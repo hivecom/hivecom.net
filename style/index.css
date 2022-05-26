@@ -425,8 +425,8 @@ button {
   background-color: var(--color-black);
   inset: 0;
   z-index: -1;
-  -webkit-transform: translate(15px, 15px);
-          transform: translate(15px, 15px);
+  -webkit-transform: translate(10px, 10px);
+          transform: translate(10px, 10px);
 }
 
 @media only screen and (max-width: 1440px) {
