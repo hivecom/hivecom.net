@@ -84,6 +84,7 @@ html body #copy img {
 
 html body #copy p {
   display: block;
+  margin: 0;
   font-size: 1rem;
   color: var(--color-black-light);
 }
@@ -426,5 +427,189 @@ button {
   z-index: -1;
   -webkit-transform: translate(15px, 15px);
           transform: translate(15px, 15px);
+}
+
+@media only screen and (max-width: 1440px) {
+  html body hr {
+    margin: 32px 0;
+    border-width: 2px;
+  }
+  html body h1,
+  html body h2,
+  html body h3,
+  html body h4,
+  html body h5,
+  html body h6 {
+    margin-bottom: 16px;
+  }
+  html body h1 {
+    font-size: 6rem;
+  }
+  html body h2 {
+    font-size: 4rem;
+  }
+  html body h3 {
+    font-size: 3.2rem;
+  }
+  html body h4 {
+    font-size: 2.8rem;
+  }
+  html body h5 {
+    font-size: 2.2rem;
+  }
+  html body h6 {
+    font-size: 1.8rem;
+  }
+  html body p {
+    font-size: 1.2rem;
+  }
+  main .teamspeak-container {
+    border-left-width: 2px;
+  }
+  main .teamspeak-container p {
+    font-size: 1.2rem;
+  }
+  main .teamspeak-container h5 {
+    margin-bottom: 16px;
+  }
+  main .content-container p {
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+    width: 100%;
+  }
+  main .content-container .section-header h1 {
+    margin-bottom: 32px;
+  }
+  main .content-container .section-about .admins .admin img {
+    width: 75%;
+  }
+  main .content-container .section-join {
+    display: block;
+  }
+  main .content-container .section-join h5 {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+  }
+  main .content-container .section-join a,
+  main .content-container .section-join button {
+    display: -webkit-inline-box;
+    display: -ms-inline-flexbox;
+    display: inline-flex;
+    margin-right: 32px;
+    min-width: 156px;
+  }
+}
+
+@media only screen and (max-width: 1080px) {
+  html body h1 {
+    font-size: 4rem;
+  }
+  main .content-container .section-join a {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  main .content-container .section-about .admins {
+    display: block;
+  }
+  main .content-container .section-about .admins .admin {
+    position: relative;
+    width: 100%;
+    padding: 24px 40px;
+    padding-left: 112px;
+  }
+  main .content-container .section-about .admins .admin p,
+  main .content-container .section-about .admins .admin strong {
+    display: block;
+    font-size: 1.2rem;
+  }
+  main .content-container .section-about .admins .admin strong {
+    padding-top: 8px;
+  }
+  main .content-container .section-about .admins .admin img {
+    position: absolute;
+    top: calc(50% -32px);
+    left: 24px;
+    width: 64px;
+    height: 64px;
+    margin: 0;
+  }
+  main .content-container .section-about .moderators {
+    display: block;
+  }
+  main .content-container .section-about .moderators .moderator {
+    margin-bottom: 8px;
+  }
+}
+
+@media only screen and (max-width: 680px) {
+  html body #copy {
+    -webkit-box-pack: center;
+        -ms-flex-pack: center;
+            justify-content: center;
+    padding: 20px;
+  }
+  html body #copy p {
+    width: auto;
+  }
+  html body hr {
+    margin: 24px 0;
+    border-width: 2px;
+  }
+  html body h1,
+  html body h2,
+  html body h3,
+  html body h4,
+  html body h5,
+  html body h6 {
+    margin-bottom: 16px;
+  }
+  html body h1 {
+    font-size: 4rem;
+  }
+  html body h2 {
+    font-size: 3.4rem;
+  }
+  html body h3 {
+    font-size: 2.8rem;
+  }
+  html body h4 {
+    font-size: 2.4rem;
+  }
+  html body h5 {
+    font-size: 2rem;
+  }
+  html body h6 {
+    font-size: 1.6rem;
+  }
+  html body p {
+    font-size: 1.1rem;
+  }
+  main {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: reverse;
+        -ms-flex-direction: column-reverse;
+            flex-direction: column-reverse;
+  }
+  main .content-container,
+  main .teamspeak-container {
+    display: block;
+    width: 100%;
+    padding: 20px;
+  }
+  main .content-container p,
+  main .teamspeak-container p {
+    font-size: 1.1rem;
+  }
+  main .teamspeak-container {
+    display: none;
+    position: relative;
+    top: unset;
+  }
 }
 /*# sourceMappingURL=index.css.map */

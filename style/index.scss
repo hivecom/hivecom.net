@@ -86,6 +86,7 @@ html body {
 
     p {
       display: block;
+      margin: 0;
 
       font-size: 1rem;
       color: var(--color-black-light);
@@ -393,5 +394,234 @@ button {
     inset: 0;
     z-index: -1;
     transform: translate(15px, 15px);
+  }
+}
+
+@media only screen and (max-width: 1440px) {
+  html body {
+    hr {
+      margin: 32px 0;
+      border-width: 2px;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 6rem;
+    }
+
+    h2 {
+      font-size: 4rem;
+    }
+
+    h3 {
+      font-size: 3.2rem;
+    }
+
+    h4 {
+      font-size: 2.8rem;
+    }
+
+    h5 {
+      font-size: 2.2rem;
+    }
+
+    h6 {
+      font-size: 1.8rem;
+    }
+
+    p {
+      font-size: 1.2rem;
+    }
+  }
+
+  main {
+    .teamspeak-container {
+      border-left-width: 2px;
+
+      p {
+        font-size: 1.2rem;
+      }
+
+      h5 {
+        margin-bottom: 16px;
+      }
+    }
+
+    .content-container {
+      p {
+        font-size: 1.3rem;
+        margin-bottom: 16px;
+        width: 100%;
+      }
+
+      .section-header {
+        h1 {
+          margin-bottom: 32px;
+        }
+      }
+
+      .section-about .admins .admin img {
+        width: 75%;
+      }
+
+      .section-join {
+        display: block;
+
+        h5 {
+          font-size: 1.6rem;
+          margin-bottom: 8px;
+        }
+
+        a,
+        button {
+          display: inline-flex;
+          margin-right: 32px;
+          min-width: 156px;
+        }
+      }
+    }
+  }
+}
+
+@media only screen and (max-width: 1080px) {
+  html body {
+    h1 {
+      font-size: 4rem;
+    }
+  }
+
+  main .content-container {
+    .section-join {
+      a {
+        display: flex;
+        width: 100%;
+        margin-bottom: 8px;
+      }
+    }
+
+    .section-about {
+      .admins {
+        display: block;
+
+        .admin {
+          position: relative;
+          width: 100%;
+          padding: 24px 40px;
+          padding-left: 112px;
+
+          p,
+          strong {
+            display: block;
+            font-size: 1.2rem;
+          }
+
+          strong {
+            padding-top: 8px;
+          }
+
+          img {
+            position: absolute;
+            top: calc(50% -32px);
+            left: 24px;
+            width: 64px;
+            height: 64px;
+            margin: 0;
+          }
+        }
+      }
+
+      .moderators {
+        display: block;
+
+        .moderator {
+          margin-bottom: 8px;
+        }
+      }
+    }
+  }
+}
+
+@media only screen and (max-width: 680px) {
+  html body {
+    #copy {
+      justify-content: center;
+      padding: 20px;
+
+      p {
+        width: auto;
+      }
+    }
+
+    hr {
+      margin: 24px 0;
+      border-width: 2px;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 4rem;
+    }
+
+    h2 {
+      font-size: 3.4rem;
+    }
+
+    h3 {
+      font-size: 2.8rem;
+    }
+
+    h4 {
+      font-size: 2.4rem;
+    }
+
+    h5 {
+      font-size: 2rem;
+    }
+
+    h6 {
+      font-size: 1.6rem;
+    }
+
+    p {
+      font-size: 1.1rem;
+    }
+  }
+
+  main {
+    display: flex;
+    flex-direction: column-reverse;
+
+    .content-container,
+    .teamspeak-container {
+      display: block;
+      width: 100%;
+      padding: 20px;
+
+      p {
+        font-size: 1.1rem;
+      }
+    }
+
+    .teamspeak-container {
+      display: none;
+      position: relative;
+      top: unset;
+    }
   }
 }
