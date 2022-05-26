@@ -1,0 +1,429 @@
+@import url("https://fonts.googleapis.com/css2?family=Arimo:wght@400;700&display=swap");
+:root {
+  --color-white: #e5eae4;
+  --color-black: #0d0d0d;
+  --color-black-light: #3c3c3c;
+  --color-green: #77ca25;
+  --color-green-light: #b8eb85;
+  --color-green-dark: #588e22;
+}
+
+:root.dark-theme {
+  --color-black: #d1cece;
+  --color-white: #171717;
+  --color-black-light: #8d8d8d;
+}
+
+:root.dark-theme #dark-mode-toggle {
+  color: var(--color-white);
+}
+
+:root.dark-theme #dark-mode-toggle:before {
+  -webkit-transform: scale(1);
+          transform: scale(1);
+  opacity: 1;
+  background-color: var(--color-green);
+}
+
+:root.dark-theme .button {
+  background-color: var(--color-green);
+  color: var(--color-white);
+}
+
+:root.dark-theme main .content-container .section-join a,
+:root.dark-theme main .content-container .section-join button {
+  background-color: #222222;
+  color: var(--color-black);
+}
+
+:root.dark-theme main .content-container .section-join a:hover,
+:root.dark-theme main .content-container .section-join button:hover {
+  background-color: rgba(34, 34, 34, 0.7);
+}
+
+:root.dark-theme #copy img {
+  -webkit-filter: invert(1);
+          filter: invert(1);
+}
+
+html body {
+  position: relative;
+  background-color: var(--color-white);
+}
+
+html body * {
+  font-family: "Arimo", sans-serif;
+  font-weight: 400;
+  color: var(--color-black);
+  word-wrap: break-word;
+}
+
+html body #copy {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: end;
+      -ms-flex-pack: end;
+          justify-content: flex-end;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  gap: 8px;
+  padding: 40px;
+  padding-bottom: 80px;
+}
+
+html body #copy img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  -o-object-fit: contain;
+     object-fit: contain;
+  opacity: 0.5;
+}
+
+html body #copy p {
+  display: block;
+  font-size: 1rem;
+  color: var(--color-black-light);
+}
+
+html body #copy p a {
+  color: var(--color-green);
+}
+
+html body h1,
+html body h2,
+html body h3,
+html body h4,
+html body h5,
+html body h6 {
+  font-family: "Arimo", sans-serif;
+  font-weight: 900;
+  display: block;
+  margin-bottom: 32px;
+}
+
+html body h1 {
+  font-size: 10rem;
+}
+
+html body h2 {
+  font-size: 8rem;
+}
+
+html body h3 {
+  font-size: 6rem;
+}
+
+html body h4 {
+  font-size: 4rem;
+}
+
+html body h5 {
+  font-size: 3rem;
+}
+
+html body h6 {
+  font-size: 2rem;
+}
+
+html body p {
+  display: block;
+  font-size: 1.5rem;
+  line-height: 1.55em;
+}
+
+html body hr {
+  margin: 64px 0;
+  border-bottom: 3px solid var(--color-black);
+}
+
+main {
+  display: -ms-grid;
+  display: grid;
+  gap: 0;
+  -ms-grid-columns: 2.5fr 1fr;
+      grid-template-columns: 2.5fr 1fr;
+  min-height: 100vh;
+}
+
+main .content-container {
+  padding: 40px;
+  max-width: 1440px;
+  padding-bottom: 156px;
+}
+
+main .content-container p {
+  width: 90%;
+}
+
+main .content-container .section-header .top-text {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: justify;
+      -ms-flex-pack: justify;
+          justify-content: space-between;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  margin-bottom: 20px;
+  padding-right: 24px;
+}
+
+main .content-container .section-header .top-text button,
+main .content-container .section-header .top-text span {
+  display: block;
+  text-transform: uppercase;
+  color: var(--color-black-light);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+}
+
+main .content-container .section-header .top-text button:hover {
+  color: var(--color-black);
+}
+
+main .content-container .section-header h1 {
+  margin-bottom: 64px;
+}
+
+main .content-container .section-join {
+  display: -ms-grid;
+  display: grid;
+  -ms-grid-columns: 2fr 1fr 1fr 1fr;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+}
+
+main .content-container .section-join h5 {
+  margin-bottom: 0;
+}
+
+main .content-container .section-join a,
+main .content-container .section-join button {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  gap: 16px;
+  background-color: var(--color-black);
+  color: var(--color-white);
+  height: 56px;
+  line-height: 56px;
+  font-size: 1.2rem;
+}
+
+main .content-container .section-join a:hover,
+main .content-container .section-join button:hover {
+  background-color: var(--color-black-light);
+}
+
+main .content-container .section-join a img,
+main .content-container .section-join button img {
+  display: block;
+  -o-object-fit: contain;
+     object-fit: contain;
+  -o-object-position: center;
+     object-position: center;
+  max-width: 20px;
+  max-height: 20px;
+}
+
+main .content-container .section-about .admins {
+  display: -ms-grid;
+  display: grid;
+  margin-bottom: 64px;
+  -ms-grid-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
+  border: 3px solid var(--color-black);
+  background-color: var(--color-white);
+  z-index: 5;
+  position: relative;
+}
+
+main .content-container .section-about .admins .admin {
+  display: block;
+  padding: 40px;
+  z-index: 10;
+  background-color: var(--color-white);
+}
+
+main .content-container .section-about .admins .admin img {
+  width: 156px;
+  height: 156px;
+  display: block;
+  margin-bottom: 20px;
+  border: 0 !important;
+  -o-object-fit: cover;
+     object-fit: cover;
+  -o-object-position: center;
+     object-position: center;
+}
+
+main .content-container .section-about .admins .admin img.image-error {
+  background-color: var(--color-green);
+  opacity: 0.25;
+}
+
+main .content-container .section-about .admins .admin img.image-error:before {
+  content: "huh";
+}
+
+main .content-container .section-about .admins .admin strong {
+  font-family: "Arimo", sans-serif;
+  font-weight: 900;
+  font-size: 2rem;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+main .content-container .section-about .admins .admin p {
+  font-size: 1.4rem;
+  margin: 0;
+  color: var(--color-black-light);
+}
+
+main .content-container .section-about .moderators {
+  display: -ms-grid;
+  display: grid;
+  margin-bottom: 64px;
+  gap: 20px;
+  -ms-grid-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
+}
+
+main .content-container .section-about .moderators .moderator {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: start;
+      -ms-flex-pack: start;
+          justify-content: flex-start;
+  gap: 16px;
+  height: 64px;
+  padding: 0 20px;
+  line-height: 64px;
+  border: 3px solid var(--color-black-light);
+}
+
+main .content-container .section-about .moderators .moderator strong {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+main .content-container .section-about .moderators .moderator img {
+  background-color: var(--color-black);
+  display: block;
+  width: 24px;
+  height: 24px;
+  -o-object-fit: cover;
+     object-fit: cover;
+  -o-object-position: center;
+     object-position: center;
+}
+
+main .content-container .section-about p {
+  margin-bottom: 32px;
+}
+
+main .teamspeak-container {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  padding-top: 5em;
+  padding: 40px;
+  max-height: 100vh;
+  border-left: 3px solid var(--color-black);
+}
+
+main .teamspeak-container h5 {
+  margin-bottom: 64px;
+}
+
+.flex-1 {
+  -webkit-box-flex: 1;
+      -ms-flex: 1;
+          flex: 1;
+}
+
+.button {
+  -webkit-transition: 0.1s all linear;
+  transition: 0.1s all linear;
+  font-family: "Arimo", sans-serif;
+  font-weight: 900;
+  display: block;
+  height: 64px;
+  line-height: 64px;
+  text-align: center;
+  background-color: var(--color-green);
+  color: var(--color-black);
+  font-size: 1.2rem;
+  text-transform: uppercase;
+}
+
+.button:hover {
+  background-color: var(--color-green-dark);
+}
+
+button {
+  cursor: pointer;
+}
+
+.hover-bubble {
+  position: relative;
+  z-index: 5;
+}
+
+.hover-bubble:hover:before {
+  -webkit-transform: scale(1);
+          transform: scale(1);
+  opacity: 1;
+}
+
+.hover-bubble:before {
+  content: "";
+  -webkit-transition: 0.1s all linear;
+  transition: 0.1s all linear;
+  border-radius: 5px;
+  position: absolute;
+  z-index: -1;
+  inset: -12px -20px;
+  background-color: var(--color-green-light);
+  -webkit-transform: scale(0.9);
+          transform: scale(0.9);
+  opacity: 0;
+}
+
+.frame {
+  position: relative;
+  z-index: 10;
+}
+
+.frame:after {
+  content: "";
+  display: block;
+  position: absolute;
+  background-color: var(--color-black);
+  inset: 0;
+  z-index: -1;
+  -webkit-transform: translate(15px, 15px);
+          transform: translate(15px, 15px);
+}
+/*# sourceMappingURL=index.css.map */
