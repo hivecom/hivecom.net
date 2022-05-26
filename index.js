@@ -11,27 +11,27 @@ const ADMINS = [
   {
     name: "Jokler",
     bio: "wait what do you need that for?",
-    avatar: "https://decider.com/wp-content/uploads/2018/03/tommy-wiseau-joker.jpg",
+    avatar: "/public/admins/jokler.jpg",
   },
   {
     name: "kilmanio",
     bio: "i buy 2 guitar pedals / week",
-    avatar: "https://cloud.funda.nl/valentina_media/156/514/097_180x120.jpg",
+    avatar: "/public/admins/kilmanio.jpg",
   },
   {
     name: "zealsprince",
     bio: "i press buttons",
-    avatar: "https://avatars.githubusercontent.com/u/1859270?v=4",
+    avatar: "/public/admins/zealsprince.jpg",
   },
 ];
 
 const MODERATORS = [
-  { name: "dolanske", image: "" },
-  { name: "Rapid", image: "https://i.imgur.com/nlD4nxx.png" },
-  { name: "Chantaro", image: "https://i.imgur.com/1Ee0S4C.jpeg" },
-  { name: "Silomare", image: "https://i.imgur.com/a7aHbwg.png" },
-  { name: "Yuki", image: "" },
-  { name: "Jarl", image: "" },
+  { name: "dolanske", avatar: "/public/moderators/dolanske.jpg" },
+  { name: "Rapid", avatar: "/public/moderators/rapid.png" },
+  { name: "Chantaro", avatar: "/public/moderators/chantaro.jpeg" },
+  { name: "Silomare", avatar: "/public/moderators/silomare.png" },
+  { name: "Yuki", avatar: "" },
+  { name: "Jarl", avatar: "" },
 ];
 
 function init() {
@@ -70,14 +70,7 @@ function init() {
 
   $("#moderators").addChild(({ render }) => {
     return MODERATORS.map((user) => {
-      return render("div", { class: "moderator" }, [
-        render("img", {
-          src: user.avatar,
-          alt: " ",
-          onerror: (e) => e.target.classList.add("image-error"),
-        }),
-        render("strong", user.name),
-      ]);
+      return render("div", { class: "moderator" }, [render("img", { src: user.avatar }), render("strong", user.name)]);
     });
   });
 }

@@ -258,13 +258,14 @@ main {
 
           strong {
             @include font-bold();
-            font-size: 2rem;
-            font-style: italic;
+            font-size: 1.6rem;
+            display: block;
+            margin-bottom: 4px;
             text-transform: uppercase;
           }
 
           p {
-            font-size: 1.4rem;
+            font-size: 1.2rem;
             margin: 0;
             color: var(--color-black-light);
           }
@@ -283,10 +284,10 @@ main {
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          gap: 16px;
+          gap: 23px;
 
           height: 64px;
-          padding: 0 20px;
+          padding: 0 8px;
           line-height: 64px;
           // padding-left: 64px;
           border: 3px solid var(--color-black-light);
@@ -299,8 +300,8 @@ main {
           img {
             background-color: var(--color-black);
             display: block;
-            width: 24px;
-            height: 24px;
+            width: 40px;
+            height: 40px;
             object-fit: cover;
             object-position: center;
           }

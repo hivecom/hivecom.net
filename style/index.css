@@ -279,13 +279,14 @@ main .content-container .section-about .admins .admin img.image-error:before {
 main .content-container .section-about .admins .admin strong {
   font-family: "Arimo", sans-serif;
   font-weight: 900;
-  font-size: 2rem;
-  font-style: italic;
+  font-size: 1.6rem;
+  display: block;
+  margin-bottom: 4px;
   text-transform: uppercase;
 }
 
 main .content-container .section-about .admins .admin p {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   margin: 0;
   color: var(--color-black-light);
 }
@@ -309,9 +310,9 @@ main .content-container .section-about .moderators .moderator {
   -webkit-box-pack: start;
       -ms-flex-pack: start;
           justify-content: flex-start;
-  gap: 16px;
+  gap: 23px;
   height: 64px;
-  padding: 0 20px;
+  padding: 0 8px;
   line-height: 64px;
   border: 3px solid var(--color-black-light);
 }
@@ -324,8 +325,8 @@ main .content-container .section-about .moderators .moderator strong {
 main .content-container .section-about .moderators .moderator img {
   background-color: var(--color-black);
   display: block;
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
   -o-object-fit: cover;
      object-fit: cover;
   -o-object-position: center;
