@@ -1,3 +1,3 @@
 # hivecom.net
 
-Just the frontpage
+Website for our community teamspeak server with descriptions and contact information. Designed and implemented by Mavulp.
