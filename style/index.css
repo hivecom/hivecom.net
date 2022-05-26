@@ -70,7 +70,7 @@ html body #copy {
           align-items: center;
   gap: 8px;
   padding: 40px;
-  padding-bottom: 80px;
+  padding-top: 256px;
 }
 
 html body #copy img {
@@ -85,6 +85,7 @@ html body #copy img {
 html body #copy p {
   display: block;
   margin: 0;
+  width: auto !important;
   font-size: 1rem;
   color: var(--color-black-light);
 }
@@ -152,7 +153,6 @@ main {
 main .content-container {
   padding: 40px;
   max-width: 1440px;
-  padding-bottom: 156px;
 }
 
 main .content-container p {
@@ -503,6 +503,10 @@ button {
 @media only screen and (max-width: 1080px) {
   html body h1 {
     font-size: 4rem;
+  }
+  html body #copy {
+    padding-top: 156px;
+    padding-bottom: 20px;
   }
   main .content-container .section-join a {
     display: -webkit-box;

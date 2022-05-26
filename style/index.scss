@@ -74,7 +74,7 @@ html body {
     align-items: center;
     gap: 8px;
     padding: 40px;
-    padding-bottom: 80px;
+    padding-top: 256px;
 
     img {
       display: block;
@@ -87,6 +87,7 @@ html body {
     p {
       display: block;
       margin: 0;
+      width: auto !important;
 
       font-size: 1rem;
       color: var(--color-black-light);
@@ -153,7 +154,6 @@ main {
   .content-container {
     padding: 40px;
     max-width: 1440px;
-    padding-bottom: 156px;
 
     p {
       width: 90%;
@@ -495,6 +495,11 @@ button {
   html body {
     h1 {
       font-size: 4rem;
+    }
+
+    #copy {
+      padding-top: 156px;
+      padding-bottom: 20px;
     }
   }
 
