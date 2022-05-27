@@ -30,8 +30,8 @@ const MODERATORS = [
   { name: "Rapid", avatar: "/public/moderators/rapid.png" },
   { name: "Chantaro", avatar: "/public/moderators/chantaro.jpeg" },
   { name: "Silomare", avatar: "/public/moderators/silomare.png" },
-  { name: "Yuki", avatar: "" },
-  { name: "Jarl", avatar: "" },
+  { name: "Yuki", avatar: "https://cdn.discordapp.com/attachments/406928561006575626/979716481707286579/image0.jpg" },
+  { name: "Jarle", avatar: "https://avatars.akamai.steamstatic.com/e0418bba378e0ce9edba08d3263c5035b9a65737_full.jpg" },
 ];
 
 function init() {
