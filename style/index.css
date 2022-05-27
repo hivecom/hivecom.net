@@ -1,4 +1,25 @@
-@import url("https://fonts.googleapis.com/css2?family=Arimo:wght@400;700&display=swap");
+/* arimo-regular - latin */
+@font-face {
+  font-family: "Arimo";
+  font-style: normal;
+  font-weight: 400;
+  src: url("../public/font/arimo-v26-latin-regular.eot");
+  /* IE9 Compat Modes */
+  src: local(""), url("../public/font/arimo-v26-latin-regular.eot?#iefix") format("embedded-opentype"), url("../public/font/arimo-v26-latin-regular.woff2") format("woff2"), url("../public/font/arimo-v26-latin-regular.woff") format("woff"), url("../public/font/arimo-v26-latin-regular.ttf") format("truetype"), url("../public/font/arimo-v26-latin-regular.svg#Arimo") format("svg");
+  /* Legacy iOS */
+}
+
+/* arimo-700 - latin */
+@font-face {
+  font-family: "Arimo";
+  font-style: normal;
+  font-weight: 700;
+  src: url("../public/font/arimo-v26-latin-700.eot");
+  /* IE9 Compat Modes */
+  src: local(""), url("../public/font/arimo-v26-latin-700.eot?#iefix") format("embedded-opentype"), url("../public/font/arimo-v26-latin-700.woff2") format("woff2"), url("../public/font/arimo-v26-latin-700.woff") format("woff"), url("../public/font/arimo-v26-latin-700.ttf") format("truetype"), url("../public/font/arimo-v26-latin-700.svg#Arimo") format("svg");
+  /* Legacy iOS */
+}
+
 :root {
   --color-white: #e5eae4;
   --color-black: #0d0d0d;
@@ -69,7 +90,6 @@ html body #copy {
       -ms-flex-align: center;
           align-items: center;
   gap: 8px;
-  padding: 40px;
   padding-top: 256px;
 }
 
@@ -195,7 +215,7 @@ main .content-container .section-join {
   display: grid;
   -ms-grid-columns: 2fr 1fr 1fr 1fr;
       grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 40px;
+  gap: 20px;
 }
 
 main .content-container .section-join h5 {
@@ -506,7 +526,6 @@ button {
   }
   html body #copy {
     padding-top: 156px;
-    padding-bottom: 20px;
   }
   main .content-container .section-join a {
     display: -webkit-box;
@@ -553,7 +572,7 @@ button {
     -webkit-box-pack: center;
         -ms-flex-pack: center;
             justify-content: center;
-    padding: 20px;
+    padding-top: 20px;
   }
   html body #copy p {
     width: auto;

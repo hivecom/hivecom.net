@@ -1,4 +1,28 @@
-@import url("https://fonts.googleapis.com/css2?family=Arimo:wght@400;700&display=swap");
+/* arimo-regular - latin */
+@font-face {
+  font-family: "Arimo";
+  font-style: normal;
+  font-weight: 400;
+  src: url("../public/font/arimo-v26-latin-regular.eot"); /* IE9 Compat Modes */
+  src: local(""), url("../public/font/arimo-v26-latin-regular.eot?#iefix") format("embedded-opentype"),
+    /* IE6-IE8 */ url("../public/font/arimo-v26-latin-regular.woff2") format("woff2"),
+    /* Super Modern Browsers */ url("../public/font/arimo-v26-latin-regular.woff") format("woff"),
+    /* Modern Browsers */ url("../public/font/arimo-v26-latin-regular.ttf") format("truetype"),
+    /* Safari, Android, iOS */ url("../public/font/arimo-v26-latin-regular.svg#Arimo") format("svg"); /* Legacy iOS */
+}
+
+/* arimo-700 - latin */
+@font-face {
+  font-family: "Arimo";
+  font-style: normal;
+  font-weight: 700;
+  src: url("../public/font/arimo-v26-latin-700.eot"); /* IE9 Compat Modes */
+  src: local(""), url("../public/font/arimo-v26-latin-700.eot?#iefix") format("embedded-opentype"),
+    /* IE6-IE8 */ url("../public/font/arimo-v26-latin-700.woff2") format("woff2"),
+    /* Super Modern Browsers */ url("../public/font/arimo-v26-latin-700.woff") format("woff"),
+    /* Modern Browsers */ url("../public/font/arimo-v26-latin-700.ttf") format("truetype"),
+    /* Safari, Android, iOS */ url("../public/font/arimo-v26-latin-700.svg#Arimo") format("svg"); /* Legacy iOS */
+}
 
 @mixin font-regular {
   font-family: "Arimo", sans-serif;
@@ -73,7 +97,6 @@ html body {
     justify-content: flex-end;
     align-items: center;
     gap: 8px;
-    padding: 40px;
     padding-top: 256px;
 
     img {
@@ -189,7 +212,7 @@ main {
     .section-join {
       display: grid;
       grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 40px;
+      gap: 20px;
 
       h5 {
         margin-bottom: 0;
@@ -499,7 +522,7 @@ button {
 
     #copy {
       padding-top: 156px;
-      padding-bottom: 20px;
+      // padding-bottom: 20px;
     }
   }
 
@@ -558,7 +581,8 @@ button {
   html body {
     #copy {
       justify-content: center;
-      padding: 20px;
+      // padding: 20px;
+      padding-top: 20px;
 
       p {
         width: auto;
