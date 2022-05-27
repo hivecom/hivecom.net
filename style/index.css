@@ -172,7 +172,6 @@ main {
 
 main .content-container {
   padding: 40px;
-  max-width: 1440px;
 }
 
 main .content-container p {
@@ -332,22 +331,22 @@ main .content-container .section-about .moderators .moderator {
       -ms-flex-pack: start;
           justify-content: flex-start;
   gap: 23px;
-  height: 64px;
+  height: 80px;
   padding: 0 8px;
-  line-height: 64px;
+  line-height: 80px;
   border: 3px solid var(--color-black-light);
 }
 
 main .content-container .section-about .moderators .moderator strong {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   margin: 0;
 }
 
 main .content-container .section-about .moderators .moderator img {
   background-color: var(--color-black);
   display: block;
-  width: 40px;
-  height: 40px;
+  width: 64px;
+  height: 64px;
   -o-object-fit: cover;
      object-fit: cover;
   -o-object-position: center;
