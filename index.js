@@ -14,7 +14,7 @@ const ADMINS = [
     avatar: "/public/admins/jokler.jpg",
   },
   {
-    name: "kilmanio",
+    name: "Kilmanio",
     bio: "i buy 2 guitar pedals / week",
     avatar: "/public/admins/kilmanio.jpg",
   },
@@ -71,6 +71,31 @@ function init() {
   $("#moderators").addChild(({ render }) => {
     return MODERATORS.map((user) => {
       return render("div", { class: "moderator" }, [render("img", { src: user.avatar }), render("strong", user.name)]);
+    });
+  });
+
+  /**
+   * Scroll
+   */
+
+  // Get height of entire document
+  const height = document.body.scrollHeight;
+
+  // Attach scroll listener to the window
+  $(window).on("scroll", () => {
+    // Simplify accessing scrolled amount
+    const scroll = window.scrollY;
+
+    // Calculate how much percent of the document is scrolled
+    // Smooth scrolled value by 5
+    const SMOOTHING = 4;
+    const percent = Math.round((scroll / height) * 100) / SMOOTHING;
+
+    // Apply CSS to the element
+    $(".radial-blob").css({
+      // Slowly move the background object with the user. Smooth by 40 times
+      transform: `translateY(${(scroll * -1) / 40}px)`,
+      backgroundPosition: `${percent}% ${50 + percent}%`,
     });
   });
 }

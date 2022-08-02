@@ -21,8 +21,8 @@
 }
 
 :root {
-  --color-white: #e5eae4;
-  --color-black: #0d0d0d;
+  --color-white: #e6eae5;
+  --color-black: #141313;
   --color-black-light: #3c3c3c;
   --color-green: #77ca25;
   --color-green-light: #b8eb85;
@@ -30,8 +30,8 @@
 }
 
 :root.dark-theme {
-  --color-black: #d1cece;
-  --color-white: #171717;
+  --color-black: #d0d0d0;
+  --color-white: #141313;
   --color-black-light: #8d8d8d;
 }
 
@@ -114,6 +114,34 @@ html body #copy p a {
   color: var(--color-green);
 }
 
+html body .noise {
+  display: block;
+  position: fixed;
+  z-index: 5;
+  inset: 0;
+  background-image: url(../public/noise.gif);
+  background-repeat: repeat;
+  pointer-events: none;
+  opacity: 0.025;
+  z-index: -1;
+}
+
+html body .radial-blob {
+  border-radius: 50%;
+  display: block;
+  position: fixed;
+  left: 5%;
+  top: 10%;
+  width: 1024px;
+  height: 1024px;
+  z-index: -2;
+  background: linear-gradient(130deg, var(--color-green-light), var(--color-green-dark), var(--color-white) 40%);
+  background-size: 140% 140%;
+  -webkit-filter: blur(7px);
+          filter: blur(7px);
+  background-position: 0% 50%;
+}
+
 html body h1,
 html body h2,
 html body h3,
@@ -157,13 +185,14 @@ html body p {
 }
 
 html body hr {
-  margin: 64px -32px;
+  margin: 64px -20px;
   border-bottom: 3px solid var(--color-green);
 }
 
 main {
   display: block;
   min-height: 100vh;
+  z-index: 10;
 }
 
 main .top-text {
@@ -200,7 +229,7 @@ main .top-text button:hover {
 
 main .content-container {
   padding: 2em;
-  width: 924px;
+  max-width: 898px;
   margin: 0 auto;
 }
 
@@ -301,16 +330,31 @@ main .content-container .section-about .admins .admin img.image-error:before {
 main .content-container .section-about .admins .admin strong {
   font-family: "Arimo", sans-serif;
   font-weight: 900;
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   display: block;
   margin-bottom: 4px;
-  text-transform: uppercase;
 }
 
 main .content-container .section-about .admins .admin p {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
+  line-height: 1.1em;
   margin: 0;
-  color: var(--color-black-light);
+  color: var(--color-black);
+  opacity: 0.75;
+  padding-left: 22px;
+  position: relative;
+  padding-top: 4px;
+}
+
+main .content-container .section-about .admins .admin p:before {
+  font-family: "Arimo", sans-serif;
+  font-weight: 900;
+  content: '"';
+  position: absolute;
+  font-size: 2rem;
+  left: 0px;
+  top: 0px;
+  color: var(--color-green);
 }
 
 main .content-container .section-about .moderators {
@@ -507,7 +551,7 @@ button {
   main .content-container .section-join {
     display: block;
   }
-  main .content-container .section-join h5 {
+  main .content-container .section-join h6 {
     font-size: 1.6rem;
     margin-bottom: 8px;
   }
@@ -527,6 +571,10 @@ button {
   }
   html body #copy {
     padding-top: 156px;
+  }
+  main .content-container .section-join h6 {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
   }
   main .content-container .section-join a {
     display: -webkit-box;

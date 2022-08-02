@@ -35,8 +35,8 @@
 }
 
 :root {
-  --color-white: #e5eae4;
-  --color-black: #0d0d0d;
+  --color-white: #e6eae5;
+  --color-black: #141313;
   --color-black-light: #3c3c3c;
   --color-green: #77ca25;
   --color-green-light: #b8eb85;
@@ -44,8 +44,8 @@
 }
 
 :root.dark-theme {
-  --color-black: #d1cece;
-  --color-white: #171717;
+  --color-black: #d0d0d0;
+  --color-white: #141313;
   --color-black-light: #8d8d8d;
 
   #dark-mode-toggle {
@@ -121,6 +121,34 @@ html body {
     }
   }
 
+  .noise {
+    display: block;
+    position: fixed;
+    z-index: 5;
+    inset: 0;
+    background-image: url(../public/noise.gif);
+    background-repeat: repeat;
+    // background-size: contain;
+    pointer-events: none;
+    opacity: 0.025;
+    z-index: -1;
+  }
+
+  .radial-blob {
+    border-radius: 50%;
+    display: block;
+    position: fixed;
+    left: 5%;
+    top: 10%;
+    width: 1024px;
+    height: 1024px;
+    z-index: -2;
+    background: linear-gradient(130deg, var(--color-green-light), var(--color-green-dark), var(--color-white) 40%);
+    background-size: 140% 140%;
+    filter: blur(7px);
+    background-position: 0% 50%;
+  }
+
   h1,
   h2,
   h3,
@@ -163,7 +191,7 @@ html body {
   }
 
   hr {
-    margin: 64px -32px;
+    margin: 64px -20px;
     border-bottom: 3px solid var(--color-green);
   }
 }
@@ -174,6 +202,7 @@ main {
   // gap: 0;
   // grid-template-columns: 2.5fr 1fr;
   min-height: 100vh;
+  z-index: 10;
 
   .top-text {
     display: flex;
@@ -203,7 +232,7 @@ main {
 
   .content-container {
     padding: 2em;
-    width: 924px;
+    max-width: 898px;
     margin: 0 auto;
 
     .section-header {
@@ -285,16 +314,32 @@ main {
 
           strong {
             @include font-bold();
-            font-size: 1.6rem;
+            font-size: 1.4rem;
             display: block;
             margin-bottom: 4px;
-            text-transform: uppercase;
+            // text-transform: uppercase;
           }
 
           p {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
+            line-height: 1.1em;
             margin: 0;
-            color: var(--color-black-light);
+            color: var(--color-black);
+            opacity: 0.75;
+            padding-left: 22px;
+            position: relative;
+            padding-top: 4px;
+
+            &:before {
+              @include font-bold();
+              content: '"';
+              position: absolute;
+              font-size: 2rem;
+              left: 0px;
+              top: 0px;
+              // opacity: 0.75;
+              color: var(--color-green);
+            }
           }
         }
       }
@@ -498,7 +543,7 @@ button {
       .section-join {
         display: block;
 
-        h5 {
+        h6 {
           font-size: 1.6rem;
           margin-bottom: 8px;
         }
@@ -528,6 +573,11 @@ button {
 
   main .content-container {
     .section-join {
+      h6 {
+        font-size: 1.6rem;
+        margin-bottom: 8px;
+      }
+
       a {
         display: flex;
         width: 100%;
