@@ -41,12 +41,14 @@
   --color-green: #77ca25;
   --color-green-light: #b8eb85;
   --color-green-dark: #588e22;
+  --color-blob-green: #9ddd5d;
 }
 
 :root.dark-theme {
   --color-black: #d0d0d0;
   --color-white: #141313;
   --color-black-light: #8d8d8d;
+  --color-blob-green: #77ca25;
 
   #dark-mode-toggle {
     color: var(--color-white);
@@ -143,10 +145,11 @@ html body {
     width: 1024px;
     height: 1024px;
     z-index: -2;
-    background: linear-gradient(130deg, var(--color-green-light), var(--color-green-dark), var(--color-white) 40%);
+    background: linear-gradient(130deg, var(--color-blob-green), var(--color-white) 40%);
     background-size: 140% 140%;
-    filter: blur(7px);
+    filter: blur(10px);
     background-position: 0% 50%;
+    // opacity: 0.75;
   }
 
   h1,
@@ -198,9 +201,6 @@ html body {
 
 main {
   display: block;
-  // display: grid;
-  // gap: 0;
-  // grid-template-columns: 2.5fr 1fr;
   min-height: 100vh;
   z-index: 10;
 
@@ -209,7 +209,6 @@ main {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 64px;
-    // padding-right: 24px;
     padding: 32px 64px;
     padding-right: 80px;
     position: sticky;
@@ -220,9 +219,21 @@ main {
     span {
       display: block;
       text-transform: uppercase;
-      color: var(--color-black-light);
+      color: var(--color-black);
       font-size: 0.8rem;
       letter-spacing: 0.1em;
+    }
+
+    span {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 12px;
+
+      img {
+        width: 24px;
+        object-fit: contain;
+      }
     }
 
     button:hover {
@@ -236,19 +247,36 @@ main {
     margin: 0 auto;
 
     .section-header {
-      h1 {
+      .title {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 16px;
         margin-bottom: 64px;
+
+        h1 {
+          margin-bottom: 0;
+        }
       }
     }
 
     .section-join {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 20px;
-      align-items: center;
+      .wrapper {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        align-items: center;
+      }
 
-      h6 {
-        margin-bottom: 0;
+      p {
+        margin-bottom: 16px;
+        font-size: 1.2rem;
+      }
+
+      span {
+        @include font-bold;
+        font-size: inherit;
+        color: var(--color-green);
       }
 
       a,
@@ -347,23 +375,47 @@ main {
       .moderators {
         display: grid;
         margin-bottom: 64px;
-        gap: 20px;
+        gap: 32px;
         grid-template-columns: 1fr 1fr 1fr;
 
         .moderator {
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          gap: 23px;
+          gap: 32px;
 
           height: 80px;
           padding: 0 8px;
+          position: relative;
           line-height: 80px;
           border: 2px solid var(--color-green);
+          z-index: 5;
+          background-color: var(--color-white);
+
+          &:before {
+            content: "";
+            display: block;
+            position: absolute;
+            inset: 0;
+            background-color: var(--color-white);
+            z-index: 0;
+          }
+
+          &:after {
+            content: "";
+            display: block;
+            position: absolute;
+            background-color: var(--color-green);
+            inset: 0;
+            z-index: -1;
+            transform: translate(8px, 8px);
+          }
 
           strong {
             font-size: 1.3rem;
             margin: 0;
+            z-index: 10;
+            position: relative;
           }
 
           img {
@@ -371,6 +423,8 @@ main {
             display: block;
             width: 64px;
             height: 64px;
+            z-index: 10;
+            position: relative;
             object-fit: cover;
             object-position: center;
           }
@@ -461,7 +515,7 @@ button {
     background-color: var(--color-green);
     inset: 0;
     z-index: -1;
-    transform: translate(10px, 10px);
+    transform: translate(8px, 8px);
   }
 }
 

@@ -32,7 +32,7 @@ const MODERATORS = [
   { name: "Silomare", avatar: "/public/moderators/silomare.png" },
   { name: "Yuki", avatar: "./public/moderators/yuki.jpg" },
   { name: "Jarle", avatar: "./public/moderators/jarle.jpg" },
-];
+].sort((a, b) => (a.name[0].toLowerCase() > b.name[0].toLocaleLowerCase() ? 1 : -1));
 
 function init() {
   const isDark = localStorage.getItem(DARK_CLASS);
@@ -94,7 +94,7 @@ function init() {
     // Apply CSS to the element
     $(".radial-blob").css({
       // Slowly move the background object with the user. Smooth by 40 times
-      transform: `translateY(${(scroll * -1) / 40}px)`,
+      transform: `translateY(${(scroll * -1) / 30}px)`,
       backgroundPosition: `${percent}% ${50 + percent}%`,
     });
   });

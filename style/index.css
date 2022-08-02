@@ -27,12 +27,14 @@
   --color-green: #77ca25;
   --color-green-light: #b8eb85;
   --color-green-dark: #588e22;
+  --color-blob-green: #9ddd5d;
 }
 
 :root.dark-theme {
   --color-black: #d0d0d0;
   --color-white: #141313;
   --color-black-light: #8d8d8d;
+  --color-blob-green: #77ca25;
 }
 
 :root.dark-theme #dark-mode-toggle {
@@ -135,10 +137,10 @@ html body .radial-blob {
   width: 1024px;
   height: 1024px;
   z-index: -2;
-  background: linear-gradient(130deg, var(--color-green-light), var(--color-green-dark), var(--color-white) 40%);
+  background: linear-gradient(130deg, var(--color-blob-green), var(--color-white) 40%);
   background-size: 140% 140%;
-  -webkit-filter: blur(7px);
-          filter: blur(7px);
+  -webkit-filter: blur(10px);
+          filter: blur(10px);
   background-position: 0% 50%;
 }
 
@@ -218,9 +220,28 @@ main .top-text button,
 main .top-text span {
   display: block;
   text-transform: uppercase;
-  color: var(--color-black-light);
+  color: var(--color-black);
   font-size: 0.8rem;
   letter-spacing: 0.1em;
+}
+
+main .top-text span {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: start;
+      -ms-flex-pack: start;
+          justify-content: flex-start;
+  gap: 12px;
+}
+
+main .top-text span img {
+  width: 24px;
+  -o-object-fit: contain;
+     object-fit: contain;
 }
 
 main .top-text button:hover {
@@ -233,23 +254,45 @@ main .content-container {
   margin: 0 auto;
 }
 
-main .content-container .section-header h1 {
+main .content-container .section-header .title {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: start;
+      -ms-flex-pack: start;
+          justify-content: flex-start;
+  gap: 16px;
   margin-bottom: 64px;
 }
 
-main .content-container .section-join {
+main .content-container .section-header .title h1 {
+  margin-bottom: 0;
+}
+
+main .content-container .section-join .wrapper {
   display: -ms-grid;
   display: grid;
-  -ms-grid-columns: 2fr 1fr 1fr 1fr;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
+  -ms-grid-columns: (1fr)[4];
+      grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   -webkit-box-align: center;
       -ms-flex-align: center;
           align-items: center;
 }
 
-main .content-container .section-join h6 {
-  margin-bottom: 0;
+main .content-container .section-join p {
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+}
+
+main .content-container .section-join span {
+  font-family: "Arimo", sans-serif;
+  font-weight: 900;
+  font-size: inherit;
+  color: var(--color-green);
 }
 
 main .content-container .section-join a,
@@ -361,7 +404,7 @@ main .content-container .section-about .moderators {
   display: -ms-grid;
   display: grid;
   margin-bottom: 64px;
-  gap: 20px;
+  gap: 32px;
   -ms-grid-columns: 1fr 1fr 1fr;
       grid-template-columns: 1fr 1fr 1fr;
 }
@@ -376,16 +419,41 @@ main .content-container .section-about .moderators .moderator {
   -webkit-box-pack: start;
       -ms-flex-pack: start;
           justify-content: flex-start;
-  gap: 23px;
+  gap: 32px;
   height: 80px;
   padding: 0 8px;
+  position: relative;
   line-height: 80px;
   border: 2px solid var(--color-green);
+  z-index: 5;
+  background-color: var(--color-white);
+}
+
+main .content-container .section-about .moderators .moderator:before {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-white);
+  z-index: 0;
+}
+
+main .content-container .section-about .moderators .moderator:after {
+  content: "";
+  display: block;
+  position: absolute;
+  background-color: var(--color-green);
+  inset: 0;
+  z-index: -1;
+  -webkit-transform: translate(8px, 8px);
+          transform: translate(8px, 8px);
 }
 
 main .content-container .section-about .moderators .moderator strong {
   font-size: 1.3rem;
   margin: 0;
+  z-index: 10;
+  position: relative;
 }
 
 main .content-container .section-about .moderators .moderator img {
@@ -393,6 +461,8 @@ main .content-container .section-about .moderators .moderator img {
   display: block;
   width: 64px;
   height: 64px;
+  z-index: 10;
+  position: relative;
   -o-object-fit: cover;
      object-fit: cover;
   -o-object-position: center;
@@ -490,8 +560,8 @@ button {
   background-color: var(--color-green);
   inset: 0;
   z-index: -1;
-  -webkit-transform: translate(10px, 10px);
-          transform: translate(10px, 10px);
+  -webkit-transform: translate(8px, 8px);
+          transform: translate(8px, 8px);
 }
 
 @media only screen and (max-width: 1440px) {
