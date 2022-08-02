@@ -94,7 +94,7 @@ html body {
 
   #copy {
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     align-items: center;
     gap: 8px;
     padding-top: 256px;
@@ -141,68 +141,72 @@ html body {
   }
 
   h3 {
-    font-size: 6rem;
-  }
-
-  h4 {
     font-size: 4rem;
   }
 
-  h5 {
+  h4 {
     font-size: 3rem;
   }
 
+  h5 {
+    font-size: 2.4rem;
+  }
+
   h6 {
-    font-size: 2rem;
+    font-size: 1.8rem;
   }
 
   p {
     display: block;
-    font-size: 1.5rem;
-    line-height: 1.55em;
+    font-size: 1.35rem;
+    line-height: 1.5em;
   }
 
   hr {
-    margin: 64px 0;
-    border-bottom: 3px solid var(--color-black);
+    margin: 64px -32px;
+    border-bottom: 3px solid var(--color-green);
   }
 }
 
 main {
-  display: grid;
-  gap: 0;
-  grid-template-columns: 2.5fr 1fr;
+  display: block;
+  // display: grid;
+  // gap: 0;
+  // grid-template-columns: 2.5fr 1fr;
   min-height: 100vh;
 
-  .content-container {
-    padding: 40px;
+  .top-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 64px;
+    // padding-right: 24px;
+    padding: 32px 64px;
+    padding-right: 80px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
 
-    p {
-      width: 90%;
+    button,
+    span {
+      display: block;
+      text-transform: uppercase;
+      color: var(--color-black-light);
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
     }
 
+    button:hover {
+      color: var(--color-black);
+    }
+  }
+
+  .content-container {
+    padding: 2em;
+    width: 924px;
+    margin: 0 auto;
+
     .section-header {
-      .top-text {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        padding-right: 24px;
-
-        button,
-        span {
-          display: block;
-          text-transform: uppercase;
-          color: var(--color-black-light);
-          font-size: 0.8rem;
-          letter-spacing: 0.1em;
-        }
-
-        button:hover {
-          color: var(--color-black);
-        }
-      }
-
       h1 {
         margin-bottom: 64px;
       }
@@ -212,8 +216,9 @@ main {
       display: grid;
       grid-template-columns: 2fr 1fr 1fr 1fr;
       gap: 20px;
+      align-items: center;
 
-      h5 {
+      h6 {
         margin-bottom: 0;
       }
 
@@ -223,7 +228,6 @@ main {
         justify-content: center;
         align-items: center;
         gap: 16px;
-        // border-radius: 4px;
         background-color: var(--color-black);
         color: var(--color-white);
         height: 56px;
@@ -249,7 +253,7 @@ main {
         display: grid;
         margin-bottom: 64px;
         grid-template-columns: 1fr 1fr 1fr;
-        border: 3px solid var(--color-black);
+        border: 2px solid var(--color-green);
         background-color: var(--color-white);
         z-index: 5;
         position: relative;
@@ -310,7 +314,7 @@ main {
           height: 80px;
           padding: 0 8px;
           line-height: 80px;
-          border: 3px solid var(--color-black-light);
+          border: 2px solid var(--color-green);
 
           strong {
             font-size: 1.3rem;
@@ -342,7 +346,7 @@ main {
     padding-top: 5em;
     padding: 40px;
     max-height: 100vh;
-    border-left: 3px solid var(--color-black);
+    border-left: 2px solid var(--color-black);
 
     h5 {
       margin-bottom: 64px;
@@ -358,7 +362,7 @@ main {
   transition: 0.1s all linear;
 
   @include font-bold;
-  // border-radius: 4px;
+
   display: block;
   height: 64px;
   line-height: 64px;
@@ -409,7 +413,7 @@ button {
     content: "";
     display: block;
     position: absolute;
-    background-color: var(--color-black);
+    background-color: var(--color-green);
     inset: 0;
     z-index: -1;
     transform: translate(10px, 10px);

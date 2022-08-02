@@ -83,9 +83,9 @@ html body #copy {
   display: -webkit-box;
   display: -ms-flexbox;
   display: flex;
-  -webkit-box-pack: end;
-      -ms-flex-pack: end;
-          justify-content: flex-end;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
   -webkit-box-align: center;
       -ms-flex-align: center;
           align-items: center;
@@ -135,50 +135,38 @@ html body h2 {
 }
 
 html body h3 {
-  font-size: 6rem;
-}
-
-html body h4 {
   font-size: 4rem;
 }
 
-html body h5 {
+html body h4 {
   font-size: 3rem;
 }
 
+html body h5 {
+  font-size: 2.4rem;
+}
+
 html body h6 {
-  font-size: 2rem;
+  font-size: 1.8rem;
 }
 
 html body p {
   display: block;
-  font-size: 1.5rem;
-  line-height: 1.55em;
+  font-size: 1.35rem;
+  line-height: 1.5em;
 }
 
 html body hr {
-  margin: 64px 0;
-  border-bottom: 3px solid var(--color-black);
+  margin: 64px -32px;
+  border-bottom: 3px solid var(--color-green);
 }
 
 main {
-  display: -ms-grid;
-  display: grid;
-  gap: 0;
-  -ms-grid-columns: 2.5fr 1fr;
-      grid-template-columns: 2.5fr 1fr;
+  display: block;
   min-height: 100vh;
 }
 
-main .content-container {
-  padding: 40px;
-}
-
-main .content-container p {
-  width: 90%;
-}
-
-main .content-container .section-header .top-text {
+main .top-text {
   display: -webkit-box;
   display: -ms-flexbox;
   display: flex;
@@ -188,12 +176,17 @@ main .content-container .section-header .top-text {
   -webkit-box-align: center;
       -ms-flex-align: center;
           align-items: center;
-  margin-bottom: 20px;
-  padding-right: 24px;
+  margin-bottom: 64px;
+  padding: 32px 64px;
+  padding-right: 80px;
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
-main .content-container .section-header .top-text button,
-main .content-container .section-header .top-text span {
+main .top-text button,
+main .top-text span {
   display: block;
   text-transform: uppercase;
   color: var(--color-black-light);
@@ -201,8 +194,14 @@ main .content-container .section-header .top-text span {
   letter-spacing: 0.1em;
 }
 
-main .content-container .section-header .top-text button:hover {
+main .top-text button:hover {
   color: var(--color-black);
+}
+
+main .content-container {
+  padding: 2em;
+  width: 924px;
+  margin: 0 auto;
 }
 
 main .content-container .section-header h1 {
@@ -215,9 +214,12 @@ main .content-container .section-join {
   -ms-grid-columns: 2fr 1fr 1fr 1fr;
       grid-template-columns: 2fr 1fr 1fr 1fr;
   gap: 20px;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
 }
 
-main .content-container .section-join h5 {
+main .content-container .section-join h6 {
   margin-bottom: 0;
 }
 
@@ -262,7 +264,7 @@ main .content-container .section-about .admins {
   margin-bottom: 64px;
   -ms-grid-columns: 1fr 1fr 1fr;
       grid-template-columns: 1fr 1fr 1fr;
-  border: 3px solid var(--color-black);
+  border: 2px solid var(--color-green);
   background-color: var(--color-white);
   z-index: 5;
   position: relative;
@@ -334,7 +336,7 @@ main .content-container .section-about .moderators .moderator {
   height: 80px;
   padding: 0 8px;
   line-height: 80px;
-  border: 3px solid var(--color-black-light);
+  border: 2px solid var(--color-green);
 }
 
 main .content-container .section-about .moderators .moderator strong {
@@ -371,7 +373,7 @@ main .teamspeak-container {
   padding-top: 5em;
   padding: 40px;
   max-height: 100vh;
-  border-left: 3px solid var(--color-black);
+  border-left: 2px solid var(--color-black);
 }
 
 main .teamspeak-container h5 {
@@ -441,7 +443,7 @@ button {
   content: "";
   display: block;
   position: absolute;
-  background-color: var(--color-black);
+  background-color: var(--color-green);
   inset: 0;
   z-index: -1;
   -webkit-transform: translate(10px, 10px);
