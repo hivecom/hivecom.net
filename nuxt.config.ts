@@ -3,10 +3,10 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ["@nuxtjs/supabase"],
   supabase: {},
-  nitro: {
-    prerender: {
-      crawlLinks: true,
-      failOnError: false, 
-    },
-  }
+  // nitro: {
+  //   prerender: {
+  //     crawlLinks: true,
+  //     failOnError: false, 
+  //   },
+  // }
 })
