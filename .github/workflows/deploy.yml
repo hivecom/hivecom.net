@@ -14,13 +14,21 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: "20"
-      # Pick your own package manager and build script
-      - run: npm install
-      - run: npx nuxt build --preset github_pages
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Nuxt build with nitro for GitHub pages
+        run: npx nuxt build --preset github_pages
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
           path: ./.output/public
+          
   # Deployment job
   deploy:
     # Add a dependency to the build job
