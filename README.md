@@ -10,6 +10,13 @@ Make sure to install the dependencies:
 npm install
 ```
 
+From there, it is recommended to configure your Supabase configuration. Add `SUPABASE_URL` and `SUPABASE_KEY` to your `.env`:
+
+```env
+SUPABASE_URL="https://example.supabase.co"
+SUPABASE_KEY="<your_key>"
+```
+
 ## Development Server
 
 Start the development server on `http://localhost:3000`:
