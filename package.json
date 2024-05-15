@@ -12,12 +12,20 @@
     "supabase:stop": "supabase stop"
   },
   "dependencies": {
+    "@nuxt/image": "^1.7.0",
     "@nuxtjs/supabase": "^1.2.2",
+    "@pinia/nuxt": "^0.5.1",
+    "@vueuse/nuxt": "^10.9.0",
     "nuxt": "^3.11.2",
+    "nuxt-icon": "^0.6.10",
+    "pinia": "^2.1.7",
+    "sass": "^1.77.1",
     "vue": "^3.4.27",
     "vue-router": "^4.3.2"
   },
   "devDependencies": {
+    "@antfu/eslint-config": "^2.18.0",
+    "eslint": "^8.57.0",
     "supabase": "^1.167.4"
   }
 }
