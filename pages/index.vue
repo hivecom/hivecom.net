@@ -4,6 +4,6 @@
 
 <template>
   <div>
-    default route
+    Hivecom website like it's 1999
   </div>
 </template>

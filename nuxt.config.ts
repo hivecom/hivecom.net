@@ -11,11 +11,20 @@ export default defineNuxtConfig({
   css: [
     '~/assets/index.scss'
   ],
-  supabase: {},
+  supabase: {
+    redirectOptions: {
+      login: '/login',
+      callback: '/confirm',
+      include: undefined,
+      exclude: ["/"],
+      cookieRedirect: false,
+    }
+  },
   // nitro: {
   //   prerender: {
   //     crawlLinks: true,
   //     failOnError: false, 
   //   },
   // }
+  
 })
