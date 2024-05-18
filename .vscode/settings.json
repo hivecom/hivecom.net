@@ -1,8 +1,9 @@
 {
-    "yaml.schemas": {
-        "https://json.schemastore.org/github-workflow.json": "file:///home/andrew/mavulp/hivecom.net/.github/workflows/deploy.yml"
-    },
-    
+  "yaml.schemas": {
+    "https://json.schemastore.org/github-workflow.json": "file:///home/andrew/mavulp/hivecom.net/.github/workflows/deploy.yml"
+  },
+  "eslint.useFlatConfig": true,
+
   // Disable the default formatter, use eslint instead
   "prettier.enable": false,
   "editor.formatOnSave": false,

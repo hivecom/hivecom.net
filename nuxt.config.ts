@@ -2,29 +2,28 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: [
-    "@nuxtjs/supabase",
-    "@nuxt/image",
-    "@pinia/nuxt",
-    "@vueuse/nuxt",
-    "nuxt-icon"
+    '@nuxtjs/supabase',
+    '@nuxt/image',
+    '@pinia/nuxt',
+    '@vueuse/nuxt',
+    'nuxt-icon',
   ],
   css: [
-    '~/assets/index.scss'
+    '~/assets/index.scss',
   ],
   supabase: {
     redirectOptions: {
       login: '/login',
       callback: '/confirm',
       include: undefined,
-      exclude: ["/"],
+      exclude: ['/'],
       cookieRedirect: false,
-    }
+    },
   },
   // nitro: {
   //   prerender: {
   //     crawlLinks: true,
-  //     failOnError: false, 
+  //     failOnError: false,
   //   },
   // }
-  
 })
