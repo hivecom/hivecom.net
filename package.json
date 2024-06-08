@@ -8,7 +8,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "supabase:types": "npx supabase gen types typescript --project-id \"$PROJECT_REF\" > types/supabase.d.ts",
+    "supabase:types": "npx supabase gen types typescript --project-id \"$PROJECT_REF\" > types/database/index.d.ts",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "lint": "eslint .",
