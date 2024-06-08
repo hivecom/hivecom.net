@@ -9,13 +9,235 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: number
+          markdown: string | null
+          modified_at: string | null
+          modified_by: string | null
+          note: string | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: number
+          markdown?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          note?: string | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: number
+          markdown?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          note?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_modified_by_fkey"
+            columns: ["modified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      games: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: number
+          name: string | null
+          shorthand: string | null
+          steam_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          name?: string | null
+          shorthand?: string | null
+          steam_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          name?: string | null
+          shorthand?: string | null
+          steam_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "games_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gameservers: {
+        Row: {
+          address: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          game: number | null
+          id: number
+          modified_at: string | null
+          modified_by: string | null
+          port: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          game?: number | null
+          id?: number
+          modified_at?: string | null
+          modified_by?: string | null
+          port?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          game?: number | null
+          id?: number
+          modified_at?: string | null
+          modified_by?: string | null
+          port?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gameservers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gameservers_game_fkey"
+            columns: ["game"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gameservers_modified_by_fkey"
+            columns: ["modified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          markdown: string | null
+          modified_at: string | null
+          modified_by: string | null
+          subtitle: string | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          markdown?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          subtitle?: string | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          markdown?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          subtitle?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_claim: {
+        Args: {
+          uid: string
+          claim: string
+        }
+        Returns: string
+      }
+      get_claim: {
+        Args: {
+          uid: string
+          claim: string
+        }
+        Returns: Json
+      }
+      get_claims: {
+        Args: {
+          uid: string
+        }
+        Returns: Json
+      }
+      get_my_claim: {
+        Args: {
+          claim: string
+        }
+        Returns: Json
+      }
+      get_my_claims: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      is_claims_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      set_claim: {
+        Args: {
+          uid: string
+          claim: string
+          value: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
