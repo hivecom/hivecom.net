@@ -14,18 +14,18 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@v2.1.5
+      - uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: '20'
       - run: "npm run supabase:types"
       - name: check for file changes
         id: git_status
         run: |
-          echo "::set-output name=status::$(git status -s)"
+          echo "status=$(git status -s)" >> $GITHUB_OUTPUT
       - name: Commit files
         if: ${{contains(steps.git_status.outputs.status, ' ')}}
         run: |
