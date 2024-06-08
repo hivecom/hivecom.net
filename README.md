@@ -1,6 +1,11 @@
-# Nuxt 3 Minimal Starter
+[![deploy](https://github.com/Mavulp/hivecom.net/actions/workflows/deploy.yml/badge.svg)](https://github.com/Mavulp/hivecom.net/actions/workflows/deploy.yml)
+[![build-types](https://github.com/Mavulp/hivecom.net/actions/workflows/build-types.yml/badge.svg)](https://github.com/Mavulp/hivecom.net/actions/workflows/build-types.yml)
 
-Look at the [Nuxt 3 documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+# hivecom.net
+
+Main website for the Hivecom community.
+
+This is a Nuxt project. As such, look at the [Nuxt 3 documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
 
 ## Setup
 
