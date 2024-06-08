@@ -1,5 +1,4 @@
 name: build-types
-
 on:
   schedule:
     # sets the action to run daily. You can modify this to run the action more or less frequently
