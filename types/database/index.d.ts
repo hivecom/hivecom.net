@@ -160,6 +160,7 @@ export type Database = {
           markdown: string | null
           modified_at: string | null
           modified_by: string | null
+          nickname: string | null
           subtitle: string | null
           title: string | null
         }
@@ -169,6 +170,7 @@ export type Database = {
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
+          nickname?: string | null
           subtitle?: string | null
           title?: string | null
         }
@@ -178,6 +180,7 @@ export type Database = {
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
+          nickname?: string | null
           subtitle?: string | null
           title?: string | null
         }
@@ -186,6 +189,13 @@ export type Database = {
             foreignKeyName: "profiles_id_fkey"
             columns: ["id"]
             isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_modified_by_fkey"
+            columns: ["modified_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
