@@ -106,6 +106,7 @@ export type Database = {
           modified_at: string | null
           modified_by: string | null
           port: string | null
+          region: Database["public"]["Enums"]["region"] | null
         }
         Insert: {
           address?: string | null
@@ -117,6 +118,7 @@ export type Database = {
           modified_at?: string | null
           modified_by?: string | null
           port?: string | null
+          region?: Database["public"]["Enums"]["region"] | null
         }
         Update: {
           address?: string | null
@@ -128,6 +130,7 @@ export type Database = {
           modified_at?: string | null
           modified_by?: string | null
           port?: string | null
+          region?: Database["public"]["Enums"]["region"] | null
         }
         Relationships: [
           {
@@ -147,6 +150,44 @@ export type Database = {
           {
             foreignKeyName: "gameservers_modified_by_fkey"
             columns: ["modified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: number
+          region: Database["public"]["Enums"]["region"] | null
+          title: string | null
+          type: Database["public"]["Enums"]["link_type"] | null
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          region?: Database["public"]["Enums"]["region"] | null
+          title?: string | null
+          type?: Database["public"]["Enums"]["link_type"] | null
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          region?: Database["public"]["Enums"]["region"] | null
+          title?: string | null
+          type?: Database["public"]["Enums"]["link_type"] | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "links_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -250,7 +291,8 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      link_type: "irc" | "teamspeak" | "discord" | "website" | "steam"
+      region: "eu" | "na" | "all"
     }
     CompositeTypes: {
       [_ in never]: never
