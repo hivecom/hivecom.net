@@ -13,8 +13,10 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          date: string
           description: string | null
           id: number
+          location: string | null
           markdown: string | null
           modified_at: string | null
           modified_by: string | null
@@ -24,8 +26,10 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          date: string
           description?: string | null
           id?: number
+          location?: string | null
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
@@ -35,8 +39,10 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          date?: string
           description?: string | null
           id?: number
+          location?: string | null
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
