@@ -16,6 +16,7 @@ export type Database = {
           date: string
           description: string | null
           id: number
+          link: string | null
           location: string | null
           markdown: string | null
           modified_at: string | null
@@ -29,6 +30,7 @@ export type Database = {
           date: string
           description?: string | null
           id?: number
+          link?: string | null
           location?: string | null
           markdown?: string | null
           modified_at?: string | null
@@ -42,6 +44,7 @@ export type Database = {
           date?: string
           description?: string | null
           id?: number
+          link?: string | null
           location?: string | null
           markdown?: string | null
           modified_at?: string | null
