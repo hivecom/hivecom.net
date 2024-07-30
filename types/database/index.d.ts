@@ -14,7 +14,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           date: string
-          description: string | null
+          description: string
           id: number
           link: string | null
           location: string | null
@@ -22,13 +22,13 @@ export type Database = {
           modified_at: string | null
           modified_by: string | null
           note: string | null
-          title: string | null
+          title: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           date: string
-          description?: string | null
+          description?: string
           id?: number
           link?: string | null
           location?: string | null
@@ -36,13 +36,13 @@ export type Database = {
           modified_at?: string | null
           modified_by?: string | null
           note?: string | null
-          title?: string | null
+          title?: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
           date?: string
-          description?: string | null
+          description?: string
           id?: number
           link?: string | null
           location?: string | null
@@ -50,7 +50,7 @@ export type Database = {
           modified_at?: string | null
           modified_by?: string | null
           note?: string | null
-          title?: string | null
+          title?: string
         }
         Relationships: [
           {
