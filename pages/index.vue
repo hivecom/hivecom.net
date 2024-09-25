@@ -5,7 +5,11 @@ const { data } = await useFetch('/api/events')
 <template>
   <div>
     Hivecom website like it's 1999
-    <br /> 
+    <br>
     {{ data }}
+
+    <NuxtLink to="/login">
+      Login
+    </NuxtLink>
   </div>
 </template>
