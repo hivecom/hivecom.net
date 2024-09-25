@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       events: {
@@ -54,18 +54,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "events_created_by_fkey"
-            columns: ["created_by"]
+            foreignKeyName: 'events_created_by_fkey'
+            columns: ['created_by']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
           {
-            foreignKeyName: "events_modified_by_fkey"
-            columns: ["modified_by"]
+            foreignKeyName: 'events_modified_by_fkey'
+            columns: ['modified_by']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -96,11 +96,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "games_created_by_fkey"
-            columns: ["created_by"]
+            foreignKeyName: 'games_created_by_fkey'
+            columns: ['created_by']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -115,7 +115,7 @@ export type Database = {
           modified_at: string | null
           modified_by: string | null
           port: string | null
-          region: Database["public"]["Enums"]["region"] | null
+          region: Database['public']['Enums']['region'] | null
         }
         Insert: {
           address?: string | null
@@ -127,7 +127,7 @@ export type Database = {
           modified_at?: string | null
           modified_by?: string | null
           port?: string | null
-          region?: Database["public"]["Enums"]["region"] | null
+          region?: Database['public']['Enums']['region'] | null
         }
         Update: {
           address?: string | null
@@ -139,29 +139,29 @@ export type Database = {
           modified_at?: string | null
           modified_by?: string | null
           port?: string | null
-          region?: Database["public"]["Enums"]["region"] | null
+          region?: Database['public']['Enums']['region'] | null
         }
         Relationships: [
           {
-            foreignKeyName: "gameservers_created_by_fkey"
-            columns: ["created_by"]
+            foreignKeyName: 'gameservers_created_by_fkey'
+            columns: ['created_by']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
           {
-            foreignKeyName: "gameservers_game_fkey"
-            columns: ["game"]
+            foreignKeyName: 'gameservers_game_fkey'
+            columns: ['game']
             isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
+            referencedRelation: 'games'
+            referencedColumns: ['id']
           },
           {
-            foreignKeyName: "gameservers_modified_by_fkey"
-            columns: ["modified_by"]
+            foreignKeyName: 'gameservers_modified_by_fkey'
+            columns: ['modified_by']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -170,36 +170,36 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: number
-          region: Database["public"]["Enums"]["region"] | null
+          region: Database['public']['Enums']['region'] | null
           title: string | null
-          type: Database["public"]["Enums"]["link_type"] | null
+          type: Database['public']['Enums']['link_type'] | null
           url: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           id?: number
-          region?: Database["public"]["Enums"]["region"] | null
+          region?: Database['public']['Enums']['region'] | null
           title?: string | null
-          type?: Database["public"]["Enums"]["link_type"] | null
+          type?: Database['public']['Enums']['link_type'] | null
           url?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           id?: number
-          region?: Database["public"]["Enums"]["region"] | null
+          region?: Database['public']['Enums']['region'] | null
           title?: string | null
-          type?: Database["public"]["Enums"]["link_type"] | null
+          type?: Database['public']['Enums']['link_type'] | null
           url?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "links_created_by_fkey"
-            columns: ["created_by"]
+            foreignKeyName: 'links_created_by_fkey'
+            columns: ['created_by']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -236,18 +236,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "profiles_id_fkey"
-            columns: ["id"]
+            foreignKeyName: 'profiles_id_fkey'
+            columns: ['id']
             isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
           {
-            foreignKeyName: "profiles_modified_by_fkey"
-            columns: ["modified_by"]
+            foreignKeyName: 'profiles_modified_by_fkey'
+            columns: ['modified_by']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -300,8 +300,8 @@ export type Database = {
       }
     }
     Enums: {
-      link_type: "irc" | "teamspeak" | "discord" | "website" | "steam"
-      region: "eu" | "na" | "all"
+      link_type: 'irc' | 'teamspeak' | 'discord' | 'website' | 'steam'
+      region: 'eu' | 'na' | 'all'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -309,84 +309,84 @@ export type Database = {
   }
 }
 
-type PublicSchema = Database[Extract<keyof Database, "public">]
+type PublicSchema = Database[Extract<keyof Database, 'public'>]
 
 export type Tables<
   PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
+  | keyof (PublicSchema['Tables'] & PublicSchema['Views'])
+  | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    ? keyof (Database[PublicTableNameOrOptions['schema']]['Tables'] &
+    Database[PublicTableNameOrOptions['schema']]['Views'])
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? (Database[PublicTableNameOrOptions['schema']]['Tables'] &
+  Database[PublicTableNameOrOptions['schema']]['Views'])[TableName] extends {
       Row: infer R
     }
-    ? R
-    : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
-        Row: infer R
-      }
       ? R
       : never
+  : PublicTableNameOrOptions extends keyof (PublicSchema['Tables'] &
+  PublicSchema['Views'])
+    ? (PublicSchema['Tables'] &
+    PublicSchema['Views'])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+        ? R
+        : never
     : never
 
 export type TablesInsert<
   PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
+  | keyof PublicSchema['Tables']
+  | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
+  ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
+    Insert: infer I
+  }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Insert: infer I
-      }
+  : PublicTableNameOrOptions extends keyof PublicSchema['Tables']
+    ? PublicSchema['Tables'][PublicTableNameOrOptions] extends {
+      Insert: infer I
+    }
       ? I
       : never
     : never
 
 export type TablesUpdate<
   PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
+  | keyof PublicSchema['Tables']
+  | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
+  ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
+    Update: infer U
+  }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Update: infer U
-      }
+  : PublicTableNameOrOptions extends keyof PublicSchema['Tables']
+    ? PublicSchema['Tables'][PublicTableNameOrOptions] extends {
+      Update: infer U
+    }
       ? U
       : never
     : never
 
 export type Enums<
   PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
-    | { schema: keyof Database },
+  | keyof PublicSchema['Enums']
+  | { schema: keyof Database },
   EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof Database[PublicEnumNameOrOptions['schema']]['Enums']
     : never = never,
 > = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+  ? Database[PublicEnumNameOrOptions['schema']]['Enums'][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema['Enums']
+    ? PublicSchema['Enums'][PublicEnumNameOrOptions]
     : never

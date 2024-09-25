@@ -15,6 +15,10 @@ Make sure to install the dependencies:
 npm install
 ```
 
+To be able to work with Supabase we recommend downloading the [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started) and then logging in via `supabase login`.
+
+Additionally, to run the Supabase instance locally, you will need to make sure you have [Docker](https://docs.docker.com/get-docker/) installed.
+
 From there, it is recommended to configure your Supabase configuration. Add `SUPABASE_URL` and `SUPABASE_KEY` to your `.env`:
 
 ```env
