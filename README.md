@@ -15,11 +15,17 @@ Make sure to install the dependencies:
 npm install
 ```
 
-To be able to work with Supabase we recommend downloading the [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started) and then logging in via `supabase login`.
+To run the Supabase instance locally, you will need to make sure you have [Docker](https://docs.docker.com/get-docker/) installed.
 
-Additionally, to run the Supabase instance locally, you will need to make sure you have [Docker](https://docs.docker.com/get-docker/) installed.
+From there, link your project via the following command:
 
-From there, it is recommended to configure your Supabase configuration. Add `SUPABASE_URL` and `SUPABASE_KEY` to your `.env`:
+```bash
+npm run supabase:link
+```
+
+Ask your project admin for the necessary database credentials if you should have access to the Supabase instance.
+
+From there, it is recommended to configure your Supabase configuration. Add `SUPABASE_URL` and `SUPABASE_KEY` to your `.env` in the root of the project:
 
 ```env
 SUPABASE_URL="https://example.supabase.co"
@@ -34,11 +40,13 @@ Start the development server on `http://localhost:3000`:
 npm run dev
 ```
 
-To additionally have access to a local Supabase instance, you can run the following to start/ stop that instance.
+To additionally have access to a local Supabase instance, you can run the following to start/stop that instance.
 
 ```bash
 npm run supabase:[start/stop]
 ```
+
+Once you have the Supabase instance running, you can access the admin panel at `http://localhost:54323`.
 
 ## Production
 

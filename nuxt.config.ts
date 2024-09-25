@@ -1,6 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: true },
+  compatibilityDate: '2024-09-25',
   modules: [
     '@nuxtjs/supabase',
     '@nuxt/image',
@@ -11,6 +12,15 @@ export default defineNuxtConfig({
   css: [
     '~/assets/index.scss',
   ],
+  vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: 'modern-compiler', // or "modern"
+        },
+      },
+    },
+  },
   supabase: {
     redirectOptions: {
       login: '/login',

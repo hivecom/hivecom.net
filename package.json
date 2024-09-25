@@ -1,6 +1,7 @@
 {
-  "name": "nuxt-app",
+  "name": "hivecom",
   "type": "module",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "build": "nuxt build",
@@ -8,28 +9,29 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "supabase:link": "npx supabase link",
     "supabase:types": "npx supabase gen types typescript --project-id \"$PROJECT_REF\" > types/database/index.d.ts",
-    "supabase:start": "supabase start",
-    "supabase:stop": "supabase stop",
+    "supabase:start": "npx supabase start",
+    "supabase:stop": "npx supabase stop",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@nuxt/image": "^1.7.0",
-    "@nuxtjs/eslint-module": "^4.1.0",
-    "@nuxtjs/supabase": "^1.2.2",
-    "@pinia/nuxt": "^0.5.1",
-    "@vueuse/nuxt": "^10.9.0",
-    "nuxt": "^3.11.2",
+    "@nuxt/image": "^1.8.0",
+    "@nuxtjs/eslint-module": "^3.1.0",
+    "@nuxtjs/supabase": "^1.4.0",
+    "@pinia/nuxt": "^0.5.4",
+    "@vueuse/nuxt": "^11.1.0",
+    "nuxt": "^3.13.2",
     "nuxt-icon": "^0.6.10",
-    "pinia": "^2.1.7",
-    "sass": "^1.77.1",
-    "vue": "^3.4.27",
-    "vue-router": "^4.3.2"
+    "pinia": "^2.2.2",
+    "sass": "^1.79.3",
+    "vue": "^3.5.8",
+    "vue-router": "^4.4.5"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^2.18.1",
-    "eslint": "^8.57.0",
-    "supabase": "^1.167.4"
+    "@antfu/eslint-config": "^3.7.1",
+    "eslint": "^9.11.1",
+    "supabase": "^1.200.3"
   }
 }
