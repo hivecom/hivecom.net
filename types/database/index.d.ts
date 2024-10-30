@@ -191,6 +191,86 @@ export type Database = {
         }
         Relationships: []
       }
+      referendum_votes: {
+        Row: {
+          choices: number[]
+          comment: string | null
+          created_at: string
+          id: number
+          modified_at: string | null
+          referendum_id: number | null
+          user_id: string
+        }
+        Insert: {
+          choices?: number[]
+          comment?: string | null
+          created_at?: string
+          id?: number
+          modified_at?: string | null
+          referendum_id?: number | null
+          user_id?: string
+        }
+        Update: {
+          choices?: number[]
+          comment?: string | null
+          created_at?: string
+          id?: number
+          modified_at?: string | null
+          referendum_id?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referendum_votes_referendum_id_fkey"
+            columns: ["referendum_id"]
+            isOneToOne: false
+            referencedRelation: "referendums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referendums: {
+        Row: {
+          choices: string[]
+          created_at: string
+          created_by: string
+          date_end: string
+          date_start: string
+          description: string | null
+          id: number
+          modified_at: string
+          modified_by: string | null
+          multiple_choice: boolean
+          title: string
+        }
+        Insert: {
+          choices: string[]
+          created_at?: string
+          created_by?: string
+          date_end: string
+          date_start?: string
+          description?: string | null
+          id?: number
+          modified_at?: string
+          modified_by?: string | null
+          multiple_choice?: boolean
+          title: string
+        }
+        Update: {
+          choices?: string[]
+          created_at?: string
+          created_by?: string
+          date_end?: string
+          date_start?: string
+          description?: string | null
+          id?: number
+          modified_at?: string
+          modified_by?: string | null
+          multiple_choice?: boolean
+          title?: string
+        }
+        Relationships: []
+      }
       role_permissions: {
         Row: {
           id: number
@@ -253,6 +333,7 @@ export type Database = {
         | "links.crud"
         | "profiles.crud"
         | "users.crud"
+        | "referendums.crud"
       app_role: "admin" | "moderator"
       link_type: "irc" | "teamspeak" | "discord" | "website" | "steam"
       region: "eu" | "na" | "all"
