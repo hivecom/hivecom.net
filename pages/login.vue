@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Card, Input } from '@dolanske/vui'
+import { Button, Card, Flex, Input } from '@dolanske/vui'
 
 const supabase = useSupabaseClient()
 const email = ref('')
@@ -31,11 +31,12 @@ watch(email, () => {
         <h4>Sign in</h4>
       </template>
 
-      <Input v-model="email" placeholder="exmaple@example.com" label="Email" type="email" :errors="err ? [err] : []" :style="{ marginBottom: '16px' }" />
-
-      <Button @click="signInWithOtp">
-        Sign In with E-Mail
-      </Button>
+      <Flex justify-center align-start :style="{ paddingBlock: '64px' }">
+        <Input v-model="email" placeholder="exmaple@example.com" label="Email" type="email" :errors="err ? [err] : []" />
+        <Button :style="{ marginTop: '23px' }" @click="signInWithOtp">
+          Sign In with E-Mail
+        </Button>
+      </Flex>
     </Card>
   </div>
 </template>
