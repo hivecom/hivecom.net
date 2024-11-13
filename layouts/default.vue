@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button, Flex } from '@dolanske/vui'
+
 const supabase = useSupabaseClient()
 
 async function signOut() {
@@ -8,14 +10,16 @@ async function signOut() {
 </script>
 
 <template>
-  <div>
-    <header>
-      <h1>Navbar</h1>
-      <button @click="signOut">
-        logout
-      </button>
-
-      <hr>
+  <div class="container">
+    <header :style="{ paddingBlock: '32px' }">
+      <Flex space-between>
+        <h3>HIVECOM</h3>
+        <div>
+          <Button square icon="ph:sign-out" @click="signOut">
+            Sign Out
+          </Button>
+        </div>
+      </Flex>
     </header>
     <slot />
   </div>

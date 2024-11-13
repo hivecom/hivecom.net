@@ -1,1 +1,13 @@
 // Place global styles which should be available on all pages here
+:root {
+  --color-bg: rgb(8,10,10);
+}
+
+html {
+  color: var(--color-text);
+}
+
+// TODO: remove when vui fixes max width
+.container {
+  max-width: var(--container-l);
+}
