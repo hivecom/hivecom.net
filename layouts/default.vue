@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { Button, Flex } from '@dolanske/vui'
+import { Button, Dropdown, DropdownItem, DropdownTitle, Flex } from '@dolanske/vui'
 
-// const supabase = useSupabaseClient()
+const supabase = useSupabaseClient()
 
-// async function signOut() {
-//   await supabase.auth.signOut()
-//   navigateTo('/login')
-// }
+async function signOut() {
+  await supabase.auth.signOut()
+  navigateTo('/login')
+}
 </script>
 
 <template>
   <header class="header">
     <div class="container">
       <NuxtImg src="/logo.svg" width="136" />
-      <ul>
+      <ul class="header-links">
         <li>
           <NuxtLink to="/home">
             Home
@@ -35,15 +35,21 @@ import { Button, Flex } from '@dolanske/vui'
           </NuxtLink>
         </li>
       </ul>
-    </div>
-    <!-- <Flex space-between>
-      <h3>HIVECOM</h3>
-      <div>
-        <Button square icon="ph:sign-out" @click="signOut">
-          Sign Out
-        </Button>
+
+      <div class="header-user">
+        <Dropdown>
+          <template #trigger="{ toggle }">
+            <button @click="toggle">
+              <NuxtImg src="https://i.imgur.com/65aJ4oG.png" width="32" height="32"/>
+            </button>
+          </template>
+          <DropdownTitle>
+            Username
+          </DropdownTitle>
+          <DropdownItem icon="ph:sign-out" @click="signOut">Sign out</DropdownItem>
+        </Dropdown>
       </div>
-    </Flex> -->
+    </div>
   </header>
   <div class="container">
     <slot />

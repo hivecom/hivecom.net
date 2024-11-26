@@ -1,7 +1,25 @@
 .header {
-  position: relative;
   z-index: 100;
 
+  
+  .container {
+    display: flex;
+    justify-content: flex-start;
+    height: 64px;
+    gap: 80px;
+    align-items: center;
+
+  position: relative;
+
+  }
+
+  .header-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+
+    
   &:before {
     content: "";
     position: absolute;
@@ -9,30 +27,16 @@
     top: -180px;
     width: 769px;
     height: 621px;
-    // TODO for green leak make an actual gradient instead of image
-    // background-image: url(/leak.png);
-    // background-repeat: no-repeat;
-    // background-size: contain;
-
+    background-image: url(/leak.png);
+    background-repeat: no-repeat;
+    background-size: contain;
+    pointer-events: none;
   }
-  
-  .container {
-    display: flex;
-    justify-content: flex-start;
-    height: 64px;
-    gap: 80px;
-    align-items: center
-  }
-
-  ul {
-    display: flex;
-    align-items: center;
-    gap: 8px;
 
     li a {
       display: block;
       padding: 0 12px;
-      font-size: var(--font-size-m);
+      font-size: var(--font-size-ms);
       color: var(--color-text);
       text-decoration: none;
       
@@ -44,6 +48,12 @@
       &.router-link-active {
         font-weight: 600;
       }
+    }
+  }
+
+  .header-user {
+    img {
+      border-radius: 999px;
     }
   }
 }
