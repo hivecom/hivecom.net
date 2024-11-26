@@ -1,6 +1,10 @@
 // Place global styles which should be available on all pages here
 :root {
-  --color-bg: rgb(8,10,10);
+  --color-bg: rgb(10,10,10);
+  --color-accent: #6AFF67;
+
+  --container-l: 1400px;
+  --container-m: 1124px;
 }
 
 html {
@@ -11,3 +15,5 @@ html {
 .container {
   max-width: var(--container-l);
 }
+
+@import "./header.scss";

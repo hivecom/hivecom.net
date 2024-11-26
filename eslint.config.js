@@ -5,4 +5,9 @@ export default antfu({
     'no-console': 'warn',
     'curly': 'error',
   },
+  formatters: {
+    css: true,
+    markdown: true,
+    html: true,
+  },
 })
