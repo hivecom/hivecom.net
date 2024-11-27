@@ -24,12 +24,10 @@ const tab = ref<'Active' | 'Concluded'>('Active')
       Let others vote and figure it out!
     </p>
 
-    <ClientOnly>
-      <Tabs v-model="tab" class="my-m">
-        <Tab id="Active" label="Active" />
-        <Tab id="Concluded" label="Concluded" />
-      </Tabs>
-    </ClientOnly>
+    <Tabs v-model="tab" class="my-m">
+      <Tab id="Active" label="Active" />
+      <Tab id="Concluded" label="Concluded" />
+    </Tabs>
 
     <template v-if="tab === 'Active'">
       <Grid gap="m" :columns="2">
