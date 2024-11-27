@@ -1,3 +1,5 @@
+@use "sass:meta";
+
 // Place global styles which should be available on all pages here
 :root {
   --color-bg: rgb(10,10,10);
@@ -18,4 +20,4 @@ html {
   max-width: var(--container-l);
 }
 
-@import "./header.scss";
+@include meta.load-css('./header.scss');

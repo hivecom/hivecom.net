@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Dropdown, DropdownItem, DropdownTitle, Flex } from '@dolanske/vui'
+import { Avatar, Button, Dropdown, DropdownItem, DropdownTitle, Flex } from '@dolanske/vui'
 
 const supabase = useSupabaseClient()
 
@@ -12,7 +12,7 @@ async function signOut() {
 <template>
   <header class="header">
     <div class="container">
-      <NuxtImg src="/logo.svg" width="136" />
+      <NuxtImg src="/logo.svg" width="136" alt="Hivecom" />
       <ul class="header-links">
         <li>
           <NuxtLink to="/home">
@@ -40,13 +40,15 @@ async function signOut() {
         <Dropdown>
           <template #trigger="{ toggle }">
             <button @click="toggle">
-              <NuxtImg src="https://i.imgur.com/65aJ4oG.png" width="32" height="32"/>
+              <Avatar src="https://i.imgur.com/65aJ4oG.png" width="32" height="32" alt="Username" />
             </button>
           </template>
           <DropdownTitle>
             Username
           </DropdownTitle>
-          <DropdownItem icon="ph:sign-out" @click="signOut">Sign out</DropdownItem>
+          <DropdownItem icon="ph:sign-out" @click="signOut">
+            Sign out
+          </DropdownItem>
         </Dropdown>
       </div>
     </div>
