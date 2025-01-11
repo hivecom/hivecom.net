@@ -11,6 +11,19 @@
   // --font-size-m: 1.4rem;
 }
 
+a {
+  text-decoration: none;
+}
+
+.link-line {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
 html {
   color: var(--color-text);
 }
@@ -21,3 +34,4 @@ html {
 }
 
 @include meta.load-css('./header.scss');
+@include meta.load-css('./layout.scss');
