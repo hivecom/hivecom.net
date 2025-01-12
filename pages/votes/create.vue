@@ -14,6 +14,8 @@ const form = reactive({
   multiple_choice: false,
 })
 
+const choices = ref([''])
+
 function resetForm() {
   Object.assign(form, {
     title: '',
@@ -22,6 +24,8 @@ function resetForm() {
     date_end: dayjs().add(1, 'day').format(dateFormat.calendarDefault),
     multiple_choice: false,
   })
+
+  choices.value = ['']
 }
 </script>
 
@@ -34,7 +38,7 @@ function resetForm() {
       To avoid any confusion about your events, make sure you get all the important details listed.
     </p>
 
-    <Grid columns="1fr 2fr" gap="m" class="mb-xl">
+    <Grid :columns="2" gap="xxl" class="mb-xl">
       <Flex column gap="m">
         <Input
           v-model="form.title"
@@ -80,7 +84,27 @@ function resetForm() {
         <Checkbox v-model="form.multiple_choice" label="Allow multiple answers per person" />
       </Flex>
 
-      <div class="vote-create-choices" />
+      <div class="vote-create-choices p-l">
+        <ol class="mb-l">
+          <li v-for="index in choices.length" :key="index">
+            <span>{{ `${index}.` }}</span>
+            <Input v-model="choices[index - 1]" expand placeholder="Enter a choice..." />
+            <Button
+              square
+              :disabled="choices.length === 1"
+              @click="choices.length > 1 && choices.splice(index - 1, 1)"
+            >
+              <Icon name="ph:x" />
+            </Button>
+          </li>
+        </ol>
+
+        <Flex justify-center>
+          <Button @click="choices.push('')">
+            Add choice
+          </Button>
+        </Flex>
+      </div>
     </Grid>
 
     <Divider size="32" />

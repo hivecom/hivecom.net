@@ -39,4 +39,31 @@
       }
     }
   }
+
+    .vote-create-choices {
+      background-color: var(--color-bg-lowered);
+      border-radius: var(--border-radius-m);
+
+      ol li {
+        display: flex;
+        align-items: center;
+        gap: var(--space-s);
+        padding: 0;
+        margin-bottom: var(--space-m);
+
+        // TODO: remove when vui fixes it
+        .vui-button {
+          min-width: 34px;
+        }
+
+        span {
+          width: 24px;
+        }
+
+        &:before {
+          position: relative;
+          left: unset;
+        }
+      }
+    }
 }
