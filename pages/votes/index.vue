@@ -15,7 +15,7 @@ const search = ref('')
 
 <template>
   <div class="route-votes">
-    <Flex align-center gap="l" class="mb-xl">
+    <Flex align-center gap="l" class="mb-l">
       <h1>Votes</h1>
       <NuxtLink to="/votes/create">
         <Button variant="accent">
@@ -24,9 +24,9 @@ const search = ref('')
       </NuxtLink>
     </Flex>
 
-    <p>
+    <p class="text-xl mb-xl">
       Planning a movie night? Need to decide dates for an event? <br>
-      Let others vote and figure it out!
+      Let others cast their vote and figure it out!
     </p>
 
     <Tabs v-model="tab" class="my-m">
@@ -50,7 +50,7 @@ const search = ref('')
             Where will the next hike be?
           </h2>
 
-          <p class="text-color-lighter  block mb-s">
+          <p class="text-color-light  block mb-s">
             Lorem ipsum dolor sit amet consectetur adipisicing elit. Explicabo dignissimos enim sequi error facere blanditiis ratione exercitationem beatae magnam illo neque sed, aut deleniti repellendus autem nesciunt? Tempore, perferendis asperiores.
           </p>
 

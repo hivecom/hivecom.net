@@ -2,11 +2,12 @@
 
 // Place global styles which should be available on all pages here
 :root {
-  --color-bg: rgb(10,10,10);
-  --color-accent: #6AFF67;
+  --dark-color-bg: rgb(10,10,10);
+  --dark-color-accent: #6AFF67;
+  // --light-color-accent: #6AFF67;
 
   --container-l: 1220px;
-  --container-m: 1124px;
+  --container-m: 1024px;
   
   // --font-size-m: 1.4rem;
 }
@@ -28,10 +29,6 @@ html {
   color: var(--color-text);
 }
 
-// TODO: remove when vui fixes max width
-.container {
-  max-width: var(--container-l);
-}
 
 @include meta.load-css('./header.scss');
 @include meta.load-css('./layout.scss');

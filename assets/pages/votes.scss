@@ -1,6 +1,15 @@
 .route-votes {
   padding-top: 128px;
 
+  h1 {
+    position: relative;
+    .vui-button {
+      position: absolute;
+      top: 2px;
+      left: -48px;
+    }
+  }
+
   .vote-article {
     position: relative;
 

@@ -28,7 +28,8 @@ export default defineNuxtConfig({
       login: '/login',
       callback: '/confirm',
       include: undefined,
-      exclude: ['/', '/votes'],
+      // TODO: remove
+      exclude: ['/', '/votes', '/votes/create', '/votes/1'],
       cookieRedirect: false,
     },
   },

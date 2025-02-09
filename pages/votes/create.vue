@@ -2,6 +2,8 @@
 import { Button, Calendar, Checkbox, Divider, Flex, Grid, Input, Textarea } from '@dolanske/vui'
 import dayjs from 'dayjs'
 
+const router = useRouter()
+
 definePageMeta({
   // middleware: 'auth',
 })
@@ -30,15 +32,16 @@ function resetForm() {
 </script>
 
 <template>
-  <div class="route-votes">
+  <div class="route-votes container container-m">
     <h1 class="mb-l">
+      <Button square icon="ph:arrow-left" plain @click="router.back()" />
       Start a vote
     </h1>
-    <p class="mb-xxl">
-      To avoid any confusion about your events, make sure you get all the important details listed.
+    <p class="mb-xxl text-xl">
+      To avoid any confusion about your events, make sure you get <br> all the important details listed.
     </p>
 
-    <Grid :columns="2" gap="xxl" class="mb-xl">
+    <Grid columns="1fr 1.25fr" gap="xxl" class="mb-xl">
       <Flex column gap="m">
         <Input
           v-model="form.title"
