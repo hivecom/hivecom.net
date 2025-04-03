@@ -7,6 +7,25 @@ async function signOut() {
   await supabase.auth.signOut()
   navigateTo('/login')
 }
+
+// Listen for auth events and save username
+const username = ref()
+
+supabase.auth.onAuthStateChange((event, session) => {
+  switch (event) {
+    case 'SIGNED_IN': {
+      if (session) {
+        username.value = session.user.user_metadata.username ?? session.user.email
+      }
+      break
+    }
+
+    case 'SIGNED_OUT': {
+      username.value = 'Not logged in'
+      break
+    }
+  }
+})
 </script>
 
 <template>
@@ -43,9 +62,7 @@ async function signOut() {
               <Avatar src="https://i.imgur.com/65aJ4oG.png" width="32" height="32" alt="Username" />
             </button>
           </template>
-          <DropdownTitle>
-            Username
-          </DropdownTitle>
+          <DropdownTitle>{{ username }}</DropdownTitle>
           <DropdownItem icon="ph:sign-out" @click="signOut">
             Sign out
           </DropdownItem>
