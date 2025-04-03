@@ -4,13 +4,12 @@ import process from 'node:process'
 export default defineNuxtConfig({
   devtools: { enabled: true },
   compatibilityDate: '2024-09-25',
-
   modules: [
     '@nuxtjs/supabase',
     '@nuxt/image',
     '@pinia/nuxt',
     '@vueuse/nuxt',
-    'nuxt-icon',
+    '@nuxt/icon',
   ],
   css: [
     '~/assets/index.scss',
@@ -30,16 +29,8 @@ export default defineNuxtConfig({
     redirectOptions: {
       login: '/login',
       callback: '/confirm',
-      include: undefined,
-      // TODO: remove
-      exclude: ['/', '/votes', '/votes/create', '/votes/1'],
+      exclude: ['/'],
       cookieRedirect: false,
     },
   },
-  // nitro: {
-  //   prerender: {
-  //     crawlLinks: true,
-  //     failOnError: false,
-  //   },
-  // }
 })

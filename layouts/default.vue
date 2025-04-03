@@ -15,7 +15,7 @@ async function signOut() {
       <NuxtImg src="/logo.svg" width="136" alt="Hivecom" />
       <ul class="header-links">
         <li>
-          <NuxtLink to="/home">
+          <NuxtLink to="/">
             Home
           </NuxtLink>
         </li>
