@@ -29,6 +29,9 @@ html {
   color: var(--color-text);
 }
 
+.iconify {
+  color: var(--color-text)
+}
 
 @include meta.load-css('./header.scss');
 @include meta.load-css('./layout.scss');

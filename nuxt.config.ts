@@ -9,7 +9,7 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@pinia/nuxt',
     '@vueuse/nuxt',
-    'nuxt-icon',
+    '@nuxt/icon',
   ],
   css: [
     '~/assets/index.scss',
