@@ -4,10 +4,6 @@ import dayjs from 'dayjs'
 
 const router = useRouter()
 
-definePageMeta({
-  // middleware: 'auth',
-})
-
 const form = reactive({
   title: '',
   description: '',
@@ -32,7 +28,7 @@ function resetForm() {
 </script>
 
 <template>
-  <div class="route-votes container container-m">
+  <div class="route-votes">
     <h1 class="mb-l">
       <Button square icon="ph:arrow-left" plain @click="router.back()" />
       Start a vote

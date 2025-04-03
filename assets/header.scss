@@ -19,6 +19,7 @@
     gap: 8px;
     flex: 1;
 
+
     
   &:before {
     content: "";
@@ -43,10 +44,6 @@
       &:hover, 
       &.router-link-active {
         color: var(--color-accent);
-      }
-
-      &.router-link-active {
-        font-weight: 600;
       }
     }
   }
