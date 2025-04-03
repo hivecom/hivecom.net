@@ -4,9 +4,15 @@
   "compilerOptions": {
     "incremental": true,
     "target": "es6",
-    "module": "NodeNext",
-    "moduleResolution": "nodenext",
     "strict": true,
     "noEmit": true
+  },
+  "paths": {
+    "@/components/*": [
+      "components/*"
+    ],
+    "@/types/*": [
+      "types/*"
+    ]
   }
 }

@@ -10,7 +10,7 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "supabase:link": "npx supabase link",
-    "supabase:types": "npx supabase gen types typescript --project-id \"$PROJECT_REF\" > types/database/index.d.ts",
+    "supabase:types": "npx supabase gen types typescript --project-id \"$PROJECT_REF\" > types/database.types.ts",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "lint": "eslint .",
