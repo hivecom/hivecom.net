@@ -12,10 +12,9 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     'nuxt-icon',
   ],
-  // css: [
-  //   '@dolanske/vui/dist/style.css',
-  //   '~/assets/index.scss',
-  // ],
+  css: [
+    '~/assets/index.scss',
+  ],
   vite: {
     css: {
       preprocessorOptions: {
@@ -36,14 +35,6 @@ export default defineNuxtConfig({
       exclude: ['/', '/votes', '/votes/create', '/votes/1'],
       cookieRedirect: false,
     },
-  },
-  imports: {
-    presets: [
-      {
-        from: '@dolanske/vui',
-        imports: [],
-      },
-    ],
   },
   // nitro: {
   //   prerender: {

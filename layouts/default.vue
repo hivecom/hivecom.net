@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Avatar, Button, Dropdown, DropdownItem, DropdownTitle, Flex } from '@dolanske/vui'
+import { Avatar, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
 
 const supabase = useSupabaseClient()
 

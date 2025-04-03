@@ -1,4 +1,12 @@
 {
   // https://nuxt.com/docs/guide/concepts/typescript
-  "extends": "./.nuxt/tsconfig.json"
+  "extends": "./.nuxt/tsconfig.json",
+  "compilerOptions": {
+    "incremental": true,
+    "target": "es6",
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "noEmit": true
+  }
 }

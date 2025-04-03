@@ -23,6 +23,8 @@ From there, link your project via the following command:
 npm run supabase:link
 ```
 
+You will probably have to login to your Supabase account via the CLI. You can do so via `npx supabase login`.
+
 Ask your project admin for the necessary database credentials if you should have access to the Supabase instance.
 
 From there, it is recommended to configure your Supabase configuration. Add `SUPABASE_URL` and `SUPABASE_KEY` to your `.env` in the root of the project:
@@ -40,7 +42,7 @@ Start the development server on `http://localhost:3000`:
 npm run dev
 ```
 
-To additionally have access to a local Supabase instance, you can run the following to start/stop that instance.
+To additionally have access to a local Supabase instance, you can run the following to start/stop that instance. Keep in mind Docker is required for this to function.
 
 ```bash
 npm run supabase:[start/stop]
