@@ -3,17 +3,17 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  
+
   // Align the main content to the center of the page
   margin-left: auto;
   margin-right: auto;
-  
+
   // Limit the width of the main content
   max-width: var(--container-l);
-  
+
   // Make sure the main content is at least the height of the viewport
   min-height: 100vh;
 
   // Pad the top for the fixed nav
-    padding-top: 64px;
+  padding-top: 64px;
 }

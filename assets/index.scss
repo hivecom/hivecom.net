@@ -4,7 +4,7 @@
 :root {
   // Main container sizes
   --container-l: 1280px;
-  
+
   // Dark (default) theme colors
   --dark-color-bg: #111;
   --dark-color-fg: #0a0a0a;
@@ -14,22 +14,8 @@
   // Light theme colors
   --light-color-bg: #eee;
   --light-color-fg: #ddd;
-  --light-color-accent: #bdff67;
+  --light-color-accent: #5ea840;
   --light-color-text: #000;
-
-  // Main color definitions that should be used in the app
-  --color-bg: var(--dark-color-bg);
-  --color-fg: var(--dark-color-fg);
-  --color-accent: var(--dark-color-accent);
-  --color-text: #f5f5f5;
-
-  // Light mode variable overrides
-  &.light {
-    --color-bg: var(--light-color-bg);
-    --color-fg: var(--light-color-fg);
-    --color-accent: var(--light-color-accent);
-    --color-text: var(--light-color-text);
-  }
 }
 
 a {
@@ -49,6 +35,8 @@ a {
   color: var(--color-text);
 }
 
-@include meta.load-css('./nav.scss');
-@include meta.load-css('./main.scss');
-@include meta.load-css('./layout.scss');
+@include meta.load-css('./utilities.scss');
+
+@include meta.load-css('./elements/nav.scss');
+@include meta.load-css('./elements/main.scss');
+@include meta.load-css('./elements/footer.scss');

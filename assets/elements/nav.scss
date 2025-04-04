@@ -1,7 +1,7 @@
 nav {
   width: 100%;
   position: fixed;
-  background-color: color-mix(in srgb, var(--color-fg) 60%, transparent);
+  background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
   backdrop-filter: blur(16px);
 
   z-index: 1; // Make sure the nav is main content
@@ -53,9 +53,15 @@ nav {
     }
   }
 
-  .header-user {
+  .nav-user {
     img {
       border-radius: 999px;
     }
+  }
+}
+
+:root.light {
+  .nav-logo {
+    filter: saturate(0.6) brightness(0.8);
   }
 }

@@ -13,24 +13,28 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-      
+
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
           fetch-depth: 0
-          
-      - uses: actions/setup-node@v3
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          
-      - run: "npm run supabase:types"
-      
-      - name: check for file changes
+          node-version: '22'
+
+      - name: Generate Supabase Types
+        run: npm run supabase:types
+
+      - name: Format Types
+        run: npm run lint:fix
+
+      - name: Check for file changes
         id: git_status
         run: |
           echo "status=$(git status -s)" >> $GITHUB_OUTPUT
-          
+
       - name: Commit files
         if: ${{contains(steps.git_status.outputs.status, ' ')}}
         run: |
@@ -38,7 +42,7 @@ jobs:
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git commit -m "Update database types" -a
-          
+
       - name: Push changes
         if: ${{contains(steps.git_status.outputs.status, ' ')}}
         uses: ad-m/github-push-action@master

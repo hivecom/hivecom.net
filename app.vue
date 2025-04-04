@@ -6,7 +6,7 @@ const isContentReady = ref(false)
 
 // Load content and then fade out loading screen
 onMounted(() => {
-  if (process.client) {
+  if (import.meta.client) {
     // Mark content as ready first (render behind loading screen)
     setTimeout(() => {
       isContentReady.value = true
@@ -26,18 +26,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app-container">
-    <div class="content-container">
-      <NuxtLoadingIndicator />
-      <NuxtLayout>
-        <NuxtPage />
-      </NuxtLayout>
-    </div>
+  <NuxtLoadingIndicator />
 
-    <!-- Loading overlay that fades out -->
-    <div v-if="isLoading" class="initial-loading" :class="{ 'fade-out': isFadingOut }">
-      <img src="/logo.svg" alt="Hivecom" width="200" class="logo-animation">
-    </div>
+  <NuxtLayout>
+    <NuxtPage />
+  </NuxtLayout>
+
+  <!-- Loading overlay that fades out -->
+  <div v-if="isLoading" class="initial-loading" :class="{ 'fade-out': isFadingOut }">
+    <img src="/logo.svg" alt="Hivecom" width="200" class="logo-animation">
   </div>
 </template>
 
@@ -49,13 +46,15 @@ onMounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: var(--color-bg);
+  background-color: #111;
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 9999;
   opacity: 1;
-  transition: opacity 0.5s ease;
+  transition:
+    opacity 0.5s ease,
+    background-color 0.5s ease;
 
   &.fade-out {
     opacity: 0;

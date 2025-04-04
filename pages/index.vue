@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Card, Divider, Switch } from '@dolanske/vui'
+import { Button, Card, Divider } from '@dolanske/vui'
 
 // For demonstration purposes only - replace with real data in production
 const upcomingEvents = ref([
