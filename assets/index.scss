@@ -6,12 +6,13 @@
 :root {
   // Main container sizes
   --container-l: 1280px;
+  --container-m: 768px;
 
   // Dark (default) theme colors
   --dark-color-bg: #111;
   --dark-color-fg: #0a0a0a;
   --dark-color-accent: #bdff67;
-  --dark-color-text: #f5f5f5;
+  --dark-color-text: #fff;
 
   // Light theme colors
   --light-color-bg: #eee;
@@ -21,7 +22,16 @@
 }
 
 a {
+  color: var(--color-text);
   text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
 }
 
 .link-line {

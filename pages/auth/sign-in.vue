@@ -58,11 +58,11 @@ watch(email, () => err.value = '')
     <div class="container container-xs">
       <Flex justify-center align-center column :style="{ paddingBlock: '64px' }" gap="l">
         <Tabs v-model="tab" variant="filled" expand>
-          <Tab label="Normal" />
+          <Tab label="Password" />
           <Tab label="E-mail" />
         </Tabs>
-        <Input v-model="email" expand placeholder="exmaple@example.com" label="Email" type="email" />
-        <Input v-if="tab === 'Normal'" v-model="password" expand placeholder="************" label="Password" type="password" />
+        <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
+        <Input v-if="tab === 'Password'" v-model="password" expand placeholder="************" label="Password" type="password" />
         <Button variant="accent" @click="signIn">
           Sign in
           <template #end>
