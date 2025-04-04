@@ -1,10 +1,12 @@
 @use 'sass:meta';
 
+@import url(@dolanske/vui/style);
+
 // Place global styles which should be available on all pages here
 :root {
   // Main container sizes
   --container-l: 1280px;
-  
+
   // Dark (default) theme colors
   --dark-color-bg: #111;
   --dark-color-fg: #0a0a0a;
