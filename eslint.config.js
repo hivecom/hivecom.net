@@ -10,6 +10,7 @@ export default antfu({
   formatters: {
     vue: true,
     css: true,
+    scss: true,
     markdown: true,
     html: true,
   },

@@ -49,7 +49,7 @@ onMounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: var(--dark-color-bg, #0a0a0a);
+  background-color: var(--color-bg);
   display: flex;
   justify-content: center;
   align-items: center;

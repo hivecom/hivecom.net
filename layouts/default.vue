@@ -29,10 +29,10 @@ supabase.auth.onAuthStateChange((event, session) => {
 </script>
 
 <template>
-  <header class="header">
-    <div class="container">
+  <nav>
+    <div class="nav-items">
       <NuxtImg src="/logo.svg" width="136" alt="Hivecom" />
-      <ul class="header-links">
+      <ul class="nav-links">
         <li>
           <NuxtLink to="/">
             Home
@@ -69,7 +69,7 @@ supabase.auth.onAuthStateChange((event, session) => {
         </Dropdown>
       </div>
     </div>
-  </header>
+  </nav>
   <main>
     <slot />
   </main>
@@ -82,14 +82,6 @@ supabase.auth.onAuthStateChange((event, session) => {
 
 <style lang="css" scoped>
 main {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin-left: auto;
-  margin-right: auto;
-  max-width: 1200px;
-  min-height: 100vh;
 }
 
 footer {

@@ -1,15 +1,35 @@
-@use "sass:meta";
+@use 'sass:meta';
 
 // Place global styles which should be available on all pages here
 :root {
-  --dark-color-bg: rgb(10,10,10);
-  --dark-color-accent: #6AFF67;
-  // --light-color-accent: #6AFF67;
-
-  --container-l: 1220px;
-  --container-m: 1024px;
+  // Main container sizes
+  --container-l: 1280px;
   
-  // --font-size-m: 1.4rem;
+  // Dark (default) theme colors
+  --dark-color-bg: #111;
+  --dark-color-fg: #0a0a0a;
+  --dark-color-accent: #bdff67;
+  --dark-color-text: #f5f5f5;
+
+  // Light theme colors
+  --light-color-bg: #eee;
+  --light-color-fg: #ddd;
+  --light-color-accent: #bdff67;
+  --light-color-text: #000;
+
+  // Main color definitions that should be used in the app
+  --color-bg: var(--dark-color-bg);
+  --color-fg: var(--dark-color-fg);
+  --color-accent: var(--dark-color-accent);
+  --color-text: #f5f5f5;
+
+  // Light mode variable overrides
+  &.light {
+    --color-bg: var(--light-color-bg);
+    --color-fg: var(--light-color-fg);
+    --color-accent: var(--light-color-accent);
+    --color-text: var(--light-color-text);
+  }
 }
 
 a {
@@ -25,13 +45,10 @@ a {
   }
 }
 
-html {
+.iconify {
   color: var(--color-text);
 }
 
-.iconify {
-  color: var(--color-text)
-}
-
-@include meta.load-css('./header.scss');
+@include meta.load-css('./nav.scss');
+@include meta.load-css('./main.scss');
 @include meta.load-css('./layout.scss');
