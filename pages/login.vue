@@ -20,7 +20,7 @@ async function signInWithOtp() {
   const { error } = await supabase.auth.signInWithOtp({
     email: email.value,
     options: {
-      emailRedirectTo: 'http://localhost:3000/confirm',
+      emailRedirectTo: 'http://localhost:3000/login-confirm',
     },
   })
 
@@ -47,30 +47,35 @@ watch(email, () => err.value = '')
 </script>
 
 <template>
-  <div>
-    <Card separators style="height:424px">
-      <template #header>
-        <h4>Sign in</h4>
-      </template>
-      <div class="container container-xs">
-        <Flex justify-center align-center column :style="{ paddingBlock: '64px' }" gap="l">
-          <Tabs v-model="tab" variant="filled" expand>
-            <Tab label="Normal" />
-            <Tab label="E-mail" />
-          </Tabs>
-          <Input v-model="email" expand placeholder="exmaple@example.com" label="Email" type="email" />
-          <Input v-if="tab === 'Normal'" v-model="password" expand placeholder="************" label="Password" type="password" />
-          <Button variant="accent" @click="signIn">
-            Sign in
-            <template #end>
-              <Icon name="ph:sign-in" color="white" />
-            </template>
-          </Button>
-          <p v-if="err" class="mt-l text-center color-text-red">
-            {{ err }}
-          </p>
-        </Flex>
-      </div>
-    </Card>
-  </div>
+  <Card class="login-card" separators style="height:424px">
+    <template #header>
+      <h4>Sign in</h4>
+    </template>
+    <div class="container container-xs">
+      <Flex justify-center align-center column :style="{ paddingBlock: '64px' }" gap="l">
+        <Tabs v-model="tab" variant="filled" expand>
+          <Tab label="Normal" />
+          <Tab label="E-mail" />
+        </Tabs>
+        <Input v-model="email" expand placeholder="exmaple@example.com" label="Email" type="email" />
+        <Input v-if="tab === 'Normal'" v-model="password" expand placeholder="************" label="Password" type="password" />
+        <Button variant="accent" @click="signIn">
+          Sign in
+          <template #end>
+            <Icon name="ph:sign-in" color="white" />
+          </template>
+        </Button>
+        <p v-if="err" class="mt-l text-center color-text-red">
+          {{ err }}
+        </p>
+      </Flex>
+    </div>
+  </Card>
 </template>
+
+<style scoped lang="scss">
+.login-card {
+  width: 100%;
+  max-width: 400px; /* Added max-width for better responsiveness */
+}
+</style>

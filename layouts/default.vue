@@ -53,7 +53,43 @@ async function signOut() {
       </div>
     </div>
   </header>
-  <div class="container">
+  <main>
     <slot />
-  </div>
+  </main>
+  <footer>
+    <div class="established-text">
+      HIVECOM | EST. IN 2013
+    </div>
+  </footer>
 </template>
+
+<style lang="css" scoped>
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1200px;
+  min-height: 100vh;
+}
+
+footer {
+  text-align: center;
+  margin-top: 3rem;
+  padding-bottom: 3rem;
+
+  p {
+    font-size: 1.5rem;
+    font-style: italic;
+    margin-bottom: 0.5rem;
+  }
+
+  .established-text {
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    opacity: 0.7;
+  }
+}
+</style>

@@ -12,6 +12,7 @@ export default defineNuxtConfig({
     '@nuxt/icon',
   ],
   css: [
+    '@dolanske/vui/style',
     '~/assets/index.scss',
   ],
   vite: {
