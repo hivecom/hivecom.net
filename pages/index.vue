@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { NuxtImg } from '#components'
 import { Button, Card, Divider } from '@dolanske/vui'
+import '@/assets/pages/landing.scss'
 
 // For demonstration purposes only - replace with real data in production
 const upcomingEvents = ref([
@@ -92,39 +94,71 @@ const communityStats = ref({
 
   <!-- Join us section -->
   <section class="section-join">
-    <Card>
+    <!-- <Card> -->
+    <h2 class="heading">
+      Join us
+    </h2>
+    <Divider />
+    <div class="section-join-container">
       <p class="join-text">
         We mainly talk on IRC and TeamSpeak. If discord is your thing, we have a bot connecting both services
-        so you won't be excluded. Just join the <strong>#lounge</strong> channel.
+        so you won't be excluded.
       </p>
 
-      <div class="platforms">
-        <div class="platform">
-          <h3>TeamSpeak</h3>
-          <Button @click="navigateTo('/')">
-            Connect
-          </Button>
-        </div>
-        <div class="platform">
-          <h3>IRC</h3>
-          <Button @click="navigateTo('/')">
-            Connect
-          </Button>
-        </div>
-        <div class="platform">
-          <h3>Discord</h3>
-          <Button @click="navigateTo('/')">
-            Connect
-          </Button>
-        </div>
-        <div class="platform">
-          <h3>Steam</h3>
-          <Button @click="navigateTo('/')">
-            Connect
-          </Button>
-        </div>
+      <div class="grid col-2 g-s">
+        <Card class="platform-item">
+          <div class="flex y-center g-m">
+            <NuxtImg src="/logos/ts3.png" width="32" height="32" />
+            <h3 class="flex-1">
+              TeamSpeak
+            </h3>
+            <Button @click="navigateTo('/')">
+              Connect
+            </Button>
+          </div>
+        </Card>
+
+        <Card class="platform-item">
+          <div class="flex y-center g-m">
+            <NuxtImg src="/logos/irc.png" width="32" height="32" />
+            <h3 class="flex-1">
+              IRC
+            </h3>
+            <Button @click="navigateTo('/')">
+              Connect
+            </Button>
+          </div>
+        </Card>
+
+        <Card class="platform-item">
+          <div class="flex y-center g-m">
+            <NuxtImg src="/logos/discord.png" width="32" height="32" />
+            <div class="flex-1">
+              <h3 class="mb-xxs">
+                Discord
+              </h3>
+              <p>Join the <strong>#lounge</strong> channel.</p>
+            </div>
+            <Button @click="navigateTo('/')">
+              Connect
+            </Button>
+          </div>
+        </Card>
+
+        <Card class="platform-item">
+          <div class="flex y-center g-m">
+            <NuxtImg src="/logos/steam.png" width="32" height="32" />
+            <h3 class="flex-1">
+              Steam
+            </h3>
+            <Button @click="navigateTo('/')">
+              Connect
+            </Button>
+          </div>
+          <!-- </Card> -->
+        </card>
       </div>
-    </Card>
+    </div>
   </section>
 
   <!-- Upcoming Events -->
@@ -136,9 +170,9 @@ const communityStats = ref({
 
     <div class="events-list">
       <Card v-for="event in upcomingEvents" :key="event.id">
-        <template #header>
-          <h4>{{ event.title }}</h4>
-        </template>
+        <h3 class="block mb-s">
+          {{ event.title }}
+        </h3>
         <div class="event-details">
           <p>Date: {{ new Date(event.date).toLocaleDateString() }}</p>
         </div>
@@ -173,7 +207,6 @@ section {
 
 h3 {
   font-size: 1.3rem;
-  margin: 0;
 }
 
 h4 {
@@ -183,16 +216,16 @@ h4 {
 
 .section-hero {
   text-align: center;
-  padding: 4rem 0;
+  padding: 6.5rem 0;
 
   &-title {
-    font-size: 4rem;
-    font-weight: bold;
+    font-size: 4.8rem;
+    font-weight: var(--font-weight-black);
     margin-bottom: 1rem;
   }
 
   &-tagline {
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     margin: 1rem 0 2rem;
     opacity: 0.8;
   }
@@ -228,22 +261,17 @@ h4 {
 .section-join {
   .join-text {
     text-align: center;
-    font-size: 1.2rem;
     margin-bottom: 2rem;
   }
 
-  .platforms {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 2rem;
+  .section-join-container {
+    max-width: 900px;
+    margin: 2rem auto 0;
+  }
 
-    .platform {
-      text-align: center;
-
-      h3 {
-        margin-bottom: 0.5rem;
-      }
+  .platform-item {
+    img {
+      border-radius: var(--border-radius-s);
     }
   }
 }
@@ -251,11 +279,16 @@ h4 {
 // Center the list and make sure it is responsive
 .section-events {
   .events-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Added back the grid template columns */
+    display: flex;
+    flex-wrap: wrap;
     gap: 1.5rem;
     margin-top: 2rem;
     justify-content: center; /* Added to center the list */
+
+    .vui-card {
+      width: 24%;
+      flex: 0 1 auto;
+    }
   }
 
   .event-details {
@@ -267,7 +300,7 @@ h4 {
 
 .view-all {
   display: flex;
-  align-items: center;
+  justify-content: center;
   margin-top: 1.5rem;
   text-align: center;
 }
@@ -281,18 +314,22 @@ h4 {
 }
 
 .stat-card {
+  width: 156px;
+  border-radius: var(--border-radius-m);
   text-align: center;
+  padding: var(--space-m);
 
   .stat-value {
     display: block;
     font-size: 2.5rem;
     font-weight: bold;
+    margin-bottom: var(--space-xs);
     color: var(--vui-color-primary);
   }
 
   .stat-label {
-    font-size: 0.9rem;
-    opacity: 0.8;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
   }
 }
 

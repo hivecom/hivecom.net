@@ -29,6 +29,12 @@ nav {
   }
 
   .nav-logo {
+    width: 128px;
+
+    img {
+      width: 100%;
+    }
+
     &:before {
       content: '';
       position: absolute;

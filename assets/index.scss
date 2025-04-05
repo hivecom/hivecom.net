@@ -21,6 +21,12 @@
   --light-color-text: #000;
 }
 
+html,
+body {
+  font-size: 63.5%;
+  font-size: 1.4rem;
+}
+
 a {
   color: var(--color-text);
   text-decoration: none;
