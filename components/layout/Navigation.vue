@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Avatar, Button, Dropdown, DropdownItem, DropdownTitle, Sheet } from '@dolanske/vui'
-import { Icon } from '@iconify/vue'
 
 const supabase = useSupabaseClient()
 
@@ -24,7 +23,7 @@ async function signOut() {
   <nav>
     <div class="nav-items">
       <div class="nav-hamburger" @click="toggleMobileMenu">
-        <Icon class="iconify" icon="ph:list" />
+        <Icon name="ph:list" />
       </div>
 
       <SharedLogo class="nav-logo" />
@@ -67,25 +66,25 @@ async function signOut() {
         </template>
         <div class="nav-mobile-menu">
           <NuxtLink to="/" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
-            <Icon icon="ph:house" />
+            <Icon name="ph:house" />
             <span>Home</span>
           </NuxtLink>
           <NuxtLink to="/community" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
-            <Icon icon="ph:users" />
+            <Icon name="ph:users" />
             <span>Community</span>
           </NuxtLink>
           <NuxtLink to="/events" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
-            <Icon icon="ph:calendar" />
+            <Icon name="ph:calendar" />
             <span>Events</span>
           </NuxtLink>
           <NuxtLink to="/gameservers" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
-            <Icon icon="ph:game-controller" />
+            <Icon name="ph:game-controller" />
             <span>Gameservers</span>
           </NuxtLink>
           <template v-if="user">
             <span class="nav-mobile-menu-separator" />
             <NuxtLink to="/votes" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon icon="ph:check-square" />
+              <Icon name="ph:check-square" />
               <span>Votes</span>
             </NuxtLink>
           </template>

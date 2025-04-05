@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { setColorTheme, Switch, theme } from '@dolanske/vui'
-import { Icon } from '@iconify/vue'
 
 const props = defineProps({
   noText: {
@@ -22,7 +21,7 @@ const isLight = computed({
 <template>
   <div :class="`theme-toggle ${props.small ? 'small' : ''}` ">
     <div class="theme-toggle-label">
-      <Icon :icon="isLight ? 'ph:sun' : 'ph:moon'" />
+      <Icon :name="isLight ? 'ph:sun' : 'ph:moon'" />
       <template v-if="!props.noText">
         Theme
       </template>

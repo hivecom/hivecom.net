@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Card, Divider } from '@dolanske/vui'
-import { Icon } from '@iconify/vue'
+// Remove the direct Iconify import and rely on the Nuxt Icon module
 
 import '~/assets/pages/error.scss'
 
@@ -48,7 +48,7 @@ onMounted(() => {
       <Card class="error-card">
         <div class="error-content">
           <div class="error-icon-wrapper" :class="{ flicker: isFlickering }">
-            <Icon icon="ph:lightning-fill" class="error-icon" />
+            <Icon name="ph:lightning-fill" class="error-icon" />
           </div>
 
           <h1 class="error-title">
@@ -67,7 +67,7 @@ onMounted(() => {
             <NuxtLink to="/">
               <Button class="error-button" size="l" variant="accent">
                 <template #end>
-                  <Icon icon="ph:arrow-u-up-left" />
+                  <Icon name="ph:arrow-u-up-left" />
                 </template>
                 Go whence you came
               </Button>
