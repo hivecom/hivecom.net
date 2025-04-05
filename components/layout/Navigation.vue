@@ -24,13 +24,10 @@ async function signOut() {
   <nav>
     <div class="nav-items">
       <div class="nav-hamburger" @click="toggleMobileMenu">
-        <Icon v-if="!mobileMenuOpen" class="iconify" icon="ph:list" />
-        <Icon v-else class="iconify" icon="ph:x" />
+        <Icon class="iconify" icon="ph:list" />
       </div>
 
-      <NuxtLink to="/" class="nav-logo">
-        <NuxtImg src="/logo.svg" width="136" alt="Hivecom" />
-      </NuxtLink>
+      <SharedLogo class="nav-logo" />
 
       <ul class="nav-links">
         <li>
@@ -66,40 +63,36 @@ async function signOut() {
       <!-- Mobile menu -->
       <Sheet v-model="mobileMenuOpen" position="left" separator>
         <template #header>
-          <h2>Navigation</h2>
+          <SharedLogo />
         </template>
-        <ul class="nav-links">
-          <li>
-            <NuxtLink to="/">
-              Home
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/community">
-              Community
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/events">
-              Events
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/gameservers">
-              Gameservers
-            </NuxtLink>
-          </li>
+        <div class="nav-mobile-menu">
+          <NuxtLink to="/" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+            <Icon icon="ph:house" />
+            <span>Home</span>
+          </NuxtLink>
+          <NuxtLink to="/community" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+            <Icon icon="ph:users" />
+            <span>Community</span>
+          </NuxtLink>
+          <NuxtLink to="/events" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+            <Icon icon="ph:calendar" />
+            <span>Events</span>
+          </NuxtLink>
+          <NuxtLink to="/gameservers" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+            <Icon icon="ph:game-controller" />
+            <span>Gameservers</span>
+          </NuxtLink>
           <template v-if="user">
-            <span class="nav-links-separator" />
-            <li>
-              <NuxtLink to="/votes">
-                Votes
-              </NuxtLink>
-            </li>
+            <span class="nav-mobile-menu-separator" />
+            <NuxtLink to="/votes" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+              <Icon icon="ph:check-square" />
+              <span>Votes</span>
+            </NuxtLink>
           </template>
-        </ul>
+        </div>
       </Sheet>
 
+      <!-- User dropdown on right side -->
       <div v-if="user" class="nav-user">
         <Dropdown>
           <template #trigger="{ toggle }">

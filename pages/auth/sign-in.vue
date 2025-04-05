@@ -5,10 +5,10 @@ const supabase = useSupabaseClient()
 const email = ref('')
 const password = ref('')
 const err = ref('')
-const tab = ref('Normal')
+const tab = ref('Password')
 
 function signIn() {
-  if (tab.value === 'Normal') {
+  if (tab.value === 'Password') {
     signInWithPassword()
   }
   else {

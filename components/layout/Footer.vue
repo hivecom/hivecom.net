@@ -2,6 +2,8 @@
   <footer>
     <div class="footer-items">
       <ul class="footer-links">
+        <SharedThemeToggle no-text small />
+        <span class="footer-links-separator" />
         <li>
           <NuxtLink to="/">
             Home

@@ -15,7 +15,7 @@ nav {
     display: flex;
     justify-content: flex-start;
     height: 64px;
-    gap: var(--space-xl);
+    gap: var(--space-xxl);
     align-items: center;
 
     position: relative;
@@ -29,8 +29,6 @@ nav {
   }
 
   .nav-logo {
-    transition: all 0.3s ease;
-
     &:before {
       content: '';
       position: absolute;
@@ -132,6 +130,54 @@ nav {
   }
 }
 
+.nav-mobile-menu {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+
+  .nav-mobile-menu-item {
+    padding: var(--space-s) var(--space-m);
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    width: 100%;
+    gap: var(--space-m);
+    border-radius: var(--border-radius-s);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+
+    &:hover,
+    &.router-link-active {
+      background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+      color: var(--color-accent);
+    }
+
+    .iconify {
+      font-size: 20px;
+    }
+
+    &.accent {
+      color: var(--color-accent);
+      font-weight: 500;
+
+      &:hover {
+        background-color: color-mix(in srgb, var(--color-accent) 15%, transparent);
+      }
+    }
+  }
+
+  .nav-mobile-menu-separator {
+    display: block;
+    height: 1px;
+    width: 100%;
+    background-color: color-mix(in srgb, var(--color-text) 20%, transparent);
+    margin: var(--space-m) 0;
+  }
+}
+
 @media (max-width: 768px) {
   nav {
     .nav-items {
@@ -170,11 +216,5 @@ nav {
         display: none;
       }
     }
-  }
-}
-
-:root.light {
-  .nav-logo {
-    filter: saturate(0.6) brightness(0.8);
   }
 }
