@@ -69,7 +69,7 @@ onMounted(() => {
                 <template #end>
                   <Icon name="ph:arrow-u-up-left" />
                 </template>
-                Go whence you came
+                Go whence I came
               </Button>
             </NuxtLink>
           </div>

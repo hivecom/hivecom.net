@@ -10,12 +10,12 @@ nav {
     margin-left: auto;
     margin-right: auto;
 
-    padding: 0 var(--space-l);
+    padding: 0 var(--space-m);
     max-width: var(--container-l);
     display: flex;
     justify-content: flex-start;
     height: 64px;
-    gap: var(--space-xxl);
+    gap: 90px;
     align-items: center;
 
     position: relative;
@@ -184,7 +184,7 @@ nav {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1080px) {
   nav {
     .nav-items {
       justify-content: space-between;

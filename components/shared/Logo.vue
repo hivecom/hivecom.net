@@ -6,7 +6,8 @@
 
 <style scoped lang="scss">
 .logo {
-  margin-bottom: -1px; // The logo has a pixel gap at the bottom, this fixes it
+  width: 152px;
+  margin-bottom: -3px; // The logo has a pixel gap at the bottom, this fixes it
 }
 
 :root.light {

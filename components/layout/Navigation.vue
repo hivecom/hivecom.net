@@ -22,9 +22,7 @@ async function signOut() {
 <template>
   <nav>
     <div class="nav-items">
-      <div class="nav-hamburger" @click="toggleMobileMenu">
-        <Icon name="ph:list" />
-      </div>
+      <Button class="nav-hamburger" icon="ph:list" @click="toggleMobileMenu" />
 
       <SharedLogo class="nav-logo" />
 
