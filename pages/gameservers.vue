@@ -3,6 +3,7 @@ import { Button, Card, Divider, Input, Select } from '@dolanske/vui'
 import type { Database } from '~/types/database.types'
 
 // NOTE: Very WIP feel free to continue the integration + add your flavours
+// The idea is we show game servers in a two columnb grid and a sidebar overview
 
 // Fetch data
 const supabase = useSupabaseClient()
