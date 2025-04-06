@@ -26,7 +26,7 @@ async function signInWithOtp() {
 <template>
   <Card class="login-card" separators style="height:424px">
     <template #header>
-      <h4>Sign in</h4>
+      <h4>Sign up</h4>
     </template>
     <div class="container container-xs">
       <Flex justify-center align-center column :style="{ paddingBlock: '64px' }" gap="l">
@@ -34,7 +34,7 @@ async function signInWithOtp() {
         <Button variant="accent" :disabled="!email" @click="signInWithOtp">
           Sign up
           <template #end>
-            <Icon name="ph:sign-up" color="white" />
+            <Icon name="ph:sign-in" color="white" />
           </template>
         </Button>
         <p v-if="err" class="mt-l text-center color-text-red">

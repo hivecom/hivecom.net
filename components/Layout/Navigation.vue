@@ -121,9 +121,11 @@ async function signOut() {
             </Button>
           </NuxtLink>
         </div>
+
+        <!-- On mobile we just have a little user icon -->
         <div class="nav-auth-mobile-button">
           <NuxtLink to="/auth/sign-in">
-            <Button square icon="ph:user" />
+            <Button square icon="ph:sign-in" />
           </NuxtLink>
         </div>
       </div>
