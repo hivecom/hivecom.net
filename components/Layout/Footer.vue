@@ -1,7 +1,7 @@
 <script setup>
 import constants from '@/constants.json'
 
-const links = constants.links
+const links = constants.LINKS
 </script>
 
 <template>
