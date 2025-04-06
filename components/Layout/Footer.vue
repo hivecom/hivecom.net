@@ -1,41 +1,33 @@
 <template>
   <footer>
     <div class="footer-items">
-      <ul class="footer-links">
-        <SharedThemeToggle no-text small />
+      <SharedThemeToggle no-text small />
+      <div class="footer-links">
         <span class="footer-links-separator" />
-        <li>
+        <div class="footer-links-group">
           <NuxtLink to="/">
             Home
           </NuxtLink>
-        </li>
-        <li>
           <NuxtLink to="/community">
             Community
           </NuxtLink>
-        </li>
-        <li>
           <NuxtLink to="/events">
             Events
           </NuxtLink>
-        </li>
-        <li>
           <NuxtLink to="/gameservers">
             Gameservers
           </NuxtLink>
-        </li>
+        </div>
         <span class="footer-links-separator" />
-        <li>
+        <div class="footer-links-group">
           <NuxtLink to="/legal/terms">
             Terms of Service
           </NuxtLink>
-        </li>
-        <li>
           <NuxtLink to="/legal/privacy">
             Privacy Policy
           </NuxtLink>
-        </li>
-      </ul>
+        </div>
+      </div>
     </div>
     <div class="established-text">
       HIVECOM | EST. IN 2013

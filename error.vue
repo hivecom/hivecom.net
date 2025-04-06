@@ -54,7 +54,9 @@ onMounted(() => {
           <h1 class="error-title">
             Error {{ errorCode }}
           </h1>
-          <Divider />
+          <ClientOnly>
+            <Divider />
+          </ClientOnly>
 
           <p class="error-description">
             {{ friendlyMessage }}

@@ -20,13 +20,20 @@ const isLight = computed({
 
 <template>
   <div :class="`theme-toggle ${props.small ? 'small' : ''}` ">
-    <div class="theme-toggle-label">
-      <Icon :name="isLight ? 'ph:sun' : 'ph:moon'" />
-      <template v-if="!props.noText">
-        Theme
+    <ClientOnly>
+      <div class="theme-toggle-label">
+        <Icon :name="isLight ? 'ph:sun' : 'ph:moon'" />
+        <template v-if="!props.noText">
+          Theme
+        </template>
+      </div>
+      <!-- Only render the actual Switch component on client-side -->
+      <Switch v-model="isLight" class="theme-toggle-switch" />
+      <template #fallback>
+        <!-- Static fallback for server-side rendering -->
+        <div class="theme-toggle-switch vui-switch" />
       </template>
-    </div>
-    <Switch v-model="isLight" data-title-top="Switch theme" class="theme-toggle-switch" />
+    </ClientOnly>
   </div>
 </template>
 
@@ -69,6 +76,11 @@ const isLight = computed({
     .theme-toggle-switch {
       transform: scale(0.5);
     }
+  }
+
+  .icon-placeholder {
+    width: 1em;
+    height: 1em;
   }
 }
 </style>

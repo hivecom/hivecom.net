@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { NuxtImg } from '#components'
-import { Button, Card, Divider } from '@dolanske/vui'
+import { Button, Card, Divider, Flex } from '@dolanske/vui'
+
 import '@/assets/pages/landing.scss'
 
 // For demonstration purposes only - replace with real data in production
@@ -25,7 +26,7 @@ const communityStats = ref({
       Hivecom
     </h1>
     <p class="section-hero-tagline">
-      A community of friends from all around the world. Playing video games and creating things together.
+      A community of friends from all around the world. Creating a space for everyone and projects to thrive.
     </p>
     <div class="section-hero-actions">
       <Button variant="fill" color="primary">
@@ -42,7 +43,9 @@ const communityStats = ref({
     <h2 class="heading">
       Community Overview
     </h2>
-    <Divider />
+    <ClientOnly>
+      <Divider />
+    </ClientOnly>
 
     <div class="stats-grid">
       <div class="stat-card">
@@ -72,7 +75,9 @@ const communityStats = ref({
     <h2 class="heading">
       About Us
     </h2>
-    <Divider />
+    <ClientOnly>
+      <Divider />
+    </ClientOnly>
 
     <div class="section-about-content">
       <p>
@@ -98,16 +103,18 @@ const communityStats = ref({
     <h2 class="heading">
       Join us
     </h2>
-    <Divider />
+    <ClientOnly>
+      <Divider />
+    </ClientOnly>
     <div class="section-join-container">
-      <p class="join-text">
+      <p class="section-join-text">
         We mainly talk on IRC and TeamSpeak. If discord is your thing, we have a bot connecting both services
         so you won't be excluded.
       </p>
 
-      <div class="grid col-2 g-s">
-        <Card class="platform-item">
-          <div class="flex y-center g-m">
+      <div class="section-join-platforms">
+        <Card class="section-join-platforms-item">
+          <Flex align-center>
             <NuxtImg src="/logos/ts3.png" width="32" height="32" />
             <h3 class="flex-1">
               TeamSpeak
@@ -115,11 +122,11 @@ const communityStats = ref({
             <Button @click="navigateTo('/')">
               Connect
             </Button>
-          </div>
+          </Flex>
         </Card>
 
-        <Card class="platform-item">
-          <div class="flex y-center g-m">
+        <Card class="section-join-platforms-item">
+          <Flex align-center>
             <NuxtImg src="/logos/irc.png" width="32" height="32" />
             <h3 class="flex-1">
               IRC
@@ -127,11 +134,11 @@ const communityStats = ref({
             <Button @click="navigateTo('/')">
               Connect
             </Button>
-          </div>
+          </Flex>
         </Card>
 
-        <Card class="platform-item">
-          <div class="flex y-center g-m">
+        <Card class="section-join-platforms-item">
+          <Flex align-center>
             <NuxtImg src="/logos/discord.png" width="32" height="32" />
             <div class="flex-1">
               <h3 class="mb-xxs">
@@ -142,11 +149,11 @@ const communityStats = ref({
             <Button @click="navigateTo('/')">
               Connect
             </Button>
-          </div>
+          </Flex>
         </Card>
 
-        <Card class="platform-item">
-          <div class="flex y-center g-m">
+        <Card class="section-join-platforms-item">
+          <Flex align-center>
             <NuxtImg src="/logos/steam.png" width="32" height="32" />
             <h3 class="flex-1">
               Steam
@@ -154,9 +161,8 @@ const communityStats = ref({
             <Button @click="navigateTo('/')">
               Connect
             </Button>
-          </div>
-          <!-- </Card> -->
-        </card>
+          </Flex>
+        </Card>
       </div>
     </div>
   </section>
@@ -166,7 +172,9 @@ const communityStats = ref({
     <h2 class="heading">
       Upcoming Events
     </h2>
-    <Divider />
+    <ClientOnly>
+      <Divider />
+    </ClientOnly>
 
     <div class="events-list">
       <Card v-for="event in upcomingEvents" :key="event.id">
@@ -174,7 +182,12 @@ const communityStats = ref({
           {{ event.title }}
         </h3>
         <div class="event-details">
-          <p>Date: {{ new Date(event.date).toLocaleDateString() }}</p>
+          <ClientOnly>
+            <template #fallback>
+              <p>Date: {{ event.date.toDateString() }}</p>
+            </template>
+            <p>Date: {{ event.date.toLocaleDateString() }}</p>
+          </ClientOnly>
         </div>
       </Card>
     </div>
@@ -259,17 +272,26 @@ h4 {
 }
 
 .section-join {
-  .join-text {
+  .section-join-text {
     text-align: center;
     margin-bottom: 2rem;
   }
 
   .section-join-container {
-    max-width: 900px;
     margin: 2rem auto 0;
   }
 
-  .platform-item {
+  .section-join-platforms {
+    display: grid;
+    gap: var(--space-m);
+    grid-template-columns: 2fr 2fr;
+
+    @media screen and (max-width: 768px) {
+      grid-template-columns: 1fr; /* Stack on smaller screens */
+    }
+  }
+
+  .section-join-platforms-item {
     img {
       border-radius: var(--border-radius-s);
     }

@@ -106,7 +106,9 @@ function resetForm() {
       </div>
     </Grid>
 
-    <Divider size="32" />
+    <ClientOnly>
+      <Divider size="32" />
+    </ClientOnly>
 
     <Flex justify-end gap="s">
       <Button @click="resetForm">
