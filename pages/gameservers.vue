@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Button, Card, Divider, Input, Select } from '@dolanske/vui'
 import type { Database } from '~/types/database.types'
+import { Button, Card, Divider, Input, Select } from '@dolanske/vui'
 
 // NOTE: Very WIP feel free to continue the integration + add your flavours
 // The idea is we show game servers in a two columnb grid and a sidebar overview
@@ -10,12 +10,11 @@ const supabase = useSupabaseClient()
 const servers = ref<Database['public']['Tables']['gameservers']['Row'][]>()
 
 onBeforeMount(() => {
-  supabase.from("gameservers").select('*')
-    .then((res) => {
-      if (res.data) {
-        servers.value = res.data
-      }
-    })
+  supabase.from('gameservers').select('*').then((res) => {
+    if (res.data) {
+      servers.value = res.data
+    }
+  })
 })
 
 // Filters
@@ -51,7 +50,7 @@ function clearFilters() {
         <div class="grid col-2 g-m">
           <Card v-for="server in servers" :key="server.id">
             <template #header>
-              <h5>{{server.game}}</h5>
+              <h5>{{ server.game }}</h5>
             </template>
             <p>{{ server.description }}</p>
             <pre>

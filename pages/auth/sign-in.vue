@@ -35,7 +35,8 @@ async function signInWithOtp() {
 
   if (error) {
     err.value = error.message
-  } else {
+  }
+  else {
     showEmailNotice.value = true
   }
 }
@@ -71,13 +72,14 @@ onMounted(() => {
 </script>
 
 <template>
-
   <Card class="login-card" separators>
     <template #header>
       <h4>Sign in</h4>
     </template>
     <div class="container container-xs" style="min-height:356px">
-      <Alert v-if="showEmailNotice" filled variant="info"><p>An email with the sing-in link has been sent to {{ email}} </p></Alert>
+      <Alert v-if="showEmailNotice" filled variant="info">
+        <p>An email with the sing-in link has been sent to {{ email }} </p>
+      </Alert>
       <Flex justify-center align-center column gap="l" class="py-l">
         <Tabs v-model="tab" variant="filled" expand>
           <Tab label="Password" />
@@ -85,7 +87,7 @@ onMounted(() => {
         </Tabs>
         <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
         <Input v-if="tab === 'Password'" v-model="password" expand placeholder="************" label="Password" type="password" />
-        <Button variant="fill" @click="signIn" :disabled="tab === 'Password' ? !(email && password) : !email"> 
+        <Button variant="fill" :disabled="tab === 'Password' ? !(email && password) : !email" @click="signIn">
           Sign in
           <template #end>
             <Icon name="ph:sign-in" color="white" />

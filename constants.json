@@ -1,0 +1,55 @@
+{
+  "LINKS": {
+    "DISCORD": {
+      "name": "Discord",
+      "url": "https://discord.gg/2xsJcSuUhW",
+      "icon": "mdi:discord"
+    },
+    "GITHUB": {
+      "name": "GitHub",
+      "url": "https://github.com/hivecom",
+      "icon": "mdi:github"
+    },
+    "STEAM": {
+      "name": "Steam",
+      "url": "https://www.steamcommunity.com/groups/hivecom",
+      "icon": "mdi:steam"
+    },
+    "TWITCH": {
+      "name": "Twitch",
+      "url": "https://www.twitch.tv/hivecom",
+      "icon": "mdi:twitch"
+    }
+  },
+
+  "PLATFORMS": {
+    "IRC": {
+      "title": "IRC",
+      "url": "https://irc.hivecom.net/",
+      "icon": "ph:chats-circle-bold",
+      "note": "Or connect directly via irc.hivecom.net:6667",
+      "action": "Connect"
+    },
+    "TEAMSPEAK": {
+      "title": "TeamSpeak",
+      "url": "ts3server://ts.hivecom.net",
+      "icon": "mdi:teamspeak",
+      "note": "Or connect directly to ts.hivecom.net",
+      "action": "Connect"
+    },
+    "DISCORD": {
+      "title": "Discord",
+      "url": "https://discord.gg/2xsJcSuUhW",
+      "icon": "mdi:discord",
+      "note": "",
+      "action": "Join"
+    },
+    "STEAM": {
+      "title": "Steam",
+      "url": "https://www.steamcommunity.com/groups/hivecomnetwork",
+      "icon": "mdi:steam",
+      "note": "",
+      "action": "Join"
+    }
+  }
+}

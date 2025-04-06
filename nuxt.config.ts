@@ -11,7 +11,7 @@ export default defineNuxtConfig({
     '@nuxtjs/seo',
     '@nuxt/content',
     '@nuxt/image',
-    'nuxt-toc',
+    // 'nuxt-toc',
     'nuxt-icon',
     'nuxt-og-image',
     '@pinia/nuxt',

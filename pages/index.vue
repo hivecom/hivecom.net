@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { NuxtImg } from '#components'
-import { Button, Card, Divider, Flex } from '@dolanske/vui'
+import constants from '@/constants.json'
+import { Button, Card, Divider, Tooltip } from '@dolanske/vui'
 
 import '@/assets/pages/landing.scss'
 
@@ -17,6 +17,8 @@ const communityStats = ref({
   age: 2025 - 2013,
   projects: 13,
 })
+
+const platforms = ref(constants.PLATFORMS)
 </script>
 
 <template>
@@ -113,57 +115,26 @@ const communityStats = ref({
       </p>
 
       <div class="section-join-platforms">
-        <Card class="section-join-platforms-item">
-          <Flex align-center>
-            <NuxtImg src="/logos/ts3.png" width="32" height="32" />
-            <h3 class="flex-1">
-              TeamSpeak
-            </h3>
-            <Button @click="navigateTo('/')">
-              Connect
-            </Button>
-          </Flex>
-        </Card>
-
-        <Card class="section-join-platforms-item">
-          <Flex align-center>
-            <NuxtImg src="/logos/irc.png" width="32" height="32" />
-            <h3 class="flex-1">
-              IRC
-            </h3>
-            <Button @click="navigateTo('/')">
-              Connect
-            </Button>
-          </Flex>
-        </Card>
-
-        <Card class="section-join-platforms-item">
-          <Flex align-center>
-            <NuxtImg src="/logos/discord.png" width="32" height="32" />
-            <div class="flex-1">
-              <h3 class="mb-xxs">
-                Discord
+        <Card v-for="platform in platforms" :key="platform.title">
+          <div class="section-join-platforms-item">
+            <div class="section-join-platforms-item-content">
+              <Icon :name="platform.icon" class="platform-icon" />
+              <h3 class="section-join-platforms-item-content-title">
+                {{ platform.title }}
               </h3>
-              <p class="text-xs">
-                Join the <strong class="text-xs">#lounge</strong> channel.
-              </p>
+              <Tooltip v-if="platform.note !== ''" placement="top">
+                <Icon name="ph:info" class="section-join-platforms-item-content-info" />
+                <template #tooltip>
+                  <p>{{ platform.note }}</p>
+                </template>
+              </Tooltip>
             </div>
-            <Button @click="navigateTo('/')">
-              Connect
-            </Button>
-          </Flex>
-        </Card>
-
-        <Card class="section-join-platforms-item">
-          <Flex align-center>
-            <NuxtImg src="/logos/steam.png" width="32" height="32" />
-            <h3 class="flex-1">
-              Steam
-            </h3>
-            <Button @click="navigateTo('/')">
-              Connect
-            </Button>
-          </Flex>
+            <a :href="platform.url" target="_blank" rel="noopener noreferrer">
+              <Button>
+                {{ platform.action }}
+              </Button>
+            </a>
+          </div>
         </Card>
       </div>
     </div>
@@ -294,7 +265,25 @@ h4 {
   }
 
   .section-join-platforms-item {
-    img {
+    display: flex;
+    justify-content: space-between;
+
+    .section-join-platforms-item-content {
+      display: flex;
+      align-items: center;
+      gap: var(--space-s);
+
+      .section-join-platforms-item-content-title {
+        font-size: 2rem;
+      }
+
+      .section-join-platforms-item-content-info.icon {
+        font-size: 16px;
+      }
+    }
+
+    .icon {
+      font-size: 32px;
       border-radius: var(--border-radius-s);
     }
   }

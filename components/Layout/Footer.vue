@@ -1,3 +1,9 @@
+<script setup>
+import constants from '@/constants.json'
+
+const links = constants.links
+</script>
+
 <template>
   <footer>
     <div class="footer-items">
@@ -29,7 +35,14 @@
         </div>
       </div>
     </div>
-    <div class="established-text">
+
+    <div class="footer-social-links">
+      <a v-for="(link, key) in links" :key="key" :href="link.url" target="_blank" rel="noopener noreferrer" class="footer-social-link">
+        <Icon :name="link.icon" />
+      </a>
+    </div>
+
+    <div class="footer-established-text">
       HIVECOM | EST. IN 2013
     </div>
   </footer>
