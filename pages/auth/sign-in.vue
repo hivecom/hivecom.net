@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Card, Flex, Input, Tab, Tabs } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Input, Tab, Tabs } from '@dolanske/vui'
 import '@/assets/pages/auth.scss'
 
 const supabase = useSupabaseClient()
@@ -7,6 +7,10 @@ const email = ref('')
 const password = ref('')
 const err = ref('')
 const tab = ref('Password')
+
+const showEmailNotice = ref(false)
+
+watch(tab, () => showEmailNotice.value = false)
 
 function signIn() {
   if (tab.value === 'Password') {
@@ -31,6 +35,8 @@ async function signInWithOtp() {
 
   if (error) {
     err.value = error.message
+  } else {
+    showEmailNotice.value = true
   }
 }
 
@@ -65,19 +71,21 @@ onMounted(() => {
 </script>
 
 <template>
-  <Card class="login-card" separators style="height:424px">
+
+  <Card class="login-card" separators>
     <template #header>
       <h4>Sign in</h4>
     </template>
-    <div class="container container-xs">
-      <Flex justify-center align-center column :style="{ paddingBlock: '64px' }" gap="l">
+    <div class="container container-xs" style="min-height:356px">
+      <Alert v-if="showEmailNotice" filled variant="info"><p>An email with the sing-in link has been sent to {{ email}} </p></Alert>
+      <Flex justify-center align-center column gap="l" class="py-l">
         <Tabs v-model="tab" variant="filled" expand>
           <Tab label="Password" />
           <Tab label="E-mail" />
         </Tabs>
         <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
         <Input v-if="tab === 'Password'" v-model="password" expand placeholder="************" label="Password" type="password" />
-        <Button variant="fill" @click="signIn">
+        <Button variant="fill" @click="signIn" :disabled="tab === 'Password' ? !(email && password) : !email"> 
           Sign in
           <template #end>
             <Icon name="ph:sign-in" color="white" />

@@ -32,7 +32,7 @@ async function signInWithOtp() {
     <div class="container container-xs">
       <Flex justify-center align-center column :style="{ paddingBlock: '64px' }" gap="l">
         <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
-        <Button variant="accent" :disabled="!email" @click="signInWithOtp">
+        <Button variant="fill" :disabled="!email" @click="signInWithOtp">
           Sign up
           <template #end>
             <Icon name="ph:sign-in" color="white" />
