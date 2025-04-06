@@ -13,7 +13,7 @@ function clearFilters() {
 </script>
 
 <template>
-  <div class="container gameservers-page">
+  <div class="game-servers-page">
     <h3>Game servers</h3>
     <Divider />
     <div class="flex g-s y-center x-start mb-l">
@@ -27,71 +27,72 @@ function clearFilters() {
         Clear
       </Button>
     </div>
-    <div class="gameservers-wrap">
+    <div class="game-servers-wrap">
       <div>
         <div class="grid col-2 g-m">
           <Card v-for="item in 12" :key="item">
             <template #header>
-              Server {{ item }}
+              <h5>Server #{{ item }}</h5>
             </template>
-            <p>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Atque, illum. Perspiciatis dolorum a non aliquam numquam eveniet in cum similique qui dicta voluptas, hic accusantium aut soluta, architecto saepe fugit?</p>
+            <p>Atque, illum. Perspiciatis dolorum a non aliquam numquam eveniet in cum similique qui dicta voluptas, hic accusantium aut soluta, architecto saepe fugit?</p>
           </Card>
         </div>
       </div>
-
       <div>
-        <strong class="flex g-s y-center mb-xs">
-          GMOD
-          <div class="counter">3</div>
-        </strong>
-        <ul class="game-server-list">
-          <li class="game-server-item">
-            <div class="game-server-indicator online" />
-            <span class="flex-1">Prop hunt</span>
-            <Button size="s">
-              Join
-            </Button>
-          </li>
-          <li class="game-server-item">
-            <div class="game-server-indicator online" />
-            <span class="flex-1">TTT #1</span>
-            <Button size="s">
-              Join
-            </Button>
-          </li>
-          <li class="game-server-item">
-            <div class="game-server-indicator offline" />
-            <span class="flex-1">Deathrun</span>
-          </li>
-        </ul>
-        <Divider margin="16px 0" />
-        <strong class="flex g-s y-center mb-xs">
-          CS Source
-          <div class="counter">1</div>
-        </strong>
-        <ul class="game-server-list">
-          <li class="game-server-item">
-            <div class="game-server-indicator online" />
-            <span class="flex-1">Server #1</span>
-            <Button size="s">
-              Join
-            </Button>
-          </li>
-        </ul>
+        <div class="game-servers-sidebar">
+          <strong class="flex g-s y-center mb-xs">
+            GMOD
+            <div class="counter">3</div>
+          </strong>
+          <ul class="game-server-list">
+            <li class="game-server-item">
+              <div class="game-server-indicator online" />
+              <span class="flex-1 text-ms">Prop hunt</span>
+              <Button size="s">
+                Join
+              </Button>
+            </li>
+            <li class="game-server-item">
+              <div class="game-server-indicator online" />
+              <span class="flex-1 text-ms">TTT #1</span>
+              <Button size="s">
+                Join
+              </Button>
+            </li>
+            <li class="game-server-item">
+              <div class="game-server-indicator offline" />
+              <span class="flex-1 text-ms">Deathrun</span>
+            </li>
+          </ul>
+          <Divider margin="16px 0" />
+          <strong class="flex g-s y-center mb-xs">
+            CS Source
+            <div class="counter">1</div>
+          </strong>
+          <ul class="game-server-list">
+            <li class="game-server-item">
+              <div class="game-server-indicator online" />
+              <span class="flex-1 text-ms">Server #1</span>
+              <Button size="s">
+                Join
+              </Button>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
-<style lang="scss">
-.gameservers-page {
+<style lang="scss" scoped>
+.game-servers-page {
   padding-block: 6.5rem;
 }
 
-.gameservers-wrap {
+.game-servers-wrap {
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 64px;
+  grid-template-columns: 1fr 324px;
+  gap: 48px;
 }
 
 .vui-card {
@@ -100,6 +101,12 @@ function clearFilters() {
 
 :root.dark .vui-card {
   --color-bg: var(--color-bg-medium);
+}
+
+.game-servers-sidebar {
+  padding-top: var(--space-s);
+  position: sticky;
+  top: var(--navbar-offset);
 }
 
 .game-server-list {
