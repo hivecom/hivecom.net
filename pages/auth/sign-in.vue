@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Input, Tab, Tabs } from '@dolanske/vui'
+import '@/assets/pages/auth.scss'
 
 const supabase = useSupabaseClient()
 const email = ref('')
@@ -47,7 +48,20 @@ async function signInWithPassword() {
   }
 }
 
-watch(email, () => err.value = '')
+// Clear errors when properties change
+watch([email, password], () => err.value = '')
+
+// Auto-focus email input on page load
+const emailInputRef = useTemplateRef('email-input')
+
+onMounted(() => {
+  // Ensure all sub-components are mounted
+  nextTick(() => {
+    if (emailInputRef.value) {
+      emailInputRef.value.focus()
+    }
+  })
+})
 </script>
 
 <template>
@@ -61,9 +75,9 @@ watch(email, () => err.value = '')
           <Tab label="Password" />
           <Tab label="E-mail" />
         </Tabs>
-        <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
+        <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
         <Input v-if="tab === 'Password'" v-model="password" expand placeholder="************" label="Password" type="password" />
-        <Button variant="accent" @click="signIn">
+        <Button variant="fill" @click="signIn">
           Sign in
           <template #end>
             <Icon name="ph:sign-in" color="white" />
@@ -76,10 +90,3 @@ watch(email, () => err.value = '')
     </div>
   </Card>
 </template>
-
-<style scoped lang="scss">
-.login-card {
-  width: 100%;
-  max-width: 400px; /* Added max-width for better responsiveness */
-}
-</style>

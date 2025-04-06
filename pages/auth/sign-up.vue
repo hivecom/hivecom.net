@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Input } from '@dolanske/vui'
+import '@/assets/pages/auth.scss'
 
 const supabase = useSupabaseClient()
 const email = ref('')
@@ -44,10 +45,3 @@ async function signInWithOtp() {
     </div>
   </Card>
 </template>
-
-<style scoped lang="scss">
-.login-card {
-  width: 100%;
-  max-width: 400px; /* Added max-width for better responsiveness */
-}
-</style>

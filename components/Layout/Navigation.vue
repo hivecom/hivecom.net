@@ -60,8 +60,15 @@ async function signOut() {
       <!-- Mobile menu -->
       <Sheet v-model="mobileMenuOpen" position="left" separator>
         <template #header>
-          <SharedLogo />
+          <div class="flex x-between" style="padding-top:3px">
+            <Button square @click="mobileMenuOpen = false">
+              <Icon name="ph:x" />
+            </Button>
+            <SharedLogo />
+            <div />
+          </div>
         </template>
+        <template #header-end />
         <div class="nav-mobile-menu">
           <NuxtLink to="/" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
             <Icon name="ph:house" />

@@ -144,7 +144,9 @@ const communityStats = ref({
               <h3 class="mb-xxs">
                 Discord
               </h3>
-              <p>Join the <strong>#lounge</strong> channel.</p>
+              <p class="text-xs">
+                Join the <strong class="text-xs">#lounge</strong> channel.
+              </p>
             </div>
             <Button @click="navigateTo('/')">
               Connect
