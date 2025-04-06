@@ -1,4 +1,5 @@
 <script setup>
+import { Divider } from '@dolanske/vui'
 import '@/assets/pages/legal.scss'
 
 const name = useRoute().params.name.join('/')
@@ -23,19 +24,21 @@ useHead(() => ({
 </script>
 
 <template>
-  <div class="legal-page">
+  <div class="legal-page typeset">
     <div v-if="content">
       <h1>{{ content.title || name }}</h1>
 
-      <div class="last-updated">
+      <p class="last-updated">
         Last updated on {{ formatDate(content.date) }}
         <a v-if="content.revisions && content.revisions.length" href="#revisions">
           (See previous revisions below)
         </a>
-      </div>
+      </p>
+
+      <Divider />
 
       <!-- Render the content as Prose & Vue components -->
-      <ContentRenderer :value="content" />
+      <ContentRenderer class="content-wrap" :value="content" />
 
       <!-- Seems to not be working right now -->
       <!-- <TableOfContents :toc="content.body.toc" /> -->
