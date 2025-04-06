@@ -1,5 +1,23 @@
 <script setup lang="ts">
 import { Button, Card, Divider, Input, Select } from '@dolanske/vui'
+import type { Database } from '~/types/database.types'
+
+// NOTE: Very WIP feel free to continue the integration + add your flavours
+
+// Fetch data
+const supabase = useSupabaseClient()
+const servers = ref<Database['public']['Tables']['gameservers']['Row'][]>()
+
+onBeforeMount(() => {
+  supabase.from("gameservers").select('*')
+    .then((res) => {
+      if (res.data) {
+        servers.value = res.data
+      }
+    })
+})
+
+// Filters
 
 const search = ref('')
 
@@ -30,11 +48,14 @@ function clearFilters() {
     <div class="game-servers-wrap">
       <div>
         <div class="grid col-2 g-m">
-          <Card v-for="item in 12" :key="item">
+          <Card v-for="server in servers" :key="server.id">
             <template #header>
-              <h5>Server #{{ item }}</h5>
+              <h5>{{server.game}}</h5>
             </template>
-            <p>Atque, illum. Perspiciatis dolorum a non aliquam numquam eveniet in cum similique qui dicta voluptas, hic accusantium aut soluta, architecto saepe fugit?</p>
+            <p>{{ server.description }}</p>
+            <pre>
+              {{ server }}
+            </pre>
           </Card>
         </div>
       </div>
@@ -121,16 +142,6 @@ function clearFilters() {
   align-items: center;
   gap: var(--space-s);
   height: 28px;
-
-  // .vui-button {
-  //   visibility: hidden;
-  // }
-
-  // &:hover {
-  //   .vui-button {
-  //     visibility: visible;
-  //   }
-  // }
 }
 
 .game-server-indicator {
