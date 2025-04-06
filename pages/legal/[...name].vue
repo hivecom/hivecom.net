@@ -26,7 +26,7 @@ useHead(() => ({
   <div class="legal-page">
     <div v-if="content">
       <h1>{{ content.title || name }}</h1>
-      
+
       <div class="last-updated">
         Last updated on {{ formatDate(content.date) }}
         <a v-if="content.revisions && content.revisions.length" href="#revisions">

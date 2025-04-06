@@ -1,14 +1,9 @@
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth',
-})
-
 const user = useSupabaseUser()
 
 watch(user, () => {
   if (user.value) {
-    // TODO: Redirect to protected page
-    return navigateTo('/')
+    return navigateTo('/profile')
   }
 }, { immediate: true })
 </script>
