@@ -25,28 +25,37 @@
   "PLATFORMS": {
     "IRC": {
       "title": "IRC",
-      "url": "https://irc.hivecom.net/",
+      "urls": [
+        { "id": "web", "title": "Web Client", "url": "https://irc.hivecom.net/" },
+        { "id": "irc", "title": "IRC Client", "url": "irc://irc.hivecom.net:6697" }
+      ],
       "icon": "ph:chats-circle-bold",
       "note": "Or connect directly via irc.hivecom.net:6667",
       "action": "Connect"
     },
     "TEAMSPEAK": {
       "title": "TeamSpeak",
-      "url": "ts3server://ts.hivecom.net",
+      "urls": [
+        { "id": "eu", "title": "Europe", "url": "ts3server://eu.ts.hivecom.net" }
+      ],
       "icon": "mdi:teamspeak",
       "note": "Or connect directly to ts.hivecom.net",
       "action": "Connect"
     },
     "DISCORD": {
       "title": "Discord",
-      "url": "https://discord.gg/2xsJcSuUhW",
+      "urls": [
+        { "id": "default", "title": "Default", "url": "https://discord.gg/2xsJcSuUhW" }
+      ],
       "icon": "mdi:discord",
       "note": "",
       "action": "Join"
     },
     "STEAM": {
       "title": "Steam",
-      "url": "https://www.steamcommunity.com/groups/hivecomnetwork",
+      "urls": [
+        { "id": "default", "title": "Default", "url": "https://www.steamcommunity.com/groups/hivecomnetwork" }
+      ],
       "icon": "mdi:steam",
       "note": "",
       "action": "Join"

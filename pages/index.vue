@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import constants from '@/constants.json'
-import { Button, Card, Divider, Tooltip } from '@dolanske/vui'
+import { Button, Card, Divider, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
 
 import '@/assets/pages/landing.scss'
 
@@ -18,7 +18,13 @@ const communityStats = ref({
   projects: 13,
 })
 
-const platforms = ref(constants.PLATFORMS)
+// Convert platforms object to array for easier v-for iteration
+const platforms = ref(Object.values(constants.PLATFORMS))
+
+// Function to open URLs safely
+function openUrl(url: string) {
+  navigateTo(url, { external: true })
+}
 </script>
 
 <template>
@@ -49,25 +55,25 @@ const platforms = ref(constants.PLATFORMS)
       <Divider />
     </ClientOnly>
 
-    <div class="stats-grid">
-      <div class="stat-card">
-        <span class="stat-value">{{ communityStats.members }}+</span>
-        <span class="stat-label">Community Members</span>
+    <div class="section-stats-grid">
+      <div class="section-stats-card">
+        <span class="section-stats-value">{{ communityStats.members }}+</span>
+        <span class="section-stats-label">Community Members</span>
       </div>
 
-      <div class="stat-card">
-        <span class="stat-value">{{ communityStats.gameservers }}</span>
-        <span class="stat-label">Gameservers</span>
+      <div class="section-stats-card">
+        <span class="section-stats-value">{{ communityStats.gameservers }}</span>
+        <span class="section-stats-label">Gameservers</span>
       </div>
 
-      <div class="stat-card">
-        <span class="stat-value">{{ communityStats.age }} Years</span>
-        <span class="stat-label">Founded in 2013</span>
+      <div class="section-stats-card">
+        <span class="section-stats-value">{{ communityStats.age }} Years</span>
+        <span class="section-stats-label">Founded in 2013</span>
       </div>
 
-      <div class="stat-card">
-        <span class="stat-value">{{ communityStats.projects }}</span>
-        <span class="stat-label">Open Source Projects</span>
+      <div class="section-stats-card">
+        <span class="section-stats-value">{{ communityStats.projects }}</span>
+        <span class="section-stats-label">Open Source Projects</span>
       </div>
     </div>
   </section>
@@ -129,11 +135,34 @@ const platforms = ref(constants.PLATFORMS)
                 </template>
               </Tooltip>
             </div>
-            <a :href="platform.url" target="_blank" rel="noopener noreferrer">
+            <!-- Single URL: Direct link button -->
+            <a v-if="platform.urls.length === 1" :href="platform.urls[0].url" target="_blank" rel="noopener noreferrer">
               <Button>
                 {{ platform.action }}
               </Button>
             </a>
+            <!-- Multiple URLs: Dropdown menu -->
+            <Dropdown
+              v-else
+              :items="platform.urls.map(url => ({
+                label: url.title,
+                click: () => openUrl(url.url),
+              }))"
+            >
+              <template #trigger="{ toggle }">
+                <Button @click="toggle">
+                  <Flex row align-center gap="xs">
+                    {{ platform.action }}
+                    <Icon name="ph:caret-down" />
+                  </Flex>
+                </Button>
+              </template>
+              <DropdownItem v-for="url in platform.urls" :key="url.title">
+                <a :href="url.url" target="_blank" rel="noopener noreferrer">
+                  {{ url.title }}
+                </a>
+              </DropdownItem>
+            </Dropdown>
           </div>
         </Card>
       </div>
@@ -280,6 +309,13 @@ h4 {
       .section-join-platforms-item-content-info.icon {
         font-size: 16px;
       }
+
+      .section-join-platforms-item-content-dropdown {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        font-size: 1.2rem;
+      }
     }
 
     .icon {
@@ -318,7 +354,7 @@ h4 {
   text-align: center;
 }
 
-.stats-grid {
+.section-stats-grid {
   display: flex;
   justify-content: space-around;
   flex-wrap: wrap;
@@ -326,13 +362,13 @@ h4 {
   gap: 2rem;
 }
 
-.stat-card {
+.section-stats-card {
   width: 156px;
   border-radius: var(--border-radius-m);
   text-align: center;
   padding: var(--space-m);
 
-  .stat-value {
+  .section-stats-value {
     display: block;
     font-size: 2.5rem;
     font-weight: bold;
@@ -340,7 +376,7 @@ h4 {
     color: var(--vui-color-primary);
   }
 
-  .stat-label {
+  .section-stats-label {
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
   }
