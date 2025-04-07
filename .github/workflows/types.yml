@@ -6,10 +6,10 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-  
+
   # Run this workflow when the Supabase push workflow completes
   workflow_run:
-    workflows: ["Push Supabase"]
+    workflows: [Push Supabase]
     types:
       - completed
     branches:
