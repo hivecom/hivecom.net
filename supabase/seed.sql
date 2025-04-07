@@ -6,6 +6,7 @@ values
   ('admin', 'gameservers.crud'),
   ('admin', 'profiles.crud'),
   ('admin', 'referendums.crud'),
+  ('admin', 'servers.crud'),
   ('admin', 'users.crud'),
   ('moderator', 'events.crud'),
   ('moderator', 'games.crud'),

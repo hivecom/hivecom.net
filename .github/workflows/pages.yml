@@ -1,17 +1,25 @@
 # https://github.com/actions/deploy-pages#usage
 name: Deploy to GitHub pages
 on:
-  workflow_dispatch:
   push:
     branches:
       - dev
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      
     steps:
       - uses: actions/checkout@v4
+
       - run: corepack enable
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
 
@@ -20,9 +28,6 @@ jobs:
 
       - name: Nuxt build with nitro for GitHub pages
         run: npx nuxt build --preset github_pages
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

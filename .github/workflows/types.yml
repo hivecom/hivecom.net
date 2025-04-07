@@ -11,8 +11,8 @@ jobs:
   update:
     runs-on: ubuntu-latest
     env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
 
     steps:
       - uses: actions/checkout@v4
@@ -24,8 +24,11 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install development dependencies
+        run: npm install --only=dev
+
       - name: Generate Supabase Types
-        run: npm run supabase:types
+        run: npm run supabase:types --project-ref $SUPABASE_PROJECT_REF
 
       - name: Format Types
         run: npm run lint:fix
