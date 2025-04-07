@@ -24,11 +24,14 @@ jobs:
         with:
           version: latest
 
+      - name: Link Supabase project
+        run: supabase link --project-ref $SUPABASE_PROJECT_REF --password $SUPABASE_DB_PASSWORD
+
       - name: Push DB migrations
-        run: supabase db push --project-ref $SUPABASE_PROJECT_REF --db-password $SUPABASE_DB_PASSWORD
+        run: supabase db push
 
       - name: Deploy Supabase functions
-        run: supabase functions deploy --project-ref $SUPABASE_PROJECT_REF
+        run: supabase functions deploy
         
       - name: Mark success
         id: mark_success

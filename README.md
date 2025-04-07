@@ -1,8 +1,8 @@
 # hivecom.net
 
-[![Deploy to GitHub pages](https://github.com/Mavulp/hivecom.net/actions/workflows/pages.yml/badge.svg)](https://github.com/hivecom/hivecom.net/actions/workflows/pages.yml)
-[![Push DB & Functions](https://github.com/Mavulp/hivecom.net/actions/workflows/supabase.yml/badge.svg)](https://github.com/hivecom/hivecom.net/actions/workflows/supabase.yml)
+[![Push Supabase](https://github.com/Mavulp/hivecom.net/actions/workflows/supabase.yml/badge.svg)](https://github.com/hivecom/hivecom.net/actions/workflows/supabase.yml)
 [![Fetch Supabase project DB types](https://github.com/hivecom/hivecom.net/actions/workflows/types.yml/badge.svg)](https://github.com/hivecom/hivecom.net/actions/workflows/types.yml)
+[![Deploy to GitHub pages](https://github.com/Mavulp/hivecom.net/actions/workflows/pages.yml/badge.svg)](https://github.com/hivecom/hivecom.net/actions/workflows/pages.yml)
 
 Main website for the Hivecom community.
 
