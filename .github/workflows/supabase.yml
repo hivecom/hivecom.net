@@ -1,4 +1,4 @@
-name: Apply DB migrations & deploy functions
+name: Push Supabase
 
 on:
   push:
@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    outputs:
+      supabase_success: ${{ steps.mark_success.outputs.success }}
 
     env:
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
@@ -27,5 +29,9 @@ jobs:
 
       - name: Deploy Supabase functions
         run: supabase functions deploy --project-ref $SUPABASE_PROJECT_REF
+        
+      - name: Mark success
+        id: mark_success
+        run: echo "success=true" >> $GITHUB_OUTPUT
 
 

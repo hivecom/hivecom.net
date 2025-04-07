@@ -1,4 +1,4 @@
-name: Fetch Supabase project DB types
+name: Fetch Supabase types
 on:
   schedule:
     # sets the action to run daily. You can modify this to run the action more or less frequently
@@ -6,9 +6,19 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+  
+  # Run this workflow when the Supabase push workflow completes
+  workflow_run:
+    workflows: ["Push Supabase"]
+    types:
+      - completed
+    branches:
+      - dev
 
 jobs:
   update:
+    # Only run if the Supabase push was successful when triggered by workflow_run
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
