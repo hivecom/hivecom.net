@@ -38,7 +38,7 @@ jobs:
         run: npm install --only=dev
 
       - name: Generate Supabase Types
-        run: npm run supabase:types --project-ref $SUPABASE_PROJECT_REF
+        run: npm run supabase:types
 
       - name: Format Types
         run: npm run lint:fix
