@@ -68,3 +68,41 @@ npm run preview
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+## DB Changes / Migrations
+
+First make sure you're pulling the lastest version of the database:
+
+```bash
+npx supabase db pull
+```
+
+Next up, depending on how comfortable you are with SQL, you can either use the Supabase Studio to make changes to the database or use the CLI to make changes directly.
+
+For the SQL route, you can create a new migration file with:
+
+```bash
+npx supabase migration new <migration_name>
+```
+
+This will create a new SQL file in the `supabase/migrations` directory. You can then edit this file to add your SQL commands. Apply those migrations with `npx supabase migrations up` to apply the changes to your local database.
+
+Alternatively, use the Supabase Studio to make changes to the database. This is a more user-friendly way to manage your database schema. You can access the Supabase Studio at `http://localhost:54323` when running a local instance.
+
+Once you have made your database changes in the studio, diff the changes to a migration file with:
+
+```bash
+npx supabase db diff -f <your_migration_name>
+```
+
+Now to wrap things up and test your changes, you can make sure your local database will reset to the latest migration with:
+
+```bash
+npx supabase db reset
+```
+
+Finally once you've confirmed everything is working as expected, you can push the changes to the remote database with:
+
+```bash
+npx supabase db push
+```
