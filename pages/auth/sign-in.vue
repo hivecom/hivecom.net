@@ -98,5 +98,10 @@ onMounted(() => {
         </p>
       </Flex>
     </div>
+    <NuxtLink to="/auth/sign-up">
+      <Button variant="link" style="width: 100%; margin-top: 2rem; font-size: 1.2rem;">
+        Don't have an account? Click to sign-up!
+      </Button>
+    </NuxtLink>
   </Card>
 </template>

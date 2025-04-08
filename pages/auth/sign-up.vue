@@ -43,5 +43,10 @@ async function signInWithOtp() {
         </p>
       </Flex>
     </div>
+    <NuxtLink to="/auth/sign-in">
+      <Button variant="link" style="width: 100%; margin-top: 2rem; font-size: 1.2rem;">
+        Already have an account? Click to sign in!
+      </Button>
+    </NuxtLink>
   </Card>
 </template>

@@ -1,6 +1,7 @@
 insert into public.role_permissions (role, permission)
 values
   ('admin', 'events.crud'),
+  ('admin', 'expenses.crud'),
   ('admin', 'funding.crud'),
   ('admin', 'games.crud'),
   ('admin', 'gameservers.crud'),
