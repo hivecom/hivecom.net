@@ -52,11 +52,15 @@ We provide game servers as a service to our community. When using these servers:
 
 ### 5.2 Communication Services
 
-Our IRC and Teamspeak services are provided as community communication tools. When using these services:
+Our IRC and TeamSpeak services are provided as community communication tools. When using these services:
 
-- Public channels may be moderated
-- We maintain zero logging for private conversations
-- Direct user-to-user communications are not monitored or logged
+- We collect minimal connection logs for security and moderation purposes which include IP addresses, connection times, and disconnection times
+- IRC channels (#public, #lounge, #staff) are logged for moderation purposes, and we reserve the right to review these logs
+- IRC direct (query) conversations are not logged unless you are communicating using our IRC bouncer which to serve its purpose must log conversations
+- TeamSpeak voice channels have minimal connection logs but otherwise store no data about your voice conversations
+- TeamSpeak channel chats are not logged but can be observed by others if in the same channel
+
+It's worth noting for any present and future services used by the community that are not hosted by us: **We can't control any third-party communication services such as Discord, and we are not responsible for any data collected by these services**
 
 ### 5.3 Community Voting
 

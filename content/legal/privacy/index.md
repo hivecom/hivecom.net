@@ -46,11 +46,25 @@ We do not use this information for profit or any other gain and will NEVER share
 
 ### 2.4 Communication Services
 
-For our IRC and Teamspeak services:
+For our IRC and TeamSpeak services:
 
-- We maintain minimal logs of public channels and connection information
-- Private conversations are not logged or recorded in any way
-- Direct user-to-user communications (via IRC queries or Teamspeak private channels) have zero logging
+- We maintain minimal logs of connections for security and moderation purposes, including IP addresses, connection times, and disconnection times
+- IRC channels (#public, #lounge, #staff) are logged for moderation purposes, and we reserve the right to review these logs
+- Direct user-to-user communications (via IRC queries or TeamSpeak private channels) have zero logging
+- TeamSpeak voice channels have minimal connection logs but do not store any data about your voice conversations
+
+### 2.5 Cookies and Tracking Technologies
+
+Cookies are small data files stored on your device that help us recognize you and remember your preferences. You can control cookie settings through your browser, but disabling cookies may affect your ability to use certain features of our services.
+
+We exclusively use our site's cookies for the following purposes:
+
+- Session management: To maintain your session while you are logged in
+- Preferences: To remember your preferences and settings
+
+We do not use our cookies for advertising purposes and never will.
+
+Keep in mind that third-party integrations such as authentication providers (e.g., Google, Discord) may use their own cookies and tracking technologies. We do not control these third-party services and are not responsible for their privacy practices.
 
 ## 3. How We Use Your Information
 

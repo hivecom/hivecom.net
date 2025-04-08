@@ -30,7 +30,7 @@
         { "id": "irc", "title": "IRC Client", "url": "irc://irc.hivecom.net:6697" }
       ],
       "icon": "ph:chats-circle-bold",
-      "note": "Or connect directly via irc.hivecom.net:6667",
+      "note": "Or connect directly via SSL to irc.hivecom.net:6697",
       "action": "Connect"
     },
     "TEAMSPEAK": {

@@ -89,18 +89,18 @@ function openUrl(url: string) {
 
     <div class="section-about-content">
       <p>
-        The community was originally created by the three server administrators: Catlinman, Jokler and Trif.
-        All three started hosting a server back in 2013 on a local machine but the growing demand for a better connection
+        The community was originally created by the three server administrators: Catlinman (now zealsprince), Jokler and Trif.
+        All three started hosting a server back in 2013 on a in-home Raspberry Pi but the growing demand for a better connection
         and 24/7 uptime made them reconsider this small hosting plan. They later that year went over to actually acquiring
-        a dedicated Teamspeak server from Fragnet but later on switched to what is now a server entirely run and managed by Hivecom itself.
+        a dedicated TeamSpeak server from Fragnet but later on switched to what is now a server entirely run and managed by
+        Hivecom itself.
       </p>
       <p>
-        Hivecom wouldn't be anything without its members though. The server now has a total of about 400 registered members
-        and is constantly growing. We're incredibly thankful for what we have now considering this all started with three
-        friends getting together to chat and hang out.
+        Hivecom has come a long way since then and wouldn't be anything without its members. We're incredibly thankful
+        for what we have now considering this all started with three friends getting together to chat and hang out.
       </p>
       <p>
-        We are always happy to welcome anyone willing to join and hang out. We host some gaming servers as well as regular hangouts on teamspeak.
+        We are always happy to welcome anyone willing to join us for this journey.
       </p>
     </div>
   </section>
