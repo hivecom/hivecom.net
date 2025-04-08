@@ -368,6 +368,8 @@ export interface Database {
         | 'profiles.crud'
         | 'users.crud'
         | 'referendums.crud'
+        | 'servers.crud'
+        | 'expenses.crud'
       app_role: 'admin' | 'moderator'
       region: 'eu' | 'na' | 'all'
     }
@@ -493,6 +495,8 @@ export const Constants = {
         'profiles.crud',
         'users.crud',
         'referendums.crud',
+        'servers.crud',
+        'expenses.crud',
       ],
       app_role: ['admin', 'moderator'],
       region: ['eu', 'na', 'all'],
