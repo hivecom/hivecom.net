@@ -1,3 +1,9 @@
+:root.light {
+  .section-hero::before {
+    opacity: 0.5;
+  }
+}
+
 :root.dark {
   .section-join-platforms-item img {
     filter: invert(1);

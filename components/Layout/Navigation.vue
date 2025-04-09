@@ -104,7 +104,11 @@ async function signOut() {
               <Avatar src="https://i.imgur.com/65aJ4oG.png" width="32" height="32" alt="Username" />
             </button>
           </template>
-          <DropdownTitle>{{ user?.email }}</DropdownTitle>
+          <DropdownTitle>
+            <NuxtLink to="/profile">
+              {{ user?.email }}
+            </NuxtLink>
+          </DropdownTitle>
           <DropdownItem icon="ph:sign-out" @click="signOut">
             Sign out
           </DropdownItem>

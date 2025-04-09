@@ -3,9 +3,10 @@ import { Alert, Button, Card, Flex, Input, Tab, Tabs } from '@dolanske/vui'
 import '@/assets/pages/auth.scss'
 
 const supabase = useSupabaseClient()
+const loading = ref(false)
 const email = ref('')
 const password = ref('')
-const err = ref('')
+const errorMessage = ref('')
 const tab = ref('Password')
 
 const showEmailNotice = ref(false)
@@ -13,12 +14,16 @@ const showEmailNotice = ref(false)
 watch(tab, () => showEmailNotice.value = false)
 
 function signIn() {
+  loading.value = true
+
   if (tab.value === 'Password') {
     signInWithPassword()
   }
   else {
     signInWithOtp()
   }
+
+  loading.value = false
 }
 
 async function signInWithOtp() {
@@ -34,7 +39,7 @@ async function signInWithOtp() {
   })
 
   if (error) {
-    err.value = error.message
+    errorMessage.value = error.message
   }
   else {
     showEmailNotice.value = true
@@ -48,7 +53,7 @@ async function signInWithPassword() {
   })
 
   if (error) {
-    err.value = error.message
+    errorMessage.value = error.message
   }
   else {
     navigateTo('/')
@@ -56,7 +61,7 @@ async function signInWithPassword() {
 }
 
 // Clear errors when properties change
-watch([email, password], () => err.value = '')
+watch([email, password], () => errorMessage.value = '')
 
 // Auto-focus email input on page load
 const emailInputRef = useTemplateRef('email-input')
@@ -87,14 +92,14 @@ onMounted(() => {
         </Tabs>
         <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
         <Input v-if="tab === 'Password'" v-model="password" expand placeholder="************" label="Password" type="password" />
-        <Button variant="fill" :disabled="tab === 'Password' ? !(email && password) : !email" @click="signIn">
+        <Button variant="fill" :loading="loading" :disabled="tab === 'Password' ? !(email && password) : !email" @click="signIn">
           Sign in
           <template #end>
             <Icon name="ph:sign-in" color="white" />
           </template>
         </Button>
-        <p v-if="err" class="mt-l text-center color-text-red">
-          {{ err }}
+        <p v-if="errorMessage" class="mt-l text-center color-text-red">
+          {{ errorMessage }}
         </p>
       </Flex>
     </div>

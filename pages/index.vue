@@ -30,8 +30,9 @@ function openUrl(url: string) {
 <template>
   <!-- Hero section -->
   <section class="section-hero">
+    <NuxtImg src="landing/globe.svg" alt="Globe" class="section-hero-globe" />
     <h1 class="section-hero-title">
-      Hivecom
+      HIVECOM
     </h1>
     <p class="section-hero-tagline">
       A community of friends from all around the world. Creating a space for everyone and projects to thrive.
@@ -44,36 +45,33 @@ function openUrl(url: string) {
         Learn More
       </Button>
     </div>
-  </section>
 
-  <!-- Community Stats -->
-  <section class="section-stats">
-    <h2 class="heading">
-      Community Overview
-    </h2>
-    <ClientOnly>
-      <Divider />
-    </ClientOnly>
+    <!-- Community Stats -->
+    <div class="stats">
+      <ClientOnly>
+        <Divider />
+      </ClientOnly>
 
-    <div class="section-stats-grid">
-      <div class="section-stats-card">
-        <span class="section-stats-value">{{ communityStats.members }}+</span>
-        <span class="section-stats-label">Community Members</span>
-      </div>
+      <div class="stats-grid">
+        <div class="stats-card">
+          <span class="stats-value">{{ communityStats.members }}+</span>
+          <span class="stats-label">Community Members</span>
+        </div>
 
-      <div class="section-stats-card">
-        <span class="section-stats-value">{{ communityStats.gameservers }}</span>
-        <span class="section-stats-label">Gameservers</span>
-      </div>
+        <div class="stats-card">
+          <span class="stats-value">{{ communityStats.gameservers }}</span>
+          <span class="stats-label">Gameservers</span>
+        </div>
 
-      <div class="section-stats-card">
-        <span class="section-stats-value">{{ communityStats.age }} Years</span>
-        <span class="section-stats-label">Founded in 2013</span>
-      </div>
+        <div class="stats-card">
+          <span class="stats-value">{{ communityStats.age }} Years</span>
+          <span class="stats-label">Founded in 2013</span>
+        </div>
 
-      <div class="section-stats-card">
-        <span class="section-stats-value">{{ communityStats.projects }}</span>
-        <span class="section-stats-label">Open Source Projects</span>
+        <div class="stats-card">
+          <span class="stats-value">{{ communityStats.projects }}</span>
+          <span class="stats-label">Open Source Projects</span>
+        </div>
       </div>
     </div>
   </section>
@@ -230,25 +228,104 @@ h4 {
 }
 
 .section-hero {
-  text-align: center;
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100vh;
+    opacity: 0.025;
+    background-image: url(/landing/noise.gif);
+    background-repeat: repeat;
+  }
+
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
   padding: 6.5rem 0;
 
+  &-globe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    min-width: 1920px;
+    width: 100%;
+    height: 100vh;
+    opacity: 0.1;
+  }
+
   &-title {
-    font-size: 4.8rem;
+    font-size: 12rem;
+    font-stretch: ultra-condensed;
     font-weight: var(--font-weight-black);
+    letter-spacing: -0.05em;
+    transform: scaleY(0.8) translateX(-0.08em);
+    line-height: 10rem;
     margin-bottom: 1rem;
+
+    @media screen and (max-width: 1280px) {
+      text-align: center;
+      font-size: 8rem;
+      line-height: 6rem;
+    }
   }
 
   &-tagline {
     font-size: 1.4rem;
     margin: 1rem 0 2rem;
     opacity: 0.8;
+
+    @media screen and (max-width: 1280px) {
+      text-align: center;
+    }
   }
 
   &-actions {
     display: flex;
     gap: 1rem;
-    justify-content: center;
+    justify-content: start;
+
+    @media screen and (max-width: 1280px) {
+      justify-content: center;
+    }
+  }
+}
+.stats {
+  margin-top: 4rem;
+
+  .stats-grid {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+    gap: 2rem;
+  }
+
+  .stats-card {
+    width: 156px;
+    border-radius: var(--border-radius-m);
+    text-align: center;
+    padding: var(--space-m);
+
+    .stats-value {
+      display: block;
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: var(--space-xs);
+      color: var(--vui-color-primary);
+    }
+
+    .stats-label {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-lighter);
+    }
   }
 }
 
@@ -352,34 +429,6 @@ h4 {
   justify-content: center;
   margin-top: 1.5rem;
   text-align: center;
-}
-
-.section-stats-grid {
-  display: flex;
-  justify-content: space-around;
-  flex-wrap: wrap;
-  margin-top: 2rem;
-  gap: 2rem;
-}
-
-.section-stats-card {
-  width: 156px;
-  border-radius: var(--border-radius-m);
-  text-align: center;
-  padding: var(--space-m);
-
-  .section-stats-value {
-    display: block;
-    font-size: 2.5rem;
-    font-weight: bold;
-    margin-bottom: var(--space-xs);
-    color: var(--vui-color-primary);
-  }
-
-  .section-stats-label {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-  }
 }
 
 .newsletter {
