@@ -12,7 +12,7 @@
 
 :root.light {
   .logo {
-    filter: invert(1) hue-rotate(180deg) brightness(1.8);
+    filter: invert(1) hue-rotate(161deg) brightness(2.25);
   }
 }
 </style>

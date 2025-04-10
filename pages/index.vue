@@ -30,20 +30,27 @@ function openUrl(url: string) {
 <template>
   <!-- Hero section -->
   <section class="section-hero">
-    <NuxtImg src="landing/globe.svg" alt="Globe" class="section-hero-globe" />
+    <div class="section-hero-globe-container">
+      <NuxtImg src="landing/globe.svg" alt="Globe" class="section-hero-globe-image" />
+    </div>
     <h1 class="section-hero-title">
       HIVECOM
     </h1>
     <p class="section-hero-tagline">
-      A community of friends from all around the world. Creating a space for everyone and projects to thrive.
+      A community of friends from all around the world. Creating a space to grow and projects to thrive.
     </p>
     <div class="section-hero-actions">
-      <Button variant="fill" color="primary">
-        Join Community
-      </Button>
-      <Button variant="accent">
-        Learn More
-      </Button>
+      <NuxtLink to="#platforms">
+        <Button variant="fill" color="primary">
+          Join Community
+        </Button>
+        </NuxtLink>
+        <NuxtLink to="community">
+
+            <Button variant="accent">
+                Learn More
+              </Button>
+            </NuxtLink>
     </div>
 
     <!-- Community Stats -->
@@ -114,11 +121,10 @@ function openUrl(url: string) {
     </ClientOnly>
     <div class="section-join-container">
       <p class="section-join-text">
-        We mainly talk on IRC and TeamSpeak. If discord is your thing, we have a bot connecting both services
-        so you won't be excluded.
+        We mainly talk on IRC and TeamSpeak. If Discord is your thing, we have a bot connecting both services so you won't be excluded.
       </p>
 
-      <div class="section-join-platforms">
+      <div id="platforms" class="section-join-platforms">
         <Card v-for="platform in platforms" :key="platform.title">
           <div class="section-join-platforms-item">
             <div class="section-join-platforms-item-content">
@@ -240,6 +246,8 @@ h4 {
     opacity: 0.025;
     background-image: url(/landing/noise.gif);
     background-repeat: repeat;
+    overflow: hidden;
+    border-bottom: 1px solid var(--color-border-strong);
   }
 
   height: 100vh;
@@ -249,12 +257,18 @@ h4 {
   text-align: left;
   padding: 6.5rem 0;
 
-  &-globe {
+  &-globe-container {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  &-globe-image {
     min-width: 1920px;
     width: 100%;
     height: 100vh;
@@ -269,6 +283,7 @@ h4 {
     transform: scaleY(0.8) translateX(-0.08em);
     line-height: 10rem;
     margin-bottom: 1rem;
+    z-index: 1;
 
     @media screen and (max-width: 1280px) {
       text-align: center;
@@ -299,6 +314,7 @@ h4 {
 }
 .stats {
   margin-top: 4rem;
+  z-index: 1;
 
   .stats-grid {
     display: flex;

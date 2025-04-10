@@ -83,7 +83,7 @@ onMounted(() => {
     </template>
     <div class="container container-xs" style="min-height:356px">
       <Alert v-if="showEmailNotice" filled variant="info">
-        <p>An email with the sing-in link has been sent to {{ email }} </p>
+        <p>An email with a sign-in link has been sent to {{ email }} </p>
       </Alert>
       <Flex justify-center align-center column gap="l" class="py-l">
         <Tabs v-model="tab" variant="filled" expand>

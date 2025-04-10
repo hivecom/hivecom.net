@@ -9,8 +9,8 @@ import { Button, Card, Divider, Input, Select } from '@dolanske/vui'
 const supabase = useSupabaseClient()
 const loading = ref(true)
 const errorMessage = ref('')
-const gameservers = ref<Database['public']['Tables']['gameservers']['Row'][]>()
 const games = ref<Database['public']['Tables']['games']['Row'][]>()
+const gameservers = ref<Database['public']['Tables']['gameservers']['Row'][]>()
 
 onMounted(async () => {
   // Make our requests at the same time.
@@ -72,6 +72,20 @@ function clearFilters() {
           <p>{{ gameserver.description }}</p>
           <pre>
               {{ gameserver }}
+            </pre>
+        </Card>
+      </div>
+    </div>
+
+        <div>
+      <div class="grid col-2 g-m">
+        <Card v-for="game in games" :key="game.id">
+          <template #header>
+            <h5>{{ game.name }}</h5>
+          </template>
+          <p>{{ game.steam_id }}</p>
+          <pre>
+              {{ game }}
             </pre>
         </Card>
       </div>

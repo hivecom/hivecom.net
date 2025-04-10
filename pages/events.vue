@@ -43,7 +43,7 @@ onMounted(async () => {
         <template #header>
           <h5>Profile</h5>
         </template>
-        <pre>{{ events?.length || "No events found" }}</pre>
+        <pre>{{ events?.length ? events : "No events found" }}</pre>
       </Card>
     </div>
   </section>

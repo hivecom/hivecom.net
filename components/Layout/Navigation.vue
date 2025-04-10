@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Avatar, Button, Dropdown, DropdownItem, DropdownTitle, Sheet } from '@dolanske/vui'
+import type { Database } from '~/types/database.types'
 
 const supabase = useSupabaseClient()
 
@@ -17,6 +18,20 @@ async function signOut() {
   await supabase.auth.signOut()
   navigateTo('/auth/sign-in')
 }
+
+const nickname = ref('')
+onMounted(async () => {
+  if (!user.value)
+    return
+
+  const requestProfile = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.value.id)
+    .single()
+
+  nickname.value = requestProfile.data?.nickname || ''
+})
 </script>
 
 <template>
@@ -65,7 +80,7 @@ async function signOut() {
               <Icon name="ph:x" />
             </Button>
             <SharedLogo />
-            <div />
+            <span />
           </div>
         </template>
         <template #header-end />
@@ -106,7 +121,7 @@ async function signOut() {
           </template>
           <DropdownTitle>
             <NuxtLink to="/profile">
-              {{ user?.email }}
+              {{ nickname || user?.email }}
             </NuxtLink>
           </DropdownTitle>
           <DropdownItem icon="ph:sign-out" @click="signOut">
