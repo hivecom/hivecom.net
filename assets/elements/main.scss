@@ -18,4 +18,21 @@ main {
   // NOTE: I have no clue where the additional 6 pixels are coming from, but the offset will remove
   // scrollbar on pages which don't need to be more than 100vh tall
   min-height: calc(100vh - 92px);
+
+  // Make sure that when scrolling to anchor links, we take the top padding into account
+  :target {
+    scroll-margin-top: 92px; // Slightly more than the nav height (64px) for better visual spacing
+  }
+
+  // Common anchor targets that might not be :target
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  section,
+  article {
+    scroll-margin-top: 92px;
+  }
 }

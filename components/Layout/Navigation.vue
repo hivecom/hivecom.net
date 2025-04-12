@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { Avatar, Button, Dropdown, DropdownItem, DropdownTitle, Sheet } from '@dolanske/vui'
 
-import '@/assets/elements/nav.scss'
-
 const supabase = useSupabaseClient()
 
 // Listen for auth events and save username
