@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Alert, Button, Card, Flex, Input, Tab, Tabs } from '@dolanske/vui'
-import '@/assets/pages/auth.scss'
+
+import '@/assets/elements/auth.scss'
 
 const supabase = useSupabaseClient()
 const loading = ref(false)

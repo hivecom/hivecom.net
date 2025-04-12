@@ -1,6 +1,5 @@
 <script setup lang='ts'>
 import { Avatar, Badge, Button, Card, Flex, Grid, Input, Tab, Tabs } from '@dolanske/vui'
-import '~/assets/pages/votes.scss'
 
 useHead({
   title: 'Vote',
@@ -76,3 +75,85 @@ const search = ref('')
     </template>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.route-votes {
+  min-height: 100vh;
+  padding-top: 128px;
+
+  h1 {
+    position: relative;
+    .vui-button {
+      position: absolute;
+      top: 2px;
+      left: -48px;
+    }
+  }
+
+  .vote-article {
+    position: relative;
+
+    &:hover {
+      background-color: var(--color-bg-lowered);
+
+      .vote-avatars .vui-avatar {
+        border-color: var(--color-bg-lowered);
+      }
+    }
+
+    .vote-author {
+      position: absolute;
+      top: var(--space-m);
+      right: var(--space-m);
+
+      a {
+        color: var(--color-accent);
+        font-size: var(--font-size-s);
+      }
+    }
+
+    .vote-avatars {
+      --avatar-offset: 12px;
+
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      margin-left: var(--avatar-offset);
+
+      .vui-avatar {
+        margin-left: calc(var(--avatar-offset) * -1);
+        margin-top: -2px;
+        border: 2px solid var(--color-bg);
+        z-index: 1;
+      }
+    }
+  }
+
+  .vote-create-choices {
+    background-color: var(--color-bg-lowered);
+    border-radius: var(--border-radius-m);
+
+    ol li {
+      display: flex;
+      align-items: center;
+      gap: var(--space-s);
+      padding: 0;
+      margin-bottom: var(--space-m);
+
+      // TODO: remove when vui fixes it
+      .vui-button {
+        min-width: 34px;
+      }
+
+      span {
+        width: 24px;
+      }
+
+      &:before {
+        position: relative;
+        left: unset;
+      }
+    }
+  }
+}
+</style>

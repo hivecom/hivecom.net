@@ -1,4 +1,3 @@
-
 # Supabase DB Triggers
 
 There are some protected schemas in Supabase that are not directly accessible through the dashboard or included in migrations. This includes schemas for auditing, logging, and other internal processes that may require special permissions to access.

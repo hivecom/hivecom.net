@@ -40,10 +40,10 @@ const gameOptions = computed(() => {
   })) ?? []
 })
 
-const game = ref()
+const filteredGame = ref()
 
 function clearFilters() {
-  game.value = undefined
+  filteredGame.value = undefined
   search.value = ''
 }
 </script>
@@ -57,8 +57,8 @@ function clearFilters() {
         <Icon name="ph:magnifying-glass" />
       </template>
     </Input>
-    <Select v-model="game" :options="gameOptions" placeholder="Select game" />
-    <Button v-if="game || search" plain outline @click="clearFilters">
+    <Select v-model="filteredGame" :options="gameOptions" placeholder="Select game" />
+    <Button v-if="filteredGame || search" plain outline @click="clearFilters">
       Clear
     </Button>
   </div>
@@ -77,7 +77,7 @@ function clearFilters() {
       </div>
     </div>
 
-        <div>
+    <div>
       <div class="grid col-2 g-m">
         <Card v-for="game in games" :key="game.id">
           <template #header>

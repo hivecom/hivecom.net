@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Input } from '@dolanske/vui'
-import '@/assets/pages/auth.scss'
+import '@/assets/elements/auth.scss'
 
 const supabase = useSupabaseClient()
 const email = ref('')

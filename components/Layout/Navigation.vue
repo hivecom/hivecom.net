@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Avatar, Button, Dropdown, DropdownItem, DropdownTitle, Sheet } from '@dolanske/vui'
-import type { Database } from '~/types/database.types'
+
+import '@/assets/elements/nav.scss'
 
 const supabase = useSupabaseClient()
 
@@ -158,3 +159,230 @@ onMounted(async () => {
     </div>
   </nav>
 </template>
+
+<style lang="scss" scoped>
+nav {
+  width: 100%;
+  position: fixed;
+  background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
+  backdrop-filter: blur(16px);
+
+  z-index: 1; // Make sure the nav is main content
+
+  .nav-items {
+    margin-left: auto;
+    margin-right: auto;
+
+    padding: 0 var(--space-m);
+    max-width: var(--container-l);
+    display: flex;
+    justify-content: flex-start;
+    height: 64px;
+    gap: 90px;
+    align-items: center;
+
+    position: relative;
+  }
+
+  .nav-hamburger {
+    display: none;
+    cursor: pointer;
+    font-size: 24px;
+    color: var(--color-text);
+  }
+
+  .nav-logo {
+    img {
+      width: 100%;
+    }
+
+    &:before {
+      content: '';
+      position: absolute;
+      left: -300px;
+      top: -180px;
+      width: 769px;
+      height: 621px;
+      background-image: url(/leak.png);
+      background-repeat: no-repeat;
+      background-size: contain;
+      pointer-events: none;
+    }
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    flex: 1;
+
+    li a {
+      display: block;
+      padding: 0 12px;
+      font-size: var(--font-size-m);
+      color: var(--color-text);
+      text-decoration: none;
+
+      &:hover,
+      &.router-link-active {
+        color: var(--color-accent);
+      }
+    }
+
+    .nav-links-separator {
+      display: block;
+      position: relative;
+      width: 1px;
+      height: 16px;
+      background: var(--color-text);
+      opacity: 0.5;
+    }
+  }
+
+  .nav-auth {
+    &-buttons {
+      display: flex;
+      align-items: center;
+      gap: var(--space-s);
+    }
+
+    &-mobile-button {
+      display: none;
+    }
+  }
+
+  .nav-user {
+    img {
+      border-radius: 999px;
+    }
+  }
+
+  .nav-dropdown {
+    position: absolute;
+    top: 64px;
+    left: 0;
+    width: 250px;
+    background: var(--color-bg-lowered);
+    padding: var(--space-m);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    transform: translateY(-10px);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+
+    &.open {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    ul {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-s);
+    }
+
+    li a {
+      display: block;
+      padding: var(--space-s);
+      font-size: var(--font-size-m);
+      color: var(--color-text);
+
+      &:hover,
+      &.router-link-active {
+        color: var(--color-accent);
+      }
+    }
+  }
+}
+
+.nav-mobile-menu {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+
+  .nav-mobile-menu-item {
+    padding: var(--space-s) var(--space-m);
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    width: 100%;
+    gap: var(--space-m);
+    border-radius: var(--border-radius-s);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+
+    &:hover,
+    &.router-link-active {
+      background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+      color: var(--color-accent);
+    }
+
+    .iconify {
+      font-size: 20px;
+    }
+
+    &.accent {
+      color: var(--color-accent);
+      font-weight: 500;
+
+      &:hover {
+        background-color: color-mix(in srgb, var(--color-accent) 15%, transparent);
+      }
+    }
+  }
+
+  .nav-mobile-menu-separator {
+    display: block;
+    height: 1px;
+    width: 100%;
+    background-color: color-mix(in srgb, var(--color-text) 20%, transparent);
+    margin: var(--space-m) 0;
+  }
+}
+
+@media (max-width: 1080px) {
+  nav {
+    .nav-items {
+      justify-content: space-between;
+    }
+
+    .nav-hamburger {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      order: 1;
+    }
+
+    .nav-logo {
+      order: 2;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .nav-links {
+      display: none;
+    }
+
+    .nav-auth,
+    .nav-user {
+      order: 3;
+    }
+
+    .nav-auth {
+      &-mobile-button {
+        display: flex;
+      }
+
+      &-buttons {
+        display: none;
+      }
+    }
+  }
+}
+</style>

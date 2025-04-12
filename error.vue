@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { Button, Card, Divider } from '@dolanske/vui'
-// Remove the direct Iconify import and rely on the Nuxt Icon module
-
-import '~/assets/pages/error.scss'
 
 // Error state setup
 const error = useError()
@@ -160,6 +157,48 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   margin-top: 2rem;
+}
+
+.error-button {
+  position: relative;
+  overflow: visible;
+  z-index: 10;
+
+  &:before {
+    content: '';
+    position: absolute;
+    left: -300px;
+    width: 769px;
+    height: 621px;
+    background-image: url(/leak.png);
+    background-repeat: no-repeat;
+    background-size: contain;
+    pointer-events: none;
+    animation: leak-pulse 8s infinite alternate;
+    z-index: -1;
+
+    &:root.light {
+      filter: invert(1);
+    }
+  }
+}
+
+@keyframes leak-pulse {
+  0% {
+    opacity: 0.2;
+    filter: brightness(0.9) hue-rotate(0deg);
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    filter: brightness(1.1) hue-rotate(5deg);
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 0.2;
+    filter: brightness(0.9) hue-rotate(0deg);
+    transform: scale(1);
+  }
 }
 
 @keyframes pulse {

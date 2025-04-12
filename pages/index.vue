@@ -2,8 +2,6 @@
 import constants from '@/constants.json'
 import { Button, Card, Divider, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
 
-import '@/assets/pages/landing.scss'
-
 // For demonstration purposes only - replace with real data in production
 const upcomingEvents = ref([
   { id: 1, title: 'Weekly Game Night', date: new Date(2025, 3, 10) },
@@ -44,13 +42,12 @@ function openUrl(url: string) {
         <Button variant="fill" color="primary">
           Join Community
         </Button>
-        </NuxtLink>
-        <NuxtLink to="community">
-
-            <Button variant="accent">
-                Learn More
-              </Button>
-            </NuxtLink>
+      </NuxtLink>
+      <NuxtLink to="community">
+        <Button variant="accent">
+          Learn More
+        </Button>
+      </NuxtLink>
     </div>
 
     <!-- Community Stats -->
@@ -207,6 +204,12 @@ function openUrl(url: string) {
 </template>
 
 <style scoped lang="scss">
+:root.dark {
+  .section-join-platforms-item img {
+    filter: invert(1);
+  }
+}
+
 .landing-page {
   padding-bottom: 3rem;
 }
