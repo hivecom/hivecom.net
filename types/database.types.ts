@@ -118,10 +118,11 @@ export interface Database {
       }
       gameservers: {
         Row: {
-          address: string | null
+          addresses: string[] | null
+          admininstrator: string | null
           container: string | null
           created_at: string
-          created_by: string | null
+          created_by: string
           description: string | null
           game: number | null
           id: number
@@ -131,10 +132,11 @@ export interface Database {
           region: Database['public']['Enums']['region'] | null
         }
         Insert: {
-          address?: string | null
+          addresses?: string[] | null
+          admininstrator?: string | null
           container?: string | null
           created_at?: string
-          created_by?: string | null
+          created_by: string
           description?: string | null
           game?: number | null
           id?: number
@@ -144,10 +146,11 @@ export interface Database {
           region?: Database['public']['Enums']['region'] | null
         }
         Update: {
-          address?: string | null
+          addresses?: string[] | null
+          admininstrator?: string | null
           container?: string | null
           created_at?: string
-          created_by?: string | null
+          created_by?: string
           description?: string | null
           game?: number | null
           id?: number
