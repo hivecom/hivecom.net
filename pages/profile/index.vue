@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import type { Database } from '~/types/database.types'
+import type { Tables } from '~/types/database.types'
 
 import { Card } from '@dolanske/vui'
 
-// Fetch data
 const user = useSupabaseUser()
-
-const profile = ref<Database['public']['Tables']['profiles']['Row']>()
+const profile = ref <Tables<'profiles'>>()
 
 const supabase = useSupabaseClient()
+
 const loading = ref(true)
 const errorMessage = ref('')
 

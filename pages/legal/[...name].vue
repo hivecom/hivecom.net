@@ -23,7 +23,7 @@ useHead(() => ({
 </script>
 
 <template>
-  <div class="legal-page typeset">
+  <div class="page typeset">
     <div v-if="content">
       <h1>{{ content.title || name }}</h1>
 
@@ -64,54 +64,52 @@ useHead(() => ({
 </template>
 
 <style lang="scss" scoped>
-.legal-page {
+.page {
   max-width: var(--container-m);
-  margin: 0 auto;
-  padding: 6.5rem 1rem;
+}
 
-  .content-wrap {
-    padding-top: var(--space-l);
-  }
+.content-wrap {
+  padding-top: var(--space-l);
+}
 
-  h1 {
-    padding-top: 0;
-  }
+h1 {
+  padding-top: 0;
+}
 
-  .revisions {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--color-border);
+.revisions {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
 
-    li,
-    ul,
-    ol {
-      a {
-        color: var(--color-primary);
-        text-decoration: none;
-        font-size: 0.9rem;
+  li,
+  ul,
+  ol {
+    a {
+      color: var(--color-primary);
+      text-decoration: none;
+      font-size: 0.9rem;
 
-        &:hover {
-          text-decoration: underline;
-        }
+      &:hover {
+        text-decoration: underline;
       }
     }
   }
+}
 
-  .last-updated {
-    font-size: var(--font-size-s);
+.last-updated {
+  font-size: var(--font-size-s);
+}
+
+.not-found {
+  text-align: center;
+  padding: 3rem 0;
+
+  h1 {
+    margin-bottom: 1rem;
   }
 
-  .not-found {
-    text-align: center;
-    padding: 3rem 0;
-
-    h1 {
-      margin-bottom: 1rem;
-    }
-
-    p {
-      color: var(--color-text-muted);
-    }
+  p {
+    color: var(--color-text-muted);
   }
 }
 </style>

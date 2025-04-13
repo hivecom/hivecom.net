@@ -1,22 +1,33 @@
 <script setup lang="ts">
-import type { Database } from '~/types/database.types'
+import type { QueryData } from '@supabase/supabase-js'
+import type { Tables } from '~/types/database.types'
 import { Button, Card, Divider, Input, Select } from '@dolanske/vui'
+import GameserverRow from '~/components/Gameservers/GameserverRow.vue'
 
-// NOTE: Very WIP feel free to continue the integration + add your flavours
-// The idea is we show game servers in a two columnb grid and a sidebar overview
+const supabase = useSupabaseClient()
+const gameserversWithContainersQuery = supabase.from('gameservers').select(`
+  id,
+  description,
+  game,
+  container (
+    name,
+    running,
+    healthy
+  )
+`)
+type gameserversWithContainersType = QueryData<typeof gameserversWithContainersQuery>
 
 // Fetch data
-const supabase = useSupabaseClient()
 const loading = ref(true)
 const errorMessage = ref('')
-const games = ref<Database['public']['Tables']['games']['Row'][]>()
-const gameservers = ref<Database['public']['Tables']['gameservers']['Row'][]>()
+const games = ref<Tables<'games'>[]>()
+const gameserversWithContainers = ref<gameserversWithContainersType>()
 
 onMounted(async () => {
   // Make our requests at the same time.
   const requests = [
     supabase.from('games').select('*'),
-    supabase.from('gameservers').select('*'),
+    gameserversWithContainersQuery,
   ] as const
   const [responseGames, responseGameservers] = await Promise.all(requests)
   loading.value = false
@@ -26,8 +37,8 @@ onMounted(async () => {
     return
   }
 
-  games.value = responseGames.data as Database['public']['Tables']['games']['Row'][]
-  gameservers.value = responseGameservers.data as Database['public']['Tables']['gameservers']['Row'][]
+  games.value = responseGames.data
+  gameserversWithContainers.value = responseGameservers.data
 })
 
 // Filters
@@ -49,142 +60,60 @@ function clearFilters() {
 </script>
 
 <template>
-  <h3>Game servers</h3>
-  <Divider />
-  <div class="flex g-s y-center x-start mb-l">
-    <Input v-model="search" placeholder="Search servers">
-      <template #start>
-        <Icon name="ph:magnifying-glass" />
+  <div class="page">
+    <section>
+      <h1>Game servers</h1>
+      <p>
+        Join our game servers and play with the community.
+      </p>
+    </section>
+    <Divider />
+    <div class="flex g-s x-start mb-l">
+      <Input v-model="search" placeholder="Search servers">
+        <template #start>
+          <Icon name="ph:magnifying-glass" />
+        </template>
+      </Input>
+      <Select v-model="filteredGame" :options="gameOptions" placeholder="Select game" />
+      <Button v-if="filteredGame || search" plain outline @click="clearFilters">
+        Clear
+      </Button>
+    </div>
+    <div class="game-servers">
+      <template v-for="game in games" :key="game.id">
+        <Card v-if="gameserversWithContainers?.some(gameserver => gameserver.game === game.id)" class="game-servers-sidebar">
+          <h3 class="flex g-m y-center mb-s">
+            {{ game.name }}
+            <div class="counter">
+              {{ gameserversWithContainers?.filter(gameserver => gameserver.game === game.id).length }}
+            </div>
+          </h3>
+          <ul class="game-server-list">
+            <template v-for="gameserver in gameserversWithContainers?.filter(gameserver => gameserver.game === game.id)" :key="gameserver.id">
+              <li class="game-server-item">
+                <GameserverRow
+                  :game="game"
+                  :gameserver="gameserver as Tables<'gameservers'>"
+                  :container="gameserver.container as Tables<'gameserver_containers'>"
+                />
+              </li>
+            </template>
+          </ul>
+        </Card>
       </template>
-    </Input>
-    <Select v-model="filteredGame" :options="gameOptions" placeholder="Select game" />
-    <Button v-if="filteredGame || search" plain outline @click="clearFilters">
-      Clear
-    </Button>
-  </div>
-  <div class="game-servers-wrap">
-    <div>
-      <div class="grid col-2 g-m">
-        <Card v-for="gameserver in gameservers" :key="gameserver.id">
-          <template #header>
-            <h5>{{ gameserver.game }}</h5>
-          </template>
-          <p>{{ gameserver.description }}</p>
-          <pre>
-              {{ gameserver }}
-            </pre>
-        </Card>
-      </div>
-    </div>
-
-    <div>
-      <div class="grid col-2 g-m">
-        <Card v-for="game in games" :key="game.id">
-          <template #header>
-            <h5>{{ game.name }}</h5>
-          </template>
-          <p>{{ game.steam_id }}</p>
-          <pre>
-              {{ game }}
-            </pre>
-        </Card>
-      </div>
-    </div>
-    <div>
-      <div class="game-servers-sidebar">
-        <strong class="flex g-s y-center mb-xs">
-          GMOD
-          <div class="counter">3</div>
-        </strong>
-        <ul class="game-server-list">
-          <li class="game-server-item">
-            <div class="game-server-indicator online" />
-            <span class="flex-1 text-ms">Prop hunt</span>
-            <Button size="s">
-              Join
-            </Button>
-          </li>
-          <li class="game-server-item">
-            <div class="game-server-indicator online" />
-            <span class="flex-1 text-ms">TTT #1</span>
-            <Button size="s">
-              Join
-            </Button>
-          </li>
-          <li class="game-server-item">
-            <div class="game-server-indicator offline" />
-            <span class="flex-1 text-ms">Deathrun</span>
-          </li>
-        </ul>
-        <Divider margin="16px 0" />
-        <strong class="flex g-s y-center mb-xs">
-          CS Source
-          <div class="counter">1</div>
-        </strong>
-        <ul class="game-server-list">
-          <li class="game-server-item">
-            <div class="game-server-indicator online" />
-            <span class="flex-1 text-ms">Server #1</span>
-            <Button size="s">
-              Join
-            </Button>
-          </li>
-        </ul>
-      </div>
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.game-servers-page {
-  padding-block: 6.5rem;
-}
-
-.game-servers-wrap {
-  display: grid;
-  grid-template-columns: 1fr 324px;
-  gap: 48px;
-}
-
-.vui-card {
-  --color-bg: white;
-}
-
-:root.dark .vui-card {
-  --color-bg: var(--color-bg-medium);
-}
-
-.game-servers-sidebar {
-  padding-top: var(--space-s);
-  position: sticky;
-  top: var(--navbar-offset);
-}
-
 .game-server-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding-left: var(--space-m);
 }
 
-.game-server-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  height: 28px;
-}
-
-.game-server-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 99px;
-
-  &.online {
-    background-color: var(--color-text-green);
-  }
-
-  &.offline {
-    background-color: var(--color-text-red);
-  }
+.game-servers-sidebar {
+  position: sticky;
+  top: var(--navbar-offset);
 }
 </style>
