@@ -111,3 +111,13 @@ Finally once you've confirmed everything is working as expected, you can push th
 ```bash
 npm run supabase db push
 ```
+
+## DB Triggers
+
+Due to some triggers relying on tables that are built-in Supabase you will have to create these triggers manually and not through migrations. Please refer to [TRIGGERS.md](TRIGGERS.md) for more information.
+
+## RBAC
+
+Hivecom utilizes Supabase's setup for role based access control (RBAC). In their guide, they outline the use of auth hooks to inject JWT tokens with additional metadata so the front-end can correctly show what users have access to.
+
+For more information, please refer to the [official guide](https://supabase.com/docs/guides/database/postgres/custom-claims-and-role-based-access-control-rbac?queryGroups=language&language=plpgsql).

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
 
-import { Button, Divider, Flex, Tooltip } from '@dolanske/vui'
+import { Button, CopyClipboard, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
 import { capitalize } from 'vue'
 
 const props = defineProps<{
@@ -29,53 +29,74 @@ const state = computed(() => {
 </script>
 
 <template>
-  <div class="gameserver-row" @click="expanded = !expanded">
-    <Flex align-center row space-between gap="s">
+  <div class="gameserver-row">
+    <Flex align-center row space-between gap="s" :class="`gameserver-row-header ${expanded ? 'expanded' : ''}`">
       <Flex align-center row gap="s">
+        <Button :icon="expanded ? `ph:caret-down` : `ph:caret-right`" square variant="gray" size="s" @click="expanded = !expanded" />
         <Tooltip placement="top">
           <template #tooltip>
             <p>{{ capitalize(state) }}</p>
           </template>
           <div :class="`gameserver-indicator ${state}`" />
         </Tooltip>
-        <span class="flex-1 text-ms">{{ props.gameserver.description }} (We need a DB column for the name)</span>
+        <span class="flex-1 text-ms">{{ props.gameserver.name }}</span>
+        <div>
+          <span>{{ props.gameserver.region }}</span>
+        </div>
       </Flex>
-      <div>
-        <span>{{ props.gameserver.region }}</span>
-      </div>
-      <Button v-if="props.gameserver.addresses" size="s">
-        Join
-      </Button>
+      <template v-if="props.gameserver.addresses">
+        <CopyClipboard v-if="props.gameserver.addresses.length === 1" :text="`${props.gameserver.addresses[0]}${props.gameserver.port ? `:${props.gameserver.port}` : ''}`" confirm>
+          <Button size="s" variant="gray">
+            Join
+          </Button>
+        </CopyClipboard>
+        <Dropdown v-else>
+          <template #trigger="{ toggle }">
+            <Button size="s" variant="gray" @click="toggle">
+              <Flex align-center gap="xs">
+                Join
+                <Icon name="ph:caret-down" size="s" />
+              </Flex>
+            </Button>
+          </template>
+          <DropdownItem v-for="address in props.gameserver.addresses" :key="address">
+            <CopyClipboard :text="`${address}${props.gameserver.port ? `:${props.gameserver.port}` : ''}`" confirm>
+              {{ `${address}${props.gameserver.port ? `:${props.gameserver.port}` : ''}` }}
+            </CopyClipboard>
+          </DropdownItem>
+        </Dropdown>
+      </template>
     </Flex>
-    <div v-if="expanded" class="gameserver-child-row">
-      <Divider />
+    <Flex v-if="expanded" class="gameserver-row-child">
       {{ props.gameserver.description }}
-    </div>
+    </Flex>
   </div>
 </template>
 
 <style scoped lang="scss">
 .gameserver-row {
-  cursor: pointer;
+  width: 100% !important;
+}
+
+.gameserver-row-header {
   padding: var(--space-xs) var(--space-m);
   border-radius: var(--border-radius-m);
   background-color: var(--color-bg-raised);
   transition: background-color 0.2s ease-in-out;
 
-  &:hover {
-    background-color: var(--color-bg-lowered);
+  &.expanded {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
   }
 }
 
-.gameserver-child-row {
+.gameserver-row-child {
+  padding: var(--space-s) var(--space-m);
   border-radius: var(--border-radius-m);
-  background-color: var(--color-bg-raised);
-  margin-top: var(--space-xs);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border: 1px solid var(--color-bg-raised);
   transition: background-color 0.2s ease-in-out;
-
-  &:hover {
-    background-color: var(--color-bg-lowered);
-  }
 }
 
 .gameserver-indicator {
@@ -83,7 +104,7 @@ const state = computed(() => {
   height: 10px;
   border-radius: 99px;
 
-  &.online {
+  &.healthy {
     background-color: var(--color-text-green);
   }
 

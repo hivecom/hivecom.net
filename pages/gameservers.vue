@@ -1,33 +1,39 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 import type { Tables } from '~/types/database.types'
-import { Button, Card, Divider, Input, Select } from '@dolanske/vui'
+
+import { Alert, Button, Card, Divider, Flex, Input, Select, Skeleton } from '@dolanske/vui'
+
 import GameserverRow from '~/components/Gameservers/GameserverRow.vue'
+import ErrorAlert from '~/components/Shared/ErrorAlert.vue'
 
 const supabase = useSupabaseClient()
-const gameserversWithContainersQuery = supabase.from('gameservers').select(`
+const gameserversQuery = supabase.from('gameservers').select(`
   id,
+  name,
+  region,
   description,
   game,
+  addresses,
   container (
     name,
     running,
     healthy
   )
 `)
-type gameserversWithContainersType = QueryData<typeof gameserversWithContainersQuery>
+type gameserversType = QueryData<typeof gameserversQuery>
 
 // Fetch data
 const loading = ref(true)
 const errorMessage = ref('')
 const games = ref<Tables<'games'>[]>()
-const gameserversWithContainers = ref<gameserversWithContainersType>()
+const gameservers = ref<gameserversType>()
 
 onMounted(async () => {
   // Make our requests at the same time.
   const requests = [
     supabase.from('games').select('*'),
-    gameserversWithContainersQuery,
+    gameserversQuery,
   ] as const
   const [responseGames, responseGameservers] = await Promise.all(requests)
   loading.value = false
@@ -38,23 +44,63 @@ onMounted(async () => {
   }
 
   games.value = responseGames.data
-  gameserversWithContainers.value = responseGameservers.data
+  gameservers.value = responseGameservers.data
 })
 
-// Filters
 const search = ref('')
-
+const selectedGames = ref<{ label: string, value: number }[]>()
 const gameOptions = computed(() => {
   return games.value?.filter(game => game.name !== null).map(game => ({
-    label: game.name!,
+    label: game.name ?? 'Unknown',
     value: game.id,
   })) ?? []
 })
 
-const filteredGame = ref()
+const filteredGameservers = computed(() => {
+  if (!gameservers.value)
+    return []
+
+  return gameservers.value.filter((gameserver) => {
+    const matchesSearch = search.value
+      ? (
+          gameserver.name?.toLowerCase().includes(search.value.toLowerCase())
+          || gameserver.region?.toLowerCase().includes(search.value.toLowerCase())
+        )
+      : true
+
+    const matchesSelectedGame = selectedGames.value
+      ? selectedGames.value.some(selectedGame => selectedGame.value === gameserver.game)
+      : true
+
+    return matchesSearch && matchesSelectedGame
+  })
+})
+
+const filteredGames = computed(() => {
+  if (!games.value || !gameservers.value)
+    return []
+
+  return games.value.filter((game) => {
+    const gameServers = gameservers.value!.filter(gameserver => gameserver.game === game.id)
+    const hasGameServers = gameServers.length > 0
+
+    const matchesSearch = search.value
+      ? (
+          game.name?.toLowerCase().includes(search.value.toLowerCase())
+          || game.shorthand?.toLowerCase().includes(search.value.toLowerCase())
+        )
+      : true
+
+    const matchesSelectedGame = selectedGames.value
+      ? selectedGames.value.some(selectedGame => selectedGame.value === game.id)
+      : true
+
+    return hasGameServers && matchesSearch && matchesSelectedGame
+  })
+})
 
 function clearFilters() {
-  filteredGame.value = undefined
+  selectedGames.value = undefined
   search.value = ''
 }
 </script>
@@ -64,56 +110,71 @@ function clearFilters() {
     <section>
       <h1>Game servers</h1>
       <p>
-        Join our game servers and play with the community.
+        Hop on. Get in.
       </p>
     </section>
     <Divider />
-    <div class="flex g-s x-start mb-l">
-      <Input v-model="search" placeholder="Search servers">
-        <template #start>
-          <Icon name="ph:magnifying-glass" />
-        </template>
-      </Input>
-      <Select v-model="filteredGame" :options="gameOptions" placeholder="Select game" />
-      <Button v-if="filteredGame || search" plain outline @click="clearFilters">
-        Clear
-      </Button>
-    </div>
     <div class="game-servers">
-      <template v-for="game in games" :key="game.id">
-        <Card v-if="gameserversWithContainers?.some(gameserver => gameserver.game === game.id)" class="game-servers-sidebar">
-          <h3 class="flex g-m y-center mb-s">
-            {{ game.name }}
-            <div class="counter">
-              {{ gameserversWithContainers?.filter(gameserver => gameserver.game === game.id).length }}
-            </div>
-          </h3>
-          <ul class="game-server-list">
-            <template v-for="gameserver in gameserversWithContainers?.filter(gameserver => gameserver.game === game.id)" :key="gameserver.id">
-              <li class="game-server-item">
-                <GameserverRow
-                  :game="game"
-                  :gameserver="gameserver as Tables<'gameservers'>"
-                  :container="gameserver.container as Tables<'gameserver_containers'>"
-                />
-              </li>
-            </template>
-          </ul>
-        </Card>
+      <!-- Error message -->
+      <template v-if="errorMessage">
+        <ErrorAlert message="An error occurred while fetching game servers." :error="errorMessage" />
+      </template>
+
+      <!-- Loading skeletons -->
+      <Flex v-if="loading" column>
+        <Flex>
+          <Skeleton :width="240" :height="32" :radius="8" />
+          <Skeleton :width="120" :height="32" :radius="8" />
+        </Flex>
+        <template v-for="i in 6" :key="i">
+          <Skeleton :height="48" :radius="8" />
+        </template>
+      </Flex>
+
+      <template v-if="!loading && !errorMessage">
+        <!-- Content -->
+        <template v-if="games && gameservers && games.length !== 0 && gameservers.length !== 0">
+          <!-- Inputs -->
+          <div class="flex g-s x-start mb-l">
+            <Input v-model="search" placeholder="Search servers">
+              <template #start>
+                <Icon name="ph:magnifying-glass" />
+              </template>
+            </Input>
+            <Select v-model="selectedGames" :options="gameOptions" placeholder="Select game" />
+            <Button v-if="selectedGames || search" plain outline @click="clearFilters">
+              Clear
+            </Button>
+          </div>
+
+          <template v-for="game in filteredGames" :key="game.id">
+            <Card v-if="filteredGameservers.length > 0">
+              <h3 class="flex g-m y-center mb-s">
+                {{ game.name }}
+                <div class="counter">
+                  {{ filteredGameservers.length }}
+                </div>
+              </h3>
+              <Flex column class="w-100">
+                <template v-for="gameserver in gameservers?.filter(gameserver => gameserver.game === game.id)" :key="gameserver.id">
+                  <GameserverRow
+                    :container="gameserver.container as Tables<'gameserver_containers'>"
+                    :gameserver="gameserver as Tables<'gameservers'>"
+                    spacer-because-this-fixes-my-syntax-highlighting-issue
+                    :game="game"
+                  />
+                </template>
+              </Flex>
+            </Card>
+          </template>
+        </template>
+        <!-- No content -->
+        <template v-else>
+          <Alert variant="info">
+            No game servers found.
+          </Alert>
+        </template>
       </template>
     </div>
   </div>
 </template>
-
-<style lang="scss" scoped>
-.game-server-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.game-servers-sidebar {
-  position: sticky;
-  top: var(--navbar-offset);
-}
-</style>
