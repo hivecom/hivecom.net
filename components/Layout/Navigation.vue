@@ -165,7 +165,7 @@ nav {
   background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
   backdrop-filter: blur(16px);
 
-  z-index: 1; // Make sure the nav is main content
+  z-index: 5; // Make sure the nav is main content
 
   .nav-items {
     margin-left: auto;
