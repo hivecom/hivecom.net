@@ -89,6 +89,7 @@ export interface Database {
           reported_at: string
           running: boolean
           server: number | null
+          uptime: number | null
         }
         Insert: {
           created_at?: string
@@ -97,6 +98,7 @@ export interface Database {
           reported_at: string
           running: boolean
           server?: number | null
+          uptime?: number | null
         }
         Update: {
           created_at?: string
@@ -105,6 +107,7 @@ export interface Database {
           reported_at?: string
           running?: boolean
           server?: number | null
+          uptime?: number | null
         }
         Relationships: [
           {
@@ -128,6 +131,7 @@ export interface Database {
           id: number
           modified_at: string | null
           modified_by: string | null
+          name: string
           port: string | null
           region: Database['public']['Enums']['region'] | null
         }
@@ -142,6 +146,7 @@ export interface Database {
           id?: number
           modified_at?: string | null
           modified_by?: string | null
+          name?: string
           port?: string | null
           region?: Database['public']['Enums']['region'] | null
         }
@@ -156,6 +161,7 @@ export interface Database {
           id?: number
           modified_at?: string | null
           modified_by?: string | null
+          name?: string
           port?: string | null
           region?: Database['public']['Enums']['region'] | null
         }
