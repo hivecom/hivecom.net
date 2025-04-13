@@ -121,3 +121,9 @@ Due to some triggers relying on tables that are built-in Supabase you will have 
 Hivecom utilizes Supabase's setup for role based access control (RBAC). In their guide, they outline the use of auth hooks to inject JWT tokens with additional metadata so the front-end can correctly show what users have access to.
 
 For more information, please refer to the [official guide](https://supabase.com/docs/guides/database/postgres/custom-claims-and-role-based-access-control-rbac?queryGroups=language&language=plpgsql).
+
+## cron
+
+We use the `pg_cron` extension to schedule jobs in the database. This is a great way to run periodic tasks without needing an external service.
+
+Our migrations should automatically create the necessary tables and invocation functions as well as the associated `system_cron_secret` Supabase Vault secret. This secret is used as an authorization token when invoking our cron edge functions so as to not allow anything but the database to invoke them.

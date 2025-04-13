@@ -386,6 +386,108 @@ export interface Database {
       [_ in never]: never
     }
   }
+  vault: {
+    Tables: {
+      secrets: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          key_id: string | null
+          name: string | null
+          nonce: string | null
+          secret: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          key_id?: string | null
+          name?: string | null
+          nonce?: string | null
+          secret: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          key_id?: string | null
+          name?: string | null
+          nonce?: string | null
+          secret?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      decrypted_secrets: {
+        Row: {
+          created_at: string | null
+          decrypted_secret: string | null
+          description: string | null
+          id: string | null
+          key_id: string | null
+          name: string | null
+          nonce: string | null
+          secret: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          decrypted_secret?: never
+          description?: string | null
+          id?: string | null
+          key_id?: string | null
+          name?: string | null
+          nonce?: string | null
+          secret?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          decrypted_secret?: never
+          description?: string | null
+          id?: string | null
+          key_id?: string | null
+          name?: string | null
+          nonce?: string | null
+          secret?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+    }
+    Functions: {
+      create_secret: {
+        Args: {
+          new_secret: string
+          new_name?: string
+          new_description?: string
+          new_key_id?: string
+        }
+        Returns: string
+      }
+      update_secret: {
+        Args: {
+          secret_id: string
+          new_secret?: string
+          new_name?: string
+          new_description?: string
+          new_key_id?: string
+        }
+        Returns: undefined
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
 type DefaultSchema = Database[Extract<keyof Database, 'public'>]
@@ -510,5 +612,8 @@ export const Constants = {
       app_role: ['admin', 'moderator'],
       region: ['eu', 'na', 'all'],
     },
+  },
+  vault: {
+    Enums: {},
   },
 } as const

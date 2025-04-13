@@ -30,7 +30,11 @@ Deno.serve(async (req: Request) => {
     )
 
     // First get the token from the Authorization header
-    const token = req.headers.get('Authorization').replace('Bearer ', '')
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
+    }
+    const token = authHeader.replace('Bearer ', '')
 
     // Now we can get the session or user object
     const {
@@ -44,7 +48,8 @@ Deno.serve(async (req: Request) => {
     })
   }
   catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     })
