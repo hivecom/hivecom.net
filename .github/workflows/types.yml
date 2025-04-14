@@ -38,7 +38,7 @@ jobs:
         run: npm install --only=dev
 
       - name: Generate Supabase Types
-        run: npx supabase gen types typescript --project-id $SUPABASE_PROJECT_REF --schema public,vault > types/database.types.ts
+        run: npx supabase gen types typescript --project-id $SUPABASE_PROJECT_REF --schema public > types/database.types.ts
 
       - name: Format Types
         run: npm run lint:fix
