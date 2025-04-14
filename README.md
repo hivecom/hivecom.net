@@ -134,3 +134,5 @@ We use the `pg_cron` extension to schedule jobs in the database. This is a great
 Our migrations should automatically create the necessary tables and invocation functions as well as the associated `system_cron_secret` Supabase Vault secret. This secret is used as an authorization token when invoking our cron edge functions so as to not allow anything but the database to invoke them.
 
 Your Edge Functions will still need to have the `system_cron_secret` secret added to them. You can do this by running the following command. Decrypt the secret from the Supabase Vault and add it to the edge function for these to properly work.
+
+Once these are set, we have helper functions in `_shared/auth.ts` for validating the system cron secret header. The JWT token is automatically validated by Supabase.

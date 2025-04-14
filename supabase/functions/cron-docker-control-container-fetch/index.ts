@@ -1,7 +1,7 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeSystemCron } from "../_shared/auth.ts";
-import { Database } from "../../../types/database.types.ts";
+import { Database, Tables } from "database-types";
 
 interface DockerControlResponse {
   containers: {
@@ -12,15 +12,13 @@ interface DockerControlResponse {
 }
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
+  // Skip CORS preflight check for OPTIONS requests as this should not originate from a browser.
   try {
     // Authorize the request using the system cron authorization function
     const authorizeResponse = authorizeSystemCron(req);
     if (authorizeResponse) {
+      console.error("Authorization failed:", authorizeResponse.statusText);
+
       return authorizeResponse;
     }
 
@@ -33,27 +31,28 @@ Deno.serve(async (req: Request) => {
     }
 
     // Create a Supabase client with the service role key (full admin access)
+    // Don't pass Authorization header from the request
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      },
     );
 
     // Fetch all active servers from the database
-    const { data: servers, error: serversError } = await supabaseClient
+    const { data: servers, error: serversError } = (await supabaseClient
       .from("servers")
       .select("*")
-      .eq("active", true);
+      .eq("active", true)) as {
+      data: Tables<"servers">[];
+      error: Error | null;
+    };
 
     if (serversError) {
       throw serversError;
     }
 
     if (!servers || servers.length === 0) {
+      console.log("No active servers found");
+
       return new Response(
         JSON.stringify({ success: true, message: "No active servers found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -64,6 +63,8 @@ Deno.serve(async (req: Request) => {
     const results = await Promise.all(
       servers.map(async (server) => {
         try {
+          console.log(`Processing server ${server.address}...`);
+
           // Construct the Docker Control URL
           const dockerControlUrl = `https://${server.address}:${DOCKER_CONTROL_PORT}/containers`;
 
@@ -74,6 +75,7 @@ Deno.serve(async (req: Request) => {
               Authorization: `Bearer ${DOCKER_CONTROL_TOKEN}`,
               "Content-Type": "application/json",
             },
+            signal: AbortSignal.timeout(5000), // 5 seconds timeout
           });
 
           if (!response.ok) {
@@ -126,6 +128,8 @@ Deno.serve(async (req: Request) => {
         }
       }),
     );
+
+    console.log("Processed servers:", results);
 
     return new Response(
       JSON.stringify({

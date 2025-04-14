@@ -18,5 +18,5 @@
     "http",
     "net"
   ],
-  "deno.importMap": "./import_map.json"
+  "deno.importMap": "../import_map.json"
 }

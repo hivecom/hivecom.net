@@ -12,35 +12,36 @@ export function authorizeSystemCron(req: Request): Response | undefined {
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+        statusText: "Unauthorized - SYSTEM_CRON_SECRET not set",
         status: 401,
       },
     );
   }
 
   // Extract token from Authorization header
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  const authHeader = req.headers.get("System-Cron-Secret");
+  if (!authHeader) {
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Unauthorized: Missing or invalid Authorization header",
+        message: "Unauthorized: Missing or invalid System-Cron-Secret header",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+        statusText:
+          "Unauthorized - Missing or invalid System-Cron-Secret header",
         status: 401,
       },
     );
   }
 
-  // Get the token part from the Bearer token
-  const token = authHeader.slice(7); // Remove 'Bearer ' prefix
-
   // Check if the provided token matches our system token from the vault
-  if (token !== systemCronSecret) {
+  if (authHeader !== systemCronSecret) {
     return new Response(
       JSON.stringify({ success: false, message: "Unauthorized" }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+        statusText: "Unauthorized - Invalid System-Cron-Secret",
         status: 401,
       },
     );
