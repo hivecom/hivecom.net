@@ -1,7 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { authorizeSystemCron } from '../_shared/auth.ts'
-import { Database } from '../../../types/database.types.ts'
+import { Database } from '../_shared/database.types.ts'
 
 interface DockerControlResponse {
   containers: {
