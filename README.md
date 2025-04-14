@@ -21,7 +21,8 @@ To run the Supabase instance locally, you will need to make sure you have [Docke
 From there, link your project via the following command:
 
 > [!NOTE]
-> We have a `supabase` npm command but you can substitute `npm run supabase` with `npx supabase` too.
+> We have a `supabase` npm command but you can substitute `npm run supabase` with `npx supabase` too for brevity.
+> Make sure to add `--` to the end of the npm command if you want to pass any arguments to the Supabase CLI.
 
 ```bash
 npm run supabase link

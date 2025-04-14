@@ -1,1 +1,0 @@
-../../../types/database.types.ts

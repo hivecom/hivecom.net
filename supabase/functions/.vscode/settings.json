@@ -1,4 +1,7 @@
 {
+  // Use Deno for JavaScript and TypeScript files.
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "denoland.vscode-deno",
   "deno.enable": true,
   "deno.unstable": [
     "bare-node-builtins",
