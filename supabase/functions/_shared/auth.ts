@@ -1,27 +1,21 @@
-import { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { Database } from "../../../types/database.types.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-export async function authorizeSystemCron(
-  req: Request,
-  client: SupabaseClient<Database>,
-): Promise<Response | undefined> {
-  // Security check - verify the request is from our internal system
-  // Get the system secret token directly from the vault
-  const { data: vaultData, error: vaultError } = await client.schema("vault")
-    .from("decrypted_secrets")
-    .select("decrypted_secret")
-    .eq("name", "system_cron_secret")
-    .single();
+export function authorizeSystemCron(req: Request): Response | undefined {
+  const systemCronSecret = Deno.env.get("SYSTEM_CRON_SECRET");
 
-  if (vaultError || !vaultData) {
-    throw new Error(
-      "Failed to retrieve system_cron_secret from vault: " +
-        (vaultError?.message || "No data returned"),
+  if (!systemCronSecret) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message:
+          "Unauthorized: SYSTEM_CRON_SECRET environment variable is not set",
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      },
     );
   }
-
-  const systemCronSecret = vaultData.decrypted_secret;
 
   // Extract token from Authorization header
   const authHeader = req.headers.get("Authorization");

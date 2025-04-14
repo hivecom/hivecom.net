@@ -39,6 +39,10 @@ SUPABASE_URL="https://example.supabase.co"
 SUPABASE_KEY="<your_key>"
 ```
 
+### VSCode Workspaces
+
+If you're using VSCode, there's a workspace file in the root of the project to isolate the main project and Supabase's Edge Functions as these use Deno and have different `.vscode` settings.
+
 ## Development Server
 
 Start the development server on `http://localhost:3000`:
@@ -128,3 +132,5 @@ For more information, please refer to the [official guide](https://supabase.com/
 We use the `pg_cron` extension to schedule jobs in the database. This is a great way to run periodic tasks without needing an external service.
 
 Our migrations should automatically create the necessary tables and invocation functions as well as the associated `system_cron_secret` Supabase Vault secret. This secret is used as an authorization token when invoking our cron edge functions so as to not allow anything but the database to invoke them.
+
+Your Edge Functions will still need to have the `system_cron_secret` secret added to them. You can do this by running the following command. Decrypt the secret from the Supabase Vault and add it to the edge function for these to properly work.

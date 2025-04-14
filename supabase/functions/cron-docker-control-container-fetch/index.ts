@@ -18,19 +18,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Create a Supabase client with the service role key (full admin access)
-    const supabaseClient = createClient<Database>(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      },
-    );
-
     // Authorize the request using the system cron authorization function
-    const authorizeResponse = await authorizeSystemCron(req, supabaseClient);
+    const authorizeResponse = authorizeSystemCron(req);
     if (authorizeResponse) {
       return authorizeResponse;
     }
@@ -42,6 +31,17 @@ Deno.serve(async (req: Request) => {
     if (!DOCKER_CONTROL_TOKEN) {
       throw new Error("DOCKER_CONTROL_TOKEN environment variable is not set");
     }
+
+    // Create a Supabase client with the service role key (full admin access)
+    const supabaseClient = createClient<Database>(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: req.headers.get("Authorization")! },
+        },
+      },
+    );
 
     // Fetch all active servers from the database
     const { data: servers, error: serversError } = await supabaseClient
@@ -65,14 +65,13 @@ Deno.serve(async (req: Request) => {
       servers.map(async (server) => {
         try {
           // Construct the Docker Control URL
-          const dockerControlUrl =
-            `https://${server.address}:${DOCKER_CONTROL_PORT}/containers`;
+          const dockerControlUrl = `https://${server.address}:${DOCKER_CONTROL_PORT}/containers`;
 
           // Make a request to the Docker Control service
           const response = await fetch(dockerControlUrl, {
             method: "GET",
             headers: {
-              "Authorization": `Bearer ${DOCKER_CONTROL_TOKEN}`,
+              Authorization: `Bearer ${DOCKER_CONTROL_TOKEN}`,
               "Content-Type": "application/json",
             },
           });
@@ -84,7 +83,7 @@ Deno.serve(async (req: Request) => {
           }
 
           // Parse the response JSON
-          const data = await response.json() as DockerControlResponse;
+          const data = (await response.json()) as DockerControlResponse;
 
           // Current timestamp for reporting
           const now = new Date().toISOString();
