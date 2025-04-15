@@ -6,7 +6,18 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  const { who } = await req.json();
+  let who;
+  try {
+    // Only try to parse JSON if there's content to parse
+    const contentLength = req.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > 0) {
+      const body = await req.json();
+      who = body.who;
+    }
+  } catch (error) {
+    console.error("Error parsing request body:", error);
+  }
+
   const data = {
     message: who ? `Pinging ${who}!` : "Pinging!",
     date: new Date().toISOString(),
@@ -15,6 +26,6 @@ Deno.serve(async (req) => {
   console.log("Received request:", data);
 
   return new Response(JSON.stringify(data), {
-    headers: { "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
