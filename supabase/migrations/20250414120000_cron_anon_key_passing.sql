@@ -2,7 +2,7 @@
 DO $$
 DECLARE
 BEGIN
-  PERFORM vault.create_secret('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbXFvY211eW9scGpqYm5iY2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTUwMTkxNDQsImV4cCI6MjAzMDU5NTE0NH0.QmtBbAOfQ4usos4zQHih6nqesf5HQBYD1e7ujpsanqI', 'anon_key');
+  PERFORM vault.create_secret('REPLACE-ME', 'anon_key');
   EXCEPTION WHEN OTHERS THEN
   -- Secret might already exist, we can ignore this
   RAISE NOTICE 'Secret might already exist: %', SQLERRM;
