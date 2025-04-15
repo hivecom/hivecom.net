@@ -42,9 +42,9 @@ Deno.serve(async (req: Request) => {
       .from("servers")
       .select("*")
       .eq("active", true)) as {
-      data: Tables<"servers">[];
-      error: Error | null;
-    };
+        data: Tables<"servers">[];
+        error: Error | null;
+      };
 
     if (serversError) {
       throw serversError;
@@ -66,7 +66,8 @@ Deno.serve(async (req: Request) => {
           console.log(`Processing server ${server.address}...`);
 
           // Construct the Docker Control URL
-          const dockerControlUrl = `https://${server.address}:${DOCKER_CONTROL_PORT}/containers`;
+          const dockerControlUrl =
+            `https://${server.address}:${DOCKER_CONTROL_PORT}/containers`;
 
           // Make a request to the Docker Control service
           const response = await fetch(dockerControlUrl, {

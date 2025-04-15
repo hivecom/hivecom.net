@@ -5,18 +5,18 @@
   "deno.enable": true,
   "deno.unstable": [
     "bare-node-builtins",
-    "byonm",
-    "sloppy-imports",
-    "unsafe-proto",
-    "webgpu",
     "broadcast-channel",
-    "worker-options",
+    "byonm",
     "cron",
-    "kv",
     "ffi",
     "fs",
     "http",
-    "net"
+    "kv",
+    "net",
+    "sloppy-imports",
+    "unsafe-proto",
+    "webgpu",
+    "worker-options"
   ],
   "deno.importMap": "../import_map.json"
 }

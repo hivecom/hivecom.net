@@ -72,7 +72,25 @@ If you want to run the edge functions locally, you can do so with the following 
 npm run supabase functions serve
 ```
 
-This will start a local server on `http://localhost:54321` where you can test your edge functions. If you ran `supabase start` before, your edge functions will already be running on that port.
+This will start a local server on `http://localhost:54321` where you can test your edge functions. If you ran `supabase start` before, your edge functions _should_ already be running on that port. If you create new edge functions, you will need to restart the server for them to be available.
+
+Additionally, this command lets you see console logs from the edge functions. This is useful for debugging and testing your functions locally.
+
+You can then use cURL or any other HTTP client to test your edge functions. For example, to test the `ping` function, you can run:
+
+```bash
+curl --request POST 'http://localhost:54321/functions/v1/ping' \
+--header 'Authorization: Bearer SUPABASE_ANON_KEY' \
+--header 'Content-Type: application/json' \
+--data '{ "who":"me" }'
+```
+
+To format your edge functions, you can use the following command:
+
+```bash
+cd supabase/functions
+deno fmt
+```
 
 ## Production
 
