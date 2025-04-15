@@ -1,0 +1,3 @@
+{
+  "workspace": ["./cron-docker-control-container-fetch", "./userinfo"]
+}

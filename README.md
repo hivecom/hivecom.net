@@ -39,10 +39,6 @@ SUPABASE_URL="https://example.supabase.co"
 SUPABASE_KEY="<your_key>"
 ```
 
-### VSCode Workspaces
-
-If you're using VSCode, there's a workspace file in the root of the project to isolate the main project and Supabase's Edge Functions as these use Deno and have different `.vscode` settings.
-
 ## Development Server
 
 Start the development server on `http://localhost:3000`:
@@ -58,6 +54,25 @@ npm run supabase [start/stop]
 ```
 
 Once you have the Supabase instance running, you can access the admin panel at `http://localhost:54323`. To make your local app direct to it, read out the API URL and anon key and replace the values in your `.env` file. Make sure to include the port for the API URL.
+
+## Edge Functions
+
+Our edge functions are located in the `supabase/functions` directory. Keep in mind they run on Deno, so you will need to install Deno if you haven't already.
+
+Then, install their dependencies:
+
+```bash
+cd supabase/functions
+deno install
+```
+
+If you want to run the edge functions locally, you can do so with the following command:
+
+```bash
+npm run supabase functions serve
+```
+
+This will start a local server on `http://localhost:54321` where you can test your edge functions. If you ran `supabase start` before, your edge functions will already be running on that port.
 
 ## Production
 

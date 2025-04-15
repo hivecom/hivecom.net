@@ -86,6 +86,10 @@
   // Use the local version of ESLint
   "eslint.nodePath": "./node_modules",
   // Use the local version of TypeScript
-  "typescript.tsdk": "./node_modules/typescript/lib"
+  "typescript.tsdk": "./node_modules/typescript/lib",
   // Since this is the root space we need to enable Deno here.
+  "deno.enable": true,
+  "deno.enablePaths": [
+    "./supabase/functions"
+  ]
 }
