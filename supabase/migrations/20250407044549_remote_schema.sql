@@ -1,30 +1,30 @@
-revoke delete on table "public"."user_roles" from "anon";
+REVOKE DELETE ON TABLE "public"."user_roles" FROM "anon";
 
-revoke insert on table "public"."user_roles" from "anon";
+REVOKE INSERT ON TABLE "public"."user_roles" FROM "anon";
 
-revoke references on table "public"."user_roles" from "anon";
+REVOKE REFERENCES ON TABLE "public"."user_roles" FROM "anon";
 
-revoke select on table "public"."user_roles" from "anon";
+REVOKE SELECT ON TABLE "public"."user_roles" FROM "anon";
 
-revoke trigger on table "public"."user_roles" from "anon";
+REVOKE TRIGGER ON TABLE "public"."user_roles" FROM "anon";
 
-revoke truncate on table "public"."user_roles" from "anon";
+REVOKE TRUNCATE ON TABLE "public"."user_roles" FROM "anon";
 
-revoke update on table "public"."user_roles" from "anon";
+REVOKE UPDATE ON TABLE "public"."user_roles" FROM "anon";
 
-revoke delete on table "public"."user_roles" from "authenticated";
+REVOKE DELETE ON TABLE "public"."user_roles" FROM "authenticated";
 
-revoke insert on table "public"."user_roles" from "authenticated";
+REVOKE INSERT ON TABLE "public"."user_roles" FROM "authenticated";
 
-revoke references on table "public"."user_roles" from "authenticated";
+REVOKE REFERENCES ON TABLE "public"."user_roles" FROM "authenticated";
 
-revoke select on table "public"."user_roles" from "authenticated";
+REVOKE SELECT ON TABLE "public"."user_roles" FROM "authenticated";
 
-revoke trigger on table "public"."user_roles" from "authenticated";
+REVOKE TRIGGER ON TABLE "public"."user_roles" FROM "authenticated";
 
-revoke truncate on table "public"."user_roles" from "authenticated";
+REVOKE TRUNCATE ON TABLE "public"."user_roles" FROM "authenticated";
 
-revoke update on table "public"."user_roles" from "authenticated";
+REVOKE UPDATE ON TABLE "public"."user_roles" FROM "authenticated";
 
 set check_function_bodies = off;
 
@@ -33,37 +33,35 @@ CREATE OR REPLACE FUNCTION public.authorize(requested_permission app_permission)
  LANGUAGE plpgsql
  STABLE SECURITY DEFINER
  SET search_path TO ''
-AS $function$
-declare
+AS $$
+DECLARE
   bind_permissions int;
   user_role public.app_role;
-begin
+BEGIN
   -- Fetch user role once and store it to reduce number of calls
-  select (auth.jwt() ->> 'user_role')::public.app_role into user_role;
+  SELECT (auth.jwt() ->> 'user_role')::public.app_role into user_role;
 
-  select count(*)
-  into bind_permissions
-  from public.role_permissions
-  where role_permissions.permission = requested_permission
-    and role_permissions.role = user_role;
+  SELECT count(*)
+  INTO bind_permissions
+  FROM public.role_permissions
+  WHERE role_permissions.permission = requested_permission
+    AND role_permissions.role = user_role;
 
-  return bind_permissions > 0;
-end;
-$function$
-;
+  RETURN bind_permissions > 0;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
  RETURNS trigger
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$
-begin
-  insert into public.profiles (id)
-  values (new.id);
-  return new;
-end;
-$function$
-;
+AS $$
+BEGIN
+  INSERT into public.profiles (id)
+  VALUES (new.id);
+  RETURN new;
+END;
+$$;
 
 

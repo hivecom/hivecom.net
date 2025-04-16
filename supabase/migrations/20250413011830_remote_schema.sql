@@ -1,31 +1,31 @@
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
-grant delete on table "storage"."s3_multipart_uploads" to "postgres";
+GRANT DELETE ON TABLE "storage"."s3_multipart_uploads" TO "postgres";
 
-grant insert on table "storage"."s3_multipart_uploads" to "postgres";
+GRANT INSERT ON TABLE "storage"."s3_multipart_uploads" TO "postgres";
 
-grant references on table "storage"."s3_multipart_uploads" to "postgres";
+GRANT REFERENCES ON TABLE "storage"."s3_multipart_uploads" TO "postgres";
 
-grant select on table "storage"."s3_multipart_uploads" to "postgres";
+GRANT SELECT ON TABLE "storage"."s3_multipart_uploads" TO "postgres";
 
-grant trigger on table "storage"."s3_multipart_uploads" to "postgres";
+GRANT TRIGGER ON TABLE "storage"."s3_multipart_uploads" TO "postgres";
 
-grant truncate on table "storage"."s3_multipart_uploads" to "postgres";
+GRANT TRUNCATE ON TABLE "storage"."s3_multipart_uploads" TO "postgres";
 
-grant update on table "storage"."s3_multipart_uploads" to "postgres";
+GRANT UPDATE ON TABLE "storage"."s3_multipart_uploads" TO "postgres";
 
-grant delete on table "storage"."s3_multipart_uploads_parts" to "postgres";
+GRANT DELETE ON TABLE "storage"."s3_multipart_uploads_parts" TO "postgres";
 
-grant insert on table "storage"."s3_multipart_uploads_parts" to "postgres";
+GRANT INSERT ON TABLE "storage"."s3_multipart_uploads_parts" TO "postgres";
 
-grant references on table "storage"."s3_multipart_uploads_parts" to "postgres";
+GRANT REFERENCES ON TABLE "storage"."s3_multipart_uploads_parts" TO "postgres";
 
-grant select on table "storage"."s3_multipart_uploads_parts" to "postgres";
+GRANT SELECT ON TABLE "storage"."s3_multipart_uploads_parts" TO "postgres";
 
-grant trigger on table "storage"."s3_multipart_uploads_parts" to "postgres";
+GRANT TRIGGER ON TABLE "storage"."s3_multipart_uploads_parts" TO "postgres";
 
-grant truncate on table "storage"."s3_multipart_uploads_parts" to "postgres";
+GRANT TRUNCATE ON TABLE "storage"."s3_multipart_uploads_parts" TO "postgres";
 
-grant update on table "storage"."s3_multipart_uploads_parts" to "postgres";
+GRANT UPDATE ON TABLE "storage"."s3_multipart_uploads_parts" TO "postgres";
 
 

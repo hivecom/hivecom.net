@@ -1,2 +1,2 @@
-alter type "public"."app_permission" add value 'servers.crud';
-alter type "public"."app_permission" add value 'expenses.crud';
+ALTER TYPE "public"."app_permission" ADD VALUE 'servers.crud';
+ALTER TYPE "public"."app_permission" ADD VALUE 'expenses.crud';
