@@ -55,6 +55,8 @@ npm run supabase [start/stop]
 
 Once you have the Supabase instance running, you can access the admin panel at `http://localhost:54323`. To make your local app direct to it, read out the API URL and anon key and replace the values in your `.env` file. Make sure to include the port for the API URL.
 
+If you'd like to test locally against production, you can invoke `npm run dev:staging`. Make sure the production credentials are defined in `.env.production`.
+
 ## Edge Functions
 
 Our edge functions are located in the `supabase/functions` directory. Keep in mind they run on Deno, so you will need to install Deno if you haven't already.
@@ -93,8 +95,6 @@ deno fmt
 ```
 
 ## Production
-
-If you'd like to test locally against production, you can invoke `npm run dev:staging`. Make sure the production credentials are defined in `.env.production`.
 
 To build the application for production:
 
