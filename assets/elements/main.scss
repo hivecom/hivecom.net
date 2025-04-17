@@ -35,4 +35,8 @@ main {
   article {
     scroll-margin-top: 92px;
   }
+
+  h1 {
+    margin-bottom: var(--space-m);
+  }
 }
