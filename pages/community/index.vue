@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Divider } from '@dolanske/vui'
+import DonationBar from '~/components/Community/DonationBar..vue'
 </script>
 
 <template>
@@ -18,5 +19,6 @@ import { Divider } from '@dolanske/vui'
         <li>Random selection of members</li>
       </ul>
     </section>
+    <DonationBar class="mt-l" />
   </div>
 </template>
