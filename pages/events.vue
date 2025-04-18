@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-
-import { Divider, Spinner } from '@dolanske/vui'
+import { Badge, Button, Divider, Flex, Grid, Sheet, Spinner } from '@dolanske/vui'
+import Event from '~/components/Events/Event.vue'
 
 // Fetch data
 const supabase = useSupabaseClient()
@@ -21,6 +21,19 @@ onMounted(async () => {
   loading.value = false
   events.value = responseEvents.data
 })
+
+// Display more event information, if there's any
+const activeEvent = shallowRef<Tables<'events'>>()
+const showDetails = computed({
+  // Open sheet when an active event is set
+  get: () => !!activeEvent.value,
+  // Clear active event when sheet is closed
+  set: (v) => {
+    if (!v) {
+      activeEvent.value = undefined
+    }
+  },
+})
 </script>
 
 <template>
@@ -35,25 +48,59 @@ onMounted(async () => {
       </p>
     </section>
     <Divider />
-    <section>
+    <section class="mt-xl">
       <div v-if="loading">
         <Spinner size="l" />
       </div>
-      <div v-else class="grid col-2">
-        <Card v-for="event in events" :key="event.id">
-          <template #header>
-            <h5>{{ event.title }}</h5>
-          </template>
+      <template v-else>
+        <Flex gap="xxl">
+          <Grid :columns="4" gap="l" class="event-item-countdown">
+            <span class="color-text-lighter text-s">Days</span>
+            <span class="color-text-lighter text-s">Hours</span>
+            <span class="color-text-lighter text-s">Minutes</span>
+            <span class="color-text-lighter text-s">Seconds</span>
+          </Grid>
+          <div class="flex-1">
+            <span class="color-text-lighter text-s">Event</span>
+          </div>
+        </Flex>
 
-          <pre>
-          {{ event }}
-          </pre>
-        </Card>
-      </div>
+        <div class="event-list">
+          <Event
+            v-for="(event, index) in events"
+            :key="event.id"
+            :data="event"
+            :index
+            @open="activeEvent = event"
+          />
+        </div>
+      </template>
     </section>
+
+    <Sheet v-model="showDetails" size="512">
+      <template #header>
+        <h3 class="text-bold text-l">
+          {{ activeEvent?.title }}
+        </h3>
+      </template>
+
+      <p>Markdown will be rendered here and more details will be added too.</p>
+    </Sheet>
   </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss">
+.event-list {
+  .vui-divider:last-of-type {
+    display: none;
+  }
+}
 
+.event-item-countdown {
+  span {
+    text-align: center;
+    display: block;
+    width: 56px;
+  }
+}
 </style>

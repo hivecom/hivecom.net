@@ -14,7 +14,7 @@ const fundingUsers = ['dolanske', 'Zealsprince', 'Felix', 'Yuki', 'Jokler', 'Joe
         <Button size="s" outline>
           Learn more
           <template #end>
-            <Icon name="ph:arrow-right" />
+            <Icon name="ph:caret-right" />
           </template>
         </Button>
       </Flex>
