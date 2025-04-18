@@ -236,6 +236,18 @@ h4 {
   margin: 0;
 }
 
+:root.dark {
+  .section-hero {
+    &::before {
+      opacity: 0.01;
+    }
+
+    &-globe-image {
+      filter: invert(1) opacity(0.2);
+    }
+  }
+}
+
 .section-hero {
   &::before {
     content: '';
@@ -246,7 +258,7 @@ h4 {
     bottom: 0;
     width: 100%;
     height: 100vh;
-    opacity: 0.025;
+    opacity: 0.25;
     background-image: url(/landing/noise.gif);
     background-repeat: repeat;
     overflow: hidden;
@@ -275,7 +287,7 @@ h4 {
     min-width: 1920px;
     width: 100%;
     height: 100vh;
-    opacity: 0.1;
+    opacity: 0.02;
   }
 
   &-title {

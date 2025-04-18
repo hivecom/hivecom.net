@@ -39,12 +39,15 @@ onMounted(async () => {
       <div v-if="loading">
         <Spinner size="l" />
       </div>
-      <div v-else>
-        <Card>
+      <div v-else class="grid col-2">
+        <Card v-for="event in events" :key="event.id">
           <template #header>
-            <h5>Profile</h5>
+            <h5>{{ event.title }}</h5>
           </template>
-          <pre>{{ events?.length ? events : "No events found" }}</pre>
+
+          <pre>
+          {{ event }}
+          </pre>
         </Card>
       </div>
     </section>
