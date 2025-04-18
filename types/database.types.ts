@@ -9,6 +9,47 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      containers: {
+        Row: {
+          addresses: string[] | null
+          created_at: string
+          healthy: boolean
+          name: string
+          reported_at: string
+          running: boolean
+          server: number | null
+          uptime: number | null
+        }
+        Insert: {
+          addresses?: string[] | null
+          created_at?: string
+          healthy: boolean
+          name: string
+          reported_at: string
+          running: boolean
+          server?: number | null
+          uptime?: number | null
+        }
+        Update: {
+          addresses?: string[] | null
+          created_at?: string
+          healthy?: boolean
+          name?: string
+          reported_at?: string
+          running?: boolean
+          server?: number | null
+          uptime?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'gameserver_containers_server_fkey'
+            columns: ['server']
+            isOneToOne: false
+            referencedRelation: 'servers'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
@@ -54,6 +95,45 @@ export interface Database {
         }
         Relationships: []
       }
+      expenses: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          ended_at: string | null
+          id: number
+          modified_by: string | null
+          name: string | null
+          started_at: string
+          url: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ended_at?: string | null
+          id?: number
+          modified_by?: string | null
+          name?: string | null
+          started_at?: string
+          url?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ended_at?: string | null
+          id?: number
+          modified_by?: string | null
+          name?: string | null
+          started_at?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       games: {
         Row: {
           created_at: string
@@ -81,44 +161,6 @@ export interface Database {
         }
         Relationships: []
       }
-      gameserver_containers: {
-        Row: {
-          created_at: string
-          healthy: boolean
-          name: string
-          reported_at: string
-          running: boolean
-          server: number | null
-          uptime: number | null
-        }
-        Insert: {
-          created_at?: string
-          healthy: boolean
-          name: string
-          reported_at: string
-          running: boolean
-          server?: number | null
-          uptime?: number | null
-        }
-        Update: {
-          created_at?: string
-          healthy?: boolean
-          name?: string
-          reported_at?: string
-          running?: boolean
-          server?: number | null
-          uptime?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'gameserver_containers_server_fkey'
-            columns: ['server']
-            isOneToOne: false
-            referencedRelation: 'servers'
-            referencedColumns: ['id']
-          },
-        ]
-      }
       gameservers: {
         Row: {
           addresses: string[] | null
@@ -129,6 +171,7 @@ export interface Database {
           description: string | null
           game: number | null
           id: number
+          markdown: string | null
           modified_at: string | null
           modified_by: string | null
           name: string
@@ -144,6 +187,7 @@ export interface Database {
           description?: string | null
           game?: number | null
           id?: number
+          markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
           name?: string
@@ -159,6 +203,7 @@ export interface Database {
           description?: string | null
           game?: number | null
           id?: number
+          markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
           name?: string
@@ -170,7 +215,7 @@ export interface Database {
             foreignKeyName: 'gameservers_container_fkey'
             columns: ['container']
             isOneToOne: false
-            referencedRelation: 'gameserver_containers'
+            referencedRelation: 'containers'
             referencedColumns: ['name']
           },
           {
@@ -182,6 +227,24 @@ export interface Database {
           },
         ]
       }
+      monthly_funding: {
+        Row: {
+          donation: number | null
+          month: string
+          patreon: number | null
+        }
+        Insert: {
+          donation?: number | null
+          month?: string
+          patreon?: number | null
+        }
+        Update: {
+          donation?: number | null
+          month?: string
+          patreon?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -189,9 +252,9 @@ export interface Database {
           markdown: string | null
           modified_at: string | null
           modified_by: string | null
-          nickname: string | null
           subtitle: string | null
           title: string | null
+          username: string
         }
         Insert: {
           created_at?: string
@@ -199,9 +262,9 @@ export interface Database {
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
-          nickname?: string | null
           subtitle?: string | null
           title?: string | null
+          username: string
         }
         Update: {
           created_at?: string
@@ -209,9 +272,9 @@ export interface Database {
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
-          nickname?: string | null
           subtitle?: string | null
           title?: string | null
+          username?: string
         }
         Relationships: []
       }
@@ -366,6 +429,10 @@ export interface Database {
       custom_access_token_hook: {
         Args: { event: Json }
         Returns: Json
+      }
+      generate_username: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
     }
     Enums: {
