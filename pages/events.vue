@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Badge, Button, Divider, Flex, Grid, Sheet, Spinner } from '@dolanske/vui'
+import { Divider, Flex, Grid, Sheet, Spinner } from '@dolanske/vui'
 import Event from '~/components/Events/Event.vue'
 
 // Fetch data
