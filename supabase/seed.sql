@@ -93,16 +93,15 @@ INSERT INTO public.user_roles (role, user_id)
 VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Create or update a profile for our admin user
-INSERT INTO public.profiles (id, created_at, nickname, title, subtitle)
+INSERT INTO public.profiles (id, created_at, username, title, subtitle)
 VALUES (
   '018d224c-0e49-4b6d-b57a-87299605c2b1',
   NOW(),
-  'Admin',
+  'Hivecom',
   'Hivecom Administrator',
   'System administrator'
 )
 ON CONFLICT (id) DO UPDATE SET
-  nickname = EXCLUDED.nickname,
   title = EXCLUDED.title,
   subtitle = EXCLUDED.subtitle;
 
@@ -136,7 +135,7 @@ VALUES (
 );
 
 -- Insert a test gameserver_container
-INSERT INTO public.gameserver_containers (created_at, healthy, name, reported_at, running, server, uptime)
+INSERT INTO public.containers (created_at, healthy, name, reported_at, running, server, uptime)
 VALUES (
   NOW(),
   true,
