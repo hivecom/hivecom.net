@@ -226,50 +226,74 @@ export interface Database {
       }
       monthly_funding: {
         Row: {
-          donation: number | null
+          donation_amount: number
+          donation_count: number
+          donation_lifetime: number
           month: string
-          patreon: number | null
+          patreon_amount: number
+          patreon_count: number
+          patreon_lifetime: number
         }
         Insert: {
-          donation?: number | null
+          donation_amount?: number
+          donation_count?: number
+          donation_lifetime?: number
           month?: string
-          patreon?: number | null
+          patreon_amount?: number
+          patreon_count?: number
+          patreon_lifetime?: number
         }
         Update: {
-          donation?: number | null
+          donation_amount?: number
+          donation_count?: number
+          donation_lifetime?: number
           month?: string
-          patreon?: number | null
+          patreon_amount?: number
+          patreon_count?: number
+          patreon_lifetime?: number
         }
         Relationships: []
       }
       profiles: {
         Row: {
           created_at: string
+          discord_id: string | null
           id: string
           markdown: string | null
           modified_at: string | null
           modified_by: string | null
+          patreon_id: string | null
           subtitle: string | null
+          supporter_lifetime: boolean
+          supporter_patreon: boolean
           title: string | null
           username: string
         }
         Insert: {
           created_at?: string
+          discord_id?: string | null
           id: string
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
+          patreon_id?: string | null
           subtitle?: string | null
+          supporter_lifetime?: boolean
+          supporter_patreon?: boolean
           title?: string | null
           username: string
         }
         Update: {
           created_at?: string
+          discord_id?: string | null
           id?: string
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
+          patreon_id?: string | null
           subtitle?: string | null
+          supporter_lifetime?: boolean
+          supporter_patreon?: boolean
           title?: string | null
           username?: string
         }

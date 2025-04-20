@@ -156,7 +156,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || "Unknown error",
+        error: "Internal server error - please email contact@hivecom.net or visit #staff on irc.hivecom.net for support",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

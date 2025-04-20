@@ -3,6 +3,12 @@
     "SUPPORT": "contact@hivecom.net"
   },
 
+  "CURRENCY": {
+    "SYMBOL": "€",
+    "NAME": "Euro",
+    "CODE": "EUR"
+  },
+
   "LINKS": {
     "DISCORD": {
       "name": "Discord",

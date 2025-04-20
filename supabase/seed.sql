@@ -32,6 +32,7 @@ INSERT INTO public.profiles(id, created_at, username, title, subtitle)
   VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), 'Hivecom', 'Hivecom Administrator', 'System administrator')
 ON CONFLICT (id)
   DO UPDATE SET
+    username = EXCLUDED.username,
     title = EXCLUDED.title,
     subtitle = EXCLUDED.subtitle;
 
@@ -57,4 +58,12 @@ INSERT INTO public.containers(created_at, healthy, name, reported_at, running, s
 INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, container, markdown)
   VALUES (ARRAY['cs2.gameserver.hivecom.net', 'cs2.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community CS2 server for casual play', 1, -- References the game ID we just created
     'Hivecom CS2 Community Server', '27015', 'eu', 'gameserver-cs2', '# CS 2\nThis is our community server for casual play.');
+
+-- Insert a test expense
+INSERT INTO public.expenses(created_at, created_by, name, description, url, amount, started_at, ended_at)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 20.00, NOW() - INTERVAL '1 month', NULL);
+
+-- Insert a monthly funding record
+INSERT INTO public.monthly_funding(month, patreon_amount, patreon_lifetime, patreon_count, donation_amount, donation_lifetime, donation_count)
+  VALUES (DATE_TRUNC('month', NOW()), 25, 100, 3, 50, 200, 1);
 
