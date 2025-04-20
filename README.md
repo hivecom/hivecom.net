@@ -144,6 +144,12 @@ Now to wrap things up and test your changes, you can make sure your local databa
 npm run supabase db reset
 ```
 
+Additionally, you will want to generate the new types for the database. This will create a new `types/database.types.ts` file with the updated types for your database schema. You can do this with:
+
+```bash
+npx supabase gen types typescript --local --schema public > types/database.types.ts
+```
+
 Finally once you've confirmed everything is working as expected, you can push the changes to the remote database with:
 
 ```bash

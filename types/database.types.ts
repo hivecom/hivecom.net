@@ -11,34 +11,31 @@ export interface Database {
     Tables: {
       containers: {
         Row: {
-          addresses: string[] | null
           created_at: string
           healthy: boolean
           name: string
           reported_at: string
           running: boolean
           server: number | null
-          uptime: number | null
+          started_at: string | null
         }
         Insert: {
-          addresses?: string[] | null
           created_at?: string
           healthy: boolean
           name: string
           reported_at: string
           running: boolean
           server?: number | null
-          uptime?: number | null
+          started_at?: string | null
         }
         Update: {
-          addresses?: string[] | null
           created_at?: string
           healthy?: boolean
           name?: string
           reported_at?: string
           running?: boolean
           server?: number | null
-          uptime?: number | null
+          started_at?: string | null
         }
         Relationships: [
           {
@@ -381,18 +378,30 @@ export interface Database {
           active: boolean
           address: string
           created_at: string
+          docker_control: boolean
+          docker_control_port: number | null
+          docker_control_secure: boolean
+          docker_control_subdomain: string | null
           id: number
         }
         Insert: {
           active: boolean
           address: string
           created_at?: string
+          docker_control?: boolean
+          docker_control_port?: number | null
+          docker_control_secure?: boolean
+          docker_control_subdomain?: string | null
           id?: number
         }
         Update: {
           active?: boolean
           address?: string
           created_at?: string
+          docker_control?: boolean
+          docker_control_port?: number | null
+          docker_control_secure?: boolean
+          docker_control_subdomain?: string | null
           id?: number
         }
         Relationships: []

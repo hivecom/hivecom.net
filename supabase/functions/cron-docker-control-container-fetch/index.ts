@@ -3,13 +3,15 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeSystemCron } from "../_shared/auth.ts";
 import { Database, Tables } from "database-types";
 
-interface DockerControlResponse {
-  containers: {
-    name: string;
-    running: boolean;
-    healthy: boolean;
-  }[];
+interface DockerControlContainer {
+  id: string;
+  name: string;
+  health: string;
+  status: string;
+  startTimestamp: number;
 }
+
+type DockerControlResponse = DockerControlContainer[];
 
 Deno.serve(async (req: Request) => {
   // Skip CORS preflight check for OPTIONS requests as this should not originate from a browser.
@@ -22,8 +24,7 @@ Deno.serve(async (req: Request) => {
       return authorizeResponse;
     }
 
-    // Get the Docker Control port and token from environment variables
-    const DOCKER_CONTROL_PORT = Deno.env.get("DOCKER_CONTROL_PORT") ?? "8080";
+    // Get the Docker Control token from environment variables
     const DOCKER_CONTROL_TOKEN = Deno.env.get("DOCKER_CONTROL_TOKEN");
 
     if (!DOCKER_CONTROL_TOKEN) {
@@ -37,11 +38,12 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    // Fetch all active servers from the database
+    // Fetch all active servers with docker control enabled from the database
     const { data: servers, error: serversError } = (await supabaseClient
       .from("servers")
       .select("*")
-      .eq("active", true)) as {
+      .eq("active", true)
+      .eq("docker_control", true)) as {
         data: Tables<"servers">[];
         error: Error | null;
       };
@@ -51,10 +53,13 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!servers || servers.length === 0) {
-      console.log("No active servers found");
+      console.log("No active servers with Docker Control enabled found");
 
       return new Response(
-        JSON.stringify({ success: true, message: "No active servers found" }),
+        JSON.stringify({
+          success: true,
+          message: "No active servers with Docker Control enabled found"
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -65,9 +70,7 @@ Deno.serve(async (req: Request) => {
         try {
           console.log(`Processing server ${server.address}...`);
 
-          // Construct the Docker Control URL
-          const dockerControlUrl =
-            `https://${server.address}:${DOCKER_CONTROL_PORT}/containers`;
+          const dockerControlUrl = `${server.docker_control_secure ? 'https' : 'http'}://${server.docker_control_subdomain ? `${server.docker_control_subdomain}.` : ''}${server.address}${server.docker_control_port ? `:${server.docker_control_port.toString()}` : ''}/status`;
 
           // Make a request to the Docker Control service
           const response = await fetch(dockerControlUrl, {
@@ -86,21 +89,27 @@ Deno.serve(async (req: Request) => {
           }
 
           // Parse the response JSON
-          const data = (await response.json()) as DockerControlResponse;
+          const containers = await response.json() as DockerControlResponse;
 
           // Current timestamp for reporting
           const now = new Date().toISOString();
 
-          // Process each container and upsert to the gameserver_containers table
+          // Process each container and upsert to the containers table
           const containerUpserts = await Promise.all(
-            data.containers.map(async (container) => {
+            containers.map(async (container) => {
+              // Determine running and healthy state from the health and status fields
+              const running = container.health === "running";
+              // Check if the status contains "healthy" text
+              const healthy = container.status.includes("healthy");
+
               const { error } = await supabaseClient
-                .from("gameserver_containers")
+                .from("containers")
                 .upsert({
                   name: container.name,
-                  running: container.running,
-                  healthy: container.healthy,
+                  running: running,
+                  healthy: healthy,
                   reported_at: now,
+                  started_at: new Date(container.startTimestamp).toISOString(),
                   server: server.id,
                 });
 

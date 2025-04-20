@@ -44,18 +44,17 @@ INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'CS2', 730);
 
 -- Insert a test server
-INSERT INTO public.servers(active, address, created_at)
-  VALUES (TRUE, 'server.hivecom.net', NOW());
+INSERT INTO public.servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port)
+  VALUES (TRUE, 'host.docker.internal', NOW(), TRUE, FALSE, 54320);
 
--- Insert a test gameserver_container
-INSERT INTO public.containers(created_at, healthy, name, reported_at, running, server, uptime)
+-- Insert a test container for our gameserver
+INSERT INTO public.containers(created_at, healthy, name, reported_at, running, server, started_at)
   VALUES (NOW(), TRUE, 'gameserver-cs2', NOW(), TRUE, 1, -- References the server ID we just created
-    3600 -- 1 hour uptime
+    NOW() - INTERVAL '1 hour' -- Set started_at to 1 hour ago
 );
 
 -- Insert a test gameserver
-INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, container)
+INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, container, markdown)
   VALUES (ARRAY['cs2.gameserver.hivecom.net', 'cs2.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community CS2 server for casual play', 1, -- References the game ID we just created
-    'Hivecom CS2 Community Server', '27015', 'eu', 'gameserver-cs2' -- References the container name we just created
-);
+    'Hivecom CS2 Community Server', '27015', 'eu', 'gameserver-cs2', '# CS 2\nThis is our community server for casual play.');
 
