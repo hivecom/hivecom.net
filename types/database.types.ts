@@ -164,7 +164,7 @@ export interface Database {
           admininstrator: string | null
           container: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           description: string | null
           game: number | null
           id: number
@@ -180,7 +180,7 @@ export interface Database {
           admininstrator?: string | null
           container?: string | null
           created_at?: string
-          created_by: string
+          created_by?: string | null
           description?: string | null
           game?: number | null
           id?: number
@@ -196,7 +196,7 @@ export interface Database {
           admininstrator?: string | null
           container?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           description?: string | null
           game?: number | null
           id?: number
