@@ -4,6 +4,6 @@
 
 <template>
   <div>
-    <h3>Dashboard</h3>
+    <h3>Referendums</h3>
   </div>
 </template>

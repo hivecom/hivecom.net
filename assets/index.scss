@@ -59,6 +59,13 @@ button {
   line-height: 1.4em;
 }
 
+.vui-dropdown-item.selected {
+  .vui-dropdown-item-icon svg path,
+  .vui-dropdown-item-slot {
+    color: var(--color-accent);
+  }
+}
+
 @include meta.load-css('./utilities.scss');
 
 @include meta.load-css('./elements/auth.scss');
