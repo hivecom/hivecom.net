@@ -1,3 +1,5 @@
+
+import * as constants from "app-constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeSystemCron } from "../_shared/auth.ts";
@@ -14,9 +16,9 @@ Deno.serve(async (req: Request) => {
       return authorizeResponse;
     }
 
+    const PATREON_ACCESS_TOKEN = Deno.env.get("PATREON_ACCESS_TOKEN");
     const PATREON_CAMPAIGN_ID = Deno.env.get("PATREON_CAMPAIGN_ID");
     const PATREON_CAMPAIGN_SUPPORTER_TIER_ID = Deno.env.get("PATREON_CAMPAIGN_SUPPORTER_TIER_ID");
-    const PATREON_ACCESS_TOKEN = Deno.env.get("PATREON_ACCESS_TOKEN");
 
     if (!PATREON_ACCESS_TOKEN) {
       throw new Error("PATREON_ACCESS_TOKEN environment variable is not set");
@@ -190,7 +192,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Internal server error - please email contact@hivecom.net or visit #staff on irc.hivecom.net for support",
+        error: constants.default.API_ERROR,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

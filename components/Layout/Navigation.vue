@@ -29,7 +29,7 @@ onMounted(async () => {
     .eq('id', user.value.id)
     .single()
 
-  nickname.value = requestProfile.data?.nickname || ''
+  nickname.value = requestProfile.data?.username || ''
 })
 </script>
 

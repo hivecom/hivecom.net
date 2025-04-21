@@ -16,6 +16,11 @@ Deno.serve(async (req) => {
     }
   } catch (error) {
     console.error("Error parsing request body:", error);
+
+    return new Response(
+      JSON.stringify({ error: "Invalid JSON" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 
   const data = {

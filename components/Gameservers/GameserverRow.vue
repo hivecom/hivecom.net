@@ -7,7 +7,7 @@ import { capitalize } from 'vue'
 const props = defineProps<{
   game: Tables<'games'>
   gameserver: Tables<'gameservers'>
-  container: Tables<'gameserver_containers'>
+  container: Tables<'containers'>
 }>()
 
 const expanded = ref(false)

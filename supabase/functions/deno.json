@@ -2,6 +2,7 @@
   "workspace": [
     "./cron-docker-control-container-fetch",
     "./cron-patreon-fetch",
+    "./oauth-patreon",
     "./ping",
     "./userinfo"
   ]

@@ -1,4 +1,5 @@
 {
+  "API_ERROR": "Internal server error - please email contact@hivecom.net or visit #staff on irc.hivecom.net for support",
   "EMAIL": {
     "SUPPORT": "contact@hivecom.net"
   },

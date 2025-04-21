@@ -109,6 +109,11 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
+      "oauth-patreon": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
       "userinfo": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"

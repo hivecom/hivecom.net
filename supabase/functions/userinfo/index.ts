@@ -1,3 +1,4 @@
+import * as constants from "app-constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -42,11 +43,12 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error
-      ? error.message
-      : "Unknown error occurred";
-    return new Response(JSON.stringify({ error: errorMessage }), {
+  } catch (_) {
+    return new Response(JSON.stringify(
+      {
+        success: false,
+        error: constants.default.API_ERROR
+      }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
     });

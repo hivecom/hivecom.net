@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-
-import { Card } from '@dolanske/vui'
+import { Button, Card, Flex } from '@dolanske/vui'
+import ConnectPatreon from '~/components/Profile/ConnectPatreon.vue'
+import ErrorAlert from '~/components/Shared/ErrorAlert.vue'
 
 const user = useSupabaseUser()
-const profile = ref <Tables<'profiles'>>()
+const profile = ref<Tables<'profiles'>>()
 
 const supabase = useSupabaseClient()
 
@@ -36,19 +37,63 @@ onMounted(async () => {
 </script>
 
 <template>
-  <h1>Profile</h1>
+  <div class="page">
+    <div v-if="errorMessage" class="error-container">
+      <ErrorAlert :message="errorMessage" />
+    </div>
 
-  <Card>
-    <template #header>
-      <h5>Profile</h5>
-    </template>
-    <pre>{{ profile || "Looks like you don't have a profile yet!" }}</pre>
-  </Card>
+    <div v-else-if="loading" class="loading-container">
+      <Loading size="lg" />
+    </div>
 
-  <Card>
-    <template #header>
-      <h5>{{ user?.email }}</h5>
-    </template>
-    <pre>{{ user }}</pre>
-  </Card>
+    <div v-if="!profile" class="error-container">
+      <ErrorAlert message="No profile found." />
+    </div>
+
+    <Flex v-else column gap="s">
+      <h1>{{ profile.username }}</h1>
+      <Flex class="w-100" gap="s">
+        <Card class="w-100">
+          <template #header>
+            <h2>
+              {{ profile.title }}
+            </h2>
+          </template>
+          <h5>{{ profile.subtitle }}</h5>
+        </Card>
+
+        <Card class="w-full">
+          <template #header>
+            <h5>Connected Accounts</h5>
+          </template>
+          <Flex column gap="s">
+            <div>
+              <Flex column gap="s">
+                <strong>Patreon</strong>
+                <div v-if="profile.patreon_id" class="connected">
+                  <span class="status-connected">Connected</span>
+                  <div class="patreon-id">
+                    ID: {{ profile.patreon_id }}
+                  </div>
+                </div>
+                <div>
+                  <ConnectPatreon v-if="!profile.patreon_id" />
+                  <span v-else class="status-not-connected">Not connected</span>
+                </div>
+              </Flex>
+            </div>
+          </Flex>
+        </Card>
+      </Flex>
+    </Flex>
+  </div>
 </template>
+
+<style scoped>
+.error-container,
+.loading-container {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+</style>
