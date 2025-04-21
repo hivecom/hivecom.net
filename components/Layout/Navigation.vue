@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Avatar, Button, Dropdown, DropdownItem, DropdownTitle, Sheet } from '@dolanske/vui'
+import { Avatar, Button, Dropdown, DropdownItem, DropdownTitle, Flex, Sheet } from '@dolanske/vui'
 
 const supabase = useSupabaseClient()
 
@@ -72,15 +72,15 @@ onMounted(async () => {
       </ul>
 
       <!-- Mobile menu -->
-      <Sheet v-model="mobileMenuOpen" position="left" separator>
-        <template #header>
-          <div class="flex x-between" style="padding-top:3px">
-            <Button square @click="mobileMenuOpen = false">
+      <Sheet :open="mobileMenuOpen" position="left" separator @close="mobileMenuOpen = false">
+        <template #header="{ close }">
+          <Flex x-between style="padding-top:3px">
+            <Button square @click="close">
               <Icon name="ph:x" />
             </Button>
             <SharedLogo />
             <span />
-          </div>
+          </Flex>
         </template>
         <template #header-end />
         <div class="nav-mobile-menu">

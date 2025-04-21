@@ -98,7 +98,7 @@ function resetForm() {
           </li>
         </ol>
 
-        <Flex justify-center>
+        <Flex x-center>
           <Button @click="choices.push('')">
             Add choice
           </Button>
@@ -110,7 +110,7 @@ function resetForm() {
       <Divider size="32" />
     </ClientOnly>
 
-    <Flex justify-end gap="s">
+    <Flex x-end gap="s">
       <Button @click="resetForm">
         Reset
       </Button>

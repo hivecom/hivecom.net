@@ -8,8 +8,8 @@ const fundingUsers = ['dolanske', 'Zealsprince', 'Felix', 'Yuki', 'Jokler', 'Joe
 
 <template>
   <Card>
-    <Flex align-center space-between class="mb-s">
-      <Flex align-center>
+    <Flex y-center x-between class="mb-s">
+      <Flex y-center>
         <strong class="block text-bold text-l">Funding</strong>
         <Button size="s" outline>
           Learn more
@@ -26,7 +26,7 @@ const fundingUsers = ['dolanske', 'Zealsprince', 'Felix', 'Yuki', 'Jokler', 'Joe
     </Flex>
     <Progress class="mb-s" :height="8" :model-value="funding" />
 
-    <Flex align-center justify-end gap="xs">
+    <Flex y-center x-end gap="xs">
       <Badge v-for="user in fundingUsers.slice(0, fundingUserCut)" :key="user" variant="accent">
         <Icon name="ph:user-circle" size="1.6rem" />
         {{ user }}

@@ -29,7 +29,7 @@ const errorMessage = ref('')
 const games = ref<Tables<'games'>[]>()
 const gameservers = ref<gameserversType>()
 
-onMounted(async () => {
+onBeforeMount(async () => {
   // Make our requests at the same time.
   const requests = [
     supabase.from('games').select('*'),
@@ -103,6 +103,10 @@ function clearFilters() {
   selectedGames.value = undefined
   search.value = ''
 }
+
+function getServersByGameId(gameId: number) {
+  return gameservers.value?.filter(gameserver => gameserver.game === gameId) ?? []
+}
 </script>
 
 <template>
@@ -135,7 +139,7 @@ function clearFilters() {
         <!-- Content -->
         <template v-if="games && gameservers && games.length !== 0 && gameservers.length !== 0">
           <!-- Inputs -->
-          <div class="flex g-s x-start mb-l">
+          <Flex gap="s" x-start class="mb-l">
             <Input v-model="search" placeholder="Search servers">
               <template #start>
                 <Icon name="ph:magnifying-glass" />
@@ -145,25 +149,25 @@ function clearFilters() {
             <Button v-if="selectedGames || search" plain outline @click="clearFilters">
               Clear
             </Button>
-          </div>
+          </Flex>
 
           <template v-for="game in filteredGames" :key="game.id">
             <Card v-if="filteredGameservers.length > 0">
-              <h3 class="flex g-m y-center mb-s">
-                {{ game.name }}
-                <div class="counter">
-                  {{ filteredGameservers.length }}
-                </div>
+              <h3 class="mb-s">
+                <Flex gap="m" y-center>
+                  {{ game.name }}
+                  <div class="counter">
+                    {{ filteredGameservers.length }}
+                  </div>
+                </Flex>
               </h3>
               <Flex column class="w-100">
-                <template v-for="gameserver in gameservers?.filter(gameserver => gameserver.game === game.id)" :key="gameserver.id">
-                  <GameserverRow
-                    :container="gameserver.container as Tables<'gameserver_containers'>"
-                    :gameserver="gameserver as Tables<'gameservers'>"
-                    spacer-because-this-fixes-my-syntax-highlighting-issue
-                    :game="game"
-                  />
-                </template>
+                <GameserverRow
+                  v-for="gameserver in getServersByGameId(game.id)" :key="gameserver.id"
+                  :gameserver="(gameserversQuery as any)"
+                  :container="(gameserver.container as any)"
+                  :game
+                />
               </Flex>
             </Card>
           </template>

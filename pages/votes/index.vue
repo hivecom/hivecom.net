@@ -14,7 +14,7 @@ const search = ref('')
 
 <template>
   <div class="route-votes">
-    <Flex align-center gap="l" class="mb-l">
+    <Flex y-center gap="l" class="mb-l">
       <h1>Votes</h1>
       <NuxtLink to="/votes/create">
         <Button variant="accent">
@@ -33,7 +33,7 @@ const search = ref('')
       <Tab id="Concluded" label="Concluded" />
     </Tabs>
 
-    <Flex space-between align-center class="mb-l">
+    <Flex x-between y-center class="mb-l">
       <Input v-model="search" placeholder="Search items..." type="search">
         <template #start>
           <Icon name="ph:magnifying-glass" />

@@ -7,7 +7,7 @@ import { capitalize } from 'vue'
 const props = defineProps<{
   game: Tables<'games'>
   gameserver: Tables<'gameservers'>
-  container: Tables<'containers'>
+  container: Tables<'containers'> | null
 }>()
 
 const expanded = ref(false)
@@ -30,8 +30,8 @@ const state = computed(() => {
 
 <template>
   <div class="gameserver-row">
-    <Flex align-center row space-between gap="s" :class="`gameserver-row-header ${expanded ? 'expanded' : ''}`">
-      <Flex align-center row gap="s">
+    <Flex y-center row x-between gap="s" :class="`gameserver-row-header ${expanded ? 'expanded' : ''}`">
+      <Flex y-center row gap="s">
         <Button :icon="expanded ? `ph:caret-down` : `ph:caret-right`" square variant="gray" size="s" @click="expanded = !expanded" />
         <Tooltip placement="top">
           <template #tooltip>
@@ -53,7 +53,7 @@ const state = computed(() => {
         <Dropdown v-else>
           <template #trigger="{ toggle }">
             <Button size="s" variant="gray" @click="toggle">
-              <Flex align-center gap="xs">
+              <Flex y-center gap="xs">
                 Join
                 <Icon name="ph:caret-down" size="s" />
               </Flex>

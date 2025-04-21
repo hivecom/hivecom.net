@@ -6,6 +6,8 @@ withDefaults(defineProps<{
   title: 'title',
   description: 'description',
 })
+// NOTE(jan): Where can I see how this lookst/test it? This looks copied over
+// from somewhere and contains tailwind classes
 </script>
 
 <template>

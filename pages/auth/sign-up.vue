@@ -30,7 +30,7 @@ async function signInWithOtp() {
       <h4>Sign up</h4>
     </template>
     <div class="container container-xs">
-      <Flex justify-center align-center column :style="{ paddingBlock: '64px' }" gap="l">
+      <Flex x-center y-center column :style="{ paddingBlock: '64px' }" gap="l">
         <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
         <Button variant="fill" :disabled="!email" @click="signInWithOtp">
           Sign up

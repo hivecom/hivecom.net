@@ -19,7 +19,7 @@ const props = defineProps({
   <Alert
     variant="danger" filled
   >
-    <Flex align-center space-between>
+    <Flex y-center x-between>
       <p>{{ props.message }}</p>
       <NuxtLink
         :to="`mailto:${constants.EMAIL.SUPPORT}`"

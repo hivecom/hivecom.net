@@ -18,11 +18,6 @@ const communityStats = ref({
 
 // Convert platforms object to array for easier v-for iteration
 const platforms = ref(Object.values(constants.PLATFORMS))
-
-// Function to open URLs safely
-function openUrl(url: string) {
-  navigateTo(url, { external: true })
-}
 </script>
 
 <template>
@@ -143,16 +138,10 @@ function openUrl(url: string) {
               </Button>
             </a>
             <!-- Multiple URLs: Dropdown menu -->
-            <Dropdown
-              v-else
-              :items="platform.urls.map(url => ({
-                label: url.title,
-                click: () => openUrl(url.url),
-              }))"
-            >
+            <Dropdown v-else>
               <template #trigger="{ toggle }">
                 <Button @click="toggle">
-                  <Flex row align-center gap="xs">
+                  <Flex row y-center gap="xs">
                     {{ platform.action }}
                     <Icon name="ph:caret-down" />
                   </Flex>
