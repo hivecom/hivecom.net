@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Button, Card, Flex } from '@dolanske/vui'
+import { Card, Flex } from '@dolanske/vui'
 import ConnectPatreon from '~/components/Profile/ConnectPatreon.vue'
 import ErrorAlert from '~/components/Shared/ErrorAlert.vue'
 
