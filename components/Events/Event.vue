@@ -18,7 +18,7 @@ const countdown = ref({
   seconds: 0,
 })
 
-useIntervalFn(() => {
+function updateTime() {
   const now = new Date()
   const eventDate = new Date(props.data.date)
   const diff = eventDate.getTime() - now.getTime()
@@ -45,7 +45,10 @@ useIntervalFn(() => {
     minutes,
     seconds,
   }
-}, 1000, { immediate: true })
+}
+
+useIntervalFn(updateTime, 1000, { immediate: true })
+updateTime()
 </script>
 
 <template>
