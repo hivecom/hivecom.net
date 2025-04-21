@@ -19,7 +19,10 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ error: "Invalid JSON" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 

@@ -1,9 +1,70 @@
-
 import * as constants from "app-constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeSystemCron } from "../_shared/auth.ts";
 import { Database } from "database-types";
+
+// Define interfaces for Patreon API response types
+interface PatreonTier {
+  id: string;
+  type: string;
+}
+
+interface PatreonUserData {
+  id: string;
+  type: string;
+}
+
+interface PatreonRelationships {
+  currently_entitled_tiers: {
+    data: PatreonTier[];
+  };
+  user: {
+    data: PatreonUserData;
+    links: {
+      related: string;
+    };
+  };
+}
+
+interface PatreonMemberAttributes {
+  campaign_lifetime_support_cents: number;
+  currently_entitled_amount_cents: number;
+  full_name: string;
+  is_free_trial: boolean;
+  is_gifted: boolean;
+  last_charge_date: string;
+  last_charge_status: string;
+  note: string;
+  patron_status: string;
+  will_pay_amount_cents: number;
+}
+
+interface PatreonMember {
+  id: string;
+  type: string;
+  attributes: PatreonMemberAttributes;
+  relationships: PatreonRelationships;
+}
+
+interface PatreonIncluded {
+  id: string;
+  type: string;
+  attributes: Record<string, unknown>;
+}
+
+interface PatreonResponse {
+  data: PatreonMember[];
+  included?: PatreonIncluded[];
+  meta?: {
+    pagination: {
+      cursors: {
+        next: string | null;
+      };
+      total: number;
+    };
+  };
+}
 
 Deno.serve(async (req: Request) => {
   // Skip CORS preflight check for OPTIONS requests as this should not originate from a browser.
@@ -18,7 +79,9 @@ Deno.serve(async (req: Request) => {
 
     const PATREON_ACCESS_TOKEN = Deno.env.get("PATREON_ACCESS_TOKEN");
     const PATREON_CAMPAIGN_ID = Deno.env.get("PATREON_CAMPAIGN_ID");
-    const PATREON_CAMPAIGN_SUPPORTER_TIER_ID = Deno.env.get("PATREON_CAMPAIGN_SUPPORTER_TIER_ID");
+    const PATREON_CAMPAIGN_SUPPORTER_TIER_ID = Deno.env.get(
+      "PATREON_CAMPAIGN_SUPPORTER_TIER_ID",
+    );
 
     if (!PATREON_ACCESS_TOKEN) {
       throw new Error("PATREON_ACCESS_TOKEN environment variable is not set");
@@ -29,7 +92,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!PATREON_CAMPAIGN_SUPPORTER_TIER_ID) {
-      throw new Error("PATREON_CAMPAIGN_SUPPORTER_TIER_ID environment variable is not set");
+      throw new Error(
+        "PATREON_CAMPAIGN_SUPPORTER_TIER_ID environment variable is not set",
+      );
     }
 
     // Create a Supabase client with the service role key (full admin access)
@@ -41,7 +106,8 @@ Deno.serve(async (req: Request) => {
 
     // Fetch the latest Patreon contribution records for our campaign.
     // Using currently_entitled_amount_cents since it represents the amount the patron is entitled to in the campaign's currency (Euro)
-    const patreonUrl = `https://patreon.com/api/oauth2/v2/campaigns/${PATREON_CAMPAIGN_ID}/members?fields%5Bmember%5D=full_name,campaign_lifetime_support_cents,currently_entitled_amount_cents,last_charge_date,last_charge_status,patron_status,note,is_free_trial,is_gifted,will_pay_amount_cents&include=currently_entitled_tiers`;
+    const patreonUrl =
+      `https://patreon.com/api/oauth2/v2/campaigns/${PATREON_CAMPAIGN_ID}/members?fields%5Bmember%5D=full_name,campaign_lifetime_support_cents,currently_entitled_amount_cents,last_charge_date,last_charge_status,patron_status,note,is_free_trial,is_gifted,will_pay_amount_cents&include=currently_entitled_tiers,user`;
 
     console.log("Fetching Patreon data from:", patreonUrl);
 
@@ -53,10 +119,13 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!patreonResponse.ok) {
-      throw new Error(`Patreon API returned ${patreonResponse.status}: ${await patreonResponse.text()}`);
+      throw new Error(
+        `Patreon API returned ${patreonResponse.status}: ${await patreonResponse
+          .text()}`,
+      );
     }
 
-    const patreonData = await patreonResponse.json();
+    const patreonData = await patreonResponse.json() as PatreonResponse;
 
     // Parse the patreon data to get member information
     const members = patreonData.data || [];
@@ -75,31 +144,40 @@ Deno.serve(async (req: Request) => {
     for (const member of members) {
       // Track lifetime total from all members regardless of status
       if (member.attributes.campaign_lifetime_support_cents) {
-        lifetimePatreonCents += member.attributes.campaign_lifetime_support_cents;
+        lifetimePatreonCents +=
+          member.attributes.campaign_lifetime_support_cents;
       }
 
       // Only include active patrons in the monthly totals
-      if (member.attributes.patron_status === "active_patron" &&
-          member.attributes.last_charge_status === "Paid") {
-
+      if (
+        member.attributes.patron_status === "active_patron" &&
+        member.attributes.last_charge_status === "Paid"
+      ) {
         // Add to monthly total keeping the value in cents
-        const patronAmountCents = member.attributes.currently_entitled_amount_cents;
+        const patronAmountCents =
+          member.attributes.currently_entitled_amount_cents;
         monthlyPatreonCents += patronAmountCents;
 
-        console.log(`Patron ${member.id}: €${patronAmountCents / 100} (${patronAmountCents} cents)`);
+        console.log(
+          `Patron ${member.id}: €${
+            patronAmountCents / 100
+          } (${patronAmountCents} cents)`,
+        );
 
-        // Track this active patron's ID
-        const patronId = member.id;
-        activePatronIds.push(patronId);
+        // Get the actual Patreon user ID from the user relationship (not the member ID)
+        const patreonUserId = member.relationships.user.data.id;
+        activePatronIds.push(patreonUserId);
 
         // Check if this patron is entitled to the supporter tier
-        const entitledTiers = member.relationships?.currently_entitled_tiers?.data || [];
+        const entitledTiers =
+          member.relationships?.currently_entitled_tiers?.data || [];
         const isSupporterTier = entitledTiers.some(
-          (tier: { id: string }) => tier.id === PATREON_CAMPAIGN_SUPPORTER_TIER_ID
+          (tier: { id: string }) =>
+            tier.id === PATREON_CAMPAIGN_SUPPORTER_TIER_ID,
         );
 
         if (isSupporterTier) {
-          supporterPatronIds.push(patronId);
+          supporterPatronIds.push(patreonUserId);
         }
       }
     }
@@ -108,16 +186,30 @@ Deno.serve(async (req: Request) => {
     const monthlyPatreonTotal = Math.round(monthlyPatreonCents);
     const lifetimePatreonTotal = Math.round(lifetimePatreonCents);
 
-    console.log(`Active patrons: ${activePatronIds.length}, Supporters: ${supporterPatronIds.length}`);
-    console.log(`Monthly Patreon total: ${monthlyPatreonTotal} cents (€${monthlyPatreonTotal / 100})`);
-    console.log(`Lifetime Patreon total: ${lifetimePatreonTotal} cents (€${lifetimePatreonTotal / 100})`);
+    console.log(
+      `Active patrons: ${activePatronIds.length}, Supporters: ${supporterPatronIds.length}`,
+    );
+    console.log(
+      `Monthly Patreon total: ${monthlyPatreonTotal} cents (€${
+        monthlyPatreonTotal / 100
+      })`,
+    );
+    console.log(
+      `Lifetime Patreon total: ${lifetimePatreonTotal} cents (€${
+        lifetimePatreonTotal / 100
+      })`,
+    );
 
     // Get the current month in YYYY-MM-DD format for the monthly funding record
     // Using the first day of the month as the date
     const now = new Date();
-    const currentMonthDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const currentMonthDate = `${now.getFullYear()}-${
+      String(now.getMonth() + 1).padStart(2, "0")
+    }-01`;
 
-    console.log(`Updating monthly funding record for date: ${currentMonthDate}`);
+    console.log(
+      `Updating monthly funding record for date: ${currentMonthDate}`,
+    );
 
     // Upsert the monthly funding record for this month based on the Patreon data
     // Using the new column structure as per the DB schema changes
@@ -134,7 +226,9 @@ Deno.serve(async (req: Request) => {
 
     if (upsertError) {
       console.error("Error upserting monthly funding:", upsertError);
-      throw new Error(`Failed to update monthly funding record: ${upsertError.message}`);
+      throw new Error(
+        `Failed to update monthly funding record: ${upsertError.message}`,
+      );
     }
 
     // Update supporter status for all profiles with patreon_id
@@ -146,21 +240,26 @@ Deno.serve(async (req: Request) => {
 
     if (resetError) {
       console.error("Error resetting supporter status:", resetError);
-      throw new Error(`Failed to reset supporter status: ${resetError.message}`);
+      throw new Error(
+        `Failed to reset supporter status: ${resetError.message}`,
+      );
     }
 
     // Then, set supporter_patreon to true for users with matching patreon_id in the supporter tier
     let supporterUpdateResult = null;
     if (supporterPatronIds.length > 0) {
-      const { data: updatedProfiles, error: supporterError } = await supabaseClient
-        .from("profiles")
-        .update({ supporter_patreon: true })
-        .in("patreon_id", supporterPatronIds)
-        .select("id, username, patreon_id");
+      const { data: updatedProfiles, error: supporterError } =
+        await supabaseClient
+          .from("profiles")
+          .update({ supporter_patreon: true })
+          .in("patreon_id", supporterPatronIds)
+          .select("id, username, patreon_id");
 
       if (supporterError) {
         console.error("Error updating supporter profiles:", supporterError);
-        throw new Error(`Failed to update supporter profiles: ${supporterError.message}`);
+        throw new Error(
+          `Failed to update supporter profiles: ${supporterError.message}`,
+        );
       }
 
       supporterUpdateResult = updatedProfiles;

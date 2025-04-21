@@ -44,13 +44,17 @@ Deno.serve(async (req: Request) => {
       status: 200,
     });
   } catch (_) {
-    return new Response(JSON.stringify(
+    return new Response(
+      JSON.stringify(
+        {
+          success: false,
+          error: constants.default.API_ERROR,
+        },
+      ),
       {
-        success: false,
-        error: constants.default.API_ERROR
-      }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
-    });
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      },
+    );
   }
 });

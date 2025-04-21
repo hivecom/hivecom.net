@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: "No active servers with Docker Control enabled found"
+          message: "No active servers with Docker Control enabled found",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -70,7 +70,17 @@ Deno.serve(async (req: Request) => {
         try {
           console.log(`Processing server ${server.address}...`);
 
-          const dockerControlUrl = `${server.docker_control_secure ? 'https' : 'http'}://${server.docker_control_subdomain ? `${server.docker_control_subdomain}.` : ''}${server.address}${server.docker_control_port ? `:${server.docker_control_port.toString()}` : ''}/status`;
+          const dockerControlUrl = `${
+            server.docker_control_secure ? "https" : "http"
+          }://${
+            server.docker_control_subdomain
+              ? `${server.docker_control_subdomain}.`
+              : ""
+          }${server.address}${
+            server.docker_control_port
+              ? `:${server.docker_control_port.toString()}`
+              : ""
+          }/status`;
 
           // Make a request to the Docker Control service
           const response = await fetch(dockerControlUrl, {
@@ -156,7 +166,8 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Internal server error - please email contact@hivecom.net or visit #staff on irc.hivecom.net for support",
+        error:
+          "Internal server error - please email contact@hivecom.net or visit #staff on irc.hivecom.net for support",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
