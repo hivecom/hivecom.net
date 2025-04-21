@@ -4,16 +4,6 @@ main {
   align-items: center;
   justify-content: center;
 
-  // Align the main content to the center of the page
-  margin-left: auto;
-  margin-right: auto;
-
-  // Limit the width of the main content
-  max-width: var(--container-l);
-
-  // Pad the top for the fixed nav
-  padding: 64px var(--space-s) 0 var(--space-s);
-
   // Make sure the main content is at least the height of the viewport minus the top offset for fixed nav
   // NOTE: I have no clue where the additional 6 pixels are coming from, but the offset will remove
   // scrollbar on pages which don't need to be more than 100vh tall

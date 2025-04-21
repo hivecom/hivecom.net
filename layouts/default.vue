@@ -8,9 +8,11 @@ defineOgImageComponent('Default', {
 <template>
   <LayoutNavigation />
 
-  <main>
-    <slot />
-  </main>
+  <div class="container container-l">
+    <main>
+      <slot />
+    </main>
+  </div>
 
   <LayoutFooter />
 </template>

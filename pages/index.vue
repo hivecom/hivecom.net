@@ -205,8 +205,6 @@ const platforms = ref(Object.values(constants.PLATFORMS))
 
 section {
   width: 100%;
-  margin: 0 auto;
-  padding: 0 1rem;
   margin-bottom: 6rem;
 }
 
@@ -377,6 +375,7 @@ h4 {
   }
 
   .section-join-container {
+    max-width: 900px;
     margin: 2rem auto 0;
   }
 
@@ -427,14 +426,15 @@ h4 {
   .events-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 1.5rem;
+    gap: var(--space-m);
     margin-top: 2rem;
+    margin: 2rem auto 0;
+    max-width: 900px;
     justify-content: center; /* Added to center the list */
+  }
 
-    .vui-card {
-      width: 24%;
-      flex: 0 1 auto;
-    }
+  .vui-card {
+    width: calc(100% / 3 - calc(var(--space-m) * 2) / 3);
   }
 
   .event-details {

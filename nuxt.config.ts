@@ -68,6 +68,10 @@ export default defineNuxtConfig({
         '/gameservers/*',
         '/projects',
         '/projects/*',
+
+        // TODO: remove later, this is only for scaffolding
+        '/admin',
+        '/admin/*',
       ],
       cookieRedirect: false,
     },

@@ -35,123 +35,125 @@ onMounted(async () => {
 
 <template>
   <nav>
-    <div class="nav-items">
-      <Button class="nav-hamburger" icon="ph:list" @click="toggleMobileMenu" />
+    <div class="container container-l">
+      <div class="nav-items">
+        <Button class="nav-hamburger" icon="ph:list" @click="toggleMobileMenu" />
 
-      <SharedLogo class="nav-logo" />
+        <SharedLogo class="nav-logo" />
 
-      <ul class="nav-links">
-        <li>
-          <NuxtLink to="/">
-            Home
-          </NuxtLink>
-        </li>
-        <li>
-          <NuxtLink to="/community">
-            Community
-          </NuxtLink>
-        </li>
-        <li>
-          <NuxtLink to="/events">
-            Events
-          </NuxtLink>
-        </li>
-        <li>
-          <NuxtLink to="/gameservers">
-            Gameservers
-          </NuxtLink>
-        </li>
-        <template v-if="user">
-          <span class="nav-links-separator" />
+        <ul class="nav-links">
           <li>
-            <NuxtLink to="/votes">
-              Votes
+            <NuxtLink to="/">
+              Home
             </NuxtLink>
           </li>
-        </template>
-      </ul>
-
-      <!-- Mobile menu -->
-      <Sheet :open="mobileMenuOpen" position="left" separator @close="mobileMenuOpen = false">
-        <template #header="{ close }">
-          <Flex x-between style="padding-top:3px">
-            <Button square @click="close">
-              <Icon name="ph:x" />
-            </Button>
-            <SharedLogo />
-            <span />
-          </Flex>
-        </template>
-        <template #header-end />
-        <div class="nav-mobile-menu">
-          <NuxtLink to="/" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
-            <Icon name="ph:house" />
-            <span>Home</span>
-          </NuxtLink>
-          <NuxtLink to="/community" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
-            <Icon name="ph:users" />
-            <span>Community</span>
-          </NuxtLink>
-          <NuxtLink to="/events" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
-            <Icon name="ph:calendar" />
-            <span>Events</span>
-          </NuxtLink>
-          <NuxtLink to="/gameservers" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
-            <Icon name="ph:game-controller" />
-            <span>Gameservers</span>
-          </NuxtLink>
+          <li>
+            <NuxtLink to="/community">
+              Community
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/events">
+              Events
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/gameservers">
+              Gameservers
+            </NuxtLink>
+          </li>
           <template v-if="user">
-            <span class="nav-mobile-menu-separator" />
-            <NuxtLink to="/votes" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:check-square" />
-              <span>Votes</span>
-            </NuxtLink>
+            <span class="nav-links-separator" />
+            <li>
+              <NuxtLink to="/votes">
+                Votes
+              </NuxtLink>
+            </li>
           </template>
-        </div>
-      </Sheet>
+        </ul>
 
-      <!-- User dropdown on right side -->
-      <div v-if="user" class="nav-user">
-        <Dropdown>
-          <template #trigger="{ toggle }">
-            <button @click="toggle">
-              <Avatar src="https://i.imgur.com/65aJ4oG.png" width="32" height="32" alt="Username" />
-            </button>
+        <!-- Mobile menu -->
+        <Sheet :open="mobileMenuOpen" position="left" separator @close="mobileMenuOpen = false">
+          <template #header="{ close }">
+            <Flex x-between style="padding-top:3px">
+              <Button square @click="close">
+                <Icon name="ph:x" />
+              </Button>
+              <SharedLogo />
+              <span />
+            </Flex>
           </template>
-          <DropdownTitle>
-            <NuxtLink to="/profile">
-              {{ nickname || user?.email }}
+          <template #header-end />
+          <div class="nav-mobile-menu">
+            <NuxtLink to="/" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+              <Icon name="ph:house" />
+              <span>Home</span>
             </NuxtLink>
-          </DropdownTitle>
-          <DropdownItem icon="ph:sign-out" @click="signOut">
-            Sign out
-          </DropdownItem>
-          <DropdownItem>
-            <SharedThemeToggle />
-          </DropdownItem>
-        </Dropdown>
-      </div>
+            <NuxtLink to="/community" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+              <Icon name="ph:users" />
+              <span>Community</span>
+            </NuxtLink>
+            <NuxtLink to="/events" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+              <Icon name="ph:calendar" />
+              <span>Events</span>
+            </NuxtLink>
+            <NuxtLink to="/gameservers" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+              <Icon name="ph:game-controller" />
+              <span>Gameservers</span>
+            </NuxtLink>
+            <template v-if="user">
+              <span class="nav-mobile-menu-separator" />
+              <NuxtLink to="/votes" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+                <Icon name="ph:check-square" />
+                <span>Votes</span>
+              </NuxtLink>
+            </template>
+          </div>
+        </Sheet>
 
-      <div v-else class="nav-auth">
-        <div class="nav-auth-buttons">
-          <NuxtLink to="/auth/sign-in">
-            <Button>
-              Sign in
-            </Button>
-          </NuxtLink>
-
-          <NuxtLink to="/auth/sign-up">
-            <Button variant="accent">
-              Sign up
-            </Button>
-          </NuxtLink>
+        <!-- User dropdown on right side -->
+        <div v-if="user" class="nav-user">
+          <Dropdown>
+            <template #trigger="{ toggle }">
+              <button @click="toggle">
+                <Avatar src="https://i.imgur.com/65aJ4oG.png" width="32" height="32" alt="Username" />
+              </button>
+            </template>
+            <DropdownTitle>
+              <NuxtLink to="/profile">
+                {{ nickname || user?.email }}
+              </NuxtLink>
+            </DropdownTitle>
+            <DropdownItem icon="ph:sign-out" @click="signOut">
+              Sign out
+            </DropdownItem>
+            <DropdownItem>
+              <SharedThemeToggle />
+            </DropdownItem>
+          </Dropdown>
         </div>
 
-        <!-- On mobile we just have a little user icon -->
-        <div class="nav-auth-mobile-button">
-          <NuxtLink to="/auth/sign-in">
-            <Button square icon="ph:sign-in" />
-          </NuxtLink>
+        <div v-else class="nav-auth">
+          <div class="nav-auth-buttons">
+            <NuxtLink to="/auth/sign-in">
+              <Button>
+                Sign in
+              </Button>
+            </NuxtLink>
+
+            <NuxtLink to="/auth/sign-up">
+              <Button variant="accent">
+                Sign up
+              </Button>
+            </NuxtLink>
+          </div>
+
+          <!-- On mobile we just have a little user icon -->
+          <div class="nav-auth-mobile-button">
+            <NuxtLink to="/auth/sign-in">
+              <Button square icon="ph:sign-in" />
+            </NuxtLink>
+          </div>
         </div>
       </div>
     </div>
@@ -168,17 +170,11 @@ nav {
   z-index: 5; // Make sure the nav is main content
 
   .nav-items {
-    margin-left: auto;
-    margin-right: auto;
-
-    padding: 0 var(--space-m);
-    max-width: var(--container-l);
     display: flex;
     justify-content: flex-start;
     height: 64px;
     gap: 90px;
     align-items: center;
-
     position: relative;
   }
 

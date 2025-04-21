@@ -2,6 +2,7 @@
   width: 100%;
   max-width: var(--container-l);
   margin: 0 auto;
-  padding: 6.5rem 1rem;
+  padding-block: calc(var(--navbar-offset) + 4rem);
+  height: 100%;
   flex: 1;
 }
