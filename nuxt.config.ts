@@ -41,7 +41,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      patreonClientId: '',
+      patreonClientId: process.env.NUXT_PUBLIC_PATREON_CLIENT_ID || '',
     },
   },
   supabase: {

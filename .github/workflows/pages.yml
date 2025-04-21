@@ -14,9 +14,11 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
+    environment: github_pages
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      NUXT_PUBLIC_PATREON_CLIENT_ID: ${{ vars.NUXT_PUBLIC_PATREON_CLIENT_ID }}
 
     steps:
       - uses: actions/checkout@v4

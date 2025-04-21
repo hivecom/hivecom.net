@@ -112,6 +112,8 @@ npm run preview
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 
+Make sure your GitHub pages deployment action has the right variables/secrets defined and matches those in the `.env` file.
+
 ## DB Changes / Migrations
 
 First make sure you're pulling the lastest version of the database:
