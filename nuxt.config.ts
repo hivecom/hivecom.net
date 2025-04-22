@@ -47,34 +47,10 @@ export default defineNuxtConfig({
   supabase: {
     url: process.env.SUPABASE_URL,
     key: process.env.SUPABASE_KEY,
+    redirect: false,
     redirectOptions: {
       login: '/auth/sign-in',
       callback: '/auth/confirm',
-      exclude: [
-        '/',
-        '/auth/sign-in',
-        '/auth/sign-up',
-        '/auth/confirm',
-        '/auth/forgot-password',
-        '/auth/verify-email',
-        '/legal/terms',
-        '/legal/terms/*',
-        '/legal/privacy',
-        '/legal/privacy/*',
-
-        '/community',
-        '/events',
-        '/events/*',
-        '/gameservers',
-        '/gameservers/*',
-        '/projects',
-        '/projects/*',
-
-        // TODO: remove later, this is only for scaffolding
-        '/admin',
-        '/admin/*',
-      ],
-      cookieRedirect: false,
     },
   },
   site: {
