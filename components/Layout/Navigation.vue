@@ -18,7 +18,7 @@ async function signOut() {
   navigateTo('/auth/sign-in')
 }
 
-const nickname = ref('')
+const username = ref('')
 onMounted(async () => {
   if (!user.value)
     return
@@ -29,7 +29,7 @@ onMounted(async () => {
     .eq('id', user.value.id)
     .single()
 
-  nickname.value = requestProfile.data?.username || ''
+  username.value = requestProfile.data?.username || ''
 })
 </script>
 
@@ -121,7 +121,7 @@ onMounted(async () => {
             </template>
             <DropdownTitle>
               <NuxtLink to="/profile">
-                {{ nickname || user?.email }}
+                {{ username || user?.email }}
               </NuxtLink>
             </DropdownTitle>
             <DropdownItem icon="ph:sign-out" @click="signOut">

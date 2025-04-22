@@ -44,7 +44,7 @@ const showDetails = computed({
         Events
       </h1>
       <p>
-        Discover the latest happenings and join us in our exciting events.
+        Discover the latest happenings.
       </p>
     </section>
     <Divider />

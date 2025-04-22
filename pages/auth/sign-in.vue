@@ -30,7 +30,7 @@ function signIn() {
 async function signInWithOtp() {
   const redirectUrl = process.env.NODE_ENV === 'development'
     ? 'http://localhost:3000/auth/confirm'
-    : 'https://dev.hivecom.net/auth/confirm'
+    : `${window.location.origin}/auth/confirm`
 
   const { error } = await supabase.auth.signInWithOtp({
     email: email.value,

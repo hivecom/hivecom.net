@@ -94,7 +94,7 @@ export interface Database {
       }
       expenses: {
         Row: {
-          amount: number
+          amount_cents: number
           created_at: string
           created_by: string | null
           description: string | null
@@ -106,7 +106,7 @@ export interface Database {
           url: string | null
         }
         Insert: {
-          amount?: number
+          amount_cents?: number
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -118,7 +118,7 @@ export interface Database {
           url?: string | null
         }
         Update: {
-          amount?: number
+          amount_cents?: number
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -226,31 +226,31 @@ export interface Database {
       }
       monthly_funding: {
         Row: {
-          donation_amount: number
           donation_count: number
-          donation_lifetime: number
+          donation_lifetime_amount_cents: number
+          donation_month_amount_cents: number
           month: string
-          patreon_amount: number
           patreon_count: number
-          patreon_lifetime: number
+          patreon_lifetime_amount_cents: number
+          patreon_month_amount_cents: number
         }
         Insert: {
-          donation_amount?: number
           donation_count?: number
-          donation_lifetime?: number
+          donation_lifetime_amount_cents?: number
+          donation_month_amount_cents?: number
           month?: string
-          patreon_amount?: number
           patreon_count?: number
-          patreon_lifetime?: number
+          patreon_lifetime_amount_cents?: number
+          patreon_month_amount_cents?: number
         }
         Update: {
-          donation_amount?: number
           donation_count?: number
-          donation_lifetime?: number
+          donation_lifetime_amount_cents?: number
+          donation_month_amount_cents?: number
           month?: string
-          patreon_amount?: number
           patreon_count?: number
-          patreon_lifetime?: number
+          patreon_lifetime_amount_cents?: number
+          patreon_month_amount_cents?: number
         }
         Relationships: []
       }

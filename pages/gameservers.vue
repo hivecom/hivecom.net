@@ -164,7 +164,7 @@ function getServersByGameId(gameId: number) {
               <Flex column class="w-100">
                 <GameserverRow
                   v-for="gameserver in getServersByGameId(game.id)" :key="gameserver.id"
-                  :gameserver="(gameserversQuery as any)"
+                  :gameserver="(gameserver as any)"
                   :container="(gameserver.container as any)"
                   :game
                 />

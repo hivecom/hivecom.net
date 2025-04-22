@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { Button } from '@dolanske/vui'
+import { SharedErrorToast } from '#components'
+
+import { Button, pushToast, Toasts } from '@dolanske/vui'
 
 const runtimeConfig = useRuntimeConfig()
 
 const isConnecting = ref(false)
 const error = ref('')
+
+watch(error, (newError) => {
+  if (newError)
+    pushToast(error.value)
+})
 
 // Determine the redirect URI - use current origin for production
 const redirectUri = process.env.NODE_ENV === 'development'
@@ -30,6 +37,14 @@ async function connectPatreon() {
     error.value = err instanceof Error ? err.message : 'An unknown error occurred'
     console.error('Error initiating Patreon connection:', err)
     isConnecting.value = false
+
+    // Display error in toast
+    pushToast('', {
+      body: SharedErrorToast,
+      bodyProps: {
+        error: 'There was an error connecting to Patreon. Please try again.',
+      },
+    })
   }
 }
 </script>
@@ -42,14 +57,12 @@ async function connectPatreon() {
       :disabled="isConnecting"
       @click="connectPatreon"
     >
-      <template #icon>
+      <template #start>
         <Icon name="simple-icons:patreon" />
       </template>
       Connect Patreon
     </Button>
-    <p v-if="error" class="error mt-s">
-      {{ error }}
-    </p>
+    <Toasts />
   </div>
 </template>
 

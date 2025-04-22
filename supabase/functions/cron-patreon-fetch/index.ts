@@ -2,7 +2,7 @@ import * as constants from "app-constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeSystemCron } from "../_shared/auth.ts";
-import { Database } from "database-types";
+import { Database, Tables } from "database-types";
 
 // Define interfaces for Patreon API response types
 interface PatreonTier {
@@ -158,15 +158,16 @@ Deno.serve(async (req: Request) => {
           member.attributes.currently_entitled_amount_cents;
         monthlyPatreonCents += patronAmountCents;
 
-        console.log(
-          `Patron ${member.id}: €${
-            patronAmountCents / 100
-          } (${patronAmountCents} cents)`,
-        );
 
         // Get the actual Patreon user ID from the user relationship (not the member ID)
         const patreonUserId = member.relationships.user.data.id;
         activePatronIds.push(patreonUserId);
+
+        console.log(
+          `Patron ${patreonUserId}: €${
+            patronAmountCents / 100
+          } (${patronAmountCents} cents)`,
+        );
 
         // Check if this patron is entitled to the supporter tier
         const entitledTiers =
@@ -187,7 +188,7 @@ Deno.serve(async (req: Request) => {
     const lifetimePatreonTotal = Math.round(lifetimePatreonCents);
 
     console.log(
-      `Active patrons: ${activePatronIds.length}, Supporters: ${supporterPatronIds.length}`,
+      `Active patrons: ${activePatronIds.length} (Supporter Tier: ${supporterPatronIds.length})`,
     );
     console.log(
       `Monthly Patreon total: ${monthlyPatreonTotal} cents (€${
@@ -217,10 +218,10 @@ Deno.serve(async (req: Request) => {
       .from("monthly_funding")
       .upsert({
         month: currentMonthDate,
-        patreon_amount: monthlyPatreonTotal, // Monthly amount in cents
+        patreon_month_amount_cents: monthlyPatreonTotal, // Monthly amount in cents
         patreon_count: activePatronIds.length, // Number of active patrons
-        patreon_lifetime: lifetimePatreonTotal, // Lifetime total in cents
-      }, {
+        patreon_lifetime_amount_cents: lifetimePatreonTotal, // Lifetime total in cents
+      } as Tables<'monthly_funding'>, {
         onConflict: "month",
       });
 
@@ -235,7 +236,7 @@ Deno.serve(async (req: Request) => {
     // First, set all users with patreon_id to false initially
     const { error: resetError } = await supabaseClient
       .from("profiles")
-      .update({ supporter_patreon: false })
+      .update({ supporter_patreon: false } as Tables<'profiles'>)
       .not("patreon_id", "is", null);
 
     if (resetError) {
@@ -251,7 +252,7 @@ Deno.serve(async (req: Request) => {
       const { data: updatedProfiles, error: supporterError } =
         await supabaseClient
           .from("profiles")
-          .update({ supporter_patreon: true })
+          .update({ supporter_patreon: true } as Tables<'profiles'>)
           .in("patreon_id", supporterPatronIds)
           .select("id, username, patreon_id");
 

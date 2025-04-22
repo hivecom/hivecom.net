@@ -1,6 +1,7 @@
 import * as constants from "app-constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
+import { Database, Tables } from "database-types";
 
 const patreonClientId = Deno.env.get("PATREON_CLIENT_ID") || "";
 const patreonClientSecret = Deno.env.get("PATREON_CLIENT_SECRET") || "";
@@ -183,7 +184,7 @@ Deno.serve(async (req) => {
     const patreonId = patreonUser.data.id;
 
     // Create Supabase admin client for database operations
-    const supabaseAdmin = createClient(
+    const supabaseAdmin = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
@@ -194,7 +195,7 @@ Deno.serve(async (req) => {
       .update({
         patreon_id: patreonId,
         modified_at: new Date().toISOString(),
-      })
+      } as Tables<'profiles'>)
       .eq("id", user.id);
 
     if (updateError) {

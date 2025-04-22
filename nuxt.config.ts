@@ -61,6 +61,7 @@ export default defineNuxtConfig({
         '/legal/terms/*',
         '/legal/privacy',
         '/legal/privacy/*',
+
         '/community',
         '/events',
         '/events/*',
