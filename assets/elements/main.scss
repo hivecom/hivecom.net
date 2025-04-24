@@ -2,12 +2,12 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  // justify-content: center;
 
   // Make sure the main content is at least the height of the viewport minus the top offset for fixed nav
   // NOTE: I have no clue where the additional 6 pixels are coming from, but the offset will remove
   // scrollbar on pages which don't need to be more than 100vh tall
-  min-height: calc(100vh - 142px);
+  min-height: 100vh;
 
   // Make sure that when scrolling to anchor links, we take the top padding into account
   :target {
