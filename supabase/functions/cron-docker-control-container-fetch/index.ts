@@ -8,7 +8,7 @@ interface DockerControlContainer {
   name: string;
   health: string;
   status: string;
-  startTimestamp: number;
+  started: number;
 }
 
 type DockerControlResponse = DockerControlContainer[];
@@ -119,7 +119,7 @@ Deno.serve(async (req: Request) => {
                   running: running,
                   healthy: healthy,
                   reported_at: now,
-                  started_at: new Date(container.startTimestamp).toISOString(),
+                  started_at: new Date(container.started).toISOString(),
                   server: server.id,
                 });
 

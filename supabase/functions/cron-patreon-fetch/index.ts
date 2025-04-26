@@ -191,14 +191,10 @@ Deno.serve(async (req: Request) => {
       `Active patrons: ${activePatronIds.length} (Supporter Tier: ${supporterPatronIds.length})`,
     );
     console.log(
-      `Monthly Patreon total: ${monthlyPatreonTotal} cents (€${
-        monthlyPatreonTotal / 100
-      })`,
+      `Monthly Patreon total: ${monthlyPatreonTotal / 100}€ (${monthlyPatreonTotal} cents)`,
     );
     console.log(
-      `Lifetime Patreon total: ${lifetimePatreonTotal} cents (€${
-        lifetimePatreonTotal / 100
-      })`,
+      `Lifetime Patreon total: ${lifetimePatreonTotal / 100}€ (${lifetimePatreonTotal} cents)`,
     );
 
     // Get the current month in YYYY-MM-DD format for the monthly funding record
