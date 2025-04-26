@@ -60,10 +60,10 @@ INSERT INTO public.gameservers(addresses, created_at, created_by, description, g
     'Hivecom CS2 Community Server', '27015', 'eu', 'gameserver-cs2', '# CS 2\nThis is our community server for casual play.');
 
 -- Insert a test expense
-INSERT INTO public.expenses(created_at, created_by, name, description, url, amount, started_at, ended_at)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 20.00, NOW() - INTERVAL '1 month', NULL);
+INSERT INTO public.expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 2000, NOW() - INTERVAL '1 month', NULL);
 
 -- Insert a monthly funding record
-INSERT INTO public.monthly_funding(month, patreon_amount, patreon_lifetime, patreon_count, donation_amount, donation_lifetime, donation_count)
-  VALUES (DATE_TRUNC('month', NOW()), 25, 100, 3, 50, 200, 1);
+INSERT INTO public.monthly_funding(month, patreon_month_amount_cents, patreon_lifetime_amount_cents, patreon_count, donation_month_amount_cents, donation_lifetime_amount_cents, donation_count)
+  VALUES (DATE_TRUNC('month', NOW()), 2500, 10000, 3, 5000, 20000, 1);
 

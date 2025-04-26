@@ -78,36 +78,38 @@ onMounted(() => {
 </script>
 
 <template>
-  <Card class="login-card" separators>
-    <template #header>
-      <h4>Sign in</h4>
-    </template>
-    <div class="container container-xs" style="min-height:356px">
-      <Alert v-if="showEmailNotice" filled variant="info">
-        <p>An email with a sign-in link has been sent to {{ email }} </p>
-      </Alert>
-      <Flex x-center y-center column gap="l" class="py-l">
-        <Tabs v-model="tab" variant="filled" expand>
-          <Tab label="Password" />
-          <Tab label="E-mail" />
-        </Tabs>
-        <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
-        <Input v-if="tab === 'Password'" v-model="password" expand placeholder="************" label="Password" type="password" />
-        <Button variant="fill" :loading="loading" :disabled="tab === 'Password' ? !(email && password) : !email" @click="signIn">
-          Sign in
-          <template #end>
-            <Icon name="ph:sign-in" color="white" />
-          </template>
+  <Flex y-center x-center class="flex-1 w-100" column>
+    <Card class="login-card" separators>
+      <template #header>
+        <h4>Sign in</h4>
+      </template>
+      <div class="container container-xs" style="min-height:356px">
+        <Alert v-if="showEmailNotice" filled variant="info">
+          <p>An email with a sign-in link has been sent to {{ email }} </p>
+        </Alert>
+        <Flex x-center y-center column gap="l" class="py-l">
+          <Tabs v-model="tab" variant="filled" expand>
+            <Tab label="Password" />
+            <Tab label="E-mail" />
+          </Tabs>
+          <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
+          <Input v-if="tab === 'Password'" v-model="password" expand placeholder="************" label="Password" type="password" />
+          <Button variant="fill" :loading="loading" :disabled="tab === 'Password' ? !(email && password) : !email" @click="signIn">
+            Sign in
+            <template #end>
+              <Icon name="ph:sign-in" color="white" />
+            </template>
+          </Button>
+          <p v-if="errorMessage" class="mt-l text-center color-text-red">
+            {{ errorMessage }}
+          </p>
+        </Flex>
+      </div>
+      <NuxtLink to="/auth/sign-up">
+        <Button variant="link" style="width: 100%; margin-top: 2rem; font-size: 1.2rem;">
+          Don't have an account? Click to sign-up!
         </Button>
-        <p v-if="errorMessage" class="mt-l text-center color-text-red">
-          {{ errorMessage }}
-        </p>
-      </Flex>
-    </div>
-    <NuxtLink to="/auth/sign-up">
-      <Button variant="link" style="width: 100%; margin-top: 2rem; font-size: 1.2rem;">
-        Don't have an account? Click to sign-up!
-      </Button>
-    </NuxtLink>
-  </Card>
+      </NuxtLink>
+    </Card>
+  </Flex>
 </template>
