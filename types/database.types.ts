@@ -12,7 +12,7 @@ export interface Database {
       containers: {
         Row: {
           created_at: string
-          healthy: boolean
+          healthy: boolean | null
           name: string
           reported_at: string
           running: boolean
@@ -21,7 +21,7 @@ export interface Database {
         }
         Insert: {
           created_at?: string
-          healthy: boolean
+          healthy?: boolean | null
           name: string
           reported_at: string
           running: boolean
@@ -30,7 +30,7 @@ export interface Database {
         }
         Update: {
           created_at?: string
-          healthy?: boolean
+          healthy?: boolean | null
           name?: string
           reported_at?: string
           running?: boolean
@@ -479,6 +479,7 @@ export interface Database {
         | 'referendums.crud'
         | 'servers.crud'
         | 'expenses.crud'
+        | 'containers.crud'
       app_role: 'admin' | 'moderator'
       region: 'eu' | 'na' | 'all'
     }
@@ -606,6 +607,7 @@ export const Constants = {
         'referendums.crud',
         'servers.crud',
         'expenses.crud',
+        'containers.crud',
       ],
       app_role: ['admin', 'moderator'],
       region: ['eu', 'na', 'all'],

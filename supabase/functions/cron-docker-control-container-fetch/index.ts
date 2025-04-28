@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeSystemCron } from "../_shared/auth.ts";
 import { Database, Tables } from "database-types";
 
@@ -60,7 +59,7 @@ Deno.serve(async (req: Request) => {
           success: true,
           message: "No active servers with Docker Control enabled found",
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -110,7 +109,8 @@ Deno.serve(async (req: Request) => {
               // Determine running and healthy state from the health and status fields
               const running = container.health === "running";
               // Check if the status contains "healthy" text
-              const healthy = container.status.includes("healthy");
+              const hasHealth = container.status.includes("healthy") || container.status.includes("unhealthy");
+              const healthy = hasHealth ? container.status.includes("healthy") : null;
 
               const { error } = await supabaseClient
                 .from("containers")
@@ -121,6 +121,7 @@ Deno.serve(async (req: Request) => {
                   reported_at: now,
                   started_at: container.started ? new Date(container.started).toISOString() : null,
                   server: server.id,
+                } as Tables<'containers'>, {
                 });
 
               return {
@@ -157,7 +158,7 @@ Deno.serve(async (req: Request) => {
         message: "Processed servers successfully",
         results,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { headers: { "Content-Type": "application/json" } },
     );
   } catch (err) {
     const error = err as Error;
@@ -170,7 +171,7 @@ Deno.serve(async (req: Request) => {
           "Internal server error - please email contact@hivecom.net or visit #staff on irc.hivecom.net for support",
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         status: 500,
       },
     );

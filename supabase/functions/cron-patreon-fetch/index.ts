@@ -1,6 +1,5 @@
 import * as constants from "app-constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
-import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeSystemCron } from "../_shared/auth.ts";
 import { Database, Tables } from "database-types";
 
@@ -279,7 +278,7 @@ Deno.serve(async (req: Request) => {
         message: "Processed Patreon records successfully",
         results,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { headers: { "Content-Type": "application/json" } },
     );
   } catch (err) {
     const error = err as Error;
@@ -291,7 +290,7 @@ Deno.serve(async (req: Request) => {
         error: constants.default.API_ERROR,
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         status: 500,
       },
     );

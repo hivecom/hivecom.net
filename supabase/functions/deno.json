@@ -1,5 +1,11 @@
 {
   "workspace": [
+    "./_shared",
+    "./admin-docker-control-container-restart",
+    "./admin-docker-control-container-start",
+    "./admin-docker-control-container-stop",
+    "./admin-docker-control-container-status",
+    "./admin-docker-control-container-logs",
     "./cron-docker-control-container-fetch",
     "./cron-patreon-fetch",
     "./oauth-patreon",

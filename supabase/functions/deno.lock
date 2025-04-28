@@ -99,6 +99,31 @@
   },
   "workspace": {
     "members": {
+      "_shared": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "admin-docker-control-container-logs": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "admin-docker-control-container-start": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "admin-docker-control-container-status": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "admin-docker-control-container-stop": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
       "cron-docker-control-container-fetch": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
