@@ -1,15 +1,24 @@
 <script setup lang="ts">
-import { Tab, Tabs } from '@dolanske/vui'
+import { Flex, Tab, Tabs } from '@dolanske/vui'
 
-const activeTab = ref('Servers')
-const availableTabs = ['Servers', 'Gameservers', 'Gameserver Containers']
+const activeTab = ref('Containers')
+// const availableTabs = ['Servers', 'Gameservers', 'Containers']
 </script>
 
 <template>
-  <div>
+  <Flex column gap="s">
     <h3>Network</h3>
-    <Tabs v-model="activeTab">
+
+    <!-- For some reason using v-for here causes tabs to not be clickable
+    <Tabs v-model="activeTab" variant="filled">
       <Tab v-for="item in availableTabs" :key="item" :label="item" />
     </Tabs>
-  </div>
+    -->
+
+    <Tabs v-model="activeTab" variant="filled">
+      <Tab label="Servers" />
+      <Tab label="Gameservers" />
+      <Tab label="Containers" />
+    </Tabs>
+  </Flex>
 </template>

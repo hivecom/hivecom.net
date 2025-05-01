@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { Avatar, Button, Dropdown, DropdownItem, DropdownTitle, Flex, Sheet } from '@dolanske/vui'
+import { Button, Flex, Sheet } from '@dolanske/vui'
 
-const supabase = useSupabaseClient()
-
-// Listen for auth events and save username
+// Listen for auth events
 const user = useSupabaseUser()
 
 // Mobile menu state
@@ -12,25 +10,6 @@ const mobileMenuOpen = ref(false)
 function toggleMobileMenu() {
   mobileMenuOpen.value = !mobileMenuOpen.value
 }
-
-async function signOut() {
-  await supabase.auth.signOut()
-  navigateTo('/auth/sign-in')
-}
-
-const username = ref('')
-onMounted(async () => {
-  if (!user.value)
-    return
-
-  const requestProfile = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.value.id)
-    .single()
-
-  username.value = requestProfile.data?.username || ''
-})
 </script>
 
 <template>
@@ -113,24 +92,7 @@ onMounted(async () => {
 
         <!-- User dropdown on right side -->
         <div v-if="user" class="nav-user">
-          <Dropdown>
-            <template #trigger="{ toggle }">
-              <button @click="toggle">
-                <Avatar src="https://i.imgur.com/65aJ4oG.png" width="32" height="32" alt="Username" />
-              </button>
-            </template>
-            <DropdownTitle>
-              <NuxtLink to="/profile">
-                {{ username || user?.email }}
-              </NuxtLink>
-            </DropdownTitle>
-            <DropdownItem icon="ph:sign-out" @click="signOut">
-              Sign out
-            </DropdownItem>
-            <DropdownItem>
-              <SharedThemeToggle />
-            </DropdownItem>
-          </Dropdown>
+          <LayoutUserDropdown />
         </div>
 
         <div v-else class="nav-auth">
@@ -242,12 +204,6 @@ nav {
 
     &-mobile-button {
       display: none;
-    }
-  }
-
-  .nav-user {
-    img {
-      border-radius: 999px;
     }
   }
 
@@ -371,10 +327,6 @@ nav {
     .nav-auth {
       &-mobile-button {
         display: flex;
-      }
-
-      &-buttons {
-        display: none;
       }
     }
   }
