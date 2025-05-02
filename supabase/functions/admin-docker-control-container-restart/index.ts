@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: containerError?.message || "Container not found",
+          error: "Container not found",
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

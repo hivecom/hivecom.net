@@ -12,13 +12,13 @@ Deno.serve(async (req: Request) => {
   try {
     // Get container name from request path or body
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/');
+    const pathParts = url.pathname.split('admin-docker-control-container-logs/');
 
     // Extract container name from path - assuming the path is like /.../container-name
     // The last part of the path should be the container name
-    const containerName = pathParts[pathParts.length - 1];
+    const containerName = pathParts[pathParts.length - 1].replace(/\/$/, "");
 
-    if (!containerName) {
+    if (pathParts.length === 1 || !containerName.trim()) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: containerError?.message || "Container not found",
+          error: "Container not found",
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
