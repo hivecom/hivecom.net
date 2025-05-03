@@ -58,6 +58,7 @@ export function authorizeSystemCron(req: Request): Response | undefined {
 export async function authorizeAuthenticated(
   req: Request
 ): Promise<Response | undefined> {
+  console.log("Authorizing authenticated user...");
   // Get the authorization header
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
@@ -184,7 +185,27 @@ export async function authorizeAuthenticatedHasPermission(
     }
 
     // Get the user_role claim from the token
-    const userRole = user.app_metadata?.user_role as Database["public"]["Enums"]["app_role"] | undefined;
+    const { data: userRole, error: roleError } = await supabaseClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (roleError) {
+      console.error("Error fetching user role:", roleError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "Error fetching user role",
+          error: roleError.message,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          statusText: "Internal Server Error",
+          status: 500,
+        },
+      );
+    }
 
     if (!userRole) {
       return new Response(
@@ -204,7 +225,7 @@ export async function authorizeAuthenticatedHasPermission(
     const { data: permissions, error: permissionsError } = await supabaseClient
       .from("role_permissions")
       .select("permission")
-      .eq("role", userRole)
+      .eq("role", userRole.role)
       .in("permission", requiredPermissions);
 
     if (permissionsError) {

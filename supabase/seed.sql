@@ -1,6 +1,7 @@
 -- Insert RBAC roles.
 INSERT INTO public.role_permissions(role, permission)
-  VALUES ('admin', 'events.crud'),
+  VALUES ('admin', 'containers.crud'),
+('admin', 'events.crud'),
 ('admin', 'expenses.crud'),
 ('admin', 'funding.crud'),
 ('admin', 'games.crud'),

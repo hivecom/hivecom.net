@@ -41,17 +41,8 @@ Deno.serve(async (req: Request) => {
       ["containers.crud"]
     );
 
-    if (!authResponse) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Authentication failed",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 401,
-        }
-      );
+    if (authResponse) {
+      return authResponse;
     }
 
     // Get the Docker Control token from environment variables
