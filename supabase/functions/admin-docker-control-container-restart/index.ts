@@ -2,18 +2,23 @@ import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeAuthenticatedHasPermission } from "../_shared/auth.ts";
 import {
-  extractContainerNameFromPath,
-  getDockerControlToken,
-  getContainerWithServer,
   buildDockerControlActionUrl,
-  updateContainerStatus
+  extractContainerNameFromPath,
+  getContainerWithServer,
+  getDockerControlToken,
+  updateContainerStatus,
 } from "../_shared/docker-control.ts";
+import { responseMethodNotAllowed } from "../_shared/response.ts";
 import { Database } from "database-types";
 
 Deno.serve(async (req: Request) => {
   // This is needed if you're planning to invoke your function from a browser.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return responseMethodNotAllowed(req.method);
   }
 
   try {
@@ -29,14 +34,14 @@ Deno.serve(async (req: Request) => {
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
-        }
+        },
       );
     }
 
     // Verify user has permission to manage servers
     const authResponse = await authorizeAuthenticatedHasPermission(
       req,
-      ["containers.crud"]
+      ["containers.crud"],
     );
 
     if (authResponse) {
@@ -55,7 +60,7 @@ Deno.serve(async (req: Request) => {
     // Get container details including the server it's hosted on
     const { container, error: containerError } = await getContainerWithServer(
       supabaseClient,
-      containerName
+      containerName,
     );
 
     if (containerError) {
@@ -66,7 +71,7 @@ Deno.serve(async (req: Request) => {
     const dockerControlUrl = buildDockerControlActionUrl(
       container!.server,
       containerName,
-      "restart"
+      "restart",
     );
 
     console.log(`Making request to Docker Control at: ${dockerControlUrl}`);
@@ -76,7 +81,7 @@ Deno.serve(async (req: Request) => {
     // Also reset healthy to null since health status will need to be re-checked
     await updateContainerStatus(supabaseClient, containerName, {
       running: false,
-      healthy: null
+      healthy: null,
     });
 
     // Send the request to docker-control service asynchronously
@@ -89,10 +94,12 @@ Deno.serve(async (req: Request) => {
       },
     }).then(async (response) => {
       if (!response.ok) {
-        console.error(`Error restarting container ${containerName}: ${response.status} ${response.statusText}`);
+        console.error(
+          `Error restarting container ${containerName}: ${response.status} ${response.statusText}`,
+        );
         // If restart failed, need to check actual container state, but mark as potentially failed
         await updateContainerStatus(supabaseClient, containerName, {
-          healthy: null
+          healthy: null,
           // Not updating running since we're unsure of the state - health check will pick up state
         });
       } else {
@@ -103,16 +110,16 @@ Deno.serve(async (req: Request) => {
         await updateContainerStatus(supabaseClient, containerName, {
           running: true,
           healthy: null,
-          started_at: new Date().toISOString()
+          started_at: new Date().toISOString(),
         });
       }
-    }).catch(error => {
+    }).catch((error) => {
       console.error(`Error restarting container ${containerName}:`, error);
       // If there was an exception, update the container state to reflect uncertain status
       updateContainerStatus(supabaseClient, containerName, {
-        healthy: null
+        healthy: null,
         // Not updating running since we don't know if restart succeeded
-      }).catch(dbError => {
+      }).catch((dbError) => {
         console.error(`Failed to update container status: ${dbError.error}`);
       });
     });
@@ -121,16 +128,16 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Container ${containerName} restart command has been sent and is processing`,
+        message:
+          `Container ${containerName} restart command has been sent and is processing`,
         container: containerName,
         info: "The container may take some time to fully restart",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
-      }
+      },
     );
-
   } catch (err) {
     const error = err as Error;
     console.error("Error in admin-docker-control-container-restart:", error);

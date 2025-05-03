@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
 import {
-  DockerControlResponse,
   buildDockerControlServerUrl,
+  DockerControlResponse,
   getActiveDockerControlServers,
-  getDockerControlToken
+  getDockerControlToken,
 } from "../_shared/docker-control.ts";
 import { Database, Tables } from "database-types";
 
@@ -28,7 +28,8 @@ Deno.serve(async (req: Request) => {
     );
 
     // Fetch all active servers with docker control enabled from the database
-    const { servers, error: serversError } = await getActiveDockerControlServers(supabaseClient);
+    const { servers, error: serversError } =
+      await getActiveDockerControlServers(supabaseClient);
 
     if (serversError) {
       return serversError;
@@ -53,7 +54,10 @@ Deno.serve(async (req: Request) => {
           console.log(`Processing server ${server.address}...`);
 
           // Build the Docker control URL for server status endpoint
-          const dockerControlUrl = buildDockerControlServerUrl(server, "status");
+          const dockerControlUrl = buildDockerControlServerUrl(
+            server,
+            "status",
+          );
 
           // Make a request to the Docker Control service
           const fetchResponse = await fetch(dockerControlUrl, {
@@ -72,7 +76,8 @@ Deno.serve(async (req: Request) => {
           }
 
           // Parse the response JSON
-          const containers = await fetchResponse.json() as DockerControlResponse;
+          const containers = await fetchResponse
+            .json() as DockerControlResponse;
 
           // Current timestamp for reporting
           const now = new Date().toISOString();
@@ -83,8 +88,11 @@ Deno.serve(async (req: Request) => {
               // Determine running and healthy state from the health and status fields
               const running = container.health === "running";
               // Check if the status contains "healthy" text
-              const hasHealth = container.status.includes("healthy") || container.status.includes("unhealthy");
-              const healthy = hasHealth ? container.status.includes("healthy") : null;
+              const hasHealth = container.status.includes("healthy") ||
+                container.status.includes("unhealthy");
+              const healthy = hasHealth
+                ? container.status.includes("healthy")
+                : null;
 
               const { error: dbError } = await supabaseClient
                 .from("containers")
@@ -93,10 +101,11 @@ Deno.serve(async (req: Request) => {
                   running: running,
                   healthy: healthy,
                   reported_at: now,
-                  started_at: container.started ? new Date(container.started).toISOString() : null,
+                  started_at: container.started
+                    ? new Date(container.started).toISOString()
+                    : null,
                   server: server.id,
-                } as Tables<'containers'>, {
-                });
+                } as Tables<"containers">, {});
 
               return {
                 container: container.name,

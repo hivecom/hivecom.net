@@ -11,6 +11,10 @@
     "CODE": "EUR"
   },
 
+  "CONTAINERS": {
+    "STALE_HOURS": 2
+  },
+
   "LINKS": {
     "DISCORD": {
       "name": "Discord",

@@ -24,14 +24,10 @@ export type DockerControlResponse = DockerControlContainer[];
  */
 export function buildDockerControlServerUrl(
   server: Tables<"servers">,
-  endpoint: string = "status"
+  endpoint: string = "status",
 ): string {
-  return `${
-    server.docker_control_secure ? "https" : "http"
-  }://${
-    server.docker_control_subdomain
-      ? `${server.docker_control_subdomain}.`
-      : ""
+  return `${server.docker_control_secure ? "https" : "http"}://${
+    server.docker_control_subdomain ? `${server.docker_control_subdomain}.` : ""
   }${server.address}${
     server.docker_control_port
       ? `:${server.docker_control_port.toString()}`
@@ -45,10 +41,13 @@ export function buildDockerControlServerUrl(
 export function buildDockerControlActionUrl(
   server: Tables<"servers">,
   containerName: string,
-  action: string
+  action: string,
 ): string {
   // Use the server URL builder as a base, with a specific endpoint for container actions
-  return buildDockerControlServerUrl(server, `control/name/${containerName}/${action}`);
+  return buildDockerControlServerUrl(
+    server,
+    `control/name/${containerName}/${action}`,
+  );
 }
 
 /**
@@ -56,7 +55,7 @@ export function buildDockerControlActionUrl(
  */
 export async function getContainerWithServer(
   supabaseClient: ReturnType<typeof createClient<Database>>,
-  containerName: string
+  containerName: string,
 ): Promise<{ container: ContainerWithServer | null; error: Response | null }> {
   // Get container details including the server it's hosted on
   const { data: container, error: containerError } = await supabaseClient
@@ -76,8 +75,8 @@ export async function getContainerWithServer(
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 404,
-        }
-      )
+        },
+      ),
     };
   }
 
@@ -95,8 +94,8 @@ export async function getContainerWithServer(
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
-        }
-      )
+        },
+      ),
     };
   }
 
@@ -112,14 +111,14 @@ export async function getContainerWithServer(
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
-        }
-      )
+        },
+      ),
     };
   }
 
   return {
     container: { container, server },
-    error: null
+    error: null,
   };
 }
 
@@ -129,13 +128,13 @@ export async function getContainerWithServer(
 export async function updateContainerStatus(
   supabaseClient: ReturnType<typeof createClient<Database>>,
   containerName: string,
-  statusUpdate: Partial<Tables<"containers">>
+  statusUpdate: Partial<Tables<"containers">>,
 ): Promise<{ success: boolean; error: string | null }> {
   try {
     const now = new Date().toISOString();
     const updateData = {
       ...statusUpdate,
-      reported_at: now
+      reported_at: now,
     };
 
     const { error: dbError } = await supabaseClient
@@ -144,7 +143,9 @@ export async function updateContainerStatus(
       .eq("name", containerName);
 
     if (dbError) {
-      console.error(`Error updating container status in database: ${dbError.message}`);
+      console.error(
+        `Error updating container status in database: ${dbError.message}`,
+      );
       return { success: false, error: dbError.message };
     }
 
@@ -163,7 +164,7 @@ export async function performDockerControlAction(
   url: string,
   method: string = "POST",
   headers: Record<string, string>,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<{ apiResponse: Response | null; error: Error | null }> {
   try {
     const apiResponse = await fetch(url, {
@@ -184,7 +185,7 @@ export async function performDockerControlAction(
  * Get all active Docker control enabled servers
  */
 export async function getActiveDockerControlServers(
-  supabaseClient: ReturnType<typeof createClient<Database>>
+  supabaseClient: ReturnType<typeof createClient<Database>>,
 ): Promise<{ servers: Tables<"servers">[] | null; error: Response | null }> {
   try {
     const { data: servers, error: dbError } = await supabaseClient
@@ -194,7 +195,9 @@ export async function getActiveDockerControlServers(
       .eq("docker_control", true);
 
     if (dbError) {
-      console.error(`Error fetching active Docker control servers: ${dbError.message}`);
+      console.error(
+        `Error fetching active Docker control servers: ${dbError.message}`,
+      );
       return {
         servers: null,
         error: new Response(
@@ -205,22 +208,24 @@ export async function getActiveDockerControlServers(
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 500,
-          }
-        )
+          },
+        ),
       };
     }
 
     if (!servers || servers.length === 0) {
       return {
         servers: [],
-        error: null
+        error: null,
       };
     }
 
     return { servers, error: null };
   } catch (err) {
     const error = err as Error;
-    console.error(`Failed to get active Docker control servers: ${error.message}`);
+    console.error(
+      `Failed to get active Docker control servers: ${error.message}`,
+    );
 
     return {
       servers: null,
@@ -232,8 +237,8 @@ export async function getActiveDockerControlServers(
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500,
-        }
-      )
+        },
+      ),
     };
   }
 }
@@ -243,7 +248,7 @@ export async function getActiveDockerControlServers(
  */
 export function extractContainerNameFromPath(req: Request): string | null {
   const url = new URL(req.url);
-  const pathParts = url.pathname.split('/');
+  const pathParts = url.pathname.split("/");
   // Extract container name from path - assuming the path is like /.../container-name
   // The last part of the path should be the container name
   return pathParts[pathParts.length - 1] || null;

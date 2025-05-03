@@ -157,7 +157,6 @@ Deno.serve(async (req: Request) => {
           member.attributes.currently_entitled_amount_cents;
         monthlyPatreonCents += patronAmountCents;
 
-
         // Get the actual Patreon user ID from the user relationship (not the member ID)
         const patreonUserId = member.relationships.user.data.id;
         activePatronIds.push(patreonUserId);
@@ -190,10 +189,14 @@ Deno.serve(async (req: Request) => {
       `Active patrons: ${activePatronIds.length} (Supporter Tier: ${supporterPatronIds.length})`,
     );
     console.log(
-      `Monthly Patreon total: ${monthlyPatreonTotal / 100}€ (${monthlyPatreonTotal} cents)`,
+      `Monthly Patreon total: ${
+        monthlyPatreonTotal / 100
+      }€ (${monthlyPatreonTotal} cents)`,
     );
     console.log(
-      `Lifetime Patreon total: ${lifetimePatreonTotal / 100}€ (${lifetimePatreonTotal} cents)`,
+      `Lifetime Patreon total: ${
+        lifetimePatreonTotal / 100
+      }€ (${lifetimePatreonTotal} cents)`,
     );
 
     // Get the current month in YYYY-MM-DD format for the monthly funding record
@@ -216,7 +219,7 @@ Deno.serve(async (req: Request) => {
         patreon_month_amount_cents: monthlyPatreonTotal, // Monthly amount in cents
         patreon_count: activePatronIds.length, // Number of active patrons
         patreon_lifetime_amount_cents: lifetimePatreonTotal, // Lifetime total in cents
-      } as Tables<'monthly_funding'>, {
+      } as Tables<"monthly_funding">, {
         onConflict: "month",
       });
 
@@ -231,7 +234,7 @@ Deno.serve(async (req: Request) => {
     // First, set all users with patreon_id to false initially
     const { error: resetError } = await supabaseClient
       .from("profiles")
-      .update({ supporter_patreon: false } as Tables<'profiles'>)
+      .update({ supporter_patreon: false } as Tables<"profiles">)
       .not("patreon_id", "is", null);
 
     if (resetError) {
@@ -247,7 +250,7 @@ Deno.serve(async (req: Request) => {
       const { data: updatedProfiles, error: supporterError } =
         await supabaseClient
           .from("profiles")
-          .update({ supporter_patreon: true } as Tables<'profiles'>)
+          .update({ supporter_patreon: true } as Tables<"profiles">)
           .in("patreon_id", supporterPatronIds)
           .select("id, username, patreon_id");
 

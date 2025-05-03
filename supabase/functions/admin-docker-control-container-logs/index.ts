@@ -1,18 +1,23 @@
 import { createClient } from "@supabase/supabase-js";
-import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeAuthenticatedHasPermission } from "../_shared/auth.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 import {
+  buildDockerControlActionUrl,
   extractContainerNameFromPath,
-  getDockerControlToken,
   getContainerWithServer,
-  buildDockerControlActionUrl
+  getDockerControlToken,
 } from "../_shared/docker-control.ts";
+import { responseMethodNotAllowed } from "../_shared/response.ts";
 import { Database } from "database-types";
 
 Deno.serve(async (req: Request) => {
   // This is needed if you're planning to invoke your function from a browser.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (req.method !== "GET") {
+    return responseMethodNotAllowed(req.method);
   }
 
   try {
@@ -28,14 +33,14 @@ Deno.serve(async (req: Request) => {
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
-        }
+        },
       );
     }
 
     // Verify user has permission to manage containers
     const authResponse = await authorizeAuthenticatedHasPermission(
       req,
-      ["containers.crud"]
+      ["containers.crud"],
     );
 
     if (authResponse) {
@@ -54,7 +59,7 @@ Deno.serve(async (req: Request) => {
     // Get container details including the server it's hosted on
     const { container, error: containerError } = await getContainerWithServer(
       supabaseClient,
-      containerName
+      containerName,
     );
 
     if (containerError) {
@@ -70,7 +75,7 @@ Deno.serve(async (req: Request) => {
     const dockerControlUrl = buildDockerControlActionUrl(
       container!.server,
       containerName,
-      `logs?tail=${tail}&since=${since}`
+      `logs?tail=${tail}&since=${since}`,
     );
 
     console.log(`Making request to Docker Control at: ${dockerControlUrl}`);
@@ -89,12 +94,13 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Failed to get container logs: ${apiResponse.status} ${apiResponse.statusText}`,
+          error:
+            `Failed to get container logs: ${apiResponse.status} ${apiResponse.statusText}`,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: apiResponse.status,
-        }
+        },
       );
     }
 
@@ -109,15 +115,14 @@ Deno.serve(async (req: Request) => {
         logs: logsData,
         options: {
           tail,
-          since
-        }
+          since,
+        },
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
-      }
+      },
     );
-
   } catch (err) {
     const error = err as Error;
     console.error("Error in admin-docker-control-container-logs:", error);
@@ -131,7 +136,7 @@ Deno.serve(async (req: Request) => {
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
-      }
+      },
     );
   }
 });

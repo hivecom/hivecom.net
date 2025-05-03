@@ -1,29 +1,40 @@
 <script setup lang="ts">
-import { Tooltip } from '@dolanske/vui'
+import { Flex, Tooltip } from '@dolanske/vui'
 import { defineProps } from 'vue'
 
 defineProps<{
-  status: 'healthy' | 'unhealthy' | 'offline' | 'unknown'
+  status: 'running' | 'healthy' | 'unhealthy' | 'stopped' | 'stale' | 'unknown'
   showLabel?: boolean
 }>()
 
 const statusLabels = {
+  running: 'Running',
   healthy: 'Healthy',
   unhealthy: 'Unhealthy',
-  offline: 'Offline',
+  stopped: 'Stopped',
+  stale: 'Stale',
   unknown: 'Unknown',
+}
+
+const statusDescriptions = {
+  running: 'The container is running.',
+  healthy: 'The container is running and functioning properly.',
+  unhealthy: 'The container is running but may not be functioning properly.',
+  stopped: 'The container is stopped and not running.',
+  stale: 'The container has not reported status in a while and might have been removed.',
+  unknown: 'The status of the container is unknown.',
 }
 </script>
 
 <template>
   <Tooltip placement="top">
     <template #tooltip>
-      <p>{{ statusLabels[status] }}</p>
+      <p>{{ statusDescriptions[status] }}</p>
     </template>
-    <div class="status-indicator-wrapper">
+    <Flex class="status-indicator-wrapper" y-center>
       <span :class="`status-indicator ${status}`" />
       <span v-if="showLabel">{{ statusLabels[status] }}</span>
-    </div>
+    </Flex>
   </Tooltip>
 </template>
 
@@ -40,20 +51,25 @@ const statusLabels = {
   height: 10px;
   border-radius: 50%;
 
+  &.running {
+    background-color: var(--color-text-green);
+  }
+
   &.healthy {
     background-color: var(--color-text-green);
   }
 
-  &.unhealthy {
+  &.unhealthy,
+  &.unknown {
     background-color: var(--color-text-red);
   }
 
-  &.offline {
-    background-color: var(--color-text-gray);
+  &.stopped {
+    background-color: var(--color-text);
   }
 
-  &.unknown {
-    background-color: var(--color-text-yellow);
+  &.stale {
+    background-color: var(--color-text-lighter);
   }
 }
 </style>

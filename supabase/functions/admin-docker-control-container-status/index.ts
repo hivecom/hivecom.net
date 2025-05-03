@@ -2,18 +2,23 @@ import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeAuthenticatedHasPermission } from "../_shared/auth.ts";
 import {
-  extractContainerNameFromPath,
-  getDockerControlToken,
-  getContainerWithServer,
   buildDockerControlActionUrl,
-  updateContainerStatus
+  extractContainerNameFromPath,
+  getContainerWithServer,
+  getDockerControlToken,
+  updateContainerStatus,
 } from "../_shared/docker-control.ts";
+import { responseMethodNotAllowed } from "../_shared/response.ts";
 import { Database, Tables } from "database-types";
 
 Deno.serve(async (req: Request) => {
   // This is needed if you're planning to invoke your function from a browser.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (req.method !== "GET") {
+    return responseMethodNotAllowed(req.method);
   }
 
   try {
@@ -29,14 +34,14 @@ Deno.serve(async (req: Request) => {
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
-        }
+        },
       );
     }
 
     // Verify user has permission to manage servers
     const authResponse = await authorizeAuthenticatedHasPermission(
       req,
-      ["containers.crud"]
+      ["containers.crud"],
     );
 
     if (authResponse) {
@@ -55,7 +60,7 @@ Deno.serve(async (req: Request) => {
     // Get container details including the server it's hosted on
     const { container, error: containerError } = await getContainerWithServer(
       supabaseClient,
-      containerName
+      containerName,
     );
 
     if (containerError) {
@@ -66,7 +71,7 @@ Deno.serve(async (req: Request) => {
     const dockerControlUrl = buildDockerControlActionUrl(
       container!.server,
       containerName,
-      "status"
+      "status",
     );
 
     console.log(`Making request to Docker Control at: ${dockerControlUrl}`);
@@ -83,7 +88,7 @@ Deno.serve(async (req: Request) => {
 
     if (!response.ok) {
       throw new Error(
-        `Failed to get container status: ${response.status} ${response.statusText}`
+        `Failed to get container status: ${response.status} ${response.statusText}`,
       );
     }
 
@@ -97,7 +102,9 @@ Deno.serve(async (req: Request) => {
 
     if (result && result.State) {
       // Determine running state based on Docker status
-      const dockerStatus = result.State.Status ? result.State.Status.toLowerCase() : '';
+      const dockerStatus = result.State.Status
+        ? result.State.Status.toLowerCase()
+        : "";
       isRunning = ["running", "restarting", "created"].includes(dockerStatus);
 
       // Determine health status if available
@@ -109,11 +116,14 @@ Deno.serve(async (req: Request) => {
       // Update container state in database
       const updateData: Partial<Tables<"containers">> = {
         running: isRunning,
-        healthy: isHealthy
+        healthy: isHealthy,
       };
 
       // Only update started_at if needed
-      if (isRunning && (!container?.container.started_at || !container?.container.running)) {
+      if (
+        isRunning &&
+        (!container?.container.started_at || !container?.container.running)
+      ) {
         updateData.started_at = new Date().toISOString();
       }
 
@@ -128,15 +138,14 @@ Deno.serve(async (req: Request) => {
         status: result,
         databaseState: {
           running: isRunning,
-          healthy: isHealthy
-        }
+          healthy: isHealthy,
+        },
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
-      }
+      },
     );
-
   } catch (err) {
     const error = err as Error;
     console.error("Error in admin-docker-control-container-status:", error);

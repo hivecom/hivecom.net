@@ -2,18 +2,23 @@ import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeAuthenticatedHasPermission } from "../_shared/auth.ts";
 import {
-  extractContainerNameFromPath,
-  getDockerControlToken,
-  getContainerWithServer,
   buildDockerControlActionUrl,
-  updateContainerStatus
+  extractContainerNameFromPath,
+  getContainerWithServer,
+  getDockerControlToken,
+  updateContainerStatus,
 } from "../_shared/docker-control.ts";
+import { responseMethodNotAllowed } from "../_shared/response.ts";
 import { Database } from "database-types";
 
 Deno.serve(async (req: Request) => {
   // This is needed if you're planning to invoke your function from a browser.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return responseMethodNotAllowed(req.method);
   }
 
   try {
@@ -29,14 +34,14 @@ Deno.serve(async (req: Request) => {
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
-        }
+        },
       );
     }
 
     // Verify user has permission to manage servers
     const authResponse = await authorizeAuthenticatedHasPermission(
       req,
-      ["containers.crud"]
+      ["containers.crud"],
     );
 
     if (authResponse) {
@@ -55,7 +60,7 @@ Deno.serve(async (req: Request) => {
     // Get container details including the server it's hosted on
     const { container, error: containerError } = await getContainerWithServer(
       supabaseClient,
-      containerName
+      containerName,
     );
 
     if (containerError) {
@@ -66,7 +71,7 @@ Deno.serve(async (req: Request) => {
     const dockerControlUrl = buildDockerControlActionUrl(
       container!.server,
       containerName,
-      "start"
+      "start",
     );
 
     console.log(`Making request to Docker Control at: ${dockerControlUrl}`);
@@ -75,7 +80,7 @@ Deno.serve(async (req: Request) => {
     // Set running to true and healthy to null since it will be checked/reported by a separate process
     await updateContainerStatus(supabaseClient, containerName, {
       running: true,
-      healthy: null
+      healthy: null,
     });
 
     // Send the request to docker-control service asynchronously
@@ -88,11 +93,13 @@ Deno.serve(async (req: Request) => {
       },
     }).then(async (response) => {
       if (!response.ok) {
-        console.error(`Error starting container ${containerName}: ${response.status} ${response.statusText}`);
+        console.error(
+          `Error starting container ${containerName}: ${response.status} ${response.statusText}`,
+        );
         // If there was an error, set running to false and healthy to null
         await updateContainerStatus(supabaseClient, containerName, {
           running: false,
-          healthy: null
+          healthy: null,
         });
       } else {
         const result = await response.json();
@@ -102,16 +109,16 @@ Deno.serve(async (req: Request) => {
         await updateContainerStatus(supabaseClient, containerName, {
           running: true,
           healthy: null,
-          started_at: new Date().toISOString()
+          started_at: new Date().toISOString(),
         });
       }
-    }).catch(error => {
+    }).catch((error) => {
       console.error(`Error starting container ${containerName}:`, error);
       // If there was an exception, update the container state
       updateContainerStatus(supabaseClient, containerName, {
         running: false,
-        healthy: null
-      }).catch(dbError => {
+        healthy: null,
+      }).catch((dbError) => {
         console.error(`Failed to update container status: ${dbError.error}`);
       });
     });
@@ -120,16 +127,16 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Container ${containerName} start command has been sent and is processing`,
+        message:
+          `Container ${containerName} start command has been sent and is processing`,
         container: containerName,
         info: "The container may take some time to fully start",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
-      }
+      },
     );
-
   } catch (err) {
     const error = err as Error;
     console.error("Error in admin-docker-control-container-start:", error);

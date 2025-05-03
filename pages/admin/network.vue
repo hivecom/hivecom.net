@@ -1,51 +1,22 @@
 <script setup lang="ts">
-import { Tab, Tabs } from '@dolanske/vui'
+import { Flex, Tab, Tabs } from '@dolanske/vui'
 
-import ContainerDetail from '~/components/Admin/ContainerDetail.vue'
 import ContainerTable from '~/components/Admin/ContainerTable.vue'
 
 // Tab management
 const activeTab = ref('Containers')
 const supabase = useSupabaseClient()
 
-// Container detail state
-const showContainerDetail = ref(false)
-const selectedContainer = ref<any>(null)
-
-// Open container detail
-function openContainerDetail(container: any) {
-  selectedContainer.value = container
-  showContainerDetail.value = true
-}
-
 // Container control actions
-async function handleContainerControl({ container, action }: { container: any, action: 'start' | 'stop' | 'restart' | 'status' | 'logs' }) {
+async function handleContainerControl(container: any, action: 'start' | 'stop' | 'restart') {
   try {
-    let method: 'POST' | 'GET' = 'POST'
-    switch (action) {
-      case 'start':
-      case 'stop':
-      case 'restart':
-        method = 'POST'
-        break
-      case 'status':
-      case 'logs':
-        method = 'GET'
-        break
-    }
-
     const endpoint = `admin-docker-control-container-${action}/${container.name}`
     const { error } = await supabase.functions.invoke(endpoint, {
-      method,
+      method: 'POST',
     })
 
     if (error)
       throw error
-
-    // Close and refresh after control action
-    setTimeout(() => {
-      showContainerDetail.value = false
-    }, 1000)
   }
   catch (error) {
     console.error('Container control error:', error)
@@ -66,18 +37,10 @@ async function handleContainerControl({ container, action }: { container: any, a
     </Tabs>
 
     <!-- Containers Tab -->
-    <div v-show="activeTab === 'Containers'">
+    <Flex v-show="activeTab === 'Containers'" expand>
       <ContainerTable
-        @view="openContainerDetail"
-        @control="handleContainerControl"
+        :control-container="handleContainerControl"
       />
-    </div>
-
-    <ContainerDetail
-      :open="showContainerDetail"
-      :container="selectedContainer"
-      @close="showContainerDetail = false"
-      @control="handleContainerControl"
-    />
+    </Flex>
   </Flex>
 </template>

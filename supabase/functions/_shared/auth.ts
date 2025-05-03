@@ -56,7 +56,7 @@ export function authorizeSystemCron(req: Request): Response | undefined {
  * @returns Response with error if unauthorized, undefined if authorized
  */
 export async function authorizeAuthenticated(
-  req: Request
+  req: Request,
 ): Promise<Response | undefined> {
   console.log("Authorizing authenticated user...");
   // Get the authorization header
@@ -277,4 +277,3 @@ export async function authorizeAuthenticatedHasPermission(
     );
   }
 }
-

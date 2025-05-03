@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
       .update({
         patreon_id: patreonId,
         modified_at: new Date().toISOString(),
-      } as Tables<'profiles'>)
+      } as Tables<"profiles">)
       .eq("id", user.id);
 
     if (updateError) {
