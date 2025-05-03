@@ -109,6 +109,11 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
+      "admin-docker-control-container-restart": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
       "admin-docker-control-container-start": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"

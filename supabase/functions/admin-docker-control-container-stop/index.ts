@@ -1,7 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeAuthenticatedHasPermission } from "../_shared/auth.ts";
-import { Database, Tables } from "database-types";
+import {
+  extractContainerNameFromPath,
+  getDockerControlToken,
+  getContainerWithServer,
+  buildDockerControlActionUrl,
+  updateContainerStatus
+} from "../_shared/docker-control.ts";
+import { Database } from "database-types";
 
 Deno.serve(async (req: Request) => {
   // This is needed if you're planning to invoke your function from a browser.
@@ -10,13 +17,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Get container name from request path or body
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split('/');
-
-    // Extract container name from path - assuming the path is like /.../container-name
-    // The last part of the path should be the container name
-    const containerName = pathParts[pathParts.length - 1];
+    // Get container name from request path
+    const containerName = extractContainerNameFromPath(req);
 
     if (!containerName) {
       return new Response(
@@ -42,11 +44,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get the Docker Control token from environment variables
-    const DOCKER_CONTROL_TOKEN = Deno.env.get("DOCKER_CONTROL_TOKEN");
-
-    if (!DOCKER_CONTROL_TOKEN) {
-      throw new Error("DOCKER_CONTROL_TOKEN environment variable is not set");
-    }
+    const DOCKER_CONTROL_TOKEN = getDockerControlToken();
 
     // Create a Supabase client
     const supabaseClient = createClient<Database>(
@@ -55,69 +53,30 @@ Deno.serve(async (req: Request) => {
     );
 
     // Get container details including the server it's hosted on
-    const { data: container, error: containerError } = await supabaseClient
-      .from("containers")
-      .select("*, server(*)")
-      .eq("name", containerName)
-      .single();
+    const { container, error: containerError } = await getContainerWithServer(
+      supabaseClient,
+      containerName
+    );
 
-    if (containerError || !container) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Container not found",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 404,
-        }
-      );
+    if (containerError) {
+      return containerError;
     }
 
-    // Get the server that hosts this container
-    const server = container.server as Tables<"servers">;
-
-    if (!server) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Container is not associated with a server",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        }
-      );
-    }
-
-    // Check if docker-control is enabled on the server
-    if (!server.docker_control || !server.active) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Docker control is not enabled for this server",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        }
-      );
-    }
-
-    // Construct the docker-control URL
-    const dockerControlUrl = `${
-      server.docker_control_secure ? "https" : "http"
-    }://${
-      server.docker_control_subdomain
-        ? `${server.docker_control_subdomain}.`
-        : ""
-    }${server.address}${
-      server.docker_control_port
-        ? `:${server.docker_control_port.toString()}`
-        : ""
-    }/control/name/${containerName}/stop`;
+    // Build the Docker control URL for stopping the container
+    const dockerControlUrl = buildDockerControlActionUrl(
+      container!.server,
+      containerName,
+      "stop"
+    );
 
     console.log(`Making request to Docker Control at: ${dockerControlUrl}`);
+
+    // Update container in database to indicate it's stopping
+    // Set running to false and healthy to null since it will be checked/reported by a separate process
+    await updateContainerStatus(supabaseClient, containerName, {
+      running: false,
+      healthy: null
+    });
 
     // Send the request to docker-control service asynchronously
     // Don't wait for the response - just fire and forget
@@ -130,12 +89,31 @@ Deno.serve(async (req: Request) => {
     }).then(async (response) => {
       if (!response.ok) {
         console.error(`Error stopping container ${containerName}: ${response.status} ${response.statusText}`);
+
+        // Since the stop command failed, container is likely still running
+        await updateContainerStatus(supabaseClient, containerName, {
+          running: true,  // Container likely still running if stop failed
+          healthy: null   // Health needs to be checked again
+        });
       } else {
         const result = await response.json();
         console.log(`Container ${containerName} stop result:`, result);
+
+        // Confirm container stopped state in database
+        await updateContainerStatus(supabaseClient, containerName, {
+          running: false,
+          healthy: null
+        });
       }
     }).catch(error => {
       console.error(`Error stopping container ${containerName}:`, error);
+      // If there was an exception, update the container state
+      updateContainerStatus(supabaseClient, containerName, {
+        healthy: null
+        // Not updating running status since we don't know if stop succeeded
+      }).catch(dbError => {
+        console.error(`Failed to update container status: ${dbError.error}`);
+      });
     });
 
     // Return immediate success response

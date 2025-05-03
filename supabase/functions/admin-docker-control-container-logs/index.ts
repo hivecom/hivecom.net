@@ -1,7 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeAuthenticatedHasPermission } from "../_shared/auth.ts";
-import { Database, Tables } from "database-types";
+import {
+  extractContainerNameFromPath,
+  getDockerControlToken,
+  getContainerWithServer,
+  buildDockerControlActionUrl
+} from "../_shared/docker-control.ts";
+import { Database } from "database-types";
 
 Deno.serve(async (req: Request) => {
   // This is needed if you're planning to invoke your function from a browser.
@@ -10,15 +16,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Get container name from request path or body
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split('admin-docker-control-container-logs/');
+    // Get container name from request path
+    const containerName = extractContainerNameFromPath(req);
 
-    // Extract container name from path - assuming the path is like /.../container-name
-    // The last part of the path should be the container name
-    const containerName = pathParts[pathParts.length - 1].replace(/\/$/, "");
-
-    if (pathParts.length === 1 || !containerName.trim()) {
+    if (!containerName) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -31,11 +32,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get optional tail parameter to limit log lines
-    const tailParam = url.searchParams.get('tail');
-    const tail = tailParam ? parseInt(tailParam, 10) : undefined;
-
-    // Verify user has permission to manage servers
+    // Verify user has permission to manage containers
     const authResponse = await authorizeAuthenticatedHasPermission(
       req,
       ["containers.crud"]
@@ -46,11 +43,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get the Docker Control token from environment variables
-    const DOCKER_CONTROL_TOKEN = Deno.env.get("DOCKER_CONTROL_TOKEN");
-
-    if (!DOCKER_CONTROL_TOKEN) {
-      throw new Error("DOCKER_CONTROL_TOKEN environment variable is not set");
-    }
+    const DOCKER_CONTROL_TOKEN = getDockerControlToken();
 
     // Create a Supabase client
     const supabaseClient = createClient<Database>(
@@ -59,99 +52,65 @@ Deno.serve(async (req: Request) => {
     );
 
     // Get container details including the server it's hosted on
-    const { data: container, error: containerError } = await supabaseClient
-      .from("containers")
-      .select("*, server(*)")
-      .eq("name", containerName)
-      .single();
+    const { container, error: containerError } = await getContainerWithServer(
+      supabaseClient,
+      containerName
+    );
 
-    if (containerError || !container) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Container not found",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 404,
-        }
-      );
+    if (containerError) {
+      return containerError;
     }
 
-    // Get the server that hosts this container
-    const server = container.server as Tables<"servers">;
+    // Process URL query parameters for log options
+    const url = new URL(req.url);
+    const tail = url.searchParams.get("tail") || "100"; // Default 100 lines
+    const since = url.searchParams.get("since") || "1h"; // Default 1 hour
 
-    if (!server) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Container is not associated with a server",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        }
-      );
-    }
-
-    // Check if docker-control is enabled on the server
-    if (!server.docker_control || !server.active) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Docker control is not enabled for this server",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        }
-      );
-    }
-
-    // Construct the docker-control URL with optional tail parameter
-    let dockerControlUrl = `${
-      server.docker_control_secure ? "https" : "http"
-    }://${
-      server.docker_control_subdomain
-        ? `${server.docker_control_subdomain}.`
-        : ""
-    }${server.address}${
-      server.docker_control_port
-        ? `:${server.docker_control_port.toString()}`
-        : ""
-    }/control/name/${containerName}/logs`;
-
-    // Add tail parameter if specified
-    if (tail !== undefined && !isNaN(tail)) {
-      dockerControlUrl += `?tail=${tail}`;
-    }
+    // Build the Docker control URL for container logs
+    const dockerControlUrl = buildDockerControlActionUrl(
+      container!.server,
+      containerName,
+      `logs?tail=${tail}&since=${since}`
+    );
 
     console.log(`Making request to Docker Control at: ${dockerControlUrl}`);
 
     // Send the request to docker-control service
-    const response = await fetch(dockerControlUrl, {
+    const apiResponse = await fetch(dockerControlUrl, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${DOCKER_CONTROL_TOKEN}`,
         "Content-Type": "application/json",
       },
-      signal: AbortSignal.timeout(5000), // 5 seconds timeout
+      signal: AbortSignal.timeout(10000), // 10 seconds timeout - logs can be large
     });
 
-    if (!response.ok) {
-      throw new Error(
-        `Failed to get container logs: ${response.status} ${response.statusText}`
+    if (!apiResponse.ok) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Failed to get container logs: ${apiResponse.status} ${apiResponse.statusText}`,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: apiResponse.status,
+        }
       );
     }
 
-    const result = await response.json();
+    // Get the logs from the response
+    const logsData = await apiResponse.text();
 
-    // Return the success response with container logs
+    // Return success response with logs
     return new Response(
       JSON.stringify({
         success: true,
         container: containerName,
-        logs: result.logs,
+        logs: logsData,
+        options: {
+          tail,
+          since
+        }
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -172,7 +131,7 @@ Deno.serve(async (req: Request) => {
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
-      },
+      }
     );
   }
 });

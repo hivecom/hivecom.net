@@ -1,54 +1,37 @@
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
+import {
+  DockerControlResponse,
+  buildDockerControlServerUrl,
+  getActiveDockerControlServers,
+  getDockerControlToken
+} from "../_shared/docker-control.ts";
 import { Database, Tables } from "database-types";
-
-interface DockerControlContainer {
-  id: string;
-  name: string;
-  health: string;
-  status: string;
-  started: number | null;
-}
-
-type DockerControlResponse = DockerControlContainer[];
 
 Deno.serve(async (req: Request) => {
   // Skip CORS preflight check for OPTIONS requests as this should not originate from a browser.
   try {
     // Authorize the request using the system cron authorization function
-    const authorizeResponse = authorizeSystemCron(req);
-    if (authorizeResponse) {
-      console.error("Authorization failed:", authorizeResponse.statusText);
-
-      return authorizeResponse;
+    const authResponse = authorizeSystemCron(req);
+    if (authResponse) {
+      console.error("Authorization failed:", authResponse.statusText);
+      return authResponse;
     }
 
     // Get the Docker Control token from environment variables
-    const DOCKER_CONTROL_TOKEN = Deno.env.get("DOCKER_CONTROL_TOKEN");
-
-    if (!DOCKER_CONTROL_TOKEN) {
-      throw new Error("DOCKER_CONTROL_TOKEN environment variable is not set");
-    }
+    const DOCKER_CONTROL_TOKEN = getDockerControlToken();
 
     // Create a Supabase client with the service role key (full admin access)
-    // Don't pass Authorization header from the request
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // Fetch all active servers with docker control enabled from the database
-    const { data: servers, error: serversError } = (await supabaseClient
-      .from("servers")
-      .select("*")
-      .eq("active", true)
-      .eq("docker_control", true)) as {
-        data: Tables<"servers">[];
-        error: Error | null;
-      };
+    const { servers, error: serversError } = await getActiveDockerControlServers(supabaseClient);
 
     if (serversError) {
-      throw serversError;
+      return serversError;
     }
 
     if (!servers || servers.length === 0) {
@@ -69,20 +52,11 @@ Deno.serve(async (req: Request) => {
         try {
           console.log(`Processing server ${server.address}...`);
 
-          const dockerControlUrl = `${
-            server.docker_control_secure ? "https" : "http"
-          }://${
-            server.docker_control_subdomain
-              ? `${server.docker_control_subdomain}.`
-              : ""
-          }${server.address}${
-            server.docker_control_port
-              ? `:${server.docker_control_port.toString()}`
-              : ""
-          }/status`;
+          // Build the Docker control URL for server status endpoint
+          const dockerControlUrl = buildDockerControlServerUrl(server, "status");
 
           // Make a request to the Docker Control service
-          const response = await fetch(dockerControlUrl, {
+          const fetchResponse = await fetch(dockerControlUrl, {
             method: "GET",
             headers: {
               Authorization: `Bearer ${DOCKER_CONTROL_TOKEN}`,
@@ -91,14 +65,14 @@ Deno.serve(async (req: Request) => {
             signal: AbortSignal.timeout(5000), // 5 seconds timeout
           });
 
-          if (!response.ok) {
+          if (!fetchResponse.ok) {
             throw new Error(
-              `Failed to fetch from ${server.address}: ${response.statusText}`,
+              `Failed to fetch from ${server.address}: ${fetchResponse.statusText}`,
             );
           }
 
           // Parse the response JSON
-          const containers = await response.json() as DockerControlResponse;
+          const containers = await fetchResponse.json() as DockerControlResponse;
 
           // Current timestamp for reporting
           const now = new Date().toISOString();
@@ -112,7 +86,7 @@ Deno.serve(async (req: Request) => {
               const hasHealth = container.status.includes("healthy") || container.status.includes("unhealthy");
               const healthy = hasHealth ? container.status.includes("healthy") : null;
 
-              const { error } = await supabaseClient
+              const { error: dbError } = await supabaseClient
                 .from("containers")
                 .upsert({
                   name: container.name,
@@ -126,8 +100,8 @@ Deno.serve(async (req: Request) => {
 
               return {
                 container: container.name,
-                success: !error,
-                error: error?.message,
+                success: !dbError,
+                error: dbError?.message,
               };
             }),
           );
