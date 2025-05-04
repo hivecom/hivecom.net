@@ -325,6 +325,10 @@ nav {
     }
 
     .nav-auth {
+      &-buttons {
+        display: none;
+      }
+
       &-mobile-button {
         display: flex;
       }

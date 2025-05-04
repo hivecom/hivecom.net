@@ -38,8 +38,8 @@ const props = defineProps({
   </Alert>
 </template>
 
-    <style scoped lang="scss">
-    .error-message {
+<style scoped lang="scss">
+.error-message {
   font-size: var(--font-size-xs);
   color: var(--color-text-light);
 }

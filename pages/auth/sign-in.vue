@@ -14,20 +14,31 @@ const showEmailNotice = ref(false)
 
 watch(tab, () => showEmailNotice.value = false)
 
-function signIn() {
+async function signIn() {
   loading.value = true
 
-  if (tab.value === 'Password') {
-    signInWithPassword()
+  try {
+    if (tab.value === 'Password') {
+      await signInWithPassword()
+    }
+    else {
+      await signInWithOtp()
+    }
   }
-  else {
-    signInWithOtp()
+  catch (error) {
+    console.error('Sign-in error:', error)
   }
-
-  loading.value = false
+  finally {
+    loading.value = false
+  }
 }
 
 async function signInWithOtp() {
+  // Make sure that the following URLs are whitelisted in your Supabase project settings
+  // http://localhost:3000/auth/*
+  // https://dev.hivecom.net/auth/*
+  // https://hivecom.net/auth/*
+
   const redirectUrl = process.env.NODE_ENV === 'development'
     ? 'http://localhost:3000/auth/confirm'
     : `${window.location.origin}/auth/confirm`
@@ -84,9 +95,6 @@ onMounted(() => {
         <h4>Sign in</h4>
       </template>
       <div class="container container-xs" style="min-height:356px">
-        <Alert v-if="showEmailNotice" filled variant="info">
-          <p>An email with a sign-in link has been sent to {{ email }} </p>
-        </Alert>
         <Flex x-center y-center column gap="l" class="py-l">
           <Tabs v-model="tab" variant="filled" expand>
             <Tab label="Password" />
@@ -100,16 +108,38 @@ onMounted(() => {
               <Icon name="ph:sign-in" color="white" />
             </template>
           </Button>
-          <p v-if="errorMessage" class="mt-l text-center color-text-red">
+          <Alert v-if="showEmailNotice" filled variant="info">
+            An email with a sign-in link has been sent to your inbox!
+          </Alert>
+          <Alert v-if="errorMessage" variant="danger" filled>
             {{ errorMessage }}
-          </p>
+          </Alert>
         </Flex>
       </div>
-      <NuxtLink to="/auth/sign-up">
-        <Button variant="link" style="width: 100%; margin-top: 2rem; font-size: 1.2rem;">
-          Don't have an account? Click to sign-up!
-        </Button>
-      </NuxtLink>
+      <template #footer>
+        <NuxtLink to="/auth/sign-up">
+          <Button variant="link" class="sign-up-link">
+            Don't have an account? Click to sign-up!
+          </Button>
+        </NuxtLink>
+        <NuxtLink to="/auth/forgot-password">
+          <Button variant="link" class="forgot-password-link">
+            Forgot your password?
+          </Button>
+        </NuxtLink>
+      </template>
     </Card>
   </Flex>
 </template>
+
+<style lang="scss" scoped>
+.sign-up-link {
+  color: var(--color-text-accent);
+  font-size: 1.2rem;
+  width: 100%;
+}
+.forgot-password-link {
+  font-size: 1.2rem;
+  width: 100%;
+}
+</style>
