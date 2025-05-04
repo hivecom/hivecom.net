@@ -52,7 +52,7 @@ const logTimePeriods = [
   { label: 'All time', value: 'all' },
 ]
 // Initialize with a default value (1 hour)
-const logTimePeriod = ref<SelectOption[]>([])
+const logTimePeriod = ref<SelectOption[]>([{ label: 'All time', value: 'all' }])
 
 const ansiConverter = new Convert({
   newline: true,

@@ -246,7 +246,7 @@ function isActionLoading(containerName: string, action: string): Record<string, 
 }
 
 // Container logs fetching
-async function fetchContainerLogs(tail = 100, since = '1h') {
+async function fetchContainerLogs(tail = 100, since: string | null = null) {
   if (!selectedContainer.value)
     return
 
