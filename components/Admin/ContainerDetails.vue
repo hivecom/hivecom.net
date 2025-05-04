@@ -198,9 +198,7 @@ function handleRefreshLogs() {
             Container is not running. Logs are unavailable.
           </Alert>
 
-          <Card v-else-if="logsLoading" class="logs-container">
-            <Skeleton :height="200" />
-          </Card>
+          <Skeleton v-else-if="logsLoading" :height="200" />
 
           <div
             v-if="!logsLoading && !logsError"

@@ -260,14 +260,14 @@ async function fetchContainerLogs() {
       .invoke(`admin-docker-control-container-logs/${selectedContainer.value.name}`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/plain',
         },
       })
 
     if (error)
       throw error
 
-    containerLogs.value = data?.logs || 'No logs available'
+    containerLogs.value = data || 'No logs available'
   }
   catch (error: any) {
     logsError.value = error.message || 'Could not fetch container logs'
