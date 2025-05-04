@@ -19,11 +19,14 @@ const menuItems = [
   <div class="vui-sidebar-layout">
     <Sidebar :model-value="true">
       <template #header>
-        <Flex y-center class="mb-s">
-          <SharedIcon />
-          <h5 class="color-accent">
-            Admin
-          </h5>
+        <Flex y-center class="mb-s" x-between>
+          <Flex y-center gap="s">
+            <SharedIcon />
+            <h5>
+              Admin
+            </h5>
+          </Flex>
+          <SharedThemeToggle no-text small />
         </Flex>
         <Divider :size="0" />
       </template>

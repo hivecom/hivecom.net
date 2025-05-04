@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Button, Flex } from '@dolanske/vui'
 
-defineProps<{
+const props = defineProps<{
   container: {
     name: string
     running: boolean
@@ -26,11 +26,11 @@ defineEmits<{
 <template>
   <Flex gap="xs">
     <Button
-      v-if="['stopped'].includes(status)"
+      v-if="['stopped'].includes(props.status)"
       size="s"
       variant="success"
-      :loading="isLoading?.start"
-      @click="$emit('action', container, 'start')"
+      :loading="props.isLoading?.start"
+      @click="$emit('action', props.container, 'start')"
     >
       <template #start>
         <Icon name="ph:play" />
@@ -38,11 +38,11 @@ defineEmits<{
       Start
     </Button>
     <Button
-      v-if="['running', 'healthy', 'unhealthy'].includes(status)"
+      v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
       size="s"
       variant="danger"
-      :loading="isLoading?.restart"
-      @click="$emit('action', container, 'restart')"
+      :loading="props.isLoading?.restart"
+      @click="$emit('action', props.container, 'restart')"
     >
       <template #start>
         <Icon name="ph:play-circle" />
@@ -50,11 +50,11 @@ defineEmits<{
       Restart
     </Button>
     <Button
-      v-if="['running', 'healthy', 'unhealthy'].includes(status)"
+      v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
       size="s"
       variant="danger"
-      :loading="isLoading?.stop"
-      @click="$emit('action', container, 'stop')"
+      :loading="props.isLoading?.stop"
+      @click="$emit('action', props.container, 'stop')"
     >
       <template #start>
         <Icon name="ph:stop" />
@@ -62,11 +62,11 @@ defineEmits<{
       Stop
     </Button>
     <Button
-      v-if="['stale'].includes(status)"
+      v-if="['stale'].includes(props.status)"
       size="s"
       variant="danger"
-      :loading="isLoading?.prune"
-      @click="$emit('prune', container)"
+      :loading="props.isLoading?.prune"
+      @click="$emit('prune', props.container)"
     >
       <template #start>
         <Icon name="ph:trash" />

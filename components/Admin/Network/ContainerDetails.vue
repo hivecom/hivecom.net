@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import constants from '@/constants.json'
+import { getContainerStatus } from '@/utils/containerStatus'
+
 import { Alert, Button, Card, Flex, Input, Select, Sheet, Skeleton } from '@dolanske/vui'
+
 import Convert from 'ansi-to-html'
+
 import { computed, nextTick, ref, watch } from 'vue'
+
+import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import StatusIndicator from './../StatusIndicator.vue'
 import ContainerActions from './ContainerActions.vue'
-import StatusIndicator from './StatusIndicator.vue'
 
 // Define interface for Select options
 interface SelectOption {
@@ -17,6 +23,7 @@ const props = defineProps<{
     name: string
     running: boolean
     healthy: boolean | null
+    created_at: string
     started_at: string | null
     reported_at: string
     server: {
@@ -32,7 +39,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'refreshLogs', tail?: number, since?: string): void
+  (e: 'refreshLogs', tail?: number, since?: string, from?: string, to?: string): void
   (e: 'control', container: any, action: 'start' | 'stop' | 'restart'): void
   (e: 'prune', container: any): void
 }>()
@@ -52,8 +59,13 @@ const logTimePeriods = [
   { label: 'Last year', value: '8760h' },
   { label: 'All time', value: 'all' },
 ]
-// Initialize with a default value (1 hour)
+// Initialize with a default value
 const logTimePeriod = ref<SelectOption[]>([{ label: 'All time', value: 'all' }])
+
+// Date range filters for logs
+const useCustomDateRange = ref(false)
+const fromDate = ref<string>('')
+const toDate = ref<string>('')
 
 const ansiConverter = new Convert({
   newline: true,
@@ -93,7 +105,7 @@ watch(() => props.container, () => {
 
 // Watch for changes in logTimePeriod to refresh logs automatically
 watch(() => logTimePeriod.value, (newValue) => {
-  if (newValue && newValue.length > 0) {
+  if (!useCustomDateRange.value && newValue && newValue.length > 0) {
     handleRefreshLogs()
   }
 }, { immediate: false })
@@ -110,26 +122,6 @@ const containerStatus = computed(() => {
     props.container.healthy,
   )
 })
-
-// Helper function for container status
-function getContainerStatus(reportedAt: string, running: boolean, healthy?: boolean | null) {
-  if (reportedAt && new Date(reportedAt) < new Date(Date.now() - 1000 * 60 * 60 * constants.CONTAINERS.STALE_HOURS))
-    return 'stale' // Hasn't been updated for 2 hours (possibly removed)
-  if (running && healthy === null)
-    return 'running'
-  if (running && healthy)
-    return 'healthy'
-  if (running && !healthy)
-    return 'unhealthy'
-  return 'stopped'
-}
-
-// Format date for display
-function formatDate(dateStr: string | null) {
-  if (!dateStr)
-    return 'Not started'
-  return new Date(dateStr).toLocaleString()
-}
 
 // Check if a specific action is loading for a container
 function isActionLoading(action: string): Record<string, boolean> {
@@ -150,12 +142,53 @@ function handlePrune() {
   }
 }
 
+// Handle copying logs to clipboard
+async function copyLogsToClipboard() {
+  if (!props.logs)
+    return
+
+  try {
+    // Remove HTML tags to get plain text
+    const plainText = props.logs.replace(/<[^>]*>/g, '')
+    await navigator.clipboard.writeText(plainText)
+  }
+  catch (error) {
+    console.error('Failed to copy logs to clipboard:', error)
+  }
+}
+
 // Handle refreshing logs with selected options
 function handleRefreshLogs() {
-  emit('refreshLogs', logTail.value, logTimePeriod.value[0].value)
+  if (useCustomDateRange.value && fromDate.value) {
+    // If using custom date range, use ISO string format for API
+    const fromTimestamp = fromDate.value ? new Date(fromDate.value).toISOString() : undefined
+    const toTimestamp = toDate.value ? new Date(toDate.value).toISOString() : undefined
+    emit('refreshLogs', logTail.value, undefined, fromTimestamp, toTimestamp)
+  }
+  else {
+    // Use the time period selection (since parameter)
+    emit('refreshLogs', logTail.value, logTimePeriod.value[0].value)
+  }
+
   // Scroll will be handled by the logs watcher, but we add a backup
   setTimeout(scrollLogsToBottom, 300)
 }
+
+// Toggle between time period and custom date range
+watch(() => useCustomDateRange.value, (newValue) => {
+  if (newValue) {
+    // When switching to custom date range, set a default from date if not set
+    if (!fromDate.value) {
+      const defaultDate = new Date()
+      defaultDate.setHours(defaultDate.getHours() - 24) // Default to 24 hours ago
+      fromDate.value = defaultDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
+    }
+    if (!toDate.value) {
+      const now = new Date()
+      toDate.value = now.toISOString().split('T')[0] // Format as YYYY-MM-DD
+    }
+  }
+})
 </script>
 
 <template>
@@ -173,19 +206,9 @@ function handleRefreshLogs() {
     <Flex v-if="container" column gap="m" class="container-detail">
       <Flex column gap="m" expand>
         <!-- Actions -->
-        <Flex gap="s">
-          <Alert v-if="containerStatus === 'stale'" variant="warning" class="w-100">
-            This container appears to be stale. It hasn't reported status in {{ constants.CONTAINERS.STALE_HOURS }} hours and may no longer exist.
-          </Alert>
-          <ContainerActions
-            v-if="containerStatus !== 'stale'"
-            :container="container"
-            :status="containerStatus"
-            :is-loading="isActionLoading"
-            @action="handleControl"
-            @prune="handlePrune"
-          />
-        </Flex>
+        <Alert v-if="containerStatus === 'stale'" variant="warning" class="w-100">
+          This container appears to be stale. It hasn't reported status in {{ constants.CONTAINERS.STALE_HOURS }} hours and may no longer exist.
+        </Alert>
 
         <!-- Basic info -->
         <Card class="container-info">
@@ -205,40 +228,48 @@ function handleRefreshLogs() {
 
               <Flex class="detail-item" x-between expand>
                 <span class="detail-label">Started:</span>
-                <span>{{ formatDate(container.started_at) }}</span>
+                <TimestampDate :date="container.started_at" fallback="Not started" />
               </Flex>
 
               <Flex class="detail-item" x-between expand>
                 <span class="detail-label">Last Report:</span>
-                <span>{{ formatDate(container.reported_at) }}</span>
+                <TimestampDate :date="container.reported_at" />
+              </Flex>
+
+              <Flex class="detail-item" x-between expand>
+                <span class="detail-label">Created:</span>
+                <TimestampDate :date="container.created_at" />
               </Flex>
             </Flex>
+
+            <ContainerActions
+              :container="container"
+              :status="containerStatus"
+              :is-loading="isActionLoading"
+              @action="handleControl"
+              @prune="handlePrune"
+            />
           </Flex>
         </Card>
 
         <!-- Logs -->
         <Flex v-if="containerStatus !== 'stale'" column gap="s" expand>
-          <Flex x-between y-center class="mb-s">
+          <Flex x-between y-center class="mb-s" expand>
             <h4>Container Logs</h4>
             <Flex y-center gap="s">
               <!-- Log filtering options -->
               <Flex gap="s" y-center>
-                <Select
-                  v-model="logTimePeriod"
-                  :options="logTimePeriods"
-                  size="s"
-                  class="time-filter"
-                />
-                <Input
-                  v-model="logTail"
-                  type="number"
-                  :min="1"
-                  :max="10000"
-                  size="s"
-                  class="tail-filter"
-                  placeholder="Tail lines"
-                />
+                <label class="toggle-label">
+                  <input v-model="useCustomDateRange" type="checkbox">
+                  Custom date range
+                </label>
               </Flex>
+              <Button size="s" variant="gray" :disabled="!props.logs || props.logsLoading" @click="copyLogsToClipboard">
+                <Flex y-center gap="xs">
+                  <Icon name="ph:copy" />
+                  Copy
+                </Flex>
+              </Button>
               <Button size="s" variant="gray" @click="handleRefreshLogs">
                 <Flex y-center gap="xs">
                   <Icon name="ph:arrow-clockwise" />
@@ -246,6 +277,33 @@ function handleRefreshLogs() {
                 </Flex>
               </Button>
             </Flex>
+          </Flex>
+
+          <!-- Time selection options -->
+          <Flex gap="s" y-center class="mb-s" wrap>
+            <template v-if="!useCustomDateRange">
+              <Select
+                v-model="logTimePeriod"
+                label="Log time period"
+                :options="logTimePeriods"
+                size="s"
+                class="time-filter"
+              />
+            </template>
+            <template v-else>
+              <Input v-model="fromDate" type="date" size="s" label="From date" />
+              <Input v-model="toDate" type="date" size="s" label="To date (optional)" />
+            </template>
+            <Input
+              v-model="logTail"
+              label="Tail lines"
+              type="number"
+              :min="1"
+              :max="10000"
+              size="s"
+              class="tail-filter"
+              placeholder="Tail lines"
+            />
           </Flex>
 
           <Alert v-if="logsError" variant="danger">
@@ -324,5 +382,15 @@ function handleRefreshLogs() {
 }
 .tail-filter {
   width: 90px;
+}
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 1.4rem;
+  color: var(--color-text-muted);
+}
+.w-100 {
+  width: 100%;
 }
 </style>

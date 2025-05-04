@@ -29,7 +29,9 @@ const statusDescriptions = {
 <template>
   <Tooltip placement="top">
     <template #tooltip>
-      <p>{{ statusDescriptions[status] }}</p>
+      <div class="tooltip-content">
+        {{ statusDescriptions[status] }}
+      </div>
     </template>
     <Flex class="status-indicator-wrapper" y-center>
       <span :class="`status-indicator ${status}`" />
@@ -69,7 +71,13 @@ const statusDescriptions = {
   }
 
   &.stale {
-    background-color: var(--color-text-lighter);
+    background-color: var(--color-text-yellow);
   }
+}
+
+.tooltip-content {
+  color: var(--color-text-light);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
 }
 </style>

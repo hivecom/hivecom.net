@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 
-import constants from '@/constants.json'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
+
+import { getContainerStatus } from '@/utils/containerStatus'
+
 import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-
 import { computed, ref } from 'vue'
-
+import StatusIndicator from './../StatusIndicator.vue'
 import ContainerActions from './ContainerActions.vue'
 import ContainerDetails from './ContainerDetails.vue'
 import ContainerFilters from './ContainerFilters.vue'
-import StatusIndicator from './StatusIndicator.vue'
 
 // Define interface for transformed container data
 interface TransformedContainer {
@@ -22,6 +23,7 @@ interface TransformedContainer {
     name: string
     running: boolean
     healthy: boolean | null
+    created_at: string
     started_at: string | null
     reported_at: string
     server: {
@@ -42,12 +44,17 @@ const props = defineProps<{
   controlContainer: (container: any, action: 'start' | 'stop' | 'restart') => Promise<void>
 }>()
 
+const emit = defineEmits<{
+  (e: 'refresh'): void
+}>()
+
 // Define query
 const supabase = useSupabaseClient()
 const containersQuery = supabase.from('containers').select(`
   name,
   running,
   healthy,
+  created_at,
   started_at,
   reported_at,
   server (
@@ -157,26 +164,6 @@ const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData
 // Set default sorting.
 setSort('Name', 'asc')
 
-// Helper function for container status
-function getContainerStatus(reportedAt: string, running: boolean, healthy?: boolean | null) {
-  if (reportedAt && new Date(reportedAt) < new Date(Date.now() - 1000 * 60 * 60 * constants.CONTAINERS.STALE_HOURS))
-    return 'stale' // Hasn't been updated for 2 hours (possibly removed)
-  if (running && healthy === null)
-    return 'running'
-  if (running && healthy)
-    return 'healthy'
-  if (running && !healthy)
-    return 'unhealthy'
-  return 'stopped'
-}
-
-// Format date for display
-function formatDate(dateStr: string | null) {
-  if (!dateStr)
-    return 'Not started'
-  return new Date(dateStr).toLocaleString()
-}
-
 // Fetch containers data
 async function fetchContainers() {
   loading.value = true
@@ -190,6 +177,8 @@ async function fetchContainers() {
     }
 
     containers.value = data || []
+    // Notify parent to refresh KPIs when container data changes
+    emit('refresh')
   }
   catch (error: any) {
     errorMessage.value = error.message || 'An error occurred while loading containers'
@@ -294,7 +283,7 @@ function isActionLoading(containerName: string, action: string): Record<string, 
 }
 
 // Container logs fetching
-async function fetchContainerLogs(tail = 100, since: string | null = null) {
+async function fetchContainerLogs(tail = 100, since: string | null = null, from: string | null = null, to: string | null = null) {
   if (!selectedContainer.value)
     return
 
@@ -309,8 +298,17 @@ async function fetchContainerLogs(tail = 100, since: string | null = null) {
     // Add parameters if provided
     if (tail)
       params.append('tail', tail.toString())
-    if (since && since !== 'all')
+
+    // If from is provided, it takes precedence over since
+    if (from) {
+      params.append('from', from)
+      if (to)
+        params.append('to', to)
+    }
+    // Otherwise use since if provided
+    else if (since && since !== 'all') {
       params.append('since', since)
+    }
 
     // Add query parameters if any exist
     if (params.toString())
@@ -387,8 +385,13 @@ onBeforeMount(fetchContainers)
           <Table.Cell>
             <StatusIndicator :status="container.Status" show-label />
           </Table.Cell>
-          <Table.Cell>{{ formatDate(container.Started) }}</Table.Cell>
-          <Table.Cell>{{ formatDate(container['Last Report']) }}</Table.Cell>
+          <Table.Cell>
+            <TimestampDate v-if="container.Started" :date="container.Started" />
+            <span v-else>Not started</span>
+          </Table.Cell>
+          <Table.Cell>
+            <TimestampDate :date="container['Last Report']" />
+          </Table.Cell>
           <td>
             <ContainerActions
               :container="container._original"

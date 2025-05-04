@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { Flex, Tab, Tabs } from '@dolanske/vui'
 
-import ContainerTable from '~/components/Admin/ContainerTable.vue'
+import ContainerKPIs from '~/components/Admin/Network/ContainerKPIs.vue'
+import ContainerTable from '~/components/Admin/Network/ContainerTable.vue'
 
 // Tab management
 const activeTab = ref('Containers')
 const supabase = useSupabaseClient()
+// Refresh trigger for KPIs
+const refreshKPIs = ref(0)
 
 // Container control actions
 async function handleContainerControl(container: any, action: 'start' | 'stop' | 'restart') {
@@ -17,6 +20,9 @@ async function handleContainerControl(container: any, action: 'start' | 'stop' |
 
     if (error)
       throw error
+
+    // Trigger refresh of KPIs after container action
+    refreshKPIs.value++
   }
   catch (error) {
     console.error('Container control error:', error)
@@ -37,7 +43,11 @@ async function handleContainerControl(container: any, action: 'start' | 'stop' |
     </Tabs>
 
     <!-- Containers Tab -->
-    <Flex v-show="activeTab === 'Containers'" expand>
+    <Flex v-show="activeTab === 'Containers'" column gap="m" expand>
+      <!-- Container KPIs -->
+      <ContainerKPIs :refresh="refreshKPIs" />
+
+      <!-- Container Table -->
       <ContainerTable
         :control-container="handleContainerControl"
       />
