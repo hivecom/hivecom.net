@@ -267,7 +267,7 @@ async function fetchContainerLogs() {
     if (error)
       throw error
 
-    containerLogs.value = data || 'No logs available'
+    containerLogs.value = data.logs || 'No logs available'
   }
   catch (error: any) {
     logsError.value = error.message || 'Could not fetch container logs'
