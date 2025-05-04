@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import constants from '@/constants.json'
-import { Alert, Button, Card, Flex, Sheet, Skeleton } from '@dolanske/vui'
+import { Alert, Button, Card, Dropdown, Flex, Input, Select, Sheet, Skeleton } from '@dolanske/vui'
 import Convert from 'ansi-to-html'
 import { computed, nextTick, ref, watch } from 'vue'
 import ContainerActions from './ContainerActions.vue'
 import StatusIndicator from './StatusIndicator.vue'
+
+// Define interface for Select options
+interface SelectOption {
+  label: string
+  value: string
+}
 
 const props = defineProps<{
   container: {
@@ -26,9 +32,27 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'refreshLogs'): void
+  (e: 'refreshLogs', tail?: number, since?: string): void
   (e: 'control', container: any, action: 'start' | 'stop' | 'restart'): void
 }>()
+
+// Log filtering options
+const logTail = ref(100)
+const logTimePeriods = [
+  { label: '30 seconds', value: '30s' },
+  { label: '5 minutes', value: '5m' },
+  { label: '30 minutes', value: '30m' },
+  { label: '3 hours', value: '3h' },
+  { label: '6 hours', value: '6h' },
+  { label: '12 hours', value: '12h' },
+  { label: 'Last day', value: '24h' },
+  { label: 'Last week', value: '168h' },
+  { label: 'Last month', value: '720h' },
+  { label: 'Last year', value: '8760h' },
+  { label: 'All time', value: 'all' },
+]
+// Initialize with a default value (1 hour)
+const logTimePeriod = ref<SelectOption[]>([])
 
 const ansiConverter = new Convert({
   newline: true,
@@ -65,6 +89,13 @@ watch(() => props.container, () => {
     scrollLogsToBottom()
   }
 }, { immediate: true })
+
+// Watch for changes in logTimePeriod to refresh logs automatically
+watch(() => logTimePeriod.value, (newValue) => {
+  if (newValue && newValue.length > 0) {
+    handleRefreshLogs()
+  }
+}, { immediate: false })
 
 // Computed property for container status
 const containerStatus = computed(() => {
@@ -111,9 +142,9 @@ function handleControl(container: any, action: 'start' | 'stop' | 'restart') {
   emit('control', container, action)
 }
 
-// Listen for refreshLogs event to ensure logs are scrolled after refresh
+// Handle refreshing logs with selected options
 function handleRefreshLogs() {
-  emit('refreshLogs')
+  emit('refreshLogs', logTail.value, logTimePeriod.value[0].value)
   // Scroll will be handled by the logs watcher, but we add a backup
   setTimeout(scrollLogsToBottom, 300)
 }
@@ -182,26 +213,46 @@ function handleRefreshLogs() {
         <Flex column gap="s" expand>
           <Flex x-between y-center class="mb-s">
             <h4>Container Logs</h4>
-            <Button size="s" variant="gray" @click="handleRefreshLogs">
-              <Flex y-center gap="xs">
-                <Icon name="ph:arrow-clockwise" />
-                Refresh
+            <Flex y-center gap="s">
+              <!-- Log filtering options -->
+              <Flex gap="s" y-center>
+                <Select
+                  v-model="logTimePeriod"
+                  :options="logTimePeriods"
+                  size="s"
+                  class="time-filter"
+                />
+                <Input
+                  v-model="logTail"
+                  type="number"
+                  :min="1"
+                  :max="10000"
+                  size="s"
+                  class="tail-filter"
+                  placeholder="Tail lines"
+                />
               </Flex>
-            </Button>
+              <Button size="s" variant="gray" @click="handleRefreshLogs">
+                <Flex y-center gap="xs">
+                  <Icon name="ph:arrow-clockwise" />
+                  Refresh
+                </Flex>
+              </Button>
+            </Flex>
           </Flex>
 
           <Alert v-if="logsError" variant="danger">
             {{ logsError }}
           </Alert>
 
-          <Alert v-else-if="container && !container.running" variant="info">
+          <Alert v-else-if="container && !container.running" variant="info" class="w-100">
             Container is not running. Logs are unavailable.
           </Alert>
 
           <Skeleton v-else-if="logsLoading" :height="200" />
 
           <div
-            v-if="!logsLoading && !logsError"
+            v-if="!logsLoading && !logsError && container?.running"
             ref="logsContainerRef"
             class="container-logs"
             v-html="formattedLogs"
@@ -243,11 +294,13 @@ function handleRefreshLogs() {
   overflow-y: auto;
 }
 .container-logs {
+  width: 100%;
   max-width: 100%;
   border-radius: var(--border-radius-s);
   white-space: pre;
+  color: #fff;
   font-family: monospace;
-  font-size: 0.8rem;
+  font-size: 1.5rem;
   line-height: 1.4;
   max-height: 50vh;
   overflow-y: auto;
@@ -261,5 +314,11 @@ function handleRefreshLogs() {
 }
 .stale-container-message {
   margin-top: var(--space-s);
+}
+.time-filter {
+  width: 192px;
+}
+.tail-filter {
+  width: 90px;
 }
 </style>

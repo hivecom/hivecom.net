@@ -246,7 +246,7 @@ function isActionLoading(containerName: string, action: string): Record<string, 
 }
 
 // Container logs fetching
-async function fetchContainerLogs() {
+async function fetchContainerLogs(tail = 100, since = '1h') {
   if (!selectedContainer.value)
     return
 
@@ -254,10 +254,24 @@ async function fetchContainerLogs() {
   logsError.value = ''
 
   try {
+    // Construct URL with query parameters
+    let endpoint = `admin-docker-control-container-logs/${selectedContainer.value.name}`
+    const params = new URLSearchParams()
+
+    // Add parameters if provided
+    if (tail)
+      params.append('tail', tail.toString())
+    if (since && since !== 'all')
+      params.append('since', since)
+
+    // Add query parameters if any exist
+    if (params.toString())
+      endpoint += `?${params.toString()}`
+
     // Call the Docker control function to get logs
     const { data, error } = await supabase
       .functions
-      .invoke(`admin-docker-control-container-logs/${selectedContainer.value.name}`, {
+      .invoke(endpoint, {
         method: 'GET',
         headers: {
           'Content-Type': 'text/plain',

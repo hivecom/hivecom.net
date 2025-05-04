@@ -69,13 +69,13 @@ Deno.serve(async (req: Request) => {
     // Process URL query parameters for log options
     const url = new URL(req.url);
     const tail = url.searchParams.get("tail") || "100"; // Default 100 lines
-    const since = url.searchParams.get("since") || "1h"; // Default 1 hour
+    const since = url.searchParams.get("since");
 
     // Build the Docker control URL for container logs
     const dockerControlUrl = buildDockerControlActionUrl(
       container!.server,
       containerName,
-      `logs?tail=${tail}&since=${since}`,
+      `logs?tail=${tail}${since ? `&since=${since}` : ""}`,
     );
 
     console.log(`Making request to Docker Control at: ${dockerControlUrl}`);
