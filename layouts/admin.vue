@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Divider, DropdownItem, Flex, Sidebar, Spinner } from '@dolanske/vui'
+// import { useStorage } from '@vueuse/core'
 
 const router = useRouter()
 const route = useRoute()
@@ -13,20 +14,26 @@ const menuItems = [
   { name: 'Network', path: '/admin/network', icon: 'ph:computer-tower' },
   { name: 'Referendums', path: '/admin/referendums', icon: 'ph:user-sound' },
 ]
+
+// TODO: need to fix something in Sidebar so for now it won't save to local storage
+// const miniSidebar = useStorage('admin-sidebar-open', false)
+const miniSidebar = ref(false)
 </script>
 
 <template>
   <div class="vui-sidebar-layout">
-    <Sidebar :model-value="true">
+    <Sidebar :model-value="true" :mini="miniSidebar">
       <template #header>
-        <Flex y-center class="mb-s" x-between>
-          <Flex y-center gap="s">
+        <Flex y-center class="mb-s">
+          <Flex y-center gap="s" expand>
             <SharedIcon />
-            <h5>
+            <h5 v-if="!miniSidebar" class="flex-1">
               Admin
             </h5>
           </Flex>
-          <SharedThemeToggle no-text small />
+          <Button v-if="!miniSidebar" square plain @click="miniSidebar = !miniSidebar">
+            <Icon name="tabler:layout-sidebar-left-collapse" />
+          </Button>
         </Flex>
         <Divider :size="0" />
       </template>
@@ -39,9 +46,12 @@ const menuItems = [
       >
         {{ item.name }}
       </DropdownItem>
+      <Divider />
+      <DropdownItem v-if="miniSidebar" square icon="tabler:layout-sidebar-left-expand" @click="miniSidebar = !miniSidebar" />
 
       <template #footer>
-        <Button expand size="s" outline @click="router.push('/')">
+        <DropdownItem v-if="miniSidebar" square icon="ph:caret-left" data-title-right="Close admin console" @click="router.push('/')" />
+        <Button v-else expand size="s" outline @click="router.push('/')">
           <template #start>
             <Icon name="ph:caret-left" />
           </template>
