@@ -2,7 +2,7 @@
 import constants from '@/constants.json'
 import { getContainerStatus } from '@/utils/containerStatus'
 
-import { Alert, Button, Card, Flex, Input, Select, Sheet, Skeleton } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Divider, Flex, Grid, Input, Select, Sheet, Skeleton } from '@dolanske/vui'
 
 import Convert from 'ansi-to-html'
 
@@ -200,7 +200,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
     @close="$emit('close')"
   >
     <template #header>
-      <h3>Container Details</h3>
+      <h3>{{ containerStatus === 'stale' ? 'Container details' : container!.name }}</h3>
     </template>
 
     <Flex v-if="container" column gap="m" class="container-detail">
@@ -212,71 +212,53 @@ watch(() => useCustomDateRange.value, (newValue) => {
 
         <!-- Basic info -->
         <Card class="container-info">
-          <Flex column gap="s">
-            <Flex x-between y-center expand>
-              <h4>{{ container.name }}</h4>
-              <Flex y-center gap="xs">
-                <StatusIndicator :status="containerStatus" :show-label="true" />
-              </Flex>
-            </Flex>
+          <Flex column gap="l" expand>
+            <Grid class="detail-item" expand :columns="2">
+              <span class="detail-label">Status:</span>
+              <StatusIndicator :status="containerStatus" :show-label="true" />
+            </Grid>
 
-            <Flex column gap="xs" expand>
-              <Flex class="detail-item" x-between expand>
-                <span class="detail-label">Server:</span>
-                <span>{{ container.server?.address || 'Unknown' }}</span>
-              </Flex>
+            <Grid class="detail-item" expand :columns="2">
+              <span class="detail-label">Server:</span>
+              <span>{{ container.server?.address || 'Unknown' }}</span>
+            </Grid>
 
-              <Flex class="detail-item" x-between expand>
-                <span class="detail-label">Started:</span>
-                <TimestampDate :date="container.started_at" fallback="Not started" />
-              </Flex>
+            <Grid class="detail-item" :columns="2" expand>
+              <span class="detail-label">Started:</span>
+              <TimestampDate :date="container.started_at" fallback="Not started" />
+            </Grid>
 
-              <Flex class="detail-item" x-between expand>
-                <span class="detail-label">Last Report:</span>
-                <TimestampDate :date="container.reported_at" />
-              </Flex>
+            <Grid class="detail-item" :columns="2" expand>
+              <span class="detail-label">Last Report:</span>
+              <TimestampDate :date="container.reported_at" />
+            </Grid>
 
-              <Flex class="detail-item" x-between expand>
-                <span class="detail-label">Created:</span>
-                <TimestampDate :date="container.created_at" />
-              </Flex>
-            </Flex>
-
-            <ContainerActions
-              :container="container"
-              :status="containerStatus"
-              :is-loading="isActionLoading"
-              @action="handleControl"
-              @prune="handlePrune"
-            />
+            <Grid class="detail-item" :columns="2" expand>
+              <span class="detail-label">Created:</span>
+              <TimestampDate :date="container.created_at" />
+            </Grid>
           </Flex>
+
+          <Divider size="40" />
+
+          <ContainerActions
+            :container="container"
+            :status="containerStatus"
+            :is-loading="isActionLoading"
+            @action="handleControl"
+            @prune="handlePrune"
+          />
         </Card>
 
         <!-- Logs -->
         <Flex v-if="containerStatus !== 'stale'" column gap="s" expand>
           <Flex x-between y-center class="mb-s" expand>
-            <h4>Container Logs</h4>
-            <Flex y-center gap="s">
-              <!-- Log filtering options -->
-              <Flex gap="s" y-center>
-                <label class="toggle-label">
-                  <input v-model="useCustomDateRange" type="checkbox">
-                  Custom date range
-                </label>
-              </Flex>
-              <Button size="s" variant="gray" :disabled="!props.logs || props.logsLoading" @click="copyLogsToClipboard">
-                <Flex y-center gap="xs">
-                  <Icon name="ph:copy" />
-                  Copy
-                </Flex>
-              </Button>
-              <Button size="s" variant="gray" @click="handleRefreshLogs">
-                <Flex y-center gap="xs">
-                  <Icon name="ph:arrow-clockwise" />
-                  Refresh
-                </Flex>
-              </Button>
-            </Flex>
+            <h4>Logs</h4>
+            <ButtonGroup :gap="1">
+              <Button square icon="ph:calendar-dots" size="s" :variant="useCustomDateRange ? 'accent' : 'gray'" :disabled="!props.logs || props.logsLoading" data-title-bottom="Custom date range" @click="useCustomDateRange = !useCustomDateRange" />
+              <Button square icon="ph:copy" size="s" variant="gray" :disabled="!props.logs || props.logsLoading" data-title-bottom="Copy logs" @click="copyLogsToClipboard" />
+              <Button square icon="ph:arrow-clockwise" size="s" variant="gray" :disabled="!props.logs || props.logsLoading" data-title-bottom-right="Refresh logs" @click="handleRefreshLogs" />
+            </ButtonGroup>
           </Flex>
 
           <!-- Time selection options -->
@@ -325,34 +307,22 @@ watch(() => useCustomDateRange.value, (newValue) => {
         </Flex>
       </Flex>
     </Flex>
-
-    <template #footer>
-      <Flex x-between>
-        <Button variant="gray" @click="$emit('close')">
-          Close
-        </Button>
-      </Flex>
-    </template>
   </Sheet>
 </template>
 
 <style scoped>
 .container-detail {
-  padding: var(--space-m) 0;
+  padding-bottom: var(--space);
 }
-
 .container-info {
-  width: 100%;
-  padding: var(--space-m);
+  padding: var(--space-s);
   background-color: var(--color-bg);
-}
-.detail-item {
-  margin: var(--space-xs) 0;
+  margin-bottom: var(--space-l);
 }
 .detail-label {
-  width: 100px;
+  /* width: 100px; */
   font-weight: 500;
-  color: var(--color-text-muted);
+  color: var(--color-text-light);
 }
 .logs-container {
   max-height: 400px;

@@ -379,7 +379,7 @@ onBeforeMount(fetchContainers)
       </template>
 
       <template #body>
-        <tr v-for="container in rows" :key="container._original.name" @click="viewContainer(container._original)">
+        <tr v-for="container in rows" :key="container._original.name" class="clickable-row" @click="viewContainer(container._original)">
           <Table.Cell>{{ container.Name }}</Table.Cell>
           <Table.Cell>{{ container.Server }}</Table.Cell>
           <Table.Cell>
@@ -438,5 +438,16 @@ onBeforeMount(fetchContainers)
 }
 .w-100 {
   width: 100%;
+}
+
+td {
+  vertical-align: middle;
+}
+
+.clickable-row:hover {
+  td {
+    cursor: pointer;
+    background-color: var(--color-bg-raised);
+  }
 }
 </style>
