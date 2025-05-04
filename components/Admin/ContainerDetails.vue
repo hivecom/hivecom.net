@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import constants from '@/constants.json'
-import { Alert, Button, Card, Dropdown, Flex, Input, Select, Sheet, Skeleton } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Input, Select, Sheet, Skeleton } from '@dolanske/vui'
 import Convert from 'ansi-to-html'
 import { computed, nextTick, ref, watch } from 'vue'
 import ContainerActions from './ContainerActions.vue'
