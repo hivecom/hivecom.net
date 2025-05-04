@@ -239,6 +239,54 @@ async function handleControl(container: any, action: 'start' | 'stop' | 'restart
   }
 }
 
+// Handle pruning stale containers - removes them from the database
+async function handlePrune(container: any) {
+  try {
+    // Set loading state for this specific container and prune action
+    if (!actionLoading.value[container.name]) {
+      actionLoading.value[container.name] = {}
+    }
+
+    actionLoading.value[container.name].prune = true
+
+    // Only proceed if the container is stale
+    const status = getContainerStatus(container.reported_at, container.running, container.healthy)
+    if (status !== 'stale') {
+      throw new Error('Only stale containers can be pruned')
+    }
+
+    // Delete the container from the database
+    const { error } = await supabase
+      .from('containers')
+      .delete()
+      .eq('name', container.name)
+
+    if (error) {
+      throw error
+    }
+
+    // Close the detail view since the container no longer exists
+    closeDetail()
+
+    // Refresh container data after action
+    await fetchContainers()
+  }
+  catch (error: any) {
+    console.error(`Error pruning container ${container.name}:`, error)
+    // Show error message
+    errorMessage.value = error.message || 'Failed to prune container'
+    setTimeout(() => {
+      errorMessage.value = ''
+    }, 5000) // Clear error after 5 seconds
+  }
+  finally {
+    // Clear loading state
+    if (actionLoading.value[container.name]) {
+      actionLoading.value[container.name].prune = false
+    }
+  }
+}
+
 // Check if a specific action is loading for a container
 function isActionLoading(containerName: string, action: string): Record<string, boolean> {
   const loadingState = actionLoading.value[containerName] || {}
@@ -347,6 +395,7 @@ onBeforeMount(fetchContainers)
               :status="container.Status"
               :is-loading="isActionLoading(container._original.name, 'start')"
               @action="handleControl"
+              @prune="handlePrune"
               @click.stop
             />
           </td>
@@ -376,6 +425,7 @@ onBeforeMount(fetchContainers)
     @close="closeDetail"
     @refresh-logs="fetchContainerLogs"
     @control="handleControl"
+    @prune="handlePrune"
   />
 </template>
 

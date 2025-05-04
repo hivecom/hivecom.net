@@ -19,6 +19,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'action', container: any, action: 'start' | 'stop' | 'restart'): void
+  (e: 'prune', container: any): void
 }>()
 </script>
 
@@ -59,6 +60,18 @@ defineEmits<{
         <Icon name="ph:stop" />
       </template>
       Stop
+    </Button>
+    <Button
+      v-if="['stale'].includes(status)"
+      size="s"
+      variant="danger"
+      :loading="isLoading?.prune"
+      @click="$emit('prune', container)"
+    >
+      <template #start>
+        <Icon name="ph:trash" />
+      </template>
+      Prune
     </Button>
   </Flex>
 </template>

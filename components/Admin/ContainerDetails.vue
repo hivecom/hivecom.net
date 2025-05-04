@@ -34,6 +34,7 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'refreshLogs', tail?: number, since?: string): void
   (e: 'control', container: any, action: 'start' | 'stop' | 'restart'): void
+  (e: 'prune', container: any): void
 }>()
 
 // Log filtering options
@@ -142,6 +143,13 @@ function handleControl(container: any, action: 'start' | 'stop' | 'restart') {
   emit('control', container, action)
 }
 
+// Handle pruning of stale containers
+function handlePrune() {
+  if (props.container && containerStatus.value === 'stale') {
+    emit('prune', props.container)
+  }
+}
+
 // Handle refreshing logs with selected options
 function handleRefreshLogs() {
   emit('refreshLogs', logTail.value, logTimePeriod.value[0].value)
@@ -164,6 +172,21 @@ function handleRefreshLogs() {
 
     <Flex v-if="container" column gap="m" class="container-detail">
       <Flex column gap="m" expand>
+        <!-- Actions -->
+        <Flex gap="s">
+          <Alert v-if="containerStatus === 'stale'" variant="warning" class="w-100">
+            This container appears to be stale. It hasn't reported status in {{ constants.CONTAINERS.STALE_HOURS }} hours and may no longer exist.
+          </Alert>
+          <ContainerActions
+            v-if="containerStatus !== 'stale'"
+            :container="container"
+            :status="containerStatus"
+            :is-loading="isActionLoading"
+            @action="handleControl"
+            @prune="handlePrune"
+          />
+        </Flex>
+
         <!-- Basic info -->
         <Card class="container-info">
           <Flex column gap="s">
@@ -193,24 +216,8 @@ function handleRefreshLogs() {
           </Flex>
         </Card>
 
-        <!-- Actions -->
-        <Flex gap="s">
-          <ContainerActions
-            v-if="containerStatus !== 'stale'"
-            :container="container"
-            :status="containerStatus"
-            :is-loading="isActionLoading"
-            @action="handleControl"
-          />
-          <Flex v-if="containerStatus === 'stale'" class="stale-container-message">
-            <Alert variant="warning">
-              This container appears to be stale. Actions are disabled.
-            </Alert>
-          </Flex>
-        </Flex>
-
         <!-- Logs -->
-        <Flex column gap="s" expand>
+        <Flex v-if="containerStatus !== 'stale'" column gap="s" expand>
           <Flex x-between y-center class="mb-s">
             <h4>Container Logs</h4>
             <Flex y-center gap="s">
@@ -311,9 +318,6 @@ function handleRefreshLogs() {
 }
 .mb-s {
   margin-bottom: var(--space-s);
-}
-.stale-container-message {
-  margin-top: var(--space-s);
 }
 .time-filter {
   width: 192px;
