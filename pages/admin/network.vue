@@ -3,12 +3,17 @@ import { Flex, Tab, Tabs } from '@dolanske/vui'
 
 import ContainerKPIs from '~/components/Admin/Network/ContainerKPIs.vue'
 import ContainerTable from '~/components/Admin/Network/ContainerTable.vue'
+import GameserverTable from '~/components/Admin/Network/GameserverTable.vue'
+import ServerTable from '~/components/Admin/Network/ServerTable.vue'
 
 // Tab management
 const activeTab = ref('Containers')
 const supabase = useSupabaseClient()
 
+// Refresh signals for each tab
 const refreshSignal = ref(0)
+const serverRefreshSignal = ref(0)
+const gameserverRefreshSignal = ref(0)
 
 // Handle refresh events from ContainerTable
 function handleRefreshSignal(value: number) {
@@ -46,6 +51,16 @@ async function handleContainerControl(container: any, action: 'start' | 'stop' |
       <Tab label="Gameservers" />
       <Tab label="Containers" />
     </Tabs>
+
+    <!-- Servers Tab -->
+    <Flex v-show="activeTab === 'Servers'" column gap="m" expand>
+      <ServerTable v-model:refresh-signal="serverRefreshSignal" />
+    </Flex>
+
+    <!-- Gameservers Tab -->
+    <Flex v-show="activeTab === 'Gameservers'" column gap="m" expand>
+      <GameserverTable v-model:refresh-signal="gameserverRefreshSignal" />
+    </Flex>
 
     <!-- Containers Tab -->
     <Flex v-show="activeTab === 'Containers'" column gap="m" expand>

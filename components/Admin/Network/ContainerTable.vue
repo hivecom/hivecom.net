@@ -7,10 +7,10 @@ import { getContainerStatus } from '@/utils/containerStatus'
 
 import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
-import StatusIndicator from './../StatusIndicator.vue'
 import ContainerActions from './ContainerActions.vue'
 import ContainerDetails from './ContainerDetails.vue'
 import ContainerFilters from './ContainerFilters.vue'
+import ContainerStatusIndicator from './ContainerStatusIndicator.vue'
 
 // Define interface for transformed container data
 interface TransformedContainer {
@@ -450,7 +450,7 @@ onBeforeMount(fetchContainers)
           <Table.Cell>{{ container.Name }}</Table.Cell>
           <Table.Cell>{{ container.Server }}</Table.Cell>
           <Table.Cell>
-            <StatusIndicator :status="container.Status" show-label />
+            <ContainerStatusIndicator :status="container.Status" show-label />
           </Table.Cell>
           <Table.Cell>
             <TimestampDate v-if="container.Started" :date="container.Started" />

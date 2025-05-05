@@ -9,8 +9,8 @@ import Convert from 'ansi-to-html'
 import { computed, nextTick, ref, watch } from 'vue'
 
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
-import StatusIndicator from './../StatusIndicator.vue'
 import ContainerActions from './ContainerActions.vue'
+import ContainerStatusIndicator from './ContainerStatusIndicator.vue'
 
 // Define interface for Select options
 interface SelectOption {
@@ -223,7 +223,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">Status:</span>
-              <StatusIndicator :status="containerStatus" :show-label="true" />
+              <ContainerStatusIndicator :status="containerStatus" :show-label="true" />
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
