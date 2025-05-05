@@ -31,7 +31,7 @@ function handleClose() {
     <Flex v-if="props.server" column gap="m" class="server-detail">
       <Flex column gap="m" expand>
         <!-- Basic info -->
-        <Card class="server-info">
+        <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">Status:</span>
@@ -51,9 +51,10 @@ function handleClose() {
         </Card>
 
         <!-- Docker Control Info -->
-        <Card class="server-info">
-          <h4>Docker Control</h4>
-          <Divider size="40" />
+        <Card separators>
+          <template #header>
+            <h6>Docker Control</h6>
+          </template>
 
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
@@ -87,11 +88,6 @@ function handleClose() {
 <style scoped>
 .server-detail {
   padding-bottom: var(--space);
-}
-.server-info {
-  padding: var(--space-s);
-  background-color: var(--color-bg);
-  margin-bottom: var(--space-l);
 }
 .detail-label {
   font-weight: 500;

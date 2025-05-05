@@ -325,7 +325,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
   padding-bottom: var(--space);
 }
 .container-info {
-  padding: var(--space-s);
+  /* padding: var(--space-s); */
   background-color: var(--color-bg);
   margin-bottom: var(--space-l);
 }

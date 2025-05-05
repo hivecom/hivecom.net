@@ -29,8 +29,17 @@ function handleClose() {
 
     <Flex v-if="props.gameserver" column gap="m" class="gameserver-detail">
       <Flex column gap="m" expand>
+        <!-- Description -->
+        <Card v-if="props.gameserver.description" separators>
+          <template #header>
+            <h6>Description</h6>
+          </template>
+
+          <p>{{ props.gameserver.description }}</p>
+        </Card>
+
         <!-- Basic info -->
-        <Card class="gameserver-info">
+        <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">ID:</span>
@@ -58,9 +67,10 @@ function handleClose() {
         </Card>
 
         <!-- Network Details -->
-        <Card class="gameserver-info">
-          <h4>Network Details</h4>
-          <Divider size="40" />
+        <Card separators>
+          <template #header>
+            <h6>Network details</h6>
+          </template>
 
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
@@ -85,18 +95,11 @@ function handleClose() {
           </Flex>
         </Card>
 
-        <!-- Description -->
-        <Card v-if="props.gameserver.description" class="gameserver-info">
-          <h4>Description</h4>
-          <Divider size="40" />
-
-          <p>{{ props.gameserver.description }}</p>
-        </Card>
-
         <!-- Metadata -->
-        <Card class="gameserver-info">
-          <h4>Metadata</h4>
-          <Divider size="40" />
+        <Card separators>
+          <template #header>
+            <h6>Metadata</h6>
+          </template>
 
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
@@ -124,11 +127,6 @@ function handleClose() {
 <style scoped>
 .gameserver-detail {
   padding-bottom: var(--space);
-}
-.gameserver-info {
-  padding: var(--space-s);
-  background-color: var(--color-bg);
-  margin-bottom: var(--space-l);
 }
 .detail-label {
   font-weight: 500;

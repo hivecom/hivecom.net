@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { Card, Divider, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Button, Card, Divider, Flex, Grid, Sheet } from '@dolanske/vui'
 
 const props = defineProps<{
   game: {
@@ -42,9 +42,9 @@ const steamStoreUrl = computed(() => {
     </template>
 
     <Flex v-if="props.game" column gap="m" class="game-detail">
-      <Flex column gap="m" expand>
+      <Flex column gap="l" expand>
         <!-- Basic info -->
-        <Card class="game-info">
+        <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">ID:</span>
@@ -61,23 +61,28 @@ const steamStoreUrl = computed(() => {
               <span>{{ props.game.shorthand }}</span>
             </Grid>
 
-            <Grid v-if="props.game.steam_id" class="detail-item" expand :columns="2">
+            <Grid v-if="props.game.steam_id" class="detail-item" expand :columns="2" y-center>
               <span class="detail-label">Steam ID:</span>
-              <Flex gap="xs">
+              <Flex gap="xs" y-center>
                 <span>{{ props.game.steam_id }}</span>
-                <a v-if="steamStoreUrl" :href="steamStoreUrl" target="_blank" rel="noopener noreferrer">
-                  <Icon name="ph:steam-logo" />
-                  View on Steam
-                </a>
+                <Button variant="link">
+                  <template #start>
+                    <Icon name="ph:steam-logo" />
+                  </template>
+                  <a v-if="steamStoreUrl" :href="steamStoreUrl" target="_blank" rel="noopener noreferrer">
+                    View on Steam
+                  </a>
+                </Button>
               </Flex>
             </Grid>
           </Flex>
         </Card>
 
         <!-- Metadata -->
-        <Card class="game-info">
-          <h4>Metadata</h4>
-          <Divider size="40" />
+        <Card separators>
+          <template #header>
+            <h6>Metadata</h6>
+          </template>
 
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
@@ -91,9 +96,10 @@ const steamStoreUrl = computed(() => {
         </Card>
 
         <!-- Related Gameservers (placeholder for future implementation) -->
-        <Card class="game-info">
-          <h4>Related Gameservers</h4>
-          <Divider size="40" />
+        <Card separators>
+          <template #header>
+            <h6>Related Gameservers</h6>
+          </template>
 
           <p class="placeholder-text">
             Gameservers using this game will be displayed here in a future update.
@@ -108,11 +114,7 @@ const steamStoreUrl = computed(() => {
 .game-detail {
   padding-bottom: var(--space);
 }
-.game-info {
-  padding: var(--space-s);
-  background-color: var(--color-bg);
-  margin-bottom: var(--space-l);
-}
+
 .detail-label {
   font-weight: 500;
   color: var(--color-text-light);
