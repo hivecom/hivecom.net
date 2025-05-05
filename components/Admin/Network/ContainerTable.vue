@@ -67,8 +67,8 @@ const loading = ref(true)
 const errorMessage = ref('')
 const containers = ref<QueryData<typeof containersQuery>>([])
 const search = ref('')
-const serverFilter = ref<SelectOption[]>([])
-const statusFilter = ref<SelectOption[]>([])
+const serverFilter = ref<SelectOption[]>()
+const statusFilter = ref<SelectOption[]>()
 
 // Container detail state
 const selectedContainer = ref<any>(null)
@@ -125,18 +125,18 @@ const filteredData = computed<TransformedContainer[]>(() => {
     }
 
     // Filter by server
-    if (serverFilter.value.length > 0 && item.server) {
+    if (serverFilter.value && item.server) {
       const serverFilterValue = serverFilter.value[0].value
       if (item.server.address !== serverFilterValue) {
         return false
       }
     }
-    else if (serverFilter.value.length > 0 && serverFilter.value[0].value === 'Unknown' && item.server) {
+    else if (serverFilter.value && serverFilter.value[0].value === 'Unknown' && item.server) {
       return false
     }
 
     // Filter by status
-    if (statusFilter.value.length > 0) {
+    if (statusFilter.value) {
       const statusFilterValue = statusFilter.value[0].value
       const status = getContainerStatus(item.reported_at, item.running, item.healthy)
       if (status !== statusFilterValue) {
@@ -408,8 +408,8 @@ async function fetchContainerLogs(tail = 100, since: string | null = null, from:
 // Clear all filters
 function clearFilters() {
   search.value = ''
-  serverFilter.value = []
-  statusFilter.value = []
+  serverFilter.value = undefined
+  statusFilter.value = undefined
 }
 
 // Lifecycle hooks
@@ -419,12 +419,12 @@ onBeforeMount(fetchContainers)
 <template>
   <!-- Error message -->
   <Alert v-if="errorMessage" variant="danger">
-    {{ errorMessage }}
+    <p>{{ errorMessage }}</p>
   </Alert>
 
   <!-- Loading state -->
   <Alert v-else-if="loading" variant="info">
-    Loading containers...
+    <p>Loading containers...</p>
   </Alert>
 
   <Flex v-else gap="s" column expand>

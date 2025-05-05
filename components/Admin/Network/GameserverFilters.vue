@@ -18,8 +18,8 @@ const emit = defineEmits<{
 
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const regionFilter = defineModel<SelectOption[]>('regionFilter', { default: () => [] })
-const gameFilter = defineModel<SelectOption[]>('gameFilter', { default: () => [] })
+const regionFilter = defineModel<SelectOption[]>('regionFilter')
+const gameFilter = defineModel<SelectOption[]>('gameFilter')
 
 // Clear filters handler
 function clearFilters() {
@@ -61,10 +61,10 @@ function clearFilters() {
 
     <!-- Clear all filters -->
     <Button
-      v-if="search || regionFilter.length || gameFilter.length"
+      v-if="search || regionFilter || gameFilter"
       plain
       outline
-      :disabled="!search && regionFilter.length === 0 && gameFilter.length === 0"
+      :disabled="!search && !regionFilter && !gameFilter"
       @click="clearFilters"
     >
       Clear Filters

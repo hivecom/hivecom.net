@@ -215,7 +215,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
       <Flex column gap="m" expand>
         <!-- Actions -->
         <Alert v-if="containerStatus === 'stale'" variant="warning" class="w-100">
-          This container appears to be stale. It hasn't reported status in {{ constants.CONTAINERS.STALE_HOURS }} hours and may no longer exist.
+          <p>This container appears to be stale. It hasn't reported status in {{ constants.CONTAINERS.STALE_HOURS }} hours and may no longer exist.</p>
         </Alert>
 
         <!-- Basic info -->

@@ -46,7 +46,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const servers = ref<QueryData<typeof serversQuery>>([])
 const search = ref('')
-const statusFilter = ref<SelectOption[]>([])
+const statusFilter = ref<SelectOption[]>()
 
 // Server detail state
 const selectedServer = ref<any>(null)
@@ -71,7 +71,7 @@ const filteredData = computed<TransformedServer[]>(() => {
     }
 
     // Filter by status
-    if (statusFilter.value.length > 0) {
+    if (statusFilter.value) {
       const statusFilterValue = statusFilter.value[0].value
       const status = item.active ? 'active' : 'inactive'
       if (status !== statusFilterValue) {
@@ -139,7 +139,7 @@ function viewServer(server: any) {
 // Clear all filters
 function clearFilters() {
   search.value = ''
-  statusFilter.value = []
+  statusFilter.value = undefined
 }
 
 // Lifecycle hooks

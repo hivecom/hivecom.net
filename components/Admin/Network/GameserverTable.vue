@@ -59,8 +59,8 @@ const loading = ref(true)
 const errorMessage = ref('')
 const gameservers = ref<QueryData<typeof gameserversQuery>>([])
 const search = ref('')
-const regionFilter = ref<SelectOption[]>([])
-const gameFilter = ref<SelectOption[]>([])
+const regionFilter = ref<SelectOption[]>()
+const gameFilter = ref<SelectOption[]>()
 
 // Gameserver detail state
 const selectedGameserver = ref<any>(null)
@@ -106,7 +106,7 @@ const filteredData = computed<TransformedGameserver[]>(() => {
     }
 
     // Filter by region
-    if (regionFilter.value.length > 0 && item.region) {
+    if (regionFilter.value && item.region) {
       const regionFilterValue = regionFilter.value[0].value
       if (item.region !== regionFilterValue) {
         return false
@@ -114,7 +114,7 @@ const filteredData = computed<TransformedGameserver[]>(() => {
     }
 
     // Filter by game
-    if (gameFilter.value.length > 0 && item.game) {
+    if (gameFilter.value && item.game) {
       const gameFilterValue = Number.parseInt(gameFilter.value[0].value)
       if (item.game.id !== gameFilterValue) {
         return false
@@ -184,8 +184,8 @@ function viewGameserver(gameserver: any) {
 // Clear all filters
 function clearFilters() {
   search.value = ''
-  regionFilter.value = []
-  gameFilter.value = []
+  regionFilter.value = undefined
+  gameFilter.value = undefined
 }
 
 // Lifecycle hooks

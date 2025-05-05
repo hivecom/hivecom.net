@@ -16,8 +16,8 @@ const emit = defineEmits<{
 }>()
 // Use defineModel with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const serverFilter = defineModel<SelectOption[]>('serverFilter', { default: () => [] })
-const statusFilter = defineModel<SelectOption[]>('statusFilter', { default: () => [] })
+const serverFilter = defineModel<SelectOption[]>('serverFilter')
+const statusFilter = defineModel<SelectOption[]>('statusFilter')
 
 function clearFilters() {
   emit('clearFilters')
@@ -54,10 +54,10 @@ function clearFilters() {
     />
 
     <Button
-      v-if="search || serverFilter.length || statusFilter.length"
+      v-if="search || serverFilter || statusFilter"
       plain
       outline
-      :disabled="!search && serverFilter.length === 0 && statusFilter.length === 0"
+      :disabled="!search && !serverFilter && !statusFilter"
       @click="clearFilters"
     >
       Clear Filters

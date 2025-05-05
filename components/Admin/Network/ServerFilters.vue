@@ -17,7 +17,7 @@ const emit = defineEmits<{
 
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const statusFilter = defineModel<SelectOption[]>('statusFilter', { default: () => [] })
+const statusFilter = defineModel<SelectOption[]>('statusFilter')
 
 // Clear filters handler
 function clearFilters() {
@@ -49,10 +49,10 @@ function clearFilters() {
 
     <!-- Clear all filters -->
     <Button
-      v-if="search || statusFilter.length"
+      v-if="search || statusFilter"
       plain
       outline
-      :disabled="!search && statusFilter.length === 0"
+      :disabled="!search && !statusFilter"
       @click="clearFilters"
     >
       Clear Filters
