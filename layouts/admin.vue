@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Divider, DropdownItem, Flex, Sidebar, Spinner } from '@dolanske/vui'
+import { Button, Divider, DropdownItem, Flex, Grid, Sidebar, Spinner } from '@dolanske/vui'
 // import { useStorage } from '@vueuse/core'
 
 const router = useRouter()
@@ -46,17 +46,26 @@ const miniSidebar = ref(false)
       >
         {{ item.name }}
       </DropdownItem>
-      <Divider />
-      <DropdownItem v-if="miniSidebar" square icon="tabler:layout-sidebar-left-expand" @click="miniSidebar = !miniSidebar" />
+
+      <template v-if="miniSidebar">
+        <Divider />
+        <DropdownItem square icon="tabler:layout-sidebar-left-expand" @click="miniSidebar = !miniSidebar" />
+      </template>
 
       <template #footer>
-        <DropdownItem v-if="miniSidebar" square icon="ph:caret-left" data-title-right="Close admin console" @click="router.push('/')" />
-        <Button v-else expand size="s" outline @click="router.push('/')">
-          <template #start>
-            <Icon name="ph:caret-left" />
-          </template>
-          Exit
-        </Button>
+        <Flex v-if="miniSidebar" column x-center y-center gap="m">
+          <SharedThemeToggle no-text small />
+          <DropdownItem square icon="ph:caret-left" data-title-right="Close admin console" @click="router.push('/')" />
+        </Flex>
+        <Flex v-else x-between y-center>
+          <Button size="s" outline @click="router.push('/')">
+            <template #start>
+              <Icon name="ph:caret-left" />
+            </template>
+            Close
+          </Button>
+          <SharedThemeToggle no-text small />
+        </Flex>
       </template>
     </Sidebar>
     <main>
