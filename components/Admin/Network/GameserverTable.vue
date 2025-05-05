@@ -234,7 +234,7 @@ onBeforeMount(fetchGameservers)
         </tr>
       </template>
 
-      <template #pagination>
+      <template v-if="filteredData.length > 10" #pagination>
         <Pagination :pagination="pagination" @change="setPage" />
       </template>
     </Table.Root>

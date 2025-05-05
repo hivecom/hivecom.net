@@ -227,7 +227,7 @@ onBeforeMount(fetchGames)
         </tr>
       </template>
 
-      <template #pagination>
+      <template v-if="transformedGames.length > 10" #pagination>
         <Pagination :pagination="pagination" @change="setPage" />
       </template>
     </Table.Root>
