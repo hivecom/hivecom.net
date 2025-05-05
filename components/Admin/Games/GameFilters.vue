@@ -1,0 +1,37 @@
+<script setup lang="ts">
+import { Button, Flex, Input } from '@dolanske/vui'
+
+// Define models for filter values
+const search = defineModel<string>('search', { default: '' })
+
+// Clear all filters
+function clearFilters() {
+  search.value = ''
+}
+</script>
+
+<template>
+  <Flex gap="m" wrap>
+    <!-- Search Input -->
+    <Input
+      v-model="search"
+      placeholder="Search games..."
+      icon="ph:magnifying-glass"
+      :icon-click="clearFilters"
+      :icon-disabled="!search"
+      class="search-input"
+    />
+
+    <!-- Clear filters button -->
+    <Button v-if="search" @click="clearFilters">
+      Clear Filters
+    </Button>
+  </Flex>
+</template>
+
+<style scoped>
+.search-input {
+  min-width: 300px;
+  flex-grow: 1;
+}
+</style>
