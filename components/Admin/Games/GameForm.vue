@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Divider, Flex, Input, Sheet } from '@dolanske/vui'
+import { Button, Flex, Input, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '../../Shared/ConfirmModal.vue'
 

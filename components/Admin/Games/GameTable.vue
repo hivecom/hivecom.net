@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Alert, Button, Card, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
 import GameDetails from './GameDetails.vue'
