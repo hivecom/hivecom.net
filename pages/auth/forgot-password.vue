@@ -63,8 +63,8 @@ onMounted(() => {
             </template>
           </Button>
           <Alert v-if="showEmailNotice" filled variant="info">
-          <p>A password reset link has been sent to {{ email }}</p>
-        </Alert>
+            <p>A password reset link has been sent to {{ email }}</p>
+          </Alert>
           <Alert v-if="errorMessage" variant="danger" filled>
             {{ errorMessage }}
           </Alert>
