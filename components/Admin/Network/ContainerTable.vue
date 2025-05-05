@@ -6,7 +6,7 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { getContainerStatus } from '@/utils/containerStatus'
 
 import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import StatusIndicator from './../StatusIndicator.vue'
 import ContainerActions from './ContainerActions.vue'
 import ContainerDetails from './ContainerDetails.vue'
@@ -44,9 +44,8 @@ const props = defineProps<{
   controlContainer: (container: any, action: 'start' | 'stop' | 'restart') => Promise<void>
 }>()
 
-const emit = defineEmits<{
-  (e: 'refresh'): void
-}>()
+// Define model value for refresh signal to parent
+const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Define query
 const supabase = useSupabaseClient()
@@ -77,6 +76,14 @@ const containerLogs = ref('')
 const logsLoading = ref(false)
 const logsError = ref('')
 const actionLoading = ref<Record<string, Record<string, boolean>>>({})
+const showContainerDetails = ref(false)
+const refreshContainerDetails = ref<boolean>(false)
+
+const refreshLogsConfig = ref<{ tail?: number, since?: string, from?: string, to?: string } | null>(null)
+
+// Type that specifically allows null
+type ContainerAction = { container: any, type: 'start' | 'stop' | 'restart' | 'prune' | null } | null
+const containerAction = ref<ContainerAction>(null)
 
 // Compute unique server options for the filter
 const serverOptions = computed<SelectOption[]>(() => {
@@ -164,6 +171,69 @@ const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData
 // Set default sorting.
 setSort('Name', 'asc')
 
+// Watch for containerAction changes
+watch(containerAction, async (newAction) => {
+  if (newAction && newAction.type) {
+    if (newAction.type === 'prune') {
+      await handlePrune(newAction.container)
+    }
+    else {
+      await handleControl(newAction.container, newAction.type)
+    }
+    // Reset the action
+    containerAction.value = null
+  }
+})
+
+// Watch for refreshLogsConfig changes
+watch(refreshLogsConfig, async (newConfig) => {
+  if (newConfig) {
+    await fetchContainerLogs(
+      newConfig.tail,
+      newConfig.since,
+      newConfig.from,
+      newConfig.to,
+    )
+    // Reset the config
+    refreshLogsConfig.value = null
+  }
+})
+
+// Watch for refreshContainerDetails changes to refresh the selected container data
+watch(refreshContainerDetails, async (shouldRefresh) => {
+  if (shouldRefresh && selectedContainer.value) {
+    try {
+      // Store the container name before refreshing
+      const containerName = selectedContainer.value.name
+
+      // Refresh all containers first
+      await fetchContainers()
+
+      // Then find and update the selected container with fresh data
+      const refreshedContainer = containers.value.find(c => c.name === containerName)
+
+      if (refreshedContainer) {
+        // Update the selected container with the refreshed data
+        selectedContainer.value = refreshedContainer
+
+        // If container is running, also refresh logs
+        if (refreshedContainer.running) {
+          await fetchContainerLogs()
+        }
+      }
+    }
+    catch (error) {
+      console.error('Error refreshing container details:', error)
+    }
+    finally {
+      // Reset the refresh flag after a short delay to ensure component re-renders
+      setTimeout(() => {
+        refreshContainerDetails.value = false
+      }, 200)
+    }
+  }
+})
+
 // Fetch containers data
 async function fetchContainers() {
   loading.value = true
@@ -177,8 +247,8 @@ async function fetchContainers() {
     }
 
     containers.value = data || []
-    // Notify parent to refresh KPIs when container data changes
-    emit('refresh')
+    // Increment the refresh signal to notify the parent
+    refreshSignal.value = (refreshSignal.value || 0) + 1
   }
   catch (error: any) {
     errorMessage.value = error.message || 'An error occurred while loading containers'
@@ -191,16 +261,12 @@ async function fetchContainers() {
 // Handle row click - View container details
 function viewContainer(container: any) {
   selectedContainer.value = container
+  showContainerDetails.value = true
 
   if (container.running)
     fetchContainerLogs()
   else
     containerLogs.value = 'Container is not running. Logs are unavailable.'
-}
-
-// Close container detail view
-function closeDetail() {
-  selectedContainer.value = null
 }
 
 // Handle container control actions with loading state
@@ -255,7 +321,8 @@ async function handlePrune(container: any) {
     }
 
     // Close the detail view since the container no longer exists
-    closeDetail()
+    showContainerDetails.value = false
+    selectedContainer.value = null
 
     // Refresh container data after action
     await fetchContainers()
@@ -394,11 +461,10 @@ onBeforeMount(fetchContainers)
           </Table.Cell>
           <td>
             <ContainerActions
+              v-model="containerAction"
               :container="container._original"
               :status="container.Status"
-              :is-loading="isActionLoading(container._original.name, 'start')"
-              @action="handleControl"
-              @prune="handlePrune"
+              :is-loading="(action) => isActionLoading(container._original.name, action)"
               @click.stop
             />
           </td>
@@ -420,15 +486,15 @@ onBeforeMount(fetchContainers)
 
   <!-- Container Detail Sheet -->
   <ContainerDetails
+    v-model:is-open="showContainerDetails"
+    v-model:refresh-logs-config="refreshLogsConfig"
+    v-model:container-action="containerAction"
+    v-model:refresh-container="refreshContainerDetails"
     :container="selectedContainer"
     :logs="containerLogs"
     :logs-loading="logsLoading"
     :logs-error="logsError"
     :action-loading="actionLoading"
-    @close="closeDetail"
-    @refresh-logs="fetchContainerLogs"
-    @control="handleControl"
-    @prune="handlePrune"
   />
 </template>
 

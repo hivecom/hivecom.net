@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex } from '@dolanske/vui'
+import ConfirmModal from '../../Shared/ConfirmModal.vue'
 
 const props = defineProps<{
   container: {
@@ -14,13 +15,37 @@ const props = defineProps<{
     } | null
   }
   status: string
-  isLoading: Record<string, boolean>
+  isLoading: (action: string) => Record<string, boolean> | boolean
 }>()
 
-defineEmits<{
-  (e: 'action', container: any, action: 'start' | 'stop' | 'restart'): void
-  (e: 'prune', container: any): void
-}>()
+// Define a model value for actions with proper type
+type ContainerAction = { container: any, type: 'start' | 'stop' | 'restart' | 'prune' | null } | null
+const action = defineModel<ContainerAction>('modelValue', { default: null })
+
+// Handler functions to update the model value with the appropriate action
+function handleAction(actionType: 'start' | 'stop' | 'restart') {
+  action.value = { container: props.container, type: actionType }
+}
+
+// State for prune confirmation modal
+const showPruneConfirm = ref(false)
+
+function handlePrune() {
+  action.value = { container: props.container, type: 'prune' }
+}
+
+function openPruneConfirm() {
+  showPruneConfirm.value = true
+}
+
+// Helper function to determine if specific action is loading
+function isActionLoading(actionType: string): boolean {
+  const loading = props.isLoading(actionType)
+  if (typeof loading === 'boolean') {
+    return loading
+  }
+  return !!loading[actionType]
+}
 </script>
 
 <template>
@@ -29,8 +54,8 @@ defineEmits<{
       v-if="['stopped'].includes(props.status)"
       size="s"
       variant="success"
-      :loading="props.isLoading?.start"
-      @click="$emit('action', props.container, 'start')"
+      :loading="isActionLoading('start')"
+      @click="handleAction('start')"
     >
       <template #start>
         <Icon name="ph:play" />
@@ -41,8 +66,8 @@ defineEmits<{
       v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
       size="s"
       variant="danger"
-      :loading="props.isLoading?.restart"
-      @click="$emit('action', props.container, 'restart')"
+      :loading="isActionLoading('restart')"
+      @click="handleAction('restart')"
     >
       <template #start>
         <Icon name="ph:play-circle" />
@@ -53,8 +78,8 @@ defineEmits<{
       v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
       size="s"
       variant="danger"
-      :loading="props.isLoading?.stop"
-      @click="$emit('action', props.container, 'stop')"
+      :loading="isActionLoading('stop')"
+      @click="handleAction('stop')"
     >
       <template #start>
         <Icon name="ph:stop" />
@@ -65,13 +90,24 @@ defineEmits<{
       v-if="['stale'].includes(props.status)"
       size="s"
       variant="danger"
-      :loading="props.isLoading?.prune"
-      @click="$emit('prune', props.container)"
+      :loading="isActionLoading('prune')"
+      @click="openPruneConfirm"
     >
       <template #start>
         <Icon name="ph:trash" />
       </template>
       Prune
     </Button>
+
+    <!-- Confirmation Modal for Prune Action -->
+    <ConfirmModal
+      v-model:open="showPruneConfirm"
+      v-model:confirm="handlePrune"
+      title="Confirm Prune Action"
+      description="Are you sure you want to prune this container? This action cannot be undone."
+      confirm-text="Prune"
+      cancel-text="Cancel"
+      :destructive="true"
+    />
   </Flex>
 </template>

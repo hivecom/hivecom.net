@@ -37,12 +37,16 @@ const props = defineProps<{
   actionLoading: Record<string, Record<string, boolean>>
 }>()
 
-const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'refreshLogs', tail?: number, since?: string, from?: string, to?: string): void
-  (e: 'control', container: any, action: 'start' | 'stop' | 'restart'): void
-  (e: 'prune', container: any): void
-}>()
+// Define models for two-way binding with proper type definitions
+const isOpen = defineModel<boolean>('isOpen', { default: false })
+// Type definitions that specify null as a possible value
+const refreshLogsConfig = defineModel<{ tail?: number, since?: string, from?: string, to?: string } | null>('refreshLogsConfig', { default: null })
+// Type that specifically allows null
+type ContainerAction = { container: any, type: 'start' | 'stop' | 'restart' | 'prune' | null } | null
+const containerAction = defineModel<ContainerAction>('containerAction', { default: null })
+
+// Add a refreshTrigger model to request a refresh from parent
+const refreshContainer = defineModel<boolean>('refreshContainer', { default: false })
 
 // Log filtering options
 const logTail = ref(100)
@@ -110,6 +114,17 @@ watch(() => logTimePeriod.value, (newValue) => {
   }
 }, { immediate: false })
 
+// Watch for containerAction changes to trigger a data refresh after action is performed
+watch(() => containerAction.value, (action) => {
+  if (action) {
+    // After a longer delay to ensure the action completes and data is updated on the server
+    setTimeout(() => {
+      // Set refresh flag to true to trigger refresh in parent
+      refreshContainer.value = true
+    }, 1500) // Increased from 500ms to 1500ms for more reliable updates
+  }
+})
+
 // Computed property for container status
 const containerStatus = computed(() => {
   if (!props.container) {
@@ -123,23 +138,9 @@ const containerStatus = computed(() => {
   )
 })
 
-// Check if a specific action is loading for a container
-function isActionLoading(action: string): Record<string, boolean> {
-  if (!props.container)
-    return {}
-  return props.actionLoading[props.container.name]?.[action] ? { [action]: true } : {}
-}
-
-// Handle container control actions
-function handleControl(container: any, action: 'start' | 'stop' | 'restart') {
-  emit('control', container, action)
-}
-
-// Handle pruning of stale containers
-function handlePrune() {
-  if (props.container && containerStatus.value === 'stale') {
-    emit('prune', props.container)
-  }
+// Handle closing the sheet
+function handleClose() {
+  isOpen.value = false
 }
 
 // Handle copying logs to clipboard
@@ -163,11 +164,18 @@ function handleRefreshLogs() {
     // If using custom date range, use ISO string format for API
     const fromTimestamp = fromDate.value ? new Date(fromDate.value).toISOString() : undefined
     const toTimestamp = toDate.value ? new Date(toDate.value).toISOString() : undefined
-    emit('refreshLogs', logTail.value, undefined, fromTimestamp, toTimestamp)
+    refreshLogsConfig.value = {
+      tail: logTail.value,
+      from: fromTimestamp,
+      to: toTimestamp,
+    }
   }
   else {
     // Use the time period selection (since parameter)
-    emit('refreshLogs', logTail.value, logTimePeriod.value[0].value)
+    refreshLogsConfig.value = {
+      tail: logTail.value,
+      since: logTimePeriod.value[0].value,
+    }
   }
 
   // Scroll will be handled by the logs watcher, but we add a backup
@@ -193,11 +201,11 @@ watch(() => useCustomDateRange.value, (newValue) => {
 
 <template>
   <Sheet
-    :open="!!container"
+    :open="!!container && isOpen"
     position="right"
     separator
     :size="600"
-    @close="$emit('close')"
+    @close="handleClose"
   >
     <template #header>
       <h3>{{ containerStatus === 'stale' ? 'Container details' : container!.name }}</h3>
@@ -242,11 +250,13 @@ watch(() => useCustomDateRange.value, (newValue) => {
           <Divider size="40" />
 
           <ContainerActions
+            v-model="containerAction"
             :container="container"
             :status="containerStatus"
-            :is-loading="isActionLoading"
-            @action="handleControl"
-            @prune="handlePrune"
+            :is-loading="(action) => {
+              if (!container) return false
+              return !!props.actionLoading[container.name]?.[action]
+            }"
           />
         </Card>
 

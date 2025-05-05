@@ -7,10 +7,7 @@ import { computed, ref, watch } from 'vue'
 
 import KPICard from '../KPICard.vue'
 
-// Define props with refresh trigger to help sync with parent component
-const props = defineProps<{
-  refresh?: number
-}>()
+const refreshSignal = defineModel<number>('refreshSignal')
 
 // Container metrics
 const metrics = ref({
@@ -98,7 +95,7 @@ const activeContainers = computed(() => {
 })
 
 // Watch for refresh signal from parent
-watch(() => props.refresh, () => {
+watch(() => refreshSignal.value, () => {
   fetchContainerMetrics()
 })
 

@@ -3,7 +3,7 @@
   "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
     "incremental": true,
-    "target": "es6",
+    "target": "ES2017",
     "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true
