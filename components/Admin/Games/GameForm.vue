@@ -119,72 +119,75 @@ const sheetTitle = computed(() => {
     </template>
 
     <Flex column gap="l" class="game-form">
+      <!-- <Flex column gap="m" expand> -->
+      <!-- Game Info Section -->
       <Flex column gap="m" expand>
-        <!-- Game Info Section -->
-        <Flex column gap="m">
-          <h4>Game Information</h4>
+        <h4>Game Information</h4>
 
-          <Input
-            v-model="gameForm.name"
-            name="name"
-            label="Name"
-            required
-            :valid="validation.name"
-            error="Game name is required"
-            placeholder="Enter game name"
-          />
+        <Input
+          v-model="gameForm.name"
+          expand
+          name="name"
+          label="Name"
+          required
+          :valid="validation.name"
+          error="Game name is required"
+          placeholder="Enter game name"
+        />
 
-          <Input
-            v-model="gameForm.shorthand"
-            name="shorthand"
-            label="Shorthand"
-            placeholder="Enter game shorthand (optional)"
-          />
+        <Input
+          v-model="gameForm.shorthand"
+          expand
+          name="shorthand"
+          label="Shorthand"
+          placeholder="Enter game shorthand (optional)"
+        />
 
-          <Input
-            v-model="gameForm.steam_id"
-            name="steam_id"
-            label="Steam ID"
-            type="number"
-            placeholder="Enter Steam app ID (optional)"
-          />
-        </Flex>
-
-        <!-- Form Actions -->
-        <Flex gap="m" class="form-actions">
-          <Button
-            type="submit"
-            variant="accent"
-            :disabled="!isValid"
-            @click.prevent="handleSubmit"
-          >
-            <template #start>
-              <Icon name="ph:check" />
-            </template>
-            {{ props.isEditMode ? 'Update Game' : 'Add Game' }}
-          </Button>
-
-          <Button
-            v-if="props.isEditMode"
-            variant="danger"
-            @click.prevent="handleDelete"
-          >
-            <template #start>
-              <Icon name="ph:trash" />
-            </template>
-            Delete
-          </Button>
-
-          <Button
-            @click.prevent="handleClose"
-          >
-            <template #start>
-              <Icon name="ph:x" />
-            </template>
-            Cancel
-          </Button>
-        </Flex>
+        <Input
+          v-model="gameForm.steam_id"
+          expand
+          name="steam_id"
+          label="Steam ID"
+          type="number"
+          placeholder="Enter Steam app ID (optional)"
+        />
       </Flex>
+
+      <!-- Form Actions -->
+      <Flex gap="s" class="form-actions">
+        <Button
+          type="submit"
+          variant="accent"
+          :disabled="!isValid"
+          @click.prevent="handleSubmit"
+        >
+          <template #start>
+            <Icon name="ph:check" />
+          </template>
+          {{ props.isEditMode ? 'Update Game' : 'Add Game' }}
+        </Button>
+
+        <Button
+          v-if="props.isEditMode"
+          variant="danger"
+          @click.prevent="handleDelete"
+        >
+          <template #start>
+            <Icon name="ph:trash" />
+          </template>
+          Delete
+        </Button>
+
+        <Button
+          @click.prevent="handleClose"
+        >
+          <template #start>
+            <Icon name="ph:x" />
+          </template>
+          Cancel
+        </Button>
+      </Flex>
+      <!-- </Flex> -->
     </Flex>
 
     <!-- Confirmation Modal for Delete Action -->

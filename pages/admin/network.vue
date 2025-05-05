@@ -46,7 +46,7 @@ async function handleContainerControl(container: any, action: 'start' | 'stop' |
       <h3>Network</h3>
     </Flex>
 
-    <Tabs v-model="activeTab" variant="filled">
+    <Tabs v-model="activeTab">
       <Tab label="Servers" />
       <Tab label="Gameservers" />
       <Tab label="Containers" />
