@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { Badge, Button, Card, Divider, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Card, Divider, Flex, Grid, Sheet } from '@dolanske/vui'
 
 const props = defineProps<{
   gameserver: any | null
