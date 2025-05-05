@@ -37,7 +37,7 @@
     "sass": "^1.86.2",
     "unstorage": "^1.15.0",
     "vue": "^3.5.13",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.12.0",
