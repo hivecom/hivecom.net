@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { Badge, Card, Divider, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Card, Divider, Flex, Grid, Sheet } from '@dolanske/vui'
 
 const props = defineProps<{
   game: {
@@ -23,7 +23,8 @@ function handleClose() {
 
 // Format the Steam store URL if a steam_id exists
 const steamStoreUrl = computed(() => {
-  if (!props.game?.steam_id) return null
+  if (!props.game?.steam_id)
+    return null
   return `https://store.steampowered.com/app/${props.game.steam_id}`
 })
 </script>
@@ -94,7 +95,9 @@ const steamStoreUrl = computed(() => {
           <h4>Related Gameservers</h4>
           <Divider size="40" />
 
-          <p class="placeholder-text">Gameservers using this game will be displayed here in a future update.</p>
+          <p class="placeholder-text">
+            Gameservers using this game will be displayed here in a future update.
+          </p>
         </Card>
       </Flex>
     </Flex>
