@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Divider, DropdownItem, Flex, Grid, Sidebar, Spinner } from '@dolanske/vui'
+import { Button, Divider, DropdownItem, Flex, Sidebar, Spinner } from '@dolanske/vui'
 // import { useStorage } from '@vueuse/core'
 
 const router = useRouter()
