@@ -97,8 +97,8 @@ onMounted(() => {
       <div class="container container-xs" style="min-height:356px">
         <Flex x-center y-center column gap="l" class="py-l">
           <Tabs v-model="tab" variant="filled" expand>
-            <Tab label="Password" />
-            <Tab label="E-mail" />
+            <Tab value="Password" />
+            <Tab value="E-mail" />
           </Tabs>
           <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
           <Input v-if="tab === 'Password'" v-model="password" expand placeholder="************" label="Password" type="password" />

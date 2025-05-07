@@ -29,8 +29,8 @@ const search = ref('')
     </p>
 
     <Tabs v-model="tab" class="my-m">
-      <Tab id="Active" label="Active" />
-      <Tab id="Concluded" label="Concluded" />
+      <Tab value="Active" />
+      <Tab value="Concluded" />
     </Tabs>
 
     <Flex x-between y-center class="mb-l">
