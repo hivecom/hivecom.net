@@ -2,7 +2,7 @@
 import constants from '@/constants.json'
 import { getContainerStatus } from '@/utils/containerStatus'
 
-import { Alert, Button, ButtonGroup, Card, Divider, Flex, Grid, Input, Select, Sheet, Skeleton } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Flex, Grid, Input, Select, Sheet, Skeleton } from '@dolanske/vui'
 
 import Convert from 'ansi-to-html'
 
