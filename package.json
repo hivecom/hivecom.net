@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@dolanske/vui": "^1.2.1",
-    "@nuxt/content": "^3.4.0",
+    "@nuxt/content": "^3.5.1",
     "@nuxt/icon": "^1.12.0",
     "@nuxt/image": "^1.10.0",
     "@nuxtjs/eslint-module": "^4.1.0",
