@@ -38,7 +38,7 @@ const steamStoreUrl = computed(() => {
     @close="handleClose"
   >
     <template #header>
-      <h3>{{ props.game ? props.game.name : 'Game Details' }}</h3>
+      <h4>{{ props.game ? props.game.name : 'Game Details' }}</h4>
     </template>
 
     <Flex v-if="props.game" column gap="m" class="game-detail">

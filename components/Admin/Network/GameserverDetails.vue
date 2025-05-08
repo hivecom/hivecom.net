@@ -24,7 +24,7 @@ function handleClose() {
     @close="handleClose"
   >
     <template #header>
-      <h3>{{ props.gameserver ? props.gameserver.name : 'Gameserver Details' }}</h3>
+      <h4>{{ props.gameserver ? props.gameserver.name : 'Gameserver Details' }}</h4>
     </template>
 
     <Flex v-if="props.gameserver" column gap="m" class="gameserver-detail">

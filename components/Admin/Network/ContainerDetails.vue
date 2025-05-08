@@ -208,7 +208,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
     @close="handleClose"
   >
     <template #header>
-      <h3>{{ containerStatus === 'stale' ? 'Container details' : container!.name }}</h3>
+      <h4>{{ containerStatus === 'stale' ? 'Container details' : container!.name }}</h4>
     </template>
 
     <Flex v-if="container" column gap="m" class="container-detail">
@@ -219,7 +219,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
         </Alert>
 
         <!-- Basic info -->
-        <Card class="container-info">
+        <Card class="container-info" separators>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">Status:</span>
@@ -247,17 +247,18 @@ watch(() => useCustomDateRange.value, (newValue) => {
             </Grid>
           </Flex>
 
-          <Divider size="40" />
-
-          <ContainerActions
-            v-model="containerAction"
-            :container="container"
-            :status="containerStatus"
-            :is-loading="(action) => {
-              if (!container) return false
-              return !!props.actionLoading[container.name]?.[action]
-            }"
-          />
+          <!-- <Divider size="40" /> -->
+          <template #footer>
+            <ContainerActions
+              v-model="containerAction"
+              :container="container"
+              :status="containerStatus"
+              :is-loading="(action) => {
+                if (!container) return false
+                return !!props.actionLoading[container.name]?.[action]
+              }"
+            />
+          </template>
         </Card>
 
         <!-- Logs -->

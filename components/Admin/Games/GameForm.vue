@@ -115,12 +115,11 @@ const sheetTitle = computed(() => {
     @close="handleClose"
   >
     <template #header>
-      <h3>{{ sheetTitle }}</h3>
+      <h4>{{ sheetTitle }}</h4>
     </template>
 
+    <!-- Game Info Section -->
     <Flex column gap="l" class="game-form">
-      <!-- <Flex column gap="m" expand> -->
-      <!-- Game Info Section -->
       <Flex column gap="m" expand>
         <h4>Game Information</h4>
 
@@ -152,9 +151,11 @@ const sheetTitle = computed(() => {
           placeholder="Enter Steam app ID (optional)"
         />
       </Flex>
+    </Flex>
 
-      <!-- Form Actions -->
-      <Flex gap="s" class="form-actions">
+    <!-- Form Actions -->
+    <template #footer>
+      <Flex gap="xs" class="form-actions">
         <Button
           type="submit"
           variant="accent"
@@ -164,31 +165,26 @@ const sheetTitle = computed(() => {
           <template #start>
             <Icon name="ph:check" />
           </template>
-          {{ props.isEditMode ? 'Update Game' : 'Add Game' }}
+          {{ props.isEditMode ? 'Update' : 'Create' }}
         </Button>
+
+        <Button @click.prevent="handleClose">
+          Cancel
+        </Button>
+
+        <div class="flex-1" />
 
         <Button
           v-if="props.isEditMode"
           variant="danger"
+          square
+          data-title-left="Delete game"
           @click.prevent="handleDelete"
         >
-          <template #start>
-            <Icon name="ph:trash" />
-          </template>
-          Delete
-        </Button>
-
-        <Button
-          @click.prevent="handleClose"
-        >
-          <template #start>
-            <Icon name="ph:x" />
-          </template>
-          Cancel
+          <Icon name="ph:trash" />
         </Button>
       </Flex>
-      <!-- </Flex> -->
-    </Flex>
+    </template>
 
     <!-- Confirmation Modal for Delete Action -->
     <ConfirmModal
