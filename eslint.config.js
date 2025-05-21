@@ -27,4 +27,17 @@ export default antfu({
   rules: {
     'no-console': 'off',
   },
+}, {
+  files: ['**/*.ts', '**/*.tsx'],
+  rules: {
+    'ts/prefer-nullish-coalescing': 'error',
+  },
+  languageOptions: {
+    parserOptions: {
+      projectService: true,
+      tsconfigRootDir: import.meta.dirname,
+    },
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+  },
 })
