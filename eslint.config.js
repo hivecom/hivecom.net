@@ -11,8 +11,11 @@ export default antfu({
     'node/prefer-global/process': 'off',
     'n/prefer-global/process': 'off',
   },
-  // Use the flat config format for overrides
-  ignores: ['**/supabase/functions/**/*.ts'],
+  ignores: [
+    'package.json',
+    'package-lock.json',
+    '**/supabase/functions/**/*.ts',
+  ],
   // Add additional configurations for specific file patterns
   formatters: {
     vue: true,
