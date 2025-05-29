@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 
+import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 
 import GameserverDetails from './GameserverDetails.vue'
 import GameserverFilters from './GameserverFilters.vue'

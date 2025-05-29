@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
 const props = defineProps<{

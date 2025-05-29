@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import constants from '@/constants.json'
 import { Flex } from '@dolanske/vui'
+import constants from '@/constants.json'
 
 defineProps({
   data: {

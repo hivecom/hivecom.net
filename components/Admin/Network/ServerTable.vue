@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, ref } from 'vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import ServerDetails from './ServerDetails.vue'
 
 import ServerFilters from './ServerFilters.vue'

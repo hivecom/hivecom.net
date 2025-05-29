@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import constants from '@/constants.json'
 import { Button, Card, Divider, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
+import constants from '@/constants.json'
 
 // For demonstration purposes only - replace with real data in production
 const upcomingEvents = ref([
