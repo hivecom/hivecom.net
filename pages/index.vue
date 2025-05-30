@@ -47,8 +47,8 @@ onMounted(async () => {
       .select('*', { count: 'exact', head: true })
 
     if (!membersError) {
-      communityStats.value.members = membersCount || 0
-      communityStats.value.membersAccurate = true
+      communityStats.value.members = membersCount || 500
+      communityStats.value.membersAccurate = membersCount !== 0
     }
 
     // Fetch gameserver count
@@ -103,18 +103,26 @@ onMounted(async () => {
 
       <div class="stats-grid">
         <div class="stats-card">
-          <span class="stats-value">
-            <template v-if="loading">-</template>
-            <template v-else>{{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}</template>
-          </span>
+          <Flex x-center class="stats-value">
+            <template v-if="loading">
+              <Skeleton height="2.5rem" width="4rem" />
+            </template>
+            <template v-else>
+              {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
+            </template>
+          </Flex>
           <span class="stats-label">Community Members</span>
         </div>
 
         <div class="stats-card">
-          <span class="stats-value">
-            <template v-if="loading">-</template>
-            <template v-else>{{ communityStats.gameservers }}</template>
-          </span>
+          <Flex x-center class="stats-value">
+            <template v-if="loading">
+              <Skeleton height="2.5rem" width="2rem" />
+            </template>
+            <template v-else>
+              {{ communityStats.gameservers }}
+            </template>
+          </Flex>
           <span class="stats-label">Game Servers</span>
         </div>
 
