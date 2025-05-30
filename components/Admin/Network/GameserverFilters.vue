@@ -39,21 +39,21 @@ function clearFilters() {
       </template>
     </Input>
 
-    <!-- Region filter -->
-    <Select
-      v-model="regionFilter"
-      :options="props.regionOptions"
-      placeholder="Filter by region"
-      expand
-      search
-      show-clear
-    />
-
     <!-- Game filter -->
     <Select
       v-model="gameFilter"
       :options="props.gameOptions"
       placeholder="Filter by game"
+      expand
+      search
+      show-clear
+    />
+
+    <!-- Region filter -->
+    <Select
+      v-model="regionFilter"
+      :options="props.regionOptions"
+      placeholder="Filter by region"
       expand
       search
       show-clear

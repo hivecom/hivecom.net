@@ -11,6 +11,8 @@ const props = defineProps<{
     steam_id: number | null
     created_at: string
     created_by: string | null
+    modified_at: string | null
+    modified_by: string | null
   } | null
   isEditMode: boolean
 }>()

@@ -100,6 +100,7 @@ export interface Database {
           description: string | null
           ended_at: string | null
           id: number
+          modified_at: string | null
           modified_by: string | null
           name: string | null
           started_at: string
@@ -112,6 +113,7 @@ export interface Database {
           description?: string | null
           ended_at?: string | null
           id?: number
+          modified_at?: string | null
           modified_by?: string | null
           name?: string | null
           started_at?: string
@@ -124,6 +126,7 @@ export interface Database {
           description?: string | null
           ended_at?: string | null
           id?: number
+          modified_at?: string | null
           modified_by?: string | null
           name?: string | null
           started_at?: string
@@ -136,6 +139,8 @@ export interface Database {
           created_at: string
           created_by: string | null
           id: number
+          modified_at: string | null
+          modified_by: string | null
           name: string | null
           shorthand: string | null
           steam_id: number | null
@@ -144,6 +149,8 @@ export interface Database {
           created_at?: string
           created_by?: string | null
           id?: number
+          modified_at?: string | null
+          modified_by?: string | null
           name?: string | null
           shorthand?: string | null
           steam_id?: number | null
@@ -152,6 +159,8 @@ export interface Database {
           created_at?: string
           created_by?: string | null
           id?: number
+          modified_at?: string | null
+          modified_by?: string | null
           name?: string | null
           shorthand?: string | null
           steam_id?: number | null
@@ -161,7 +170,7 @@ export interface Database {
       gameservers: {
         Row: {
           addresses: string[] | null
-          admininstrator: string | null
+          administrator: string | null
           container: string | null
           created_at: string
           created_by: string | null
@@ -177,7 +186,7 @@ export interface Database {
         }
         Insert: {
           addresses?: string[] | null
-          admininstrator?: string | null
+          administrator?: string | null
           container?: string | null
           created_at?: string
           created_by?: string | null
@@ -193,7 +202,7 @@ export interface Database {
         }
         Update: {
           addresses?: string[] | null
-          admininstrator?: string | null
+          administrator?: string | null
           container?: string | null
           created_at?: string
           created_by?: string | null

@@ -38,7 +38,7 @@ function toggleMobileMenu() {
           </li>
           <li>
             <NuxtLink to="/gameservers">
-              Gameservers
+              Game Servers
             </NuxtLink>
           </li>
           <template v-if="user">
@@ -123,6 +123,8 @@ function toggleMobileMenu() {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 nav {
   width: 100%;
   position: fixed;
@@ -295,7 +297,7 @@ nav {
   }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: $breakpoint-lg) {
   nav {
     .nav-items {
       justify-content: space-between;

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
+import SteamLink from '@/components/Shared/SteamLink.vue'
 import GameDetails from './GameDetails.vue'
 import GameFilters from './GameFilters.vue'
 import GameForm from './GameForm.vue'
@@ -14,6 +15,8 @@ interface Game {
   steam_id: number | null
   created_at: string
   created_by: string | null
+  modified_at: string | null
+  modified_by: string | null
 }
 
 // Define transformed game data interface
@@ -29,6 +32,7 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Setup client and state
 const supabase = useSupabaseClient()
+const user = useSupabaseUser()
 const loading = ref(true)
 const errorMessage = ref('')
 const games = ref<Game[]>([])
@@ -129,11 +133,31 @@ function openEditGameForm(game: Game, event?: Event) {
 // Handle game save (both create and update)
 async function handleGameSave(gameData: Partial<Game>) {
   try {
+    // Normalize shorthand: lowercase, no spaces, empty string becomes null
+    const normalizedData = { ...gameData }
+    if (normalizedData.shorthand !== undefined) {
+      if (normalizedData.shorthand === null || normalizedData.shorthand === '') {
+        normalizedData.shorthand = null
+      }
+      else {
+        normalizedData.shorthand = normalizedData.shorthand.toLowerCase().replace(/\s+/g, '')
+        if (normalizedData.shorthand === '') {
+          normalizedData.shorthand = null
+        }
+      }
+    }
+
     if (isEditMode.value && selectedGame.value) {
-      // Update existing game
+      // Update existing game with modification tracking
+      const updateData = {
+        ...normalizedData,
+        modified_at: new Date().toISOString(),
+        modified_by: user.value?.id,
+      }
+
       const { error } = await supabase
         .from('games')
-        .update(gameData)
+        .update(updateData)
         .eq('id', selectedGame.value.id)
 
       if (error)
@@ -143,7 +167,7 @@ async function handleGameSave(gameData: Partial<Game>) {
       // Create new game
       const { error } = await supabase
         .from('games')
-        .insert(gameData)
+        .insert(normalizedData)
 
       if (error)
         throw error
@@ -215,8 +239,15 @@ onBeforeMount(fetchGames)
       <template #body>
         <tr v-for="game in rows" :key="game._original.id" class="clickable-row" @click="viewGameDetails(game._original)">
           <Table.Cell>{{ game.Name }}</Table.Cell>
-          <Table.Cell>{{ game.Shorthand || '-' }}</Table.Cell>
-          <Table.Cell>{{ game['Steam ID'] || '-' }}</Table.Cell>
+          <Table.Cell>
+            <Badge v-if="game.Shorthand" variant="accent">
+              {{ game.Shorthand }}
+            </Badge>
+            <span v-else>-</span>
+          </Table.Cell>
+          <Table.Cell @click.stop>
+            <SteamLink :steam-id="game['Steam ID']" size="small" />
+          </Table.Cell>
           <Table.Cell @click.stop>
             <Flex gap="xs">
               <Button small icon="ph:pencil" @click="(event) => openEditGameForm(game._original, event)">

@@ -38,12 +38,34 @@ ON CONFLICT (id)
     subtitle = EXCLUDED.subtitle;
 
 -- Insert a test event
-INSERT INTO public.events(created_at, created_by, date, description, title, location)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', '2025-05-01 18:00:00.000000+00', 'Join us for our monthly gaming session!', 'May Community Gaming Night', 'Discord');
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '30 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Discord', '
+# Community Gaming Night
+
+It is that time of the month again! Join us for our community gaming night where we play various games together, chat, and have fun.
+
+We will probably be playing on our CS2 server, but feel free to suggest other games as well.
+  ');
+
+-- Insert an expired test event
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
+  VALUES (NOW() - INTERVAL '10 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '5 days', 'Come celebrate with us for this special occasion!', 'Celebrate Something!', 'Community Center', '
+# Celebrate Something!
+
+Join us for an amazing celebration event! We hope to see many participants.
+
+## What we will celebrate
+
+- New IRC quotes added
+- Felix returns from Bulgaria
+- 43rd Garrys Mod server launched
+
+Hope to see you at this event!
+  ');
 
 -- Insert a test game
 INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'CS2', 730);
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'cs2', 730);
 
 -- Insert a test server
 INSERT INTO public.servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port)
@@ -58,7 +80,20 @@ INSERT INTO public.containers(created_at, healthy, name, reported_at, running, s
 -- Insert a test gameserver
 INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, container, markdown)
   VALUES (ARRAY['cs2.gameserver.hivecom.net', 'cs2.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community CS2 server for casual play', 1, -- References the game ID we just created
-    'Hivecom CS2 Community Server', '27015', 'eu', 'gameserver-cs2', '# CS 2\nThis is our community server for casual play.');
+    'Hivecom CS2 Community Server', '27015', 'eu', 'gameserver-cs2', '
+# CS 2
+
+Welcome to the Hivecom CS2 Community Server!
+
+This server is geared towards casual play - if you are looking for a competitive environment, ranked play is probably a better fit.
+
+## Rules
+
+1. Be respectful to all players.
+2. No cheating or exploiting.
+3. Follow the server admin instructions.
+4. Have fun!
+  ');
 
 -- Insert a test expense
 INSERT INTO public.expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)

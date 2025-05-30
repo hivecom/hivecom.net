@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
 const props = defineProps<{
   gameserver: any | null
@@ -61,7 +62,7 @@ function handleClose() {
 
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">Administrator:</span>
-              <span>{{ props.gameserver.administrator || 'None assigned' }}</span>
+              <UserDisplay :user-id="props.gameserver.administrator" />
             </Grid>
           </Flex>
         </Card>
@@ -106,7 +107,10 @@ function handleClose() {
               <span class="detail-label">Created:</span>
               <Flex column>
                 <TimestampDate :date="props.gameserver.created_at" />
-                <span v-if="props.gameserver.created_by" class="metadata-by">by {{ props.gameserver.created_by }}</span>
+                <Flex v-if="props.gameserver.created_by" gap="xs" y-center class="metadata-by">
+                  <span>by</span>
+                  <UserDisplay :user-id="props.gameserver.created_by" />
+                </Flex>
               </Flex>
             </Grid>
 
@@ -114,7 +118,10 @@ function handleClose() {
               <span class="detail-label">Modified:</span>
               <Flex column>
                 <TimestampDate :date="props.gameserver.modified_at" />
-                <span v-if="props.gameserver.modified_by" class="metadata-by">by {{ props.gameserver.modified_by }}</span>
+                <Flex v-if="props.gameserver.modified_by" gap="xs" y-center class="metadata-by">
+                  <span>by</span>
+                  <UserDisplay :user-id="props.gameserver.modified_by" />
+                </Flex>
               </Flex>
             </Grid>
           </Flex>

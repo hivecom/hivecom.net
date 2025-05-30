@@ -193,9 +193,21 @@ const platforms = ref(Object.values(constants.PLATFORMS))
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 :root.dark {
   .section-join-platforms-item img {
     filter: invert(1);
+  }
+
+  .section-hero {
+    &::before {
+      opacity: 0.01;
+    }
+
+    &-globe-image {
+      filter: invert(1) opacity(0.2);
+    }
   }
 }
 
@@ -221,18 +233,6 @@ h3 {
 h4 {
   font-size: 1.1rem;
   margin: 0;
-}
-
-:root.dark {
-  .section-hero {
-    &::before {
-      opacity: 0.01;
-    }
-
-    &-globe-image {
-      filter: invert(1) opacity(0.2);
-    }
-  }
 }
 
 .section-hero {
@@ -287,7 +287,7 @@ h4 {
     margin-bottom: 1rem;
     z-index: 1;
 
-    @media screen and (max-width: 1280px) {
+    @media screen and (max-width: $breakpoint-lg) {
       text-align: center;
       font-size: 8rem;
       line-height: 6rem;
@@ -299,7 +299,7 @@ h4 {
     margin: 1rem 0 2rem;
     opacity: 0.8;
 
-    @media screen and (max-width: 1280px) {
+    @media screen and (max-width: $breakpoint-lg) {
       text-align: center;
     }
   }
@@ -309,7 +309,7 @@ h4 {
     gap: 1rem;
     justify-content: start;
 
-    @media screen and (max-width: 1280px) {
+    @media screen and (max-width: $breakpoint-lg) {
       justify-content: center;
     }
   }
@@ -384,7 +384,7 @@ h4 {
     gap: var(--space-m);
     grid-template-columns: 2fr 2fr;
 
-    @media screen and (max-width: 768px) {
+    @media screen and (max-width: $breakpoint-sm) {
       grid-template-columns: 1fr; /* Stack on smaller screens */
     }
   }
@@ -427,7 +427,6 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-m);
-    margin-top: 2rem;
     margin: 2rem auto 0;
     max-width: 900px;
     justify-content: center; /* Added to center the list */

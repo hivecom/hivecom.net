@@ -20,9 +20,9 @@ const props = defineProps<{
 const regionEmoji = computed(() => {
   switch (props.region) {
     case 'eu': return '🇪🇺'
-    case 'na': return '🇺🇸'
+    case 'na': return '🇨🇦'
     case 'all': return '🌎'
-    default: return '❓'
+    default: return ''
   }
 })
 
@@ -31,14 +31,14 @@ const regionLabel = computed(() => {
     case 'eu': return 'Europe'
     case 'na': return 'North America'
     case 'all': return 'All Regions'
-    default: return 'Unknown'
+    default: return 'No Region'
   }
 })
 </script>
 
 <template>
   <div class="region-indicator">
-    <span class="region-emoji" :title="regionLabel">{{ regionEmoji }}</span>
+    <span v-if="props.region !== null" class="region-emoji" :title="regionLabel">{{ regionEmoji }}</span>
     <span v-if="showLabel" class="region-label">{{ regionLabel }}</span>
   </div>
 </template>

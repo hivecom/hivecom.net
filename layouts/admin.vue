@@ -4,6 +4,68 @@ import { useStorage as useLocalStorage } from '@vueuse/core'
 
 const router = useRouter()
 const route = useRoute()
+const supabase = useSupabaseClient()
+const user = useSupabaseUser()
+
+// Initialize user role from database
+const userRole = ref<string | null>(null)
+const isLoading = ref(true)
+const isAuthorized = ref(false)
+
+// Check user role and redirect if not authorized
+onMounted(async () => {
+  try {
+    if (!user.value) {
+      // User not authenticated, redirect to landing page
+      await router.push('/')
+      return
+    }
+
+    // Fetch user role from user_roles table
+    const { error, data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.value.id)
+      .single()
+
+    if (error) {
+      console.error('Error fetching user role:', error)
+      // If error fetching role or no role found, redirect to landing page
+      await router.push('/')
+      return
+    }
+
+    userRole.value = roleData?.role || null
+
+    // Check if user has admin or moderator role
+    const hasRequiredRole = userRole.value === 'admin' || userRole.value === 'moderator'
+
+    if (!hasRequiredRole) {
+      // User doesn't have required role, redirect to landing page
+      await router.push('/')
+      return
+    }
+
+    // User is authorized
+    isAuthorized.value = true
+  }
+  catch (error) {
+    console.error('Error in admin layout:', error)
+    await router.push('/')
+  }
+  finally {
+    isLoading.value = false
+  }
+})
+
+// Watch for user changes (login/logout)
+watch(user, async (newUser) => {
+  if (!newUser) {
+    // User logged out, redirect to landing page
+    isAuthorized.value = false
+    await router.push('/')
+  }
+})
 
 const menuItems = [
   { name: 'Dashboard', path: '/admin/', icon: 'ph:squares-four' },
@@ -20,7 +82,13 @@ const open = ref(true)
 </script>
 
 <template>
-  <div class="vui-sidebar-layout">
+  <!-- Show loading spinner while checking authorization -->
+  <div v-if="isLoading" class="loading-container">
+    <Spinner />
+  </div>
+
+  <!-- Show admin layout only if authorized -->
+  <div v-else-if="isAuthorized" class="vui-sidebar-layout">
     <ClientOnly>
       <Sidebar v-model="open" :mini="miniSidebar">
         <template #header>
@@ -86,5 +154,13 @@ const open = ref(true)
 <style scoped lang=scss>
 :deep(h3) {
   margin-bottom: var(--space-m);
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
 }
 </style>

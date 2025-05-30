@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
+import type { TablesInsert, TablesUpdate } from '~/types/database.types'
 
-import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
 import GameserverDetails from './GameserverDetails.vue'
 import GameserverFilters from './GameserverFilters.vue'
+import GameserverForm from './GameserverForm.vue'
+
+// Type from the query result
+type QueryGameserver = QueryData<typeof gameserversQuery>[0]
 
 // Define interface for transformed gameserver data
 interface TransformedGameserver {
@@ -15,23 +20,7 @@ interface TransformedGameserver {
   Game: string | null
   Region: string | null
   Created: string
-  _original: {
-    id: number
-    name: string
-    description: string | null
-    markdown: string | null
-    region: 'eu' | 'na' | 'all' | null
-    addresses: string[] | null
-    port: string | null
-    container: string | null
-    game: number | null
-    admininstrator: string | null
-    created_at: string
-    created_by: string | null
-    modified_at: string | null
-    modified_by: string | null
-    game_name?: string | null
-  }
+  _original: QueryGameserver
 }
 
 // Define interface for Select options
@@ -45,6 +34,7 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Define query
 const supabase = useSupabaseClient()
+const user = useSupabaseUser()
 const gameserversQuery = supabase.from('gameservers').select(`
   *,
   game (
@@ -63,14 +53,19 @@ const regionFilter = ref<SelectOption[]>()
 const gameFilter = ref<SelectOption[]>()
 
 // Gameserver detail state
-const selectedGameserver = ref<any>(null)
+const selectedGameserver = ref<QueryGameserver | null>(null)
 const showGameserverDetails = ref(false)
+
+// Gameserver form state
+const showGameserverForm = ref(false)
+const isEditMode = ref(false)
 
 // Filter options
 const regionOptions: SelectOption[] = [
   { label: 'Europe', value: 'eu' },
   { label: 'North America', value: 'na' },
   { label: 'All Regions', value: 'all' },
+  { label: 'No Region', value: 'none' },
 ]
 
 // Compute unique game options for the filter
@@ -106,9 +101,15 @@ const filteredData = computed<TransformedGameserver[]>(() => {
     }
 
     // Filter by region
-    if (regionFilter.value && item.region) {
+    if (regionFilter.value) {
       const regionFilterValue = regionFilter.value[0].value
-      if (item.region !== regionFilterValue) {
+      if (regionFilterValue === 'none') {
+        // Filter for gameservers with no region (null or undefined)
+        if (item.region) {
+          return false
+        }
+      }
+      else if (item.region !== regionFilterValue) {
         return false
       }
     }
@@ -176,9 +177,84 @@ async function fetchGameservers() {
 }
 
 // Handle row click - View gameserver details
-function viewGameserver(gameserver: any) {
+function viewGameserver(gameserver: QueryGameserver) {
   selectedGameserver.value = gameserver
   showGameserverDetails.value = true
+}
+
+// Open the add gameserver form
+function openAddGameserverForm() {
+  selectedGameserver.value = null
+  isEditMode.value = false
+  showGameserverForm.value = true
+}
+
+// Open the edit gameserver form
+function openEditGameserverForm(gameserver: QueryGameserver, event?: Event) {
+  // Prevent the click from triggering the view details
+  if (event)
+    event.stopPropagation()
+
+  selectedGameserver.value = gameserver
+  isEditMode.value = true
+  showGameserverForm.value = true
+}
+
+// Handle gameserver save (both create and update)
+async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> | TablesUpdate<'gameservers'>) {
+  try {
+    if (isEditMode.value && selectedGameserver.value) {
+      // Update existing gameserver
+      const updateData = {
+        ...gameserverData,
+        modified_at: new Date().toISOString(),
+        modified_by: user.value?.id,
+      }
+
+      const { error } = await supabase
+        .from('gameservers')
+        .update(updateData)
+        .eq('id', selectedGameserver.value.id)
+
+      if (error)
+        throw error
+    }
+    else {
+      // Create new gameserver
+      const { error } = await supabase
+        .from('gameservers')
+        .insert(gameserverData as TablesInsert<'gameservers'>)
+
+      if (error)
+        throw error
+    }
+
+    // Refresh gameservers data and close form
+    showGameserverForm.value = false
+    await fetchGameservers()
+  }
+  catch (error: any) {
+    errorMessage.value = error.message || 'An error occurred while saving the gameserver'
+  }
+}
+
+// Handle gameserver deletion
+async function handleGameserverDelete(gameserverId: number) {
+  try {
+    const { error } = await supabase
+      .from('gameservers')
+      .delete()
+      .eq('id', gameserverId)
+
+    if (error)
+      throw error
+
+    showGameserverForm.value = false
+    await fetchGameservers()
+  }
+  catch (error: any) {
+    errorMessage.value = error.message || 'An error occurred while deleting the gameserver'
+  }
 }
 
 // Clear all filters
@@ -204,24 +280,34 @@ onBeforeMount(fetchGameservers)
   </Alert>
 
   <Flex v-else gap="s" column expand>
-    <!-- Search and Filters -->
-    <GameserverFilters
-      v-model:search="search"
-      v-model:region-filter="regionFilter"
-      v-model:game-filter="gameFilter"
-      :region-options="regionOptions"
-      :game-options="gameOptions"
-      @clear-filters="clearFilters"
-    />
+    <!-- Header and filters -->
+    <Flex x-between expand>
+      <GameserverFilters
+        v-model:search="search"
+        v-model:region-filter="regionFilter"
+        v-model:game-filter="gameFilter"
+        :region-options="regionOptions"
+        :game-options="gameOptions"
+        @clear-filters="clearFilters"
+      />
+
+      <Button variant="accent" @click="openAddGameserverForm">
+        <template #start>
+          <Icon name="ph:plus" />
+        </template>
+        Add Gameserver
+      </Button>
+    </Flex>
 
     <!-- Properly structured table -->
     <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
       <template #header>
         <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+        <Table.Head key="actions" :header="{ label: 'Actions', sortToggle: () => {} }" />
       </template>
 
       <template #body>
-        <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row" @click="viewGameserver(gameserver._original)">
+        <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row" @click="viewGameserver(gameserver._original as QueryGameserver)">
           <Table.Cell>{{ gameserver.ID }}</Table.Cell>
           <Table.Cell>{{ gameserver.Name }}</Table.Cell>
           <Table.Cell>{{ gameserver.Game }}</Table.Cell>
@@ -230,6 +316,11 @@ onBeforeMount(fetchGameservers)
           </Table.Cell>
           <Table.Cell>
             <TimestampDate :date="gameserver.Created" />
+          </Table.Cell>
+          <Table.Cell @click.stop>
+            <Flex gap="xs">
+              <Button small icon="ph:pencil" @click="(event) => openEditGameserverForm(gameserver._original as QueryGameserver, event)" />
+            </Flex>
           </Table.Cell>
         </tr>
       </template>
@@ -251,6 +342,15 @@ onBeforeMount(fetchGameservers)
   <GameserverDetails
     v-model:is-open="showGameserverDetails"
     :gameserver="selectedGameserver"
+  />
+
+  <!-- Gameserver Form Sheet (for both create and edit) -->
+  <GameserverForm
+    v-model:is-open="showGameserverForm"
+    :gameserver="selectedGameserver"
+    :is-edit-mode="isEditMode"
+    @save="handleGameserverSave"
+    @delete="handleGameserverDelete"
   />
 </template>
 

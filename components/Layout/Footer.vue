@@ -49,6 +49,8 @@ const links = constants.LINKS
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 footer {
   background: var(--color-bg-lowered);
   display: flex;
@@ -65,7 +67,7 @@ footer {
     width: 100%;
     gap: var(--space-s);
 
-    @media screen and (max-width: 768px) {
+    @media screen and (max-width: $breakpoint-sm) {
       flex-direction: column;
       align-items: center;
     }
@@ -75,7 +77,7 @@ footer {
       flex-direction: row;
       gap: var(--space-s);
 
-      @media screen and (max-width: 768px) {
+      @media screen and (max-width: $breakpoint-sm) {
         // On mobile, stack the links. Make sure the width is 100% and center them.
         width: 100%;
         flex-direction: column;
@@ -88,7 +90,7 @@ footer {
         display: flex;
         gap: var(--space-s);
 
-        @media screen and (max-width: 768px) {
+        @media screen and (max-width: $breakpoint-sm) {
           width: 95%;
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -109,7 +111,7 @@ footer {
         background: var(--color-text);
         opacity: 0.25;
 
-        @media screen and (max-width: 768px) {
+        @media screen and (max-width: $breakpoint-sm) {
           display: none;
         }
       }
@@ -149,7 +151,7 @@ footer {
       }
     }
 
-    @media screen and (max-width: 768px) {
+    @media screen and (max-width: $breakpoint-sm) {
       width: 100%;
       justify-content: space-between;
       padding: 0 var(--space-m);

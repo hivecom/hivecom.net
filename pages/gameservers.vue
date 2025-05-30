@@ -6,6 +6,7 @@ import { Alert, Button, Card, Divider, Flex, Input, Select, Skeleton } from '@do
 
 import GameserverRow from '~/components/Gameservers/GameserverRow.vue'
 import ErrorAlert from '~/components/Shared/ErrorAlert.vue'
+import SteamLink from '~/components/Shared/SteamLink.vue'
 
 const supabase = useSupabaseClient()
 const gameserversQuery = supabase.from('gameservers').select(`
@@ -13,13 +14,15 @@ const gameserversQuery = supabase.from('gameservers').select(`
   name,
   region,
   description,
+  markdown,
   game,
   addresses,
   container (
     name,
     running,
     healthy
-  )
+  ),
+  administrator
 `)
 type gameserversType = QueryData<typeof gameserversQuery>
 
@@ -49,12 +52,20 @@ onBeforeMount(async () => {
 
 const search = ref('')
 const selectedGames = ref<{ label: string, value: number }[]>()
+const selectedRegions = ref<{ label: string, value: string }[]>()
 const gameOptions = computed(() => {
   return games.value?.filter(game => game.name !== null).map(game => ({
-    label: game.name ?? 'Unknown',
+    label: game.name ?? 'Uassigned',
     value: game.id,
   })) ?? []
 })
+
+const regionOptions = [
+  { label: 'Europe', value: 'eu' },
+  { label: 'North America', value: 'na' },
+  { label: 'All Regions', value: 'all' },
+  { label: 'No Region', value: 'none' },
+]
 
 const filteredGameservers = computed(() => {
   if (!gameservers.value)
@@ -72,7 +83,16 @@ const filteredGameservers = computed(() => {
       ? selectedGames.value.some(selectedGame => selectedGame.value === gameserver.game)
       : true
 
-    return matchesSearch && matchesSelectedGame
+    const matchesSelectedRegion = selectedRegions.value
+      ? selectedRegions.value.some((selectedRegion) => {
+          if (selectedRegion.value === 'none') {
+            return !gameserver.region
+          }
+          return selectedRegion.value === gameserver.region
+        })
+      : true
+
+    return matchesSearch && matchesSelectedGame && matchesSelectedRegion
   })
 })
 
@@ -81,7 +101,19 @@ const filteredGames = computed(() => {
     return []
 
   return games.value.filter((game) => {
-    const gameServers = gameservers.value!.filter(gameserver => gameserver.game === game.id)
+    const gameServers = gameservers.value!.filter((gameserver) => {
+      const belongsToGame = gameserver.game === game.id
+      const matchesRegionFilter = selectedRegions.value
+        ? selectedRegions.value.some((selectedRegion) => {
+            if (selectedRegion.value === 'none') {
+              return !gameserver.region
+            }
+            return selectedRegion.value === gameserver.region
+          })
+        : true
+
+      return belongsToGame && matchesRegionFilter
+    })
     const hasGameServers = gameServers.length > 0
 
     const matchesSearch = search.value
@@ -99,8 +131,43 @@ const filteredGames = computed(() => {
   })
 })
 
+const gameserversWithoutGame = computed(() => {
+  if (!gameservers.value)
+    return []
+
+  return gameservers.value.filter((gameserver) => {
+    // Check if gameserver doesn't have a game or the game doesn't exist
+    const hasNoGame = !gameserver.game || !games.value?.some(game => game.id === gameserver.game)
+
+    if (!hasNoGame)
+      return false
+
+    const matchesSearch = search.value
+      ? (
+          gameserver.name?.toLowerCase().includes(search.value.toLowerCase())
+          || gameserver.region?.toLowerCase().includes(search.value.toLowerCase())
+        )
+      : true
+
+    const matchesSelectedRegion = selectedRegions.value
+      ? selectedRegions.value.some((selectedRegion) => {
+          if (selectedRegion.value === 'none') {
+            return !gameserver.region
+          }
+          return selectedRegion.value === gameserver.region
+        })
+      : true
+
+    // If games are selected in filter, don't show gameservers without games
+    const matchesSelectedGame = !selectedGames.value
+
+    return matchesSearch && matchesSelectedGame && matchesSelectedRegion
+  })
+})
+
 function clearFilters() {
   selectedGames.value = undefined
+  selectedRegions.value = undefined
   search.value = ''
 }
 
@@ -112,7 +179,7 @@ function getServersByGameId(gameId: number) {
 <template>
   <div class="page">
     <section>
-      <h1>Game servers</h1>
+      <h1>Game Servers</h1>
       <p>
         Hop on. Get in.
       </p>
@@ -146,7 +213,8 @@ function getServersByGameId(gameId: number) {
               </template>
             </Input>
             <Select v-model="selectedGames" :options="gameOptions" placeholder="Select game" />
-            <Button v-if="selectedGames || search" plain outline @click="clearFilters">
+            <Select v-model="selectedRegions" :options="regionOptions" placeholder="Select region" />
+            <Button v-if="selectedGames || selectedRegions || search" plain outline @click="clearFilters">
               Clear
             </Button>
           </Flex>
@@ -154,11 +222,14 @@ function getServersByGameId(gameId: number) {
           <template v-for="game in filteredGames" :key="game.id">
             <Card v-if="filteredGameservers.length > 0">
               <h3 class="mb-s">
-                <Flex gap="m" y-center>
-                  {{ game.name }}
-                  <div class="counter">
-                    {{ filteredGameservers.length }}
-                  </div>
+                <Flex gap="m" y-center x-between>
+                  <Flex gap="m" y-center>
+                    {{ game.name }}
+                    <div class="counter">
+                      {{ getServersByGameId(game.id).length }}
+                    </div>
+                  </Flex>
+                  <SteamLink v-if="game.steam_id" :steam-id="game.steam_id" show-icon hide-id />
                 </Flex>
               </h3>
               <Flex column class="w-100">
@@ -171,6 +242,26 @@ function getServersByGameId(gameId: number) {
               </Flex>
             </Card>
           </template>
+
+          <!-- Gameservers without a game -->
+          <Card v-if="gameserversWithoutGame.length > 0">
+            <h3 class="mb-s">
+              <Flex gap="m" y-center>
+                Unassigned Servers
+                <div class="counter">
+                  {{ gameserversWithoutGame.length }}
+                </div>
+              </Flex>
+            </h3>
+            <Flex column class="w-100">
+              <GameserverRow
+                v-for="gameserver in gameserversWithoutGame" :key="gameserver.id"
+                :gameserver="(gameserver as any)"
+                :container="(gameserver.container as any)"
+                :game="undefined"
+              />
+            </Flex>
+          </Card>
         </template>
         <!-- No content -->
         <template v-else>
