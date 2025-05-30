@@ -220,10 +220,17 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
         throw error
     }
     else {
-      // Create new gameserver
+      // Create new gameserver with creation and modification tracking
+      const createData = {
+        ...gameserverData,
+        created_by: user.value?.id,
+        modified_by: user.value?.id,
+        modified_at: new Date().toISOString(),
+      }
+
       const { error } = await supabase
         .from('gameservers')
-        .insert(gameserverData as TablesInsert<'gameservers'>)
+        .insert(createData as TablesInsert<'gameservers'>)
 
       if (error)
         throw error

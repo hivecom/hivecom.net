@@ -164,10 +164,17 @@ async function handleGameSave(gameData: Partial<Game>) {
         throw error
     }
     else {
-      // Create new game
+      // Create new game with creation and modification tracking
+      const createData = {
+        ...normalizedData,
+        created_by: user.value?.id,
+        modified_by: user.value?.id,
+        modified_at: new Date().toISOString(),
+      }
+
       const { error } = await supabase
         .from('games')
-        .insert(normalizedData)
+        .insert(createData)
 
       if (error)
         throw error

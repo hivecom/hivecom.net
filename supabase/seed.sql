@@ -39,7 +39,7 @@ ON CONFLICT (id)
 
 -- Insert a test event
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '30 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Discord', '
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '30 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
 # Community Gaming Night
 
 It is that time of the month again! Join us for our community gaming night where we play various games together, chat, and have fun.
@@ -49,18 +49,19 @@ We will probably be playing on our CS2 server, but feel free to suggest other ga
 
 -- Insert an expired test event
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
-  VALUES (NOW() - INTERVAL '10 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '5 days', 'Come celebrate with us for this special occasion!', 'Celebrate Something!', 'Community Center', '
-# Celebrate Something!
+  VALUES (NOW() - INTERVAL '10 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '5 days', 'Join us for a scenic hike through the beautiful Harz National Park!', 'Hike in Harz National Park', 'Harz National Park, Germany', '
+# Hike in Harz National Park
 
-Join us for an amazing celebration event! We hope to see many participants.
+Join us for an amazing hiking adventure in the Harz National Park, Germany!
 
-## What we will celebrate
+## What we will explore
 
-- New IRC quotes added
-- Felix returns from Bulgaria
-- 43rd Garrys Mod server launched
+- Beautiful German mountain landscapes
+- Dense ancient forests
+- Local wildlife and nature
+- Historic mining heritage sites
 
-Hope to see you at this event!
+Let me know if you have any questions or suggestions for the hike. Please also RSVP so I can plan accordingly!
   ');
 
 -- Insert a test game

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
+import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import UserLink from '~/components/Shared/UserLink.vue'
 
 const props = defineProps<{
   gameserver: any | null
@@ -30,15 +31,6 @@ function handleClose() {
 
     <Flex v-if="props.gameserver" column gap="m" class="gameserver-detail">
       <Flex column gap="m" expand>
-        <!-- Description -->
-        <Card v-if="props.gameserver.description" separators>
-          <template #header>
-            <h6>Description</h6>
-          </template>
-
-          <p>{{ props.gameserver.description }}</p>
-        </Card>
-
         <!-- Basic info -->
         <Card>
           <Flex column gap="l" expand>
@@ -54,17 +46,40 @@ function handleClose() {
 
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">Region:</span>
-              <span v-if="props.gameserver.region === 'eu'">Europe</span>
-              <span v-else-if="props.gameserver.region === 'na'">North America</span>
-              <span v-else-if="props.gameserver.region === 'all'">All Regions</span>
-              <span v-else>Unknown</span>
+              <RegionIndicator :region="props.gameserver.region" show-label />
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">Administrator:</span>
-              <UserDisplay :user-id="props.gameserver.administrator" />
+              <div :class="{ 'not-assigned': !props.gameserver.administrator }">
+                <UserLink v-if="props.gameserver.administrator" :user-id="props.gameserver.administrator" />
+                <span v-else>Not Assigned</span>
+              </div>
             </Grid>
           </Flex>
+        </Card>
+
+        <!-- Description -->
+        <Card v-if="props.gameserver.description" separators>
+          <template #header>
+            <h6>Description</h6>
+          </template>
+
+          <p>{{ props.gameserver.description }}</p>
+        </Card>
+
+        <!-- Markdown Content -->
+        <Card v-if="props.gameserver.markdown" separators>
+          <template #header>
+            <h6>Details</h6>
+          </template>
+
+          <Suspense class="gameserver-markdown" suspensible>
+            <template #fallback>
+              <Skeleton class="gameserver-markdown-skeleton" height="320px" />
+            </template>
+            <MDC :partial="true" class="gameserver-markdown-content typeset" :value="props.gameserver.markdown" />
+          </Suspense>
         </Card>
 
         <!-- Network Details -->
@@ -91,7 +106,12 @@ function handleClose() {
 
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">Container:</span>
-              <span>{{ props.gameserver.container || 'Not linked' }}</span>
+              <Flex>
+                <Badge v-if="props.gameserver.container">
+                  {{ props.gameserver.container }}
+                </Badge>
+                <span v-else>Not linked</span>
+              </Flex>
             </Grid>
           </Flex>
         </Card>
@@ -109,7 +129,7 @@ function handleClose() {
                 <TimestampDate :date="props.gameserver.created_at" />
                 <Flex v-if="props.gameserver.created_by" gap="xs" y-center class="metadata-by">
                   <span>by</span>
-                  <UserDisplay :user-id="props.gameserver.created_by" />
+                  <UserLink :user-id="props.gameserver.created_by" />
                 </Flex>
               </Flex>
             </Grid>
@@ -120,7 +140,7 @@ function handleClose() {
                 <TimestampDate :date="props.gameserver.modified_at" />
                 <Flex v-if="props.gameserver.modified_by" gap="xs" y-center class="metadata-by">
                   <span>by</span>
-                  <UserDisplay :user-id="props.gameserver.modified_by" />
+                  <UserLink :user-id="props.gameserver.modified_by" />
                 </Flex>
               </Flex>
             </Grid>
@@ -146,5 +166,29 @@ h4 {
 .metadata-by {
   font-size: 1.3rem;
   color: var(--color-text-light);
+}
+
+.gameserver-markdown {
+  width: 100%;
+}
+
+.gameserver-markdown-skeleton {
+  width: 100%;
+}
+
+.gameserver-markdown-content {
+  h1 {
+    margin-top: var(--space-s);
+    font-size: var(--font-size-xxl);
+  }
+
+  h2 {
+    margin-top: var(--space-s);
+    font-size: var(--font-size-xxl);
+  }
+}
+
+.not-assigned {
+  opacity: 0.5;
 }
 </style>

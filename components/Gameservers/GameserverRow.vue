@@ -2,8 +2,9 @@
 import type { Tables } from '~/types/database.types'
 import { Button, CopyClipboard, Dropdown, DropdownItem, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import { capitalize } from 'vue'
+import Metadata from '~/components/Shared/Metadata.vue'
 import RegionIndicator from '~/components/Shared/RegionIndicator.vue'
-import UserDisplay from '~/components/Shared/UserDisplay.vue'
+import UserLink from '~/components/Shared/UserLink.vue'
 
 const props = defineProps<{
   game?: Tables<'games'> | null
@@ -79,7 +80,7 @@ const state = computed(() => {
         <!-- Administrator -->
         <div v-if="props.gameserver.administrator" class="detail-item">
           <span class="detail-label">Administrator</span>
-          <UserDisplay :user-id="props.gameserver.administrator" />
+          <UserLink :user-id="props.gameserver.administrator" />
         </div>
       </Flex>
 
@@ -95,6 +96,14 @@ const state = computed(() => {
           No additional details available.
         </p>
       </div>
+
+      <!-- Metadata Section -->
+      <Metadata
+        :created-at="props.gameserver.created_at"
+        :created-by="props.gameserver.created_by"
+        :modified-at="props.gameserver.modified_at"
+        :modified-by="props.gameserver.modified_by"
+      />
     </Flex>
   </div>
 </template>
@@ -119,7 +128,7 @@ const state = computed(() => {
 }
 
 .gameserver-row-child {
-  padding: var(--space-s) var(--space-m);
+  padding: 0 var(--space-m) var(--space-m) var(--space-m);
   border-radius: var(--border-radius-m);
   border-top-left-radius: 0;
   border-top-right-radius: 0;
@@ -159,18 +168,6 @@ const state = computed(() => {
 
 .gameserver-markdown-skeleton {
   width: 100%;
-}
-
-.gameserver-markdown-content {
-  h1 {
-    margin-top: var(--space-s);
-    font-size: var(--font-size-xxl);
-  }
-
-  h2 {
-    margin-top: var(--space-s);
-    font-size: var(--font-size-xxl);
-  }
 }
 
 .gameserver-markdown-placeholder {

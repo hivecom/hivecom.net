@@ -342,6 +342,16 @@ onMounted(fetchDropdownData)
           :rows="3"
         />
 
+        <!-- Markdown Content -->
+        <Textarea
+          v-model="gameserverForm.markdown"
+          expand
+          name="markdown"
+          label="Details (Supports Markdown)"
+          placeholder="Enter markdown content (optional)"
+          :rows="9"
+        />
+
         <Select
           v-model="selectedRegionComputed"
           expand
@@ -448,20 +458,6 @@ onMounted(fetchDropdownData)
             </Button>
           </Flex>
         </Flex>
-      </Flex>
-
-      <!-- Markdown Content -->
-      <Flex column gap="m" expand>
-        <h4>Markdown Content</h4>
-
-        <Textarea
-          v-model="gameserverForm.markdown"
-          expand
-          name="markdown"
-          label="Markdown"
-          placeholder="Enter markdown content (optional)"
-          :rows="6"
-        />
       </Flex>
     </Flex>
 

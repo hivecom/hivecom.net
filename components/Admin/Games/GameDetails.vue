@@ -3,7 +3,7 @@ import type { QueryData } from '@supabase/supabase-js'
 import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import UserLink from '~/components/Shared/UserLink.vue'
 
 const props = defineProps<{
   game: {
@@ -127,7 +127,7 @@ watchEffect(async () => {
                 <TimestampDate :date="props.game.created_at" />
                 <Flex v-if="props.game.created_by" gap="xs" y-center class="metadata-by">
                   <span>by</span>
-                  <UserDisplay :user-id="props.game.created_by" />
+                  <UserLink :user-id="props.game.created_by" />
                 </Flex>
               </Flex>
             </Grid>
@@ -138,7 +138,7 @@ watchEffect(async () => {
                 <TimestampDate :date="props.game.modified_at" />
                 <Flex v-if="props.game.modified_by" gap="xs" y-center class="metadata-by">
                   <span>by</span>
-                  <UserDisplay :user-id="props.game.modified_by" />
+                  <UserLink :user-id="props.game.modified_by" />
                 </Flex>
               </Flex>
             </Grid>

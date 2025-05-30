@@ -10,13 +10,7 @@ import SteamLink from '~/components/Shared/SteamLink.vue'
 
 const supabase = useSupabaseClient()
 const gameserversQuery = supabase.from('gameservers').select(`
-  id,
-  name,
-  region,
-  description,
-  markdown,
-  game,
-  addresses,
+  *,
   container (
     name,
     running,
@@ -235,9 +229,9 @@ function getServersByGameId(gameId: number) {
               <Flex column class="w-100">
                 <GameserverRow
                   v-for="gameserver in getServersByGameId(game.id)" :key="gameserver.id"
-                  :gameserver="(gameserver as any)"
-                  :container="(gameserver.container as any)"
-                  :game
+                  :gameserver="(gameserver as Tables<'gameservers'>)"
+                  :container="(gameserver.container as Tables<'containers'> | null)"
+                  :game="(game as Tables<'games'>)"
                 />
               </Flex>
             </Card>
