@@ -1,23 +1,73 @@
 <script setup lang="ts">
-import { Button, Card, Divider, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
+import type { Tables } from '~/types/database.types'
+import { Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '@/constants.json'
 
-// For demonstration purposes only - replace with real data in production
-const upcomingEvents = ref([
-  { id: 1, title: 'Weekly Game Night', date: new Date(2025, 3, 10) },
-  { id: 2, title: 'Tournament Finals', date: new Date(2025, 3, 17) },
-  { id: 3, title: 'New Member Orientation', date: new Date(2025, 3, 25) },
-])
+// Fetch data from database
+const supabase = useSupabaseClient()
+const loading = ref(true)
+const errorMessage = ref('')
 
+// Real data from database
+const upcomingEvents = ref<Tables<'events'>[]>([])
 const communityStats = ref({
-  members: 400,
-  gameservers: 20,
-  age: 2025 - 2013,
-  projects: 13,
+  members: 500,
+  membersAccurate: false,
+  gameservers: 0,
+  age: new Date().getFullYear() - 2013,
+  projects: 13, // This could be fetched from a projects table if you have one
 })
 
 // Convert platforms object to array for easier v-for iteration
 const platforms = ref(Object.values(constants.PLATFORMS))
+
+// Fetch real data on component mount
+onMounted(async () => {
+  loading.value = true
+
+  try {
+    // Fetch upcoming events
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const { data: eventsData, error: eventsError } = await supabase
+      .from('events')
+      .select('*')
+      .gte('date', today.toISOString())
+      .order('date', { ascending: true })
+      .limit(3)
+
+    if (eventsError)
+      throw eventsError
+    upcomingEvents.value = eventsData || []
+
+    // Fetch community member count
+    const { count: membersCount, error: membersError } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+
+    if (!membersError) {
+      communityStats.value.members = membersCount || 0
+      communityStats.value.membersAccurate = true
+    }
+
+    // Fetch gameserver count
+    const { count: gameserversCount, error: gameserversError } = await supabase
+      .from('gameservers')
+      .select('*', { count: 'exact', head: true })
+
+    if (gameserversError)
+      throw gameserversError
+    communityStats.value.gameservers = gameserversCount || 0
+  }
+  catch (error: any) {
+    console.error('Error fetching data:', error)
+    errorMessage.value = error.message || 'Failed to fetch data'
+  }
+  finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
@@ -53,12 +103,18 @@ const platforms = ref(Object.values(constants.PLATFORMS))
 
       <div class="stats-grid">
         <div class="stats-card">
-          <span class="stats-value">{{ communityStats.members }}+</span>
+          <span class="stats-value">
+            <template v-if="loading">-</template>
+            <template v-else>{{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}</template>
+          </span>
           <span class="stats-label">Community Members</span>
         </div>
 
         <div class="stats-card">
-          <span class="stats-value">{{ communityStats.gameservers }}</span>
+          <span class="stats-value">
+            <template v-if="loading">-</template>
+            <template v-else>{{ communityStats.gameservers }}</template>
+          </span>
           <span class="stats-label">Game Servers</span>
         </div>
 
@@ -168,21 +224,46 @@ const platforms = ref(Object.values(constants.PLATFORMS))
       <Divider />
     </ClientOnly>
 
-    <div class="events-list">
-      <Card v-for="event in upcomingEvents" :key="event.id">
+    <Grid v-if="loading" class="events-list" :columns="3" gap="m">
+      <!-- Loading state -->
+      <Card v-for="i in 3" :key="i">
+        <Skeleton height="1.5rem" width="80%" class="mb-s" />
+        <Skeleton height="1rem" width="60%" />
+      </Card>
+    </Grid>
+
+    <div v-else-if="errorMessage" class="events-error">
+      <Card>
+        <p class="error-text">
+          Failed to load events: {{ errorMessage }}
+        </p>
+      </Card>
+    </div>
+
+    <div v-else-if="upcomingEvents.length === 0" class="events-empty">
+      <Card>
+        <p>No upcoming events scheduled.</p>
+      </Card>
+    </div>
+
+    <Grid v-else class="events-list" :columns="3" gap="m" expand>
+      <Card v-for="event in upcomingEvents" :key="event.id" class="event-card-clickable" @click="navigateTo('/events')">
         <h3 class="block mb-s">
           {{ event.title }}
         </h3>
         <div class="event-details">
           <ClientOnly>
             <template #fallback>
-              <p>Date: {{ event.date.toDateString() }}</p>
+              <p>{{ new Date(event.date).toDateString() }}</p>
             </template>
-            <p>Date: {{ event.date.toLocaleDateString() }}</p>
+            <p>{{ new Date(event.date).toLocaleDateString() }}</p>
           </ClientOnly>
+          <p v-if="event.description" class="event-description">
+            {{ event.description }}
+          </p>
         </div>
       </Card>
-    </div>
+    </Grid>
 
     <div class="view-all">
       <Button @click="navigateTo('/events')">
@@ -424,22 +505,86 @@ h4 {
 // Center the list and make sure it is responsive
 .section-events {
   .events-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-m);
     margin: 2rem auto 0;
     max-width: 900px;
-    justify-content: center; /* Added to center the list */
   }
 
   .vui-card {
-    width: calc(100% / 3 - calc(var(--space-m) * 2) / 3);
+    height: 100%;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    h3 {
+      margin-bottom: var(--space-s);
+      color: var(--vui-color-primary);
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    &.event-card-clickable {
+      cursor: pointer;
+
+      &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      }
+    }
   }
 
   .event-details {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--space-xs);
+    flex-grow: 1;
+
+    p {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+
+      &:first-child {
+        font-weight: 500;
+        color: var(--color-text-strong);
+        margin-bottom: var(--space-xs);
+      }
+    }
+  }
+
+  .event-description {
+    font-size: var(--font-size-s);
+    color: var(--color-text-light);
+    line-height: 1.5;
+    margin-top: var(--space-xs);
+    padding-top: var(--space-xs);
+    border-top: 1px solid var(--color-border-subtle);
+    flex-grow: 1;
+  }
+
+  .events-error,
+  .events-empty {
+    .vui-card {
+      text-align: center;
+      padding: var(--space-l);
+      background: var(--color-bg-subtle);
+      border: 2px dashed var(--color-border-subtle);
+
+      &:hover {
+        transform: none;
+        box-shadow: none;
+      }
+    }
+  }
+
+  .error-text {
+    color: var(--color-text-red);
+    font-weight: 500;
   }
 }
 
@@ -456,6 +601,25 @@ h4 {
     align-items: center;
     gap: 1rem;
     margin-top: 1rem;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
   }
 }
 </style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Badge, Button, Divider, Flex, Grid, Modal, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Divider, Flex, Grid, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
 import Metadata from '../Shared/Metadata.vue'
 
@@ -98,10 +98,10 @@ updateTime()
         <span class="text-bold text-xxxl">{{ countdown.days }}</span>
         <span class="text-bold text-xxxl">{{ countdown.hours }}</span>
         <span class="text-bold text-xxxl">{{ countdown.minutes }}</span>
-        <span class="text-bold text-xxxl">{{ index === 0 ? countdown.seconds : '' }}</span>
+        <span class="text-bold text-xxxl">{{ countdown.seconds }}</span>
       </Grid>
       <div class="event-date">
-        <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY" />
+        <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY [at] HH:mm" />
       </div>
     </div>
 
@@ -164,7 +164,7 @@ updateTime()
   <Divider />
 
   <!-- Event Details Modal -->
-  <Modal :open="isModalOpen" size="l" :card="{ separators: true }" @close="isModalOpen = false">
+  <Modal :open="isModalOpen" scrollable size="l" :card="{ separators: true }" @close="isModalOpen = false">
     <template #header>
       <div class="event-modal-header">
         <h3>Event Details</h3>
@@ -185,9 +185,9 @@ updateTime()
         <Suspense suspensible>
           <template #fallback>
             <div class="event-markdown-skeleton">
-              <div class="skeleton-line" />
-              <div class="skeleton-line" />
-              <div class="skeleton-line short" />
+              <Skeleton height="1rem" width="100%" class="mb-s" />
+              <Skeleton height="1rem" width="100%" class="mb-s" />
+              <Skeleton height="1rem" width="60%" />
             </div>
           </template>
           <MDC :partial="true" class="event-markdown-content typeset" :value="props.data.markdown" />
@@ -380,33 +380,5 @@ updateTime()
   border: 1px solid var(--color-border);
   border-radius: var(--radius-m);
   padding: var(--space-m);
-
-  .skeleton-line {
-    height: 16px;
-    background: var(--color-bg-muted);
-    border-radius: var(--radius-xs);
-    margin-bottom: var(--space-s);
-    animation: skeleton-pulse 1.5s ease-in-out infinite;
-
-    &.short {
-      width: 60%;
-    }
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-}
-
-@keyframes skeleton-pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
-  100% {
-    opacity: 1;
-  }
 }
 </style>

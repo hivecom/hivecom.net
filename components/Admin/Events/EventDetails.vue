@@ -3,7 +3,7 @@ import type { Tables } from '~/types/database.types'
 import { Badge, Button, Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
 
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import Metadata from '~/components/Shared/Metadata.vue'
+import UserLink from '~/components/Shared/UserLink.vue'
 
 const props = defineProps<{
   event: Tables<'events'> | null
@@ -132,12 +132,29 @@ function isUpcoming(eventDate: string): boolean {
             <h6>Metadata</h6>
           </template>
 
-          <Metadata
-            :created-at="props.event.created_at"
-            :created-by="props.event.created_by"
-            :modified-at="props.event.modified_at"
-            :modified-by="props.event.modified_by"
-          />
+          <Flex column gap="l" expand>
+            <Grid class="detail-item" expand :columns="2">
+              <span class="detail-label">Created:</span>
+              <Flex column>
+                <TimestampDate :date="props.event.created_at" />
+                <Flex v-if="props.event.created_by" gap="xs" y-center class="metadata-by">
+                  <span>by</span>
+                  <UserLink :user-id="props.event.created_by" />
+                </Flex>
+              </Flex>
+            </Grid>
+
+            <Grid v-if="props.event.modified_at" class="detail-item" expand :columns="2">
+              <span class="detail-label">Modified:</span>
+              <Flex column>
+                <TimestampDate :date="props.event.modified_at" />
+                <Flex v-if="props.event.modified_by" gap="xs" y-center class="metadata-by">
+                  <span>by</span>
+                  <UserLink :user-id="props.event.modified_by" />
+                </Flex>
+              </Flex>
+            </Grid>
+          </Flex>
         </Card>
       </Flex>
     </Flex>

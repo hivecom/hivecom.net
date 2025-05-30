@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Button, Flex, Input, Sheet, Textarea } from '@dolanske/vui'
+import { Button, Calendar, Flex, Input, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
 import ConfirmModal from '../../Shared/ConfirmModal.vue'
@@ -21,7 +21,7 @@ const eventForm = ref({
   title: '',
   description: '',
   note: '',
-  date: '',
+  date: null as Date | null,
   location: '',
   link: '',
   markdown: '',
@@ -48,7 +48,7 @@ watch(
         title: newEvent.title,
         description: newEvent.description,
         note: newEvent.note || '',
-        date: newEvent.date,
+        date: newEvent.date ? new Date(newEvent.date) : null,
         location: newEvent.location || '',
         link: newEvent.link || '',
         markdown: newEvent.markdown || '',
@@ -60,7 +60,7 @@ watch(
         title: '',
         description: '',
         note: '',
-        date: '',
+        date: null,
         location: '',
         link: '',
         markdown: '',
@@ -85,7 +85,7 @@ function handleSubmit() {
     title: eventForm.value.title.trim(),
     description: eventForm.value.description.trim(),
     note: eventForm.value.note.trim() || null,
-    date: eventForm.value.date,
+    date: eventForm.value.date ? eventForm.value.date.toISOString() : '',
     location: eventForm.value.location.trim() || null,
     link: eventForm.value.link.trim() || null,
     markdown: eventForm.value.markdown.trim() || null,
@@ -143,6 +143,46 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
           placeholder="Enter event title"
         />
 
+        <div class="date-picker-container">
+          <label for="date-picker" class="date-picker-label">
+            Date <span class="required" style="color: var(--color-text-red);">*</span>
+          </label>
+          <Calendar
+            v-model="eventForm.date"
+            position="left"
+            expand
+            enable-time-picker
+            time-picker-inline
+            enable-minutes
+            enable-seconds
+            is24
+            format="yyyy-MM-dd-HH:mm"
+            :class="{ invalid: !validation.date }"
+          >
+            <template #trigger>
+              <Button
+                id="date-picker"
+                class="date-picker-button"
+                expand
+                :class="{ error: !validation.date }"
+              >
+                {{ eventForm.date ? eventForm.date.toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                }) : 'Choose date and time' }}
+                <template #end>
+                  <Icon name="ph:calendar" />
+                </template>
+              </Button>
+            </template>
+          </Calendar>
+          <span v-if="!validation.date" class="error-text">Date is required</span>
+        </div>
+
         <Textarea
           v-model="eventForm.description"
           expand
@@ -172,47 +212,25 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
           placeholder="Additional event details in markdown format (optional)"
           :rows="6"
         />
-        <p class="help-text">
-          You can use markdown formatting for rich text content (headings, lists, links, etc.)
-        </p>
       </Flex>
 
-      <!-- Event Details -->
-      <Flex column gap="m" expand>
-        <h4>Event Details</h4>
+      <Input
+        v-model="eventForm.location"
+        expand
+        name="location"
+        label="Location"
+        placeholder="Enter event location (optional)"
+      />
 
-        <!-- First row: Date and Location -->
-        <Flex gap="m" wrap>
-          <Input
-            v-model="eventForm.date"
-            expand
-            name="date"
-            type="date"
-            label="Date"
-            required
-            :valid="validation.date"
-            error="Date is required"
-          />
-
-          <Input
-            v-model="eventForm.location"
-            expand
-            name="location"
-            label="Location"
-            placeholder="Enter event location (optional)"
-          />
-        </Flex>
-
-        <!-- Second row: Link -->
-        <Input
-          v-model="eventForm.link"
-          expand
-          name="link"
-          type="url"
-          label="Link"
-          placeholder="https://example.com (optional)"
-        />
-      </Flex>
+      <!-- Second row: Link -->
+      <Input
+        v-model="eventForm.link"
+        expand
+        name="link"
+        type="url"
+        label="Link"
+        placeholder="https://example.com (optional)"
+      />
     </Flex>
 
     <template #footer>
@@ -283,5 +301,26 @@ h4 {
 
 .flex-1 {
   flex: 1;
+}
+
+.date-picker-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.date-picker-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.required {
+  color: var(--color-danger);
+}
+
+.error-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
 }
 </style>
