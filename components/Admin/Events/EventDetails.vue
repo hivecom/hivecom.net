@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Badge, Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
 
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import Metadata from '~/components/Shared/Metadata.vue'
@@ -9,11 +9,20 @@ const props = defineProps<{
   event: Tables<'events'> | null
 }>()
 
+// Define emits
+const emit = defineEmits(['edit'])
+
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
 // Handle closing the sheet
 function handleClose() {
+  isOpen.value = false
+}
+
+// Handle edit button click
+function handleEdit() {
+  emit('edit', props.event)
   isOpen.value = false
 }
 
@@ -33,13 +42,24 @@ function isUpcoming(eventDate: string): boolean {
   >
     <template #header>
       <Flex x-between y-center>
-        <h4>{{ props.event ? props.event.title : 'Event Details' }}</h4>
-        <Badge
-          v-if="props.event"
-          :variant="isUpcoming(props.event.date) ? 'accent' : 'neutral'"
-        >
-          {{ isUpcoming(props.event.date) ? 'Upcoming' : 'Past' }}
-        </Badge>
+        <h4>Event Details</h4>
+        <Flex y-center gap="s">
+          <Badge
+            v-if="props.event"
+            :variant="isUpcoming(props.event.date) ? 'accent' : 'neutral'"
+          >
+            {{ isUpcoming(props.event.date) ? 'Upcoming' : 'Past' }}
+          </Badge>
+          <Button
+            v-if="props.event"
+            @click="handleEdit"
+          >
+            <template #start>
+              <Icon name="ph:pencil" />
+            </template>
+            Edit
+          </Button>
+        </Flex>
       </Flex>
     </template>
 
@@ -51,6 +71,11 @@ function isUpcoming(eventDate: string): boolean {
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">ID:</span>
               <span>{{ props.event.id }}</span>
+            </Grid>
+
+            <Grid class="detail-item" expand :columns="2">
+              <span class="detail-label">Title:</span>
+              <span>{{ props.event.title }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
@@ -90,7 +115,7 @@ function isUpcoming(eventDate: string): boolean {
         <!-- Markdown Content -->
         <Card v-if="props.event.markdown" separators>
           <template #header>
-            <h6>Details</h6>
+            <h6>Markdown</h6>
           </template>
 
           <Suspense class="event-markdown" suspensible>

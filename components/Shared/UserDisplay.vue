@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Avatar, Badge, Flex } from '@dolanske/vui'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 
 interface Props {
   userId?: string | null
@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const supabase = useSupabaseClient()
+const currentUser = useSupabaseUser()
 const user = ref<{ id: string, username: string, role: string | null } | null>(null)
 const loading = ref(true)
 const error = ref(false)
@@ -21,6 +22,12 @@ const error = ref(false)
 // Fetch user data
 async function fetchUserData() {
   if (!props.userId) {
+    loading.value = false
+    return
+  }
+
+  // Only fetch user data if current user is authenticated
+  if (!currentUser.value) {
     loading.value = false
     return
   }
@@ -99,12 +106,20 @@ function getRoleInfo(role: string | null) {
 onMounted(() => {
   fetchUserData()
 })
+
+// Watch for authentication state changes
+watch(currentUser, () => {
+  fetchUserData()
+}, { immediate: false })
 </script>
 
 <template>
   <div class="user-display">
+    <!-- Unauthenticated user state -->
+    <Flex v-if="!currentUser" gap="m" y-center class="user-header" />
+
     <!-- Loading state -->
-    <Flex v-if="loading" gap="m" y-center class="user-header">
+    <Flex v-else-if="loading" gap="m" y-center class="user-header">
       <Avatar :size="size">
         ?
       </Avatar>

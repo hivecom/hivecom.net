@@ -104,7 +104,7 @@ const filteredData = computed<TransformedGameserver[]>(() => {
     if (regionFilter.value) {
       const regionFilterValue = regionFilter.value[0].value
       if (regionFilterValue === 'none') {
-        // Filter for gameservers with no region (null or undefined)
+        // Filter for game servers with no region (null or undefined)
         if (item.region) {
           return false
         }
@@ -152,7 +152,7 @@ const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData
 // Set default sorting.
 setSort('Name', 'asc')
 
-// Fetch gameservers data
+// Fetch game servers data
 async function fetchGameservers() {
   loading.value = true
   errorMessage.value = ''
@@ -169,27 +169,27 @@ async function fetchGameservers() {
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
   catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading gameservers'
+    errorMessage.value = error.message || 'An error occurred while loading game servers'
   }
   finally {
     loading.value = false
   }
 }
 
-// Handle row click - View gameserver details
+// Handle row click - View game server details
 function viewGameserver(gameserver: QueryGameserver) {
   selectedGameserver.value = gameserver
   showGameserverDetails.value = true
 }
 
-// Open the add gameserver form
+// Open the add game server form
 function openAddGameserverForm() {
   selectedGameserver.value = null
   isEditMode.value = false
   showGameserverForm.value = true
 }
 
-// Open the edit gameserver form
+// Open the edit game server form
 function openEditGameserverForm(gameserver: QueryGameserver, event?: Event) {
   // Prevent the click from triggering the view details
   if (event)
@@ -200,7 +200,12 @@ function openEditGameserverForm(gameserver: QueryGameserver, event?: Event) {
   showGameserverForm.value = true
 }
 
-// Handle gameserver save (both create and update)
+// Handle edit from GameserverDetails
+function handleEditFromDetails(gameserver: QueryGameserver) {
+  openEditGameserverForm(gameserver)
+}
+
+// Handle game server save (both create and update)
 async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> | TablesUpdate<'gameservers'>) {
   try {
     if (isEditMode.value && selectedGameserver.value) {
@@ -236,16 +241,16 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
         throw error
     }
 
-    // Refresh gameservers data and close form
+    // Refresh game servers data and close form
     showGameserverForm.value = false
     await fetchGameservers()
   }
   catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while saving the gameserver'
+    errorMessage.value = error.message || 'An error occurred while saving the game server'
   }
 }
 
-// Handle gameserver deletion
+// Handle game server deletion
 async function handleGameserverDelete(gameserverId: number) {
   try {
     const { error } = await supabase
@@ -260,7 +265,7 @@ async function handleGameserverDelete(gameserverId: number) {
     await fetchGameservers()
   }
   catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while deleting the gameserver'
+    errorMessage.value = error.message || 'An error occurred while deleting the game server'
   }
 }
 
@@ -276,14 +281,13 @@ onBeforeMount(fetchGameservers)
 </script>
 
 <template>
-  <!-- Error message -->
-  <Alert v-if="errorMessage" variant="danger">
-    {{ errorMessage }}
-  </Alert>
+  <!-- Error message -->    <Alert v-if="errorMessage" variant="danger">
+                              {{ errorMessage }}
+                            </Alert>
 
   <!-- Loading state -->
   <Alert v-else-if="loading" variant="info">
-    Loading gameservers...
+    Loading game servers...
   </Alert>
 
   <Flex v-else gap="s" column expand>
@@ -302,7 +306,7 @@ onBeforeMount(fetchGameservers)
         <template #start>
           <Icon name="ph:plus" />
         </template>
-        Add Gameserver
+        Add Game Server
       </Button>
     </Flex>
 
@@ -340,18 +344,19 @@ onBeforeMount(fetchGameservers)
     <!-- No results message -->
     <Flex v-if="!loading && (!rows || rows.length === 0)" expand>
       <Alert variant="info" class="w-100">
-        No gameservers found
+        No game servers found
       </Alert>
     </Flex>
   </Flex>
 
-  <!-- Gameserver Detail Sheet -->
+  <!-- Game Server Detail Sheet -->
   <GameserverDetails
     v-model:is-open="showGameserverDetails"
     :gameserver="selectedGameserver"
+    @edit="handleEditFromDetails"
   />
 
-  <!-- Gameserver Form Sheet (for both create and edit) -->
+  <!-- Game Server Form Sheet (for both create and edit) -->
   <GameserverForm
     v-model:is-open="showGameserverForm"
     :gameserver="selectedGameserver"

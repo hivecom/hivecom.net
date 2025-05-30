@@ -59,7 +59,7 @@ const platforms = ref(Object.values(constants.PLATFORMS))
 
         <div class="stats-card">
           <span class="stats-value">{{ communityStats.gameservers }}</span>
-          <span class="stats-label">Gameservers</span>
+          <span class="stats-label">Game Servers</span>
         </div>
 
         <div class="stats-card">

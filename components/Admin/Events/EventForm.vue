@@ -111,7 +111,7 @@ function confirmDelete() {
 }
 
 // Computed properties for form title and button text
-const formTitle = computed(() => props.isEditMode ? 'Edit Event' : 'Create Event')
+const formTitle = computed(() => props.isEditMode ? 'Edit Event' : 'Add Event')
 const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Create Event')
 </script>
 
@@ -168,7 +168,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
           v-model="eventForm.markdown"
           expand
           name="markdown"
-          label="Details (Supports Markdown)"
+          label="Markdown"
           placeholder="Additional event details in markdown format (optional)"
           :rows="6"
         />

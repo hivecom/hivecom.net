@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
 import { Badge, Button, Divider, Flex, Grid, Modal, Tooltip } from '@dolanske/vui'
-import EventMetadata from '~/components/Events/EventMetadata.vue'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import Metadata from '../Shared/Metadata.vue'
 
 const props = defineProps<{
   data: Tables<'events'>
@@ -86,12 +86,11 @@ updateTime()
 <template>
   <Flex
     gap="xxl"
-    class="event-item"
+    class="event-item event-item-clickable"
     :class="{
       'event-item-first': index === 0 && !isPast,
-      'event-item-clickable': props.data.markdown,
     }"
-    @click="props.data.markdown ? (isModalOpen = true) : undefined"
+    @click="isModalOpen = true"
   >
     <!-- Countdown for upcoming events -->
     <div v-if="!isPast" class="event-item-countdown-container">
@@ -154,7 +153,7 @@ updateTime()
     </div>
 
     <!-- Details indicator -->
-    <div v-if="props.data.markdown" class="event-item-details">
+    <div class="event-item-details">
       <Tooltip v-if="props.data.note" :content="props.data.note" position="left">
         <Icon name="ph:caret-right" class="event-item-arrow" />
       </Tooltip>
@@ -182,19 +181,33 @@ updateTime()
 
     <div class="event-modal-content">
       <!-- Markdown Content -->
-      <Suspense class="event-markdown" suspensible>
-        <template #fallback>
-          <div class="event-markdown-skeleton">
-            <div class="skeleton-line" />
-            <div class="skeleton-line" />
-            <div class="skeleton-line short" />
-          </div>
-        </template>
-        <MDC :partial="true" class="event-markdown-content typeset" :value="props.data.markdown || ''" />
-      </Suspense>
+      <div v-if="props.data.markdown" class="event-markdown">
+        <Suspense suspensible>
+          <template #fallback>
+            <div class="event-markdown-skeleton">
+              <div class="skeleton-line" />
+              <div class="skeleton-line" />
+              <div class="skeleton-line short" />
+            </div>
+          </template>
+          <MDC :partial="true" class="event-markdown-content typeset" :value="props.data.markdown" />
+        </Suspense>
+      </div>
+
+      <!-- No additional details message -->
+      <div v-else class="event-no-details">
+        <p class="color-text-lighter">
+          No additional details available for this event.
+        </p>
+      </div>
 
       <!-- Event Metadata -->
-      <EventMetadata :event="props.data" />
+      <Metadata
+        :created-at="props.data.created_at"
+        :created-by="props.data.created_by"
+        :modified-at="props.data.modified_at"
+        :modified-by="props.data.modified_by"
+      />
     </div>
 
     <template #footer="{ close }">
@@ -344,12 +357,21 @@ updateTime()
   }
 }
 
-.event-markdown {
-  .event-markdown-content {
-    background: var(--color-bg-subtle);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-m);
-    padding: var(--space-m);
+.event-markdown-content {
+  padding-bottom: var(--space-m);
+}
+
+.event-no-details {
+  padding: var(--space-l);
+  text-align: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  background: var(--color-bg-subtle);
+  margin-bottom: var(--space-m);
+
+  p {
+    margin: 0;
+    font-style: italic;
   }
 }
 

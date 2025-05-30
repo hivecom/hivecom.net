@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { CopyClipboard, Flex } from '@dolanske/vui'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 
 const props = defineProps<{
   userId: string | null
@@ -8,6 +8,7 @@ const props = defineProps<{
 }>()
 
 const supabase = useSupabaseClient()
+const currentUser = useSupabaseUser()
 const username = ref<string | null>(null)
 const loading = ref(true)
 const error = ref(false)
@@ -15,6 +16,12 @@ const error = ref(false)
 // Fetch user profile data
 async function fetchUserProfile() {
   if (!props.userId) {
+    loading.value = false
+    return
+  }
+
+  // Only fetch user profile if current user is authenticated
+  if (!currentUser.value) {
     loading.value = false
     return
   }
@@ -44,10 +51,20 @@ async function fetchUserProfile() {
 onMounted(() => {
   fetchUserProfile()
 })
+
+// Watch for authentication state changes
+watch(currentUser, () => {
+  fetchUserProfile()
+}, { immediate: false })
 </script>
 
 <template>
-  <div v-if="!props.userId" class="user-display">
+  <!-- Only show content if user is authenticated -->
+  <div v-if="!currentUser" class="user-display">
+    {{ props.placeholder || 'Sign-in required' }}
+  </div>
+
+  <div v-else-if="!props.userId" class="user-display">
     {{ props.placeholder || 'None assigned' }}
   </div>
 

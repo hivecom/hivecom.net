@@ -118,6 +118,11 @@ function openEditEventForm(event: Event, clickEvent?: MouseEvent) {
   showEventForm.value = true
 }
 
+// Handle edit from EventDetails
+function handleEditFromDetails(event: Event) {
+  openEditEventForm(event)
+}
+
 async function handleEventSave(eventData: Partial<Event>) {
   try {
     if (isEditMode.value && selectedEvent.value) {
@@ -266,6 +271,7 @@ onBeforeMount(fetchEvents)
     <EventDetails
       v-model:is-open="showEventDetails"
       :event="selectedEvent"
+      @edit="handleEditFromDetails"
     />
 
     <!-- Event Form Sheet (for both create and edit) -->

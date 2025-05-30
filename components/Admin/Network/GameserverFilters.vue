@@ -32,7 +32,7 @@ function clearFilters() {
     <!-- Search input -->
     <Input
       v-model="search"
-      placeholder="Search gameservers..."
+      placeholder="Search game servers..."
     >
       <template #start>
         <Icon name="ph:magnifying-glass" />

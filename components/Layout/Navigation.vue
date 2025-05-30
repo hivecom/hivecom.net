@@ -78,7 +78,7 @@ function toggleMobileMenu() {
             </NuxtLink>
             <NuxtLink to="/gameservers" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
               <Icon name="ph:game-controller" />
-              <span>Gameservers</span>
+              <span>Game Servers</span>
             </NuxtLink>
             <template v-if="user">
               <span class="nav-mobile-menu-separator" />

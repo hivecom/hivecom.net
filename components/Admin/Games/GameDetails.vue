@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '~/components/Shared/UserLink.vue'
@@ -18,11 +18,20 @@ const props = defineProps<{
   } | null
 }>()
 
+// Define emits
+const emit = defineEmits(['edit'])
+
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
 // Handle closing the sheet
 function handleClose() {
+  isOpen.value = false
+}
+
+// Handle edit button click
+function handleEdit() {
+  emit('edit', props.game)
   isOpen.value = false
 }
 
@@ -84,7 +93,20 @@ watchEffect(async () => {
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ props.game ? props.game.name : 'Game Details' }}</h4>
+      <Flex x-between y-center>
+        <h4>Game Details</h4>
+        <Flex y-center gap="s">
+          <Button
+            v-if="props.game"
+            @click="handleEdit"
+          >
+            <template #start>
+              <Icon name="ph:pencil" />
+            </template>
+            Edit
+          </Button>
+        </Flex>
+      </Flex>
     </template>
 
     <Flex v-if="props.game" column gap="m" class="game-detail">
@@ -145,15 +167,15 @@ watchEffect(async () => {
           </Flex>
         </Card>
 
-        <!-- Related Gameservers -->
+        <!-- Related Game Servers -->
         <Card separators>
           <template #header>
-            <h6>Related Gameservers</h6>
+            <h6>Related Game Servers</h6>
           </template>
 
           <!-- Loading state -->
           <div v-if="gameserversLoading" class="placeholder-text">
-            Loading gameservers...
+            Loading game servers...
           </div>
 
           <!-- Error state -->

@@ -292,14 +292,6 @@ function confirmDelete() {
   emit('delete', props.gameserver.id)
 }
 
-// Sheet title based on mode
-const sheetTitle = computed(() => {
-  if (props.isEditMode) {
-    return `Edit Gameserver: ${props.gameserver?.name}`
-  }
-  return 'Add New Gameserver'
-})
-
 // Fetch dropdown data when component mounts
 onMounted(fetchDropdownData)
 </script>
@@ -313,7 +305,7 @@ onMounted(fetchDropdownData)
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ sheetTitle }}</h4>
+      <h4>{{ props.isEditMode ? 'Edit Game Server' : 'Add Game Server' }}</h4>
     </template>
 
     <!-- Gameserver Info Section -->
@@ -329,8 +321,8 @@ onMounted(fetchDropdownData)
           label="Name"
           required
           :valid="validation.name"
-          error="Gameserver name is required"
-          placeholder="Enter gameserver name"
+          error="Game server name is required"
+          placeholder="Enter game server name"
         />
 
         <Textarea
@@ -338,7 +330,7 @@ onMounted(fetchDropdownData)
           expand
           name="description"
           label="Description"
-          placeholder="Enter gameserver description (optional)"
+          placeholder="Enter game server description (optional)"
           :rows="3"
         />
 
@@ -347,7 +339,7 @@ onMounted(fetchDropdownData)
           v-model="gameserverForm.markdown"
           expand
           name="markdown"
-          label="Details (Supports Markdown)"
+          label="Markdown"
           placeholder="Enter markdown content (optional)"
           :rows="9"
         />
@@ -486,7 +478,7 @@ onMounted(fetchDropdownData)
           v-if="props.isEditMode"
           variant="danger"
           square
-          data-title-left="Delete gameserver"
+          data-title-left="Delete game server"
           @click.prevent="handleDelete"
         >
           <Icon name="ph:trash" />
@@ -498,8 +490,8 @@ onMounted(fetchDropdownData)
     <ConfirmModal
       v-model:open="showDeleteConfirm"
       v-model:confirm="confirmDelete"
-      title="Confirm Delete Gameserver"
-      :description="`Are you sure you want to delete the gameserver '${props.gameserver?.name}'? This action cannot be undone.`"
+      title="Confirm Delete Game Server"
+      :description="`Are you sure you want to delete the game server '${props.gameserver?.name}'? This action cannot be undone.`"
       confirm-text="Delete"
       cancel-text="Cancel"
       :destructive="true"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Button, CopyClipboard, Dropdown, DropdownItem, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Dropdown, DropdownItem, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import { capitalize } from 'vue'
 import Metadata from '~/components/Shared/Metadata.vue'
 import RegionIndicator from '~/components/Shared/RegionIndicator.vue'
@@ -13,6 +13,7 @@ const props = defineProps<{
 }>()
 
 const expanded = ref(false)
+const user = useSupabaseUser()
 
 const state = computed(() => {
   if (!props.container)
@@ -75,15 +76,6 @@ const state = computed(() => {
       </Flex>
     </Flex>
     <Flex v-if="expanded" column gap="s" class="gameserver-row-child">
-      <!-- Details Grid -->
-      <Flex gap="l" wrap class="gameserver-details">
-        <!-- Administrator -->
-        <div v-if="props.gameserver.administrator" class="detail-item">
-          <span class="detail-label">Administrator</span>
-          <UserLink :user-id="props.gameserver.administrator" />
-        </div>
-      </Flex>
-
       <!-- Markdown Content -->
       <Suspense v-if="props.gameserver.markdown" class="gameserver-markdown" suspensible>
         <template #fallback>
@@ -96,6 +88,16 @@ const state = computed(() => {
           No additional details available.
         </p>
       </div>
+
+      <span style="margin-top: var(--space-s)" />
+
+      <!-- Administrator -->
+      <Card v-if="props.gameserver.administrator && user" gap="l" class="gameserver-details">
+        <div class="detail-item">
+          <span class="detail-label">Administrator</span>
+          <UserLink :user-id="props.gameserver.administrator" />
+        </div>
+      </Card>
 
       <!-- Metadata Section -->
       <Metadata
@@ -128,7 +130,7 @@ const state = computed(() => {
 }
 
 .gameserver-row-child {
-  padding: 0 var(--space-m) var(--space-m) var(--space-m);
+  padding: var(--space-m);
   border-radius: var(--border-radius-m);
   border-top-left-radius: 0;
   border-top-right-radius: 0;

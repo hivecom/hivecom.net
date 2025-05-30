@@ -130,6 +130,11 @@ function openEditGameForm(game: Game, event?: Event) {
   showGameForm.value = true
 }
 
+// Handle edit from GameDetails
+function handleEditFromDetails(game: Game) {
+  openEditGameForm(game)
+}
+
 // Handle game save (both create and update)
 async function handleGameSave(gameData: Partial<Game>) {
   try {
@@ -279,6 +284,7 @@ onBeforeMount(fetchGames)
     <GameDetails
       v-model:is-open="showGameDetails"
       :game="selectedGame"
+      @edit="handleEditFromDetails"
     />
 
     <!-- Game Form Sheet (for both create and edit) -->

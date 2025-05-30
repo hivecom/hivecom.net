@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '~/components/Shared/UserLink.vue'
@@ -8,11 +8,20 @@ const props = defineProps<{
   gameserver: any | null
 }>()
 
+// Define emits
+const emit = defineEmits(['edit'])
+
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
 // Handle closing the sheet
 function handleClose() {
+  isOpen.value = false
+}
+
+// Handle edit button click
+function handleEdit() {
+  emit('edit', props.gameserver)
   isOpen.value = false
 }
 </script>
@@ -26,7 +35,20 @@ function handleClose() {
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ props.gameserver ? props.gameserver.name : 'Gameserver Details' }}</h4>
+      <Flex x-between y-center>
+        <h4>Game Server Details</h4>
+        <Flex y-center gap="s">
+          <Button
+            v-if="props.gameserver"
+            @click="handleEdit"
+          >
+            <template #start>
+              <Icon name="ph:pencil" />
+            </template>
+            Edit
+          </Button>
+        </Flex>
+      </Flex>
     </template>
 
     <Flex v-if="props.gameserver" column gap="m" class="gameserver-detail">
@@ -37,6 +59,11 @@ function handleClose() {
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">ID:</span>
               <span>{{ props.gameserver.id }}</span>
+            </Grid>
+
+            <Grid class="detail-item" expand :columns="2">
+              <span class="detail-label">Name:</span>
+              <span>{{ props.gameserver.name }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
@@ -71,7 +98,7 @@ function handleClose() {
         <!-- Markdown Content -->
         <Card v-if="props.gameserver.markdown" separators>
           <template #header>
-            <h6>Details</h6>
+            <h6>Markdown</h6>
           </template>
 
           <Suspense class="gameserver-markdown" suspensible>

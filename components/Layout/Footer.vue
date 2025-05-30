@@ -21,7 +21,7 @@ const links = constants.LINKS
             Events
           </NuxtLink>
           <NuxtLink to="/gameservers">
-            Gameservers
+            Game Servers
           </NuxtLink>
         </div>
         <span class="footer-links-separator" />

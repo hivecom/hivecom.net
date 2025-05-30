@@ -98,14 +98,6 @@ function confirmDelete() {
 
   emit('delete', props.game.id)
 }
-
-// Sheet title based on mode
-const sheetTitle = computed(() => {
-  if (props.isEditMode) {
-    return `Edit Game: ${props.game?.name}`
-  }
-  return 'Add New Game'
-})
 </script>
 
 <template>
@@ -117,7 +109,7 @@ const sheetTitle = computed(() => {
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ sheetTitle }}</h4>
+      <h4>{{ props.isEditMode ? 'Edit Game' : 'Add Game' }}</h4>
     </template>
 
     <!-- Game Info Section -->

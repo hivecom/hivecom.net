@@ -57,10 +57,6 @@ const isSameUser = computed(() => {
 </template>
 
 <style lang="scss">
-.metadata {
-  margin-top: var(--space-l);
-}
-
 .metadata-content {
   display: flex;
   flex-direction: column;
