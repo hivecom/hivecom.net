@@ -64,13 +64,14 @@ Join us for an amazing hiking adventure in the Harz National Park, Germany!
 Let me know if you have any questions or suggestions for the hike. Please also RSVP so I can plan accordingly!
   ');
 
--- Insert a test game
-INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'cs2', 730);
-
 -- Insert a test server
 INSERT INTO public.servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port)
   VALUES (TRUE, 'host.docker.internal', NOW(), TRUE, FALSE, 54320);
+
+-- Insert test games
+INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'cs2', 730),
+(NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Garrys Mod', 'gmod', 4000);
 
 -- Insert a test container for our gameserver
 INSERT INTO public.containers(created_at, healthy, name, reported_at, running, server, started_at)
@@ -78,7 +79,7 @@ INSERT INTO public.containers(created_at, healthy, name, reported_at, running, s
     NOW() - INTERVAL '1 hour' -- Set started_at to 1 hour ago
 );
 
--- Insert a test gameserver
+-- Insert a test gameserver for CS2
 INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, container, markdown)
   VALUES (ARRAY['cs2.gameserver.hivecom.net', 'cs2.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community CS2 server for casual play', 1, -- References the game ID we just created
     'Hivecom CS2 Community Server', '27015', 'eu', 'gameserver-cs2', '
@@ -96,6 +97,10 @@ This server is geared towards casual play - if you are looking for a competitive
 4. Have fun!
   ');
 
+-- Insert a test gameserver for Garrys Mod
+INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region)
+  VALUES (ARRAY['gmod.gameserver.hivecom.net', 'gmod.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Garrys Mod server for sandbox fun', 2, 'Hivecom Garrys Mod Sandbox Server', '27015', 'eu');
+
 -- Insert a test expense
 INSERT INTO public.expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 2000, NOW() - INTERVAL '1 month', NULL);
@@ -103,4 +108,12 @@ INSERT INTO public.expenses(created_at, created_by, name, description, url, amou
 -- Insert a monthly funding record
 INSERT INTO public.monthly_funding(month, patreon_month_amount_cents, patreon_lifetime_amount_cents, patreon_count, donation_month_amount_cents, donation_lifetime_amount_cents, donation_count)
   VALUES (DATE_TRUNC('month', NOW()), 2500, 10000, 3, 5000, 20000, 1);
+
+-- Insert a test referendum
+INSERT INTO public.referendums(created_at, created_by, title, description, choices, date_start, date_end, multiple_choice)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Next Community Game Server', 'Which game should we host as our next community server? This will help us decide where to invest our resources for the best community experience.', ARRAY['Minecraft', 'Valheim', 'Rust', 'Team Fortress 2'], NOW(), NOW() + INTERVAL '14 days', FALSE);
+
+-- Insert a test vote for the referendum
+INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices, comment)
+  VALUES (NOW() + INTERVAL '1 hour', '018d224c-0e49-4b6d-b57a-87299605c2b1', 1, ARRAY[1], 'Minecraft would be fun!');
 
