@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
 import { Card, Flex } from '@dolanske/vui'
-import GameServerHeader from '~/components/Gameservers/GameServerHeader.vue'
-import GameServerMarkdown from '~/components/Gameservers/GameServerMarkdown.vue'
+import GameServerHeader from '~/components/GameServers/GameServerHeader.vue'
+import GameServerMarkdown from '~/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '~/components/Shared/DetailStates.vue'
 import Metadata from '~/components/Shared/Metadata.vue'
 

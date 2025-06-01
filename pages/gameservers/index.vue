@@ -4,7 +4,7 @@ import type { Tables } from '~/types/database.types'
 
 import { Alert, Button, Card, Divider, Flex, Input, Select, Skeleton } from '@dolanske/vui'
 
-import GameServerRow from '~/components/Gameservers/GameServerRow.vue'
+import GameServerRow from '~/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '~/components/Shared/ErrorAlert.vue'
 import SteamLink from '~/components/Shared/SteamLink.vue'
 
