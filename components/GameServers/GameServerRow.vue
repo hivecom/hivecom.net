@@ -18,9 +18,14 @@ const state = computed(() => {
   if (!props.container)
     return 'unknown'
 
+  if (props.container.running && props.container.healthy === null) {
+    return 'running'
+  }
+
   if (props.container.running && props.container.healthy) {
     return 'healthy'
   }
+
   else if (props.container.running && !props.container.healthy) {
     return 'unhealthy'
   }
@@ -131,7 +136,8 @@ const state = computed(() => {
   height: 10px;
   border-radius: 99px;
 
-  &.healthy {
+  &.healthy,
+  &.running {
     background-color: var(--color-text-green);
   }
 

@@ -24,6 +24,11 @@ const error = ref<string | null>(null)
 const state = computed(() => {
   if (!container.value)
     return 'unknown'
+
+  if (container.value.running && container.value.healthy === null) {
+    return 'running'
+  }
+
   if (container.value.running && container.value.healthy) {
     return 'healthy'
   }
@@ -43,6 +48,12 @@ const stateConfig = computed(() => {
       icon: 'ph:check-circle-fill',
       label: 'Healthy',
       description: 'Server is running and healthy',
+    },
+    running: {
+      color: 'info' as const,
+      icon: 'ph:play-circle-fill',
+      label: 'Running',
+      description: 'Server is running but health status is unknown',
     },
     unhealthy: {
       color: 'warning' as const,

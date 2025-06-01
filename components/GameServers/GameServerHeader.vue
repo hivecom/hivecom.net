@@ -9,13 +9,6 @@ interface Props {
   gameserver: Tables<'gameservers'>
   game?: Tables<'games'> | null
   container?: Tables<'containers'> | null
-  state: 'healthy' | 'unhealthy' | 'offline' | 'unknown'
-  stateConfig: {
-    color: 'success' | 'warning' | 'danger' | 'neutral' | 'accent' | 'info'
-    icon: string
-    label: string
-    description: string
-  }
 }
 
 defineProps<Props>()
@@ -120,7 +113,7 @@ defineProps<Props>()
                 </Badge>
               </div>
 
-              <div class="status-item">
+              <div v-if="container.healthy !== null" class="status-item">
                 <span class="status-label">Healthy</span>
                 <Badge :variant="container.healthy ? 'success' : 'warning'" size="s">
                   <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
