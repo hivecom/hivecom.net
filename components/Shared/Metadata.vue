@@ -31,11 +31,11 @@ const isSameUser = computed(() => {
         <div class="timestamp-grid">
           <div class="timestamp-item">
             <span class="timestamp-label">Created</span>
-            <TimestampDate :date="createdAt" format="MMM D, YYYY [at] HH:mm" class="timestamp-date" />
+            <TimestampDate small :date="createdAt" format="MMM D, YYYY [at] HH:mm" class="timestamp-date" />
           </div>
           <div v-if="modifiedAt" class="timestamp-item">
             <span class="timestamp-label">Modified</span>
-            <TimestampDate :date="modifiedAt" format="MMM D, YYYY [at] HH:mm" class="timestamp-date" />
+            <TimestampDate small :date="modifiedAt" format="MMM D, YYYY [at] HH:mm" class="timestamp-date" />
           </div>
         </div>
 
@@ -87,11 +87,6 @@ const isSameUser = computed(() => {
     color: var(--color-text-lighter);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-  }
-
-  .timestamp-date {
-    font-size: var(--font-size-xs);
-    color: var(--color-text);
   }
 }
 

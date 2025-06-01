@@ -3,7 +3,7 @@ import { Flex, Tab, Tabs } from '@dolanske/vui'
 
 import ContainerKPIs from '~/components/Admin/Network/ContainerKPIs.vue'
 import ContainerTable from '~/components/Admin/Network/ContainerTable.vue'
-import GameserverTable from '~/components/Admin/Network/GameserverTable.vue'
+import GameserverTable from '~/components/Admin/Network/GameServerTable.vue'
 import ServerTable from '~/components/Admin/Network/ServerTable.vue'
 
 // Tab management

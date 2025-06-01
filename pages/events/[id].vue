@@ -1,0 +1,206 @@
+<script setup lang="ts">
+import type { Tables } from '~/types/database.types'
+import { Button, Card, Flex } from '@dolanske/vui'
+import EventHeader from '~/components/Events/EventHeader.vue'
+import EventMarkdown from '~/components/Events/EventMarkdown.vue'
+import EventMetadata from '~/components/Events/EventMetadata.vue'
+import DetailStates from '~/components/Shared/DetailStates.vue'
+
+// Get route parameter
+const route = useRoute()
+const eventId = Number.parseInt(route.params.id as string)
+
+// Supabase client
+const supabase = useSupabaseClient()
+
+// Reactive data
+const event = ref<Tables<'events'> | null>(null)
+const loading = ref(true)
+const error = ref<string | null>(null)
+
+// Countdown for upcoming events
+const countdown = ref({
+  days: 0,
+  hours: 0,
+  minutes: 0,
+  seconds: 0,
+})
+
+// Check if event is upcoming
+const isUpcoming = computed(() => {
+  if (!event.value)
+    return false
+  return new Date(event.value.date) >= new Date()
+})
+
+// Calculate "time ago" for past events
+const timeAgo = computed(() => {
+  if (!event.value || isUpcoming.value)
+    return ''
+
+  const now = new Date()
+  const eventDate = new Date(event.value.date)
+  const diff = now.getTime() - eventDate.getTime()
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+  if (days > 0) {
+    return days === 1 ? '1 day ago' : `${days} days ago`
+  }
+  else if (hours > 0) {
+    return hours === 1 ? '1 hour ago' : `${hours} hours ago`
+  }
+  else if (minutes > 0) {
+    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
+  }
+  else {
+    return 'Just now'
+  }
+})
+
+// Update countdown
+function updateTime() {
+  if (!event.value || !isUpcoming.value)
+    return
+
+  const now = new Date()
+  const eventDate = new Date(event.value.date)
+  const diff = eventDate.getTime() - now.getTime()
+
+  if (diff <= 0) {
+    countdown.value = {
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+    }
+    return
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  countdown.value = {
+    days,
+    hours,
+    minutes,
+    seconds,
+  }
+}
+
+// Fetch event data
+async function fetchEvent() {
+  try {
+    loading.value = true
+    error.value = null
+
+    const { data, error: fetchError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .single()
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        error.value = 'Event not found'
+      }
+      else {
+        error.value = fetchError.message
+      }
+      return
+    }
+
+    event.value = data
+  }
+  catch (err: any) {
+    error.value = err.message || 'An error occurred while loading the event'
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+// Set up interval for countdown updates
+useIntervalFn(updateTime, 1000, { immediate: true })
+
+// Fetch data on mount
+onMounted(() => {
+  fetchEvent()
+})
+
+// SEO and page metadata
+useSeoMeta({
+  title: computed(() => event.value ? `${event.value.title} | Events` : 'Event Details'),
+  description: computed(() => event.value?.description || 'Event details'),
+  ogTitle: computed(() => event.value ? `${event.value.title} | Events` : 'Event Details'),
+  ogDescription: computed(() => event.value?.description || 'Event details'),
+})
+
+// Page title
+useHead({
+  title: computed(() => event.value ? event.value.title : 'Event Details'),
+})
+</script>
+
+<template>
+  <div class="page">
+    <!-- Loading and Error States -->
+    <DetailStates
+      :loading="loading"
+      :error="error"
+      back-to="/events"
+      back-label="Back to Events"
+    >
+      <template #error-message>
+        The event you're looking for might have been removed or doesn't exist.
+      </template>
+    </DetailStates>
+
+    <!-- Event Content -->
+    <div v-if="event && !loading && !error" class="event-content">
+      <!-- Back Button -->
+      <Flex x-between>
+        <NuxtLink to="/events" class="back-link">
+          <Button variant="gray" size="s">
+            <template #start>
+              <Icon name="ph:arrow-left" />
+            </template>
+            Back to Events
+          </Button>
+        </NuxtLink>
+      </Flex>
+
+      <!-- Header -->
+      <Card>
+        <EventHeader
+          :event="event"
+          :is-upcoming="isUpcoming"
+          :countdown="countdown"
+          :time-ago="timeAgo"
+        />
+      </Card>
+
+      <!-- Details -->
+      <EventMarkdown :event="event" />
+
+      <!-- Metadata -->
+      <EventMetadata :event="event" />
+    </div>
+  </div>
+</template>
+
+<style lang="scss" scoped>
+.event-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-l);
+}
+
+.back-link {
+  text-decoration: none;
+}
+</style>

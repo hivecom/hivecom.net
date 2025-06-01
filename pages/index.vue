@@ -255,7 +255,7 @@ onMounted(async () => {
     </div>
 
     <Grid v-else class="events-list" :columns="3" gap="m" expand>
-      <Card v-for="event in upcomingEvents" :key="event.id" class="event-card-clickable" @click="navigateTo('/events')">
+      <Card v-for="event in upcomingEvents" :key="event.id" class="event-card-clickable" @click="navigateTo(`/events/${event.id}`)">
         <h3 class="block mb-s">
           {{ event.title }}
         </h3>

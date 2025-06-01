@@ -6,9 +6,9 @@ import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/v
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
-import GameserverDetails from './GameserverDetails.vue'
-import GameserverFilters from './GameserverFilters.vue'
-import GameserverForm from './GameserverForm.vue'
+import GameserverDetails from './GameServerDetails.vue'
+import GameserverFilters from './GameServerFilters.vue'
+import GameserverForm from './GameServerForm.vue'
 
 // Type from the query result
 type QueryGameserver = QueryData<typeof gameserversQuery>[0]

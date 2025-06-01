@@ -4,7 +4,7 @@ import type { Tables } from '~/types/database.types'
 
 import { Alert, Button, Card, Divider, Flex, Input, Select, Skeleton } from '@dolanske/vui'
 
-import GameserverRow from '~/components/Gameservers/GameserverRow.vue'
+import GameServerRow from '~/components/Gameservers/GameServerRow.vue'
 import ErrorAlert from '~/components/Shared/ErrorAlert.vue'
 import SteamLink from '~/components/Shared/SteamLink.vue'
 
@@ -200,7 +200,7 @@ function getServersByGameId(gameId: number) {
         <!-- Content -->
         <template v-if="games && gameservers && games.length !== 0 && gameservers.length !== 0">
           <!-- Inputs -->
-          <Flex gap="s" x-start class="mb-l">
+          <Flex gap="s" x-start class="mb-m">
             <Input v-model="search" placeholder="Search servers">
               <template #start>
                 <Icon name="ph:magnifying-glass" />
@@ -213,49 +213,51 @@ function getServersByGameId(gameId: number) {
             </Button>
           </Flex>
 
-          <template v-for="game in filteredGames" :key="game.id">
-            <Card v-if="filteredGameservers.length > 0">
-              <h3 class="mb-s">
-                <Flex gap="m" y-center x-between>
-                  <Flex gap="m" y-center>
-                    {{ game.name }}
-                    <div class="counter">
-                      {{ getServersByGameId(game.id).length }}
-                    </div>
+          <Flex gap="m" column>
+            <template v-for="game in filteredGames" :key="game.id">
+              <Card v-if="filteredGameservers.length > 0">
+                <h3 class="mb-s">
+                  <Flex gap="m" y-center x-between>
+                    <Flex gap="m" y-center>
+                      {{ game.name }}
+                      <div class="counter">
+                        {{ getServersByGameId(game.id).length }}
+                      </div>
+                    </Flex>
+                    <SteamLink v-if="game.steam_id" :steam-id="game.steam_id" show-icon hide-id />
                   </Flex>
-                  <SteamLink v-if="game.steam_id" :steam-id="game.steam_id" show-icon hide-id />
+                </h3>
+                <Flex column class="w-100">
+                  <GameServerRow
+                    v-for="gameserver in getServersByGameId(game.id)" :key="gameserver.id"
+                    :gameserver="(gameserver as Tables<'gameservers'>)"
+                    :container="(gameserver.container as Tables<'containers'> | null)"
+                    :game="(game as Tables<'games'>)"
+                  />
+                </Flex>
+              </Card>
+            </template>
+
+            <!-- Gameservers without a game -->
+            <Card v-if="gameserversWithoutGame.length > 0">
+              <h3 class="mb-s">
+                <Flex gap="m" y-center>
+                  Unassigned Servers
+                  <div class="counter">
+                    {{ gameserversWithoutGame.length }}
+                  </div>
                 </Flex>
               </h3>
               <Flex column class="w-100">
-                <GameserverRow
-                  v-for="gameserver in getServersByGameId(game.id)" :key="gameserver.id"
-                  :gameserver="(gameserver as Tables<'gameservers'>)"
-                  :container="(gameserver.container as Tables<'containers'> | null)"
-                  :game="(game as Tables<'games'>)"
+                <GameServerRow
+                  v-for="gameserver in gameserversWithoutGame" :key="gameserver.id"
+                  :gameserver="(gameserver as any)"
+                  :container="(gameserver.container as any)"
+                  :game="undefined"
                 />
               </Flex>
             </Card>
-          </template>
-
-          <!-- Gameservers without a game -->
-          <Card v-if="gameserversWithoutGame.length > 0">
-            <h3 class="mb-s">
-              <Flex gap="m" y-center>
-                Unassigned Servers
-                <div class="counter">
-                  {{ gameserversWithoutGame.length }}
-                </div>
-              </Flex>
-            </h3>
-            <Flex column class="w-100">
-              <GameserverRow
-                v-for="gameserver in gameserversWithoutGame" :key="gameserver.id"
-                :gameserver="(gameserver as any)"
-                :container="(gameserver.container as any)"
-                :game="undefined"
-              />
-            </Flex>
-          </Card>
+          </Flex>
         </template>
         <!-- No content -->
         <template v-else>

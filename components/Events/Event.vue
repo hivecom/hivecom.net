@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Badge, Button, Divider, Flex, Grid, Modal, Skeleton, Tooltip } from '@dolanske/vui'
+import { Badge, Divider, Flex, Grid, Tooltip } from '@dolanske/vui'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
-import Metadata from '../Shared/Metadata.vue'
 
 const props = defineProps<{
   data: Tables<'events'>
@@ -13,8 +12,6 @@ const props = defineProps<{
 const _emit = defineEmits<{
   open: []
 }>()
-
-const isModalOpen = ref(false)
 
 const countdown = ref({
   days: 0,
@@ -90,30 +87,30 @@ updateTime()
     :class="{
       'event-item-first': index === 0 && !isPast,
     }"
-    @click="isModalOpen = true"
+    @click="navigateTo(`/events/${data.id}`)"
   >
     <!-- Countdown for upcoming events -->
-    <div v-if="!isPast" class="event-item-countdown-container">
+    <Flex v-if="!isPast" column gap="xs" class="event-item-countdown-container">
       <Grid :columns="4" gap="l" class="event-item-countdown">
         <span class="text-bold text-xxxl">{{ countdown.days }}</span>
         <span class="text-bold text-xxxl">{{ countdown.hours }}</span>
         <span class="text-bold text-xxxl">{{ countdown.minutes }}</span>
         <span class="text-bold text-xxxl">{{ countdown.seconds }}</span>
       </Grid>
-      <div class="event-date">
+      <Flex x-center expand class="event-date">
         <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY [at] HH:mm" />
-      </div>
-    </div>
+      </Flex>
+    </Flex>
 
     <!-- Time ago for past events -->
-    <div v-else class="event-item-time-ago">
-      <div class="time-ago-text">
+    <Flex v-else column gap="xs" class="event-item-time-ago">
+      <Flex x-center class="time-ago-text" expand>
         <span class="text-bold text-xxxl color-text-lighter">{{ timeAgo }}</span>
-      </div>
-      <div class="event-date">
+      </Flex>
+      <Flex x-center expand class="event-date">
         <TimestampDate :date="props.data.date" format="MMM D, YYYY" />
-      </div>
-    </div>
+      </Flex>
+    </Flex>
 
     <div class="flex-1">
       <h5 class="mb-xs">
@@ -133,7 +130,7 @@ updateTime()
       <p class="mb-m">
         {{ props.data.description }}
       </p>
-      <Flex gap="xs" align="center">
+      <Flex gap="xs">
         <Badge v-if="props.data.location" variant="accent">
           <Icon name="ph:map-pin-fill" />
           {{ props.data.location }}
@@ -153,72 +150,20 @@ updateTime()
     </div>
 
     <!-- Details indicator -->
-    <div class="event-item-details">
+    <Flex class="event-item-details">
       <Tooltip v-if="props.data.note" :content="props.data.note" position="left">
         <Icon name="ph:caret-right" class="event-item-arrow" />
       </Tooltip>
       <Icon v-else name="ph:caret-right" class="event-item-arrow" />
-    </div>
+    </Flex>
   </Flex>
 
   <Divider />
-
-  <!-- Event Details Modal -->
-  <Modal :open="isModalOpen" scrollable size="l" :card="{ separators: true }" @close="isModalOpen = false">
-    <template #header>
-      <div class="event-modal-header">
-        <h3>Event Details</h3>
-        <NuxtLink v-if="props.data.link" :to="props.data.link" target="_blank" rel="noopener noreferrer">
-          <Button variant="accent" size="s">
-            <template #start>
-              <Icon name="ph:link" />
-            </template>
-            Link
-          </Button>
-        </NuxtLink>
-      </div>
-    </template>
-
-    <div class="event-modal-content">
-      <!-- Markdown Content -->
-      <div v-if="props.data.markdown" class="event-markdown">
-        <Suspense suspensible>
-          <template #fallback>
-            <div class="event-markdown-skeleton">
-              <Skeleton height="1rem" width="100%" class="mb-s" />
-              <Skeleton height="1rem" width="100%" class="mb-s" />
-              <Skeleton height="1rem" width="60%" />
-            </div>
-          </template>
-          <MDC :partial="true" class="event-markdown-content typeset" :value="props.data.markdown" />
-        </Suspense>
-      </div>
-
-      <!-- No additional details message -->
-      <div v-else class="event-no-details">
-        <p class="color-text-lighter">
-          No additional details available for this event.
-        </p>
-      </div>
-
-      <!-- Event Metadata -->
-      <Metadata
-        :created-at="props.data.created_at"
-        :created-by="props.data.created_by"
-        :modified-at="props.data.modified_at"
-        :modified-by="props.data.modified_by"
-      />
-    </div>
-
-    <template #footer="{ close }">
-      <Button @click="close">
-        Close
-      </Button>
-    </template>
-  </Modal>
 </template>
 
 <style lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 .event-item {
   margin-block: var(--space-l);
   padding-block: var(--space-l);
@@ -248,10 +193,7 @@ updateTime()
   }
 
   &-countdown-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-xs);
+    min-width: 296px;
   }
 
   &-countdown {
@@ -261,25 +203,11 @@ updateTime()
   }
 
   &-time-ago {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     min-width: 296px;
     text-align: center;
-    gap: var(--space-xs);
-
-    .time-ago-text {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
   }
 
   &-details {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     padding: var(--space-s);
   }
 
@@ -322,63 +250,26 @@ updateTime()
   }
 }
 
-.event-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-m);
-  width: 100%;
-}
-
-.event-modal-content {
-  .event-modal-section {
-    margin-bottom: var(--space-l);
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  .event-modal-countdown {
-    .countdown-grid {
-      .countdown-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        gap: var(--space-xxs);
-
-        span:first-child {
-          font-variant-numeric: tabular-nums;
-          color: var(--color-accent);
-        }
-      }
+// Mobile responsiveness
+@media (max-width: $breakpoint-sm) {
+  .event-item {
+    &-countdown-container,
+    &-time-ago {
+      min-width: 200px;
     }
   }
 }
 
-.event-markdown-content {
-  padding-bottom: var(--space-m);
-}
+@media (max-width: $breakpoint-xs) {
+  .event-item {
+    &-countdown-container,
+    &-time-ago {
+      min-width: 150px;
+    }
 
-.event-no-details {
-  padding: var(--space-l);
-  text-align: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  background: var(--color-bg-subtle);
-  margin-bottom: var(--space-m);
-
-  p {
-    margin: 0;
-    font-style: italic;
+    .event-date span {
+      font-size: var(--font-size-xxs);
+    }
   }
-}
-
-.event-markdown-skeleton {
-  background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  padding: var(--space-m);
 }
 </style>

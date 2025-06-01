@@ -18,11 +18,14 @@ const props = withDefaults(defineProps<{
   fallback?: string
   // Tooltip placement
   placement?: 'top' | 'right' | 'bottom' | 'left'
+  // Use smaller font size
+  small?: boolean
 }>(), {
   format: dateFormat.default,
   tooltip: true,
   fallback: 'N/A',
   placement: 'top',
+  small: false,
 })
 
 // Format the date for display using either the provided format or default
@@ -56,15 +59,20 @@ const tooltipText = computed(() => {
         {{ tooltipText }}
       </div>
     </template>
-    <span class="timestamp-date">{{ formattedDate }}</span>
+    <span class="timestamp-date" :class="{ small }">{{ formattedDate }}</span>
   </Tooltip>
-  <span v-else class="timestamp-date">{{ formattedDate }}</span>
+  <span v-else class="timestamp-date" :class="{ small }">{{ formattedDate }}</span>
 </template>
 
 <style scoped>
 .timestamp-date {
   cursor: help;
 }
+
+.timestamp-date.small {
+  font-size: var(--font-size-xs);
+}
+
 .timestamp-tooltip {
   font-family: monospace;
   font-size: 0.9rem;

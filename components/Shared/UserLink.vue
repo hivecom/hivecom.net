@@ -73,7 +73,7 @@ watch(currentUser, () => {
   </div>
 
   <div v-else-if="error" class="user-display">
-    <Flex gap="xs" align="center">
+    <Flex gap="xs" x-center>
       <span class="error-text">Failed to load user</span>
       <CopyClipboard :text="props.userId" confirm>
         <Icon name="ph:copy" size="14" />
@@ -82,7 +82,7 @@ watch(currentUser, () => {
   </div>
 
   <div v-else class="user-display">
-    <Flex gap="xs" align="center">
+    <Flex gap="xs" x-center>
       <NuxtLink
         :to="`/profile/${props.userId}`"
         class="username-link"

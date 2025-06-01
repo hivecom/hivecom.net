@@ -114,9 +114,9 @@ const showDetails = computed({
             Past Events
           </h2>
           <Flex gap="xxl">
-            <div class="time-ago-header">
+            <Flex x-center class="time-ago-header">
               <span class="color-text-lighter text-s">When</span>
-            </div>
+            </Flex>
             <div class="flex-1">
               <span class="color-text-lighter text-s">Event</span>
             </div>
@@ -156,6 +156,8 @@ const showDetails = computed({
 </template>
 
 <style lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 .events-section {
   margin-bottom: 4rem;
 
@@ -186,9 +188,6 @@ const showDetails = computed({
 }
 
 .time-ago-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   min-width: 296px;
   text-align: center;
 }
@@ -221,5 +220,44 @@ const showDetails = computed({
 .no-events {
   text-align: center;
   padding: 3rem 0;
+}
+
+// Mobile responsiveness
+@media (max-width: $breakpoint-sm) {
+  .time-ago-header {
+    min-width: 200px;
+  }
+
+  .event-item-countdown {
+    span {
+      width: 40px;
+    }
+  }
+}
+
+@media (max-width: $breakpoint-xs) {
+  .events-section {
+    margin-bottom: 2rem;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .time-ago-header {
+    min-width: 150px;
+  }
+
+  .event-item-countdown {
+    span {
+      width: 30px;
+      font-size: var(--font-size-xs);
+    }
+  }
+
+  .no-events {
+    padding: 2rem 0;
+  }
 }
 </style>
