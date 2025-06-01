@@ -92,9 +92,9 @@ const showDetails = computed({
               <span class="color-text-lighter text-s">Minutes</span>
               <span class="color-text-lighter text-s">Seconds</span>
             </Grid>
-            <div class="flex-1">
+            <Flex expand>
               <span class="color-text-lighter text-s">Event</span>
-            </div>
+            </Flex>
           </Flex>
 
           <div class="event-list">
@@ -184,6 +184,14 @@ const showDetails = computed({
     text-align: center;
     display: block;
     width: 56px;
+
+    @media (max-width: $breakpoint-sm) {
+      min-width: 80px;
+    }
+
+    @media (max-width: $breakpoint-xs) {
+      min-width: 60px;
+    }
   }
 }
 
@@ -224,13 +232,45 @@ const showDetails = computed({
 
 // Mobile responsiveness
 @media (max-width: $breakpoint-sm) {
+  // Center page header on mobile
+  .page section:first-child {
+    text-align: center !important;
+
+    h1 {
+      text-align: center !important;
+    }
+
+    p {
+      text-align: center !important;
+    }
+  }
+
+  .events-section {
+    text-align: center !important;
+  }
+
+  .section-title {
+    text-align: center !important;
+  }
+
+  // Hide the header row on mobile since individual events are centered
+  .events-section > .vui-flex:has(.event-item-countdown),
+  .events-section > .vui-flex:has(.time-ago-header) {
+    display: none !important;
+  }
+
   .time-ago-header {
     min-width: 200px;
+    text-align: center !important;
+    justify-content: center !important;
   }
 
   .event-item-countdown {
+    justify-content: center !important;
+
     span {
       width: 40px;
+      text-align: center !important;
     }
   }
 }
@@ -238,26 +278,32 @@ const showDetails = computed({
 @media (max-width: $breakpoint-xs) {
   .events-section {
     margin-bottom: 2rem;
+    text-align: center !important;
   }
 
   .section-title {
-    font-size: 1.25rem;
     margin-bottom: 1rem;
+    text-align: center !important;
   }
 
   .time-ago-header {
     min-width: 150px;
+    text-align: center !important;
+    justify-content: center !important;
   }
 
   .event-item-countdown {
+    justify-content: center !important;
+
     span {
       width: 30px;
-      font-size: var(--font-size-xs);
+      text-align: center !important;
     }
   }
 
   .no-events {
     padding: 2rem 0;
+    text-align: center !important;
   }
 }
 </style>

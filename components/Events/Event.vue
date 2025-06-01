@@ -112,8 +112,8 @@ updateTime()
       </Flex>
     </Flex>
 
-    <div class="flex-1">
-      <h5 class="mb-xs">
+    <Flex column gap="xs" expand class="event-item-details">
+      <h5>
         <a
           v-if="props.data.link"
           :href="props.data.link"
@@ -127,7 +127,7 @@ updateTime()
         </a>
         <span v-else>{{ props.data.title }}</span>
       </h5>
-      <p class="mb-m">
+      <p>
         {{ props.data.description }}
       </p>
       <Flex gap="xs">
@@ -147,7 +147,7 @@ updateTime()
           </Badge>
         </Tooltip>
       </Flex>
-    </div>
+    </Flex>
 
     <!-- Details indicator -->
     <Flex class="event-item-details">
@@ -183,11 +183,29 @@ updateTime()
 
     &:hover {
       background-color: var(--color-bg-raised);
-      transform: translateY(-2px);
 
       .event-item-arrow {
-        transform: translateX(4px);
         color: var(--color-accent);
+
+        @media screen and (max-width: $breakpoint-sm) {
+          transform: rotate(90deg);
+        }
+      }
+    }
+
+    // Mobile touch states
+    @media (max-width: $breakpoint-sm) {
+      &:active {
+        background-color: var(--color-bg-raised) !important;
+        transform: scale(0.98) !important;
+      }
+
+      &:hover {
+        transform: none !important;
+
+        .event-item-arrow {
+          transform: rotate(90deg) !important;
+        }
       }
     }
   }
@@ -209,6 +227,11 @@ updateTime()
 
   &-details {
     padding: var(--space-s);
+    padding-left: 0;
+
+    @media screen and (max-width: $breakpoint-sm) {
+      align-items: center !important;
+    }
   }
 
   &-arrow {
@@ -227,12 +250,26 @@ updateTime()
   .note-badge {
     cursor: help;
     transition: all 0.2s ease;
+
+    // On mobile, make tooltips more accessible
+    @media (max-width: $breakpoint-sm) {
+      cursor: pointer !important;
+
+      &:active {
+        background-color: var(--color-accent-muted) !important;
+      }
+    }
   }
 
   .tooltip-content {
     max-width: 250px;
     font-size: var(--font-size-xs);
     line-height: 1.4;
+
+    @media (max-width: $breakpoint-xs) {
+      max-width: 200px !important;
+      font-size: var(--font-size-xxs) !important;
+    }
   }
 }
 
@@ -250,25 +287,148 @@ updateTime()
   }
 }
 
-// Mobile responsiveness
 @media (max-width: $breakpoint-sm) {
   .event-item {
+    flex-direction: column !important;
+    gap: var(--space-m) !important;
+    margin-block: var(--space-m) !important;
+    padding: var(--space-m) !important;
+    text-align: center !important;
+
     &-countdown-container,
     &-time-ago {
-      min-width: 200px;
+      min-width: 100% !important;
+      width: 100% !important;
+      align-items: center !important;
+    }
+
+    &-countdown {
+      justify-content: center !important;
+      gap: var(--space-m) !important;
+
+      span {
+        text-align: center !important;
+      }
+    }
+
+    .time-ago-text {
+      justify-content: center !important;
+
+      span {
+        text-align: center !important;
+      }
+    }
+
+    .event-date {
+      justify-content: center !important;
+      margin-top: var(--space-xs) !important;
+      text-align: center !important;
+    }
+
+    .flex-1 {
+      text-align: center !important;
+
+      h5 {
+        text-align: center !important;
+      }
+
+      p {
+        text-align: center !important;
+      }
+    }
+
+    // Center the badges container
+    .vui-flex {
+      justify-content: center !important;
+    }
+
+    &-details {
+      align-self: center !important;
+      padding: var(--space-xs) !important;
+    }
+
+    &-arrow {
+      transform: rotate(90deg) !important;
+    }
+
+    &:hover .event-item-arrow {
+      transform: rotate(90deg) !important;
+
+      @media screen and (max-width: $breakpoint-sm) {
+        transform: rotate(90deg) !important;
+      }
     }
   }
 }
 
 @media (max-width: $breakpoint-xs) {
   .event-item {
+    padding: var(--space-s) !important;
+    gap: var(--space-s) !important;
+    text-align: center !important;
+
     &-countdown-container,
     &-time-ago {
-      min-width: 150px;
+      min-width: 100% !important;
     }
 
-    .event-date span {
-      font-size: var(--font-size-xxs);
+    &-countdown {
+      gap: var(--space-s) !important;
+      justify-content: center !important;
+
+      span {
+        font-size: var(--font-size-xxl) !important;
+        text-align: center !important;
+      }
+    }
+
+    .time-ago-text {
+      justify-content: center !important;
+
+      span {
+        text-align: center !important;
+      }
+    }
+
+    .event-date {
+      justify-content: center !important;
+      text-align: center !important;
+
+      span {
+        text-align: center !important;
+      }
+    }
+
+    .flex-1 {
+      text-align: center !important;
+    }
+
+    h5 {
+      margin-bottom: var(--space-xs) !important;
+      text-align: center !important;
+    }
+
+    p {
+      font-size: var(--font-size-s) !important;
+      margin-bottom: var(--space-s) !important;
+      text-align: center !important;
+    }
+
+    // Override VUI Badge component styles for mobile
+    .vui-badge {
+      font-size: var(--font-size-xxs) !important;
+      padding: var(--space-xxs) var(--space-xs) !important;
+
+      .vui-icon {
+        width: 12px !important;
+        height: 12px !important;
+      }
+    }
+
+    // Override VUI Flex component gap for badges and center them
+    .vui-flex {
+      gap: var(--space-xxs) !important;
+      justify-content: center !important;
     }
   }
 }
