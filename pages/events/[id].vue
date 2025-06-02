@@ -19,28 +19,46 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 
 // Countdown for upcoming events
-const countdown = ref({
-  days: 0,
-  hours: 0,
-  minutes: 0,
-  seconds: 0,
-})
+const countdown = ref<{
+  days: number
+  hours: number
+  minutes: number
+  seconds: number
+} | null>(null)
 
 // Check if event is upcoming
 const isUpcoming = computed(() => {
   if (!event.value)
     return false
-  return new Date(event.value.date) >= new Date()
+  const now = new Date()
+  const eventStart = new Date(event.value.date)
+  return eventStart > now
+})
+
+// Check if event is ongoing
+const isOngoing = computed(() => {
+  if (!event.value)
+    return false
+  const now = new Date()
+  const eventStart = new Date(event.value.date)
+  const eventEnd = event.value.duration_minutes
+    ? new Date(eventStart.getTime() + event.value.duration_minutes * 60 * 1000)
+    : eventStart
+
+  return eventStart <= now && now <= eventEnd
 })
 
 // Calculate "time ago" for past events
 const timeAgo = computed(() => {
-  if (!event.value || isUpcoming.value)
+  if (!event.value || isUpcoming.value || isOngoing.value)
     return ''
 
   const now = new Date()
   const eventDate = new Date(event.value.date)
-  const diff = now.getTime() - eventDate.getTime()
+  const eventEnd = event.value.duration_minutes
+    ? new Date(eventDate.getTime() + event.value.duration_minutes * 60 * 1000)
+    : eventDate
+  const diff = now.getTime() - eventEnd.getTime()
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
@@ -62,11 +80,23 @@ const timeAgo = computed(() => {
 
 // Update countdown
 function updateTime() {
-  if (!event.value || !isUpcoming.value)
+  if (!event.value || (!isUpcoming.value && !isOngoing.value))
     return
 
   const now = new Date()
   const eventDate = new Date(event.value.date)
+
+  if (isOngoing.value) {
+    // For ongoing events, set countdown to zeros (will display "NOW")
+    countdown.value = {
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+    }
+    return
+  }
+
   const diff = eventDate.getTime() - now.getTime()
 
   if (diff <= 0) {
@@ -175,16 +205,17 @@ useHead({
       </Flex>
 
       <!-- Header -->
-      <Card>
+      <Card :class="{ 'event-ongoing': isOngoing }">
         <EventHeader
           :event="event"
           :is-upcoming="isUpcoming"
+          :is-ongoing="isOngoing"
           :countdown="countdown"
           :time-ago="timeAgo"
         />
       </Card>
 
-      <!-- Details -->
+      <!-- Markdown -->
       <EventMarkdown :event="event" />
 
       <!-- Metadata -->

@@ -146,7 +146,7 @@ watch(currentUser, () => {
         </Avatar>
       </NuxtLink>
       <div class="user-info">
-        <Flex gap="xs" x-start y-center>
+        <Flex gap="xs" x-start y-center wrap>
           <NuxtLink :to="`/profile/${user.id}`" class="user-link">
             <span class="username">{{ user.username }}</span>
           </NuxtLink>
@@ -165,16 +165,6 @@ watch(currentUser, () => {
 
 <style lang="scss">
 .user-display {
-  .user-header {
-    .user-info {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xxs);
-      align-items: flex-start;
-    }
-  }
-
   .username {
     font-weight: 500;
     color: var(--color-text);

@@ -4,6 +4,7 @@ import { Badge, Button, Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
 
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '~/components/Shared/UserLink.vue'
+import { formatDurationFromMinutes } from '~/utils/duration'
 
 const props = defineProps<{
   event: Tables<'events'> | null
@@ -26,9 +27,23 @@ function handleEdit() {
   isOpen.value = false
 }
 
-// Helper function to check if event is upcoming
-function isUpcoming(eventDate: string): boolean {
-  return new Date(eventDate) >= new Date()
+// Helper function to get event status
+function getEventStatus(event: Tables<'events'>): { label: string, variant: 'accent' | 'success' | 'neutral' } {
+  const now = new Date()
+  const eventStart = new Date(event.date)
+  const eventEnd = event.duration_minutes
+    ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
+    : eventStart
+
+  if (now < eventStart) {
+    return { label: 'Upcoming', variant: 'accent' }
+  }
+  else if (now >= eventStart && now <= eventEnd) {
+    return { label: 'Ongoing', variant: 'success' }
+  }
+  else {
+    return { label: 'Past', variant: 'neutral' }
+  }
 }
 </script>
 
@@ -46,9 +61,9 @@ function isUpcoming(eventDate: string): boolean {
         <Flex y-center gap="s">
           <Badge
             v-if="props.event"
-            :variant="isUpcoming(props.event.date) ? 'accent' : 'neutral'"
+            :variant="getEventStatus(props.event).variant"
           >
-            {{ isUpcoming(props.event.date) ? 'Upcoming' : 'Past' }}
+            {{ getEventStatus(props.event).label }}
           </Badge>
           <Button
             v-if="props.event"
@@ -81,6 +96,11 @@ function isUpcoming(eventDate: string): boolean {
             <Grid class="detail-item" expand :columns="2">
               <span class="detail-label">Date:</span>
               <TimestampDate :date="props.event.date" />
+            </Grid>
+
+            <Grid v-if="props.event.duration_minutes" class="detail-item" expand :columns="2">
+              <span class="detail-label">Duration:</span>
+              <span>{{ formatDurationFromMinutes(props.event.duration_minutes) }}</span>
             </Grid>
 
             <Grid v-if="props.event.location" class="detail-item" expand :columns="2">
@@ -122,7 +142,7 @@ function isUpcoming(eventDate: string): boolean {
             <template #fallback>
               <Skeleton class="event-markdown-skeleton" height="320px" />
             </template>
-            <MDC :partial="true" class="event-markdown-content typeset" :value="props.event.markdown" />
+            <MDC :partial="true" class="event-markdown-content typeset" value="# Test" />
           </Suspense>
         </Card>
 

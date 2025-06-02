@@ -3,16 +3,18 @@ import type { Tables } from '~/types/database.types'
 import { Badge, Button, Flex, Tooltip } from '@dolanske/vui'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
 import CountdownTimer from './CountdownTimer.vue'
+import { formatDurationFromMinutes } from '~/utils/duration'
 
 interface Props {
   event: Tables<'events'>
   isUpcoming: boolean
+  isOngoing?: boolean
   countdown?: {
     days: number
     hours: number
     minutes: number
     seconds: number
-  }
+  } | null
   timeAgo?: string
 }
 
@@ -34,26 +36,31 @@ defineProps<Props>()
 
       <!-- Timing/Countdown Section -->
       <div class="timing-section">
-        <!-- Enhanced Countdown for upcoming events -->
+        <!-- Enhanced Countdown for upcoming events or NOW for ongoing -->
         <CountdownTimer
-          v-if="isUpcoming && countdown"
+          v-if="isUpcoming || isOngoing"
           :countdown="countdown"
+          :is-ongoing="isOngoing"
         />
 
         <!-- Time ago for past events -->
-        <div v-else-if="!isUpcoming && timeAgo" class="time-ago-compact">
+        <div v-else-if="!isUpcoming && !isOngoing && timeAgo" class="time-ago-compact">
           <span class="time-ago-text">{{ timeAgo }}</span>
         </div>
 
         <!-- Event date display -->
-        <div class="event-date-display">
+        <Flex y-center class="event-date-display">
           <TimestampDate small :date="event.date" class="event-date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
-        </div>
+          <!-- Duration display -->
+          <div v-if="event.duration_minutes" class="event-duration">
+            for {{ formatDurationFromMinutes(event.duration_minutes) }}
+          </div>
+        </Flex>
       </div>
     </Flex>
 
     <!-- Event meta information -->
-    <div class="info-section">
+    <Flex gap="m" x-between expand>
       <Flex gap="m" wrap class="badges-section">
         <Badge v-if="event.location" variant="accent" size="l">
           <Icon name="ph:map-pin-fill" />
@@ -72,30 +79,32 @@ defineProps<Props>()
           </Badge>
         </Tooltip>
 
+        <template v-if="!isOngoing">
         <Badge
-          :variant="isUpcoming ? 'success' : 'neutral'"
+          :variant="isOngoing ? 'success' : isUpcoming ? 'accent' : 'neutral'"
           size="l"
         >
-          <Icon :name="isUpcoming ? 'ph:calendar-plus' : 'ph:calendar-x'" />
-          {{ isUpcoming ? 'Upcoming' : 'Past Event' }}
-        </Badge>
-
-        <!-- External Link -->
-        <NuxtLink
-          v-if="event.link"
-          :to="event.link"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Button variant="accent" size="s">
-            <template #start>
-              <Icon name="ph:link" />
-            </template>
-            Open Link
-          </Button>
-        </NuxtLink>
+            <Icon :name="isUpcoming ? 'ph:calendar-plus' : 'ph:calendar-x'" />
+            {{ isUpcoming ? 'Upcoming' : 'Past Event' }}
+          </Badge>
+        </template>
       </Flex>
-    </div>
+
+      <!-- External Link -->
+      <NuxtLink
+        v-if="event.link"
+        :to="event.link"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Button variant="accent" size="s">
+          <template #start>
+            <Icon name="ph:link" />
+          </template>
+          Open Link
+        </Button>
+      </NuxtLink>
+    </Flex>
   </div>
 </template>
 
@@ -106,6 +115,10 @@ defineProps<Props>()
   display: flex;
   flex-direction: column;
   gap: var(--space-l);
+
+  &.event-ongoing {
+    background: linear-gradient(135deg, var(--color-accent-muted), transparent);
+  }
 }
 
 .title-row {
@@ -144,12 +157,24 @@ defineProps<Props>()
 
 .event-date-display {
   text-align: right;
+  gap: .5rem !important;
 
   .event-date-time {
     font-size: var(--font-size-m);
     font-weight: 600;
     color: var(--color-text);
   }
+
+  .event-duration {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--color-text-muted);
+  }
+}
+
+.event-duration {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
 }
 
 .time-ago-compact {
@@ -198,6 +223,11 @@ defineProps<Props>()
 
   .event-description {
     font-size: var(--font-size-m);
+  }
+
+  .event-duration {
+    font-size: var(--font-size-s);
+    color: var(--color-text-muted);
   }
 }
 

@@ -1,19 +1,79 @@
 -- Insert RBAC roles.
 INSERT INTO public.role_permissions(role, permission)
-  VALUES ('admin', 'containers.crud'),
-('admin', 'events.crud'),
-('admin', 'expenses.crud'),
-('admin', 'funding.crud'),
-('admin', 'games.crud'),
-('admin', 'gameservers.crud'),
-('admin', 'profiles.crud'),
-('admin', 'referendums.crud'),
-('admin', 'servers.crud'),
-('admin', 'users.crud'),
-('moderator', 'events.crud'),
-('moderator', 'games.crud'),
-('moderator', 'gameservers.crud'),
-('moderator', 'referendums.crud');
+  VALUES
+    -- Admin permissions - full access to all resources
+('admin', 'announcements.create'),
+('admin', 'announcements.delete'),
+('admin', 'announcements.read'),
+('admin', 'announcements.update'),
+('admin', 'containers.create'),
+('admin', 'containers.delete'),
+('admin', 'containers.read'),
+('admin', 'containers.update'),
+('admin', 'events.create'),
+('admin', 'events.delete'),
+('admin', 'events.read'),
+('admin', 'events.update'),
+('admin', 'expenses.create'),
+('admin', 'expenses.delete'),
+('admin', 'expenses.read'),
+('admin', 'expenses.update'),
+('admin', 'forums.create'),
+('admin', 'forums.delete'),
+('admin', 'forums.read'),
+('admin', 'forums.update'),
+('admin', 'funding.create'),
+('admin', 'funding.delete'),
+('admin', 'funding.read'),
+('admin', 'funding.update'),
+('admin', 'games.create'),
+('admin', 'games.delete'),
+('admin', 'games.read'),
+('admin', 'games.update'),
+('admin', 'gameservers.create'),
+('admin', 'gameservers.delete'),
+('admin', 'gameservers.read'),
+('admin', 'gameservers.update'),
+('admin', 'profiles.delete'),
+('admin', 'profiles.read'),
+('admin', 'profiles.update'),
+('admin', 'referendums.create'),
+('admin', 'referendums.delete'),
+('admin', 'referendums.read'),
+('admin', 'referendums.update'),
+('admin', 'servers.create'),
+('admin', 'servers.delete'),
+('admin', 'servers.read'),
+('admin', 'servers.update'),
+('admin', 'users.create'),
+('admin', 'users.delete'),
+('admin', 'users.read'),
+('admin', 'users.update'),
+    -- Moderator permissions - content management with delete access
+('moderator', 'announcements.create'),
+('moderator', 'announcements.delete'),
+('moderator', 'announcements.read'),
+('moderator', 'announcements.update'),
+('moderator', 'events.create'),
+('moderator', 'events.delete'),
+('moderator', 'events.read'),
+('moderator', 'events.update'),
+('moderator', 'forums.create'),
+('moderator', 'forums.delete'),
+('moderator', 'forums.read'),
+('moderator', 'forums.update'),
+('moderator', 'games.create'),
+('moderator', 'games.delete'),
+('moderator', 'games.read'),
+('moderator', 'games.update'),
+('moderator', 'gameservers.create'),
+('moderator', 'gameservers.delete'),
+('moderator', 'gameservers.read'),
+('moderator', 'gameservers.update'),
+('moderator', 'referendums.create'),
+('moderator', 'referendums.delete'),
+('moderator', 'referendums.read'),
+('moderator', 'referendums.update');
 
 -- Create the storage buckets
 INSERT INTO "storage"."buckets"("id", "name", "owner", "created_at", "updated_at", "public", "avif_autodetection", "file_size_limit", "allowed_mime_types", "owner_id")
@@ -37,7 +97,7 @@ ON CONFLICT (id)
     title = EXCLUDED.title,
     subtitle = EXCLUDED.subtitle;
 
--- Insert a test event
+-- Insert an upcoming test event
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '30 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
 # Community Gaming Night
@@ -46,6 +106,49 @@ It is that time of the month again! Join us for our community gaming night where
 
 We will probably be playing on our CS2 server, but feel free to suggest other games as well.
   ');
+
+-- Insert an ongoing test event
+INSERT INTO "public"."events"("id", "created_at", "created_by", "modified_at", "modified_by", "title", "description", "note", "markdown", "date", "location", "link", "duration_minutes")
+  VALUES ('11', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Andrew Explosion', 'Andrew is placed in the explosion chamber. Bye!', 'You will want to see this one in person!', '
+# Es ist Zeit!
+
+The time has finally come to place our beloved Andrew in the communal destruction chamber.
+
+Gather around for we will place him first in the bluff-em crush-em room before transitioning into the squisher-bisher.
+
+## Itinerary
+
+1. Guests arrive and are seated
+2. Andrew enters and shakes hands (not everyone)
+3. We wave goodbye to Andrew from a few meters away
+4. Andrew enters the chamber
+5. Remembrance speech and impressionist dance act
+6. Andrew discovers religion
+7. Break-time with tea and cake
+8. Crushing time!
+9. Annual shareholder meeting
+
+## Questions?
+
+Please keep them to yourself.
+
+## FAQ
+
+- Q: What are the papers saying about this?
+  - A: No one gives a shit.
+
+- Q: Will it hurt Andrew?
+  - A: Probably?
+
+- Q: Is he going to be ok?
+  - A: We will see after.
+
+- Q: What if I do not make it.
+  - A: The event will be simulcast to qwer.ee just in case. You should really be there in person though. Just because.
+
+## Refunds
+
+There are no refunds. Why did you pay for this to begin with?', NOW(), 'TeamSpeak', 'https://ts.hivecom.net', 10080);
 
 -- Insert an expired test event
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
@@ -116,4 +219,37 @@ INSERT INTO public.referendums(created_at, created_by, title, description, choic
 -- Insert a test vote for the referendum
 INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices, comment)
   VALUES (NOW() + INTERVAL '1 hour', '018d224c-0e49-4b6d-b57a-87299605c2b1', 1, ARRAY[1], 'Minecraft would be fun!');
+
+-- Insert test announcements
+INSERT INTO public.announcements(created_at, created_by, title, description, markdown, pinned)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Welcome to Hivecom', 'Welcome to our gaming community platform!', '
+# Welcome to Hivecom
+
+We are excited to have you join our gaming community! This platform serves as the central hub for all our community activities, events, and server information.
+
+## What you can do here
+
+- **Browse Events**: Check out upcoming gaming sessions and community events
+- **Game Servers**: Find and connect to our various game servers
+- **Community Voting**: Participate in community decisions through our referendum system
+- **Stay Updated**: Get the latest announcements and updates
+
+Feel free to explore and don''t hesitate to reach out if you have any questions!
+  ', TRUE),
+(NOW() - INTERVAL '2 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'New CS2 Server Online', 'Our new Counter-Strike 2 server is now live!', '
+# New CS2 Server Online
+
+Great news! Our brand new Counter-Strike 2 community server is now online and ready for action.
+
+## Server Details
+
+- **Address**: cs2.gameserver.hivecom.net
+- **Port**: 27015
+- **Region**: EU
+- **Game Mode**: Casual
+
+The server is configured for casual play with a friendly, welcoming environment. Whether you''re a seasoned veteran or new to CS2, everyone is welcome!
+
+Come join us and let''s have some fun together!
+  ', FALSE);
 

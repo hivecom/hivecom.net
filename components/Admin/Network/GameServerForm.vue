@@ -525,7 +525,7 @@ h4 {
 }
 
 .address-text {
-  font-family: var(--font-mono, 'Monaco', 'Menlo', 'Ubuntu Mono', monospace);
+  font-family: monospace;
   font-size: var(--font-size-s);
   color: var(--color-text);
 }

@@ -256,7 +256,7 @@ h4 {
 }
 
 .gameserver-address {
-  font-family: var(--font-mono, 'Monaco', 'Menlo', 'Ubuntu Mono', monospace);
+  font-family: monospace;
   font-size: var(--font-size-xs);
   color: var(--color-text-light);
   background-color: var(--color-bg-raised);

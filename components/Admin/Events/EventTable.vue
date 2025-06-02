@@ -189,9 +189,23 @@ async function handleEventDelete(eventId: number) {
   }
 }
 
-// Helper function to check if event is upcoming
-function isUpcoming(eventDate: string): boolean {
-  return new Date(eventDate) >= new Date()
+// Helper function to get event status
+function getEventStatus(event: Event): { label: string, variant: 'accent' | 'success' | 'neutral' } {
+  const now = new Date()
+  const eventStart = new Date(event.date)
+  const eventEnd = event.duration_minutes
+    ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
+    : eventStart
+
+  if (now < eventStart) {
+    return { label: 'Upcoming', variant: 'accent' }
+  }
+  else if (now >= eventStart && now <= eventEnd) {
+    return { label: 'Ongoing', variant: 'success' }
+  }
+  else {
+    return { label: 'Past', variant: 'neutral' }
+  }
 }
 
 // Lifecycle hooks
@@ -243,8 +257,8 @@ onBeforeMount(fetchEvents)
             <span v-else>-</span>
           </Table.Cell>
           <Table.Cell @click.stop>
-            <Badge :variant="isUpcoming(event._original.date) ? 'accent' : 'neutral'">
-              {{ isUpcoming(event._original.date) ? 'Upcoming' : 'Past' }}
+            <Badge :variant="getEventStatus(event._original).variant">
+              {{ getEventStatus(event._original).label }}
             </Badge>
           </Table.Cell>
           <Table.Cell @click.stop>

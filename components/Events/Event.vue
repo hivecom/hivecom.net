@@ -2,11 +2,13 @@
 import type { Tables } from '~/types/database.types'
 import { Badge, Divider, Flex, Grid, Tooltip } from '@dolanske/vui'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import { formatDurationFromMinutes } from '~/utils/duration'
 
 const props = defineProps<{
   data: Tables<'events'>
   index: number
   isPast?: boolean
+  isOngoing?: boolean
 }>()
 
 const _emit = defineEmits<{
@@ -88,17 +90,46 @@ updateTime()
       'event-item-first': index === 0 && !isPast,
     }"
     @click="navigateTo(`/events/${data.id}`)"
+    y-center
   >
     <!-- Countdown for upcoming events -->
-    <Flex v-if="!isPast" column gap="xs" class="event-item-countdown-container">
+    <Flex v-if="!isPast && !isOngoing" column gap="xs" class="event-item-countdown-container">
       <Grid :columns="4" gap="l" class="event-item-countdown">
-        <span class="text-bold text-xxxl">{{ countdown.days }}</span>
-        <span class="text-bold text-xxxl">{{ countdown.hours }}</span>
-        <span class="text-bold text-xxxl">{{ countdown.minutes }}</span>
-        <span class="text-bold text-xxxl">{{ countdown.seconds }}</span>
+        <Flex column gap="xxs" x-center class="countdown-item">
+          <span class="countdown-label text-xs color-text-lighter">Days</span>
+          <span class="text-bold text-xxxl">{{ countdown.days }}</span>
+        </Flex>
+        <Flex column gap="xxs" x-center class="countdown-item">
+          <span class="countdown-label text-xs color-text-lighter">Hours</span>
+          <span class="text-bold text-xxxl">{{ countdown.hours }}</span>
+        </Flex>
+        <Flex column gap="xxs" x-center class="countdown-item">
+          <span class="countdown-label text-xs color-text-lighter">Minutes</span>
+          <span class="text-bold text-xxxl">{{ countdown.minutes }}</span>
+        </Flex>
+        <Flex column gap="xxs" x-center class="countdown-item">
+          <span class="countdown-label text-xs color-text-lighter">Seconds</span>
+          <span class="text-bold text-xxxl">{{ countdown.seconds }}</span>
+        </Flex>
       </Grid>
       <Flex x-center expand class="event-date">
         <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY [at] HH:mm" />
+      </Flex>
+      <Flex v-if="props.data.duration_minutes" x-center expand class="event-duration">
+        <span class="text-xs color-text-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
+      </Flex>
+    </Flex>
+
+    <!-- Ongoing event status -->
+    <Flex v-else-if="isOngoing" column gap="xs" class="event-item-ongoing-container">
+      <Flex x-center class="ongoing-text" expand>
+        <span class="text-bold text-xxxl color-accent">NOW</span>
+      </Flex>
+      <Flex x-center expand class="event-date">
+        <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY [at] HH:mm" />
+      </Flex>
+      <Flex v-if="props.data.duration_minutes" x-center expand class="event-duration">
+        <span class="text-xs color-text-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
       </Flex>
     </Flex>
 
@@ -109,6 +140,9 @@ updateTime()
       </Flex>
       <Flex x-center expand class="event-date">
         <TimestampDate :date="props.data.date" format="MMM D, YYYY" />
+      </Flex>
+      <Flex v-if="props.data.duration_minutes" x-center expand class="event-duration">
+        <span class="text-xs color-text-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
       </Flex>
     </Flex>
 
@@ -164,6 +198,16 @@ updateTime()
 <style lang="scss">
 @use '@/assets/breakpoints.scss' as *;
 
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
 .event-item {
   margin-block: var(--space-l);
   padding-block: var(--space-l);
@@ -214,15 +258,39 @@ updateTime()
     min-width: 296px;
   }
 
+  &-ongoing-container {
+    min-width: 272px;
+  }
+
   &-countdown {
     span {
       font-variant-numeric: tabular-nums;
+    }
+
+    .countdown-item {
+      .countdown-label {
+        display: none; // Hide labels on desktop
+      }
     }
   }
 
   &-time-ago {
     min-width: 296px;
     text-align: center;
+  }
+
+  .ongoing-text {
+    text-align: center;
+    animation: pulse 2s infinite;
+  }
+
+  .event-duration {
+    margin-top: var(--space-xs);
+
+    span {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-lighter);
+    }
   }
 
   &-details {
@@ -296,6 +364,7 @@ updateTime()
     text-align: center !important;
 
     &-countdown-container,
+    &-ongoing-container,
     &-time-ago {
       min-width: 100% !important;
       width: 100% !important;
@@ -309,9 +378,16 @@ updateTime()
       span {
         text-align: center !important;
       }
+
+      .countdown-item {
+        .countdown-label {
+          display: block !important; // Show labels on mobile
+        }
+      }
     }
 
-    .time-ago-text {
+    .time-ago-text,
+    .ongoing-text {
       justify-content: center !important;
 
       span {
@@ -368,6 +444,7 @@ updateTime()
     text-align: center !important;
 
     &-countdown-container,
+    &-ongoing-container,
     &-time-ago {
       min-width: 100% !important;
     }
@@ -380,9 +457,17 @@ updateTime()
         font-size: var(--font-size-xxl) !important;
         text-align: center !important;
       }
+
+      .countdown-item {
+        .countdown-label {
+          display: block !important; // Show labels on mobile
+          font-size: var(--font-size-xxs) !important;
+        }
+      }
     }
 
-    .time-ago-text {
+    .time-ago-text,
+    .ongoing-text {
       justify-content: center !important;
 
       span {

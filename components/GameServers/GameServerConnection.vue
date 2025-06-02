@@ -135,7 +135,6 @@ defineProps<Props>()
     flex: 1;
 
     .address-text {
-      font-family: var(--font-mono, 'Monaco', 'Menlo', 'Ubuntu Mono', monospace);
       font-size: var(--font-size-m);
       font-weight: 600;
       color: var(--color-text);

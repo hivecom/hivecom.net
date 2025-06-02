@@ -9,6 +9,45 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: number
+          link: string | null
+          markdown: string
+          modified_at: string | null
+          modified_by: string | null
+          pinned: boolean
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: number
+          link?: string | null
+          markdown: string
+          modified_at?: string | null
+          modified_by?: string | null
+          pinned?: boolean
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: number
+          link?: string | null
+          markdown?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          pinned?: boolean
+          title?: string
+        }
+        Relationships: []
+      }
       containers: {
         Row: {
           created_at: string
@@ -53,6 +92,7 @@ export interface Database {
           created_by: string | null
           date: string
           description: string
+          duration_minutes: number | null
           id: number
           link: string | null
           location: string | null
@@ -67,6 +107,7 @@ export interface Database {
           created_by?: string | null
           date: string
           description?: string
+          duration_minutes?: number | null
           id?: number
           link?: string | null
           location?: string | null
@@ -81,6 +122,7 @@ export interface Database {
           created_by?: string | null
           date?: string
           description?: string
+          duration_minutes?: number | null
           id?: number
           link?: string | null
           location?: string | null
@@ -485,16 +527,53 @@ export interface Database {
     }
     Enums: {
       app_permission:
-        | 'events.crud'
-        | 'games.crud'
-        | 'gameservers.crud'
-        | 'funding.crud'
-        | 'profiles.crud'
-        | 'users.crud'
-        | 'referendums.crud'
-        | 'servers.crud'
-        | 'expenses.crud'
-        | 'containers.crud'
+        | 'announcements.create'
+        | 'announcements.delete'
+        | 'announcements.read'
+        | 'announcements.update'
+        | 'containers.create'
+        | 'containers.delete'
+        | 'containers.read'
+        | 'containers.update'
+        | 'events.create'
+        | 'events.delete'
+        | 'events.read'
+        | 'events.update'
+        | 'expenses.create'
+        | 'expenses.delete'
+        | 'expenses.read'
+        | 'expenses.update'
+        | 'forums.create'
+        | 'forums.delete'
+        | 'forums.read'
+        | 'forums.update'
+        | 'funding.create'
+        | 'funding.delete'
+        | 'funding.read'
+        | 'funding.update'
+        | 'games.create'
+        | 'games.delete'
+        | 'games.read'
+        | 'games.update'
+        | 'gameservers.create'
+        | 'gameservers.delete'
+        | 'gameservers.read'
+        | 'gameservers.update'
+        | 'profiles.delete'
+        | 'profiles.read'
+        | 'profiles.update'
+        | 'referendums.create'
+        | 'referendums.delete'
+        | 'referendums.read'
+        | 'referendums.update'
+        | 'servers.create'
+        | 'servers.delete'
+        | 'servers.read'
+        | 'servers.update'
+        | 'users.create'
+        | 'users.delete'
+        | 'users.read'
+        | 'users.update'
       app_role: 'admin' | 'moderator'
       region: 'eu' | 'na' | 'all'
     }
@@ -613,16 +692,53 @@ export const Constants = {
   public: {
     Enums: {
       app_permission: [
-        'events.crud',
-        'games.crud',
-        'gameservers.crud',
-        'funding.crud',
-        'profiles.crud',
-        'users.crud',
-        'referendums.crud',
-        'servers.crud',
-        'expenses.crud',
-        'containers.crud',
+        'announcements.create',
+        'announcements.delete',
+        'announcements.read',
+        'announcements.update',
+        'containers.create',
+        'containers.delete',
+        'containers.read',
+        'containers.update',
+        'events.create',
+        'events.delete',
+        'events.read',
+        'events.update',
+        'expenses.create',
+        'expenses.delete',
+        'expenses.read',
+        'expenses.update',
+        'forums.create',
+        'forums.delete',
+        'forums.read',
+        'forums.update',
+        'funding.create',
+        'funding.delete',
+        'funding.read',
+        'funding.update',
+        'games.create',
+        'games.delete',
+        'games.read',
+        'games.update',
+        'gameservers.create',
+        'gameservers.delete',
+        'gameservers.read',
+        'gameservers.update',
+        'profiles.delete',
+        'profiles.read',
+        'profiles.update',
+        'referendums.create',
+        'referendums.delete',
+        'referendums.read',
+        'referendums.update',
+        'servers.create',
+        'servers.delete',
+        'servers.read',
+        'servers.update',
+        'users.create',
+        'users.delete',
+        'users.read',
+        'users.update',
       ],
       app_role: ['admin', 'moderator'],
       region: ['eu', 'na', 'all'],

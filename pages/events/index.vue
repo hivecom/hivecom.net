@@ -2,6 +2,8 @@
 import type { Tables } from '~/types/database.types'
 import { Divider, Flex, Grid, Sheet, Spinner } from '@dolanske/vui'
 import Event from '~/components/Events/Event.vue'
+import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import { formatDurationFromMinutes } from '~/utils/duration'
 
 // Fetch data
 const supabase = useSupabaseClient()
@@ -22,30 +24,45 @@ onMounted(async () => {
   events.value = responseEvents.data
 })
 
-// Split events into upcoming and past
+// Split events into upcoming, ongoing, and past
 const upcomingEvents = computed(() => {
   if (!events.value)
     return []
-  const today = new Date()
-  today.setHours(0, 0, 0, 0) // Reset time to start of day for accurate comparison
+  const now = new Date()
 
   return events.value.filter((event) => {
-    const eventDate = new Date(event.date)
-    eventDate.setHours(0, 0, 0, 0)
-    return eventDate >= today
+    const eventStart = new Date(event.date)
+    return eventStart > now
+  })
+})
+
+const ongoingEvents = computed(() => {
+  if (!events.value)
+    return []
+  const now = new Date()
+
+  return events.value.filter((event) => {
+    const eventStart = new Date(event.date)
+    const eventEnd = event.duration_minutes
+      ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
+      : eventStart
+
+    return eventStart <= now && now <= eventEnd
   })
 })
 
 const pastEvents = computed(() => {
   if (!events.value)
     return []
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const now = new Date()
 
   return events.value.filter((event) => {
-    const eventDate = new Date(event.date)
-    eventDate.setHours(0, 0, 0, 0)
-    return eventDate < today
+    const eventStart = new Date(event.date)
+    const eventEnd = event.duration_minutes
+      ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
+      : eventStart
+
+    return eventEnd < now
   }).reverse()
 })
 
@@ -80,6 +97,24 @@ const showDetails = computed({
         <Spinner size="l" />
       </div>
       <template v-else>
+        <!-- Ongoing Events Section -->
+        <div v-if="ongoingEvents.length > 0" class="events-section ongoing-events">
+          <h2 class="section-title">
+            Happening Now
+          </h2>
+
+          <div class="event-list">
+            <Event
+              v-for="(event, index) in ongoingEvents"
+              :key="event.id"
+              :data="event"
+              :index
+              :is-ongoing="true"
+              @open="activeEvent = event"
+            />
+          </div>
+        </div>
+
         <!-- Upcoming Events Section -->
         <div v-if="upcomingEvents.length > 0" class="events-section">
           <h2 class="section-title">
@@ -150,7 +185,40 @@ const showDetails = computed({
         </h3>
       </template>
 
-      <p>Markdown will be rendered here and more details will be added too.</p>
+      <div v-if="activeEvent" class="event-details">
+        <div class="detail-row">
+          <strong>Date & Time:</strong>
+          <TimestampDate :date="activeEvent.date" format="dddd, MMM D, YYYY [at] HH:mm" />
+        </div>
+
+        <div v-if="activeEvent.duration_minutes" class="detail-row">
+          <strong>Duration:</strong>
+          {{ formatDurationFromMinutes(activeEvent.duration_minutes) }}
+        </div>
+
+        <div v-if="activeEvent.location" class="detail-row">
+          <strong>Location:</strong>
+          {{ activeEvent.location }}
+        </div>
+
+        <div v-if="activeEvent.description" class="detail-row">
+          <strong>Description:</strong>
+          <p>{{ activeEvent.description }}</p>
+        </div>
+
+        <div v-if="activeEvent.note" class="detail-row">
+          <strong>Note:</strong>
+          <p>{{ activeEvent.note }}</p>
+        </div>
+
+        <div v-if="activeEvent.link" class="detail-row">
+          <strong>Link:</strong>
+          <a :href="activeEvent.link" target="_blank" rel="noopener noreferrer" class="event-link">
+            {{ activeEvent.link }}
+            <Icon name="ph:arrow-square-out" class="ml-xs" size="14" />
+          </a>
+        </div>
+      </div>
     </Sheet>
   </div>
 </template>
@@ -195,8 +263,8 @@ const showDetails = computed({
   }
 }
 
-.time-ago-header {
-  min-width: 296px;
+.time-ago-header,
+.ongoing-header {
   text-align: center;
 }
 
@@ -225,9 +293,66 @@ const showDetails = computed({
   }
 }
 
+// Ongoing events styling - highlighted with accent color
+.ongoing-events {
+  .section-title {
+    color: var(--color-accent);
+    position: relative;
+
+    &::before {
+      content: '';
+      display: inline-block;
+      position: relative;
+      width: 8px;
+      height: 8px;
+      background: var(--color-text-red);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+  }
+
+  .event-list {
+    .event-item {
+      border: 1px solid var(--color-accent);
+      padding-left: var(--space-m);
+      margin-left: var(--space-xs);
+      background: linear-gradient(to right, var(--color-accent-muted) 0%, transparent 100%);
+      border-radius: var(--border-radius-m);
+    }
+  }
+}
+
 .no-events {
   text-align: center;
   padding: 3rem 0;
+}
+
+.event-details {
+  .detail-row {
+    margin-bottom: var(--space-m);
+
+    strong {
+      display: block;
+      margin-bottom: var(--space-xs);
+      color: var(--color-text);
+    }
+
+    p {
+      margin: 0;
+      line-height: 1.5;
+    }
+  }
+
+  .event-link {
+    color: var(--color-accent);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
 // Mobile responsiveness
@@ -255,11 +380,13 @@ const showDetails = computed({
 
   // Hide the header row on mobile since individual events are centered
   .events-section > .vui-flex:has(.event-item-countdown),
-  .events-section > .vui-flex:has(.time-ago-header) {
+  .events-section > .vui-flex:has(.time-ago-header),
+  .events-section > .vui-flex:has(.ongoing-header) {
     display: none !important;
   }
 
-  .time-ago-header {
+  .time-ago-header,
+  .ongoing-header {
     min-width: 200px;
     text-align: center !important;
     justify-content: center !important;
@@ -286,7 +413,8 @@ const showDetails = computed({
     text-align: center !important;
   }
 
-  .time-ago-header {
+  .time-ago-header,
+  .ongoing-header {
     min-width: 150px;
     text-align: center !important;
     justify-content: center !important;

@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { Flex } from '@dolanske/vui'
+import { Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 
 interface Props {
-  countdown: {
+  countdown?: {
     days: number
     hours: number
     minutes: number
     seconds: number
-  }
+  } | null
+  isOngoing?: boolean
 }
 
 const props = defineProps<Props>()
@@ -38,10 +39,42 @@ const timeProgressPercentage = computed(() => {
 </script>
 
 <template>
-  <Flex expand class="countdown" :class="{ imminent: isImminent }" :style="{ '--time-progress': `${timeProgressPercentage}%` }">
-    <div class="countdown-border" />
-    <div class="countdown-glow" />
-    <Flex gap="m" class="countdown-grid" expand>
+  <!-- Loading state with skeletons -->
+  <Flex v-if="!countdown" expand class="countdown countdown-loading">
+    <Flex gap="s" class="countdown-grid" expand>
+      <Flex column y-center x-center class="countdown-item" expand>
+        <div class="countdown-number-wrapper">
+          <Skeleton height="3rem" width="3.5rem" />
+        </div>
+      </Flex>
+      <Flex column y-center x-center class="countdown-item" expand>
+        <div class="countdown-number-wrapper">
+          <Skeleton height="3rem" width="3.5rem" />
+        </div>
+      </Flex>
+      <Flex column y-center x-center class="countdown-item" expand>
+        <div class="countdown-number-wrapper">
+          <Skeleton height="3rem" width="3.5rem" />
+        </div>
+      </Flex>
+      <Flex column y-center x-center class="countdown-item" expand>
+        <div class="countdown-number-wrapper">
+          <Skeleton height="3rem" width="3.5rem" />
+        </div>
+      </Flex>
+    </Flex>
+  </Flex>  <!-- Actual countdown when data is available -->
+  <Flex v-else expand class="countdown" :class="{ 'countdown-ongoing': isOngoing }" :style="{ '--time-progress': `${timeProgressPercentage}%` }">
+    <!-- Border animation - only show when imminent -->
+    <div v-if="isImminent" class="countdown-border" />
+
+    <!-- Show "NOW" when event is ongoing -->
+    <Flex v-if="isOngoing" y-center x-center class="countdown-now" expand>
+      <span class="now-text">NOW</span>
+    </Flex>
+
+    <!-- Regular countdown grid -->
+    <Flex v-else gap="s" class="countdown-grid" expand>
       <Flex column y-center x-center class="countdown-item" data-unit="days" expand>
         <div class="countdown-number-wrapper">
           <span :key="countdown.days" class="countdown-number">{{ countdown.days.toString().padStart(2, '0') }}</span>
@@ -58,13 +91,13 @@ const timeProgressPercentage = computed(() => {
         <div class="countdown-number-wrapper">
           <span :key="countdown.minutes" class="countdown-number">{{ countdown.minutes.toString().padStart(2, '0') }}</span>
         </div>
-        <span class="countdown-label">mins</span>
+        <span class="countdown-label">minutes</span>
       </Flex>
       <Flex column y-center x-center class="countdown-item" data-unit="seconds" expand>
         <div class="countdown-number-wrapper">
           <span :key="countdown.seconds" class="countdown-number">{{ countdown.seconds.toString().padStart(2, '0') }}</span>
         </div>
-        <span class="countdown-label">secs</span>
+        <span class="countdown-label">seconds</span>
       </Flex>
     </Flex>
   </Flex>
@@ -77,7 +110,7 @@ const timeProgressPercentage = computed(() => {
   position: relative;
   padding: var(--space-s);
   background: linear-gradient(135deg, var(--color-bg-subtle), var(--color-bg));
-  border: 2px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
   overflow: hidden;
 
@@ -87,7 +120,7 @@ const timeProgressPercentage = computed(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    border: 3px solid var(--color-accent);
+    border: 1px solid var(--color-accent);
     border-radius: var(--border-radius-m);
     clip-path: polygon(0 0, var(--time-progress) 0, var(--time-progress) 100%, 0 100%);
     transition: clip-path 1s ease;
@@ -95,48 +128,32 @@ const timeProgressPercentage = computed(() => {
     pointer-events: none;
   }
 
-  &.imminent {
-    border-color: var(--color-accent);
-    background: linear-gradient(135deg, rgba(var(--color-accent-rgb), 0.1), var(--color-bg));
-    box-shadow: 0 0 20px rgba(var(--color-accent-rgb), 0.3);
-    animation: imminentGlow 2s ease-in-out infinite alternate;
-
-    .countdown-number {
-      color: var(--color-accent) !important;
-      text-shadow: 0 0 10px rgba(var(--color-accent-rgb), 0.5);
-    }
-
-    .countdown-border {
-      border-color: var(--color-accent);
-      box-shadow: 0 0 15px rgba(var(--color-accent-rgb), 0.4);
-    }
-
-    .countdown-item {
-      box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.1),
-        0 0 10px rgba(var(--color-accent-rgb), 0.2);
-    }
+  &.countdown-ongoing {
+    background: linear-gradient(135deg, var(--color-accent-muted), var(--color-bg));
   }
 
-  .countdown-glow {
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, var(--color-accent), var(--color-primary));
-    border-radius: var(--border-radius-m);
-    opacity: 0;
-    z-index: -1;
-    transition: opacity 0.3s ease;
-  }
+  .countdown-now {
+    min-width: 356px;
 
-  &:hover .countdown-glow {
-    opacity: 0.3;
-    animation: rotate 3s linear infinite;
+    .now-text {
+      width: 156px;
+      text-align: center;
+      font-size: 3rem;
+      line-height: 5.5rem;
+      font-weight: 900;
+      color: var(--color-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      text-shadow: 0 0 20px var(--color-accent);
+    }
+
+    @media (max-width: $breakpoint-sm) {
+      min-width: auto;
+    }
   }
 
   .countdown-item {
+    gap: 0 !important;
     position: relative;
     padding: var(--space-s);
     background: var(--color-bg);
@@ -144,6 +161,7 @@ const timeProgressPercentage = computed(() => {
     border-radius: var(--border-radius-s);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 80px;
 
     &:hover {
       transform: translateY(-2px) scale(1.05);
@@ -152,9 +170,9 @@ const timeProgressPercentage = computed(() => {
 
     .countdown-number-wrapper {
       position: relative;
-      width: 100%;
       text-align: center;
     }
+
     .countdown-number {
       font-size: var(--font-size-xl);
       font-weight: 800;
@@ -166,33 +184,18 @@ const timeProgressPercentage = computed(() => {
     }
 
     .countdown-label {
-      font-size: var(--font-size-xs);
-      color: var(--color-text-muted);
-      font-weight: 600;
-      margin-top: var(--space-xs);
+      font-size: var(--font-size-xxs);
+      color: var(--color-text-lightest) !important;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
   }
-}
 
-@keyframes imminentGlow {
-  0% {
-    box-shadow: 0 0 20px rgba(var(--color-accent-rgb), 0.3);
-  }
-  100% {
-    box-shadow:
-      0 0 30px rgba(var(--color-accent-rgb), 0.6),
-      0 0 40px rgba(var(--color-accent-rgb), 0.3);
-  }
-}
-
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+  &.countdown-loading {
+    .countdown-item:hover {
+      transform: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
   }
 }
 
@@ -212,6 +215,7 @@ const timeProgressPercentage = computed(() => {
 @media (max-width: $breakpoint-sm) {
   .countdown {
     .countdown-item {
+      min-width: auto;
       padding: var(--space-xs);
 
       .countdown-number {
@@ -220,6 +224,12 @@ const timeProgressPercentage = computed(() => {
 
       .countdown-label {
         font-size: 10px;
+      }
+    }
+
+    .countdown-now {
+      .now-text {
+        font-size: 2rem;
       }
     }
   }
@@ -236,6 +246,12 @@ const timeProgressPercentage = computed(() => {
 
       .countdown-label {
         font-size: 9px;
+      }
+    }
+
+    .countdown-now {
+      .now-text {
+        font-size: 1.5rem;
       }
     }
   }

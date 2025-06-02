@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Button, Calendar, Flex, Input, Sheet, Textarea } from '@dolanske/vui'
+import { Button, Calendar, Flex, Grid, Input, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
 import ConfirmModal from '../../Shared/ConfirmModal.vue'
@@ -22,6 +22,9 @@ const eventForm = ref({
   description: '',
   note: '',
   date: null as Date | null,
+  duration_days: null as number | null,
+  duration_hours: null as number | null,
+  duration_minutes: null as number | null,
   location: '',
   link: '',
   markdown: '',
@@ -44,11 +47,20 @@ watch(
   () => props.event,
   (newEvent) => {
     if (newEvent) {
+      // Convert total minutes to separate duration fields
+      const totalMinutes = newEvent.duration_minutes || 0
+      const days = Math.floor(totalMinutes / (24 * 60))
+      const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
+      const minutes = totalMinutes % 60
+
       eventForm.value = {
         title: newEvent.title,
         description: newEvent.description,
         note: newEvent.note || '',
         date: newEvent.date ? new Date(newEvent.date) : null,
+        duration_days: days > 0 ? days : null,
+        duration_hours: hours > 0 ? hours : null,
+        duration_minutes: minutes > 0 ? minutes : null,
         location: newEvent.location || '',
         link: newEvent.link || '',
         markdown: newEvent.markdown || '',
@@ -61,6 +73,9 @@ watch(
         description: '',
         note: '',
         date: null,
+        duration_days: null,
+        duration_hours: null,
+        duration_minutes: null,
         location: '',
         link: '',
         markdown: '',
@@ -80,12 +95,19 @@ function handleSubmit() {
   if (!isValid.value)
     return
 
+  // Calculate total duration in minutes from separate fields
+  const totalDurationMinutes
+    = (eventForm.value.duration_days || 0) * 24 * 60
+      + (eventForm.value.duration_hours || 0) * 60
+      + (eventForm.value.duration_minutes || 0)
+
   // Prepare the data to save
   const eventData = {
     title: eventForm.value.title.trim(),
     description: eventForm.value.description.trim(),
     note: eventForm.value.note.trim() || null,
     date: eventForm.value.date ? eventForm.value.date.toISOString() : '',
+    duration_minutes: totalDurationMinutes > 0 ? totalDurationMinutes : null,
     location: eventForm.value.location.trim() || null,
     link: eventForm.value.link.trim() || null,
     markdown: eventForm.value.markdown.trim() || null,
@@ -143,45 +165,81 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
           placeholder="Enter event title"
         />
 
-        <div class="date-picker-container">
-          <label for="date-picker" class="date-picker-label">
-            Date <span class="required" style="color: var(--color-text-red);">*</span>
-          </label>
-          <Calendar
-            v-model="eventForm.date"
-            position="left"
-            expand
-            enable-time-picker
-            time-picker-inline
-            enable-minutes
-            enable-seconds
-            is24
-            format="yyyy-MM-dd-HH:mm"
-            :class="{ invalid: !validation.date }"
-          >
-            <template #trigger>
-              <Button
-                id="date-picker"
-                class="date-picker-button"
-                expand
-                :class="{ error: !validation.date }"
-              >
-                {{ eventForm.date ? eventForm.date.toLocaleString('en-US', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false,
-                }) : 'Choose date and time' }}
-                <template #end>
-                  <Icon name="ph:calendar" />
-                </template>
-              </Button>
-            </template>
-          </Calendar>
-          <span v-if="!validation.date" class="error-text">Date is required</span>
-        </div>
+        <Grid expand>
+          <div class="date-picker-container">
+            <label for="date-picker" class="date-picker-label">
+              Date <span class="required" style="color: var(--color-text-red);">*</span>
+            </label>
+            <Calendar
+              v-model="eventForm.date"
+              expand
+              enable-time-picker
+              time-picker-inline
+              enable-minutes
+              enable-seconds
+              is24
+              format="yyyy-MM-dd-HH:mm"
+              :class="{ invalid: !validation.date }"
+            >
+              <template #trigger>
+                <Button
+                  id="date-picker"
+                  class="date-picker-button"
+                  expand
+                  :class="{ error: !validation.date }"
+                >
+                  {{ eventForm.date ? eventForm.date.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                  }) : 'Choose date and time' }}
+                  <template #end>
+                    <Icon name="ph:calendar" />
+                  </template>
+                </Button>
+              </template>
+            </Calendar>
+            <span v-if="!validation.date" class="error-text">Date is required</span>
+          </div>
+        </Grid>
+
+        <Flex column gap="s" expand>
+          <div class="duration-label">
+            Duration
+          </div>
+          <Grid :columns="3" gap="xs" expand>
+            <Input
+              style="width: auto"
+              name="duration_days"
+              type="number"
+              placeholder="Days"
+              :min="0"
+              :model-value="eventForm.duration_days?.toString() || ''"
+              @update:model-value="eventForm.duration_days = $event ? Number($event) : null"
+            />
+            <Input
+              name="duration_hours"
+              type="number"
+              placeholder="Hours"
+              :min="0"
+              :max="23"
+              :model-value="eventForm.duration_hours?.toString() || ''"
+              @update:model-value="eventForm.duration_hours = $event ? Number($event) : null"
+            />
+            <Input
+              name="duration_minutes"
+              type="number"
+              placeholder="Minutes"
+              :min="0"
+              :max="59"
+              :model-value="eventForm.duration_minutes?.toString() || ''"
+              @update:model-value="eventForm.duration_minutes = $event ? Number($event) : null"
+            />
+          </Grid>
+        </Flex>
 
         <Textarea
           v-model="eventForm.description"
@@ -310,6 +368,12 @@ h4 {
 }
 
 .date-picker-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.duration-label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text);

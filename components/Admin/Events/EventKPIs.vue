@@ -22,12 +22,22 @@ const totalEvents = computed(() => events.value.length)
 
 const upcomingEvents = computed(() => {
   const now = new Date()
-  return events.value.filter(event => new Date(event.date) >= now).length
+  return events.value.filter((event) => {
+    const eventStart = new Date(event.date)
+    return eventStart > now
+  }).length
 })
 
 const pastEvents = computed(() => {
   const now = new Date()
-  return events.value.filter(event => new Date(event.date) < now).length
+  return events.value.filter((event) => {
+    const eventStart = new Date(event.date)
+    const eventEnd = event.duration_minutes
+      ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
+      : eventStart
+
+    return eventEnd < now
+  }).length
 })
 
 const eventsThisMonth = computed(() => {
@@ -85,7 +95,7 @@ onMounted(fetchEvents)
     />
 
     <KPICard
-      label="Future Events"
+      label="Upcoming Events"
       :value="upcomingEvents"
       icon="ph:clock"
       :is-loading="loading"
@@ -93,7 +103,7 @@ onMounted(fetchEvents)
     />
 
     <KPICard
-      label="Upcoming This Month"
+      label="This Month"
       :value="eventsThisMonth"
       icon="ph:calendar-check"
       :is-loading="loading"
