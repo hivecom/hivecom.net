@@ -2,8 +2,8 @@
 import type { Tables } from '~/types/database.types'
 import { Badge, Button, Flex, Tooltip } from '@dolanske/vui'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
-import CountdownTimer from './CountdownTimer.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
+import CountdownTimer from './CountdownTimer.vue'
 
 interface Props {
   event: Tables<'events'>
@@ -80,10 +80,10 @@ defineProps<Props>()
         </Tooltip>
 
         <template v-if="!isOngoing">
-        <Badge
-          :variant="isOngoing ? 'success' : isUpcoming ? 'accent' : 'neutral'"
-          size="l"
-        >
+          <Badge
+            :variant="isOngoing ? 'success' : isUpcoming ? 'accent' : 'neutral'"
+            size="l"
+          >
             <Icon :name="isUpcoming ? 'ph:calendar-plus' : 'ph:calendar-x'" />
             {{ isUpcoming ? 'Upcoming' : 'Past Event' }}
           </Badge>
@@ -157,7 +157,7 @@ defineProps<Props>()
 
 .event-date-display {
   text-align: right;
-  gap: .5rem !important;
+  gap: 0.5rem !important;
 
   .event-date-time {
     font-size: var(--font-size-m);

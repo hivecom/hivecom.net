@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       announcements: {
@@ -78,11 +78,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "gameserver_containers_server_fkey"
-            columns: ["server"]
+            foreignKeyName: 'gameserver_containers_server_fkey'
+            columns: ['server']
             isOneToOne: false
-            referencedRelation: "servers"
-            referencedColumns: ["id"]
+            referencedRelation: 'servers'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -224,7 +224,7 @@ export type Database = {
           modified_by: string | null
           name: string
           port: string | null
-          region: Database["public"]["Enums"]["region"] | null
+          region: Database['public']['Enums']['region'] | null
         }
         Insert: {
           addresses?: string[] | null
@@ -240,7 +240,7 @@ export type Database = {
           modified_by?: string | null
           name?: string
           port?: string | null
-          region?: Database["public"]["Enums"]["region"] | null
+          region?: Database['public']['Enums']['region'] | null
         }
         Update: {
           addresses?: string[] | null
@@ -256,22 +256,22 @@ export type Database = {
           modified_by?: string | null
           name?: string
           port?: string | null
-          region?: Database["public"]["Enums"]["region"] | null
+          region?: Database['public']['Enums']['region'] | null
         }
         Relationships: [
           {
-            foreignKeyName: "gameservers_container_fkey"
-            columns: ["container"]
+            foreignKeyName: 'gameservers_container_fkey'
+            columns: ['container']
             isOneToOne: false
-            referencedRelation: "containers"
-            referencedColumns: ["name"]
+            referencedRelation: 'containers'
+            referencedColumns: ['name']
           },
           {
-            foreignKeyName: "gameservers_game_fkey"
-            columns: ["game"]
+            foreignKeyName: 'gameservers_game_fkey'
+            columns: ['game']
             isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
+            referencedRelation: 'games'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -386,11 +386,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "referendum_votes_referendum_id_fkey"
-            columns: ["referendum_id"]
+            foreignKeyName: 'referendum_votes_referendum_id_fkey'
+            columns: ['referendum_id']
             isOneToOne: false
-            referencedRelation: "referendums"
-            referencedColumns: ["id"]
+            referencedRelation: 'referendums'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -439,18 +439,18 @@ export type Database = {
       role_permissions: {
         Row: {
           id: number
-          permission: Database["public"]["Enums"]["app_permission"]
-          role: Database["public"]["Enums"]["app_role"]
+          permission: Database['public']['Enums']['app_permission']
+          role: Database['public']['Enums']['app_role']
         }
         Insert: {
           id?: number
-          permission: Database["public"]["Enums"]["app_permission"]
-          role: Database["public"]["Enums"]["app_role"]
+          permission: Database['public']['Enums']['app_permission']
+          role: Database['public']['Enums']['app_role']
         }
         Update: {
           id?: number
-          permission?: Database["public"]["Enums"]["app_permission"]
-          role?: Database["public"]["Enums"]["app_role"]
+          permission?: Database['public']['Enums']['app_permission']
+          role?: Database['public']['Enums']['app_role']
         }
         Relationships: []
       }
@@ -490,17 +490,17 @@ export type Database = {
       user_roles: {
         Row: {
           id: number
-          role: Database["public"]["Enums"]["app_role"]
+          role: Database['public']['Enums']['app_role']
           user_id: string
         }
         Insert: {
           id?: number
-          role: Database["public"]["Enums"]["app_role"]
+          role: Database['public']['Enums']['app_role']
           user_id: string
         }
         Update: {
           id?: number
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: Database['public']['Enums']['app_role']
           user_id?: string
         }
         Relationships: []
@@ -512,7 +512,7 @@ export type Database = {
     Functions: {
       authorize: {
         Args: {
-          requested_permission: Database["public"]["Enums"]["app_permission"]
+          requested_permission: Database['public']['Enums']['app_permission']
         }
         Returns: boolean
       }
@@ -527,55 +527,55 @@ export type Database = {
     }
     Enums: {
       app_permission:
-        | "announcements.create"
-        | "announcements.delete"
-        | "announcements.read"
-        | "announcements.update"
-        | "containers.create"
-        | "containers.delete"
-        | "containers.read"
-        | "containers.update"
-        | "events.create"
-        | "events.delete"
-        | "events.read"
-        | "events.update"
-        | "expenses.create"
-        | "expenses.delete"
-        | "expenses.read"
-        | "expenses.update"
-        | "forums.create"
-        | "forums.delete"
-        | "forums.read"
-        | "forums.update"
-        | "funding.create"
-        | "funding.delete"
-        | "funding.read"
-        | "funding.update"
-        | "games.create"
-        | "games.delete"
-        | "games.read"
-        | "games.update"
-        | "gameservers.create"
-        | "gameservers.delete"
-        | "gameservers.read"
-        | "gameservers.update"
-        | "profiles.delete"
-        | "profiles.read"
-        | "profiles.update"
-        | "referendums.create"
-        | "referendums.delete"
-        | "referendums.read"
-        | "referendums.update"
-        | "servers.create"
-        | "servers.delete"
-        | "servers.read"
-        | "servers.update"
-        | "users.create"
-        | "users.delete"
-        | "users.read"
-        | "users.update"
-      app_role: "admin" | "moderator"
-      region: "eu" | "na" | "all"
+        | 'announcements.create'
+        | 'announcements.delete'
+        | 'announcements.read'
+        | 'announcements.update'
+        | 'containers.create'
+        | 'containers.delete'
+        | 'containers.read'
+        | 'containers.update'
+        | 'events.create'
+        | 'events.delete'
+        | 'events.read'
+        | 'events.update'
+        | 'expenses.create'
+        | 'expenses.delete'
+        | 'expenses.read'
+        | 'expenses.update'
+        | 'forums.create'
+        | 'forums.delete'
+        | 'forums.read'
+        | 'forums.update'
+        | 'funding.create'
+        | 'funding.delete'
+        | 'funding.read'
+        | 'funding.update'
+        | 'games.create'
+        | 'games.delete'
+        | 'games.read'
+        | 'games.update'
+        | 'gameservers.create'
+        | 'gameservers.delete'
+        | 'gameservers.read'
+        | 'gameservers.update'
+        | 'profiles.delete'
+        | 'profiles.read'
+        | 'profiles.update'
+        | 'referendums.create'
+        | 'referendums.delete'
+        | 'referendums.read'
+        | 'referendums.update'
+        | 'servers.create'
+        | 'servers.delete'
+        | 'servers.read'
+        | 'servers.update'
+        | 'users.create'
+        | 'users.delete'
+        | 'users.read'
+        | 'users.update'
+      app_role: 'admin' | 'moderator'
+      region: 'eu' | 'na' | 'all'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -583,166 +583,165 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DefaultSchema = Database[Extract<keyof Database, 'public'>]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+  | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+  | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof Database
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (Database[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+      Database[DefaultSchemaTableNameOrOptions['schema']]['Views'])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? (Database[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+    Database[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
       Row: infer R
     }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
       ? R
       : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
+    DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] &
+      DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+        ? R
+        : never
     : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+  | keyof DefaultSchema['Tables']
+  | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof Database
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof Database[DefaultSchemaTableNameOrOptions['schema']]['Tables']
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
+  ? Database[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+    Insert: infer I
+  }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+      Insert: infer I
+    }
       ? I
       : never
     : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+  | keyof DefaultSchema['Tables']
+  | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof Database
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof Database[DefaultSchemaTableNameOrOptions['schema']]['Tables']
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
+  ? Database[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+    Update: infer U
+  }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+      Update: infer U
+    }
       ? U
       : never
     : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+  | keyof DefaultSchema['Enums']
+  | { schema: keyof Database },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof Database
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof Database[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  ? Database[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
+    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+  | keyof DefaultSchema['CompositeTypes']
+  | { schema: keyof Database },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof Database
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof Database[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  ? Database[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
+    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
   public: {
     Enums: {
       app_permission: [
-        "announcements.create",
-        "announcements.delete",
-        "announcements.read",
-        "announcements.update",
-        "containers.create",
-        "containers.delete",
-        "containers.read",
-        "containers.update",
-        "events.create",
-        "events.delete",
-        "events.read",
-        "events.update",
-        "expenses.create",
-        "expenses.delete",
-        "expenses.read",
-        "expenses.update",
-        "forums.create",
-        "forums.delete",
-        "forums.read",
-        "forums.update",
-        "funding.create",
-        "funding.delete",
-        "funding.read",
-        "funding.update",
-        "games.create",
-        "games.delete",
-        "games.read",
-        "games.update",
-        "gameservers.create",
-        "gameservers.delete",
-        "gameservers.read",
-        "gameservers.update",
-        "profiles.delete",
-        "profiles.read",
-        "profiles.update",
-        "referendums.create",
-        "referendums.delete",
-        "referendums.read",
-        "referendums.update",
-        "servers.create",
-        "servers.delete",
-        "servers.read",
-        "servers.update",
-        "users.create",
-        "users.delete",
-        "users.read",
-        "users.update",
+        'announcements.create',
+        'announcements.delete',
+        'announcements.read',
+        'announcements.update',
+        'containers.create',
+        'containers.delete',
+        'containers.read',
+        'containers.update',
+        'events.create',
+        'events.delete',
+        'events.read',
+        'events.update',
+        'expenses.create',
+        'expenses.delete',
+        'expenses.read',
+        'expenses.update',
+        'forums.create',
+        'forums.delete',
+        'forums.read',
+        'forums.update',
+        'funding.create',
+        'funding.delete',
+        'funding.read',
+        'funding.update',
+        'games.create',
+        'games.delete',
+        'games.read',
+        'games.update',
+        'gameservers.create',
+        'gameservers.delete',
+        'gameservers.read',
+        'gameservers.update',
+        'profiles.delete',
+        'profiles.read',
+        'profiles.update',
+        'referendums.create',
+        'referendums.delete',
+        'referendums.read',
+        'referendums.update',
+        'servers.create',
+        'servers.delete',
+        'servers.read',
+        'servers.update',
+        'users.create',
+        'users.delete',
+        'users.read',
+        'users.update',
       ],
-      app_role: ["admin", "moderator"],
-      region: ["eu", "na", "all"],
+      app_role: ['admin', 'moderator'],
+      region: ['eu', 'na', 'all'],
     },
   },
 } as const
-

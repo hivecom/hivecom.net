@@ -89,8 +89,8 @@ updateTime()
     :class="{
       'event-item-first': index === 0 && !isPast,
     }"
-    @click="navigateTo(`/events/${data.id}`)"
     y-center
+    @click="navigateTo(`/events/${data.id}`)"
   >
     <!-- Countdown for upcoming events -->
     <Flex v-if="!isPast && !isOngoing" column gap="xs" class="event-item-countdown-container">
