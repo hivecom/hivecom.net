@@ -15,6 +15,10 @@
     "STALE_HOURS": 2
   },
 
+  "PATREON": {
+    "URL": "https://www.patreon.com/hivecom"
+  },
+
   "LINKS": {
     "DISCORD": {
       "name": "Discord",

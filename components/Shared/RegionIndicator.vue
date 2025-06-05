@@ -6,7 +6,7 @@
 // Define props
 const props = defineProps<{
   /**
-   * Region code: 'eu' (Europe), 'na' (North America), 'all' (All Regions)
+   * Region code: 'eu' (Europe), 'na' (North America), 'all' (Multi-Region)
    */
   region: 'eu' | 'na' | 'all' | null | undefined
 
@@ -30,7 +30,7 @@ const regionLabel = computed(() => {
   switch (props.region) {
     case 'eu': return 'Europe'
     case 'na': return 'North America'
-    case 'all': return 'All Regions'
+    case 'all': return 'Multi-Region'
     default: return 'No Region'
   }
 })

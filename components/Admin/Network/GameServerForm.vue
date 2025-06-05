@@ -81,7 +81,7 @@ const profiles = ref<ProfileSelect[]>([])
 const regionOptions = [
   { label: 'Europe', value: 'eu' },
   { label: 'North America', value: 'na' },
-  { label: 'All Regions', value: 'all' },
+  { label: 'Multi-Region', value: 'all' },
 ]
 
 // Computed options for selects

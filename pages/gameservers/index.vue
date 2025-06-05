@@ -57,7 +57,7 @@ const gameOptions = computed(() => {
 const regionOptions = [
   { label: 'Europe', value: 'eu' },
   { label: 'North America', value: 'na' },
-  { label: 'All Regions', value: 'all' },
+  { label: 'Multi-Region', value: 'all' },
   { label: 'No Region', value: 'none' },
 ]
 

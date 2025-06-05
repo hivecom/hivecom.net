@@ -64,7 +64,7 @@ const isEditMode = ref(false)
 const regionOptions: SelectOption[] = [
   { label: 'Europe', value: 'eu' },
   { label: 'North America', value: 'na' },
-  { label: 'All Regions', value: 'all' },
+  { label: 'Multi-Region', value: 'all' },
   { label: 'No Region', value: 'none' },
 ]
 

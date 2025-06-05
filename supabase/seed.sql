@@ -206,11 +206,19 @@ INSERT INTO public.gameservers(addresses, created_at, created_by, description, g
 
 -- Insert a test expense
 INSERT INTO public.expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 2000, NOW() - INTERVAL '1 month', NULL);
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 100, NOW() - INTERVAL '1 month', NULL),
+(NOW() - INTERVAL '1 month', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Game Server Hosting', 'Monthly server hosting fees', NULL, 5000, NOW() - INTERVAL '6 months', NULL),
+(NOW() - INTERVAL '3 months', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Hivecom Supabase', 'Monthly Supabase hosting fees', NULL, 2000, NOW() - INTERVAL '3 months', NULL),
+(NOW() - INTERVAL '12 months', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'VPS Web Hosting', 'VPS hosting fees for Hivecom website', NULL, 3000, NOW() - INTERVAL '12 months', NOW() - INTERVAL '3 months');
 
--- Insert a monthly funding record
+-- Insert monthly funding records
 INSERT INTO public.monthly_funding(month, patreon_month_amount_cents, patreon_lifetime_amount_cents, patreon_count, donation_month_amount_cents, donation_lifetime_amount_cents, donation_count)
-  VALUES (DATE_TRUNC('month', NOW()), 2500, 10000, 3, 5000, 20000, 1);
+  VALUES (DATE_TRUNC('month', NOW()), 3000, 9000, 3, 5000, 20000, 1),
+(DATE_TRUNC('month', NOW()) - INTERVAL '1 month', 2000, 6000, 2, 5000, 15000, 1),
+(DATE_TRUNC('month', NOW()) - INTERVAL '2 months', 2000, 4000, 2, 0, 10000, 0),
+(DATE_TRUNC('month', NOW()) - INTERVAL '3 months', 1000, 2000, 1, 0, 10000, 0),
+(DATE_TRUNC('month', NOW()) - INTERVAL '4 months', 1000, 1000, 1, 10000, 10000, 1),
+(DATE_TRUNC('month', NOW()) - INTERVAL '5 months', 0, 0, 0, 0, 0, 0);
 
 -- Insert a test referendum
 INSERT INTO public.referendums(created_at, created_by, title, description, choices, date_start, date_end, multiple_choice)
