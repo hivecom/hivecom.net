@@ -109,28 +109,28 @@ watchEffect(async () => {
       </Flex>
     </template>
 
-    <Flex v-if="props.game" column gap="m" class="game-detail">
+    <Flex v-if="props.game" column gap="m" class="game-details">
       <Flex column gap="l" expand>
         <!-- Basic info -->
         <Card>
           <Flex column gap="l" expand>
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">ID:</span>
+            <Grid class="game-details__item" expand :columns="2">
+              <span class="game-details__label">ID:</span>
               <span>{{ props.game.id }}</span>
             </Grid>
 
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Name:</span>
+            <Grid class="game-details__item" expand :columns="2">
+              <span class="game-details__label">Name:</span>
               <span>{{ props.game.name }}</span>
             </Grid>
 
-            <Grid v-if="props.game.shorthand" class="detail-item" expand :columns="2">
-              <span class="detail-label">Shorthand:</span>
+            <Grid v-if="props.game.shorthand" class="game-details__item" expand :columns="2">
+              <span class="game-details__label">Shorthand:</span>
               <span>{{ props.game.shorthand }}</span>
             </Grid>
 
-            <Grid v-if="props.game.steam_id" class="detail-item" expand :columns="2" y-center>
-              <span class="detail-label">Steam ID:</span>
+            <Grid v-if="props.game.steam_id" class="game-details__item" expand :columns="2" y-center>
+              <span class="game-details__label">Steam ID:</span>
               <SteamLink :steam-id="props.game.steam_id" show-icon />
             </Grid>
           </Flex>
@@ -143,22 +143,22 @@ watchEffect(async () => {
           </template>
 
           <Flex column gap="l" expand>
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Created:</span>
+            <Grid class="game-details__item" expand :columns="2">
+              <span class="game-details__label">Created:</span>
               <Flex column>
                 <TimestampDate :date="props.game.created_at" />
-                <Flex v-if="props.game.created_by" gap="xs" y-center class="metadata-by">
+                <Flex v-if="props.game.created_by" gap="xs" y-center class="game-details__metadata-by">
                   <span>by</span>
                   <UserLink :user-id="props.game.created_by" />
                 </Flex>
               </Flex>
             </Grid>
 
-            <Grid v-if="props.game.modified_at" class="detail-item" expand :columns="2">
-              <span class="detail-label">Modified:</span>
+            <Grid v-if="props.game.modified_at" class="game-details__item" expand :columns="2">
+              <span class="game-details__label">Modified:</span>
               <Flex column>
                 <TimestampDate :date="props.game.modified_at" />
-                <Flex v-if="props.game.modified_by" gap="xs" y-center class="metadata-by">
+                <Flex v-if="props.game.modified_by" gap="xs" y-center class="game-details__metadata-by">
                   <span>by</span>
                   <UserLink :user-id="props.game.modified_by" />
                 </Flex>
@@ -174,32 +174,32 @@ watchEffect(async () => {
           </template>
 
           <!-- Loading state -->
-          <div v-if="gameserversLoading" class="placeholder-text">
+          <div v-if="gameserversLoading" class="game-details__placeholder-text">
             Loading game servers...
           </div>
 
           <!-- Error state -->
-          <div v-else-if="gameserversError" class="placeholder-text" style="color: var(--color-text-red);">
+          <div v-else-if="gameserversError" class="game-details__placeholder-text game-details__placeholder-text--error">
             Error: {{ gameserversError }}
           </div>
 
           <!-- No gameservers -->
-          <div v-else-if="gameservers.length === 0" class="placeholder-text">
+          <div v-else-if="gameservers.length === 0" class="game-details__placeholder-text">
             No gameservers are currently using this game.
           </div>
 
           <!-- Gameservers list -->
           <Flex v-else column gap="s">
-            <div v-for="gameserver in gameservers" :key="gameserver.id" class="gameserver-item">
+            <div v-for="gameserver in gameservers" :key="gameserver.id" class="game-details__gameserver-item">
               <Flex y-center x-between gap="m">
-                <span class="gameserver-name">{{ gameserver.name }}</span>
+                <span class="game-details__gameserver-name">{{ gameserver.name }}</span>
 
                 <!-- Addresses -->
                 <Flex v-if="gameserver.addresses && gameserver.addresses.length > 0" y-center gap="xs">
-                  <span v-for="address in gameserver.addresses.slice(0, 1)" :key="address" class="gameserver-address">
+                  <span v-for="address in gameserver.addresses.slice(0, 1)" :key="address" class="game-details__gameserver-address">
                     {{ address }}{{ gameserver.port ? `:${gameserver.port}` : '' }}
                   </span>
-                  <span v-if="gameserver.addresses.length > 1" class="address-count">
+                  <span v-if="gameserver.addresses.length > 1" class="game-details__address-count">
                     +{{ gameserver.addresses.length - 1 }} more
                   </span>
                 </Flex>
@@ -213,83 +213,88 @@ watchEffect(async () => {
 </template>
 
 <style scoped>
-.game-detail {
+.game-details {
   padding-bottom: var(--space);
+
+  &__label {
+    font-weight: 500;
+    color: var(--color-text-light);
+  }
+
+  &__metadata-by {
+    font-size: 1.3rem;
+    color: var(--color-text-light);
+  }
+
+  &__placeholder-text {
+    color: var(--color-text-light);
+    font-style: italic;
+
+    &--error {
+      color: var(--color-text-red);
+    }
+  }
+
+  &__gameserver-item {
+    width: 100%;
+    padding: var(--space-s);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-s);
+    background-color: var(--color-bg);
+  }
+
+  &__gameserver-name {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  &__gameserver-description {
+    font-size: var(--font-size-s);
+    color: var(--color-text-light);
+    margin: 0;
+  }
+
+  &__gameserver-address {
+    font-family: monospace;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-light);
+    background-color: var(--color-bg-raised);
+    padding: var(--space-xs) var(--space-s);
+    border-radius: var(--border-radius-s);
+  }
+
+  &__address-count {
+    font-size: var(--font-size-s);
+    color: var(--color-text-light);
+  }
+
+  &__status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    &--healthy {
+      background-color: var(--color-text-green);
+    }
+
+    &--unhealthy {
+      background-color: var(--color-text-orange);
+    }
+
+    &--offline {
+      background-color: var(--color-text-red);
+    }
+
+    &--unknown {
+      background-color: var(--color-text-light);
+    }
+  }
 }
 
-.detail-label {
-  font-weight: 500;
-  color: var(--color-text-light);
-}
 h4 {
   margin-top: 0;
   margin-bottom: var(--space-xs);
-}
-.metadata-by {
-  font-size: 1.3rem;
-  color: var(--color-text-light);
-}
-.placeholder-text {
-  color: var(--color-text-light);
-  font-style: italic;
-}
-
-/* Gameserver item styles */
-.gameserver-item {
-  width: 100%;
-  padding: var(--space-s);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-s);
-  background-color: var(--color-bg);
-}
-
-.gameserver-name {
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.gameserver-description {
-  font-size: var(--font-size-s);
-  color: var(--color-text-light);
-  margin: 0;
-}
-
-.gameserver-address {
-  font-family: monospace;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-light);
-  background-color: var(--color-bg-raised);
-  padding: var(--space-xs) var(--space-s);
-  border-radius: var(--border-radius-s);
-}
-
-.address-count {
-  font-size: var(--font-size-s);
-  color: var(--color-text-light);
-}
-
-/* Status indicator styles */
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.status-indicator.healthy {
-  background-color: var(--color-text-green);
-}
-
-.status-indicator.unhealthy {
-  background-color: var(--color-text-orange);
-}
-
-.status-indicator.offline {
-  background-color: var(--color-text-red);
-}
-
-.status-indicator.unknown {
-  background-color: var(--color-text-light);
 }
 </style>

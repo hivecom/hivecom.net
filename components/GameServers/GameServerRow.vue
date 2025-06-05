@@ -63,7 +63,7 @@ const state = computed(() => {
           </CopyClipboard>
           <Dropdown v-else @click.stop>
             <template #trigger="{ toggle }">
-              <Button size="s" variant="gray" @click="toggle">
+              <Button size="s" variant="gray" @click.stop="toggle">
                 <Flex y-center gap="xs">
                   Join
                   <Icon name="ph:caret-down" size="s" />

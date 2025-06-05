@@ -22,20 +22,20 @@ defineProps<Props>()
 </script>
 
 <template>
-  <div class="event-header-section">
+  <div class="event-header">
     <!-- Title and actions row -->
-    <Flex x-between align="start" gap="l" class="title-row">
-      <div class="title-section">
-        <h1 class="event-title">
+    <Flex x-between align="start" gap="l" class="event-header__title-row">
+      <div class="event-header__title-section">
+        <h1 class="event-header__title">
           {{ event.title }}
         </h1>
-        <p v-if="event.description" class="event-description">
+        <p v-if="event.description" class="event-header__description">
           {{ event.description }}
         </p>
       </div>
 
       <!-- Timing/Countdown Section -->
-      <div class="timing-section">
+      <div class="event-header__timing-section">
         <!-- Enhanced Countdown for upcoming events or NOW for ongoing -->
         <CountdownTimer
           v-if="isUpcoming || isOngoing"
@@ -44,15 +44,15 @@ defineProps<Props>()
         />
 
         <!-- Time ago for past events -->
-        <div v-else-if="!isUpcoming && !isOngoing && timeAgo" class="time-ago-compact">
-          <span class="time-ago-text">{{ timeAgo }}</span>
+        <div v-else-if="!isUpcoming && !isOngoing && timeAgo" class="event-header__time-ago-compact">
+          <span class="event-header__time-ago-text">{{ timeAgo }}</span>
         </div>
 
         <!-- Event date display -->
-        <Flex y-center class="event-date-display">
-          <TimestampDate small :date="event.date" class="event-date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
+        <Flex y-center class="event-header__date-display">
+          <TimestampDate small :date="event.date" class="event-header__date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
           <!-- Duration display -->
-          <div v-if="event.duration_minutes" class="event-duration">
+          <div v-if="event.duration_minutes" class="event-header__duration">
             for {{ formatDurationFromMinutes(event.duration_minutes) }}
           </div>
         </Flex>
@@ -61,19 +61,19 @@ defineProps<Props>()
 
     <!-- Event meta information -->
     <Flex gap="m" x-between expand>
-      <Flex gap="m" wrap class="badges-section">
-        <Badge v-if="event.location" variant="accent" size="l">
+      <Flex gap="m" wrap class="event-header__badges-section">
+        <Badge v-if="event.location" variant="neutral" size="l">
           <Icon name="ph:map-pin-fill" />
           {{ event.location }}
         </Badge>
 
         <Tooltip v-if="event.note" placement="bottom">
           <template #tooltip>
-            <div class="tooltip-content">
+            <div class="event-header__tooltip-content">
               {{ event.note }}
             </div>
           </template>
-          <Badge variant="neutral" size="l" class="note-badge">
+          <Badge variant="neutral" size="l" class="event-header__note-badge">
             <Icon name="ph:note" />
             Note
           </Badge>
@@ -111,129 +111,114 @@ defineProps<Props>()
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
 
-.event-header-section {
+.event-header {
   display: flex;
   flex-direction: column;
   gap: var(--space-l);
 
-  &.event-ongoing {
+  &--ongoing {
     background: linear-gradient(135deg, var(--color-accent-muted), transparent);
   }
-}
 
-.title-row {
-  align-items: flex-start;
-  @media screen and (max-width: $breakpoint-sm) {
-    align-items: center;
-    flex-direction: column-reverse !important;
+  &__title-row {
+    align-items: flex-start;
+
+    @media screen and (max-width: $breakpoint-sm) {
+      align-items: center;
+      flex-direction: column-reverse !important;
+      gap: var(--space-m);
+    }
   }
-}
 
-.title-section {
-  flex: 1;
-}
+  &__title-section {
+    flex: 1;
+  }
 
-.event-title {
-  font-size: var(--font-size-xxxl);
-  font-weight: 700;
-  margin: 0;
-  line-height: 1.2;
-}
+  &__title {
+    font-size: var(--font-size-xxxl);
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
 
-.event-description {
-  font-size: var(--font-size-l);
-  color: var(--color-text-muted);
-  margin: var(--space-s) 0 0 0;
-  line-height: 1.5;
-}
+    @media (max-width: $breakpoint-sm) {
+      font-size: var(--font-size-xxl);
+    }
 
-.timing-section {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-s);
-  min-width: fit-content;
-}
+    @media (max-width: $breakpoint-xs) {
+      font-size: var(--font-size-xl);
+    }
+  }
 
-.event-date-display {
-  text-align: right;
-  gap: 0.5rem !important;
+  &__description {
+    font-size: var(--font-size-l);
+    color: var(--color-text-muted);
+    margin: var(--space-s) 0 0 0;
+    line-height: 1.5;
 
-  .event-date-time {
+    @media (max-width: $breakpoint-sm) {
+      font-size: var(--font-size-m);
+    }
+  }
+
+  &__timing-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-s);
+    min-width: fit-content;
+
+    @media (max-width: $breakpoint-sm) {
+      align-items: flex-start;
+      width: 100%;
+    }
+  }
+
+  &__date-display {
+    text-align: right;
+    gap: 0.5rem !important;
+
+    @media (max-width: $breakpoint-sm) {
+      text-align: left;
+    }
+  }
+
+  &__date-time {
     font-size: var(--font-size-m);
     font-weight: 600;
     color: var(--color-text);
   }
 
-  .event-duration {
+  &__duration {
     font-size: var(--font-size-xs);
     font-weight: 500;
     color: var(--color-text-muted);
+
+    @media (max-width: $breakpoint-sm) {
+      font-size: var(--font-size-s);
+    }
   }
-}
 
-.event-duration {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.time-ago-compact {
-  .time-ago-text {
-    font-size: var(--font-size-xxl);
-    font-weight: 600;
-    color: var(--color-text-muted);
+  &__time-ago-compact {
+    .event-header__time-ago-text {
+      font-size: var(--font-size-xxl);
+      font-weight: 600;
+      color: var(--color-text-muted);
+    }
   }
-}
 
-.info-section {
-  .badges-section {
+  &__badges-section {
     align-items: center;
   }
-}
 
-.note-badge {
-  cursor: help;
-  transition: all 0.2s ease;
-}
-
-.tooltip-content {
-  max-width: 250px;
-  font-size: var(--font-size-s);
-  line-height: 1.4;
-}
-
-@media (max-width: $breakpoint-sm) {
-  .title-row {
-    flex-direction: column;
-    gap: var(--space-m);
+  &__note-badge {
+    cursor: help;
+    transition: all 0.2s ease;
   }
 
-  .timing-section {
-    align-items: flex-start;
-    width: 100%;
-  }
-
-  .event-date-display {
-    text-align: left;
-  }
-
-  .event-title {
-    font-size: var(--font-size-xxl);
-  }
-
-  .event-description {
-    font-size: var(--font-size-m);
-  }
-
-  .event-duration {
+  &__tooltip-content {
+    max-width: 250px;
     font-size: var(--font-size-s);
-    color: var(--color-text-muted);
-  }
-}
-
-@media (max-width: $breakpoint-xs) {
-  .event-title {
-    font-size: var(--font-size-xl);
+    line-height: 1.4;
   }
 }
 </style>

@@ -85,75 +85,75 @@ updateTime()
 <template>
   <Flex
     gap="xxl"
-    class="event-item event-item-clickable"
+    class="event-item event-item--clickable"
     :class="{
-      'event-item-first': index === 0 && !isPast,
+      'event-item--first': index === 0 && !isPast,
     }"
     y-center
     @click="navigateTo(`/events/${data.id}`)"
   >
     <!-- Countdown for upcoming events -->
-    <Flex v-if="!isPast && !isOngoing" column gap="xs" class="event-item-countdown-container">
-      <Grid :columns="4" gap="l" class="event-item-countdown">
-        <Flex column gap="xxs" x-center class="countdown-item">
-          <span class="countdown-label text-xs color-text-lighter">Days</span>
+    <Flex v-if="!isPast && !isOngoing" column gap="xs" class="event-item__countdown-container">
+      <Grid :columns="4" gap="l" class="event-item__countdown" expand>
+        <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
+          <span class="event-item__countdown-label text-xs color-text-lighter">Days</span>
           <span class="text-bold text-xxxl">{{ countdown.days }}</span>
         </Flex>
-        <Flex column gap="xxs" x-center class="countdown-item">
-          <span class="countdown-label text-xs color-text-lighter">Hours</span>
+        <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
+          <span class="event-item__countdown-label text-xs color-text-lighter">Hours</span>
           <span class="text-bold text-xxxl">{{ countdown.hours }}</span>
         </Flex>
-        <Flex column gap="xxs" x-center class="countdown-item">
-          <span class="countdown-label text-xs color-text-lighter">Minutes</span>
+        <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
+          <span class="event-item__countdown-label text-xs color-text-lighter">Minutes</span>
           <span class="text-bold text-xxxl">{{ countdown.minutes }}</span>
         </Flex>
-        <Flex column gap="xxs" x-center class="countdown-item">
-          <span class="countdown-label text-xs color-text-lighter">Seconds</span>
+        <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
+          <span class="event-item__countdown-label text-xs color-text-lighter">Seconds</span>
           <span class="text-bold text-xxxl">{{ countdown.seconds }}</span>
         </Flex>
       </Grid>
-      <Flex x-center expand class="event-date">
+      <Flex x-center expand class="event-item__event-date">
         <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY [at] HH:mm" />
       </Flex>
-      <Flex v-if="props.data.duration_minutes" x-center expand class="event-duration">
+      <Flex v-if="props.data.duration_minutes" x-center expand class="event-item__event-duration">
         <span class="text-xs color-text-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
       </Flex>
     </Flex>
 
     <!-- Ongoing event status -->
-    <Flex v-else-if="isOngoing" column gap="xs" class="event-item-ongoing-container">
-      <Flex x-center class="ongoing-text" expand>
+    <Flex v-else-if="isOngoing" column gap="xs" class="event-item__ongoing-container">
+      <Flex x-center class="event-item__ongoing-text" expand>
         <span class="text-bold text-xxxl color-accent">NOW</span>
       </Flex>
-      <Flex x-center expand class="event-date">
+      <Flex x-center expand class="event-item__event-date">
         <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY [at] HH:mm" />
       </Flex>
-      <Flex v-if="props.data.duration_minutes" x-center expand class="event-duration">
+      <Flex v-if="props.data.duration_minutes" x-center expand class="event-item__event-duration">
         <span class="text-xs color-text-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
       </Flex>
     </Flex>
 
     <!-- Time ago for past events -->
-    <Flex v-else column gap="xs" class="event-item-time-ago">
-      <Flex x-center class="time-ago-text" expand>
+    <Flex v-else column gap="xs" class="event-item__time-ago">
+      <Flex x-center class="event-item__time-ago-text" expand>
         <span class="text-bold text-xxxl color-text-lighter">{{ timeAgo }}</span>
       </Flex>
-      <Flex x-center expand class="event-date">
+      <Flex x-center expand class="event-item__event-date">
         <TimestampDate :date="props.data.date" format="MMM D, YYYY" />
       </Flex>
-      <Flex v-if="props.data.duration_minutes" x-center expand class="event-duration">
+      <Flex v-if="props.data.duration_minutes" x-center expand class="event-item__event-duration">
         <span class="text-xs color-text-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
       </Flex>
     </Flex>
 
-    <Flex column gap="xs" expand class="event-item-details">
+    <Flex column gap="xs" expand class="event-item__details">
       <h5>
         <a
           v-if="props.data.link"
           :href="props.data.link"
           target="_blank"
           rel="noopener noreferrer"
-          class="event-title-link"
+          class="event-item__title-link"
           @click.stop
         >
           {{ props.data.title }}
@@ -165,17 +165,17 @@ updateTime()
         {{ props.data.description }}
       </p>
       <Flex gap="xs">
-        <Badge v-if="props.data.location" variant="accent">
+        <Badge v-if="props.data.location" variant="neutral">
           <Icon name="ph:map-pin-fill" />
           {{ props.data.location }}
         </Badge>
         <Tooltip v-if="props.data.note" placement="right">
           <template #tooltip>
-            <div class="tooltip-content">
+            <div class="event-item__tooltip-content">
               {{ props.data.note }}
             </div>
           </template>
-          <Badge variant="neutral" class="note-badge">
+          <Badge variant="neutral" class="event-item__note-badge">
             <Icon name="ph:note" />
             Note
           </Badge>
@@ -184,11 +184,11 @@ updateTime()
     </Flex>
 
     <!-- Details indicator -->
-    <Flex class="event-item-details">
+    <Flex class="event-item__details-indicator">
       <Tooltip v-if="props.data.note" :content="props.data.note" position="left">
-        <Icon name="ph:caret-right" class="event-item-arrow" />
+        <Icon name="ph:caret-right" class="event-item__arrow" />
       </Tooltip>
-      <Icon v-else name="ph:caret-right" class="event-item-arrow" />
+      <Icon v-else name="ph:caret-right" class="event-item__arrow" />
     </Flex>
   </Flex>
 
@@ -216,19 +216,19 @@ updateTime()
     background-color 0.2s ease,
     transform 0.2s ease;
 
-  &-first {
+  &--first {
     span {
       color: var(--color-accent);
     }
   }
 
-  &-clickable {
+  &--clickable {
     cursor: pointer;
 
     &:hover {
       background-color: var(--color-bg-raised);
 
-      .event-item-arrow {
+      .event-item__arrow {
         color: var(--color-accent);
 
         @media screen and (max-width: $breakpoint-sm) {
@@ -247,44 +247,44 @@ updateTime()
       &:hover {
         transform: none !important;
 
-        .event-item-arrow {
+        .event-item__arrow {
           transform: rotate(90deg) !important;
         }
       }
     }
   }
 
-  &-countdown-container {
+  &__countdown-container {
     min-width: 296px;
   }
 
-  &-ongoing-container {
+  &__ongoing-container {
     min-width: 272px;
   }
 
-  &-countdown {
+  &__countdown {
     span {
       font-variant-numeric: tabular-nums;
     }
+  }
 
-    .countdown-item {
-      .countdown-label {
-        display: none; // Hide labels on desktop
-      }
+  &__countdown-item {
+    .event-item__countdown-label {
+      display: none; // Hide labels on desktop
     }
   }
 
-  &-time-ago {
+  &__time-ago {
     min-width: 296px;
     text-align: center;
   }
 
-  .ongoing-text {
+  &__ongoing-text {
     text-align: center;
     animation: pulse 2s infinite;
   }
 
-  .event-duration {
+  &__event-duration {
     margin-top: var(--space-xs);
 
     span {
@@ -293,7 +293,7 @@ updateTime()
     }
   }
 
-  &-details {
+  &__details {
     padding: var(--space-s);
     padding-left: 0;
 
@@ -302,7 +302,7 @@ updateTime()
     }
   }
 
-  &-arrow {
+  &__arrow {
     font-size: 20px;
     color: var(--color-text-lighter);
     transition:
@@ -310,12 +310,12 @@ updateTime()
       color 0.2s ease;
   }
 
-  .event-date span {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
+  &__event-date span {
+    font-size: var(--font-size-xs) !important;
+    color: var(--color-text-lighter) !important;
   }
 
-  .note-badge {
+  &__note-badge {
     cursor: help;
     transition: all 0.2s ease;
 
@@ -329,7 +329,7 @@ updateTime()
     }
   }
 
-  .tooltip-content {
+  &__tooltip-content {
     max-width: 250px;
     font-size: var(--font-size-xs);
     line-height: 1.4;
@@ -339,19 +339,19 @@ updateTime()
       font-size: var(--font-size-xxs) !important;
     }
   }
-}
 
-.event-title-link {
-  color: inherit;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  position: relative;
-  z-index: 2;
+  &__title-link {
+    color: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    z-index: 2;
 
-  &:hover {
-    color: var(--color-accent);
-    text-decoration: underline;
+    &:hover {
+      color: var(--color-accent);
+      text-decoration: underline;
+    }
   }
 }
 
@@ -363,15 +363,16 @@ updateTime()
     padding: var(--space-m) !important;
     text-align: center !important;
 
-    &-countdown-container,
-    &-ongoing-container,
-    &-time-ago {
+    &__countdown-container,
+    &__ongoing-container,
+    &__time-ago {
       min-width: 100% !important;
       width: 100% !important;
       align-items: center !important;
     }
 
-    &-countdown {
+    &__countdown {
+      width: 100%;
       justify-content: center !important;
       gap: var(--space-m) !important;
 
@@ -379,15 +380,15 @@ updateTime()
         text-align: center !important;
       }
 
-      .countdown-item {
-        .countdown-label {
+      .event-item__countdown-item {
+        .event-item__countdown-label {
           display: block !important; // Show labels on mobile
         }
       }
     }
 
-    .time-ago-text,
-    .ongoing-text {
+    &__time-ago-text,
+    &__ongoing-text {
       justify-content: center !important;
 
       span {
@@ -395,7 +396,7 @@ updateTime()
       }
     }
 
-    .event-date {
+    &__event-date {
       justify-content: center !important;
       margin-top: var(--space-xs) !important;
       text-align: center !important;
@@ -418,16 +419,16 @@ updateTime()
       justify-content: center !important;
     }
 
-    &-details {
+    &__details {
       align-self: center !important;
       padding: var(--space-xs) !important;
     }
 
-    &-arrow {
+    &__arrow {
       transform: rotate(90deg) !important;
     }
 
-    &:hover .event-item-arrow {
+    &:hover .event-item__arrow {
       transform: rotate(90deg) !important;
 
       @media screen and (max-width: $breakpoint-sm) {
@@ -443,13 +444,13 @@ updateTime()
     gap: var(--space-s) !important;
     text-align: center !important;
 
-    &-countdown-container,
-    &-ongoing-container,
-    &-time-ago {
+    &__countdown-container,
+    &__ongoing-container,
+    &__time-ago {
       min-width: 100% !important;
     }
 
-    &-countdown {
+    &__countdown {
       gap: var(--space-s) !important;
       justify-content: center !important;
 
@@ -458,16 +459,16 @@ updateTime()
         text-align: center !important;
       }
 
-      .countdown-item {
-        .countdown-label {
+      .event-item__countdown-item {
+        .event-item__countdown-label {
           display: block !important; // Show labels on mobile
           font-size: var(--font-size-xxs) !important;
         }
       }
     }
 
-    .time-ago-text,
-    .ongoing-text {
+    &__time-ago-text,
+    &__ongoing-text {
       justify-content: center !important;
 
       span {
@@ -475,7 +476,7 @@ updateTime()
       }
     }
 
-    .event-date {
+    &__event-date {
       justify-content: center !important;
       text-align: center !important;
 

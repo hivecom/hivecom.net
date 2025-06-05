@@ -2,6 +2,7 @@
 import type { Tables } from '~/types/database.types'
 import { Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '@/constants.json'
+import EventCard from '~/components/Events/EventCard.vue'
 
 // Fetch data from database
 const supabase = useSupabaseClient()
@@ -72,17 +73,17 @@ onMounted(async () => {
 
 <template>
   <!-- Hero section -->
-  <section class="section-hero">
-    <div class="section-hero-globe-container">
-      <NuxtImg src="landing/globe.svg" alt="Globe" class="section-hero-globe-image" />
+  <section class="hero-section">
+    <div class="hero-section__globe-container">
+      <NuxtImg src="landing/globe.svg" alt="Globe" class="hero-section__globe-image" />
     </div>
-    <h1 class="section-hero-title">
+    <h1 class="hero-section__title">
       HIVECOM
     </h1>
-    <p class="section-hero-tagline">
+    <p class="hero-section__tagline">
       A community of friends from all around the world. Creating a space to grow and projects to thrive.
     </p>
-    <div class="section-hero-actions">
+    <div class="hero-section__actions">
       <NuxtLink to="#platforms">
         <Button variant="fill" color="primary">
           Join Community
@@ -96,14 +97,14 @@ onMounted(async () => {
     </div>
 
     <!-- Community Stats -->
-    <div class="stats">
+    <div class="hero-section__stats">
       <ClientOnly>
         <Divider />
       </ClientOnly>
 
-      <div class="stats-grid">
-        <div class="stats-card">
-          <Flex x-center class="stats-value">
+      <div class="hero-section__stats-grid">
+        <div class="hero-section__stats-card">
+          <Flex x-center class="hero-section__stats-value">
             <template v-if="loading">
               <Skeleton height="2.5rem" width="4rem" />
             </template>
@@ -111,11 +112,11 @@ onMounted(async () => {
               {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
             </template>
           </Flex>
-          <span class="stats-label">Community Members</span>
+          <span class="hero-section__stats-label">Community Members</span>
         </div>
 
-        <div class="stats-card">
-          <Flex x-center class="stats-value">
+        <div class="hero-section__stats-card">
+          <Flex x-center class="hero-section__stats-value">
             <template v-if="loading">
               <Skeleton height="2.5rem" width="2rem" />
             </template>
@@ -123,24 +124,24 @@ onMounted(async () => {
               {{ communityStats.gameservers }}
             </template>
           </Flex>
-          <span class="stats-label">Game Servers</span>
+          <span class="hero-section__stats-label">Game Servers</span>
         </div>
 
-        <div class="stats-card">
-          <span class="stats-value">{{ communityStats.age }} Years</span>
-          <span class="stats-label">Founded in 2013</span>
+        <div class="hero-section__stats-card">
+          <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
+          <span class="hero-section__stats-label">Founded in 2013</span>
         </div>
 
-        <div class="stats-card">
-          <span class="stats-value">{{ communityStats.projects }}</span>
-          <span class="stats-label">Open Source Projects</span>
+        <div class="hero-section__stats-card">
+          <span class="hero-section__stats-value">{{ communityStats.projects }}</span>
+          <span class="hero-section__stats-label">Open Source Projects</span>
         </div>
       </div>
     </div>
   </section>
 
   <!-- About section -->
-  <section class="section-about">
+  <section class="about-section">
     <h2 class="heading">
       About Us
     </h2>
@@ -148,7 +149,7 @@ onMounted(async () => {
       <Divider />
     </ClientOnly>
 
-    <div class="section-about-content">
+    <div class="about-section__content">
       <p>
         The community was originally created by the three server administrators: Catlinman (now zealsprince), Jokler and Trif.
         All three started hosting a server back in 2013 on a in-home Raspberry Pi but the growing demand for a better connection
@@ -167,7 +168,7 @@ onMounted(async () => {
   </section>
 
   <!-- Join us section -->
-  <section class="section-join">
+  <section class="join-section">
     <!-- <Card> -->
     <h2 class="heading">
       Join us
@@ -175,21 +176,21 @@ onMounted(async () => {
     <ClientOnly>
       <Divider />
     </ClientOnly>
-    <div class="section-join-container">
-      <p class="section-join-text">
+    <div class="join-section__container">
+      <p class="join-section__text">
         We mainly talk on IRC and TeamSpeak. If Discord is your thing, we have a bot connecting both services so you won't be excluded.
       </p>
 
-      <div id="platforms" class="section-join-platforms">
+      <div id="platforms" class="join-section__platforms">
         <Card v-for="platform in platforms" :key="platform.title">
-          <div class="section-join-platforms-item">
-            <div class="section-join-platforms-item-content">
+          <div class="join-section__platform-item">
+            <div class="join-section__platform-content">
               <Icon :name="platform.icon" class="platform-icon" />
-              <h3 class="section-join-platforms-item-content-title">
+              <h3 class="join-section__platform-title">
                 {{ platform.title }}
               </h3>
               <Tooltip v-if="platform.note !== ''" placement="top">
-                <Icon name="ph:info" class="section-join-platforms-item-content-info" />
+                <Icon name="ph:info" class="join-section__platform-info" />
                 <template #tooltip>
                   <p>{{ platform.note }}</p>
                 </template>
@@ -224,7 +225,7 @@ onMounted(async () => {
   </section>
 
   <!-- Upcoming Events -->
-  <section class="section-events">
+  <section class="events-section">
     <h2 class="heading">
       Upcoming Events
     </h2>
@@ -232,7 +233,7 @@ onMounted(async () => {
       <Divider />
     </ClientOnly>
 
-    <Grid v-if="loading" class="events-list" :columns="3" gap="m">
+    <Grid v-if="loading" class="events-section__list" :columns="3" gap="m">
       <!-- Loading state -->
       <Card v-for="i in 3" :key="i">
         <Skeleton height="1.5rem" width="80%" class="mb-s" />
@@ -240,42 +241,35 @@ onMounted(async () => {
       </Card>
     </Grid>
 
-    <div v-else-if="errorMessage" class="events-error">
+    <div v-else-if="errorMessage" class="events-section__error">
       <Card>
-        <p class="error-text">
+        <p class="events-section__error-text">
           Failed to load events: {{ errorMessage }}
         </p>
       </Card>
     </div>
 
-    <div v-else-if="upcomingEvents.length === 0" class="events-empty">
+    <div v-else-if="upcomingEvents.length === 0" class="events-section__empty">
       <Card>
         <p>No upcoming events scheduled.</p>
       </Card>
     </div>
 
-    <Grid v-else class="events-list" :columns="3" gap="m" expand>
-      <Card v-for="event in upcomingEvents" :key="event.id" class="event-card-clickable" @click="navigateTo(`/events/${event.id}`)">
-        <h3 class="block mb-s">
-          {{ event.title }}
-        </h3>
-        <div class="event-details">
-          <ClientOnly>
-            <template #fallback>
-              <p>{{ new Date(event.date).toDateString() }}</p>
-            </template>
-            <p>{{ new Date(event.date).toLocaleDateString() }}</p>
-          </ClientOnly>
-          <p v-if="event.description" class="event-description">
-            {{ event.description }}
-          </p>
-        </div>
-      </Card>
+    <Grid v-else class="events-section__list" :columns="3" gap="m" expand>
+      <EventCard
+        v-for="event in upcomingEvents"
+        :key="event.id"
+        :event="event"
+        compact
+      />
     </Grid>
 
-    <div class="view-all">
+    <div class="events-section__view-all">
       <Button @click="navigateTo('/events')">
-        View All Events →
+        View All Events
+        <template #end>
+          <Icon name="ph:arrow-right" />
+        </template>
       </Button>
     </div>
   </section>
@@ -285,16 +279,16 @@ onMounted(async () => {
 @use '@/assets/breakpoints.scss' as *;
 
 :root.dark {
-  .section-join-platforms-item img {
+  .join-section__platform-item img {
     filter: invert(1);
   }
 
-  .section-hero {
+  .hero-section {
     &::before {
       opacity: 0.01;
     }
 
-    &-globe-image {
+    &__globe-image {
       filter: invert(1) opacity(0.2);
     }
   }
@@ -324,7 +318,7 @@ h4 {
   margin: 0;
 }
 
-.section-hero {
+.hero-section {
   &::before {
     content: '';
     position: absolute;
@@ -348,7 +342,7 @@ h4 {
   text-align: left;
   padding: 6.5rem 0;
 
-  &-globe-container {
+  &__globe-container {
     position: absolute;
     top: 0;
     left: 0;
@@ -359,14 +353,14 @@ h4 {
     overflow: hidden;
   }
 
-  &-globe-image {
+  &__globe-image {
     min-width: 1920px;
     width: 100%;
     height: 100vh;
     opacity: 0.02;
   }
 
-  &-title {
+  &__title {
     font-size: 12rem;
     font-stretch: ultra-condensed;
     font-weight: var(--font-weight-black);
@@ -383,7 +377,7 @@ h4 {
     }
   }
 
-  &-tagline {
+  &__tagline {
     font-size: 1.4rem;
     margin: 1rem 0 2rem;
     opacity: 0.8;
@@ -393,7 +387,7 @@ h4 {
     }
   }
 
-  &-actions {
+  &__actions {
     display: flex;
     gap: 1rem;
     justify-content: start;
@@ -402,12 +396,13 @@ h4 {
       justify-content: center;
     }
   }
-}
-.stats {
-  margin-top: 4rem;
-  z-index: 1;
 
-  .stats-grid {
+  &__stats {
+    margin-top: 4rem;
+    z-index: 1;
+  }
+
+  &__stats-grid {
     display: flex;
     justify-content: space-around;
     flex-wrap: wrap;
@@ -415,29 +410,29 @@ h4 {
     gap: 2rem;
   }
 
-  .stats-card {
+  &__stats-card {
     width: 156px;
     border-radius: var(--border-radius-m);
     text-align: center;
     padding: var(--space-m);
+  }
 
-    .stats-value {
-      display: block;
-      font-size: 2.5rem;
-      font-weight: bold;
-      margin-bottom: var(--space-xs);
-      color: var(--vui-color-primary);
-    }
+  &__stats-value {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: var(--space-xs);
+    color: var(--vui-color-primary);
+  }
 
-    .stats-label {
-      font-size: var(--font-size-xs);
-      color: var(--color-text-lighter);
-    }
+  &__stats-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
   }
 }
 
-.section-about {
-  &-content {
+.about-section {
+  &__content {
     max-width: 900px;
     margin: 2rem auto 0;
 
@@ -457,18 +452,18 @@ h4 {
   }
 }
 
-.section-join {
-  .section-join-text {
+.join-section {
+  &__text {
     text-align: center;
     margin-bottom: 2rem;
   }
 
-  .section-join-container {
+  &__container {
     max-width: 900px;
     margin: 2rem auto 0;
   }
 
-  .section-join-platforms {
+  &__platforms {
     display: grid;
     gap: var(--space-m);
     grid-template-columns: 2fr 2fr;
@@ -478,105 +473,47 @@ h4 {
     }
   }
 
-  .section-join-platforms-item {
+  &__platform-item {
     display: flex;
     justify-content: space-between;
+  }
 
-    .section-join-platforms-item-content {
-      display: flex;
-      align-items: center;
-      gap: var(--space-s);
+  &__platform-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+  }
 
-      .section-join-platforms-item-content-title {
-        font-size: 2rem;
-      }
+  &__platform-title {
+    font-size: 2rem;
+  }
 
-      .section-join-platforms-item-content-info.icon {
-        font-size: 16px;
-      }
+  &__platform-info.icon {
+    font-size: 16px !important;
+  }
 
-      .section-join-platforms-item-content-dropdown {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        font-size: 1.2rem;
-      }
-    }
+  &__platform-dropdown {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 1.2rem;
+  }
 
-    .icon {
-      font-size: 32px;
-      border-radius: var(--border-radius-s);
-    }
+  .icon {
+    font-size: 32px;
+    border-radius: var(--border-radius-s);
   }
 }
 
 // Center the list and make sure it is responsive
-.section-events {
-  .events-list {
+.events-section {
+  &__list {
     margin: 2rem auto 0;
     max-width: 900px;
   }
 
-  .vui-card {
-    height: 100%;
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    h3 {
-      margin-bottom: var(--space-s);
-      color: var(--vui-color-primary);
-      font-weight: 600;
-      line-height: 1.3;
-    }
-
-    &.event-card-clickable {
-      cursor: pointer;
-
-      &:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-      }
-    }
-  }
-
-  .event-details {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-    flex-grow: 1;
-
-    p {
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-
-      &:first-child {
-        font-weight: 500;
-        color: var(--color-text-strong);
-        margin-bottom: var(--space-xs);
-      }
-    }
-  }
-
-  .event-description {
-    font-size: var(--font-size-s);
-    color: var(--color-text-light);
-    line-height: 1.5;
-    margin-top: var(--space-xs);
-    padding-top: var(--space-xs);
-    border-top: 1px solid var(--color-border-subtle);
-    flex-grow: 1;
-  }
-
-  .events-error,
-  .events-empty {
+  &__error,
+  &__empty {
     .vui-card {
       text-align: center;
       padding: var(--space-l);
@@ -590,17 +527,17 @@ h4 {
     }
   }
 
-  .error-text {
+  &__error-text {
     color: var(--color-text-red);
     font-weight: 500;
   }
-}
 
-.view-all {
-  display: flex;
-  justify-content: center;
-  margin-top: 1.5rem;
-  text-align: center;
+  &__view-all {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+    text-align: center;
+  }
 }
 
 .newsletter {

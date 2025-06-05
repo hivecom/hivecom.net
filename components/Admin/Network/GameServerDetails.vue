@@ -51,34 +51,34 @@ function handleEdit() {
       </Flex>
     </template>
 
-    <Flex v-if="props.gameserver" column gap="m" class="gameserver-detail">
+    <Flex v-if="props.gameserver" column gap="m" class="gameserver-details">
       <Flex column gap="m" expand>
         <!-- Basic info -->
         <Card>
           <Flex column gap="l" expand>
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">ID:</span>
+            <Grid class="gameserver-details__item" expand :columns="2">
+              <span class="gameserver-details__label">ID:</span>
               <span>{{ props.gameserver.id }}</span>
             </Grid>
 
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Name:</span>
+            <Grid class="gameserver-details__item" expand :columns="2">
+              <span class="gameserver-details__label">Name:</span>
               <span>{{ props.gameserver.name }}</span>
             </Grid>
 
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Game:</span>
+            <Grid class="gameserver-details__item" expand :columns="2">
+              <span class="gameserver-details__label">Game:</span>
               <span>{{ props.gameserver.game_name || 'Unknown' }}</span>
             </Grid>
 
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Region:</span>
+            <Grid class="gameserver-details__item" expand :columns="2">
+              <span class="gameserver-details__label">Region:</span>
               <RegionIndicator :region="props.gameserver.region" show-label />
             </Grid>
 
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Administrator:</span>
-              <div :class="{ 'not-assigned': !props.gameserver.administrator }">
+            <Grid class="gameserver-details__item" expand :columns="2">
+              <span class="gameserver-details__label">Administrator:</span>
+              <div :class="{ 'gameserver-details__not-assigned': !props.gameserver.administrator }">
                 <UserLink v-if="props.gameserver.administrator" :user-id="props.gameserver.administrator" />
                 <span v-else>Not Assigned</span>
               </div>
@@ -101,11 +101,11 @@ function handleEdit() {
             <h6>Markdown</h6>
           </template>
 
-          <Suspense class="gameserver-markdown" suspensible>
+          <Suspense class="gameserver-details__markdown" suspensible>
             <template #fallback>
-              <Skeleton class="gameserver-markdown-skeleton" height="320px" />
+              <Skeleton class="gameserver-details__markdown-skeleton" height="320px" />
             </template>
-            <MDC :partial="true" class="gameserver-markdown-content typeset" :value="props.gameserver.markdown" />
+            <MDC :partial="true" class="gameserver-details__markdown-content typeset" :value="props.gameserver.markdown" />
           </Suspense>
         </Card>
 
@@ -116,8 +116,8 @@ function handleEdit() {
           </template>
 
           <Flex column gap="l" expand>
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Addresses:</span>
+            <Grid class="gameserver-details__item" expand :columns="2">
+              <span class="gameserver-details__label">Addresses:</span>
               <Flex v-if="props.gameserver.addresses && props.gameserver.addresses.length" gap="xs" wrap>
                 <Badge v-for="address in props.gameserver.addresses" :key="address">
                   {{ address }}
@@ -126,13 +126,13 @@ function handleEdit() {
               <span v-else>None configured</span>
             </Grid>
 
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Port:</span>
+            <Grid class="gameserver-details__item" expand :columns="2">
+              <span class="gameserver-details__label">Port:</span>
               <span>{{ props.gameserver.port || 'Not specified' }}</span>
             </Grid>
 
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Container:</span>
+            <Grid class="gameserver-details__item" expand :columns="2">
+              <span class="gameserver-details__label">Container:</span>
               <Flex>
                 <Badge v-if="props.gameserver.container">
                   {{ props.gameserver.container }}
@@ -150,22 +150,22 @@ function handleEdit() {
           </template>
 
           <Flex column gap="l" expand>
-            <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Created:</span>
+            <Grid class="gameserver-details__item" expand :columns="2">
+              <span class="gameserver-details__label">Created:</span>
               <Flex column>
                 <TimestampDate :date="props.gameserver.created_at" />
-                <Flex v-if="props.gameserver.created_by" gap="xs" y-center class="metadata-by">
+                <Flex v-if="props.gameserver.created_by" gap="xs" y-center class="gameserver-details__metadata-by">
                   <span>by</span>
                   <UserLink :user-id="props.gameserver.created_by" />
                 </Flex>
               </Flex>
             </Grid>
 
-            <Grid v-if="props.gameserver.modified_at" class="detail-item" expand :columns="2">
-              <span class="detail-label">Modified:</span>
+            <Grid v-if="props.gameserver.modified_at" class="gameserver-details__item" expand :columns="2">
+              <span class="gameserver-details__label">Modified:</span>
               <Flex column>
                 <TimestampDate :date="props.gameserver.modified_at" />
-                <Flex v-if="props.gameserver.modified_by" gap="xs" y-center class="metadata-by">
+                <Flex v-if="props.gameserver.modified_by" gap="xs" y-center class="gameserver-details__metadata-by">
                   <span>by</span>
                   <UserLink :user-id="props.gameserver.modified_by" />
                 </Flex>
@@ -179,43 +179,46 @@ function handleEdit() {
 </template>
 
 <style scoped>
-.gameserver-detail {
+.gameserver-details {
   padding-bottom: var(--space);
+
+  &__label {
+    font-weight: 500;
+    color: var(--color-text-light);
+  }
+
+  &__metadata-by {
+    font-size: 1.3rem;
+    color: var(--color-text-light);
+  }
+
+  &__markdown {
+    width: 100%;
+  }
+
+  &__markdown-skeleton {
+    width: 100%;
+  }
+
+  &__markdown-content {
+    h1 {
+      margin-top: var(--space-s);
+      font-size: var(--font-size-xxl);
+    }
+
+    h2 {
+      margin-top: var(--space-s);
+      font-size: var(--font-size-xxl);
+    }
+  }
+
+  &__not-assigned {
+    opacity: 0.5;
+  }
 }
-.detail-label {
-  font-weight: 500;
-  color: var(--color-text-light);
-}
+
 h4 {
   margin-top: 0;
   margin-bottom: var(--space-xs);
-}
-.metadata-by {
-  font-size: 1.3rem;
-  color: var(--color-text-light);
-}
-
-.gameserver-markdown {
-  width: 100%;
-}
-
-.gameserver-markdown-skeleton {
-  width: 100%;
-}
-
-.gameserver-markdown-content {
-  h1 {
-    margin-top: var(--space-s);
-    font-size: var(--font-size-xxl);
-  }
-
-  h2 {
-    margin-top: var(--space-s);
-    font-size: var(--font-size-xxl);
-  }
-}
-
-.not-assigned {
-  opacity: 0.5;
 }
 </style>

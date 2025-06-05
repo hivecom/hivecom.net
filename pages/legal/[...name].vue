@@ -23,11 +23,11 @@ useHead(() => ({
 </script>
 
 <template>
-  <div class="page typeset">
+  <div class="legal-page typeset">
     <div v-if="content">
       <h1>{{ content.title || name }}</h1>
 
-      <p class="last-updated">
+      <p class="legal-page__last-updated">
         Last updated on {{ formatDate(content.date) }}
         <a v-if="content.revisions && content.revisions.length" href="#revisions">
           (See previous revisions below)
@@ -37,12 +37,12 @@ useHead(() => ({
       <Divider />
 
       <!-- Render the content as Prose & Vue components -->
-      <ContentRenderer class="content-wrap" :value="content" />
+      <ContentRenderer class="legal-page__content" :value="content" />
 
       <!-- Seems to not be working right now -->
       <!-- <TableOfContents :toc="content.body.toc" /> -->
 
-      <div v-if="content.revisions && content.revisions.length" class="revisions">
+      <div v-if="content.revisions && content.revisions.length" class="legal-page__revisions">
         <h5 id="revisions">
           Previous Versions
         </h5>
@@ -56,7 +56,7 @@ useHead(() => ({
       </div>
     </div>
 
-    <div v-else class="not-found">
+    <div v-else class="legal-page__not-found">
       <h1>Document Not Found</h1>
       <p>The requested legal document "{{ name }}" could not be found.</p>
     </div>
@@ -64,52 +64,48 @@ useHead(() => ({
 </template>
 
 <style lang="scss" scoped>
-.page {
+.legal-page {
   max-width: var(--container-m);
-}
 
-.content-wrap {
-  padding-top: var(--space-l);
-}
+  &__content {
+    padding-top: var(--space-l);
+  }
 
-h1 {
-  padding-top: 0;
-}
+  &__last-updated {
+    font-size: var(--font-size-s);
+  }
 
-.revisions {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-border);
+  &__revisions {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
 
-  li,
-  ul,
-  ol {
-    a {
-      color: var(--color-primary);
-      text-decoration: none;
-      font-size: 0.9rem;
+    li,
+    ul,
+    ol {
+      a {
+        color: var(--color-primary);
+        text-decoration: none;
+        font-size: 0.9rem;
 
-      &:hover {
-        text-decoration: underline;
+        &:hover {
+          text-decoration: underline;
+        }
       }
     }
   }
-}
 
-.last-updated {
-  font-size: var(--font-size-s);
-}
+  &__not-found {
+    text-align: center;
+    padding: 3rem 0;
 
-.not-found {
-  text-align: center;
-  padding: 3rem 0;
+    h1 {
+      margin-bottom: 1rem;
+    }
 
-  h1 {
-    margin-bottom: 1rem;
-  }
-
-  p {
-    color: var(--color-text-muted);
+    p {
+      color: var(--color-text-muted);
+    }
   }
 }
 </style>

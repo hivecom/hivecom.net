@@ -13,7 +13,7 @@ defineProps<Props>()
 <template>
   <Card class="event-metadata">
     <Flex column gap="l">
-      <h3 class="section-title">
+      <h3 class="event-metadata__title">
         <Icon name="ph:info" />
         Metadata
       </h3>
@@ -28,7 +28,7 @@ defineProps<Props>()
 </template>
 
 <style lang="scss" scoped>
-.section-title {
+.event-metadata__title {
   display: flex;
   align-items: center;
   gap: var(--space-s);

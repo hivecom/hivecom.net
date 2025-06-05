@@ -186,15 +186,15 @@ useHead({
       back-label="Back to Events"
     >
       <template #error-message>
-        The event you're looking for might have been removed or doesn't exist.
+        We are unable to load event details at this time. Please try again later.
       </template>
     </DetailStates>
 
     <!-- Event Content -->
-    <div v-if="event && !loading && !error" class="event-content">
+    <div v-if="event && !loading && !error" class="event-detail">
       <!-- Back Button -->
       <Flex x-between>
-        <NuxtLink to="/events" class="back-link">
+        <NuxtLink to="/events" class="event-detail__back-link">
           <Button variant="gray" size="s">
             <template #start>
               <Icon name="ph:arrow-left" />
@@ -225,13 +225,13 @@ useHead({
 </template>
 
 <style lang="scss" scoped>
-.event-content {
+.event-detail {
   display: flex;
   flex-direction: column;
   gap: var(--space-l);
-}
 
-.back-link {
-  text-decoration: none;
+  &__back-link {
+    text-decoration: none;
+  }
 }
 </style>

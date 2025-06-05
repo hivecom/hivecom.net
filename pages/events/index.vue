@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Divider, Flex, Grid, Sheet, Spinner } from '@dolanske/vui'
+import { Divider, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
 import Event from '~/components/Events/Event.vue'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
@@ -94,21 +94,38 @@ const showDetails = computed({
     <Divider />
     <section class="mt-xl">
       <div v-if="loading">
-        <Spinner size="l" />
+        <!-- Loading skeletons -->
+        <Flex column gap="l">
+          <!-- Section title skeleton -->
+          <Skeleton :width="200" :height="36" :radius="8" />
+
+          <!-- Event list skeletons -->
+          <template v-for="i in 4" :key="i">
+            <Skeleton :height="80" :radius="8" />
+          </template>
+
+          <!-- Another section skeleton -->
+          <Skeleton :width="150" :height="36" :radius="8" class="mt-xl" />
+
+          <!-- More event skeletons -->
+          <template v-for="i in 3" :key="`past-${i}`">
+            <Skeleton :height="80" :radius="8" />
+          </template>
+        </Flex>
       </div>
       <template v-else>
         <!-- Ongoing Events Section -->
-        <div v-if="ongoingEvents.length > 0" class="events-section ongoing-events">
-          <h2 class="section-title">
+        <div v-if="ongoingEvents.length > 0" class="events-section events-section--ongoing">
+          <h2 class="events-section__title">
             Happening Now
           </h2>
 
-          <div class="event-list">
+          <div class="events-section__list">
             <Event
               v-for="(event, index) in ongoingEvents"
               :key="event.id"
               :data="event"
-              :index
+              :index="index"
               :is-ongoing="true"
               @open="activeEvent = event"
             />
@@ -117,52 +134,52 @@ const showDetails = computed({
 
         <!-- Upcoming Events Section -->
         <div v-if="upcomingEvents.length > 0" class="events-section">
-          <h2 class="section-title">
+          <h2 class="events-section__title">
             Upcoming Events
           </h2>
           <Flex gap="xxl">
-            <Grid :columns="4" gap="l" class="event-item-countdown">
-              <span class="color-text-lighter text-s">Days</span>
-              <span class="color-text-lighter text-s">Hours</span>
-              <span class="color-text-lighter text-s">Minutes</span>
-              <span class="color-text-lighter text-s">Seconds</span>
+            <Grid :columns="4" gap="l" class="events-section__countdown-header">
+              <span>Days</span>
+              <span>Hours</span>
+              <span>Minutes</span>
+              <span>Seconds</span>
             </Grid>
-            <Flex expand>
-              <span class="color-text-lighter text-s">Event</span>
+            <Flex expand class="events-section__event-header">
+              <span>Event</span>
             </Flex>
           </Flex>
 
-          <div class="event-list">
+          <div class="events-section__list">
             <Event
               v-for="(event, index) in upcomingEvents"
               :key="event.id"
               :data="event"
-              :index
+              :index="index"
               @open="activeEvent = event"
             />
           </div>
         </div>
 
         <!-- Past Events Section -->
-        <div v-if="pastEvents.length > 0" class="events-section past-events">
-          <h2 class="section-title">
+        <div v-if="pastEvents.length > 0" class="events-section events-section--past">
+          <h2 class="events-section__title">
             Past Events
           </h2>
           <Flex gap="xxl">
-            <Flex x-center class="time-ago-header">
-              <span class="color-text-lighter text-s">When</span>
+            <Flex x-center class="events-section__time-header time-ago-header">
+              <span>Time Ago</span>
             </Flex>
-            <div class="flex-1">
-              <span class="color-text-lighter text-s">Event</span>
-            </div>
+            <Flex expand class="events-section__event-header">
+              <span>Event</span>
+            </Flex>
           </Flex>
 
-          <div class="event-list">
+          <div class="events-section__list">
             <Event
               v-for="(event, index) in pastEvents"
               :key="event.id"
               :data="event"
-              :index
+              :index="index"
               :is-past="true"
               @open="activeEvent = event"
             />
@@ -170,7 +187,7 @@ const showDetails = computed({
         </div>
 
         <!-- No Events Message -->
-        <div v-if="upcomingEvents.length === 0 && pastEvents.length === 0" class="no-events">
+        <div v-if="upcomingEvents.length === 0 && pastEvents.length === 0 && ongoingEvents.length === 0" class="events-section__no-events">
           <p class="color-text-lighter">
             No events found.
           </p>
@@ -186,32 +203,32 @@ const showDetails = computed({
       </template>
 
       <div v-if="activeEvent" class="event-details">
-        <div class="detail-row">
+        <div class="event-details__row">
           <strong>Date & Time:</strong>
           <TimestampDate :date="activeEvent.date" format="dddd, MMM D, YYYY [at] HH:mm" />
         </div>
 
-        <div v-if="activeEvent.duration_minutes" class="detail-row">
+        <div v-if="activeEvent.duration_minutes" class="event-details__row">
           <strong>Duration:</strong>
           {{ formatDurationFromMinutes(activeEvent.duration_minutes) }}
         </div>
 
-        <div v-if="activeEvent.location" class="detail-row">
+        <div v-if="activeEvent.location" class="event-details__row">
           <strong>Location:</strong>
           {{ activeEvent.location }}
         </div>
 
-        <div v-if="activeEvent.description" class="detail-row">
+        <div v-if="activeEvent.description" class="event-details__row">
           <strong>Description:</strong>
           <p>{{ activeEvent.description }}</p>
         </div>
 
-        <div v-if="activeEvent.note" class="detail-row">
+        <div v-if="activeEvent.note" class="event-details__row">
           <strong>Note:</strong>
           <p>{{ activeEvent.note }}</p>
         </div>
 
-        <div v-if="activeEvent.link" class="detail-row">
+        <div v-if="activeEvent.link" class="event-details__row">
           <strong>Link:</strong>
           <a :href="activeEvent.link" target="_blank" rel="noopener noreferrer" class="event-link">
             {{ activeEvent.link }}
@@ -232,103 +249,111 @@ const showDetails = computed({
   &:last-child {
     margin-bottom: 0;
   }
-}
 
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: var(--color-text);
-}
-
-.event-list {
-  .vui-divider:last-of-type {
-    display: none;
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: var(--color-text);
   }
-}
 
-.event-item-countdown {
-  span {
-    text-align: center;
-    display: block;
-    width: 56px;
-
-    @media (max-width: $breakpoint-sm) {
-      min-width: 80px;
-    }
-
-    @media (max-width: $breakpoint-xs) {
-      min-width: 60px;
+  &__list {
+    .vui-divider:last-of-type {
+      display: none;
     }
   }
-}
 
-.time-ago-header,
-.ongoing-header {
-  text-align: center;
-}
+  &__countdown-header {
+    span {
+      text-align: center;
+      display: block;
+      width: 56px;
+      color: var(--color-text-lighter) !important;
 
-// Past events styling - grayed out with hover effect
-.past-events {
-  .section-title {
+      @media (max-width: $breakpoint-sm) {
+        min-width: 80px;
+      }
+
+      @media (max-width: $breakpoint-xs) {
+        min-width: 60px;
+      }
+    }
+  }
+
+  &__event-header {
+    flex: 1;
     color: var(--color-text-lighter);
+    text-align: left;
   }
 
-  .event-list {
-    opacity: 0.5;
-    transition: opacity 0.2s ease;
+  &__time-header {
+    text-align: center;
+    color: var(--color-text-lighter);
 
-    &:hover {
-      opacity: 0.8;
+    min-width: 294px;
+  }
+
+  &__no-events {
+    text-align: center;
+    padding: 3rem 0;
+  }
+
+  // Past events styling - grayed out with hover effect
+  &--past {
+    .events-section__title {
+      color: var(--color-text-lighter);
     }
 
-    // Individual event hover effect
-    .event-item {
+    .events-section__list {
+      opacity: 0.5;
       transition: opacity 0.2s ease;
 
       &:hover {
-        opacity: 1 !important;
+        opacity: 0.8;
+      }
+
+      // Individual event hover effect
+      .event-item {
+        transition: opacity 0.2s ease;
+
+        &:hover {
+          opacity: 1 !important;
+        }
+      }
+    }
+  }
+
+  // Ongoing events styling - highlighted with accent color
+  &--ongoing {
+    .events-section__title {
+      color: var(--color-accent);
+      position: relative;
+
+      &::before {
+        content: '';
+        display: inline-block;
+        position: relative;
+        width: 8px;
+        height: 8px;
+        background: var(--color-text-red);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+    }
+
+    .events-section__list {
+      .event-item {
+        border: 1px solid var(--color-accent);
+        padding-left: var(--space-m);
+        background: linear-gradient(to right, var(--color-accent-muted) 0%, transparent 100%);
+        border-radius: var(--border-radius-m);
       }
     }
   }
 }
 
-// Ongoing events styling - highlighted with accent color
-.ongoing-events {
-  .section-title {
-    color: var(--color-accent);
-    position: relative;
-
-    &::before {
-      content: '';
-      display: inline-block;
-      position: relative;
-      width: 8px;
-      height: 8px;
-      background: var(--color-text-red);
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-  }
-
-  .event-list {
-    .event-item {
-      border: 1px solid var(--color-accent);
-      padding-left: var(--space-m);
-      margin-left: var(--space-xs);
-      background: linear-gradient(to right, var(--color-accent-muted) 0%, transparent 100%);
-      border-radius: var(--border-radius-m);
-    }
-  }
-}
-
-.no-events {
-  text-align: center;
-  padding: 3rem 0;
-}
-
 .event-details {
-  .detail-row {
+  &__row {
     margin-bottom: var(--space-m);
 
     strong {
@@ -374,12 +399,12 @@ const showDetails = computed({
     text-align: center !important;
   }
 
-  .section-title {
+  .events-section__title {
     text-align: center !important;
   }
 
   // Hide the header row on mobile since individual events are centered
-  .events-section > .vui-flex:has(.event-item-countdown),
+  .events-section > .vui-flex:has(.events-section__countdown-header),
   .events-section > .vui-flex:has(.time-ago-header),
   .events-section > .vui-flex:has(.ongoing-header) {
     display: none !important;
@@ -392,7 +417,7 @@ const showDetails = computed({
     justify-content: center !important;
   }
 
-  .event-item-countdown {
+  .events-section__countdown-header {
     justify-content: center !important;
 
     span {
@@ -408,19 +433,18 @@ const showDetails = computed({
     text-align: center !important;
   }
 
-  .section-title {
+  .events-section__title {
     margin-bottom: 1rem;
     text-align: center !important;
   }
 
   .time-ago-header,
   .ongoing-header {
-    min-width: 150px;
     text-align: center !important;
     justify-content: center !important;
   }
 
-  .event-item-countdown {
+  .events-section__countdown-header {
     justify-content: center !important;
 
     span {

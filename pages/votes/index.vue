@@ -13,7 +13,7 @@ const search = ref('')
 </script>
 
 <template>
-  <div class="route-votes">
+  <div class="votes-page">
     <Flex y-center gap="l" class="mb-l">
       <h1>Votes</h1>
       <NuxtLink to="/votes/create">
@@ -77,7 +77,7 @@ const search = ref('')
 </template>
 
 <style lang="scss" scoped>
-.route-votes {
+.votes-page {
   min-height: 100vh;
   padding-top: 128px;
 

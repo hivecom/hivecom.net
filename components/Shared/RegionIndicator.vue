@@ -38,23 +38,23 @@ const regionLabel = computed(() => {
 
 <template>
   <div class="region-indicator">
-    <span v-if="props.region !== null" class="region-emoji" :title="regionLabel">{{ regionEmoji }}</span>
-    <span v-if="showLabel" class="region-label">{{ regionLabel }}</span>
+    <span v-if="props.region !== null" class="region-indicator__emoji" :title="regionLabel">{{ regionEmoji }}</span>
+    <span v-if="showLabel" class="region-indicator__label">{{ regionLabel }}</span>
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .region-indicator {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs, 0.25rem);
-}
 
-.region-emoji {
-  font-size: 1.2em;
-}
+  &__emoji {
+    font-size: 1.2em;
+  }
 
-.region-label {
-  font-size: 0.9em;
+  &__label {
+    font-size: 0.9em;
+  }
 }
 </style>

@@ -19,19 +19,19 @@ const isLight = computed({
 </script>
 
 <template>
-  <div :class="`theme-toggle ${props.small ? 'small' : ''}` ">
+  <div :class="`theme-toggle ${props.small ? 'theme-toggle--small' : ''}` ">
     <ClientOnly>
-      <div class="theme-toggle-label">
+      <div class="theme-toggle__label">
         <Icon :name="isLight ? 'ph:sun' : 'ph:moon'" />
         <template v-if="!props.noText">
           Theme
         </template>
       </div>
       <!-- Only render the actual Switch component on client-side -->
-      <Switch v-model="isLight" class="theme-toggle-switch" />
+      <Switch v-model="isLight" class="theme-toggle__switch" />
       <template #fallback>
         <!-- Static fallback for server-side rendering -->
-        <div class="theme-toggle-switch vui-switch" />
+        <div class="theme-toggle__switch vui-switch" />
       </template>
     </ClientOnly>
   </div>
@@ -44,14 +44,14 @@ const isLight = computed({
   justify-content: space-between;
   gap: var(--space-xs);
 
-  .theme-toggle-switch {
+  &__switch {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-xs);
   }
 
-  .theme-toggle-label {
+  &__label {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -60,7 +60,7 @@ const isLight = computed({
   }
 
   // This is a super scuffed way of doing this but until VUI has a smaller switch we will be doing this.
-  &.small {
+  &--small {
     padding: 0;
     gap: 0;
     margin-top: -2px;
@@ -68,12 +68,12 @@ const isLight = computed({
     width: 32px;
     height: 1.5rem;
 
-    .theme-toggle-label {
+    .theme-toggle__label {
       font-size: var(--font-size-sm);
       margin-right: -8px;
     }
 
-    .theme-toggle-switch {
+    .theme-toggle__switch {
       transform: scale(0.5);
     }
   }

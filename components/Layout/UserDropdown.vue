@@ -58,16 +58,16 @@ async function signOut() {
   <div class="user-dropdown">
     <Dropdown min-width="300px" placement="bottom-end">
       <template #trigger="{ toggle }">
-        <button @click="toggle">
+        <button class="user-dropdown__trigger" @click="toggle">
           <Avatar src="https://i.imgur.com/65aJ4oG.png" width="32" height="32" :alt="username || 'User profile'" />
         </button>
       </template>
       <DropdownTitle>
-        <div class="user-info">
-          <NuxtLink to="/profile">
+        <div class="user-dropdown__info">
+          <NuxtLink to="/profile" class="user-dropdown__username">
             {{ username || user?.email }}
           </NuxtLink>
-          <Badge v-if="isAdminOrMod" variant="info" class="user-badge" :class="userRole">
+          <Badge v-if="isAdminOrMod" variant="danger" :class="`user-dropdown__badge--${userRole}`">
             {{ roleDisplay }}
           </Badge>
         </div>
@@ -85,7 +85,7 @@ async function signOut() {
         </DropdownItem>
       </template>
       <Divider size="4" />
-      <div class="user-footer">
+      <div class="user-dropdown__footer">
         <SharedThemeToggle no-text />
         <Button square icon="ph:sign-out" @click="signOut" />
       </div>
@@ -98,46 +98,64 @@ async function signOut() {
   img {
     border-radius: 999px;
   }
-}
 
-.user-info {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.user-badge {
-  &.admin {
-    background-color: var(--color-bg-red-lowered);
-    color: var(--color-text-red);
+  &__trigger {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
   }
 
-  &.moderator {
-    background-color: var(--color-bg-blue-lowered);
-    color: var(--color-text-blue);
+  &__info {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
   }
-}
 
-.user-footer {
-  padding: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  &__username {
+    text-decoration: none;
+    color: inherit;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &__badge {
+    &--admin {
+      background-color: var(--color-bg-red-lowered);
+      color: var(--color-text-red);
+    }
+
+    &--moderator {
+      background-color: var(--color-bg-blue-lowered);
+      color: var(--color-text-blue);
+    }
+  }
+
+  &__footer {
+    padding: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
 }
 
 :root.light {
-  .user-badge {
-    &.admin {
-      background-color: var(--color-bg-red-raised);
-      color: var(--color-text-invert);
-    }
+  .user-dropdown {
+    &__badge {
+      &--admin {
+        background-color: var(--color-bg-red-raised);
+        color: var(--color-text-invert);
+      }
 
-    &.moderator {
-      background-color: var(--color-bg-blue-raised);
-      color: var(--color-text-invert);
+      &--moderator {
+        background-color: var(--color-bg-blue-raised);
+        color: var(--color-text-invert);
+      }
     }
   }
 }

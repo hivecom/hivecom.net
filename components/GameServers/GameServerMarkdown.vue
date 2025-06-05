@@ -11,9 +11,9 @@ defineProps<Props>()
 
 <template>
   <!-- Server Details (Markdown) -->
-  <Card v-if="gameserver.markdown" class="server-markdown">
+  <Card v-if="gameserver.markdown" class="gameserver-markdown">
     <Flex column gap="l">
-      <h3 class="section-title">
+      <h3 class="gameserver-markdown__title">
         <Icon name="ph:article" />
         Server Details
       </h3>
@@ -21,28 +21,30 @@ defineProps<Props>()
         <template #fallback>
           <Skeleton height="50rem" />
         </template>
-        <MDC :partial="true" class="gameserver-markdown-content typeset" :value="gameserver.markdown" />
+        <MDC :partial="true" class="gameserver-markdown__content typeset" :value="gameserver.markdown" />
       </Suspense>
     </Flex>
   </Card>
 </template>
 
 <style lang="scss" scoped>
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  margin: 0;
-  color: var(--color-text);
+.gameserver-markdown {
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text);
 
-  svg {
-    color: var(--color-accent);
+    svg {
+      color: var(--color-accent);
+    }
   }
-}
 
-.gameserver-markdown-content {
-  line-height: 1.6;
+  &__content {
+    line-height: 1.6;
+  }
 }
 </style>

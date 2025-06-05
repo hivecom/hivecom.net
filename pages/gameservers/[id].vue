@@ -178,7 +178,7 @@ useHead({
       <!-- Server Metadata -->
       <Card class="server-metadata">
         <Flex column gap="l">
-          <h3 class="section-title">
+          <h3 class="server-metadata__title">
             <Icon name="ph:info" />
             Metadata
           </h3>
@@ -201,7 +201,7 @@ useHead({
   gap: var(--space-l);
 }
 
-.section-title {
+.server-metadata__title {
   display: flex;
   align-items: center;
   gap: var(--space-s);

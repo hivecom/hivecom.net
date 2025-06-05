@@ -166,8 +166,8 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
         />
 
         <Grid expand>
-          <div class="date-picker-container">
-            <label for="date-picker" class="date-picker-label">
+          <div class="event-form__date-picker-container">
+            <label for="date-picker" class="event-form__date-picker-label">
               Date <span class="required" style="color: var(--color-text-red);">*</span>
             </label>
             <Calendar
@@ -184,7 +184,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
               <template #trigger>
                 <Button
                   id="date-picker"
-                  class="date-picker-button"
+                  class="event-form__date-picker-button"
                   expand
                   :class="{ error: !validation.date }"
                 >
@@ -207,7 +207,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
         </Grid>
 
         <Flex column gap="s" expand>
-          <div class="duration-label">
+          <div class="event-form__duration-label">
             Duration
           </div>
           <Grid :columns="3" gap="xs" expand>
@@ -340,6 +340,24 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
 <style scoped>
 .event-form {
   padding-bottom: var(--space);
+
+  &__date-picker-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  &__date-picker-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+  }
+
+  &__duration-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+  }
 }
 
 h4 {
@@ -359,24 +377,6 @@ h4 {
 
 .flex-1 {
   flex: 1;
-}
-
-.date-picker-container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.date-picker-label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-}
-
-.duration-label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
 }
 
 .required {

@@ -116,39 +116,39 @@ watch(currentUser, () => {
 <template>
   <div class="user-display">
     <!-- Unauthenticated user state -->
-    <Flex v-if="!currentUser" gap="m" y-center class="user-header" />
+    <Flex v-if="!currentUser" gap="m" y-center class="user-display__header" />
 
     <!-- Loading state -->
-    <Flex v-else-if="loading" gap="m" y-center class="user-header">
+    <Flex v-else-if="loading" gap="m" y-center class="user-display__header">
       <Avatar :size="size">
         ?
       </Avatar>
-      <div class="user-info">
-        <span class="username loading">Loading...</span>
+      <div class="user-display__info">
+        <span class="user-display__username user-display__username--loading">Loading...</span>
       </div>
     </Flex>
 
     <!-- No user state -->
-    <Flex v-else-if="!userId" gap="m" y-center class="user-header">
+    <Flex v-else-if="!userId" gap="m" y-center class="user-display__header">
       <Avatar :size="size">
         SY
       </Avatar>
-      <div class="user-info">
-        <span class="username">System</span>
+      <div class="user-display__info">
+        <span class="user-display__username">System</span>
       </div>
     </Flex>
 
     <!-- User data -->
-    <Flex v-else-if="user" gap="m" y-center class="user-header">
-      <NuxtLink :to="`/profile/${user.id}`" class="user-link">
+    <Flex v-else-if="user" gap="m" y-center class="user-display__header">
+      <NuxtLink :to="`/profile/${user.id}`" class="user-display__link">
         <Avatar :size="size">
           {{ getUserInitials(user.username) }}
         </Avatar>
       </NuxtLink>
-      <div class="user-info">
+      <div class="user-display__info">
         <Flex gap="xs" x-start y-center wrap>
-          <NuxtLink :to="`/profile/${user.id}`" class="user-link">
-            <span class="username">{{ user.username }}</span>
+          <NuxtLink :to="`/profile/${user.id}`" class="user-display__link">
+            <span class="user-display__username">{{ user.username }}</span>
           </NuxtLink>
           <Badge
             v-if="showRole && user.role"
@@ -163,22 +163,22 @@ watch(currentUser, () => {
   </div>
 </template>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .user-display {
-  .username {
+  &__username {
     font-weight: 500;
     color: var(--color-text);
 
-    &.loading {
+    &--loading {
       color: var(--color-text-lighter);
     }
 
-    &.error {
+    &--error {
       color: var(--color-text-red);
     }
   }
 
-  .user-link {
+  &__link {
     text-decoration: none;
     color: inherit;
     transition: opacity 0.2s ease;
@@ -187,7 +187,7 @@ watch(currentUser, () => {
       opacity: 0.8;
     }
 
-    .username {
+    .user-display__username {
       &:hover {
         text-decoration: underline;
       }

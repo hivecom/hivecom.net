@@ -13,7 +13,7 @@ defineProps<Props>()
 
 <template>
   <!-- Loading State -->
-  <div v-if="loading" class="detail-loading">
+  <div v-if="loading" class="detail-states__loading">
     <Card>
       <Flex column gap="l">
         <Skeleton height="2rem" width="60%" />
@@ -25,7 +25,7 @@ defineProps<Props>()
   </div>
 
   <!-- Error State -->
-  <div v-else-if="error" class="detail-error">
+  <div v-else-if="error" class="detail-states__error">
     <NuxtLink :to="backTo">
       <Button variant="accent">
         <template #start>
@@ -36,9 +36,9 @@ defineProps<Props>()
     </NuxtLink>
     <Card>
       <Flex column gap="m" x-center>
-        <Icon name="ph:warning-circle" size="48" class="error-icon" />
+        <Icon name="ph:warning-circle" size="48" class="detail-states__error-icon" />
         <h3>{{ error }}</h3>
-        <p class="error-message">
+        <p class="detail-states__error-message">
           <slot name="error-message">
             The resource you're looking for might have been removed or doesn't exist.
           </slot>
@@ -49,20 +49,22 @@ defineProps<Props>()
 </template>
 
 <style lang="scss" scoped>
-.detail-loading,
-.detail-error {
-  .card {
-    padding: var(--space-xl);
+.detail-states {
+  &__loading,
+  &__error {
+    .card {
+      padding: var(--space-xl);
+    }
   }
-}
 
-.error-icon {
-  color: var(--color-text-red);
-}
+  &__error-icon {
+    color: var(--color-text-red);
+  }
 
-.error-message {
-  color: var(--color-text-muted);
-  text-align: center;
-  margin: 0;
+  &__error-message {
+    color: var(--color-text-muted);
+    text-align: center;
+    margin: 0;
+  }
 }
 </style>

@@ -10,29 +10,29 @@ defineProps<Props>()
 </script>
 
 <template>
-  <Card v-if="gameserver.addresses && gameserver.addresses.length" class="connection-details">
+  <Card v-if="gameserver.addresses && gameserver.addresses.length" class="gameserver-connection">
     <Flex column gap="l">
-      <h3 class="section-title">
+      <h3 class="gameserver-connection__title">
         <Icon name="ph:globe" />
         Connection Details
       </h3>
 
-      <div class="connection-section">
-        <h4 class="connection-subtitle">
+      <div class="gameserver-connection__section">
+        <h4 class="gameserver-connection__subtitle">
           Server Addresses
         </h4>
-        <div class="addresses-grid">
+        <div class="gameserver-connection__addresses-grid">
           <Card
             v-for="address in gameserver.addresses"
             :key="address"
-            class="address-card"
+            class="gameserver-connection__address-card"
           >
             <Flex x-between x-center gap="m">
-              <div class="address-info">
-                <div class="address-text">
+              <div class="gameserver-connection__address-info">
+                <div class="gameserver-connection__address-text">
                   {{ `${address}${gameserver.port ? `:${gameserver.port}` : ''}` }}
                 </div>
-                <div class="address-label">
+                <div class="gameserver-connection__address-label">
                   Server Address
                 </div>
               </div>
@@ -52,11 +52,11 @@ defineProps<Props>()
         </div>
 
         <!-- Quick Join Button -->
-        <div class="quick-join-section">
-          <h4 class="connection-subtitle">
+        <div class="gameserver-connection__quick-join-section">
+          <h4 class="gameserver-connection__subtitle">
             Quick Join
           </h4>
-          <div class="quick-join-buttons">
+          <div class="gameserver-connection__quick-join-buttons">
             <CopyClipboard
               v-if="gameserver.addresses.length === 1"
               :text="`${gameserver.addresses[0]}${gameserver.port ? `:${gameserver.port}` : ''}`"
@@ -99,81 +99,75 @@ defineProps<Props>()
 </template>
 
 <style lang="scss" scoped>
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  margin: 0;
-  color: var(--color-text);
+.gameserver-connection {
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text);
 
-  svg {
-    color: var(--color-accent);
+    svg {
+      color: var(--color-accent);
+    }
   }
-}
 
-.connection-subtitle {
-  font-size: var(--font-size-l);
-  font-weight: 600;
-  margin: 0 0 var(--space-m) 0;
-  color: var(--color-text);
-}
+  &__subtitle {
+    font-size: var(--font-size-l);
+    font-weight: 600;
+    margin: 0 0 var(--space-m) 0;
+    color: var(--color-text);
+  }
 
-.addresses-grid {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-s);
-  margin-bottom: var(--space-l);
-}
+  &__addresses-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-s);
+    margin-bottom: var(--space-l);
+  }
 
-.address-card {
-  background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
+  &__address-card {
+    background: var(--color-bg-subtle);
+    border: 1px solid var(--color-border);
+  }
 
-  .address-info {
+  &__address-info {
     flex: 1;
-
-    .address-text {
-      font-size: var(--font-size-m);
-      font-weight: 600;
-      color: var(--color-text);
-      margin-bottom: var(--space-xs);
-    }
-
-    .address-label {
-      font-size: var(--font-size-s);
-      color: var(--color-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
   }
-}
 
-.quick-join-section {
-  padding-top: var(--space-l);
-  border-top: 1px solid var(--color-border);
+  &__address-text {
+    font-size: var(--font-size-m);
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--space-xs);
+  }
 
-  .quick-join-buttons {
+  &__address-label {
+    font-size: var(--font-size-s);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__quick-join-section {
+    padding-top: var(--space-l);
+    border-top: 1px solid var(--color-border);
+  }
+
+  &__quick-join-buttons {
     display: flex;
     gap: var(--space-m);
-  }
-}
 
-@media (max-width: 768px) {
-  .quick-join-buttons {
-    flex-direction: column;
+    @media (max-width: 768px) {
+      flex-direction: column;
+    }
   }
-}
 
-@media (max-width: 480px) {
-  .addresses-grid {
-    .address-card {
-      .address-info {
-        .address-text {
-          font-size: var(--font-size-s);
-        }
-      }
+  @media (max-width: 480px) {
+    &__address-text {
+      font-size: var(--font-size-s);
     }
   }
 }

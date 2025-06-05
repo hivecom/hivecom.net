@@ -13,14 +13,14 @@ function toggleMobileMenu() {
 </script>
 
 <template>
-  <nav>
+  <nav class="navigation">
     <div class="container container-l">
-      <div class="nav-items">
-        <Button class="nav-hamburger" icon="ph:list" @click="toggleMobileMenu" />
+      <div class="navigation__items">
+        <Button class="navigation__hamburger" icon="ph:list" @click="toggleMobileMenu" />
 
-        <SharedLogo class="nav-logo" />
+        <SharedLogo class="navigation__logo" />
 
-        <ul class="nav-links">
+        <ul class="navigation__links">
           <li>
             <NuxtLink to="/">
               Home
@@ -42,7 +42,7 @@ function toggleMobileMenu() {
             </NuxtLink>
           </li>
           <template v-if="user">
-            <span class="nav-links-separator" />
+            <span class="navigation__links-separator" />
             <li>
               <NuxtLink to="/votes">
                 Votes
@@ -63,26 +63,26 @@ function toggleMobileMenu() {
             </Flex>
           </template>
           <template #header-end />
-          <div class="nav-mobile-menu">
-            <NuxtLink to="/" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+          <div class="navigation__mobile-menu">
+            <NuxtLink to="/" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
               <Icon name="ph:house" />
               <span>Home</span>
             </NuxtLink>
-            <NuxtLink to="/community" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+            <NuxtLink to="/community" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
               <Icon name="ph:users" />
               <span>Community</span>
             </NuxtLink>
-            <NuxtLink to="/events" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+            <NuxtLink to="/events" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
               <Icon name="ph:calendar" />
               <span>Events</span>
             </NuxtLink>
-            <NuxtLink to="/gameservers" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+            <NuxtLink to="/gameservers" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
               <Icon name="ph:game-controller" />
               <span>Game Servers</span>
             </NuxtLink>
             <template v-if="user">
-              <span class="nav-mobile-menu-separator" />
-              <NuxtLink to="/votes" class="nav-mobile-menu-item" @click="mobileMenuOpen = false">
+              <span class="navigation__mobile-menu-separator" />
+              <NuxtLink to="/votes" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
                 <Icon name="ph:check-square" />
                 <span>Votes</span>
               </NuxtLink>
@@ -91,12 +91,12 @@ function toggleMobileMenu() {
         </Sheet>
 
         <!-- User dropdown on right side -->
-        <div v-if="user" class="nav-user">
+        <div v-if="user" class="navigation__user">
           <LayoutUserDropdown />
         </div>
 
-        <div v-else class="nav-auth">
-          <div class="nav-auth-buttons">
+        <div v-else class="navigation__auth">
+          <div class="navigation__auth-buttons">
             <NuxtLink to="/auth/sign-in">
               <Button>
                 Sign in
@@ -111,7 +111,7 @@ function toggleMobileMenu() {
           </div>
 
           <!-- On mobile we just have a little user icon -->
-          <div class="nav-auth-mobile-button">
+          <div class="navigation__auth-mobile-button">
             <NuxtLink to="/auth/sign-in">
               <Button square icon="ph:sign-in" />
             </NuxtLink>
@@ -125,15 +125,14 @@ function toggleMobileMenu() {
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
 
-nav {
+.navigation {
   width: 100%;
   position: fixed;
   background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
   backdrop-filter: blur(16px);
-
   z-index: 5; // Make sure the nav is main content
 
-  .nav-items {
+  &__items {
     display: flex;
     justify-content: flex-start;
     height: 64px;
@@ -142,14 +141,14 @@ nav {
     position: relative;
   }
 
-  .nav-hamburger {
+  &__hamburger {
     display: none;
     cursor: pointer;
     font-size: 24px;
     color: var(--color-text);
   }
 
-  .nav-logo {
+  &__logo {
     img {
       width: 100%;
     }
@@ -168,7 +167,7 @@ nav {
     }
   }
 
-  .nav-links {
+  &__links {
     display: flex;
     align-items: center;
     gap: var(--space-s);
@@ -186,18 +185,18 @@ nav {
         color: var(--color-accent);
       }
     }
-
-    .nav-links-separator {
-      display: block;
-      position: relative;
-      width: 1px;
-      height: 16px;
-      background: var(--color-text);
-      opacity: 0.5;
-    }
   }
 
-  .nav-auth {
+  &__links-separator {
+    display: block;
+    position: relative;
+    width: 1px;
+    height: 16px;
+    background: var(--color-text);
+    opacity: 0.5;
+  }
+
+  &__auth {
     &-buttons {
       display: flex;
       align-items: center;
@@ -209,7 +208,7 @@ nav {
     }
   }
 
-  .nav-dropdown {
+  &__dropdown {
     position: absolute;
     top: 64px;
     left: 0;
@@ -223,7 +222,7 @@ nav {
     pointer-events: none;
     transition: all 0.2s ease;
 
-    &.open {
+    &--open {
       transform: translateY(0);
       opacity: 1;
       pointer-events: auto;
@@ -247,15 +246,15 @@ nav {
       }
     }
   }
-}
 
-.nav-mobile-menu {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+  &__mobile-menu {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
 
-  .nav-mobile-menu-item {
+  &__mobile-menu-item {
     padding: var(--space-s) var(--space-m);
     display: flex;
     align-items: center;
@@ -278,7 +277,7 @@ nav {
       font-size: 20px;
     }
 
-    &.accent {
+    &--accent {
       color: var(--color-accent);
       font-weight: 500;
 
@@ -288,7 +287,7 @@ nav {
     }
   }
 
-  .nav-mobile-menu-separator {
+  &__mobile-menu-separator {
     display: block;
     height: 1px;
     width: 100%;
@@ -298,35 +297,35 @@ nav {
 }
 
 @media (max-width: $breakpoint-lg) {
-  nav {
-    .nav-items {
+  .navigation {
+    &__items {
       justify-content: space-between;
     }
 
-    .nav-hamburger {
+    &__hamburger {
       display: flex;
       align-items: center;
       justify-content: center;
       order: 1;
     }
 
-    .nav-logo {
+    &__logo {
       order: 2;
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
     }
 
-    .nav-links {
+    &__links {
       display: none;
     }
 
-    .nav-auth,
-    .nav-user {
+    &__auth,
+    &__user {
       order: 3;
     }
 
-    .nav-auth {
+    &__auth {
       &-buttons {
         display: none;
       }

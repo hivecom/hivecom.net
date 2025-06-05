@@ -17,7 +17,7 @@ defineProps<Props>()
 <template>
   <!-- Navigation -->
   <Flex x-between>
-    <NuxtLink to="/gameservers" class="back-link">
+    <NuxtLink to="/gameservers" class="gameserver-header__back-link">
       <Button variant="gray" size="s">
         <template #start>
           <Icon name="ph:arrow-left" />
@@ -26,26 +26,26 @@ defineProps<Props>()
       </Button>
     </NuxtLink>
   </Flex>
-  <div class="gameserver-header-section">
+  <div class="gameserver-header">
     <!-- Title and actions row -->
-    <Flex x-between align="start" gap="l" class="title-row">
-      <div class="title-section">
-        <h1 class="gameserver-title">
+    <Flex x-between align="start" gap="l" class="gameserver-header__title-row">
+      <div class="gameserver-header__title-section">
+        <h1 class="gameserver-header__title">
           {{ gameserver.name }}
         </h1>
       </div>
 
       <Flex>
         <!-- Administrator -->
-        <div v-if="gameserver.administrator" class="administrator-info">
-          <span class="administrator-label">Administrator</span>
+        <div v-if="gameserver.administrator" class="gameserver-header__administrator-info">
+          <span class="gameserver-header__administrator-label">Administrator</span>
           <UserDisplay :user-id="gameserver.administrator" size="s" />
         </div>
       </Flex>
       <!-- Connect Button -->
-      <div v-if="gameserver.addresses && gameserver.addresses.length || gameserver.administrator" class="connect-section">
-        <div class="connect-actions">
-          <div v-if="gameserver.addresses && gameserver.addresses.length" class="connect-button">
+      <div v-if="gameserver.addresses && gameserver.addresses.length || gameserver.administrator" class="gameserver-header__connect-section">
+        <div class="gameserver-header__connect-actions">
+          <div v-if="gameserver.addresses && gameserver.addresses.length" class="gameserver-header__connect-button">
             <CopyClipboard
               v-if="gameserver.addresses.length === 1"
               :text="`${gameserver.addresses[0]}${gameserver.port ? `:${gameserver.port}` : ''}`"
@@ -85,14 +85,14 @@ defineProps<Props>()
     <Flex y-start x-between gap="l" expand>
       <Flex column gap="xs" expand>
         <!-- Description -->
-        <p v-if="gameserver.description" class="gameserver-description">
+        <p v-if="gameserver.description" class="gameserver-header__description">
           {{ gameserver.description }}
         </p>
 
         <!-- Quick info badges and status -->
-        <div class="info-section">
-          <Flex gap="m" wrap class="badges-section">
-            <Badge v-if="game" variant="accent" size="l">
+        <div class="gameserver-header__info-section">
+          <Flex gap="m" wrap class="gameserver-header__badges-section">
+            <Badge v-if="game" variant="neutral" size="l">
               <Icon name="ph:game-controller" />
               {{ game.name }}
             </Badge>
@@ -103,27 +103,27 @@ defineProps<Props>()
           </Flex>
 
           <!-- Status Information -->
-          <div v-if="container" class="status-info">
+          <div v-if="container" class="gameserver-header__status-info">
             <Flex gap="m" wrap>
-              <div class="status-item">
-                <span class="status-label">Running</span>
+              <div class="gameserver-header__status-item">
+                <span class="gameserver-header__status-label">Running</span>
                 <Badge :variant="container.running ? 'success' : 'danger'" size="s">
                   <Icon :name="container.running ? 'ph:check' : 'ph:x'" />
                   {{ container.running ? 'Yes' : 'No' }}
                 </Badge>
               </div>
 
-              <div v-if="container.healthy !== null" class="status-item">
-                <span class="status-label">Healthy</span>
+              <div v-if="container.healthy !== null" class="gameserver-header__status-item">
+                <span class="gameserver-header__status-label">Healthy</span>
                 <Badge :variant="container.healthy ? 'success' : 'warning'" size="s">
                   <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
                   {{ container.healthy ? 'Yes' : 'No' }}
                 </Badge>
               </div>
 
-              <div class="status-item">
-                <span class="status-label">Last Reported</span>
-                <span class="status-value">
+              <div class="gameserver-header__status-item">
+                <span class="gameserver-header__status-label">Last Reported</span>
+                <span class="gameserver-header__status-value">
                   <TimestampDate small :date="container.reported_at" />
                 </span>
               </div>
@@ -136,155 +136,131 @@ defineProps<Props>()
 </template>
 
 <style lang="scss" scoped>
-.gameserver-title {
-  font-size: var(--font-size-xxxl);
-  font-weight: 700;
-  margin: 0;
-  line-height: 1.2;
-}
+.gameserver-header {
+  &__title {
+    font-size: var(--font-size-xxxl);
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+  }
 
-.gameserver-description {
-  font-size: var(--font-size-l);
-  color: var(--color-text-muted);
-  line-height: 1.5;
-}
+  &__description {
+    font-size: var(--font-size-l);
+    color: var(--color-text-muted);
+    line-height: 1.5;
+  }
 
-.title-row {
-  margin-bottom: var(--space-s);
-}
+  &__title-row {
+    margin-bottom: var(--space-s);
+  }
 
-.title-section {
-  flex: 1;
-}
+  &__title-section {
+    flex: 1;
+  }
 
-.connect-section {
-  flex-shrink: 0;
-}
+  &__connect-section {
+    flex-shrink: 0;
+  }
 
-.connect-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-s);
-}
+  &__connect-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-s);
+  }
 
-.administrator-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-xs);
+  &__administrator-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-xs);
+  }
 
-  .administrator-label {
+  &__administrator-label {
     font-size: var(--font-size-xs);
     font-weight: 600;
     color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
-}
 
-.info-section {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-m);
-}
+  &__info-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-m);
+  }
 
-.badges-section {
-  margin-bottom: var(--space-s);
-}
+  &__badges-section {
+    margin-bottom: var(--space-s);
+  }
 
-.status-info {
-  padding-top: var(--space-m);
-  border-top: 1px solid var(--color-border);
+  &__status-info {
+    padding-top: var(--space-m);
+    border-top: 1px solid var(--color-border);
+  }
 
-  .status-item {
+  &__status-item {
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
     align-items: flex-start;
+  }
 
-    .status-label {
-      font-size: var(--font-size-xs);
-      font-weight: 600;
-      color: var(--color-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+  &__status-label {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__status-value {
+    font-size: var(--font-size-s);
+    color: var(--color-text);
+    font-weight: 500;
+  }
+
+  &__back-link {
+    text-decoration: none;
+  }
+
+  @media (max-width: 768px) {
+    &__title {
+      font-size: var(--font-size-xxl);
     }
 
-    .status-value {
-      font-size: var(--font-size-s);
-      color: var(--color-text);
-      font-weight: 500;
+    &__description {
+      font-size: var(--font-size-m);
     }
-  }
-}
 
-.status-indicator-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.status-badge {
-  margin-top: var(--space-xs);
-}
-
-.status-tooltip {
-  font-size: var(--font-size-s);
-  line-height: 1.4;
-}
-
-.back-link {
-  text-decoration: none;
-}
-
-@media (max-width: 768px) {
-  .gameserver-title {
-    font-size: var(--font-size-xxl);
-  }
-
-  .gameserver-description {
-    font-size: var(--font-size-m);
-  }
-
-  .title-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-m);
-  }
-
-  .connect-section {
-    align-self: stretch;
-
-    .connect-actions {
+    &__title-row {
+      flex-direction: column;
       align-items: stretch;
+      gap: var(--space-m);
+    }
 
-      .administrator-info {
-        align-items: flex-start;
-      }
+    &__connect-section {
+      align-self: stretch;
+    }
+
+    &__connect-actions {
+      align-items: stretch;
+    }
+
+    &__administrator-info {
+      align-items: flex-start;
+    }
+
+    &__status-label {
+      font-size: var(--font-size-xs);
     }
   }
 
-  .status-info {
-    .status-item {
-      .status-label {
-        font-size: var(--font-size-xs);
-      }
+  @media (max-width: 480px) {
+    &__title {
+      font-size: var(--font-size-xl);
     }
-  }
-}
-
-@media (max-width: 480px) {
-  .status-indicator-wrapper {
-    .status-indicator {
-      width: 32px;
-      height: 32px;
-    }
-  }
-
-  .gameserver-title {
-    font-size: var(--font-size-xl);
   }
 }
 </style>

@@ -59,7 +59,7 @@ async function signInWithOtp() {
         </Flex>
       </div>
       <template #footer>
-        <div class="sign-up-footer">
+        <div class="sign-up__footer">
           <p>
             By signing up, you agree to our <NuxtLink to="/legal/terms">
               Terms of Service
@@ -68,7 +68,7 @@ async function signInWithOtp() {
             </NuxtLink>.
           </p>
           <NuxtLink to="/auth/sign-in">
-            <Button variant="link" class="sign-up-footer-link">
+            <Button variant="link" class="sign-up__footer-link">
               Already have an account? Click to sign in!
             </Button>
           </NuxtLink>
@@ -79,15 +79,18 @@ async function signInWithOtp() {
 </template>
 
 <style lang="scss" scoped>
-.sign-up-footer {
-  padding: 1rem;
-  text-align: center;
-  color: var(--color-text-light);
-}
-.sign-up-footer p {
-  font-size: 1rem;
-  margin: 0;
-  padding: 0;
+.sign-up {
+  &__footer {
+    padding: 1rem;
+    text-align: center;
+    color: var(--color-text-light);
+
+    p {
+      font-size: 1rem;
+      margin: 0;
+      padding: 0;
+    }
+  }
 }
 
 .sign-up-footer-link {

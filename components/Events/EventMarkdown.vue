@@ -11,9 +11,9 @@ defineProps<Props>()
 
 <template>
   <!-- Event Details -->
-  <Card v-if="event.markdown" class="event-details">
+  <Card v-if="event.markdown" class="event-markdown">
     <Flex column gap="l">
-      <h3 class="section-title">
+      <h3 class="event-markdown__title">
         <Icon name="ph:article" />
         Event Details
       </h3>
@@ -21,28 +21,30 @@ defineProps<Props>()
         <template #fallback>
           <Skeleton height="50rem" />
         </template>
-        <MDC :partial="true" class="event-markdown-content typeset" :value="event.markdown" />
+        <MDC :partial="true" class="event-markdown__content typeset" :value="event.markdown" />
       </Suspense>
     </Flex>
   </Card>
 </template>
 
 <style lang="scss" scoped>
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  margin: 0;
-  color: var(--color-text);
+.event-markdown {
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text);
 
-  svg {
-    color: var(--color-accent);
+    svg {
+      color: var(--color-accent);
+    }
   }
-}
 
-.event-markdown-content {
-  line-height: 1.6;
+  &__content {
+    line-height: 1.6;
+  }
 }
 </style>

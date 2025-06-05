@@ -40,64 +40,64 @@ const timeProgressPercentage = computed(() => {
 
 <template>
   <!-- Loading state with skeletons -->
-  <Flex v-if="!countdown" expand class="countdown countdown-loading">
-    <Flex gap="s" class="countdown-grid" expand>
-      <Flex column y-center x-center class="countdown-item" expand>
-        <div class="countdown-number-wrapper">
+  <Flex v-if="!countdown" expand class="countdown-timer countdown-timer--loading">
+    <Flex gap="s" class="countdown-timer__grid" expand>
+      <Flex column y-center x-center class="countdown-timer__item" expand>
+        <div class="countdown-timer__number-wrapper">
           <Skeleton height="3rem" width="3.5rem" />
         </div>
       </Flex>
-      <Flex column y-center x-center class="countdown-item" expand>
-        <div class="countdown-number-wrapper">
+      <Flex column y-center x-center class="countdown-timer__item" expand>
+        <div class="countdown-timer__number-wrapper">
           <Skeleton height="3rem" width="3.5rem" />
         </div>
       </Flex>
-      <Flex column y-center x-center class="countdown-item" expand>
-        <div class="countdown-number-wrapper">
+      <Flex column y-center x-center class="countdown-timer__item" expand>
+        <div class="countdown-timer__number-wrapper">
           <Skeleton height="3rem" width="3.5rem" />
         </div>
       </Flex>
-      <Flex column y-center x-center class="countdown-item" expand>
-        <div class="countdown-number-wrapper">
+      <Flex column y-center x-center class="countdown-timer__item" expand>
+        <div class="countdown-timer__number-wrapper">
           <Skeleton height="3rem" width="3.5rem" />
         </div>
       </Flex>
     </Flex>
   </Flex>  <!-- Actual countdown when data is available -->
-  <Flex v-else expand class="countdown" :class="{ 'countdown-ongoing': isOngoing }" :style="{ '--time-progress': `${timeProgressPercentage}%` }">
+  <Flex v-else expand class="countdown-timer" :class="{ 'countdown-timer--ongoing': isOngoing }" :style="{ '--time-progress': `${timeProgressPercentage}%` }">
     <!-- Border animation - only show when imminent -->
-    <div v-if="isImminent" class="countdown-border" />
+    <div v-if="isImminent" class="countdown-timer__border" />
 
     <!-- Show "NOW" when event is ongoing -->
-    <Flex v-if="isOngoing" y-center x-center class="countdown-now" expand>
-      <span class="now-text">NOW</span>
+    <Flex v-if="isOngoing" y-center x-center class="countdown-timer__now" expand>
+      <span class="countdown-timer__now-text">NOW</span>
     </Flex>
 
     <!-- Regular countdown grid -->
-    <Flex v-else gap="s" class="countdown-grid" expand>
-      <Flex column y-center x-center class="countdown-item" data-unit="days" expand>
-        <div class="countdown-number-wrapper">
-          <span :key="countdown.days" class="countdown-number">{{ countdown.days.toString().padStart(2, '0') }}</span>
+    <Flex v-else gap="s" class="countdown-timer__grid" expand>
+      <Flex column y-center x-center class="countdown-timer__item" data-unit="days" expand>
+        <div class="countdown-timer__number-wrapper">
+          <span :key="countdown.days" class="countdown-timer__number">{{ countdown.days.toString().padStart(2, '0') }}</span>
         </div>
-        <span class="countdown-label">days</span>
+        <span class="countdown-timer__label">days</span>
       </Flex>
-      <Flex column y-center x-center class="countdown-item" data-unit="hours" expand>
-        <div class="countdown-number-wrapper">
-          <span :key="countdown.hours" class="countdown-number">{{ countdown.hours.toString().padStart(2, '0') }}</span>
+      <Flex column y-center x-center class="countdown-timer__item" data-unit="hours" expand>
+        <div class="countdown-timer__number-wrapper">
+          <span :key="countdown.hours" class="countdown-timer__number">{{ countdown.hours.toString().padStart(2, '0') }}</span>
         </div>
-        <span class="countdown-label">hours</span>
+        <span class="countdown-timer__label">hours</span>
       </Flex>
-      <Flex column y-center x-center class="countdown-item" data-unit="minutes" expand>
-        <div class="countdown-number-wrapper">
-          <span :key="countdown.minutes" class="countdown-number">{{ countdown.minutes.toString().padStart(2, '0') }}</span>
+      <Flex column y-center x-center class="countdown-timer__item" data-unit="minutes" expand>
+        <div class="countdown-timer__number-wrapper">
+          <span :key="countdown.minutes" class="countdown-timer__number">{{ countdown.minutes.toString().padStart(2, '0') }}</span>
         </div>
-        <span class="countdown-label">minutes</span>
+        <span class="countdown-timer__label">minutes</span>
       </Flex>
-      <Flex column y-center x-center class="countdown-item" data-unit="seconds" expand>
-        <div class="countdown-number-wrapper">
-          <span :key="countdown.seconds" class="countdown-number">{{ countdown.seconds.toString().padStart(2, '0') }}</span>
+      <Flex column y-center x-center class="countdown-timer__item" data-unit="seconds" expand>
+        <div class="countdown-timer__number-wrapper">
+          <span :key="countdown.seconds" class="countdown-timer__number">{{ countdown.seconds.toString().padStart(2, '0') }}</span>
         </div>
-        <span class="countdown-label">seconds</span>
+        <span class="countdown-timer__label">seconds</span>
       </Flex>
     </Flex>
   </Flex>
@@ -106,7 +106,7 @@ const timeProgressPercentage = computed(() => {
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
 
-.countdown {
+.countdown-timer {
   position: relative;
   padding: var(--space-s);
   background: linear-gradient(135deg, var(--color-bg-subtle), var(--color-bg));
@@ -114,7 +114,7 @@ const timeProgressPercentage = computed(() => {
   border-radius: var(--border-radius-m);
   overflow: hidden;
 
-  .countdown-border {
+  &__border {
     position: absolute;
     top: 0;
     left: 0;
@@ -128,31 +128,46 @@ const timeProgressPercentage = computed(() => {
     pointer-events: none;
   }
 
-  &.countdown-ongoing {
+  &--ongoing {
     background: linear-gradient(135deg, var(--color-accent-muted), var(--color-bg));
   }
 
-  .countdown-now {
-    min-width: 356px;
-
-    .now-text {
-      width: 156px;
-      text-align: center;
-      font-size: 3rem;
-      line-height: 5.5rem;
-      font-weight: 900;
-      color: var(--color-accent);
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      text-shadow: 0 0 20px var(--color-accent);
+  &--loading {
+    .countdown-timer__item:hover {
+      transform: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
+  }
+
+  &__now {
+    min-width: 356px;
 
     @media (max-width: $breakpoint-sm) {
       min-width: auto;
     }
   }
 
-  .countdown-item {
+  &__now-text {
+    width: 156px;
+    text-align: center;
+    font-size: 3rem;
+    line-height: 5.5rem;
+    font-weight: 900;
+    color: var(--color-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    text-shadow: 0 0 20px var(--color-accent);
+
+    @media (max-width: $breakpoint-sm) {
+      font-size: 2rem;
+    }
+
+    @media (max-width: $breakpoint-xs) {
+      font-size: 1.5rem;
+    }
+  }
+
+  &__item {
     gap: 0 !important;
     position: relative;
     padding: var(--space-s);
@@ -168,33 +183,51 @@ const timeProgressPercentage = computed(() => {
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     }
 
-    .countdown-number-wrapper {
-      position: relative;
-      text-align: center;
+    @media (max-width: $breakpoint-sm) {
+      min-width: auto;
+      padding: var(--space-xs);
     }
 
-    .countdown-number {
-      font-size: var(--font-size-xl);
-      font-weight: 800;
-      color: var(--color-accent);
-      line-height: 1;
-      display: inline-block;
-      transition: all 0.3s ease;
-      animation: whiteFlash 0.6s ease-out;
-    }
-
-    .countdown-label {
-      font-size: var(--font-size-xxs);
-      color: var(--color-text-lightest) !important;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    @media (max-width: $breakpoint-xs) {
+      padding: 6px;
     }
   }
 
-  &.countdown-loading {
-    .countdown-item:hover {
-      transform: none;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  &__number-wrapper {
+    position: relative;
+    text-align: center;
+  }
+
+  &__number {
+    font-size: var(--font-size-xl);
+    font-weight: 800;
+    color: var(--color-accent);
+    line-height: 1;
+    display: inline-block;
+    transition: all 0.3s ease;
+    animation: whiteFlash 0.6s ease-out;
+
+    @media (max-width: $breakpoint-sm) {
+      font-size: var(--font-size-l);
+    }
+
+    @media (max-width: $breakpoint-xs) {
+      font-size: var(--font-size-m);
+    }
+  }
+
+  &__label {
+    font-size: var(--font-size-xxs);
+    color: var(--color-text-lightest) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    @media (max-width: $breakpoint-sm) {
+      font-size: 10px;
+    }
+
+    @media (max-width: $breakpoint-xs) {
+      font-size: 9px;
     }
   }
 }
@@ -209,51 +242,6 @@ const timeProgressPercentage = computed(() => {
   }
   100% {
     transform: scale(1);
-  }
-}
-
-@media (max-width: $breakpoint-sm) {
-  .countdown {
-    .countdown-item {
-      min-width: auto;
-      padding: var(--space-xs);
-
-      .countdown-number {
-        font-size: var(--font-size-l);
-      }
-
-      .countdown-label {
-        font-size: 10px;
-      }
-    }
-
-    .countdown-now {
-      .now-text {
-        font-size: 2rem;
-      }
-    }
-  }
-}
-
-@media (max-width: $breakpoint-xs) {
-  .countdown {
-    .countdown-item {
-      padding: 6px;
-
-      .countdown-number {
-        font-size: var(--font-size-m);
-      }
-
-      .countdown-label {
-        font-size: 9px;
-      }
-    }
-
-    .countdown-now {
-      .now-text {
-        font-size: 1.5rem;
-      }
-    }
   }
 }
 </style>

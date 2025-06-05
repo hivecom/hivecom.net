@@ -21,21 +21,21 @@ const isSameUser = computed(() => {
 
 <template>
   <Card class="metadata">
-    <div v-if="loading" class="loading-state">
-      <Skeleton class="skeleton-line" />
-      <Skeleton class="skeleton-line short" />
+    <div v-if="loading" class="metadata__loading">
+      <Skeleton class="metadata__skeleton-line" />
+      <Skeleton class="metadata__skeleton-line metadata__skeleton-line--short" />
     </div>
 
-    <div v-else class="metadata-content">
-      <div class="metadata-section">
-        <div class="timestamp-grid">
-          <div class="timestamp-item">
-            <span class="timestamp-label">Created</span>
-            <TimestampDate small :date="createdAt" format="MMM D, YYYY [at] HH:mm" class="timestamp-date" />
+    <div v-else class="metadata__content">
+      <div class="metadata__section">
+        <div class="metadata__timestamp-grid">
+          <div class="metadata__timestamp-item">
+            <span class="metadata__timestamp-label">Created</span>
+            <TimestampDate small :date="createdAt" format="MMM D, YYYY [at] HH:mm" class="metadata__timestamp-date" />
           </div>
-          <div v-if="modifiedAt" class="timestamp-item">
-            <span class="timestamp-label">Modified</span>
-            <TimestampDate small :date="modifiedAt" format="MMM D, YYYY [at] HH:mm" class="timestamp-date" />
+          <div v-if="modifiedAt" class="metadata__timestamp-item">
+            <span class="metadata__timestamp-label">Modified</span>
+            <TimestampDate small :date="modifiedAt" format="MMM D, YYYY [at] HH:mm" class="metadata__timestamp-date" />
           </div>
         </div>
 
@@ -56,51 +56,53 @@ const isSameUser = computed(() => {
   </Card>
 </template>
 
-<style lang="scss">
-.metadata-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-m);
-}
+<style lang="scss" scoped>
+.metadata {
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-m);
+  }
 
-.metadata-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-s);
-}
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-s);
+  }
 
-.timestamp-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-m);
-  margin-top: var(--space-xs);
-}
+  &__timestamp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-m);
+    margin-top: var(--space-xs);
+  }
 
-.timestamp-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xxs);
+  &__timestamp-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+  }
 
-  .timestamp-label {
+  &__timestamp-label {
     font-size: var(--font-size-xs);
     font-weight: 500;
     color: var(--color-text-lighter);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
-}
 
-.loading-state {
-  .skeleton-line {
-    height: 16px;
-    margin-bottom: var(--space-s);
+  &__loading {
+    .metadata__skeleton-line {
+      height: 16px;
+      margin-bottom: var(--space-s);
 
-    &.short {
-      width: 60%;
-    }
+      &--short {
+        width: 60%;
+      }
 
-    &:last-child {
-      margin-bottom: 0;
+      &:last-child {
+        margin-bottom: 0;
+      }
     }
   }
 }

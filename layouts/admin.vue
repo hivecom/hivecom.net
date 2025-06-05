@@ -83,12 +83,12 @@ const open = ref(true)
 
 <template>
   <!-- Show loading spinner while checking authorization -->
-  <div v-if="isLoading" class="loading-container">
+  <div v-if="isLoading" class="admin-layout__loading">
     <Spinner />
   </div>
 
   <!-- Show admin layout only if authorized -->
-  <div v-else-if="isAuthorized" class="vui-sidebar-layout">
+  <div v-else-if="isAuthorized" class="admin-layout vui-sidebar-layout">
     <ClientOnly>
       <Sidebar v-model="open" :mini="miniSidebar">
         <template #header>
@@ -156,11 +156,13 @@ const open = ref(true)
   margin-bottom: var(--space-m);
 }
 
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  width: 100vw;
+.admin-layout {
+  &__loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+  }
 }
 </style>
