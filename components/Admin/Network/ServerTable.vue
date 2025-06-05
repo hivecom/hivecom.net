@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 
+import type TableContainer from '~/components/Shared/TableContainer.vue'
 import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import ServerDetails from './ServerDetails.vue'
 
+import ServerDetails from './ServerDetails.vue'
 import ServerFilters from './ServerFilters.vue'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
@@ -166,37 +167,38 @@ onBeforeMount(fetchServers)
       @clear-filters="clearFilters"
     />
 
-    <!-- Properly structured table -->
-    <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
-      <template #header>
-        <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
-      </template>
+    <TableContainer>
+      <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
+        <template #header>
+          <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+        </template>
 
-      <template #body>
-        <tr v-for="server in rows" :key="server._original.id" class="clickable-row" @click="viewServer(server._original)">
-          <Table.Cell>{{ server.ID }}</Table.Cell>
-          <Table.Cell>{{ server.Address }}</Table.Cell>
-          <Table.Cell>
-            <ServerStatusIndicator :status="server.Status" show-label />
-          </Table.Cell>
-          <Table.Cell>{{ server['Docker Control'] ? 'Yes' : 'No' }}</Table.Cell>
-          <Table.Cell>
-            <TimestampDate :date="server.Created" />
-          </Table.Cell>
-        </tr>
-      </template>
+        <template #body>
+          <tr v-for="server in rows" :key="server._original.id" class="clickable-row" @click="viewServer(server._original)">
+            <Table.Cell>{{ server.ID }}</Table.Cell>
+            <Table.Cell>{{ server.Address }}</Table.Cell>
+            <Table.Cell>
+              <ServerStatusIndicator :status="server.Status" show-label />
+            </Table.Cell>
+            <Table.Cell>{{ server['Docker Control'] ? 'Yes' : 'No' }}</Table.Cell>
+            <Table.Cell>
+              <TimestampDate :date="server.Created" />
+            </Table.Cell>
+          </tr>
+        </template>
 
-      <template v-if="filteredData.length > 10" #pagination>
-        <Pagination :pagination="pagination" @change="setPage" />
-      </template>
-    </Table.Root>
+        <template v-if="filteredData.length > 10" #pagination>
+          <Pagination :pagination="pagination" @change="setPage" />
+        </template>
+      </Table.Root>
 
-    <!-- No results message -->
-    <Flex v-if="!loading && (!rows || rows.length === 0)" expand>
-      <Alert variant="info" class="w-100">
-        No servers found
-      </Alert>
-    </Flex>
+      <!-- No results message -->
+      <Flex v-if="!loading && (!rows || rows.length === 0)" expand>
+        <Alert variant="info" class="w-100">
+          No servers found
+        </Alert>
+      </Flex>
+    </TableContainer>
   </Flex>
 
   <!-- Server Detail Sheet -->

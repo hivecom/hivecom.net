@@ -4,6 +4,6 @@
 
 <template>
   <div>
-    <h3>Expenses</h3>
+    <h3>Funding</h3>
   </div>
 </template>

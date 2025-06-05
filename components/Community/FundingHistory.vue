@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
 import { Alert, Badge, Card, defineTable, Flex, Grid, Table } from '@dolanske/vui'
+import TableContainer from '~/components/Shared/TableContainer.vue'
 
 interface Props {
   monthlyFunding: Tables<'monthly_funding'>[]
@@ -33,10 +34,8 @@ const availableYears = computed(() => {
 
 // Process historical data for display
 const historicalData = computed(() => {
-  let filteredData = props.monthlyFunding
-
   // Filter by year if selected
-  filteredData = props.monthlyFunding.filter((funding) => {
+  const filteredData = props.monthlyFunding.filter((funding) => {
     const year = new Date(`${funding.month}T00:00:00Z`).getFullYear()
     return year === selectedYear.value
   })
@@ -199,53 +198,55 @@ function getGrowthIndicator(growth: number | null) {
         <h3 class="text-bold mb-m">
           Previous Months
         </h3>
-        <Table.Root v-if="rows.length > 0" separate-cells class="mb-l">
-          <template #header>
-            <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" :header />
-          </template>
+        <TableContainer>
+          <Table.Root v-if="rows.length > 0" separate-cells class="mb-l table-container">
+            <template #header>
+              <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" :header />
+            </template>
 
-          <template #body>
-            <tr v-for="funding in rows" :key="funding._original.month">
-              <Table.Cell>
-                <span class="text-s text-bold">{{ funding.Month }}</span>
-              </Table.Cell>
-              <Table.Cell>
-                <Flex v-if="funding.Patreon > 0" gap="xxs" y-center>
-                  <span class="text-bold" style="font-size: var(--font-size-s) !important">{{ formatCurrency(funding.Patreon) }}</span>
-                  <span class="text-xs color-text-light ml-xs">({{ funding._original.supporterCount || 0 }})</span>
-                </Flex>
-                <span v-else class="text-xs color-text-light">-</span>
-              </Table.Cell>
-              <Table.Cell>
-                <Flex v-if="funding.Donations > 0" gap="xxs" y-center>
-                  <span class="text-bold" style="font-size: var(--font-size-s) !important">{{ formatCurrency(funding.Donations) }}</span>
-                  <span class="text-xs color-text-light ml-xs">({{ funding._original.donationCount || 0 }})</span>
-                </Flex>
-                <span v-else class="text-xs color-text-light">-</span>
-              </Table.Cell>
-              <Table.Cell>
-                <span class="text-s text-bold">{{ formatCurrency(funding['Monthly Total']) }}</span>
-              </Table.Cell>
-              <Table.Cell>
-                <Badge
-                  v-if="funding.Growth !== null"
-                  :variant="getGrowthIndicator(funding.Growth).variant"
-                  size="s"
-                >
-                  <Icon
-                    :name="getGrowthIndicator(funding.Growth).icon"
-                    size="0.8rem"
-                  />
-                  {{ getGrowthIndicator(funding.Growth).text }}
-                </Badge>
-                <span v-else class="text-xs color-text-light">-</span>
-              </Table.Cell>
-              <Table.Cell>
-                <span class="text-s text-bold">{{ formatCurrency(funding['Lifetime Total']) }}</span>
-              </Table.Cell>
-            </tr>
-          </template>
-        </Table.Root>
+            <template #body>
+              <tr v-for="funding in rows" :key="funding._original.month">
+                <Table.Cell>
+                  <span class="text-s text-bold">{{ funding.Month }}</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <Flex v-if="funding.Patreon > 0" gap="xxs" y-center>
+                    <span class="text-bold" style="font-size: var(--font-size-s) !important">{{ formatCurrency(funding.Patreon) }}</span>
+                    <span class="text-xs color-text-light ml-xs">({{ funding._original.supporterCount || 0 }})</span>
+                  </Flex>
+                  <span v-else class="text-xs color-text-light">-</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <Flex v-if="funding.Donations > 0" gap="xxs" y-center>
+                    <span class="text-bold" style="font-size: var(--font-size-s) !important">{{ formatCurrency(funding.Donations) }}</span>
+                    <span class="text-xs color-text-light ml-xs">({{ funding._original.donationCount || 0 }})</span>
+                  </Flex>
+                  <span v-else class="text-xs color-text-light">-</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <span class="text-s text-bold">{{ formatCurrency(funding['Monthly Total']) }}</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <Badge
+                    v-if="funding.Growth !== null"
+                    :variant="getGrowthIndicator(funding.Growth).variant"
+                    size="s"
+                  >
+                    <Icon
+                      :name="getGrowthIndicator(funding.Growth).icon"
+                      size="0.8rem"
+                    />
+                    {{ getGrowthIndicator(funding.Growth).text }}
+                  </Badge>
+                  <span v-else class="text-xs color-text-light">-</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <span class="text-s text-bold">{{ formatCurrency(funding['Lifetime Total']) }}</span>
+                </Table.Cell>
+              </tr>
+            </template>
+          </Table.Root>
+        </TableContainer>
       </div>
     </div>
 

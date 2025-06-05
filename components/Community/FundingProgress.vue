@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
 import { Badge, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
+import constants from '~/constants.json'
 
 // Data setup
 const supabase = useSupabaseClient()
 const loading = ref(true)
 const errorMessage = ref('')
+
+// Check if we're on the funding page
+const route = useRoute()
+const isOnFundingPage = computed(() => route.path === '/community/funding')
 
 // Funding data
 const currentFunding = ref<Tables<'monthly_funding'> | null>(null)
@@ -97,7 +102,8 @@ const statusMessage = computed(() => {
 
 <template>
   <div>
-    <NuxtLink to="/community/funding" class="funding-card-link">
+    <!-- Conditional wrapper: NuxtLink to funding page OR external link to Patreon -->
+    <NuxtLink v-if="!isOnFundingPage" to="/community/funding" class="funding-card-link">
       <Card :class="{ 'funding-progress__complete': fundingProgress.percentage >= 100 }">
         <!-- Loading state -->
         <template v-if="loading">
@@ -121,7 +127,7 @@ const statusMessage = computed(() => {
 
         <!-- Main content -->
         <template v-else>
-          <Flex y-center x-between class="mb-s">
+          <Flex y-center x-between class="mb-s funding-header">
             <Flex y-center gap="s">
               <h3 class="text-bold text-xxxl">
                 Monthly Funding
@@ -130,7 +136,7 @@ const statusMessage = computed(() => {
                 {{ supporterCount }} supporters
               </Badge>
             </Flex>
-            <Flex y-center gap="s">
+            <Flex y-center gap="s" class="funding-amounts">
               <strong class="text-bold text-xxxl">{{ formatCurrency(fundingProgress.current) }}</strong>
               <span class="color-text-light text-xxxl">/</span>
               <strong class="color-text-light text-xxxl">{{ formatCurrency(fundingProgress.goal) }}</strong>
@@ -167,12 +173,103 @@ const statusMessage = computed(() => {
         </template>
       </Card>
     </NuxtLink>
+
+    <!-- When on funding page, link to Patreon instead -->
+    <a v-else :href="constants.PATREON.URL" target="_blank" rel="noopener noreferrer" class="funding-card-link">
+      <Card :class="{ 'funding-progress__complete': fundingProgress.percentage >= 100 }">
+        <!-- Loading state -->
+        <template v-if="loading">
+          <Flex column gap="m">
+            <Skeleton :width="300" :height="32" :radius="4" />
+            <Skeleton :height="8" :radius="4" />
+            <Flex x-between y-center>
+              <Skeleton :width="200" :height="20" :radius="4" />
+              <Skeleton :width="120" :height="20" :radius="4" />
+            </Flex>
+          </Flex>
+        </template>
+
+        <!-- Error state -->
+        <template v-else-if="errorMessage">
+          <Flex y-center gap="s" class="color-error">
+            <Icon name="ph:warning" size="1.2rem" />
+            <span class="text-s">Unable to load funding data</span>
+          </Flex>
+        </template>
+
+        <!-- Main content -->
+        <template v-else>
+          <Flex y-center x-between class="mb-s funding-header">
+            <Flex y-center gap="s">
+              <h3 class="text-bold text-xxxl">
+                Monthly Funding
+              </h3>
+              <Badge v-if="supporterCount > 0" variant="accent">
+                {{ supporterCount }} supporters
+              </Badge>
+            </Flex>
+            <Flex y-center gap="s" class="funding-amounts">
+              <strong class="text-bold text-xxxl">{{ formatCurrency(fundingProgress.current) }}</strong>
+              <span class="color-text-light text-xxxl">/</span>
+              <strong class="color-text-light text-xxxl">{{ formatCurrency(fundingProgress.goal) }}</strong>
+            </Flex>
+          </Flex>
+
+          <Progress
+            class="mb-m"
+            :height="8"
+            :model-value="fundingProgress.percentage"
+          />
+
+          <!-- Funding vs Expenses Summary -->
+          <Flex x-between y-center class="mt-s">
+            <div>
+              <p
+                class="text-s" :class="{
+                  'color-success': balanceStatus === 'positive',
+                  'color-warning': balanceStatus === 'neutral',
+                  'color-error': balanceStatus === 'negative',
+                }"
+              >
+                {{ statusMessage }}
+              </p>
+            </div>
+
+            <div class="funding-cta">
+              <Badge variant="accent">
+                <Icon name="ph:heart" size="1.4rem" />
+                Support Us
+              </Badge>
+            </div>
+          </Flex>
+        </template>
+      </Card>
+    </a>
   </div>
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .funding-progress__complete {
   border: 1px solid var(--color-accent);
+}
+
+// Responsive text sizing
+@media screen and (max-width: $breakpoint-sm) {
+  .text-xxxl {
+    font-size: var(--text-size-xl) !important;
+  }
+
+  .funding-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: var(--space-s) !important;
+  }
+
+  .funding-amounts {
+    align-self: flex-end;
+  }
 }
 
 .funding-card-link {

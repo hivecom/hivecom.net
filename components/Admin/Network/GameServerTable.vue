@@ -6,6 +6,7 @@ import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/v
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
+import TableContainer from '~/components/Shared/TableContainer.vue'
 import GameserverDetails from './GameServerDetails.vue'
 import GameserverFilters from './GameServerFilters.vue'
 import GameserverForm from './GameServerForm.vue'
@@ -281,9 +282,10 @@ onBeforeMount(fetchGameservers)
 </script>
 
 <template>
-  <!-- Error message -->    <Alert v-if="errorMessage" variant="danger">
-                              {{ errorMessage }}
-                            </Alert>
+  <!-- Error message -->
+  <Alert v-if="errorMessage" variant="danger">
+    {{ errorMessage }}
+  </Alert>
 
   <!-- Loading state -->
   <Alert v-else-if="loading" variant="info">
@@ -310,36 +312,37 @@ onBeforeMount(fetchGameservers)
       </Button>
     </Flex>
 
-    <!-- Properly structured table -->
-    <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
-      <template #header>
-        <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
-        <Table.Head key="actions" :header="{ label: 'Actions', sortToggle: () => {} }" />
-      </template>
+    <TableContainer>
+      <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
+        <template #header>
+          <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head key="actions" :header="{ label: 'Actions', sortToggle: () => {} }" />
+        </template>
 
-      <template #body>
-        <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row" @click="viewGameserver(gameserver._original as QueryGameserver)">
-          <Table.Cell>{{ gameserver.ID }}</Table.Cell>
-          <Table.Cell>{{ gameserver.Name }}</Table.Cell>
-          <Table.Cell>{{ gameserver.Game }}</Table.Cell>
-          <Table.Cell>
-            <RegionIndicator :region="gameserver._original.region" show-label />
-          </Table.Cell>
-          <Table.Cell>
-            <TimestampDate :date="gameserver.Created" />
-          </Table.Cell>
-          <Table.Cell @click.stop>
-            <Flex gap="xs">
-              <Button small icon="ph:pencil" @click="(event) => openEditGameserverForm(gameserver._original as QueryGameserver, event)" />
-            </Flex>
-          </Table.Cell>
-        </tr>
-      </template>
+        <template #body>
+          <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row" @click="viewGameserver(gameserver._original as QueryGameserver)">
+            <Table.Cell>{{ gameserver.ID }}</Table.Cell>
+            <Table.Cell>{{ gameserver.Name }}</Table.Cell>
+            <Table.Cell>{{ gameserver.Game }}</Table.Cell>
+            <Table.Cell>
+              <RegionIndicator :region="gameserver._original.region" show-label />
+            </Table.Cell>
+            <Table.Cell>
+              <TimestampDate :date="gameserver.Created" />
+            </Table.Cell>
+            <Table.Cell @click.stop>
+              <Flex gap="xs">
+                <Button small icon="ph:pencil" @click="(event) => openEditGameserverForm(gameserver._original as QueryGameserver, event)" />
+              </Flex>
+            </Table.Cell>
+          </tr>
+        </template>
 
-      <template v-if="filteredData.length > 10" #pagination>
-        <Pagination :pagination="pagination" @change="setPage" />
-      </template>
-    </Table.Root>
+        <template v-if="filteredData.length > 10" #pagination>
+          <Pagination :pagination="pagination" @change="setPage" />
+        </template>
+      </Table.Root>
+    </TableContainer>
 
     <!-- No results message -->
     <Flex v-if="!loading && (!rows || rows.length === 0)" expand>

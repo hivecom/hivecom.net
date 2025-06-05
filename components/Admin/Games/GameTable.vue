@@ -3,6 +3,7 @@ import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dol
 import { computed, onBeforeMount, ref } from 'vue'
 
 import SteamLink from '@/components/Shared/SteamLink.vue'
+import TableContainer from '~/components/Shared/TableContainer.vue'
 import GameDetails from './GameDetails.vue'
 import GameFilters from './GameFilters.vue'
 import GameForm from './GameForm.vue'
@@ -242,43 +243,45 @@ onBeforeMount(fetchGames)
     </Flex>
 
     <!-- Table -->
-    <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
-      <template #header>
-        <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
-        <Table.Head key="actions" :header="{ label: 'Actions', sortToggle: () => {} }" />
-      </template>
+    <TableContainer>
+      <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
+        <template #header>
+          <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head key="actions" :header="{ label: 'Actions', sortToggle: () => {} }" />
+        </template>
 
-      <template #body>
-        <tr v-for="game in rows" :key="game._original.id" class="clickable-row" @click="viewGameDetails(game._original)">
-          <Table.Cell>{{ game.Name }}</Table.Cell>
-          <Table.Cell>
-            <Badge v-if="game.Shorthand" variant="accent">
-              {{ game.Shorthand }}
-            </Badge>
-            <span v-else>-</span>
-          </Table.Cell>
-          <Table.Cell @click.stop>
-            <SteamLink :steam-id="game['Steam ID']" size="small" />
-          </Table.Cell>
-          <Table.Cell @click.stop>
-            <Flex gap="xs">
-              <Button small icon="ph:pencil" @click="(event) => openEditGameForm(game._original, event)">
-                Edit
-              </Button>
-            </Flex>
-          </Table.Cell>
-        </tr>
-      </template>
+        <template #body>
+          <tr v-for="game in rows" :key="game._original.id" class="clickable-row" @click="viewGameDetails(game._original)">
+            <Table.Cell>{{ game.Name }}</Table.Cell>
+            <Table.Cell>
+              <Badge v-if="game.Shorthand" variant="accent">
+                {{ game.Shorthand }}
+              </Badge>
+              <span v-else>-</span>
+            </Table.Cell>
+            <Table.Cell @click.stop>
+              <SteamLink :steam-id="game['Steam ID']" size="small" />
+            </Table.Cell>
+            <Table.Cell @click.stop>
+              <Flex gap="xs">
+                <Button small icon="ph:pencil" @click="(event) => openEditGameForm(game._original, event)">
+                  Edit
+                </Button>
+              </Flex>
+            </Table.Cell>
+          </tr>
+        </template>
 
-      <template v-if="transformedGames.length > 10" #pagination>
-        <Pagination :pagination="pagination" @change="setPage" />
-      </template>
-    </Table.Root>
+        <template v-if="transformedGames.length > 10" #pagination>
+          <Pagination :pagination="pagination" @change="setPage" />
+        </template>
+      </Table.Root>
 
-    <!-- No results message -->
-    <Alert v-else-if="!loading" variant="info">
-      No games found
-    </Alert>
+      <!-- No results message -->
+      <Alert v-else-if="!loading" variant="info">
+        No games found
+      </Alert>
+    </TableContainer>
 
     <!-- Game Detail Sheet -->
     <GameDetails

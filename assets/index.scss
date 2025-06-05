@@ -73,6 +73,12 @@ button {
   }
 }
 
+@media (max-width: $breakpoint-sm) {
+  .vui-table-container {
+    width: auto !important;
+  }
+}
+
 @include meta.load-css('./utilities.scss');
 
 @include meta.load-css('./elements/auth.scss');

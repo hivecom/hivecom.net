@@ -510,6 +510,11 @@ h4 {
   &__list {
     margin: 2rem auto 0;
     max-width: 900px;
+    text-align: left;
+
+    @media screen and (max-width: $breakpoint-sm) {
+      grid-template-columns: 1fr !important;
+    }
   }
 
   &__error,

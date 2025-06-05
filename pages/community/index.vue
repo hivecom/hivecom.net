@@ -31,7 +31,7 @@ import SupportCTA from '~/components/Community/SupportCTA.vue'
               </Flex>
 
               <p class="about-description">
-                Hivecom is a passionate community of developers, gamers, and tech enthusiasts who love building and sharing projects together. We host game servers, develop open-source tools, and create a welcoming space for collaboration.
+                Hivecom is a passionate community of developers, gamers, and friends who love building and sharing projects together. We host game servers, develop open-source tools, and create a welcoming space for collaboration.
               </p>
 
               <Flex expand column gap="xxs">
@@ -108,7 +108,7 @@ import SupportCTA from '~/components/Community/SupportCTA.vue'
                         Community Events
                       </div>
                       <div class="community-link__subtitle">
-                        Join our regular events and competitions
+                        Join our community events and online gatherings
                       </div>
                     </div>
                     <div class="community-link__arrow">
@@ -156,9 +156,15 @@ import SupportCTA from '~/components/Community/SupportCTA.vue'
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 // Grid container for equal heights
 .community-grid {
   align-items: stretch; // Ensure all grid items stretch to the same height
+
+  @media screen and (max-width: $breakpoint-sm) {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 // About Card Styling

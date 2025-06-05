@@ -123,7 +123,7 @@ defineProps<Props>()
   &__title-row {
     align-items: flex-start;
 
-    @media screen and (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-sm) {
       align-items: center;
       flex-direction: column-reverse !important;
       gap: var(--space-m);

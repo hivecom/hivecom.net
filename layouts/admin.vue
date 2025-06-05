@@ -69,12 +69,12 @@ watch(user, async (newUser) => {
 
 const menuItems = [
   { name: 'Dashboard', path: '/admin/', icon: 'ph:squares-four' },
-  { name: 'Users', path: '/admin/users', icon: 'ph:user' },
-  { name: 'Expenses', path: '/admin/expenses', icon: 'ph:coins' },
   { name: 'Events', path: '/admin/events', icon: 'ph:calendar-blank' },
+  { name: 'Funding', path: '/admin/funding', icon: 'ph:coins' },
   { name: 'Games', path: '/admin/games', icon: 'ph:game-controller' },
   { name: 'Network', path: '/admin/network', icon: 'ph:computer-tower' },
   { name: 'Referendums', path: '/admin/referendums', icon: 'ph:user-sound' },
+  { name: 'Users', path: '/admin/users', icon: 'ph:user' },
 ]
 
 const miniSidebar = useLocalStorage('admin-sidebar-open', false)

@@ -63,17 +63,19 @@ const { headers, rows } = defineTable(modelledUsers)
     {{ errorMessage }}
   </Alert>
 
-  <Table.Root v-if="rows.length > 0" :loading>
-    <template #header>
-      <Table.Head v-for="header in headers" :key="header.label" :header sort />
-    </template>
+  <TableContainer v-if="rows.length > 0">
+    <Table.Root :loading>
+      <template #header>
+        <Table.Head v-for="header in headers" :key="header.label" :header sort />
+      </template>
 
-    <template #body>
-      <tr v-for="game in rows" :key="game.Name">
-        <Table.Cell>{{ game.Name }}</Table.Cell>
-        <Table.Cell>{{ game.Supporter ? 'Yes' : 'No' }}</Table.Cell>
-        <Table.Cell>{{ game.Created }}</Table.Cell>
-      </tr>
-    </template>
-  </Table.Root>
+      <template #body>
+        <tr v-for="game in rows" :key="game.Name">
+          <Table.Cell>{{ game.Name }}</Table.Cell>
+          <Table.Cell>{{ game.Supporter ? 'Yes' : 'No' }}</Table.Cell>
+          <Table.Cell>{{ game.Created }}</Table.Cell>
+        </tr>
+      </template>
+    </Table.Root>
+  </TableContainer>
 </template>

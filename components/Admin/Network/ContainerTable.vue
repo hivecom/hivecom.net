@@ -7,6 +7,7 @@ import { computed, ref, watch } from 'vue'
 
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { getContainerStatus } from '@/utils/containerStatus'
+import TableContainer from '~/components/Shared/TableContainer.vue'
 import ContainerActions from './ContainerActions.vue'
 import ContainerDetails from './ContainerDetails.vue'
 import ContainerFilters from './ContainerFilters.vue'
@@ -125,14 +126,13 @@ const filteredData = computed<TransformedContainer[]>(() => {
     }
 
     // Filter by server
-    if (serverFilter.value && item.server) {
+    if (serverFilter.value) {
       const serverFilterValue = serverFilter.value[0].value
-      if (item.server.address !== serverFilterValue) {
+      const serverAddress = item.server?.address || 'Unknown'
+
+      if (serverAddress !== serverFilterValue) {
         return false
       }
-    }
-    else if (serverFilter.value && serverFilter.value[0].value === 'Unknown' && item.server) {
-      return false
     }
 
     // Filter by status
@@ -438,43 +438,44 @@ onBeforeMount(fetchContainers)
       @clear-filters="clearFilters"
     />
 
-    <!-- Properly structured table -->
-    <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
-      <template #header>
-        <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
-        <Table.Head key="actions" :header="{ label: 'actions', sortToggle: () => {} }" />
-      </template>
+    <TableContainer>
+      <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
+        <template #header>
+          <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head key="actions" :header="{ label: 'actions', sortToggle: () => {} }" />
+        </template>
 
-      <template #body>
-        <tr v-for="container in rows" :key="container._original.name" class="clickable-row" @click="viewContainer(container._original)">
-          <Table.Cell>{{ container.Name }}</Table.Cell>
-          <Table.Cell>{{ container.Server }}</Table.Cell>
-          <Table.Cell>
-            <ContainerStatusIndicator :status="container.Status" show-label />
-          </Table.Cell>
-          <Table.Cell>
-            <TimestampDate v-if="container.Started" :date="container.Started" />
-            <span v-else>Not started</span>
-          </Table.Cell>
-          <Table.Cell>
-            <TimestampDate :date="container['Last Report']" />
-          </Table.Cell>
-          <td>
-            <ContainerActions
-              v-model="containerAction"
-              :container="container._original"
-              :status="container.Status"
-              :is-loading="(action) => isActionLoading(container._original.name, action)"
-              @click.stop
-            />
-          </td>
-        </tr>
-      </template>
+        <template #body>
+          <tr v-for="container in rows" :key="container._original.name" class="clickable-row" @click="viewContainer(container._original)">
+            <Table.Cell>{{ container.Name }}</Table.Cell>
+            <Table.Cell>{{ container.Server }}</Table.Cell>
+            <Table.Cell>
+              <ContainerStatusIndicator :status="container.Status" show-label />
+            </Table.Cell>
+            <Table.Cell>
+              <TimestampDate v-if="container.Started" :date="container.Started" />
+              <span v-else>Not started</span>
+            </Table.Cell>
+            <Table.Cell>
+              <TimestampDate :date="container['Last Report']" />
+            </Table.Cell>
+            <td>
+              <ContainerActions
+                v-model="containerAction"
+                :container="container._original"
+                :status="container.Status"
+                :is-loading="(action) => isActionLoading(container._original.name, action)"
+                @click.stop
+              />
+            </td>
+          </tr>
+        </template>
 
-      <template v-if="filteredData.length > 10" #pagination>
-        <Pagination :pagination="pagination" @change="setPage" />
-      </template>
-    </Table.Root>
+        <template v-if="filteredData.length > 10" #pagination>
+          <Pagination :pagination="pagination" @change="setPage" />
+        </template>
+      </Table.Root>
+    </TableContainer>
 
     <!-- No results message -->
     <Flex v-if="!loading && (!rows || rows.length === 0)" expand>

@@ -4,6 +4,7 @@ import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dol
 import { computed, onBeforeMount, ref } from 'vue'
 
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import TableContainer from '~/components/Shared/TableContainer.vue'
 import EventDetails from './EventDetails.vue'
 import EventFilters from './EventFilters.vue'
 import EventForm from './EventForm.vue'
@@ -237,49 +238,51 @@ onBeforeMount(fetchEvents)
     </Flex>
 
     <!-- Table -->
-    <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
-      <template #header>
-        <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
-        <Table.Head key="status" :header="{ label: 'Status', sortToggle: () => {} }" />
-        <Table.Head key="actions" :header="{ label: 'Actions', sortToggle: () => {} }" />
-      </template>
+    <TableContainer>
+      <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
+        <template #header>
+          <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head key="status" :header="{ label: 'Status', sortToggle: () => {} }" />
+          <Table.Head key="actions" :header="{ label: 'Actions', sortToggle: () => {} }" />
+        </template>
 
-      <template #body>
-        <tr v-for="event in rows" :key="event._original.id" class="clickable-row" @click="viewEventDetails(event._original)">
-          <Table.Cell>{{ event.Title }}</Table.Cell>
-          <Table.Cell>
-            <TimestampDate :date="event.Date" />
-          </Table.Cell>
-          <Table.Cell>
-            <Badge v-if="event.Location" variant="neutral">
-              {{ event.Location }}
-            </Badge>
-            <span v-else>-</span>
-          </Table.Cell>
-          <Table.Cell @click.stop>
-            <Badge :variant="getEventStatus(event._original).variant">
-              {{ getEventStatus(event._original).label }}
-            </Badge>
-          </Table.Cell>
-          <Table.Cell @click.stop>
-            <Flex gap="xs">
-              <Button small icon="ph:pencil" @click="(clickEvent: MouseEvent) => openEditEventForm(event._original, clickEvent)">
-                Edit
-              </Button>
-            </Flex>
-          </Table.Cell>
-        </tr>
-      </template>
+        <template #body>
+          <tr v-for="event in rows" :key="event._original.id" class="clickable-row" @click="viewEventDetails(event._original)">
+            <Table.Cell>{{ event.Title }}</Table.Cell>
+            <Table.Cell>
+              <TimestampDate :date="event.Date" />
+            </Table.Cell>
+            <Table.Cell>
+              <Badge v-if="event.Location" variant="neutral">
+                {{ event.Location }}
+              </Badge>
+              <span v-else>-</span>
+            </Table.Cell>
+            <Table.Cell @click.stop>
+              <Badge :variant="getEventStatus(event._original).variant">
+                {{ getEventStatus(event._original).label }}
+              </Badge>
+            </Table.Cell>
+            <Table.Cell @click.stop>
+              <Flex gap="xs">
+                <Button small icon="ph:pencil" @click="(clickEvent: MouseEvent) => openEditEventForm(event._original, clickEvent)">
+                  Edit
+                </Button>
+              </Flex>
+            </Table.Cell>
+          </tr>
+        </template>
 
-      <template v-if="transformedEvents.length > 10" #pagination>
-        <Pagination :pagination="pagination" @change="setPage" />
-      </template>
-    </Table.Root>
+        <template v-if="transformedEvents.length > 10" #pagination>
+          <Pagination :pagination="pagination" @change="setPage" />
+        </template>
+      </Table.Root>
 
-    <!-- No results message -->
-    <Alert v-else-if="!loading" variant="info">
-      No events found
-    </Alert>
+      <!-- No results message -->
+      <Alert v-else-if="!loading" variant="info">
+        No events found
+      </Alert>
+    </TableContainer>
 
     <!-- Event Detail Sheet -->
     <EventDetails
