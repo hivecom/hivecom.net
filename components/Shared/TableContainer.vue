@@ -1,15 +1,13 @@
 <script setup lang="ts">
-interface Props {
-  class?: string
-}
+import { Flex } from '@dolanske/vui'
 
-defineProps<Props>()
+defineProps<{class?: string}>()
 </script>
 
 <template>
-  <div class="table-overflow" :class="$props.class">
+  <Flex :class="`table-overflow ${$props.class}`" expand>
     <slot />
-  </div>
+  </Flex>
 </template>
 
 <style scoped>

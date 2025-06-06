@@ -11,3 +11,11 @@ export const dateFormat = {
 export function formatDate(dateStr: string) {
   return dayjs(dateStr).format(dateFormat.default)
 }
+
+// Format month helper
+export function formatMonth(month: string): string {
+  return new Date(`${month}T00:00:00Z`).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
+}

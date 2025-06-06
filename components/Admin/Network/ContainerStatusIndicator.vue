@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Flex, Tooltip } from '@dolanske/vui'
-import { defineProps } from 'vue'
 
 defineProps<{
   status: 'running' | 'healthy' | 'unhealthy' | 'stopped' | 'stale' | 'unknown'

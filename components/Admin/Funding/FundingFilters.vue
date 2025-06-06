@@ -15,7 +15,7 @@ function clearFilters() {
     <!-- Search Input -->
     <Input
       v-model="search"
-      placeholder="Search games..."
+      placeholder="Search funding records..."
       class="search-input"
     >
       <template #start>

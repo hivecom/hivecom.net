@@ -28,7 +28,7 @@ function clearFilters() {
   <Flex gap="s" x-start wrap>
     <Input
       v-model="search"
-      placeholder="Search"
+      placeholder="Search containers..."
     >
       <template #start>
         <Icon name="ph:magnifying-glass" />

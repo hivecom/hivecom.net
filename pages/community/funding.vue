@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
 import { Alert, Badge, Card, Checkbox, Divider, Flex, Grid, Skeleton } from '@dolanske/vui'
+import ExpenseCard from '~/components/Community/ExpenseCard.vue'
 import FundingHistory from '~/components/Community/FundingHistory.vue'
 import FundingProgress from '~/components/Community/FundingProgress.vue'
 import SupportCTA from '~/components/Community/SupportCTA.vue'
+import { formatCurrency } from '~/utils/currency'
 
 // Data setup
 const supabase = useSupabaseClient()
@@ -52,11 +54,6 @@ onMounted(async () => {
   }
 })
 
-// Format currency helper
-function formatCurrency(cents: number): string {
-  return `€${(cents / 100).toFixed(0)}`
-}
-
 // Filtered expenses based on checkbox
 const filteredExpenses = computed(() => {
   if (showPastExpenses.value) {
@@ -66,16 +63,6 @@ const filteredExpenses = computed(() => {
     return expenses.value.filter(expense => !expense.ended_at)
   }
 })
-
-// Format date range helper
-function formatDateRange(startDate: string, endDate?: string | null): string {
-  const start = new Date(startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-  if (endDate) {
-    const end = new Date(endDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-    return `From ${start} to ${end}`
-  }
-  return `From ${start} to present`
-}
 </script>
 
 <template>
@@ -130,35 +117,11 @@ function formatDateRange(startDate: string, endDate?: string | null): string {
 
         <div v-if="expenses.length > 0">
           <Grid :columns="2" gap="l" class="expenses-grid">
-            <Card v-for="expense in filteredExpenses.slice(0, 6)" :key="expense.id">
-              <Flex column gap="s">
-                <!-- Header with name and amount -->
-                <Flex x-between y-center>
-                  <h4 class="text-bold">
-                    {{ expense.name || 'Unnamed Expense' }}
-                  </h4>
-                  <Badge :variant="!expense.ended_at ? 'success' : 'neutral'">
-                    {{ !expense.ended_at ? 'Active' : 'Ended' }}
-                  </Badge>
-                </Flex>
-
-                <!-- Amount -->
-                <div>
-                  <span class="text-l text-bold">{{ formatCurrency(expense.amount_cents) }}</span>
-                  <span class="color-text-light text-s">/month</span>
-                </div>
-
-                <!-- Description -->
-                <p v-if="expense.description" class="color-text-light text-s">
-                  {{ expense.description }}
-                </p>
-
-                <!-- Date info -->
-                <div class="text-xs color-text-light">
-                  {{ formatDateRange(expense.started_at, expense.ended_at) }}
-                </div>
-              </Flex>
-            </Card>
+            <ExpenseCard
+              v-for="expense in filteredExpenses.slice(0, 6)"
+              :key="expense.id"
+              :expense="expense"
+            />
           </Grid>
         </div>
 
@@ -189,12 +152,12 @@ function formatDateRange(startDate: string, endDate?: string | null): string {
 
 // Responsive grid for expenses
 .expenses-grid {
+  // Ensure cards stretch to fill grid height
+  align-items: stretch;
+
   @media screen and (max-width: $breakpoint-sm) {
     grid-template-columns: 1fr !important;
   }
-
-  // Ensure cards stretch to fill grid height
-  align-items: stretch;
 
   .vui-card {
     height: 100%;

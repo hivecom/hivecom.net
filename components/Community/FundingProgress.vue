@@ -2,6 +2,7 @@
 import type { Tables } from '~/types/database.types'
 import { Badge, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
 import constants from '~/constants.json'
+import { formatCurrency } from '~/utils/currency'
 
 // Data setup
 const supabase = useSupabaseClient()
@@ -32,11 +33,12 @@ onMounted(async () => {
 
     currentFunding.value = fundingData
 
-    // Fetch current active expenses to calculate goal
+    // Fetch current active expenses to calculate goal (started and not ended)
     const { data: expensesData, error: expensesError } = await supabase
       .from('expenses')
       .select('amount_cents')
       .is('ended_at', null) // Only active expenses
+      .lte('started_at', new Date().toISOString()) // Only expenses that have started
 
     if (expensesError)
       throw expensesError
@@ -68,11 +70,6 @@ const fundingProgress = computed(() => {
 const supporterCount = computed(() => {
   return currentFunding.value?.patreon_count || 0
 })
-
-// Format currency helper
-function formatCurrency(cents: number): string {
-  return `€${(cents / 100).toFixed(0)}`
-}
 
 // Calculate funding balance and status
 const fundingBalance = computed(() => {
