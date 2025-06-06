@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import { formatCurrency } from '~/utils/currency'
 
 const props = defineProps<{

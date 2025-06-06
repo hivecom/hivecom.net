@@ -242,8 +242,14 @@ onBeforeMount(fetchEvents)
       <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
           <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
-          <Table.Head key="status" :header="{ label: 'Status', sortToggle: () => {} }" />
-          <Table.Head key="actions" :header="{ label: 'Actions', sortToggle: () => {} }" />
+          <Table.Head
+            key="status" :header="{ label: 'Status',
+                                    sortToggle: () => {} }"
+          />
+          <Table.Head
+            key="actions" :header="{ label: 'Actions',
+                                     sortToggle: () => {} }"
+          />
         </template>
 
         <template #body>

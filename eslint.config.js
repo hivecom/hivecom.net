@@ -1,15 +1,16 @@
 import antfu from '@antfu/eslint-config'
-import pluginVue from 'eslint-plugin-vue'
 
 export default antfu({
   vue: true,
-  // Add the Vue recommended config
-  ...pluginVue.configs['flat/recommended'],
   // Global rules
   rules: {
     'unicorn/prefer-node-protocol': 'off',
     'node/prefer-global/process': 'off',
     'n/prefer-global/process': 'off',
+    // Override the problematic vue/object-property-newline rule
+    'vue/object-property-newline': ['error', {
+      allowAllPropertiesOnSameLine: false,
+    }],
   },
   ignores: [
     'package.json',

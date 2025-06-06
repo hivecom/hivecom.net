@@ -5,9 +5,9 @@ import { computed, onBeforeMount, ref } from 'vue'
 
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import TableContainer from '~/components/Shared/TableContainer.vue'
+import { formatCurrency } from '~/utils/currency'
 import FundingDetails from './FundingDetails.vue'
 import FundingFilters from './FundingFilters.vue'
-import { formatCurrency } from '~/utils/currency'
 
 // Monthly funding table type
 interface MonthlyFunding extends Tables<'monthly_funding'> {}
@@ -67,7 +67,7 @@ const transformedFundings = computed<TransformedFunding[]>(() => {
 })
 
 // Table configuration
-const { headers, rows, pagination, setPage, setSort } = defineTable(transformedFundings, {
+const { headers, rows, pagination, setPage } = defineTable(transformedFundings, {
   pagination: {
     enabled: true,
     perPage: 10,
@@ -145,14 +145,14 @@ onBeforeMount(fetchMonthlyFundings)
             <Table.Cell>
               <Badge v-if="funding['Patreon Amount'] !== '€0'" variant="success">
                 {{ funding['Patreon Amount'] }}
-                <span v-if="funding['_patronCount'] > 0" class="text-xs color-text-light ml-xs">({{ funding['_patronCount'] }})</span>
+                <span v-if="funding._patronCount > 0" class="text-xs color-text-light ml-xs">({{ funding._patronCount }})</span>
               </Badge>
               <span v-else class="color-text-light">-</span>
             </Table.Cell>
             <Table.Cell>
               <Badge v-if="funding['Donation Amount'] !== '€0'" variant="info">
                 {{ funding['Donation Amount'] }}
-                <span v-if="funding['_donationCount'] > 0" class="text-xs color-text-light ml-xs">({{ funding['_donationCount'] }})</span>
+                <span v-if="funding._donationCount > 0" class="text-xs color-text-light ml-xs">({{ funding._donationCount }})</span>
               </Badge>
               <span v-else class="color-text-light">-</span>
             </Table.Cell>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Alert, Badge, Card, Checkbox, Divider, Flex, Grid, Skeleton } from '@dolanske/vui'
+import { Alert, Checkbox, Divider, Flex, Grid, Skeleton } from '@dolanske/vui'
 import ExpenseCard from '~/components/Community/ExpenseCard.vue'
 import FundingHistory from '~/components/Community/FundingHistory.vue'
 import FundingProgress from '~/components/Community/FundingProgress.vue'

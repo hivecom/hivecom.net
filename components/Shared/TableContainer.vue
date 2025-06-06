@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
 
-defineProps<{class?: string}>()
+defineProps<{ class?: string }>()
 </script>
 
 <template>

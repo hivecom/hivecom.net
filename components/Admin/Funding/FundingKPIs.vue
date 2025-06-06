@@ -2,8 +2,8 @@
 import { Flex } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
-import KPICard from '../KPICard.vue'
 import { formatCurrency } from '~/utils/currency'
+import KPICard from '../KPICard.vue'
 
 const refreshSignal = defineModel<number>('refreshSignal')
 
@@ -61,7 +61,7 @@ async function fetchFundingMetrics() {
     }
 
     // Get total funding records count
-    const { count, error: countError } = await supabase
+    const { error: countError } = await supabase
       .from('monthly_funding')
       .select('*', { count: 'exact', head: true })
 
@@ -75,12 +75,10 @@ async function fetchFundingMetrics() {
       : 0
 
     const lifetimeFunding = allFundingData?.reduce((sum, record) =>
-      sum + (record.patreon_month_amount_cents || 0) + (record.donation_month_amount_cents || 0), 0
-    ) || 0
+      sum + (record.patreon_month_amount_cents || 0) + (record.donation_month_amount_cents || 0), 0) || 0
 
     const currentMonthExpenses = expensesData?.reduce((sum, expense) => sum + expense.amount_cents, 0) || 0
     const totalPatrons = currentFundingData?.patreon_count || 0
-    const totalRecords = count || 0
 
     metrics.value = {
       currentMonthFunding,
@@ -100,13 +98,6 @@ async function fetchFundingMetrics() {
 // Calculate funding balance
 const fundingBalance = computed(() => {
   return metrics.value.lifetimeFunding - metrics.value.currentMonthExpenses
-})
-
-// Calculate monthly surplus/deficit for expenses card
-const monthlySurplusDeficit = computed(() => {
-  const difference = metrics.value.currentMonthFunding - metrics.value.currentMonthExpenses
-  const sign = difference >= 0 ? '+' : ''
-  return `(${sign}${formatCurrency(difference)})`
 })
 
 // Watch for refresh signal from parent

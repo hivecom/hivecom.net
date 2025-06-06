@@ -41,9 +41,9 @@ const showDeleteConfirm = ref(false)
 
 // Form validation
 const validation = computed(() => {
-  const hasValidEndDate = !expenseForm.value.ended_at ||
-    !expenseForm.value.started_at ||
-    expenseForm.value.ended_at >= expenseForm.value.started_at
+  const hasValidEndDate = !expenseForm.value.ended_at
+    || !expenseForm.value.started_at
+    || expenseForm.value.ended_at >= expenseForm.value.started_at
 
   return {
     name: !!expenseForm.value.name.trim(),
@@ -57,7 +57,8 @@ const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
 // Check if this is a planned expense (start date in the future)
 const isPlannedExpense = computed(() => {
-  if (!expenseForm.value.started_at) return false
+  if (!expenseForm.value.started_at)
+    return false
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const startDate = new Date(expenseForm.value.started_at)

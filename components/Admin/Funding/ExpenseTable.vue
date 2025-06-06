@@ -4,10 +4,10 @@ import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dol
 import { computed, onBeforeMount, ref } from 'vue'
 
 import TableContainer from '~/components/Shared/TableContainer.vue'
+import { formatCurrency } from '~/utils/currency'
 import ExpenseDetails from './ExpenseDetails.vue'
 import ExpenseFilters from './ExpenseFilters.vue'
 import ExpenseForm from './ExpenseForm.vue'
-import { formatCurrency } from '~/utils/currency'
 
 // Expense table type
 type Expense = Tables<'expenses'>
@@ -282,7 +282,10 @@ onBeforeMount(fetchExpenses)
       <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
           <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
-          <Table.Head key="actions" :header="{ label: 'Actions', sortToggle: () => {} }" />
+          <Table.Head
+            key="actions" :header="{ label: 'Actions',
+                                     sortToggle: () => {} }"
+          />
         </template>
 
         <template #body>
