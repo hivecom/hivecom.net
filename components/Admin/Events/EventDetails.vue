@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Badge, Button, Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 
+import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '~/components/Shared/UserLink.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
@@ -138,12 +139,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
             <h6>Markdown</h6>
           </template>
 
-          <Suspense class="event-markdown" suspensible>
-            <template #fallback>
-              <Skeleton class="event-markdown-skeleton" height="320px" />
-            </template>
-            <MDC :partial="true" class="event-markdown-content typeset" value="# Test" />
-          </Suspense>
+          <MDRenderer :md="props.event.markdown" class="event-markdown-content" />
         </Card>
 
         <!-- Metadata -->

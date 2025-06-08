@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Badge, Button, Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '~/components/Shared/UserLink.vue'
@@ -101,12 +102,7 @@ function handleEdit() {
             <h6>Markdown</h6>
           </template>
 
-          <Suspense class="gameserver-details__markdown" suspensible>
-            <template #fallback>
-              <Skeleton class="gameserver-details__markdown-skeleton" height="320px" />
-            </template>
-            <MDC :partial="true" class="gameserver-details__markdown-content typeset" :value="props.gameserver.markdown" />
-          </Suspense>
+          <MDRenderer :md="props.gameserver.markdown" class="gameserver-details__markdown-content" />
         </Card>
 
         <!-- Network Details -->

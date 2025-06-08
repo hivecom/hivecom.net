@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Card, Flex, Skeleton } from '@dolanske/vui'
+import { Card, Flex } from '@dolanske/vui'
+import MDRenderer from '~/components/Shared/MDRenderer.vue'
 
 interface Props {
   event: Tables<'events'>
@@ -17,12 +18,7 @@ defineProps<Props>()
         <Icon name="ph:article" />
         Event Details
       </h3>
-      <Suspense suspensible>
-        <template #fallback>
-          <Skeleton height="50rem" />
-        </template>
-        <MDC :partial="true" class="event-markdown__content typeset" :value="event.markdown" />
-      </Suspense>
+      <MDRenderer :md="event.markdown" class="event-markdown__content" />
     </Flex>
   </Card>
 </template>

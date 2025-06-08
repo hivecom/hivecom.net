@@ -51,15 +51,6 @@ async function fetchFundingMetrics() {
       throw expensesError
     }
 
-    // Get lifetime funding data (all records)
-    const { data: allFundingData, error: allFundingError } = await supabase
-      .from('monthly_funding')
-      .select('patreon_month_amount_cents, donation_month_amount_cents')
-
-    if (allFundingError) {
-      throw allFundingError
-    }
-
     // Get total funding records count
     const { error: countError } = await supabase
       .from('monthly_funding')
@@ -74,8 +65,8 @@ async function fetchFundingMetrics() {
       ? (currentFundingData.patreon_month_amount_cents || 0) + (currentFundingData.donation_month_amount_cents || 0)
       : 0
 
-    const lifetimeFunding = allFundingData?.reduce((sum, record) =>
-      sum + (record.patreon_month_amount_cents || 0) + (record.donation_month_amount_cents || 0), 0) || 0
+    const lifetimeFunding = (currentFundingData?.patreon_lifetime_amount_cents || 0)
+      + (currentFundingData?.donation_lifetime_amount_cents || 0)
 
     const currentMonthExpenses = expensesData?.reduce((sum, expense) => sum + expense.amount_cents, 0) || 0
     const totalPatrons = currentFundingData?.patreon_count || 0
@@ -97,7 +88,7 @@ async function fetchFundingMetrics() {
 
 // Calculate funding balance
 const fundingBalance = computed(() => {
-  return metrics.value.lifetimeFunding - metrics.value.currentMonthExpenses
+  return metrics.value.lifetimeFunding
 })
 
 // Watch for refresh signal from parent

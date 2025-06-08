@@ -52,7 +52,7 @@ defineProps<Props>()
         <div class="gameserver-status__item">
           <span class="gameserver-status__label">Last Reported</span>
           <span class="gameserver-status__value">
-            <TimestampDate :date="container.reported_at" />
+            <TimestampDate size="xs" :date="container.reported_at" />
           </span>
         </div>
       </Grid>
@@ -85,7 +85,6 @@ defineProps<Props>()
   &__label {
     font-size: var(--font-size-s);
     font-weight: 600;
-    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }

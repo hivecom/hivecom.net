@@ -367,7 +367,7 @@ h4 {
 
 .help-text {
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-lightest);
   margin-top: var(--space-xs);
 }
 

@@ -84,7 +84,7 @@ defineProps<Props>()
   &__label {
     font-size: var(--font-size-s);
     font-weight: 600;
-    color: var(--color-text-muted);
+    color: var(--color-text-lightest);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }

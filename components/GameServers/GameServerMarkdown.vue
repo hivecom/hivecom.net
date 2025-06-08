@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Card, Flex, Skeleton } from '@dolanske/vui'
+import { Card, Flex } from '@dolanske/vui'
+import MDRenderer from '~/components/Shared/MDRenderer.vue'
 
 interface Props {
   gameserver: Tables<'gameservers'>
@@ -17,12 +18,7 @@ defineProps<Props>()
         <Icon name="ph:article" />
         Server Details
       </h3>
-      <Suspense suspensible>
-        <template #fallback>
-          <Skeleton height="50rem" />
-        </template>
-        <MDC :partial="true" class="gameserver-markdown__content typeset" :value="gameserver.markdown" />
-      </Suspense>
+      <MDRenderer :md="gameserver.markdown" class="gameserver-markdown__content" />
     </Flex>
   </Card>
 </template>

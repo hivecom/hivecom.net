@@ -369,7 +369,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
   align-items: center;
   gap: var(--space-xs);
   font-size: 1.4rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-lightest);
 }
 .w-100 {
   width: 100%;

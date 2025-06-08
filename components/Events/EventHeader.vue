@@ -50,7 +50,7 @@ defineProps<Props>()
 
         <!-- Event date display -->
         <Flex y-center class="event-header__date-display">
-          <TimestampDate small :date="event.date" class="event-header__date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
+          <TimestampDate size="xs" :date="event.date" class="event-header__date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
           <!-- Duration display -->
           <div v-if="event.duration_minutes" class="event-header__duration">
             for {{ formatDurationFromMinutes(event.duration_minutes) }}
@@ -151,7 +151,7 @@ defineProps<Props>()
 
   &__description {
     font-size: var(--font-size-l);
-    color: var(--color-text-muted);
+    color: var(--color-text-light);
     margin: var(--space-s) 0 0 0;
     line-height: 1.5;
 
@@ -191,7 +191,6 @@ defineProps<Props>()
   &__duration {
     font-size: var(--font-size-xs);
     font-weight: 500;
-    color: var(--color-text-muted);
 
     @media (max-width: $breakpoint-sm) {
       font-size: var(--font-size-s);
@@ -202,7 +201,6 @@ defineProps<Props>()
     .event-header__time-ago-text {
       font-size: var(--font-size-xxl);
       font-weight: 600;
-      color: var(--color-text-muted);
     }
   }
 

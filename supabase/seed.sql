@@ -89,13 +89,12 @@ INSERT INTO public.user_roles(role, user_id)
   VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Create or update a profile for our admin user
-INSERT INTO public.profiles(id, created_at, username, title, subtitle)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), 'Hivecom', 'Hivecom Administrator', 'System administrator')
+INSERT INTO public.profiles(id, created_at, username, introduction)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), 'Hivecom', 'Local develop and test user')
 ON CONFLICT (id)
   DO UPDATE SET
     username = EXCLUDED.username,
-    title = EXCLUDED.title,
-    subtitle = EXCLUDED.subtitle;
+    introduction = EXCLUDED.introduction;
 
 -- Insert an upcoming test event
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)

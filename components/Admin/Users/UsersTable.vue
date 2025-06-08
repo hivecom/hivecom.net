@@ -70,10 +70,10 @@ const { headers, rows } = defineTable(modelledUsers)
       </template>
 
       <template #body>
-        <tr v-for="game in rows" :key="game.Name">
-          <Table.Cell>{{ game.Name }}</Table.Cell>
-          <Table.Cell>{{ game.Supporter ? 'Yes' : 'No' }}</Table.Cell>
-          <Table.Cell>{{ game.Created }}</Table.Cell>
+        <tr v-for="user in rows" :key="user.Name">
+          <Table.Cell>{{ user.Name }}</Table.Cell>
+          <Table.Cell>{{ user.Supporter ? 'Yes' : 'No' }}</Table.Cell>
+          <Table.Cell>{{ user.Created }}</Table.Cell>
         </tr>
       </template>
     </Table.Root>

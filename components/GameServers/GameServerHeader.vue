@@ -124,7 +124,7 @@ defineProps<Props>()
               <div class="gameserver-header__status-item">
                 <span class="gameserver-header__status-label">Last Reported</span>
                 <span class="gameserver-header__status-value">
-                  <TimestampDate small :date="container.reported_at" />
+                  <TimestampDate size="xs" :date="container.reported_at" />
                 </span>
               </div>
             </Flex>
@@ -146,7 +146,7 @@ defineProps<Props>()
 
   &__description {
     font-size: var(--font-size-l);
-    color: var(--color-text-muted);
+    color: var(--color-text-light);
     line-height: 1.5;
   }
 
@@ -179,7 +179,6 @@ defineProps<Props>()
   &__administrator-label {
     font-size: var(--font-size-xs);
     font-weight: 600;
-    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -210,7 +209,6 @@ defineProps<Props>()
   &__status-label {
     font-size: var(--font-size-xs);
     font-weight: 600;
-    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }

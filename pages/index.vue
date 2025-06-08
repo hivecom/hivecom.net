@@ -10,7 +10,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 
 // Real data from database
-const upcomingEvents = ref<Tables<'events'>[]>([])
+const events = ref<Tables<'events'>[]>([])
 const communityStats = ref({
   members: 500,
   membersAccurate: false,
@@ -27,20 +27,73 @@ onMounted(async () => {
   loading.value = true
 
   try {
-    // Fetch upcoming events
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
+    // Fetch all events and sort by status (ongoing first, then upcoming, then past)
     const { data: eventsData, error: eventsError } = await supabase
       .from('events')
       .select('*')
-      .gte('date', today.toISOString())
       .order('date', { ascending: true })
-      .limit(3)
 
     if (eventsError)
       throw eventsError
-    upcomingEvents.value = eventsData || []
+
+    // Sort events by status: ongoing first, then upcoming, then past
+    const sortedEvents = (eventsData || []).sort((a, b) => {
+      const now = new Date()
+
+      // Get status for event a
+      const eventAStart = new Date(a.date)
+      const eventAEnd = a.duration_minutes
+        ? new Date(eventAStart.getTime() + a.duration_minutes * 60 * 1000)
+        : eventAStart
+
+      let statusA: 'ongoing' | 'upcoming' | 'past'
+      if (now < eventAStart) {
+        statusA = 'upcoming'
+      }
+      else if (now >= eventAStart && now <= eventAEnd) {
+        statusA = 'ongoing'
+      }
+      else {
+        statusA = 'past'
+      }
+
+      // Get status for event b
+      const eventBStart = new Date(b.date)
+      const eventBEnd = b.duration_minutes
+        ? new Date(eventBStart.getTime() + b.duration_minutes * 60 * 1000)
+        : eventBStart
+
+      let statusB: 'ongoing' | 'upcoming' | 'past'
+      if (now < eventBStart) {
+        statusB = 'upcoming'
+      }
+      else if (now >= eventBStart && now <= eventBEnd) {
+        statusB = 'ongoing'
+      }
+      else {
+        statusB = 'past'
+      }
+
+      // Sort by status priority: ongoing (0), upcoming (1), past (2)
+      const statusOrder = { ongoing: 0, upcoming: 1, past: 2 }
+      const statusDiff = statusOrder[statusA] - statusOrder[statusB]
+
+      if (statusDiff !== 0) {
+        return statusDiff
+      }
+
+      // Within same status, sort by date
+      if (statusA === 'past') {
+        // For past events, show most recent first
+        return new Date(b.date).getTime() - new Date(a.date).getTime()
+      }
+      else {
+        // For ongoing and upcoming events, show earliest first
+        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      }
+    })
+
+    events.value = sortedEvents.slice(0, 6) // Show up to 6 events
 
     // Fetch community member count
     const { count: membersCount, error: membersError } = await supabase
@@ -224,10 +277,10 @@ onMounted(async () => {
     </div>
   </section>
 
-  <!-- Upcoming Events -->
+  <!-- Events -->
   <section class="events-section">
     <h2 class="heading">
-      Upcoming Events
+      Events
     </h2>
     <ClientOnly>
       <Divider />
@@ -249,22 +302,22 @@ onMounted(async () => {
       </Card>
     </div>
 
-    <div v-else-if="upcomingEvents.length === 0" class="events-section__empty">
+    <div v-else-if="events.length === 0" class="events-section__empty">
       <Card>
-        <p>No upcoming events scheduled.</p>
+        <p>No events scheduled.</p>
       </Card>
     </div>
 
     <Grid v-else class="events-section__list" :columns="3" gap="m" expand>
       <EventCard
-        v-for="event in upcomingEvents"
+        v-for="event in events"
         :key="event.id"
         :event="event"
         compact
       />
     </Grid>
 
-    <div class="events-section__view-all">
+    <div class="events-section__view-all mb-m">
       <Button @click="navigateTo('/events')">
         View All Events
         <template #end>

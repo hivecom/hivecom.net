@@ -27,6 +27,9 @@ export default defineNuxtConfig({
         },
       },
     },
+    optimizeDeps: {
+      include: ['debug'],
+    },
   },
   runtimeConfig: {
     public: {

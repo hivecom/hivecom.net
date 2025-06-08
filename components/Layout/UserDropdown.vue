@@ -75,7 +75,7 @@ async function signOut() {
       <DropdownItem icon="ph:user" @click="navigateTo('/profile')">
         Profile
       </DropdownItem>
-      <DropdownItem icon="ph:gear-six" @click="navigateTo('/settings')">
+      <DropdownItem icon="ph:gear-six" @click="navigateTo('/profile/settings')">
         Settings
       </DropdownItem>
       <template v-if="isAdminOrMod">

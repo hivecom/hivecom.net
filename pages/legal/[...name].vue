@@ -104,7 +104,7 @@ useHead(() => ({
     }
 
     p {
-      color: var(--color-text-muted);
+      color: var(--color-text-lightest);
     }
   }
 }

@@ -118,7 +118,7 @@ const state = computed(() => {
 
   .description-text {
     font-size: var(--font-size-s);
-    color: var(--color-text-muted);
+    color: var(--color-text-lightest);
     font-style: italic;
     white-space: nowrap;
     overflow: hidden;
@@ -165,7 +165,6 @@ const state = computed(() => {
 
 .region-badge .region-indicator {
   font-size: var(--font-size-s);
-  font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-text-light);
 }
 </style>

@@ -137,7 +137,7 @@ defineProps<Props>()
 
   &__countdown-label {
     font-size: var(--font-size-s);
-    color: var(--color-text-muted);
+    color: var(--color-text-lightest);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 600;
@@ -153,7 +153,7 @@ defineProps<Props>()
   &__time-ago-text {
     font-size: var(--font-size-xl);
     font-weight: 600;
-    color: var(--color-text-muted);
+    color: var(--color-text-lightest);
   }
 }
 </style>

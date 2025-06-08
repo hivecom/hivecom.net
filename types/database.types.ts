@@ -310,15 +310,14 @@ export interface Database {
           created_at: string
           discord_id: string | null
           id: string
+          introduction: string | null
           markdown: string | null
           modified_at: string | null
           modified_by: string | null
           patreon_id: string | null
           steam_id: string | null
-          subtitle: string | null
           supporter_lifetime: boolean
           supporter_patreon: boolean
-          title: string | null
           username: string
           username_set: boolean
         }
@@ -326,15 +325,14 @@ export interface Database {
           created_at?: string
           discord_id?: string | null
           id: string
+          introduction?: string | null
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
           patreon_id?: string | null
           steam_id?: string | null
-          subtitle?: string | null
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
-          title?: string | null
           username: string
           username_set?: boolean
         }
@@ -342,15 +340,14 @@ export interface Database {
           created_at?: string
           discord_id?: string | null
           id?: string
+          introduction?: string | null
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
           patreon_id?: string | null
           steam_id?: string | null
-          subtitle?: string | null
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
-          title?: string | null
           username?: string
           username_set?: boolean
         }

@@ -31,11 +31,11 @@ const isSameUser = computed(() => {
         <div class="metadata__timestamp-grid">
           <div class="metadata__timestamp-item">
             <span class="metadata__timestamp-label">Created</span>
-            <TimestampDate small :date="createdAt" format="MMM D, YYYY [at] HH:mm" class="metadata__timestamp-date" />
+            <TimestampDate size="xs" :date="createdAt" format="MMM D, YYYY [at] HH:mm" class="metadata__timestamp-date" />
           </div>
           <div v-if="modifiedAt" class="metadata__timestamp-item">
             <span class="metadata__timestamp-label">Modified</span>
-            <TimestampDate small :date="modifiedAt" format="MMM D, YYYY [at] HH:mm" class="metadata__timestamp-date" />
+            <TimestampDate size="xs" :date="modifiedAt" format="MMM D, YYYY [at] HH:mm" class="metadata__timestamp-date" />
           </div>
         </div>
 

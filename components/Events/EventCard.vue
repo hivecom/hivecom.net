@@ -28,7 +28,7 @@ const eventStatus = computed(() => {
     return { type: 'ongoing', label: 'NOW', variant: 'success' as const }
   }
   else {
-    return { type: 'past', label: 'Past', variant: 'neutral' as const }
+    return { type: 'past', label: 'PAST', variant: 'neutral' as const }
   }
 })
 
@@ -85,11 +85,14 @@ function handleClick() {
       <div v-if="eventStatus.type === 'ongoing'" class="event-card__live-indicator">
         <div class="event-card__live-dot" />
         <span class="event-card__live-text">{{ eventStatus.label }}</span>
-      </div>
-
-      <!-- Status indicator for upcoming events -->
+      </div>      <!-- Status indicator for upcoming events -->
       <div v-if="eventStatus.type === 'upcoming'" class="event-card__upcoming-indicator">
         <span class="event-card__upcoming-text">{{ eventStatus.label }}</span>
+      </div>
+
+      <!-- Status indicator for past events -->
+      <div v-if="eventStatus.type === 'past'" class="event-card__past-indicator">
+        <span class="event-card__past-text">{{ eventStatus.label }}</span>
       </div>
 
       <!-- Event header -->
@@ -98,16 +101,7 @@ function handleClick() {
           {{ event.title }}
           <Icon v-if="event.link" name="ph:arrow-square-out" class="event-card__external-icon" />
         </h3>
-
-        <!-- Status badge for past events only -->
-        <Badge
-          v-if="eventStatus.type === 'past'"
-          :variant="eventStatus.variant"
-          size="s"
-          class="event-card__status-badge"
-        >
-          {{ eventStatus.label }}
-        </Badge>
+        <!-- Removed status badge for past events since it's now at the top -->
       </div>
 
       <!-- Event timing -->
@@ -280,6 +274,21 @@ function handleClick() {
   }
 
   &__upcoming-text {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__past-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-s);
+    font-size: var(--font-size-s);
+    font-weight: 600;
+    color: var(--color-text-lighter);
+  }
+
+  &__past-text {
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }

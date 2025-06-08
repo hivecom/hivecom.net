@@ -146,7 +146,7 @@ defineProps<Props>()
 
   &__address-label {
     font-size: var(--font-size-s);
-    color: var(--color-text-muted);
+    color: var(--color-text-lightest);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
