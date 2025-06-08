@@ -123,7 +123,7 @@ const open = ref(true)
         <template #footer>
           <Flex v-if="miniSidebar" column x-center y-center gap="m">
             <SharedThemeToggle no-text small />
-            <DropdownItem square icon="ph:caret-left" data-title-right="Close admin console" @click="router.push('/')" />
+            <DropdownItem square icon="ph:caret-left" data-title-right="Close admin console" aria-label="Close admin console" @click="router.push('/')" />
           </Flex>
           <Flex v-else x-between y-center>
             <Button size="s" outline @click="router.push('/')">
@@ -151,7 +151,7 @@ const open = ref(true)
   </div>
 </template>
 
-<style scoped lang=scss>
+<style lang="scss" scoped>
 :deep(h3) {
   margin-bottom: var(--space-m);
 }

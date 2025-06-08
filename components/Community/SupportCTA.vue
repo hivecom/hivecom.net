@@ -59,7 +59,13 @@ onMounted(async () => {
 
       <!-- Call to Action -->
       <div>
-        <NuxtLink :to="constants.PATREON.URL" external target="_blank" class="support-button">
+        <NuxtLink
+          :to="constants.PATREON.URL"
+          external
+          target="_blank"
+          class="support-button"
+          aria-label="Become a Patron on Patreon to support our community"
+        >
           <Flex y-center x-center gap="s" class="support-button-content">
             <Icon name="ph:heart-fill" size="1.6rem" />
             <span class="text-l text-bold">Become a Patron</span>

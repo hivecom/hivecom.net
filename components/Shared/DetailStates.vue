@@ -26,14 +26,16 @@ defineProps<Props>()
 
   <!-- Error State -->
   <div v-else-if="error" class="detail-states__error">
-    <NuxtLink :to="backTo">
-      <Button variant="accent">
-        <template #start>
-          <Icon name="ph:arrow-left" />
-        </template>
-        {{ backLabel }}
-      </Button>
-    </NuxtLink>
+    <Button
+      variant="accent"
+      :aria-label="`Go back to ${backLabel}`"
+      @click="$router.push(backTo)"
+    >
+      <template #start>
+        <Icon name="ph:arrow-left" />
+      </template>
+      {{ backLabel }}
+    </Button>
     <Card>
       <Flex column gap="m" x-center>
         <Icon name="ph:warning-circle" size="48" class="detail-states__error-icon" />

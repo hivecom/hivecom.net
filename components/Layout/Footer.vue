@@ -37,7 +37,7 @@ const links = constants.LINKS
     </div>
 
     <div class="footer__social-links">
-      <a v-for="(link, key) in links" :key="key" :href="link.url" target="_blank" rel="noopener noreferrer" class="footer__social-link">
+      <a v-for="(link, key) in links" :key="key" :href="link.url" target="_blank" rel="noopener noreferrer" class="footer__social-link" :aria-label="`Visit our ${link.name} page`">
         <Icon :name="link.icon" />
       </a>
     </div>

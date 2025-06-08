@@ -140,14 +140,22 @@ watch(currentUser, () => {
 
     <!-- User data -->
     <Flex v-else-if="user" gap="m" y-center class="user-display__header">
-      <NuxtLink :to="`/profile/${user.id}`" class="user-display__link">
+      <NuxtLink
+        :to="`/profile/${user.id}`"
+        class="user-display__link"
+        :aria-label="`View profile of ${user.username}`"
+      >
         <Avatar :size="size">
           {{ getUserInitials(user.username) }}
         </Avatar>
       </NuxtLink>
       <div class="user-display__info">
         <Flex gap="xs" x-start y-center wrap>
-          <NuxtLink :to="`/profile/${user.id}`" class="user-display__link">
+          <NuxtLink
+            :to="`/profile/${user.id}`"
+            class="user-display__link"
+            :aria-label="`View profile of ${user.username}`"
+          >
             <span class="user-display__username">{{ user.username }}</span>
           </NuxtLink>
           <Badge

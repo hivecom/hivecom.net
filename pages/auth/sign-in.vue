@@ -117,15 +117,11 @@ onMounted(() => {
         </Flex>
       </div>
       <template #footer>
-        <NuxtLink to="/auth/sign-up">
-          <Button variant="link" class="sign-up-link">
-            Don't have an account? Click to sign-up!
-          </Button>
+        <NuxtLink to="/auth/sign-up" class="sign-up-link" aria-label="Sign up for a new account">
+          Don't have an account? Click to sign-up!
         </NuxtLink>
-        <NuxtLink to="/auth/forgot-password">
-          <Button variant="link" class="forgot-password-link">
-            Forgot your password?
-          </Button>
+        <NuxtLink to="/auth/forgot-password" class="forgot-password-link" aria-label="Reset your password">
+          Forgot your password?
         </NuxtLink>
       </template>
     </Card>
@@ -133,13 +129,27 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+.sign-up-link,
+.forgot-password-link {
+  display: block;
+  width: 100%;
+  font-size: 1.2rem;
+  padding: var(--space-s) var(--space-m);
+  text-decoration: none;
+  border-radius: var(--border-radius-s);
+  transition: background-color 0.2s ease;
+  text-align: center;
+
+  &:hover {
+    background-color: var(--color-bg-raised);
+  }
+}
+
 .sign-up-link {
   color: var(--color-text-accent);
-  font-size: 1.2rem;
-  width: 100%;
 }
+
 .forgot-password-link {
-  font-size: 1.2rem;
-  width: 100%;
+  color: var(--color-text);
 }
 </style>

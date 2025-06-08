@@ -79,7 +79,11 @@ import SupportCTA from '~/components/Community/SupportCTA.vue'
               </Flex>
 
               <Flex column gap="s" expand>
-                <NuxtLink to="/community/funding" class="community-link community-link--funding">
+                <NuxtLink
+                  to="/community/funding"
+                  class="community-link community-link--funding"
+                  aria-label="View our funding transparency and financial information"
+                >
                   <div class="community-link__content">
                     <div class="community-link__icon">
                       <Icon name="ph:chart-bar" size="1.4rem" />
@@ -98,7 +102,11 @@ import SupportCTA from '~/components/Community/SupportCTA.vue'
                   </div>
                 </NuxtLink>
 
-                <NuxtLink to="/events" class="community-link community-link--events">
+                <NuxtLink
+                  to="/events"
+                  class="community-link community-link--events"
+                  aria-label="View upcoming community events and activities"
+                >
                   <div class="community-link__content">
                     <div class="community-link__icon">
                       <Icon name="ph:calendar" size="1.4rem" />
@@ -117,7 +125,11 @@ import SupportCTA from '~/components/Community/SupportCTA.vue'
                   </div>
                 </NuxtLink>
 
-                <NuxtLink to="/gameservers" class="community-link community-link--gameservers">
+                <NuxtLink
+                  to="/gameservers"
+                  class="community-link community-link--gameservers"
+                  aria-label="Explore our game servers and gaming community"
+                >
                   <div class="community-link__content">
                     <div class="community-link__icon">
                       <Icon name="ph:game-controller" size="1.4rem" />

@@ -14,9 +14,20 @@ watch(error, (newError) => {
 })
 
 // Determine the redirect URI - use current origin for production
-const redirectUri = process.env.NODE_ENV === 'development'
-  ? 'http://localhost:3000/auth/callback/patreon'
-  : `${window.location.origin}/auth/callback/patreon`
+function getRedirectUri() {
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000/auth/callback/patreon'
+  }
+
+  // Use process.client to ensure we're on client side
+  if (process.client && window?.location?.origin) {
+    return `${window.location.origin}/auth/callback/patreon`
+  }
+
+  // Fallback for SSR - use the public runtime config if available
+  const baseUrl = runtimeConfig.public.baseUrl || 'https://hivecom.net'
+  return `${baseUrl}/auth/callback/patreon`
+}
 
 async function connectPatreon() {
   isConnecting.value = true
@@ -27,11 +38,16 @@ async function connectPatreon() {
     // It's typically used for CSRF protection and to store the redirect destination
     const state = JSON.stringify({ redirectTo: '/profile' })
 
+    // Get the redirect URI dynamically
+    const redirectUri = getRedirectUri()
+
     // Construct the URL for our Patreon authorization
     const authorizeUrl = `https://www.patreon.com/oauth2/authorize?client_id=${runtimeConfig.public.patreonClientId || ''}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`
 
     // Redirect the user to Patreon's authorization page
-    window.location.href = authorizeUrl
+    if (process.client) {
+      window.location.href = authorizeUrl
+    }
   }
   catch (err) {
     error.value = err instanceof Error ? err.message : 'An unknown error occurred'

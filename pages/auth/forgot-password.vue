@@ -71,10 +71,8 @@ onMounted(() => {
         </Flex>
       </div>
       <template #footer>
-        <NuxtLink to="/auth/sign-in">
-          <Button variant="link" class="back-to-signin-link">
-            Back to Sign In
-          </Button>
+        <NuxtLink to="/auth/sign-in" class="back-to-signin-link" aria-label="Return to sign in page">
+          Back to Sign In
         </NuxtLink>
       </template>
     </Card>

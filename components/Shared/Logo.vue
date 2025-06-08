@@ -1,5 +1,5 @@
 <template>
-  <NuxtLink to="/">
+  <NuxtLink to="/" aria-label="Go to homepage">
     <NuxtImg src="/logo.svg" alt="Hivecom" class="logo" />
   </NuxtLink>
 </template>

@@ -67,10 +67,8 @@ async function signInWithOtp() {
               Privacy Policy
             </NuxtLink>.
           </p>
-          <NuxtLink to="/auth/sign-in">
-            <Button variant="link" class="sign-up__footer-link">
-              Already have an account? Click to sign in!
-            </Button>
+          <NuxtLink to="/auth/sign-in" class="sign-up__footer-link" aria-label="Sign in to existing account">
+            Already have an account? Click to sign in!
           </NuxtLink>
         </div>
       </template>
@@ -93,9 +91,20 @@ async function signInWithOtp() {
   }
 }
 
-.sign-up-footer-link {
-  margin-top: 2rem;
+.sign-up__footer-link {
+  display: block;
+  margin-top: 1rem;
   font-size: 1.2rem;
   width: 100%;
+  text-decoration: none;
+  color: var(--color-text-accent);
+  padding: var(--space-s) var(--space-m);
+  border-radius: var(--border-radius-s);
+  transition: background-color 0.2s ease;
+  text-align: center;
+
+  &:hover {
+    background-color: var(--color-bg-raised);
+  }
 }
 </style>

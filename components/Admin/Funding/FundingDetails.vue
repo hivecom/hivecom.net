@@ -120,7 +120,7 @@ function formatMonth(month: string): string {
   </Sheet>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .funding-details {
   padding-bottom: var(--space);
 

@@ -86,6 +86,7 @@ watch(currentUser, () => {
       <NuxtLink
         :to="`/profile/${props.userId}`"
         class="username-link"
+        :aria-label="`View profile of ${username || 'user'}`"
       >
         {{ username || props.userId }}
       </NuxtLink>

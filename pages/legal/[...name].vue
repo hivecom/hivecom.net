@@ -29,7 +29,11 @@ useHead(() => ({
 
       <p class="legal-page__last-updated">
         Last updated on {{ formatDate(content.date) }}
-        <a v-if="content.revisions && content.revisions.length" href="#revisions">
+        <a
+          v-if="content.revisions && content.revisions.length"
+          href="#revisions"
+          aria-label="Jump to previous revisions section"
+        >
           (See previous revisions below)
         </a>
       </p>
@@ -48,7 +52,10 @@ useHead(() => ({
         </h5>
         <ul>
           <li v-for="revision in content.revisions" :key="revision">
-            <NuxtLink :to="`/legal/${name}/${revision}`">
+            <NuxtLink
+              :to="`/legal/${name}/${revision}`"
+              :aria-label="`View revision from ${formatDate(revision)}`"
+            >
               {{ formatDate(revision) }}
             </NuxtLink>
           </li>

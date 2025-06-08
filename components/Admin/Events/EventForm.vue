@@ -337,7 +337,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
   />
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .event-form {
   padding-bottom: var(--space);
 

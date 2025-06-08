@@ -2,11 +2,6 @@
 import type { Tables } from '~/types/database.types'
 import { Badge, Button, Card, Flex } from '@dolanske/vui'
 
-// Set page metadata
-definePageMeta({
-  layout: 'default',
-})
-
 // Async component
 const ConnectPatreonButton = defineAsyncComponent(() => import('~/components/Profile/ConnectPatreon.vue'))
 
@@ -89,7 +84,9 @@ onMounted(() => {
                 <Icon name="ph:check" />
                 Connected
               </Badge>
-              <ConnectPatreonButton v-else />
+              <ClientOnly v-else>
+                <ConnectPatreonButton />
+              </ClientOnly>
             </div>
           </Flex>
         </Flex>
@@ -114,7 +111,7 @@ onMounted(() => {
                 <Icon name="ph:check" />
                 Connected
               </Badge>
-              <Button v-else size="s" variant="gray" disabled>
+              <Button v-else size="s" variant="gray" disabled aria-label="Steam integration coming soon">
                 Coming Soon
               </Button>
             </div>
@@ -141,7 +138,7 @@ onMounted(() => {
                 <Icon name="ph:check" />
                 Connected
               </Badge>
-              <Button v-else size="s" variant="gray" disabled>
+              <Button v-else size="s" variant="gray" disabled aria-label="Discord integration coming soon">
                 Coming Soon
               </Button>
             </div>

@@ -16,7 +16,7 @@ function toggleMobileMenu() {
   <nav class="navigation">
     <div class="container container-l">
       <div class="navigation__items">
-        <Button class="navigation__hamburger" icon="ph:list" @click="toggleMobileMenu" />
+        <Button class="navigation__hamburger" icon="ph:list" aria-label="Open mobile menu" @click="toggleMobileMenu" />
 
         <SharedLogo class="navigation__logo" />
 
@@ -97,24 +97,18 @@ function toggleMobileMenu() {
 
         <div v-else class="navigation__auth">
           <div class="navigation__auth-buttons">
-            <NuxtLink to="/auth/sign-in">
-              <Button>
-                Sign in
-              </Button>
-            </NuxtLink>
+            <Button @click="$router.push('/auth/sign-in')">
+              Sign in
+            </Button>
 
-            <NuxtLink to="/auth/sign-up">
-              <Button variant="accent">
-                Sign up
-              </Button>
-            </NuxtLink>
+            <Button variant="accent" @click="$router.push('/auth/sign-up')">
+              Sign up
+            </Button>
           </div>
 
           <!-- On mobile we just have a little user icon -->
           <div class="navigation__auth-mobile-button">
-            <NuxtLink to="/auth/sign-in">
-              <Button square icon="ph:sign-in" />
-            </NuxtLink>
+            <Button square icon="ph:sign-in" aria-label="Sign in" @click="$router.push('/auth/sign-in')" />
           </div>
         </div>
       </div>

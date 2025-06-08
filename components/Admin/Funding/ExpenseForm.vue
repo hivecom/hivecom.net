@@ -325,7 +325,7 @@ function confirmDelete() {
   </Sheet>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .expense-form {
   padding-bottom: var(--space);
 

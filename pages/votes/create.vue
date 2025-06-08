@@ -30,7 +30,7 @@ function resetForm() {
 <template>
   <div class="route-votes">
     <h1 class="mb-l">
-      <Button square icon="ph:arrow-left" plain @click="router.back()" />
+      <Button square icon="ph:arrow-left" plain aria-label="Go back" @click="router.back()" />
       Start a vote
     </h1>
     <p class="mb-xxl text-xl">

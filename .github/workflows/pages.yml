@@ -8,6 +8,9 @@ on:
     branches:
       - dev
 
+  # Or trigger manually
+  workflow_dispatch:
+
 jobs:
   build:
     # Only run if the Supabase push was successful
@@ -37,7 +40,7 @@ jobs:
         run: npm run lint
 
       - name: Nuxt build with nitro for GitHub pages
-        run: npx nuxt build --preset github_pages
+        run: npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

@@ -64,7 +64,11 @@ async function signOut() {
       </template>
       <DropdownTitle>
         <div class="user-dropdown__info">
-          <NuxtLink to="/profile" class="user-dropdown__username">
+          <NuxtLink
+            to="/profile"
+            class="user-dropdown__username"
+            :aria-label="`View your profile: ${username || user?.email}`"
+          >
             {{ username || user?.email }}
           </NuxtLink>
           <Badge v-if="isAdminOrMod" variant="danger" :class="`user-dropdown__badge--${userRole}`">
@@ -87,7 +91,7 @@ async function signOut() {
       <Divider size="4" />
       <div class="user-dropdown__footer">
         <SharedThemeToggle no-text />
-        <Button square icon="ph:sign-out" @click="signOut" />
+        <Button square icon="ph:sign-out" aria-label="Sign out" @click="signOut" />
       </div>
     </Dropdown>
   </div>

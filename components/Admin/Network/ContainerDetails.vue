@@ -266,9 +266,9 @@ watch(() => useCustomDateRange.value, (newValue) => {
           <Flex x-between y-center class="mb-s" expand>
             <h4>Logs</h4>
             <ButtonGroup :gap="1">
-              <Button square icon="ph:calendar-dots" size="s" :variant="useCustomDateRange ? 'accent' : 'gray'" :disabled="!props.logs || props.logsLoading" data-title-bottom="Custom date range" @click="useCustomDateRange = !useCustomDateRange" />
-              <Button square icon="ph:copy" size="s" variant="gray" :disabled="!props.logs || props.logsLoading" data-title-bottom="Copy logs" @click="copyLogsToClipboard" />
-              <Button square icon="ph:arrow-clockwise" size="s" variant="gray" :disabled="!props.logs || props.logsLoading" data-title-bottom-right="Refresh logs" @click="handleRefreshLogs" />
+              <Button square icon="ph:calendar-dots" size="s" :variant="useCustomDateRange ? 'accent' : 'gray'" :disabled="!props.logs || props.logsLoading" data-title-bottom="Custom date range" aria-label="Toggle custom date range" @click="useCustomDateRange = !useCustomDateRange" />
+              <Button square icon="ph:copy" size="s" variant="gray" :disabled="!props.logs || props.logsLoading" data-title-bottom="Copy logs" aria-label="Copy logs to clipboard" @click="copyLogsToClipboard" />
+              <Button square icon="ph:arrow-clockwise" size="s" variant="gray" :disabled="!props.logs || props.logsLoading" data-title-bottom-right="Refresh logs" aria-label="Refresh logs" @click="handleRefreshLogs" />
             </ButtonGroup>
           </Flex>
 

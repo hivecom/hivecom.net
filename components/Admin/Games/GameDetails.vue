@@ -212,7 +212,7 @@ watchEffect(async () => {
   </Sheet>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .game-details {
   padding-bottom: var(--space);
 

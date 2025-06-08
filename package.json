@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "nuxi build",
+    "build": "nuxi build --preset github_pages",
     "dev": "nuxi dev",
     "dev:staging": "nuxi dev --dotenv .env.production",
     "generate": "nuxi generate",

@@ -16,11 +16,13 @@ const search = ref('')
   <div class="votes-page">
     <Flex y-center gap="l" class="mb-l">
       <h1>Votes</h1>
-      <NuxtLink to="/votes/create">
-        <Button variant="accent">
-          Create poll
-        </Button>
-      </NuxtLink>
+      <Button
+        variant="accent"
+        aria-label="Create a new poll"
+        @click="$router.push('/votes/create')"
+      >
+        Create poll
+      </Button>
     </Flex>
 
     <p class="text-xl mb-xl">

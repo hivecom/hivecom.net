@@ -189,7 +189,7 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
   </Sheet>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .expense-details {
   padding-bottom: var(--space);
 

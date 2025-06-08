@@ -100,7 +100,7 @@ const statusMessage = computed(() => {
 <template>
   <div>
     <!-- Conditional wrapper: NuxtLink to funding page OR external link to Patreon -->
-    <NuxtLink v-if="!isOnFundingPage" to="/community/funding" class="funding-card-link">
+    <NuxtLink v-if="!isOnFundingPage" to="/community/funding" class="funding-card-link" aria-label="View detailed funding information">
       <Card :class="{ 'funding-progress__complete': fundingProgress.percentage >= 100 }">
         <!-- Loading state -->
         <template v-if="loading">
@@ -172,7 +172,7 @@ const statusMessage = computed(() => {
     </NuxtLink>
 
     <!-- When on funding page, link to Patreon instead -->
-    <a v-else :href="constants.PATREON.URL" target="_blank" rel="noopener noreferrer" class="funding-card-link">
+    <a v-else :href="constants.PATREON.URL" target="_blank" rel="noopener noreferrer" class="funding-card-link" aria-label="Support us on Patreon">
       <Card :class="{ 'funding-progress__complete': fundingProgress.percentage >= 100 }">
         <!-- Loading state -->
         <template v-if="loading">

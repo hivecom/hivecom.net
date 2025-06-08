@@ -17,14 +17,18 @@ defineProps<Props>()
 <template>
   <!-- Navigation -->
   <Flex x-between>
-    <NuxtLink to="/gameservers" class="gameserver-header__back-link">
-      <Button variant="gray" size="s">
-        <template #start>
-          <Icon name="ph:arrow-left" />
-        </template>
-        Back to Game Servers
-      </Button>
-    </NuxtLink>
+    <Button
+      variant="gray"
+      size="s"
+      aria-label="Go back to Game Servers"
+      class="gameserver-header__back-link"
+      @click="$router.push('/gameservers')"
+    >
+      <template #start>
+        <Icon name="ph:arrow-left" />
+      </template>
+      Back to Game Servers
+    </Button>
   </Flex>
   <div class="gameserver-header">
     <!-- Title and actions row -->

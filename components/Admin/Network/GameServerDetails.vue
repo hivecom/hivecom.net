@@ -174,7 +174,7 @@ function handleEdit() {
   </Sheet>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .gameserver-details {
   padding-bottom: var(--space);
 

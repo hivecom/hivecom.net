@@ -194,14 +194,18 @@ useHead({
     <div v-if="event && !loading && !error" class="event-detail">
       <!-- Back Button -->
       <Flex x-between>
-        <NuxtLink to="/events" class="event-detail__back-link">
-          <Button variant="gray" size="s">
-            <template #start>
-              <Icon name="ph:arrow-left" />
-            </template>
-            Back to Events
-          </Button>
-        </NuxtLink>
+        <Button
+          variant="gray"
+          size="s"
+          aria-label="Go back to Events page"
+          class="event-detail__back-link"
+          @click="$router.push('/events')"
+        >
+          <template #start>
+            <Icon name="ph:arrow-left" />
+          </template>
+          Back to Events
+        </Button>
       </Flex>
 
       <!-- Header -->

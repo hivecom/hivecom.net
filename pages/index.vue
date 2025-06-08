@@ -22,6 +22,13 @@ const communityStats = ref({
 // Convert platforms object to array for easier v-for iteration
 const platforms = ref(Object.values(constants.PLATFORMS))
 
+// Function to scroll to platforms section
+function scrollToPlatforms() {
+  if (process.client) {
+    document.getElementById('platforms')?.scrollIntoView({ behavior: 'smooth' })
+  }
+}
+
 // Fetch real data on component mount
 onMounted(async () => {
   loading.value = true
@@ -137,16 +144,12 @@ onMounted(async () => {
       A community of friends from all around the world. Creating a space to grow and projects to thrive.
     </p>
     <div class="hero-section__actions">
-      <NuxtLink to="#platforms">
-        <Button variant="fill" color="primary">
-          Join Community
-        </Button>
-      </NuxtLink>
-      <NuxtLink to="community">
-        <Button variant="accent">
-          Learn More
-        </Button>
-      </NuxtLink>
+      <Button variant="fill" color="primary" @click="scrollToPlatforms">
+        Join Community
+      </Button>
+      <Button variant="accent" @click="navigateTo('/community')">
+        Learn More
+      </Button>
     </div>
 
     <!-- Community Stats -->
@@ -250,11 +253,12 @@ onMounted(async () => {
               </Tooltip>
             </div>
             <!-- Single URL: Direct link button -->
-            <a v-if="platform.urls.length === 1" :href="platform.urls[0].url" target="_blank" rel="noopener noreferrer">
-              <Button>
-                {{ platform.action }}
-              </Button>
-            </a>
+            <Button
+              v-if="platform.urls.length === 1" @click="navigateTo(platform.urls[0].url, { external: true,
+                                                                                           open: { target: '_blank' } })"
+            >
+              {{ platform.action }}
+            </Button>
             <!-- Multiple URLs: Dropdown menu -->
             <Dropdown v-else>
               <template #trigger="{ toggle }">
@@ -266,9 +270,16 @@ onMounted(async () => {
                 </Button>
               </template>
               <DropdownItem v-for="url in platform.urls" :key="url.title">
-                <a :href="url.url" target="_blank" rel="noopener noreferrer">
+                <NuxtLink
+                  external
+                  no-prefetch
+                  :href="url.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :aria-label="`Connect to ${platform.title} on ${url.title}`"
+                >
                   {{ url.title }}
-                </a>
+                </NuxtLink>
               </DropdownItem>
             </Dropdown>
           </div>
