@@ -11,8 +11,11 @@ const refreshSignal = ref(0)
 
 <template>
   <Flex column gap="l">
-    <Flex x-between>
-      <h3>Funding</h3>
+    <Flex column :gap="0">
+      <h1>Funding</h1>
+      <p class="color-text-light">
+        Manage expenses and view our funding history
+      </p>
     </Flex>
 
     <!-- Funding KPIs -->

@@ -16,6 +16,7 @@ const props = defineProps<{
   }
   status: string
   isLoading: (action: string) => Record<string, boolean> | boolean
+  showLabels?: boolean
 }>()
 
 // Define a model value for actions with proper type
@@ -49,10 +50,10 @@ function isActionLoading(actionType: string): boolean {
 </script>
 
 <template>
-  <Flex gap="xs">
+  <Flex :gap="props.showLabels ? 's' : 'xs'">
     <Button
       v-if="['stopped'].includes(props.status)"
-      size="s"
+      :size="props.showLabels ? 'm' : 's'"
       variant="success"
       :loading="isActionLoading('start')"
       @click="handleAction('start')"
@@ -60,23 +61,27 @@ function isActionLoading(actionType: string): boolean {
       <template #start>
         <Icon name="ph:play" />
       </template>
-      Start
+      <template v-if="props.showLabels">
+        Start
+      </template>
     </Button>
     <Button
       v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
-      size="s"
+      :size="props.showLabels ? 'm' : 's'"
       variant="danger"
       :loading="isActionLoading('restart')"
       @click="handleAction('restart')"
     >
       <template #start>
-        <Icon name="ph:play-circle" />
+        <Icon :name="props.showLabels ? 'ph:arrow-clockwise' : 'ph:play-circle'" />
       </template>
-      Restart
+      <template v-if="props.showLabels">
+        Restart
+      </template>
     </Button>
     <Button
       v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
-      size="s"
+      :size="props.showLabels ? 'm' : 's'"
       variant="danger"
       :loading="isActionLoading('stop')"
       @click="handleAction('stop')"
@@ -84,19 +89,26 @@ function isActionLoading(actionType: string): boolean {
       <template #start>
         <Icon name="ph:stop" />
       </template>
-      Stop
+      <template v-if="props.showLabels">
+        Stop
+      </template>
     </Button>
     <Button
       v-if="['stale'].includes(props.status)"
-      size="s"
+      :size="props.showLabels ? 'm' : 's'"
       variant="danger"
       :loading="isActionLoading('prune')"
+      :icon="props.showLabels ? undefined : 'ph:trash'"
+      :square="!props.showLabels"
+      :data-title-top="props.showLabels ? undefined : 'Prune Container'"
       @click="openPruneConfirm"
     >
-      <template #start>
+      <template v-if="props.showLabels" #start>
         <Icon name="ph:trash" />
       </template>
-      Prune
+      <template v-if="props.showLabels">
+        Prune
+      </template>
     </Button>
 
     <!-- Confirmation Modal for Prune Action -->

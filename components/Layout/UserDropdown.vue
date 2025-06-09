@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Avatar, Badge, Button, Divider, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
+import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
+import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -43,11 +44,6 @@ const isAdminOrMod = computed(() => {
   return userRole.value === 'admin' || userRole.value === 'moderator'
 })
 
-// Get role display text
-const roleDisplay = computed(() => {
-  return userRole.value ? userRole.value.charAt(0).toUpperCase() + userRole.value.slice(1) : ''
-})
-
 async function signOut() {
   await supabase.auth.signOut()
   navigateTo('/auth/sign-in')
@@ -71,9 +67,7 @@ async function signOut() {
           >
             {{ username || user?.email }}
           </NuxtLink>
-          <Badge v-if="isAdminOrMod" variant="danger" :class="`user-dropdown__badge--${userRole}`">
-            {{ roleDisplay }}
-          </Badge>
+          <RoleIndicator v-if="isAdminOrMod && userRole" :role="userRole" size="s" />
         </div>
       </DropdownTitle>
       <DropdownItem icon="ph:user" @click="navigateTo('/profile')">
@@ -127,40 +121,12 @@ async function signOut() {
     }
   }
 
-  &__badge {
-    &--admin {
-      background-color: var(--color-bg-red-lowered);
-      color: var(--color-text-red);
-    }
-
-    &--moderator {
-      background-color: var(--color-bg-blue-lowered);
-      color: var(--color-text-blue);
-    }
-  }
-
   &__footer {
     padding: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 8px;
-  }
-}
-
-:root.light {
-  .user-dropdown {
-    &__badge {
-      &--admin {
-        background-color: var(--color-bg-red-raised);
-        color: var(--color-text-invert);
-      }
-
-      &--moderator {
-        background-color: var(--color-bg-blue-raised);
-        color: var(--color-text-invert);
-      }
-    }
   }
 }
 </style>

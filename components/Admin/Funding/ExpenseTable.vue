@@ -303,7 +303,7 @@ onBeforeMount(fetchExpenses)
             <Table.Cell>{{ expense.Duration }}</Table.Cell>
             <Table.Cell @click.stop>
               <Flex gap="xs">
-                <Button small icon="ph:pencil" @click="(event) => openEditExpenseForm(expense._original, event)">
+                <Button square size="s" data-title-top="Edit Expense" icon="ph:pencil" @click="(event) => openEditExpenseForm(expense._original, event)">
                   Edit
                 </Button>
               </Flex>

@@ -11,10 +11,12 @@ const refreshSignal = ref(0)
 
 <template>
   <Flex column gap="l">
-    <Flex x-between>
-      <h3>Events</h3>
+    <Flex column :gap="0">
+      <h1>Events</h1>
+      <p class="color-text-light">
+        Manage and schedule events for the community
+      </p>
     </Flex>
-
     <!-- Event KPIs -->
     <EventKPIs :refresh-signal="refreshSignal" />
 

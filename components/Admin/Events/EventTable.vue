@@ -3,8 +3,8 @@ import type { Tables, TablesInsert, TablesUpdate } from '~/types/database.types'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
+import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import TableContainer from '~/components/Shared/TableContainer.vue'
 import EventDetails from './EventDetails.vue'
 import EventFilters from './EventFilters.vue'
 import EventForm from './EventForm.vue'
@@ -271,7 +271,7 @@ onBeforeMount(fetchEvents)
             </Table.Cell>
             <Table.Cell @click.stop>
               <Flex gap="xs">
-                <Button small icon="ph:pencil" @click="(clickEvent: MouseEvent) => openEditEventForm(event._original, clickEvent)">
+                <Button square size="s" data-title-top="Edit Event" icon="ph:pencil" @click="(clickEvent: MouseEvent) => openEditEventForm(event._original, clickEvent)">
                   Edit
                 </Button>
               </Flex>

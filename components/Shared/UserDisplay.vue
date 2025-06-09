@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Avatar, Badge, Flex } from '@dolanske/vui'
+import { Avatar, Flex } from '@dolanske/vui'
 import { onMounted, ref, watch } from 'vue'
+import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 
 interface Props {
   userId?: string | null
@@ -81,28 +82,6 @@ function getUserInitials(username: string): string {
     .slice(0, 2)
 }
 
-// Get role display and styling
-function getRoleInfo(role: string | null) {
-  if (!role)
-    return null
-
-  const roleDisplay = role.charAt(0).toUpperCase() + role.slice(1)
-  let variant: 'info' | 'success' | 'danger'
-
-  switch (role) {
-    case 'admin':
-      variant = 'danger'
-      break
-    case 'moderator':
-      variant = 'info'
-      break
-    default:
-      variant = 'success'
-  }
-
-  return { display: roleDisplay, variant }
-}
-
 onMounted(() => {
   fetchUserData()
 })
@@ -158,13 +137,11 @@ watch(currentUser, () => {
           >
             <span class="user-display__username">{{ user.username }}</span>
           </NuxtLink>
-          <Badge
+          <RoleIndicator
             v-if="showRole && user.role"
-            :variant="getRoleInfo(user.role)?.variant"
+            :role="user.role"
             size="s"
-          >
-            {{ getRoleInfo(user.role)?.display }}
-          </Badge>
+          />
         </Flex>
       </div>
     </Flex>

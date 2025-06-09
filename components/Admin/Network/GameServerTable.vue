@@ -335,7 +335,7 @@ onBeforeMount(fetchGameservers)
             </Table.Cell>
             <Table.Cell @click.stop>
               <Flex gap="xs">
-                <Button small icon="ph:pencil" @click="(event) => openEditGameserverForm(gameserver._original as QueryGameserver, event)" />
+                <Button square size="s" data-title-top="Edit Game Server" icon="ph:pencil" @click="(event) => openEditGameserverForm(gameserver._original as QueryGameserver, event)" />
               </Flex>
             </Table.Cell>
           </tr>

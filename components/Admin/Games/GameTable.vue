@@ -267,7 +267,7 @@ onBeforeMount(fetchGames)
             </Table.Cell>
             <Table.Cell @click.stop>
               <Flex gap="xs">
-                <Button small icon="ph:pencil" @click="(event) => openEditGameForm(game._original, event)">
+                <Button square size="s" data-title-top="Edit Game" icon="ph:pencil" @click="(event) => openEditGameForm(game._original, event)">
                   Edit
                 </Button>
               </Flex>

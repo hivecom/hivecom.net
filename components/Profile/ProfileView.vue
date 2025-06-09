@@ -292,7 +292,7 @@ const hasAchievements = computed(() => {
             <Flex column gap="m" expand>
               <!-- Name, Title, Subtitle, and Badges -->
               <Flex gap="l" y-start x-between expand>
-                <Flex column :gap="4" expand>
+                <Flex column :gap="4" expand y-between>
                   <!-- Username and Role -->
                   <Flex gap="m" y-center wrap>
                     <h1 class="profile-title">
@@ -325,7 +325,7 @@ const hasAchievements = computed(() => {
                   </p>
 
                   <!-- Account Info -->
-                  <Flex gap="l" wrap class="profile-meta">
+                  <Flex gap="l" class="profile-meta" expand>
                     <Flex gap="xs" y-center>
                       <Icon name="ph:calendar" size="16" />
                       <span class="text-s">Joined {{ getAccountAge(profile.created_at) }}</span>
@@ -333,7 +333,7 @@ const hasAchievements = computed(() => {
 
                     <Flex v-if="profile.modified_at && profile.modified_at !== profile.created_at" gap="xs" y-center>
                       <Icon name="ph:pencil" size="16" />
-                      <span class="timestamp">Last updated <TimestampDate class="timestamp" :date="profile.modified_at" relative /></span>
+                      <span class="timestamp">Last updated <TimestampDate size="s" class="timestamp" :date="profile.modified_at" relative /></span>
                     </Flex>
                   </Flex>
                 </Flex>

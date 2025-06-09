@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
     // Verify user has permission to manage containers
     const authResponse = await authorizeAuthenticatedHasPermission(
       req,
-      ["containers.crud"],
+      ["containers.read"],
     );
 
     if (authResponse) {

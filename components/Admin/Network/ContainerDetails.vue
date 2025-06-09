@@ -208,7 +208,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ containerStatus === 'stale' ? 'Container details' : container!.name }}</h4>
+      <h4>Container Details</h4>
     </template>
 
     <Flex v-if="container" column gap="m" class="container-detail">
@@ -253,6 +253,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
               v-model="containerAction"
               :container="container"
               :status="containerStatus"
+              :show-labels="true"
               :is-loading="(action) => {
                 if (!container) return false
                 return !!props.actionLoading[container.name]?.[action]

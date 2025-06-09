@@ -42,8 +42,11 @@ async function handleContainerControl(container: any, action: 'start' | 'stop' |
 
 <template>
   <Flex column gap="m">
-    <Flex x-between>
-      <h3>Network</h3>
+    <Flex column :gap="0">
+      <h1>Network</h1>
+      <p class="color-text-light">
+        Define servers, monitor containers and manage game servers
+      </p>
     </Flex>
 
     <Tabs v-model="activeTab">
