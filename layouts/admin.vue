@@ -101,6 +101,18 @@ const menuItems = [
     permissions: [], // Dashboard is always accessible to admin/moderator
   },
   {
+    name: 'Announcements',
+    path: '/admin/announcements',
+    icon: 'ph:megaphone',
+    permissions: ['announcements.read', 'announcements.create', 'announcements.update', 'announcements.delete'],
+  },
+  {
+    name: 'Complaints',
+    path: '/admin/complaints',
+    icon: 'ph:flag',
+    permissions: ['complaints.read', 'complaints.create', 'complaints.update', 'complaints.delete'],
+  },
+  {
     name: 'Events',
     path: '/admin/events',
     icon: 'ph:calendar-blank',
@@ -129,6 +141,12 @@ const menuItems = [
     path: '/admin/referendums',
     icon: 'ph:user-sound',
     permissions: ['referendums.read', 'referendums.create', 'referendums.update', 'referendums.delete'],
+  },
+  {
+    name: 'Roles',
+    path: '/admin/roles',
+    icon: 'ph:shield-check',
+    permissions: ['roles.read'],
   },
   {
     name: 'Users',
@@ -169,7 +187,7 @@ const open = ref(true)
   <!-- Show admin layout only if authorized -->
   <div v-else-if="isAuthorized" class="admin-layout vui-sidebar-layout">
     <ClientOnly>
-      <Sidebar v-model="open" :mini="miniSidebar">
+      <Sidebar v-model="open" :mini="miniSidebar" style="position: static">
         <template #header>
           <Flex y-center class="mb-s">
             <Flex y-center gap="s" expand>

@@ -177,10 +177,5 @@ onBeforeMount(fetchUserMetrics)
 </template>
 
 <style scoped>
-.kpi-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  width: 100%;
-  gap: var(--space-m);
-}
+
 </style>

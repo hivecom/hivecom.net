@@ -49,6 +49,11 @@ const variant = computed(() => {
     background-color: var(--color-bg-blue-lowered);
     color: var(--color-text-blue);
   }
+
+  &--user {
+    background-color: var(--color-bg-green-lowered);
+    color: var(--color-text-green);
+  }
 }
 
 :root.light {
@@ -60,6 +65,11 @@ const variant = computed(() => {
 
     &--moderator {
       background-color: var(--color-bg-blue-raised);
+      color: var(--color-text-invert);
+    }
+
+    &--user {
+      background-color: var(--color-bg-green-raised);
       color: var(--color-text-invert);
     }
   }
