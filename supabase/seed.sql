@@ -6,6 +6,10 @@ INSERT INTO public.role_permissions(role, permission)
 ('admin', 'announcements.delete'),
 ('admin', 'announcements.read'),
 ('admin', 'announcements.update'),
+('admin', 'complaints.create'),
+('admin', 'complaints.delete'),
+('admin', 'complaints.read'),
+('admin', 'complaints.update'),
 ('admin', 'containers.create'),
 ('admin', 'containers.delete'),
 ('admin', 'containers.read'),
@@ -34,13 +38,16 @@ INSERT INTO public.role_permissions(role, permission)
 ('admin', 'gameservers.delete'),
 ('admin', 'gameservers.read'),
 ('admin', 'gameservers.update'),
-('admin', 'profiles.delete'),
 ('admin', 'profiles.read'),
 ('admin', 'profiles.update'),
 ('admin', 'referendums.create'),
 ('admin', 'referendums.delete'),
 ('admin', 'referendums.read'),
 ('admin', 'referendums.update'),
+('admin', 'roles.create'),
+('admin', 'roles.delete'),
+('admin', 'roles.read'),
+('admin', 'roles.update'),
 ('admin', 'servers.create'),
 ('admin', 'servers.delete'),
 ('admin', 'servers.read'),
@@ -49,11 +56,14 @@ INSERT INTO public.role_permissions(role, permission)
 ('admin', 'users.delete'),
 ('admin', 'users.read'),
 ('admin', 'users.update'),
-    -- Moderator permissions - content management with delete access
+    -- Moderator permissions - content management with delete access but no role management
 ('moderator', 'announcements.create'),
 ('moderator', 'announcements.delete'),
 ('moderator', 'announcements.read'),
 ('moderator', 'announcements.update'),
+('moderator', 'complaints.create'),
+('moderator', 'complaints.read'),
+('moderator', 'complaints.update'),
 ('moderator', 'events.create'),
 ('moderator', 'events.delete'),
 ('moderator', 'events.read'),
@@ -70,10 +80,17 @@ INSERT INTO public.role_permissions(role, permission)
 ('moderator', 'gameservers.delete'),
 ('moderator', 'gameservers.read'),
 ('moderator', 'gameservers.update'),
+('moderator', 'profiles.read'),
+('moderator', 'profiles.update'),
 ('moderator', 'referendums.create'),
 ('moderator', 'referendums.delete'),
 ('moderator', 'referendums.read'),
-('moderator', 'referendums.update');
+('moderator', 'referendums.update'),
+('moderator', 'roles.read'),
+('moderator', 'users.create'),
+('moderator', 'users.delete'),
+('moderator', 'users.read'),
+('moderator', 'users.update');
 
 -- Create the storage buckets
 INSERT INTO "storage"."buckets"("id", "name", "owner", "created_at", "updated_at", "public", "avif_autodetection", "file_size_limit", "allowed_mime_types", "owner_id")
@@ -91,6 +108,19 @@ INSERT INTO public.user_roles(role, user_id)
 -- Create or update a profile for our admin user
 INSERT INTO public.profiles(id, created_at, username, introduction)
   VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), 'Hivecom', 'Local develop and test user')
+ON CONFLICT (id)
+  DO UPDATE SET
+    username = EXCLUDED.username,
+    introduction = EXCLUDED.introduction;
+
+-- Insert example test user for admin to modify and test with
+INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous")
+  VALUES ('00000000-0000-0000-0000-000000000000', '018d224c-0e49-4b6d-b57a-87299605c2b2', 'authenticated', 'authenticated', 'testuser@example.com', '$2a$10$Q6EF4VpHdLQlgwHxpUyPrewgFHmqwaw/ZTaKwuD3X8k0v4DVoMf7a', '2025-01-01 12:00:00.000000+00', NULL, '', NULL, '', NULL, '', '', NULL, NULL, '{"provider": "email", "providers": ["email"]}', '{"email_verified": true}', NULL, '2025-04-15 04:18:06.23308+00', '2025-04-15 04:18:06.237601+00', NULL, NULL, '', '', NULL, '', '0', NULL, '', NULL, 'false', NULL, 'false');
+
+-- Keep in mind, we're not going to assign the user a role because most users will not have a role assigned.
+-- Create profile for test user
+INSERT INTO public.profiles(id, created_at, username, introduction)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b2', NOW(), 'TestUser', 'Example user for testing admin features and role assignments')
 ON CONFLICT (id)
   DO UPDATE SET
     username = EXCLUDED.username,
@@ -259,4 +289,14 @@ The server is configured for casual play with a friendly, welcoming environment.
 
 Come join us and let''s have some fun together!
   ', FALSE);
+
+-- Insert test complaints
+INSERT INTO public.complaints(created_at, created_by, message, response, responded_by, responded_at, acknowledged)
+  VALUES
+    -- Unresponded complaint
+(NOW() - INTERVAL '2 hours', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'I''m experiencing lag issues on the CS2 server. The ping seems to spike randomly during gameplay.', NULL, NULL, NULL, FALSE),
+    -- Responded but not acknowledged complaint
+(NOW() - INTERVAL '1 day', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'There was a player using inappropriate language in voice chat yesterday around 8 PM.', 'Thank you for reporting this. We have reviewed the logs and taken appropriate action against the player. Please continue to report any issues you encounter.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '20 hours', FALSE),
+    -- Fully resolved complaint
+(NOW() - INTERVAL '3 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'The gameserver seems to be down. I can''t connect to cs2.gameserver.hivecom.net', 'The server has been restarted and is now operational. The issue was caused by a temporary network configuration problem that has been resolved.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '2 days', TRUE);
 

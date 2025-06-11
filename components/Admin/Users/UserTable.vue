@@ -36,7 +36,9 @@ const _profilesQuery = supabase.from('profiles').select(`
   supporter_patreon,
   patreon_id,
   steam_id,
-  discord_id
+  discord_id,
+  introduction,
+  markdown
 `)
 
 // Define interface for transformed user data
@@ -55,12 +57,17 @@ interface TransformedUser {
   _original: {
     id: string
     username: string
+    created_at: string
+    modified_at: string | null
     supporter_patreon: boolean
     supporter_lifetime: boolean
     patreon_id: string | null
     steam_id: string | null
     discord_id: string | null
+    introduction: string | null
+    markdown: string | null
     banned: boolean
+    roles: string[]
   }
 }
 
@@ -106,7 +113,9 @@ async function fetchUsers() {
         supporter_patreon,
         patreon_id,
         steam_id,
-        discord_id
+        discord_id,
+        introduction,
+        markdown
       `)
       .order('created_at', { ascending: false })
 
@@ -206,12 +215,17 @@ const filteredData = computed<TransformedUser[]>(() => {
       _original: {
         id: user.id,
         username: user.username || 'Unknown',
+        created_at: user.created_at,
+        modified_at: user.modified_at,
         supporter_patreon: user.supporter_patreon || false,
         supporter_lifetime: user.supporter_lifetime || false,
         patreon_id: user.patreon_id,
         steam_id: user.steam_id,
         discord_id: user.discord_id,
+        introduction: user.introduction,
+        markdown: user.markdown,
         banned,
+        roles,
       },
     }
   })

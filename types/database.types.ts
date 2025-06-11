@@ -48,6 +48,39 @@ export interface Database {
         }
         Relationships: []
       }
+      complaints: {
+        Row: {
+          acknowledged: boolean
+          created_at: string
+          created_by: string
+          id: number
+          message: string
+          responded_at: string | null
+          responded_by: string | null
+          response: string | null
+        }
+        Insert: {
+          acknowledged?: boolean
+          created_at?: string
+          created_by: string
+          id?: number
+          message: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response?: string | null
+        }
+        Update: {
+          acknowledged?: boolean
+          created_at?: string
+          created_by?: string
+          id?: number
+          message?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response?: string | null
+        }
+        Relationships: []
+      }
       containers: {
         Row: {
           created_at: string
@@ -456,31 +489,40 @@ export interface Database {
           active: boolean
           address: string
           created_at: string
+          created_by: string | null
           docker_control: boolean
           docker_control_port: number | null
           docker_control_secure: boolean
           docker_control_subdomain: string | null
           id: number
+          modified_at: string | null
+          modified_by: string | null
         }
         Insert: {
           active: boolean
           address: string
           created_at?: string
+          created_by?: string | null
           docker_control?: boolean
           docker_control_port?: number | null
           docker_control_secure?: boolean
           docker_control_subdomain?: string | null
           id?: number
+          modified_at?: string | null
+          modified_by?: string | null
         }
         Update: {
           active?: boolean
           address?: string
           created_at?: string
+          created_by?: string | null
           docker_control?: boolean
           docker_control_port?: number | null
           docker_control_secure?: boolean
           docker_control_subdomain?: string | null
           id?: number
+          modified_at?: string | null
+          modified_by?: string | null
         }
         Relationships: []
       }
@@ -507,6 +549,10 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      audit_fields_unchanged: {
+        Args: { created_at: string, created_by: string }
+        Returns: boolean
+      }
       authorize: {
         Args: {
           requested_permission: Database['public']['Enums']['app_permission']
@@ -521,6 +567,18 @@ export interface Database {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      has_permission: {
+        Args: { permission_name: Database['public']['Enums']['app_permission'] }
+        Returns: boolean
+      }
+      is_owner: {
+        Args: { record_user_id: string }
+        Returns: boolean
+      }
+      is_profile_owner: {
+        Args: { profile_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_permission:
@@ -528,6 +586,10 @@ export interface Database {
         | 'announcements.delete'
         | 'announcements.read'
         | 'announcements.update'
+        | 'complaints.create'
+        | 'complaints.delete'
+        | 'complaints.read'
+        | 'complaints.update'
         | 'containers.create'
         | 'containers.delete'
         | 'containers.read'
@@ -563,6 +625,10 @@ export interface Database {
         | 'referendums.delete'
         | 'referendums.read'
         | 'referendums.update'
+        | 'roles.create'
+        | 'roles.delete'
+        | 'roles.read'
+        | 'roles.update'
         | 'servers.create'
         | 'servers.delete'
         | 'servers.read'
@@ -693,6 +759,10 @@ export const Constants = {
         'announcements.delete',
         'announcements.read',
         'announcements.update',
+        'complaints.create',
+        'complaints.delete',
+        'complaints.read',
+        'complaints.update',
         'containers.create',
         'containers.delete',
         'containers.read',
@@ -728,6 +798,10 @@ export const Constants = {
         'referendums.delete',
         'referendums.read',
         'referendums.update',
+        'roles.create',
+        'roles.delete',
+        'roles.read',
+        'roles.update',
         'servers.create',
         'servers.delete',
         'servers.read',

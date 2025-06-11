@@ -6,6 +6,22 @@ import UserForm from '~/components/Admin/Users/UserForm.vue'
 import UserKPIs from '~/components/Admin/Users/UserKPIs.vue'
 import UserTable from '~/components/Admin/Users/UserTable.vue'
 
+// Get admin permissions and current user
+const {
+  canViewUsers,
+  canUpdateRoles,
+} = useAdminPermissions()
+
+const currentUser = useSupabaseUser()
+
+// Ensure user has at least read permission for users
+if (!canViewUsers.value) {
+  throw createError({
+    statusCode: 403,
+    statusMessage: 'Insufficient permissions to view users',
+  })
+}
+
 // Reactive state
 const selectedUser = ref<any>(null)
 const showUserDetails = ref(false)
@@ -100,6 +116,16 @@ async function handleUserSave(userData: any) {
 
     // Handle role update if role is provided
     if (role !== undefined) {
+      // Security checks for role modification
+      if (!canUpdateRoles.value) {
+        throw new Error('Insufficient permissions to modify user roles')
+      }
+
+      // Prevent users from modifying their own role
+      if (currentUser.value && currentUser.value.id === userToEdit.value.id) {
+        throw new Error('You cannot modify your own role')
+      }
+
       // First, remove any existing roles for this user
       const { error: deleteError } = await supabase
         .from('user_roles')

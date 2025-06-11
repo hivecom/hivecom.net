@@ -12,10 +12,20 @@ import EventForm from './EventForm.vue'
 // Event table type
 type Event = Tables<'events'>
 
-// Remove unused interface - not used in the code
+// Props
+const _props = defineProps<{
+  canManage?: boolean
+}>()
 
 // Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
+// Get admin permissions
+const { hasPermission } = useAdminPermissions()
+
+// Permission checks
+const canCreateEvents = computed(() => hasPermission('events.create'))
+const canUpdateEvents = computed(() => hasPermission('events.update'))
 
 // Setup client and state
 const supabase = useSupabaseClient()
@@ -229,7 +239,11 @@ onBeforeMount(fetchEvents)
     <Flex x-between expand>
       <EventFilters v-model:search="search" />
 
-      <Button variant="accent" @click="openAddEventForm">
+      <Button
+        v-if="canCreateEvents"
+        variant="accent"
+        @click="openAddEventForm"
+      >
         <template #start>
           <Icon name="ph:plus" />
         </template>
@@ -271,7 +285,14 @@ onBeforeMount(fetchEvents)
             </Table.Cell>
             <Table.Cell @click.stop>
               <Flex gap="xs">
-                <Button square size="s" data-title-top="Edit Event" icon="ph:pencil" @click="(clickEvent: MouseEvent) => openEditEventForm(event._original, clickEvent)">
+                <Button
+                  v-if="canUpdateEvents"
+                  square
+                  size="s"
+                  data-title-top="Edit Event"
+                  icon="ph:pencil"
+                  @click="(clickEvent: MouseEvent) => openEditEventForm(event._original, clickEvent)"
+                >
                   Edit
                 </Button>
               </Flex>

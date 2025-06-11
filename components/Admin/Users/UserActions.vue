@@ -17,6 +17,9 @@ const props = defineProps<{
   showLabels?: boolean
 }>()
 
+// Get admin permissions
+const { canModifyUsers, canDeleteUsers } = useAdminPermissions()
+
 // Define a model value for actions with proper type
 type UserAction = {
   user: any
@@ -88,7 +91,8 @@ const showLabels = computed(() => !!props.showLabels)
       variant="gray"
       :icon="props.showLabels ? undefined : 'ph:pencil-simple'"
       :square="!showLabels"
-      :data-title-top="!showLabels ? 'Edit User' : undefined"
+      :data-title-top="!showLabels ? (canModifyUsers ? 'Edit User' : 'No permission to edit users') : undefined"
+      :disabled="!canModifyUsers"
       @click="openEditConfirm"
     >
       <template v-if="props.showLabels" #start>
@@ -103,10 +107,11 @@ const showLabels = computed(() => !!props.showLabels)
       v-if="!props.user.banned"
       :size="buttonSize"
       variant="danger"
+      :disabled="!canModifyUsers"
       :loading="isActionLoading('ban')"
       :icon="props.showLabels ? undefined : 'ph:prohibit'"
       :square="!showLabels"
-      :data-title-top="!showLabels ? 'Ban User' : undefined"
+      :data-title-top="!showLabels ? (canModifyUsers ? 'Ban User' : 'Insufficient permissions to ban users') : undefined"
       @click="openBanModal"
     >
       <template v-if="props.showLabels" #start>
@@ -121,10 +126,11 @@ const showLabels = computed(() => !!props.showLabels)
       v-if="props.user.banned"
       :size="buttonSize"
       variant="success"
+      :disabled="!canModifyUsers"
       :loading="isActionLoading('unban')"
       :icon="props.showLabels ? undefined : 'ph:check-circle'"
       :square="!showLabels"
-      :data-title-top="!showLabels ? 'Unban User' : undefined"
+      :data-title-top="!showLabels ? (canModifyUsers ? 'Unban User' : 'Insufficient permissions to unban users') : undefined"
       @click="openUnbanConfirm"
     >
       <template v-if="props.showLabels" #start>
@@ -138,10 +144,11 @@ const showLabels = computed(() => !!props.showLabels)
     <Button
       :size="buttonSize"
       variant="danger"
+      :disabled="!canDeleteUsers"
       :loading="isActionLoading('delete')"
       :icon="props.showLabels ? undefined : 'ph:trash'"
       :square="!showLabels"
-      :data-title-top="!showLabels ? 'Delete User' : undefined"
+      :data-title-top="!showLabels ? (canDeleteUsers ? 'Delete User' : 'Insufficient permissions to delete users') : undefined"
       @click="openDeleteConfirm"
     >
       <template v-if="props.showLabels" #start>

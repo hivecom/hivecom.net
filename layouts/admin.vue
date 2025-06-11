@@ -7,12 +7,13 @@ const route = useRoute()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 
-// Initialize user role from database
+// Initialize user role and permissions from database
 const userRole = ref<string | null>(null)
+const userPermissions = ref<string[]>([])
 const isLoading = ref(true)
 const isAuthorized = ref(false)
 
-// Check user role and redirect if not authorized
+// Check user role and permissions, redirect if not authorized
 onMounted(async () => {
   try {
     if (!user.value) {
@@ -46,7 +47,21 @@ onMounted(async () => {
       return
     }
 
-    // User is authorized
+    // Fetch role permissions from role_permissions table
+    const { data: permissionsData, error: permissionsError } = await supabase
+      .from('role_permissions')
+      .select('permission')
+      .eq('role', userRole.value as 'admin' | 'moderator')
+
+    if (permissionsError) {
+      console.error('Error fetching role permissions:', permissionsError)
+      // Continue with empty permissions - this will limit access
+    }
+    else {
+      userPermissions.value = permissionsData?.map(p => p.permission) || []
+    }
+
+    // User is authorized (has admin/moderator role)
     isAuthorized.value = true
   }
   catch (error) {
@@ -67,15 +82,79 @@ watch(user, async (newUser) => {
   }
 })
 
+// Helper function to check if user has specific permission
+function hasPermission(permission: string): boolean {
+  return userPermissions.value.includes(permission)
+}
+
+// Helper function to check if user has any of the provided permissions
+function hasAnyPermission(permissions: string[]): boolean {
+  return permissions.some(permission => userPermissions.value.includes(permission))
+}
+
+// Menu items with their required permissions
 const menuItems = [
-  { name: 'Dashboard', path: '/admin/', icon: 'ph:squares-four' },
-  { name: 'Events', path: '/admin/events', icon: 'ph:calendar-blank' },
-  { name: 'Funding', path: '/admin/funding', icon: 'ph:coins' },
-  { name: 'Games', path: '/admin/games', icon: 'ph:game-controller' },
-  { name: 'Network', path: '/admin/network', icon: 'ph:computer-tower' },
-  { name: 'Referendums', path: '/admin/referendums', icon: 'ph:user-sound' },
-  { name: 'Users', path: '/admin/users', icon: 'ph:user' },
+  {
+    name: 'Dashboard',
+    path: '/admin/',
+    icon: 'ph:squares-four',
+    permissions: [], // Dashboard is always accessible to admin/moderator
+  },
+  {
+    name: 'Events',
+    path: '/admin/events',
+    icon: 'ph:calendar-blank',
+    permissions: ['events.read', 'events.create', 'events.update', 'events.delete'],
+  },
+  {
+    name: 'Funding',
+    path: '/admin/funding',
+    icon: 'ph:coins',
+    permissions: ['funding.read', 'funding.create', 'funding.update', 'funding.delete', 'expenses.read', 'expenses.create', 'expenses.update', 'expenses.delete'],
+  },
+  {
+    name: 'Games',
+    path: '/admin/games',
+    icon: 'ph:game-controller',
+    permissions: ['games.read', 'games.create', 'games.update', 'games.delete'],
+  },
+  {
+    name: 'Network',
+    path: '/admin/network',
+    icon: 'ph:computer-tower',
+    permissions: ['gameservers.read', 'gameservers.create', 'gameservers.update', 'gameservers.delete', 'servers.read', 'servers.create', 'servers.update', 'servers.delete', 'containers.read', 'containers.create', 'containers.update', 'containers.delete'],
+  },
+  {
+    name: 'Referendums',
+    path: '/admin/referendums',
+    icon: 'ph:user-sound',
+    permissions: ['referendums.read', 'referendums.create', 'referendums.update', 'referendums.delete'],
+  },
+  {
+    name: 'Users',
+    path: '/admin/users',
+    icon: 'ph:user',
+    permissions: ['users.read', 'users.create', 'users.update', 'users.delete', 'profiles.read', 'profiles.update', 'profiles.delete'],
+  },
 ]
+
+// Filter menu items based on user permissions
+const accessibleMenuItems = computed(() => {
+  return menuItems.filter((item) => {
+    // If no permissions required, always show (like Dashboard)
+    if (item.permissions.length === 0)
+      return true
+
+    // Check if user has any of the required permissions for this menu item
+    return hasAnyPermission(item.permissions)
+  })
+})
+
+// Provide permissions to child components
+provide('userPermissions', readonly(userPermissions))
+provide('userRole', readonly(userRole))
+provide('hasPermission', hasPermission)
+provide('hasAnyPermission', hasAnyPermission)
 
 const miniSidebar = useLocalStorage('admin-sidebar-open', false)
 const open = ref(true)
@@ -105,8 +184,10 @@ const open = ref(true)
           </Flex>
           <Divider :size="0" />
         </template>
+
+        <!-- Only show menu items the user has permissions for -->
         <DropdownItem
-          v-for="item in menuItems"
+          v-for="item in accessibleMenuItems"
           :key="item.path"
           :icon="item.icon"
           :class="{ selected: route.path === item.path }"

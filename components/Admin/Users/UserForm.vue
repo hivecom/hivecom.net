@@ -38,6 +38,10 @@ const isOpen = defineModel<boolean>('isOpen')
 // Supabase client for role operations
 const supabase = useSupabaseClient()
 
+// Get current user and admin permissions
+const currentUser = useSupabaseUser()
+const { canModifyUsers, canDeleteUsers, canUpdateRoles } = useAdminPermissions()
+
 // Available roles - "User" means no role in database
 const availableRoles = [
   { value: 'user', label: 'User', description: 'Standard user with no admin privileges' },
@@ -70,6 +74,10 @@ const selectedRole = ref<string>('user')
 const originalRole = ref<string>('user')
 const rolesLoading = ref(false)
 const rolesError = ref('')
+
+// Permission verification state
+const permissionVerified = ref(false)
+const permissionVerifying = ref(false)
 
 // Computed property to handle VUI Select format (expects array of selected options)
 const selectedRoleComputed = computed({
@@ -160,6 +168,36 @@ const validation = computed(() => ({
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
+// Permission-based access control
+const canEditForm = computed(() => {
+  if (!props.isEditMode)
+    return canModifyUsers.value // Creating new user
+  return canModifyUsers.value // Editing existing user
+})
+
+const canEditRoles = computed(() => {
+  // Basic permission check from the admin permissions composable
+  if (!canUpdateRoles.value) {
+    return false
+  }
+
+  // Additional database verification check
+  if (!permissionVerified.value) {
+    return false
+  }
+
+  // Prevent users from modifying their own role
+  if (currentUser.value && props.user && currentUser.value.id === props.user.id) {
+    return false
+  }
+
+  return true
+})
+
+const canDeleteUser = computed(() => canDeleteUsers.value)
+
+const showDeleteButton = computed(() => props.isEditMode && canDeleteUser.value)
+
 // Role management functions
 async function fetchUserRoles() {
   if (!props.user?.id)
@@ -191,6 +229,56 @@ async function fetchUserRoles() {
   }
 }
 
+// Verify that the current user has the required permissions to modify roles
+async function verifyRolePermissions() {
+  if (!currentUser.value) {
+    permissionVerified.value = false
+    return
+  }
+
+  permissionVerifying.value = true
+
+  try {
+    // Get the current user's role
+    const { data: userRoleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', currentUser.value.id)
+      .single()
+
+    if (roleError && roleError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      throw roleError
+    }
+
+    const userRole = userRoleData?.role
+
+    if (!userRole) {
+      permissionVerified.value = false
+      return
+    }
+
+    // Check if the user's role has the required permissions
+    const { data: permissionData, error: permissionError } = await supabase
+      .from('role_permissions')
+      .select('permission')
+      .eq('role', userRole)
+      .in('permission', ['roles.update', 'roles.create'])
+
+    if (permissionError) {
+      throw permissionError
+    }
+
+    permissionVerified.value = permissionData && permissionData.length > 0
+  }
+  catch (error) {
+    console.error('Error verifying role permissions:', error)
+    permissionVerified.value = false
+  }
+  finally {
+    permissionVerifying.value = false
+  }
+}
+
 // Update form data when user prop changes
 watch(
   () => props.user,
@@ -210,6 +298,8 @@ watch(
       if (props.isEditMode) {
         fetchUserRoles()
       }
+      // Verify role permissions when user changes
+      verifyRolePermissions()
     }
     else {
       // Reset form for new user
@@ -226,7 +316,18 @@ watch(
       // Reset role for new user
       selectedRole.value = 'user'
       originalRole.value = 'user'
+      // Verify permissions for new user creation
+      verifyRolePermissions()
     }
+  },
+  { immediate: true },
+)
+
+// Watch for authentication state changes to re-verify permissions
+watch(
+  () => currentUser.value,
+  () => {
+    verifyRolePermissions()
   },
   { immediate: true },
 )
@@ -251,7 +352,8 @@ function handleSubmit() {
     patreon_id: userForm.value.patreon_id.trim() || null,
     discord_id: userForm.value.discord_id.trim() || null,
     steam_id: userForm.value.steam_id.trim() || null,
-    role: selectedRole.value,
+    // Only include role if user has permission to modify roles
+    ...(canEditRoles.value && { role: selectedRole.value }),
   }
 
   emit('save', userData)
@@ -292,6 +394,25 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
 
     <!-- User Info Section -->
     <Flex column gap="l" class="user-form" expand>
+      <!-- Admin Guidelines -->
+      <Flex v-if="props.isEditMode" column gap="s" class="admin-guidelines" expand>
+        <h5>⚠️ Admin Guidelines</h5>
+        <ul class="guidelines-list">
+          <li>
+            <Icon name="ph:warning-circle" />
+            Only modify user information for content moderation purposes
+          </li>
+          <li>
+            <Icon name="ph:warning-circle" />
+            Personal information should remain unchanged unless necessary for safety
+          </li>
+          <li>
+            <Icon name="ph:warning-circle" />
+            All modifications are logged and subject to audit
+          </li>
+        </ul>
+      </Flex>
+
       <Flex column gap="m" expand>
         <h4>User Information</h4>
 
@@ -303,6 +424,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           :valid="usernameValidation.valid"
           :error="usernameValidation.error"
           :maxlength="USERNAME_LIMIT"
+          :disabled="!canEditForm"
         >
           <template #after>
             <Flex expand x-between>
@@ -327,7 +449,6 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
         <Flex column gap="m" expand>
           <div v-if="rolesLoading" class="roles-loading">
             <Icon name="ph:spinner" spin />
-            Loading roles...
           </div>
 
           <div v-else-if="rolesError" class="help-text error">
@@ -336,17 +457,31 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           </div>
 
           <Flex v-else class="roles-section" column expand>
-            <Flex class="role-dropdown" column expand>
+            <Flex class="role-dropdown" expand y-end>
               <Select
                 v-model="selectedRoleComputed"
                 label="User Role"
                 placeholder="Select role"
                 :options="roleSelectOptions"
+                :disabled="!canEditRoles"
                 expand
               />
-              <div class="role-description">
-                {{ availableRoles.find(r => r.value === selectedRole)?.description }}
-              </div>
+              <Flex v-if="!canEditRoles" class="help-text">
+                <Icon name="ph:lock" />
+                <span v-if="currentUser && props.user && currentUser.id === props.user.id">
+                  You cannot modify your own role
+                </span>
+                <span v-else-if="!canUpdateRoles">
+                  Requires 'roles.update' permission to modify user roles
+                </span>
+                <span v-else-if="!permissionVerified">
+                  <span v-if="permissionVerifying">Verifying permissions...</span>
+                  <span v-else>Role modification permissions not verified</span>
+                </span>
+                <span v-else>
+                  Role modification not permitted
+                </span>
+              </Flex>
             </Flex>
           </Flex>
         </Flex>
@@ -358,6 +493,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           placeholder="Short introduction about the user"
           :rows="3"
           :maxlength="INTRODUCTION_LIMIT"
+          :disabled="!canEditForm"
         >
           <template #after>
               <div class="character-count">
@@ -375,6 +511,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           placeholder="Detailed profile description in markdown format"
           :rows="8"
           :maxlength="MARKDOWN_LIMIT"
+          :disabled="!canEditForm"
         >
           <template #after>
               <div class="character-count">
@@ -397,6 +534,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           placeholder="Enter Patreon ID"
           :valid="patreonIdValidation.valid"
           :error="patreonIdValidation.error"
+          :disabled="!canEditForm"
         >
           <template #after>
             <div v-if="!patreonIdValidation.valid && userForm.patreon_id" class="help-text error">
@@ -417,6 +555,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           placeholder="Enter Discord ID"
           :valid="discordIdValidation.valid"
           :error="discordIdValidation.error"
+          :disabled="!canEditForm"
         >
           <template #after>
             <div v-if="!discordIdValidation.valid && userForm.discord_id" class="help-text error">
@@ -437,6 +576,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           placeholder="Enter Steam ID"
           :valid="steamIdValidation.valid"
           :error="steamIdValidation.error"
+          :disabled="!canEditForm"
         >
           <template #after>
             <div v-if="!steamIdValidation.valid && userForm.steam_id" class="help-text error">
@@ -460,33 +600,16 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
             v-model="userForm.supporter_patreon"
             label="Patreon Supporter"
             description="User is currently a Patreon supporter"
+            :disabled="!canEditForm"
           />
 
           <Switch
             v-model="userForm.supporter_lifetime"
             label="Lifetime Supporter"
             description="User has lifetime supporter status"
+            :disabled="!canEditForm"
           />
         </Flex>
-      </Flex>
-
-      <!-- Admin Guidelines -->
-      <Flex v-if="props.isEditMode" column gap="s" class="admin-guidelines" expand>
-        <h5>⚠️ Admin Guidelines</h5>
-        <ul class="guidelines-list">
-          <li>
-            <Icon name="ph:warning-circle" />
-            Only modify user information for content moderation purposes
-          </li>
-          <li>
-            <Icon name="ph:warning-circle" />
-            Personal information should remain unchanged unless necessary for safety
-          </li>
-          <li>
-            <Icon name="ph:warning-circle" />
-            All modifications are logged and subject to audit
-          </li>
-        </ul>
       </Flex>
     </Flex>
 
@@ -494,7 +617,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
       <Flex gap="xs" class="form-actions">
         <Button
           variant="accent"
-          :disabled="!isValid"
+          :disabled="!isValid || !canEditForm"
           @click="handleSubmit"
         >
           <template #start>
@@ -510,7 +633,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
         <div class="flex-1" />
 
         <Button
-          v-if="props.isEditMode"
+          v-if="showDeleteButton"
           variant="danger"
           square
           data-title-left="Delete user"

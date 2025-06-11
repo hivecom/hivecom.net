@@ -16,6 +16,10 @@ const emit = defineEmits(['save', 'delete'])
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
+// Get admin permissions
+const { hasPermission } = useAdminPermissions()
+const canDeleteEvents = computed(() => hasPermission('events.delete'))
+
 // Form state
 const eventForm = ref({
   title: '',
@@ -312,7 +316,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
         <div class="flex-1" />
 
         <Button
-          v-if="isEditMode"
+          v-if="isEditMode && canDeleteEvents"
           variant="danger"
           square
           data-title-left="Delete event"

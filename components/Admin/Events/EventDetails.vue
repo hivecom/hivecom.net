@@ -17,6 +17,10 @@ const emit = defineEmits(['edit'])
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
+// Get admin permissions
+const { hasPermission } = useAdminPermissions()
+const canUpdateEvents = computed(() => hasPermission('events.update'))
+
 // Handle closing the sheet
 function handleClose() {
   isOpen.value = false
@@ -67,7 +71,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
             {{ getEventStatus(props.event).label }}
           </Badge>
           <Button
-            v-if="props.event"
+            v-if="props.event && canUpdateEvents"
             @click="handleEdit"
           >
             <template #start>
