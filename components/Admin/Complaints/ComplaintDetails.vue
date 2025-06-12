@@ -26,6 +26,7 @@ const emit = defineEmits<{
   (e: 'respond', data: { id: number, response: string }): void
   (e: 'updateResponse', data: { id: number, response: string }): void
   (e: 'removeResponse', id: number): void
+  (e: 'deleteComplaint', id: number): void
   (e: 'close'): void
 }>()
 
@@ -37,6 +38,7 @@ const responseText = ref('')
 const isSubmitting = ref(false)
 const isEditingResponse = ref(false)
 const showRemoveConfirm = ref(false)
+const showDeleteConfirm = ref(false)
 
 // Computed properties
 const status = computed(() => {
@@ -172,6 +174,23 @@ function confirmRemoveResponse() {
   responseText.value = ''
   showRemoveConfirm.value = false
 }
+
+// Handle delete complaint
+function handleDeleteComplaint() {
+  showDeleteConfirm.value = true
+}
+
+// Confirm delete complaint
+function confirmDeleteComplaint() {
+  if (!props.complaint)
+    return
+
+  emit('deleteComplaint', props.complaint.id)
+  showDeleteConfirm.value = false
+  // Close the sheet and reset state after deletion
+  isOpen.value = false
+  emit('close')
+}
 </script>
 
 <template>
@@ -183,8 +202,17 @@ function confirmRemoveResponse() {
     @close="handleClose"
   >
     <template #header>
-      <Flex column :gap="0">
+      <Flex x-between y-center gap="l">
         <h4>Complaint #{{ complaint?.id }}</h4>
+        <Button
+          variant="danger"
+          @click="handleDeleteComplaint"
+        >
+          <template #start>
+            <Icon name="ph:trash" />
+          </template>
+          Delete
+        </Button>
       </Flex>
     </template>
 
@@ -326,6 +354,17 @@ function confirmRemoveResponse() {
     title="Remove Response"
     description="Are you sure you want to remove this response? This action cannot be undone and will revert the complaint back to acknowledged status."
     confirm-text="Remove Response"
+    cancel-text="Cancel"
+    :destructive="true"
+  />
+
+  <!-- Delete Complaint Confirmation Modal -->
+  <ConfirmModal
+    v-model:open="showDeleteConfirm"
+    v-model:confirm="confirmDeleteComplaint"
+    title="Delete Complaint"
+    description="Are you sure you want to permanently delete this complaint? This action cannot be undone and will remove the complaint and all associated data."
+    confirm-text="Delete Complaint"
     cancel-text="Cancel"
     :destructive="true"
   />

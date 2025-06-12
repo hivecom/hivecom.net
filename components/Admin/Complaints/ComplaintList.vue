@@ -342,6 +342,46 @@ async function handleRemoveResponse(complaintId: number) {
   }
 }
 
+// Handle delete complaint action
+async function handleDeleteComplaint(complaintId: number) {
+  if (!user.value)
+    return
+
+  try {
+    actionLoading.value[complaintId] = true
+
+    const { error } = await supabase
+      .from('complaints')
+      .delete()
+      .eq('id', complaintId)
+
+    if (error) {
+      throw error
+    }
+
+    // Remove from local data
+    const index = complaints.value.findIndex(c => c.id === complaintId)
+    if (index !== -1) {
+      complaints.value.splice(index, 1)
+    }
+
+    // Clear selected complaint if it's the deleted one
+    if (selectedComplaint.value?.id === complaintId) {
+      selectedComplaint.value = null
+    }
+
+    // Trigger refresh signal
+    refreshSignal.value = Date.now()
+  }
+  catch (error) {
+    console.error('Error deleting complaint:', error)
+    // You might want to show a toast notification here
+  }
+  finally {
+    actionLoading.value[complaintId] = false
+  }
+}
+
 // Handle pagination
 function handlePageChange(page: number) {
   currentPage.value = page
@@ -441,6 +481,7 @@ onMounted(fetchComplaints)
       @respond="handleRespond"
       @update-response="handleUpdateResponse"
       @remove-response="handleRemoveResponse"
+      @delete-complaint="handleDeleteComplaint"
       @close="selectedComplaint = null"
     />
   </Flex>
