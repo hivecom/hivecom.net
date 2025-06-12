@@ -112,7 +112,12 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
   >
     <template #header>
       <Flex x-between y-center expand>
-        <h4>Edit Profile</h4>
+        <Flex column :gap="0">
+          <h4>Edit Profile</h4>
+          <span v-if="props.profile" class="color-text-light text-xxs">
+            {{ props.profile.username }}
+          </span>
+        </Flex>
         <Button
           variant="accent"
           :disabled="!isValid"

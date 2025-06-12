@@ -25,7 +25,12 @@ function handleClose() {
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ props.server ? props.server.address : 'Server Details' }}</h4>
+      <Flex column :gap="0">
+        <h4>Server Details</h4>
+        <span v-if="props.server" class="color-text-light text-xxs">
+          {{ props.server.address }}
+        </span>
+      </Flex>
     </template>
 
     <Flex v-if="props.server" column gap="m" class="server-detail">
@@ -34,13 +39,18 @@ function handleClose() {
         <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Status:</span>
-              <ServerStatusIndicator :status="props.server.active ? 'active' : 'inactive'" show-label />
+              <span class="color-text-light text-bold">ID:</span>
+              <span>{{ props.server.id }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">ID:</span>
-              <span>{{ props.server.id }}</span>
+              <span class="color-text-light text-bold">Address:</span>
+              <span>{{ props.server.address }}</span>
+            </Grid>
+
+            <Grid class="detail-item" expand :columns="2">
+              <span class="color-text-light text-bold">Status:</span>
+              <ServerStatusIndicator :status="props.server.active ? 'active' : 'inactive'" show-label />
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
@@ -88,9 +98,5 @@ function handleClose() {
 <style scoped>
 .server-detail {
   padding-bottom: var(--space);
-}
-h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-xs);
 }
 </style>

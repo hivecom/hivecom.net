@@ -150,7 +150,12 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ formTitle }}</h4>
+      <Flex column :gap="0">
+        <h4>{{ formTitle }}</h4>
+        <span v-if="props.isEditMode && props.event" class="color-text-light text-xxs">
+          {{ props.event.title }}
+        </span>
+      </Flex>
     </template>
 
     <Flex column gap="l" class="event-form">
@@ -362,11 +367,6 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
     font-weight: var(--font-weight-medium);
     color: var(--color-text);
   }
-}
-
-h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-xs);
 }
 
 .help-text {

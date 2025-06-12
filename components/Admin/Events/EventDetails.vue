@@ -62,7 +62,12 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
   >
     <template #header>
       <Flex x-between y-center>
-        <h4>Event Details</h4>
+        <Flex column :gap="0">
+          <h4>Event Details</h4>
+          <span v-if="props.event" class="color-text-light text-xxs">
+            {{ props.event.title }}
+          </span>
+        </Flex>
         <Flex y-center gap="s">
           <Badge
             v-if="props.event"
@@ -161,11 +166,6 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 <style scoped>
 .event-detail {
   padding-bottom: var(--space);
-}
-
-h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-xs);
 }
 
 .event-markdown {

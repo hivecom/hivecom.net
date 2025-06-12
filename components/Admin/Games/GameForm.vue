@@ -109,7 +109,12 @@ function confirmDelete() {
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ props.isEditMode ? 'Edit Game' : 'Add Game' }}</h4>
+      <Flex column :gap="0">
+        <h4>{{ props.isEditMode ? 'Edit Game' : 'Add Game' }}</h4>
+        <span v-if="props.isEditMode && props.game" class="color-text-light text-xxs">
+          {{ props.game.name }}
+        </span>
+      </Flex>
     </template>
 
     <!-- Game Info Section -->
@@ -197,10 +202,7 @@ function confirmDelete() {
 .game-form {
   padding-bottom: var(--space);
 }
-h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-xs);
-}
+
 .form-actions {
   margin-top: var(--space);
 }

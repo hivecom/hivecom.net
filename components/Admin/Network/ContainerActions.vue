@@ -96,6 +96,7 @@ function isActionLoading(actionType: string): boolean {
         Stop
       </template>
     </Button>
+
     <Button
       v-if="['stale'].includes(props.status)"
       :size="props.showLabels ? 'm' : 's'"

@@ -33,7 +33,12 @@ function formatMonth(month: string): string {
     @close="handleClose"
   >
     <template #header>
-      <h4>Funding Details</h4>
+      <Flex column :gap="0">
+        <h4>Funding Details</h4>
+        <span v-if="props.funding" class="color-text-light text-xxs">
+          {{ formatMonth(props.funding.month) }}
+        </span>
+      </Flex>
     </template>
 
     <Flex v-if="props.funding" column gap="m" class="funding-details">
@@ -133,10 +138,5 @@ function formatMonth(month: string): string {
     font-size: var(--font-size-l);
     color: var(--color-text-light);
   }
-}
-
-h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-xs);
 }
 </style>

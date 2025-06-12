@@ -209,9 +209,14 @@ watch(() => useCustomDateRange.value, (newValue) => {
   >
     <template #header>
       <Flex x-between y-center expand>
-        <h4>Container Details</h4>
+        <Flex column :gap="0">
+          <h4>Container Details</h4>
+          <span v-if="container" class="color-text-light text-xxs">
+            {{ container.name }}
+          </span>
+        </Flex>
         <ContainerActions
-          v-if="container && containerStatus !== 'stale'"
+          v-if="container"
           v-model="containerAction"
           :container="container"
           :status="containerStatus"

@@ -389,7 +389,12 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ props.isEditMode ? 'Edit User' : 'Add User' }}</h4>
+      <Flex column :gap="0">
+        <h4>{{ props.isEditMode ? 'Edit User' : 'Add User' }}</h4>
+        <span v-if="props.isEditMode && props.user" class="color-text-light text-xxs">
+          {{ props.user.username }}
+        </span>
+      </Flex>
     </template>
 
     <!-- User Info Section -->

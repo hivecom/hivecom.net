@@ -305,7 +305,12 @@ onMounted(fetchDropdownData)
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ props.isEditMode ? 'Edit Game Server' : 'Add Game Server' }}</h4>
+      <Flex column :gap="0">
+        <h4>{{ props.isEditMode ? 'Edit Game Server' : 'Add Game Server' }}</h4>
+        <span v-if="props.isEditMode && props.gameserver" class="color-text-light text-xxs">
+          {{ props.gameserver.name }}
+        </span>
+      </Flex>
     </template>
 
     <!-- Gameserver Info Section -->
@@ -502,11 +507,6 @@ onMounted(fetchDropdownData)
 <style scoped>
 .gameserver-form {
   padding-bottom: var(--space);
-}
-
-h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-xs);
 }
 
 .form-actions {

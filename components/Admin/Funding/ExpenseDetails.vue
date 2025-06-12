@@ -77,7 +77,12 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
   >
     <template #header>
       <Flex x-between y-center>
-        <h4>Expense Details</h4>
+        <Flex column :gap="0">
+          <h4>Expense Details</h4>
+          <span v-if="props.expense" class="color-text-light text-xxs">
+            {{ props.expense.description }}
+          </span>
+        </Flex>
         <Flex y-center gap="s">
           <Button
             v-if="props.expense && canUpdateExpenses"
@@ -183,11 +188,6 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
     font-size: var(--font-size-l);
     color: var(--color-text-light);
   }
-}
-
-h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-xs);
 }
 
 .link {

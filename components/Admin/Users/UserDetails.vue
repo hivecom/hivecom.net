@@ -90,7 +90,12 @@ function handleClose() {
   >
     <template #header>
       <Flex x-between y-center>
-        <h4>User Details</h4>
+        <Flex column :gap="0">
+          <h4>User Details</h4>
+          <span v-if="user" class="color-text-light text-xxs">
+            {{ user.username }}
+          </span>
+        </Flex>
         <UserActions
           v-if="user"
           v-model="userAction"
@@ -191,11 +196,6 @@ function handleClose() {
 <style scoped>
 .user-detail {
   padding-bottom: var(--space);
-}
-
-h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-xs);
 }
 
 .user-id,

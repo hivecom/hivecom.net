@@ -145,7 +145,12 @@ function confirmDelete() {
   >
     <template #header>
       <Flex align="center" gap="m">
-        <h4>{{ props.isEditMode ? 'Edit Expense' : 'Add Expense' }}</h4>
+        <Flex column :gap="0">
+          <h4>{{ props.isEditMode ? 'Edit Expense' : 'Add Expense' }}</h4>
+          <span v-if="props.isEditMode && props.expense" class="color-text-light text-xxs">
+            {{ props.expense.description || props.expense.name }}
+          </span>
+        </Flex>
         <span
           v-if="isPlannedExpense"
           class="expense-form__planned-badge"
@@ -353,11 +358,6 @@ function confirmDelete() {
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
-}
-
-h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-xs);
 }
 
 .form-actions {

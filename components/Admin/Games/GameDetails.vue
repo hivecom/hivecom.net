@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { QueryData } from '@supabase/supabase-js'
 import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import Metadata from '~/components/Shared/Metadata.vue'
@@ -42,22 +41,7 @@ function handleEdit() {
 const supabase = useSupabaseClient()
 const gameserversLoading = ref(false)
 const gameserversError = ref('')
-const gameservers = ref<QueryData<typeof gameserversQuery>>([])
-
-const gameserversQuery = supabase.from('gameservers').select(`
-  id,
-  name,
-  description,
-  region,
-  addresses,
-  port,
-  created_at,
-  container (
-    name,
-    running,
-    healthy
-  )
-`)
+const gameservers = ref<any[]>([])
 
 // Fetch gameservers when game changes
 watchEffect(async () => {
@@ -70,7 +54,24 @@ watchEffect(async () => {
   gameserversError.value = ''
 
   try {
-    const { data, error } = await gameserversQuery.eq('game', props.game.id)
+    // Create a fresh query each time to avoid caching issues
+    const { data, error } = await supabase
+      .from('gameservers')
+      .select(`
+        id,
+        name,
+        description,
+        region,
+        addresses,
+        port,
+        created_at,
+        container!left (
+          name,
+          running,
+          healthy
+        )
+      `)
+      .eq('game', props.game.id)
 
     if (error) {
       throw error
@@ -97,7 +98,12 @@ watchEffect(async () => {
   >
     <template #header>
       <Flex x-between y-center>
-        <h4>Game Details</h4>
+        <Flex column :gap="0">
+          <h4>Game Details</h4>
+          <span v-if="props.game" class="color-text-light text-xxs">
+            {{ props.game.name }}
+          </span>
+        </Flex>
         <Flex y-center gap="s">
           <Button
             v-if="props.game && canUpdateGames"
@@ -139,14 +145,6 @@ watchEffect(async () => {
           </Flex>
         </Card>
 
-        <!-- Metadata -->
-        <Metadata
-          :created-at="props.game.created_at"
-          :created-by="props.game.created_by"
-          :modified-at="props.game.modified_at"
-          :modified-by="props.game.modified_by"
-        />
-
         <!-- Related Game Servers -->
         <Card separators>
           <template #header>
@@ -187,6 +185,14 @@ watchEffect(async () => {
             </div>
           </Flex>
         </Card>
+
+        <!-- Metadata -->
+        <Metadata
+          :created-at="props.game.created_at"
+          :created-by="props.game.created_by"
+          :modified-at="props.game.modified_at"
+          :modified-by="props.game.modified_by"
+        />
       </Flex>
     </Flex>
   </Sheet>
@@ -271,10 +277,5 @@ watchEffect(async () => {
       background-color: var(--color-text-light);
     }
   }
-}
-
-h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-xs);
 }
 </style>
