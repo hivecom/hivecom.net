@@ -322,7 +322,7 @@ onBeforeMount(fetchRolePermissions)
 
 .role-title {
   font-size: var(--font-size-xl);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   margin: 0;
 }
 
@@ -348,7 +348,7 @@ onBeforeMount(fetchRolePermissions)
 
 .category-title {
   font-size: var(--font-size-m);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   margin: 0;
   color: var(--color-text);
 }
@@ -404,7 +404,7 @@ onBeforeMount(fetchRolePermissions)
 
 .summary-value {
   font-size: var(--font-size-xxl);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   color: var(--color-accent);
   margin-bottom: var(--space-xs);
 }

@@ -515,7 +515,7 @@ defineExpose({
 }
 
 .username {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text);
 }
 
@@ -545,7 +545,7 @@ defineExpose({
   padding: 2px 6px;
   border-radius: var(--border-radius-xs);
   font-size: var(--font-size-xs);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .platform-connections-cell {
@@ -583,7 +583,7 @@ defineExpose({
 
 .supporter-yes {
   color: var(--color-success);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .supporter-no {

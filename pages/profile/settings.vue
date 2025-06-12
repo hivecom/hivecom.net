@@ -154,7 +154,7 @@ onMounted(() => {
   margin-bottom: var(--space-l);
   color: var(--color-text);
   font-size: var(--font-size-xl);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .account-connection-row {

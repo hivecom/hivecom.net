@@ -670,14 +670,14 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
     margin: 0 0 var(--space-xs) 0;
     color: var(--color-text);
     font-size: var(--font-size-l);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   h5 {
     margin: 0 0 var(--space-xs) 0;
     color: var(--color-text);
     font-size: var(--font-size-m);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 }
 
@@ -698,7 +698,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
 
   .over-limit {
     color: var(--color-text-red);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 }
 

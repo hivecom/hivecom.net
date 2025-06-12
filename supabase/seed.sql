@@ -293,10 +293,10 @@ Come join us and let''s have some fun together!
 -- Insert test complaints
 INSERT INTO public.complaints(created_at, created_by, message, response, responded_by, responded_at, acknowledged)
   VALUES
-    -- Unresponded complaint
-(NOW() - INTERVAL '2 hours', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'I''m experiencing lag issues on the CS2 server. The ping seems to spike randomly during gameplay.', NULL, NULL, NULL, FALSE),
+    -- Fully resolved complaint
+(NOW() - INTERVAL '3 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'The gameserver seems to be down. I can''t connect to cs2.gameserver.hivecom.net', NULL, NULL, NOW() - INTERVAL '2 days', TRUE),
     -- Responded but not acknowledged complaint
 (NOW() - INTERVAL '1 day', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'There was a player using inappropriate language in voice chat yesterday around 8 PM.', 'Thank you for reporting this. We have reviewed the logs and taken appropriate action against the player. Please continue to report any issues you encounter.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '20 hours', FALSE),
-    -- Fully resolved complaint
-(NOW() - INTERVAL '3 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'The gameserver seems to be down. I can''t connect to cs2.gameserver.hivecom.net', 'The server has been restarted and is now operational. The issue was caused by a temporary network configuration problem that has been resolved.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '2 days', TRUE);
+    -- Unresponded complaint
+(NOW() - INTERVAL '2 hours', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'I''m experiencing lag issues on the CS2 server. The ping seems to spike randomly during gameplay.', NULL, NULL, NULL, FALSE);
 

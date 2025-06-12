@@ -151,7 +151,7 @@ watch(currentUser, () => {
 <style lang="scss" scoped>
 .user-display {
   &__username {
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     color: var(--color-text);
 
     &--loading {

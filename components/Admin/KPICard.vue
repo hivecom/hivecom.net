@@ -94,7 +94,7 @@ defineProps<{
 
   &__label {
     font-size: var(--font-size-s);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     color: var(--color-text-light);
   }
 
@@ -111,7 +111,7 @@ defineProps<{
 
   &__value {
     font-size: var(--font-size-xxl);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     line-height: 1.2;
 
     &--primary,

@@ -152,7 +152,7 @@ const timeProgressPercentage = computed(() => {
     text-align: center;
     font-size: 3rem;
     line-height: 5.5rem;
-    font-weight: 900;
+    font-weight: var(--font-weight-black);
     color: var(--color-accent);
     text-transform: uppercase;
     letter-spacing: 0.2em;

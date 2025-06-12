@@ -503,7 +503,7 @@ h4 {
 
     .highlight-text {
       font-size: var(--font-size-m);
-      font-weight: 500;
+      font-weight: var(--font-weight-medium);
       padding: 1rem;
       border-left: 4px solid var(--vui-color-primary);
       background-color: rgba(var(--vui-color-primary-rgb), 0.05);
@@ -593,7 +593,7 @@ h4 {
 
   &__error-text {
     color: var(--color-text-red);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
   }
 
   &__view-all {

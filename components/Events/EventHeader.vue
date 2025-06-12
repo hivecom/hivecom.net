@@ -136,7 +136,7 @@ defineProps<Props>()
 
   &__title {
     font-size: var(--font-size-xxxl);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     margin: 0;
     line-height: 1.2;
 
@@ -184,13 +184,13 @@ defineProps<Props>()
 
   &__date-time {
     font-size: var(--font-size-m);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text);
   }
 
   &__duration {
     font-size: var(--font-size-xs);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
 
     @media (max-width: $breakpoint-sm) {
       font-size: var(--font-size-s);
@@ -200,7 +200,7 @@ defineProps<Props>()
   &__time-ago-compact {
     .event-header__time-ago-text {
       font-size: var(--font-size-xxl);
-      font-weight: 600;
+      font-weight: var(--font-weight-semibold);
     }
   }
 

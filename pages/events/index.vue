@@ -252,7 +252,7 @@ const showDetails = computed({
 
   &__title {
     font-size: var(--font-size-xl);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin-bottom: 1.5rem;
     color: var(--color-text);
   }

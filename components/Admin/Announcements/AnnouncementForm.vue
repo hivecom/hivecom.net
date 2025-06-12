@@ -258,7 +258,7 @@ function confirmDelete() {
 }
 
 .toggle-label {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text);
   cursor: pointer;
 }

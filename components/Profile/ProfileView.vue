@@ -493,14 +493,14 @@ const hasAchievements = computed(() => {
   .profile-title {
     margin: 0;
     font-size: var(--font-size-xxl);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     color: var(--color-text);
   }
 
   .profile-subtitle {
     margin: 0;
     font-size: var(--font-size-l);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text-light);
   }
 

@@ -67,7 +67,7 @@ defineProps<Props>()
     align-items: center;
     gap: var(--space-s);
     font-size: var(--font-size-xl);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin: 0;
     color: var(--color-text);
 
@@ -84,7 +84,7 @@ defineProps<Props>()
 
   &__label {
     font-size: var(--font-size-s);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -92,7 +92,7 @@ defineProps<Props>()
   &__value {
     font-size: var(--font-size-m);
     color: var(--color-text);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
   }
 
   @media (max-width: 992px) {

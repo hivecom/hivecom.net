@@ -246,7 +246,7 @@ function handleClick() {
     gap: var(--space-xs);
     margin-bottom: var(--space-s);
     font-size: var(--font-size-s);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-accent);
   }
 
@@ -269,7 +269,7 @@ function handleClick() {
     gap: var(--space-xs);
     margin-bottom: var(--space-s);
     font-size: var(--font-size-s);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text-green);
   }
 
@@ -284,7 +284,7 @@ function handleClick() {
     gap: var(--space-xs);
     margin-bottom: var(--space-s);
     font-size: var(--font-size-s);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text-lighter);
   }
 
@@ -303,7 +303,7 @@ function handleClick() {
 
   &__title {
     font-size: var(--font-size-l);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     line-height: 1.3;
     margin: 0;
     color: var(--color-text);
@@ -358,7 +358,7 @@ function handleClick() {
 
   &__countdown-value {
     font-size: var(--font-size-l);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     color: var(--color-accent);
     line-height: 1;
   }

@@ -273,7 +273,7 @@ function toggleMobileMenu() {
 
     &--accent {
       color: var(--color-accent);
-      font-weight: 500;
+      font-weight: var(--font-weight-medium);
 
       &:hover {
         background-color: color-mix(in srgb, var(--color-accent) 15%, transparent);

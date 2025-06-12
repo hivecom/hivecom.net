@@ -30,7 +30,7 @@ defineProps<Props>()
     align-items: center;
     gap: var(--space-s);
     font-size: var(--font-size-xl);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin: 0;
     color: var(--color-text);
 

@@ -209,7 +209,7 @@ function handleClose() {
 
 .ban-duration {
   color: var(--color-danger);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .introduction-text {

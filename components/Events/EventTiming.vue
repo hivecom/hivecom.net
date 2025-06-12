@@ -95,7 +95,7 @@ defineProps<Props>()
     align-items: center;
     gap: var(--space-s);
     font-size: var(--font-size-xl);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin: 0;
     color: var(--color-text);
 
@@ -107,7 +107,7 @@ defineProps<Props>()
   &__countdown-section {
     .event-timing__countdown-title {
       font-size: var(--font-size-l);
-      font-weight: 600;
+      font-weight: var(--font-weight-semibold);
       margin: 0 0 var(--space-m) 0;
       color: var(--color-text);
     }
@@ -130,7 +130,7 @@ defineProps<Props>()
 
   &__countdown-number {
     font-size: var(--font-size-xxl);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     color: var(--color-accent);
     line-height: 1;
   }
@@ -140,19 +140,19 @@ defineProps<Props>()
     color: var(--color-text-lightest);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   &__time-ago-title {
     font-size: var(--font-size-l);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin: 0 0 var(--space-s) 0;
     color: var(--color-text);
   }
 
   &__time-ago-text {
     font-size: var(--font-size-xl);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text-lightest);
   }
 }

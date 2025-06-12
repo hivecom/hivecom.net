@@ -143,7 +143,7 @@ defineProps<Props>()
 .gameserver-header {
   &__title {
     font-size: var(--font-size-xxxl);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     margin: 0;
     line-height: 1.2;
   }
@@ -182,7 +182,7 @@ defineProps<Props>()
 
   &__administrator-label {
     font-size: var(--font-size-xs);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -212,7 +212,7 @@ defineProps<Props>()
 
   &__status-label {
     font-size: var(--font-size-xs);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -220,7 +220,7 @@ defineProps<Props>()
   &__status-value {
     font-size: var(--font-size-s);
     color: var(--color-text);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
   }
 
   &__back-link {

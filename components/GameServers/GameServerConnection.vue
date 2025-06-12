@@ -105,7 +105,7 @@ defineProps<Props>()
     align-items: center;
     gap: var(--space-s);
     font-size: var(--font-size-xl);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin: 0;
     color: var(--color-text);
 
@@ -116,7 +116,7 @@ defineProps<Props>()
 
   &__subtitle {
     font-size: var(--font-size-l);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin: 0 0 var(--space-m) 0;
     color: var(--color-text);
   }
@@ -139,7 +139,7 @@ defineProps<Props>()
 
   &__address-text {
     font-size: var(--font-size-m);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text);
     margin-bottom: var(--space-xs);
   }
