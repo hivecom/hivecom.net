@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Button, Flex } from '@dolanske/vui'
+import { computed, ref } from 'vue'
+import ConfirmModal from '../../Shared/ConfirmModal.vue'
 
 interface AdminActionsProps {
   /**
@@ -51,6 +53,9 @@ const emit = defineEmits<{
   edit: [item: any]
   delete: [item: any]
 }>()
+
+// State for delete confirmation modal
+const showDeleteConfirm = ref(false)
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
@@ -115,7 +120,44 @@ function handleEdit() {
 }
 
 function handleDelete() {
+  showDeleteConfirm.value = true
+}
+
+function confirmDelete() {
   emit('delete', props.item)
+  showDeleteConfirm.value = false
+}
+
+// Helper function to get resource display name
+function getResourceDisplayName(): string {
+  const resourceMap: Record<string, string> = {
+    games: 'Game',
+    events: 'Event',
+    gameservers: 'Game Server',
+    profiles: 'Profile',
+    expenses: 'Expense',
+    announcements: 'Announcement',
+    referendums: 'Referendum',
+    servers: 'Server',
+  }
+
+  return resourceMap[props.resourceType] || 'Item'
+}
+
+// Helper function to get item display name
+function getItemDisplayName(): string {
+  if (!props.item)
+    return 'this item'
+
+  // Try common name properties
+  if (props.item.title)
+    return props.item.title
+  if (props.item.name)
+    return props.item.name
+  if (props.item.username)
+    return props.item.username
+
+  return 'this item'
 }
 </script>
 
@@ -179,4 +221,15 @@ function handleDelete() {
       </template>
     </Button>
   </Flex>
+
+  <!-- Delete Confirmation Modal -->
+  <ConfirmModal
+    v-model:open="showDeleteConfirm"
+    v-model:confirm="confirmDelete"
+    :title="`Confirm Delete ${getResourceDisplayName()}`"
+    :description="`Are you sure you want to delete '${getItemDisplayName()}'? This action cannot be undone.`"
+    confirm-text="Delete"
+    cancel-text="Cancel"
+    :destructive="true"
+  />
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import Metadata from '~/components/Shared/Metadata.vue'
 
@@ -17,23 +18,25 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['edit'])
+const emit = defineEmits(['edit', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
-
-// Get admin permissions
-const { hasPermission } = useAdminPermissions()
-const canUpdateGames = computed(() => hasPermission('games.update'))
 
 // Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle edit button click
-function handleEdit() {
-  emit('edit', props.game)
+// Handle edit action from AdminActions
+function handleEdit(game: any) {
+  emit('edit', game)
+  isOpen.value = false
+}
+
+// Handle delete action from AdminActions
+function handleDelete(game: any) {
+  emit('delete', game)
   isOpen.value = false
 }
 
@@ -105,15 +108,14 @@ watchEffect(async () => {
           </span>
         </Flex>
         <Flex y-center gap="s">
-          <Button
-            v-if="props.game && canUpdateGames"
-            @click="handleEdit"
-          >
-            <template #start>
-              <Icon name="ph:pencil" />
-            </template>
-            Edit
-          </Button>
+          <AdminActions
+            v-if="props.game"
+            resource-type="games"
+            :item="props.game"
+            :show-labels="true"
+            @edit="handleEdit"
+            @delete="handleDelete"
+          />
         </Flex>
       </Flex>
     </template>

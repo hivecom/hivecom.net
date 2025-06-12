@@ -13,7 +13,7 @@ defineProps<{ class?: string }>()
 <style scoped>
 .table-overflow {
   display: flex;
-  overflow-x: auto;
+  /* overflow-x: auto; */
   max-width: 94vw;
 }
 </style>

@@ -332,6 +332,7 @@ onBeforeMount(fetchEvents)
       v-model:is-open="showEventDetails"
       :event="selectedEvent"
       @edit="handleEditFromDetails"
+      @delete="(eventItem) => handleEventDelete(eventItem.id)"
     />
 
     <!-- Event Form Sheet (for both create and edit) -->

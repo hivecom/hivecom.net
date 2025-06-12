@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import Metadata from '~/components/Shared/Metadata.vue'
 import { formatCurrency } from '~/utils/currency'
@@ -21,23 +22,25 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['edit'])
+const emit = defineEmits(['edit', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
-
-// Get admin permissions
-const { hasPermission } = useAdminPermissions()
-const canUpdateExpenses = computed(() => hasPermission('expenses.update'))
 
 // Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle edit button click
-function handleEdit() {
-  emit('edit', props.expense)
+// Handle edit action from AdminActions
+function handleEdit(expense: any) {
+  emit('edit', expense)
+  isOpen.value = false
+}
+
+// Handle delete action from AdminActions
+function handleDelete(expense: any) {
+  emit('delete', expense)
   isOpen.value = false
 }
 
@@ -80,19 +83,18 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
         <Flex column :gap="0">
           <h4>Expense Details</h4>
           <span v-if="props.expense" class="color-text-light text-xxs">
-            {{ props.expense.description }}
+            {{ props.expense.name }}
           </span>
         </Flex>
         <Flex y-center gap="s">
-          <Button
-            v-if="props.expense && canUpdateExpenses"
-            @click="handleEdit"
-          >
-            <template #start>
-              <Icon name="ph:pencil" />
-            </template>
-            Edit
-          </Button>
+          <AdminActions
+            v-if="props.expense"
+            resource-type="expenses"
+            :item="props.expense"
+            :show-labels="true"
+            @edit="handleEdit"
+            @delete="handleDelete"
+          />
         </Flex>
       </Flex>
     </template>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 
+import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import Metadata from '~/components/Shared/Metadata.vue'
@@ -12,23 +13,25 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['edit'])
+const emit = defineEmits(['edit', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
-
-// Get admin permissions
-const { hasPermission } = useAdminPermissions()
-const canUpdateEvents = computed(() => hasPermission('events.update'))
 
 // Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle edit button click
-function handleEdit() {
-  emit('edit', props.event)
+// Handle edit action from AdminActions
+function handleEdit(event: any) {
+  emit('edit', event)
+  isOpen.value = false
+}
+
+// Handle delete action from AdminActions
+function handleDelete(event: any) {
+  emit('delete', event)
   isOpen.value = false
 }
 
@@ -75,15 +78,14 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
           >
             {{ getEventStatus(props.event).label }}
           </Badge>
-          <Button
-            v-if="props.event && canUpdateEvents"
-            @click="handleEdit"
-          >
-            <template #start>
-              <Icon name="ph:pencil" />
-            </template>
-            Edit
-          </Button>
+          <AdminActions
+            v-if="props.event"
+            resource-type="events"
+            :item="props.event"
+            :show-labels="true"
+            @edit="handleEdit"
+            @delete="handleDelete"
+          />
         </Flex>
       </Flex>
     </template>
@@ -105,7 +107,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 
             <Grid class="detail-item" expand :columns="2">
               <span class="color-text-light text-bold">Date:</span>
-              <TimestampDate :date="props.event.date" />
+              <TimestampDate size="m" :date="props.event.date" />
             </Grid>
 
             <Grid v-if="props.event.duration_minutes" class="detail-item" expand :columns="2">
@@ -125,10 +127,10 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 
             <Grid v-if="props.event.link" class="detail-item" expand :columns="2">
               <span class="color-text-light text-bold">Link:</span>
-              <a :href="props.event.link" target="_blank" rel="noopener noreferrer" class="link">
+              <NuxtLink external :href="props.event.link" target="_blank" rel="noopener noreferrer" class="link text-m">
                 {{ props.event.link }}
                 <Icon name="ph:arrow-square-out" />
-              </a>
+              </NuxtLink>
             </Grid>
           </Flex>
         </Card>

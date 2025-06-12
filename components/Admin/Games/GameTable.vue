@@ -317,6 +317,7 @@ onBeforeMount(fetchGames)
       v-model:is-open="showGameDetails"
       :game="selectedGame"
       @edit="handleEditFromDetails"
+      @delete="(gameItem) => handleGameDelete(gameItem.id)"
     />
 
     <!-- Game Form Sheet (for both create and edit) -->

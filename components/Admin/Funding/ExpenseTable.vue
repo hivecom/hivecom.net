@@ -353,6 +353,7 @@ onBeforeMount(fetchExpenses)
       v-model:is-open="showExpenseDetails"
       :expense="selectedExpense"
       @edit="handleEditFromDetails"
+      @delete="(expenseItem) => handleExpenseDelete(expenseItem.id)"
     />
 
     <!-- Expense Form Sheet (for both create and edit) -->
