@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import UserLink from '~/components/Shared/UserLink.vue'
+import Metadata from '~/components/Shared/Metadata.vue'
 import { formatCurrency } from '~/utils/currency'
 
 const props = defineProps<{
@@ -25,6 +25,10 @@ const emit = defineEmits(['edit'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+// Get admin permissions
+const { hasPermission } = useAdminPermissions()
+const canUpdateExpenses = computed(() => hasPermission('expenses.update'))
 
 // Handle closing the sheet
 function handleClose() {
@@ -76,7 +80,7 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
         <h4>Expense Details</h4>
         <Flex y-center gap="s">
           <Button
-            v-if="props.expense"
+            v-if="props.expense && canUpdateExpenses"
             @click="handleEdit"
           >
             <template #start>
@@ -155,35 +159,12 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
         </Card>
 
         <!-- Metadata -->
-        <Card separators>
-          <template #header>
-            <h6>Metadata</h6>
-          </template>
-
-          <Flex column gap="l" expand>
-            <Grid class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">Created:</span>
-              <Flex column>
-                <TimestampDate :date="props.expense.created_at" />
-                <Flex v-if="props.expense.created_by" gap="xs" y-center class="expense-details__metadata-by">
-                  <span>by</span>
-                  <UserLink :user-id="props.expense.created_by" />
-                </Flex>
-              </Flex>
-            </Grid>
-
-            <Grid v-if="props.expense.modified_at" class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">Modified:</span>
-              <Flex column>
-                <TimestampDate :date="props.expense.modified_at" />
-                <Flex v-if="props.expense.modified_by" gap="xs" y-center class="expense-details__metadata-by">
-                  <span>by</span>
-                  <UserLink :user-id="props.expense.modified_by" />
-                </Flex>
-              </Flex>
-            </Grid>
-          </Flex>
-        </Card>
+        <Metadata
+          :created-at="props.expense.created_at"
+          :created-by="props.expense.created_by"
+          :modified-at="props.expense.modified_at"
+          :modified-by="props.expense.modified_by"
+        />
       </Flex>
     </Flex>
   </Sheet>

@@ -2,8 +2,8 @@
 import { Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 import { computed, watch } from 'vue'
 
+import Metadata from '~/components/Shared/Metadata.vue'
 import RoleIndicator from '~/components/Shared/RoleIndicator.vue'
-import TimestampDate from '~/components/Shared/TimestampDate.vue'
 import UserActions from './UserActions.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
 
@@ -107,7 +107,7 @@ function handleClose() {
         <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">User ID:</span>
+              <span class="color-text-light text-bold">UUID:</span>
               <CopyClipboard :text="user.id" variant="outline" size="xs">
                 <span class="user-id">{{ user.id }}</span>
               </CopyClipboard>
@@ -179,23 +179,10 @@ function handleClose() {
         </Card>
 
         <!-- Metadata -->
-        <Card separators>
-          <template #header>
-            <h6>Metadata</h6>
-          </template>
-
-          <Flex column gap="l" expand>
-            <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Joined:</span>
-              <TimestampDate :date="user.created_at" />
-            </Grid>
-
-            <Grid v-if="user.modified_at" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Last Modified:</span>
-              <TimestampDate :date="user.modified_at" />
-            </Grid>
-          </Flex>
-        </Card>
+        <Metadata
+          :created-at="user.created_at"
+          :modified-at="user.modified_at"
+        />
       </Flex>
     </Flex>
   </Sheet>

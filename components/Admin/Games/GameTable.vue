@@ -2,6 +2,8 @@
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
+import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TableContainer from '~/components/Shared/TableContainer.vue'
 import GameDetails from './GameDetails.vue'
@@ -30,6 +32,9 @@ interface TransformedGame {
 
 // Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
+// Get admin permissions
+const { canManageResource, canCreate } = useTableActions('games')
 
 // Setup client and state
 const supabase = useSupabaseClient()
@@ -225,16 +230,35 @@ onBeforeMount(fetchGames)
   </Alert>
 
   <!-- Loading state -->
-  <Alert v-else-if="loading" variant="info">
-    Loading games...
-  </Alert>
+  <template v-else-if="loading">
+    <Flex gap="s" column expand>
+      <!-- Header and filters -->
+      <Flex x-between expand>
+        <GameFilters v-model:search="search" />
+
+        <Button v-if="canCreate" variant="accent" @click="openAddGameForm">
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Game
+        </Button>
+      </Flex>
+
+      <!-- Table skeleton -->
+      <TableSkeleton
+        :columns="3"
+        :rows="10"
+        :show-actions="canManageResource"
+      />
+    </Flex>
+  </template>
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
     <Flex x-between expand>
       <GameFilters v-model:search="search" />
 
-      <Button variant="accent" @click="openAddGameForm">
+      <Button v-if="canCreate" variant="accent" @click="openAddGameForm">
         <template #start>
           <Icon name="ph:plus" />
         </template>
@@ -248,6 +272,7 @@ onBeforeMount(fetchGames)
         <template #header>
           <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
           <Table.Head
+            v-if="canManageResource"
             key="actions" :header="{ label: 'Actions',
                                      sortToggle: () => {} }"
           />
@@ -265,12 +290,13 @@ onBeforeMount(fetchGames)
             <Table.Cell @click.stop>
               <SteamLink :steam-id="game['Steam ID']" size="small" />
             </Table.Cell>
-            <Table.Cell @click.stop>
-              <Flex gap="xs">
-                <Button square size="s" data-title-top="Edit Game" icon="ph:pencil" @click="(event) => openEditGameForm(game._original, event)">
-                  Edit
-                </Button>
-              </Flex>
+            <Table.Cell v-if="canManageResource" @click.stop>
+              <AdminActions
+                resource-type="games"
+                :item="game._original"
+                @edit="(gameItem) => openEditGameForm(gameItem)"
+                @delete="(gameItem) => handleGameDelete(gameItem.id)"
+              />
             </Table.Cell>
           </tr>
         </template>

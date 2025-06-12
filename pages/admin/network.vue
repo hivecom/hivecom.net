@@ -1,13 +1,40 @@
 <script setup lang="ts">
-import { Flex, Tab, Tabs } from '@dolanske/vui'
+import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
 
 import ContainerKPIs from '~/components/Admin/Network/ContainerKPIs.vue'
 import ContainerTable from '~/components/Admin/Network/ContainerTable.vue'
 import GameserverTable from '~/components/Admin/Network/GameServerTable.vue'
 import ServerTable from '~/components/Admin/Network/ServerTable.vue'
 
-// Tab management
-const activeTab = ref('Containers')
+// Get admin permissions
+const { hasPermission } = useAdminPermissions()
+
+// Check permissions for each resource type
+const canReadServers = computed(() => hasPermission('servers.read'))
+const canReadGameservers = computed(() => hasPermission('gameservers.read'))
+const canReadContainers = computed(() => hasPermission('containers.read'))
+
+// Tab management - compute available tabs and set default
+const availableTabs = computed(() => {
+  const tabs = []
+  if (canReadServers.value)
+    tabs.push({ label: 'Servers', value: 'Servers' })
+  if (canReadGameservers.value)
+    tabs.push({ label: 'Gameservers', value: 'Gameservers' })
+  if (canReadContainers.value)
+    tabs.push({ label: 'Containers', value: 'Containers' })
+  return tabs
+})
+
+// Set active tab to first available tab
+const activeTab = ref('')
+
+// Watch for available tabs changes and set default
+watch(availableTabs, (newTabs) => {
+  if (newTabs.length > 0 && !activeTab.value) {
+    activeTab.value = newTabs[0].value
+  }
+}, { immediate: true })
 const supabase = useSupabaseClient()
 
 // Refresh signals for each tab
@@ -49,24 +76,25 @@ async function handleContainerControl(container: any, action: 'start' | 'stop' |
       </p>
     </Flex>
 
-    <Tabs v-model="activeTab">
-      <Tab value="Servers" />
-      <Tab value="Gameservers" />
-      <Tab value="Containers" />
+    <!-- Only show tabs if there are available tabs -->
+    <Tabs v-if="availableTabs.length > 0" v-model="activeTab">
+      <Tab v-for="tab in availableTabs" :key="tab.value" :value="tab.value">
+        {{ tab.label }}
+      </Tab>
     </Tabs>
 
     <!-- Servers Tab -->
-    <Flex v-show="activeTab === 'Servers'" column gap="m" expand>
+    <Flex v-if="canReadServers" v-show="activeTab === 'Servers'" column gap="m" expand>
       <ServerTable v-model:refresh-signal="serverRefreshSignal" />
     </Flex>
 
     <!-- Gameservers Tab -->
-    <Flex v-show="activeTab === 'Gameservers'" column gap="m" expand>
+    <Flex v-if="canReadGameservers" v-show="activeTab === 'Gameservers'" column gap="m" expand>
       <GameserverTable v-model:refresh-signal="gameserverRefreshSignal" />
     </Flex>
 
     <!-- Containers Tab -->
-    <Flex v-show="activeTab === 'Containers'" column gap="m" expand>
+    <Flex v-if="canReadContainers" v-show="activeTab === 'Containers'" column gap="m" expand>
       <!-- Container KPIs with v-model for refresh -->
       <ContainerKPIs v-model:refresh-signal="refreshSignal" />
 
@@ -77,5 +105,10 @@ async function handleContainerControl(container: any, action: 'start' | 'stop' |
         @update:refresh-signal="handleRefreshSignal"
       />
     </Flex>
+
+    <!-- No access message -->
+    <Alert v-if="availableTabs.length === 0" variant="info">
+      You don't have permission to view any network resources.
+    </Alert>
   </Flex>
 </template>

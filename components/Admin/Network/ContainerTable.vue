@@ -5,6 +5,7 @@ import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
 
+import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { getContainerStatus } from '@/utils/containerStatus'
 import TableContainer from '~/components/Shared/TableContainer.vue'
@@ -47,6 +48,13 @@ const props = defineProps<{
 
 // Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
+// Get admin permissions
+const { canManageResource } = useTableActions('containers')
+const { hasPermission } = useAdminPermissions()
+
+// Check if user can read containers
+const canReadContainers = computed(() => hasPermission('containers.read'))
 
 // Define query
 const supabase = useSupabaseClient()
@@ -417,89 +425,113 @@ onBeforeMount(fetchContainers)
 </script>
 
 <template>
-  <!-- Error message -->
-  <Alert v-if="errorMessage" variant="danger">
-    <p>{{ errorMessage }}</p>
+  <!-- Check if user can read containers -->
+  <Alert v-if="!canReadContainers" variant="info">
+    You don't have permission to view containers.
   </Alert>
 
-  <!-- Loading state -->
-  <Alert v-else-if="loading" variant="info">
-    <p>Loading containers...</p>
-  </Alert>
+  <template v-else>
+    <!-- Error message -->
+    <Alert v-if="errorMessage" variant="danger">
+      <p>{{ errorMessage }}</p>
+    </Alert>
 
-  <Flex v-else gap="s" column expand>
-    <!-- Search and Filters -->
-    <ContainerFilters
-      v-model:search="search"
-      v-model:server-filter="serverFilter"
-      v-model:status-filter="statusFilter"
-      :server-options="serverOptions"
-      :status-options="statusOptions"
-      @clear-filters="clearFilters"
-    />
+    <!-- Loading state -->
+    <template v-else-if="loading">
+      <Flex gap="s" column expand>
+        <!-- Search and Filters -->
+        <ContainerFilters
+          v-model:search="search"
+          v-model:server-filter="serverFilter"
+          v-model:status-filter="statusFilter"
+          :server-options="serverOptions"
+          :status-options="statusOptions"
+          @clear-filters="clearFilters"
+        />
 
-    <TableContainer>
-      <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
-        <template #header>
-          <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
-          <Table.Head
-            key="actions" :header="{ label: 'actions',
-                                     sortToggle: () => {} }"
-          />
-        </template>
+        <!-- Table skeleton -->
+        <TableSkeleton
+          :columns="5"
+          :rows="10"
+          :show-actions="canManageResource"
+        />
+      </Flex>
+    </template>
 
-        <template #body>
-          <tr v-for="container in rows" :key="container._original.name" class="clickable-row" @click="viewContainer(container._original)">
-            <Table.Cell>{{ container.Name }}</Table.Cell>
-            <Table.Cell>{{ container.Server }}</Table.Cell>
-            <Table.Cell>
-              <ContainerStatusIndicator :status="container.Status" show-label />
-            </Table.Cell>
-            <Table.Cell>
-              <TimestampDate v-if="container.Started" :date="container.Started" />
-              <span v-else>Not started</span>
-            </Table.Cell>
-            <Table.Cell>
-              <TimestampDate :date="container['Last Report']" />
-            </Table.Cell>
-            <td>
-              <ContainerActions
-                v-model="containerAction"
-                :container="container._original"
-                :status="container.Status"
-                :is-loading="(action) => isActionLoading(container._original.name, action)"
-                @click.stop
-              />
-            </td>
-          </tr>
-        </template>
+    <Flex v-else gap="s" column expand>
+      <!-- Search and Filters -->
+      <ContainerFilters
+        v-model:search="search"
+        v-model:server-filter="serverFilter"
+        v-model:status-filter="statusFilter"
+        :server-options="serverOptions"
+        :status-options="statusOptions"
+        @clear-filters="clearFilters"
+      />
 
-        <template v-if="filteredData.length > 10" #pagination>
-          <Pagination :pagination="pagination" @change="setPage" />
-        </template>
-      </Table.Root>
-    </TableContainer>
+      <TableContainer>
+        <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
+          <template #header>
+            <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+            <Table.Head
+              v-if="canManageResource"
+              key="actions" :header="{ label: 'Actions',
+                                       sortToggle: () => {} }"
+            />
+          </template>
 
-    <!-- No results message -->
-    <Flex v-if="!loading && (!rows || rows.length === 0)" expand>
-      <Alert variant="info" class="w-100">
-        No containers found
-      </Alert>
+          <template #body>
+            <tr v-for="container in rows" :key="container._original.name" class="clickable-row" @click="viewContainer(container._original)">
+              <Table.Cell>{{ container.Name }}</Table.Cell>
+              <Table.Cell>{{ container.Server }}</Table.Cell>
+              <Table.Cell>
+                <ContainerStatusIndicator :status="container.Status" show-label />
+              </Table.Cell>
+              <Table.Cell>
+                <TimestampDate v-if="container.Started" :date="container.Started" />
+                <span v-else>Not started</span>
+              </Table.Cell>
+              <Table.Cell>
+                <TimestampDate :date="container['Last Report']" />
+              </Table.Cell>
+              <Table.Cell v-if="canManageResource" @click.stop>
+                <ContainerActions
+                  v-model="containerAction"
+                  :container="container._original"
+                  :status="container.Status"
+                  :is-loading="(action) => isActionLoading(container._original.name, action)"
+                />
+              </Table.Cell>
+            </tr>
+          </template>
+
+          <template v-if="filteredData.length > 10" #pagination>
+            <Pagination :pagination="pagination" @change="setPage" />
+          </template>
+        </Table.Root>
+      </TableContainer>
+
+      <!-- No results message -->
+      <Flex v-if="!loading && (!rows || rows.length === 0)" expand>
+        <Alert variant="info" class="w-100">
+          No containers found
+        </Alert>
+      </Flex>
     </Flex>
-  </Flex>
 
-  <!-- Container Detail Sheet -->
-  <ContainerDetails
-    v-model:is-open="showContainerDetails"
-    v-model:refresh-logs-config="refreshLogsConfig"
-    v-model:container-action="containerAction"
-    v-model:refresh-container="refreshContainerDetails"
-    :container="selectedContainer"
-    :logs="containerLogs"
-    :logs-loading="logsLoading"
-    :logs-error="logsError"
-    :action-loading="actionLoading"
-  />
+    <!-- Container Detail Sheet -->
+    <ContainerDetails
+      v-model:is-open="showContainerDetails"
+      v-model:refresh-logs-config="refreshLogsConfig"
+      v-model:container-action="containerAction"
+      v-model:refresh-container="refreshContainerDetails"
+      :container="selectedContainer"
+      :logs="containerLogs"
+      :logs-loading="logsLoading"
+      :logs-error="logsError"
+      :action-loading="actionLoading"
+    />
+  </template>
 </template>
 
 <style scoped>

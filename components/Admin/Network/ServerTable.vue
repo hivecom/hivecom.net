@@ -2,17 +2,18 @@
 import type { QueryData } from '@supabase/supabase-js'
 
 import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, ref } from 'vue'
+import { computed, onBeforeMount, ref } from 'vue'
+import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import TableContainer from '~/components/Shared/TableContainer.vue'
 
+import TableContainer from '~/components/Shared/TableContainer.vue'
 import ServerDetails from './ServerDetails.vue'
 import ServerFilters from './ServerFilters.vue'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
 // Define interface for transformed server data
 interface TransformedServer {
-  'ID': number
   'Address': string
   'Status': 'active' | 'inactive'
   'Docker Control': boolean
@@ -37,6 +38,9 @@ interface SelectOption {
 
 // Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
+// Get admin permissions
+const { canManageResource } = useTableActions('servers')
 
 // Define query
 const supabase = useSupabaseClient()
@@ -85,7 +89,6 @@ const filteredData = computed<TransformedServer[]>(() => {
 
   // Transform the data into explicit key-value pairs
   return filtered.map(server => ({
-    'ID': server.id,
     'Address': server.address,
     'Status': server.active ? 'active' : 'inactive',
     'Docker Control': server.docker_control,
@@ -137,6 +140,25 @@ function viewServer(server: any) {
   showServerDetails.value = true
 }
 
+// Handle server deletion
+async function handleServerDelete(serverId: number) {
+  try {
+    const { error } = await supabase
+      .from('servers')
+      .delete()
+      .eq('id', serverId)
+
+    if (error)
+      throw error
+
+    // Refresh servers data after deletion
+    await fetchServers()
+  }
+  catch (error: any) {
+    errorMessage.value = error.message || 'An error occurred while deleting the server'
+  }
+}
+
 // Clear all filters
 function clearFilters() {
   search.value = ''
@@ -154,9 +176,24 @@ onBeforeMount(fetchServers)
   </Alert>
 
   <!-- Loading state -->
-  <Alert v-else-if="loading" variant="info">
-    Loading servers...
-  </Alert>
+  <template v-else-if="loading">
+    <Flex gap="s" column expand>
+      <!-- Search and Filters -->
+      <ServerFilters
+        v-model:search="search"
+        v-model:status-filter="statusFilter"
+        :status-options="statusOptions"
+        @clear-filters="clearFilters"
+      />
+
+      <!-- Table skeleton -->
+      <TableSkeleton
+        :columns="4"
+        :rows="10"
+        :show-actions="canManageResource"
+      />
+    </Flex>
+  </template>
 
   <Flex v-else gap="s" column expand>
     <!-- Search and Filters -->
@@ -171,11 +208,15 @@ onBeforeMount(fetchServers)
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
           <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head
+            v-if="canManageResource"
+            key="actions" :header="{ label: 'Actions',
+                                     sortToggle: () => {} }"
+          />
         </template>
 
         <template #body>
           <tr v-for="server in rows" :key="server._original.id" class="clickable-row" @click="viewServer(server._original)">
-            <Table.Cell>{{ server.ID }}</Table.Cell>
             <Table.Cell>{{ server.Address }}</Table.Cell>
             <Table.Cell>
               <ServerStatusIndicator :status="server.Status" show-label />
@@ -183,6 +224,14 @@ onBeforeMount(fetchServers)
             <Table.Cell>{{ server['Docker Control'] ? 'Yes' : 'No' }}</Table.Cell>
             <Table.Cell>
               <TimestampDate :date="server.Created" />
+            </Table.Cell>
+            <Table.Cell v-if="canManageResource" @click.stop>
+              <AdminActions
+                resource-type="servers"
+                :item="server._original"
+                @edit="(serverItem) => viewServer(serverItem)"
+                @delete="(serverItem) => handleServerDelete(serverItem.id)"
+              />
             </Table.Cell>
           </tr>
         </template>

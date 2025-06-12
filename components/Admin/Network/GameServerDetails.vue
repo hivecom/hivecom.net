@@ -2,7 +2,7 @@
 import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import Metadata from '~/components/Shared/Metadata.vue'
 import UserLink from '~/components/Shared/UserLink.vue'
 
 const props = defineProps<{
@@ -14,6 +14,10 @@ const emit = defineEmits(['edit'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+// Get admin permissions
+const { hasPermission } = useAdminPermissions()
+const canUpdateGameservers = computed(() => hasPermission('gameservers.update'))
 
 // Handle closing the sheet
 function handleClose() {
@@ -40,7 +44,7 @@ function handleEdit() {
         <h4>Game Server Details</h4>
         <Flex y-center gap="s">
           <Button
-            v-if="props.gameserver"
+            v-if="props.gameserver && canUpdateGameservers"
             @click="handleEdit"
           >
             <template #start>
@@ -140,35 +144,12 @@ function handleEdit() {
         </Card>
 
         <!-- Metadata -->
-        <Card separators>
-          <template #header>
-            <h6>Metadata</h6>
-          </template>
-
-          <Flex column gap="l" expand>
-            <Grid class="gameserver-details__item" expand :columns="2">
-              <span class="gameserver-details__label">Created:</span>
-              <Flex column>
-                <TimestampDate :date="props.gameserver.created_at" />
-                <Flex v-if="props.gameserver.created_by" gap="xs" y-center class="gameserver-details__metadata-by">
-                  <span>by</span>
-                  <UserLink :user-id="props.gameserver.created_by" />
-                </Flex>
-              </Flex>
-            </Grid>
-
-            <Grid v-if="props.gameserver.modified_at" class="gameserver-details__item" expand :columns="2">
-              <span class="gameserver-details__label">Modified:</span>
-              <Flex column>
-                <TimestampDate :date="props.gameserver.modified_at" />
-                <Flex v-if="props.gameserver.modified_by" gap="xs" y-center class="gameserver-details__metadata-by">
-                  <span>by</span>
-                  <UserLink :user-id="props.gameserver.modified_by" />
-                </Flex>
-              </Flex>
-            </Grid>
-          </Flex>
-        </Card>
+        <Metadata
+          :created-at="props.gameserver.created_at"
+          :created-by="props.gameserver.created_by"
+          :modified-at="props.gameserver.modified_at"
+          :modified-by="props.gameserver.modified_by"
+        />
       </Flex>
     </Flex>
   </Sheet>

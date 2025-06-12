@@ -2,8 +2,7 @@
 import type { QueryData } from '@supabase/supabase-js'
 import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import SteamLink from '@/components/Shared/SteamLink.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import UserLink from '~/components/Shared/UserLink.vue'
+import Metadata from '~/components/Shared/Metadata.vue'
 
 const props = defineProps<{
   game: {
@@ -23,6 +22,10 @@ const emit = defineEmits(['edit'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+// Get admin permissions
+const { hasPermission } = useAdminPermissions()
+const canUpdateGames = computed(() => hasPermission('games.update'))
 
 // Handle closing the sheet
 function handleClose() {
@@ -97,7 +100,7 @@ watchEffect(async () => {
         <h4>Game Details</h4>
         <Flex y-center gap="s">
           <Button
-            v-if="props.game"
+            v-if="props.game && canUpdateGames"
             @click="handleEdit"
           >
             <template #start>
@@ -137,35 +140,12 @@ watchEffect(async () => {
         </Card>
 
         <!-- Metadata -->
-        <Card separators>
-          <template #header>
-            <h6>Metadata</h6>
-          </template>
-
-          <Flex column gap="l" expand>
-            <Grid class="game-details__item" expand :columns="2">
-              <span class="game-details__label">Created:</span>
-              <Flex column>
-                <TimestampDate :date="props.game.created_at" />
-                <Flex v-if="props.game.created_by" gap="xs" y-center class="game-details__metadata-by">
-                  <span>by</span>
-                  <UserLink :user-id="props.game.created_by" />
-                </Flex>
-              </Flex>
-            </Grid>
-
-            <Grid v-if="props.game.modified_at" class="game-details__item" expand :columns="2">
-              <span class="game-details__label">Modified:</span>
-              <Flex column>
-                <TimestampDate :date="props.game.modified_at" />
-                <Flex v-if="props.game.modified_by" gap="xs" y-center class="game-details__metadata-by">
-                  <span>by</span>
-                  <UserLink :user-id="props.game.modified_by" />
-                </Flex>
-              </Flex>
-            </Grid>
-          </Flex>
-        </Card>
+        <Metadata
+          :created-at="props.game.created_at"
+          :created-by="props.game.created_by"
+          :modified-at="props.game.modified_at"
+          :modified-by="props.game.modified_by"
+        />
 
         <!-- Related Game Servers -->
         <Card separators>

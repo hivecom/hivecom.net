@@ -3,6 +3,8 @@ import type { Tables } from '~/types/database.types'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
+import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '~/components/Shared/TableContainer.vue'
 import { formatCurrency } from '~/utils/currency'
 import ExpenseDetails from './ExpenseDetails.vue'
@@ -24,6 +26,9 @@ interface TransformedExpense {
 
 // Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
+// Get admin permissions
+const { canManageResource, canCreate } = useTableActions('expenses')
 
 // Setup client and state
 const supabase = useSupabaseClient()
@@ -260,16 +265,35 @@ onBeforeMount(fetchExpenses)
   </Alert>
 
   <!-- Loading state -->
-  <Alert v-else-if="loading" variant="info">
-    Loading expenses...
-  </Alert>
+  <template v-else-if="loading">
+    <Flex gap="s" column expand>
+      <!-- Header and filters -->
+      <Flex x-between expand>
+        <ExpenseFilters v-model:search="search" />
+
+        <Button v-if="canCreate" variant="accent" @click="openAddExpenseForm">
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Expense
+        </Button>
+      </Flex>
+
+      <!-- Table skeleton -->
+      <TableSkeleton
+        :columns="5"
+        :rows="10"
+        :show-actions="canManageResource"
+      />
+    </Flex>
+  </template>
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
     <Flex x-between expand>
       <ExpenseFilters v-model:search="search" />
 
-      <Button variant="accent" @click="openAddExpenseForm">
+      <Button v-if="canCreate" variant="accent" @click="openAddExpenseForm">
         <template #start>
           <Icon name="ph:plus" />
         </template>
@@ -283,6 +307,7 @@ onBeforeMount(fetchExpenses)
         <template #header>
           <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
           <Table.Head
+            v-if="canManageResource"
             key="actions" :header="{ label: 'Actions',
                                      sortToggle: () => {} }"
           />
@@ -301,12 +326,13 @@ onBeforeMount(fetchExpenses)
             </Table.Cell>
             <Table.Cell>{{ expense.Started }}</Table.Cell>
             <Table.Cell>{{ expense.Duration }}</Table.Cell>
-            <Table.Cell @click.stop>
-              <Flex gap="xs">
-                <Button square size="s" data-title-top="Edit Expense" icon="ph:pencil" @click="(event) => openEditExpenseForm(expense._original, event)">
-                  Edit
-                </Button>
-              </Flex>
+            <Table.Cell v-if="canManageResource" @click.stop>
+              <AdminActions
+                resource-type="expenses"
+                :item="expense._original"
+                @edit="(expenseItem) => openEditExpenseForm(expenseItem)"
+                @delete="(expenseItem) => handleExpenseDelete(expenseItem.id)"
+              />
             </Table.Cell>
           </tr>
         </template>

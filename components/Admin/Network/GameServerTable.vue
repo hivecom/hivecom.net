@@ -3,9 +3,11 @@ import type { QueryData } from '@supabase/supabase-js'
 import type { TablesInsert, TablesUpdate } from '~/types/database.types'
 
 import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import TableContainer from '~/components/Shared/TableContainer.vue'
 import GameserverDetails from './GameServerDetails.vue'
 import GameserverFilters from './GameServerFilters.vue'
@@ -16,7 +18,6 @@ type QueryGameserver = QueryData<typeof gameserversQuery>[0]
 
 // Define interface for transformed gameserver data
 interface TransformedGameserver {
-  ID: number
   Name: string
   Game: string | null
   Region: string | null
@@ -32,6 +33,9 @@ interface SelectOption {
 
 // Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
+// Get admin permissions
+const { canManageResource, canCreate } = useTableActions('gameservers')
 
 // Define query
 const supabase = useSupabaseClient()
@@ -128,7 +132,6 @@ const filteredData = computed<TransformedGameserver[]>(() => {
 
   // Transform the data into explicit key-value pairs
   return filtered.map(gameserver => ({
-    ID: gameserver.id,
     Name: gameserver.name,
     Game: gameserver.game?.name || 'Unknown',
     Region: gameserver.region || 'Unknown',
@@ -288,9 +291,35 @@ onBeforeMount(fetchGameservers)
   </Alert>
 
   <!-- Loading state -->
-  <Alert v-else-if="loading" variant="info">
-    Loading game servers...
-  </Alert>
+  <template v-else-if="loading">
+    <Flex gap="s" column expand>
+      <!-- Header and filters -->
+      <Flex x-between expand>
+        <GameserverFilters
+          v-model:search="search"
+          v-model:region-filter="regionFilter"
+          v-model:game-filter="gameFilter"
+          :region-options="regionOptions"
+          :game-options="gameOptions"
+          @clear-filters="clearFilters"
+        />
+
+        <Button v-if="canCreate" variant="accent" @click="openAddGameserverForm">
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Game Server
+        </Button>
+      </Flex>
+
+      <!-- Table skeleton -->
+      <TableSkeleton
+        :columns="4"
+        :rows="10"
+        :show-actions="canManageResource"
+      />
+    </Flex>
+  </template>
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
@@ -304,7 +333,7 @@ onBeforeMount(fetchGameservers)
         @clear-filters="clearFilters"
       />
 
-      <Button variant="accent" @click="openAddGameserverForm">
+      <Button v-if="canCreate" variant="accent" @click="openAddGameserverForm">
         <template #start>
           <Icon name="ph:plus" />
         </template>
@@ -317,6 +346,7 @@ onBeforeMount(fetchGameservers)
         <template #header>
           <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
           <Table.Head
+            v-if="canManageResource"
             key="actions" :header="{ label: 'Actions',
                                      sortToggle: () => {} }"
           />
@@ -324,7 +354,6 @@ onBeforeMount(fetchGameservers)
 
         <template #body>
           <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row" @click="viewGameserver(gameserver._original as QueryGameserver)">
-            <Table.Cell>{{ gameserver.ID }}</Table.Cell>
             <Table.Cell>{{ gameserver.Name }}</Table.Cell>
             <Table.Cell>{{ gameserver.Game }}</Table.Cell>
             <Table.Cell>
@@ -333,10 +362,13 @@ onBeforeMount(fetchGameservers)
             <Table.Cell>
               <TimestampDate :date="gameserver.Created" />
             </Table.Cell>
-            <Table.Cell @click.stop>
-              <Flex gap="xs">
-                <Button square size="s" data-title-top="Edit Game Server" icon="ph:pencil" @click="(event) => openEditGameserverForm(gameserver._original as QueryGameserver, event)" />
-              </Flex>
+            <Table.Cell v-if="canManageResource" @click.stop>
+              <AdminActions
+                resource-type="gameservers"
+                :item="gameserver._original"
+                @edit="(gameserverItem) => openEditGameserverForm(gameserverItem)"
+                @delete="(gameserverItem) => handleGameserverDelete(gameserverItem.id)"
+              />
             </Table.Cell>
           </tr>
         </template>

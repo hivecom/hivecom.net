@@ -4,7 +4,7 @@ import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import UserLink from '~/components/Shared/UserLink.vue'
+import Metadata from '~/components/Shared/Metadata.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
 
 const props = defineProps<{
@@ -147,35 +147,12 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
         </Card>
 
         <!-- Metadata -->
-        <Card separators>
-          <template #header>
-            <h6>Metadata</h6>
-          </template>
-
-          <Flex column gap="l" expand>
-            <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Created:</span>
-              <Flex column>
-                <TimestampDate :date="props.event.created_at" />
-                <Flex v-if="props.event.created_by" gap="xs" y-center class="color-text-light text-m">
-                  <span>by</span>
-                  <UserLink :user-id="props.event.created_by" />
-                </Flex>
-              </Flex>
-            </Grid>
-
-            <Grid v-if="props.event.modified_at" class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Modified:</span>
-              <Flex column>
-                <TimestampDate :date="props.event.modified_at" />
-                <Flex v-if="props.event.modified_by" gap="xs" y-center class="color-text-light text-m">
-                  <span>by</span>
-                  <UserLink :user-id="props.event.modified_by" />
-                </Flex>
-              </Flex>
-            </Grid>
-          </Flex>
-        </Card>
+        <Metadata
+          :created-at="props.event.created_at"
+          :created-by="props.event.created_by"
+          :modified-at="props.event.modified_at"
+          :modified-by="props.event.modified_by"
+        />
       </Flex>
     </Flex>
   </Sheet>

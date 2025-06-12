@@ -55,10 +55,11 @@ function isActionLoading(actionType: string): boolean {
       v-if="['stopped'].includes(props.status)"
       :size="props.showLabels ? 'm' : 's'"
       variant="success"
+      :icon="props.showLabels ? undefined : 'ph:play'"
       :loading="isActionLoading('start')"
       @click="handleAction('start')"
     >
-      <template #start>
+      <template v-if="props.showLabels" #start>
         <Icon name="ph:play" />
       </template>
       <template v-if="props.showLabels">
@@ -68,12 +69,13 @@ function isActionLoading(actionType: string): boolean {
     <Button
       v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
       :size="props.showLabels ? 'm' : 's'"
+      :icon="props.showLabels ? undefined : 'ph:arrow-clockwise'"
       variant="danger"
       :loading="isActionLoading('restart')"
       @click="handleAction('restart')"
     >
-      <template #start>
-        <Icon :name="props.showLabels ? 'ph:arrow-clockwise' : 'ph:play-circle'" />
+      <template v-if="props.showLabels" #start>
+        <Icon name="ph:arrow-clockwise" />
       </template>
       <template v-if="props.showLabels">
         Restart
@@ -83,10 +85,11 @@ function isActionLoading(actionType: string): boolean {
       v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
       :size="props.showLabels ? 'm' : 's'"
       variant="danger"
+      :icon="props.showLabels ? undefined : 'ph:stop'"
       :loading="isActionLoading('stop')"
       @click="handleAction('stop')"
     >
-      <template #start>
+      <template v-if="props.showLabels" #start>
         <Icon name="ph:stop" />
       </template>
       <template v-if="props.showLabels">

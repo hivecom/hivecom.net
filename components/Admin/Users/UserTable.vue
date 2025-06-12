@@ -3,6 +3,7 @@ import type { QueryData } from '@supabase/supabase-js'
 import { Alert, Button, CopyClipboard, defineTable, Flex, Pagination, Table, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
+import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -313,9 +314,29 @@ defineExpose({
   </Alert>
 
   <!-- Loading state -->
-  <Alert v-else-if="loading" variant="info">
-    Loading users...
-  </Alert>
+  <template v-else-if="loading">
+    <Flex gap="s" column expand>
+      <!-- Header and filters -->
+      <Flex x-between expand>
+        <UserFilters
+          v-model:search="search"
+          v-model:role-filter="roleFilter"
+          v-model:status-filter="statusFilter"
+          :role-options="roleOptions"
+          :status-options="statusOptions"
+          @clear-filters="clearFilters"
+        />
+      </Flex>
+
+      <!-- Table skeleton -->
+      <TableSkeleton
+        :columns="7"
+        :rows="10"
+        :show-actions="true"
+        compact
+      />
+    </Flex>
+  </template>
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
@@ -450,6 +471,15 @@ defineExpose({
 <style scoped>
 .user-table-container {
   width: 100%;
+}
+
+/* Additional responsive adjustments for compact mode */
+@media (max-width: 1200px) {
+  :deep(.table-compact td),
+  :deep(.table-compact th) {
+    padding-left: var(--space-xs);
+    padding-right: var(--space-xs);
+  }
 }
 
 .user-row {

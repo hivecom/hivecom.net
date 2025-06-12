@@ -3,6 +3,8 @@ import type { Tables, TablesInsert, TablesUpdate } from '~/types/database.types'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
+import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import EventDetails from './EventDetails.vue'
@@ -21,11 +23,7 @@ const _props = defineProps<{
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
-const { hasPermission } = useAdminPermissions()
-
-// Permission checks
-const canCreateEvents = computed(() => hasPermission('events.create'))
-const canUpdateEvents = computed(() => hasPermission('events.update'))
+const { canManageResource, canCreate } = useTableActions('events')
 
 // Setup client and state
 const supabase = useSupabaseClient()
@@ -230,9 +228,32 @@ onBeforeMount(fetchEvents)
   </Alert>
 
   <!-- Loading state -->
-  <Alert v-else-if="loading" variant="info">
-    Loading events...
-  </Alert>
+  <template v-else-if="loading">
+    <Flex gap="s" column expand>
+      <!-- Header and filters -->
+      <Flex x-between expand>
+        <EventFilters v-model:search="search" />
+
+        <Button
+          v-if="canCreate"
+          variant="accent"
+          @click="openAddEventForm"
+        >
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Event
+        </Button>
+      </Flex>
+
+      <!-- Table skeleton -->
+      <TableSkeleton
+        :columns="3"
+        :rows="10"
+        :show-actions="canManageResource"
+      />
+    </Flex>
+  </template>
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
@@ -240,7 +261,7 @@ onBeforeMount(fetchEvents)
       <EventFilters v-model:search="search" />
 
       <Button
-        v-if="canCreateEvents"
+        v-if="canCreate"
         variant="accent"
         @click="openAddEventForm"
       >
@@ -261,6 +282,7 @@ onBeforeMount(fetchEvents)
                                     sortToggle: () => {} }"
           />
           <Table.Head
+            v-if="canManageResource"
             key="actions" :header="{ label: 'Actions',
                                      sortToggle: () => {} }"
           />
@@ -283,19 +305,13 @@ onBeforeMount(fetchEvents)
                 {{ getEventStatus(event._original).label }}
               </Badge>
             </Table.Cell>
-            <Table.Cell @click.stop>
-              <Flex gap="xs">
-                <Button
-                  v-if="canUpdateEvents"
-                  square
-                  size="s"
-                  data-title-top="Edit Event"
-                  icon="ph:pencil"
-                  @click="(clickEvent: MouseEvent) => openEditEventForm(event._original, clickEvent)"
-                >
-                  Edit
-                </Button>
-              </Flex>
+            <Table.Cell v-if="canManageResource" @click.stop>
+              <AdminActions
+                resource-type="events"
+                :item="event._original"
+                @edit="(eventItem) => openEditEventForm(eventItem)"
+                @delete="(eventItem) => handleEventDelete(eventItem.id)"
+              />
             </Table.Cell>
           </tr>
         </template>

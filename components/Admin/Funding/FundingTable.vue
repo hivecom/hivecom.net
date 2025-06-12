@@ -3,6 +3,7 @@ import type { Tables } from '~/types/database.types'
 import { Alert, Badge, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
+import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import TableContainer from '~/components/Shared/TableContainer.vue'
 import { formatCurrency } from '~/utils/currency'
@@ -120,9 +121,21 @@ onBeforeMount(fetchMonthlyFundings)
   </Alert>
 
   <!-- Loading state -->
-  <Alert v-else-if="loading" variant="info">
-    Loading funding data...
-  </Alert>
+  <template v-else-if="loading">
+    <Flex gap="s" column expand>
+      <!-- Header and filters -->
+      <Flex x-between expand>
+        <FundingFilters v-model:search="search" />
+      </Flex>
+
+      <!-- Table skeleton -->
+      <TableSkeleton
+        :columns="4"
+        :rows="10"
+        :show-actions="false"
+      />
+    </Flex>
+  </template>
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->

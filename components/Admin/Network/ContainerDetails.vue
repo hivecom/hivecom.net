@@ -208,7 +208,20 @@ watch(() => useCustomDateRange.value, (newValue) => {
     @close="handleClose"
   >
     <template #header>
-      <h4>Container Details</h4>
+      <Flex x-between y-center expand>
+        <h4>Container Details</h4>
+        <ContainerActions
+          v-if="container && containerStatus !== 'stale'"
+          v-model="containerAction"
+          :container="container"
+          :status="containerStatus"
+          :show-labels="true"
+          :is-loading="(action) => {
+            if (!container) return false
+            return !!props.actionLoading[container.name]?.[action]
+          }"
+        />
+      </Flex>
     </template>
 
     <Flex v-if="container" column gap="m" class="container-detail">
@@ -221,6 +234,11 @@ watch(() => useCustomDateRange.value, (newValue) => {
         <!-- Basic info -->
         <Card class="container-info" separators>
           <Flex column gap="l" expand>
+            <Grid class="detail-item" expand :columns="2">
+              <span class="color-text-light text-bold">Name:</span>
+              <span class="container-name">{{ container.name }}</span>
+            </Grid>
+
             <Grid class="detail-item" expand :columns="2">
               <span class="color-text-light text-bold">Status:</span>
               <ContainerStatusIndicator :status="containerStatus" :show-label="true" />
@@ -246,20 +264,6 @@ watch(() => useCustomDateRange.value, (newValue) => {
               <TimestampDate :date="container.created_at" />
             </Grid>
           </Flex>
-
-          <!-- <Divider size="40" /> -->
-          <template #footer>
-            <ContainerActions
-              v-model="containerAction"
-              :container="container"
-              :status="containerStatus"
-              :show-labels="true"
-              :is-loading="(action) => {
-                if (!container) return false
-                return !!props.actionLoading[container.name]?.[action]
-              }"
-            />
-          </template>
         </Card>
 
         <!-- Logs -->
@@ -369,5 +373,10 @@ watch(() => useCustomDateRange.value, (newValue) => {
 }
 .w-100 {
   width: 100%;
+}
+.container-name {
+  font-family: monospace;
+  font-weight: bold;
+  color: var(--color-text);
 }
 </style>

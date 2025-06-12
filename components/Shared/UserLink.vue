@@ -82,10 +82,10 @@ watch(currentUser, () => {
   </div>
 
   <div v-else class="user-display">
-    <Flex gap="xs" x-center>
+    <Flex gap="xs" x-center y-center>
       <NuxtLink
         :to="`/profile/${props.userId}`"
-        class="username-link"
+        class="username-link text-s"
         :aria-label="`View profile of ${username || 'user'}`"
       >
         {{ username || props.userId }}
