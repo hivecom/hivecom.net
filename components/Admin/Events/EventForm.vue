@@ -206,7 +206,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
                 </Button>
               </template>
             </Calendar>
-            <span v-if="!validation.date" class="error-text">Date is required</span>
+            <span v-if="!validation.date" class="text-xs color-text-red">Date is required</span>
           </div>
         </Grid>
 
@@ -352,13 +352,13 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
   }
 
   &__date-picker-label {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
     color: var(--color-text);
   }
 
   &__duration-label {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
     color: var(--color-text);
   }
@@ -370,7 +370,7 @@ h4 {
 }
 
 .help-text {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-s);
   color: var(--color-text-lightest);
   margin-top: var(--space-xs);
 }
@@ -384,11 +384,6 @@ h4 {
 }
 
 .required {
-  color: var(--color-danger);
-}
-
-.error-text {
-  font-size: var(--font-size-xs);
   color: var(--color-danger);
 }
 </style>

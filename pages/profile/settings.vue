@@ -73,7 +73,7 @@ onMounted(() => {
               </div>
               <div>
                 <strong>Patreon</strong>
-                <p class="text-xs account-description">
+                <p class="text-xs color-text-lighter">
                   Support the community and get supporter benefits
                 </p>
               </div>
@@ -100,7 +100,7 @@ onMounted(() => {
               </div>
               <div>
                 <strong>Steam</strong>
-                <p class="text-xs account-description">
+                <p class="text-xs color-text-lighter">
                   Connect your gaming profile
                 </p>
               </div>
@@ -127,7 +127,7 @@ onMounted(() => {
               </div>
               <div>
                 <strong>Discord</strong>
-                <p class="text-xs account-description">
+                <p class="text-xs color-text-lighter">
                   Join our community chat
                 </p>
               </div>
@@ -191,10 +191,6 @@ onMounted(() => {
   .account-status {
     flex-shrink: 0;
   }
-}
-
-.account-description {
-  color: var(--color-text-lighter);
 }
 
 @media (max-width: 768px) {

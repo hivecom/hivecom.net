@@ -211,14 +211,14 @@ function getGrowthIndicator(growth: number | null) {
                 </Table.Cell>
                 <Table.Cell>
                   <Flex v-if="funding.Patreon > 0" gap="xxs" y-center>
-                    <span class="text-bold" style="font-size: var(--font-size-s) !important">{{ formatCurrency(funding.Patreon) }}</span>
+                    <span class="text-bold text-s">{{ formatCurrency(funding.Patreon) }}</span>
                     <span class="text-xs color-text-light ml-xs">({{ funding._original.supporterCount || 0 }})</span>
                   </Flex>
                   <span v-else class="text-xs color-text-light">-</span>
                 </Table.Cell>
                 <Table.Cell>
                   <Flex v-if="funding.Donations > 0" gap="xxs" y-center>
-                    <span class="text-bold" style="font-size: var(--font-size-s) !important">{{ formatCurrency(funding.Donations) }}</span>
+                    <span class="text-bold text-s">{{ formatCurrency(funding.Donations) }}</span>
                     <span class="text-xs color-text-light ml-xs">({{ funding._original.donationCount || 0 }})</span>
                   </Flex>
                   <span v-else class="text-xs color-text-light">-</span>

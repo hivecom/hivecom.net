@@ -163,7 +163,7 @@ const timeProgressPercentage = computed(() => {
     }
 
     @media (max-width: $breakpoint-xs) {
-      font-size: 1.5rem;
+      font-size: var(--font-size-xl);
     }
   }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Alert, Card, Flex, Skeleton } from '@dolanske/vui'
+import { Alert, Badge, Card, Flex, Skeleton } from '@dolanske/vui'
 
 import RoleKPIs from '~/components/Admin/Roles/RoleKPIs.vue'
 
@@ -272,9 +272,12 @@ onBeforeMount(fetchRolePermissions)
                 <h3 class="role-title" :style="{ color: getRoleColor(role) }">
                   {{ role.charAt(0).toUpperCase() + role.slice(1) }}
                 </h3>
-                <div class="role-badge" :style="{ backgroundColor: getRoleColor(role) }">
+                <Badge
+                  :style="{ backgroundColor: getRoleColor(role),
+                            color: 'white' }"
+                >
                   {{ permissionsByRole[role]?.length || 0 }} permissions
-                </div>
+                </Badge>
               </Flex>
               <Icon name="ph:shield-check" size="1.5rem" :style="{ color: getRoleColor(role) }" />
             </Flex>
@@ -288,7 +291,7 @@ onBeforeMount(fetchRolePermissions)
                 <h4 class="category-title">
                   {{ formatCategoryName(category) }}
                 </h4>
-                <span class="category-count">({{ permissions.length }})</span>
+                <span class="color-text-light text-xs">({{ permissions.length }})</span>
               </Flex>
 
               <div class="permissions-list">
@@ -318,17 +321,9 @@ onBeforeMount(fetchRolePermissions)
 }
 
 .role-title {
-  font-size: var(--text-size-xl);
+  font-size: var(--font-size-xl);
   font-weight: 600;
   margin: 0;
-}
-
-.role-badge {
-  padding: var(--space-xs) var(--space-s);
-  border-radius: var(--border-radius-s);
-  color: white;
-  font-size: var(--text-size-xs);
-  font-weight: 500;
 }
 
 .permissions-container {
@@ -352,15 +347,10 @@ onBeforeMount(fetchRolePermissions)
 }
 
 .category-title {
-  font-size: var(--text-size-m);
+  font-size: var(--font-size-m);
   font-weight: 500;
   margin: 0;
   color: var(--color-text);
-}
-
-.category-count {
-  font-size: var(--text-size-xs);
-  color: var(--color-text-light);
 }
 
 .permissions-list {
@@ -386,7 +376,7 @@ onBeforeMount(fetchRolePermissions)
 }
 
 .permission-text {
-  font-size: var(--text-size-s);
+  font-size: var(--font-size-s);
   color: var(--color-text);
 }
 
@@ -413,16 +403,10 @@ onBeforeMount(fetchRolePermissions)
 }
 
 .summary-value {
-  font-size: var(--text-size-xxl);
+  font-size: var(--font-size-xxl);
   font-weight: 700;
   color: var(--color-accent);
   margin-bottom: var(--space-xs);
-}
-
-.summary-label {
-  font-size: var(--text-size-s);
-  color: var(--color-text-light);
-  font-weight: 500;
 }
 
 /* Responsive design */

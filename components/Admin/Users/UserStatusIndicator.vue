@@ -2,28 +2,18 @@
 import { Flex, Tooltip } from '@dolanske/vui'
 
 defineProps<{
-  status: 'active' | 'banned' | 'supporter' | 'lifetime_supporter' | 'admin' | 'moderator' | 'unknown'
+  status: 'active' | 'banned'
   showLabel?: boolean
 }>()
 
 const statusLabels = {
   active: 'Active',
   banned: 'Banned',
-  supporter: 'Supporter',
-  lifetime_supporter: 'Lifetime Supporter',
-  admin: 'Admin',
-  moderator: 'Moderator',
-  unknown: 'Unknown',
 }
 
 const statusDescriptions = {
   active: 'The user is active and can access the platform.',
   banned: 'The user is currently banned from the platform.',
-  supporter: 'The user is an active Patreon supporter.',
-  lifetime_supporter: 'The user has lifetime supporter status.',
-  admin: 'The user has administrator privileges.',
-  moderator: 'The user has moderator privileges.',
-  unknown: 'The user status is unknown.',
 }
 </script>
 
@@ -36,7 +26,7 @@ const statusDescriptions = {
     </template>
     <Flex class="status-indicator-wrapper" y-center>
       <span :class="`status-indicator ${status}`" />
-      <span v-if="showLabel">{{ statusLabels[status] }}</span>
+      <span v-if="showLabel" class="text-s">{{ statusLabels[status] }}</span>
     </Flex>
   </Tooltip>
 </template>
@@ -58,21 +48,7 @@ const statusDescriptions = {
     background-color: var(--color-text-green);
   }
 
-  &.supporter,
-  &.lifetime_supporter {
-    background-color: var(--color-text-blue);
-  }
-
-  &.admin {
-    background-color: var(--color-text-purple);
-  }
-
-  &.moderator {
-    background-color: var(--color-text-yellow);
-  }
-
-  &.banned,
-  &.unknown {
+  &.banned {
     background-color: var(--color-text-red);
   }
 }

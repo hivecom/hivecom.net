@@ -83,8 +83,4 @@ async function connectPatreon() {
 </template>
 
 <style scoped>
-.error {
-  color: var(--color-text-red);
-  font-size: 0.875rem;
-}
 </style>

@@ -333,7 +333,7 @@ const hasAchievements = computed(() => {
 
                     <Flex v-if="profile.modified_at && profile.modified_at !== profile.created_at" gap="xs" y-center>
                       <Icon name="ph:pencil" size="16" />
-                      <span class="timestamp">Last updated <TimestampDate size="s" class="timestamp" :date="profile.modified_at" relative /></span>
+                      <span class="color-text-light text-s">Last updated <TimestampDate size="s" class="color-text-light text-s" :date="profile.modified_at" relative /></span>
                     </Flex>
                   </Flex>
                 </Flex>
@@ -389,11 +389,11 @@ const hasAchievements = computed(() => {
             <MDRenderer skeleton-height="504px" :md="profile.markdown" />
           </div>
           <div v-else-if="isOwnProfile" class="empty-state">
-            <p class="empty-state-text text-s">
+            <p class="color-text-lighter text-s">
               Add content to your profile to tell others about yourself!
             </p>
           </div>
-          <p v-else class="empty-content-text text-s">
+          <p v-else class="color-text-lighter text-s">
             This user hasn't added any content yet. Surely they will soon!
           </p>
         </Card>
@@ -440,7 +440,7 @@ const hasAchievements = computed(() => {
 
             <!-- Show a placeholder if no achievements -->
             <Flex v-if="!hasAchievements" column y-center x-center class="achievements-empty">
-              <p class="achievements-empty-text text-s">
+              <p class="color-text-lighter text-s">
                 Achievements will appear here as you participate in the community!
               </p>
             </Flex>
@@ -575,7 +575,7 @@ const hasAchievements = computed(() => {
     padding: var(--space-xs) var(--space-s);
     border-radius: var(--border-radius-s);
     font-family: var(--font-family-mono);
-    font-size: 0.9em;
+    font-size: var(--font-size-s);
   }
 
   :deep(pre) {
@@ -598,22 +598,5 @@ const hasAchievements = computed(() => {
   p {
     margin-bottom: var(--space-m);
   }
-}
-
-.empty-state-text {
-  color: var(--color-text-lighter);
-}
-
-.empty-content-text {
-  color: var(--color-text-lighter);
-}
-
-.achievements-empty-text {
-  color: var(--color-text-lighter);
-}
-
-.timestamp {
-  color: var(--color-text-light);
-  font-size: var(--font-size-s) !important;
 }
 </style>

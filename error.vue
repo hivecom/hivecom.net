@@ -141,7 +141,7 @@ onMounted(() => {
 }
 
 .error-description {
-  font-size: 1.5rem;
+  font-size: var(--font-size-xl);
   margin-bottom: 1rem;
   opacity: 0.9;
 }

@@ -34,17 +34,17 @@ function handleClose() {
         <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Status:</span>
+              <span class="color-text-light text-bold">Status:</span>
               <ServerStatusIndicator :status="props.server.active ? 'active' : 'inactive'" show-label />
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">ID:</span>
+              <span class="color-text-light text-bold">ID:</span>
               <span>{{ props.server.id }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Created:</span>
+              <span class="color-text-light text-bold">Created:</span>
               <TimestampDate :date="props.server.created_at" />
             </Grid>
           </Flex>
@@ -58,23 +58,23 @@ function handleClose() {
 
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Enabled:</span>
+              <span class="color-text-light text-bold">Enabled:</span>
               <span>{{ props.server.docker_control ? 'Yes' : 'No' }}</span>
             </Grid>
 
             <template v-if="props.server.docker_control">
               <Grid class="detail-item" expand :columns="2">
-                <span class="detail-label">Port:</span>
+                <span class="color-text-light text-bold">Port:</span>
                 <span>{{ props.server.docker_control_port || 'Default' }}</span>
               </Grid>
 
               <Grid class="detail-item" expand :columns="2">
-                <span class="detail-label">Secure:</span>
+                <span class="color-text-light text-bold">Secure:</span>
                 <span>{{ props.server.docker_control_secure ? 'Yes' : 'No' }}</span>
               </Grid>
 
               <Grid class="detail-item" expand :columns="2">
-                <span class="detail-label">Subdomain:</span>
+                <span class="color-text-light text-bold">Subdomain:</span>
                 <span>{{ props.server.docker_control_subdomain || 'None' }}</span>
               </Grid>
             </template>
@@ -88,10 +88,6 @@ function handleClose() {
 <style scoped>
 .server-detail {
   padding-bottom: var(--space);
-}
-.detail-label {
-  font-weight: 500;
-  color: var(--color-text-light);
 }
 h4 {
   margin-top: 0;

@@ -46,7 +46,7 @@ const state = computed(() => {
           </template>
           <div :class="`gameserver-indicator ${state}`" />
         </Tooltip>
-        <span class="flex-1 text-ms">{{ props.gameserver.name }}</span>
+        <span class="flex-1 text-m">{{ props.gameserver.name }}</span>
       </Flex>
       <Flex y-center row gap="s">
         <div v-if="props.gameserver.description" class="gameserver-description-main">
@@ -118,7 +118,7 @@ const state = computed(() => {
 
   .description-text {
     font-size: var(--font-size-s);
-    color: var(--color-text-lightest);
+    color: var(--color-text-lighter);
     font-style: italic;
     white-space: nowrap;
     overflow: hidden;

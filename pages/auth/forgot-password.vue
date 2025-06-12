@@ -71,7 +71,7 @@ onMounted(() => {
         </Flex>
       </div>
       <template #footer>
-        <NuxtLink to="/auth/sign-in" class="back-to-signin-link" aria-label="Return to sign in page">
+        <NuxtLink to="/auth/sign-in" class="auth-link color-accent" aria-label="Return to sign in page">
           Back to Sign In
         </NuxtLink>
       </template>
@@ -80,9 +80,18 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
-.back-to-signin-link {
-  color: var(--color-text-accent);
-  font-size: 1.2rem;
+.auth-link {
+  font-size: var(--font-size-m);
   width: 100%;
+  display: block;
+  text-decoration: none;
+  padding: var(--space-s) var(--space-m);
+  border-radius: var(--border-radius-s);
+  transition: background-color 0.2s ease;
+  text-align: center;
+
+  &:hover {
+    background-color: var(--color-bg-raised);
+  }
 }
 </style>

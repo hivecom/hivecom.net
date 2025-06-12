@@ -9,7 +9,7 @@ const supabase = useSupabaseClient()
 const loading = ref(true)
 const errorMessage = ref('')
 
-// Real data from database
+// Real data from d    font-size: var(--font-size-m);tabase
 const events = ref<Tables<'events'>[]>([])
 const communityStats = ref({
   members: 500,
@@ -168,7 +168,7 @@ onMounted(async () => {
               {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
             </template>
           </Flex>
-          <span class="hero-section__stats-label">Community Members</span>
+          <span class="text-xs color-text-lighter">Community Members</span>
         </div>
 
         <div class="hero-section__stats-card">
@@ -180,17 +180,17 @@ onMounted(async () => {
               {{ communityStats.gameservers }}
             </template>
           </Flex>
-          <span class="hero-section__stats-label">Game Servers</span>
+          <span class="text-xs color-text-lighter">Game Servers</span>
         </div>
 
         <div class="hero-section__stats-card">
           <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
-          <span class="hero-section__stats-label">Founded in 2013</span>
+          <span class="text-xs color-text-lighter">Founded in 2013</span>
         </div>
 
         <div class="hero-section__stats-card">
           <span class="hero-section__stats-value">{{ communityStats.projects }}</span>
-          <span class="hero-section__stats-label">Open Source Projects</span>
+          <span class="text-xs color-text-lighter">Open Source Projects</span>
         </div>
       </div>
     </div>
@@ -369,16 +369,16 @@ section {
 
 .heading {
   text-align: center;
-  font-size: 1.8rem;
+  font-size: var(--font-size-xxl);
   margin-bottom: 0.5rem;
 }
 
 h3 {
-  font-size: 1.3rem;
+  font-size: var(--font-size-l);
 }
 
 h4 {
-  font-size: 1.1rem;
+  font-size: var(--font-size-m);
   margin: 0;
 }
 
@@ -442,7 +442,7 @@ h4 {
   }
 
   &__tagline {
-    font-size: 1.4rem;
+    font-size: var(--font-size-l);
     margin: 1rem 0 2rem;
     opacity: 0.8;
 
@@ -488,11 +488,6 @@ h4 {
     margin-bottom: var(--space-xs);
     color: var(--vui-color-primary);
   }
-
-  &__stats-label {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-  }
 }
 
 .about-section {
@@ -507,7 +502,7 @@ h4 {
     }
 
     .highlight-text {
-      font-size: 1.2rem;
+      font-size: var(--font-size-m);
       font-weight: 500;
       padding: 1rem;
       border-left: 4px solid var(--vui-color-primary);
@@ -560,7 +555,7 @@ h4 {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
-    font-size: 1.2rem;
+    font-size: var(--font-size-m);
   }
 
   .icon {

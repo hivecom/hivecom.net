@@ -69,7 +69,7 @@ const isLight = computed({
     height: 1.5rem;
 
     .theme-toggle__label {
-      font-size: var(--font-size-sm);
+      font-size: var(--font-size-s);
       margin-right: -8px;
     }
 

@@ -251,7 +251,7 @@ const showDetails = computed({
   }
 
   &__title {
-    font-size: 1.5rem;
+    font-size: var(--font-size-xl);
     font-weight: 600;
     margin-bottom: 1.5rem;
     color: var(--color-text);

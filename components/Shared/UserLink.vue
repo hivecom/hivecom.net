@@ -74,7 +74,7 @@ watch(currentUser, () => {
 
   <div v-else-if="error" class="user-display">
     <Flex gap="xs" x-center>
-      <span class="error-text">Failed to load user</span>
+      <span class="text-xs color-error">Failed to load user</span>
       <CopyClipboard :text="props.userId" confirm>
         <Icon name="ph:copy" size="14" />
       </CopyClipboard>
@@ -110,10 +110,5 @@ watch(currentUser, () => {
 
 .username-link:hover {
   text-decoration: underline;
-}
-
-.error-text {
-  color: var(--color-error);
-  font-size: 0.875rem;
 }
 </style>

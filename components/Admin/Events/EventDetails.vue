@@ -89,37 +89,37 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
         <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">ID:</span>
+              <span class="color-text-light text-bold">ID:</span>
               <span>{{ props.event.id }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Title:</span>
+              <span class="color-text-light text-bold">Title:</span>
               <span>{{ props.event.title }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Date:</span>
+              <span class="color-text-light text-bold">Date:</span>
               <TimestampDate :date="props.event.date" />
             </Grid>
 
             <Grid v-if="props.event.duration_minutes" class="detail-item" expand :columns="2">
-              <span class="detail-label">Duration:</span>
+              <span class="color-text-light text-bold">Duration:</span>
               <span>{{ formatDurationFromMinutes(props.event.duration_minutes) }}</span>
             </Grid>
 
             <Grid v-if="props.event.location" class="detail-item" expand :columns="2">
-              <span class="detail-label">Location:</span>
+              <span class="color-text-light text-bold">Location:</span>
               <span>{{ props.event.location }}</span>
             </Grid>
 
             <Grid v-if="props.event.note" class="detail-item" expand :columns="2">
-              <span class="detail-label">Note:</span>
+              <span class="color-text-light text-bold">Note:</span>
               <span>{{ props.event.note }}</span>
             </Grid>
 
             <Grid v-if="props.event.link" class="detail-item" expand :columns="2">
-              <span class="detail-label">Link:</span>
+              <span class="color-text-light text-bold">Link:</span>
               <a :href="props.event.link" target="_blank" rel="noopener noreferrer" class="link">
                 {{ props.event.link }}
                 <Icon name="ph:arrow-square-out" />
@@ -154,10 +154,10 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Created:</span>
+              <span class="color-text-light text-bold">Created:</span>
               <Flex column>
                 <TimestampDate :date="props.event.created_at" />
-                <Flex v-if="props.event.created_by" gap="xs" y-center class="metadata-by">
+                <Flex v-if="props.event.created_by" gap="xs" y-center class="color-text-light text-m">
                   <span>by</span>
                   <UserLink :user-id="props.event.created_by" />
                 </Flex>
@@ -165,10 +165,10 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
             </Grid>
 
             <Grid v-if="props.event.modified_at" class="detail-item" expand :columns="2">
-              <span class="detail-label">Modified:</span>
+              <span class="color-text-light text-bold">Modified:</span>
               <Flex column>
                 <TimestampDate :date="props.event.modified_at" />
-                <Flex v-if="props.event.modified_by" gap="xs" y-center class="metadata-by">
+                <Flex v-if="props.event.modified_by" gap="xs" y-center class="color-text-light text-m">
                   <span>by</span>
                   <UserLink :user-id="props.event.modified_by" />
                 </Flex>
@@ -186,19 +186,9 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
   padding-bottom: var(--space);
 }
 
-.detail-label {
-  font-weight: 500;
-  color: var(--color-text-light);
-}
-
 h4 {
   margin-top: 0;
   margin-bottom: var(--space-xs);
-}
-
-.metadata-by {
-  font-size: 1.3rem;
-  color: var(--color-text-light);
 }
 
 .event-markdown {

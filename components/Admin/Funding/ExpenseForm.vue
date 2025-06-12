@@ -220,7 +220,7 @@ function confirmDelete() {
                 </Button>
               </template>
             </Calendar>
-            <span v-if="!validation.started_at" class="error-text">Start date is required</span>
+            <span v-if="!validation.started_at" class="text-xs color-text-red">Start date is required</span>
           </Flex>
 
           <Flex column expand class="expense-form__date-picker-container">
@@ -262,7 +262,7 @@ function confirmDelete() {
                 <Icon name="ph:x" />
               </Button>
             </Flex>
-            <span v-if="!validation.ended_at && expenseForm.ended_at" class="error-text">
+            <span v-if="!validation.ended_at && expenseForm.ended_at" class="text-xs color-text-red">
               End date cannot be before start date
             </span>
           </Flex>
@@ -336,7 +336,7 @@ function confirmDelete() {
   }
 
   &__date-picker-label {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
     color: var(--color-text);
   }
@@ -366,11 +366,6 @@ h4 {
 
 .required {
   color: var(--color-text-red);
-}
-
-.error-text {
-  font-size: var(--font-size-xs);
-  color: var(--color-danger);
 }
 
 .error {

@@ -52,7 +52,7 @@ function resetForm() {
           :resize="false"
           placeholder="So there's this big green guy living a swamp..."
         />
-        <p class="text-size-m text-color-light">
+        <p class="font-size-m text-color-light">
           Please choose timeframe in which the votes should be accepted. No starting date will start the vote immediately.
         </p>
         <Flex gap="xs" expand>

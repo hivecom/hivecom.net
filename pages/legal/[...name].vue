@@ -93,7 +93,7 @@ useHead(() => ({
       a {
         color: var(--color-primary);
         text-decoration: none;
-        font-size: 0.9rem;
+        font-size: var(--font-size-s);
 
         &:hover {
           text-decoration: underline;

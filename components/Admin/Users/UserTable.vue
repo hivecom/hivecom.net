@@ -45,7 +45,7 @@ const _profilesQuery = supabase.from('profiles').select(`
 interface TransformedUser {
   Username: string
   UUID: string
-  Roles: string[]
+  Role: string | null
   Status: 'active' | 'banned'
   Platforms: {
     steam: string | null
@@ -67,7 +67,7 @@ interface TransformedUser {
     introduction: string | null
     markdown: string | null
     banned: boolean
-    roles: string[]
+    role: string | null
   }
 }
 
@@ -75,7 +75,7 @@ interface TransformedUser {
 const loading = ref(true)
 const errorMessage = ref('')
 const users = ref<QueryData<typeof _profilesQuery>>([])
-const userRoles = ref<Record<string, string[]>>({})
+const userRoles = ref<Record<string, string | null>>({})
 const search = ref('')
 const roleFilter = ref<SelectOption[]>()
 const statusFilter = ref<SelectOption[]>()
@@ -134,13 +134,10 @@ async function fetchUsers() {
       // Don't throw error - continue without roles
     }
     else {
-      // Map roles by user ID
-      const rolesMap: Record<string, string[]> = {}
+      // Map roles by user ID (single role per user)
+      const rolesMap: Record<string, string | null> = {}
       rolesData?.forEach((roleRecord) => {
-        if (!rolesMap[roleRecord.user_id]) {
-          rolesMap[roleRecord.user_id] = []
-        }
-        rolesMap[roleRecord.user_id].push(roleRecord.role)
+        rolesMap[roleRecord.user_id] = roleRecord.role
       })
       userRoles.value = rolesMap
     }
@@ -155,7 +152,7 @@ async function fetchUsers() {
 }
 
 // Helper function to get user status
-function getUserStatus(_user: any, _roles: string[]): 'active' | 'banned' {
+function getUserStatus(_user: any, _role: string | null): 'active' | 'banned' {
   // Note: ban status checking would need to be implemented via admin API or separate table
   // For now, return 'active' unless explicitly banned
   const banned = false // TODO: Implement proper ban status checking
@@ -178,24 +175,24 @@ const filteredData = computed<TransformedUser[]>(() => {
   // Apply role filters
   if (roleFilter.value && roleFilter.value.length > 0) {
     filtered = filtered.filter((user: any) => {
-      const roles = userRoles.value[user.id] || []
-      return roleFilter.value?.some(roleOpt => roles.includes(roleOpt.value))
+      const role = userRoles.value[user.id] || null
+      return roleFilter.value?.some(roleOpt => role === roleOpt.value)
     })
   }
 
   // Apply status filters
   if (statusFilter.value && statusFilter.value.length > 0) {
     filtered = filtered.filter((user: any) => {
-      const roles = userRoles.value[user.id] || []
-      const status = getUserStatus(user, roles)
+      const role = userRoles.value[user.id] || null
+      const status = getUserStatus(user, role)
       return statusFilter.value?.some(statusOpt => status === statusOpt.value)
     })
   }
 
   // Transform the data into explicit key-value pairs
   return filtered.map((user: any) => {
-    const roles = userRoles.value[user.id] || []
-    const status = getUserStatus(user, roles)
+    const role = userRoles.value[user.id] || null
+    const status = getUserStatus(user, role)
     const isSupporter = !!(user.supporter_lifetime || user.supporter_patreon)
     // Note: banned status would need to be checked via admin API or separate banned_users table
     const banned = false // TODO: Implement proper ban status checking
@@ -203,7 +200,7 @@ const filteredData = computed<TransformedUser[]>(() => {
     return {
       Username: user.username || 'Unknown',
       UUID: user.id,
-      Roles: roles,
+      Role: role,
       Status: status,
       Platforms: {
         steam: user.steam_id,
@@ -225,7 +222,7 @@ const filteredData = computed<TransformedUser[]>(() => {
         introduction: user.introduction,
         markdown: user.markdown,
         banned,
-        roles,
+        role,
       },
     }
   })
@@ -356,16 +353,11 @@ defineExpose({
               </CopyClipboard>
             </Table.Cell>
 
-            <Table.Cell class="roles-cell">
-              <Flex gap="xs" wrap>
-                <RoleIndicator
-                  v-for="role in user.Roles"
-                  :key="role"
-                  :role="role"
-                  size="s"
-                />
-                <span v-if="user.Roles.length === 0" class="no-roles">No roles</span>
-              </Flex>
+            <Table.Cell class="role-cell">
+              <RoleIndicator
+                :role="user.Role"
+                size="s"
+              />
             </Table.Cell>
 
             <Table.Cell class="status-cell">
@@ -411,7 +403,7 @@ defineExpose({
                 </Tooltip>
 
                 <!-- No connections indicator -->
-                <span v-if="!user.Platforms.steam && !user.Platforms.discord && !user.Platforms.patreon" class="no-connections">
+                <span v-if="!user.Platforms.steam && !user.Platforms.discord && !user.Platforms.patreon" class="color-text-light text-s">
                   No connections
                 </span>
               </Flex>
@@ -479,7 +471,7 @@ defineExpose({
 
 .uuid-button {
   font-family: monospace;
-  font-size: 0.8em;
+  font-size: var(--font-size-xs);
 }
 
 .uuid-text {
@@ -498,7 +490,7 @@ defineExpose({
 }
 
 .email {
-  font-size: 0.85em;
+  font-size: var(--font-size-s);
   color: var(--color-text-light);
   font-family: monospace;
 }
@@ -507,11 +499,11 @@ defineExpose({
   min-width: 120px;
 }
 
-.roles-cell {
+.role-cell {
   min-width: 150px;
 }
 
-.roles-list {
+.role-list {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
@@ -522,13 +514,8 @@ defineExpose({
   color: var(--color-accent-contrast);
   padding: 2px 6px;
   border-radius: var(--border-radius-xs);
-  font-size: 0.75em;
+  font-size: var(--font-size-xs);
   font-weight: 500;
-}
-
-.no-roles {
-  color: var(--color-text-light);
-  font-size: 0.85em;
 }
 
 .platform-connections-cell {
@@ -560,11 +547,6 @@ defineExpose({
   }
 }
 
-.no-connections {
-  color: var(--color-text-light);
-  font-size: 0.85em;
-}
-
 .supporter-cell {
   min-width: 80px;
 }
@@ -581,7 +563,7 @@ defineExpose({
 .joined-cell,
 .last-signin-cell {
   min-width: 120px;
-  font-size: 0.9em;
+  font-size: var(--font-size-s);
   color: var(--color-text-light);
 }
 

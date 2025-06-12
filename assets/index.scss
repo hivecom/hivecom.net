@@ -33,7 +33,7 @@
 html,
 body {
   font-size: 63.5%;
-  font-size: 1.4rem;
+  font-size: var(--font-size-l);
 }
 
 a {
@@ -71,6 +71,11 @@ button {
   .vui-dropdown-item-slot {
     color: var(--color-accent);
   }
+}
+
+table th,
+table td {
+  font-size: var(--font-size-s);
 }
 
 @media (max-width: $breakpoint-sm) {

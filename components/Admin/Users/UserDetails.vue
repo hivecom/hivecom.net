@@ -22,7 +22,7 @@ const props = defineProps<{
     markdown: string | null
     banned: boolean
     ban_duration?: string
-    roles?: string[]
+    role?: string | null
   } | null
 }>()
 
@@ -64,27 +64,11 @@ watch(() => userAction.value, (action) => {
 // Computed property for user status
 const userStatus = computed(() => {
   if (!props.user) {
-    return 'unknown'
+    return 'active'
   }
 
   if (props.user.banned) {
     return 'banned'
-  }
-
-  if (props.user.roles?.includes('admin')) {
-    return 'admin'
-  }
-
-  if (props.user.roles?.includes('moderator')) {
-    return 'moderator'
-  }
-
-  if (props.user.supporter_lifetime) {
-    return 'lifetime_supporter'
-  }
-
-  if (props.user.supporter_patreon || props.user.patreon_id) {
-    return 'supporter'
   }
 
   return 'active'
@@ -123,35 +107,29 @@ function handleClose() {
         <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" :columns="2" expand>
-              <span class="detail-label">User ID:</span>
+              <span class="color-text-light text-bold">User ID:</span>
               <CopyClipboard :text="user.id" variant="outline" size="xs">
                 <span class="user-id">{{ user.id }}</span>
               </CopyClipboard>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Username:</span>
+              <span class="color-text-light text-bold">Username:</span>
               <span>{{ user.username }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="detail-label">Status:</span>
+              <span class="color-text-light text-bold">Status:</span>
               <UserStatusIndicator :status="userStatus" :show-label="true" />
             </Grid>
 
-            <Grid v-if="user.roles && user.roles.length > 0" class="detail-item" :columns="2" expand>
-              <span class="detail-label">Roles:</span>
-              <div class="roles-list">
-                <RoleIndicator
-                  v-for="role in user.roles"
-                  :key="role"
-                  :role="role"
-                />
-              </div>
+            <Grid class="detail-item" :columns="2" expand>
+              <span class="color-text-light text-bold">Role:</span>
+              <RoleIndicator :role="user.role" />
             </Grid>
 
             <Grid v-if="user.banned && user.ban_duration" class="detail-item" :columns="2" expand>
-              <span class="detail-label">Ban Duration:</span>
+              <span class="color-text-light text-bold">Ban Duration:</span>
               <span class="ban-duration">{{ user.ban_duration }}</span>
             </Grid>
           </Flex>
@@ -168,21 +146,21 @@ function handleClose() {
 
           <Flex column gap="l" expand>
             <Grid v-if="user.patreon_id" class="detail-item" :columns="2" expand>
-              <span class="detail-label">Patreon ID:</span>
+              <span class="color-text-light text-bold">Patreon ID:</span>
               <CopyClipboard :text="user.patreon_id" variant="outline" size="xs">
                 <span class="platform-id">{{ user.patreon_id }}</span>
               </CopyClipboard>
             </Grid>
 
             <Grid v-if="user.discord_id" class="detail-item" :columns="2" expand>
-              <span class="detail-label">Discord ID:</span>
+              <span class="color-text-light text-bold">Discord ID:</span>
               <CopyClipboard :text="user.discord_id" variant="outline" size="xs">
                 <span class="platform-id">{{ user.discord_id }}</span>
               </CopyClipboard>
             </Grid>
 
             <Grid v-if="user.steam_id" class="detail-item" :columns="2" expand>
-              <span class="detail-label">Steam ID:</span>
+              <span class="color-text-light text-bold">Steam ID:</span>
               <CopyClipboard :text="user.steam_id" variant="outline" size="xs">
                 <span class="platform-id">{{ user.steam_id }}</span>
               </CopyClipboard>
@@ -208,12 +186,12 @@ function handleClose() {
 
           <Flex column gap="l" expand>
             <Grid class="detail-item" :columns="2" expand>
-              <span class="detail-label">Joined:</span>
+              <span class="color-text-light text-bold">Joined:</span>
               <TimestampDate :date="user.created_at" />
             </Grid>
 
             <Grid v-if="user.modified_at" class="detail-item" :columns="2" expand>
-              <span class="detail-label">Last Modified:</span>
+              <span class="color-text-light text-bold">Last Modified:</span>
               <TimestampDate :date="user.modified_at" />
             </Grid>
           </Flex>
@@ -228,11 +206,6 @@ function handleClose() {
   padding-bottom: var(--space);
 }
 
-.detail-label {
-  font-weight: 500;
-  color: var(--color-text-light);
-}
-
 h4 {
   margin-top: 0;
   margin-bottom: var(--space-xs);
@@ -241,16 +214,10 @@ h4 {
 .user-id,
 .platform-id {
   font-family: monospace;
-  font-size: 0.9em;
+  font-size: var(--font-size-s);
   background-color: var(--color-bg-light);
   padding: 2px 6px;
   border-radius: var(--border-radius-xs);
-}
-
-.roles-list {
-  display: flex;
-  gap: var(--space-xs);
-  flex-wrap: wrap;
 }
 
 .ban-duration {

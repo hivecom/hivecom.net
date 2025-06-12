@@ -38,8 +38,8 @@ const regionLabel = computed(() => {
 
 <template>
   <div class="region-indicator">
-    <span v-if="props.region !== null" class="region-indicator__emoji" :title="regionLabel">{{ regionEmoji }}</span>
-    <span v-if="showLabel" class="region-indicator__label">{{ regionLabel }}</span>
+    <span v-if="props.region !== null" class="region-indicator__emoji text-m" :title="regionLabel">{{ regionEmoji }}</span>
+    <span v-if="showLabel" class="region-indicator__label text-s">{{ regionLabel }}</span>
   </div>
 </template>
 
@@ -48,13 +48,5 @@ const regionLabel = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs, 0.25rem);
-
-  &__emoji {
-    font-size: 1.2em;
-  }
-
-  &__label {
-    font-size: 0.9em;
-  }
 }
 </style>

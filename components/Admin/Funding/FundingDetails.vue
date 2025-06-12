@@ -130,7 +130,7 @@ function formatMonth(month: string): string {
   }
 
   &__metadata-by {
-    font-size: 1.3rem;
+    font-size: var(--font-size-l);
     color: var(--color-text-light);
   }
 }

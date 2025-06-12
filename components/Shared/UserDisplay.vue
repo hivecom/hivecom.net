@@ -138,7 +138,7 @@ watch(currentUser, () => {
             <span class="user-display__username">{{ user.username }}</span>
           </NuxtLink>
           <RoleIndicator
-            v-if="showRole && user.role"
+            v-if="showRole"
             :role="user.role"
             size="s"
           />

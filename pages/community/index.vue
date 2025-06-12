@@ -236,7 +236,7 @@ import SupportCTA from '~/components/Community/SupportCTA.vue'
 .about-description {
   color: var(--color-text-light);
   line-height: 1.6;
-  font-size: var(--text-size-s);
+  font-size: var(--font-size-s);
 }
 
 .activities-grid {
@@ -254,7 +254,7 @@ import SupportCTA from '~/components/Community/SupportCTA.vue'
   border-radius: var(--border-radius-s);
   background: var(--color-bg-raised);
   border: 1px solid var(--color-border-weak);
-  font-size: var(--text-size-xs);
+  font-size: var(--font-size-xs);
   color: var(--color-text-light);
   transition: all 0.2s ease;
 
@@ -384,7 +384,7 @@ import SupportCTA from '~/components/Community/SupportCTA.vue'
   }
 
   &__subtitle {
-    font-size: var(--text-size-xs);
+    font-size: var(--font-size-xs);
     color: var(--color-text-light);
     line-height: 1.4;
   }

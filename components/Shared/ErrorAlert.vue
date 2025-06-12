@@ -32,15 +32,8 @@ const props = defineProps({
         </Button>
       </NuxtLink>
     </Flex>
-    <p class="error-message">
+    <p class="text-xs color-text-light">
       {{ props.error }}
     </p>
   </Alert>
 </template>
-
-<style scoped lang="scss">
-.error-message {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-light);
-}
-</style>

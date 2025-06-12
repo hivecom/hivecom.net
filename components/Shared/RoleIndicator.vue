@@ -2,7 +2,7 @@
 import { Badge } from '@dolanske/vui'
 
 interface Props {
-  role: string
+  role: string | null | undefined
   size?: 'xs' | 's' | 'm' | 'l'
 }
 
@@ -12,7 +12,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Get role display text
 const roleDisplay = computed(() => {
-  return props.role.charAt(0).toUpperCase() + props.role.slice(1)
+  const role = props.role || 'user'
+  return role.charAt(0).toUpperCase() + role.slice(1)
 })
 
 // Get variant based on role
@@ -32,7 +33,7 @@ const variant = computed(() => {
   <Badge
     :variant="variant"
     :size="size"
-    :class="`role-indicator--${role}`"
+    :class="`role-indicator--${role || 'user'}`"
   >
     {{ roleDisplay }}
   </Badge>

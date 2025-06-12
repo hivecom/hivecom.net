@@ -167,7 +167,7 @@ const links = constants.LINKS
   }
 
   &__established-text {
-    font-size: 0.8rem;
+    font-size: var(--font-size-xs);
     letter-spacing: 1px;
     opacity: 0.7;
   }

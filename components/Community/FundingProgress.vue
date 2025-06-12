@@ -255,7 +255,7 @@ const statusMessage = computed(() => {
 // Responsive text sizing
 @media screen and (max-width: $breakpoint-sm) {
   .text-xxxl {
-    font-size: var(--text-size-xl) !important;
+    font-size: var(--font-size-xl) !important;
   }
 
   .funding-header {
