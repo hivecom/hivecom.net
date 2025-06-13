@@ -46,6 +46,17 @@ $function$;
 
 -- Create triggers for all tables with audit fields
 -- These triggers will fire BEFORE UPDATE to modify the NEW record
+-- Drop existing triggers first to ensure clean creation
+DROP TRIGGER IF EXISTS update_announcements_audit_fields ON public.announcements;
+DROP TRIGGER IF EXISTS update_events_audit_fields ON public.events;
+DROP TRIGGER IF EXISTS update_expenses_audit_fields ON public.expenses;
+DROP TRIGGER IF EXISTS update_games_audit_fields ON public.games;
+DROP TRIGGER IF EXISTS update_gameservers_audit_fields ON public.gameservers;
+DROP TRIGGER IF EXISTS update_profiles_audit_fields ON public.profiles;
+DROP TRIGGER IF EXISTS update_referendums_audit_fields ON public.referendums;
+DROP TRIGGER IF EXISTS update_referendum_votes_audit_fields ON public.referendum_votes;
+DROP TRIGGER IF EXISTS update_servers_audit_fields ON public.servers;
+
 -- Trigger for announcements table
 CREATE TRIGGER update_announcements_audit_fields
   BEFORE UPDATE ON public.announcements

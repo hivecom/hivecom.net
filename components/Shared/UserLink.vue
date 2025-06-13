@@ -82,7 +82,7 @@ watch(currentUser, () => {
   </div>
 
   <div v-else class="user-display">
-    <Flex gap="xs" x-center y-center>
+    <Flex gap="xs" y-center>
       <NuxtLink
         :to="`/profile/${props.userId}`"
         class="username-link text-s"

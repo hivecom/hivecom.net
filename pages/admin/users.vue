@@ -13,6 +13,7 @@ const {
 } = useAdminPermissions()
 
 const currentUser = useSupabaseUser()
+const supabase = useSupabaseClient()
 
 // Ensure user has at least read permission for users
 if (!canViewUsers.value) {
@@ -73,6 +74,78 @@ async function handleUserAction(action: any) {
     isEditMode.value = true
     showUserForm.value = true
     showUserDetails.value = false // Close UserDetails when opening edit form
+    return
+  }
+
+  // Handle ban action
+  if (action.type === 'ban') {
+    try {
+      const { error } = await supabase.functions.invoke('admin-user-ban', {
+        method: 'POST',
+        body: {
+          userId: action.user.id,
+          banDuration: action.banDuration,
+          banReason: action.banReason,
+        },
+      })
+
+      if (error)
+        throw error
+
+      // Trigger refresh after successful ban
+      refreshSignal.value++
+    }
+    catch (error: any) {
+      console.error('Error banning user:', error.message)
+      // You might want to show an error toast/notification here
+    }
+    return
+  }
+
+  // Handle unban action
+  if (action.type === 'unban') {
+    try {
+      const { error } = await supabase.functions.invoke('admin-user-ban', {
+        method: 'POST',
+        body: {
+          userId: action.user.id,
+          banDuration: 'none', // Special value to unban
+        },
+      })
+
+      if (error)
+        throw error
+
+      // Trigger refresh after successful unban
+      refreshSignal.value++
+    }
+    catch (error: any) {
+      console.error('Error unbanning user:', error.message)
+      // You might want to show an error toast/notification here
+    }
+    return
+  }
+
+  // Handle delete action
+  if (action.type === 'delete') {
+    try {
+      const { error } = await supabase.functions.invoke('admin-user-delete', {
+        method: 'POST',
+        body: {
+          userId: action.user.id,
+        },
+      })
+
+      if (error)
+        throw error
+
+      // Trigger refresh after successful delete
+      refreshSignal.value++
+    }
+    catch (error: any) {
+      console.error('Error deleting user:', error.message)
+      // You might want to show an error toast/notification here
+    }
     return
   }
 

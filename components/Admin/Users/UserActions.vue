@@ -15,6 +15,7 @@ const props = defineProps<{
   status: string
   isLoading?: (action: string) => Record<string, boolean> | boolean
   showLabels?: boolean
+  currentUserId?: string // Add current user ID to hide ban/delete for self
 }>()
 
 // Get admin permissions
@@ -25,6 +26,7 @@ type UserAction = {
   user: any
   type: 'ban' | 'unban' | 'edit' | 'delete' | null
   banDuration?: string
+  banReason?: string
 } | null
 const action = defineModel<UserAction>('modelValue', { default: null })
 
@@ -35,8 +37,13 @@ const showUnbanConfirm = ref(false)
 const showDeleteConfirm = ref(false)
 const showEditConfirm = ref(false)
 
-function handleBan(banDuration: string) {
-  action.value = { user: props.user, type: 'ban', banDuration }
+function handleBan(banData: { duration: string, reason?: string }) {
+  action.value = {
+    user: props.user,
+    type: 'ban',
+    banDuration: banData.duration,
+    banReason: banData.reason,
+  }
   showBanModal.value = false
 }
 
@@ -82,6 +89,9 @@ function isActionLoading(actionType: string): boolean {
 // Computed properties for button styling based on variant
 const buttonSize = computed(() => props.showLabels ? 'm' as const : 's' as const)
 const showLabels = computed(() => !!props.showLabels)
+
+// Check if this is the current user to prevent self-ban/delete
+const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 </script>
 
 <template>
@@ -104,7 +114,7 @@ const showLabels = computed(() => !!props.showLabels)
     </Button>
 
     <Button
-      v-if="!props.user.banned && canModifyUsers"
+      v-if="!props.user.banned && canModifyUsers && !isCurrentUser"
       :size="buttonSize"
       variant="danger"
       :loading="isActionLoading('ban')"
@@ -122,7 +132,7 @@ const showLabels = computed(() => !!props.showLabels)
     </Button>
 
     <Button
-      v-if="props.user.banned && canModifyUsers"
+      v-if="props.user.banned && canModifyUsers && !isCurrentUser"
       :size="buttonSize"
       variant="success"
       :loading="isActionLoading('unban')"
@@ -140,7 +150,7 @@ const showLabels = computed(() => !!props.showLabels)
     </Button>
 
     <Button
-      v-if="canDeleteUsers"
+      v-if="canDeleteUsers && !isCurrentUser"
       :size="buttonSize"
       variant="danger"
       :loading="isActionLoading('delete')"

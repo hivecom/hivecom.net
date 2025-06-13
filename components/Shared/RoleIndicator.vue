@@ -33,7 +33,7 @@ const variant = computed(() => {
   <Badge
     :variant="variant"
     :size="size"
-    :class="`role-indicator--${role || 'user'}`"
+    :class="`role-indicator role-indicator--${role || 'user'}`"
   >
     {{ roleDisplay }}
   </Badge>
@@ -41,6 +41,8 @@ const variant = computed(() => {
 
 <style lang="scss" scoped>
 .role-indicator {
+  width: fit-content;
+
   &--admin {
     background-color: var(--color-bg-red-lowered);
     color: var(--color-text-red);

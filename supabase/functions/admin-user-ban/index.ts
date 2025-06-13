@@ -7,6 +7,7 @@ import { Database } from "database-types";
 interface BanUserRequest {
   userId: string;
   banDuration: string; // Format: '300ms', '2h45m', '100y' for permanent, or 'none' to unban
+  banReason?: string; // Optional reason for the ban
 }
 
 Deno.serve(async (req: Request) => {
@@ -22,7 +23,7 @@ Deno.serve(async (req: Request) => {
   try {
     // Parse request body to get user ID and ban duration
     const body: BanUserRequest = await req.json();
-    const { userId, banDuration } = body;
+    const { userId, banDuration, banReason } = body;
 
     if (!userId || typeof userId !== "string") {
       return new Response(
@@ -58,6 +59,60 @@ Deno.serve(async (req: Request) => {
 
     if (authResponse) {
       return authResponse;
+    }
+
+    // Get current user to prevent self-banning
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Authorization header missing",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
+        },
+      );
+    }
+
+    const tempClient = createClient<Database>(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      },
+    );
+
+    const { data: { user: currentUser }, error: userError } = await tempClient.auth.getUser();
+
+    if (userError || !currentUser) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Failed to get current user",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
+        },
+      );
+    }
+
+    // Prevent users from banning themselves
+    if (currentUser.id === userId) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "You cannot ban yourself",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        },
+      );
     }
 
     // Create a Supabase client with service role key for admin operations
@@ -101,7 +156,71 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`Attempting to ban user: ${userProfile.username} (${userId}) for duration: ${banDuration}`);
+    console.log(`Attempting to ban user: ${userProfile.username} (${userId}) for duration: ${banDuration}${banReason ? ` with reason: ${banReason}` : ''}`);
+
+    // Determine ban start and end times
+    let banStart: string | null = null;
+    let banEnd: string | null = null;
+    let banned = false;
+
+    if (banDuration !== 'none') {
+      banned = true;
+      banStart = new Date().toISOString();
+
+      if (banDuration !== 'permanent') {
+        // Parse duration and calculate end time
+        // This is a simplified parser - you might want to use a more robust one
+        const durationMatch = banDuration.match(/^(\d+)([hmdy])$/);
+        if (durationMatch) {
+          const amount = parseInt(durationMatch[1]);
+          const unit = durationMatch[2];
+          const now = new Date();
+
+          switch (unit) {
+            case 'h':
+              now.setHours(now.getHours() + amount);
+              break;
+            case 'd':
+              now.setDate(now.getDate() + amount);
+              break;
+            case 'm':
+              now.setMinutes(now.getMinutes() + amount);
+              break;
+            case 'y':
+              now.setFullYear(now.getFullYear() + amount);
+              break;
+          }
+
+          banEnd = now.toISOString();
+        }
+      }
+    }
+
+    // Update the profiles table with ban information
+    const { error: profileUpdateError } = await supabaseClient
+      .from('profiles')
+      .update({
+        banned,
+        ban_reason: banDuration === 'none' ? null : (banReason || null),
+        ban_start: banStart,
+        ban_end: banEnd,
+      })
+      .eq('id', userId);
+
+    if (profileUpdateError) {
+      console.error("Error updating profile ban status:", profileUpdateError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Failed to update profile ban status",
+          details: profileUpdateError.message,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        },
+      );
+    }
 
     // Ban the user using Supabase Auth Admin API
     const { error: banError } = await supabaseClient.auth.admin.updateUserById(

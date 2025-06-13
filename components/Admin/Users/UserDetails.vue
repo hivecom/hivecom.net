@@ -2,8 +2,11 @@
 import { Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 import { computed, watch } from 'vue'
 
+import MDRenderer from '~/components/Shared/MDRenderer.vue'
 import Metadata from '~/components/Shared/Metadata.vue'
 import RoleIndicator from '~/components/Shared/RoleIndicator.vue'
+import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import UserLink from '~/components/Shared/UserLink.vue'
 import UserActions from './UserActions.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
 
@@ -13,6 +16,7 @@ const props = defineProps<{
     username: string
     created_at: string
     modified_at: string | null
+    modified_by: string | null
     supporter_patreon: boolean
     supporter_lifetime: boolean
     patreon_id: string | null
@@ -21,6 +25,9 @@ const props = defineProps<{
     introduction: string | null
     markdown: string | null
     banned: boolean
+    ban_reason: string | null
+    ban_start: string | null
+    ban_end: string | null
     ban_duration?: string
     role?: string | null
   } | null
@@ -28,6 +35,9 @@ const props = defineProps<{
 
 // Define emits
 const emit = defineEmits(['edit'])
+
+// Get current user
+const currentUser = useSupabaseUser()
 
 // Define models for two-way binding with proper type definitions
 const isOpen = defineModel<boolean>('isOpen', { default: false })
@@ -37,6 +47,7 @@ type UserAction = {
   user: any
   type: 'ban' | 'unban' | 'edit' | 'delete' | null
   banDuration?: string
+  banReason?: string
 } | null
 const userAction = defineModel<UserAction>('userAction', { default: null })
 
@@ -93,7 +104,7 @@ function handleClose() {
         <Flex column :gap="0">
           <h4>User Details</h4>
           <span v-if="user" class="color-text-light text-xxs">
-            {{ user.username }}
+            <UserLink :user-id="user.id" />
           </span>
         </Flex>
         <UserActions
@@ -102,6 +113,7 @@ function handleClose() {
           :user="user"
           :status="userStatus"
           :show-labels="true"
+          :current-user-id="currentUser?.id"
         />
       </Flex>
     </template>
@@ -120,7 +132,7 @@ function handleClose() {
 
             <Grid class="detail-item" expand :columns="2">
               <span class="color-text-light text-bold">Username:</span>
-              <span>{{ user.username }}</span>
+              <UserLink :user-id="user.id" />
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
@@ -135,6 +147,42 @@ function handleClose() {
 
             <Grid v-if="user.banned && user.ban_duration" class="detail-item" :columns="2" expand>
               <span class="color-text-light text-bold">Ban Duration:</span>
+              <span class="ban-duration">{{ user.ban_duration }}</span>
+            </Grid>
+          </Flex>
+        </Card>
+
+        <!-- Ban Information -->
+        <Card v-if="user.banned" separators class="ban-info-card">
+          <template #header>
+            <h6 class="ban-header">
+              Ban Information
+            </h6>
+          </template>
+
+          <Flex column gap="l" expand>
+            <Grid v-if="user.ban_reason" class="detail-item" :columns="2" expand>
+              <span class="color-text-light text-bold">Reason:</span>
+              <span class="ban-reason-text">{{ user.ban_reason }}</span>
+            </Grid>
+
+            <Grid v-if="user.ban_start" class="detail-item" :columns="2" expand>
+              <span class="color-text-light text-bold">Ban Start:</span>
+              <TimestampDate :date="user.ban_start" />
+            </Grid>
+
+            <Grid v-if="user.ban_end" class="detail-item" :columns="2" expand>
+              <span class="color-text-light text-bold">Ban End:</span>
+              <TimestampDate :date="user.ban_end" />
+            </Grid>
+
+            <Grid v-else-if="user.banned" class="detail-item" :columns="2" expand>
+              <span class="color-text-light text-bold">Ban Type:</span>
+              <span class="ban-permanent">Permanent</span>
+            </Grid>
+
+            <Grid v-if="user.ban_duration" class="detail-item" :columns="2" expand>
+              <span class="color-text-light text-bold">Duration:</span>
               <span class="ban-duration">{{ user.ban_duration }}</span>
             </Grid>
           </Flex>
@@ -183,10 +231,21 @@ function handleClose() {
           </div>
         </Card>
 
+        <!-- User Profile Markdown -->
+        <Card v-if="user.markdown" separators>
+          <template #header>
+            <h6>Profile Content</h6>
+          </template>
+          <div class="profile-markdown">
+            <MDRenderer :md="user.markdown" />
+          </div>
+        </Card>
+
         <!-- Metadata -->
         <Metadata
           :created-at="user.created_at"
           :modified-at="user.modified_at"
+          :modified-by="user.modified_by"
         />
       </Flex>
     </Flex>
@@ -212,8 +271,36 @@ function handleClose() {
   font-weight: var(--font-weight-medium);
 }
 
+.ban-info-card {
+  border-left: 4px solid var(--color-danger);
+}
+
+.ban-header {
+  color: var(--color-danger);
+  margin: 0;
+}
+
+.ban-reason-text {
+  color: var(--color-text);
+  line-height: 1.4;
+}
+
+.ban-permanent {
+  color: var(--color-danger);
+  font-weight: var(--font-weight-bold);
+}
+
 .introduction-text {
   line-height: 1.6;
   color: var(--color-text);
+}
+
+.profile-markdown {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-s);
+  padding: var(--space-m);
+  background-color: var(--color-bg-lowered);
 }
 </style>

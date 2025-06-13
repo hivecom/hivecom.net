@@ -340,6 +340,10 @@ export interface Database {
       }
       profiles: {
         Row: {
+          ban_end: string | null
+          ban_reason: string | null
+          ban_start: string | null
+          banned: boolean
           created_at: string
           discord_id: string | null
           id: string
@@ -355,6 +359,10 @@ export interface Database {
           username_set: boolean
         }
         Insert: {
+          ban_end?: string | null
+          ban_reason?: string | null
+          ban_start?: string | null
+          banned?: boolean
           created_at?: string
           discord_id?: string | null
           id: string
@@ -370,6 +378,10 @@ export interface Database {
           username_set?: boolean
         }
         Update: {
+          ban_end?: string | null
+          ban_reason?: string | null
+          ban_start?: string | null
+          banned?: boolean
           created_at?: string
           discord_id?: string | null
           id?: string

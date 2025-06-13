@@ -7,6 +7,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import UserLink from '@/components/Shared/UserLink.vue'
 import UserActions from './UserActions.vue'
 import UserFilters from './UserFilters.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
@@ -26,6 +27,9 @@ const emit = defineEmits<{
 // Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
+// Get current user
+const currentUser = useSupabaseUser()
+
 // Define query for profiles with user roles
 const supabase = useSupabaseClient()
 const _profilesQuery = supabase.from('profiles').select(`
@@ -33,13 +37,18 @@ const _profilesQuery = supabase.from('profiles').select(`
   username,
   created_at,
   modified_at,
+  modified_by,
   supporter_lifetime,
   supporter_patreon,
   patreon_id,
   steam_id,
   discord_id,
   introduction,
-  markdown
+  markdown,
+  banned,
+  ban_reason,
+  ban_start,
+  ban_end
 `)
 
 // Define interface for transformed user data
@@ -60,6 +69,7 @@ interface TransformedUser {
     username: string
     created_at: string
     modified_at: string | null
+    modified_by: string | null
     supporter_patreon: boolean
     supporter_lifetime: boolean
     patreon_id: string | null
@@ -68,6 +78,9 @@ interface TransformedUser {
     introduction: string | null
     markdown: string | null
     banned: boolean
+    ban_reason: string | null
+    ban_start: string | null
+    ban_end: string | null
     role: string | null
   }
 }
@@ -110,13 +123,18 @@ async function fetchUsers() {
         username,
         created_at,
         modified_at,
+        modified_by,
         supporter_lifetime,
         supporter_patreon,
         patreon_id,
         steam_id,
         discord_id,
         introduction,
-        markdown
+        markdown,
+        banned,
+        ban_reason,
+        ban_start,
+        ban_end
       `)
       .order('created_at', { ascending: false })
 
@@ -153,11 +171,9 @@ async function fetchUsers() {
 }
 
 // Helper function to get user status
-function getUserStatus(_user: any, _role: string | null): 'active' | 'banned' {
-  // Note: ban status checking would need to be implemented via admin API or separate table
-  // For now, return 'active' unless explicitly banned
-  const banned = false // TODO: Implement proper ban status checking
-  return banned ? 'banned' : 'active'
+function getUserStatus(user: any, _role: string | null): 'active' | 'banned' {
+  // Check if user is actually banned
+  return user.banned ? 'banned' : 'active'
 }
 
 // Filter based on search and filters
@@ -195,8 +211,6 @@ const filteredData = computed<TransformedUser[]>(() => {
     const role = userRoles.value[user.id] || null
     const status = getUserStatus(user, role)
     const isSupporter = !!(user.supporter_lifetime || user.supporter_patreon)
-    // Note: banned status would need to be checked via admin API or separate banned_users table
-    const banned = false // TODO: Implement proper ban status checking
 
     return {
       Username: user.username || 'Unknown',
@@ -215,6 +229,7 @@ const filteredData = computed<TransformedUser[]>(() => {
         username: user.username || 'Unknown',
         created_at: user.created_at,
         modified_at: user.modified_at,
+        modified_by: user.modified_by,
         supporter_patreon: user.supporter_patreon || false,
         supporter_lifetime: user.supporter_lifetime || false,
         patreon_id: user.patreon_id,
@@ -222,7 +237,10 @@ const filteredData = computed<TransformedUser[]>(() => {
         discord_id: user.discord_id,
         introduction: user.introduction,
         markdown: user.markdown,
-        banned,
+        banned: user.banned || false,
+        ban_reason: user.ban_reason,
+        ban_start: user.ban_start,
+        ban_end: user.ban_end,
         role,
       },
     }
@@ -362,7 +380,7 @@ defineExpose({
           <tr v-for="user in rows" :key="user._original.id" class="clickable-row" @click="handleUserClick(user._original)">
             <Table.Cell class="username-cell">
               <div class="username-content">
-                <span class="username">{{ user.Username }}</span>
+                <UserLink :user-id="user._original.id" />
               </div>
             </Table.Cell>
 
@@ -449,6 +467,7 @@ defineExpose({
                 :user="user._original"
                 :status="user.Status"
                 :is-loading="(action) => isActionLoading(user._original.id, action)"
+                :current-user-id="currentUser?.id"
                 variant="compact"
               />
             </Table.Cell>

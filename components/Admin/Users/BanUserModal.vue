@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Modal, Select } from '@dolanske/vui'
+import { Button, Flex, Input, Modal, Radio, RadioGroup, Select } from '@dolanske/vui'
 
 const props = defineProps<{
   user: {
@@ -9,7 +9,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'ban', banDuration: string): void
+  (e: 'ban', banData: { duration: string, reason?: string }): void
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
@@ -31,13 +31,13 @@ const banDurationOptions = [
 
 const selectedDuration = ref<{ label: string, value: string }[]>([])
 const customDuration = ref('')
-const useCustomDuration = ref(false)
+const useCustomDuration = ref('preset') // 'preset' or 'custom'
 const banReason = ref('')
 
 function handleBan() {
   let duration = ''
 
-  if (useCustomDuration.value) {
+  if (useCustomDuration.value === 'custom') {
     duration = customDuration.value
   }
   else if (selectedDuration.value.length > 0) {
@@ -48,14 +48,17 @@ function handleBan() {
     return
   }
 
-  emit('ban', duration)
+  emit('ban', {
+    duration,
+    reason: banReason.value || undefined,
+  })
   resetForm()
 }
 
 function resetForm() {
   selectedDuration.value = []
   customDuration.value = ''
-  useCustomDuration.value = false
+  useCustomDuration.value = 'preset'
   banReason.value = ''
 }
 
@@ -74,44 +77,23 @@ function handleClose() {
     <Flex column gap="m" class="ban-modal-content">
       <p>Select the duration for banning this user:</p>
 
-      <Flex column gap="s">
-        <label>
-          <input
-            v-model="useCustomDuration"
-            type="radio"
-            :value="false"
-            name="durationType"
-          >
-          Choose from preset durations
-        </label>
+      <RadioGroup v-model="useCustomDuration" column>
+        <Radio value="preset" label="Choose from preset durations" />
+        <Radio value="custom" label="Custom duration" />
+      </RadioGroup>
 
-        <Select
-          v-if="!useCustomDuration"
-          v-model="selectedDuration"
-          :options="banDurationOptions"
-          placeholder="Select ban duration"
-          :disabled="useCustomDuration"
-        />
-      </Flex>
+      <Select
+        v-if="useCustomDuration === 'preset'"
+        v-model="selectedDuration"
+        :options="banDurationOptions"
+        placeholder="Select ban duration"
+      />
 
-      <Flex column gap="s">
-        <label>
-          <input
-            v-model="useCustomDuration"
-            type="radio"
-            :value="true"
-            name="durationType"
-          >
-          Custom duration
-        </label>
-
-        <Input
-          v-if="useCustomDuration"
-          v-model="customDuration"
-          placeholder="e.g., 5h, 30m, 7d, permanent"
-          :disabled="!useCustomDuration"
-        />
-      </Flex>
+      <Input
+        v-if="useCustomDuration === 'custom'"
+        v-model="customDuration"
+        placeholder="e.g., 5h, 30m, 7d, permanent"
+      />
 
       <Input
         v-model="banReason"
@@ -128,7 +110,7 @@ function handleClose() {
         </Button>
         <Button
           variant="danger"
-          :disabled="selectedDuration.length === 0 && !customDuration"
+          :disabled="(useCustomDuration === 'preset' && selectedDuration.length === 0) || (useCustomDuration === 'custom' && !customDuration)"
           @click="handleBan"
         >
           Ban User
@@ -141,17 +123,5 @@ function handleClose() {
 <style scoped>
 .ban-modal-content {
   min-width: 400px;
-}
-
-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--font-size-s);
-  cursor: pointer;
-}
-
-input[type='radio'] {
-  margin: 0;
 }
 </style>

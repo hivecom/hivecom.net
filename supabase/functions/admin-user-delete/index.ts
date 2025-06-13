@@ -46,6 +46,60 @@ Deno.serve(async (req: Request) => {
       return authResponse;
     }
 
+    // Get current user to prevent self-deletion
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Authorization header missing",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
+        },
+      );
+    }
+
+    const tempClient = createClient<Database>(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      },
+    );
+
+    const { data: { user: currentUser }, error: userError } = await tempClient.auth.getUser();
+
+    if (userError || !currentUser) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Failed to get current user",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
+        },
+      );
+    }
+
+    // Prevent users from deleting themselves
+    if (currentUser.id === userId) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "You cannot delete yourself",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        },
+      );
+    }
+
     // Create a Supabase client with service role key for admin operations
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
