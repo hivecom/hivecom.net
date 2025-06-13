@@ -29,6 +29,7 @@
     "@unhead/vue": "^2.0.10",
     "@vueuse/nuxt": "^13.3.0",
     "ansi-to-html": "^0.7.2",
+    "chart.js": "^4.4.9",
     "dayjs": "^1.11.13",
     "nuxt": "^3.17.5",
     "nuxt-icon": "^0.6.10",
@@ -38,6 +39,7 @@
     "sass": "^1.89.1",
     "unstorage": "^1.16.0",
     "vue": "^3.5.16",
+    "vue-chartjs": "^5.3.2",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
