@@ -55,7 +55,7 @@ const tooltipText = computed(() => {
 <template>
   <Tooltip v-if="tooltip && date" :placement="placement">
     <template #tooltip>
-      <div class="timestamp-tooltip">
+      <div class="text-xs">
         {{ tooltipText }}
       </div>
     </template>
@@ -67,11 +67,5 @@ const tooltipText = computed(() => {
 <style scoped>
 .timestamp-date {
   cursor: help;
-}
-
-.timestamp-tooltip {
-  font-family: monospace;
-  font-size: var(--font-size-s);
-  white-space: nowrap;
 }
 </style>

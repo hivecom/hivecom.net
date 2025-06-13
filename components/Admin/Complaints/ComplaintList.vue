@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 import type { TablesUpdate } from '~/types/database.types'
-import { Alert, Button, Flex, Grid } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import ComplaintCard from './ComplaintCard.vue'
 import ComplaintDetails from './ComplaintDetails.vue'
@@ -404,7 +404,7 @@ onMounted(fetchComplaints)
 </script>
 
 <template>
-  <Flex column gap="l">
+  <Flex column gap="l" expand>
     <!-- Filters -->
     <ComplaintFilters
       v-model:search="search"
@@ -412,12 +412,24 @@ onMounted(fetchComplaints)
     />
 
     <!-- Loading skeleton -->
-    <Grid v-if="loading" columns="2" gap="m">
-      <div v-for="i in 6" :key="i" class="complaint-skeleton">
-        <div class="skeleton-header" />
-        <div class="skeleton-content" />
-        <div class="skeleton-footer" />
-      </div>
+    <Grid v-if="loading" :columns="2" gap="m" expand>
+      <Card v-for="i in 6" :key="i" separators>
+        <template #header>
+          <Flex x-between y-center expand>
+            <Skeleton :width="120" :height="20" :radius="4" />
+            <Skeleton :width="80" :height="16" :radius="12" />
+          </Flex>
+        </template>
+
+        <Flex column gap="m">
+          <Skeleton :height="16" :width="100" :radius="4" />
+          <Skeleton :height="60" :radius="4" />
+          <Flex x-between y-center>
+            <Skeleton :width="80" :height="14" :radius="4" />
+            <Skeleton :width="100" :height="14" :radius="4" />
+          </Flex>
+        </Flex>
+      </Card>
     </Grid>
 
     <!-- Error message -->
@@ -488,37 +500,6 @@ onMounted(fetchComplaints)
 </template>
 
 <style scoped>
-.complaint-skeleton {
-  padding: var(--space-l);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-m);
-  background-color: var(--color-bg-subtle);
-}
-
-.skeleton-header {
-  height: 20px;
-  background-color: var(--color-bg-medium);
-  border-radius: var(--border-radius-s);
-  margin-bottom: var(--space-m);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.skeleton-content {
-  height: 60px;
-  background-color: var(--color-bg-medium);
-  border-radius: var(--border-radius-s);
-  margin-bottom: var(--space-m);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.skeleton-footer {
-  height: 16px;
-  width: 60%;
-  background-color: var(--color-bg-medium);
-  border-radius: var(--border-radius-s);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
 .pagination-container {
   margin-top: var(--space-l);
 }
@@ -544,15 +525,5 @@ onMounted(fetchComplaints)
 
 .complaints-grid {
   align-items: stretch;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
 }
 </style>

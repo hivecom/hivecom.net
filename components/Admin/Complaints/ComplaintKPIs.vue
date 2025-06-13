@@ -29,8 +29,8 @@ const errorMessage = ref('')
 // Computed KPI values
 const totalComplaints = computed(() => complaints.value.length)
 
-const newComplaints = computed(() =>
-  complaints.value.filter(complaint => !complaint.acknowledged).length,
+const pendingComplaints = computed(() =>
+  complaints.value.filter(complaint => !complaint.acknowledged && complaint.response === null).length,
 )
 
 const acknowledgedComplaints = computed(() =>
@@ -98,12 +98,12 @@ onMounted(fetchComplaints)
     />
 
     <KPICard
-      label="New"
-      :value="newComplaints"
+      label="Pending"
+      :value="pendingComplaints"
       :is-loading="loading"
       icon="ph:bell"
       variant="warning"
-      description="Unacknowledged complaints requiring attention"
+      description="Complaints awaiting acknowledgment or response"
     />
 
     <KPICard

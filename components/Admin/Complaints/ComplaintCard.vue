@@ -99,26 +99,29 @@ function handleAcknowledge(event: Event) {
       'complaint-card--responded': status === 'responded',
     }"
     expand
+    separators
     @click="handleCardClick"
   >
     <!-- Header with status and date -->
-    <Flex x-between y-start :gap="0" class="complaint-card__header" expand>
-      <Flex column :gap="0" expand>
-        <Flex gap="xs" y-center x-between expand>
-          <span class="complaint-card__id">Complaint #{{ complaint.id }}</span>
+    <template #header>
+      <Flex y-center :gap="0" class="complaint-card__header" expand>
+        <Flex gap="xs" x-between y-center expand>
+          <Flex gap="xs" column x-start y-center>
+            <span class="complaint-card__id">Complaint #{{ complaint.id }}</span>
+            <TimestampDate
+              :date="complaint.created_at"
+              relative
+              size="xxs"
+              class="color-text-light"
+            />
+          </Flex>
           <Badge :variant="statusConfig.variant" size="s">
             <Icon :name="statusConfig.icon" />
             {{ statusConfig.label }}
           </Badge>
         </Flex>
-        <TimestampDate
-          :date="complaint.created_at"
-          relative
-          size="xxs"
-          class="color-text-light"
-        />
       </Flex>
-    </Flex>
+    </template>
 
     <!-- User info -->
     <Flex class="complaint-card__user">
@@ -147,8 +150,13 @@ function handleAcknowledge(event: Event) {
               :date="complaint.responded_at"
               relative
               size="s"
-              class="color-text-light"
             />
+          </Flex>
+        </div>
+        <div v-else-if="complaint.acknowledged" class="complaint-card__response-indicator">
+          <Flex gap="xs" y-center>
+            <Icon name="ph:arrow-bend-up-right" class="color-text-light" />
+            <span class="text-s color-text-light">No response yet</span>
           </Flex>
         </div>
         <Button
@@ -167,7 +175,7 @@ function handleAcknowledge(event: Event) {
   </Card>
 </template>
 
-<style scoped>
+<style scoped  lang="scss">
 .complaint-card {
   cursor: pointer;
   transition: all 0.2s ease;
@@ -279,5 +287,9 @@ function handleAcknowledge(event: Event) {
   50% {
     opacity: 0.2;
   }
+}
+
+.vui-card .vui-card-footer {
+  background: none !important; /* Remove default footer background */
 }
 </style>

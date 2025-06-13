@@ -89,6 +89,7 @@ const links = constants.LINKS
   }
 
   &__links-group {
+    font-size: var(--font-size-s);
     display: flex;
     gap: var(--space-s);
 
@@ -167,7 +168,7 @@ const links = constants.LINKS
   }
 
   &__established-text {
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-xxs);
     letter-spacing: 1px;
     opacity: 0.7;
   }
