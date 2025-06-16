@@ -29,7 +29,7 @@
     "@unhead/vue": "^2.0.10",
     "@vueuse/nuxt": "^13.3.0",
     "ansi-to-html": "^0.7.2",
-    "chart.js": "^4.4.9",
+    "chart.js": "^4.5.0",
     "dayjs": "^1.11.13",
     "nuxt": "^3.17.5",
     "nuxt-icon": "^0.6.10",
