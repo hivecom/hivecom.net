@@ -7,6 +7,7 @@ import Metadata from '~/components/Shared/Metadata.vue'
 import RoleIndicator from '~/components/Shared/RoleIndicator.vue'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
 import UserLink from '~/components/Shared/UserLink.vue'
+import { getUserActivityStatus } from '~/utils/lastSeen'
 import UserActions from './UserActions.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
 
@@ -28,6 +29,7 @@ const props = defineProps<{
     ban_reason: string | null
     ban_start: string | null
     ban_end: string | null
+    last_seen: string
     ban_duration?: string
     role?: string | null
   } | null
@@ -83,6 +85,13 @@ const userStatus = computed(() => {
   }
 
   return 'active'
+})
+
+// Computed property for user activity status
+const activityStatus = computed(() => {
+  if (!props.user?.last_seen)
+    return null
+  return getUserActivityStatus(props.user.last_seen)
 })
 
 // Handle closing the sheet
@@ -143,6 +152,20 @@ function handleClose() {
             <Grid class="detail-item" :columns="2" expand>
               <span class="color-text-light text-bold">Role:</span>
               <RoleIndicator :role="user.role" />
+            </Grid>
+
+            <Grid class="detail-item" :columns="2" expand>
+              <span class="color-text-light text-bold">Last Seen:</span>
+              <span
+                class="text-s"
+                :class="{
+                  'color-accent': activityStatus?.isActive,
+                  'color-text': activityStatus && !activityStatus.isActive,
+                  'color-text-light': !activityStatus,
+                }"
+              >
+                {{ activityStatus?.lastSeenText || 'Never' }}
+              </span>
             </Grid>
 
             <Grid v-if="user.banned && user.ban_duration" class="detail-item" :columns="2" expand>
@@ -291,6 +314,7 @@ function handleClose() {
 }
 
 .introduction-text {
+  font-size: var(--font-size-m);
   line-height: 1.6;
   color: var(--color-text);
 }

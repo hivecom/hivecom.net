@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { QueryData } from '@supabase/supabase-js'
 import { Alert, Button, CopyClipboard, defineTable, Flex, Pagination, Table, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
@@ -8,6 +7,7 @@ import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { getUserActivityStatus } from '~/utils/lastSeen'
 import UserActions from './UserActions.vue'
 import UserFilters from './UserFilters.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
@@ -48,23 +48,25 @@ const _profilesQuery = supabase.from('profiles').select(`
   banned,
   ban_reason,
   ban_start,
-  ban_end
+  ban_end,
+  last_seen
 `)
 
 // Define interface for transformed user data
 interface TransformedUser {
-  Username: string
-  UUID: string
-  Role: string | null
-  Status: 'active' | 'banned'
-  Platforms: {
+  'Username': string
+  'UUID': string
+  'Role': string | null
+  'Status': 'active' | 'banned'
+  'Last Seen': string
+  'Platforms': {
     steam: string | null
     discord: string | null
     patreon: string | null
   }
-  Supporter: boolean
-  Joined: string
-  _original: {
+  'Supporter': boolean
+  'Joined': string
+  '_original': {
     id: string
     username: string
     created_at: string
@@ -81,6 +83,7 @@ interface TransformedUser {
     ban_reason: string | null
     ban_start: string | null
     ban_end: string | null
+    last_seen: string
     role: string | null
   }
 }
@@ -88,7 +91,7 @@ interface TransformedUser {
 // Data states
 const loading = ref(true)
 const errorMessage = ref('')
-const users = ref<QueryData<typeof _profilesQuery>>([])
+const users = ref<any[]>([])
 const userRoles = ref<Record<string, string | null>>({})
 const search = ref('')
 const roleFilter = ref<SelectOption[]>()
@@ -134,7 +137,8 @@ async function fetchUsers() {
         banned,
         ban_reason,
         ban_start,
-        ban_end
+        ban_end,
+        last_seen
       `)
       .order('created_at', { ascending: false })
 
@@ -211,20 +215,22 @@ const filteredData = computed<TransformedUser[]>(() => {
     const role = userRoles.value[user.id] || null
     const status = getUserStatus(user, role)
     const isSupporter = !!(user.supporter_lifetime || user.supporter_patreon)
+    const activityStatus = user.last_seen ? getUserActivityStatus(user.last_seen) : null
 
     return {
-      Username: user.username || 'Unknown',
-      UUID: user.id,
-      Role: role,
-      Status: status,
-      Platforms: {
+      'Username': user.username || 'Unknown',
+      'UUID': user.id,
+      'Role': role,
+      'Status': status,
+      'Last Seen': activityStatus?.lastSeenText || 'Never',
+      'Platforms': {
         steam: user.steam_id,
         discord: user.discord_id,
         patreon: user.patreon_id,
       },
-      Supporter: isSupporter,
-      Joined: user.created_at,
-      _original: {
+      'Supporter': isSupporter,
+      'Joined': user.created_at,
+      '_original': {
         id: user.id,
         username: user.username || 'Unknown',
         created_at: user.created_at,
@@ -241,6 +247,7 @@ const filteredData = computed<TransformedUser[]>(() => {
         ban_reason: user.ban_reason,
         ban_start: user.ban_start,
         ban_end: user.ban_end,
+        last_seen: user.last_seen,
         role,
       },
     }
@@ -348,7 +355,7 @@ defineExpose({
 
       <!-- Table skeleton -->
       <TableSkeleton
-        :columns="7"
+        :columns="8"
         :rows="10"
         :show-actions="true"
         compact
@@ -401,6 +408,19 @@ defineExpose({
 
             <Table.Cell class="status-cell">
               <UserStatusIndicator :status="user.Status" :show-label="true" />
+            </Table.Cell>
+
+            <Table.Cell class="last-seen-cell">
+              <span
+                class="text-s"
+                :class="{
+                  'color-accent': user['Last Seen'] && user['Last Seen'].includes('Online'),
+                  'color-text': user['Last Seen'] && !user['Last Seen'].includes('Online'),
+                  'color-text-light': !user['Last Seen'] || user['Last Seen'] === 'Never',
+                }"
+              >
+                {{ user['Last Seen'] }}
+              </span>
             </Table.Cell>
 
             <Table.Cell class="platform-connections-cell" @click.stop>

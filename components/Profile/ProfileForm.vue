@@ -2,6 +2,7 @@
 import type { Tables } from '~/types/database.types'
 import { Button, Flex, Input, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import { stripHtmlTags, validateMarkdownNoHtml } from '~/utils/sanitize'
 
 const props = defineProps<{
   profile: Tables<'profiles'> | null
@@ -46,9 +47,21 @@ const usernameValidation = computed(() => {
   return { valid: true, error: null }
 })
 
+// Markdown validation
+const markdownValidation = computed(() => {
+  const markdown = profileForm.value.markdown.trim()
+
+  if (markdown.length > MARKDOWN_LIMIT) {
+    return { valid: false, error: `Content must be ${MARKDOWN_LIMIT} characters or less` }
+  }
+
+  return validateMarkdownNoHtml(markdown)
+})
+
 // Form validation
 const validation = computed(() => ({
   username: usernameValidation.value.valid,
+  markdown: markdownValidation.value.valid,
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -87,11 +100,11 @@ function handleSubmit() {
   if (!isValid.value)
     return
 
-  // Prepare the data to save
+  // Prepare the data to save with HTML sanitization
   const profileData = {
     username: profileForm.value.username.trim(),
     introduction: profileForm.value.introduction.trim() || null,
-    markdown: profileForm.value.markdown.trim() || null,
+    markdown: profileForm.value.markdown.trim() ? stripHtmlTags(profileForm.value.markdown.trim()) : null,
   }
 
   emit('save', profileData)
@@ -197,16 +210,18 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
             v-model="profileForm.markdown"
             expand
             name="markdown"
-            label="Markdown"
+            label="Profile Content (Markdown)"
             placeholder="Tell others about yourself!"
             :rows="8"
             :maxlength="MARKDOWN_LIMIT"
+            :valid="markdownValidation.valid"
+            :error="markdownValidation.error"
           >
           <template #after>
             <Flex expand x-between>
               <div class="help-text">
                 <Icon name="ph:info" />
-                You can use Markdown formatting (headings, lists, links, etc.)
+                You can use Markdown formatting (headings, lists, links, etc.). HTML tags are not allowed.
               </div>
 
               <div class="character-count">
@@ -235,6 +250,10 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
           <li>
             <Icon name="ph:check-circle" />
             Use markdown in your content for rich formatting
+          </li>
+          <li>
+            <Icon name="ph:warning-circle" />
+            HTML tags are not allowed and will be removed for security
           </li>
           <li>
             <Icon name="ph:check-circle" />

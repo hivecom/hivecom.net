@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "build": "nuxi build --preset github_pages",
-    "dev": "nuxi dev",
+    "dev": "npx supabase start && nuxi dev",
     "dev:staging": "nuxi dev --dotenv .env.production",
     "generate": "nuxi generate",
     "preview": "nuxi preview",

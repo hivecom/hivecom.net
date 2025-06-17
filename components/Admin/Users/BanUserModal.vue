@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Modal, Radio, RadioGroup, Select } from '@dolanske/vui'
+import { Button, Flex, Input, Modal, Radio, RadioGroup, Select, Textarea } from '@dolanske/vui'
 
 const props = defineProps<{
   user: {
@@ -95,8 +95,9 @@ function handleClose() {
         placeholder="e.g., 5h, 30m, 7d, permanent"
       />
 
-      <Input
+      <Textarea
         v-model="banReason"
+        expand
         placeholder="Reason for ban (optional)"
         multiline
         :rows="3"

@@ -60,7 +60,7 @@ watch(user, (newUser) => {
     </template>
 
     <template v-else>
-      <ProfileView :user-id="user.id" :is-own-profile="true" />
+      <ProfileView :user-id="user.id" />
     </template>
   </div>
 </template>

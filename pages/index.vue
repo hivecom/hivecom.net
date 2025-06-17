@@ -24,7 +24,7 @@ const platforms = ref(Object.values(constants.PLATFORMS))
 
 // Function to scroll to platforms section
 function scrollToPlatforms() {
-  if (process.client) {
+  if (import.meta.client) {
     document.getElementById('platforms')?.scrollIntoView({ behavior: 'smooth' })
   }
 }

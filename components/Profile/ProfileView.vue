@@ -1,31 +1,56 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Avatar, Badge, Button, Card, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import ProfileForm from '~/components/Profile/ProfileForm.vue'
 import ErrorAlert from '~/components/Shared/ErrorAlert.vue'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import { formatDuration } from '~/utils/duration'
+import { getUserActivityStatus } from '~/utils/lastSeen'
 import MDRenderer from '../Shared/MDRenderer.vue'
 
 interface Props {
-  userId: string
-  isOwnProfile?: boolean
+  userId?: string
+  username?: string
 }
 
 const props = defineProps<Props>()
 
 const supabase = useSupabaseClient()
+const user = useSupabaseUser()
 const profile = ref<Tables<'profiles'>>()
 const userRole = ref<string | null>(null)
+const currentUserRole = ref<string | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
 const isEditSheetOpen = ref(false)
+
+// Computed property to check if this is the user's own profile
+const isOwnProfile = computed(() => {
+  if (!user.value || !profile.value)
+    return false
+  return user.value.id === profile.value.id
+})
+
+// Computed property to check if the current user is an admin
+const isCurrentUserAdmin = computed(() => {
+  return currentUserRole.value === 'admin'
+})
+
+// Computed property for user activity status
+const activityStatus = computed(() => {
+  if (!profile.value?.last_seen)
+    return null
+  return getUserActivityStatus(profile.value.last_seen)
+})
 
 // Copy profile URL to clipboard
 async function copyProfileURL() {
   if (!profile.value)
     return
 
-  const url = `${window.location.origin}/profile/${profile.value.id}`
+  // Use username if available, otherwise fall back to UUID
+  const identifier = profile.value.username || profile.value.id
+  const url = `${window.location.origin}/profile/${identifier}`
 
   try {
     await navigator.clipboard.writeText(url)
@@ -70,25 +95,46 @@ async function fetchProfile() {
   loading.value = true
   errorMessage.value = ''
 
-  if (!props.userId) {
-    errorMessage.value = 'No user ID provided'
+  if (!props.userId && !props.username) {
+    errorMessage.value = 'No user ID or username provided'
     loading.value = false
     return
   }
 
-  const requestProfile = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', props.userId)
-    .single()
+  let requestProfile
 
-  if (requestProfile.error) {
-    errorMessage.value = requestProfile.error.message
+  if (props.userId) {
+    // Query by UUID
+    requestProfile = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', props.userId)
+      .single()
+  }
+  else if (props.username) {
+    // Query by username
+    requestProfile = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('username', props.username)
+      .single()
+  }
+
+  if (requestProfile?.error) {
+    // Handle specific error messages more user-friendly
+    if (requestProfile.error.message.includes('JSON object requested, multiple (or no) rows returned')) {
+      errorMessage.value = props.username
+        ? `User "${props.username}" was not found`
+        : 'User not found'
+    }
+    else {
+      errorMessage.value = requestProfile.error.message
+    }
     loading.value = false
     return
   }
 
-  profile.value = requestProfile.data
+  profile.value = requestProfile?.data
 
   // Fetch user role if available
   if (profile.value) {
@@ -99,6 +145,17 @@ async function fetchProfile() {
       .single()
 
     userRole.value = roleData?.role || null
+  }
+
+  // Fetch current user's role for admin privileges
+  if (user.value) {
+    const { data: currentRoleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.value.id)
+      .single()
+
+    currentUserRole.value = currentRoleData?.role || null
   }
 
   loading.value = false
@@ -175,6 +232,51 @@ const hasAchievements = computed(() => {
     || profile.value.supporter_patreon
     || getAccountAge(profile.value.created_at).includes('year')
 })
+
+// Function to check if ban is active
+function isBanActive() {
+  if (!profile.value || !profile.value.banned)
+    return false
+
+  // If no end date, it's a permanent ban
+  if (!profile.value.ban_end)
+    return true
+
+  // Check if ban end date is in the future
+  const banEndDate = new Date(profile.value.ban_end)
+  const now = new Date()
+  return banEndDate > now
+}
+
+// Function to format ban duration
+function getBanDuration() {
+  if (!profile.value?.ban_start)
+    return ''
+
+  const banStart = new Date(profile.value.ban_start)
+
+  if (!profile.value.ban_end) {
+    return `Permanently banned since ${banStart.toLocaleDateString()}`
+  }
+
+  const banEnd = new Date(profile.value.ban_end)
+  const now = new Date()
+
+  // Calculate the duration between start and end
+  const durationMs = banEnd.getTime() - banStart.getTime()
+  const durationText = formatDuration(durationMs)
+
+  if (banEnd <= now) {
+    return `Was banned for ${durationText}`
+  }
+
+  return `Banned for ${durationText}`
+}
+
+// Function to get ban end date for TimestampDate component
+function getBanEndDate() {
+  return profile.value?.ban_end || null
+}
 </script>
 
 <template>
@@ -274,6 +376,34 @@ const hasAchievements = computed(() => {
 
     <!-- Profile Content -->
     <template v-else>
+      <!-- Ban Status Callout -->
+      <Card v-if="profile.banned" class="ban-status-card" :class="{ 'ban-expired': !isBanActive() }">
+        <Flex gap="m" y-center>
+          <Icon
+            :name="isBanActive() ? 'ph:warning-circle-fill' : 'ph:clock-fill'"
+            size="24"
+            class="ban-icon"
+          />
+          <Flex column gap="xs" expand>
+            <h3 class="ban-title">
+              {{ isBanActive() ? 'This user has been banned' : 'This user was previously banned' }}
+            </h3>
+            <p v-if="profile.ban_reason" class="ban-reason">
+              <strong>Reason:</strong> {{ profile.ban_reason }}
+            </p>
+            <p class="text-s color-text-light">
+              {{ getBanDuration() }}
+              <span v-if="getBanEndDate() && isBanActive()" class="text-xs color-text-lighter">
+                - expires <TimestampDate :date="getBanEndDate()!" size="xs" relative />
+              </span>
+              <span v-else-if="getBanEndDate() && !isBanActive()" class="text-xs color-text-lighter">
+                - expired <TimestampDate :date="getBanEndDate()!" size="xs" relative />
+              </span>
+            </p>
+          </Flex>
+        </Flex>
+      </Card>
+
       <!-- Profile Header -->
       <Card class="profile-header">
         <Flex column expand y-center x-center>
@@ -284,62 +414,49 @@ const hasAchievements = computed(() => {
                 <Avatar :size="80">
                   {{ getUserInitials(profile.username) }}
                 </Avatar>
-                <!-- Online status indicator (mock for now) -->
-                <div class="online-indicator" />
+                <!-- Activity status indicator -->
+                <Tooltip v-if="activityStatus">
+                  <template #tooltip>
+                    <p>{{ activityStatus.lastSeenText }}</p>
+                  </template>
+                  <div
+                    class="online-indicator"
+                    :class="{ active: activityStatus.isActive }"
+                  />
+                </Tooltip>
               </div>
             </div>
 
-            <Flex column gap="m" expand>
-              <!-- Name, Title, Subtitle, and Badges -->
-              <Flex gap="l" y-start x-between expand>
-                <Flex column :gap="4" expand y-between>
-                  <!-- Username and Role -->
-                  <Flex gap="m" y-center wrap>
-                    <h1 class="profile-title">
-                      {{ profile.username }}
-                    </h1>
-                    <Badge
-                      v-if="userRole && getRoleInfo(userRole)"
-                      :variant="getRoleInfo(userRole)?.variant"
-                      size="s"
-                    >
-                      {{ getRoleInfo(userRole)?.display }}
+            <Flex column :gap="4" expand>
+              <!-- Username, Role, Badges and Action Buttons Row -->
+              <Flex gap="m" y-center x-between expand>
+                <Flex gap="m" y-center wrap>
+                  <h1 class="profile-title">
+                    {{ profile.username }}
+                  </h1>
+                  <Badge
+                    v-if="userRole && getRoleInfo(userRole)"
+                    :variant="getRoleInfo(userRole)?.variant"
+                    size="s"
+                  >
+                    {{ getRoleInfo(userRole)?.display }}
+                  </Badge>
+                  <!-- Supporter Badges -->
+                  <Flex gap="xs" y-center>
+                    <Badge v-if="profile.supporter_patreon" variant="accent" size="s">
+                      <Icon name="ph:heart-fill" />
+                      Patreon Supporter
                     </Badge>
-                    <!-- Supporter Badges -->
-                    <Flex gap="xs" y-center>
-                      <Badge v-if="profile.supporter_patreon" variant="accent" size="s">
-                        <Icon name="ph:heart-fill" />
-                        Patreon Supporter
-                      </Badge>
 
-                      <Badge v-if="profile.supporter_lifetime" variant="success" size="s">
-                        <Icon name="ph:crown-simple" />
-                        Lifetime Supporter
-                      </Badge>
-                    </Flex>
-                  </Flex>
-
-                  <!-- Introduction -->
-                  <p v-if="profile.introduction" class="profile-description">
-                    {{ profile.introduction }}
-                  </p>
-
-                  <!-- Account Info -->
-                  <Flex gap="l" class="profile-meta" expand>
-                    <Flex gap="xs" y-center>
-                      <Icon name="ph:calendar" size="16" />
-                      <span class="text-s">Joined {{ getAccountAge(profile.created_at) }}</span>
-                    </Flex>
-
-                    <Flex v-if="profile.modified_at && profile.modified_at !== profile.created_at" gap="xs" y-center>
-                      <Icon name="ph:pencil" size="16" />
-                      <span class="color-text-light text-s">Last updated <TimestampDate size="s" class="color-text-light text-s" :date="profile.modified_at" relative /></span>
-                    </Flex>
+                    <Badge v-if="profile.supporter_lifetime" variant="success" size="s">
+                      <Icon name="ph:crown-simple" />
+                      Lifetime Supporter
+                    </Badge>
                   </Flex>
                 </Flex>
 
-                <!-- Action Buttons (for own profile) -->
-                <Flex v-if="isOwnProfile" gap="s" expand x-end>
+                <!-- Action Buttons -->
+                <Flex v-if="isOwnProfile" gap="s">
                   <Button variant="accent" @click="openEditSheet">
                     <template #start>
                       <Icon name="ph:pencil" />
@@ -364,6 +481,35 @@ const hasAchievements = computed(() => {
                   </Button>
                 </Flex>
               </Flex>
+
+              <!-- Introduction (Full Width) -->
+              <p v-if="profile.introduction" class="profile-description">
+                {{ profile.introduction }}
+              </p>
+
+              <!-- Account Info (Full Width) -->
+              <Flex x-between y-center class="profile-meta" expand>
+                <Flex gap="l">
+                  <Flex gap="xs" y-center>
+                    <Icon class="color-text-lighter" name="ph:calendar" size="16" />
+                    <span class="text-s color-text-lighter">Joined {{ getAccountAge(profile.created_at) }}</span>
+                  </Flex>
+
+                  <Flex v-if="profile.modified_at && profile.modified_at !== profile.created_at" gap="xs" y-center>
+                    <Icon class="color-text-lighter" name="ph:pencil" size="16" />
+                    <span class="color-text-lighter text-s">Last updated <TimestampDate size="s" class="color-text-light text-s" :date="profile.modified_at" relative /></span>
+                  </Flex>
+                </Flex>
+
+                <!-- Admin-only UUID display -->
+                <Flex v-if="isCurrentUserAdmin" gap="xs" y-center>
+                  <Icon class="color-text-lighter" name="ph:hash" size="16" />
+                  <span class="text-xs color-text-lighter font-mono">{{ profile.id }}</span>
+                  <CopyClipboard :text="profile.id" size="s" confirm>
+                    <Icon class="color-text-lighter" name="ph:copy" size="12" />
+                  </CopyClipboard>
+                </Flex>
+              </Flex>
             </Flex>
           </Flex>
         </Flex>
@@ -372,13 +518,13 @@ const hasAchievements = computed(() => {
       <!-- Profile Sections -->
       <div class="profile-sections">
         <!-- About Section (Left) -->
-        <Card v-if="profile.markdown || isOwnProfile" separators class="about-section">
+        <Card separators class="about-section">
           <template #header>
             <Flex x-between y-center>
               <Flex>
                 <h3>About</h3>
-                <Button size="s" variant="gray" @click="openEditSheet">
-                  Add Content
+                <Button v-if="isOwnProfile" size="s" variant="gray" @click="openEditSheet">
+                  Edit Content
                 </Button>
               </Flex>
               <Icon name="ph:user-circle" />
@@ -482,10 +628,15 @@ const hasAchievements = computed(() => {
         right: 4px;
         width: 16px;
         height: 16px;
-        background-color: var(--color-text-green);
+        background-color: var(--color-text-lighter);
         border: 3px solid var(--color-bg);
         border-radius: 50%;
         box-shadow: 0 0 0 1px var(--color-border);
+        transition: background-color 0.2s ease;
+
+        &.active {
+          background-color: var(--color-text-green);
+        }
       }
     }
   }
@@ -506,7 +657,7 @@ const hasAchievements = computed(() => {
 
   .profile-description {
     margin: 0;
-    color: var(--color-text-lighter);
+    color: var(--color-text-light);
     line-height: 1.5;
   }
 
@@ -597,6 +748,61 @@ const hasAchievements = computed(() => {
 
   p {
     margin-bottom: var(--space-m);
+  }
+}
+
+.ban-status-callout {
+  margin-bottom: var(--space-l);
+
+  .ban-card {
+    padding: var(--space-m);
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+  }
+}
+
+.ban-status-card {
+  border: 2px solid var(--color-text-red);
+  background: var(--color-bg-danger);
+
+  &.ban-expired {
+    border: 2px solid var(--color-text-orange);
+    background: var(--color-bg-warning);
+
+    .ban-icon {
+      color: var(--color-text-orange);
+    }
+
+    .ban-title {
+      color: var(--color-text-orange);
+    }
+
+    .ban-reason strong {
+      color: var(--color-text-orange);
+    }
+  }
+
+  .ban-icon {
+    color: var(--color-text-red);
+    flex-shrink: 0;
+  }
+
+  .ban-title {
+    margin: 0;
+    font-size: var(--font-size-l);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-red);
+  }
+
+  .ban-reason {
+    margin: 0;
+    color: var(--color-text);
+    font-size: var(--font-size-s);
+
+    strong {
+      color: var(--color-text-red);
+    }
   }
 }
 </style>

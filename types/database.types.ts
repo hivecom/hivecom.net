@@ -7,6 +7,31 @@ export type Json
     | Json[]
 
 export interface Database {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          operationName?: string
+          query?: string
+          variables?: Json
+          extensions?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       announcements: {
@@ -348,6 +373,7 @@ export interface Database {
           discord_id: string | null
           id: string
           introduction: string | null
+          last_seen: string
           markdown: string | null
           modified_at: string | null
           modified_by: string | null
@@ -367,6 +393,7 @@ export interface Database {
           discord_id?: string | null
           id: string
           introduction?: string | null
+          last_seen?: string
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
@@ -386,6 +413,7 @@ export interface Database {
           discord_id?: string | null
           id?: string
           introduction?: string | null
+          last_seen?: string
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
@@ -571,6 +599,10 @@ export interface Database {
         }
         Returns: boolean
       }
+      contains_html_tags: {
+        Args: { input_text: string }
+        Returns: boolean
+      }
       custom_access_token_hook: {
         Args: { event: Json }
         Returns: Json
@@ -590,6 +622,10 @@ export interface Database {
       is_profile_owner: {
         Args: { profile_id: string }
         Returns: boolean
+      }
+      update_user_last_seen: {
+        Args: { user_id?: string }
+        Returns: undefined
       }
     }
     Enums: {
@@ -764,6 +800,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_permission: [

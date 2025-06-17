@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import { useLastSeenTracking } from '~/utils/lastSeen'
+
 const route = useRoute()
+
+// Initialize last seen tracking for authenticated users
+useLastSeenTracking()
 </script>
 
 <template>

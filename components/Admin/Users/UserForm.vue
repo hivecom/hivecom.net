@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Flex, Input, Select, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import { stripHtmlTags, validateMarkdownNoHtml } from '~/utils/sanitize'
 import ConfirmModal from '../../Shared/ConfirmModal.vue'
 
 // Interface for Select options
@@ -158,12 +159,36 @@ const steamIdValidation = computed(() => {
   return { valid: true, error: null }
 })
 
+// Markdown validation
+const markdownValidation = computed(() => {
+  const markdown = userForm.value.markdown.trim()
+
+  if (markdown.length > MARKDOWN_LIMIT) {
+    return { valid: false, error: `Content must be ${MARKDOWN_LIMIT} characters or less` }
+  }
+
+  return validateMarkdownNoHtml(markdown)
+})
+
+// Introduction validation
+const introductionValidation = computed(() => {
+  const introduction = userForm.value.introduction.trim()
+
+  if (introduction.length > INTRODUCTION_LIMIT) {
+    return { valid: false, error: `Introduction must be ${INTRODUCTION_LIMIT} characters or less` }
+  }
+
+  return validateMarkdownNoHtml(introduction)
+})
+
 // Form validation
 const validation = computed(() => ({
   username: usernameValidation.value.valid,
   patreon_id: patreonIdValidation.value.valid,
   discord_id: discordIdValidation.value.valid,
   steam_id: steamIdValidation.value.valid,
+  markdown: markdownValidation.value.valid,
+  introduction: introductionValidation.value.valid,
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -342,11 +367,11 @@ function handleSubmit() {
   if (!isValid.value)
     return
 
-  // Prepare the data to save
+  // Prepare the data to save with HTML sanitization
   const userData = {
     username: userForm.value.username.trim(),
-    introduction: userForm.value.introduction.trim() || null,
-    markdown: userForm.value.markdown.trim() || null,
+    introduction: userForm.value.introduction.trim() ? stripHtmlTags(userForm.value.introduction.trim()) : null,
+    markdown: userForm.value.markdown.trim() ? stripHtmlTags(userForm.value.markdown.trim()) : null,
     supporter_patreon: userForm.value.supporter_patreon,
     supporter_lifetime: userForm.value.supporter_lifetime,
     patreon_id: userForm.value.patreon_id.trim() || null,
@@ -499,31 +524,47 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           :rows="3"
           :maxlength="INTRODUCTION_LIMIT"
           :disabled="!canEditForm"
+          :valid="introductionValidation.valid"
+          :error="introductionValidation.error"
         >
           <template #after>
+            <Flex x-between>
+              <div class="help-text">
+                <Icon name="ph:info" />
+                HTML tags are not allowed
+              </div>
               <div class="character-count">
                 <span :class="{ 'over-limit': introductionCharCount > INTRODUCTION_LIMIT }">
                   {{ introductionCharCount }}/{{ INTRODUCTION_LIMIT }}
                 </span>
               </div>
+            </Flex>
           </template>
         </Textarea>
 
         <Textarea
           v-model="userForm.markdown"
           expand
-          label="Profile Description (Markdown)"
-          placeholder="Detailed profile description in markdown format"
+          label="Profile Content (Markdown)"
+          placeholder="Detailed profile content in markdown format"
           :rows="8"
           :maxlength="MARKDOWN_LIMIT"
           :disabled="!canEditForm"
+          :valid="markdownValidation.valid"
+          :error="markdownValidation.error"
         >
           <template #after>
+            <Flex x-between>
+              <div class="help-text">
+                <Icon name="ph:info" />
+                You can use Markdown formatting. HTML tags are not allowed.
+              </div>
               <div class="character-count">
                 <span :class="{ 'over-limit': markdownCharCount > MARKDOWN_LIMIT }">
                   {{ markdownCharCount }}/{{ MARKDOWN_LIMIT }}
                 </span>
               </div>
+            </Flex>
           </template>
         </Textarea>
       </Flex>
