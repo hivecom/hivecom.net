@@ -53,18 +53,19 @@ async function fetchUsersData() {
     .select('created_at, supporter_lifetime, supporter_patreon')
     .order('created_at', { ascending: true })
 
-  if (error) throw error
+  if (error)
+    throw error
 
   // Group users by month
-  const usersByMonth: Record<string, { total: number; supporters: number }> = {}
-  
+  const usersByMonth: Record<string, { total: number, supporters: number }> = {}
+
   profiles?.forEach((profile) => {
     const month = dayjs(profile.created_at).format('YYYY-MM')
     if (!usersByMonth[month]) {
       usersByMonth[month] = { total: 0, supporters: 0 }
     }
     usersByMonth[month].total++
-    
+
     // Count as supporter if they have lifetime or patreon support
     if (profile.supporter_lifetime || profile.supporter_patreon) {
       usersByMonth[month].supporters++
@@ -81,7 +82,8 @@ async function fetchMonthlyFundings() {
     .select('month, patreon_count')
     .order('month', { ascending: true })
 
-  if (error) throw error
+  if (error)
+    throw error
   return data || []
 }
 
@@ -93,27 +95,27 @@ async function fetchAllData() {
   try {
     const [usersByMonth, monthlyFundings] = await Promise.all([
       fetchUsersData(),
-      fetchMonthlyFundings()
+      fetchMonthlyFundings(),
     ])
 
     // Create a combined dataset
     const allMonths = new Set([
       ...Object.keys(usersByMonth),
-      ...monthlyFundings.map(f => f.month)
+      ...monthlyFundings.map(f => f.month),
     ])
 
     const combinedData: MonthlyUserData[] = Array.from(allMonths)
       .sort()
-      .map(month => {
+      .map((month) => {
         const users = usersByMonth[month] || { total: 0, supporters: 0 }
         const funding = monthlyFundings.find(f => f.month === month)
-        
+
         // Calculate cumulative totals
         return {
           month,
           totalUsers: users.total,
           patreonSupporters: funding?.patreon_count || 0,
-          totalSupporters: users.supporters
+          totalSupporters: users.supporters,
         }
       })
 
@@ -121,20 +123,21 @@ async function fetchAllData() {
     let cumulativeUsers = 0
     let cumulativeSupporters = 0
 
-    monthlyData.value = combinedData.map(data => {
+    monthlyData.value = combinedData.map((data) => {
       cumulativeUsers += data.totalUsers
       cumulativeSupporters += data.totalSupporters
-      
+
       return {
         ...data,
         totalUsers: cumulativeUsers,
-        totalSupporters: cumulativeSupporters
+        totalSupporters: cumulativeSupporters,
       }
     })
-
-  } catch (error: any) {
+  }
+  catch (error: any) {
     errorMessage.value = error.message || 'An error occurred while loading user data'
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
