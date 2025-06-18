@@ -124,23 +124,11 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
     @close="handleClose"
   >
     <template #header>
-      <Flex x-between y-center expand>
-        <Flex column :gap="0">
-          <h4>Edit Profile</h4>
-          <span v-if="props.profile" class="color-text-light text-xxs">
-            {{ props.profile.username }}
-          </span>
-        </Flex>
-        <Button
-          variant="accent"
-          :disabled="!isValid"
-          @click="handleSubmit"
-        >
-          <template #start>
-            <Icon name="ph:check" />
-          </template>
-          Save Changes
-        </Button>
+      <Flex column :gap="0">
+        <h4>Edit Profile</h4>
+        <span v-if="props.profile" class="color-text-light text-xxs">
+          {{ props.profile.username }}
+        </span>
       </Flex>
     </template>
 
@@ -278,16 +266,6 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
 
         <Button @click="handleClose">
           Cancel
-        </Button>
-
-        <div class="flex-1" />
-
-        <Button
-          variant="gray"
-          @click="handleClose"
-        >
-          <Icon name="ph:eye" />
-          Preview
         </Button>
       </Flex>
     </template>
