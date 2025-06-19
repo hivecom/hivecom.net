@@ -85,7 +85,15 @@ export interface Database {
           responded_by?: string | null
           response?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'complaints_context_gameserver_fkey'
+            columns: ['context_gameserver']
+            isOneToOne: false
+            referencedRelation: 'gameservers'
+            referencedColumns: ['id']
+          },
+        ]
       }
       containers: {
         Row: {
