@@ -27,6 +27,11 @@ function toggleMobileMenu() {
             </NuxtLink>
           </li>
           <li>
+            <NuxtLink to="/announcements">
+              Announcements
+            </NuxtLink>
+          </li>
+          <li>
             <NuxtLink to="/community">
               Community
             </NuxtLink>
@@ -67,6 +72,10 @@ function toggleMobileMenu() {
             <NuxtLink to="/" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
               <Icon name="ph:house" />
               <span>Home</span>
+            </NuxtLink>
+            <NuxtLink to="/announcements" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
+              <Icon name="ph:megaphone" />
+              <span>Announcements</span>
             </NuxtLink>
             <NuxtLink to="/community" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
               <Icon name="ph:users" />

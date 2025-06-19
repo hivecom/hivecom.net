@@ -1,14 +1,28 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 
+// Define container with server interface
+interface ContainerWithServer {
+  name: string
+  running: boolean
+  healthy: boolean | null
+  created_at: string
+  started_at: string | null
+  reported_at: string
+  server: {
+    id: number
+    address: string
+  } | null
+}
+
 import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
 
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { getContainerStatus } from '@/utils/containerStatus'
-import TableContainer from '~/components/Shared/TableContainer.vue'
 import ContainerActions from './ContainerActions.vue'
 import ContainerDetails from './ContainerDetails.vue'
 import ContainerFilters from './ContainerFilters.vue'
@@ -43,7 +57,7 @@ interface SelectOption {
 
 const props = defineProps<{
   // Function to control containers (start, stop, restart)
-  controlContainer: (container: any, action: 'start' | 'stop' | 'restart') => Promise<void>
+  controlContainer: (container: ContainerWithServer, action: 'start' | 'stop' | 'restart') => Promise<void>
 }>()
 
 // Define model value for refresh signal to parent
@@ -80,7 +94,7 @@ const serverFilter = ref<SelectOption[]>()
 const statusFilter = ref<SelectOption[]>()
 
 // Container detail state
-const selectedContainer = ref<any>(null)
+const selectedContainer = ref<ContainerWithServer | null>(null)
 const containerLogs = ref('')
 const logsLoading = ref(false)
 const logsError = ref('')
@@ -91,8 +105,11 @@ const refreshContainerDetails = ref<boolean>(false)
 const refreshLogsConfig = ref<{ tail?: number, since?: string, from?: string, to?: string } | null>(null)
 
 // Type that specifically allows null
-type ContainerAction = { container: any, type: 'start' | 'stop' | 'restart' | 'prune' | null } | null
-const containerAction = ref<ContainerAction>(null)
+interface ContainerAction {
+  container: ContainerWithServer
+  type: 'start' | 'stop' | 'restart' | 'prune' | null
+}
+const containerAction = ref<ContainerAction | null>(null)
 
 // Compute unique server options for the filter
 const serverOptions = computed<SelectOption[]>(() => {
@@ -258,8 +275,8 @@ async function fetchContainers() {
     // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading containers'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading containers'
   }
   finally {
     loading.value = false
@@ -267,7 +284,7 @@ async function fetchContainers() {
 }
 
 // Handle row click - View container details
-function viewContainer(container: any) {
+function viewContainer(container: ContainerWithServer) {
   selectedContainer.value = container
   showContainerDetails.value = true
 
@@ -278,7 +295,7 @@ function viewContainer(container: any) {
 }
 
 // Handle container control actions with loading state
-async function handleControl(container: any, action: 'start' | 'stop' | 'restart') {
+async function handleControl(container: ContainerWithServer, action: 'start' | 'stop' | 'restart') {
   try {
     // Set loading state for this specific container and action
     if (!actionLoading.value[container.name]) {
@@ -303,7 +320,7 @@ async function handleControl(container: any, action: 'start' | 'stop' | 'restart
 }
 
 // Handle pruning stale containers - removes them from the database
-async function handlePrune(container: any) {
+async function handlePrune(container: ContainerWithServer) {
   try {
     // Set loading state for this specific container and prune action
     if (!actionLoading.value[container.name]) {
@@ -335,10 +352,10 @@ async function handlePrune(container: any) {
     // Refresh container data after action
     await fetchContainers()
   }
-  catch (error: any) {
+  catch (error: unknown) {
     console.error(`Error pruning container ${container.name}:`, error)
     // Show error message
-    errorMessage.value = error.message || 'Failed to prune container'
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to prune container'
     setTimeout(() => {
       errorMessage.value = ''
     }, 5000) // Clear error after 5 seconds
@@ -404,8 +421,8 @@ async function fetchContainerLogs(tail = 100, since: string | null = null, from:
 
     containerLogs.value = data.logs || 'No logs available'
   }
-  catch (error: any) {
-    logsError.value = error.message || 'Could not fetch container logs'
+  catch (error: unknown) {
+    logsError.value = error instanceof Error ? error.message : 'Could not fetch container logs'
     containerLogs.value = 'Failed to load logs'
   }
   finally {
@@ -534,7 +551,7 @@ onBeforeMount(fetchContainers)
   </template>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .mb-l {
   margin-bottom: var(--space-l);
 }

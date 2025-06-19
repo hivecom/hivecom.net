@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
-import Metadata from '~/components/Shared/Metadata.vue'
+import Metadata from '@/components/Shared/Metadata.vue'
 
 const props = defineProps<{
-  announcement: any | null
+  announcement: Tables<'announcements'> | null
 }>()
 
 // Define emits
@@ -20,13 +21,13 @@ function handleClose() {
 }
 
 // Handle edit action from AdminActions
-function handleEdit(announcement: any) {
+function handleEdit(announcement: Tables<'announcements'>) {
   emit('edit', announcement)
   isOpen.value = false
 }
 
 // Handle delete action from AdminActions
-function handleDelete(announcement: any) {
+function handleDelete(announcement: Tables<'announcements'>) {
   emit('delete', announcement)
   isOpen.value = false
 }
@@ -84,9 +85,9 @@ function handleDelete(announcement: any) {
 
             <Grid v-if="props.announcement.link" class="announcement-details__item" expand :columns="2">
               <span class="color-text-light text-bold">Link:</span>
-              <a :href="props.announcement.link" target="_blank" class="color-accent">
+              <NuxtLink external :href="props.announcement.link" target="_blank" class="color-accent text-m">
                 {{ props.announcement.link }}
-              </a>
+              </NuxtLink>
             </Grid>
           </Flex>
         </Card>

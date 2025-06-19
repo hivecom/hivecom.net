@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TablesInsert, TablesUpdate } from '~/types/database.types'
+import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Button, Flex, Input, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '../../Shared/ConfirmModal.vue'
@@ -244,7 +244,7 @@ function confirmDelete() {
   </Sheet>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .announcement-form {
   padding-bottom: var(--space);
 }

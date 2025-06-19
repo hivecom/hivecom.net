@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Divider, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
-import Event from '~/components/Events/Event.vue'
-import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import Event from '@/components/Events/Event.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
 
 // Fetch data
@@ -88,7 +88,7 @@ const showDetails = computed({
         Events
       </h1>
       <p>
-        Discover the latest happenings.
+        Discover the latest happenings
       </p>
     </section>
     <Divider />

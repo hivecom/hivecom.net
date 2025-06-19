@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Spinner } from '@dolanske/vui'
-import ProfileView from '~/components/Profile/ProfileView.vue'
+import ProfileView from '@/components/Profile/ProfileView.vue'
 
 const user = useSupabaseUser()
 const client = useSupabaseClient()

@@ -106,12 +106,61 @@ INSERT INTO public.user_roles(role, user_id)
   VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Create or update a profile for our admin user
-INSERT INTO public.profiles(id, created_at, username, introduction)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), 'Hivecom', 'Local develop and test user')
+INSERT INTO public.profiles(id, created_at, username, introduction, markdown)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), 'Hivecom', 'Local develop and test user', '# whoami
+
+```javascript
+console.log("Hello, Hivecom!");
+```
+
+Hey there! I''m @Hivecom, the developer test account. Let''s do some Markdown testing here.
+
+**Bold Text** and *Italic Text* are working fine.
+
+> Blockquote text goes here.
+>> Nested blockquote text goes here.
+>>> Even more nested blockquote text goes here.
+
+## Lists
+
+### Unordered List
+- Item 1
+- Item 2
+  - Nested item 2a
+  - Nested item 2b
+- Item 3
+
+### Ordered List
+1. First item
+2. Second item
+   1. Nested item 2.1
+   2. Nested item 2.2
+3. Third item
+
+## Links and Images
+
+[Link to Hivecom](https://hivecom.net)
+
+![Alt text for image](https://via.placeholder.com/150)
+
+## Code Blocks
+
+Inline `code` example.
+
+## Heading 2
+
+### Heading 3
+
+#### Heading 4
+
+##### Heading 5
+
+###### Heading 6')
 ON CONFLICT (id)
   DO UPDATE SET
     username = EXCLUDED.username,
-    introduction = EXCLUDED.introduction;
+    introduction = EXCLUDED.introduction,
+    markdown = EXCLUDED.markdown;
 
 -- Insert example test user for admin to modify and test with
 INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous")
@@ -291,12 +340,14 @@ Come join us and let''s have some fun together!
   ', FALSE);
 
 -- Insert test complaints
-INSERT INTO public.complaints(created_at, created_by, message, response, responded_by, responded_at, acknowledged)
+INSERT INTO public.complaints(created_at, created_by, message, response, responded_by, responded_at, acknowledged, context_user, context_gameserver)
   VALUES
-    -- Fully resolved complaint
-(NOW() - INTERVAL '3 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'The gameserver seems to be down. I can''t connect to cs2.gameserver.hivecom.net', NULL, NULL, NOW() - INTERVAL '2 days', TRUE),
-    -- Responded but not acknowledged complaint
-(NOW() - INTERVAL '1 day', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'There was a player using inappropriate language in voice chat yesterday around 8 PM.', 'Thank you for reporting this. We have reviewed the logs and taken appropriate action against the player. Please continue to report any issues you encounter.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '20 hours', FALSE),
-    -- Unresponded complaint
-(NOW() - INTERVAL '2 hours', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'I''m experiencing lag issues on the CS2 server. The ping seems to spike randomly during gameplay.', NULL, NULL, NULL, FALSE);
+  -- General complaint with no context (from TestUser)
+(NOW() - INTERVAL '3 days', '018d224c-0e49-4b6d-b57a-87299605c2b2', 'I''m having trouble accessing my profile settings. The page seems to be loading indefinitely and I can''t update my information.', 'Thank you for reporting this issue. We have identified and fixed the bug affecting profile settings. Please try again and let us know if you continue to experience problems.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '2 days', TRUE, NULL, NULL),
+  -- Complaint about a user (context_user)
+(NOW() - INTERVAL '1 day', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'This user was using inappropriate language and being disrespectful to other community members during our gaming session yesterday evening. They were also intentionally griefing other players.', 'Thank you for reporting this behavior. We have reviewed the situation and taken appropriate moderation action. The user has been warned and is now being monitored. Please continue to report any issues you encounter.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '20 hours', TRUE, '018d224c-0e49-4b6d-b57a-87299605c2b2', NULL),
+  -- Complaint about a gameserver (context_gameserver) - acknowledged but not responded
+(NOW() - INTERVAL '4 hours', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'The CS2 server is experiencing severe performance issues. There are frequent lag spikes, players are getting disconnected randomly, and hit registration seems inconsistent. This makes the game unplayable.', NULL, NULL, NULL, TRUE, NULL, 1),
+  -- New unacknowledged complaint with no context
+(NOW() - INTERVAL '30 minutes', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'I noticed that the community voting system seems to have a bug where my vote doesn''t get saved properly. I tried voting on the recent referendum but it keeps asking me to vote again.', NULL, NULL, NULL, FALSE, NULL, NULL);
 

@@ -2,11 +2,11 @@
 import { Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 import { computed, watch } from 'vue'
 
-import MDRenderer from '~/components/Shared/MDRenderer.vue'
-import Metadata from '~/components/Shared/Metadata.vue'
-import RoleIndicator from '~/components/Shared/RoleIndicator.vue'
-import TimestampDate from '~/components/Shared/TimestampDate.vue'
-import UserLink from '~/components/Shared/UserLink.vue'
+import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import Metadata from '@/components/Shared/Metadata.vue'
+import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import UserLink from '@/components/Shared/UserLink.vue'
 import { getUserActivityStatus } from '~/utils/lastSeen'
 import UserActions from './UserActions.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
@@ -46,7 +46,7 @@ const isOpen = defineModel<boolean>('isOpen', { default: false })
 
 // Type that specifically allows null
 type UserAction = {
-  user: any
+  user: NonNullable<typeof props.user>
   type: 'ban' | 'unban' | 'edit' | 'delete' | null
   banDuration?: string
   banReason?: string
@@ -275,7 +275,7 @@ function handleClose() {
   </Sheet>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .user-detail {
   padding-bottom: var(--space);
 }

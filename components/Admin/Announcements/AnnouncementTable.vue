@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-import type { TablesInsert, TablesUpdate } from '~/types/database.types'
+import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 
 import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 
+import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import TableContainer from '~/components/Shared/TableContainer.vue'
 import AnnouncementDetails from './AnnouncementDetails.vue'
 import AnnouncementFilters from './AnnouncementFilters.vue'
 import AnnouncementForm from './AnnouncementForm.vue'
@@ -110,7 +110,7 @@ const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData
 })
 
 // Set default sorting.
-setSort('Title', 'asc')
+setSort('Created', 'desc')
 
 // Fetch announcements data
 async function fetchAnnouncements() {
@@ -128,8 +128,8 @@ async function fetchAnnouncements() {
     // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading announcements'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading announcements'
   }
   finally {
     loading.value = false
@@ -205,8 +205,8 @@ async function handleAnnouncementSave(announcementData: TablesInsert<'announceme
     showAnnouncementForm.value = false
     await fetchAnnouncements()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while saving the announcement'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while saving the announcement'
   }
 }
 
@@ -224,8 +224,8 @@ async function handleAnnouncementDelete(announcementId: number) {
     showAnnouncementForm.value = false
     await fetchAnnouncements()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while deleting the announcement'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the announcement'
   }
 }
 
@@ -357,7 +357,7 @@ onBeforeMount(fetchAnnouncements)
   />
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .mb-l {
   margin-bottom: var(--space-l);
 }

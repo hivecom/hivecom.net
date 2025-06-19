@@ -1,10 +1,24 @@
 <script setup lang="ts">
 import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
 
-import ContainerKPIs from '~/components/Admin/Network/ContainerKPIs.vue'
-import ContainerTable from '~/components/Admin/Network/ContainerTable.vue'
-import GameserverTable from '~/components/Admin/Network/GameServerTable.vue'
-import ServerTable from '~/components/Admin/Network/ServerTable.vue'
+import ContainerKPIs from '@/components/Admin/Network/ContainerKPIs.vue'
+import ContainerTable from '@/components/Admin/Network/ContainerTable.vue'
+import GameserverTable from '@/components/Admin/Network/GameServerTable.vue'
+import ServerTable from '@/components/Admin/Network/ServerTable.vue'
+
+// Define container with server interface to match what ContainerTable expects
+interface ContainerWithServer {
+  name: string
+  running: boolean
+  healthy: boolean | null
+  created_at: string
+  started_at: string | null
+  reported_at: string
+  server: {
+    id: number
+    address: string
+  } | null
+}
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
@@ -49,7 +63,7 @@ function handleRefreshSignal(value: number) {
 }
 
 // Container control actions
-async function handleContainerControl(container: any, action: 'start' | 'stop' | 'restart') {
+async function handleContainerControl(container: ContainerWithServer, action: 'start' | 'stop' | 'restart') {
   try {
     const endpoint = `admin-docker-control-container-${action}/${container.name}`
     const { error } = await supabase.functions.invoke(endpoint, {

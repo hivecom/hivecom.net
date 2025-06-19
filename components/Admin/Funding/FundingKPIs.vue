@@ -78,8 +78,8 @@ async function fetchFundingMetrics() {
       totalPatrons,
     }
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'Failed to fetch funding metrics'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to fetch funding metrics'
   }
   finally {
     loading.value = false
@@ -135,6 +135,6 @@ onBeforeMount(fetchFundingMetrics)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 
 </style>

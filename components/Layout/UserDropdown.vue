@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
+import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 
 const supabase = useSupabaseClient()
@@ -9,6 +10,9 @@ const user = useSupabaseUser()
 const username = ref('')
 // Initialize user role from database
 const userRole = ref<string | null>(null)
+
+// Complaint modal state
+const showComplaintModal = ref(false)
 
 // Fetch username from profile and role from user_roles
 onMounted(async () => {
@@ -44,6 +48,22 @@ const isAdminOrMod = computed(() => {
   return userRole.value === 'admin' || userRole.value === 'moderator'
 })
 
+// Handle complaint submission
+function handleComplaintSubmit(_complaintData: { message: string }) {
+  // Could show a success toast here in the future
+  // For now, just handle the successful submission
+}
+
+function openComplaintModal() {
+  // Defensive check - UserDropdown should only be rendered for authenticated users
+  if (!user.value) {
+    navigateTo('/auth/sign-in')
+    return
+  }
+
+  showComplaintModal.value = true
+}
+
 async function signOut() {
   await supabase.auth.signOut()
   navigateTo('/auth/sign-in')
@@ -76,6 +96,9 @@ async function signOut() {
       <DropdownItem icon="ph:gear-six" @click="navigateTo('/profile/settings')">
         Settings
       </DropdownItem>
+      <DropdownItem icon="ph:chat-circle-text" @click="openComplaintModal">
+        Complaints
+      </DropdownItem>
       <template v-if="isAdminOrMod">
         <Divider size="4" style="margin-bottom: 4px;" />
         <DropdownItem icon="ph:faders" @click="navigateTo('/admin')">
@@ -88,6 +111,10 @@ async function signOut() {
         <Button square icon="ph:sign-out" aria-label="Sign out" @click="signOut" />
       </div>
     </Dropdown>
+    <ComplaintsManager
+      v-model:open="showComplaintModal"
+      @submit="handleComplaintSubmit"
+    />
   </div>
 </template>
 

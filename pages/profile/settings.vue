@@ -1,15 +1,56 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Badge, Button, Card, Flex } from '@dolanske/vui'
 
 // Async component
-const ConnectPatreonButton = defineAsyncComponent(() => import('~/components/Profile/ConnectPatreon.vue'))
+const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Profile/ConnectPatreon.vue'))
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const profile = ref<Tables<'profiles'> | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
+const authReady = ref(false)
+
+// Authentication check - redirect if not signed in
+onMounted(() => {
+  const authListener = supabase.auth.onAuthStateChange((event, _session) => {
+    authReady.value = true
+
+    if (event === 'SIGNED_OUT' || (!user.value && authReady.value)) {
+      navigateTo('/auth/sign-in')
+    }
+  })
+
+  // Cleanup listener on component unmount
+  onUnmounted(() => {
+    authListener.data.subscription.unsubscribe()
+  })
+
+  // Try to determine auth state immediately if user is already available
+  if (user.value) {
+    authReady.value = true
+    fetchProfile()
+  }
+  else {
+    // Set a timeout to check if we're still loading after a reasonable time
+    setTimeout(() => {
+      if (!user.value && authReady.value) {
+        navigateTo('/auth/sign-in')
+      }
+    }, 1000)
+  }
+})
+
+// Watch for user changes
+watch(user, (newUser) => {
+  if (!newUser && authReady.value) {
+    navigateTo('/auth/sign-in')
+  }
+  else if (newUser) {
+    fetchProfile()
+  }
+})
 
 // Fetch user's profile data
 async function fetchProfile() {
@@ -34,118 +75,127 @@ async function fetchProfile() {
 
     profile.value = data
   }
-  catch (error: any) {
+  catch (error: unknown) {
     console.error('Error fetching profile:', error)
-    errorMessage.value = error.message || 'Failed to load profile'
+    errorMessage.value = (error as Error).message || 'Failed to load profile'
   }
   finally {
     loading.value = false
   }
 }
-
-onMounted(() => {
-  fetchProfile()
-})
 </script>
 
 <template>
   <div class="page">
-    <h1 class="settings-title">
-      Profile Settings
-    </h1>
+    <template v-if="loading && !authReady">
+      <div class="loading-container">
+        <Icon name="ph:spinner" class="spin" size="24" />
+        <span>Loading...</span>
+      </div>
+    </template>
 
-    <!-- Connected Accounts Section -->
-    <Card separators>
-      <template #header>
-        <Flex x-between y-center>
-          <h3>Connected Accounts</h3>
-          <Icon name="ph:link" />
-        </Flex>
-      </template>
+    <template v-else-if="!user">
+      <div>Please sign in to access profile settings.</div>
+    </template>
 
-      <Flex column gap="m">
-        <!-- Patreon -->
-        <Flex expand class="account-connection-row">
-          <Flex x-between y-center expand>
-            <Flex gap="m" y-center>
-              <div class="account-icon patreon">
-                <Icon name="ph:patreon-logo" size="20" />
-              </div>
-              <div>
-                <strong>Patreon</strong>
-                <p class="text-xs color-text-lighter">
-                  Support the community and get supporter benefits
-                </p>
+    <template v-else>
+      <h1 class="settings-title">
+        Profile Settings
+      </h1>
+
+      <!-- Connected Accounts Section -->
+      <Card separators>
+        <template #header>
+          <Flex x-between y-center>
+            <h3>Connected Accounts</h3>
+            <Icon name="ph:link" />
+          </Flex>
+        </template>
+
+        <Flex column gap="m">
+          <!-- Patreon -->
+          <Flex expand class="account-connection-row">
+            <Flex x-between y-center expand>
+              <Flex gap="m" y-center>
+                <div class="account-icon patreon">
+                  <Icon name="ph:patreon-logo" size="20" />
+                </div>
+                <div>
+                  <strong>Patreon</strong>
+                  <p class="text-xs color-text-lighter">
+                    Support the community and get supporter benefits
+                  </p>
+                </div>
+              </Flex>
+
+              <div class="account-status">
+                <Badge v-if="profile?.patreon_id" variant="success" size="s">
+                  <Icon name="ph:check" />
+                  Connected
+                </Badge>
+                <ClientOnly v-else>
+                  <ConnectPatreonButton />
+                </ClientOnly>
               </div>
             </Flex>
-
-            <div class="account-status">
-              <Badge v-if="profile?.patreon_id" variant="success" size="s">
-                <Icon name="ph:check" />
-                Connected
-              </Badge>
-              <ClientOnly v-else>
-                <ConnectPatreonButton />
-              </ClientOnly>
-            </div>
           </Flex>
-        </Flex>
 
-        <!-- Steam -->
-        <Flex expand class="account-connection-row">
-          <Flex x-between y-center expand>
-            <Flex gap="m" y-center>
-              <div class="account-icon steam">
-                <Icon name="ph:game-controller" size="20" />
-              </div>
-              <div>
-                <strong>Steam</strong>
-                <p class="text-xs color-text-lighter">
-                  Connect your gaming profile
-                </p>
+          <!-- Steam -->
+          <Flex expand class="account-connection-row">
+            <Flex x-between y-center expand>
+              <Flex gap="m" y-center>
+                <div class="account-icon steam">
+                  <Icon name="ph:game-controller" size="20" />
+                </div>
+                <div>
+                  <strong>Steam</strong>
+                  <p class="text-xs color-text-lighter">
+                    Connect your gaming profile
+                  </p>
+                </div>
+              </Flex>
+
+              <div class="account-status">
+                <Badge v-if="profile?.steam_id" variant="success" size="s">
+                  <Icon name="ph:check" />
+                  Connected
+                </Badge>
+                <Button v-else size="s" variant="gray" disabled aria-label="Steam integration coming soon">
+                  Coming Soon
+                </Button>
               </div>
             </Flex>
-
-            <div class="account-status">
-              <Badge v-if="profile?.steam_id" variant="success" size="s">
-                <Icon name="ph:check" />
-                Connected
-              </Badge>
-              <Button v-else size="s" variant="gray" disabled aria-label="Steam integration coming soon">
-                Coming Soon
-              </Button>
-            </div>
           </Flex>
-        </Flex>
 
-        <!-- Discord -->
-        <Flex expand class="account-connection-row">
-          <Flex x-between y-center expand>
-            <Flex gap="m" y-center>
-              <div class="account-icon discord">
-                <Icon name="ph:discord-logo" size="20" />
-              </div>
-              <div>
-                <strong>Discord</strong>
-                <p class="text-xs color-text-lighter">
-                  Join our community chat
-                </p>
+          <!-- Discord -->
+          <Flex expand class="account-connection-row">
+            <Flex x-between y-center expand>
+              <Flex gap="m" y-center>
+                <div class="account-icon discord">
+                  <Icon name="ph:discord-logo" size="20" />
+                </div>
+                <div>
+                  <strong>Discord</strong>
+                  <p class="text-xs color-text-lighter">
+                    Join our community chat
+                  </p>
+                </div>
+              </Flex>
+
+              <div class="account-status">
+                <Badge v-if="profile?.discord_id" variant="success" size="s">
+                  <Icon name="ph:check" />
+                  Connected
+                </Badge>
+                <Button v-else size="s" variant="gray" disabled aria-label="Discord integration coming soon">
+                  Coming Soon
+                </Button>
               </div>
             </Flex>
-
-            <div class="account-status">
-              <Badge v-if="profile?.discord_id" variant="success" size="s">
-                <Icon name="ph:check" />
-                Connected
-              </Badge>
-              <Button v-else size="s" variant="gray" disabled aria-label="Discord integration coming soon">
-                Coming Soon
-              </Button>
-            </div>
           </Flex>
         </Flex>
-      </Flex>
-    </Card>
+      </Card>
+    </template>
   </div>
 </template>
 
@@ -155,6 +205,28 @@ onMounted(() => {
   color: var(--color-text);
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
+}
+
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-s);
+  padding: var(--space-xl);
+  color: var(--color-text-light);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .account-connection-row {

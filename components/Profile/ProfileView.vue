@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Skeleton, Tooltip } from '@dolanske/vui'
-import ProfileForm from '~/components/Profile/ProfileForm.vue'
-import ErrorAlert from '~/components/Shared/ErrorAlert.vue'
-import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import ProfileForm from '@/components/Profile/ProfileForm.vue'
+import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatDuration } from '~/utils/duration'
 import { getUserActivityStatus } from '~/utils/lastSeen'
 import MDRenderer from '../Shared/MDRenderer.vue'
@@ -23,6 +24,7 @@ const currentUserRole = ref<string | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
 const isEditSheetOpen = ref(false)
+const showComplaintModal = ref(false)
 
 // Computed property to check if this is the user's own profile
 const isOwnProfile = computed(() => {
@@ -67,8 +69,8 @@ function getUserInitials(username: string): string {
     .split(' ')
     .map(word => word.charAt(0))
     .join('')
+    .substring(0, 2)
     .toUpperCase()
-    .slice(0, 2)
 }
 
 // Format time since account creation
@@ -199,6 +201,23 @@ async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
     console.error('Error updating profile:', error)
     // In a real app, you'd show an error toast notification here
   }
+}
+
+// Complaint modal functions
+function openComplaintModal() {
+  // Check if user is authenticated
+  if (!user.value) {
+    // Redirect to sign-in page if not authenticated
+    navigateTo('/auth/sign-in')
+    return
+  }
+
+  showComplaintModal.value = true
+}
+
+function handleComplaintSubmit(_complaintData: { message: string }) {
+  // Could show a success toast here in the future
+  // For now, just handle the successful submission
 }
 
 // Get role display and styling
@@ -479,6 +498,12 @@ function getBanEndDate() {
                     </template>
                     Copy Link
                   </Button>
+                  <Button variant="gray" @click="openComplaintModal">
+                    <template #start>
+                      <Icon name="ph:chat-circle-text" />
+                    </template>
+                    Complaint
+                  </Button>
                 </Flex>
               </Flex>
 
@@ -594,16 +619,25 @@ function getBanEndDate() {
         </Card>
       </div>
     </template>
-  </div>
 
-  <!-- Profile Edit Form Sheet -->
-  <ProfileForm
-    :profile="profile || null"
-    :is-open="isEditSheetOpen"
-    @save="handleProfileSave"
-    @close="closeEditSheet"
-    @update:is-open="isEditSheetOpen = $event"
-  />
+    <!-- Profile Edit Form Sheet -->
+    <ProfileForm
+      :profile="profile || null"
+      :is-open="isEditSheetOpen"
+      @save="handleProfileSave"
+      @close="closeEditSheet"
+      @update:is-open="isEditSheetOpen = $event"
+    />
+
+    <!-- Complaints Manager -->
+    <ComplaintsManager
+      v-model:open="showComplaintModal"
+      :target-user-id="profile?.id"
+      :target-user-name="profile?.username"
+      :start-with-submit="true"
+      @submit="handleComplaintSubmit"
+    />
+  </div>
 </template>
 
 <style lang="scss">

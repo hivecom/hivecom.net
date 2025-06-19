@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
 const props = defineProps<{
-  server: any | null
+  server: Tables<'servers'> | null
 }>()
 
 // Define model for sheet visibility
@@ -95,7 +96,7 @@ function handleClose() {
   </Sheet>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .server-detail {
   padding-bottom: var(--space);
 }

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
 import { ref } from 'vue'
-import ExpenseTable from '~/components/Admin/Funding/ExpenseTable.vue'
-import FundingKPIs from '~/components/Admin/Funding/FundingKPIs.vue'
-import FundingTable from '~/components/Admin/Funding/FundingTable.vue'
+import ExpenseTable from '@/components/Admin/Funding/ExpenseTable.vue'
+import FundingKPIs from '@/components/Admin/Funding/FundingKPIs.vue'
+import FundingTable from '@/components/Admin/Funding/FundingTable.vue'
 
 // State for refresh coordination between components
 const refreshSignal = ref(0)

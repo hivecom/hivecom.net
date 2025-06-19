@@ -4,11 +4,11 @@ import Convert from 'ansi-to-html'
 
 import { computed, nextTick, ref, watch } from 'vue'
 
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
+
 import constants from '@/constants.json'
 
 import { getContainerStatus } from '@/utils/containerStatus'
-
-import TimestampDate from '~/components/Shared/TimestampDate.vue'
 import ContainerActions from './ContainerActions.vue'
 import ContainerStatusIndicator from './ContainerStatusIndicator.vue'
 
@@ -41,9 +41,26 @@ const props = defineProps<{
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 // Type definitions that specify null as a possible value
 const refreshLogsConfig = defineModel<{ tail?: number, since?: string, from?: string, to?: string } | null>('refreshLogsConfig', { default: null })
+
+// Define container with server interface
+interface ContainerWithServer {
+  name: string
+  running: boolean
+  healthy: boolean | null
+  started_at: string | null
+  reported_at: string
+  server: {
+    id: number
+    address: string
+  } | null
+}
+
 // Type that specifically allows null
-type ContainerAction = { container: any, type: 'start' | 'stop' | 'restart' | 'prune' | null } | null
-const containerAction = defineModel<ContainerAction>('containerAction', { default: null })
+interface ContainerAction {
+  container: ContainerWithServer
+  type: 'start' | 'stop' | 'restart' | 'prune' | null
+}
+const containerAction = defineModel<ContainerAction | null>('containerAction', { default: null })
 
 // Add a refreshTrigger model to request a refresh from parent
 const refreshContainer = defineModel<boolean>('refreshContainer', { default: false })
@@ -331,7 +348,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
   </Sheet>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .container-detail {
   padding-bottom: var(--space);
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
 
-import GameTable from '~/components/Admin/Games/GameTable.vue'
+import GameTable from '@/components/Admin/Games/GameTable.vue'
 </script>
 
 <template>

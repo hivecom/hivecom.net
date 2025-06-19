@@ -51,6 +51,8 @@ export interface Database {
       complaints: {
         Row: {
           acknowledged: boolean
+          context_gameserver: number | null
+          context_user: string | null
           created_at: string
           created_by: string
           id: number
@@ -61,6 +63,8 @@ export interface Database {
         }
         Insert: {
           acknowledged?: boolean
+          context_gameserver?: number | null
+          context_user?: string | null
           created_at?: string
           created_by: string
           id?: number
@@ -71,6 +75,8 @@ export interface Database {
         }
         Update: {
           acknowledged?: boolean
+          context_gameserver?: number | null
+          context_user?: string | null
           created_at?: string
           created_by?: string
           id?: number

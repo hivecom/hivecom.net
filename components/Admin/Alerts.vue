@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Card, Flex, Skeleton } from '@dolanske/vui'
 import { onBeforeMount, ref, watch } from 'vue'
-import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
 // Props
 interface Props {
@@ -153,10 +153,7 @@ onBeforeMount(() => {
   <Card class="alerts-card" :padding="false">
     <Flex class="alerts-header" y-center x-between expand>
       <Flex y-center gap="s">
-        <h3>Alerts</h3>
-      </Flex>
-      <Flex class="alerts-count" :class="{ 'alerts-count--active': alerts.length > 0 }" y-center x-center>
-        {{ loading ? '...' : alerts.length }}
+        <h3>{{ loading ? '...' : alerts.length }} {{ alerts.length > 1 ? 'Alerts' : 'Alert' }}</h3>
       </Flex>
     </Flex>
 
@@ -168,8 +165,8 @@ onBeforeMount(() => {
         <div class="col-title">
           Alert
         </div>
-        <div class="col-time text-right">
-          Time
+        <div class="col-date text-right">
+          Date
         </div>
       </div>
 
@@ -191,7 +188,7 @@ onBeforeMount(() => {
     </div>
 
     <Flex v-else-if="alerts.length === 0" class="alerts-empty" y-center x-center gap="m" expand>
-      <span>All systems operational</span>
+      <span>Looks like it's all smooth sailing</span>
     </Flex>
 
     <div v-else class="alerts-table">
@@ -202,8 +199,8 @@ onBeforeMount(() => {
         <div class="col-title">
           Alert
         </div>
-        <div class="col-time text-right">
-          Time
+        <div class="col-date text-right">
+          Date
         </div>
       </div>
 
@@ -235,7 +232,7 @@ onBeforeMount(() => {
               :date="alert.timestamp.toISOString()"
               size="xs"
               :tooltip="true"
-              format="HH:mm"
+              format="YYYY-MM-DD"
             />
           </Flex>
         </div>

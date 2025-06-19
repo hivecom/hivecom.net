@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import Metadata from '~/components/Shared/Metadata.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
 
 const props = defineProps<{
@@ -24,13 +24,13 @@ function handleClose() {
 }
 
 // Handle edit action from AdminActions
-function handleEdit(event: any) {
+function handleEdit(event: Tables<'events'>) {
   emit('edit', event)
   isOpen.value = false
 }
 
 // Handle delete action from AdminActions
-function handleDelete(event: any) {
+function handleDelete(event: Tables<'events'>) {
   emit('delete', event)
   isOpen.value = false
 }
@@ -165,7 +165,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
   </Sheet>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .event-detail {
   padding-bottom: var(--space);
 }

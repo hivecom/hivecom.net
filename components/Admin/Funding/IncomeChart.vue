@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Database } from '~/types/database.types'
+import type { Database } from '@/types/database.types'
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -182,8 +182,8 @@ async function fetchMonthlyFundings() {
 
     monthlyFundings.value = data as MonthlyFunding[] || []
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading funding data'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading funding data'
   }
   finally {
     loading.value = false
@@ -221,7 +221,7 @@ onBeforeMount(fetchMonthlyFundings)
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .chart-container {
   width: 100%;
   min-height: 320px;

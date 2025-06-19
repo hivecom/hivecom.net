@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Alert, Badge, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import TableContainer from '~/components/Shared/TableContainer.vue'
 import { formatCurrency } from '~/utils/currency'
 import FundingDetails from './FundingDetails.vue'
 import FundingFilters from './FundingFilters.vue'
@@ -96,8 +96,8 @@ async function fetchMonthlyFundings() {
     // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading funding data'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading funding data'
   }
   finally {
     loading.value = false
@@ -194,7 +194,7 @@ onBeforeMount(fetchMonthlyFundings)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .mb-l {
   margin-bottom: var(--space-l);
 }

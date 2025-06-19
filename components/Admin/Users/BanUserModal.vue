@@ -121,7 +121,7 @@ function handleClose() {
   </Modal>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .ban-modal-content {
   min-width: 400px;
 }

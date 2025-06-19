@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Flex, Grid } from '@dolanske/vui'
 import { ref } from 'vue'
-import IncomeChart from '~/components/Admin/Funding/IncomeChart.vue'
-import UserChart from '~/components/Admin/Funding/UserChart.vue'
-import KPIOverview from '~/components/Admin/KPIOverview.vue'
-import SystemCallouts from '~/components/Admin/SystemCallouts.vue'
+import Alerts from '@/components/Admin/Alerts.vue'
+import IncomeChart from '@/components/Admin/Funding/IncomeChart.vue'
+import UserChart from '@/components/Admin/Funding/UserChart.vue'
+import KPIOverview from '@/components/Admin/KPIOverview.vue'
 
 // State for refresh coordination between components
 const refreshSignal = ref(0)
@@ -32,6 +32,6 @@ const refreshSignal = ref(0)
     </Grid>
 
     <!-- System Callouts -->
-    <SystemCallouts :refresh-signal="refreshSignal" />
+    <Alerts :refresh-signal="refreshSignal" />
   </Flex>
 </template>

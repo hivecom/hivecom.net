@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 
+import type { Tables } from '@/types/database.types'
 import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
-import TableContainer from '~/components/Shared/TableContainer.vue'
+import TableContainer from '@/components/Shared/TableContainer.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import ServerDetails from './ServerDetails.vue'
 import ServerFilters from './ServerFilters.vue'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
@@ -54,7 +55,7 @@ const search = ref('')
 const statusFilter = ref<SelectOption[]>()
 
 // Server detail state
-const selectedServer = ref<any>(null)
+const selectedServer = ref<Tables<'servers'> | null>(null)
 const showServerDetails = ref(false)
 
 // Status options for filter
@@ -126,8 +127,8 @@ async function fetchServers() {
     // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading servers'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading servers'
   }
   finally {
     loading.value = false
@@ -135,7 +136,7 @@ async function fetchServers() {
 }
 
 // Handle row click - View server details
-function viewServer(server: any) {
+function viewServer(server: Tables<'servers'>) {
   selectedServer.value = server
   showServerDetails.value = true
 }
@@ -154,8 +155,8 @@ async function handleServerDelete(serverId: number) {
     // Refresh servers data after deletion
     await fetchServers()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while deleting the server'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the server'
   }
 }
 
@@ -257,7 +258,7 @@ onBeforeMount(fetchServers)
   />
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .mb-l {
   margin-bottom: var(--space-l);
 }

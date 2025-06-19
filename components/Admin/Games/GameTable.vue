@@ -5,7 +5,7 @@ import { computed, onBeforeMount, ref } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
-import TableContainer from '~/components/Shared/TableContainer.vue'
+import TableContainer from '@/components/Shared/TableContainer.vue'
 import GameDetails from './GameDetails.vue'
 import GameFilters from './GameFilters.vue'
 import GameForm from './GameForm.vue'
@@ -104,8 +104,8 @@ async function fetchGames() {
     // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading games'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading games'
   }
   finally {
     loading.value = false
@@ -195,8 +195,8 @@ async function handleGameSave(gameData: Partial<Game>) {
     showGameForm.value = false
     await fetchGames()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while saving the game'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while saving the game'
   }
 }
 
@@ -214,8 +214,8 @@ async function handleGameDelete(gameId: number) {
     showGameForm.value = false
     await fetchGames()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while deleting the game'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the game'
   }
 }
 
@@ -331,7 +331,7 @@ onBeforeMount(fetchGames)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .mb-l {
   margin-bottom: var(--space-l);
 }

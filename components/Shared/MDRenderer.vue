@@ -1,5 +1,7 @@
 <script setup>
 import { Skeleton } from '@dolanske/vui'
+import { computed } from 'vue'
+import { processMentions } from '~/utils/mentions'
 import MDRendererSlot from './MDRendererSlot.vue'
 
 const props = defineProps({
@@ -19,6 +21,11 @@ const props = defineProps({
     default: '320px',
   },
 })
+
+// Process the markdown to convert @mentions to links
+const processedMarkdown = computed(() => {
+  return processMentions(props.md)
+})
 </script>
 
 <template>
@@ -29,10 +36,23 @@ const props = defineProps({
     <MDRendererSlot>
       <MDC
         :partial="true"
-        :value="props.md"
+        :value="processedMarkdown"
         :tag="props.tag"
         :class="`typeset ${props.class}`"
       />
     </MDRendererSlot>
   </Suspense>
 </template>
+
+<style lang="scss">
+/* Style all links in markdown content */
+p a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+p a:hover {
+  opacity: 0.8;
+}
+</style>

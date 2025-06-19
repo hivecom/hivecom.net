@@ -61,7 +61,7 @@ function getRandomWidth(): number {
   </TableContainer>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 /* Compact mode for tables with many columns - only affects widths/spacing */
 :deep(.table-compact td) {
   padding-left: var(--space-xs);

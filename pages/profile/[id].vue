@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import ProfileView from '~/components/Profile/ProfileView.vue'
+import { Spinner } from '@dolanske/vui'
+import ProfileView from '@/components/Profile/ProfileView.vue'
 
 const route = useRoute()
+const user = useSupabaseUser()
+const client = useSupabaseClient()
 const identifier = route.params.id as string
+
+const loading = ref(true)
+const authReady = ref(false)
 
 // UUID regex pattern to detect if the identifier is a UUID
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -11,13 +17,61 @@ const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 const isUuid = uuidRegex.test(identifier)
 const userId = isUuid ? identifier : undefined
 const username = !isUuid ? identifier : undefined
+
+onMounted(() => {
+  const authListener = client.auth.onAuthStateChange((event, _session) => {
+    authReady.value = true
+    loading.value = false
+
+    if (event === 'SIGNED_OUT') {
+      navigateTo('/auth/sign-in')
+    }
+  })
+
+  // Cleanup listener on component unmount
+  onUnmounted(() => {
+    authListener.data.subscription.unsubscribe()
+  })
+
+  // Try to determine auth state immediately if user is already available
+  if (user.value) {
+    loading.value = false
+    authReady.value = true
+  }
+  else {
+    // Set a timeout to check if we're still loading after a reasonable time
+    setTimeout(() => {
+      if (loading.value && !user.value && authReady.value) {
+        navigateTo('/auth/sign-in')
+      }
+      loading.value = false
+    }, 1000)
+  }
+})
+
+// Watch for user changes
+watch(user, (newUser) => {
+  if (!newUser && authReady.value) {
+    navigateTo('/auth/sign-in')
+  }
+})
 </script>
 
 <template>
   <div class="page">
-    <ProfileView
-      :user-id="userId"
-      :username="username"
-    />
+    <template v-if="loading">
+      <Spinner size="l" />
+    </template>
+
+    <template v-else-if="!user">
+      <div>Please sign in to view profiles.</div>
+    </template>
+
+    <template v-else>
+      <ProfileView
+        :user-id="userId"
+        :username="username"
+      />
+    </template>
   </div>
 </template>

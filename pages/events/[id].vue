@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Button, Card, Flex } from '@dolanske/vui'
-import EventHeader from '~/components/Events/EventHeader.vue'
-import EventMarkdown from '~/components/Events/EventMarkdown.vue'
-import EventMetadata from '~/components/Events/EventMetadata.vue'
-import DetailStates from '~/components/Shared/DetailStates.vue'
+import EventHeader from '@/components/Events/EventHeader.vue'
+import EventMarkdown from '@/components/Events/EventMarkdown.vue'
+import EventMetadata from '@/components/Events/EventMetadata.vue'
+import DetailStates from '@/components/Shared/DetailStates.vue'
 
 // Get route parameter
 const route = useRoute()
@@ -146,8 +146,8 @@ async function fetchEvent() {
 
     event.value = data
   }
-  catch (err: any) {
-    error.value = err.message || 'An error occurred while loading the event'
+  catch (err: unknown) {
+    error.value = (err as Error).message || 'An error occurred while loading the event'
   }
   finally {
     loading.value = false

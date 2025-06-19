@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import Metadata from '~/components/Shared/Metadata.vue'
 import { formatCurrency } from '~/utils/currency'
 
 const props = defineProps<{
@@ -33,13 +34,13 @@ function handleClose() {
 }
 
 // Handle edit action from AdminActions
-function handleEdit(expense: any) {
+function handleEdit(expense: Tables<'expenses'>) {
   emit('edit', expense)
   isOpen.value = false
 }
 
 // Handle delete action from AdminActions
-function handleDelete(expense: any) {
+function handleDelete(expense: Tables<'expenses'>) {
   emit('delete', expense)
   isOpen.value = false
 }

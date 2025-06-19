@@ -1,10 +1,43 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { Flex } from '@dolanske/vui'
 
-import UserDetails from '~/components/Admin/Users/UserDetails.vue'
-import UserForm from '~/components/Admin/Users/UserForm.vue'
-import UserKPIs from '~/components/Admin/Users/UserKPIs.vue'
-import UserTable from '~/components/Admin/Users/UserTable.vue'
+import UserDetails from '@/components/Admin/Users/UserDetails.vue'
+import UserForm from '@/components/Admin/Users/UserForm.vue'
+import UserKPIs from '@/components/Admin/Users/UserKPIs.vue'
+import UserTable from '@/components/Admin/Users/UserTable.vue'
+
+// Define types for user data and actions - matching what UserTable expects
+type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
+  | 'username'
+  | 'created_at'
+  | 'modified_at'
+  | 'modified_by'
+  | 'supporter_lifetime'
+  | 'supporter_patreon'
+  | 'patreon_id'
+  | 'steam_id'
+  | 'discord_id'
+  | 'introduction'
+  | 'markdown'
+  | 'banned'
+  | 'ban_reason'
+  | 'ban_start'
+  | 'ban_end'
+  | 'last_seen'>
+
+interface UserAction {
+  user: QueryUserProfile
+  type: 'ban' | 'unban' | 'edit' | 'delete' | null
+  banDuration?: string
+  banReason?: string
+}
+
+// Interface for user form data
+interface UserFormData {
+  role?: string
+  [key: string]: unknown
+}
 
 // Get admin permissions and current user
 const {
@@ -24,19 +57,19 @@ if (!canViewUsers.value) {
 }
 
 // Reactive state
-const selectedUser = ref<any>(null)
+const selectedUser = ref<QueryUserProfile | null>(null)
 const showUserDetails = ref(false)
-const userAction = ref<any>(null)
+const userAction = ref<UserAction | null>(null)
 const refreshSignal = ref(0)
 const userRefreshTrigger = ref(false)
 
 // UserForm state
 const showUserForm = ref(false)
 const isEditMode = ref(false)
-const userToEdit = ref<any>(null)
+const userToEdit = ref<QueryUserProfile | null>(null)
 
 // Handle user selection from table
-function handleUserSelected(user: any) {
+function handleUserSelected(user: QueryUserProfile) {
   selectedUser.value = user
   showUserDetails.value = true
 }
@@ -64,7 +97,7 @@ watch(userAction, (action) => {
 })
 
 // Handle user actions - updated to handle edit actions at table level
-async function handleUserAction(action: any) {
+async function handleUserAction(action: UserAction) {
   if (!action || !action.type)
     return
 
@@ -95,8 +128,8 @@ async function handleUserAction(action: any) {
       // Trigger refresh after successful ban
       refreshSignal.value++
     }
-    catch (error: any) {
-      console.error('Error banning user:', error.message)
+    catch (error: unknown) {
+      console.error('Error banning user:', (error as Error).message)
       // You might want to show an error toast/notification here
     }
     return
@@ -119,8 +152,8 @@ async function handleUserAction(action: any) {
       // Trigger refresh after successful unban
       refreshSignal.value++
     }
-    catch (error: any) {
-      console.error('Error unbanning user:', error.message)
+    catch (error: unknown) {
+      console.error('Error unbanning user:', (error as Error).message)
       // You might want to show an error toast/notification here
     }
     return
@@ -142,8 +175,8 @@ async function handleUserAction(action: any) {
       // Trigger refresh after successful delete
       refreshSignal.value++
     }
-    catch (error: any) {
-      console.error('Error deleting user:', error.message)
+    catch (error: unknown) {
+      console.error('Error deleting user:', (error as Error).message)
       // You might want to show an error toast/notification here
     }
     return
@@ -160,7 +193,7 @@ async function handleUserAction(action: any) {
 }
 
 // Handle edit from UserDetails
-function handleEditFromDetails(user: any) {
+function handleEditFromDetails(user: QueryUserProfile) {
   userToEdit.value = user
   isEditMode.value = true
   showUserForm.value = true
@@ -168,7 +201,7 @@ function handleEditFromDetails(user: any) {
 }
 
 // Handle save from UserForm
-async function handleUserSave(userData: any) {
+async function handleUserSave(userData: UserFormData) {
   try {
     const supabase = useSupabaseClient()
 
@@ -228,8 +261,8 @@ async function handleUserSave(userData: any) {
 
     // User updated successfully
   }
-  catch (error: any) {
-    console.error('Error updating user:', error.message)
+  catch (error: unknown) {
+    console.error('Error updating user:', (error as Error).message)
     // Handle error (you might want to show error message to user)
   }
 }
@@ -254,8 +287,8 @@ async function handleUserDelete(userId: string) {
 
     // User deleted successfully
   }
-  catch (error: any) {
-    console.error('Error deleting user:', error.message)
+  catch (error: unknown) {
+    console.error('Error deleting user:', (error as Error).message)
   }
 }
 </script>

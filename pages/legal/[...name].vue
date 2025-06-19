@@ -23,7 +23,7 @@ useHead(() => ({
 </script>
 
 <template>
-  <div class="legal-page typeset">
+  <div class="page legal-page typeset">
     <div v-if="content">
       <h1>{{ content.title || name }}</h1>
 

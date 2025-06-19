@@ -64,7 +64,7 @@ const tooltipText = computed(() => {
   <span v-else class="timestamp-date" :class="`text-${size}`">{{ formattedDate }}</span>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .timestamp-date {
   cursor: help;
 }

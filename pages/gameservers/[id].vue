@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Card, Flex } from '@dolanske/vui'
-import GameServerHeader from '~/components/GameServers/GameServerHeader.vue'
-import GameServerMarkdown from '~/components/GameServers/GameServerMarkdown.vue'
-import DetailStates from '~/components/Shared/DetailStates.vue'
-import Metadata from '~/components/Shared/Metadata.vue'
+import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
+import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
+import DetailStates from '@/components/Shared/DetailStates.vue'
+import Metadata from '@/components/Shared/Metadata.vue'
 
 // Get route parameter
 const route = useRoute()
@@ -121,8 +121,8 @@ async function fetchGameserver() {
       container.value = containerData
     }
   }
-  catch (err: any) {
-    error.value = err.message || 'An error occurred while loading the gameserver'
+  catch (err: unknown) {
+    error.value = (err as Error).message || 'An error occurred while loading the gameserver'
   }
   finally {
     loading.value = false

@@ -198,7 +198,7 @@ function confirmDelete() {
   </Sheet>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .game-form {
   padding-bottom: var(--space);
 }

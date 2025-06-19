@@ -6,6 +6,7 @@ export default antfu({
   rules: {
     'unicorn/prefer-node-protocol': 'off',
     'node/prefer-global/process': 'off',
+    'ts/no-explicit-any': 'error',
     'n/prefer-global/process': 'off',
     // Override the problematic vue/object-property-newline rule
     'vue/object-property-newline': ['error', {

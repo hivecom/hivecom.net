@@ -2,8 +2,8 @@
 import { Flex } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 
-import EventKPIs from '~/components/Admin/Events/EventKPIs.vue'
-import EventTable from '~/components/Admin/Events/EventTable.vue'
+import EventKPIs from '@/components/Admin/Events/EventKPIs.vue'
+import EventTable from '@/components/Admin/Events/EventTable.vue'
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()

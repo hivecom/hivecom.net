@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Card, Flex } from '@dolanske/vui'
-import MDRenderer from '~/components/Shared/MDRenderer.vue'
+import MDRenderer from '@/components/Shared/MDRenderer.vue'
 
 interface Props {
   gameserver: Tables<'gameservers'>

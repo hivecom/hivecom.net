@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import Metadata from '@/components/Shared/Metadata.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
-import Metadata from '~/components/Shared/Metadata.vue'
 
 const props = defineProps<{
   game: {
@@ -29,13 +30,13 @@ function handleClose() {
 }
 
 // Handle edit action from AdminActions
-function handleEdit(game: any) {
+function handleEdit(game: Tables<'games'>) {
   emit('edit', game)
   isOpen.value = false
 }
 
 // Handle delete action from AdminActions
-function handleDelete(game: any) {
+function handleDelete(game: Tables<'games'>) {
   emit('delete', game)
   isOpen.value = false
 }
@@ -44,7 +45,23 @@ function handleDelete(game: any) {
 const supabase = useSupabaseClient()
 const gameserversLoading = ref(false)
 const gameserversError = ref('')
-const gameservers = ref<any[]>([])
+
+interface GameServerWithContainer {
+  id: number
+  name: string
+  description: string | null
+  region: 'eu' | 'na' | 'all' | null
+  addresses: string[] | null
+  port: string | null
+  created_at: string
+  container: {
+    name: string
+    running: boolean
+    healthy: boolean | null
+  } | null
+}
+
+const gameservers = ref<GameServerWithContainer[]>([])
 
 // Fetch gameservers when game changes
 watchEffect(async () => {
@@ -80,10 +97,10 @@ watchEffect(async () => {
       throw error
     }
 
-    gameservers.value = data || []
+    gameservers.value = (data as GameServerWithContainer[]) || []
   }
-  catch (error: any) {
-    gameserversError.value = error.message || 'Failed to load gameservers'
+  catch (error: unknown) {
+    gameserversError.value = error instanceof Error ? error.message : 'Failed to load gameservers'
   }
   finally {
     gameserversLoading.value = false

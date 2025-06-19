@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
 import { ref } from 'vue'
-import ComplaintKPIs from '~/components/Admin/Complaints/ComplaintKPIs.vue'
-import ComplaintList from '~/components/Admin/Complaints/ComplaintList.vue'
+import ComplaintKPIs from '@/components/Admin/Complaints/ComplaintKPIs.vue'
+import ComplaintList from '@/components/Admin/Complaints/ComplaintList.vue'
 
 // Define page metadata
 definePageMeta({

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Alert, Badge, Card, Flex, Skeleton } from '@dolanske/vui'
 
-import RoleKPIs from '~/components/Admin/Roles/RoleKPIs.vue'
+import RoleKPIs from '@/components/Admin/Roles/RoleKPIs.vue'
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
@@ -111,8 +111,8 @@ async function fetchRolePermissions() {
 
     rolePermissions.value = data || []
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'Failed to fetch role permissions'
+  catch (error: unknown) {
+    errorMessage.value = (error as Error).message || 'Failed to fetch role permissions'
   }
   finally {
     loading.value = false
@@ -314,7 +314,7 @@ onBeforeMount(fetchRolePermissions)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .role-card {
   position: relative;
   overflow: hidden;

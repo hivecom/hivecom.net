@@ -29,7 +29,7 @@ defineProps({
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 p {
   margin: 0;
 }

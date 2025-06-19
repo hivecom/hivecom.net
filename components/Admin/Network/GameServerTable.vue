@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-import type { TablesInsert, TablesUpdate } from '~/types/database.types'
+import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 
 import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 
+import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import TableContainer from '~/components/Shared/TableContainer.vue'
 import GameserverDetails from './GameServerDetails.vue'
 import GameserverFilters from './GameServerFilters.vue'
 import GameserverForm from './GameServerForm.vue'
@@ -172,8 +172,8 @@ async function fetchGameservers() {
     // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading game servers'
+  catch (error: unknown) {
+    errorMessage.value = (error as Error).message || 'An error occurred while loading game servers'
   }
   finally {
     loading.value = false
@@ -249,8 +249,8 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
     showGameserverForm.value = false
     await fetchGameservers()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while saving the game server'
+  catch (error: unknown) {
+    errorMessage.value = (error as Error).message || 'An error occurred while saving the game server'
   }
 }
 
@@ -268,8 +268,8 @@ async function handleGameserverDelete(gameserverId: number) {
     showGameserverForm.value = false
     await fetchGameservers()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while deleting the game server'
+  catch (error: unknown) {
+    errorMessage.value = (error as Error).message || 'An error occurred while deleting the game server'
   }
 }
 
@@ -404,7 +404,7 @@ onBeforeMount(fetchGameservers)
   />
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .mb-l {
   margin-bottom: var(--space-l);
 }

@@ -1,23 +1,11 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-import type { TablesUpdate } from '~/types/database.types'
+import type { Tables, TablesUpdate } from '@/types/database.types'
 import { Alert, Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import ComplaintCard from './ComplaintCard.vue'
 import ComplaintDetails from './ComplaintDetails.vue'
 import ComplaintFilters from './ComplaintFilters.vue'
-
-// Interface for complaint data
-interface Complaint {
-  id: number
-  created_at: string
-  created_by: string
-  message: string
-  acknowledged: boolean
-  responded_at: string | null
-  responded_by: string | null
-  response: string | null
-}
 
 // Interface for Select options
 interface SelectOption {
@@ -43,7 +31,9 @@ const complaintsQuery = supabase
     acknowledged,
     responded_at,
     responded_by,
-    response
+    response,
+    context_user,
+    context_gameserver
   `)
   .order('created_at', { ascending: false })
 
@@ -57,7 +47,7 @@ const search = ref('')
 const statusFilter = ref<SelectOption[]>([])
 
 // Detail states
-const selectedComplaint = ref<Complaint | null>(null)
+const selectedComplaint = ref<Tables<'complaints'> | null>(null)
 const showComplaintDetails = ref(false)
 
 // Action loading states
@@ -103,7 +93,7 @@ const totalPages = computed(() =>
 )
 
 // Helper function to get complaint status
-function getComplaintStatus(complaint: Complaint): string {
+function getComplaintStatus(complaint: Tables<'complaints'>): string {
   if (complaint.response) {
     return 'responded'
   }
@@ -137,7 +127,7 @@ async function fetchComplaints() {
 }
 
 // Handle complaint selection
-function handleComplaintSelect(complaint: Complaint) {
+function handleComplaintSelect(complaint: Tables<'complaints'>) {
   selectedComplaint.value = complaint
   showComplaintDetails.value = true
 }
@@ -443,8 +433,8 @@ onMounted(fetchComplaints)
     </Alert>
 
     <!-- Complaints grid -->
-    <div v-else>
-      <Grid :columns="2" gap="m" class="complaints-grid">
+    <Flex v-else column gap="l" expand>
+      <Grid :columns="2" gap="m" class="complaints-grid" expand>
         <ComplaintCard
           v-for="complaint in paginatedComplaints"
           :key="complaint.id"
@@ -483,7 +473,7 @@ onMounted(fetchComplaints)
           </div>
         </div>
       </Flex>
-    </div>
+    </Flex>
 
     <!-- Complaint Details -->
     <ComplaintDetails
@@ -499,7 +489,7 @@ onMounted(fetchComplaints)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .pagination-container {
   margin-top: var(--space-l);
 }

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Badge, Button, CopyClipboard, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
-import RegionIndicator from '~/components/Shared/RegionIndicator.vue'
-import TimestampDate from '~/components/Shared/TimestampDate.vue'
-import UserDisplay from '~/components/Shared/UserDisplay.vue'
+import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
+import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
 interface Props {
   gameserver: Tables<'gameservers'>
@@ -12,6 +13,29 @@ interface Props {
 }
 
 defineProps<Props>()
+
+// Get current user for authentication check
+const user = useSupabaseUser()
+
+// Complaint modal state
+const showComplaintModal = ref(false)
+
+// Handle complaint submission
+function handleComplaintSubmit(_complaintData: { message: string }) {
+  // Could show a success toast here in the future
+  // For now, just handle the successful submission
+}
+
+function openComplaintModal() {
+  // Check if user is authenticated
+  if (!user.value) {
+    // Redirect to sign-in page if not authenticated
+    navigateTo('/auth/sign-in')
+    return
+  }
+
+  showComplaintModal.value = true
+}
 </script>
 
 <template>
@@ -39,16 +63,24 @@ defineProps<Props>()
         </h1>
       </div>
 
-      <Flex>
+      <Flex gap="m">
         <!-- Administrator -->
         <div v-if="gameserver.administrator" class="gameserver-header__administrator-info">
           <span class="gameserver-header__administrator-label">Administrator</span>
           <UserDisplay :user-id="gameserver.administrator" size="s" />
         </div>
-      </Flex>
-      <!-- Connect Button -->
-      <div v-if="gameserver.addresses && gameserver.addresses.length || gameserver.administrator" class="gameserver-header__connect-section">
-        <div class="gameserver-header__connect-actions">
+
+        <!-- Action Buttons -->
+        <Flex gap="s" class="gameserver-header__actions">
+          <!-- Complaint Button -->
+          <Button variant="gray" size="l" @click="openComplaintModal">
+            <template #start>
+              <Icon name="ph:chat-circle-text" />
+            </template>
+            Report Issue
+          </Button>
+
+          <!-- Connect Button -->
           <div v-if="gameserver.addresses && gameserver.addresses.length" class="gameserver-header__connect-button">
             <CopyClipboard
               v-if="gameserver.addresses.length === 1"
@@ -82,8 +114,8 @@ defineProps<Props>()
               </DropdownItem>
             </Dropdown>
           </div>
-        </div>
-      </div>
+        </Flex>
+      </Flex>
     </Flex>
 
     <Flex y-start x-between gap="l" expand>
@@ -137,6 +169,15 @@ defineProps<Props>()
       </Flex>
     </Flex>
   </div>
+
+  <!-- Complaints Manager -->
+  <ComplaintsManager
+    v-model:open="showComplaintModal"
+    :context-gameserver-id="gameserver.id"
+    :context-gameserver-name="gameserver.name"
+    :start-with-submit="true"
+    @submit="handleComplaintSubmit"
+  />
 </template>
 
 <style lang="scss" scoped>
@@ -227,6 +268,14 @@ defineProps<Props>()
     text-decoration: none;
   }
 
+  &__actions {
+    flex-shrink: 0;
+  }
+
+  &__connect-button {
+    display: flex;
+  }
+
   @media (max-width: 768px) {
     &__title {
       font-size: var(--font-size-xxl);
@@ -242,12 +291,12 @@ defineProps<Props>()
       gap: var(--space-m);
     }
 
-    &__connect-section {
+    &__actions {
       align-self: stretch;
-    }
 
-    &__connect-actions {
-      align-items: stretch;
+      .gameserver-header__connect-button {
+        flex: 1;
+      }
     }
 
     &__administrator-info {

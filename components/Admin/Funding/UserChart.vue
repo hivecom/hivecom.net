@@ -105,7 +105,7 @@ async function fetchAllData() {
     ])
 
     const combinedData: MonthlyUserData[] = Array.from(allMonths)
-      .sort()
+      .sort((a, b) => dayjs(a).valueOf() - dayjs(b).valueOf()) // Use proper date sorting
       .map((month) => {
         const users = usersByMonth[month] || { total: 0, supporters: 0 }
         const funding = monthlyFundings.find(f => f.month === month)
@@ -134,8 +134,8 @@ async function fetchAllData() {
       }
     })
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading user data'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading user data'
   }
   finally {
     loading.value = false
@@ -151,10 +151,8 @@ const chartData = computed(() => {
     }
   }
 
-  // Sort data by month ascending for chronological display
-  const sortedData = [...monthlyData.value].sort((a, b) => {
-    return dayjs(a.month).valueOf() - dayjs(b.month).valueOf()
-  })
+  // Data is already sorted in fetchAllData, no need to sort again
+  const sortedData = monthlyData.value
 
   const labels = sortedData.map((data) => {
     return dayjs(data.month).format('MMM YYYY')
@@ -280,7 +278,7 @@ onBeforeMount(fetchAllData)
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .chart-container {
   width: 100%;
   min-height: 320px;

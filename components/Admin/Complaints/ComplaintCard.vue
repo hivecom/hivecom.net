@@ -1,27 +1,16 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { Badge, Button, Card, Flex } from '@dolanske/vui'
 import { computed } from 'vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
-// Interface for complaint data
-interface Complaint {
-  id: number
-  created_at: string
-  created_by: string
-  message: string
-  acknowledged: boolean
-  responded_at: string | null
-  responded_by: string | null
-  response: string | null
-}
-
 const props = defineProps<{
-  complaint: Complaint
+  complaint: Tables<'complaints'>
 }>()
 
 const emit = defineEmits<{
-  (e: 'select', complaint: Complaint): void
+  (e: 'select', complaint: Tables<'complaints'>): void
   (e: 'acknowledge', id: number): void
 }>()
 
@@ -33,14 +22,14 @@ const status = computed(() => {
   if (props.complaint.acknowledged) {
     return 'acknowledged'
   }
-  return 'new'
+  return 'pending'
 })
 
 const statusConfig = computed(() => {
   switch (status.value) {
-    case 'new':
+    case 'pending':
       return {
-        label: 'New',
+        label: 'Pending',
         variant: 'warning' as const,
         icon: 'ph:bell',
         color: 'var(--color-text-yellow)',
@@ -93,11 +82,7 @@ function handleAcknowledge(event: Event) {
 <template>
   <Card
     class="complaint-card"
-    :class="{
-      'complaint-card--new': status === 'new',
-      'complaint-card--acknowledged': status === 'acknowledged',
-      'complaint-card--responded': status === 'responded',
-    }"
+    :class="`complaint-card--${status}`"
     expand
     separators
     @click="handleCardClick"
@@ -160,7 +145,7 @@ function handleAcknowledge(event: Event) {
           </Flex>
         </div>
         <Button
-          v-if="status === 'new'"
+          v-if="status === 'pending'"
           size="s"
           variant="accent"
           @click="handleAcknowledge"
@@ -175,7 +160,7 @@ function handleAcknowledge(event: Event) {
   </Card>
 </template>
 
-<style scoped  lang="scss">
+<style scoped lang="scss">
 .complaint-card {
   cursor: pointer;
   transition: all 0.2s ease;
@@ -210,7 +195,7 @@ function handleAcknowledge(event: Event) {
   color: var(--color-accent);
 }
 
-.complaint-card--new {
+.complaint-card--pending {
   border-left-color: var(--color-text-yellow);
 }
 
@@ -266,7 +251,7 @@ function handleAcknowledge(event: Event) {
 }
 
 /* New complaint pulse animation */
-.complaint-card--new .complaint-card__header::before {
+.complaint-card--pending .complaint-card__header::before {
   content: '';
   position: absolute;
   top: -4px;

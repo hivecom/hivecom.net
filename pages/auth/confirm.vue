@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Alert, Button, Card, Flex, Input, Spinner, Switch } from '@dolanske/vui'
-import ErrorAlert from '~/components/Shared/ErrorAlert.vue'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()

@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
+import AnnouncementCard from '@/components/Announcements/AnnouncementCard.vue'
+import EventCard from '@/components/Events/EventCard.vue'
 import constants from '@/constants.json'
-import EventCard from '~/components/Events/EventCard.vue'
 
 // Fetch data from database
 const supabase = useSupabaseClient()
 const loading = ref(true)
 const errorMessage = ref('')
 
-// Real data from d    font-size: var(--font-size-m);tabase
+// Real data from database
 const events = ref<Tables<'events'>[]>([])
+const pinnedAnnouncements = ref<Tables<'announcements'>[]>([])
 const communityStats = ref({
   members: 500,
   membersAccurate: false,
@@ -34,6 +36,19 @@ onMounted(async () => {
   loading.value = true
 
   try {
+    // Fetch pinned announcements
+    const { data: announcementsData, error: announcementsError } = await supabase
+      .from('announcements')
+      .select('*')
+      .eq('pinned', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (announcementsError)
+      throw announcementsError
+
+    pinnedAnnouncements.value = announcementsData || []
+
     // Fetch all events and sort by status (ongoing first, then upcoming, then past)
     const { data: eventsData, error: eventsError } = await supabase
       .from('events')
@@ -121,9 +136,9 @@ onMounted(async () => {
       throw gameserversError
     communityStats.value.gameservers = gameserversCount || 0
   }
-  catch (error: any) {
+  catch (error: unknown) {
     console.error('Error fetching data:', error)
-    errorMessage.value = error.message || 'Failed to fetch data'
+    errorMessage.value = (error as Error).message || 'Failed to fetch data'
   }
   finally {
     loading.value = false
@@ -150,6 +165,15 @@ onMounted(async () => {
       <Button variant="accent" @click="navigateTo('/community')">
         Learn More
       </Button>
+
+      <!-- Ultra compact announcement -->
+      <div v-if="pinnedAnnouncements.length > 0 && !loading" class="hero-section__latest-announcement">
+        <AnnouncementCard
+          :announcement="pinnedAnnouncements[0]"
+          :is-latest="true"
+          ultra-compact
+        />
+      </div>
     </div>
 
     <!-- Community Stats -->
@@ -455,9 +479,22 @@ h4 {
     display: flex;
     gap: 1rem;
     justify-content: start;
+    align-items: center;
+    flex-wrap: wrap;
 
     @media screen and (max-width: $breakpoint-lg) {
       justify-content: center;
+    }
+  }
+
+  &__latest-announcement {
+    .announcement-card {
+      max-width: 350px;
+
+      @media screen and (max-width: $breakpoint-sm) {
+        max-width: 100%;
+        margin-top: var(--space-s);
+      }
     }
   }
 
@@ -486,7 +523,6 @@ h4 {
     font-size: 2.5rem;
     font-weight: bold;
     margin-bottom: var(--space-xs);
-    color: var(--vui-color-primary);
   }
 }
 
@@ -505,8 +541,6 @@ h4 {
       font-size: var(--font-size-m);
       font-weight: var(--font-weight-medium);
       padding: 1rem;
-      border-left: 4px solid var(--vui-color-primary);
-      background-color: rgba(var(--vui-color-primary-rgb), 0.05);
     }
   }
 }

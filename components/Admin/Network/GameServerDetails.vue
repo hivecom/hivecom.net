@@ -1,12 +1,18 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
+
+interface GameServerWithJoins extends Tables<'gameservers'> {
+  game_name?: string
+}
+
 import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import Metadata from '@/components/Shared/Metadata.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
-import Metadata from '~/components/Shared/Metadata.vue'
-import UserLink from '~/components/Shared/UserLink.vue'
+import UserLink from '@/components/Shared/UserLink.vue'
 
 const props = defineProps<{
-  gameserver: any | null
+  gameserver: GameServerWithJoins | null
 }>()
 
 // Define emits

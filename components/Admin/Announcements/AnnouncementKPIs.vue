@@ -56,8 +56,8 @@ async function fetchAnnouncementMetrics() {
       recentAnnouncements,
     }
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'Failed to fetch announcement metrics'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to fetch announcement metrics'
   }
   finally {
     loading.value = false
@@ -101,6 +101,6 @@ onBeforeMount(fetchAnnouncementMetrics)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 
 </style>

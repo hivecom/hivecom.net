@@ -1,24 +1,15 @@
 <script setup lang="ts">
-import { Badge, Button, Flex, Sheet, Textarea } from '@dolanske/vui'
+import type { Tables } from '@/types/database.types'
+import { Badge, Button, Card, Flex, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import GameServerLink from '@/components/Shared/GameServerLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
-
-// Interface for complaint data
-interface Complaint {
-  id: number
-  created_at: string
-  created_by: string
-  message: string
-  acknowledged: boolean
-  responded_at: string | null
-  responded_by: string | null
-  response: string | null
-}
+import UserLink from '@/components/Shared/UserLink.vue'
+import UserDisplay from '~/components/Shared/UserDisplay.vue'
 
 const props = defineProps<{
-  complaint: Complaint | null
+  complaint: Tables<'complaints'> | null
 }>()
 
 const emit = defineEmits<{
@@ -51,14 +42,14 @@ const status = computed(() => {
   if (props.complaint.acknowledged) {
     return 'acknowledged'
   }
-  return 'new'
+  return 'pending'
 })
 
 const statusConfig = computed(() => {
   switch (status.value) {
-    case 'new':
+    case 'pending':
       return {
-        label: 'New',
+        label: 'Pending',
         variant: 'warning' as const,
         icon: 'ph:bell',
       }
@@ -84,7 +75,7 @@ const statusConfig = computed(() => {
 })
 
 const canRespond = computed(() => {
-  return props.complaint && (status.value === 'acknowledged' || status.value === 'new')
+  return props.complaint && (status.value === 'acknowledged' || status.value === 'pending')
 })
 
 // Watch for complaint changes to reset form
@@ -218,46 +209,72 @@ function confirmDeleteComplaint() {
 
     <div v-if="complaint" class="complaint-details">
       <!-- Complaint -->
-      <div class="complaint-section">
-        <Flex expand gap="m" y-center x-between>
-          <h5>Complaint</h5>
-          <Badge :variant="statusConfig.variant" size="s">
-            <Icon :name="statusConfig.icon" />
-            {{ statusConfig.label }}
-          </Badge>
-        </Flex>
-
-        <!-- User info -->
-        <div class="complaint-user">
-          <UserDisplay
-            :user-id="complaint.created_by"
-            show-role
-          />
-        </div>
-
-        <!-- Submitted date -->
-        <div class="complaint-meta">
-          <Flex gap="xs" y-center>
-            <Icon name="ph:calendar" class="color-text-light" />
-            <span class="text-s color-text-light">
-              Submitted <TimestampDate :date="complaint.created_at" relative />
-            </span>
+      <h5>Complaint</h5>
+      <Card separators>
+        <template #header>
+          <Flex column gap="m">
+            <!-- Header row with title and badge -->
+            <Flex expand gap="m" y-center x-between>
+              <UserDisplay
+                :user-id="complaint.created_by"
+                show-role
+              />
+              <Badge :variant="statusConfig.variant" size="s">
+                <Icon :name="statusConfig.icon" />
+                {{ statusConfig.label }}
+              </Badge>
+            </Flex>
           </Flex>
-        </div>
+        </template>
 
         <!-- Message -->
         <div class="complaint-message">
           <p>{{ complaint.message }}</p>
         </div>
-      </div>
 
+        <template #footer>
+          <!-- Metadata row -->
+          <Flex column gap="s" class="complaint-header-meta" expand>
+            <!-- Context and date info -->
+            <Flex gap="l" wrap expand>
+              <Flex gap="xs" y-center expand x-between>
+                <Flex y-center>
+                  <Icon name="ph:calendar" class="color-text-light" />
+                  <span class="text-s color-text-light">
+                    Created <TimestampDate :date="complaint.created_at" relative />
+                  </span>
+                </Flex>
+
+                <!-- Context information -->
+                <div v-if="complaint.context_user || complaint.context_gameserver">
+                  <Flex gap="m" wrap>
+                    <div v-if="complaint.context_user">
+                      <Flex gap="xs" y-center>
+                        <Icon name="ph:user" class="color-text-light" />
+                        <span class="text-s color-text-light">About:</span>
+                        <UserLink :user-id="complaint.context_user" />
+                      </Flex>
+                    </div>
+                    <div v-if="complaint.context_gameserver">
+                      <Flex gap="xs" y-center>
+                        <Icon name="ph:game-controller" class="color-text-light" />
+                        <span class="text-s color-text-light">Game Server:</span>
+                        <GameServerLink :gameserver-id="complaint.context_gameserver" />
+                      </Flex>
+                    </div>
+                  </Flex>
+                </div>
+              </Flex>
+            </Flex>
+          </Flex>
+        </template>
+      </Card>
+
+      <h5>Response</h5>
       <!-- Response section -->
-      <div v-if="complaint.response || canRespond || isEditingResponse" class="response-section">
-        <h5>Admin Response</h5>
-
-        <!-- Existing response (view mode) -->
-        <div v-if="complaint.response && !isEditingResponse" class="existing-response">
-          <div class="response-meta">
+      <Card v-if="complaint.response && !isEditingResponse" separators>
+        <template #header>
+          <div v-if="complaint.response">
             <Flex gap="m" y-center>
               <UserDisplay
                 v-if="complaint.responded_by"
@@ -265,9 +282,6 @@ function confirmDeleteComplaint() {
                 size="s"
                 show-role
               />
-              <span v-if="complaint.responded_at" class="text-s color-text-light">
-                Responded <TimestampDate :date="complaint.responded_at" relative />
-              </span>
               <div class="flex-1" />
               <Flex gap="xs">
                 <Button variant="gray" size="s" @click="handleEditResponse">
@@ -285,28 +299,38 @@ function confirmDeleteComplaint() {
               </Flex>
             </Flex>
           </div>
+        </template>
 
-          <div class="response-content">
+        <Flex column gap="l">
+          <!-- Existing response (view mode) -->
+          <div v-if="complaint.response && !isEditingResponse" class="response-content">
             <p>{{ complaint.response }}</p>
           </div>
-        </div>
-
-        <!-- Response form (new response or edit mode) -->
-        <Flex v-if="(canRespond && !complaint.response) || isEditingResponse" column class="response-form">
-          <Textarea
-            v-model="responseText"
-            :placeholder="isEditingResponse ? 'Edit your response...' : 'Type your response to this complaint...'"
-            :rows="6"
-            expand
-          />
-
-          <!-- Cancel edit button -->
-          <div v-if="isEditingResponse" class="edit-actions">
-            <Button variant="gray" size="s" @click="handleCancelEdit">
-              Cancel
-            </Button>
-          </div>
         </Flex>
+
+        <template #footer>
+          <Flex gap="xs" y-center>
+            <Icon name="ph:calendar" class="color-text-light" />
+            <span v-if="complaint.responded_at" class="text-s color-text-light">
+              Responded <TimestampDate :date="complaint.responded_at" relative />
+            </span>
+          </Flex>
+        </template>
+      </Card>
+
+      <Textarea
+        v-else-if="canRespond || isEditingResponse"
+        v-model="responseText"
+        :placeholder="isEditingResponse ? 'Edit your response...' : 'Type your response to this complaint...'"
+        :rows="6"
+        expand
+      />
+
+      <!-- Cancel edit button -->
+      <div v-if="isEditingResponse" class="edit-actions">
+        <Button variant="gray" size="s" @click="handleCancelEdit">
+          Cancel
+        </Button>
       </div>
     </div>
 
@@ -315,7 +339,7 @@ function confirmDeleteComplaint() {
       <Flex gap="xs" class="form-actions">
         <!-- Acknowledge button -->
         <Button
-          v-if="status === 'new'"
+          v-if="status === 'pending'"
           variant="accent"
           @click="handleAcknowledge"
         >
@@ -370,7 +394,7 @@ function confirmDeleteComplaint() {
   />
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .complaint-details {
   display: flex;
   flex-direction: column;
@@ -378,26 +402,9 @@ function confirmDeleteComplaint() {
   padding-bottom: var(--space);
 }
 
-.complaint-section,
-.response-section {
-  padding: var(--space-l);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-m);
-  background-color: var(--color-bg-subtle);
-}
-
-.complaint-section h5,
-.response-section h5 {
-  margin: 0 0 var(--space-m) 0;
-  color: var(--color-text);
-}
-
-.complaint-user {
-  margin-bottom: var(--space-m);
-}
-
-.complaint-meta {
-  margin-bottom: var(--space-m);
+.complaint-header-meta {
+  border-top: 1px solid var(--color-border-light);
+  padding-top: var(--space-s);
 }
 
 .complaint-message {
@@ -410,19 +417,6 @@ function confirmDeleteComplaint() {
   white-space: pre-wrap;
 }
 
-.existing-response {
-  padding: var(--space-m);
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-s);
-}
-
-.response-meta {
-  margin-bottom: var(--space-m);
-  padding-bottom: var(--space-s);
-  border-bottom: 1px solid var(--color-border);
-}
-
 .response-content p {
   margin: 0;
   color: var(--color-text);
@@ -431,7 +425,7 @@ function confirmDeleteComplaint() {
 }
 
 .response-form {
-  margin-top: var(--space-m);
+  margin-top: calc(var(--space-m) * -1);
 }
 
 .form-actions {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Card, Grid, Skeleton } from '@dolanske/vui'
-import TimestampDate from '~/components/Shared/TimestampDate.vue'
-import UserDisplay from '~/components/Shared/UserDisplay.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
 interface Props {
   createdAt: string

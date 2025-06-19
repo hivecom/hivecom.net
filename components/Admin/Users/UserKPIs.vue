@@ -117,8 +117,8 @@ async function fetchUserMetrics() {
 
     metrics.value = newMetrics
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'Failed to fetch user metrics'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to fetch user metrics'
   }
   finally {
     loading.value = false
@@ -176,6 +176,6 @@ onBeforeMount(fetchUserMetrics)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 
 </style>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Card, Flex } from '@dolanske/vui'
-import Metadata from '~/components/Shared/Metadata.vue'
+import Metadata from '@/components/Shared/Metadata.vue'
 
 interface Props {
   event: Tables<'events'>

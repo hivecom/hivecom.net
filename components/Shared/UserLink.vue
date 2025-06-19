@@ -97,7 +97,7 @@ watch(currentUser, () => {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .user-display {
   display: inline-block;
 }

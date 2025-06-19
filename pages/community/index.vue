@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Card, Divider, Flex, Grid } from '@dolanske/vui'
-import FundingProgress from '~/components/Community/FundingProgress.vue'
-import SupportCTA from '~/components/Community/SupportCTA.vue'
+import FundingProgress from '@/components/Community/FundingProgress.vue'
+import SupportCTA from '@/components/Community/SupportCTA.vue'
 </script>
 
 <template>

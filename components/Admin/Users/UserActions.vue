@@ -22,13 +22,13 @@ const props = defineProps<{
 const { canModifyUsers, canDeleteUsers } = useAdminPermissions()
 
 // Define a model value for actions with proper type
-type UserAction = {
-  user: any
+interface UserAction {
+  user: typeof props.user
   type: 'ban' | 'unban' | 'edit' | 'delete' | null
   banDuration?: string
   banReason?: string
-} | null
-const action = defineModel<UserAction>('modelValue', { default: null })
+}
+const action = defineModel<UserAction | null>('modelValue', { default: null })
 
 // Handler functions to update the model value with the appropriate action
 // State for modals

@@ -10,7 +10,7 @@ defineProps<{ class?: string }>()
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .table-overflow {
   display: flex;
   /* overflow-x: auto; */

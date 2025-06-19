@@ -12,7 +12,7 @@ interface AdminActionsProps {
   /**
    * The item being acted upon
    */
-  item: any
+  item: Record<string, unknown>
 
   /**
    * Optional loading states for different actions
@@ -50,8 +50,8 @@ const props = withDefaults(defineProps<AdminActionsProps>(), {
 })
 
 const emit = defineEmits<{
-  edit: [item: any]
-  delete: [item: any]
+  edit: [item: Record<string, unknown>]
+  delete: [item: Record<string, unknown>]
 }>()
 
 // State for delete confirmation modal
@@ -151,11 +151,11 @@ function getItemDisplayName(): string {
 
   // Try common name properties
   if (props.item.title)
-    return props.item.title
+    return props.item.title as string
   if (props.item.name)
-    return props.item.name
+    return props.item.name as string
   if (props.item.username)
-    return props.item.username
+    return props.item.username as string
 
   return 'this item'
 }

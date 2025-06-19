@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 
 import { Alert, Button, Card, Divider, Flex, Input, Select, Skeleton } from '@dolanske/vui'
 
-import GameServerRow from '~/components/GameServers/GameServerRow.vue'
-import ErrorAlert from '~/components/Shared/ErrorAlert.vue'
-import SteamLink from '~/components/Shared/SteamLink.vue'
+import GameServerRow from '@/components/GameServers/GameServerRow.vue'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import SteamLink from '@/components/Shared/SteamLink.vue'
 
 const supabase = useSupabaseClient()
 const gameserversQuery = supabase.from('gameservers').select(`

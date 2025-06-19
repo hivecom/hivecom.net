@@ -20,8 +20,23 @@ const props = defineProps<{
 }>()
 
 // Define a model value for actions with proper type
-type ContainerAction = { container: any, type: 'start' | 'stop' | 'restart' | 'prune' | null } | null
-const action = defineModel<ContainerAction>('modelValue', { default: null })
+interface ContainerWithServer {
+  name: string
+  running: boolean
+  healthy: boolean | null
+  started_at: string | null
+  reported_at: string
+  server: {
+    id: number
+    address: string
+  } | null
+}
+
+interface ContainerAction {
+  container: ContainerWithServer
+  type: 'start' | 'stop' | 'restart' | 'prune' | null
+}
+const action = defineModel<ContainerAction | null>('modelValue', { default: null })
 
 // Handler functions to update the model value with the appropriate action
 function handleAction(actionType: 'start' | 'stop' | 'restart') {

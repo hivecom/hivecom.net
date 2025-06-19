@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Grid } from '@dolanske/vui'
 import { computed, onMounted, ref } from 'vue'
 

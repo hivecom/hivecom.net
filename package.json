@@ -29,6 +29,7 @@
     "@unhead/vue": "^2.0.10",
     "@vueuse/nuxt": "^13.3.0",
     "ansi-to-html": "^0.7.2",
+    "better-sqlite3": "^11.10.0",
     "chart.js": "^4.5.0",
     "dayjs": "^1.11.13",
     "nuxt": "^3.17.5",

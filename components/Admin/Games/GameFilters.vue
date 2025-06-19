@@ -30,7 +30,7 @@ function clearFilters() {
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .search-input {
   min-width: 300px;
   flex-grow: 1;

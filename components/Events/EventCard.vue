@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex } from '@dolanske/vui'
-import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
 
 interface Props {

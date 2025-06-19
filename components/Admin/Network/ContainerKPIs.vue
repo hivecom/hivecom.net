@@ -81,8 +81,8 @@ async function fetchContainerMetrics() {
 
     metrics.value = newMetrics
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'Failed to fetch container metrics'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to fetch container metrics'
   }
   finally {
     loading.value = false
@@ -140,6 +140,6 @@ onBeforeMount(fetchContainerMetrics)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 
 </style>

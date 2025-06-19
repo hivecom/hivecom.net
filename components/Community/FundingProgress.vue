@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
 import constants from '~/constants.json'
 import { formatCurrency } from '~/utils/currency'
@@ -46,8 +46,8 @@ onMounted(async () => {
     // Calculate total monthly expenses
     monthlyExpenses.value = expensesData?.reduce((sum, expense) => sum + expense.amount_cents, 0) || 0
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'Failed to load funding data'
+  catch (error: unknown) {
+    errorMessage.value = (error as Error).message || 'Failed to load funding data'
   }
   finally {
     loading.value = false

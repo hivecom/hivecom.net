@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Alert, Checkbox, Divider, Flex, Grid, Skeleton } from '@dolanske/vui'
-import ExpenseCard from '~/components/Community/ExpenseCard.vue'
-import FundingHistory from '~/components/Community/FundingHistory.vue'
-import FundingProgress from '~/components/Community/FundingProgress.vue'
-import SupportCTA from '~/components/Community/SupportCTA.vue'
+import ExpenseCard from '@/components/Community/ExpenseCard.vue'
+import FundingHistory from '@/components/Community/FundingHistory.vue'
+import FundingProgress from '@/components/Community/FundingProgress.vue'
+import SupportCTA from '@/components/Community/SupportCTA.vue'
 import { formatCurrency } from '~/utils/currency'
 
 // Data setup
@@ -46,8 +46,8 @@ onMounted(async () => {
 
     expenses.value = expensesData || []
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'Failed to load funding data'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to load funding data'
   }
   finally {
     loading.value = false

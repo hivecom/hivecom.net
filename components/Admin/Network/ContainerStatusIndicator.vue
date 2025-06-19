@@ -39,7 +39,7 @@ const statusDescriptions = {
   </Tooltip>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .status-indicator-wrapper {
   display: inline-flex;
   align-items: center;

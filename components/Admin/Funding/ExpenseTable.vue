@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
-import TableContainer from '~/components/Shared/TableContainer.vue'
+import TableContainer from '@/components/Shared/TableContainer.vue'
 import { formatCurrency } from '~/utils/currency'
 import ExpenseDetails from './ExpenseDetails.vue'
 import ExpenseFilters from './ExpenseFilters.vue'
@@ -153,8 +153,8 @@ async function fetchExpenses() {
     // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading games'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading games'
   }
   finally {
     loading.value = false
@@ -230,8 +230,8 @@ async function handleExpenseSave(expenseData: Partial<Expense>) {
     showExpenseForm.value = false
     await fetchExpenses()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while saving the expense'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while saving the expense'
   }
 }
 
@@ -249,8 +249,8 @@ async function handleExpenseDelete(expenseId: number) {
     showExpenseForm.value = false
     await fetchExpenses()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while deleting the expense'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the expense'
   }
 }
 
@@ -367,7 +367,7 @@ onBeforeMount(fetchExpenses)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .mb-l {
   margin-bottom: var(--space-l);
 }

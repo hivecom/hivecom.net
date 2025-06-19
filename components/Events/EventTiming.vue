@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Card, Flex, Grid } from '@dolanske/vui'
-import TimestampDate from '~/components/Shared/TimestampDate.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
 interface Props {
   event: Tables<'events'>

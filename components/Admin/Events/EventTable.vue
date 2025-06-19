@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables, TablesInsert, TablesUpdate } from '~/types/database.types'
+import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
@@ -95,8 +95,8 @@ async function fetchEvents() {
     // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while loading events'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading events'
   }
   finally {
     loading.value = false
@@ -174,8 +174,8 @@ async function handleEventSave(eventData: Partial<Event>) {
     showEventForm.value = false
     await fetchEvents()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while saving the event'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while saving the event'
   }
 }
 
@@ -193,8 +193,8 @@ async function handleEventDelete(eventId: number) {
     showEventForm.value = false
     await fetchEvents()
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'An error occurred while deleting the event'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the event'
   }
 }
 
@@ -346,7 +346,7 @@ onBeforeMount(fetchEvents)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .mb-l {
   margin-bottom: var(--space-l);
 }

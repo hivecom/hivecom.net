@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { Alert, Button, CopyClipboard, defineTable, Flex, Pagination, Table, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
@@ -12,6 +13,33 @@ import UserActions from './UserActions.vue'
 import UserFilters from './UserFilters.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
 
+// Type for user profile from query - only includes fields we actually select
+type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
+  | 'username'
+  | 'created_at'
+  | 'modified_at'
+  | 'modified_by'
+  | 'supporter_lifetime'
+  | 'supporter_patreon'
+  | 'patreon_id'
+  | 'steam_id'
+  | 'discord_id'
+  | 'introduction'
+  | 'markdown'
+  | 'banned'
+  | 'ban_reason'
+  | 'ban_start'
+  | 'ban_end'
+  | 'last_seen'>
+
+// Type for user action
+interface UserAction {
+  user: QueryUserProfile
+  type: 'ban' | 'unban' | 'edit' | 'delete' | null
+  banDuration?: string
+  banReason?: string
+}
+
 // Define interface for Select options
 interface SelectOption {
   label: string
@@ -20,8 +48,8 @@ interface SelectOption {
 
 // Emits
 const emit = defineEmits<{
-  userSelected: [user: any]
-  action: [action: any]
+  userSelected: [user: QueryUserProfile]
+  action: [action: UserAction]
 }>()
 
 // Define model value for refresh signal to parent
@@ -66,39 +94,20 @@ interface TransformedUser {
   }
   'Supporter': boolean
   'Joined': string
-  '_original': {
-    id: string
-    username: string
-    created_at: string
-    modified_at: string | null
-    modified_by: string | null
-    supporter_patreon: boolean
-    supporter_lifetime: boolean
-    patreon_id: string | null
-    steam_id: string | null
-    discord_id: string | null
-    introduction: string | null
-    markdown: string | null
-    banned: boolean
-    ban_reason: string | null
-    ban_start: string | null
-    ban_end: string | null
-    last_seen: string
-    role: string | null
-  }
+  '_original': QueryUserProfile
 }
 
 // Data states
 const loading = ref(true)
 const errorMessage = ref('')
-const users = ref<any[]>([])
+const users = ref<QueryUserProfile[]>([])
 const userRoles = ref<Record<string, string | null>>({})
 const search = ref('')
 const roleFilter = ref<SelectOption[]>()
 const statusFilter = ref<SelectOption[]>()
 
 // User action state
-const userAction = ref<any>(null)
+const userAction = ref<UserAction | null>(null)
 const actionLoading = ref<Record<string, Record<string, boolean>>>({})
 
 // Filter options
@@ -165,9 +174,9 @@ async function fetchUsers() {
       userRoles.value = rolesMap
     }
   }
-  catch (error: any) {
+  catch (error: unknown) {
     console.error('Error fetching users:', error)
-    errorMessage.value = error.message || 'An error occurred while loading users'
+    errorMessage.value = (error as Error).message || 'An error occurred while loading users'
   }
   finally {
     loading.value = false
@@ -175,7 +184,7 @@ async function fetchUsers() {
 }
 
 // Helper function to get user status
-function getUserStatus(user: any, _role: string | null): 'active' | 'banned' {
+function getUserStatus(user: QueryUserProfile, _role: string | null): 'active' | 'banned' {
   // Check if user is actually banned
   return user.banned ? 'banned' : 'active'
 }
@@ -187,7 +196,7 @@ const filteredData = computed<TransformedUser[]>(() => {
   // Apply search filter
   if (search.value) {
     const searchTerm = search.value.toLowerCase()
-    filtered = filtered.filter((user: any) =>
+    filtered = filtered.filter((user: QueryUserProfile) =>
       user.username?.toLowerCase().includes(searchTerm)
       || user.id?.toLowerCase().includes(searchTerm),
     )
@@ -195,7 +204,7 @@ const filteredData = computed<TransformedUser[]>(() => {
 
   // Apply role filters
   if (roleFilter.value && roleFilter.value.length > 0) {
-    filtered = filtered.filter((user: any) => {
+    filtered = filtered.filter((user: QueryUserProfile) => {
       const role = userRoles.value[user.id] || null
       return roleFilter.value?.some(roleOpt => role === roleOpt.value)
     })
@@ -203,7 +212,7 @@ const filteredData = computed<TransformedUser[]>(() => {
 
   // Apply status filters
   if (statusFilter.value && statusFilter.value.length > 0) {
-    filtered = filtered.filter((user: any) => {
+    filtered = filtered.filter((user: QueryUserProfile) => {
       const role = userRoles.value[user.id] || null
       const status = getUserStatus(user, role)
       return statusFilter.value?.some(statusOpt => status === statusOpt.value)
@@ -211,7 +220,7 @@ const filteredData = computed<TransformedUser[]>(() => {
   }
 
   // Transform the data into explicit key-value pairs
-  return filtered.map((user: any) => {
+  return filtered.map((user: QueryUserProfile) => {
     const role = userRoles.value[user.id] || null
     const status = getUserStatus(user, role)
     const isSupporter = !!(user.supporter_lifetime || user.supporter_patreon)
@@ -266,8 +275,10 @@ const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData
 // Set default sorting
 setSort('Username', 'asc')
 
-function handleUserClick(userData: any) {
-  emit('userSelected', userData)
+function handleUserClick(userData: unknown) {
+  // userData might be transformed by defineTable, so we need to check its structure
+  const user = (userData as TransformedUser)._original || (userData as QueryUserProfile)
+  emit('userSelected', user)
 }
 
 // Check if action is loading for a specific user and action type
@@ -277,7 +288,7 @@ function isActionLoading(userId: string, action: string): boolean {
 
 // Watch for action completion to refresh data
 watch(() => userAction.value, (action) => {
-  if (action && action.type) {
+  if (action && action.type && action.type !== null) {
     // Emit the action to the parent component
     emit('action', action)
 
@@ -290,7 +301,7 @@ watch(() => userAction.value, (action) => {
     // After action completes, refresh the data
     setTimeout(() => {
       fetchUsers()
-      if (actionLoading.value[action.user.id]) {
+      if (actionLoading.value[action.user.id] && action.type !== null) {
         actionLoading.value[action.user.id][action.type] = false
       }
     }, 1500)
@@ -384,7 +395,7 @@ defineExpose({
         </template>
 
         <template #body>
-          <tr v-for="user in rows" :key="user._original.id" class="clickable-row" @click="handleUserClick(user._original)">
+          <tr v-for="user in rows" :key="user._original.id" class="clickable-row" @click="handleUserClick(user)">
             <Table.Cell class="username-cell">
               <div class="username-content">
                 <UserLink :user-id="user._original.id" />
@@ -507,7 +518,7 @@ defineExpose({
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .user-table-container {
   width: 100%;
 }

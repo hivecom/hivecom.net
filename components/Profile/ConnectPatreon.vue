@@ -82,5 +82,5 @@ async function connectPatreon() {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 </style>

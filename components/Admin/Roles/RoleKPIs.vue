@@ -60,8 +60,8 @@ async function fetchRoleMetrics() {
       moderatorPermissions,
     }
   }
-  catch (error: any) {
-    errorMessage.value = error.message || 'Failed to fetch role metrics'
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to fetch role metrics'
   }
   finally {
     loading.value = false
@@ -126,6 +126,6 @@ onBeforeMount(fetchRoleMetrics)
   </Flex>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 
 </style>

@@ -137,7 +137,6 @@ onMounted(() => {
   font-size: 4rem;
   font-weight: bold;
   margin-bottom: 0.5rem;
-  color: var(--vui-color-primary);
 }
 
 .error-description {

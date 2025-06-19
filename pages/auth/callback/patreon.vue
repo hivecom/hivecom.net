@@ -106,7 +106,7 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .patreon-callback {
   display: flex;
   flex-direction: column;

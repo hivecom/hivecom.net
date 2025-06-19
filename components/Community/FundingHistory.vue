@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Card, defineTable, Flex, Grid, Table } from '@dolanske/vui'
-import TableContainer from '~/components/Shared/TableContainer.vue'
+import TableContainer from '@/components/Shared/TableContainer.vue'
 
 interface Props {
   monthlyFunding: Tables<'monthly_funding'>[]
@@ -18,7 +18,7 @@ interface TransformedFunding {
   'Monthly Total': number
   'Lifetime Total': number
   'Growth': number | null
-  '_original': any
+  '_original': Tables<'monthly_funding'>
 }
 
 // Year filter
@@ -212,14 +212,14 @@ function getGrowthIndicator(growth: number | null) {
                 <Table.Cell>
                   <Flex v-if="funding.Patreon > 0" gap="xxs" y-center>
                     <span class="text-bold text-s">{{ formatCurrency(funding.Patreon) }}</span>
-                    <span class="text-xs color-text-light ml-xs">({{ funding._original.supporterCount || 0 }})</span>
+                    <span class="text-xs color-text-light ml-xs">({{ funding._original.patreon_count || 0 }})</span>
                   </Flex>
                   <span v-else class="text-xs color-text-light">-</span>
                 </Table.Cell>
                 <Table.Cell>
                   <Flex v-if="funding.Donations > 0" gap="xxs" y-center>
                     <span class="text-bold text-s">{{ formatCurrency(funding.Donations) }}</span>
-                    <span class="text-xs color-text-light ml-xs">({{ funding._original.donationCount || 0 }})</span>
+                    <span class="text-xs color-text-light ml-xs">({{ funding._original.donation_count || 0 }})</span>
                   </Flex>
                   <span v-else class="text-xs color-text-light">-</span>
                 </Table.Cell>
@@ -270,7 +270,7 @@ function getGrowthIndicator(growth: number | null) {
   </Alert>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .space-y-xs > * + * {
   margin-top: 0.25rem;
 }

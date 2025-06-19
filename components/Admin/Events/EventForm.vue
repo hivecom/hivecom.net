@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '~/types/database.types'
+import type { Tables } from '@/types/database.types'
 import { Button, Calendar, Flex, Grid, Input, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 

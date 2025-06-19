@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
 import { ref } from 'vue'
-import AnnouncementKPIs from '~/components/Admin/Announcements/AnnouncementKPIs.vue'
-import AnnouncementTable from '~/components/Admin/Announcements/AnnouncementTable.vue'
+import AnnouncementKPIs from '@/components/Admin/Announcements/AnnouncementKPIs.vue'
+import AnnouncementTable from '@/components/Admin/Announcements/AnnouncementTable.vue'
 
 // State for refresh coordination between components
 const refreshSignal = ref(0)

@@ -23,8 +23,9 @@ export function stripHtmlTags(input: string): string {
     .replace(/&#x27;/g, '\'')
     .replace(/&#x2F;/g, '/')
     .replace(/&nbsp;/g, ' ')
-    // Clean up extra whitespace
-    .replace(/\s+/g, ' ')
+    // Clean up extra whitespace while preserving newlines
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n/g, '\n\n')
     .trim()
 }
 
