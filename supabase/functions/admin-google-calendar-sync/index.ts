@@ -253,9 +253,9 @@ async function updateGoogleEvent(
     summary: eventData.title,
     description: [
       eventData.description,
-      eventData.markdown,
+      `Event Link: ${eventData.link}`,
+      `Event Page: https://hivecom.net/events/${eventData.id}`,
       eventData.note,
-      eventData.link ? `Event Link: ${eventData.link}` : `Event Page: https://hivecom.net/events/${eventData.id}`
     ].filter(Boolean).join('\n\n'),
     start: {
       dateTime: eventStart.toISOString(),
