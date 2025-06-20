@@ -177,8 +177,8 @@ async function createGoogleEvent(
     summary: eventData.title,
     description: [
       eventData.description,
-      eventData.markdown,
-      eventData.note
+      eventData.note,
+      eventData.link ? `Event Link: ${eventData.link}` : `Event Page: https://hivecom.net/events/${eventData.id}`
     ].filter(Boolean).join('\n\n'),
     start: {
       dateTime: eventStart.toISOString(),
@@ -189,9 +189,25 @@ async function createGoogleEvent(
       timeZone: 'UTC'
     },
     location: eventData.location || undefined,
+    status: 'confirmed',
+    transparency: 'opaque', // Event blocks time on calendar
+    visibility: 'public', // Community events are public
     source: {
       title: 'Hivecom Event',
-      url: eventData.link || `https://hivecom.net/events/${eventData.id}`
+      url: `https://hivecom.net/events/${eventData.id}`
+    },
+    extendedProperties: {
+      shared: {
+        hivecomEventId: eventData.id.toString(),
+        hivecomSource: 'hivecom-admin-sync'
+      }
+    },
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: 'popup', minutes: 60 }, // 1 hour before
+        { method: 'popup', minutes: 15 }  // 15 minutes before
+      ]
     }
   }
 
@@ -238,7 +254,8 @@ async function updateGoogleEvent(
     description: [
       eventData.description,
       eventData.markdown,
-      eventData.note
+      eventData.note,
+      eventData.link ? `Event Link: ${eventData.link}` : `Event Page: https://hivecom.net/events/${eventData.id}`
     ].filter(Boolean).join('\n\n'),
     start: {
       dateTime: eventStart.toISOString(),
@@ -249,9 +266,25 @@ async function updateGoogleEvent(
       timeZone: 'UTC'
     },
     location: eventData.location || undefined,
+    status: 'confirmed',
+    transparency: 'opaque', // Event blocks time on calendar
+    visibility: 'public', // Community events are public
     source: {
       title: 'Hivecom Event',
       url: eventData.link || `https://hivecom.net/events/${eventData.id}`
+    },
+    extendedProperties: {
+      shared: {
+        hivecomEventId: eventData.id.toString(),
+        hivecomSource: 'hivecom-admin-sync'
+      }
+    },
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: 'popup', minutes: 60 }, // 1 hour before
+        { method: 'popup', minutes: 15 }  // 15 minutes before
+      ]
     }
   }
 
