@@ -2,9 +2,9 @@
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
-
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import EventDetails from './EventDetails.vue'
@@ -38,6 +38,22 @@ const showEventDetails = ref(false)
 const showEventForm = ref(false)
 const selectedEvent = ref<Event | null>(null)
 const isEditMode = ref(false)
+
+// Loading states for individual events
+const eventLoadingStates = ref<Record<number, Record<string, boolean>>>({})
+
+// Helper function to check if an action is loading for a specific event
+function isEventActionLoading(eventId: number, action: string): boolean {
+  return eventLoadingStates.value[eventId]?.[action] || false
+}
+
+// Helper function to set loading state for an event action
+function setEventActionLoading(eventId: number, action: string, loading: boolean) {
+  if (!eventLoadingStates.value[eventId]) {
+    eventLoadingStates.value[eventId] = {}
+  }
+  eventLoadingStates.value[eventId][action] = loading
+}
 
 // Filtered and transformed events
 const transformedEvents = computed(() => {
@@ -76,6 +92,31 @@ const { headers, rows, pagination, setPage, setSort } = defineTable(transformedE
 
 // Set default sorting by date (newest first)
 setSort('Date', 'desc')
+
+// Google Calendar sync function
+async function syncEventWithGoogleCalendar(action: 'INSERT' | 'UPDATE' | 'DELETE', eventId: number) {
+  try {
+    const { data, error } = await supabase.functions.invoke('admin-google-calendar-sync', {
+      method: 'POST',
+      body: {
+        eventId,
+        action,
+      },
+    })
+
+    if (error) {
+      console.error('Google Calendar sync error:', error)
+      throw error
+    }
+
+    return data
+  }
+  catch (error) {
+    console.error('Failed to sync with Google Calendar:', error)
+    // Don't throw the error - we don't want sync failures to break the UI
+    // The user should still see their event created/updated even if sync fails
+  }
+}
 
 // Fetch events data
 async function fetchEvents() {
@@ -134,6 +175,8 @@ function handleEditFromDetails(event: Event) {
 
 async function handleEventSave(eventData: Partial<Event>) {
   try {
+    let eventId: number | undefined
+
     if (isEditMode.value && selectedEvent.value) {
       // Update existing event with modification tracking
       const updateData: TablesUpdate<'events'> = {
@@ -149,6 +192,8 @@ async function handleEventSave(eventData: Partial<Event>) {
 
       if (error)
         throw error
+
+      eventId = selectedEvent.value.id
     }
     else {
       // Create new event with creation and modification tracking
@@ -162,12 +207,24 @@ async function handleEventSave(eventData: Partial<Event>) {
         modified_at: new Date().toISOString(),
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('events')
         .insert(createData)
+        .select('id')
+        .single()
 
       if (error)
         throw error
+
+      eventId = data?.id
+    }
+
+    // Sync with Google Calendar if we have an event ID
+    if (eventId) {
+      await syncEventWithGoogleCalendar(
+        isEditMode.value ? 'UPDATE' : 'INSERT',
+        eventId,
+      )
     }
 
     // Refresh events data and close form
@@ -182,6 +239,12 @@ async function handleEventSave(eventData: Partial<Event>) {
 // Handle event deletion
 async function handleEventDelete(eventId: number) {
   try {
+    // Set loading state
+    setEventActionLoading(eventId, 'delete', true)
+
+    // Sync with Google Calendar first (before deleting from our database)
+    await syncEventWithGoogleCalendar('DELETE', eventId)
+
     const { error } = await supabase
       .from('events')
       .delete()
@@ -195,6 +258,10 @@ async function handleEventDelete(eventId: number) {
   }
   catch (error: unknown) {
     errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the event'
+  }
+  finally {
+    // Clear loading state (though component will reload anyway)
+    setEventActionLoading(eventId, 'delete', false)
   }
 }
 
@@ -234,16 +301,22 @@ onBeforeMount(fetchEvents)
       <Flex x-between expand>
         <EventFilters v-model:search="search" />
 
-        <Button
-          v-if="canCreate"
-          variant="accent"
-          @click="openAddEventForm"
-        >
-          <template #start>
-            <Icon name="ph:plus" />
-          </template>
-          Add Event
-        </Button>
+        <Flex gap="xs">
+          <CalendarButtons />
+
+          <!-- Create event button -->
+          <Button
+            v-if="canCreate"
+            variant="accent"
+            loading
+            @click="openAddEventForm"
+          >
+            <template #start>
+              <Icon name="ph:plus" />
+            </template>
+            Add Event
+          </Button>
+        </Flex>
       </Flex>
 
       <!-- Table skeleton -->
@@ -260,16 +333,21 @@ onBeforeMount(fetchEvents)
     <Flex x-between expand>
       <EventFilters v-model:search="search" />
 
-      <Button
-        v-if="canCreate"
-        variant="accent"
-        @click="openAddEventForm"
-      >
-        <template #start>
-          <Icon name="ph:plus" />
-        </template>
-        Add Event
-      </Button>
+      <Flex gap="xs">
+        <CalendarButtons />
+
+        <!-- Create event button -->
+        <Button
+          v-if="canCreate"
+          variant="accent"
+          @click="openAddEventForm"
+        >
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Event
+        </Button>
+      </Flex>
     </Flex>
 
     <!-- Table -->
@@ -309,8 +387,9 @@ onBeforeMount(fetchEvents)
               <AdminActions
                 resource-type="events"
                 :item="event._original"
-                @edit="(eventItem) => openEditEventForm(eventItem)"
-                @delete="(eventItem) => handleEventDelete(eventItem.id)"
+                :is-loading="(action: string) => isEventActionLoading(event._original.id, action)"
+                @edit="(eventItem) => openEditEventForm(eventItem as Event)"
+                @delete="(eventItem) => handleEventDelete((eventItem as Event).id)"
               />
             </Table.Cell>
           </tr>
@@ -332,7 +411,7 @@ onBeforeMount(fetchEvents)
       v-model:is-open="showEventDetails"
       :event="selectedEvent"
       @edit="handleEditFromDetails"
-      @delete="(eventItem) => handleEventDelete(eventItem.id)"
+      @delete="(eventItem) => handleEventDelete((eventItem as Event).id)"
     />
 
     <!-- Event Form Sheet (for both create and edit) -->

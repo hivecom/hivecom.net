@@ -6,6 +6,7 @@
     "./admin-docker-control-container-stop",
     "./admin-docker-control-container-status",
     "./admin-docker-control-container-logs",
+    "./admin-google-calendar-sync",
     "./admin-user-ban",
     "./admin-user-delete",
     "./cron-docker-control-container-fetch",

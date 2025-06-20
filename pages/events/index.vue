@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Divider, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
+import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import Event from '@/components/Events/Event.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
@@ -84,12 +85,17 @@ const showDetails = computed({
   <div class="page">
     <!-- Hero section -->
     <section>
-      <h1>
-        Events
-      </h1>
-      <p>
-        Discover the latest happenings
-      </p>
+      <Flex :gap="0" expand column>
+        <h1>
+          Events
+        </h1>
+        <Flex x-between expand>
+          <p>
+            Discover the latest happenings
+          </p>
+          <CalendarButtons show-labels />
+        </Flex>
+      </Flex>
     </section>
     <Divider />
     <section class="mt-xl">

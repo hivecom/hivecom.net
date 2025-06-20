@@ -1,19 +1,11 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { Button, Flex, Input, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '../../Shared/ConfirmModal.vue'
 
 const props = defineProps<{
-  game: {
-    id: number
-    name: string
-    shorthand: string | null
-    steam_id: number | null
-    created_at: string
-    created_by: string | null
-    modified_at: string | null
-    modified_by: string | null
-  } | null
+  game: Tables<'games'> | null
   isEditMode: boolean
 }>()
 
@@ -46,7 +38,7 @@ watch(
   (newGame) => {
     if (newGame) {
       gameForm.value = {
-        name: newGame.name,
+        name: newGame.name || '',
         shorthand: newGame.shorthand || '',
         steam_id: newGame.steam_id ? String(newGame.steam_id) : '',
       }

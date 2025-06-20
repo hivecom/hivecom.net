@@ -271,7 +271,7 @@ onBeforeMount(fetchExpenses)
       <Flex x-between expand>
         <ExpenseFilters v-model:search="search" />
 
-        <Button v-if="canCreate" variant="accent" @click="openAddExpenseForm">
+        <Button v-if="canCreate" variant="accent" loading>
           <template #start>
             <Icon name="ph:plus" />
           </template>
@@ -330,8 +330,8 @@ onBeforeMount(fetchExpenses)
               <AdminActions
                 resource-type="expenses"
                 :item="expense._original"
-                @edit="(expenseItem) => openEditExpenseForm(expenseItem)"
-                @delete="(expenseItem) => handleExpenseDelete(expenseItem.id)"
+                @edit="(expenseItem) => openEditExpenseForm(expenseItem as Expense)"
+                @delete="(expenseItem) => handleExpenseDelete((expenseItem as Expense).id)"
               />
             </Table.Cell>
           </tr>

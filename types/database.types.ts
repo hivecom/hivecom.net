@@ -140,6 +140,8 @@ export interface Database {
           date: string
           description: string
           duration_minutes: number | null
+          google_event_id: string | null
+          google_last_synced_at: string | null
           id: number
           link: string | null
           location: string | null
@@ -155,6 +157,8 @@ export interface Database {
           date: string
           description?: string
           duration_minutes?: number | null
+          google_event_id?: string | null
+          google_last_synced_at?: string | null
           id?: number
           link?: string | null
           location?: string | null
@@ -170,6 +174,8 @@ export interface Database {
           date?: string
           description?: string
           duration_minutes?: number | null
+          google_event_id?: string | null
+          google_last_synced_at?: string | null
           id?: number
           link?: string | null
           location?: string | null

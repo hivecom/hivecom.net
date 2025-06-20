@@ -366,8 +366,8 @@ onBeforeMount(fetchGameservers)
               <AdminActions
                 resource-type="gameservers"
                 :item="gameserver._original"
-                @edit="(gameserverItem) => openEditGameserverForm(gameserverItem)"
-                @delete="(gameserverItem) => handleGameserverDelete(gameserverItem.id)"
+                @edit="(gameserverItem) => openEditGameserverForm(gameserverItem as QueryGameserver)"
+                @delete="(gameserverItem) => handleGameserverDelete((gameserverItem as QueryGameserver).id)"
               />
             </Table.Cell>
           </tr>

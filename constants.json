@@ -5,6 +5,11 @@
     "SUPPORT": "contact@hivecom.net"
   },
 
+  "EVENT_CALENDAR": {
+    "GOOGLE": "https://calendar.google.com/calendar/u/2?cid=Y181Zjk0NjNjNTQzMTBhNWNiNzYxNjhkM2QxZTU1ZjQzMzI0MjliZDZmNjk0NTRlOTM1MDUwZDY5YTRjZThkZGJiQGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20",
+    "ICAL": "https://calendar.google.com/calendar/ical/c_5f9463c54310a5cb76168d3d1e55f4332429bd6f69454e935050d69a4ce8ddbb%40group.calendar.google.com/public/basic.ics"
+  },
+
   "CURRENCY": {
     "SYMBOL": "€",
     "NAME": "Euro",

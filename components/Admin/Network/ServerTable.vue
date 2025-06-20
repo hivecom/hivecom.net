@@ -19,16 +19,7 @@ interface TransformedServer {
   'Status': 'active' | 'inactive'
   'Docker Control': boolean
   'Created': string
-  '_original': {
-    id: number
-    address: string
-    active: boolean
-    docker_control: boolean
-    docker_control_port: number | null
-    docker_control_secure: boolean
-    docker_control_subdomain: string | null
-    created_at: string
-  }
+  '_original': Tables<'servers'>
 }
 
 // Define interface for Select options
@@ -230,8 +221,8 @@ onBeforeMount(fetchServers)
               <AdminActions
                 resource-type="servers"
                 :item="server._original"
-                @edit="(serverItem) => viewServer(serverItem)"
-                @delete="(serverItem) => handleServerDelete(serverItem.id)"
+                @edit="(serverItem) => viewServer(serverItem as Tables<'servers'>)"
+                @delete="(serverItem) => handleServerDelete((serverItem as Tables<'servers'>).id)"
               />
             </Table.Cell>
           </tr>

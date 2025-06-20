@@ -37,6 +37,10 @@ const eventForm = ref({
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 
+// Loading states for buttons
+const saveLoading = ref(false)
+const deleteLoading = ref(false)
+
 // Form validation
 const validation = computed(() => ({
   title: !!eventForm.value.title.trim(),
@@ -99,6 +103,9 @@ function handleSubmit() {
   if (!isValid.value)
     return
 
+  // Set loading state
+  saveLoading.value = true
+
   // Calculate total duration in minutes from separate fields
   const totalDurationMinutes
     = (eventForm.value.duration_days || 0) * 24 * 60
@@ -132,6 +139,9 @@ function handleDelete() {
 function confirmDelete() {
   if (!props.event)
     return
+
+  // Set loading state
+  deleteLoading.value = true
 
   emit('delete', props.event.id)
 }
@@ -306,6 +316,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
           type="submit"
           variant="accent"
           :disabled="!isValid"
+          :loading="saveLoading"
           @click.prevent="handleSubmit"
         >
           <template #start>
@@ -324,6 +335,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
           v-if="isEditMode && canDeleteEvents"
           variant="danger"
           square
+          :loading="deleteLoading"
           data-title-left="Delete event"
           @click.prevent="handleDelete"
         >

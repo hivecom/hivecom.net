@@ -6,16 +6,7 @@ import Metadata from '@/components/Shared/Metadata.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 
 const props = defineProps<{
-  game: {
-    id: number
-    name: string
-    shorthand: string | null
-    steam_id: number | null
-    created_at: string
-    created_by: string | null
-    modified_at: string | null
-    modified_by: string | null
-  } | null
+  game: Tables<'games'> | null
 }>()
 
 // Define emits
@@ -30,14 +21,14 @@ function handleClose() {
 }
 
 // Handle edit action from AdminActions
-function handleEdit(game: Tables<'games'>) {
-  emit('edit', game)
+function handleEdit(item: Record<string, unknown>) {
+  emit('edit', item as Tables<'games'>)
   isOpen.value = false
 }
 
 // Handle delete action from AdminActions
-function handleDelete(game: Tables<'games'>) {
-  emit('delete', game)
+function handleDelete(item: Record<string, unknown>) {
+  emit('delete', item as Tables<'games'>)
   isOpen.value = false
 }
 

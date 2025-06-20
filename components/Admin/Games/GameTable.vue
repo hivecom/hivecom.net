@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 
@@ -11,20 +12,11 @@ import GameFilters from './GameFilters.vue'
 import GameForm from './GameForm.vue'
 
 // Game table type
-interface Game {
-  id: number
-  name: string
-  shorthand: string | null
-  steam_id: number | null
-  created_at: string
-  created_by: string | null
-  modified_at: string | null
-  modified_by: string | null
-}
+type Game = Tables<'games'>
 
 // Define transformed game data interface
 interface TransformedGame {
-  'Name': string
+  'Name': string | null
   'Shorthand': string | null
   'Steam ID': number | null
   '_original': Game
@@ -294,8 +286,8 @@ onBeforeMount(fetchGames)
               <AdminActions
                 resource-type="games"
                 :item="game._original"
-                @edit="(gameItem) => openEditGameForm(gameItem)"
-                @delete="(gameItem) => handleGameDelete(gameItem.id)"
+                @edit="(gameItem) => openEditGameForm(gameItem as Game)"
+                @delete="(gameItem) => handleGameDelete((gameItem as Game).id)"
               />
             </Table.Cell>
           </tr>

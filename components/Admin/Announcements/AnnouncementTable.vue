@@ -257,7 +257,7 @@ onBeforeMount(fetchAnnouncements)
           @clear-filters="clearFilters"
         />
 
-        <Button v-if="canCreate" variant="accent" @click="openAddAnnouncementForm">
+        <Button v-if="canCreate" variant="accent" loading>
           <template #start>
             <Icon name="ph:plus" />
           </template>
@@ -318,8 +318,8 @@ onBeforeMount(fetchAnnouncements)
               <AdminActions
                 resource-type="announcements"
                 :item="announcement._original"
-                @edit="(announcementItem) => openEditAnnouncementForm(announcementItem)"
-                @delete="(announcementItem) => handleAnnouncementDelete(announcementItem.id)"
+                @edit="(announcementItem) => openEditAnnouncementForm(announcementItem as QueryAnnouncement)"
+                @delete="(announcementItem) => handleAnnouncementDelete((announcementItem as QueryAnnouncement).id)"
               />
             </Table.Cell>
           </tr>
