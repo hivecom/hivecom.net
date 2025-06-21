@@ -4,6 +4,7 @@ import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
+import { getGameAssetUrl } from '~/utils/storage'
 
 const props = defineProps<{
   game: Tables<'games'> | null
@@ -54,15 +55,56 @@ interface GameServerWithContainer {
 
 const gameservers = ref<GameServerWithContainer[]>([])
 
-// Fetch gameservers when game changes
+// Game assets state
+const assetsLoading = ref(false)
+const assetsUrl = ref({
+  icon: null as string | null,
+  cover: null as string | null,
+  background: null as string | null,
+})
+
+// Fetch gameservers and assets when game changes
 watchEffect(async () => {
   if (!props.game?.id) {
     gameservers.value = []
+    assetsUrl.value = {
+      icon: null,
+      cover: null,
+      background: null,
+    }
     return
   }
 
+  // Load gameservers
   gameserversLoading.value = true
   gameserversError.value = ''
+
+  // Load assets if shorthand exists
+  if (props.game.shorthand) {
+    assetsLoading.value = true
+
+    // Load all assets in parallel
+    const [iconUrl, coverUrl, backgroundUrl] = await Promise.all([
+      getGameAssetUrl(supabase, props.game.shorthand, 'icon'),
+      getGameAssetUrl(supabase, props.game.shorthand, 'cover'),
+      getGameAssetUrl(supabase, props.game.shorthand, 'background'),
+    ])
+
+    assetsUrl.value = {
+      icon: iconUrl,
+      cover: coverUrl,
+      background: backgroundUrl,
+    }
+
+    assetsLoading.value = false
+  }
+  else {
+    assetsUrl.value = {
+      icon: null,
+      cover: null,
+      background: null,
+    }
+  }
 
   try {
     // Create a fresh query each time to avoid caching issues
@@ -128,7 +170,7 @@ watchEffect(async () => {
       </Flex>
     </template>
 
-    <Flex v-if="props.game" column gap="m" class="game-details">
+    <Flex v-if="props.game" column gap="m" expand class="game-details">
       <Flex column gap="l" expand>
         <!-- Basic info -->
         <Card>
@@ -177,9 +219,9 @@ watchEffect(async () => {
           </div>
 
           <!-- Gameservers list -->
-          <Flex v-else column gap="s">
-            <div v-for="gameserver in gameservers" :key="gameserver.id" class="game-details__gameserver-item">
-              <Flex y-center x-between gap="m">
+          <Flex v-else column gap="s" expand>
+            <Flex v-for="gameserver in gameservers" :key="gameserver.id" class="game-details__gameserver-item" expand>
+              <Flex y-center x-between gap="m" expand>
                 <span class="game-details__gameserver-name">{{ gameserver.name }}</span>
 
                 <!-- Addresses -->
@@ -192,7 +234,69 @@ watchEffect(async () => {
                   </span>
                 </Flex>
               </Flex>
-            </div>
+            </Flex>
+          </Flex>
+        </Card>
+
+        <!-- Game Assets -->
+        <Card v-if="props.game.shorthand" separators>
+          <template #header>
+            <h6>Game Assets</h6>
+          </template>
+
+          <!-- Loading state -->
+          <div v-if="assetsLoading" class="game-details__placeholder-text">
+            Loading game assets...
+          </div>
+
+          <!-- Assets display -->
+          <Flex v-else column gap="m" expand>
+            <!-- Game Icon -->
+            <Flex column gap="s" expand>
+              <span class="game-details__asset-label">Icon</span>
+              <Flex v-if="assetsUrl.icon" y-center>
+                <img
+                  :src="assetsUrl.icon"
+                  alt="Game Icon"
+                  class="game-details__asset-image game-details__asset-image--icon"
+                >
+              </Flex>
+              <span v-else class="game-details__asset-missing">No icon uploaded</span>
+            </Flex>
+
+            <!-- Game Cover -->
+            <Flex column gap="s" expand>
+              <span class="game-details__asset-label">Cover</span>
+              <Flex v-if="assetsUrl.cover" y-center expand>
+                <img
+                  :src="assetsUrl.cover"
+                  alt="Game Cover"
+                  class="game-details__asset-image game-details__asset-image--cover"
+                >
+              </Flex>
+              <span v-else class="game-details__asset-missing">No cover uploaded</span>
+            </Flex>
+
+            <!-- Game Background -->
+            <Flex column gap="s" expand>
+              <span class="game-details__asset-label">Background</span>
+              <Flex v-if="assetsUrl.background" y-center>
+                <img
+                  :src="assetsUrl.background"
+                  alt="Game Background"
+                  class="game-details__asset-image game-details__asset-image--background"
+                >
+              </Flex>
+              <span v-else class="game-details__asset-missing">No background uploaded</span>
+            </Flex>
+          </Flex>
+        </Card>
+
+        <!-- No shorthand notice -->
+        <Card v-else-if="props.game">
+          <Flex y-center gap="s" class="game-details__placeholder-text">
+            <Icon name="ph:info" />
+            <span>Game assets are not available because this game has no shorthand assigned.</span>
           </Flex>
         </Card>
 
@@ -263,6 +367,31 @@ watchEffect(async () => {
   &__address-count {
     font-size: var(--font-size-s);
     color: var(--color-text-light);
+  }
+
+  &__asset-label {
+    font-size: var(--font-size-s);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+  }
+
+  &__asset-image {
+    width: 100%;
+    border-radius: var(--border-radius-s);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-subtle);
+    object-fit: cover;
+
+    &--icon {
+      width: 64px;
+      height: 64px;
+    }
+  }
+
+  &__asset-missing {
+    font-size: var(--font-size-s);
+    color: var(--color-text-light);
+    font-style: italic;
   }
 
   &__status-indicator {

@@ -7,6 +7,7 @@ import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatDuration } from '~/utils/duration'
 import { getUserActivityStatus } from '~/utils/lastSeen'
+import { getUserAvatarUrl } from '~/utils/storage'
 import MDRenderer from '../Shared/MDRenderer.vue'
 
 interface Props {
@@ -19,12 +20,16 @@ const props = defineProps<Props>()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const profile = ref<Tables<'profiles'>>()
+const avatarUrl = ref<string | null>(null)
 const userRole = ref<string | null>(null)
 const currentUserRole = ref<string | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
 const isEditSheetOpen = ref(false)
 const showComplaintModal = ref(false)
+
+// Add refresh functionality for avatar updates
+const refreshTrigger = ref(0)
 
 // Computed property to check if this is the user's own profile
 const isOwnProfile = computed(() => {
@@ -138,8 +143,11 @@ async function fetchProfile() {
 
   profile.value = requestProfile?.data
 
-  // Fetch user role if available
+  // Fetch user avatar and role if available
   if (profile.value) {
+    // Fetch avatar URL
+    avatarUrl.value = await getUserAvatarUrl(supabase, profile.value.id)
+
     const { data: roleData } = await supabase
       .from('user_roles')
       .select('role')
@@ -165,6 +173,20 @@ async function fetchProfile() {
 
 onMounted(() => {
   fetchProfile()
+
+  // Listen for custom avatar update events
+  window.addEventListener('avatar-updated', handleAvatarUpdate)
+
+  // Listen for storage events (when avatar is updated)
+  window.addEventListener('storage', (event) => {
+    if (event.key?.includes('avatar-updated') && profile.value?.id) {
+      refreshAvatar()
+    }
+  })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('avatar-updated', handleAvatarUpdate)
 })
 
 // Profile editing functions
@@ -193,6 +215,10 @@ async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
 
     // Update local profile data
     profile.value = data
+
+    // Refresh avatar in case it was updated
+    await refreshAvatar()
+
     closeEditSheet()
 
     // In a real app, you'd show a success toast notification here
@@ -295,6 +321,45 @@ function getBanDuration() {
 // Function to get ban end date for TimestampDate component
 function getBanEndDate() {
   return profile.value?.ban_end || null
+}
+
+// Function to refresh avatar URL
+async function refreshAvatar() {
+  if (profile.value?.id) {
+    // Force refresh by bypassing cache
+    avatarUrl.value = await getUserAvatarUrl(supabase, profile.value.id)
+  }
+}
+
+// Function to trigger avatar refresh (can be called from external components)
+function triggerAvatarRefresh() {
+  refreshTrigger.value++
+}
+
+// Watch for refresh trigger changes
+watch(refreshTrigger, () => {
+  refreshAvatar()
+})
+
+// Watch for profile changes to update avatar if needed
+watch(() => profile.value?.id, async (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    await refreshAvatar()
+  }
+})
+
+// Expose function for parent components to trigger refresh
+defineExpose({
+  triggerAvatarRefresh,
+  refreshAvatar,
+})
+
+// Handle avatar update events
+function handleAvatarUpdate(event: Event) {
+  const customEvent = event as CustomEvent
+  if (customEvent.detail?.userId === profile.value?.id) {
+    refreshAvatar()
+  }
 }
 </script>
 
@@ -430,8 +495,10 @@ function getBanEndDate() {
             <!-- Avatar -->
             <div class="profile-avatar">
               <div class="avatar-container">
-                <Avatar :size="80">
-                  {{ getUserInitials(profile.username) }}
+                <Avatar :size="80" :url="avatarUrl || undefined">
+                  <template v-if="!avatarUrl" #default>
+                    {{ getUserInitials(profile.username) }}
+                  </template>
                 </Avatar>
                 <!-- Activity status indicator -->
                 <Tooltip v-if="activityStatus">

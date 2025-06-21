@@ -2,7 +2,7 @@
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Button, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
-import ConfirmModal from '../../Shared/ConfirmModal.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 // Interface for gameserver query result
 interface QueryGameserver {

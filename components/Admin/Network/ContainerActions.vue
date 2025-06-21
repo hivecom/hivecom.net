@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex } from '@dolanske/vui'
-import ConfirmModal from '../../Shared/ConfirmModal.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 const props = defineProps<{
   container: {

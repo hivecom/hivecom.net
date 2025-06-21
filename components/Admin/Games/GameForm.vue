@@ -2,7 +2,9 @@
 import type { Tables } from '@/types/database.types'
 import { Button, Flex, Input, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
-import ConfirmModal from '../../Shared/ConfirmModal.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import FileUpload from '@/components/Shared/FileUpload.vue'
+import { deleteGameAsset, getGameAssetUrl, uploadGameAsset } from '~/utils/storage'
 
 const props = defineProps<{
   game: Tables<'games'> | null
@@ -25,6 +27,23 @@ const gameForm = ref({
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 
+// Asset upload state
+const assetsUploading = ref({
+  icon: false,
+  cover: false,
+  background: false,
+})
+const assetsError = ref({
+  icon: null as string | null,
+  cover: null as string | null,
+  background: null as string | null,
+})
+const assetsUrl = ref({
+  icon: null as string | null,
+  cover: null as string | null,
+  background: null as string | null,
+})
+
 // Form validation
 const validation = computed(() => ({
   name: !!gameForm.value.name.trim(),
@@ -35,12 +54,20 @@ const isValid = computed(() => Object.values(validation.value).every(Boolean))
 // Update form data when game prop changes
 watch(
   () => props.game,
-  (newGame) => {
+  async (newGame) => {
     if (newGame) {
       gameForm.value = {
         name: newGame.name || '',
         shorthand: newGame.shorthand || '',
         steam_id: newGame.steam_id ? String(newGame.steam_id) : '',
+      }
+
+      // Initialize asset URLs if shorthand exists
+      if (newGame.shorthand) {
+        const supabase = useSupabaseClient()
+        assetsUrl.value.icon = await getGameAssetUrl(supabase, newGame.shorthand, 'icon')
+        assetsUrl.value.cover = await getGameAssetUrl(supabase, newGame.shorthand, 'cover')
+        assetsUrl.value.background = await getGameAssetUrl(supabase, newGame.shorthand, 'background')
       }
     }
     else {
@@ -49,6 +76,12 @@ watch(
         name: '',
         shorthand: '',
         steam_id: '',
+      }
+
+      assetsUrl.value = {
+        icon: null,
+        cover: null,
+        background: null,
       }
     }
   },
@@ -89,6 +122,57 @@ function confirmDelete() {
     return
 
   emit('delete', props.game.id)
+}
+
+// Handle asset upload
+async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', file: File) {
+  if (!gameForm.value.shorthand)
+    return
+
+  try {
+    assetsUploading.value[assetType] = true
+    assetsError.value[assetType] = null
+
+    const supabase = useSupabaseClient()
+    const result = await uploadGameAsset(supabase, gameForm.value.shorthand, assetType, file)
+
+    if (result.success && result.url) {
+      assetsUrl.value[assetType] = result.url
+    }
+    else {
+      assetsError.value[assetType] = result.error || `Failed to upload ${assetType}`
+    }
+  }
+  catch (error) {
+    console.error(`Error uploading ${assetType}:`, error)
+    assetsError.value[assetType] = 'An unexpected error occurred'
+  }
+  finally {
+    assetsUploading.value[assetType] = false
+  }
+}
+
+// Handle asset removal
+async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
+  if (!gameForm.value.shorthand)
+    return
+
+  try {
+    const supabase = useSupabaseClient()
+    const result = await deleteGameAsset(supabase, gameForm.value.shorthand, assetType)
+
+    if (result.success) {
+      assetsUrl.value[assetType] = null
+      assetsError.value[assetType] = null
+    }
+    else {
+      assetsError.value[assetType] = result.error || 'Failed to remove asset'
+    }
+  }
+  catch (error) {
+    console.error(`Error removing ${assetType}:`, error)
+    assetsError.value[assetType] = 'Failed to remove asset'
+  }
 }
 </script>
 
@@ -142,6 +226,68 @@ function confirmDelete() {
           placeholder="Enter Steam app ID (optional)"
         />
       </Flex>
+
+      <!-- Asset Upload Section -->
+      <Flex v-if="gameForm.shorthand" column gap="m" expand>
+        <h4>Game Assets</h4>
+        <p class="text-s color-text-light">
+          Upload visual assets for the game. These will be displayed throughout the platform.
+        </p>
+        <p class="text-xs color-text-light">
+          Note: Uploading assets will immediately apply them, even if this dialog is cancelled or closed.
+        </p>
+
+        <Flex column gap="m" expand>
+          <Flex expand>
+            <!-- Icon Upload -->
+            <Flex column gap="xs" expand>
+              <label class="asset-label">Game Icon</label>
+              <FileUpload
+                :preview-url="assetsUrl.icon"
+                label="Upload Icon"
+                :loading="assetsUploading.icon"
+                :error="assetsError.icon"
+                @upload="(file) => handleAssetUpload('icon', file)"
+                @remove="() => handleAssetRemove('icon')"
+              />
+              <span class="text-xs color-text-light">Recommended: 512x512px square image</span>
+            </Flex>
+
+            <!-- Cover Upload -->
+            <Flex column gap="xs" expand>
+              <label class="asset-label">Game Cover</label>
+              <FileUpload
+                :preview-url="assetsUrl.cover"
+                label="Upload Cover"
+                :loading="assetsUploading.cover"
+                :error="assetsError.cover"
+                @upload="(file) => handleAssetUpload('cover', file)"
+                @remove="() => handleAssetRemove('cover')"
+              />
+              <span class="text-xs color-text-light">Recommended: 1280x720px landscape image</span>
+            </Flex>
+          </Flex>
+
+          <!-- Background Upload -->
+          <Flex column gap="xs" expand>
+            <label class="asset-label">Game Background</label>
+            <FileUpload
+              :preview-url="assetsUrl.background"
+              label="Upload Background"
+              :loading="assetsUploading.background"
+              :error="assetsError.background"
+              @upload="(file) => handleAssetUpload('background', file)"
+              @remove="() => handleAssetRemove('background')"
+            />
+            <span class="text-xs color-text-light">Recommended: 1920x1080px wide image</span>
+          </Flex>
+        </Flex>
+      </Flex>
+
+      <div v-else-if="props.isEditMode" class="asset-notice">
+        <Icon name="ph:info" />
+        <span>Add a shorthand to enable asset uploads</span>
+      </div>
     </Flex>
 
     <!-- Form Actions -->
@@ -197,5 +343,28 @@ function confirmDelete() {
 
 .form-actions {
   margin-top: var(--space);
+}
+
+.asset-label {
+  font-size: var(--font-size-s);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-xs);
+}
+
+.asset-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  padding: var(--space-m);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-s);
+  color: var(--color-text-light);
+  font-size: var(--font-size-s);
+
+  .iconify {
+    color: var(--color-text-blue);
+  }
 }
 </style>

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Button, Flex, Input, Select, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { stripHtmlTags, validateMarkdownNoHtml } from '~/utils/sanitize'
-import ConfirmModal from '../../Shared/ConfirmModal.vue'
+import { deleteUserAvatar, getUserAvatarUrl } from '~/utils/storage'
 
 // Interface for Select options
 interface SelectOption {
@@ -36,12 +38,16 @@ const emit = defineEmits(['save', 'delete'])
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-// Supabase client for role operations
-const supabase = useSupabaseClient()
-
 // Get current user and admin permissions
 const currentUser = useSupabaseUser()
 const { canModifyUsers, canDeleteUsers, canUpdateRoles } = useAdminPermissions()
+
+// Supabase client for role operations
+const supabase = useSupabaseClient()
+
+// Avatar state
+const avatarUrl = ref<string | null>(null)
+const avatarDeleting = ref(false)
 
 // Available roles - "User" means no role in database
 const availableRoles = [
@@ -307,7 +313,7 @@ async function verifyRolePermissions() {
 // Update form data when user prop changes
 watch(
   () => props.user,
-  (newUser) => {
+  async (newUser) => {
     if (newUser) {
       userForm.value = {
         username: newUser.username,
@@ -322,6 +328,10 @@ watch(
       // Fetch user roles when editing existing user
       if (props.isEditMode) {
         fetchUserRoles()
+      }
+      // Fetch user avatar when editing existing user
+      if (props.isEditMode && newUser.id) {
+        avatarUrl.value = await getUserAvatarUrl(supabase, newUser.id)
       }
       // Verify role permissions when user changes
       verifyRolePermissions()
@@ -341,6 +351,8 @@ watch(
       // Reset role for new user
       selectedRole.value = 'user'
       originalRole.value = 'user'
+      // Reset avatar for new user
+      avatarUrl.value = null
       // Verify permissions for new user creation
       verifyRolePermissions()
     }
@@ -398,6 +410,27 @@ function confirmDelete() {
     return
 
   emit('delete', props.user.id)
+}
+
+// Handle avatar deletion
+async function handleAvatarDelete() {
+  if (!props.user?.id)
+    return
+
+  avatarDeleting.value = true
+
+  try {
+    await deleteUserAvatar(supabase, props.user.id)
+    avatarUrl.value = null
+    // You might want to emit an event here to notify parent component
+  }
+  catch (error) {
+    console.error('Error deleting avatar:', error)
+    // Handle error state if needed
+  }
+  finally {
+    avatarDeleting.value = false
+  }
 }
 
 // Character counts for text areas
@@ -516,31 +549,47 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           </Flex>
         </Flex>
 
-        <Textarea
-          v-model="userForm.introduction"
-          expand
-          label="Introduction"
-          placeholder="Short introduction about the user"
-          :rows="3"
-          :maxlength="INTRODUCTION_LIMIT"
-          :disabled="!canEditForm"
-          :valid="introductionValidation.valid"
-          :error="introductionValidation.error"
-        >
-          <template #after>
-            <Flex x-between>
-              <div class="help-text">
-                <Icon name="ph:info" />
-                HTML tags are not allowed
-              </div>
-              <div class="character-count">
-                <span :class="{ 'over-limit': introductionCharCount > INTRODUCTION_LIMIT }">
-                  {{ introductionCharCount }}/{{ INTRODUCTION_LIMIT }}
-                </span>
-              </div>
-            </Flex>
-          </template>
-        </Textarea>
+        <Flex expand gap="m">
+          <Textarea
+            v-model="userForm.introduction"
+            expand
+            label="Introduction"
+            placeholder="Short introduction about the user"
+            :rows="3"
+            :maxlength="INTRODUCTION_LIMIT"
+            :disabled="!canEditForm"
+            :valid="introductionValidation.valid"
+            :error="introductionValidation.error"
+          >
+            <template #after>
+              <Flex x-between>
+                <div class="help-text">
+                  <Icon name="ph:info" />
+                  HTML tags are not allowed
+                </div>
+                <div class="character-count">
+                  <span :class="{ 'over-limit': introductionCharCount > INTRODUCTION_LIMIT }">
+                    {{ introductionCharCount }}/{{ INTRODUCTION_LIMIT }}
+                  </span>
+                </div>
+              </Flex>
+            </template>
+          </Textarea>
+          <Flex column gap="xs">
+            <label class="text-m">Avatar</label>
+            <!-- Avatar Management (Edit Mode Only) -->
+            <AvatarDelete
+              v-if="props.isEditMode && props.user"
+              :size="98"
+              :user-id="props.user.id"
+              :username="props.user.username"
+              :avatar-url="avatarUrl"
+              :loading="avatarDeleting"
+              :disabled="!canEditForm"
+              @delete="handleAvatarDelete"
+            />
+          </Flex>
+        </Flex>
 
         <Textarea
           v-model="userForm.markdown"

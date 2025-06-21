@@ -2,7 +2,10 @@
 import type { Tables } from '@/types/database.types'
 import { Button, Flex, Input, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import FileUpload from '@/components/Shared/FileUpload.vue'
 import { stripHtmlTags, validateMarkdownNoHtml } from '~/utils/sanitize'
+import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '~/utils/storage'
 
 const props = defineProps<{
   profile: Tables<'profiles'> | null
@@ -66,16 +69,29 @@ const validation = computed(() => ({
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
+// Avatar upload state
+const avatarUploading = ref(false)
+const avatarError = ref<string | null>(null)
+const avatarUrl = ref<string | null>(null)
+
+// Avatar delete confirmation state
+const showDeleteConfirm = ref(false)
+const avatarDeleting = ref(false)
+
 // Update form data when profile prop changes
 watch(
   () => props.profile,
-  (newProfile) => {
+  async (newProfile) => {
     if (newProfile) {
       profileForm.value = {
         username: newProfile.username,
         introduction: newProfile.introduction || '',
         markdown: newProfile.markdown || '',
       }
+
+      // Initialize avatar URL
+      const supabase = useSupabaseClient()
+      avatarUrl.value = await getUserAvatarUrl(supabase, newProfile.id)
     }
     else {
       // Reset form
@@ -84,6 +100,8 @@ watch(
         introduction: '',
         markdown: '',
       }
+
+      avatarUrl.value = null
     }
   },
   { immediate: true },
@@ -110,6 +128,78 @@ function handleSubmit() {
   emit('save', profileData)
 }
 
+// Handle avatar upload
+async function handleAvatarUpload(file: File) {
+  if (!props.profile)
+    return
+
+  try {
+    avatarUploading.value = true
+    avatarError.value = null
+
+    const supabase = useSupabaseClient()
+    const result = await uploadUserAvatar(supabase, props.profile.id, file)
+
+    if (result.success && result.url) {
+      avatarUrl.value = result.url
+    }
+    else {
+      avatarError.value = result.error || 'Failed to upload avatar'
+    }
+  }
+  catch (error) {
+    console.error('Error uploading avatar:', error)
+    avatarError.value = 'An unexpected error occurred'
+  }
+  finally {
+    avatarUploading.value = false
+  }
+}
+
+// Handle avatar removal
+function handleAvatarRemove() {
+  avatarUrl.value = null
+  avatarError.value = null
+}
+
+// Handle avatar delete confirmation
+function handleAvatarDeleteConfirm() {
+  showDeleteConfirm.value = true
+}
+
+// Handle avatar deletion
+async function handleAvatarDelete() {
+  if (!props.profile)
+    return
+
+  try {
+    avatarDeleting.value = true
+    avatarError.value = null
+
+    const supabase = useSupabaseClient()
+    const result = await deleteUserAvatar(supabase, props.profile.id)
+
+    if (result.success) {
+      avatarUrl.value = null
+    }
+    else {
+      avatarError.value = result.error || 'Failed to delete avatar'
+    }
+  }
+  catch (error) {
+    console.error('Error deleting avatar:', error)
+    avatarError.value = 'An unexpected error occurred'
+  }
+  finally {
+    avatarDeleting.value = false
+  }
+}
+
+// Wrapper function for the confirm modal
+async function confirmAvatarDelete() {
+  await handleAvatarDelete()
+}
+
 // Character counts for text areas
 const markdownCharCount = computed(() => profileForm.value.markdown.length)
 const introductionCharCount = computed(() => profileForm.value.introduction.length)
@@ -133,51 +223,53 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
     </template>
 
     <Flex column gap="l" class="profile-edit-form" expand>
-      <!-- Basic Information -->
-      <Flex column gap="m" expand>
-        <h4>Basic Information</h4>
+      <!-- Avatar Section -->
+      <Flex gap="m" expand>
+        <!-- Basic Information -->
+        <Flex column gap="m" expand>
+          <h4>Basic Information</h4>
 
-        <Flex expand class="profile-edit-form__username-container">
-          <Input
-            v-model="profileForm.username"
-            expand
-            name="username"
-            label="Username"
-            required
-            :valid="usernameValidation.valid"
-            :error="usernameValidation.error"
-            placeholder="Enter your username"
-            :maxlength="USERNAME_LIMIT"
-          >
-            <template #after>
-              <Flex expand x-between>
-                <div v-if="!usernameValidation.valid && profileForm.username" class="help-text error">
-                  <Icon name="ph:warning" />
-                  {{ usernameValidation.error }}
-                </div>
-                <div v-else class="help-text">
-                  <Icon name="ph:info" />
-                  Username can only contain letters, numbers, and underscores
-                </div>
-                <div class="character-count">
-                  <span :class="{ 'over-limit': profileForm.username.length > USERNAME_LIMIT }">
-                    {{ profileForm.username.length }}/{{ USERNAME_LIMIT }}
-                  </span>
-                </div>
-              </Flex>
-            </template>
-          </Input>
-        </Flex>
-        <Flex expand class="profile-edit-form__introduction-container">
-          <Textarea
-            v-model="profileForm.introduction"
-            expand
-            name="introduction"
-            label="Introduction"
-            placeholder="A brief introduction about yourself (optional)"
-            :rows="3"
-            :maxlength="INTRODUCTION_LIMIT"
-          >
+          <Flex expand class="profile-edit-form__username-container">
+            <Input
+              v-model="profileForm.username"
+              expand
+              name="username"
+              label="Username"
+              required
+              :valid="usernameValidation.valid"
+              :error="usernameValidation.error"
+              placeholder="Enter your username"
+              :maxlength="USERNAME_LIMIT"
+            >
+              <template #after>
+                <Flex expand x-between>
+                  <div v-if="!usernameValidation.valid && profileForm.username" class="help-text error">
+                    <Icon name="ph:warning" />
+                    {{ usernameValidation.error }}
+                  </div>
+                  <div v-else class="help-text">
+                    <Icon name="ph:info" />
+                    Username can only contain letters, numbers, and underscores
+                  </div>
+                  <div class="character-count">
+                    <span :class="{ 'over-limit': profileForm.username.length > USERNAME_LIMIT }">
+                      {{ profileForm.username.length }}/{{ USERNAME_LIMIT }}
+                    </span>
+                  </div>
+                </Flex>
+              </template>
+            </Input>
+          </Flex>
+          <Flex expand class="profile-edit-form__introduction-container">
+            <Textarea
+              v-model="profileForm.introduction"
+              expand
+              name="introduction"
+              label="Introduction"
+              placeholder="A brief introduction about yourself (optional)"
+              :rows="3"
+              :maxlength="INTRODUCTION_LIMIT"
+            >
           <template #after>
             <div class="character-count">
               <span :class="{ 'over-limit': introductionCharCount > INTRODUCTION_LIMIT }">
@@ -186,6 +278,22 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
             </div>
           </template>
         </textarea>
+          </Flex>
+        </Flex>
+        <Flex column gap="m">
+          <h4>Avatar</h4>
+          <FileUpload
+            variant="avatar"
+            label="Upload Avatar"
+            :preview-url="avatarUrl"
+            :loading="avatarUploading"
+            :deleting="avatarDeleting"
+            :error="avatarError"
+            :show-delete="!!avatarUrl"
+            @upload="handleAvatarUpload"
+            @remove="handleAvatarRemove"
+            @delete="handleAvatarDeleteConfirm"
+          />
         </Flex>
       </Flex>
 
@@ -269,12 +377,47 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
         </Button>
       </Flex>
     </template>
+
+    <!-- Delete Avatar Confirmation Modal -->
+    <ConfirmModal
+      v-model:open="showDeleteConfirm"
+      v-model:confirm="confirmAvatarDelete"
+      title="Delete Avatar"
+      description="Are you sure you want to delete your avatar? This action cannot be undone."
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      :destructive="true"
+    />
   </Sheet>
 </template>
 
 <style scoped lang="scss">
 .profile-edit-form {
   padding-bottom: var(--space-m);
+
+  &__avatar-container {
+    .avatar-preview {
+      &__image {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--color-border);
+      }
+
+      &__placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px dashed var(--color-border);
+        color: var(--color-text-light);
+        font-size: var(--font-size-m);
+      }
+    }
+  }
 
   &__introduction-container,
   &__markdown-container,

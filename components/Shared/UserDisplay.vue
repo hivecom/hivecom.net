@@ -2,6 +2,7 @@
 import { Avatar, Flex } from '@dolanske/vui'
 import { onMounted, ref, watch } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
+import { getUserAvatarUrl } from '~/utils/storage'
 
 interface Props {
   userId?: string | null
@@ -17,6 +18,7 @@ const props = withDefaults(defineProps<Props>(), {
 const supabase = useSupabaseClient()
 const currentUser = useSupabaseUser()
 const user = ref<{ id: string, username: string, role: string | null } | null>(null)
+const avatarUrl = ref<string | null>(null)
 const loading = ref(true)
 const error = ref(false)
 
@@ -62,6 +64,9 @@ async function fetchUserData() {
       username: profile?.username || 'Unknown',
       role,
     }
+
+    // Fetch user avatar
+    avatarUrl.value = await getUserAvatarUrl(supabase, props.userId)
   }
   catch (err) {
     console.error('Failed to fetch user data:', err)
@@ -124,8 +129,10 @@ watch(currentUser, () => {
         class="user-display__link"
         :aria-label="`View profile of ${user.username}`"
       >
-        <Avatar :size="size">
-          {{ getUserInitials(user.username) }}
+        <Avatar :size="size" :url="avatarUrl || undefined">
+          <template v-if="!avatarUrl" #default>
+            {{ getUserInitials(user.username) }}
+          </template>
         </Avatar>
       </NuxtLink>
       <div class="user-display__info">

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Button, Calendar, Flex, Input, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
-import ConfirmModal from '../../Shared/ConfirmModal.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 const props = defineProps<{
   expense: {

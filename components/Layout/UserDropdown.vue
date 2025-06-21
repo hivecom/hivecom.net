@@ -2,6 +2,7 @@
 import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
+import { getUserAvatarUrl } from '~/utils/storage'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -10,6 +11,8 @@ const user = useSupabaseUser()
 const username = ref('')
 // Initialize user role from database
 const userRole = ref<string | null>(null)
+// Avatar URL state
+const avatarUrl = ref<string | null>(null)
 
 // Complaint modal state
 const showComplaintModal = ref(false)
@@ -41,6 +44,9 @@ onMounted(async () => {
   }
 
   userRole.value = roleData?.role || null
+
+  // Fetch user avatar URL
+  avatarUrl.value = await getUserAvatarUrl(supabase, user.value.id)
 })
 
 // Check if user is admin or moderator
@@ -75,7 +81,16 @@ async function signOut() {
     <Dropdown min-width="300px" placement="bottom-end">
       <template #trigger="{ toggle }">
         <button class="user-dropdown__trigger" @click="toggle">
-          <Avatar src="https://i.imgur.com/65aJ4oG.png" width="32" height="32" :alt="username || 'User profile'" />
+          <Avatar
+            width="32"
+            height="32"
+            :alt="username || 'User profile'"
+            :url="avatarUrl || undefined"
+          >
+            <template v-if="!avatarUrl" #default>
+              {{ username ? username.charAt(0).toUpperCase() : '?' }}
+            </template>
+          </Avatar>
         </button>
       </template>
       <DropdownTitle>

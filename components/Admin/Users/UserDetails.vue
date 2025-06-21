@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
-import { computed, watch } from 'vue'
+import { Avatar, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
 
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
@@ -8,6 +8,7 @@ import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { getUserActivityStatus } from '~/utils/lastSeen'
+import { getUserAvatarUrl } from '~/utils/storage'
 import UserActions from './UserActions.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
 
@@ -40,6 +41,10 @@ const emit = defineEmits(['edit'])
 
 // Get current user
 const currentUser = useSupabaseUser()
+const supabase = useSupabaseClient()
+
+// Avatar state
+const avatarUrl = ref<string | null>(null)
 
 // Define models for two-way binding with proper type definitions
 const isOpen = defineModel<boolean>('isOpen', { default: false })
@@ -74,6 +79,16 @@ watch(() => userAction.value, (action) => {
   }
 })
 
+// Watch for user changes to fetch avatar
+watch(() => props.user, async (newUser) => {
+  if (newUser?.id) {
+    avatarUrl.value = await getUserAvatarUrl(supabase, newUser.id)
+  }
+  else {
+    avatarUrl.value = null
+  }
+}, { immediate: true })
+
 // Computed property for user status
 const userStatus = computed(() => {
   if (!props.user) {
@@ -97,6 +112,16 @@ const activityStatus = computed(() => {
 // Handle closing the sheet
 function handleClose() {
   isOpen.value = false
+}
+
+// Get user initials for avatar fallback
+function getUserInitials(username: string): string {
+  return username
+    .split(' ')
+    .map(word => word.charAt(0))
+    .join('')
+    .substring(0, 2)
+    .toUpperCase()
 }
 </script>
 
@@ -244,15 +269,28 @@ function handleClose() {
           </Flex>
         </Card>
 
-        <!-- User Introduction -->
-        <Card v-if="user.introduction" separators>
-          <template #header>
-            <h6>Introduction</h6>
-          </template>
-          <div class="introduction-text">
-            {{ user.introduction }}
-          </div>
-        </Card>
+        <Flex expand>
+          <!-- User Introduction -->
+          <Card v-if="user.introduction" separators expand class="introduction-card">
+            <template #header>
+              <h6>Introduction</h6>
+            </template>
+            <div class="introduction-text">
+              {{ user.introduction }}
+            </div>
+          </Card>
+          <!-- User Avatar -->
+          <Card separators class="avatar-card">
+            <template #header>
+              <h6>Avatar</h6>
+            </template>
+            <Avatar :size="120" :url="avatarUrl || undefined">
+              <template v-if="!avatarUrl" #default>
+                {{ getUserInitials(user.username) }}
+              </template>
+            </Avatar>
+          </Card>
+        </Flex>
 
         <!-- User Profile Markdown -->
         <Card v-if="user.markdown" separators>
@@ -326,5 +364,26 @@ function handleClose() {
   border-radius: var(--border-radius-s);
   padding: var(--space-m);
   background-color: var(--color-bg-lowered);
+}
+
+.avatar-section {
+  padding: var(--space-l);
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+}
+
+/* Make both cards the same height */
+.avatar-card,
+.introduction-card {
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-card {
+  width: auto;
 }
 </style>

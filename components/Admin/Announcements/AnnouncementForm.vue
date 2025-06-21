@@ -2,7 +2,7 @@
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Button, Flex, Input, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
-import ConfirmModal from '../../Shared/ConfirmModal.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 // Interface for announcement query result
 interface QueryAnnouncement {
