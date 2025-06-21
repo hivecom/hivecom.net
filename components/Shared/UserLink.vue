@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CopyClipboard, Flex } from '@dolanske/vui'
+import { CopyClipboard, Flex, Skeleton } from '@dolanske/vui'
 import { onMounted, ref, watch } from 'vue'
 
 const props = defineProps<{
@@ -69,7 +69,7 @@ watch(currentUser, () => {
   </div>
 
   <div v-else-if="loading" class="user-display">
-    Loading...
+    <Skeleton :width="120" :height="20" :radius="4" />
   </div>
 
   <div v-else-if="error" class="user-display">

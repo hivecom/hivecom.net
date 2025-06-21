@@ -21,6 +21,9 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
+// Get admin permissions
+const { canDeleteComplaints } = useAdminPermissions()
+
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
@@ -196,6 +199,7 @@ function confirmDeleteComplaint() {
       <Flex x-between y-center gap="l">
         <h4>Complaint #{{ complaint?.id }}</h4>
         <Button
+          v-if="canDeleteComplaints"
           variant="danger"
           @click="handleDeleteComplaint"
         >

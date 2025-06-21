@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Skeleton, Toasts, Tooltip } from '@dolanske/vui'
 import ProfileForm from '@/components/Profile/ProfileForm.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
@@ -27,6 +27,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const isEditSheetOpen = ref(false)
 const showComplaintModal = ref(false)
+const profileSubmissionError = ref<string | null>(null)
 
 // Add refresh functionality for avatar updates
 const refreshTrigger = ref(0)
@@ -119,11 +120,11 @@ async function fetchProfile() {
       .single()
   }
   else if (props.username) {
-    // Query by username
+    // Query by username (case-insensitive)
     requestProfile = await supabase
       .from('profiles')
       .select('*')
-      .eq('username', props.username)
+      .ilike('username', props.username)
       .single()
   }
 
@@ -196,11 +197,20 @@ function openEditSheet() {
 
 function closeEditSheet() {
   isEditSheetOpen.value = false
+  // Clear any submission errors when closing
+  profileSubmissionError.value = null
+}
+
+function clearProfileError() {
+  profileSubmissionError.value = null
 }
 
 async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
   if (!profile.value)
     return
+
+  // Clear any previous errors
+  profileSubmissionError.value = null
 
   try {
     const { data, error } = await supabase
@@ -220,12 +230,20 @@ async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
     await refreshAvatar()
 
     closeEditSheet()
-
-    // In a real app, you'd show a success toast notification here
   }
-  catch (error) {
+  catch (error: unknown) {
     console.error('Error updating profile:', error)
-    // In a real app, you'd show an error toast notification here
+
+    // Handle specific database errors
+    const errorObj = error as { code?: string, message?: string }
+    if (errorObj?.code === '23505' && errorObj?.message?.includes('profiles_username_key')) {
+      // Set error for duplicate username
+      profileSubmissionError.value = 'This username is already taken (usernames are case-insensitive). Please choose a different one.'
+    }
+    else {
+      // Set generic error
+      profileSubmissionError.value = 'An error occurred while saving your profile. Please try again.'
+    }
   }
 }
 
@@ -691,9 +709,11 @@ function handleAvatarUpdate(event: Event) {
     <ProfileForm
       :profile="profile || null"
       :is-open="isEditSheetOpen"
+      :submission-error="profileSubmissionError"
       @save="handleProfileSave"
       @close="closeEditSheet"
       @update:is-open="isEditSheetOpen = $event"
+      @clear-error="clearProfileError"
     />
 
     <!-- Complaints Manager -->

@@ -8,7 +8,6 @@ const client = useSupabaseClient()
 const identifier = route.params.id as string
 
 const loading = ref(true)
-const authReady = ref(false)
 
 // UUID regex pattern to detect if the identifier is a UUID
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -18,12 +17,13 @@ const isUuid = uuidRegex.test(identifier)
 const userId = isUuid ? identifier : undefined
 const username = !isUuid ? identifier : undefined
 
-onMounted(() => {
-  const authListener = client.auth.onAuthStateChange((event, _session) => {
-    authReady.value = true
-    loading.value = false
+onMounted(async () => {
+  // First, wait for the initial session to be determined
+  const { data: { session } } = await client.auth.getSession()
 
-    if (event === 'SIGNED_OUT') {
+  // Set up auth state change listener
+  const authListener = client.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT' || !session) {
       navigateTo('/auth/sign-in')
     }
   })
@@ -33,28 +33,21 @@ onMounted(() => {
     authListener.data.subscription.unsubscribe()
   })
 
-  // Try to determine auth state immediately if user is already available
-  if (user.value) {
-    loading.value = false
-    authReady.value = true
+  // Check initial auth state
+  if (!session) {
+    navigateTo('/auth/sign-in')
+    return
   }
-  else {
-    // Set a timeout to check if we're still loading after a reasonable time
-    setTimeout(() => {
-      if (loading.value && !user.value && authReady.value) {
-        navigateTo('/auth/sign-in')
-      }
-      loading.value = false
-    }, 1000)
-  }
+
+  loading.value = false
 })
 
-// Watch for user changes
+// Watch for user changes and redirect if signed out
 watch(user, (newUser) => {
-  if (!newUser && authReady.value) {
+  if (!newUser && !loading.value) {
     navigateTo('/auth/sign-in')
   }
-})
+}, { immediate: true })
 </script>
 
 <template>

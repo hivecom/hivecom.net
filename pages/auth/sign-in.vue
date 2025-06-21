@@ -109,10 +109,14 @@ onMounted(() => {
             </template>
           </Button>
           <Alert v-if="showEmailNotice" filled variant="info">
-            An email with a sign-in link has been sent to your inbox!
+            <p class="text-s">
+              An email with a sign-in link has been sent to your inbox! Please check your spam folder as well!
+            </p>
           </Alert>
           <Alert v-if="errorMessage" variant="danger" filled>
-            {{ errorMessage }}
+            <p class="text-s">
+              {{ errorMessage }}
+            </p>
           </Alert>
         </Flex>
       </div>

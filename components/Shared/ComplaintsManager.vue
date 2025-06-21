@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { pushToast, Toasts } from '@dolanske/vui'
 import { ref, watch } from 'vue'
 import ComplaintModal from './ComplaintModal.vue'
 import ComplaintsViewer from './ComplaintsViewer.vue'
@@ -62,6 +63,12 @@ function handleCloseNewComplaint() {
 // Handle complaint submission
 function handleComplaintSubmit(data: { message: string }) {
   emit('submit', data)
+
+  // Show success toast notification
+  pushToast('Complaint submitted successfully', {
+    description: 'Your complaint has been submitted and will be reviewed by our staff team.',
+  })
+
   // Close both modals
   showNewComplaint.value = false
   showViewer.value = false
@@ -93,4 +100,6 @@ function handleClose() {
     @submit="handleComplaintSubmit"
     @close="handleCloseNewComplaint"
   />
+
+  <Toasts />
 </template>

@@ -31,6 +31,9 @@ onMounted(async () => {
 
   username.value = requestProfile.data?.username || ''
 
+  // Fetch user avatar URL
+  avatarUrl.value = await getUserAvatarUrl(supabase, user.value.id)
+
   // Fetch user role from user_roles table
   const { error, data: roleData } = await supabase
     .from('user_roles')
@@ -40,13 +43,10 @@ onMounted(async () => {
 
   if (error) {
     console.error('Error fetching user role:', error)
-    return
   }
-
-  userRole.value = roleData?.role || null
-
-  // Fetch user avatar URL
-  avatarUrl.value = await getUserAvatarUrl(supabase, user.value.id)
+  else {
+    userRole.value = roleData?.role || null
+  }
 })
 
 // Check if user is admin or moderator

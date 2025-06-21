@@ -271,12 +271,12 @@ function getUserInitials(username: string): string {
 
         <Flex expand>
           <!-- User Introduction -->
-          <Card v-if="user.introduction" separators expand class="introduction-card">
+          <Card separators expand class="introduction-card">
             <template #header>
               <h6>Introduction</h6>
             </template>
-            <div class="introduction-text">
-              {{ user.introduction }}
+            <div :class="`introduction-text ${!user.introduction ? 'color-text-lighter' : ''}`">
+              {{ user.introduction ? user.introduction : 'No introduction provided.' }}
             </div>
           </Card>
           <!-- User Avatar -->

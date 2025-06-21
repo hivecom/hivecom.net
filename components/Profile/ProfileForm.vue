@@ -10,10 +10,11 @@ import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '~/utils/st
 const props = defineProps<{
   profile: Tables<'profiles'> | null
   isOpen: boolean
+  submissionError?: string | null
 }>()
 
 // Define emits
-const emit = defineEmits(['save', 'close', 'update:isOpen'])
+const emit = defineEmits(['save', 'close', 'update:isOpen', 'clearError'])
 
 // Limits (matching database constraints)
 const USERNAME_LIMIT = 32
@@ -45,6 +46,11 @@ const usernameValidation = computed(() => {
 
   if (/\s/.test(username)) {
     return { valid: false, error: 'Username cannot contain spaces' }
+  }
+
+  // Show submission error if it exists and is related to username
+  if (props.submissionError && props.submissionError.toLowerCase().includes('username')) {
+    return { valid: false, error: props.submissionError }
   }
 
   return { valid: true, error: null }
@@ -106,6 +112,13 @@ watch(
   },
   { immediate: true },
 )
+
+// Clear submission error when username changes
+watch(() => profileForm.value.username, () => {
+  if (props.submissionError) {
+    emit('clearError')
+  }
+})
 
 // Handle closing the sheet
 function handleClose() {
@@ -249,7 +262,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
                   </div>
                   <div v-else class="help-text">
                     <Icon name="ph:info" />
-                    Username can only contain letters, numbers, and underscores
+                    Username can only contain letters, numbers, and underscores. Usernames are case-insensitive.
                   </div>
                   <div class="character-count">
                     <span :class="{ 'over-limit': profileForm.username.length > USERNAME_LIMIT }">
