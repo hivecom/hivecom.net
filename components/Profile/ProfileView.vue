@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Skeleton, Toasts, Tooltip } from '@dolanske/vui'
+import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import ProfileForm from '@/components/Profile/ProfileForm.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
