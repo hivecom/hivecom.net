@@ -209,24 +209,24 @@ useHead({
 .announcements__grid--regular,
 .announcements__grid--filtered,
 .announcements__grid--loading {
-  :deep(.vui-grid__item) {
+  .vui-grid__item {
     display: flex;
     align-items: stretch;
   }
 
-  :deep(.announcement-card) {
+  .announcement-card {
     height: 100%;
     display: flex;
     flex-direction: column;
   }
 
-  :deep(.announcement-card__content) {
+  .announcement-card__content {
     flex: 1;
     display: flex;
     flex-direction: column;
   }
 
-  :deep(.announcement-card__description) {
+  .announcement-card__description {
     flex: 1;
   }
 }

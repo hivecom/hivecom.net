@@ -69,7 +69,6 @@ INSERT INTO public.role_permissions(role, permission)
 ('moderator', 'events.read'),
 ('moderator', 'events.update'),
 ('moderator', 'forums.create'),
-('moderator', 'forums.delete'),
 ('moderator', 'forums.read'),
 ('moderator', 'forums.update'),
 ('moderator', 'games.create'),
@@ -88,7 +87,6 @@ INSERT INTO public.role_permissions(role, permission)
 ('moderator', 'referendums.update'),
 ('moderator', 'roles.read'),
 ('moderator', 'users.create'),
-('moderator', 'users.delete'),
 ('moderator', 'users.read'),
 ('moderator', 'users.update');
 
@@ -175,15 +173,126 @@ ON CONFLICT (id)
     username = EXCLUDED.username,
     introduction = EXCLUDED.introduction;
 
--- Insert an upcoming test event
+-- Insert an upcoming test event (moved 2 weeks earlier)
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '30 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '16 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
 # Community Gaming Night
 
 It is that time of the month again! Join us for our community gaming night where we play various games together, chat, and have fun.
 
 We will probably be playing on our CS2 server, but feel free to suggest other games as well.
   ');
+
+-- Insert Hivecom Meetup event in Prague
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '1 month', 'Epic 3-day meetup in Prague with pub crawls, LAN parties, and community bonding!', 'Hivecom Meetup - Prague', 'Prague, Czech Republic', '
+# Hivecom Meetup - Prague
+
+The moment we''ve all been waiting for! Join us for a 3-day community meetup in the beautiful city of Prague!
+
+## What''s Planned
+
+### Day 1 - Arrival & Pub Crawl
+- **Afternoon**: Arrival and check-in at our Airbnb
+- **Evening**: Classic Prague pub crawl through the historic center
+
+### Day 2 - LAN Party
+- **All Day**: LAN party at our Airbnb, followed by evening Beerio Kart sessions and drinking games.
+
+### Day 3 - Sightseeing & Farewell
+- **Morning**: Prague Castle and Old Town exploration
+- **Afternoon**: Group lunch and final hangout
+- **Evening**: Farewell dinner and departure preparations
+
+## What to Bring
+
+- Your gaming laptop/gear for the LAN party
+- Comfortable walking shoes for the pub crawl
+- Good vibes and readiness to have an amazing time!
+
+## Accommodation
+
+We''ve booked a large Airbnb that can accommodate the whole crew. The place has:
+- High-speed internet perfect for gaming
+- Large common areas for the LAN setup
+- Multiple bedrooms and bathrooms
+- Kitchen for late-night snacks
+
+## Getting There
+
+Prague is easily accessible by:
+- **Flight**: Václav Havel Airport Prague (PRG)
+- **Train**: Central Prague railway station
+- **Bus**: Various bus connections from major European cities
+
+## Cost Estimate
+
+- Accommodation: ~€40/night per person (3 nights)
+- Food & drinks: ~€50/day per person
+- Activities: ~€30 total per person
+- **Total estimated cost**: ~€200 per person
+
+## RSVP
+
+Please let us know if you''re coming so we can:
+- Confirm accommodation capacity
+- Plan food and drinks accordingly
+- Organize group activities
+
+Can''t wait to meet everyone in person!
+
+## Questions?
+
+Hit up in #events on IRC or drop me a direct message if you have any questions about the meetup!
+  ', 4320);
+
+-- Insert LAN Crossover Game Night (synced with Prague meetup day 2)
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '1 month' + INTERVAL '1 day', 'Join the Prague crew online for an epic crossover LAN party with livestream, games, and drinks!', 'LAN Crossover Game Night', 'Online + Prague Airbnb', '
+# LAN Crossover Game Night!
+
+Tonight''s extra special - we''re crossing over with our Prague meetup crew!
+
+## What''s Happening
+
+The Prague gang will be hosting their LAN party at the Airbnb, and we''re all invited to join the fun online! They''ll be livestreaming the entire experience so we can hang out together virtually.
+
+### Schedule
+
+- **6:00 PM CET**: Stream goes live from Prague Airbnb
+- **6:30 PM CET**: Multi-game session starts - join in!
+- **10:00 PM CET**: Drinking games and Beerio Kart
+- **Late Night**: We''ll see how things go!
+
+## How to Join
+
+### Online Participants
+- **Discord**: Join the #lan-crossover voice channel
+- **Stream**: Watch the Prague feed on our Twitch
+- **Games**: The usual community staples!
+- **Drinks**: BYOB for the crossover drinking games!
+
+### Prague Crew
+- You''re already sorted - just don''t forget to start the stream!
+
+## Games We''ll Play
+
+1. **Garrys Mod**: Probably some TTT, Prop Hunt, or Hide and Seek
+2. **Counter-Strike Source**: Classic CS matches
+3. **Jackbox Games**: Everyone can join with phone/browser
+4. **Beerio Kart**: Synchronized drinking game madness
+5. **Drinking Games**: We''ll figure this one out as we go!
+
+## Stream Setup
+
+The Prague crew will be streaming on:
+- **Main Camera**: Overview of the LAN setup
+- **Game Feed**: Direct capture of gameplay
+
+## Questions?
+
+Drop questions in #events or ask during the stream - the Prague crew will be monitoring chat throughout the night!
+  ', 480);
 
 -- Insert an ongoing test event
 INSERT INTO "public"."events"("id", "created_at", "created_by", "modified_at", "modified_by", "title", "description", "note", "markdown", "date", "location", "link", "duration_minutes")
@@ -229,11 +338,11 @@ Please keep them to yourself.
 There are no refunds. Why did you pay for this to begin with?', NOW(), 'TeamSpeak', 'https://ts.hivecom.net', 10080);
 
 -- Insert an expired test event
-INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
-  VALUES (NOW() - INTERVAL '10 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '5 days', 'Join us for a scenic hike through the beautiful Harz National Park!', 'Hike in Harz National Park', 'Harz National Park, Germany', '
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
+  VALUES (NOW() - INTERVAL '10 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '5 days', 'Join us for a scenic 4-day hike through the beautiful Harz National Park!', 'Hike in Harz National Park', 'Harz National Park, Germany', '
 # Hike in Harz National Park
 
-Join us for an amazing hiking adventure in the Harz National Park, Germany!
+Join us for an amazing 4-day hiking adventure in the Harz National Park, Germany!
 
 ## What we will explore
 
@@ -242,8 +351,8 @@ Join us for an amazing hiking adventure in the Harz National Park, Germany!
 - Local wildlife and nature
 - Historic mining heritage sites
 
-Let me know if you have any questions or suggestions for the hike. Please also RSVP so I can plan accordingly!
-  ');
+This will be a multi-day expedition with camping opportunities. Let me know if you have any questions or suggestions for the hike. Please also RSVP so I can plan accordingly!
+  ', 5760);
 
 -- Insert a test server
 INSERT INTO public.servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port)

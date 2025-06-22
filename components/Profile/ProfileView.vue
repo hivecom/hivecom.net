@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Skeleton, Toasts, Tooltip } from '@dolanske/vui'
+import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import ProfileForm from '@/components/Profile/ProfileForm.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
@@ -820,47 +820,6 @@ function handleAvatarUpdate(event: Event) {
 
 .profile-markdown {
   line-height: 1.6;
-
-  :deep(p) {
-    margin: 0 0 var(--space-m) 0;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  :deep(h1, h2, h3, h4, h5, h6) {
-    margin: var(--space-l) 0 var(--space-s) 0;
-
-    &:first-child {
-      margin-top: 0;
-    }
-  }
-
-  :deep(ul, ol) {
-    margin: var(--space-s) 0;
-    padding-left: var(--space-l);
-  }
-
-  :deep(code) {
-    background: var(--color-bg-raised);
-    padding: var(--space-xs) var(--space-s);
-    border-radius: var(--border-radius-s);
-    font-family: var(--font-family-mono);
-    font-size: var(--font-size-s);
-  }
-
-  :deep(pre) {
-    background: var(--color-bg-raised);
-    padding: var(--space-m);
-    border-radius: var(--border-radius-m);
-    overflow-x: auto;
-
-    code {
-      background: none;
-      padding: 0;
-    }
-  }
 }
 
 .empty-state {

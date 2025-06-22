@@ -172,19 +172,6 @@ function handleAcknowledge(event: Event) {
   min-height: 280px;
 }
 
-/* Ensure the card content area grows to fill available space */
-.complaint-card :deep(.vui-card-content) {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Ensure footer stays at bottom */
-.complaint-card :deep(.vui-card-footer) {
-  margin-top: auto;
-  justify-content: flex-end;
-}
-
 .complaint-card:hover {
   background-color: var(--color-bg-raised);
   transform: translateY(-1px);

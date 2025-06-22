@@ -13,22 +13,27 @@ const search = ref('')
 </script>
 
 <template>
-  <div class="votes-page">
-    <Flex y-center gap="l" class="mb-l">
-      <h1>Votes</h1>
-      <Button
-        variant="accent"
-        aria-label="Create a new poll"
-        @click="$router.push('/votes/create')"
-      >
-        Create poll
-      </Button>
-    </Flex>
-
-    <p class="text-xl mb-xl">
-      Planning a movie night? Need to decide dates for an event? <br>
-      Let others cast their vote and figure it out!
-    </p>
+  <div class="page">
+    <!-- Hero section -->
+    <section>
+      <Flex :gap="0" expand column>
+        <Flex y-center x-between expand>
+          <h1>
+            Votes
+          </h1>
+          <Button
+            variant="accent"
+            aria-label="Create a new poll"
+            @click="$router.push('/votes/create')"
+          >
+            Create poll
+          </Button>
+        </Flex>
+        <p>
+          Planning a movie night? Need to decide dates for an event? Let others cast their vote and figure it out!
+        </p>
+      </Flex>
+    </section>
 
     <Tabs v-model="tab" class="my-m">
       <Tab value="Active" />

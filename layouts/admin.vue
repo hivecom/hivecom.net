@@ -251,10 +251,6 @@ const open = ref(true)
 </template>
 
 <style lang="scss" scoped>
-:deep(h3) {
-  margin-bottom: var(--space-m);
-}
-
 .admin-layout {
   &__loading {
     display: flex;

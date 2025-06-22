@@ -523,15 +523,6 @@ defineExpose({
   width: 100%;
 }
 
-/* Additional responsive adjustments for compact mode */
-@media (max-width: 1200px) {
-  :deep(.table-compact td),
-  :deep(.table-compact th) {
-    padding-left: var(--space-xs);
-    padding-right: var(--space-xs);
-  }
-}
-
 .user-row {
   cursor: pointer;
   transition: background-color 0.2s ease;
