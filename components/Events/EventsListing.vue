@@ -9,12 +9,7 @@ interface Props {
   errorMessage: string
 }
 
-interface Emits {
-  (e: 'openEvent', event: Tables<'events'>): void
-}
-
 const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
 
 // Split events into upcoming, ongoing, and past
 const upcomingEvents = computed(() => {
@@ -57,10 +52,6 @@ const pastEvents = computed(() => {
     return eventEnd < now
   }).reverse()
 })
-
-function handleEventOpen(event: Tables<'events'>) {
-  emit('openEvent', event)
-}
 </script>
 
 <template>
@@ -98,7 +89,6 @@ function handleEventOpen(event: Tables<'events'>) {
           :data="event"
           :index="index"
           :is-ongoing="true"
-          @open="handleEventOpen(event)"
         />
       </div>
     </div>
@@ -126,7 +116,6 @@ function handleEventOpen(event: Tables<'events'>) {
           :key="event.id"
           :data="event"
           :index="index"
-          @open="handleEventOpen(event)"
         />
       </div>
     </div>
@@ -152,7 +141,6 @@ function handleEventOpen(event: Tables<'events'>) {
           :data="event"
           :index="index"
           :is-past="true"
-          @open="handleEventOpen(event)"
         />
       </div>
     </div>

@@ -29,6 +29,10 @@ const isEditSheetOpen = ref(false)
 const showComplaintModal = ref(false)
 const profileSubmissionError = ref<string | null>(null)
 
+// Friend-related state
+const friendshipStatus = ref<'none' | 'friends' | 'pending' | 'loading'>('none')
+const friendshipId = ref<number | null>(null)
+
 // Add refresh functionality for avatar updates
 const refreshTrigger = ref(0)
 
@@ -42,6 +46,16 @@ const isOwnProfile = computed(() => {
 // Computed property to check if the current user is an admin
 const isCurrentUserAdmin = computed(() => {
   return currentUserRole.value === 'admin'
+})
+
+// Computed property to check if users can friend each other
+const canFriend = computed(() => {
+  return user.value && profile.value && !isOwnProfile.value && friendshipStatus.value === 'none'
+})
+
+// Computed property to check if users are friends
+const areFriends = computed(() => {
+  return friendshipStatus.value === 'friends'
 })
 
 // Computed property for user activity status
@@ -168,6 +182,9 @@ async function fetchProfile() {
 
     currentUserRole.value = currentRoleData?.role || null
   }
+
+  // Check friendship status after profile is loaded
+  await checkFriendshipStatus()
 
   loading.value = false
 }
@@ -363,6 +380,14 @@ watch(refreshTrigger, () => {
 watch(() => profile.value?.id, async (newId, oldId) => {
   if (newId && newId !== oldId) {
     await refreshAvatar()
+    await checkFriendshipStatus()
+  }
+})
+
+// Watch for user authentication changes to recheck friendship status
+watch(() => user.value?.id, async (newUserId, oldUserId) => {
+  if (newUserId !== oldUserId) {
+    await checkFriendshipStatus()
   }
 })
 
@@ -377,6 +402,104 @@ function handleAvatarUpdate(event: Event) {
   const customEvent = event as CustomEvent
   if (customEvent.detail?.userId === profile.value?.id) {
     refreshAvatar()
+  }
+}
+
+// Friend-related functions
+async function checkFriendshipStatus() {
+  if (!user.value || !profile.value || isOwnProfile.value) {
+    friendshipStatus.value = 'none'
+    return
+  }
+
+  friendshipStatus.value = 'loading'
+
+  try {
+    // Check if there's an existing friendship (in either direction)
+    const { data, error } = await supabase
+      .from('friends')
+      .select('id, friender, friend')
+      .or(`and(friender.eq.${user.value.id},friend.eq.${profile.value.id}),and(friender.eq.${profile.value.id},friend.eq.${user.value.id})`)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      console.error('Error checking friendship status:', error)
+      friendshipStatus.value = 'none'
+      return
+    }
+
+    if (data) {
+      friendshipStatus.value = 'friends'
+      friendshipId.value = data.id
+    }
+    else {
+      friendshipStatus.value = 'none'
+      friendshipId.value = null
+    }
+  }
+  catch (error) {
+    console.error('Error checking friendship status:', error)
+    friendshipStatus.value = 'none'
+  }
+}
+
+async function addFriend() {
+  if (!user.value || !profile.value || isOwnProfile.value) {
+    return
+  }
+
+  friendshipStatus.value = 'loading'
+
+  try {
+    const { data, error } = await supabase
+      .from('friends')
+      .insert({
+        friender: user.value.id,
+        friend: profile.value.id,
+      })
+      .select('id')
+      .single()
+
+    if (error) {
+      console.error('Error adding friend:', error)
+      friendshipStatus.value = 'none'
+      return
+    }
+
+    friendshipStatus.value = 'friends'
+    friendshipId.value = data.id
+  }
+  catch (error) {
+    console.error('Error adding friend:', error)
+    friendshipStatus.value = 'none'
+  }
+}
+
+async function removeFriend() {
+  if (!user.value || !profile.value || !friendshipId.value) {
+    return
+  }
+
+  friendshipStatus.value = 'loading'
+
+  try {
+    const { error } = await supabase
+      .from('friends')
+      .delete()
+      .eq('id', friendshipId.value)
+
+    if (error) {
+      console.error('Error removing friend:', error)
+      friendshipStatus.value = 'friends'
+      return
+    }
+
+    friendshipStatus.value = 'none'
+    friendshipId.value = null
+  }
+  catch (error) {
+    console.error('Error removing friend:', error)
+    friendshipStatus.value = 'friends'
   }
 }
 </script>
@@ -416,6 +539,7 @@ function handleAvatarUpdate(event: Event) {
 
                 <!-- Action buttons -->
                 <Flex gap="s">
+                  <Skeleton height="2.5rem" width="7rem" style="border-radius: 0.5rem;" />
                   <Skeleton height="2.5rem" width="7rem" style="border-radius: 0.5rem;" />
                   <Skeleton height="2.5rem" width="6rem" style="border-radius: 0.5rem;" />
                 </Flex>
@@ -577,6 +701,39 @@ function handleAvatarUpdate(event: Event) {
 
                 <!-- Action Buttons (for other profiles) -->
                 <Flex v-else gap="s">
+                  <!-- Friend button -->
+                  <Button
+                    v-if="canFriend"
+                    variant="accent"
+                    :disabled="friendshipStatus === 'loading'"
+                    @click="addFriend"
+                  >
+                    <template #start>
+                      <Icon name="ph:user-plus" />
+                    </template>
+                    Add Friend
+                  </Button>
+
+                  <Button
+                    v-else-if="areFriends"
+                    variant="gray"
+                    :disabled="friendshipStatus === 'loading'"
+                    @click="removeFriend"
+                  >
+                    <template #start>
+                      <Icon name="ph:user-minus" />
+                    </template>
+                    Remove Friend
+                  </Button>
+
+                  <!-- Show loading skeleton while checking friendship status -->
+                  <Skeleton
+                    v-else-if="friendshipStatus === 'loading'"
+                    height="2.5rem"
+                    width="7rem"
+                    style="border-radius: 0.5rem;"
+                  />
+
                   <Button variant="gray" @click="copyProfileURL">
                     <template #start>
                       <Icon name="ph:link" />

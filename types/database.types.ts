@@ -20,6 +20,7 @@ export interface Database {
           modified_at: string | null
           modified_by: string | null
           pinned: boolean
+          published_at: string
           title: string
         }
         Insert: {
@@ -32,6 +33,7 @@ export interface Database {
           modified_at?: string | null
           modified_by?: string | null
           pinned?: boolean
+          published_at?: string
           title: string
         }
         Update: {
@@ -44,6 +46,7 @@ export interface Database {
           modified_at?: string | null
           modified_by?: string | null
           pinned?: boolean
+          published_at?: string
           title?: string
         }
         Relationships: []
@@ -187,6 +190,47 @@ export interface Database {
         }
         Relationships: []
       }
+      events_rsvps: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_id: number
+          id: number
+          modified_at: string | null
+          modified_by: string | null
+          rsvp: Database['public']['Enums']['events_rsvp_status']
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_id: number
+          id?: number
+          modified_at?: string | null
+          modified_by?: string | null
+          rsvp: Database['public']['Enums']['events_rsvp_status']
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_id?: number
+          id?: number
+          modified_at?: string | null
+          modified_by?: string | null
+          rsvp?: Database['public']['Enums']['events_rsvp_status']
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'events_rsvps_event_id_fkey'
+            columns: ['event_id']
+            isOneToOne: false
+            referencedRelation: 'events'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount_cents: number
@@ -226,6 +270,27 @@ export interface Database {
           name?: string | null
           started_at?: string
           url?: string | null
+        }
+        Relationships: []
+      }
+      friends: {
+        Row: {
+          created_at: string
+          friend: string
+          friender: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          friend: string
+          friender: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          friend?: string
+          friender?: string
+          id?: number
         }
         Relationships: []
       }
@@ -681,6 +746,7 @@ export interface Database {
         | 'users.read'
         | 'users.update'
       app_role: 'admin' | 'moderator'
+      events_rsvp_status: 'yes' | 'no' | 'tentative'
       region: 'eu' | 'na' | 'all'
     }
     CompositeTypes: {
@@ -855,6 +921,7 @@ export const Constants = {
         'users.update',
       ],
       app_role: ['admin', 'moderator'],
+      events_rsvp_status: ['yes', 'no', 'tentative'],
       region: ['eu', 'na', 'all'],
     },
   },

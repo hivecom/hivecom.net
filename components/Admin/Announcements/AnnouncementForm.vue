@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
-import { Button, Flex, Input, Sheet, Switch, Textarea } from '@dolanske/vui'
+import { Button, Calendar, Flex, Input, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
@@ -15,6 +15,7 @@ interface QueryAnnouncement {
   modified_at: string | null
   modified_by: string | null
   pinned: boolean
+  published_at: string
   title: string
 }
 
@@ -36,6 +37,7 @@ const announcementForm = ref({
   markdown: '',
   link: '',
   pinned: false,
+  published_at: null as Date | null,
 })
 
 // State for delete confirmation modal
@@ -45,6 +47,7 @@ const showDeleteConfirm = ref(false)
 const validation = computed(() => ({
   title: !!announcementForm.value.title.trim(),
   markdown: !!announcementForm.value.markdown.trim(),
+  published_at: !!announcementForm.value.published_at,
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -60,6 +63,7 @@ watch(
         markdown: newAnnouncement.markdown || '',
         link: newAnnouncement.link || '',
         pinned: newAnnouncement.pinned || false,
+        published_at: newAnnouncement.published_at ? new Date(newAnnouncement.published_at) : new Date(),
       }
     }
     else {
@@ -69,6 +73,7 @@ watch(
         markdown: '',
         link: '',
         pinned: false,
+        published_at: new Date(),
       }
     }
   },
@@ -92,6 +97,7 @@ function handleSubmit() {
     markdown: announcementForm.value.markdown,
     link: announcementForm.value.link || null,
     pinned: announcementForm.value.pinned,
+    published_at: announcementForm.value.published_at ? announcementForm.value.published_at.toISOString() : new Date().toISOString(),
   }
 
   emit('save', announcementData)
@@ -145,6 +151,43 @@ function confirmDelete() {
           error="Announcement title is required"
           placeholder="Enter announcement title"
         />
+
+        <Flex column class="announcement-form__date-picker-container" expand>
+          <label for="published-date-picker" class="announcement-form__date-picker-label">
+            Publish Date <span class="required" style="color: var(--color-text-red);">*</span>
+          </label>
+          <Calendar
+            v-model="announcementForm.published_at"
+            expand
+            enable-time-picker
+            time-picker-inline
+            enable-minutes
+            is24
+            format="yyyy-MM-dd-HH:mm"
+            :class="{ invalid: !validation.published_at }"
+          >
+            <template #trigger>
+              <Button
+                id="published-date-picker"
+                class="announcement-form__date-picker-button"
+                expand
+                :class="{ error: !validation.published_at }"
+              >
+                {{ announcementForm.published_at ? announcementForm.published_at.toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                }) : 'Choose publication date and time' }}
+                <template #end>
+                  <Icon name="ph:calendar" />
+                </template>
+              </Button>
+            </template>
+          </Calendar>
+        </Flex>
 
         <Textarea
           v-model="announcementForm.description"
@@ -247,6 +290,18 @@ function confirmDelete() {
 <style scoped lang="scss">
 .announcement-form {
   padding-bottom: var(--space);
+
+  &__date-picker-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  &__date-picker-label {
+    font-size: var(--font-size-s);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+  }
 }
 
 .form-actions {
@@ -261,5 +316,9 @@ function confirmDelete() {
   font-weight: var(--font-weight-medium);
   color: var(--color-text);
   cursor: pointer;
+}
+
+.required {
+  color: var(--color-danger);
 }
 </style>

@@ -24,8 +24,9 @@ async function fetchAnnouncements() {
     const { data, error: fetchError } = await supabase
       .from('announcements')
       .select('*')
+      .lte('published_at', new Date().toISOString())
       .order('pinned', { ascending: false })
-      .order('created_at', { ascending: false })
+      .order('published_at', { ascending: false })
 
     if (fetchError) {
       error.value = fetchError.message

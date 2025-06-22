@@ -93,8 +93,8 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
             resource-type="expenses"
             :item="props.expense"
             :show-labels="true"
-            @edit="handleEdit"
-            @delete="handleDelete"
+            @edit="(expenseItem) => handleEdit(expenseItem as Tables<'expenses'>)"
+            @delete="(expenseItem) => handleDelete(expenseItem as Tables<'expenses'>)"
           />
         </Flex>
       </Flex>

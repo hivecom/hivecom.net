@@ -4,6 +4,7 @@ import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
 const props = defineProps<{
   announcement: Tables<'announcements'> | null
@@ -55,8 +56,8 @@ function handleDelete(announcement: Tables<'announcements'>) {
             resource-type="announcements"
             :item="props.announcement"
             :show-labels="true"
-            @edit="handleEdit"
-            @delete="handleDelete"
+            @edit="(announcementItem) => handleEdit(announcementItem as Tables<'announcements'>)"
+            @delete="(announcementItem) => handleDelete(announcementItem as Tables<'announcements'>)"
           />
         </Flex>
       </Flex>
@@ -81,6 +82,15 @@ function handleDelete(announcement: Tables<'announcements'>) {
               <span class="color-text-light text-bold">Pinned:</span>
               <Icon v-if="props.announcement.pinned" name="ph:push-pin-fill" class="color-accent" />
               <span v-else class="color-text-light">No</span>
+            </Grid>
+
+            <Grid class="announcement-details__item" expand :columns="2">
+              <span class="color-text-light text-bold">Published:</span>
+              <TimestampDate
+                :date="props.announcement.published_at"
+                size="s"
+                class="color-text"
+              />
             </Grid>
 
             <Grid v-if="props.announcement.link" class="announcement-details__item" expand :columns="2">

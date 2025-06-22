@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Divider, Flex, Grid, Tooltip } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
+import EventRSVPCount from './EventRSVPCount.vue'
 
 const props = defineProps<{
   data: Tables<'events'>
@@ -163,8 +164,7 @@ updateTime()
       </h5>
       <p>
         {{ props.data.description }}
-      </p>
-      <Flex gap="xs">
+      </p>      <Flex gap="xs">
         <Badge v-if="props.data.location" variant="neutral">
           <Icon name="ph:map-pin-fill" />
           {{ props.data.location }}
@@ -180,6 +180,13 @@ updateTime()
             Note
           </Badge>
         </Tooltip>
+
+        <!-- RSVP Count Badge -->
+        <EventRSVPCount
+          :event="props.data"
+          size="s"
+          :show-when-zero="false"
+        />
       </Flex>
     </Flex>
 

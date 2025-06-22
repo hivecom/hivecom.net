@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import EventRSVPCount from '@/components/Events/EventRSVPCount.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -83,8 +84,8 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
             resource-type="events"
             :item="props.event"
             :show-labels="true"
-            @edit="handleEdit"
-            @delete="handleDelete"
+            @edit="(eventItem) => handleEdit(eventItem as Tables<'events'>)"
+            @delete="(eventItem) => handleDelete(eventItem as Tables<'events'>)"
           />
         </Flex>
       </Flex>
@@ -131,6 +132,16 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
                 {{ props.event.link }}
                 <Icon name="ph:arrow-square-out" />
               </NuxtLink>
+            </Grid>
+
+            <Grid class="detail-item" expand :columns="2">
+              <span class="color-text-light text-bold">RSVPs:</span>
+              <EventRSVPCount
+                :event="props.event"
+                variant="info"
+                size="s"
+                :show-when-zero="true"
+              />
             </Grid>
           </Flex>
         </Card>

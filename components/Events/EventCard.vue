@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
+import EventRSVPCount from './EventRSVPCount.vue'
 
 interface Props {
   event: Tables<'events'>
@@ -143,7 +144,7 @@ function handleClick() {
       </p>
 
       <!-- Event metadata -->
-      <div v-if="event.location || event.note" class="event-card__meta">
+      <div v-if="event.location || event.note || !compact" class="event-card__meta">
         <Badge v-if="event.location" variant="neutral" size="s">
           <Icon name="ph:map-pin" />
           {{ event.location }}
@@ -152,6 +153,13 @@ function handleClick() {
           <Icon name="ph:note" />
           Note
         </Badge>
+
+        <!-- RSVP Count for non-compact view -->
+        <EventRSVPCount
+          :event="event"
+          size="s"
+          :show-when-zero="false"
+        />
       </div>
     </div>
 
@@ -383,6 +391,12 @@ function handleClick() {
     flex-wrap: wrap;
     gap: var(--space-xs);
     margin-bottom: var(--space-s);
+  }
+
+  &__rsvp-count {
+    margin-top: var(--space-xs);
+    font-size: var(--font-size-s);
+    color: var(--color-text-light);
   }
 
   &__hover-indicator {

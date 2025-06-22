@@ -4,6 +4,8 @@ import { Badge, Button, Flex, Tooltip } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
 import CountdownTimer from './CountdownTimer.vue'
+import EventRSVPCount from './EventRSVPCount.vue'
+import RSVPButton from './RSVPButton.vue'
 
 interface Props {
   event: Tables<'events'>
@@ -18,7 +20,7 @@ interface Props {
   timeAgo?: string
 }
 
-defineProps<Props>()
+const _props = defineProps<Props>()
 </script>
 
 <template>
@@ -88,22 +90,30 @@ defineProps<Props>()
             {{ isUpcoming ? 'Upcoming' : 'Past Event' }}
           </Badge>
         </template>
+
+        <!-- RSVP Count Badge -->
+        <EventRSVPCount :event="event" variant="accent" size="l" :show-when-zero="false" />
       </Flex>
 
-      <!-- External Link -->
-      <NuxtLink
-        v-if="event.link"
-        :to="event.link"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Button variant="accent" size="s">
-          <template #start>
-            <Icon name="ph:link" />
-          </template>
-          Open Link
-        </Button>
-      </NuxtLink>
+      <Flex gap="xs" class="event-header__actions">
+        <!-- RSVP button -->
+        <RSVPButton :event="event" size="s" />
+
+        <!-- External Link -->
+        <NuxtLink
+          v-if="event.link"
+          :to="event.link"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Button variant="accent" size="s">
+            <template #start>
+              <Icon name="ph:link" />
+            </template>
+            Open Link
+          </Button>
+        </NuxtLink>
+      </Flex>
     </Flex>
   </div>
 </template>

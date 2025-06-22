@@ -15,7 +15,17 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+// Initialize with current date and ensure it updates properly
 const date = ref(new Date())
+
+// Ensure calendar starts on today's date and handle timezone properly
+onMounted(() => {
+  // Create a fresh date object to avoid any stale date issues
+  const today = new Date()
+  // Reset time to start of day to avoid timezone confusion
+  today.setHours(0, 0, 0, 0)
+  date.value = today
+})
 
 // Theme detection
 const isDark = computed(() => theme.value === 'dark')
@@ -190,6 +200,8 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
         borderless
         :rows="3"
         :first-day-of-week="2"
+        :initial-page="{ month: date.getMonth() + 1,
+                         year: date.getFullYear() }"
         @dayclick="onDayClick"
       >
         <template #day-popover="{ dayTitle, attributes }">
@@ -220,14 +232,16 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
                       {{ formatEventTime(customData) }}
                     </div>
                   </div>
-                  <div v-if="customData.location" class="event-popover__location">
-                    <Icon name="ph:map-pin" size="12" />
-                    {{ customData.location }}
-                  </div>
-                  <div v-if="customData.duration_minutes" class="event-popover__duration">
-                    <Icon name="ph:clock" size="12" />
-                    {{ formatEventDuration(customData) }}
-                  </div>
+                  <Flex y-center>
+                    <div v-if="customData.location" class="event-popover__location">
+                      <Icon name="ph:map-pin" size="12" />
+                      {{ customData.location }}
+                    </div>                  <div v-if="customData.duration_minutes" class="event-popover__duration">
+                      <Icon name="ph:clock" size="12" />
+                      {{ formatEventDuration(customData) }}
+                    </div>
+                  </Flex>
+
                   <div class="event-popover__action">
                     <Icon name="ph:arrow-right" size="12" />
                     View details
@@ -380,6 +394,16 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
     gap: var(--space-xxs);
     margin-bottom: var(--space-xxs);
     line-height: 1.3;
+  }
+
+  &__rsvp {
+    margin-bottom: var(--space-xxs);
+
+    // Override badge styling to fit popover
+    .vui-badge {
+      font-size: var(--font-size-xxs);
+      padding: 2px 6px;
+    }
   }
 
   &__action {
@@ -622,6 +646,13 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
     &__location,
     &__duration {
       font-size: var(--font-size-xxs);
+    }
+
+    &__rsvp {
+      .vui-badge {
+        font-size: var(--font-size-xxs);
+        padding: 1px 4px;
+      }
     }
 
     &__action {
