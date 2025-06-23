@@ -158,6 +158,7 @@ useHead({
               v-for="announcement in pinnedAnnouncements"
               :key="announcement.id"
               :announcement="announcement"
+              expand
             />
           </Flex>
 
@@ -175,14 +176,12 @@ useHead({
 
           <!-- All filtered announcements (when filters are active) -->
           <Flex v-if="showPinnedOnly" column gap="m" class="announcements__section" expand>
-            <Grid :columns="3" gap="m" class="announcements__grid--filtered" expand>
-              <AnnouncementCard
-                v-for="(announcement, index) in filteredAnnouncements"
-                :key="announcement.id"
-                :announcement="announcement"
-                :is-latest="index === 0"
-              />
-            </Grid>
+            <AnnouncementCard
+              v-for="(announcement, index) in filteredAnnouncements"
+              :key="announcement.id"
+              :announcement="announcement"
+              :is-latest="index === 0"
+            />
           </Flex>
         </template>
 

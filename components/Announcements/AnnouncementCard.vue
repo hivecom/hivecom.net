@@ -24,6 +24,7 @@ function handleClick() {
 
 <template>
   <Card
+    expand
     class="announcement-card"
     :class="{
       'announcement-card--pinned': announcement.pinned,

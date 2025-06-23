@@ -2,56 +2,29 @@
 import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
-import { getUserAvatarUrl } from '~/utils/storage'
+import { useUserData } from '@/composables/useUserData'
 
-const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 
-// Initialize username ref for profile data
-const username = ref('')
-// Initialize user role from database
-const userRole = ref<string | null>(null)
-// Avatar URL state
-const avatarUrl = ref<string | null>(null)
+// Use cached user data for the current user
+const {
+  user: userData,
+  userInitials,
+} = useUserData(
+  computed(() => user.value?.id || null),
+  {
+    includeRole: true,
+    includeAvatar: true,
+    userTtl: 15 * 60 * 1000, // 15 minutes for current user
+    avatarTtl: 60 * 60 * 1000, // 1 hour for avatar
+  },
+)
 
 // Complaint modal state
 const showComplaintModal = ref(false)
-
-// Fetch username from profile and role from user_roles
-onMounted(async () => {
-  if (!user.value)
-    return
-
-  // Fetch profile data
-  const requestProfile = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.value.id)
-    .single()
-
-  username.value = requestProfile.data?.username || ''
-
-  // Fetch user avatar URL
-  avatarUrl.value = await getUserAvatarUrl(supabase, user.value.id)
-
-  // Fetch user role from user_roles table
-  const { error, data: roleData } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.value.id)
-    .single()
-
-  if (error) {
-    console.error('Error fetching user role:', error)
-  }
-  else {
-    userRole.value = roleData?.role || null
-  }
-})
-
 // Check if user is admin or moderator
 const isAdminOrMod = computed(() => {
-  return userRole.value === 'admin' || userRole.value === 'moderator'
+  return userData.value?.role === 'admin' || userData.value?.role === 'moderator'
 })
 
 // Handle complaint submission
@@ -71,6 +44,7 @@ function openComplaintModal() {
 }
 
 async function signOut() {
+  const supabase = useSupabaseClient()
   await supabase.auth.signOut()
   navigateTo('/auth/sign-in')
 }
@@ -84,11 +58,11 @@ async function signOut() {
           <Avatar
             width="32"
             height="32"
-            :alt="username || 'User profile'"
-            :url="avatarUrl || undefined"
+            :alt="userData?.username || 'User profile'"
+            :url="userData?.avatarUrl || undefined"
           >
-            <template v-if="!avatarUrl" #default>
-              {{ username ? username.charAt(0).toUpperCase() : '?' }}
+            <template v-if="!userData?.avatarUrl" #default>
+              {{ userInitials || '?' }}
             </template>
           </Avatar>
         </button>
@@ -98,11 +72,11 @@ async function signOut() {
           <NuxtLink
             to="/profile"
             class="user-dropdown__username"
-            :aria-label="`View your profile: ${username || user?.email}`"
+            :aria-label="`View your profile: ${userData?.username || user?.email}`"
           >
-            {{ username || user?.email }}
+            {{ userData?.username || user?.email }}
           </NuxtLink>
-          <RoleIndicator v-if="isAdminOrMod && userRole" :role="userRole" size="s" />
+          <RoleIndicator v-if="isAdminOrMod && userData?.role" :role="userData.role" size="s" />
         </div>
       </DropdownTitle>
       <DropdownItem icon="ph:user" @click="navigateTo('/profile')">

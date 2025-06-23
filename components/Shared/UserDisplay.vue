@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { Avatar, Flex } from '@dolanske/vui'
-import { onMounted, ref, watch } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
-import { getUserAvatarUrl } from '~/utils/storage'
+import { useUserData } from '@/composables/useUserData'
 
 interface Props {
   userId?: string | null
@@ -15,86 +14,22 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'm',
 })
 
-const supabase = useSupabaseClient()
+// Use the cached user data composable
+const {
+  user,
+  loading,
+  userInitials,
+} = useUserData(
+  toRef(props, 'userId'),
+  {
+    includeRole: props.showRole,
+    includeAvatar: true,
+    userTtl: 10 * 60 * 1000, // 10 minutes
+    avatarTtl: 30 * 60 * 1000, // 30 minutes
+  },
+)
+
 const currentUser = useSupabaseUser()
-const user = ref<{ id: string, username: string, role: string | null } | null>(null)
-const avatarUrl = ref<string | null>(null)
-const loading = ref(true)
-const error = ref(false)
-
-// Fetch user data
-async function fetchUserData() {
-  if (!props.userId) {
-    loading.value = false
-    return
-  }
-
-  // Only fetch user data if current user is authenticated
-  if (!currentUser.value) {
-    loading.value = false
-    return
-  }
-
-  try {
-    // Fetch profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .eq('id', props.userId)
-      .single()
-
-    if (profileError) {
-      throw profileError
-    }
-
-    // Fetch role if requested
-    let role = null
-    if (props.showRole) {
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', props.userId)
-        .single()
-
-      role = roleData?.role || null
-    }
-
-    user.value = {
-      id: props.userId,
-      username: profile?.username || 'Unknown',
-      role,
-    }
-
-    // Fetch user avatar
-    avatarUrl.value = await getUserAvatarUrl(supabase, props.userId)
-  }
-  catch (err) {
-    console.error('Failed to fetch user data:', err)
-    error.value = true
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Get user initials for avatar
-function getUserInitials(username: string): string {
-  return username
-    .split(' ')
-    .map(word => word.charAt(0))
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
-}
-
-onMounted(() => {
-  fetchUserData()
-})
-
-// Watch for authentication state changes
-watch(currentUser, () => {
-  fetchUserData()
-}, { immediate: false })
 </script>
 
 <template>
@@ -129,9 +64,9 @@ watch(currentUser, () => {
         class="user-display__link"
         :aria-label="`View profile of ${user.username}`"
       >
-        <Avatar :size="size" :url="avatarUrl || undefined">
-          <template v-if="!avatarUrl" #default>
-            {{ getUserInitials(user.username) }}
+        <Avatar :size="size" :url="user.avatarUrl || undefined">
+          <template v-if="!user.avatarUrl" #default>
+            {{ userInitials }}
           </template>
         </Avatar>
       </NuxtLink>

@@ -98,26 +98,41 @@ async function fetchAllData() {
       fetchMonthlyFundings(),
     ])
 
-    // Create a combined dataset
-    const allMonths = new Set([
-      ...Object.keys(usersByMonth),
-      ...monthlyFundings.map(f => f.month),
-    ])
+    // Normalize month formats and create a combined dataset
+    const monthsMap = new Map<string, MonthlyUserData>()
 
-    const combinedData: MonthlyUserData[] = Array.from(allMonths)
-      .sort((a, b) => dayjs(a).valueOf() - dayjs(b).valueOf()) // Use proper date sorting
-      .map((month) => {
-        const users = usersByMonth[month] || { total: 0, supporters: 0 }
-        const funding = monthlyFundings.find(f => f.month === month)
-
-        // Calculate cumulative totals
-        return {
-          month,
-          totalUsers: users.total,
-          patreonSupporters: funding?.patreon_count || 0,
-          totalSupporters: users.supporters,
-        }
+    // Add user data
+    Object.entries(usersByMonth).forEach(([month, users]) => {
+      const normalizedMonth = dayjs(month).format('YYYY-MM')
+      monthsMap.set(normalizedMonth, {
+        month: normalizedMonth,
+        totalUsers: users.total,
+        patreonSupporters: 0,
+        totalSupporters: users.supporters,
       })
+    })
+
+    // Add/merge funding data
+    monthlyFundings.forEach((funding) => {
+      const normalizedMonth = dayjs(funding.month).format('YYYY-MM')
+      const existing = monthsMap.get(normalizedMonth)
+
+      if (existing) {
+        existing.patreonSupporters = funding.patreon_count || 0
+      }
+      else {
+        monthsMap.set(normalizedMonth, {
+          month: normalizedMonth,
+          totalUsers: 0,
+          patreonSupporters: funding.patreon_count || 0,
+          totalSupporters: 0,
+        })
+      }
+    })
+
+    // Convert to sorted array
+    const combinedData = Array.from(monthsMap.values())
+      .sort((a, b) => dayjs(a.month).valueOf() - dayjs(b.month).valueOf())
 
     // Calculate cumulative values
     let cumulativeUsers = 0

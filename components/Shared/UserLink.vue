@@ -1,61 +1,26 @@
 <script setup lang="ts">
 import { CopyClipboard, Flex, Skeleton } from '@dolanske/vui'
-import { onMounted, ref, watch } from 'vue'
+import { useUserData } from '@/composables/useUserData'
 
 const props = defineProps<{
   userId: string | null
   placeholder?: string
 }>()
 
-const supabase = useSupabaseClient()
+// Use the cached user data composable
+const {
+  user,
+  loading,
+} = useUserData(
+  toRef(props, 'userId'),
+  {
+    includeRole: false, // We only need username for this component
+    includeAvatar: false, // No avatar needed
+    userTtl: 10 * 60 * 1000, // 10 minutes
+  },
+)
+
 const currentUser = useSupabaseUser()
-const username = ref<string | null>(null)
-const loading = ref(true)
-const error = ref(false)
-
-// Fetch user profile data
-async function fetchUserProfile() {
-  if (!props.userId) {
-    loading.value = false
-    return
-  }
-
-  // Only fetch user profile if current user is authenticated
-  if (!currentUser.value) {
-    loading.value = false
-    return
-  }
-
-  try {
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', props.userId)
-      .single()
-
-    if (profileError) {
-      throw profileError
-    }
-
-    username.value = profile?.username || null
-  }
-  catch (err) {
-    console.error('Failed to fetch user profile:', err)
-    error.value = true
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-onMounted(() => {
-  fetchUserProfile()
-})
-
-// Watch for authentication state changes
-watch(currentUser, () => {
-  fetchUserProfile()
-}, { immediate: false })
 </script>
 
 <template>
@@ -72,7 +37,7 @@ watch(currentUser, () => {
     <Skeleton :width="120" :height="20" :radius="4" />
   </div>
 
-  <div v-else-if="error" class="user-display">
+  <div v-else-if="!user" class="user-display">
     <Flex gap="xs" x-center>
       <span class="text-xs color-error">Failed to load user</span>
       <CopyClipboard :text="props.userId" confirm>
@@ -86,9 +51,9 @@ watch(currentUser, () => {
       <NuxtLink
         :to="`/profile/${props.userId}`"
         class="username-link text-s"
-        :aria-label="`View profile of ${username || 'user'}`"
+        :aria-label="`View profile of ${user.username || 'user'}`"
       >
-        {{ username || props.userId }}
+        {{ user.username || props.userId }}
       </NuxtLink>
       <CopyClipboard :text="props.userId" confirm>
         <Icon name="ph:copy" size="14" />

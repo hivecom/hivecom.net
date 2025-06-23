@@ -5,9 +5,10 @@ import ProfileForm from '@/components/Profile/ProfileForm.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
+import { useUserData } from '@/composables/useUserData'
 import { formatDuration } from '~/utils/duration'
 import { getUserActivityStatus } from '~/utils/lastSeen'
-import { getUserAvatarUrl } from '~/utils/storage'
 import MDRenderer from '../Shared/MDRenderer.vue'
 
 interface Props {
@@ -20,9 +21,6 @@ const props = defineProps<Props>()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const profile = ref<Tables<'profiles'>>()
-const avatarUrl = ref<string | null>(null)
-const userRole = ref<string | null>(null)
-const currentUserRole = ref<string | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
 const isEditSheetOpen = ref(false)
@@ -42,6 +40,53 @@ const isOwnProfile = computed(() => {
   if (!user.value || !profile.value)
     return false
   return user.value.id === profile.value.id
+})
+
+// Get current user's data with caching
+const {
+  user: currentUserData,
+} = useUserData(
+  computed(() => user.value?.id || null),
+  {
+    includeRole: true,
+    includeAvatar: false, // We don't need current user's avatar here
+    userTtl: 15 * 60 * 1000, // 15 minutes
+  },
+)
+
+// Get profile user's data with caching (once we have the profile ID)
+const profileUserId = computed(() => profile.value?.id || null)
+const {
+  user: profileUserData,
+  refetch: refetchProfileUserData,
+} = useUserData(
+  profileUserId,
+  {
+    includeRole: true,
+    includeAvatar: true,
+    userTtl: 10 * 60 * 1000, // 10 minutes for viewed profiles
+    avatarTtl: 60 * 60 * 1000, // 1 hour for avatars
+  },
+)
+
+// Computed properties to get cached data
+const avatarUrl = computed(() => profileUserData.value?.avatarUrl || null)
+const userRole = computed(() => profileUserData.value?.role || null)
+const currentUserRole = computed(() => currentUserData.value?.role || null)
+
+// Fetch friendships data with caching
+const {
+  data: _friendshipsData,
+  refetch: _refetchFriendships,
+} = useCachedSupabaseQuery<Array<{ id: number, friender: string, friend: string }>>({
+  table: 'friends',
+  select: 'id, friender, friend',
+  filters: {
+    // We'll handle the complex OR logic in the computed
+  },
+}, {
+  enabled: computed(() => !!user.value && !!profile.value && !isOwnProfile.value),
+  ttl: 2 * 60 * 1000, // 2 minutes for friendship data
 })
 
 // Computed property to check if the current user is an admin
@@ -124,85 +169,85 @@ function getAccountAge(createdAt: string): string {
   }
 }
 
-async function fetchProfile() {
-  loading.value = true
-  errorMessage.value = ''
-
-  if (!props.userId && !props.username) {
-    errorMessage.value = 'No user ID or username provided'
-    loading.value = false
-    return
-  }
-
-  let requestProfile
-
+// Fetch profile data with caching based on props
+const profileQuery = computed(() => {
   if (props.userId) {
-    // Query by UUID
-    requestProfile = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', props.userId)
-      .single()
+    return {
+      table: 'profiles' as const,
+      select: '*',
+      filters: { id: props.userId },
+      single: true,
+    }
   }
   else if (props.username) {
-    // Query by username (case-insensitive)
-    requestProfile = await supabase
-      .from('profiles')
-      .select('*')
-      .ilike('username', props.username)
-      .single()
+    // For case-insensitive username lookup, normalize the cache key by using lowercase
+    // but search with ilike to match any case in the database
+    const normalizedUsername = props.username.toLowerCase()
+    return {
+      table: 'profiles' as const,
+      select: '*',
+      filters: { username: normalizedUsername },
+      filterOperators: { username: 'ilike' as const },
+      single: true,
+    }
   }
+  return null
+})
 
-  if (requestProfile?.error) {
-    // Handle specific error messages more user-friendly
-    if (requestProfile.error.message.includes('JSON object requested, multiple (or no) rows returned')) {
+const {
+  data: profileData,
+  loading: profileLoading,
+  error: profileError,
+  refetch: _refetchProfile,
+} = useCachedSupabaseQuery<Tables<'profiles'>>(
+  profileQuery.value || { table: 'profiles', select: '*', filters: {} },
+  {
+    enabled: computed(() => !!(props.userId || props.username)),
+    ttl: 10 * 60 * 1000, // 10 minutes for profile data
+  },
+)
+
+// Set profile from cached data
+watch(profileData, (newData) => {
+  if (newData) {
+    profile.value = newData
+    // Check friendship status after profile is loaded
+    checkFriendshipStatus()
+  }
+}, { immediate: true })
+
+// Handle profile errors
+watch(profileError, (error) => {
+  if (error) {
+    if (error.includes('JSON object requested, multiple (or no) rows returned')) {
       errorMessage.value = props.username
         ? `User "${props.username}" was not found`
         : 'User not found'
     }
     else {
-      errorMessage.value = requestProfile.error.message
+      errorMessage.value = error
     }
+  }
+  else {
+    errorMessage.value = ''
+  }
+}, { immediate: true })
+
+// Handle missing props
+watch(() => [props.userId, props.username], ([userId, username]) => {
+  if (!userId && !username) {
+    errorMessage.value = 'No user ID or username provided'
     loading.value = false
-    return
   }
+}, { immediate: true })
 
-  profile.value = requestProfile?.data
-
-  // Fetch user avatar and role if available
-  if (profile.value) {
-    // Fetch avatar URL
-    avatarUrl.value = await getUserAvatarUrl(supabase, profile.value.id)
-
-    const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', profile.value.id)
-      .single()
-
-    userRole.value = roleData?.role || null
-  }
-
-  // Fetch current user's role for admin privileges
-  if (user.value) {
-    const { data: currentRoleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.value.id)
-      .single()
-
-    currentUserRole.value = currentRoleData?.role || null
-  }
-
-  // Check friendship status after profile is loaded
-  await checkFriendshipStatus()
-
-  loading.value = false
-}
+// Set loading state
+watch(profileLoading, (isLoading) => {
+  loading.value = isLoading
+}, { immediate: true })
 
 onMounted(() => {
-  fetchProfile()
-
+  // Profile data will be fetched automatically by the cached query
   // Listen for custom avatar update events
   window.addEventListener('avatar-updated', handleAvatarUpdate)
 
@@ -254,8 +299,8 @@ async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
     // Update local profile data
     profile.value = data
 
-    // Refresh avatar in case it was updated
-    await refreshAvatar()
+    // Refresh cached user data in case it was updated
+    await refetchProfileUserData()
 
     closeEditSheet()
   }
@@ -372,8 +417,8 @@ function getBanEndDate() {
 // Function to refresh avatar URL
 async function refreshAvatar() {
   if (profile.value?.id) {
-    // Force refresh by bypassing cache
-    avatarUrl.value = await getUserAvatarUrl(supabase, profile.value.id)
+    // Force refresh by refetching cached user data
+    await refetchProfileUserData()
   }
 }
 
@@ -387,10 +432,10 @@ watch(refreshTrigger, () => {
   refreshAvatar()
 })
 
-// Watch for profile changes to update avatar if needed
+// Watch for profile changes to update cached data if needed
 watch(() => profile.value?.id, async (newId, oldId) => {
   if (newId && newId !== oldId) {
-    await refreshAvatar()
+    // Cached data will auto-refresh due to profileUserId computed change
     await checkFriendshipStatus()
   }
 })

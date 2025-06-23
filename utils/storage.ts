@@ -125,6 +125,9 @@ export async function uploadUserAvatar(
       .from('hivecom-content-users')
       .getPublicUrl(filePath)
 
+    // Invalidate cached avatar URL since we uploaded a new one
+    invalidateAvatarCache(userId)
+
     // Dispatch avatar updated event
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('avatar-updated', {
@@ -149,11 +152,35 @@ export async function uploadUserAvatar(
 /**
  * Gets the public URL for a user's avatar
  * Tries multiple common extensions to find the avatar, prioritizing WebP
+ * Results are cached to avoid repeated storage API calls
  */
 export async function getUserAvatarUrl(
   supabaseClient: SupabaseClient<Database>,
   userId: string,
 ): Promise<string | null> {
+  // Use a simple in-memory cache for avatar URLs
+  const cacheKey = `avatar:${userId}`
+  const cacheTTL = 60 * 60 * 1000 // 1 hour cache
+
+  // Check if we have a cached result
+  if (typeof window !== 'undefined') {
+    const cached = window.localStorage.getItem(cacheKey)
+    if (cached) {
+      try {
+        const { url, timestamp } = JSON.parse(cached)
+        const isExpired = Date.now() - timestamp > cacheTTL
+
+        if (!isExpired) {
+          return url
+        }
+      }
+      catch {
+        // Invalid cache entry, remove it
+        window.localStorage.removeItem(cacheKey)
+      }
+    }
+  }
+
   try {
     // Common image extensions to try, in order of preference (WebP first for new uploads)
     const extensions = ['webp', 'png', 'jpg', 'jpeg']
@@ -174,16 +201,54 @@ export async function getUserAvatarUrl(
           .from('hivecom-content-users')
           .getPublicUrl(filePath)
 
-        return urlData.publicUrl
+        const avatarUrl = urlData.publicUrl
+
+        // Cache the result
+        if (typeof window !== 'undefined') {
+          try {
+            window.localStorage.setItem(cacheKey, JSON.stringify({
+              url: avatarUrl,
+              timestamp: Date.now(),
+            }))
+          }
+          catch {
+            // localStorage might be full, ignore cache errors
+          }
+        }
+
+        return avatarUrl
       }
     }
 
-    // No avatar found with any extension
+    // No avatar found with any extension - cache this result too
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(cacheKey, JSON.stringify({
+          url: null,
+          timestamp: Date.now(),
+        }))
+      }
+      catch {
+        // localStorage might be full, ignore cache errors
+      }
+    }
+
     return null
   }
   catch (error) {
     console.error('Error getting avatar URL:', error)
     return null
+  }
+}
+
+/**
+ * Invalidates the cached avatar URL for a user
+ * Should be called when avatar is uploaded or deleted
+ */
+export function invalidateAvatarCache(userId: string): void {
+  if (typeof window !== 'undefined') {
+    const cacheKey = `avatar:${userId}`
+    window.localStorage.removeItem(cacheKey)
   }
 }
 
@@ -373,6 +438,9 @@ export async function deleteUserAvatar(
           console.error('Error deleting avatar:', error)
           return { success: false, error: error.message }
         }
+
+        // Invalidate cached avatar URL since we deleted it
+        invalidateAvatarCache(userId)
 
         // Dispatch avatar deleted event
         if (typeof window !== 'undefined') {
