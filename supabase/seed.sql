@@ -162,16 +162,20 @@ ON CONFLICT (id)
 
 -- Insert example test user for admin to modify and test with
 INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous")
-  VALUES ('00000000-0000-0000-0000-000000000000', '018d224c-0e49-4b6d-b57a-87299605c2b2', 'authenticated', 'authenticated', 'testuser@example.com', '$2a$10$Q6EF4VpHdLQlgwHxpUyPrewgFHmqwaw/ZTaKwuD3X8k0v4DVoMf7a', '2025-01-01 12:00:00.000000+00', NULL, '', NULL, '', NULL, '', '', NULL, NULL, '{"provider": "email", "providers": ["email"]}', '{"email_verified": true}', NULL, '2025-04-15 04:18:06.23308+00', '2025-04-15 04:18:06.237601+00', NULL, NULL, '', '', NULL, '', '0', NULL, '', NULL, 'false', NULL, 'false');
+  VALUES ('00000000-0000-0000-0000-000000000000', '018d224c-0e49-4b6d-b57a-87299605c2b3', 'authenticated', 'authenticated', 'testuser@example.com', '$2a$10$Q6EF4VpHdLQlgwHxpUyPrewgFHmqwaw/ZTaKwuD3X8k0v4DVoMf7a', '2025-01-01 12:00:00.000000+00', NULL, '', NULL, '', NULL, '', '', NULL, NULL, '{"provider": "email", "providers": ["email"]}', '{"email_verified": true}', NULL, '2025-04-15 04:18:06.23308+00', '2025-04-15 04:18:06.237601+00', NULL, NULL, '', '', NULL, '', '0', NULL, '', NULL, 'false', NULL, 'false');
 
 -- Keep in mind, we're not going to assign the user a role because most users will not have a role assigned.
 -- Create profile for test user
 INSERT INTO public.profiles(id, created_at, username, introduction)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b2', NOW(), 'TestUser', 'Example user for testing admin features and role assignments')
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b3', NOW(), 'TestUser', 'Example user for testing admin features and role assignments')
 ON CONFLICT (id)
   DO UPDATE SET
     username = EXCLUDED.username,
     introduction = EXCLUDED.introduction;
+
+-- Create friend relationship between admin and test user
+INSERT INTO public.friends(created_at, friender, friend)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b3', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Insert an upcoming test event (moved 2 weeks earlier)
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
@@ -452,9 +456,9 @@ Come join us and let''s have some fun together!
 INSERT INTO public.complaints(created_at, created_by, message, response, responded_by, responded_at, acknowledged, context_user, context_gameserver)
   VALUES
   -- General complaint with no context (from TestUser)
-(NOW() - INTERVAL '3 days', '018d224c-0e49-4b6d-b57a-87299605c2b2', 'I''m having trouble accessing my profile settings. The page seems to be loading indefinitely and I can''t update my information.', 'Thank you for reporting this issue. We have identified and fixed the bug affecting profile settings. Please try again and let us know if you continue to experience problems.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '2 days', TRUE, NULL, NULL),
+(NOW() - INTERVAL '3 days', '018d224c-0e49-4b6d-b57a-87299605c2b3', 'I''m having trouble accessing my profile settings. The page seems to be loading indefinitely and I can''t update my information.', 'Thank you for reporting this issue. We have identified and fixed the bug affecting profile settings. Please try again and let us know if you continue to experience problems.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '2 days', TRUE, NULL, NULL),
   -- Complaint about a user (context_user)
-(NOW() - INTERVAL '1 day', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'This user was using inappropriate language and being disrespectful to other community members during our gaming session yesterday evening. They were also intentionally griefing other players.', 'Thank you for reporting this behavior. We have reviewed the situation and taken appropriate moderation action. The user has been warned and is now being monitored. Please continue to report any issues you encounter.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '20 hours', TRUE, '018d224c-0e49-4b6d-b57a-87299605c2b2', NULL),
+(NOW() - INTERVAL '1 day', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'This user was using inappropriate language and being disrespectful to other community members during our gaming session yesterday evening. They were also intentionally griefing other players.', 'Thank you for reporting this behavior. We have reviewed the situation and taken appropriate moderation action. The user has been warned and is now being monitored. Please continue to report any issues you encounter.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '20 hours', TRUE, '018d224c-0e49-4b6d-b57a-87299605c2b3', NULL),
   -- Complaint about a gameserver (context_gameserver) - acknowledged but not responded
 (NOW() - INTERVAL '4 hours', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'The CS2 server is experiencing severe performance issues. There are frequent lag spikes, players are getting disconnected randomly, and hit registration seems inconsistent. This makes the game unplayable.', NULL, NULL, NULL, TRUE, NULL, 1),
   -- New unacknowledged complaint with no context

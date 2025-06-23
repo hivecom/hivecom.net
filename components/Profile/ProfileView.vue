@@ -30,8 +30,9 @@ const showComplaintModal = ref(false)
 const profileSubmissionError = ref<string | null>(null)
 
 // Friend-related state
-const friendshipStatus = ref<'none' | 'friends' | 'pending' | 'loading'>('none')
-const friendshipId = ref<number | null>(null)
+const friendshipStatus = ref<'none' | 'mutual' | 'sent_request' | 'received_request' | 'loading'>('none')
+const sentFriendshipId = ref<number | null>(null)
+const receivedFriendshipId = ref<number | null>(null)
 
 // Add refresh functionality for avatar updates
 const refreshTrigger = ref(0)
@@ -48,14 +49,24 @@ const isCurrentUserAdmin = computed(() => {
   return currentUserRole.value === 'admin'
 })
 
-// Computed property to check if users can friend each other
-const canFriend = computed(() => {
+// Computed property to check if users can send a friend request
+const canSendFriendRequest = computed(() => {
   return user.value && profile.value && !isOwnProfile.value && friendshipStatus.value === 'none'
 })
 
-// Computed property to check if users are friends
-const areFriends = computed(() => {
-  return friendshipStatus.value === 'friends'
+// Computed property to check if users are mutual friends
+const areMutualFriends = computed(() => {
+  return friendshipStatus.value === 'mutual'
+})
+
+// Computed property to check if user has sent a friend request
+const hasSentRequest = computed(() => {
+  return friendshipStatus.value === 'sent_request'
+})
+
+// Computed property to check if user has received a friend request
+const hasReceivedRequest = computed(() => {
+  return friendshipStatus.value === 'received_request'
 })
 
 // Computed property for user activity status
@@ -415,12 +426,11 @@ async function checkFriendshipStatus() {
   friendshipStatus.value = 'loading'
 
   try {
-    // Check if there's an existing friendship (in either direction)
-    const { data, error } = await supabase
+    // Check for friendship requests in both directions
+    const { data: friendships, error } = await supabase
       .from('friends')
       .select('id, friender, friend')
       .or(`and(friender.eq.${user.value.id},friend.eq.${profile.value.id}),and(friender.eq.${profile.value.id},friend.eq.${user.value.id})`)
-      .single()
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
       console.error('Error checking friendship status:', error)
@@ -428,13 +438,41 @@ async function checkFriendshipStatus() {
       return
     }
 
-    if (data) {
-      friendshipStatus.value = 'friends'
-      friendshipId.value = data.id
+    if (!friendships || friendships.length === 0) {
+      // No friendship exists
+      friendshipStatus.value = 'none'
+      sentFriendshipId.value = null
+      receivedFriendshipId.value = null
+      return
+    }
+
+    // Check if we have friendships in both directions (mutual)
+    const sentByCurrentUser = friendships.find(f => f.friender === user.value!.id && f.friend === profile.value!.id)
+    const sentByOtherUser = friendships.find(f => f.friender === profile.value!.id && f.friend === user.value!.id)
+
+    if (sentByCurrentUser && sentByOtherUser) {
+      // Mutual friendship
+      friendshipStatus.value = 'mutual'
+      sentFriendshipId.value = sentByCurrentUser.id
+      receivedFriendshipId.value = sentByOtherUser.id
+    }
+    else if (sentByCurrentUser) {
+      // Current user sent a request
+      friendshipStatus.value = 'sent_request'
+      sentFriendshipId.value = sentByCurrentUser.id
+      receivedFriendshipId.value = null
+    }
+    else if (sentByOtherUser) {
+      // Current user received a request
+      friendshipStatus.value = 'received_request'
+      sentFriendshipId.value = null
+      receivedFriendshipId.value = sentByOtherUser.id
     }
     else {
+      // This shouldn't happen, but fallback to none
       friendshipStatus.value = 'none'
-      friendshipId.value = null
+      sentFriendshipId.value = null
+      receivedFriendshipId.value = null
     }
   }
   catch (error) {
@@ -443,7 +481,7 @@ async function checkFriendshipStatus() {
   }
 }
 
-async function addFriend() {
+async function sendFriendRequest() {
   if (!user.value || !profile.value || isOwnProfile.value) {
     return
   }
@@ -451,32 +489,61 @@ async function addFriend() {
   friendshipStatus.value = 'loading'
 
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('friends')
       .insert({
         friender: user.value.id,
         friend: profile.value.id,
       })
-      .select('id')
-      .single()
 
     if (error) {
-      console.error('Error adding friend:', error)
+      console.error('Error sending friend request:', error)
       friendshipStatus.value = 'none'
       return
     }
 
-    friendshipStatus.value = 'friends'
-    friendshipId.value = data.id
+    // Check if the other user has already sent us a request (making it mutual)
+    await checkFriendshipStatus()
   }
   catch (error) {
-    console.error('Error adding friend:', error)
+    console.error('Error sending friend request:', error)
     friendshipStatus.value = 'none'
   }
 }
 
-async function removeFriend() {
-  if (!user.value || !profile.value || !friendshipId.value) {
+async function acceptFriendRequest() {
+  if (!user.value || !profile.value || isOwnProfile.value) {
+    return
+  }
+
+  friendshipStatus.value = 'loading'
+
+  try {
+    // Send a friend request back to make it mutual
+    const { error } = await supabase
+      .from('friends')
+      .insert({
+        friender: user.value.id,
+        friend: profile.value.id,
+      })
+
+    if (error) {
+      console.error('Error accepting friend request:', error)
+      await checkFriendshipStatus() // Refresh to current state
+      return
+    }
+
+    // Now they should be mutual friends
+    await checkFriendshipStatus()
+  }
+  catch (error) {
+    console.error('Error accepting friend request:', error)
+    await checkFriendshipStatus() // Refresh to current state
+  }
+}
+
+async function revokeFriendRequest() {
+  if (!user.value || !profile.value || !sentFriendshipId.value) {
     return
   }
 
@@ -486,20 +553,68 @@ async function removeFriend() {
     const { error } = await supabase
       .from('friends')
       .delete()
-      .eq('id', friendshipId.value)
+      .eq('id', sentFriendshipId.value)
 
     if (error) {
-      console.error('Error removing friend:', error)
-      friendshipStatus.value = 'friends'
+      console.error('Error revoking friend request:', error)
+      await checkFriendshipStatus() // Refresh to current state
+      return
+    }
+
+    await checkFriendshipStatus()
+  }
+  catch (error) {
+    console.error('Error revoking friend request:', error)
+    await checkFriendshipStatus() // Refresh to current state
+  }
+}
+
+async function removeFriend() {
+  if (!user.value || !profile.value) {
+    return
+  }
+
+  friendshipStatus.value = 'loading'
+
+  try {
+    // Remove both friendship records to break the mutual friendship
+    const deletePromises = []
+
+    if (sentFriendshipId.value) {
+      deletePromises.push(
+        supabase
+          .from('friends')
+          .delete()
+          .eq('id', sentFriendshipId.value),
+      )
+    }
+
+    if (receivedFriendshipId.value) {
+      deletePromises.push(
+        supabase
+          .from('friends')
+          .delete()
+          .eq('id', receivedFriendshipId.value),
+      )
+    }
+
+    const results = await Promise.all(deletePromises)
+
+    // Check if any deletion failed
+    const hasError = results.some(result => result.error)
+    if (hasError) {
+      console.error('Error removing friendship:', results.find(r => r.error)?.error)
+      await checkFriendshipStatus() // Refresh to current state
       return
     }
 
     friendshipStatus.value = 'none'
-    friendshipId.value = null
+    sentFriendshipId.value = null
+    receivedFriendshipId.value = null
   }
   catch (error) {
-    console.error('Error removing friend:', error)
-    friendshipStatus.value = 'friends'
+    console.error('Error removing friendship:', error)
+    await checkFriendshipStatus() // Refresh to current state
   }
 }
 </script>
@@ -669,6 +784,31 @@ async function removeFriend() {
                   >
                     {{ getRoleInfo(userRole)?.display }}
                   </Badge>
+                  <!-- Friend status badge -->
+                  <Badge
+                    v-if="!isOwnProfile && friendshipStatus === 'mutual'"
+                    variant="success"
+                    size="s"
+                  >
+                    <Icon name="ph:user-check" />
+                    Friends
+                  </Badge>
+                  <Badge
+                    v-else-if="!isOwnProfile && friendshipStatus === 'sent_request'"
+                    variant="info"
+                    size="s"
+                  >
+                    <Icon name="ph:clock" />
+                    Request Sent
+                  </Badge>
+                  <Badge
+                    v-else-if="!isOwnProfile && friendshipStatus === 'received_request'"
+                    variant="accent"
+                    size="s"
+                  >
+                    <Icon name="ph:bell" />
+                    Friend Request
+                  </Badge>
                   <!-- Supporter Badges -->
                   <Flex gap="xs" y-center>
                     <Badge v-if="profile.supporter_patreon" variant="accent" size="s">
@@ -701,21 +841,45 @@ async function removeFriend() {
 
                 <!-- Action Buttons (for other profiles) -->
                 <Flex v-else gap="s">
-                  <!-- Friend button -->
+                  <!-- Friend action button -->
                   <Button
-                    v-if="canFriend"
+                    v-if="canSendFriendRequest"
                     variant="accent"
                     :disabled="friendshipStatus === 'loading'"
-                    @click="addFriend"
+                    @click="sendFriendRequest"
                   >
                     <template #start>
                       <Icon name="ph:user-plus" />
                     </template>
-                    Add Friend
+                    Send Friend Request
                   </Button>
 
                   <Button
-                    v-else-if="areFriends"
+                    v-else-if="hasReceivedRequest"
+                    variant="accent"
+                    :disabled="friendshipStatus === 'loading'"
+                    @click="acceptFriendRequest"
+                  >
+                    <template #start>
+                      <Icon name="ph:user-check" />
+                    </template>
+                    Accept Request
+                  </Button>
+
+                  <Button
+                    v-else-if="hasSentRequest"
+                    variant="gray"
+                    :disabled="friendshipStatus === 'loading'"
+                    @click="revokeFriendRequest"
+                  >
+                    <template #start>
+                      <Icon name="ph:user-minus" />
+                    </template>
+                    Revoke Request
+                  </Button>
+
+                  <Button
+                    v-else-if="areMutualFriends"
                     variant="gray"
                     :disabled="friendshipStatus === 'loading'"
                     @click="removeFriend"
