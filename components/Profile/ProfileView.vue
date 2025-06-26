@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import { Card, Flex, Skeleton } from '@dolanske/vui'
+import FriendsModal from '@/components/Profile/FriendsModal.vue'
+import ProfileAbout from '@/components/Profile/ProfileAbout.vue'
+import ProfileAchievements from '@/components/Profile/ProfileAchievements.vue'
+import ProfileBanStatus from '@/components/Profile/ProfileBanStatus.vue'
 import ProfileForm from '@/components/Profile/ProfileForm.vue'
+import ProfileFriends from '@/components/Profile/ProfileFriends.vue'
+import ProfileHeader from '@/components/Profile/ProfileHeader.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
 import { useUserData } from '@/composables/useUserData'
-import { formatDuration } from '~/utils/duration'
-import { getUserActivityStatus } from '~/utils/lastSeen'
-import MDRenderer from '../Shared/MDRenderer.vue'
 
 interface Props {
   userId?: string
@@ -25,6 +27,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const isEditSheetOpen = ref(false)
 const showComplaintModal = ref(false)
+const showFriendsModal = ref(false)
 const profileSubmissionError = ref<string | null>(null)
 
 // Friend-related state
@@ -39,6 +42,7 @@ const refreshTrigger = ref(0)
 const isOwnProfile = computed(() => {
   if (!user.value || !profile.value)
     return false
+
   return user.value.id === profile.value.id
 })
 
@@ -94,80 +98,69 @@ const isCurrentUserAdmin = computed(() => {
   return currentUserRole.value === 'admin'
 })
 
-// Computed property to check if users can send a friend request
-const canSendFriendRequest = computed(() => {
-  return user.value && profile.value && !isOwnProfile.value && friendshipStatus.value === 'none'
-})
+// Computed properties for friends data
+const allFriendships = ref<Array<{ id: number, friender: string, friend: string }>>([])
 
-// Computed property to check if users are mutual friends
-const areMutualFriends = computed(() => {
-  return friendshipStatus.value === 'mutual'
-})
-
-// Computed property to check if user has sent a friend request
-const hasSentRequest = computed(() => {
-  return friendshipStatus.value === 'sent_request'
-})
-
-// Computed property to check if user has received a friend request
-const hasReceivedRequest = computed(() => {
-  return friendshipStatus.value === 'received_request'
-})
-
-// Computed property for user activity status
-const activityStatus = computed(() => {
-  if (!profile.value?.last_seen)
-    return null
-  return getUserActivityStatus(profile.value.last_seen)
-})
-
-// Copy profile URL to clipboard
-async function copyProfileURL() {
+// Get friends (mutual friendships)
+const friends = computed(() => {
   if (!profile.value)
-    return
+    return []
 
-  // Use username if available, otherwise fall back to UUID
-  const identifier = profile.value.username || profile.value.id
-  const url = `${window.location.origin}/profile/${identifier}`
+  const sentByProfile = allFriendships.value.filter(f => f.friender === profile.value!.id)
+  const receivedByProfile = allFriendships.value.filter(f => f.friend === profile.value!.id)
 
-  try {
-    await navigator.clipboard.writeText(url)
-    // In a real app, you'd show a toast notification here
-  }
-  catch (err) {
-    console.error('Failed to copy URL:', err)
-  }
-}
+  // Find mutual friends (users who have both sent and received friendship with this profile)
+  const mutualFriends: string[] = []
 
-// Get user initials for avatar
-function getUserInitials(username: string): string {
-  return username
-    .split(' ')
-    .map(word => word.charAt(0))
-    .join('')
-    .substring(0, 2)
-    .toUpperCase()
-}
+  sentByProfile.forEach((sent) => {
+    const mutual = receivedByProfile.find(received => received.friender === sent.friend)
+    if (mutual) {
+      mutualFriends.push(sent.friend)
+    }
+  })
 
-// Format time since account creation
-function getAccountAge(createdAt: string): string {
-  const created = new Date(createdAt)
-  const now = new Date()
-  const diffTime = Math.abs(now.getTime() - created.getTime())
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return mutualFriends
+})
 
-  if (diffDays < 30) {
-    return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
-  }
-  else if (diffDays < 365) {
-    const months = Math.floor(diffDays / 30)
-    return `${months} month${months === 1 ? '' : 's'} ago`
-  }
-  else {
-    const years = Math.floor(diffDays / 365)
-    return `${years} year${years === 1 ? '' : 's'} ago`
-  }
-}
+// Get sent requests (profile sent but no reciprocation)
+const sentRequests = computed(() => {
+  if (!profile.value)
+    return []
+
+  const sentByProfile = allFriendships.value.filter(f => f.friender === profile.value!.id)
+  const receivedByProfile = allFriendships.value.filter(f => f.friend === profile.value!.id)
+
+  const sentRequests: string[] = []
+
+  sentByProfile.forEach((sent) => {
+    const mutual = receivedByProfile.find(received => received.friender === sent.friend)
+    if (!mutual) {
+      sentRequests.push(sent.friend)
+    }
+  })
+
+  return sentRequests
+})
+
+// Get pending requests (others sent to profile but profile hasn't reciprocated)
+const pendingRequests = computed(() => {
+  if (!profile.value)
+    return []
+
+  const sentByProfile = allFriendships.value.filter(f => f.friender === profile.value!.id)
+  const receivedByProfile = allFriendships.value.filter(f => f.friend === profile.value!.id)
+
+  const pendingRequests: string[] = []
+
+  receivedByProfile.forEach((received) => {
+    const mutual = sentByProfile.find(sent => sent.friend === received.friender)
+    if (!mutual) {
+      pendingRequests.push(received.friender)
+    }
+  })
+
+  return pendingRequests
+})
 
 // Fetch profile data with caching based on props
 const profileQuery = computed(() => {
@@ -337,83 +330,6 @@ function handleComplaintSubmit(_complaintData: { message: string }) {
   // For now, just handle the successful submission
 }
 
-// Get role display and styling
-function getRoleInfo(role: string | null) {
-  if (!role)
-    return null
-
-  const roleDisplay = role.charAt(0).toUpperCase() + role.slice(1)
-  let variant: 'info' | 'success' | 'danger'
-
-  switch (role) {
-    case 'admin':
-      variant = 'danger'
-      break
-    case 'moderator':
-      variant = 'info'
-      break
-    default:
-      variant = 'success'
-  }
-
-  return { display: roleDisplay, variant }
-}
-
-// Check if user has any achievements
-const hasAchievements = computed(() => {
-  if (!profile.value)
-    return false
-
-  return profile.value.supporter_lifetime
-    || profile.value.supporter_patreon
-    || getAccountAge(profile.value.created_at).includes('year')
-})
-
-// Function to check if ban is active
-function isBanActive() {
-  if (!profile.value || !profile.value.banned)
-    return false
-
-  // If no end date, it's a permanent ban
-  if (!profile.value.ban_end)
-    return true
-
-  // Check if ban end date is in the future
-  const banEndDate = new Date(profile.value.ban_end)
-  const now = new Date()
-  return banEndDate > now
-}
-
-// Function to format ban duration
-function getBanDuration() {
-  if (!profile.value?.ban_start)
-    return ''
-
-  const banStart = new Date(profile.value.ban_start)
-
-  if (!profile.value.ban_end) {
-    return `Permanently banned since ${banStart.toLocaleDateString()}`
-  }
-
-  const banEnd = new Date(profile.value.ban_end)
-  const now = new Date()
-
-  // Calculate the duration between start and end
-  const durationMs = banEnd.getTime() - banStart.getTime()
-  const durationText = formatDuration(durationMs)
-
-  if (banEnd <= now) {
-    return `Was banned for ${durationText}`
-  }
-
-  return `Banned for ${durationText}`
-}
-
-// Function to get ban end date for TimestampDate component
-function getBanEndDate() {
-  return profile.value?.ban_end || null
-}
-
 // Function to refresh avatar URL
 async function refreshAvatar() {
   if (profile.value?.id) {
@@ -437,6 +353,7 @@ watch(() => profile.value?.id, async (newId, oldId) => {
   if (newId && newId !== oldId) {
     // Cached data will auto-refresh due to profileUserId computed change
     await checkFriendshipStatus()
+    await fetchAllFriendships()
   }
 })
 
@@ -524,6 +441,33 @@ async function checkFriendshipStatus() {
     console.error('Error checking friendship status:', error)
     friendshipStatus.value = 'none'
   }
+}
+
+async function fetchAllFriendships() {
+  if (!profile.value)
+    return
+
+  try {
+    // Fetch all friendships for this profile
+    const { data: friendships, error } = await supabase
+      .from('friends')
+      .select('id, friender, friend')
+      .or(`friender.eq.${profile.value.id},friend.eq.${profile.value.id}`)
+
+    if (error) {
+      console.error('Error fetching friendships:', error)
+      return
+    }
+
+    allFriendships.value = friendships || []
+  }
+  catch (error) {
+    console.error('Error fetching friendships:', error)
+  }
+}
+
+function openFriendsModal() {
+  showFriendsModal.value = true
 }
 
 async function sendFriendRequest() {
@@ -662,6 +606,36 @@ async function removeFriend() {
     await checkFriendshipStatus() // Refresh to current state
   }
 }
+
+async function ignoreFriendRequest() {
+  if (!user.value || !profile.value || !receivedFriendshipId.value) {
+    return
+  }
+
+  friendshipStatus.value = 'loading'
+
+  try {
+    // Delete the friend request that was sent to the current user
+    const { error } = await supabase
+      .from('friends')
+      .delete()
+      .eq('id', receivedFriendshipId.value)
+
+    if (error) {
+      console.error('Error ignoring friend request:', error)
+      await checkFriendshipStatus() // Refresh to current state
+      return
+    }
+
+    // Update status to none since the request was ignored/deleted
+    friendshipStatus.value = 'none'
+    receivedFriendshipId.value = null
+  }
+  catch (error) {
+    console.error('Error ignoring friend request:', error)
+    await checkFriendshipStatus() // Refresh to current state
+  }
+}
 </script>
 
 <template>
@@ -763,313 +737,58 @@ async function removeFriend() {
     <!-- Profile Content -->
     <template v-else>
       <!-- Ban Status Callout -->
-      <Card v-if="profile.banned" class="ban-status-card" :class="{ 'ban-expired': !isBanActive() }">
-        <Flex gap="m" y-center>
-          <Icon
-            :name="isBanActive() ? 'ph:warning-circle-fill' : 'ph:clock-fill'"
-            size="24"
-            class="ban-icon"
-          />
-          <Flex column gap="xs" expand>
-            <h3 class="ban-title">
-              {{ isBanActive() ? 'This user has been banned' : 'This user was previously banned' }}
-            </h3>
-            <p v-if="profile.ban_reason" class="ban-reason">
-              <strong>Reason:</strong> {{ profile.ban_reason }}
-            </p>
-            <p class="text-s color-text-light">
-              {{ getBanDuration() }}
-              <span v-if="getBanEndDate() && isBanActive()" class="text-xs color-text-lighter">
-                - expires <TimestampDate :date="getBanEndDate()!" size="xs" relative />
-              </span>
-              <span v-else-if="getBanEndDate() && !isBanActive()" class="text-xs color-text-lighter">
-                - expired <TimestampDate :date="getBanEndDate()!" size="xs" relative />
-              </span>
-            </p>
-          </Flex>
-        </Flex>
-      </Card>
+      <ProfileBanStatus v-if="profile.banned" :profile="profile" />
 
       <!-- Profile Header -->
-      <Card class="profile-header">
-        <Flex column expand y-center x-center>
-          <Flex gap="l" y-start expand x-center>
-            <!-- Avatar -->
-            <div class="profile-avatar">
-              <div class="avatar-container">
-                <Avatar :size="80" :url="avatarUrl || undefined">
-                  <template v-if="!avatarUrl" #default>
-                    {{ getUserInitials(profile.username) }}
-                  </template>
-                </Avatar>
-                <!-- Activity status indicator -->
-                <Tooltip v-if="activityStatus">
-                  <template #tooltip>
-                    <p>{{ activityStatus.lastSeenText }}</p>
-                  </template>
-                  <div
-                    class="online-indicator"
-                    :class="{ active: activityStatus.isActive }"
-                  />
-                </Tooltip>
-              </div>
-            </div>
-
-            <Flex column :gap="4" expand>
-              <!-- Username, Role, Badges and Action Buttons Row -->
-              <Flex gap="m" y-center x-between expand>
-                <Flex gap="m" y-center wrap>
-                  <h1 class="profile-title">
-                    {{ profile.username }}
-                  </h1>
-                  <Badge
-                    v-if="userRole && getRoleInfo(userRole)"
-                    :variant="getRoleInfo(userRole)?.variant"
-                    size="s"
-                  >
-                    {{ getRoleInfo(userRole)?.display }}
-                  </Badge>
-                  <!-- Friend status badge -->
-                  <Badge
-                    v-if="!isOwnProfile && friendshipStatus === 'mutual'"
-                    variant="success"
-                    size="s"
-                  >
-                    <Icon name="ph:user-check" />
-                    Friends
-                  </Badge>
-                  <Badge
-                    v-else-if="!isOwnProfile && friendshipStatus === 'sent_request'"
-                    variant="info"
-                    size="s"
-                  >
-                    <Icon name="ph:clock" />
-                    Request Sent
-                  </Badge>
-                  <Badge
-                    v-else-if="!isOwnProfile && friendshipStatus === 'received_request'"
-                    variant="accent"
-                    size="s"
-                  >
-                    <Icon name="ph:bell" />
-                    Friend Request
-                  </Badge>
-                  <!-- Supporter Badges -->
-                  <Flex gap="xs" y-center>
-                    <Badge v-if="profile.supporter_patreon" variant="accent" size="s">
-                      <Icon name="ph:heart-fill" />
-                      Patreon Supporter
-                    </Badge>
-
-                    <Badge v-if="profile.supporter_lifetime" variant="success" size="s">
-                      <Icon name="ph:crown-simple" />
-                      Lifetime Supporter
-                    </Badge>
-                  </Flex>
-                </Flex>
-
-                <!-- Action Buttons -->
-                <Flex v-if="isOwnProfile" gap="s">
-                  <Button variant="accent" @click="openEditSheet">
-                    <template #start>
-                      <Icon name="ph:pencil" />
-                    </template>
-                    Edit Profile
-                  </Button>
-                  <Button variant="gray" @click="copyProfileURL">
-                    <template #start>
-                      <Icon name="ph:link" />
-                    </template>
-                    Copy Link
-                  </Button>
-                </Flex>
-
-                <!-- Action Buttons (for other profiles) -->
-                <Flex v-else gap="s">
-                  <!-- Friend action button -->
-                  <Button
-                    v-if="canSendFriendRequest"
-                    variant="accent"
-                    :disabled="friendshipStatus === 'loading'"
-                    @click="sendFriendRequest"
-                  >
-                    <template #start>
-                      <Icon name="ph:user-plus" />
-                    </template>
-                    Send Friend Request
-                  </Button>
-
-                  <Button
-                    v-else-if="hasReceivedRequest"
-                    variant="accent"
-                    :disabled="friendshipStatus === 'loading'"
-                    @click="acceptFriendRequest"
-                  >
-                    <template #start>
-                      <Icon name="ph:user-check" />
-                    </template>
-                    Accept Request
-                  </Button>
-
-                  <Button
-                    v-else-if="hasSentRequest"
-                    variant="gray"
-                    :disabled="friendshipStatus === 'loading'"
-                    @click="revokeFriendRequest"
-                  >
-                    <template #start>
-                      <Icon name="ph:user-minus" />
-                    </template>
-                    Revoke Request
-                  </Button>
-
-                  <Button
-                    v-else-if="areMutualFriends"
-                    variant="gray"
-                    :disabled="friendshipStatus === 'loading'"
-                    @click="removeFriend"
-                  >
-                    <template #start>
-                      <Icon name="ph:user-minus" />
-                    </template>
-                    Remove Friend
-                  </Button>
-
-                  <!-- Show loading skeleton while checking friendship status -->
-                  <Skeleton
-                    v-else-if="friendshipStatus === 'loading'"
-                    height="2.5rem"
-                    width="7rem"
-                    style="border-radius: 0.5rem;"
-                  />
-
-                  <Button variant="gray" @click="copyProfileURL">
-                    <template #start>
-                      <Icon name="ph:link" />
-                    </template>
-                    Copy Link
-                  </Button>
-                  <Button variant="gray" @click="openComplaintModal">
-                    <template #start>
-                      <Icon name="ph:chat-circle-text" />
-                    </template>
-                    Complaint
-                  </Button>
-                </Flex>
-              </Flex>
-
-              <!-- Introduction (Full Width) -->
-              <p v-if="profile.introduction" class="profile-description">
-                {{ profile.introduction }}
-              </p>
-
-              <!-- Account Info (Full Width) -->
-              <Flex x-between y-center class="profile-meta" expand>
-                <Flex gap="l">
-                  <Flex gap="xs" y-center>
-                    <Icon class="color-text-lighter" name="ph:calendar" size="16" />
-                    <span class="text-s color-text-lighter">Joined {{ getAccountAge(profile.created_at) }}</span>
-                  </Flex>
-
-                  <Flex v-if="profile.modified_at && profile.modified_at !== profile.created_at" gap="xs" y-center>
-                    <Icon class="color-text-lighter" name="ph:pencil" size="16" />
-                    <span class="color-text-lighter text-s">Last updated <TimestampDate size="s" class="color-text-light text-s" :date="profile.modified_at" relative /></span>
-                  </Flex>
-                </Flex>
-
-                <!-- Admin-only UUID display -->
-                <Flex v-if="isCurrentUserAdmin" gap="xs" y-center>
-                  <Icon class="color-text-lighter" name="ph:hash" size="16" />
-                  <span class="text-xs color-text-lighter font-mono">{{ profile.id }}</span>
-                  <CopyClipboard :text="profile.id" size="s" confirm>
-                    <Icon class="color-text-lighter" name="ph:copy" size="12" />
-                  </CopyClipboard>
-                </Flex>
-              </Flex>
-            </Flex>
-          </Flex>
-        </Flex>
-      </Card>
+      <ProfileHeader
+        :profile="profile"
+        :avatar-url="avatarUrl"
+        :user-role="userRole"
+        :current-user-role="currentUserRole"
+        :is-own-profile="isOwnProfile"
+        :friendship-status="friendshipStatus"
+        :is-current-user-admin="isCurrentUserAdmin"
+        @open-edit-sheet="openEditSheet"
+        @send-friend-request="sendFriendRequest"
+        @accept-friend-request="acceptFriendRequest"
+        @revoke-friend-request="revokeFriendRequest"
+        @remove-friend="removeFriend"
+        @ignore-friend-request="ignoreFriendRequest"
+        @open-complaint-modal="openComplaintModal"
+      />
 
       <!-- Profile Sections -->
       <div class="profile-sections">
         <!-- About Section (Left) -->
-        <Card separators class="about-section">
-          <template #header>
-            <Flex x-between y-center>
-              <Flex>
-                <h3>About</h3>
-                <Button v-if="isOwnProfile" size="s" variant="gray" @click="openEditSheet">
-                  Edit Content
-                </Button>
-              </Flex>
-              <Icon name="ph:user-circle" />
-            </Flex>
-          </template>
+        <ProfileAbout :profile="profile" :is-own-profile="isOwnProfile" @open-edit-sheet="openEditSheet" />
 
-          <div v-if="profile.markdown" class="profile-markdown">
-            <MDRenderer skeleton-height="504px" :md="profile.markdown" />
-          </div>
-          <div v-else-if="isOwnProfile" class="empty-state">
-            <p class="color-text-lighter text-s">
-              Add content to your profile to tell others about yourself!
-            </p>
-          </div>
-          <p v-else class="color-text-lighter text-s">
-            This user hasn't added any content yet. Surely they will soon!
-          </p>
-        </Card>
+        <!-- (Right) -->
+        <Flex column>
+          <!-- Achievements -->
+          <ProfileAchievements :profile="profile" />
 
-        <!-- Achievements (Right) -->
-        <Card separators class="achievements-section">
-          <template #header>
-            <Flex x-between y-center>
-              <h3>Achievements</h3>
-              <Icon name="ph:trophy" />
-            </Flex>
-          </template>
-
-          <Flex gap="s" wrap extend x-center>
-            <Tooltip v-if="profile.supporter_lifetime">
-              <template #tooltip>
-                <p>Contributed in a significant way to the community!</p>
-              </template>
-              <Badge variant="success" size="m">
-                <Icon name="ph:crown-simple" />
-                Lifetime Supporter
-              </Badge>
-            </Tooltip>
-
-            <Tooltip v-if="profile.supporter_patreon">
-              <template #tooltip>
-                <p>Thank you for being an active supporter!</p>
-              </template>
-              <Badge variant="accent" size="m">
-                <Icon name="ph:heart-fill" />
-                Community Supporter
-              </Badge>
-            </Tooltip>
-
-            <Tooltip v-if="getAccountAge(profile.created_at).includes('year')">
-              <template #tooltip>
-                <p>Been part of the community for over a year!</p>
-              </template>
-              <Badge variant="info" size="m">
-                <Icon name="ph:cake" />
-                Veteran Member
-              </Badge>
-            </Tooltip>
-
-            <!-- Show a placeholder if no achievements -->
-            <Flex v-if="!hasAchievements" column y-center x-center class="achievements-empty">
-              <p class="color-text-lighter text-s">
-                Achievements will appear here as you participate in the community!
-              </p>
-            </Flex>
-          </Flex>
-        </Card>
+          <!-- Friends Section -->
+          <ProfileFriends
+            :profile="profile"
+            :friends="friends"
+            :pending-requests="pendingRequests"
+            :is-own-profile="isOwnProfile"
+            @open-friends-modal="openFriendsModal"
+          />
+        </Flex>
       </div>
     </template>
+
+    <!-- Friends Modal -->
+    <FriendsModal
+      v-model:open="showFriendsModal"
+      :friends="friends"
+      :sent-requests="sentRequests"
+      :pending-requests="pendingRequests"
+      :user-name="profile?.username || 'User'"
+      :show-all-tabs="isOwnProfile"
+      @close="showFriendsModal = false"
+    />
 
     <!-- Profile Edit Form Sheet -->
     <ProfileForm
@@ -1101,59 +820,6 @@ async function removeFriend() {
   width: 100%;
 }
 
-.profile-header {
-  .profile-avatar {
-    flex-shrink: 0;
-
-    .avatar-container {
-      position: relative;
-      display: inline-block;
-
-      .online-indicator {
-        position: absolute;
-        bottom: 4px;
-        right: 4px;
-        width: 16px;
-        height: 16px;
-        background-color: var(--color-text-lighter);
-        border: 3px solid var(--color-bg);
-        border-radius: 50%;
-        box-shadow: 0 0 0 1px var(--color-border);
-        transition: background-color 0.2s ease;
-
-        &.active {
-          background-color: var(--color-text-green);
-        }
-      }
-    }
-  }
-
-  .profile-title {
-    margin: 0;
-    font-size: var(--font-size-xxl);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-text);
-  }
-
-  .profile-subtitle {
-    margin: 0;
-    font-size: var(--font-size-l);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-light);
-  }
-
-  .profile-description {
-    margin: 0;
-    color: var(--color-text-light);
-    line-height: 1.5;
-  }
-
-  .profile-meta {
-    color: var(--color-text-light);
-    font-size: var(--font-size-s);
-  }
-}
-
 .profile-sections {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -1166,89 +832,6 @@ async function removeFriend() {
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-  }
-}
-
-.achievements-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-l);
-  text-align: center;
-
-  p {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-  }
-}
-
-.profile-markdown {
-  line-height: 1.6;
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--space-l);
-
-  p {
-    margin-bottom: var(--space-m);
-  }
-}
-
-.ban-status-callout {
-  margin-bottom: var(--space-l);
-
-  .ban-card {
-    padding: var(--space-m);
-    display: flex;
-    align-items: center;
-    gap: var(--space-s);
-  }
-}
-
-.ban-status-card {
-  border: 2px solid var(--color-text-red);
-  background: var(--color-bg-danger);
-
-  &.ban-expired {
-    border: 2px solid var(--color-text-orange);
-    background: var(--color-bg-warning);
-
-    .ban-icon {
-      color: var(--color-text-orange);
-    }
-
-    .ban-title {
-      color: var(--color-text-orange);
-    }
-
-    .ban-reason strong {
-      color: var(--color-text-orange);
-    }
-  }
-
-  .ban-icon {
-    color: var(--color-text-red);
-    flex-shrink: 0;
-  }
-
-  .ban-title {
-    margin: 0;
-    font-size: var(--font-size-l);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-text-red);
-  }
-
-  .ban-reason {
-    margin: 0;
-    color: var(--color-text);
-    font-size: var(--font-size-s);
-
-    strong {
-      color: var(--color-text-red);
-    }
   }
 }
 </style>

@@ -5,6 +5,7 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
 import CountdownTimer from './CountdownTimer.vue'
 import EventRSVPCount from './EventRSVPCount.vue'
+import EventRSVPModal from './EventRSVPModal.vue'
 import RSVPButton from './RSVPButton.vue'
 
 interface Props {
@@ -21,6 +22,71 @@ interface Props {
 }
 
 const _props = defineProps<Props>()
+
+// State for RSVP modal
+const showRSVPModal = ref(false)
+
+// State for RSVP counts
+const supabase = useSupabaseClient()
+const rsvpCounts = ref({
+  yes: 0,
+  tentative: 0,
+  no: 0,
+  total: 0,
+})
+
+// Fetch RSVP counts
+async function fetchRSVPCounts() {
+  if (!_props.event?.id)
+    return
+
+  try {
+    const { count: yesCount } = await supabase
+      .from('events_rsvps')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', _props.event.id)
+      .eq('rsvp', 'yes')
+
+    const { count: tentativeCount } = await supabase
+      .from('events_rsvps')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', _props.event.id)
+      .eq('rsvp', 'tentative')
+
+    const { count: noCount } = await supabase
+      .from('events_rsvps')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', _props.event.id)
+      .eq('rsvp', 'no')
+
+    rsvpCounts.value = {
+      yes: yesCount || 0,
+      tentative: tentativeCount || 0,
+      no: noCount || 0,
+      total: (yesCount || 0) + (tentativeCount || 0) + (noCount || 0),
+    }
+  }
+  catch (error) {
+    console.error('Error fetching RSVP counts:', error)
+  }
+}
+
+// Listen for RSVP updates
+function handleRsvpUpdate(event: Event) {
+  const customEvent = event as CustomEvent
+  if (customEvent.detail?.eventId === _props.event.id) {
+    fetchRSVPCounts()
+  }
+}
+
+onMounted(() => {
+  fetchRSVPCounts()
+  window.addEventListener('rsvp-updated', handleRsvpUpdate)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('rsvp-updated', handleRsvpUpdate)
+})
 </script>
 
 <template>
@@ -99,6 +165,18 @@ const _props = defineProps<Props>()
         <!-- RSVP button -->
         <RSVPButton :event="event" size="s" />
 
+        <!-- View RSVPs button -->
+        <Button
+          variant="accent"
+          size="s"
+          @click="showRSVPModal = true"
+        >
+          <template #start>
+            <Icon name="ph:users" />
+          </template>
+          View RSVPs
+        </Button>
+
         <!-- External Link -->
         <NuxtLink
           v-if="event.link"
@@ -115,6 +193,13 @@ const _props = defineProps<Props>()
         </NuxtLink>
       </Flex>
     </Flex>
+
+    <!-- RSVP Modal -->
+    <EventRSVPModal
+      v-model:open="showRSVPModal"
+      :event="event"
+      @close="showRSVPModal = false"
+    />
   </div>
 </template>
 

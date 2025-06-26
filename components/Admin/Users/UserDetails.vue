@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { Avatar, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Avatar, Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
+import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
 import { getUserActivityStatus } from '~/utils/lastSeen'
 import { getUserAvatarUrl } from '~/utils/storage'
 import UserActions from './UserActions.vue'
@@ -46,6 +48,99 @@ const supabase = useSupabaseClient()
 // Avatar state
 const avatarUrl = ref<string | null>(null)
 
+// Friends modal state
+const showFriendsModal = ref(false)
+
+// Friends data
+const allFriendships = ref<Array<{ id: number, friender: string, friend: string }>>([])
+
+// Fetch all friendships for this user
+const {
+  data: friendshipsData,
+  refetch: refetchFriendships,
+} = useCachedSupabaseQuery<Array<{ id: number, friender: string, friend: string }>>({
+  table: 'friends',
+  select: 'id, friender, friend',
+  filters: {},
+}, {
+  enabled: computed(() => !!props.user?.id),
+  ttl: 2 * 60 * 1000, // 2 minutes for friendship data
+})
+
+// Update local friendships data when query data changes
+watch(friendshipsData, (newData) => {
+  if (newData && props.user?.id) {
+    // Filter to only friendships involving this user
+    allFriendships.value = newData.filter(f =>
+      f.friender === props.user!.id || f.friend === props.user!.id,
+    )
+  }
+  else {
+    allFriendships.value = []
+  }
+}, { immediate: true })
+
+// Get friends (mutual friendships)
+const friends = computed(() => {
+  if (!props.user?.id)
+    return []
+
+  const sentByUser = allFriendships.value.filter(f => f.friender === props.user!.id)
+  const receivedByUser = allFriendships.value.filter(f => f.friend === props.user!.id)
+
+  // Find mutual friends (users who have both sent and received friendship with this user)
+  const mutualFriends: string[] = []
+
+  sentByUser.forEach((sent) => {
+    const mutual = receivedByUser.find(received => received.friender === sent.friend)
+    if (mutual) {
+      mutualFriends.push(sent.friend)
+    }
+  })
+
+  return mutualFriends
+})
+
+// Get sent requests (user sent but no reciprocation)
+const sentRequests = computed(() => {
+  if (!props.user?.id)
+    return []
+
+  const sentByUser = allFriendships.value.filter(f => f.friender === props.user!.id)
+  const receivedByUser = allFriendships.value.filter(f => f.friend === props.user!.id)
+
+  const sentRequests: string[] = []
+
+  sentByUser.forEach((sent) => {
+    const mutual = receivedByUser.find(received => received.friender === sent.friend)
+    if (!mutual) {
+      sentRequests.push(sent.friend)
+    }
+  })
+
+  return sentRequests
+})
+
+// Get pending requests (others sent to user but user hasn't reciprocated)
+const pendingRequests = computed(() => {
+  if (!props.user?.id)
+    return []
+
+  const sentByUser = allFriendships.value.filter(f => f.friender === props.user!.id)
+  const receivedByUser = allFriendships.value.filter(f => f.friend === props.user!.id)
+
+  const pendingRequests: string[] = []
+
+  receivedByUser.forEach((received) => {
+    const mutual = sentByUser.find(sent => sent.friend === received.friender)
+    if (!mutual) {
+      pendingRequests.push(received.friender)
+    }
+  })
+
+  return pendingRequests
+})
+
 // Define models for two-way binding with proper type definitions
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 
@@ -79,13 +174,16 @@ watch(() => userAction.value, (action) => {
   }
 })
 
-// Watch for user changes to fetch avatar
+// Watch for user changes to fetch avatar and refetch friends data
 watch(() => props.user, async (newUser) => {
   if (newUser?.id) {
     avatarUrl.value = await getUserAvatarUrl(supabase, newUser.id)
+    // Refetch friends data when user changes
+    await refetchFriendships()
   }
   else {
     avatarUrl.value = null
+    allFriendships.value = []
   }
 }, { immediate: true })
 
@@ -193,6 +291,30 @@ function getUserInitials(username: string): string {
               </span>
             </Grid>
 
+            <!-- Friends Information -->
+            <Grid class="detail-item" :columns="2" expand>
+              <span class="color-text-light text-bold">Friends:</span>
+              <Flex gap="xs" y-center>
+                <span class="text-s">
+                  {{ friends.length }} {{ friends.length === 1 ? 'friend' : 'friends' }}
+                </span>
+                <span v-if="sentRequests.length > 0" class="text-s color-text-light">
+                  • {{ sentRequests.length }} sent
+                </span>
+                <span v-if="pendingRequests.length > 0" class="text-s color-text-light">
+                  • {{ pendingRequests.length }} pending
+                </span>
+                <Button
+                  v-if="friends.length > 0 || sentRequests.length > 0 || pendingRequests.length > 0"
+                  variant="gray"
+                  size="s"
+                  @click="showFriendsModal = true"
+                >
+                  View Details
+                </Button>
+              </Flex>
+            </Grid>
+
             <Grid v-if="user.banned && user.ban_duration" class="detail-item" :columns="2" expand>
               <span class="color-text-light text-bold">Ban Duration:</span>
               <span class="ban-duration">{{ user.ban_duration }}</span>
@@ -248,21 +370,21 @@ function getUserInitials(username: string): string {
           <Flex column gap="l" expand>
             <Grid v-if="user.patreon_id" class="detail-item" :columns="2" expand>
               <span class="color-text-light text-bold">Patreon ID:</span>
-              <CopyClipboard :text="user.patreon_id" variant="outline" size="xs">
+              <CopyClipboard :text="user.patreon_id" variant="outline" size="xs" confirm>
                 <span class="platform-id">{{ user.patreon_id }}</span>
               </CopyClipboard>
             </Grid>
 
             <Grid v-if="user.discord_id" class="detail-item" :columns="2" expand>
               <span class="color-text-light text-bold">Discord ID:</span>
-              <CopyClipboard :text="user.discord_id" variant="outline" size="xs">
+              <CopyClipboard :text="user.discord_id" variant="outline" size="xs" confirm>
                 <span class="platform-id">{{ user.discord_id }}</span>
               </CopyClipboard>
             </Grid>
 
             <Grid v-if="user.steam_id" class="detail-item" :columns="2" expand>
               <span class="color-text-light text-bold">Steam ID:</span>
-              <CopyClipboard :text="user.steam_id" variant="outline" size="xs">
+              <CopyClipboard :text="user.steam_id" variant="outline" size="xs" confirm>
                 <span class="platform-id">{{ user.steam_id }}</span>
               </CopyClipboard>
             </Grid>
@@ -310,6 +432,18 @@ function getUserInitials(username: string): string {
         />
       </Flex>
     </Flex>
+
+    <!-- Friends Modal -->
+    <FriendsModal
+      v-if="user"
+      v-model:open="showFriendsModal"
+      :friends="friends"
+      :sent-requests="sentRequests"
+      :pending-requests="pendingRequests"
+      :user-name="user.username"
+      :show-all-tabs="true"
+      @close="showFriendsModal = false"
+    />
   </Sheet>
 </template>
 
