@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import type { ChartOptions } from 'chart.js'
 import type { Database } from '@/types/database.types'
 import {
   CategoryScale,
   Chart as ChartJS,
-  type ChartOptions,
+
   Legend,
   LinearScale,
   LineElement,

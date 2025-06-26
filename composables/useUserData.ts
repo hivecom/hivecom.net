@@ -3,10 +3,12 @@
  * Provides efficient caching for user profile and role data
  */
 
+import type { Ref } from 'vue'
+import type { CacheConfig } from './useSupabaseCache'
 import type { Database } from '@/types/database.types'
-import { computed, ref, type Ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { getUserAvatarUrl } from '~/utils/storage'
-import { type CacheConfig, useSupabaseCache } from './useSupabaseCache'
+import { useSupabaseCache } from './useSupabaseCache'
 
 export interface UserDisplayData {
   id: string

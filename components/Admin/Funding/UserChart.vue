@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { ChartOptions } from 'chart.js'
 import {
   CategoryScale,
   Chart as ChartJS,
-  type ChartOptions,
+
   Legend,
   LinearScale,
   LineElement,
