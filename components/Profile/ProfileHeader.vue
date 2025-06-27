@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
 import { getUserActivityStatus } from '~/utils/lastSeen'
@@ -271,12 +271,12 @@ function getRoleInfo(role: string | null) {
                 Remove Friend
               </Button>
 
-              <!-- Show loading skeleton while checking friendship status -->
-              <Skeleton
+              <!-- Show loading button while checking friendship status -->
+              <Button
                 v-else-if="friendshipStatus === 'loading'"
-                height="2.5rem"
-                width="7rem"
-                style="border-radius: 0.5rem;"
+                :disabled="true"
+                variant="gray"
+                :loading="true"
               />
 
               <CopyClipboard :text="profileUrl" variant="gray" confirm>

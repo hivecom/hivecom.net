@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Avatar, Flex } from '@dolanske/vui'
+import { Avatar, Flex, Skeleton } from '@dolanske/vui'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import { useUserData } from '@/composables/useUserData'
 
@@ -100,11 +100,13 @@ const currentUser = useSupabaseUser()
 
     <!-- Loading state -->
     <Flex v-else-if="loading" gap="m" y-center class="user-display__header">
-      <Avatar :size="size">
-        ?
-      </Avatar>
+      <Skeleton
+        :width="size === 's' ? '32px' : size === 'm' ? '40px' : '48px'"
+        :height="size === 's' ? '32px' : size === 'm' ? '40px' : '48px'"
+        style="border-radius: 50%;"
+      />
       <div class="user-display__info">
-        <span class="user-display__username user-display__username--loading">Loading...</span>
+        <Skeleton width="120px" height="20px" />
       </div>
     </Flex>
 
@@ -156,10 +158,6 @@ const currentUser = useSupabaseUser()
   &__username {
     font-weight: var(--font-weight-medium);
     color: var(--color-text);
-
-    &--loading {
-      color: var(--color-text-lighter);
-    }
 
     &--error {
       color: var(--color-text-red);
