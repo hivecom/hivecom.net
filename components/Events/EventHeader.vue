@@ -25,6 +25,9 @@ interface Props {
 
 const _props = defineProps<Props>()
 
+// Get current user for authentication checks
+const user = useSupabaseUser()
+
 // State for RSVP modal
 const showRSVPModal = ref(false)
 
@@ -175,6 +178,7 @@ onUnmounted(() => {
 
         <!-- View RSVPs button -->
         <Button
+          v-if="user"
           variant="accent"
           size="s"
           @click="showRSVPModal = true"

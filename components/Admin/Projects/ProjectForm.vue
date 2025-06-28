@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
-import { Badge, Button, Calendar, Flex, Input, Sheet, Switch, Textarea } from '@dolanske/vui'
+import { Badge, Button, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
-// Interface for announcement query result
-interface QueryAnnouncement {
+// Interface for project query result
+interface QueryProject {
   created_at: string
   created_by: string
   description: string | null
@@ -14,14 +14,26 @@ interface QueryAnnouncement {
   markdown: string
   modified_at: string | null
   modified_by: string | null
-  pinned: boolean
-  published_at: string
+  owner: string | null
   tags: string[] | null
   title: string
+  github: string | null
+}
+
+// Interface for profile selection
+interface ProfileSelect {
+  id: string
+  username: string
+}
+
+// Interface for Select options
+interface SelectOption {
+  label: string
+  value: string
 }
 
 const props = defineProps<{
-  announcement: QueryAnnouncement | null
+  project: QueryProject | null
   isEditMode: boolean
 }>()
 
@@ -31,15 +43,18 @@ const emit = defineEmits(['save', 'delete'])
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
+// Setup Supabase client
+const supabase = useSupabaseClient()
+
 // Form state
-const announcementForm = ref({
+const projectForm = ref({
   title: '',
   description: '',
   markdown: '',
   link: '',
-  pinned: false,
-  published_at: null as Date | null,
+  owner: null as string | null, // UUID of the owner
   tags: [] as string[],
+  github: '',
 })
 
 // New tag input for adding individual tags
@@ -48,39 +63,88 @@ const newTagInput = ref('')
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 
+// Loading states for dropdowns
+const loadingProfiles = ref(true)
+
+// Options for dropdowns
+const profiles = ref<ProfileSelect[]>([])
+
+// Computed options for selects
+const profileOptions = computed(() =>
+  profiles.value.map(profile => ({
+    label: profile.username || 'Unknown User',
+    value: profile.id,
+  })),
+)
+
+// Computed property to handle conversion between form values and select options
+const selectedOwnerComputed = computed({
+  get: () => {
+    if (!projectForm.value.owner)
+      return []
+    const option = profileOptions.value.find(opt => opt.value === projectForm.value.owner)
+    return option ? [option] : []
+  },
+  set: (value: SelectOption[] | null | undefined) => {
+    projectForm.value.owner = (value && value.length > 0) ? value[0].value : null
+  },
+})
+
+// GitHub repository format validation (username/repository)
+const githubRegex = /^\w[\w.-]*\/\w[\w.-]*$/
+
 // Form validation
 const validation = computed(() => ({
-  title: !!announcementForm.value.title.trim(),
-  markdown: !!announcementForm.value.markdown.trim(),
-  published_at: !!announcementForm.value.published_at,
+  title: !!projectForm.value.title.trim(),
+  markdown: !!projectForm.value.markdown.trim(),
+  github: !projectForm.value.github.trim() || githubRegex.test(projectForm.value.github.trim()),
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
-// Update form data when announcement prop changes
+// Fetch dropdown data
+async function fetchDropdownData() {
+  try {
+    // Fetch profiles
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .order('username')
+
+    if (profilesError)
+      throw profilesError
+    profiles.value = profilesData || []
+    loadingProfiles.value = false
+  }
+  catch (error) {
+    console.error('Error fetching dropdown data:', error)
+  }
+}
+
+// Update form data when project prop changes
 watch(
-  () => props.announcement,
-  (newAnnouncement) => {
-    if (newAnnouncement) {
-      announcementForm.value = {
-        title: newAnnouncement.title || '',
-        description: newAnnouncement.description || '',
-        markdown: newAnnouncement.markdown || '',
-        link: newAnnouncement.link || '',
-        pinned: newAnnouncement.pinned || false,
-        published_at: newAnnouncement.published_at ? new Date(newAnnouncement.published_at) : new Date(),
-        tags: newAnnouncement.tags || [],
+  () => props.project,
+  (newProject) => {
+    if (newProject) {
+      projectForm.value = {
+        title: newProject.title || '',
+        description: newProject.description || '',
+        markdown: newProject.markdown || '',
+        link: newProject.link || '',
+        owner: newProject.owner || null,
+        tags: newProject.tags || [],
+        github: newProject.github || '',
       }
     }
     else {
-      announcementForm.value = {
+      projectForm.value = {
         title: '',
         description: '',
         markdown: '',
         link: '',
-        pinned: false,
-        published_at: new Date(),
+        owner: null,
         tags: [],
+        github: '',
       }
     }
   },
@@ -98,32 +162,35 @@ function handleSubmit() {
     return
 
   // Prepare the data to save
-  const announcementData: TablesInsert<'announcements'> | TablesUpdate<'announcements'> = {
-    title: announcementForm.value.title,
-    description: announcementForm.value.description || null,
-    markdown: announcementForm.value.markdown,
-    link: announcementForm.value.link || null,
-    pinned: announcementForm.value.pinned,
-    published_at: announcementForm.value.published_at ? announcementForm.value.published_at.toISOString() : new Date().toISOString(),
-    tags: announcementForm.value.tags.length > 0 ? announcementForm.value.tags : null,
+  const projectData: TablesInsert<'projects'> | TablesUpdate<'projects'> = {
+    title: projectForm.value.title,
+    description: projectForm.value.description || null,
+    markdown: projectForm.value.markdown,
+    link: projectForm.value.link || null,
+    owner: projectForm.value.owner || null,
+    tags: projectForm.value.tags.length > 0 ? projectForm.value.tags : null,
+    github: projectForm.value.github.trim() || null,
   }
 
-  emit('save', announcementData)
+  emit('save', projectData)
 }
 
 // Handle delete
 function handleDelete() {
-  if (!props.announcement)
+  if (!props.project)
     return
   showDeleteConfirm.value = true
 }
 
 // Confirm delete
 function confirmDelete() {
-  if (!props.announcement)
+  if (!props.project)
     return
-  emit('delete', props.announcement.id)
+  emit('delete', props.project.id)
 }
+
+// Fetch dropdown data when component mounts
+onMounted(fetchDropdownData)
 
 // Add a new tag
 function addTag() {
@@ -131,8 +198,8 @@ function addTag() {
   if (rawTag) {
     // Normalize tag: lowercase and replace spaces with hyphens
     const normalizedTag = rawTag.toLowerCase().replace(/\s+/g, '-')
-    if (!announcementForm.value.tags.includes(normalizedTag)) {
-      announcementForm.value.tags.push(normalizedTag)
+    if (!projectForm.value.tags.includes(normalizedTag)) {
+      projectForm.value.tags.push(normalizedTag)
       newTagInput.value = ''
     }
   }
@@ -140,7 +207,7 @@ function addTag() {
 
 // Remove a tag
 function removeTag(tagToRemove: string) {
-  announcementForm.value.tags = announcementForm.value.tags.filter(tag => tag !== tagToRemove)
+  projectForm.value.tags = projectForm.value.tags.filter(tag => tag !== tagToRemove)
 }
 
 // Handle enter key in new tag input
@@ -159,82 +226,58 @@ function handleTagInputEnter() {
   >
     <template #header>
       <Flex column :gap="0">
-        <h4>{{ props.isEditMode ? 'Edit Announcement' : 'Add Announcement' }}</h4>
-        <span v-if="props.isEditMode && props.announcement" class="color-text-light text-xxs">
-          {{ props.announcement.title }}
+        <h4>{{ props.isEditMode ? 'Edit Project' : 'Add Project' }}</h4>
+        <span v-if="props.isEditMode && props.project" class="color-text-light text-xxs">
+          {{ props.project.title }}
         </span>
       </Flex>
     </template>
 
-    <!-- Announcement Form Section -->
-    <Flex column gap="l" class="announcement-form">
+    <!-- Project Form Section -->
+    <Flex column gap="l" class="project-form">
       <!-- Basic Information -->
       <Flex column gap="m" expand>
         <h4>Basic Information</h4>
 
         <Input
-          v-model="announcementForm.title"
+          v-model="projectForm.title"
           expand
           name="title"
           label="Title"
           required
           :valid="validation.title"
-          error="Announcement title is required"
-          placeholder="Enter announcement title"
+          error="Project title is required"
+          placeholder="Enter project title"
         />
 
-        <Flex column class="announcement-form__date-picker-container" expand>
-          <label for="published-date-picker" class="announcement-form__date-picker-label">
-            Publish Date <span class="required" style="color: var(--color-text-red);">*</span>
-          </label>
-          <Calendar
-            v-model="announcementForm.published_at"
-            expand
-            enable-time-picker
-            time-picker-inline
-            enable-minutes
-            is24
-            format="yyyy-MM-dd-HH:mm"
-            :class="{ invalid: !validation.published_at }"
-          >
-            <template #trigger>
-              <Button
-                id="published-date-picker"
-                class="announcement-form__date-picker-button"
-                expand
-                :class="{ error: !validation.published_at }"
-              >
-                {{ announcementForm.published_at ? announcementForm.published_at.toLocaleString('en-US', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false,
-                }) : 'Choose publication date and time' }}
-                <template #end>
-                  <Icon name="ph:calendar" />
-                </template>
-              </Button>
-            </template>
-          </Calendar>
-        </Flex>
-
         <Textarea
-          v-model="announcementForm.description"
+          v-model="projectForm.description"
           expand
           name="description"
           label="Description"
-          placeholder="Enter announcement description (optional)"
+          placeholder="Enter project description (optional)"
           :rows="3"
         />
 
         <Input
-          v-model="announcementForm.link"
+          v-model="projectForm.link"
           expand
           name="link"
           label="Link"
           placeholder="Enter external link (optional)"
+        />
+
+        <Select
+          v-model="selectedOwnerComputed"
+          search
+          expand
+          name="owner"
+          label="Owner"
+          placeholder="Select owner"
+          :options="profileOptions"
+          :loading="loadingProfiles"
+          searchable
+          show-clear
         />
 
         <div class="tags-section">
@@ -260,9 +303,9 @@ function handleTagInputEnter() {
           </Flex>
 
           <!-- Display existing tags -->
-          <div v-if="announcementForm.tags.length > 0" class="tags-display">
+          <div v-if="projectForm.tags.length > 0" class="tags-display">
             <Badge
-              v-for="tag in announcementForm.tags"
+              v-for="tag in projectForm.tags"
               :key="tag"
               size="s"
               variant="neutral"
@@ -280,6 +323,17 @@ function handleTagInputEnter() {
             </Badge>
           </div>
         </div>
+
+        <!-- GitHub Repository -->
+        <Input
+          v-model="projectForm.github"
+          expand
+          name="github"
+          label="GitHub Repository"
+          placeholder="username/repository (optional)"
+          :valid="validation.github"
+          error="Invalid format. Use 'username/repository' format"
+        />
       </Flex>
 
       <!-- Content Section -->
@@ -287,7 +341,7 @@ function handleTagInputEnter() {
         <h4>Content</h4>
 
         <Textarea
-          v-model="announcementForm.markdown"
+          v-model="projectForm.markdown"
           expand
           name="markdown"
           label="Markdown Content"
@@ -297,22 +351,6 @@ function handleTagInputEnter() {
           placeholder="Enter markdown content"
           :rows="12"
         />
-      </Flex>
-
-      <!-- Settings Section -->
-      <Flex column gap="m" expand>
-        <h4>Settings</h4>
-
-        <Flex gap="m" y-center>
-          <Switch
-            v-model="announcementForm.pinned"
-            name="pinned"
-          />
-          <Flex column :gap="0">
-            <label for="pinned" class="toggle-label">Pin Announcement</label>
-            <span class="color-text-light text-xs">Pinned announcements appear at the top</span>
-          </Flex>
-        </Flex>
       </Flex>
     </Flex>
 
@@ -341,7 +379,7 @@ function handleTagInputEnter() {
           v-if="props.isEditMode"
           variant="danger"
           square
-          data-title-left="Delete announcement"
+          data-title-left="Delete project"
           @click.prevent="handleDelete"
         >
           <Icon name="ph:trash" />
@@ -353,8 +391,8 @@ function handleTagInputEnter() {
     <ConfirmModal
       v-model:open="showDeleteConfirm"
       v-model:confirm="confirmDelete"
-      title="Confirm Delete Announcement"
-      :description="`Are you sure you want to delete the announcement '${props.announcement?.title}'? This action cannot be undone.`"
+      title="Confirm Delete Project"
+      :description="`Are you sure you want to delete the project '${props.project?.title}'? This action cannot be undone.`"
       confirm-text="Delete"
       cancel-text="Cancel"
       :destructive="true"
@@ -363,20 +401,8 @@ function handleTagInputEnter() {
 </template>
 
 <style scoped lang="scss">
-.announcement-form {
+.project-form {
   padding-bottom: var(--space);
-
-  &__date-picker-container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-  }
-
-  &__date-picker-label {
-    font-size: var(--font-size-s);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text);
-  }
 }
 
 .form-actions {
@@ -385,12 +411,6 @@ function handleTagInputEnter() {
 
 .flex-1 {
   flex: 1;
-}
-
-.toggle-label {
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-  cursor: pointer;
 }
 
 .required {

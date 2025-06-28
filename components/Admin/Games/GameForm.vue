@@ -4,7 +4,7 @@ import { Button, Flex, Input, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
-import { deleteGameAsset, getGameAssetUrl, uploadGameAsset } from '~/utils/storage'
+import { deleteGameAsset, uploadGameAsset } from '~/utils/storage'
 
 const props = defineProps<{
   game: Tables<'games'> | null
@@ -16,6 +16,9 @@ const emit = defineEmits(['save', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+// Game assets composable
+const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl, clearGameAssets } = useGameAssets()
 
 // Form state
 const gameForm = ref({
@@ -64,10 +67,9 @@ watch(
 
       // Initialize asset URLs if shorthand exists
       if (newGame.shorthand) {
-        const supabase = useSupabaseClient()
-        assetsUrl.value.icon = await getGameAssetUrl(supabase, newGame.shorthand, 'icon')
-        assetsUrl.value.cover = await getGameAssetUrl(supabase, newGame.shorthand, 'cover')
-        assetsUrl.value.background = await getGameAssetUrl(supabase, newGame.shorthand, 'background')
+        assetsUrl.value.icon = await getGameIconUrl(newGame)
+        assetsUrl.value.cover = await getGameCoverUrl(newGame)
+        assetsUrl.value.background = await getGameBackgroundUrl(newGame)
       }
     }
     else {
@@ -126,7 +128,7 @@ function confirmDelete() {
 
 // Handle asset upload
 async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', file: File) {
-  if (!gameForm.value.shorthand)
+  if (!gameForm.value.shorthand || !props.game)
     return
 
   try {
@@ -138,6 +140,8 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 
     if (result.success && result.url) {
       assetsUrl.value[assetType] = result.url
+      // Clear cache for this game to ensure fresh data
+      clearGameAssets(props.game.id)
     }
     else {
       assetsError.value[assetType] = result.error || `Failed to upload ${assetType}`
@@ -154,7 +158,7 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 
 // Handle asset removal
 async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
-  if (!gameForm.value.shorthand)
+  if (!gameForm.value.shorthand || !props.game)
     return
 
   try {
@@ -164,6 +168,8 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     if (result.success) {
       assetsUrl.value[assetType] = null
       assetsError.value[assetType] = null
+      // Clear cache for this game to ensure fresh data
+      clearGameAssets(props.game.id)
     }
     else {
       assetsError.value[assetType] = result.error || 'Failed to remove asset'
@@ -174,32 +180,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     assetsError.value[assetType] = 'Failed to remove asset'
   }
 }
-
-// Helper functions to generate Steam URLs for reference
-function getSteamIconUrl(steamId: number) {
-  return `https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/${steamId}/icon.jpg`
-}
-
-function getSteamCoverUrl(steamId: number) {
-  return `https://cdn.akamai.steamstatic.com/steam/apps/${steamId}/library_600x900.jpg`
-}
-
-function getSteamBackgroundUrl(steamId: number) {
-  return `https://cdn.akamai.steamstatic.com/steam/apps/${steamId}/page_bg_generated_v6b.jpg`
-}
-
-// Computed properties for Steam URLs
-const steamUrls = computed(() => {
-  const steamId = gameForm.value.steam_id ? Number(gameForm.value.steam_id) : null
-  if (!steamId)
-    return { icon: null, cover: null, background: null }
-
-  return {
-    icon: getSteamIconUrl(steamId),
-    cover: getSteamCoverUrl(steamId),
-    background: getSteamBackgroundUrl(steamId),
-  }
-})
 </script>
 
 <template>
@@ -294,13 +274,6 @@ const steamUrls = computed(() => {
                 @remove="() => handleAssetRemove('cover')"
               />
               <span class="text-xs color-text-light">Recommended: 600x900px portrait image</span>
-              <div v-if="!assetsUrl.cover && steamUrls.cover" class="steam-reference">
-                <Icon name="ph:link" />
-                <span class="text-xs">Steam reference:</span>
-                <a :href="steamUrls.cover" target="_blank" rel="noopener" class="steam-link">
-                  View Steam cover
-                </a>
-              </div>
             </Flex>
           </Flex>
 
@@ -318,13 +291,6 @@ const steamUrls = computed(() => {
               @remove="() => handleAssetRemove('background')"
             />
             <span class="text-xs color-text-light">Recommended: 1920x1080px wide image</span>
-            <div v-if="!assetsUrl.background && steamUrls.background" class="steam-reference">
-              <Icon name="ph:link" />
-              <span class="text-xs">Steam reference:</span>
-              <a :href="steamUrls.background" target="_blank" rel="noopener" class="steam-link">
-                View Steam background
-              </a>
-            </div>
           </Flex>
         </Flex>
       </Flex>
@@ -410,27 +376,6 @@ const steamUrls = computed(() => {
 
   .iconify {
     color: var(--color-text-blue);
-  }
-}
-
-.steam-reference {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  color: var(--color-text-light);
-  font-size: var(--font-size-xs);
-
-  .iconify {
-    color: var(--color-accent);
-  }
-
-  .steam-link {
-    color: var(--color-accent);
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
   }
 }
 </style>

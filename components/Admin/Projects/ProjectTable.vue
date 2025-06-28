@@ -6,26 +6,28 @@ import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dol
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 
+import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import AnnouncementDetails from './AnnouncementDetails.vue'
-import AnnouncementFilters from './AnnouncementFilters.vue'
-import AnnouncementForm from './AnnouncementForm.vue'
+import UserLink from '@/components/Shared/UserLink.vue'
+import ProjectDetails from './ProjectDetails.vue'
+import ProjectFilters from './ProjectFilters.vue'
+import ProjectForm from './ProjectForm.vue'
 
 // Type from the query result
-type QueryAnnouncement = QueryData<typeof announcementsQuery>[0]
+type QueryProject = QueryData<typeof projectsQuery>[0]
 
-// Define interface for transformed announcement data
-interface TransformedAnnouncement {
+// Define interface for transformed project data
+interface TransformedProject {
   Title: string
   Description: string | null
   Tags: string[] | null
-  Pinned: boolean
+  Owner: string | null
   Created: string
-  _original: QueryAnnouncement
+  _original: QueryProject
 }
 
-// Define interface for Select options
+// Interface for Select options
 interface SelectOption {
   label: string
   value: string
@@ -35,43 +37,31 @@ interface SelectOption {
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
-const { canManageResource, canCreate } = useTableActions('announcements')
+const { canManageResource, canCreate } = useTableActions('projects')
 
 // Define query
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
-const announcementsQuery = supabase.from('announcements').select(`
-  *
+const projectsQuery = supabase.from('projects').select(`
+  *,
+  owner_profile:owner(username)
 `)
 
 // Data states
 const loading = ref(true)
 const errorMessage = ref('')
-const announcements = ref<QueryData<typeof announcementsQuery>>([])
+const projects = ref<QueryData<typeof projectsQuery>>([])
 const search = ref('')
-const pinnedFilter = ref<SelectOption[]>()
+
+// Filter states
 const tagFilter = ref<SelectOption[]>([])
 
-// Announcement detail state
-const selectedAnnouncement = ref<QueryAnnouncement | null>(null)
-const showAnnouncementDetails = ref(false)
-
-// Announcement form state
-const showAnnouncementForm = ref(false)
-const isEditMode = ref(false)
-
-// Filter options
-const pinnedOptions: SelectOption[] = [
-  { label: 'Pinned', value: 'true' },
-  { label: 'Not Pinned', value: 'false' },
-]
-
-// Compute unique tag options from all announcements
+// Compute unique tag options from all projects
 const tagOptions = computed<SelectOption[]>(() => {
   const allTags = new Set<string>()
-  announcements.value.forEach((announcement) => {
-    if (announcement.tags) {
-      announcement.tags.forEach(tag => allTags.add(tag))
+  projects.value.forEach((project) => {
+    if (project.tags) {
+      project.tags.forEach(tag => allTags.add(tag))
     }
   })
   return Array.from(allTags).sort().map(tag => ({
@@ -80,9 +70,17 @@ const tagOptions = computed<SelectOption[]>(() => {
   }))
 })
 
-// Filter based on search, pinned status, and tags
-const filteredData = computed<TransformedAnnouncement[]>(() => {
-  const filtered = announcements.value.filter((item) => {
+// Project detail state
+const selectedProject = ref<QueryProject | null>(null)
+const showProjectDetails = ref(false)
+
+// Project form state
+const showProjectForm = ref(false)
+const isEditMode = ref(false)
+
+// Filter based on search and tags
+const filteredData = computed<TransformedProject[]>(() => {
+  const filtered = projects.value.filter((item) => {
     // Filter by search term
     if (search.value && !Object.values(item).some((value) => {
       if (value === null || value === undefined)
@@ -90,16 +88,6 @@ const filteredData = computed<TransformedAnnouncement[]>(() => {
       return String(value).toLowerCase().includes(search.value.toLowerCase())
     })) {
       return false
-    }
-
-    // Filter by pinned status
-    if (pinnedFilter.value && pinnedFilter.value.length > 0) {
-      const isPinned = pinnedFilter.value.some(filter =>
-        (filter.value === 'true' && item.pinned)
-        || (filter.value === 'false' && !item.pinned),
-      )
-      if (!isPinned)
-        return false
     }
 
     // Filter by tags
@@ -114,14 +102,14 @@ const filteredData = computed<TransformedAnnouncement[]>(() => {
   })
 
   // Transform the data into explicit key-value pairs
-  return filtered.map(announcement => ({
-    Title: announcement.title,
-    Description: announcement.description || 'No description',
-    Tags: announcement.tags || null,
-    Pinned: announcement.pinned,
-    Created: announcement.created_at,
+  return filtered.map(project => ({
+    Title: project.title,
+    Description: project.description || 'No description',
+    Tags: project.tags || null,
+    Owner: project.owner || null, // Store the user ID, not the username
+    Created: project.created_at,
     // Keep the original object to use when emitting events
-    _original: announcement,
+    _original: project,
   }))
 })
 
@@ -137,132 +125,131 @@ const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData
 // Set default sorting.
 setSort('Created', 'desc')
 
-// Fetch announcements data
-async function fetchAnnouncements() {
+// Fetch projects data
+async function fetchProjects() {
   loading.value = true
   errorMessage.value = ''
 
   try {
-    const { data, error } = await announcementsQuery
+    const { data, error } = await projectsQuery
 
     if (error) {
       throw error
     }
 
-    announcements.value = data || []
+    projects.value = data || []
     // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
   catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading announcements'
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading projects'
   }
   finally {
     loading.value = false
   }
 }
 
-// Handle row click - View announcement details
-function viewAnnouncement(announcement: QueryAnnouncement) {
-  selectedAnnouncement.value = announcement
-  showAnnouncementDetails.value = true
+// Handle row click - View project details
+function viewProject(project: QueryProject) {
+  selectedProject.value = project
+  showProjectDetails.value = true
 }
 
-// Open the add announcement form
-function openAddAnnouncementForm() {
-  selectedAnnouncement.value = null
+// Open the add project form
+function openAddProjectForm() {
+  selectedProject.value = null
   isEditMode.value = false
-  showAnnouncementForm.value = true
+  showProjectForm.value = true
 }
 
-// Open the edit announcement form
-function openEditAnnouncementForm(announcement: QueryAnnouncement, event?: Event) {
+// Open the edit project form
+function openEditProjectForm(project: QueryProject, event?: Event) {
   // Prevent the click from triggering the view details
   if (event)
     event.stopPropagation()
 
-  selectedAnnouncement.value = announcement
+  selectedProject.value = project
   isEditMode.value = true
-  showAnnouncementForm.value = true
+  showProjectForm.value = true
 }
 
-// Handle edit from AnnouncementDetails
-function handleEditFromDetails(announcement: QueryAnnouncement) {
-  openEditAnnouncementForm(announcement)
+// Handle edit from ProjectDetails
+function handleEditFromDetails(project: QueryProject) {
+  openEditProjectForm(project)
 }
 
-// Handle announcement save (both create and update)
-async function handleAnnouncementSave(announcementData: TablesInsert<'announcements'> | TablesUpdate<'announcements'>) {
+// Handle project save (both create and update)
+async function handleProjectSave(projectData: TablesInsert<'projects'> | TablesUpdate<'projects'>) {
   try {
-    if (isEditMode.value && selectedAnnouncement.value) {
-      // Update existing announcement
+    if (isEditMode.value && selectedProject.value) {
+      // Update existing project
       const updateData = {
-        ...announcementData,
+        ...projectData,
         modified_at: new Date().toISOString(),
         modified_by: user.value?.id,
       }
 
       const { error } = await supabase
-        .from('announcements')
+        .from('projects')
         .update(updateData)
-        .eq('id', selectedAnnouncement.value.id)
+        .eq('id', selectedProject.value.id)
 
       if (error)
         throw error
     }
     else {
-      // Create new announcement with creation and modification tracking
+      // Create new project with creation and modification tracking
       const createData = {
-        ...announcementData,
+        ...projectData,
         created_by: user.value?.id,
         modified_by: user.value?.id,
         modified_at: new Date().toISOString(),
       }
 
       const { error } = await supabase
-        .from('announcements')
-        .insert(createData as TablesInsert<'announcements'>)
+        .from('projects')
+        .insert(createData as TablesInsert<'projects'>)
 
       if (error)
         throw error
     }
 
-    // Refresh announcements data and close form
-    showAnnouncementForm.value = false
-    await fetchAnnouncements()
+    // Refresh projects data and close form
+    showProjectForm.value = false
+    await fetchProjects()
   }
   catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while saving the announcement'
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while saving the project'
   }
 }
 
-// Handle announcement deletion
-async function handleAnnouncementDelete(announcementId: number) {
+// Handle project deletion
+async function handleProjectDelete(projectId: number) {
   try {
     const { error } = await supabase
-      .from('announcements')
+      .from('projects')
       .delete()
-      .eq('id', announcementId)
+      .eq('id', projectId)
 
     if (error)
       throw error
 
-    showAnnouncementForm.value = false
-    await fetchAnnouncements()
+    showProjectForm.value = false
+    await fetchProjects()
   }
   catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the announcement'
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the project'
   }
 }
 
 // Clear all filters
 function clearFilters() {
   search.value = ''
-  pinnedFilter.value = undefined
   tagFilter.value = []
 }
 
 // Lifecycle hooks
-onBeforeMount(fetchAnnouncements)
+onBeforeMount(fetchProjects)
 </script>
 
 <template>
@@ -276,11 +263,9 @@ onBeforeMount(fetchAnnouncements)
     <Flex gap="s" column expand>
       <!-- Header and filters -->
       <Flex x-between expand>
-        <AnnouncementFilters
+        <ProjectFilters
           v-model:search="search"
-          v-model:pinned-filter="pinnedFilter"
           v-model:tag-filter="tagFilter"
-          :pinned-options="pinnedOptions"
           :tag-options="tagOptions"
           @clear-filters="clearFilters"
         />
@@ -289,7 +274,7 @@ onBeforeMount(fetchAnnouncements)
           <template #start>
             <Icon name="ph:plus" />
           </template>
-          Add Announcement
+          Add Project
         </Button>
       </Flex>
 
@@ -305,20 +290,18 @@ onBeforeMount(fetchAnnouncements)
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
     <Flex x-between expand>
-      <AnnouncementFilters
+      <ProjectFilters
         v-model:search="search"
-        v-model:pinned-filter="pinnedFilter"
         v-model:tag-filter="tagFilter"
-        :pinned-options="pinnedOptions"
         :tag-options="tagOptions"
         @clear-filters="clearFilters"
       />
 
-      <Button v-if="canCreate" variant="accent" @click="openAddAnnouncementForm">
+      <Button v-if="canCreate" variant="accent" @click="openAddProjectForm">
         <template #start>
           <Icon name="ph:plus" />
         </template>
-        Add Announcement
+        Add Project
       </Button>
     </Flex>
 
@@ -334,13 +317,25 @@ onBeforeMount(fetchAnnouncements)
         </template>
 
         <template #body>
-          <tr v-for="announcement in rows" :key="announcement._original.id" class="clickable-row" @click="viewAnnouncement(announcement._original as QueryAnnouncement)">
-            <Table.Cell>{{ announcement.Title }}</Table.Cell>
-            <Table.Cell>{{ announcement.Description }}</Table.Cell>
+          <tr v-for="project in rows" :key="project._original.id" class="clickable-row" @click="viewProject(project._original as QueryProject)">
             <Table.Cell>
-              <div v-if="announcement.Tags && announcement.Tags.length > 0" class="tags-cell">
+              <Flex gap="xs" y-center>
+                <span>{{ project.Title }}</span>
+                <GitHubLink
+                  v-if="project._original.github"
+                  :github="project._original.github"
+                  :show-icon="true"
+                  :hide-repo="true"
+                  small
+                  @click.stop
+                />
+              </Flex>
+            </Table.Cell>
+            <Table.Cell>{{ project.Description }}</Table.Cell>
+            <Table.Cell>
+              <div v-if="project.Tags && project.Tags.length > 0" class="tags-cell">
                 <Badge
-                  v-for="tag in announcement.Tags"
+                  v-for="tag in project.Tags"
                   :key="tag"
                   size="xs"
                   variant="neutral"
@@ -352,18 +347,18 @@ onBeforeMount(fetchAnnouncements)
               <span v-else class="color-text-light">No tags</span>
             </Table.Cell>
             <Table.Cell>
-              <Icon v-if="announcement.Pinned" name="ph:push-pin-fill" class="color-accent" />
-              <span v-else class="color-text-light">—</span>
+              <UserLink v-if="project.Owner" :user-id="project.Owner" />
+              <span v-else class="color-text-light">No owner</span>
             </Table.Cell>
             <Table.Cell>
-              <TimestampDate :date="announcement.Created" />
+              <TimestampDate :date="project.Created" />
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
                 resource-type="announcements"
-                :item="announcement._original"
-                @edit="(announcementItem) => openEditAnnouncementForm(announcementItem as QueryAnnouncement)"
-                @delete="(announcementItem) => handleAnnouncementDelete((announcementItem as QueryAnnouncement).id)"
+                :item="project._original"
+                @edit="(projectItem) => openEditProjectForm(projectItem as QueryProject)"
+                @delete="(projectItem) => handleProjectDelete((projectItem as QueryProject).id)"
               />
             </Table.Cell>
           </tr>
@@ -378,26 +373,26 @@ onBeforeMount(fetchAnnouncements)
     <!-- No results message -->
     <Flex v-if="!loading && (!rows || rows.length === 0)" expand>
       <Alert variant="info" class="w-100">
-        No announcements found
+        No projects found
       </Alert>
     </Flex>
   </Flex>
 
-  <!-- Announcement Detail Sheet -->
-  <AnnouncementDetails
-    v-model:is-open="showAnnouncementDetails"
-    :announcement="selectedAnnouncement"
+  <!-- Project Detail Sheet -->
+  <ProjectDetails
+    v-model:is-open="showProjectDetails"
+    :project="selectedProject"
     @edit="handleEditFromDetails"
-    @delete="(announcementItem) => handleAnnouncementDelete(announcementItem.id)"
+    @delete="(projectItem) => handleProjectDelete(projectItem.id)"
   />
 
-  <!-- Announcement Form Sheet (for both create and edit) -->
-  <AnnouncementForm
-    v-model:is-open="showAnnouncementForm"
-    :announcement="selectedAnnouncement"
+  <!-- Project Form Sheet (for both create and edit) -->
+  <ProjectForm
+    v-model:is-open="showProjectForm"
+    :project="selectedProject"
     :is-edit-mode="isEditMode"
-    @save="handleAnnouncementSave"
-    @delete="handleAnnouncementDelete"
+    @save="handleProjectSave"
+    @delete="handleProjectDelete"
   />
 </template>
 

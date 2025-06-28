@@ -8,12 +8,14 @@ interface Props {
   maxUsers?: number
   avatarSize?: number
   showNames?: boolean
+  random?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   maxUsers: 10,
   avatarSize: 40,
   showNames: true,
+  random: false,
 })
 
 // Convert userIds array to reactive ref
@@ -39,6 +41,15 @@ const {
 
 // Get visible users (up to maxUsers)
 const visibleUserIds = computed(() => {
+  if (props.random) {
+    // Create a copy of the array and shuffle it
+    const shuffled = [...props.userIds]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled.slice(0, props.maxUsers)
+  }
   return props.userIds.slice(0, props.maxUsers)
 })
 
@@ -195,7 +206,6 @@ defineExpose({
   }
 
   &__avatar-item {
-    border: 2px solid var(--color-bg);
     transition:
       transform 0.2s ease,
       z-index 0.2s ease;

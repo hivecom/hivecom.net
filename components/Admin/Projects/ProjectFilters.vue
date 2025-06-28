@@ -7,7 +7,6 @@ interface SelectOption {
 }
 
 const props = defineProps<{
-  pinnedOptions: SelectOption[]
   tagOptions: SelectOption[]
 }>()
 
@@ -18,7 +17,6 @@ const emit = defineEmits<{
 
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const pinnedFilter = defineModel<SelectOption[]>('pinnedFilter')
 const tagFilter = defineModel<SelectOption[]>('tagFilter')
 
 // Clear filters handler
@@ -32,22 +30,12 @@ function clearFilters() {
     <!-- Search input -->
     <Input
       v-model="search"
-      placeholder="Search announcements..."
+      placeholder="Search projects..."
     >
       <template #start>
         <Icon name="ph:magnifying-glass" />
       </template>
     </Input>
-
-    <!-- Pinned filter -->
-    <Select
-      v-model="pinnedFilter"
-      :options="props.pinnedOptions"
-      placeholder="Filter by pinned status"
-      expand
-      search
-      show-clear
-    />
 
     <!-- Tag filter -->
     <Select
@@ -62,10 +50,10 @@ function clearFilters() {
 
     <!-- Clear all filters -->
     <Button
-      v-if="search || pinnedFilter || tagFilter"
+      v-if="search || tagFilter"
       plain
       outline
-      :disabled="!search && !pinnedFilter && !tagFilter"
+      :disabled="!search && !tagFilter"
       @click="clearFilters"
     >
       Clear Filters

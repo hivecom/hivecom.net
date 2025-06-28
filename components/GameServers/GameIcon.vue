@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
-import { getGameAssetUrl } from '~/utils/storage'
+import { useGameAssets } from '~/composables/useGameAssets'
 
 interface Props {
   game: Tables<'games'>
@@ -13,7 +13,8 @@ const props = withDefaults(defineProps<Props>(), {
   showFallback: true,
 })
 
-const supabase = useSupabaseClient()
+const { getGameIconUrl } = useGameAssets()
+
 const iconUrl = ref<string>('/icon.svg')
 const isLoading = ref(true)
 const hasError = ref(false)
@@ -28,29 +29,14 @@ const sizeClasses = computed(() => {
   return sizes[props.size]
 })
 
-// Get game icon URL with fallback hierarchy
+// Get game icon URL with caching
 async function loadGameIcon() {
   try {
     isLoading.value = true
     hasError.value = false
 
-    // First try: Custom icon from storage
-    if (props.game.shorthand) {
-      const customIconUrl = await getGameAssetUrl(supabase, props.game.shorthand, 'icon')
-      if (customIconUrl) {
-        iconUrl.value = customIconUrl
-        return
-      }
-    }
-
-    // Second try: Steam icon
-    if (props.game.steam_id) {
-      iconUrl.value = `https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/${props.game.steam_id}/icon.jpg`
-      return
-    }
-
-    // Final fallback: Default icon
-    iconUrl.value = '/icon.svg'
+    const url = await getGameIconUrl(props.game)
+    iconUrl.value = url || '/icon.svg'
   }
   catch (error) {
     console.error(`Failed to load icon for game ${props.game.id}:`, error)

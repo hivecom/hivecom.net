@@ -137,6 +137,12 @@ const menuItems = [
     permissions: ['gameservers.read', 'gameservers.create', 'gameservers.update', 'gameservers.delete', 'servers.read', 'servers.create', 'servers.update', 'servers.delete', 'containers.read', 'containers.create', 'containers.update', 'containers.delete'],
   },
   {
+    name: 'Projects',
+    path: '/admin/projects',
+    icon: 'ph:folder',
+    permissions: ['projects.read', 'projects.create', 'projects.update', 'projects.delete'],
+  },
+  {
     name: 'Referendums',
     path: '/admin/referendums',
     icon: 'ph:user-sound',

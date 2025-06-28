@@ -21,6 +21,7 @@ export interface Database {
           modified_by: string | null
           pinned: boolean
           published_at: string
+          tags: string[] | null
           title: string
         }
         Insert: {
@@ -34,6 +35,7 @@ export interface Database {
           modified_by?: string | null
           pinned?: boolean
           published_at?: string
+          tags?: string[] | null
           title: string
         }
         Update: {
@@ -47,6 +49,7 @@ export interface Database {
           modified_by?: string | null
           pinned?: boolean
           published_at?: string
+          tags?: string[] | null
           title?: string
         }
         Relationships: []
@@ -497,6 +500,7 @@ export interface Database {
           created_at: string
           created_by: string
           description: string | null
+          github: string | null
           id: number
           link: string | null
           markdown: string
@@ -510,6 +514,7 @@ export interface Database {
           created_at?: string
           created_by?: string
           description?: string | null
+          github?: string | null
           id?: number
           link?: string | null
           markdown: string
@@ -523,6 +528,7 @@ export interface Database {
           created_at?: string
           created_by?: string
           description?: string | null
+          github?: string | null
           id?: number
           link?: string | null
           markdown?: string
@@ -743,6 +749,18 @@ export interface Database {
         Args: { user_id?: string }
         Returns: undefined
       }
+      validate_github_repo: {
+        Args: { github_repo: string }
+        Returns: boolean
+      }
+      validate_tag_format: {
+        Args: { tag: string }
+        Returns: boolean
+      }
+      validate_tags_array: {
+        Args: { tags: string[] }
+        Returns: boolean
+      }
     }
     Enums: {
       app_permission:
@@ -785,6 +803,10 @@ export interface Database {
         | 'profiles.delete'
         | 'profiles.read'
         | 'profiles.update'
+        | 'projects.create'
+        | 'projects.read'
+        | 'projects.update'
+        | 'projects.delete'
         | 'referendums.create'
         | 'referendums.delete'
         | 'referendums.read'
@@ -801,10 +823,6 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
-        | 'projects.read'
-        | 'projects.create'
-        | 'projects.update'
-        | 'projects.delete'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       region: 'eu' | 'na' | 'all'
@@ -963,6 +981,10 @@ export const Constants = {
         'profiles.delete',
         'profiles.read',
         'profiles.update',
+        'projects.create',
+        'projects.read',
+        'projects.update',
+        'projects.delete',
         'referendums.create',
         'referendums.delete',
         'referendums.read',
@@ -979,10 +1001,6 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
-        'projects.read',
-        'projects.create',
-        'projects.update',
-        'projects.delete',
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],

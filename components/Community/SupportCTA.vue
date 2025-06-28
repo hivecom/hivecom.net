@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { Card, Flex } from '@dolanske/vui'
+import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import constants from '~/constants.json'
 
 interface Props {
   supporterCount?: number
+  supporterIds?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   supporterCount: 0,
+  supporterIds: () => [],
 })
 
 // Fetch supporter count if not provided
@@ -74,6 +77,13 @@ onMounted(async () => {
         <p class="mt-s text-s color-text-light">
           Join {{ actualSupporterCount }} supporters helping fund our community
         </p>
+        <BulkAvatarDisplay
+          :user-ids="props.supporterIds"
+          :max-users="16"
+          :avatar-size="48"
+          :random="true"
+          class="pt-m"
+        />
       </div>
 
       <!-- Benefits -->
@@ -172,6 +182,14 @@ onMounted(async () => {
   background: var(--color-bg-medium);
   border-radius: var(--border-radius-s);
   border: 1px solid var(--color-border-weak);
+}
+
+.supporters-section {
+  padding: var(--space-l);
+  background: var(--color-bg-medium);
+  border-radius: var(--border-radius-s);
+  border: 1px solid var(--color-border-weak);
+  width: 100%;
 }
 
 .benefits-list {

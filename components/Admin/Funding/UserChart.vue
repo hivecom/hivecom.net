@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ChartOptions } from 'chart.js'
+import { Skeleton } from '@dolanske/vui'
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -277,7 +278,35 @@ onBeforeMount(fetchAllData)
 <template>
   <div class="chart-container">
     <div v-if="loading" class="chart-loading">
-      <p>Loading chart data...</p>
+      <div class="chart-skeleton">
+        <!-- Chart title skeleton -->
+        <Skeleton :width="200" :height="20" :radius="4" style="margin-bottom: var(--space-l);" />
+
+        <!-- Legend skeleton -->
+        <div class="legend-skeleton">
+          <Skeleton :width="80" :height="16" :radius="4" />
+          <Skeleton :width="120" :height="16" :radius="4" />
+          <Skeleton :width="80" :height="16" :radius="4" />
+        </div>
+
+        <!-- Chart area skeleton -->
+        <div class="chart-area-skeleton">
+          <!-- Y-axis labels -->
+          <div class="y-axis-skeleton">
+            <Skeleton v-for="i in 6" :key="i" :width="40" :height="12" :radius="2" />
+          </div>
+
+          <!-- Chart lines simulation -->
+          <div class="chart-lines-skeleton">
+            <Skeleton :height="200" :radius="8" style="opacity: 0.3;" />
+          </div>
+        </div>
+
+        <!-- X-axis labels -->
+        <div class="x-axis-skeleton">
+          <Skeleton v-for="i in 6" :key="i" :width="60" :height="12" :radius="2" />
+        </div>
+      </div>
     </div>
 
     <div v-else-if="errorMessage" class="chart-error">
@@ -317,6 +346,44 @@ onBeforeMount(fetchAllData)
   justify-content: center;
   height: 400px;
   color: var(--color-text-light);
+}
+
+.chart-skeleton {
+  width: 100%;
+  max-width: 800px;
+
+  .legend-skeleton {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-l);
+    margin-bottom: var(--space-l);
+  }
+
+  .chart-area-skeleton {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    margin-bottom: var(--space-m);
+
+    .y-axis-skeleton {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 200px;
+    }
+
+    .chart-lines-skeleton {
+      flex: 1;
+      height: 200px;
+    }
+  }
+
+  .x-axis-skeleton {
+    display: flex;
+    justify-content: space-between;
+    margin-left: 48px;
+    margin-right: 0;
+  }
 }
 
 .chart-error {

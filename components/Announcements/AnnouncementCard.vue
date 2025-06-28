@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Card, Flex } from '@dolanske/vui'
+import { Badge, Card, Flex } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
 interface Props {
@@ -79,6 +79,13 @@ function handleClick() {
       <p v-if="announcement.description && !compact" class="announcement-card__description">
         {{ announcement.description }}
       </p>
+
+      <!-- Announcement tags -->
+      <div v-if="announcement.tags && announcement.tags.length > 0 && !compact" class="announcement-card__tags">
+        <Badge v-for="tag in announcement.tags" :key="tag" size="xs" variant="neutral">
+          {{ tag }}
+        </Badge>
+      </div>
     </div>
   </Card>
 </template>
@@ -203,7 +210,7 @@ function handleClick() {
 }
 
 .announcement-card__title {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-l);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
   margin: 0 32px 0 0; // Add right margin for icon space
@@ -241,6 +248,13 @@ function handleClick() {
   margin: 0;
   font-size: var(--font-size-m);
   margin-top: var(--space-s); // Add consistent top margin
+}
+
+.announcement-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-s);
 }
 
 .announcement-card__ultra-compact-content {

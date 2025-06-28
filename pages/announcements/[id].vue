@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Button, Card, Flex } from '@dolanske/vui'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
@@ -135,9 +136,18 @@ useHead({
       </Card>
 
       <!-- Announcement Content (Markdown) -->
-      <div class="announcement-content">
+      <Card class="announcement-content">
         <MDRenderer :md="announcement.markdown" />
-      </div>
+      </Card>
+
+      <!-- Announcement Metadata -->
+      <MetadataCard
+        :tags="announcement.tags"
+        :created-at="announcement.created_at"
+        :created-by="announcement.created_by"
+        :modified-at="announcement.modified_at"
+        :modified-by="announcement.modified_by"
+      />
     </div>
   </div>
 </template>
@@ -187,7 +197,7 @@ useHead({
 }
 
 .announcement-header__description {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-l);
   color: var(--color-text-light);
   margin: 0;
   line-height: 1.6;

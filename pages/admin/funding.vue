@@ -10,7 +10,7 @@ const refreshSignal = ref(0)
 </script>
 
 <template>
-  <Flex column gap="l">
+  <Flex column gap="l" expand>
     <Flex column :gap="0">
       <h1>Funding</h1>
       <p class="color-text-light">
@@ -22,9 +22,11 @@ const refreshSignal = ref(0)
     <FundingKPIs v-model:refresh-signal="refreshSignal" />
 
     <!-- Expense Table -->
+    <h2>Expenses</h2>
     <ExpenseTable v-model:refresh-signal="refreshSignal" />
 
     <!-- Funding Table -->
+    <h2>Funding History</h2>
     <FundingTable v-model:refresh-signal="refreshSignal" />
   </Flex>
 </template>

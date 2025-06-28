@@ -8,7 +8,7 @@ useLastSeenTracking()
 </script>
 
 <template>
-  <NuxtLoadingIndicator />
+  <NuxtLoadingIndicator color="#88ff22" />
 
   <NuxtLayout :name="route.path.startsWith('/admin') ? 'admin' : 'default'">
     <NuxtPage />

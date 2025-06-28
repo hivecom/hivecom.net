@@ -5,7 +5,6 @@ import { Alert, Badge, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
-import { getGameAssetUrl } from '@/utils/storage'
 
 const props = defineProps<Props>()
 // Define the type inline to match what the parent component provides
@@ -51,17 +50,12 @@ function getServerCountForGame(gameId: number) {
   return props.gameservers?.filter((gs: GameserversType[0]) => gs.game === gameId).length || 0
 }
 
-// Get game cover image - only return actual covers, not fallbacks
+// Get game cover image using the cached composable
 async function getGameCover(game: Tables<'games'>) {
-  if (game.shorthand) {
-    const supabase = useSupabaseClient()
-    const coverUrl = await getGameAssetUrl(supabase, game.shorthand, 'cover')
-    if (coverUrl)
-      return coverUrl
-  }
-
-  // No cover available - return empty string to show only the small logo
-  return ''
+  const { getGameCoverUrl } = useGameAssets()
+  const coverUrl = await getGameCoverUrl(game)
+  // Return empty string if no cover to show only the small logo
+  return coverUrl || ''
 }
 
 function handleCoverLoad(event: Event) {

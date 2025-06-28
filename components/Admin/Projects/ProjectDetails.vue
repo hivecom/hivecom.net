@@ -2,12 +2,14 @@
 import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import UserLink from '@/components/Shared/UserLink.vue'
 
 const props = defineProps<{
-  announcement: Tables<'announcements'> | null
+  project: Tables<'projects'> | null
 }>()
 
 // Define emits
@@ -22,21 +24,21 @@ function handleClose() {
 }
 
 // Handle edit action from AdminActions
-function handleEdit(announcement: Tables<'announcements'>) {
-  emit('edit', announcement)
+function handleEdit(project: Tables<'projects'>) {
+  emit('edit', project)
   isOpen.value = false
 }
 
 // Handle delete action from AdminActions
-function handleDelete(announcement: Tables<'announcements'>) {
-  emit('delete', announcement)
+function handleDelete(project: Tables<'projects'>) {
+  emit('delete', project)
   isOpen.value = false
 }
 </script>
 
 <template>
   <Sheet
-    :open="!!props.announcement && isOpen"
+    :open="!!props.project && isOpen"
     position="right"
     separator
     :size="600"
@@ -45,66 +47,73 @@ function handleDelete(announcement: Tables<'announcements'>) {
     <template #header>
       <Flex x-between y-center>
         <Flex column :gap="0">
-          <h4>Announcement Details</h4>
-          <span v-if="props.announcement" class="color-text-light text-xxs">
-            {{ props.announcement.title }}
+          <h4>Project Details</h4>
+          <span v-if="props.project" class="color-text-light text-xxs">
+            {{ props.project.title }}
           </span>
         </Flex>
         <Flex y-center gap="s">
           <AdminActions
-            v-if="props.announcement"
+            v-if="props.project"
             resource-type="announcements"
-            :item="props.announcement"
+            :item="props.project"
             :show-labels="true"
-            @edit="(announcementItem) => handleEdit(announcementItem as Tables<'announcements'>)"
-            @delete="(announcementItem) => handleDelete(announcementItem as Tables<'announcements'>)"
+            @edit="(projectItem) => handleEdit(projectItem as Tables<'projects'>)"
+            @delete="(projectItem) => handleDelete(projectItem as Tables<'projects'>)"
           />
         </Flex>
       </Flex>
     </template>
 
-    <Flex v-if="props.announcement" column gap="m" class="announcement-details">
+    <Flex v-if="props.project" column gap="m" class="project-details">
       <Flex column gap="m" expand>
         <!-- Basic info -->
         <Card>
           <Flex column gap="l" expand>
-            <Grid class="announcement-details__item" expand :columns="2">
+            <Grid class="project-details__item" expand :columns="2">
               <span class="color-text-light text-bold">ID:</span>
-              <span>{{ props.announcement.id }}</span>
+              <span>{{ props.project.id }}</span>
             </Grid>
 
-            <Grid class="announcement-details__item" expand :columns="2">
+            <Grid class="project-details__item" expand :columns="2">
               <span class="color-text-light text-bold">Title:</span>
-              <span>{{ props.announcement.title }}</span>
+              <span>{{ props.project.title }}</span>
             </Grid>
 
-            <Grid class="announcement-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Pinned:</span>
-              <Icon v-if="props.announcement.pinned" name="ph:push-pin-fill" class="color-accent" />
-              <span v-else class="color-text-light">No</span>
+            <Grid class="project-details__item" expand :columns="2">
+              <span class="color-text-light text-bold">Owner:</span>
+              <div :class="{ 'project-details__not-assigned': !props.project.owner }">
+                <UserLink v-if="props.project.owner" :user-id="props.project.owner" />
+                <span v-else>Not Assigned</span>
+              </div>
             </Grid>
 
-            <Grid class="announcement-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Published:</span>
+            <Grid class="project-details__item" expand :columns="2">
+              <span class="color-text-light text-bold">Created:</span>
               <TimestampDate
-                :date="props.announcement.published_at"
+                :date="props.project.created_at"
                 size="s"
                 class="color-text"
               />
             </Grid>
 
-            <Grid v-if="props.announcement.link" class="announcement-details__item" expand :columns="2">
+            <Grid v-if="props.project.link" class="project-details__item" expand :columns="2">
               <span class="color-text-light text-bold">Link:</span>
-              <NuxtLink external :href="props.announcement.link" target="_blank" class="color-accent text-m">
-                {{ props.announcement.link }}
+              <NuxtLink external :href="props.project.link" target="_blank" class="color-accent text-m">
+                {{ props.project.link }}
               </NuxtLink>
             </Grid>
 
-            <Grid v-if="props.announcement.tags && props.announcement.tags.length > 0" class="announcement-details__item" expand :columns="2">
+            <Grid v-if="props.project.github" class="project-details__item" expand :columns="2" y-center>
+              <span class="color-text-light text-bold">GitHub:</span>
+              <GitHubLink :github="props.project.github" :show-icon="true" />
+            </Grid>
+
+            <Grid v-if="props.project.tags && props.project.tags.length > 0" class="project-details__item" expand :columns="2">
               <span class="color-text-light text-bold">Tags:</span>
               <div class="tags-display">
                 <Badge
-                  v-for="tag in props.announcement.tags"
+                  v-for="tag in props.project.tags"
                   :key="tag"
                   size="xs"
                   variant="neutral"
@@ -117,29 +126,29 @@ function handleDelete(announcement: Tables<'announcements'>) {
         </Card>
 
         <!-- Description -->
-        <Card v-if="props.announcement.description" separators>
+        <Card v-if="props.project.description" separators>
           <template #header>
             <h6>Description</h6>
           </template>
 
-          <p>{{ props.announcement.description }}</p>
+          <p>{{ props.project.description }}</p>
         </Card>
 
         <!-- Markdown Content -->
-        <Card v-if="props.announcement.markdown" separators>
+        <Card v-if="props.project.markdown" separators>
           <template #header>
             <h6>Content</h6>
           </template>
 
-          <MDRenderer :md="props.announcement.markdown" class="announcement-details__markdown-content" />
+          <MDRenderer :md="props.project.markdown" class="project-details__markdown-content" />
         </Card>
 
         <!-- Metadata -->
         <Metadata
-          :created-at="props.announcement.created_at"
-          :created-by="props.announcement.created_by"
-          :modified-at="props.announcement.modified_at"
-          :modified-by="props.announcement.modified_by"
+          :created-at="props.project.created_at"
+          :created-by="props.project.created_by"
+          :modified-at="props.project.modified_at"
+          :modified-by="props.project.modified_by"
         />
       </Flex>
     </Flex>
@@ -147,7 +156,7 @@ function handleDelete(announcement: Tables<'announcements'>) {
 </template>
 
 <style lang="scss" scoped>
-.announcement-details {
+.project-details {
   padding-bottom: var(--space);
 
   &__markdown-content {
@@ -160,6 +169,10 @@ function handleDelete(announcement: Tables<'announcements'>) {
       margin-top: var(--space-s);
       font-size: var(--font-size-xxl);
     }
+  }
+
+  &__not-assigned {
+    opacity: 0.5;
   }
 }
 
