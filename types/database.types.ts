@@ -803,10 +803,6 @@ export interface Database {
         | 'profiles.delete'
         | 'profiles.read'
         | 'profiles.update'
-        | 'projects.create'
-        | 'projects.read'
-        | 'projects.update'
-        | 'projects.delete'
         | 'referendums.create'
         | 'referendums.delete'
         | 'referendums.read'
@@ -823,6 +819,10 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
+        | 'projects.read'
+        | 'projects.create'
+        | 'projects.update'
+        | 'projects.delete'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       region: 'eu' | 'na' | 'all'
@@ -981,10 +981,6 @@ export const Constants = {
         'profiles.delete',
         'profiles.read',
         'profiles.update',
-        'projects.create',
-        'projects.read',
-        'projects.update',
-        'projects.delete',
         'referendums.create',
         'referendums.delete',
         'referendums.read',
@@ -1001,6 +997,10 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
+        'projects.read',
+        'projects.create',
+        'projects.update',
+        'projects.delete',
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],
