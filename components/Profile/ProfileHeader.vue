@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '~/types/database.types'
 import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Tooltip } from '@dolanske/vui'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TimestampDate from '~/components/Shared/TimestampDate.vue'
 import { getUserActivityStatus } from '~/utils/lastSeen'
 
@@ -26,6 +27,9 @@ const emit = defineEmits<{
   ignoreFriendRequest: []
   openComplaintModal: []
 }>()
+
+// Modal state
+const showRemoveFriendConfirm = ref(false)
 
 // Computed property for user activity status
 const activityStatus = computed(() => {
@@ -109,6 +113,12 @@ function getRoleInfo(role: string | null) {
   }
 
   return { display: roleDisplay, variant }
+}
+
+// Handle remove friend confirmation
+function handleRemoveFriend() {
+  emit('removeFriend')
+  showRemoveFriendConfirm.value = false
 }
 </script>
 
@@ -263,7 +273,7 @@ function getRoleInfo(role: string | null) {
                 v-else-if="areMutualFriends"
                 variant="danger"
                 :disabled="friendshipStatus === 'loading'"
-                @click="emit('removeFriend')"
+                @click="showRemoveFriendConfirm = true"
               >
                 <template #start>
                   <Icon name="ph:user-minus" />
@@ -313,6 +323,18 @@ function getRoleInfo(role: string | null) {
                 <Icon class="color-text-lighter" name="ph:pencil" size="16" />
                 <span class="color-text-lighter text-s">Last updated <TimestampDate size="s" class="color-text-light text-s" :date="profile.modified_at" relative /></span>
               </Flex>
+
+              <Flex v-if="(profile as any).website" gap="xs" y-center>
+                <Icon class="color-text-lighter" name="ph:link" size="16" />
+                <a
+                  :href="(profile as any).website"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="website-link text-s"
+                >
+                  {{ (profile as any).website }}
+                </a>
+              </Flex>
             </Flex>
 
             <!-- Admin-only UUID display -->
@@ -328,6 +350,17 @@ function getRoleInfo(role: string | null) {
       </Flex>
     </Flex>
   </Card>
+
+  <!-- Remove Friend Confirmation Modal -->
+  <ConfirmModal
+    v-model:open="showRemoveFriendConfirm"
+    v-model:confirm="handleRemoveFriend"
+    title="Remove Friend"
+    :description="`Are you sure you want to remove ${profile.username} from your friends list? This action cannot be undone.`"
+    confirm-text="Remove Friend"
+    cancel-text="Cancel"
+    :destructive="true"
+  />
 </template>
 
 <style lang="scss" scoped>
@@ -374,6 +407,20 @@ function getRoleInfo(role: string | null) {
   .profile-meta {
     color: var(--color-text-light);
     font-size: var(--font-size-s);
+
+    .website-link {
+      color: var(--color-text-accent);
+      text-decoration: none;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: inline-block;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 }
 </style>

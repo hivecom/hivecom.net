@@ -26,6 +26,7 @@ const profileForm = ref({
   username: '',
   introduction: '',
   markdown: '',
+  website: '',
 })
 
 // Username validation rules based on database constraints
@@ -67,10 +68,51 @@ const markdownValidation = computed(() => {
   return validateMarkdownNoHtml(markdown)
 })
 
+// Website validation
+const websiteValidation = computed(() => {
+  const website = profileForm.value.website.trim()
+
+  if (!website) {
+    return { valid: true, error: null }
+  }
+
+  // Auto-prepend https:// if no protocol is provided for validation
+  let normalizedUrl = website
+  if (!website.match(/^https?:\/\//)) {
+    normalizedUrl = `https://${website}`
+  }
+
+  // Basic URL validation
+  try {
+    const url = new URL(normalizedUrl)
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return { valid: false, error: 'Website must be a valid HTTP or HTTPS URL' }
+    }
+    return { valid: true, error: null }
+  }
+  catch {
+    return { valid: false, error: 'Please enter a valid website URL' }
+  }
+})
+
+// Function to normalize website URL
+function normalizeWebsiteUrl(url: string): string {
+  const trimmed = url.trim()
+  if (!trimmed)
+    return trimmed
+
+  if (!trimmed.match(/^https?:\/\//)) {
+    return `https://${trimmed}`
+  }
+
+  return trimmed
+}
+
 // Form validation
 const validation = computed(() => ({
   username: usernameValidation.value.valid,
   markdown: markdownValidation.value.valid,
+  website: websiteValidation.value.valid,
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -93,6 +135,7 @@ watch(
         username: newProfile.username,
         introduction: newProfile.introduction || '',
         markdown: newProfile.markdown || '',
+        website: (newProfile as Tables<'profiles'> & { website?: string }).website || '',
       }
 
       // Initialize avatar URL
@@ -105,6 +148,7 @@ watch(
         username: '',
         introduction: '',
         markdown: '',
+        website: '',
       }
 
       avatarUrl.value = null
@@ -136,6 +180,7 @@ function handleSubmit() {
     username: profileForm.value.username.trim(),
     introduction: profileForm.value.introduction.trim() || null,
     markdown: profileForm.value.markdown.trim() ? stripHtmlTags(profileForm.value.markdown.trim()) : null,
+    website: profileForm.value.website.trim() ? normalizeWebsiteUrl(profileForm.value.website.trim()) : null,
   }
 
   emit('save', profileData)
@@ -292,6 +337,18 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
           </template>
         </textarea>
           </Flex>
+
+          <Flex expand class="profile-edit-form__website-container">
+            <Input
+              v-model="profileForm.website"
+              expand
+              name="website"
+              label="Website"
+              placeholder="https://yourwebsite.com"
+              :valid="websiteValidation.valid"
+              :error="websiteValidation.error"
+            />
+          </Flex>
         </Flex>
         <Flex column gap="m">
           <h4>Avatar</h4>
@@ -355,6 +412,10 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
           <li>
             <Icon name="ph:check-circle" />
             Write a compelling introduction that summarizes who you are (128 characters max)
+          </li>
+          <li>
+            <Icon name="ph:check-circle" />
+            Add your website URL to showcase your work or portfolio
           </li>
           <li>
             <Icon name="ph:check-circle" />
@@ -434,7 +495,8 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
 
   &__introduction-container,
   &__markdown-container,
-  &__username-container {
+  &__username-container,
+  &__website-container {
     position: relative;
   }
 

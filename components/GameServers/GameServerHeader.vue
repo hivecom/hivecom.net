@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Badge, Button, CopyClipboard, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
+import GameIcon from '@/components/GameServers/GameIcon.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
+import SteamLink from '@/components/Shared/SteamLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
@@ -12,7 +14,7 @@ interface Props {
   container?: Tables<'containers'> | null
 }
 
-defineProps<Props>()
+const _props = defineProps<Props>()
 
 // Get current user for authentication check
 const user = useSupabaseUser()
@@ -58,9 +60,12 @@ function openComplaintModal() {
     <!-- Title and actions row -->
     <Flex x-between align="start" gap="l" class="gameserver-header__title-row">
       <div class="gameserver-header__title-section">
-        <h1 class="gameserver-header__title">
-          {{ gameserver.name }}
-        </h1>
+        <Flex gap="m" y-center class="gameserver-header__title-container">
+          <GameIcon v-if="game" :game="game" size="large" />
+          <h1 class="gameserver-header__title">
+            {{ gameserver.name }}
+          </h1>
+        </Flex>
       </div>
 
       <Flex gap="m">
@@ -123,11 +128,9 @@ function openComplaintModal() {
         <!-- Description -->
         <p v-if="gameserver.description" class="gameserver-header__description">
           {{ gameserver.description }}
-        </p>
-
-        <!-- Quick info badges and status -->
+        </p>        <!-- Quick info badges and status -->
         <div class="gameserver-header__info-section">
-          <Flex gap="m" wrap class="gameserver-header__badges-section">
+          <Flex gap="xs" wrap class="gameserver-header__badges-section" y-center>
             <Badge v-if="game" variant="neutral" size="l">
               <Icon name="ph:game-controller" />
               {{ game.name }}
@@ -136,6 +139,7 @@ function openComplaintModal() {
             <Badge v-if="gameserver.region" variant="neutral" size="l">
               <RegionIndicator :region="gameserver.region" show-label />
             </Badge>
+            <SteamLink v-if="game?.steam_id" :steam-id="game.steam_id" show-icon hide-id />
           </Flex>
 
           <!-- Status Information -->
@@ -182,6 +186,10 @@ function openComplaintModal() {
 
 <style lang="scss" scoped>
 .gameserver-header {
+  &__title-container {
+    margin-bottom: var(--space-xs);
+  }
+
   &__title {
     font-size: var(--font-size-xxxl);
     font-weight: var(--font-weight-bold);

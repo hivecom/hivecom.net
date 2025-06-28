@@ -5,6 +5,7 @@ import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
+import { getGameAssetUrl } from '@/utils/storage'
 
 // Get route parameter
 const route = useRoute()
@@ -19,6 +20,7 @@ const game = ref<Tables<'games'> | null>(null)
 const container = ref<Tables<'containers'> | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const gameBackground = ref<string | null>(null)
 
 // Computed server state
 const state = computed(() => {
@@ -129,10 +131,41 @@ async function fetchGameserver() {
   }
 }
 
+// Get game background image
+async function getGameBackground(game: Tables<'games'>) {
+  if (game.shorthand) {
+    const backgroundUrl = await getGameAssetUrl(supabase, game.shorthand, 'background')
+    if (backgroundUrl)
+      return backgroundUrl
+  }
+
+  return null
+}
+
+// Load game background when game data is available
+async function loadGameBackground() {
+  if (game.value) {
+    try {
+      gameBackground.value = await getGameBackground(game.value)
+    }
+    catch (error) {
+      console.error('Failed to load game background:', error)
+      gameBackground.value = null
+    }
+  }
+}
+
 // Fetch data on mount
 onMounted(() => {
   fetchGameserver()
 })
+
+// Watch for game changes to load background
+watch(game, (newGame) => {
+  if (newGame) {
+    loadGameBackground()
+  }
+}, { immediate: true })
 
 // SEO and page metadata
 useSeoMeta({
@@ -171,6 +204,15 @@ useHead({
         :state="state"
         :state-config="stateConfig"
       />
+
+      <!-- Background Image -->
+      <div
+        v-if="gameBackground"
+        class="game-background-section"
+        :style="{ backgroundImage: `url(${gameBackground})` }"
+      >
+        <div class="background-overlay" />
+      </div>
 
       <!-- Server Details (Markdown) -->
       <GameServerMarkdown :gameserver="gameserver" />
@@ -213,5 +255,41 @@ useHead({
   svg {
     color: var(--color-accent);
   }
+}
+
+.game-background-section {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  border-radius: var(--border-radius-m);
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  .background-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.1) 100%);
+  }
+
+  @media (max-width: 768px) {
+    height: 150px;
+  }
+}
+
+.game-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.1;
 }
 </style>

@@ -291,6 +291,19 @@ function getUserInitials(username: string): string {
               </span>
             </Grid>
 
+            <!-- Website Information -->
+            <Grid v-if="(user as any).website" class="detail-item" :columns="2" expand>
+              <span class="color-text-light text-bold">Website:</span>
+              <a
+                :href="(user as any).website"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="website-link"
+              >
+                {{ (user as any).website }}
+              </a>
+            </Grid>
+
             <!-- Friends Information -->
             <Grid class="detail-item" :columns="2" expand>
               <span class="color-text-light text-bold">Friends:</span>
@@ -519,5 +532,15 @@ function getUserInitials(username: string): string {
 
 .avatar-card {
   width: auto;
+}
+
+.website-link {
+  color: var(--color-text-accent);
+  text-decoration: none;
+  font-size: var(--font-size-s);
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 </style>

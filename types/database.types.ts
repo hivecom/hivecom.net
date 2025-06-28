@@ -143,6 +143,7 @@ export interface Database {
           date: string
           description: string
           duration_minutes: number | null
+          games: number[] | null
           google_event_id: string | null
           google_last_synced_at: string | null
           id: number
@@ -160,6 +161,7 @@ export interface Database {
           date: string
           description?: string
           duration_minutes?: number | null
+          games?: number[] | null
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
@@ -177,6 +179,7 @@ export interface Database {
           date?: string
           description?: string
           duration_minutes?: number | null
+          games?: number[] | null
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
@@ -443,6 +446,7 @@ export interface Database {
           supporter_patreon: boolean
           username: string
           username_set: boolean
+          website: string | null
         }
         Insert: {
           ban_end?: string | null
@@ -463,6 +467,7 @@ export interface Database {
           supporter_patreon?: boolean
           username: string
           username_set?: boolean
+          website?: string | null
         }
         Update: {
           ban_end?: string | null
@@ -483,8 +488,59 @@ export interface Database {
           supporter_patreon?: boolean
           username?: string
           username_set?: boolean
+          website?: string | null
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: number
+          link: string | null
+          markdown: string
+          modified_at: string | null
+          modified_by: string | null
+          owner: string | null
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: number
+          link?: string | null
+          markdown: string
+          modified_at?: string | null
+          modified_by?: string | null
+          owner?: string | null
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: number
+          link?: string | null
+          markdown?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          owner?: string | null
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'projects_owner_fkey'
+            columns: ['owner']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
       referendum_votes: {
         Row: {
@@ -729,6 +785,10 @@ export interface Database {
         | 'profiles.delete'
         | 'profiles.read'
         | 'profiles.update'
+        | 'projects.create'
+        | 'projects.read'
+        | 'projects.update'
+        | 'projects.delete'
         | 'referendums.create'
         | 'referendums.delete'
         | 'referendums.read'
@@ -903,6 +963,10 @@ export const Constants = {
         'profiles.delete',
         'profiles.read',
         'profiles.update',
+        'projects.create',
+        'projects.read',
+        'projects.update',
+        'projects.delete',
         'referendums.create',
         'referendums.delete',
         'referendums.read',

@@ -30,7 +30,8 @@ type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
   | 'ban_reason'
   | 'ban_start'
   | 'ban_end'
-  | 'last_seen'>
+  | 'last_seen'
+  | 'website'>
 
 // Type for user action
 interface UserAction {
@@ -77,7 +78,8 @@ const _profilesQuery = supabase.from('profiles').select(`
   ban_reason,
   ban_start,
   ban_end,
-  last_seen
+  last_seen,
+  website
 `)
 
 // Define interface for transformed user data
@@ -147,7 +149,8 @@ async function fetchUsers() {
         ban_reason,
         ban_start,
         ban_end,
-        last_seen
+        last_seen,
+        website
       `)
       .order('created_at', { ascending: false })
 
@@ -257,6 +260,7 @@ const filteredData = computed<TransformedUser[]>(() => {
         ban_start: user.ban_start,
         ban_end: user.ban_end,
         last_seen: user.last_seen,
+        website: user.website || null,
         role,
       },
     }

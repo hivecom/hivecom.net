@@ -174,6 +174,32 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     assetsError.value[assetType] = 'Failed to remove asset'
   }
 }
+
+// Helper functions to generate Steam URLs for reference
+function getSteamIconUrl(steamId: number) {
+  return `https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/${steamId}/icon.jpg`
+}
+
+function getSteamCoverUrl(steamId: number) {
+  return `https://cdn.akamai.steamstatic.com/steam/apps/${steamId}/library_600x900.jpg`
+}
+
+function getSteamBackgroundUrl(steamId: number) {
+  return `https://cdn.akamai.steamstatic.com/steam/apps/${steamId}/page_bg_generated_v6b.jpg`
+}
+
+// Computed properties for Steam URLs
+const steamUrls = computed(() => {
+  const steamId = gameForm.value.steam_id ? Number(gameForm.value.steam_id) : null
+  if (!steamId)
+    return { icon: null, cover: null, background: null }
+
+  return {
+    icon: getSteamIconUrl(steamId),
+    cover: getSteamCoverUrl(steamId),
+    background: getSteamBackgroundUrl(steamId),
+  }
+})
 </script>
 
 <template>
@@ -247,6 +273,8 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 label="Upload Icon"
                 :loading="assetsUploading.icon"
                 :error="assetsError.icon"
+                :aspect-ratio="1"
+                :max-height="300"
                 @upload="(file) => handleAssetUpload('icon', file)"
                 @remove="() => handleAssetRemove('icon')"
               />
@@ -261,10 +289,18 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 label="Upload Cover"
                 :loading="assetsUploading.cover"
                 :error="assetsError.cover"
+                :aspect-ratio="600 / 900"
                 @upload="(file) => handleAssetUpload('cover', file)"
                 @remove="() => handleAssetRemove('cover')"
               />
-              <span class="text-xs color-text-light">Recommended: 1280x720px landscape image</span>
+              <span class="text-xs color-text-light">Recommended: 600x900px portrait image</span>
+              <div v-if="!assetsUrl.cover && steamUrls.cover" class="steam-reference">
+                <Icon name="ph:link" />
+                <span class="text-xs">Steam reference:</span>
+                <a :href="steamUrls.cover" target="_blank" rel="noopener" class="steam-link">
+                  View Steam cover
+                </a>
+              </div>
             </Flex>
           </Flex>
 
@@ -276,10 +312,19 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
               label="Upload Background"
               :loading="assetsUploading.background"
               :error="assetsError.background"
+              :aspect-ratio="1920 / 1080"
+              :min-height="120"
               @upload="(file) => handleAssetUpload('background', file)"
               @remove="() => handleAssetRemove('background')"
             />
             <span class="text-xs color-text-light">Recommended: 1920x1080px wide image</span>
+            <div v-if="!assetsUrl.background && steamUrls.background" class="steam-reference">
+              <Icon name="ph:link" />
+              <span class="text-xs">Steam reference:</span>
+              <a :href="steamUrls.background" target="_blank" rel="noopener" class="steam-link">
+                View Steam background
+              </a>
+            </div>
           </Flex>
         </Flex>
       </Flex>
@@ -365,6 +410,27 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
 
   .iconify {
     color: var(--color-text-blue);
+  }
+}
+
+.steam-reference {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-text-light);
+  font-size: var(--font-size-xs);
+
+  .iconify {
+    color: var(--color-accent);
+  }
+
+  .steam-link {
+    color: var(--color-accent);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 }
 </style>

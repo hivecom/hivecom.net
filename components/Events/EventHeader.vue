@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Flex, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
+import EventGames from '@/components/Events/EventGames.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatDurationFromMinutes } from '~/utils/duration'
 import CountdownTimer from './CountdownTimer.vue'
@@ -10,6 +11,7 @@ import RSVPButton from './RSVPButton.vue'
 
 interface Props {
   event: Tables<'events'>
+  games?: Tables<'games'>[]
   isUpcoming: boolean
   isOngoing?: boolean
   countdown?: {
@@ -93,14 +95,18 @@ onUnmounted(() => {
   <div class="event-header">
     <!-- Title and actions row -->
     <Flex x-between align="start" gap="l" class="event-header__title-row">
-      <div class="event-header__title-section">
+      <Flex column class="event-header__title-section">
         <h1 class="event-header__title">
           {{ event.title }}
         </h1>
         <p v-if="event.description" class="event-header__description">
           {{ event.description }}
         </p>
-      </div>
+        <!-- Games Section -->
+        <template v-if="games && games.length > 0">
+          <EventGames :games="games" :show-label="false" />
+        </template>
+      </Flex>
 
       <!-- Timing/Countdown Section -->
       <div class="event-header__timing-section">
@@ -126,6 +132,8 @@ onUnmounted(() => {
         </Flex>
       </div>
     </Flex>
+
+    <Divider :margin="0" size="xxs" />
 
     <!-- Event meta information -->
     <Flex gap="m" x-between expand>
@@ -247,7 +255,6 @@ onUnmounted(() => {
   &__description {
     font-size: var(--font-size-l);
     color: var(--color-text-light);
-    margin: var(--space-s) 0 0 0;
     line-height: 1.5;
 
     @media (max-width: $breakpoint-sm) {

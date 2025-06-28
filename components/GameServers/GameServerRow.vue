@@ -8,6 +8,7 @@ const props = defineProps<{
   game?: Tables<'games'> | null
   gameserver: Tables<'gameservers'>
   container: Tables<'containers'> | null
+  compact?: boolean
 }>()
 
 function handleRowClick() {
@@ -49,7 +50,7 @@ const state = computed(() => {
         <span class="flex-1 text-m">{{ props.gameserver.name }}</span>
       </Flex>
       <Flex y-center row gap="s">
-        <div v-if="props.gameserver.description" class="gameserver-description-main">
+        <div v-if="props.gameserver.description && !props.compact" class="gameserver-description-main">
           <span class="description-text">{{ props.gameserver.description }}</span>
         </div>
         <div class="region-badge">

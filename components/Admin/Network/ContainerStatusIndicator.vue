@@ -10,7 +10,7 @@ const statusLabels = {
   running: 'Running',
   healthy: 'Healthy',
   unhealthy: 'Unhealthy',
-  stopped: 'Stopped',
+  stopped: 'Stopped - ask staff to start',
   stale: 'Stale',
   unknown: 'Unknown',
 }

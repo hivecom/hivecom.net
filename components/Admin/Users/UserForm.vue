@@ -69,6 +69,7 @@ const userForm = ref({
   username: '',
   introduction: '',
   markdown: '',
+  website: '',
   supporter_patreon: false,
   supporter_lifetime: false,
   patreon_id: '',
@@ -187,6 +188,47 @@ const introductionValidation = computed(() => {
   return validateMarkdownNoHtml(introduction)
 })
 
+// Website validation
+const websiteValidation = computed(() => {
+  const website = userForm.value.website.trim()
+
+  if (!website) {
+    return { valid: true, error: null }
+  }
+
+  // Auto-prepend https:// if no protocol is provided for validation
+  let normalizedUrl = website
+  if (!website.match(/^https?:\/\//)) {
+    normalizedUrl = `https://${website}`
+  }
+
+  // Basic URL validation
+  try {
+    const url = new URL(normalizedUrl)
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return { valid: false, error: 'Website must be a valid HTTP or HTTPS URL' }
+    }
+
+    return { valid: true, error: null }
+  }
+  catch {
+    return { valid: false, error: 'Please enter a valid website URL' }
+  }
+})
+
+// Function to normalize website URL
+function normalizeWebsiteUrl(url: string): string {
+  const trimmed = url.trim()
+  if (!trimmed)
+    return trimmed
+
+  if (!trimmed.match(/^https?:\/\//)) {
+    return `https://${trimmed}`
+  }
+
+  return trimmed
+}
+
 // Form validation
 const validation = computed(() => ({
   username: usernameValidation.value.valid,
@@ -195,6 +237,7 @@ const validation = computed(() => ({
   steam_id: steamIdValidation.value.valid,
   markdown: markdownValidation.value.valid,
   introduction: introductionValidation.value.valid,
+  website: websiteValidation.value.valid,
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -319,6 +362,7 @@ watch(
         username: newUser.username,
         introduction: newUser.introduction || '',
         markdown: newUser.markdown || '',
+        website: (newUser as typeof newUser & { website?: string }).website || '',
         supporter_patreon: newUser.supporter_patreon,
         supporter_lifetime: newUser.supporter_lifetime,
         patreon_id: newUser.patreon_id || '',
@@ -342,6 +386,7 @@ watch(
         username: '',
         introduction: '',
         markdown: '',
+        website: '',
         supporter_patreon: false,
         supporter_lifetime: false,
         patreon_id: '',
@@ -384,6 +429,7 @@ function handleSubmit() {
     username: userForm.value.username.trim(),
     introduction: userForm.value.introduction.trim() ? stripHtmlTags(userForm.value.introduction.trim()) : null,
     markdown: userForm.value.markdown.trim() ? stripHtmlTags(userForm.value.markdown.trim()) : null,
+    website: userForm.value.website.trim() ? normalizeWebsiteUrl(userForm.value.website.trim()) : null,
     supporter_patreon: userForm.value.supporter_patreon,
     supporter_lifetime: userForm.value.supporter_lifetime,
     patreon_id: userForm.value.patreon_id.trim() || null,
@@ -590,6 +636,23 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
             />
           </Flex>
         </Flex>
+
+        <Input
+          v-model="userForm.website"
+          expand
+          label="Website"
+          placeholder="https://example.com"
+          :valid="websiteValidation.valid"
+          :error="websiteValidation.error"
+          :disabled="!canEditForm"
+        >
+          <template #after>
+            <div class="help-text">
+              <Icon name="ph:info" />
+              Personal website or portfolio URL
+            </div>
+          </template>
+        </Input>
 
         <Textarea
           v-model="userForm.markdown"

@@ -178,14 +178,14 @@ INSERT INTO public.friends(created_at, friender, friend)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b3', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Insert an upcoming test event (moved 2 weeks earlier)
-INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, games)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '16 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
 # Community Gaming Night
 
 It is that time of the month again! Join us for our community gaming night where we play various games together, chat, and have fun.
 
 We will probably be playing on our CS2 server, but feel free to suggest other games as well.
-  ');
+  ', ARRAY[1, 2]);
 
 -- Insert Hivecom Meetup event in Prague
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
@@ -251,7 +251,7 @@ Hit up in #events on IRC or drop me a direct message if you have any questions a
   ', 4320);
 
 -- Insert LAN Crossover Game Night (synced with Prague meetup day 2)
-INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes, games)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '1 month' + INTERVAL '1 day', 'Join the Prague crew online for an epic crossover LAN party with livestream, games, and drinks!', 'LAN Crossover Game Night', 'Online + Prague Airbnb', '
 # LAN Crossover Game Night!
 
@@ -296,7 +296,7 @@ The Prague crew will be streaming on:
 ## Questions?
 
 Drop questions in #events or ask during the stream - the Prague crew will be monitoring chat throughout the night!
-  ', 480);
+  ', 480, ARRAY[1, 2]);
 
 -- Insert an ongoing test event
 INSERT INTO "public"."events"("id", "created_at", "created_by", "modified_at", "modified_by", "title", "description", "note", "markdown", "date", "location", "link", "duration_minutes")
