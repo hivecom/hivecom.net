@@ -805,6 +805,10 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
+        | 'projects.read'
+        | 'projects.create'
+        | 'projects.update'
+        | 'projects.delete'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       region: 'eu' | 'na' | 'all'
@@ -983,6 +987,10 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
+        'projects.read',
+        'projects.create',
+        'projects.update',
+        'projects.delete',
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],
