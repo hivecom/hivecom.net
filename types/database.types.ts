@@ -785,10 +785,6 @@ export interface Database {
         | 'profiles.delete'
         | 'profiles.read'
         | 'profiles.update'
-        | 'projects.create'
-        | 'projects.read'
-        | 'projects.update'
-        | 'projects.delete'
         | 'referendums.create'
         | 'referendums.delete'
         | 'referendums.read'
@@ -967,10 +963,6 @@ export const Constants = {
         'profiles.delete',
         'profiles.read',
         'profiles.update',
-        'projects.create',
-        'projects.read',
-        'projects.update',
-        'projects.delete',
         'referendums.create',
         'referendums.delete',
         'referendums.read',
