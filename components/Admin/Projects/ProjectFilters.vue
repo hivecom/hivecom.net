@@ -23,6 +23,12 @@ const tagFilter = defineModel<SelectOption[]>('tagFilter')
 function clearFilters() {
   emit('clearFilters')
 }
+
+// Check if any filters are active
+const hasActiveFilters = computed(() =>
+  search.value.length > 0
+  || (tagFilter.value && tagFilter.value.length > 0),
+)
 </script>
 
 <template>
@@ -50,10 +56,9 @@ function clearFilters() {
 
     <!-- Clear all filters -->
     <Button
-      v-if="search || tagFilter"
+      v-if="hasActiveFilters"
       plain
       outline
-      :disabled="!search && !tagFilter"
       @click="clearFilters"
     >
       Clear Filters

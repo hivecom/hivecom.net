@@ -116,7 +116,7 @@ defineExpose({
     </div>
 
     <!-- Avatars -->
-    <Flex v-else x-center class="bulk-avatar-display__avatars">
+    <Flex v-else x-center y-center class="bulk-avatar-display__avatars">
       <!-- User Avatars -->
       <Tooltip
         v-for="(user, index) in usersList"

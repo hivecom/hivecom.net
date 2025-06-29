@@ -84,6 +84,21 @@ useHead({
 
     <!-- Project Content -->
     <div v-if="project && !loading && !error" class="page-content">
+      <!-- Back Button -->
+      <Flex x-between>
+        <Button
+          variant="gray"
+          size="s"
+          aria-label="Go back to Projects page"
+          class="event-detail__back-link"
+          @click="$router.push('/community/projects')"
+        >
+          <template #start>
+            <Icon name="ph:arrow-left" />
+          </template>
+          Back to Projects
+        </Button>
+      </Flex>
       <!-- Header -->
       <Card class="project-header" expand>
         <Flex column gap="m" expand>

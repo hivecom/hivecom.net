@@ -7,8 +7,8 @@ interface SelectOption {
 }
 
 const props = defineProps<{
-  pinnedOptions: SelectOption[]
-  tagOptions: SelectOption[]
+  statusOptions: SelectOption[]
+  typeOptions: SelectOption[]
 }>()
 
 // Emit is still needed for the clearFilters action
@@ -18,8 +18,8 @@ const emit = defineEmits<{
 
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const pinnedFilter = defineModel<SelectOption[]>('pinnedFilter')
-const tagFilter = defineModel<SelectOption[]>('tagFilter')
+const statusFilter = defineModel<SelectOption[]>('statusFilter')
+const typeFilter = defineModel<SelectOption[]>('typeFilter')
 
 // Clear filters handler
 function clearFilters() {
@@ -29,8 +29,8 @@ function clearFilters() {
 // Check if any filters are active
 const hasActiveFilters = computed(() =>
   search.value.length > 0
-  || (pinnedFilter.value && pinnedFilter.value.length > 0)
-  || (tagFilter.value && tagFilter.value.length > 0),
+  || (statusFilter.value && statusFilter.value.length > 0)
+  || (typeFilter.value && typeFilter.value.length > 0),
 )
 </script>
 
@@ -39,32 +39,29 @@ const hasActiveFilters = computed(() =>
     <!-- Search input -->
     <Input
       v-model="search"
-      placeholder="Search announcements..."
+      placeholder="Search referendums..."
     >
       <template #start>
         <Icon name="ph:magnifying-glass" />
       </template>
     </Input>
 
-    <!-- Pinned filter -->
+    <!-- Status filter -->
     <Select
-      v-model="pinnedFilter"
-      :options="props.pinnedOptions"
-      placeholder="Filter by pinned status"
+      v-model="statusFilter"
+      :options="props.statusOptions"
+      placeholder="Filter by status"
       expand
-      search
       show-clear
     />
 
-    <!-- Tag filter -->
+    <!-- Type filter -->
     <Select
-      v-model="tagFilter"
-      :options="props.tagOptions"
-      placeholder="Filter by tags"
+      v-model="typeFilter"
+      :options="props.typeOptions"
+      placeholder="Filter by type"
       expand
-      search
       show-clear
-      :single="false"
     />
 
     <!-- Clear all filters -->

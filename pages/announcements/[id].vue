@@ -85,6 +85,22 @@ useHead({
 
     <!-- Announcement Content -->
     <div v-if="announcement && !loading && !error" class="page-content">
+      <!-- Back Button -->
+      <Flex x-between>
+        <Button
+          variant="gray"
+          size="s"
+          aria-label="Go back to Announcements page"
+          class="event-detail__back-link"
+          @click="$router.push('/announcements')"
+        >
+          <template #start>
+            <Icon name="ph:arrow-left" />
+          </template>
+          Back to Announcements
+        </Button>
+      </Flex>
+
       <!-- Header -->
       <Card class="announcement-header" expand>
         <Flex column gap="m" expand>

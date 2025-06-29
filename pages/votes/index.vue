@@ -1,5 +1,18 @@
 <script setup lang='ts'>
-import { Avatar, Badge, Button, Card, Flex, Grid, Input, Tab, Tabs } from '@dolanske/vui'
+import type { Tables } from '@/types/database.types'
+
+import { Flex, Grid, Input, Skeleton, Tab, Tabs } from '@dolanske/vui'
+
+import ReferendumCard from '@/components/Shared/ReferendumCard.vue'
+import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
+
+// Redirect to login if user is not authenticated
+const user = useSupabaseUser()
+watch(user, (newUser) => {
+  if (newUser === null) {
+    navigateTo('/auth/sign-in')
+  }
+}, { immediate: true })
 
 useHead({
   title: 'Vote',
@@ -10,6 +23,120 @@ useHead({
 
 const tab = ref<'Active' | 'Concluded'>('Active')
 const search = ref('')
+
+// Get current date for filtering
+const currentDate = new Date().toISOString()
+
+// Fetch active referendums
+const { data: activeReferendums, loading: loadingActive, refetch: _refetchActive } = useCachedSupabaseQuery<Tables<'referendums'>[]>(
+  {
+    table: 'referendums',
+    select: '*',
+    filters: {
+      date_end: currentDate,
+    },
+    filterOperators: {
+      date_end: 'gte',
+    },
+    orderBy: { created_at: false },
+  },
+  {
+    enabled: computed(() => tab.value === 'Active' && !!user.value),
+    ttl: 60000, // 1 minute cache
+  },
+)
+
+// Fetch concluded referendums
+const { data: concludedReferendums, loading: loadingConcluded, refetch: _refetchConcluded } = useCachedSupabaseQuery<Tables<'referendums'>[]>(
+  {
+    table: 'referendums',
+    select: '*',
+    filters: {
+      date_end: currentDate,
+    },
+    filterOperators: {
+      date_end: 'lt',
+    },
+    orderBy: { created_at: false },
+  },
+  {
+    enabled: computed(() => tab.value === 'Concluded' && !!user.value),
+    ttl: 300000, // 5 minute cache for concluded
+  },
+)
+
+// Simple vote count fetching - get all votes and count per referendum
+const { data: allVotesForCounting } = useCachedSupabaseQuery<Tables<'referendum_votes'>[]>(
+  {
+    table: 'referendum_votes',
+    select: 'referendum_id, user_id',
+  },
+  {
+    enabled: computed(() => !!user.value && ((activeReferendums.value?.length || 0) > 0 || (concludedReferendums.value?.length || 0) > 0)),
+    ttl: 60000, // 1 minute cache
+  },
+)
+
+// Compute vote counts and voter IDs per referendum
+const referendumVoteCounts = computed(() => {
+  if (!allVotesForCounting.value)
+    return new Map()
+
+  const counts = new Map<number, number>()
+  allVotesForCounting.value.forEach((vote) => {
+    if (vote.referendum_id) {
+      counts.set(vote.referendum_id, (counts.get(vote.referendum_id) || 0) + 1)
+    }
+  })
+  return counts
+})
+
+const referendumVoterIds = computed(() => {
+  if (!allVotesForCounting.value)
+    return new Map()
+
+  const voterIds = new Map<number, string[]>()
+  allVotesForCounting.value.forEach((vote) => {
+    if (vote.referendum_id && vote.user_id) {
+      const currentVoters = voterIds.get(vote.referendum_id) || []
+      if (!currentVoters.includes(vote.user_id)) {
+        currentVoters.push(vote.user_id)
+        voterIds.set(vote.referendum_id, currentVoters)
+      }
+    }
+  })
+  return voterIds
+})
+
+// Helper functions
+function getVoteCount(referendumId: number): number {
+  return referendumVoteCounts.value.get(referendumId) || 0
+}
+
+function getVoterIds(referendumId: number): string[] {
+  return referendumVoterIds.value.get(referendumId) || []
+}
+
+// Loading state for current tab
+const isLoading = computed(() => {
+  return tab.value === 'Active' ? loadingActive.value : loadingConcluded.value
+})
+
+// Computed for current referendums based on tab
+const currentReferendums = computed(() => {
+  const referendums = tab.value === 'Active' ? activeReferendums.value : concludedReferendums.value
+  if (!referendums)
+    return []
+
+  if (!search.value.trim())
+    return referendums
+
+  const searchLower = search.value.toLowerCase()
+  return referendums.filter(referendum =>
+    referendum.title.toLowerCase().includes(searchLower)
+    || referendum.description?.toLowerCase().includes(searchLower),
+  )
+})
 </script>
 
 <template>
@@ -21,13 +148,6 @@ const search = ref('')
           <h1>
             Votes
           </h1>
-          <Button
-            variant="accent"
-            aria-label="Create a new poll"
-            @click="$router.push('/votes/create')"
-          >
-            Create poll
-          </Button>
         </Flex>
         <p>
           Planning a movie night? Need to decide dates for an event? Let others cast their vote and figure it out!
@@ -46,121 +166,93 @@ const search = ref('')
           <Icon name="ph:magnifying-glass" />
         </template>
       </Input>
-      <span class="text-s text-color-lighter">3 results</span>
+      <span v-if="isLoading" class="text-s text-color-lighter">Loading...</span>
+      <span v-else class="text-s text-color-lighter">{{ currentReferendums.length }} result{{ currentReferendums.length !== 1 ? 's' : '' }}</span>
     </Flex>
 
     <template v-if="tab === 'Active'">
-      <Grid gap="m" :columns="2">
-        <Card class="vote-article" role="button">
-          <h2 class="text-xxl mb-m">
-            Where will the next hike be?
-          </h2>
+      <!-- Loading state -->
+      <Grid v-if="loadingActive" gap="m" :columns="2" class="referendum-cards-grid">
+        <div v-for="n in 4" :key="`skeleton-${n}`" class="skeleton-card">
+          <Skeleton :height="200" :radius="12" />
+        </div>
+      </Grid>
 
-          <p class="text-color-light  block mb-s">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Explicabo dignissimos enim sequi error facere blanditiis ratione exercitationem beatae magnam illo neque sed, aut deleniti repellendus autem nesciunt? Tempore, perferendis asperiores.
-          </p>
+      <!-- Empty state -->
+      <div v-else-if="currentReferendums.length === 0" class="text-center p-xl">
+        <Icon name="ph:user-sound" size="3rem" class="text-color-light mb-m" />
+        <h3>No active referendums</h3>
+        <p class="text-color-light">
+          Stay on the lookout for new referendums!
+        </p>
+      </div>
 
-          <span class="vote-author">
-            by <a href="" class="link-line" @click.prevent="">@Rapid</a>
-          </span>
+      <!-- Actual content -->
+      <Grid v-else gap="m" :columns="2" class="referendum-cards-grid">
+        <ReferendumCard
+          v-for="referendum in currentReferendums"
+          :key="referendum.id"
+          :referendum="referendum"
+          :vote-count="getVoteCount(referendum.id)"
+          :voter-ids="getVoterIds(referendum.id)"
+          :is-active="true"
+        />
+      </Grid>
+    </template>
 
-          <Flex gap="xs">
-            <Badge variant="info">
-              3 days left
-            </Badge>
-            <Badge>Multichoice</Badge>
+    <template v-else>
+      <!-- Loading state -->
+      <Grid v-if="loadingConcluded" gap="m" :columns="2" class="referendum-cards-grid">
+        <div v-for="n in 4" :key="`skeleton-${n}`" class="skeleton-card">
+          <Skeleton :height="200" :radius="12" />
+        </div>
+      </Grid>
 
-            <div class="vote-avatars">
-              <Avatar :size="30" />
-              <Avatar :size="30" />
-              <Avatar :size="30" />
-              <span class="font-size-s">+3</span>
-            </div>
-          </Flex>
-        </Card>
+      <!-- Empty state -->
+      <div v-else-if="currentReferendums.length === 0" class="text-center p-xl">
+        <Icon name="ph:user-sound" size="3rem" class="text-color-light mb-m" />
+        <h3>No concluded referendums</h3>
+        <p class="text-color-light">
+          Previous referendums will appear here once they conclude.
+        </p>
+      </div>
+
+      <!-- Actual content -->
+      <Grid v-else gap="m" :columns="2" class="referendum-cards-grid">
+        <ReferendumCard
+          v-for="referendum in currentReferendums"
+          :key="referendum.id"
+          :referendum="referendum"
+          :vote-count="getVoteCount(referendum.id)"
+          :voter-ids="getVoterIds(referendum.id)"
+          :is-active="false"
+        />
       </Grid>
     </template>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.votes-page {
-  min-height: 100vh;
-  padding-top: 128px;
+.referendum-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-m);
+  align-items: stretch; /* Ensures all cards stretch to the same height */
 
-  h1 {
-    position: relative;
-    .vui-button {
-      position: absolute;
-      top: 2px;
-      left: -48px;
-    }
+  :deep(.referendum-card) {
+    height: 100%; /* Make cards fill their grid cell */
+    display: flex;
+    flex-direction: column;
   }
 
-  .vote-article {
-    position: relative;
-
-    &:hover {
-      background-color: var(--color-bg-lowered);
-
-      .vote-avatars .vui-avatar {
-        border-color: var(--color-bg-lowered);
-      }
-    }
-
-    .vote-author {
-      position: absolute;
-      top: var(--space-m);
-      right: var(--space-m);
-
-      a {
-        color: var(--color-accent);
-        font-size: var(--font-size-s);
-      }
-    }
-
-    .vote-avatars {
-      --avatar-offset: 12px;
-
-      display: flex;
-      gap: 4px;
-      align-items: center;
-      margin-left: var(--avatar-offset);
-
-      .vui-avatar {
-        margin-left: calc(var(--avatar-offset) * -1);
-        margin-top: -2px;
-        border: 2px solid var(--color-bg);
-        z-index: 1;
-      }
-    }
+  .skeleton-card {
+    min-height: 200px; /* Ensure skeleton cards match the expected card height */
   }
+}
 
-  .vote-create-choices {
-    background-color: var(--color-bg-lowered);
-    border-radius: var(--border-radius-m);
-
-    ol li {
-      display: flex;
-      align-items: center;
-      gap: var(--space-s);
-      padding: 0;
-      margin-bottom: var(--space-m);
-
-      // TODO: remove when vui fixes it
-      .vui-button {
-        min-width: 34px;
-      }
-
-      span {
-        width: 24px;
-      }
-
-      &:before {
-        position: relative;
-        left: unset;
-      }
-    }
+@media (max-width: 768px) {
+  .referendum-cards-grid {
+    grid-template-columns: 1fr; /* Single column on mobile */
   }
 }
 </style>

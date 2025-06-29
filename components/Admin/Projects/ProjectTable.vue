@@ -8,7 +8,6 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import ProjectDetails from './ProjectDetails.vue'
 import ProjectFilters from './ProjectFilters.vue'
@@ -20,10 +19,8 @@ type QueryProject = QueryData<typeof projectsQuery>[0]
 // Define interface for transformed project data
 interface TransformedProject {
   Title: string
-  Description: string | null
   Tags: string[] | null
   Owner: string | null
-  Created: string
   _original: QueryProject
 }
 
@@ -104,10 +101,8 @@ const filteredData = computed<TransformedProject[]>(() => {
   // Transform the data into explicit key-value pairs
   return filtered.map(project => ({
     Title: project.title,
-    Description: project.description || 'No description',
     Tags: project.tags || null,
     Owner: project.owner || null, // Store the user ID, not the username
-    Created: project.created_at,
     // Keep the original object to use when emitting events
     _original: project,
   }))
@@ -123,7 +118,7 @@ const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData
 })
 
 // Set default sorting.
-setSort('Created', 'desc')
+setSort('Title', 'desc')
 
 // Fetch projects data
 async function fetchProjects() {
@@ -331,7 +326,6 @@ onBeforeMount(fetchProjects)
                 />
               </Flex>
             </Table.Cell>
-            <Table.Cell>{{ project.Description }}</Table.Cell>
             <Table.Cell>
               <div v-if="project.Tags && project.Tags.length > 0" class="tags-cell">
                 <Badge
@@ -349,9 +343,6 @@ onBeforeMount(fetchProjects)
             <Table.Cell>
               <UserLink v-if="project.Owner" :user-id="project.Owner" />
               <span v-else class="color-text-light">No owner</span>
-            </Table.Cell>
-            <Table.Cell>
-              <TimestampDate :date="project.Created" />
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
