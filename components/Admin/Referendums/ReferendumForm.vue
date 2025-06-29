@@ -53,6 +53,18 @@ const isValid = computed(() =>
   && validation.value.dateRange,
 )
 
+// Check if choices are being removed in edit mode
+const isRemovingChoices = computed(() => {
+  if (!props.isEditMode || !props.referendum)
+    return false
+
+  const originalChoices = props.referendum.choices || []
+  const currentChoices = referendumForm.value.choices
+
+  // Check if any original choices are missing from current choices
+  return originalChoices.some(choice => !currentChoices.includes(choice))
+})
+
 // Function to update form data
 function updateFormData(newReferendum: Tables<'referendums'> | null) {
   if (newReferendum) {
@@ -263,6 +275,21 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
         <Flex column :gap="0" class="choices-section" expand>
           <label class="input-label">Voting Choices (minimum 2 required)</label>
 
+          <!-- Warning about removing choices in edit mode -->
+          <Flex v-if="isRemovingChoices" expand class="warning-box">
+            <Flex gap="xs" y-center>
+              <Icon name="ph:warning" class="warning-icon" />
+              <div>
+                <p class="warning-text">
+                  <strong>Warning:</strong> Removing voting choices will delete all existing votes for this referendum.
+                </p>
+                <p class="warning-subtext">
+                  Adding new choices is safe and won't affect existing votes.
+                </p>
+              </div>
+            </Flex>
+          </Flex>
+
           <!-- Add new choice -->
           <Flex gap="xs" y-center expand>
             <Input
@@ -384,6 +411,33 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
   }
 
   .choices-section {
+    .warning-box {
+      background-color: var(--color-bg-lowered);
+      border: 1px solid var(--color-text-red);
+      border-radius: var(--border-radius-s);
+      padding: var(--space-m);
+      margin-bottom: var(--space-m);
+
+      .warning-icon {
+        color: var(--color-text-red);
+        font-size: var(--font-size-l);
+        flex-shrink: 0;
+      }
+
+      .warning-text {
+        color: var(--color-text);
+        font-size: var(--font-size-s);
+        margin: 0 0 var(--space-xs) 0;
+        font-weight: var(--font-weight-medium);
+      }
+
+      .warning-subtext {
+        color: var(--color-text-light);
+        font-size: var(--font-size-xs);
+        margin: 0;
+      }
+    }
+
     .choices-display {
       display: flex;
       flex-wrap: wrap;
