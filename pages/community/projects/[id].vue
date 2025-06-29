@@ -4,7 +4,6 @@ import { Button, Card, Flex } from '@dolanske/vui'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
 // Get route parameter
@@ -95,10 +94,6 @@ useHead({
                 {{ project.title }}
               </h1>
             </div>
-            <Flex gap="s" y-center>
-              <Icon name="ph:calendar" />
-              <TimestampDate :date="project.created_at" format="dddd, MMM D, YYYY [at] HH:mm" />
-            </Flex>
           </Flex>
 
           <!-- Description -->
@@ -124,7 +119,7 @@ useHead({
                   <template #start>
                     <Icon name="ph:arrow-square-out" />
                   </template>
-                  View Link
+                  Open Link
                 </Button>
               </NuxtLink>
               <NuxtLink
@@ -134,7 +129,6 @@ useHead({
                 target="_blank"
               >
                 <Button
-                  outline
                   size="s"
                 >
                   <template #start>

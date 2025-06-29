@@ -196,7 +196,7 @@ onUnmounted(() => {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Button variant="accent" size="s">
+          <Button size="s">
             <template #start>
               <Icon name="ph:link" />
             </template>

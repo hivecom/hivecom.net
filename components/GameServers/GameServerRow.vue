@@ -43,7 +43,7 @@ const state = computed(() => {
         <Icon name="ph:caret-right" class="gameserver-row-arrow" size="16" />
         <Tooltip placement="top">
           <template #tooltip>
-            <p>{{ capitalize(state) }}</p>
+            <p>{{ capitalize(state) }}{{ state === 'offline' ? ' - Ask an administrator to start it' : '' }}</p>
           </template>
           <div :class="`gameserver-indicator ${state}`" />
         </Tooltip>
@@ -151,7 +151,7 @@ const state = computed(() => {
   }
 
   &.offline {
-    background-color: var(--color-text-gray);
+    background-color: var(--color-text-lighter);
   }
 }
 

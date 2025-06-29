@@ -128,7 +128,7 @@ useHead({
                 <template #start>
                   <Icon name="ph:arrow-square-out" />
                 </template>
-                View Link
+                Open Link
               </Button>
             </NuxtLink>
           </Flex>

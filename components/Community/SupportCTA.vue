@@ -16,6 +16,9 @@ const props = withDefaults(defineProps<Props>(), {
 // Fetch supporter count if not provided
 const actualSupporterCount = ref(props.supporterCount)
 
+// Get current user for authentication check
+const currentUser = useSupabaseUser()
+
 onMounted(async () => {
   // Only fetch if supporter count is not provided (defaulted to 0)
   if (props.supporterCount === 0) {
@@ -78,6 +81,7 @@ onMounted(async () => {
           Join {{ actualSupporterCount }} supporters helping fund our community
         </p>
         <BulkAvatarDisplay
+          v-if="currentUser"
           :user-ids="props.supporterIds"
           :max-users="16"
           :avatar-size="48"

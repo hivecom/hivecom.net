@@ -6,8 +6,8 @@ withDefaults(defineProps<{
   title: 'title',
   description: 'description',
 })
-// NOTE(jan): Where can I see how this lookst/test it? This looks copied over
-// from somewhere and contains tailwind classes
+// NOTE (Jan): Where can I see how this lookst/test it? This looks copied over from somewhere and contains tailwind classes.
+// NOTE (Andrew): It actually isn't copied over, this is a custom OG image component for the homepage. Check the Nuxt Dev Tools to see the image.
 </script>
 
 <template>

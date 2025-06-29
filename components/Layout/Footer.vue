@@ -1,4 +1,5 @@
 <script setup>
+import { Flex } from '@dolanske/vui'
 import constants from '@/constants.json'
 
 const links = constants.LINKS
@@ -33,18 +34,24 @@ const links = constants.LINKS
             Privacy Policy
           </NuxtLink>
         </div>
+        <span class="footer__links-separator" />
+        <Flex class="footer__links-group text-center" x-center>
+          <NuxtLink external to="https://github.com/hivecom/hivecom.net">
+            Source Code
+          </NuxtLink>
+        </Flex>
       </div>
     </div>
 
     <div class="footer__social-links">
-      <a v-for="(link, key) in links" :key="key" :href="link.url" target="_blank" rel="noopener noreferrer" class="footer__social-link" :aria-label="`Visit our ${link.name} page`">
+      <NuxtLink v-for="(link, key) in links" :key="key" external :to="link.url" target="_blank" rel="noopener noreferrer" class="footer__social-link" :aria-label="`Visit our ${link.name} page`">
         <Icon :name="link.icon" />
-      </a>
+      </NuxtLink>
     </div>
 
-    <div class="footer__established-text">
+    <Flex class="footer__established-text">
       HIVECOM | EST. IN 2013
-    </div>
+    </Flex>
   </footer>
 </template>
 
