@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Card, Flex } from '@dolanske/vui'
 import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
-import Metadata from '@/components/Shared/Metadata.vue'
+import MetadataCard from '@/components/Shared/MetadataCard.vue'
 
 // Get route parameter
 const route = useRoute()
@@ -19,6 +18,7 @@ const game = ref<Tables<'games'> | null>(null)
 const container = ref<Tables<'containers'> | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const gameBackground = ref<string | null>(null)
 
 // Computed server state
 const state = computed(() => {
@@ -129,10 +129,36 @@ async function fetchGameserver() {
   }
 }
 
+// Get game background image using the cached composable
+async function getGameBackground(game: Tables<'games'>) {
+  const { getGameBackgroundUrl } = useGameAssets()
+  return await getGameBackgroundUrl(game)
+}
+
+// Load game background when game data is available
+async function loadGameBackground() {
+  if (game.value) {
+    try {
+      gameBackground.value = await getGameBackground(game.value)
+    }
+    catch (error) {
+      console.error('Failed to load game background:', error)
+      gameBackground.value = null
+    }
+  }
+}
+
 // Fetch data on mount
 onMounted(() => {
   fetchGameserver()
 })
+
+// Watch for game changes to load background
+watch(game, (newGame) => {
+  if (newGame) {
+    loadGameBackground()
+  }
+}, { immediate: true })
 
 // SEO and page metadata
 useSeoMeta({
@@ -172,24 +198,25 @@ useHead({
         :state-config="stateConfig"
       />
 
+      <!-- Background Image -->
+      <div
+        v-if="gameBackground"
+        class="game-background-section"
+        :style="{ backgroundImage: `url(${gameBackground})` }"
+      >
+        <div class="background-overlay" />
+      </div>
+
       <!-- Server Details (Markdown) -->
       <GameServerMarkdown :gameserver="gameserver" />
 
       <!-- Server Metadata -->
-      <Card class="server-metadata">
-        <Flex column gap="l">
-          <h3 class="server-metadata__title">
-            <Icon name="ph:info" />
-            Metadata
-          </h3>
-          <Metadata
-            :created-at="gameserver.created_at"
-            :created-by="gameserver.created_by"
-            :modified-at="gameserver.modified_at"
-            :modified-by="gameserver.modified_by"
-          />
-        </Flex>
-      </Card>
+      <MetadataCard
+        :created-at="gameserver.created_at"
+        :created-by="gameserver.created_by"
+        :modified-at="gameserver.modified_at"
+        :modified-by="gameserver.modified_by"
+      />
     </div>
   </div>
 </template>
@@ -201,17 +228,39 @@ useHead({
   gap: var(--space-l);
 }
 
-.server-metadata__title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  margin: 0;
-  color: var(--color-text);
+.game-background-section {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  border-radius: var(--border-radius-m);
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 
-  svg {
-    color: var(--color-accent);
+  .background-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.1) 100%);
   }
+
+  @media (max-width: 768px) {
+    height: 150px;
+  }
+}
+
+.game-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.1;
 }
 </style>

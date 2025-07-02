@@ -9,8 +9,9 @@
  * - Memory-efficient with configurable size limits
  */
 
+import type { Ref } from 'vue'
 import type { Database } from '@/types/database.types'
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref } from 'vue'
 
 export interface CacheEntry<T = unknown> {
   data: T

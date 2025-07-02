@@ -21,6 +21,7 @@ export interface Database {
           modified_by: string | null
           pinned: boolean
           published_at: string
+          tags: string[] | null
           title: string
         }
         Insert: {
@@ -34,6 +35,7 @@ export interface Database {
           modified_by?: string | null
           pinned?: boolean
           published_at?: string
+          tags?: string[] | null
           title: string
         }
         Update: {
@@ -47,6 +49,7 @@ export interface Database {
           modified_by?: string | null
           pinned?: boolean
           published_at?: string
+          tags?: string[] | null
           title?: string
         }
         Relationships: []
@@ -143,6 +146,7 @@ export interface Database {
           date: string
           description: string
           duration_minutes: number | null
+          games: number[] | null
           google_event_id: string | null
           google_last_synced_at: string | null
           id: number
@@ -160,6 +164,7 @@ export interface Database {
           date: string
           description?: string
           duration_minutes?: number | null
+          games?: number[] | null
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
@@ -177,6 +182,7 @@ export interface Database {
           date?: string
           description?: string
           duration_minutes?: number | null
+          games?: number[] | null
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
@@ -443,6 +449,7 @@ export interface Database {
           supporter_patreon: boolean
           username: string
           username_set: boolean
+          website: string | null
         }
         Insert: {
           ban_end?: string | null
@@ -463,6 +470,7 @@ export interface Database {
           supporter_patreon?: boolean
           username: string
           username_set?: boolean
+          website?: string | null
         }
         Update: {
           ban_end?: string | null
@@ -483,8 +491,62 @@ export interface Database {
           supporter_patreon?: boolean
           username?: string
           username_set?: boolean
+          website?: string | null
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          github: string | null
+          id: number
+          link: string | null
+          markdown: string
+          modified_at: string | null
+          modified_by: string | null
+          owner: string | null
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          github?: string | null
+          id?: number
+          link?: string | null
+          markdown: string
+          modified_at?: string | null
+          modified_by?: string | null
+          owner?: string | null
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          github?: string | null
+          id?: number
+          link?: string | null
+          markdown?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          owner?: string | null
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'projects_owner_fkey'
+            columns: ['owner']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
       referendum_votes: {
         Row: {
@@ -687,6 +749,18 @@ export interface Database {
         Args: { user_id?: string }
         Returns: undefined
       }
+      validate_github_repo: {
+        Args: { github_repo: string }
+        Returns: boolean
+      }
+      validate_tag_format: {
+        Args: { tag: string }
+        Returns: boolean
+      }
+      validate_tags_array: {
+        Args: { tags: string[] }
+        Returns: boolean
+      }
     }
     Enums: {
       app_permission:
@@ -745,6 +819,10 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
+        | 'projects.read'
+        | 'projects.create'
+        | 'projects.update'
+        | 'projects.delete'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       region: 'eu' | 'na' | 'all'
@@ -919,6 +997,10 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
+        'projects.read',
+        'projects.create',
+        'projects.update',
+        'projects.delete',
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],

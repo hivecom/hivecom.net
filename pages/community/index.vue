@@ -1,7 +1,113 @@
 <script setup lang="ts">
-import { Card, Divider, Flex, Grid } from '@dolanske/vui'
+import type { Database } from '~/types/database.types'
+import { Button, Card, Divider, Flex, Grid } from '@dolanske/vui'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
+import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
+import BulkAvatarDisplay from '~/components/Shared/BulkAvatarDisplay.vue'
+
+// Get current user for authentication checks
+const user = useSupabaseUser()
+const supabase = useSupabaseClient()
+
+// State for community members
+const randomUsers = ref<string[]>([])
+const supporters = ref<string[]>([])
+const loading = ref(true)
+const error = ref('')
+
+// State for recent projects
+const recentProjects = ref<Database['public']['Tables']['projects']['Row'][]>([])
+
+// Fetch community data
+async function fetchCommunityData() {
+  try {
+    loading.value = true
+    error.value = ''
+
+    if (user.value) {
+      // Fetch supporters, random users, and recent projects in parallel for authenticated users
+      const [supportersResult, randomUsersResult, projectsResult] = await Promise.all([
+        // Fetch supporters (lifetime and patreon)
+        supabase
+          .from('profiles')
+          .select('id, supporter_lifetime, supporter_patreon')
+          .eq('banned', false)
+          .or('supporter_lifetime.eq.true,supporter_patreon.eq.true')
+          .order('created_at', { ascending: true }), // Show earliest supporters first
+
+        // Fetch random selection of users
+        supabase
+          .from('profiles')
+          .select('id')
+          .eq('banned', false)
+          .limit(200), // Get more to randomize from
+
+        // Fetch recent projects
+        supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(3),
+      ])
+
+      if (supportersResult.error) {
+        console.warn('Error fetching supporters:', supportersResult.error)
+      }
+      else if (supportersResult.data) {
+        supporters.value = supportersResult.data.map(u => u.id)
+      }
+
+      if (randomUsersResult.error) {
+        console.warn('Error fetching random users:', randomUsersResult.error)
+      }
+      else if (randomUsersResult.data) {
+        // Shuffle and take max 50 users
+        const shuffled = (randomUsersResult.data as Array<{ id: string }>)
+          .map(user => ({ user, sort: Math.random() }))
+          .sort((a, b) => a.sort - b.sort)
+          .map(({ user }) => user)
+          .slice(0, 50)
+
+        randomUsers.value = shuffled.map(u => u.id)
+      }
+
+      if (projectsResult.error) {
+        console.warn('Error fetching recent projects:', projectsResult.error)
+      }
+      else if (projectsResult.data) {
+        recentProjects.value = projectsResult.data
+      }
+    }
+    else {
+      // For non-authenticated users, just fetch recent projects
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(3)
+
+      if (projectsError) {
+        console.warn('Error fetching recent projects:', projectsError)
+      }
+      else if (projectsData) {
+        recentProjects.value = projectsData
+      }
+    }
+  }
+  catch (err) {
+    console.error('Error fetching community data:', err)
+    error.value = err instanceof Error ? err.message : 'Failed to load community data'
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+// Load data when user is authenticated or on initial load
+watch(user, () => {
+  fetchCommunityData()
+}, { immediate: true })
 </script>
 
 <template>
@@ -13,6 +119,52 @@ import SupportCTA from '@/components/Community/SupportCTA.vue'
     </section>
 
     <Divider />
+
+    <!-- Community Members -->
+    <Card v-if="user && randomUsers.length > 0" class="pb-l">
+      <Flex column gap="m" x-center y-center>
+        <Flex y-center gap="m" x-center expand>
+          <Flex column :gap="0" x-center class="text-center" y-center>
+            <h2 class="text-bold text-xxl">
+              Community Members
+            </h2>
+            <p class="color-text-light">
+              Meet some of our amazing community members from around the world
+            </p>
+          </Flex>
+        </Flex>
+        <BulkAvatarDisplay
+          :user-ids="randomUsers"
+          :max-users="32"
+          :avatar-size="64"
+        />
+      </Flex>
+    </Card>
+
+    <!-- Sign-in prompt for community features -->
+    <section v-if="!user" class="mt-xl">
+      <Card class="signin-prompt">
+        <Flex column gap="m" y-center class="signin-prompt__content">
+          <div class="signin-prompt__icon">
+            <Icon name="ph:users-three" size="2.5rem" />
+          </div>
+          <h3 class="text-bold text-xl">
+            Discover Our Community
+          </h3>
+          <p class="color-text-light text-center">
+            Sign in to see our supporters and meet community members from around the world
+          </p>
+          <NuxtLink to="/auth/sign-in">
+            <Button variant="accent">
+              <template #start>
+                <Icon name="ph:sign-in" />
+              </template>
+              Sign In
+            </Button>
+          </NuxtLink>
+        </Flex>
+      </Card>
+    </section>
 
     <!-- Community Overview -->
     <section class="mt-xl">
@@ -80,29 +232,6 @@ import SupportCTA from '@/components/Community/SupportCTA.vue'
 
               <Flex column gap="s" expand>
                 <NuxtLink
-                  to="/community/funding"
-                  class="community-link community-link--funding"
-                  aria-label="View our funding transparency and financial information"
-                >
-                  <div class="community-link__content">
-                    <div class="community-link__icon">
-                      <Icon name="ph:chart-bar" size="1.4rem" />
-                    </div>
-                    <div class="community-link__text">
-                      <div class="community-link__title">
-                        Funding & Transparency
-                      </div>
-                      <div class="community-link__subtitle">
-                        See how we're funded and where contributions go
-                      </div>
-                    </div>
-                    <div class="community-link__arrow">
-                      <Icon name="ph:arrow-right" size="1.2rem" />
-                    </div>
-                  </div>
-                </NuxtLink>
-
-                <NuxtLink
                   to="/events"
                   class="community-link community-link--events"
                   aria-label="View upcoming community events and activities"
@@ -117,6 +246,52 @@ import SupportCTA from '@/components/Community/SupportCTA.vue'
                       </div>
                       <div class="community-link__subtitle">
                         Join our community events and online gatherings
+                      </div>
+                    </div>
+                    <div class="community-link__arrow">
+                      <Icon name="ph:arrow-right" size="1.2rem" />
+                    </div>
+                  </div>
+                </NuxtLink>
+
+                <NuxtLink
+                  to="/community/projects"
+                  class="community-link community-link--projects"
+                  aria-label="Explore community projects and initiatives"
+                >
+                  <div class="community-link__content">
+                    <div class="community-link__icon">
+                      <Icon name="ph:folder" size="1.4rem" />
+                    </div>
+                    <div class="community-link__text">
+                      <div class="community-link__title">
+                        Community Projects
+                      </div>
+                      <div class="community-link__subtitle">
+                        Explore projects and initiatives from our community
+                      </div>
+                    </div>
+                    <div class="community-link__arrow">
+                      <Icon name="ph:arrow-right" size="1.2rem" />
+                    </div>
+                  </div>
+                </NuxtLink>
+
+                <NuxtLink
+                  to="/community/funding"
+                  class="community-link community-link--funding"
+                  aria-label="View our funding transparency and financial information"
+                >
+                  <div class="community-link__content">
+                    <div class="community-link__icon">
+                      <Icon name="ph:chart-bar" size="1.4rem" />
+                    </div>
+                    <div class="community-link__text">
+                      <div class="community-link__title">
+                        Funding & Transparency
+                      </div>
+                      <div class="community-link__subtitle">
+                        See how we're funded and where contributions go
                       </div>
                     </div>
                     <div class="community-link__arrow">
@@ -155,14 +330,47 @@ import SupportCTA from '@/components/Community/SupportCTA.vue'
       </Grid>
     </section>
 
+    <!-- Recent Projects -->
+    <section v-if="recentProjects.length > 0" class="mt-xl">
+      <Flex column gap="l">
+        <Flex y-center x-between expand>
+          <div>
+            <h2 class="text-bold text-xxl">
+              Recent Projects
+            </h2>
+            <p class="color-text-light">
+              Check out what our community has been building
+            </p>
+          </div>
+          <NuxtLink to="/community/projects">
+            <Button>
+              <template #end>
+                <Icon name="ph:arrow-right" />
+              </template>
+              View All Projects
+            </Button>
+          </NuxtLink>
+        </Flex>
+
+        <Grid :columns="3" gap="l" class="projects-grid">
+          <ProjectCard
+            v-for="project in recentProjects"
+            :key="project.id"
+            :project="project"
+            compact
+          />
+        </Grid>
+      </Flex>
+    </section>
+
     <!-- Monthly Funding Progress -->
     <section class="mt-xl">
       <FundingProgress />
     </section>
 
-    <!-- Support Section -->
+    <!-- Support Section with Community Supporters -->
     <section class="mt-l">
-      <SupportCTA />
+      <SupportCTA :supporter-ids="supporters" />
     </section>
   </div>
 </template>
@@ -395,75 +603,121 @@ import SupportCTA from '@/components/Community/SupportCTA.vue'
     transition: all 0.3s ease;
     flex-shrink: 0;
   }
+}
 
-  // Variant-specific accent colors
-  &--funding {
-    &:hover .community-link__icon {
-      background: var(--color-success-weak);
-      color: var(--color-success);
-    }
+// Section Icons
+.section-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--border-radius-l);
+  flex-shrink: 0;
 
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--color-success), transparent);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
+  &--members {
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
+    color: white;
+    box-shadow: 0 4px 15px -4px var(--color-accent-alpha);
+  }
+}
 
-    &:hover::before {
-      opacity: 1;
-    }
+// Sign-in Prompt
+.signin-prompt {
+  border: 2px dashed var(--color-border);
+  text-align: center;
+
+  &__content {
+    padding: var(--space-xl);
   }
 
-  &--events {
-    &:hover .community-link__icon {
-      background: var(--color-warning-weak);
-      color: var(--color-warning);
-    }
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-accent-weak), var(--color-accent-alpha));
+    color: var(--color-accent);
+    margin: 0 auto;
+  }
+}
 
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--color-warning), transparent);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    &:hover::before {
-      opacity: 1;
-    }
+// Projects Grid Styling
+.projects-grid {
+  @media screen and (max-width: $breakpoint-md) {
+    grid-template-columns: 1fr 1fr !important;
   }
 
-  &--gameservers {
-    &:hover .community-link__icon {
-      background: var(--color-info-weak);
-      color: var(--color-info);
-    }
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--color-info), transparent);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    &:hover::before {
-      opacity: 1;
-    }
+  @media screen and (max-width: $breakpoint-sm) {
+    grid-template-columns: 1fr !important;
   }
+}
+
+.project-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-m);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -8px var(--color-shadow);
+    border-color: var(--color-border-strong);
+  }
+}
+
+.project-title {
+  color: var(--color-text);
+  font-size: var(--font-size-l);
+  margin: 0;
+}
+
+.project-description {
+  color: var(--color-text-light);
+  flex: 1;
+  margin: 0;
+}
+
+.project-github {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-bg-accent-weak);
+  color: var(--color-accent);
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: var(--color-accent-weak);
+    color: var(--color-accent);
+  }
+}
+
+.project-tag {
+  display: inline-block;
+  padding: var(--space-xxs) var(--space-xs);
+  border-radius: var(--border-radius-s);
+  background: var(--color-bg-medium);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  margin-right: var(--space-xxs);
+  margin-bottom: var(--space-xxs);
+
+  &--more {
+    background: var(--color-info-weak);
+    color: var(--color-info);
+  }
+}
+
+.project-link {
+  margin-top: auto;
 }
 </style>

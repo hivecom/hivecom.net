@@ -13,6 +13,9 @@ interface Props {
   variant?: 'avatar' | 'asset'
   showDelete?: boolean
   deleting?: boolean
+  aspectRatio?: number // Width/height ratio (e.g., 16/9 = 1.778, 9/16 = 0.5625)
+  minHeight?: number // Minimum height in pixels
+  maxHeight?: number // Maximum height in pixels
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -22,6 +25,7 @@ const props = withDefaults(defineProps<Props>(), {
   variant: 'asset',
   showDelete: false,
   deleting: false,
+  minHeight: 160,
 })
 
 const emit = defineEmits<{
@@ -40,6 +44,34 @@ const maxSizeBytes = computed(() => props.maxSizeMB * 1024 * 1024)
 const currentPreviewUrl = computed(() => localPreviewUrl.value || props.previewUrl)
 const hasPreview = computed(() => !!currentPreviewUrl.value && imageExists.value)
 const isAvatarVariant = computed(() => props.variant === 'avatar')
+
+// Computed style for aspect ratio
+const aspectRatioStyle = computed(() => {
+  if (isAvatarVariant.value || !props.aspectRatio) {
+    return {}
+  }
+
+  const style: Record<string, string> = {
+    aspectRatio: props.aspectRatio.toString(),
+  }
+
+  // Only apply min-height if no maxHeight is set, or if maxHeight allows it
+  if (props.maxHeight) {
+    style.maxHeight = `${props.maxHeight}px`
+    // Calculate max width based on aspect ratio and max height
+    const maxWidth = props.maxHeight * props.aspectRatio
+    style.maxWidth = `${maxWidth}px`
+  }
+
+  if (props.minHeight && (!props.maxHeight || props.minHeight <= props.maxHeight)) {
+    style.minHeight = `${props.minHeight}px`
+    // Calculate min width based on aspect ratio and min height
+    const minWidth = props.minHeight * props.aspectRatio
+    style.minWidth = `${minWidth}px`
+  }
+
+  return style
+})
 
 // Handle file selection
 function handleFileSelect(event: Event) {
@@ -177,7 +209,12 @@ onUnmounted(() => {
     >
 
     <!-- Preview Image (if exists) -->
-    <div v-if="hasPreview" class="file-upload__preview" :class="{ 'file-upload__preview--avatar': isAvatarVariant }">
+    <div
+      v-if="hasPreview"
+      class="file-upload__preview"
+      :class="{ 'file-upload__preview--avatar': isAvatarVariant }"
+      :style="aspectRatioStyle"
+    >
       <img :src="currentPreviewUrl!" :alt="label" class="file-upload__image">
       <div class="file-upload__overlay">
         <Flex gap="xs" class="file-upload__actions">
@@ -231,6 +268,7 @@ onUnmounted(() => {
         'file-upload__drop-zone--disabled': disabled,
         'file-upload__drop-zone--avatar': isAvatarVariant,
       }"
+      :style="aspectRatioStyle"
       @click="openFileDialog"
       @drop="handleDrop"
       @dragover="handleDragOver"
@@ -318,6 +356,16 @@ onUnmounted(() => {
     cursor: pointer;
     transition: all 0.2s ease;
     min-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* When aspect ratio is set, let the computed style handle all constraints */
+    &[style*='aspect-ratio'] {
+      min-height: unset;
+      width: 100%;
+      max-width: 100%;
+    }
 
     &--avatar {
       width: 240px;
@@ -346,7 +394,7 @@ onUnmounted(() => {
   &__content {
     text-align: center;
     pointer-events: none;
-    height: 100%;
+    width: 100%;
   }
 
   &__icon {

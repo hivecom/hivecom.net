@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Button, Card, Flex } from '@dolanske/vui'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
@@ -84,6 +85,22 @@ useHead({
 
     <!-- Announcement Content -->
     <div v-if="announcement && !loading && !error" class="page-content">
+      <!-- Back Button -->
+      <Flex x-between>
+        <Button
+          variant="gray"
+          size="s"
+          aria-label="Go back to Announcements page"
+          class="event-detail__back-link"
+          @click="$router.push('/announcements')"
+        >
+          <template #start>
+            <Icon name="ph:arrow-left" />
+          </template>
+          Back to Announcements
+        </Button>
+      </Flex>
+
       <!-- Header -->
       <Card class="announcement-header" expand>
         <Flex column gap="m" expand>
@@ -127,7 +144,7 @@ useHead({
                 <template #start>
                   <Icon name="ph:arrow-square-out" />
                 </template>
-                View Link
+                Open Link
               </Button>
             </NuxtLink>
           </Flex>
@@ -135,9 +152,18 @@ useHead({
       </Card>
 
       <!-- Announcement Content (Markdown) -->
-      <div class="announcement-content">
+      <Card class="announcement-content">
         <MDRenderer :md="announcement.markdown" />
-      </div>
+      </Card>
+
+      <!-- Announcement Metadata -->
+      <MetadataCard
+        :tags="announcement.tags"
+        :created-at="announcement.created_at"
+        :created-by="announcement.created_by"
+        :modified-at="announcement.modified_at"
+        :modified-by="announcement.modified_by"
+      />
     </div>
   </div>
 </template>
@@ -187,7 +213,7 @@ useHead({
 }
 
 .announcement-header__description {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-l);
   color: var(--color-text-light);
   margin: 0;
   line-height: 1.6;

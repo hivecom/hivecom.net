@@ -8,6 +8,7 @@ interface SelectOption {
 
 const props = defineProps<{
   pinnedOptions: SelectOption[]
+  tagOptions: SelectOption[]
 }>()
 
 // Emit is still needed for the clearFilters action
@@ -18,11 +19,19 @@ const emit = defineEmits<{
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
 const pinnedFilter = defineModel<SelectOption[]>('pinnedFilter')
+const tagFilter = defineModel<SelectOption[]>('tagFilter')
 
 // Clear filters handler
 function clearFilters() {
   emit('clearFilters')
 }
+
+// Check if any filters are active
+const hasActiveFilters = computed(() =>
+  search.value.length > 0
+  || (pinnedFilter.value && pinnedFilter.value.length > 0)
+  || (tagFilter.value && tagFilter.value.length > 0),
+)
 </script>
 
 <template>
@@ -47,12 +56,22 @@ function clearFilters() {
       show-clear
     />
 
+    <!-- Tag filter -->
+    <Select
+      v-model="tagFilter"
+      :options="props.tagOptions"
+      placeholder="Filter by tags"
+      expand
+      search
+      show-clear
+      :single="false"
+    />
+
     <!-- Clear all filters -->
     <Button
-      v-if="search || pinnedFilter"
+      v-if="hasActiveFilters"
       plain
       outline
-      :disabled="!search && !pinnedFilter"
       @click="clearFilters"
     >
       Clear Filters

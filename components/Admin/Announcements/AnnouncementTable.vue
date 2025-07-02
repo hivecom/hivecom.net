@@ -2,7 +2,7 @@
 import type { QueryData } from '@supabase/supabase-js'
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 
-import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 
@@ -19,6 +19,7 @@ type QueryAnnouncement = QueryData<typeof announcementsQuery>[0]
 interface TransformedAnnouncement {
   Title: string
   Description: string | null
+  Tags: string[] | null
   Pinned: boolean
   Created: string
   _original: QueryAnnouncement
@@ -49,6 +50,7 @@ const errorMessage = ref('')
 const announcements = ref<QueryData<typeof announcementsQuery>>([])
 const search = ref('')
 const pinnedFilter = ref<SelectOption[]>()
+const tagFilter = ref<SelectOption[]>([])
 
 // Announcement detail state
 const selectedAnnouncement = ref<QueryAnnouncement | null>(null)
@@ -64,7 +66,21 @@ const pinnedOptions: SelectOption[] = [
   { label: 'Not Pinned', value: 'false' },
 ]
 
-// Filter based on search and pinned status
+// Compute unique tag options from all announcements
+const tagOptions = computed<SelectOption[]>(() => {
+  const allTags = new Set<string>()
+  announcements.value.forEach((announcement) => {
+    if (announcement.tags) {
+      announcement.tags.forEach(tag => allTags.add(tag))
+    }
+  })
+  return Array.from(allTags).sort().map(tag => ({
+    label: tag,
+    value: tag,
+  }))
+})
+
+// Filter based on search, pinned status, and tags
 const filteredData = computed<TransformedAnnouncement[]>(() => {
   const filtered = announcements.value.filter((item) => {
     // Filter by search term
@@ -86,6 +102,14 @@ const filteredData = computed<TransformedAnnouncement[]>(() => {
         return false
     }
 
+    // Filter by tags
+    if (tagFilter.value && tagFilter.value.length > 0) {
+      const selectedTags = tagFilter.value.map((option: SelectOption) => option.value)
+      if (!item.tags || !selectedTags.some((tag: string) => item.tags!.includes(tag))) {
+        return false
+      }
+    }
+
     return true
   })
 
@@ -93,6 +117,7 @@ const filteredData = computed<TransformedAnnouncement[]>(() => {
   return filtered.map(announcement => ({
     Title: announcement.title,
     Description: announcement.description || 'No description',
+    Tags: announcement.tags || null,
     Pinned: announcement.pinned,
     Created: announcement.created_at,
     // Keep the original object to use when emitting events
@@ -233,6 +258,7 @@ async function handleAnnouncementDelete(announcementId: number) {
 function clearFilters() {
   search.value = ''
   pinnedFilter.value = undefined
+  tagFilter.value = []
 }
 
 // Lifecycle hooks
@@ -253,7 +279,9 @@ onBeforeMount(fetchAnnouncements)
         <AnnouncementFilters
           v-model:search="search"
           v-model:pinned-filter="pinnedFilter"
+          v-model:tag-filter="tagFilter"
           :pinned-options="pinnedOptions"
+          :tag-options="tagOptions"
           @clear-filters="clearFilters"
         />
 
@@ -267,7 +295,7 @@ onBeforeMount(fetchAnnouncements)
 
       <!-- Table skeleton -->
       <TableSkeleton
-        :columns="4"
+        :columns="5"
         :rows="10"
         :show-actions="canManageResource"
       />
@@ -280,7 +308,9 @@ onBeforeMount(fetchAnnouncements)
       <AnnouncementFilters
         v-model:search="search"
         v-model:pinned-filter="pinnedFilter"
+        v-model:tag-filter="tagFilter"
         :pinned-options="pinnedOptions"
+        :tag-options="tagOptions"
         @clear-filters="clearFilters"
       />
 
@@ -307,6 +337,20 @@ onBeforeMount(fetchAnnouncements)
           <tr v-for="announcement in rows" :key="announcement._original.id" class="clickable-row" @click="viewAnnouncement(announcement._original as QueryAnnouncement)">
             <Table.Cell>{{ announcement.Title }}</Table.Cell>
             <Table.Cell>{{ announcement.Description }}</Table.Cell>
+            <Table.Cell>
+              <div v-if="announcement.Tags && announcement.Tags.length > 0" class="tags-cell">
+                <Badge
+                  v-for="tag in announcement.Tags"
+                  :key="tag"
+                  size="xs"
+                  variant="neutral"
+                  class="table-tag"
+                >
+                  {{ tag }}
+                </Badge>
+              </div>
+              <span v-else class="color-text-light">No tags</span>
+            </Table.Cell>
             <Table.Cell>
               <Icon v-if="announcement.Pinned" name="ph:push-pin-fill" class="color-accent" />
               <span v-else class="color-text-light">—</span>
@@ -373,6 +417,18 @@ td {
   td {
     cursor: pointer;
     background-color: var(--color-bg-raised);
+  }
+}
+
+.tags-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  max-width: 200px; // Limit width to prevent table from becoming too wide
+
+  .table-tag {
+    font-size: var(--font-size-xxs);
+    white-space: nowrap;
   }
 }
 </style>

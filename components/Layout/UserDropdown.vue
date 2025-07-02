@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
+import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle, Spinner } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import { useUserData } from '@/composables/useUserData'
@@ -62,7 +62,12 @@ async function signOut() {
             :url="userData?.avatarUrl || undefined"
           >
             <template v-if="!userData?.avatarUrl" #default>
-              {{ userInitials || '?' }}
+              <template v-if="userInitials">
+                {{ userInitials }}
+              </template>
+              <template v-else>
+                <Spinner size="s" />
+              </template>
             </template>
           </Avatar>
         </button>

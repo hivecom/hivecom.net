@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Calendar, Flex, Grid, Input, Sheet, Textarea } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { Button, Calendar, Flex, Grid, Input, Select, Sheet, Textarea } from '@dolanske/vui'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
@@ -15,6 +15,9 @@ const emit = defineEmits(['save', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+// Setup Supabase client
+const supabase = useSupabaseClient()
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
@@ -32,14 +35,76 @@ const eventForm = ref({
   location: '',
   link: '',
   markdown: '',
+  games: [] as number[],
 })
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 
-// Loading states for buttons
+// Loading states for buttons and dropdowns
 const saveLoading = ref(false)
 const deleteLoading = ref(false)
+const loadingGames = ref(true)
+
+// Interface for Select options
+interface SelectOption {
+  label: string
+  value: number
+}
+
+// Games data
+const games = ref<Tables<'games'>[]>([])
+
+// Computed options for games select
+const gameOptions = computed(() =>
+  games.value.map(game => ({
+    label: game.name || 'Unknown Game',
+    value: game.id,
+  })),
+)
+
+// Selected games for VUI Select component (matches VUI example pattern)
+const selectedGames = ref<SelectOption[]>([])
+
+// Watch for changes in selectedGames and update form
+watch(selectedGames, (newSelectedGames) => {
+  if (newSelectedGames && Array.isArray(newSelectedGames)) {
+    eventForm.value.games = newSelectedGames.map(option => option.value)
+  }
+  else {
+    eventForm.value.games = []
+  }
+}, { deep: true })
+
+// Helper function to sync form games to selectedGames
+function syncSelectedGames() {
+  const formGames = eventForm.value.games || []
+  selectedGames.value = gameOptions.value.filter(option =>
+    formGames.includes(option.value),
+  )
+}
+
+// Fetch games data
+async function fetchGames() {
+  loadingGames.value = true
+  try {
+    const { data: gamesData, error: gamesError } = await supabase
+      .from('games')
+      .select('*')
+      .order('name')
+
+    if (gamesError)
+      throw gamesError
+
+    games.value = gamesData || []
+  }
+  catch (error) {
+    console.error('Error fetching games:', error)
+  }
+  finally {
+    loadingGames.value = false
+  }
+}
 
 // Form validation
 const validation = computed(() => ({
@@ -50,48 +115,92 @@ const validation = computed(() => ({
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
-// Update form data when event prop changes
+// Function to update form data
+function updateFormData(newEvent: Tables<'events'> | null) {
+  if (newEvent) {
+    // Convert total minutes to separate duration fields
+    const totalMinutes = newEvent.duration_minutes || 0
+    const days = Math.floor(totalMinutes / (24 * 60))
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
+    const minutes = totalMinutes % 60
+
+    eventForm.value = {
+      title: newEvent.title,
+      description: newEvent.description,
+      note: newEvent.note || '',
+      date: newEvent.date ? new Date(newEvent.date) : null,
+      duration_days: days > 0 ? days : null,
+      duration_hours: hours > 0 ? hours : null,
+      duration_minutes: minutes > 0 ? minutes : null,
+      location: newEvent.location || '',
+      link: newEvent.link || '',
+      markdown: newEvent.markdown || '',
+      games: newEvent.games || [], // Handle null case from database
+    }
+
+    // Sync the selected games after updating form data
+    if (gameOptions.value.length > 0) {
+      nextTick(() => {
+        syncSelectedGames()
+      })
+    }
+  }
+  else {
+    // Reset form for new event
+    eventForm.value = {
+      title: '',
+      description: '',
+      note: '',
+      date: null,
+      duration_days: null,
+      duration_hours: null,
+      duration_minutes: null,
+      location: '',
+      link: '',
+      markdown: '',
+      games: [],
+    }
+
+    // Clear selected games
+    selectedGames.value = []
+  }
+}
+
+// Update form data when event prop changes (but only after games are loaded)
 watch(
   () => props.event,
   (newEvent) => {
-    if (newEvent) {
-      // Convert total minutes to separate duration fields
-      const totalMinutes = newEvent.duration_minutes || 0
-      const days = Math.floor(totalMinutes / (24 * 60))
-      const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
-      const minutes = totalMinutes % 60
-
-      eventForm.value = {
-        title: newEvent.title,
-        description: newEvent.description,
-        note: newEvent.note || '',
-        date: newEvent.date ? new Date(newEvent.date) : null,
-        duration_days: days > 0 ? days : null,
-        duration_hours: hours > 0 ? hours : null,
-        duration_minutes: minutes > 0 ? minutes : null,
-        location: newEvent.location || '',
-        link: newEvent.link || '',
-        markdown: newEvent.markdown || '',
-      }
+    // If games are already loaded, update form immediately
+    if (!loadingGames.value) {
+      updateFormData(newEvent)
     }
-    else {
-      // Reset form for new event
-      eventForm.value = {
-        title: '',
-        description: '',
-        note: '',
-        date: null,
-        duration_days: null,
-        duration_hours: null,
-        duration_minutes: null,
-        location: '',
-        link: '',
-        markdown: '',
-      }
+    // If games are still loading, the form will be updated when games finish loading
+  },
+)
+
+// Also watch for when games finish loading to update form
+watch(
+  () => loadingGames.value,
+  (isLoading) => {
+    // When games finish loading, update form with current event data
+    if (!isLoading && props.event) {
+      updateFormData(props.event)
+    }
+    // Also sync selected games when games finish loading
+    if (!isLoading) {
+      nextTick(() => {
+        syncSelectedGames()
+      })
     }
   },
-  { immediate: true },
 )
+
+// Initialize data on mount and update form when games are loaded
+onMounted(async () => {
+  await fetchGames()
+  // Update form data after games are loaded
+  updateFormData(props.event)
+})
 
 // Handle closing the sheet
 function handleClose() {
@@ -122,6 +231,7 @@ function handleSubmit() {
     location: eventForm.value.location.trim() || null,
     link: eventForm.value.link.trim() || null,
     markdown: eventForm.value.markdown.trim() || null,
+    games: eventForm.value.games.length > 0 ? eventForm.value.games : null,
   }
 
   emit('save', eventData)
@@ -278,6 +388,19 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
           name="note"
           label="Note"
           placeholder="Short note about the event (optional)"
+        />
+
+        <!-- Games Selection -->
+        <Select
+          v-model="selectedGames"
+          :single="false"
+          expand
+          :options="gameOptions"
+          :disabled="loadingGames"
+          label="Games"
+          placeholder="Select associated games (optional)"
+          search
+          show-clear
         />
 
         <!-- Markdown Content -->

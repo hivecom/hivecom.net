@@ -8,6 +8,7 @@ const props = defineProps<{
   game?: Tables<'games'> | null
   gameserver: Tables<'gameservers'>
   container: Tables<'containers'> | null
+  compact?: boolean
 }>()
 
 function handleRowClick() {
@@ -42,14 +43,14 @@ const state = computed(() => {
         <Icon name="ph:caret-right" class="gameserver-row-arrow" size="16" />
         <Tooltip placement="top">
           <template #tooltip>
-            <p>{{ capitalize(state) }}</p>
+            <p>{{ capitalize(state) }}{{ state === 'offline' ? ' - Ask an administrator to start it' : '' }}</p>
           </template>
           <div :class="`gameserver-indicator ${state}`" />
         </Tooltip>
         <span class="flex-1 text-m">{{ props.gameserver.name }}</span>
       </Flex>
       <Flex y-center row gap="s">
-        <div v-if="props.gameserver.description" class="gameserver-description-main">
+        <div v-if="props.gameserver.description && !props.compact" class="gameserver-description-main">
           <span class="description-text">{{ props.gameserver.description }}</span>
         </div>
         <div class="region-badge">
@@ -150,7 +151,7 @@ const state = computed(() => {
   }
 
   &.offline {
-    background-color: var(--color-text-gray);
+    background-color: var(--color-text-lighter);
   }
 }
 

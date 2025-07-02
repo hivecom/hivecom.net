@@ -15,6 +15,7 @@ const supabase = useSupabaseClient()
 
 // Reactive data
 const event = ref<Tables<'events'> | null>(null)
+const games = ref<Tables<'games'>[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
@@ -145,6 +146,24 @@ async function fetchEvent() {
     }
 
     event.value = data
+
+    // Fetch related games if the event has games
+    if (data.games && data.games.length > 0) {
+      const { data: gamesData, error: gamesError } = await supabase
+        .from('games')
+        .select('*')
+        .in('id', data.games)
+
+      if (gamesError) {
+        console.error('Error fetching games:', gamesError)
+      }
+      else {
+        games.value = gamesData || []
+      }
+    }
+    else {
+      games.value = []
+    }
   }
   catch (err: unknown) {
     error.value = (err as Error).message || 'An error occurred while loading the event'
@@ -212,6 +231,7 @@ useHead({
       <Card :class="{ 'event-ongoing': isOngoing }">
         <EventHeader
           :event="event"
+          :games="games"
           :is-upcoming="isUpcoming"
           :is-ongoing="isOngoing"
           :countdown="countdown"

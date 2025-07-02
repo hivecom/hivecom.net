@@ -14,6 +14,13 @@ const steamStoreUrl = computed(() => {
     return null
   return `https://store.steampowered.com/app/${props.steamId}`
 })
+
+// Navigate to Steam store page
+function navigateToSteam() {
+  if (steamStoreUrl.value) {
+    window.open(steamStoreUrl.value, '_blank', 'noopener,noreferrer')
+  }
+}
 </script>
 
 <template>
@@ -24,13 +31,13 @@ const steamStoreUrl = computed(() => {
     variant="link"
     :small="small"
     style="padding: 0; display: block;"
-    @click.stop
+    @click.stop="navigateToSteam"
   >
     <template v-if="showIcon" #start>
       <Icon name="ph:steam-logo" />
     </template>
-    <a v-if="!hideId" :href="steamStoreUrl!" target="_blank" rel="noopener noreferrer">
+    <template v-if="!hideId">
       {{ steamId }}
-    </a>
+    </template>
   </Button>
 </template>

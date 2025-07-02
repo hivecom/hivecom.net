@@ -277,3 +277,51 @@ export async function authorizeAuthenticatedHasPermission(
     );
   }
 }
+
+export function authorizeSystemTrigger(req: Request): Response | undefined {
+  const systemTriggerSecret = Deno.env.get("SYSTEM_TRIGGER_SECRET");
+
+  if (!systemTriggerSecret) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message:
+          "Unauthorized: SYSTEM_TRIGGER_SECRET environment variable is not set",
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        statusText: "Unauthorized - SYSTEM_TRIGGER_SECRET not set",
+        status: 401,
+      },
+    );
+  }
+
+  // Extract token from the System-Trigger-Secret header
+  const triggerHeader = req.headers.get("System-Trigger-Secret");
+  if (!triggerHeader) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: "Unauthorized: Missing or invalid System-Trigger-Secret header",
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        statusText:
+          "Unauthorized - Missing or invalid System-Trigger-Secret header",
+        status: 401,
+      },
+    );
+  }
+
+  // Check if the provided token matches our system token from the vault
+  if (triggerHeader !== systemTriggerSecret) {
+    return new Response(
+      JSON.stringify({ success: false, message: "Unauthorized" }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        statusText: "Unauthorized - Invalid System-Trigger-Secret",
+        status: 401,
+      },
+    );
+  }
+}

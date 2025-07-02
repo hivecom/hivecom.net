@@ -25,8 +25,8 @@ const currentUser = useSupabaseUser()
 
 <template>
   <!-- Only show content if user is authenticated -->
-  <div v-if="!currentUser" class="user-display">
-    {{ props.placeholder || 'Sign-in required' }}
+  <div v-if="!currentUser" class="text-xs user-display">
+    {{ props.placeholder || 'Sign-in to view' }}
   </div>
 
   <div v-else-if="!props.userId" class="user-display">

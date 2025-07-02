@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
-import { Button, Calendar, Flex, Input, Sheet, Switch, Textarea } from '@dolanske/vui'
+import { Badge, Button, Calendar, Flex, Input, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
@@ -16,6 +16,7 @@ interface QueryAnnouncement {
   modified_by: string | null
   pinned: boolean
   published_at: string
+  tags: string[] | null
   title: string
 }
 
@@ -38,7 +39,11 @@ const announcementForm = ref({
   link: '',
   pinned: false,
   published_at: null as Date | null,
+  tags: [] as string[],
 })
+
+// New tag input for adding individual tags
+const newTagInput = ref('')
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
@@ -64,6 +69,7 @@ watch(
         link: newAnnouncement.link || '',
         pinned: newAnnouncement.pinned || false,
         published_at: newAnnouncement.published_at ? new Date(newAnnouncement.published_at) : new Date(),
+        tags: newAnnouncement.tags || [],
       }
     }
     else {
@@ -74,6 +80,7 @@ watch(
         link: '',
         pinned: false,
         published_at: new Date(),
+        tags: [],
       }
     }
   },
@@ -98,6 +105,7 @@ function handleSubmit() {
     link: announcementForm.value.link || null,
     pinned: announcementForm.value.pinned,
     published_at: announcementForm.value.published_at ? announcementForm.value.published_at.toISOString() : new Date().toISOString(),
+    tags: announcementForm.value.tags.length > 0 ? announcementForm.value.tags : null,
   }
 
   emit('save', announcementData)
@@ -115,6 +123,29 @@ function confirmDelete() {
   if (!props.announcement)
     return
   emit('delete', props.announcement.id)
+}
+
+// Add a new tag
+function addTag() {
+  const rawTag = newTagInput.value.trim()
+  if (rawTag) {
+    // Normalize tag: lowercase and replace spaces with hyphens
+    const normalizedTag = rawTag.toLowerCase().replace(/\s+/g, '-')
+    if (!announcementForm.value.tags.includes(normalizedTag)) {
+      announcementForm.value.tags.push(normalizedTag)
+      newTagInput.value = ''
+    }
+  }
+}
+
+// Remove a tag
+function removeTag(tagToRemove: string) {
+  announcementForm.value.tags = announcementForm.value.tags.filter(tag => tag !== tagToRemove)
+}
+
+// Handle enter key in new tag input
+function handleTagInputEnter() {
+  addTag()
 }
 </script>
 
@@ -205,6 +236,50 @@ function confirmDelete() {
           label="Link"
           placeholder="Enter external link (optional)"
         />
+
+        <div class="tags-section">
+          <label class="input-label">Tags</label>
+
+          <!-- Add new tag -->
+          <Flex gap="xs" y-center>
+            <Input
+              v-model="newTagInput"
+              expand
+              name="new-tag"
+              placeholder="Enter a tag"
+              @keydown.enter.prevent="handleTagInputEnter"
+            />
+            <Button
+              variant="accent"
+              square
+              :disabled="!newTagInput.trim()"
+              @click="addTag"
+            >
+              <Icon name="ph:plus" />
+            </Button>
+          </Flex>
+
+          <!-- Display existing tags -->
+          <div v-if="announcementForm.tags.length > 0" class="tags-display">
+            <Badge
+              v-for="tag in announcementForm.tags"
+              :key="tag"
+              size="s"
+              variant="neutral"
+              class="tag-badge"
+            >
+              {{ tag }}
+              <Button
+                size="s"
+                square
+                class="tag-remove-btn"
+                @click="removeTag(tag)"
+              >
+                <Icon name="ph:x" />
+              </Button>
+            </Badge>
+          </div>
+        </div>
       </Flex>
 
       <!-- Content Section -->
@@ -320,5 +395,52 @@ function confirmDelete() {
 
 .required {
   color: var(--color-danger);
+}
+
+.tags-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+
+  .input-label {
+    font-size: var(--font-size-s);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+    margin-bottom: var(--space-xs);
+  }
+
+  .tags-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: var(--space-xs);
+  }
+
+  .tag-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    position: relative;
+
+    .tag-remove-btn {
+      margin-left: var(--space-xs);
+      padding: 2px;
+      min-width: auto;
+      min-height: auto;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.2);
+      color: currentColor;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.4);
+      }
+
+      svg {
+        font-size: 10px;
+      }
+    }
+  }
 }
 </style>

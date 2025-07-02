@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Card, Flex } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
 
 // Async component
 const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Profile/ConnectPatreon.vue'))
@@ -89,8 +89,32 @@ async function fetchProfile() {
   <div class="page">
     <template v-if="loading && !authReady">
       <div class="loading-container">
-        <Icon name="ph:spinner" class="spin" size="24" />
-        <span>Loading...</span>
+        <Skeleton height="2.5rem" width="60%" style="margin-bottom: var(--space-l);" />
+
+        <Card separators>
+          <template #header>
+            <Flex x-between y-center>
+              <Skeleton height="1.5rem" width="10rem" />
+              <Skeleton width="1.5rem" height="1.5rem" />
+            </Flex>
+          </template>
+
+          <Flex column gap="m">
+            <!-- Account connection row skeletons -->
+            <div v-for="i in 3" :key="i" class="account-connection-row">
+              <Flex x-between y-center expand>
+                <Flex gap="m" y-center>
+                  <Skeleton width="40px" height="40px" style="border-radius: var(--border-radius-m);" />
+                  <div>
+                    <Skeleton height="1.2rem" width="6rem" style="margin-bottom: var(--space-xs);" />
+                    <Skeleton height="0.8rem" width="12rem" />
+                  </div>
+                </Flex>
+                <Skeleton height="2rem" width="5rem" style="border-radius: 1rem;" />
+              </Flex>
+            </div>
+          </Flex>
+        </Card>
       </div>
     </template>
 
@@ -209,24 +233,9 @@ async function fetchProfile() {
 
 .loading-container {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-s);
+  flex-direction: column;
+  gap: var(--space-m);
   padding: var(--space-xl);
-  color: var(--color-text-light);
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .account-connection-row {

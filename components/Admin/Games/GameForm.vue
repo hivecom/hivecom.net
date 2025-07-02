@@ -4,7 +4,7 @@ import { Button, Flex, Input, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
-import { deleteGameAsset, getGameAssetUrl, uploadGameAsset } from '~/utils/storage'
+import { deleteGameAsset, uploadGameAsset } from '~/utils/storage'
 
 const props = defineProps<{
   game: Tables<'games'> | null
@@ -16,6 +16,9 @@ const emit = defineEmits(['save', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+// Game assets composable
+const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl, clearGameAssets } = useGameAssets()
 
 // Form state
 const gameForm = ref({
@@ -64,10 +67,9 @@ watch(
 
       // Initialize asset URLs if shorthand exists
       if (newGame.shorthand) {
-        const supabase = useSupabaseClient()
-        assetsUrl.value.icon = await getGameAssetUrl(supabase, newGame.shorthand, 'icon')
-        assetsUrl.value.cover = await getGameAssetUrl(supabase, newGame.shorthand, 'cover')
-        assetsUrl.value.background = await getGameAssetUrl(supabase, newGame.shorthand, 'background')
+        assetsUrl.value.icon = await getGameIconUrl(newGame)
+        assetsUrl.value.cover = await getGameCoverUrl(newGame)
+        assetsUrl.value.background = await getGameBackgroundUrl(newGame)
       }
     }
     else {
@@ -126,7 +128,7 @@ function confirmDelete() {
 
 // Handle asset upload
 async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', file: File) {
-  if (!gameForm.value.shorthand)
+  if (!gameForm.value.shorthand || !props.game)
     return
 
   try {
@@ -138,6 +140,8 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 
     if (result.success && result.url) {
       assetsUrl.value[assetType] = result.url
+      // Clear cache for this game to ensure fresh data
+      clearGameAssets(props.game.id)
     }
     else {
       assetsError.value[assetType] = result.error || `Failed to upload ${assetType}`
@@ -154,7 +158,7 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 
 // Handle asset removal
 async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
-  if (!gameForm.value.shorthand)
+  if (!gameForm.value.shorthand || !props.game)
     return
 
   try {
@@ -164,6 +168,8 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     if (result.success) {
       assetsUrl.value[assetType] = null
       assetsError.value[assetType] = null
+      // Clear cache for this game to ensure fresh data
+      clearGameAssets(props.game.id)
     }
     else {
       assetsError.value[assetType] = result.error || 'Failed to remove asset'
@@ -247,6 +253,8 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 label="Upload Icon"
                 :loading="assetsUploading.icon"
                 :error="assetsError.icon"
+                :aspect-ratio="1"
+                :max-height="300"
                 @upload="(file) => handleAssetUpload('icon', file)"
                 @remove="() => handleAssetRemove('icon')"
               />
@@ -261,10 +269,11 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 label="Upload Cover"
                 :loading="assetsUploading.cover"
                 :error="assetsError.cover"
+                :aspect-ratio="600 / 900"
                 @upload="(file) => handleAssetUpload('cover', file)"
                 @remove="() => handleAssetRemove('cover')"
               />
-              <span class="text-xs color-text-light">Recommended: 1280x720px landscape image</span>
+              <span class="text-xs color-text-light">Recommended: 600x900px portrait image</span>
             </Flex>
           </Flex>
 
@@ -276,6 +285,8 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
               label="Upload Background"
               :loading="assetsUploading.background"
               :error="assetsError.background"
+              :aspect-ratio="1920 / 1080"
+              :min-height="120"
               @upload="(file) => handleAssetUpload('background', file)"
               @remove="() => handleAssetRemove('background')"
             />

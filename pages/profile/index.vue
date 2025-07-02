@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Spinner } from '@dolanske/vui'
-import ProfileView from '@/components/Profile/ProfileView.vue'
+import ProfileDetail from '~/components/Profile/ProfileDetail.vue'
 
 const user = useSupabaseUser()
 const client = useSupabaseClient()
@@ -51,7 +51,7 @@ watch(user, (newUser) => {
     </template>
 
     <template v-else>
-      <ProfileView :user-id="user.id" />
+      <ProfileDetail :user-id="user.id" />
     </template>
   </div>
 </template>

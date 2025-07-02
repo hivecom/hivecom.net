@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
@@ -99,6 +99,20 @@ function handleDelete(announcement: Tables<'announcements'>) {
                 {{ props.announcement.link }}
               </NuxtLink>
             </Grid>
+
+            <Grid v-if="props.announcement.tags && props.announcement.tags.length > 0" class="announcement-details__item" expand :columns="2">
+              <span class="color-text-light text-bold">Tags:</span>
+              <div class="tags-display">
+                <Badge
+                  v-for="tag in props.announcement.tags"
+                  :key="tag"
+                  size="xs"
+                  variant="neutral"
+                >
+                  {{ tag }}
+                </Badge>
+              </div>
+            </Grid>
           </Flex>
         </Card>
 
@@ -147,5 +161,11 @@ function handleDelete(announcement: Tables<'announcements'>) {
       font-size: var(--font-size-xxl);
     }
   }
+}
+
+.tags-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
 }
 </style>

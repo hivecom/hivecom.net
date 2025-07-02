@@ -168,12 +168,33 @@ Hivecom utilizes Supabase's setup for role based access control (RBAC). In their
 
 For more information, please refer to the [official guide](https://supabase.com/docs/guides/database/postgres/custom-claims-and-role-based-access-control-rbac?queryGroups=language&language=plpgsql).
 
-## cron
+## Vault Secrets
+
+The application requires several secrets to be configured in Supabase's Vault for proper operation. These secrets need to be manually added to your Supabase project's vault:
+
+### Required Secrets
+
+- `anon_key` - Supabase anonymous key used by cron jobs for authorization
+- `project_url` - Base URL of your Supabase project
+- `system_cron_secret` - Secret token for authenticating system cron job requests
+- `system_trigger_secret` - Secret token for authenticating database trigger requests
+- `discord_complaint_webhook_url` - Discord webhook URL for complaint notifications
+
+### Setting Up Vault Secrets
+
+1. Navigate to your Supabase project dashboard
+2. Go to Settings -> Vault
+3. Add each required secret with its corresponding value
+4. For production deployments, ensure all secrets are properly configured
+
+## cron & Database Triggers
 
 We use the `pg_cron` extension to schedule jobs in the database. This is a great way to run periodic tasks without needing an external service.
 
 Our migrations should automatically create the necessary tables and invocation functions as well as the associated `system_cron_secret` Supabase Vault secret. This secret is used as an authorization token when invoking our cron edge functions so as to not allow anything but the database to invoke them.
 
-Your Edge Functions will still need to have the `system_cron_secret` secret added to them. You can do this by running the following command. Decrypt the secret from the Supabase Vault and add it to the edge function for these to properly work.
+Additionally, we use database triggers to automatically invoke edge functions when certain database operations occur (like creating/updating/deleting events for Google Calendar sync). These triggers use the `system_trigger_secret` for authentication.
+
+Your Edge Functions will still need to have the `system_cron_secret` and `system_trigger_secret` secrets added to them. Decrypt the secret from the Supabase Vault and add it to the edge function for these to properly work.
 
 Once these are set, we have helper functions in `_shared/auth.ts` for validating the system cron secret header. The JWT token is automatically validated by Supabase.

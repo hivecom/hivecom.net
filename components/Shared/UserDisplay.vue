@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { Avatar, Flex } from '@dolanske/vui'
+import { Avatar, Flex, Skeleton } from '@dolanske/vui'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import { useUserData } from '@/composables/useUserData'
 
 interface Props {
   userId?: string | null
+  userProfile?: {
+    id: string
+    username: string
+    avatar_url?: string | null
+    role?: string | null
+  } | null
   showRole?: boolean
   size?: 's' | 'm' | 'l'
 }
@@ -14,13 +20,16 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'm',
 })
 
-// Use the cached user data composable
+// Determine what data we need to fetch
+const shouldFetchUser = computed(() => !props.userProfile && props.userId)
+const shouldFetchAvatar = computed(() => props.userProfile && props.userId)
+
 const {
-  user,
-  loading,
-  userInitials,
+  user: fetchedUser,
+  loading: userLoading,
+  userInitials: fetchedUserInitials,
 } = useUserData(
-  toRef(props, 'userId'),
+  computed(() => shouldFetchUser.value ? props.userId : null),
   {
     includeRole: props.showRole,
     includeAvatar: true,
@@ -28,6 +37,58 @@ const {
     avatarTtl: 30 * 60 * 1000, // 30 minutes
   },
 )
+
+// Fetch avatar separately when userProfile is provided
+const avatarUrl = ref<string | null>(null)
+const avatarLoading = ref(false)
+
+async function fetchAvatar() {
+  if (!shouldFetchAvatar.value)
+    return
+
+  avatarLoading.value = true
+  try {
+    const { getUserAvatarUrl } = await import('~/utils/storage')
+    const supabase = useSupabaseClient()
+    avatarUrl.value = await getUserAvatarUrl(supabase, props.userId!)
+  }
+  catch (error) {
+    console.error('Failed to fetch avatar:', error)
+    avatarUrl.value = null
+  }
+  finally {
+    avatarLoading.value = false
+  }
+}
+
+// Watch for changes to trigger avatar fetch
+watch(shouldFetchAvatar, (shouldFetch) => {
+  if (shouldFetch) {
+    fetchAvatar()
+  }
+}, { immediate: true })
+
+// Use provided userProfile or fetched user
+const user = computed(() => {
+  if (props.userProfile) {
+    return {
+      id: props.userProfile.id,
+      username: props.userProfile.username,
+      avatarUrl: avatarUrl.value || props.userProfile.avatar_url,
+      role: props.userProfile.role,
+    }
+  }
+  return fetchedUser.value
+})
+
+const userInitials = computed(() => {
+  if (props.userProfile) {
+    return props.userProfile.username.charAt(0).toUpperCase()
+  }
+  return fetchedUserInitials.value
+})
+
+const loading = computed(() => userLoading.value || (shouldFetchAvatar.value && avatarLoading.value))
 
 const currentUser = useSupabaseUser()
 </script>
@@ -39,11 +100,13 @@ const currentUser = useSupabaseUser()
 
     <!-- Loading state -->
     <Flex v-else-if="loading" gap="m" y-center class="user-display__header">
-      <Avatar :size="size">
-        ?
-      </Avatar>
+      <Skeleton
+        :width="size === 's' ? '32px' : size === 'm' ? '40px' : '48px'"
+        :height="size === 's' ? '32px' : size === 'm' ? '40px' : '48px'"
+        style="border-radius: 50%;"
+      />
       <div class="user-display__info">
-        <span class="user-display__username user-display__username--loading">Loading...</span>
+        <Skeleton width="120px" height="20px" />
       </div>
     </Flex>
 
@@ -95,10 +158,6 @@ const currentUser = useSupabaseUser()
   &__username {
     font-weight: var(--font-weight-medium);
     color: var(--color-text);
-
-    &--loading {
-      color: var(--color-text-lighter);
-    }
 
     &--error {
       color: var(--color-text-red);

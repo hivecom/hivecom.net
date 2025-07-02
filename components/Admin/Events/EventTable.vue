@@ -367,7 +367,7 @@ onBeforeMount(fetchEvents)
         </template>
 
         <template #body>
-          <tr v-for="event in rows" :key="event._original.id" class="clickable-row" @click="viewEventDetails(event._original)">
+          <tr v-for="event in rows" :key="event._original.id" class="clickable-row" @click="viewEventDetails(event._original as Event)">
             <Table.Cell>{{ event.Title }}</Table.Cell>
             <Table.Cell>
               <TimestampDate :date="event.Date" />
@@ -379,8 +379,8 @@ onBeforeMount(fetchEvents)
               <span v-else>-</span>
             </Table.Cell>
             <Table.Cell @click.stop>
-              <Badge :variant="getEventStatus(event._original).variant">
-                {{ getEventStatus(event._original).label }}
+              <Badge :variant="getEventStatus(event._original as Event).variant">
+                {{ getEventStatus(event._original as Event).label }}
               </Badge>
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>

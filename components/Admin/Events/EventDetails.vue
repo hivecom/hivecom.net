@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import EventRSVPCount from '@/components/Events/EventRSVPCount.vue'
+import EventRSVPModal from '@/components/Events/EventRSVPModal.vue'
+import GameIcon from '@/components/GameServers/GameIcon.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -18,6 +20,50 @@ const emit = defineEmits(['edit', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+// RSVP modal state
+const showRSVPModal = ref(false)
+
+// Games data
+const supabase = useSupabaseClient()
+const eventGames = ref<Tables<'games'>[]>([])
+const loadingGames = ref(false)
+
+// Fetch games for the event
+async function fetchEventGames() {
+  if (!props.event?.games || props.event.games.length === 0) {
+    eventGames.value = []
+    return
+  }
+
+  loadingGames.value = true
+  try {
+    const { data: gamesData, error: gamesError } = await supabase
+      .from('games')
+      .select('*')
+      .in('id', props.event.games)
+      .order('name')
+
+    if (gamesError)
+      throw gamesError
+
+    eventGames.value = gamesData || []
+  }
+  catch (error) {
+    console.error('Error fetching event games:', error)
+    eventGames.value = []
+  }
+  finally {
+    loadingGames.value = false
+  }
+}
+
+// Watch for event changes and fetch games
+watch(() => props.event, (newEvent) => {
+  if (newEvent) {
+    fetchEventGames()
+  }
+}, { immediate: true })
 
 // Handle closing the sheet
 function handleClose() {
@@ -136,12 +182,41 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 
             <Grid class="detail-item" expand :columns="2">
               <span class="color-text-light text-bold">RSVPs:</span>
-              <EventRSVPCount
-                :event="props.event"
-                variant="info"
-                size="s"
-                :show-when-zero="true"
-              />
+              <Flex gap="xs" y-center>
+                <EventRSVPCount
+                  :event="props.event"
+                  variant="info"
+                  size="s"
+                  :show-when-zero="true"
+                />
+                <Button
+                  variant="gray"
+                  size="s"
+                  @click="showRSVPModal = true"
+                >
+                  View Details
+                </Button>
+              </Flex>
+            </Grid>
+
+            <!-- Games -->
+            <Grid v-if="props.event.games && props.event.games.length > 0" class="detail-item" expand :columns="2">
+              <span class="color-text-light text-bold">Games:</span>
+              <Flex gap="xs" y-center>
+                <!-- Loading state -->
+                <div v-if="loadingGames" class="game-skeleton-container">
+                  <div v-for="n in (props.event.games?.length || 1)" :key="n" class="game-skeleton" />
+                </div>
+                <!-- Games icons -->
+                <template v-else>
+                  <GameIcon
+                    v-for="game in eventGames"
+                    :key="game.id"
+                    :game="game"
+                    size="small"
+                  />
+                </template>
+              </Flex>
             </Grid>
           </Flex>
         </Card>
@@ -173,6 +248,14 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
         />
       </Flex>
     </Flex>
+
+    <!-- RSVP Modal -->
+    <EventRSVPModal
+      v-if="props.event"
+      v-model:open="showRSVPModal"
+      :event="props.event"
+      @close="showRSVPModal = false"
+    />
   </Sheet>
 </template>
 
@@ -211,5 +294,28 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 
 .link:hover {
   text-decoration: underline;
+}
+
+.game-skeleton-container {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.game-skeleton {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--border-radius-s);
+  background: var(--color-background-secondary);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 </style>

@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Button, Divider, Flex, Grid, Input, Skeleton, Switch } from '@dolanske/vui'
+import { Alert, Button, Divider, Flex, Grid, Input, Select, Skeleton, Switch } from '@dolanske/vui'
 import AnnouncementCard from '@/components/Announcements/AnnouncementCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+
+// Interface for Select options
+interface SelectOption {
+  label: string
+  value: string
+}
 
 const supabase = useSupabaseClient()
 
@@ -14,6 +20,21 @@ const error = ref<string | null>(null)
 // Filters
 const search = ref('')
 const showPinnedOnly = ref(false)
+const tagFilter = ref<SelectOption[]>([])
+
+// Compute unique tag options from all announcements
+const tagOptions = computed<SelectOption[]>(() => {
+  const allTags = new Set<string>()
+  announcements.value.forEach((announcement) => {
+    if (announcement.tags) {
+      announcement.tags.forEach(tag => allTags.add(tag))
+    }
+  })
+  return Array.from(allTags).sort().map(tag => ({
+    label: tag,
+    value: tag,
+  }))
+})
 
 // Fetch announcements
 async function fetchAnnouncements() {
@@ -61,7 +82,14 @@ const filteredAnnouncements = computed(() => {
       ? announcement.pinned
       : true
 
-    return matchesSearch && matchesPinnedFilter
+    // Filter by tags
+    const matchesTags = tagFilter.value && tagFilter.value.length > 0
+      ? tagFilter.value.some(selectedTag =>
+          announcement.tags?.includes(selectedTag.value),
+        )
+      : true
+
+    return matchesSearch && matchesPinnedFilter && matchesTags
   })
 })
 
@@ -77,6 +105,7 @@ const regularAnnouncements = computed(() =>
 function clearFilters() {
   search.value = ''
   showPinnedOnly.value = false
+  tagFilter.value = []
 }
 
 // Fetch data on mount
@@ -130,18 +159,27 @@ useHead({
 
       <template v-if="!loading && !error">
         <!-- Filters -->
-        <Flex gap="s" x-start class="announcements__filters" y-center>
+        <Flex gap="s" x-start class="announcements__filters" y-center wrap>
           <Input v-model="search" placeholder="Search announcements">
             <template #start>
               <Icon name="ph:magnifying-glass" />
             </template>
           </Input>
+          <Select
+            v-model="tagFilter"
+            :options="tagOptions"
+            placeholder="Filter by tags"
+            expand
+            search
+            show-clear
+            :single="false"
+          />
           <Flex gap="s" y-center>
             <Switch v-model="showPinnedOnly" />
             <span class="text-s">Pinned only</span>
           </Flex>
           <Button
-            v-if="search || showPinnedOnly"
+            v-if="search || showPinnedOnly || (tagFilter && tagFilter.length > 0)"
             plain
             outline
             @click="clearFilters"
@@ -188,7 +226,7 @@ useHead({
         <!-- No content -->
         <template v-else>
           <Alert variant="info">
-            <template v-if="search || showPinnedOnly">
+            <template v-if="search || showPinnedOnly || tagFilter.length > 0">
               No announcements match your current filters.
             </template>
             <template v-else>

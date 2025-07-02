@@ -2,7 +2,8 @@
  * Composable for getting user avatar URLs from storage
  */
 
-import { ref, type Ref } from 'vue'
+import type { Ref } from 'vue'
+import { ref } from 'vue'
 import { getUserAvatarUrl } from '~/utils/storage'
 
 /**

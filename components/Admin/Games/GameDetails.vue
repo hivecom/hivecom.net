@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
-import { getGameAssetUrl } from '~/utils/storage'
 
 const props = defineProps<{
   game: Tables<'games'> | null
@@ -37,6 +36,9 @@ function handleDelete(item: Record<string, unknown>) {
 const supabase = useSupabaseClient()
 const gameserversLoading = ref(false)
 const gameserversError = ref('')
+
+// Game assets composable
+const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl } = useGameAssets()
 
 interface GameServerWithContainer {
   id: number
@@ -83,11 +85,11 @@ watchEffect(async () => {
   if (props.game.shorthand) {
     assetsLoading.value = true
 
-    // Load all assets in parallel
+    // Load all assets in parallel using the composable
     const [iconUrl, coverUrl, backgroundUrl] = await Promise.all([
-      getGameAssetUrl(supabase, props.game.shorthand, 'icon'),
-      getGameAssetUrl(supabase, props.game.shorthand, 'cover'),
-      getGameAssetUrl(supabase, props.game.shorthand, 'background'),
+      getGameIconUrl(props.game),
+      getGameCoverUrl(props.game),
+      getGameBackgroundUrl(props.game),
     ])
 
     assetsUrl.value = {
@@ -204,9 +206,14 @@ watchEffect(async () => {
           </template>
 
           <!-- Loading state -->
-          <div v-if="gameserversLoading" class="game-details__placeholder-text">
-            Loading game servers...
-          </div>
+          <Flex v-if="gameserversLoading" column gap="s" expand>
+            <Flex v-for="i in 3" :key="i" class="game-details__gameserver-item" expand>
+              <Flex y-center x-between gap="m" expand>
+                <Skeleton :width="120" :height="16" :radius="4" />
+                <Skeleton :width="80" :height="20" :radius="8" />
+              </Flex>
+            </Flex>
+          </Flex>
 
           <!-- Error state -->
           <div v-else-if="gameserversError" class="game-details__placeholder-text game-details__placeholder-text--error">
@@ -245,9 +252,25 @@ watchEffect(async () => {
           </template>
 
           <!-- Loading state -->
-          <div v-if="assetsLoading" class="game-details__placeholder-text">
-            Loading game assets...
-          </div>
+          <Flex v-if="assetsLoading" column gap="m" expand>
+            <!-- Game Icon Skeleton -->
+            <Flex column gap="s" expand>
+              <Skeleton :width="32" :height="14" :radius="4" />
+              <Skeleton :width="64" :height="64" :radius="8" />
+            </Flex>
+
+            <!-- Game Cover Skeleton -->
+            <Flex column gap="s" expand>
+              <Skeleton :width="40" :height="14" :radius="4" />
+              <Skeleton :width="133" :height="200" :radius="8" />
+            </Flex>
+
+            <!-- Game Background Skeleton -->
+            <Flex column gap="s" expand>
+              <Skeleton :width="70" :height="14" :radius="4" />
+              <Skeleton :height="108" :radius="8" />
+            </Flex>
+          </Flex>
 
           <!-- Assets display -->
           <Flex v-else column gap="m" expand>
@@ -385,6 +408,11 @@ watchEffect(async () => {
     &--icon {
       width: 64px;
       height: 64px;
+    }
+
+    &--cover {
+      aspect-ratio: 600 / 900;
+      max-width: 200px;
     }
   }
 

@@ -18,7 +18,7 @@ const communityStats = ref({
   membersAccurate: false,
   gameservers: 0,
   age: new Date().getFullYear() - 2013,
-  projects: 13, // This could be fetched from a projects table if you have one
+  projects: 0, // Will be fetched from the projects table
 })
 
 // Convert platforms object to array for easier v-for iteration
@@ -135,6 +135,15 @@ onMounted(async () => {
     if (gameserversError)
       throw gameserversError
     communityStats.value.gameservers = gameserversCount || 0
+
+    // Fetch project count
+    const { count: projectsCount, error: projectsError } = await supabase
+      .from('projects')
+      .select('*', { count: 'exact', head: true })
+
+    if (!projectsError) {
+      communityStats.value.projects = projectsCount || 0
+    }
   }
   catch (error: unknown) {
     console.error('Error fetching data:', error)
@@ -183,7 +192,7 @@ onMounted(async () => {
       </ClientOnly>
 
       <div class="hero-section__stats-grid">
-        <div class="hero-section__stats-card">
+        <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
           <Flex x-center class="hero-section__stats-value">
             <template v-if="loading">
               <Skeleton height="2.5rem" width="4rem" />
@@ -193,9 +202,9 @@ onMounted(async () => {
             </template>
           </Flex>
           <span class="text-xs color-text-lighter">Community Members</span>
-        </div>
+        </NuxtLink>
 
-        <div class="hero-section__stats-card">
+        <NuxtLink to="/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
           <Flex x-center class="hero-section__stats-value">
             <template v-if="loading">
               <Skeleton height="2.5rem" width="2rem" />
@@ -205,17 +214,24 @@ onMounted(async () => {
             </template>
           </Flex>
           <span class="text-xs color-text-lighter">Game Servers</span>
-        </div>
+        </NuxtLink>
 
         <div class="hero-section__stats-card">
           <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
           <span class="text-xs color-text-lighter">Founded in 2013</span>
         </div>
 
-        <div class="hero-section__stats-card">
-          <span class="hero-section__stats-value">{{ communityStats.projects }}</span>
-          <span class="text-xs color-text-lighter">Open Source Projects</span>
-        </div>
+        <NuxtLink to="/community/projects" class="hero-section__stats-card hero-section__stats-card--clickable">
+          <Flex x-center class="hero-section__stats-value">
+            <template v-if="loading">
+              <Skeleton height="2.5rem" width="2rem" />
+            </template>
+            <template v-else>
+              {{ communityStats.projects }}
+            </template>
+          </Flex>
+          <span class="text-xs color-text-lighter">Community Projects</span>
+        </NuxtLink>
       </div>
     </div>
   </section>
@@ -516,6 +532,29 @@ h4 {
     border-radius: var(--border-radius-m);
     text-align: center;
     padding: var(--space-m);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+
+    &--clickable {
+      cursor: pointer;
+      border: 1px solid transparent;
+
+      &:hover {
+        transform: translateY(-2px);
+        border-color: var(--color-accent-alpha);
+        background: var(--color-bg-subtle);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+
+        .hero-section__stats-value {
+          color: var(--color-accent);
+        }
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+    }
   }
 
   &__stats-value {

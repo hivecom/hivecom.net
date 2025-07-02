@@ -368,6 +368,7 @@ onMounted(fetchDropdownData)
         <Flex gap="m" wrap>
           <Select
             v-model="selectedGameComputed"
+            search
             expand
             name="game"
             label="Game"
@@ -380,6 +381,7 @@ onMounted(fetchDropdownData)
 
           <Select
             v-model="selectedContainerComputed"
+            search
             expand
             name="container"
             label="Container"
@@ -395,6 +397,7 @@ onMounted(fetchDropdownData)
         <Flex gap="m" wrap>
           <Select
             v-model="selectedAdministratorComputed"
+            search
             expand
             name="administrator"
             label="Administrator"

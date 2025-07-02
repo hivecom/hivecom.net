@@ -178,14 +178,14 @@ INSERT INTO public.friends(created_at, friender, friend)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b3', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Insert an upcoming test event (moved 2 weeks earlier)
-INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown)
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, games)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '16 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
 # Community Gaming Night
 
 It is that time of the month again! Join us for our community gaming night where we play various games together, chat, and have fun.
 
 We will probably be playing on our CS2 server, but feel free to suggest other games as well.
-  ');
+  ', ARRAY[1, 2]);
 
 -- Insert Hivecom Meetup event in Prague
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
@@ -251,7 +251,7 @@ Hit up in #events on IRC or drop me a direct message if you have any questions a
   ', 4320);
 
 -- Insert LAN Crossover Game Night (synced with Prague meetup day 2)
-INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes, games)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '1 month' + INTERVAL '1 day', 'Join the Prague crew online for an epic crossover LAN party with livestream, games, and drinks!', 'LAN Crossover Game Night', 'Online + Prague Airbnb', '
 # LAN Crossover Game Night!
 
@@ -296,7 +296,7 @@ The Prague crew will be streaming on:
 ## Questions?
 
 Drop questions in #events or ask during the stream - the Prague crew will be monitoring chat throughout the night!
-  ', 480);
+  ', 480, ARRAY[1, 2]);
 
 -- Insert an ongoing test event
 INSERT INTO "public"."events"("id", "created_at", "created_by", "modified_at", "modified_by", "title", "description", "note", "markdown", "date", "location", "link", "duration_minutes")
@@ -420,7 +420,7 @@ INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices,
   VALUES (NOW() + INTERVAL '1 hour', '018d224c-0e49-4b6d-b57a-87299605c2b1', 1, ARRAY[1], 'Minecraft would be fun!');
 
 -- Insert test announcements
-INSERT INTO public.announcements(created_at, created_by, title, description, markdown, pinned)
+INSERT INTO public.announcements(created_at, created_by, title, description, markdown, pinned, tags)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Welcome to Hivecom', 'Welcome to our gaming community platform!', '
 # Welcome to Hivecom
 
@@ -434,7 +434,7 @@ We are excited to have you join our gaming community! This platform serves as th
 - **Stay Updated**: Get the latest announcements and updates
 
 Feel free to explore and don''t hesitate to reach out if you have any questions!
-  ', TRUE),
+  ', TRUE, ARRAY['welcome', 'community', 'getting-started']),
 (NOW() - INTERVAL '2 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'New CS2 Server Online', 'Our new Counter-Strike 2 server is now live!', '
 # New CS2 Server Online
 
@@ -450,7 +450,7 @@ Great news! Our brand new Counter-Strike 2 community server is now online and re
 The server is configured for casual play with a friendly, welcoming environment. Whether you''re a seasoned veteran or new to CS2, everyone is welcome!
 
 Come join us and let''s have some fun together!
-  ', FALSE);
+  ', FALSE, ARRAY['cs2', 'gameserver', 'gaming', 'announcement']);
 
 -- Insert test complaints
 INSERT INTO public.complaints(created_at, created_by, message, response, responded_by, responded_at, acknowledged, context_user, context_gameserver)
@@ -463,4 +463,23 @@ INSERT INTO public.complaints(created_at, created_by, message, response, respond
 (NOW() - INTERVAL '4 hours', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'The CS2 server is experiencing severe performance issues. There are frequent lag spikes, players are getting disconnected randomly, and hit registration seems inconsistent. This makes the game unplayable.', NULL, NULL, NULL, TRUE, NULL, 1),
   -- New unacknowledged complaint with no context
 (NOW() - INTERVAL '30 minutes', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'I noticed that the community voting system seems to have a bug where my vote doesn''t get saved properly. I tried voting on the recent referendum but it keeps asking me to vote again.', NULL, NULL, NULL, FALSE, NULL, NULL);
+
+-- Insert test projects
+INSERT INTO public.projects(created_at, created_by, title, description, markdown, link, owner, tags, github)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'VUI', 'The UI library that powers the Hivecom platform interface.', '
+# VUI
+
+VUI is the powerful and elegant Vue 3 component library that drives the user interface of Hivecom and other modern web applications.
+
+It powers every aspect of the Hivecom interface:
+
+- **Admin Dashboard**: All admin tables, forms, and management interfaces
+- **Community Pages**: Project cards, event listings, and user profiles
+- **Authentication**: Login forms and user management
+- **Gaming Features**: Server status displays and game information
+
+The library''s consistent design language helps create a cohesive user experience across all areas of the platform.
+
+Give @dolanske a shout since we couldn''t have built this project without his hard work and dedication!
+  ', 'https://dolanske.github.io/vui/', '018d224c-0e49-4b6d-b57a-87299605c2b1', ARRAY['vue', 'typescript', 'ui-library', 'components', 'frontend', 'open-source'], 'dolanske/vui');
 

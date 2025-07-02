@@ -1,6 +1,19 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 
+import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+
+import { computed, ref, watch } from 'vue'
+
+import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import TableContainer from '@/components/Shared/TableContainer.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { getContainerStatus } from '@/utils/containerStatus'
+import ContainerActions from './ContainerActions.vue'
+import ContainerDetails from './ContainerDetails.vue'
+import ContainerFilters from './ContainerFilters.vue'
+import ContainerStatusIndicator from './ContainerStatusIndicator.vue'
+
 // Define container with server interface
 interface ContainerWithServer {
   name: string
@@ -14,19 +27,6 @@ interface ContainerWithServer {
     address: string
   } | null
 }
-
-import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-
-import { computed, ref, watch } from 'vue'
-
-import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
-import TableContainer from '@/components/Shared/TableContainer.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { getContainerStatus } from '@/utils/containerStatus'
-import ContainerActions from './ContainerActions.vue'
-import ContainerDetails from './ContainerDetails.vue'
-import ContainerFilters from './ContainerFilters.vue'
-import ContainerStatusIndicator from './ContainerStatusIndicator.vue'
 
 // Define interface for transformed container data
 interface TransformedContainer {
