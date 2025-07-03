@@ -178,7 +178,7 @@ The application requires several secrets to be configured in Supabase's Vault fo
 - `project_url` - Base URL of your Supabase project
 - `system_cron_secret` - Secret token for authenticating system cron job requests
 - `system_trigger_secret` - Secret token for authenticating database trigger requests
-- `discord_complaint_webhook_url` - Discord webhook URL for complaint notifications
+- `system_discord_notification_webhook_url` - Discord webhook URL for notification messages
 
 ### Setting Up Vault Secrets
 

@@ -59,10 +59,15 @@ const search = ref('')
 const selectedGames = ref<{ label: string, value: number }[]>()
 const selectedRegions = ref<{ label: string, value: string }[]>()
 const gameOptions = computed(() => {
-  return games.value?.filter(game => game.name !== null).map(game => ({
-    label: game.name ?? 'Unassigned',
-    value: game.id,
-  })) ?? []
+  return (
+    games.value?.filter(game => game.name !== null)
+      .map(game => ({
+        label: game.name ?? 'Unassigned',
+        value: game.id,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+      ?? []
+  )
 })
 
 const regionOptions = [
@@ -77,10 +82,15 @@ const filteredGameservers = computed(() => {
     return []
 
   return gameservers.value.filter((gameserver) => {
+    // Find the game object for this gameserver
+    const gameObj = games.value?.find(g => g.id === gameserver.game)
+    const searchLower = search.value?.toLowerCase() || ''
     const matchesSearch = search.value
       ? (
-          gameserver.name?.toLowerCase().includes(search.value.toLowerCase())
-          || gameserver.region?.toLowerCase().includes(search.value.toLowerCase())
+          gameserver.name?.toLowerCase().includes(searchLower)
+          || gameserver.region?.toLowerCase().includes(searchLower)
+          || gameObj?.name?.toLowerCase().includes(searchLower)
+          || gameObj?.shorthand?.toLowerCase().includes(searchLower)
         )
       : true
 
