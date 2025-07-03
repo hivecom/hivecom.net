@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
+import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
