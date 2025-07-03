@@ -3,7 +3,6 @@ import type { Tables } from '@/types/database.types'
 import { Button, CopyClipboard, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
 import { capitalize } from 'vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
-import { noop } from '~/utils/common'
 
 const props = defineProps<{
   game?: Tables<'games'> | null

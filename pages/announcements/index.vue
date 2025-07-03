@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Button, Divider, Flex, Grid, Input, Select, Skeleton, Switch } from '@dolanske/vui'
+import { Alert, Button, Flex, Grid, Input, Select, Skeleton, Switch } from '@dolanske/vui'
 import AnnouncementCard from '@/components/Announcements/AnnouncementCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 

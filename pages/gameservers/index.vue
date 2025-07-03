@@ -2,7 +2,7 @@
 import type { QueryData } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.types'
 
-import { searchString, Tab, Tabs } from '@dolanske/vui'
+import { Tab, Tabs } from '@dolanske/vui'
 import GameLibrary from '~/components/GameServers/GameServerLibrary.vue'
 import GameListing from '~/components/GameServers/GameServerListing.vue'
 
