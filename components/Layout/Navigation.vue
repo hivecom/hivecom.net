@@ -106,7 +106,7 @@ function toggleMobileMenu() {
 
         <div v-else class="navigation__auth">
           <div class="navigation__auth-buttons">
-            <Button @click="$router.push('/auth/sign-in')">
+            <Button plain @click="$router.push('/auth/sign-in')">
               Sign in
             </Button>
 
@@ -173,7 +173,7 @@ function toggleMobileMenu() {
   &__links {
     display: flex;
     align-items: center;
-    gap: var(--space-s);
+    gap: var(--space-xs);
     flex: 1;
 
     li a {

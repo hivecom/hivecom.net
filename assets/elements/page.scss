@@ -8,3 +8,17 @@
 .page-small {
   max-width: 640px;
 }
+
+.page-title {
+  padding: var(--space-l) 0;
+
+  h1 {
+    margin-bottom: var(--space-xs);
+    font-size: var(--font-size-xxxl);
+  }
+
+  p {
+    font-size: var(--font-size-m);
+    // color: var(--color-text-light);
+  }
+}

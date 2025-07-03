@@ -109,7 +109,7 @@ function clearFilters() {
 }
 
 // Fetch data on mount
-onMounted(() => {
+onBeforeMount(() => {
   fetchAnnouncements()
 })
 
@@ -129,16 +129,14 @@ useHead({
 
 <template>
   <div class="page">
-    <section>
+    <section class="page-title">
       <h1>Announcements</h1>
       <p>
         What we've been up to and what's to come
       </p>
     </section>
 
-    <Divider />
-
-    <Flex column gap="l" class="announcements">
+    <Flex column gap="l" class="announcements mt-m">
       <!-- Error message -->
       <template v-if="error">
         <ErrorAlert message="An error occurred while fetching announcements." :error="error" />

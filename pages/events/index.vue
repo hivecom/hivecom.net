@@ -31,18 +31,13 @@ onMounted(async () => {
 <template>
   <div class="page">
     <!-- Hero section -->
-    <section>
-      <Flex :gap="0" expand column>
-        <Flex y-center x-between expand>
-          <h1>
-            Events
-          </h1>
-          <CalendarButtons show-labels />
-        </Flex>
-        <p>
-          Discover the latest happenings
-        </p>
-      </Flex>
+    <section class="page-title">
+      <h1>
+        Events
+      </h1>
+      <p>
+        Discover the latest happenings
+      </p>
     </section>
 
     <!-- Tabs Navigation -->
@@ -53,6 +48,10 @@ onMounted(async () => {
       <Tab value="calendar">
         Calendar
       </Tab>
+
+      <template #end>
+        <CalendarButtons size="s" show-labels />
+      </template>
     </Tabs>
 
     <section class="mt-xl">

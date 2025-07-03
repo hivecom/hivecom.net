@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Button, CopyClipboard, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
 import { capitalize } from 'vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
+import { noop } from '~/utils/common'
 
 const props = defineProps<{
   game?: Tables<'games'> | null
@@ -57,12 +58,12 @@ const state = computed(() => {
           <RegionIndicator :region="props.gameserver.region" show-label />
         </div>
         <template v-if="props.gameserver.addresses">
-          <CopyClipboard v-if="props.gameserver.addresses.length === 1" :text="`${props.gameserver.addresses[0]}${props.gameserver.port ? `:${props.gameserver.port}` : ''}`" confirm @click.stop>
+          <CopyClipboard v-if="props.gameserver.addresses.length === 1" :text="`${props.gameserver.addresses[0]}${props.gameserver.port ? `:${props.gameserver.port}` : ''}`" confirm>
             <Button size="s" variant="gray">
               Join
             </Button>
           </CopyClipboard>
-          <Dropdown v-else @click.stop>
+          <Dropdown v-else>
             <template #trigger="{ toggle }">
               <Button size="s" variant="gray" @click.stop="toggle">
                 <Flex y-center gap="xs">

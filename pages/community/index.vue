@@ -113,12 +113,10 @@ watch(user, () => {
 <template>
   <div class="page">
     <!-- Hero section -->
-    <section>
+    <section class="page-title">
       <h1>Community</h1>
       <p>Friends building things together</p>
     </section>
-
-    <Divider />
 
     <!-- Community Members -->
     <Card v-if="user && randomUsers.length > 0" class="pb-l">
@@ -142,7 +140,7 @@ watch(user, () => {
     </Card>
 
     <!-- Sign-in prompt for community features -->
-    <section v-if="!user" class="mt-xl">
+    <section v-if="!user" class="mt-m">
       <Card class="signin-prompt">
         <Flex column gap="m" y-center class="signin-prompt__content">
           <div class="signin-prompt__icon">

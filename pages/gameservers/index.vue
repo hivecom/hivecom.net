@@ -2,7 +2,7 @@
 import type { QueryData } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.types'
 
-import { Tab, Tabs } from '@dolanske/vui'
+import { searchString, Tab, Tabs } from '@dolanske/vui'
 import GameLibrary from '~/components/GameServers/GameServerLibrary.vue'
 import GameListing from '~/components/GameServers/GameServerListing.vue'
 
@@ -20,6 +20,16 @@ type GameserversType = QueryData<typeof gameserversQuery>
 
 // Tab management
 const activeTab = ref('library')
+
+watch(activeTab, (newVal) => {
+  window.location.hash = newVal === 'list' ? '#list' : ''
+})
+
+onMounted(() => {
+  if (window.location.hash.includes('#list')) {
+    activeTab.value = 'list'
+  }
+})
 
 // Fetch data
 const loading = ref(true)
@@ -174,7 +184,7 @@ function clearFilters() {
 
 <template>
   <div class="page">
-    <section>
+    <section class="page-title">
       <h1>Game Servers</h1>
       <p>
         Hop on. Get in.

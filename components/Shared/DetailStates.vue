@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
 import { Button, Card, Flex, Skeleton } from '@dolanske/vui'
 
 interface Props {
   loading: boolean
   error: string | null
-  backTo: string
+  backTo: RouteLocationRaw
   backLabel: string
 }
 
