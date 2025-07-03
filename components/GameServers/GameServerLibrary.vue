@@ -128,7 +128,7 @@ function isCoverLoading(gameId: number): boolean {
             class="game-grid-container"
             appear
           >
-            <div
+            <button
               v-for="(game, index) in filteredGames"
               :key="game.id"
               class="game-card"
@@ -168,16 +168,14 @@ function isCoverLoading(gameId: number): boolean {
                 </div>
               </div>
               <div class="game-info">
-                <div class="game-header">
-                  <h3 class="game-title">
-                    {{ game.name }}
-                  </h3>
-                  <Badge>
-                    {{ getServerCountForGame(game.id) }}
-                  </Badge>
+                <h3 class="game-title">
+                  {{ game.name }}
+                </h3>
+                <div class="counter text-semibold">
+                  {{ getServerCountForGame(game.id) }}
                 </div>
               </div>
-            </div>
+            </button>
           </TransitionGroup>
         </div>
       </template>
@@ -297,10 +295,14 @@ function isCoverLoading(gameId: number): boolean {
 }
 
 .game-card {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--color-background);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
   overflow: hidden;
+  text-align: left;
   cursor: pointer;
   transition:
     transform 0.2s ease,
@@ -329,7 +331,7 @@ function isCoverLoading(gameId: number): boolean {
 
 .game-cover {
   position: relative;
-  aspect-ratio: 2/3;
+  height: 324px;
   overflow: hidden;
   border-radius: var(--border-radius-m) var(--border-radius-m) 0 0;
 
@@ -393,13 +395,9 @@ function isCoverLoading(gameId: number): boolean {
 .game-info {
   border-top: 1px solid var(--color-border);
   padding: var(--space-m);
-}
-
-.game-header {
+  width: 100%;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: var(--space-s);
 }
 
 .game-title {

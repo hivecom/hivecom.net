@@ -37,7 +37,7 @@ function toggleMobileMenu() {
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/events">
+            <NuxtLink to="/events" :class="{ 'router-link-active': $route.path.includes('/events') }">
               Events
             </NuxtLink>
           </li>

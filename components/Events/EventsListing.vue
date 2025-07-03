@@ -125,14 +125,14 @@ const pastEvents = computed(() => {
       <h2 class="events-section__title">
         Past Events
       </h2>
-      <Flex gap="xxl">
+      <!-- <Flex gap="xxl">
         <Flex x-center class="events-section__time-header time-ago-header">
           <span>Time Ago</span>
         </Flex>
         <Flex expand class="events-section__event-header">
           <span>Event</span>
         </Flex>
-      </Flex>
+      </Flex> -->
 
       <div class="events-section__list">
         <Event
