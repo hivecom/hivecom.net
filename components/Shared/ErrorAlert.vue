@@ -32,7 +32,7 @@ const props = defineProps({
         </Button>
       </NuxtLink>
     </Flex>
-    <p class="text-xs color-text-light">
+    <p class="text-xs text-left color-text-light">
       {{ props.error }}
     </p>
   </Alert>

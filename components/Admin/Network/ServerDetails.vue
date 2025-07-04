@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
@@ -8,12 +8,21 @@ const props = defineProps<{
   server: Tables<'servers'> | null
 }>()
 
+// Declare emits for edit event
+const emit = defineEmits(['edit'])
+
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
 // Handle closing the sheet
 function handleClose() {
   isOpen.value = false
+}
+
+// Handle edit button click: close details, then emit edit
+function handleEdit() {
+  isOpen.value = false
+  emit('edit', props.server)
 }
 </script>
 
@@ -26,11 +35,24 @@ function handleClose() {
     @close="handleClose"
   >
     <template #header>
-      <Flex column :gap="0">
-        <h4>Server Details</h4>
-        <span v-if="props.server" class="color-text-light text-xxs">
-          {{ props.server.address }}
-        </span>
+      <Flex x-between y-center>
+        <Flex column :gap="0">
+          <h4>Server Details</h4>
+          <span v-if="props.server" class="color-text-light text-xxs">
+            {{ props.server.address }}
+          </span>
+        </Flex>
+        <Flex y-center gap="s">
+          <Button
+            v-if="props.server"
+            @click="handleEdit"
+          >
+            <template #start>
+              <Icon name="ph:pencil" />
+            </template>
+            Edit
+          </Button>
+        </Flex>
       </Flex>
     </template>
 

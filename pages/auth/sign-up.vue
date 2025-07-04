@@ -8,6 +8,12 @@ const err = ref('')
 const loading = ref(false)
 const showEmailNotice = ref(false)
 
+const isDev = process.env.NODE_ENV === 'development'
+
+function skipToConfirm() {
+  window.location.href = '/auth/confirm'
+}
+
 async function signInWithOtp() {
   loading.value = true
 
@@ -50,8 +56,14 @@ async function signInWithOtp() {
               <Icon name="ph:sign-in" color="white" />
             </template>
           </Button>
+          <Button v-if="isDev" variant="link" @click="skipToConfirm">
+            Skip to Confirm
+            <template #end>
+              <Icon name="ph:arrow-right" />
+            </template>
+          </Button>
           <Alert v-if="showEmailNotice" filled variant="info">
-            An email with a sign-up link has been sent to your inbox!
+            An email with a sign-up link has been sent to your inbox! (check spam just in case)
           </Alert>
           <Alert v-if="err" variant="danger" filled>
             {{ err }}

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 
-import type { Tables } from '@/types/database.types'
-import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.types'
+import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
@@ -11,6 +11,7 @@ import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import ServerDetails from './ServerDetails.vue'
 import ServerFilters from './ServerFilters.vue'
+import ServerForm from './ServerForm.vue'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
 // Define interface for transformed server data
@@ -32,7 +33,7 @@ interface SelectOption {
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
-const { canManageResource } = useTableActions('servers')
+const { canManageResource, canCreate } = useTableActions('servers')
 
 // Define query
 const supabase = useSupabaseClient()
@@ -48,6 +49,10 @@ const statusFilter = ref<SelectOption[]>()
 // Server detail state
 const selectedServer = ref<Tables<'servers'> | null>(null)
 const showServerDetails = ref(false)
+
+// Server form state
+const showServerForm = ref(false)
+const isEditMode = ref(false)
 
 // Status options for filter
 const statusOptions: SelectOption[] = [
@@ -132,22 +137,88 @@ function viewServer(server: Tables<'servers'>) {
   showServerDetails.value = true
 }
 
+// Open the add server form
+function openAddServerForm() {
+  selectedServer.value = null
+  isEditMode.value = false
+  showServerForm.value = true
+}
+
+// Open the edit server form
+function openEditServerForm(server: Tables<'servers'>, event?: Event) {
+  if (event)
+    event.stopPropagation()
+  selectedServer.value = server
+  isEditMode.value = true
+  showServerForm.value = true
+}
+
+// Handle edit from ServerDetails
+function handleEditFromDetails(server: Tables<'servers'>) {
+  openEditServerForm(server)
+}
+
+// Handle server save (create or update)
+// ---
+async function handleServerSave(serverData: TablesInsert<'servers'> | TablesUpdate<'servers'>) {
+  console.warn('handleServerSave called with:', serverData)
+  try {
+    if (isEditMode.value && selectedServer.value) {
+      // Update existing server
+      const updateData = {
+        ...serverData,
+        modified_at: new Date().toISOString(),
+        modified_by: null, // Set to user id if available
+      }
+      const { error } = await supabase
+        .from('servers')
+        .update(updateData)
+        .eq('id', selectedServer.value.id)
+      if (error)
+        throw error
+    }
+    else {
+      // Create new server
+      // Only include fields defined in TablesInsert<'servers'>
+      const createData: TablesInsert<'servers'> = {
+        address: serverData.address ?? '',
+        active: serverData.active ?? true,
+        docker_control: serverData.docker_control ?? false,
+        docker_control_port: serverData.docker_control_port ?? undefined,
+        docker_control_secure: serverData.docker_control_secure ?? false,
+        docker_control_subdomain: serverData.docker_control_subdomain ?? undefined,
+        created_by: null, // Set to user id if available
+      }
+      const { error } = await supabase
+        .from('servers')
+        .insert([createData])
+      if (error)
+        throw error
+    }
+    showServerForm.value = false
+    await fetchServers()
+  }
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while saving the server'
+  }
+}
+
 // Handle server deletion
 async function handleServerDelete(serverId: number) {
+  console.warn('handleServerDelete called with:', serverId)
   try {
     const { error } = await supabase
       .from('servers')
       .delete()
       .eq('id', serverId)
-
     if (error)
       throw error
-
-    // Refresh servers data after deletion
+    showServerForm.value = false
     await fetchServers()
   }
   catch (error: unknown) {
     errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the server'
+    showServerForm.value = false
   }
 }
 
@@ -188,13 +259,21 @@ onBeforeMount(fetchServers)
   </template>
 
   <Flex v-else gap="s" column expand>
-    <!-- Search and Filters -->
-    <ServerFilters
-      v-model:search="search"
-      v-model:status-filter="statusFilter"
-      :status-options="statusOptions"
-      @clear-filters="clearFilters"
-    />
+    <!-- Header and filters -->
+    <Flex x-between expand>
+      <ServerFilters
+        v-model:search="search"
+        v-model:status-filter="statusFilter"
+        :status-options="statusOptions"
+        @clear-filters="clearFilters"
+      />
+      <Button v-if="canCreate" variant="accent" @click="openAddServerForm">
+        <template #start>
+          <Icon name="ph:plus" />
+        </template>
+        Add Server
+      </Button>
+    </Flex>
 
     <TableContainer>
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
@@ -221,7 +300,7 @@ onBeforeMount(fetchServers)
               <AdminActions
                 resource-type="servers"
                 :item="server._original"
-                @edit="(serverItem) => viewServer(serverItem as Tables<'servers'>)"
+                @edit="(item) => openEditServerForm(item as Tables<'servers'>)"
                 @delete="(serverItem) => handleServerDelete((serverItem as Tables<'servers'>).id)"
               />
             </Table.Cell>
@@ -246,6 +325,16 @@ onBeforeMount(fetchServers)
   <ServerDetails
     v-model:is-open="showServerDetails"
     :server="selectedServer"
+    @edit="handleEditFromDetails"
+  />
+
+  <!-- Server Form Sheet (for both create and edit) -->
+  <ServerForm
+    v-model:is-open="showServerForm"
+    :server="selectedServer"
+    :is-edit-mode="isEditMode"
+    @save="handleServerSave"
+    @delete="handleServerDelete"
   />
 </template>
 

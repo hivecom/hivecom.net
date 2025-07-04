@@ -1,16 +1,50 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
 
 // Async component
 const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Profile/ConnectPatreon.vue'))
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+
 const profile = ref<Tables<'profiles'> | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
 const authReady = ref(false)
+
+// Password reset state
+const passwordResetLoading = ref(false)
+const passwordResetSent = ref(false)
+const passwordResetError = ref('')
+
+async function sendPasswordReset() {
+  passwordResetLoading.value = true
+  passwordResetError.value = ''
+  passwordResetSent.value = false
+  try {
+    if (!user.value?.email) {
+      passwordResetError.value = 'No email found for your account.'
+      return
+    }
+    const redirectUrl = process.env.NODE_ENV === 'development'
+      ? 'http://localhost:3000/auth/confirm'
+      : `${window.location.origin}/auth/confirm`
+    const { error } = await supabase.auth.resetPasswordForEmail(user.value.email, { redirectTo: redirectUrl })
+    if (error) {
+      passwordResetError.value = error.message
+    }
+    else {
+      passwordResetSent.value = true
+    }
+  }
+  catch (err) {
+    passwordResetError.value = err instanceof Error ? err.message : 'An error occurred.'
+  }
+  finally {
+    passwordResetLoading.value = false
+  }
+}
 
 // Authentication check - redirect if not signed in
 onMounted(() => {
@@ -126,6 +160,30 @@ async function fetchProfile() {
       <h1 class="settings-title">
         Profile Settings
       </h1>
+
+      <!-- Change Password Section -->
+      <Card separators class="mb-l">
+        <template #header>
+          <Flex x-between y-center>
+            <h3>Change Password</h3>
+            <Icon name="ph:key" />
+          </Flex>
+        </template>
+        <Flex column gap="m">
+          <p class="text-s color-text-lighter">
+            You can set or change your password to log in with email and password instead of just email links.
+          </p>
+          <Button :loading="passwordResetLoading" variant="accent" @click="sendPasswordReset">
+            Send Password Reset Email
+          </Button>
+          <Alert v-if="passwordResetSent" filled variant="info">
+            A password reset link has been sent to your email address.
+          </Alert>
+          <Alert v-if="passwordResetError" filled variant="danger">
+            {{ passwordResetError }}
+          </Alert>
+        </Flex>
+      </Card>
 
       <!-- Connected Accounts Section -->
       <Card separators>

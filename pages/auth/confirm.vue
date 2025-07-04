@@ -9,8 +9,15 @@ const router = useRouter()
 // Normal state variables
 const loading = ref(true)
 const error = ref('')
+
 const processComplete = ref(false)
 const usernameStep = ref(false)
+const passwordResetStep = ref(false)
+const passwordResetSuccess = ref(false)
+const passwordResetError = ref('')
+const password = ref('')
+const passwordConfirm = ref('')
+const passwordLoading = ref(false)
 const username = ref('')
 const usernameError = ref('')
 const usernameLoading = ref(false)
@@ -25,6 +32,7 @@ const debugOptions = reactive({
   forceError: false,
   customError: 'Authentication failed due to an expired token',
   skipRedirect: false,
+  forcePasswordReset: false,
 })
 
 // Apply debug options
@@ -52,6 +60,15 @@ function applyDebugOptions() {
     usernameStep.value = true
     processComplete.value = false
     error.value = ''
+    passwordResetStep.value = false
+    return
+  }
+
+  if (debugOptions.forcePasswordReset) {
+    passwordResetStep.value = true
+    processComplete.value = false
+    usernameStep.value = false
+    error.value = ''
   }
 }
 
@@ -65,6 +82,44 @@ const hasAuthParams = computed(() => {
   const hash = window.location.hash
   return hash && (hash.includes('access_token') || hash.includes('error') || hash.includes('type=recovery'))
 })
+
+// Detect if this is a password recovery (reset) flow
+const isPasswordReset = computed(() => {
+  const hash = window.location.hash
+  return hash && hash.includes('type=recovery')
+})
+// Handle password reset submission
+async function submitPasswordReset() {
+  if (!password.value || password.value.length < 8) {
+    passwordResetError.value = 'Password must be at least 8 characters long.'
+    return
+  }
+  if (password.value !== passwordConfirm.value) {
+    passwordResetError.value = 'Passwords do not match.'
+    return
+  }
+  passwordLoading.value = true
+  passwordResetError.value = ''
+  try {
+    const { error: updateError } = await supabase.auth.updateUser({ password: password.value })
+    if (updateError) {
+      passwordResetError.value = updateError.message
+      return
+    }
+    passwordResetSuccess.value = true
+    passwordResetStep.value = false
+    // Optionally, redirect or show a message
+    setTimeout(() => {
+      router.push('/auth/sign-in')
+    }, 2000)
+  }
+  catch (err) {
+    passwordResetError.value = err instanceof Error ? err.message : 'An error occurred.'
+  }
+  finally {
+    passwordLoading.value = false
+  }
+}
 
 // Handle username submission
 async function submitUsername() {
@@ -137,35 +192,58 @@ async function handleEmailConfirmation() {
   }
 
   try {
-    const { data, error: authError } = await supabase.auth.getSession()
+    // If this is a password reset flow, show the password reset form
+    if (isPasswordReset.value) {
+      // If user is already signed in, allow password change
+      if (user.value) {
+        passwordResetStep.value = true
+        loading.value = false
+        return
+      }
+      // Otherwise, wait for auth event
+      const { data: authData } = await supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY' && session) {
+          passwordResetStep.value = true
+          loading.value = false
+        }
+        if (event === 'SIGNED_IN' && session) {
+          // Some clients may emit SIGNED_IN instead
+          passwordResetStep.value = true
+          loading.value = false
+        }
+      })
+      // Unsubscribe after 10 seconds if no event
+      setTimeout(() => {
+        authData.subscription.unsubscribe()
+        if (!passwordResetStep.value) {
+          error.value = 'Password reset link is invalid or expired.'
+          loading.value = false
+        }
+      }, 10000)
+      return
+    }
 
+    // Normal email confirmation flow
+    const { data, error: authError } = await supabase.auth.getSession()
     if (authError) {
       throw authError
     }
-
     if (!data.session) {
-      // Try to get auth parameters from the URL hash
       if (hasAuthParams.value) {
-        // Process the email link confirmation
         const { data: authData } = await supabase.auth.onAuthStateChange((event, session) => {
           if (event === 'SIGNED_IN' && session) {
-            // Set user needs to provide username
             checkUsernameStatus()
           }
         })
-
-        // Need to manually unsubscribe when done
         setTimeout(() => {
           authData.subscription.unsubscribe()
-        }, 10000) // Unsubscribe after 10 seconds if no auth event occurs
+        }, 10000)
       }
       else {
-        // No session and no hash parameters - user needs to sign in
         throw new Error('No authentication session found')
       }
     }
     else {
-      // User is authenticated, check if they need to set a username
       await checkUsernameStatus()
     }
   }
@@ -292,7 +370,7 @@ onMounted(() => {
 
 <template>
   <Flex y-center x-center class="flex-1 w-100" column>
-    <Card class="auth-confirm-card">
+    <Card class="auth-confirm-card text-center" separators>
       <template #header>
         <h3>Authentication</h3>
       </template>
@@ -305,6 +383,33 @@ onMounted(() => {
           <p>Please wait while we complete your sign-in process.</p>
         </div>
 
+        <!-- Password reset state -->
+        <div v-else-if="passwordResetStep" class="auth-confirm-state">
+          <Icon name="ph:key" size="48" class="mb-s" />
+          <h4>Reset your password</h4>
+          <p>Enter a new password for your account.</p>
+          <Flex x-center column gap="l" class="w-100 mt-l" style="max-width: 320px;">
+            <Input v-model="password" expand label="New Password" placeholder="Enter new password" type="password" />
+            <Input v-model="passwordConfirm" expand label="Confirm Password" placeholder="Confirm new password" type="password" />
+            <Alert v-if="passwordResetError" variant="danger" filled>
+              {{ passwordResetError }}
+            </Alert>
+            <Button expand variant="accent" :loading="passwordLoading" @click="submitPasswordReset">
+              <Flex y-center gap="xs">
+                Set Password
+                <Icon name="ph:arrow-right" />
+              </Flex>
+            </Button>
+          </Flex>
+        </div>
+
+        <!-- Password reset success -->
+        <div v-else-if="passwordResetSuccess" class="auth-confirm-state success">
+          <Icon name="ph:check-circle" size="48" />
+          <h4>Password changed!</h4>
+          <p>Your password has been updated. You can now sign in with your new password.</p>
+        </div>
+
         <!-- Username selection state -->
         <div v-else-if="usernameStep" class="auth-confirm-state">
           <Icon name="ph:user-circle" size="48" class="mb-s" />
@@ -312,18 +417,15 @@ onMounted(() => {
           <p>
             Before continuing, please choose a unique username to identify yourself on the platform.
           </p>
-
           <Flex x-center column gap="l" class="w-100 mt-l" style="max-width: 320px;">
             <Input v-model="username" expand label="Username" placeholder="Choose a username">
               <template #start>
                 <Icon name="ph:at" />
               </template>
             </Input>
-
             <Alert v-if="usernameError" variant="danger" filled>
               {{ usernameError }}
             </Alert>
-
             <Button expand variant="accent" :loading="usernameLoading" :disabled="!username" @click="submitUsername">
               <Flex y-center gap="xs">
                 Continue
@@ -387,18 +489,23 @@ onMounted(() => {
         </Flex>
 
         <Flex y-center gap="m">
-          <Switch v-model="debugOptions.forceUsernameStep" :disabled="debugOptions.forceSuccess || debugOptions.forceError" />
+          <Switch v-model="debugOptions.forceUsernameStep" :disabled="debugOptions.forceSuccess || debugOptions.forceError || debugOptions.forcePasswordReset" />
           <span>Force Username Step</span>
         </Flex>
 
         <Flex y-center gap="m">
-          <Switch v-model="debugOptions.forceSuccess" :disabled="debugOptions.forceUsernameStep || debugOptions.forceError" />
+          <Switch v-model="debugOptions.forceSuccess" :disabled="debugOptions.forceUsernameStep || debugOptions.forceError || debugOptions.forcePasswordReset" />
           <span>Force Success State</span>
         </Flex>
 
         <Flex y-center gap="m">
-          <Switch v-model="debugOptions.forceError" :disabled="debugOptions.forceUsernameStep || debugOptions.forceSuccess" />
+          <Switch v-model="debugOptions.forceError" :disabled="debugOptions.forceUsernameStep || debugOptions.forceSuccess || debugOptions.forcePasswordReset" />
           <span>Force Error State</span>
+        </Flex>
+
+        <Flex y-center gap="m">
+          <Switch v-model="debugOptions.forcePasswordReset" :disabled="debugOptions.forceUsernameStep || debugOptions.forceSuccess || debugOptions.forceError" />
+          <span>Force Password Reset Step</span>
         </Flex>
 
         <Flex y-center gap="m">
