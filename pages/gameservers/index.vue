@@ -131,10 +131,14 @@ const filteredGames = computed(() => {
     })
     const hasGameServers = gameServers.length > 0
 
+    // Check if search matches game name/shorthand OR any server names belonging to this game
     const matchesSearch = search.value
       ? (
           game.name?.toLowerCase().includes(search.value.toLowerCase())
           || game.shorthand?.toLowerCase().includes(search.value.toLowerCase())
+          || gameServers.some(server => 
+              server.name?.toLowerCase().includes(search.value.toLowerCase())
+            )
         )
       : true
 

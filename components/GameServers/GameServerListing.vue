@@ -45,7 +45,7 @@ interface Emits {
 }
 
 function getServersByGameId(gameId: number) {
-  return props.gameservers?.filter((gameserver: GameserversType[0]) => gameserver.game === gameId) ?? []
+  return props.filteredGameservers?.filter((gameserver: GameserversType[0]) => gameserver.game === gameId) ?? []
 }
 
 function clearFilters() {
@@ -116,7 +116,7 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
 
         <Flex gap="m" column>
           <template v-for="game in filteredGames" :key="game.id">
-            <Card v-if="filteredGameservers.length > 0">
+            <Card v-if="getServersByGameId(game.id).length > 0">
               <h3 class="mb-s">
                 <Flex gap="m" y-center x-between>
                   <Flex gap="s" y-center>
