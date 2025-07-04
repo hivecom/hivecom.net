@@ -136,9 +136,9 @@ const filteredGames = computed(() => {
       ? (
           game.name?.toLowerCase().includes(search.value.toLowerCase())
           || game.shorthand?.toLowerCase().includes(search.value.toLowerCase())
-          || gameServers.some(server => 
-              server.name?.toLowerCase().includes(search.value.toLowerCase())
-            )
+          || gameServers.some(server =>
+            server.name?.toLowerCase().includes(search.value.toLowerCase()),
+          )
         )
       : true
 
