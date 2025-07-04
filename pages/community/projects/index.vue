@@ -84,7 +84,7 @@ const filteredProjects = computed(() => {
       : true
 
     return matchesSearch && matchesTags
-  })
+  }).sort((a, b) => a.title.localeCompare(b.title))
 })
 
 // Clear filters
@@ -170,23 +170,14 @@ useHead({
 
         <!-- Content -->
         <template v-if="filteredProjects.length > 0">
-          <!-- Featured/Latest project (full width) -->
-          <div v-if="filteredProjects.length > 0" class="projects__featured">
+          <!-- All projects at full width -->
+          <Flex column gap="m" class="projects__section" expand>
             <ProjectCard
-              :project="filteredProjects[0]"
+              v-for="project in filteredProjects"
+              :key="project.id"
+              :project="project"
               :is-latest="true"
             />
-          </div>
-
-          <!-- All other projects -->
-          <Flex v-if="filteredProjects.length > 1" column gap="m" class="projects__section" expand>
-            <Grid :columns="3" gap="m" class="projects__grid--regular" expand>
-              <ProjectCard
-                v-for="project in filteredProjects.slice(1)"
-                :key="project.id"
-                :project="project"
-              />
-            </Grid>
           </Flex>
         </template>
 

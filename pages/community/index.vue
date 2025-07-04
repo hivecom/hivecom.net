@@ -43,12 +43,11 @@ async function fetchCommunityData() {
           .eq('banned', false)
           .limit(200), // Get more to randomize from
 
-        // Fetch recent projects
+        // Fetch random projects
         supabase
           .from('projects')
           .select('*')
-          .order('created_at', { ascending: false })
-          .limit(3),
+          .limit(50), // Get more projects to randomize from
       ])
 
       if (supportersResult.error) {
@@ -73,25 +72,38 @@ async function fetchCommunityData() {
       }
 
       if (projectsResult.error) {
-        console.warn('Error fetching recent projects:', projectsResult.error)
+        console.warn('Error fetching random projects:', projectsResult.error)
       }
       else if (projectsResult.data) {
-        recentProjects.value = projectsResult.data
+        // Shuffle projects and take 3 random ones
+        const shuffledProjects = projectsResult.data
+          .map(project => ({ project, sort: Math.random() }))
+          .sort((a, b) => a.sort - b.sort)
+          .map(({ project }) => project)
+          .slice(0, 3)
+
+        recentProjects.value = shuffledProjects
       }
     }
     else {
-      // For non-authenticated users, just fetch recent projects
+      // For non-authenticated users, just fetch random projects
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(3)
+        .limit(50) // Get more projects to randomize from
 
       if (projectsError) {
-        console.warn('Error fetching recent projects:', projectsError)
+        console.warn('Error fetching random projects:', projectsError)
       }
       else if (projectsData) {
-        recentProjects.value = projectsData
+        // Shuffle projects and take 3 random ones
+        const shuffledProjects = projectsData
+          .map(project => ({ project, sort: Math.random() }))
+          .sort((a, b) => a.sort - b.sort)
+          .map(({ project }) => project)
+          .slice(0, 3)
+
+        recentProjects.value = shuffledProjects
       }
     }
   }
@@ -334,10 +346,10 @@ watch(user, () => {
         <Flex y-center x-between expand>
           <div>
             <h2 class="text-bold text-xxl">
-              Recent Projects
+              Featured Projects
             </h2>
             <p class="color-text-light">
-              Check out what our community has been building
+              Discover what our community has been building
             </p>
           </div>
           <NuxtLink to="/community/projects">
@@ -350,7 +362,7 @@ watch(user, () => {
           </NuxtLink>
         </Flex>
 
-        <Grid :columns="3" gap="l" class="projects-grid">
+        <Grid :columns="3" gap="l" class="projects-grid" expand>
           <ProjectCard
             v-for="project in recentProjects"
             :key="project.id"
