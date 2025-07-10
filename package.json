@@ -15,7 +15,7 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@dolanske/vui": "^1.4.6",
+    "@dolanske/vui": "^1.4.7",
     "@nuxt/content": "^3.6.2",
     "@nuxt/icon": "^1.15.0",
     "@nuxt/image": "^1.10.0",
