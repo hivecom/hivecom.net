@@ -34,7 +34,7 @@
     "dayjs": "^1.11.13",
     "nuxt": "^3.17.6",
     "nuxt-icon": "^0.6.10",
-    "nuxt-og-image": "^5.1.8",
+    "nuxt-og-image": "^5.1.9",
     "nuxt-toc": "^2.7.2",
     "pinia": "^3.0.3",
     "sass": "^1.89.2",
