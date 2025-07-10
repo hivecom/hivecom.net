@@ -27,7 +27,7 @@
     "@nuxtjs/supabase": "^1.5.3",
     "@pinia/nuxt": "^0.11.1",
     "@samk-dev/nuxt-vcalendar": "^1.0.4",
-    "@unhead/vue": "^2.0.11",
+    "@unhead/vue": "^2.0.12",
     "@vueuse/nuxt": "^13.5.0",
     "ansi-to-html": "^0.7.2",
     "chart.js": "^4.5.0",
