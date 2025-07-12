@@ -47,7 +47,9 @@ Start the development server on `http://localhost:3000`:
 npm run dev
 ```
 
-To additionally have access to a local Supabase instance, you can run the following to start/stop that instance. Keep in mind Docker is required for this to function.
+This automatically start the Supabase instance locally as well if it's not already running. Keep in mind Docker is required for this to function.
+
+To separately start or stop the Supabase instance, you can use the following commands:
 
 ```bash
 npm run supabase [start/stop]
@@ -56,6 +58,14 @@ npm run supabase [start/stop]
 Once you have the Supabase instance running, you can access the admin panel at `http://localhost:54323`. To make your local app direct to it, read out the API URL and anon key and replace the values in your `.env` file. Make sure to include the port for the API URL.
 
 If you'd like to test locally against production, you can invoke `npm run dev:staging`. Make sure the production credentials are defined in `.env.production`.
+
+Don't forget to reset your local database to the latest migrations after starting the Supabase instance:
+
+```bash
+npm run supabase db reset
+```
+
+This will ensure your local database is in sync with the latest migrations and schema changes plus seed it with the initial data.
 
 ## Edge Functions
 
@@ -116,7 +126,13 @@ Make sure your GitHub pages deployment action has the right variables/secrets de
 
 ## DB Changes / Migrations
 
-First make sure you're pulling the lastest version of the database:
+First reset your local database to the latest migration with:
+
+```bash
+npm run supabase db reset
+```
+
+Then make sure you're pulling the lastest version of the remote database:
 
 ```bash
 npm run supabase db pull
