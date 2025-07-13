@@ -1,17 +1,16 @@
 -- This migration creates a Discord webhook trigger for new complaints
 -- First, create the vault secret for the Discord webhook URL
-DO $$
-DECLARE
-BEGIN
-  PERFORM
-    vault.create_secret('REPLACE-ME', 'discord_complaint_webhook_url');
-EXCEPTION
-  WHEN OTHERS THEN
-    -- Secret might already exist, we can ignore this
-    RAISE NOTICE 'Discord webhook secret might already exist: %', SQLERRM;
-END
-$$;
-
+-- DO $$
+-- DECLARE
+-- BEGIN
+--   PERFORM
+--     vault.create_secret('REPLACE-ME', 'discord_complaint_webhook_url');
+-- EXCEPTION
+--   WHEN OTHERS THEN
+--     -- Secret might already exist, we can ignore this
+--     RAISE NOTICE 'Discord webhook secret might already exist: %', SQLERRM;
+-- END
+-- $$;
 -- Create a function to send Discord webhook notifications for new complaints
 CREATE OR REPLACE FUNCTION notify_discord_new_complaint()
   RETURNS TRIGGER

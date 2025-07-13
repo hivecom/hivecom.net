@@ -93,31 +93,6 @@ const { headers, rows, pagination, setPage, setSort } = defineTable(transformedE
 // Set default sorting by date (newest first)
 setSort('Date', 'desc')
 
-// Google Calendar sync function
-async function syncEventWithGoogleCalendar(action: 'INSERT' | 'UPDATE' | 'DELETE', eventId: number) {
-  try {
-    const { data, error } = await supabase.functions.invoke('admin-google-calendar-sync', {
-      method: 'POST',
-      body: {
-        eventId,
-        action,
-      },
-    })
-
-    if (error) {
-      console.error('Google Calendar sync error:', error)
-      throw error
-    }
-
-    return data
-  }
-  catch (error) {
-    console.error('Failed to sync with Google Calendar:', error)
-    // Don't throw the error - we don't want sync failures to break the UI
-    // The user should still see their event created/updated even if sync fails
-  }
-}
-
 // Fetch events data
 async function fetchEvents() {
   loading.value = true
@@ -175,8 +150,6 @@ function handleEditFromDetails(event: Event) {
 
 async function handleEventSave(eventData: Partial<Event>) {
   try {
-    let eventId: number | undefined
-
     if (isEditMode.value && selectedEvent.value) {
       // Update existing event with modification tracking
       const updateData: TablesUpdate<'events'> = {
@@ -192,8 +165,6 @@ async function handleEventSave(eventData: Partial<Event>) {
 
       if (error)
         throw error
-
-      eventId = selectedEvent.value.id
     }
     else {
       // Create new event with creation and modification tracking
@@ -207,7 +178,7 @@ async function handleEventSave(eventData: Partial<Event>) {
         modified_at: new Date().toISOString(),
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('events')
         .insert(createData)
         .select('id')
@@ -215,17 +186,10 @@ async function handleEventSave(eventData: Partial<Event>) {
 
       if (error)
         throw error
-
-      eventId = data?.id
     }
 
-    // Sync with Google Calendar if we have an event ID
-    if (eventId) {
-      await syncEventWithGoogleCalendar(
-        isEditMode.value ? 'UPDATE' : 'INSERT',
-        eventId,
-      )
-    }
+    // Google Calendar sync is now handled automatically by database triggers
+    // No manual sync call needed - the database will handle it automatically
 
     // Refresh events data and close form
     showEventForm.value = false
@@ -242,8 +206,8 @@ async function handleEventDelete(eventId: number) {
     // Set loading state
     setEventActionLoading(eventId, 'delete', true)
 
-    // Sync with Google Calendar first (before deleting from our database)
-    await syncEventWithGoogleCalendar('DELETE', eventId)
+    // Google Calendar sync is now handled automatically by database triggers
+    // No manual sync call needed - the database will handle it automatically
 
     const { error } = await supabase
       .from('events')

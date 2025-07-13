@@ -71,5 +71,3 @@ This eliminates the need for application-level audit field management and ensure
 - referendums
 - referendum_votes
 - servers
-
-**Note:** You no longer need to manually set `modified_at` and `modified_by` in your application code - the triggers handle this automatically.

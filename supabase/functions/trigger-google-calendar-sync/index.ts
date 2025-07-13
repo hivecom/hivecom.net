@@ -23,11 +23,10 @@ interface SyncRequest {
   action: 'INSERT' | 'UPDATE' | 'DELETE'
   eventId: number
   timestamp?: string
+  google_event_id?: string // This field is used for DELETE operation as the row is already deleted.
 }
 
 Deno.serve(async (req) => {
-  console.log(`Received request: ${req.method} ${req.url}`)
-
   if (req.method !== "POST") {
     return responseMethodNotAllowed(req.method);
   }
@@ -40,7 +39,9 @@ Deno.serve(async (req) => {
       return authResponse;
     }
 
-    const { action, eventId, timestamp: _timestamp }: SyncRequest = await req.json()
+    // Read the request body once and store it
+    const requestData = await req.json();
+    const { action, eventId } = requestData as SyncRequest;
 
     // Validate request data
     if (!action || !eventId) {
@@ -65,23 +66,6 @@ Deno.serve(async (req) => {
 
     console.log(`Processing ${action} for event ${eventId}`)
 
-    // Initialize Supabase client with service role for Google Calendar operations
-    const supabase = createClient<Database>(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    // Get event data from database
-    const { data: event_data, error: eventError } = await supabase
-      .from('events')
-      .select('*')
-      .eq('id', eventId)
-      .single()
-
-    if (eventError || !event_data) {
-      throw new Error(`Event not found: ${eventError?.message}`)
-    }
-
     // Get Google Calendar credentials
     const googleCalendarId = Deno.env.get('GOOGLE_CALENDAR_ID')
     const googleServiceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY')
@@ -95,18 +79,45 @@ Deno.serve(async (req) => {
     const calendar = google.calendar({ version: 'v3', auth })
 
     let result
-    switch (action) {
-      case 'INSERT':
+
+    // For DELETE, use the data provided in the request since the row is already deleted
+    if (action === 'DELETE') {
+      // Use the already parsed request data
+      console.log('Deleting event with Google Calendar ID:', requestData.google_event_id)
+
+      if (!requestData.google_event_id) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'No Google Calendar ID was provided, nothing to delete'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        })
+      }
+
+      result = await deleteGoogleEvent(calendar, googleCalendarId, requestData as EventData, undefined)
+    } else {
+      // For INSERT/UPDATE, fetch the data from the database
+      const supabase = createClient<Database>(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      )
+
+      const { data: event_data, error: eventError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .single()
+
+      if (eventError || !event_data) {
+        throw new Error(`Event not found: ${eventError?.message}`)
+      }
+
+      if (action === 'INSERT') {
         result = await createGoogleEvent(calendar, googleCalendarId, event_data, supabase)
-        break
-      case 'UPDATE':
+      } else { // UPDATE
         result = await updateGoogleEvent(calendar, googleCalendarId, event_data, supabase)
-        break
-      case 'DELETE':
-        result = await deleteGoogleEvent(calendar, googleCalendarId, event_data, supabase)
-        break
-      default:
-        throw new Error(`Unknown operation: ${action}`)
+      }
     }
 
     console.log(`Successfully processed ${action} for event ${eventId}`)
@@ -295,7 +306,7 @@ async function deleteGoogleEvent(
   calendar: calendar_v3.Calendar,
   calendarId: string,
   eventData: EventData,
-  _supabase: SupabaseClientType
+  _supabase?: SupabaseClientType | null
 ) {
   if (!eventData.google_event_id) {
     // Nothing to delete in Google Calendar

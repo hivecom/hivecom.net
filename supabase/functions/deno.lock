@@ -440,11 +440,6 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
-      "admin-google-calendar-sync": {
-        "dependencies": [
-          "jsr:@supabase/supabase-js@2"
-        ]
-      },
       "admin-user-ban": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
@@ -466,6 +461,11 @@
         ]
       },
       "oauth-patreon": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "trigger-google-calendar-sync": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
         ]

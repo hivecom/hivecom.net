@@ -7,7 +7,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
 -- Create a Vault secret for the project URL so that we can use it in the cron job for invoking our edge functions.
 -- Replace with 'https://project_ref.supabase.co' when deploying to production.
 SELECT
-  vault.create_secret('http://127.0.0.1:54321', 'project_url');
+  vault.create_secret('http://host.docker.internal:54321', 'project_url');
 
 -- Setup hourly cron job for Docker control container fetch
 -- Create a random secure token for system cron invocation

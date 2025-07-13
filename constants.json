@@ -84,6 +84,15 @@
       "icon": "mdi:steam",
       "note": "",
       "action": "Join"
+    },
+    "SYNCPLAY": {
+      "title": "Syncplay",
+      "urls": [
+        { "id": "default", "title": "Default", "url": "syncplay://syncplay.hivecom.net:8999" }
+      ],
+      "icon": "ph:play-circle-bold",
+      "note": "Or connect directly to syncplay.hivecom.net:8999",
+      "action": "Connect"
     }
   }
 }
