@@ -123,7 +123,7 @@ onMounted(async () => {
       .select('*', { count: 'exact', head: true })
 
     if (!membersError) {
-      communityStats.value.members = membersCount || 500
+      communityStats.value.members = membersCount || 100
       communityStats.value.membersAccurate = membersCount !== 0
     }
 
