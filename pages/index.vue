@@ -14,7 +14,7 @@ const errorMessage = ref('')
 const events = ref<Tables<'events'>[]>([])
 const pinnedAnnouncements = ref<Tables<'announcements'>[]>([])
 const communityStats = ref({
-  members: 500,
+  members: 100,
   membersAccurate: false,
   gameservers: 0,
   age: new Date().getFullYear() - 2013,
