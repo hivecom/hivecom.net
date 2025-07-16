@@ -7,6 +7,7 @@ import MetadataCard from '@/components/Shared/MetadataCard.vue'
 
 // Get route parameter
 const route = useRoute()
+const router = useRouter()
 const gameserverId = Number.parseInt(route.params.id as string)
 
 // Supabase client
@@ -179,8 +180,8 @@ useHead({
     <DetailStates
       :loading="loading"
       :error="error"
-      back-to="/gameservers"
-      back-label="Back to Game Servers"
+      :back-to="() => router.back()"
+      back-label="Game Servers"
     >
       <template #error-message>
         The game server you're looking for might have been removed or doesn't exist.

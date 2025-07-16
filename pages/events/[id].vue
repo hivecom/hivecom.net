@@ -202,7 +202,7 @@ useHead({
       :loading="loading"
       :error="error"
       back-to="/events"
-      back-label="Back to Events"
+      back-label="Events"
     >
       <template #error-message>
         We are unable to load event details at this time. Please try again later.

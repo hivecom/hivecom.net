@@ -75,7 +75,7 @@ useHead({
       :loading="loading"
       :error="error"
       back-to="/community/projects"
-      back-label="Back to Projects"
+      back-label="Projects"
     >
       <template #error-message>
         The project you're looking for might have been removed or doesn't exist.

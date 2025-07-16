@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Card, Flex } from '@dolanske/vui'
+import { Accordion, Badge, Card, Flex } from '@dolanske/vui'
 import Metadata from '@/components/Shared/Metadata.vue'
 
 interface Props {
@@ -15,8 +15,8 @@ defineProps<Props>()
 </script>
 
 <template>
-  <Card class="metadata-card">
-    <Flex column gap="l">
+  <Accordion class="metadata-card" card>
+    <template #header>
       <Flex expand x-between y-center class="metadata-card__header">
         <h3 class="metadata-card__title">
           <Icon name="ph:info" />
@@ -33,6 +33,8 @@ defineProps<Props>()
           </Badge>
         </div>
       </Flex>
+    </template>
+    <Flex column gap="l">
       <Metadata
         :created-at="createdAt"
         :created-by="createdBy"
@@ -41,7 +43,7 @@ defineProps<Props>()
         :loading="loading"
       />
     </Flex>
-  </Card>
+  </Accordion>
 </template>
 
 <style lang="scss" scoped>
@@ -53,10 +55,10 @@ defineProps<Props>()
   display: flex;
   align-items: center;
   gap: var(--space-s);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-m);
   font-weight: var(--font-weight-semibold);
   margin: 0;
-  color: var(--color-text);
+  color: var(--color-text-light);
 
   svg {
     color: var(--color-accent);

@@ -14,10 +14,10 @@ defineProps<Props>()
   <!-- Server Details (Markdown) -->
   <Card v-if="gameserver.markdown" class="gameserver-markdown">
     <Flex column gap="l">
-      <h3 class="gameserver-markdown__title">
+      <strong class="gameserver-markdown__title">
         <Icon name="ph:article" />
         Server Details
-      </h3>
+      </strong>
       <MDRenderer :md="gameserver.markdown" class="gameserver-markdown__content" />
     </Flex>
   </Card>
@@ -29,10 +29,10 @@ defineProps<Props>()
     display: flex;
     align-items: center;
     gap: var(--space-s);
-    font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-m);
+    // font-weight: var(--font-weight-semibold);
     margin: 0;
-    color: var(--color-text);
+    color: var(--color-text-light);
 
     svg {
       color: var(--color-accent);
@@ -41,6 +41,8 @@ defineProps<Props>()
 
   &__content {
     line-height: 1.6;
+    max-width: 512px;
+    margin: auto;
   }
 }
 </style>

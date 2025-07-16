@@ -50,6 +50,8 @@ const tooltipText = computed(() => {
 
   return `${detailed} (UTC${offsetSign}${offsetHours}:${offsetMinutes}, ${timezone})`
 })
+
+const attrs = useAttrs()
 </script>
 
 <template>
@@ -59,9 +61,9 @@ const tooltipText = computed(() => {
         {{ tooltipText }}
       </div>
     </template>
-    <span class="timestamp-date" :class="`text-${size}`">{{ formattedDate }}</span>
+    <span class="timestamp-date" v-bind="attrs" :class="`text-${size}`">{{ formattedDate }}</span>
   </Tooltip>
-  <span v-else class="timestamp-date" :class="`text-${size}`">{{ formattedDate }}</span>
+  <span v-else class="timestamp-date" v-bind="attrs" :class="`text-${size}`">{{ formattedDate }}</span>
 </template>
 
 <style scoped lang="scss">

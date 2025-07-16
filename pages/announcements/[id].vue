@@ -76,7 +76,7 @@ useHead({
       :loading="loading"
       :error="error"
       back-to="/announcements"
-      back-label="Back to Announcements"
+      back-label="Announcements"
     >
       <template #error-message>
         The announcement you're looking for might have been removed or doesn't exist.

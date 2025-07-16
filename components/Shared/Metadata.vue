@@ -20,7 +20,7 @@ const isSameUser = computed(() => {
 </script>
 
 <template>
-  <Card class="metadata">
+  <div>
     <div v-if="loading" class="metadata__loading">
       <Skeleton class="metadata__skeleton-line" />
       <Skeleton class="metadata__skeleton-line metadata__skeleton-line--short" />
@@ -53,7 +53,7 @@ const isSameUser = computed(() => {
         </template>
       </div>
     </div>
-  </Card>
+  </div>
 </template>
 
 <style lang="scss" scoped>

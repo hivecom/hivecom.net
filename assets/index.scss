@@ -78,6 +78,10 @@ table td {
   font-size: var(--font-size-s);
 }
 
+.inert {
+  pointer-events: none;
+}
+
 @media (max-width: $breakpoint-sm) {
   .vui-table-container {
     width: auto !important;

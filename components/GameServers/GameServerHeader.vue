@@ -12,6 +12,9 @@ interface Props {
   gameserver: Tables<'gameservers'>
   game?: Tables<'games'> | null
   container?: Tables<'containers'> | null
+  // FIxme: these props are passed in, but unused
+  state: string
+  stateConfig: unknown // TODO: add type
 }
 
 const _props = defineProps<Props>()
@@ -45,6 +48,7 @@ function openComplaintModal() {
   <Flex x-between>
     <Button
       variant="gray"
+      plain
       size="s"
       aria-label="Go back to Game Servers"
       class="gameserver-header__back-link"
@@ -53,18 +57,58 @@ function openComplaintModal() {
       <template #start>
         <Icon name="ph:arrow-left" />
       </template>
-      Back to Game Servers
+      Game Servers
     </Button>
   </Flex>
   <div class="gameserver-header">
     <!-- Title and actions row -->
     <Flex x-between align="start" gap="l" class="gameserver-header__title-row">
       <div class="gameserver-header__title-section">
-        <Flex gap="m" y-center class="gameserver-header__title-container">
+        <Flex gap="m" y-start class="gameserver-header__title-container">
           <GameIcon v-if="game" :game="game" size="large" />
-          <h1 class="gameserver-header__title">
-            {{ gameserver.name }}
-          </h1>
+          <div>
+            <h1 class="gameserver-header__title">
+              {{ gameserver.name }}
+            </h1>
+            <!-- Description -->
+            <p v-if="gameserver.description" class="gameserver-header__description">
+              {{ gameserver.description }}
+            </p>
+            <!-- Connect Button -->
+            <div v-if="gameserver.addresses && gameserver.addresses.length" class="gameserver-header__connect-button">
+              <CopyClipboard
+                v-if="gameserver.addresses.length === 1"
+                :text="`${gameserver.addresses[0]}${gameserver.port ? `:${gameserver.port}` : ''}`"
+                confirm
+              >
+                <Button variant="accent">
+                  <template #start>
+                    <Icon name="ph:play" />
+                  </template>
+                  Connect
+                </Button>
+              </CopyClipboard>
+
+              <Dropdown v-else>
+                <template #trigger="{ toggle }">
+                  <Button variant="accent" @click="toggle">
+                    <Flex y-center gap="xs">
+                      Connect
+                      <Icon name="ph:caret-down" size="s" />
+                    </Flex>
+                  </Button>
+                </template>
+                <DropdownItem v-for="address in gameserver.addresses" :key="address">
+                  <CopyClipboard :text="`${address}${gameserver.port ? `:${gameserver.port}` : ''}`" confirm>
+                    <Flex y-center gap="xs">
+                      <Icon name="ph:copy" size="s" />
+                      {{ `${address}${gameserver.port ? `:${gameserver.port}` : ''}` }}
+                    </Flex>
+                  </CopyClipboard>
+                </DropdownItem>
+              </Dropdown>
+            </div>
+          </div>
         </Flex>
       </div>
 
@@ -78,60 +122,15 @@ function openComplaintModal() {
         <!-- Action Buttons -->
         <Flex gap="s" class="gameserver-header__actions">
           <!-- Complaint Button -->
-          <Button variant="gray" size="l" @click="openComplaintModal">
-            <template #start>
-              <Icon name="ph:chat-circle-text" />
-            </template>
-            Report Issue
-          </Button>
-
-          <!-- Connect Button -->
-          <div v-if="gameserver.addresses && gameserver.addresses.length" class="gameserver-header__connect-button">
-            <CopyClipboard
-              v-if="gameserver.addresses.length === 1"
-              :text="`${gameserver.addresses[0]}${gameserver.port ? `:${gameserver.port}` : ''}`"
-              confirm
-            >
-              <Button variant="success" size="l">
-                <template #start>
-                  <Icon name="ph:play" />
-                </template>
-                Connect
-              </Button>
-            </CopyClipboard>
-
-            <Dropdown v-else>
-              <template #trigger="{ toggle }">
-                <Button variant="success" size="l" @click="toggle">
-                  <Flex y-center gap="xs">
-                    Connect
-                    <Icon name="ph:caret-down" size="s" />
-                  </Flex>
-                </Button>
-              </template>
-              <DropdownItem v-for="address in gameserver.addresses" :key="address">
-                <CopyClipboard :text="`${address}${gameserver.port ? `:${gameserver.port}` : ''}`" confirm>
-                  <Flex y-center gap="xs">
-                    <Icon name="ph:copy" size="s" />
-                    {{ `${address}${gameserver.port ? `:${gameserver.port}` : ''}` }}
-                  </Flex>
-                </CopyClipboard>
-              </DropdownItem>
-            </Dropdown>
-          </div>
         </Flex>
       </Flex>
     </Flex>
 
     <Flex y-start x-between gap="l" expand>
       <Flex column gap="xs" expand>
-        <!-- Description -->
-        <p v-if="gameserver.description" class="gameserver-header__description">
-          {{ gameserver.description }}
-        </p>
         <!-- Quick info badges and status -->
         <div class="gameserver-header__info-section">
-          <Flex gap="xs" wrap class="gameserver-header__badges-section" y-center>
+          <!-- <Flex gap="xs" wrap class="gameserver-header__badges-section" y-center>
             <Badge v-if="game" variant="neutral" size="l">
               <Icon name="ph:game-controller" />
               {{ game.name }}
@@ -141,11 +140,26 @@ function openComplaintModal() {
               <RegionIndicator :region="gameserver.region" show-label />
             </Badge>
             <SteamLink v-if="game?.steam_id" :steam-id="game.steam_id" show-icon hide-id />
-          </Flex>
+          </Flex> -->
 
           <!-- Status Information -->
           <div v-if="container" class="gameserver-header__status-info">
-            <Flex gap="m" wrap>
+            <Flex gap="m" wrap y-end>
+              <div v-if="game" class="gameserver-header__status-item">
+                <span class="gameserver-header__status-label">Game</span>
+                <Badge>
+                  <Icon name="ph:game-controller" />
+                  {{ game.name }}
+                </Badge>
+              </div>
+
+              <div v-if="gameserver.region" class="gameserver-header__status-item">
+                <span class="gameserver-header__status-label">Country</span>
+                <Badge v-if="gameserver.region" variant="neutral" size="l">
+                  <RegionIndicator :region="gameserver.region" show-label />
+                </Badge>
+              </div>
+
               <div class="gameserver-header__status-item">
                 <span class="gameserver-header__status-label">Running</span>
                 <Badge :variant="container.running ? 'success' : 'neutral'" size="s">
@@ -164,10 +178,20 @@ function openComplaintModal() {
 
               <div class="gameserver-header__status-item">
                 <span class="gameserver-header__status-label">Last Reported</span>
-                <span class="gameserver-header__status-value">
+                <!-- <span class="gameserver-header__status-value"> -->
+                <Badge>
                   <TimestampDate size="xs" :date="container.reported_at" />
-                </span>
+                </Badge>
+                <!-- </span> -->
               </div>
+
+              <div class="flex-1" />
+              <Button variant="gray" plain size="s" @click="openComplaintModal">
+                <template #start>
+                  <Icon name="ph:chat-circle-text" />
+                </template>
+                Report Issue
+              </Button>
             </Flex>
           </div>
         </div>
@@ -188,7 +212,7 @@ function openComplaintModal() {
 <style lang="scss" scoped>
 .gameserver-header {
   &__title-container {
-    margin-bottom: var(--space-xs);
+    margin-bottom: var(--space-l);
   }
 
   &__title {
@@ -261,10 +285,11 @@ function openComplaintModal() {
   }
 
   &__status-label {
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-xxs);
+    color: var(--color-text-light);
     font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    // letter-spacing: 0.5px;
   }
 
   &__status-value {
@@ -283,6 +308,12 @@ function openComplaintModal() {
 
   &__connect-button {
     display: flex;
+    margin-top: var(--space-s);
+
+    .vui-button {
+      font-size: var(--font-size-m);
+      font-weight: var(--font-weight-medium);
+    }
   }
 
   @media (max-width: 768px) {

@@ -21,14 +21,12 @@ type GameserversType = QueryData<typeof gameserversQuery>
 // Tab management
 const activeTab = ref('library')
 
-watch(activeTab, (newVal) => {
-  window.location.hash = newVal === 'list' ? '#list' : ''
+onBeforeRouteLeave(() => {
+  sessionStorage.setItem('gameservers_active_tab', activeTab.value)
 })
 
 onMounted(() => {
-  if (window.location.hash.includes('#list')) {
-    activeTab.value = 'list'
-  }
+  activeTab.value = sessionStorage.getItem('gameservers_active_tab') ?? 'library'
 })
 
 // Fetch data

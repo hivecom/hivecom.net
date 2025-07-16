@@ -5,7 +5,7 @@ import { Button, Card, Flex, Skeleton } from '@dolanske/vui'
 interface Props {
   loading: boolean
   error: string | null
-  backTo: RouteLocationRaw
+  backTo: RouteLocationRaw | (() => void)
   backLabel: string
 }
 
@@ -29,8 +29,9 @@ defineProps<Props>()
   <div v-else-if="error" class="detail-states__error">
     <Button
       variant="accent"
-      :aria-label="`Go back to ${backLabel}`"
-      @click="$router.push(backTo)"
+      plain
+      :aria-label="backLabel"
+      @click="typeof backTo === 'function' ? backTo() : $router.push(backTo)"
     >
       <template #start>
         <Icon name="ph:arrow-left" />

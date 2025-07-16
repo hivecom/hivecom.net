@@ -117,16 +117,16 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
         <Flex gap="m" column>
           <template v-for="game in filteredGames" :key="game.id">
             <Card v-if="getServersByGameId(game.id).length > 0">
-              <h3 class="mb-s">
+              <h3 class="mb-s text-l">
                 <Flex gap="m" y-center x-between>
                   <Flex gap="s" y-center>
                     <GameIcon :game="game" size="medium" />
                     {{ game.name }}
-                    <Badge>
+                    <div class="counter">
                       {{ getServersByGameId(game.id).length }}
-                    </Badge>
+                    </div>
                   </Flex>
-                  <SteamLink v-if="game.steam_id" :steam-id="game.steam_id" show-icon hide-id />
+                  <!-- <SteamLink v-if="game.steam_id" :steam-id="game.steam_id" show-icon hide-id /> -->
                 </Flex>
               </h3>
               <Flex column class="w-100">

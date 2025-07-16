@@ -11,9 +11,7 @@ const props = defineProps<{
   compact?: boolean
 }>()
 
-function handleRowClick() {
-  navigateTo(`/gameservers/${props.gameserver.id}`)
-}
+const router = useRouter()
 
 const state = computed(() => {
   if (!props.container)
@@ -37,10 +35,9 @@ const state = computed(() => {
 </script>
 
 <template>
-  <div class="gameserver-row">
-    <Flex y-center row x-between gap="s" class="gameserver-row-header gameserver-row-clickable" @click="handleRowClick">
+  <button class="gameserver-row" @click="router.push(`/gameservers/${props.gameserver.id}`)">
+    <Flex y-center row x-between gap="s" class="gameserver-row-header gameserver-row-clickable">
       <Flex y-center row gap="s">
-        <Icon name="ph:caret-right" class="gameserver-row-arrow" size="16" />
         <Tooltip placement="top">
           <template #tooltip>
             <p>{{ capitalize(state) }}{{ state === 'offline' ? ' - Ask an administrator to start it' : '' }}</p>
@@ -49,14 +46,15 @@ const state = computed(() => {
         </Tooltip>
         <span class="flex-1 text-m">{{ props.gameserver.name }}</span>
       </Flex>
-      <Flex y-center row gap="s">
-        <div v-if="props.gameserver.description && !props.compact" class="gameserver-description-main">
+      <div class="flex-1" />
+      <Flex y-center row gap="s" x-end>
+        <!-- <div v-if="props.gameserver.description && !props.compact" class="gameserver-description-main">
           <span class="description-text">{{ props.gameserver.description }}</span>
-        </div>
+        </div> -->
         <div class="region-badge">
           <RegionIndicator :region="props.gameserver.region" show-label />
         </div>
-        <template v-if="props.gameserver.addresses">
+        <div v-if="props.gameserver.addresses" data-dropdown-ignore @click.stop="noop">
           <CopyClipboard v-if="props.gameserver.addresses.length === 1" :text="`${props.gameserver.addresses[0]}${props.gameserver.port ? `:${props.gameserver.port}` : ''}`" confirm>
             <Button size="s" variant="gray">
               Join
@@ -77,10 +75,11 @@ const state = computed(() => {
               </CopyClipboard>
             </DropdownItem>
           </Dropdown>
-        </template>
+        </div>
       </Flex>
+      <Icon name="ph:caret-right" class="gameserver-row-arrow" size="16" />
     </Flex>
-  </div>
+  </button>
 </template>
 
 <style lang="scss">
@@ -93,12 +92,13 @@ const state = computed(() => {
 .gameserver-row-header {
   padding: var(--space-xs) var(--space-m);
   border-radius: var(--border-radius-m);
-  background-color: var(--color-bg-raised);
+  background-color: var(--color-bg-medium);
   transition: all 0.2s ease-in-out;
   cursor: pointer;
 
   &.gameserver-row-clickable:hover {
-    transform: translateY(-1px);
+    // transform: translateY(-1px);
+    background-color: var(--color-bg-raised);
 
     .gameserver-row-arrow {
       transform: translateX(4px);
