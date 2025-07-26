@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Accordion, Badge, Card, Flex } from '@dolanske/vui'
+import { Accordion, Badge, Flex } from '@dolanske/vui'
 import Metadata from '@/components/Shared/Metadata.vue'
 
 interface Props {

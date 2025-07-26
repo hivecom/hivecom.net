@@ -4,7 +4,6 @@ import { Badge, Button, CopyClipboard, Dropdown, DropdownItem, Flex } from '@dol
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
-import SteamLink from '@/components/Shared/SteamLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '../Shared/UserLink.vue'
 

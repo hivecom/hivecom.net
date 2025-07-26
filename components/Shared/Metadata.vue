@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Card, Grid, Skeleton } from '@dolanske/vui'
+import { Grid, Skeleton } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 

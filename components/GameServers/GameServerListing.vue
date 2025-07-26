@@ -5,7 +5,6 @@ import { Alert, Badge, Button, Card, Flex, Input, Select, Skeleton } from '@dola
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
-import SteamLink from '@/components/Shared/SteamLink.vue'
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
