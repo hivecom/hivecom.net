@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex } from '@dolanske/vui'
-import constants from '@/constants.json'
+import constants from '~~/constants.json'
 
 interface CalendarButtonsProps {
   /**

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Card, Flex } from '@dolanske/vui'
+import constants from '~~/constants.json'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
-import constants from '@/constants.json'
 
 interface Props {
   supporterCount?: number

@@ -1,6 +1,6 @@
 <script setup>
 import { Flex } from '@dolanske/vui'
-import constants from '@/constants.json'
+import constants from '~~/constants.json'
 
 const links = constants.LINKS
 </script>

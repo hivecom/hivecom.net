@@ -2,7 +2,7 @@
 import { Flex } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
-import constants from '@/constants.json'
+import constants from '~~/constants.json'
 import { getContainerStatus } from '@/lib/utils/containerStatus'
 
 import KPICard from '../KPICard.vue'

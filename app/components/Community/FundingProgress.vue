@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
-import constants from '@/constants.json'
+import constants from '~~/constants.json'
 import { formatCurrency } from '@/lib/utils/currency'
 
 // Data setup

@@ -1,4 +1,4 @@
-import constants from '@/constants.json'
+import constants from '~~/constants.json'
 
 /**
  * Formats a monetary amount in cents to a localized currency string

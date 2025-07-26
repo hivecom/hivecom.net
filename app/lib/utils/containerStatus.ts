@@ -1,4 +1,4 @@
-import constants from '@/constants.json'
+import constants from '~~/constants.json'
 
 // Helper function for container status
 export function getContainerStatus(reportedAt: string, running: boolean, healthy?: boolean | null) {

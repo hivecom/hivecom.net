@@ -4,9 +4,9 @@ import Convert from 'ansi-to-html'
 
 import { computed, nextTick, ref, watch } from 'vue'
 
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import constants from '~~/constants.json'
 
-import constants from '@/constants.json'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
 import { getContainerStatus } from '@/lib/utils/containerStatus'
 import ContainerActions from './ContainerActions.vue'

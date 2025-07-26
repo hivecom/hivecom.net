@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
+import constants from '~~/constants.json'
 import AnnouncementCard from '@/components/Announcements/AnnouncementCard.vue'
 import EventCard from '@/components/Events/EventCard.vue'
-import constants from '@/constants.json'
 
 // Fetch data from database
 const supabase = useSupabaseClient()

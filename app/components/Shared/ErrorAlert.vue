@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Alert, Button, Flex } from '@dolanske/vui'
 
-import constants from '@/constants.json'
+import constants from '~~/constants.json'
 
 const props = defineProps({
   message: {
