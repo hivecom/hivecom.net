@@ -1,7 +1,13 @@
-import process from 'node:process'
+import { fileURLToPath } from 'node:url'
+import process from 'process'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  alias: {
+    '@': fileURLToPath(new URL('./app', import.meta.url)),
+    '~': fileURLToPath(new URL('.', import.meta.url)),
+    '~~': fileURLToPath(new URL('.', import.meta.url)),
+  },
   app: {
     pageTransition: {
       name: 'page',
@@ -21,7 +27,7 @@ export default defineNuxtConfig({
     '@nuxtjs/seo',
     '@nuxt/content',
     '@nuxt/image',
-    'nuxt-icon',
+    '@nuxt/icon',
     'nuxt-og-image',
     '@pinia/nuxt',
     '@vueuse/nuxt',
@@ -29,16 +35,9 @@ export default defineNuxtConfig({
     '@samk-dev/nuxt-vcalendar',
   ],
   css: [
-    '~/assets/index.scss',
+    '@/assets/index.scss',
   ],
   vite: {
-    css: {
-      preprocessorOptions: {
-        scss: {
-          api: 'modern-compiler', // or "modern"
-        },
-      },
-    },
     optimizeDeps: {
       include: ['debug'],
     },

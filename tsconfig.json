@@ -4,16 +4,44 @@
   "compilerOptions": {
     "incremental": true,
     "target": "ES2017",
+    "baseUrl": ".",
     "moduleResolution": "bundler",
+    "paths": {
+      "@/*": [
+        "./app/*"
+      ],
+      "@/components/*": [
+        "./app/components/*"
+      ],
+      "@/lib/*": [
+        "./app/lib/*"
+      ],
+      "@/types/*": [
+        "./types/*"
+      ],
+      "@/composables/*": [
+        "./app/composables/*"
+      ],
+      "@/assets/*": [
+        "./app/assets/*"
+      ],
+      "@/layouts/*": [
+        "./app/layouts/*"
+      ],
+      "@/pages/*": [
+        "./app/pages/*"
+      ],
+      "@/utils/*": [
+        "./app/lib/utils/*"
+      ],
+      "~/*": [
+        "./*"
+      ],
+      "~~/*": [
+        "./*"
+      ]
+    },
     "strict": true,
     "noEmit": true
-  },
-  "paths": {
-    "@/components/*": [
-      "components/*"
-    ],
-    "@/types/*": [
-      "types/*"
-    ]
   }
 }
