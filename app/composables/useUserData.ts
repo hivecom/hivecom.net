@@ -3,7 +3,6 @@
  * Provides efficient caching for user profile and role data
  */
 
-import type { User } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
 import type { CacheConfig } from './useSupabaseCache'
 import type { Database } from '@/types/database.types'
@@ -39,7 +38,7 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
 
   const cache = useSupabaseCache(cacheConfig)
   const supabase = useSupabaseClient<Database>()
-  const currentUser = useSupabaseUser() as globalThis.Ref<User | null>
+  const currentUser = useSupabaseUser()
 
   const user = ref<UserDisplayData | null>(null)
   const loading = ref(false)
@@ -288,7 +287,7 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
 export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOptions = {}) {
   const cache = useSupabaseCache(options)
   const supabase = useSupabaseClient<Database>()
-  const currentUser = useSupabaseUser() as globalThis.Ref<User | null>
+  const currentUser = useSupabaseUser()
 
   const users = ref<Map<string, UserDisplayData>>(new Map())
   const loading = ref(false)

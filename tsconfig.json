@@ -3,7 +3,7 @@
   "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
     "incremental": true,
-    "target": "ES2017",
+    "target": "ES2018",
     "baseUrl": ".",
     "moduleResolution": "bundler",
     "paths": {
@@ -39,11 +39,18 @@
       ],
       "~~/*": [
         "./*"
+      ],
+      "#imports": [ // Fixes "Cannot find module '#imports' or its corresponding type declarations."
+        ".nuxt/imports.d.ts"
+      ], // Fixes "Cannot find module '#app/nuxt' or its corresponding type declarations."
+      "#app/nuxt": [
+        "./node_modules/nuxt/dist/app/index"
       ]
     },
     "resolveJsonModule": true,
     "strict": true,
-    "noEmit": true
+    "noEmit": true,
+    "skipLibCheck": true
   },
   "files": [
     "content.config.ts"

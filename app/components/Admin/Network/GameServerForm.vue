@@ -115,7 +115,7 @@ const selectedRegionComputed = computed({
     return option ? [option] : []
   },
   set: (value: SelectOption[] | null | undefined) => {
-    gameserverForm.value.region = (value && value.length > 0) ? value[0].value as Tables<'gameservers'>['region'] : null
+    gameserverForm.value.region = (value && value.length > 0) ? value[0]!.value as Tables<'gameservers'>['region'] : null
   },
 })
 
@@ -127,7 +127,7 @@ const selectedGameComputed = computed({
     return option ? [option] : []
   },
   set: (value: SelectOption[] | null | undefined) => {
-    gameserverForm.value.game = (value && value.length > 0) ? Number(value[0].value) : null
+    gameserverForm.value.game = (value && value.length > 0) ? Number(value[0]!.value) : null
   },
 })
 
@@ -139,7 +139,7 @@ const selectedContainerComputed = computed({
     return option ? [option] : []
   },
   set: (value: SelectOption[] | null | undefined) => {
-    gameserverForm.value.container = (value && value.length > 0) ? value[0].value : null
+    gameserverForm.value.container = (value && value.length > 0) ? value[0]!.value : null
   },
 })
 
@@ -151,7 +151,7 @@ const selectedAdministratorComputed = computed({
     return option ? [option] : []
   },
   set: (value: SelectOption[] | null | undefined) => {
-    gameserverForm.value.administrator = (value && value.length > 0) ? value[0].value : null
+    gameserverForm.value.administrator = (value && value.length > 0) ? value[0]!.value : null
   },
 })
 

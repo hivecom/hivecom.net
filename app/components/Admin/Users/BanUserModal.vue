@@ -40,7 +40,7 @@ function handleBan() {
   if (useCustomDuration.value === 'custom') {
     duration = customDuration.value
   }
-  else if (selectedDuration.value.length > 0) {
+  else if (selectedDuration.value.length > 0 && selectedDuration.value[0]) {
     duration = selectedDuration.value[0].value
   }
 

@@ -191,7 +191,7 @@ function handleRefreshLogs() {
     // Use the time period selection (since parameter)
     refreshLogsConfig.value = {
       tail: logTail.value,
-      since: logTimePeriod.value[0].value,
+      since: logTimePeriod.value[0]?.value,
     }
   }
 
@@ -206,11 +206,17 @@ watch(() => useCustomDateRange.value, (newValue) => {
     if (!fromDate.value) {
       const defaultDate = new Date()
       defaultDate.setHours(defaultDate.getHours() - 24) // Default to 24 hours ago
-      fromDate.value = defaultDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
+      const dateString = defaultDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
+      if (dateString) {
+        fromDate.value = dateString
+      }
     }
     if (!toDate.value) {
       const now = new Date()
-      toDate.value = now.toISOString().split('T')[0] // Format as YYYY-MM-DD
+      const dateString = now.toISOString().split('T')[0] // Format as YYYY-MM-DD
+      if (dateString) {
+        toDate.value = dateString
+      }
     }
   }
 })

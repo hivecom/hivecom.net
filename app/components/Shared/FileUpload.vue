@@ -88,8 +88,9 @@ function handleDrop(event: DragEvent) {
   dragOver.value = false
 
   const files = event.dataTransfer?.files
-  if (files?.length) {
-    processFile(files[0])
+  const file = files?.[0]
+  if (file) {
+    processFile(file)
   }
 }
 

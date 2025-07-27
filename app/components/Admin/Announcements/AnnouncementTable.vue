@@ -69,9 +69,9 @@ const pinnedOptions: SelectOption[] = [
 // Compute unique tag options from all announcements
 const tagOptions = computed<SelectOption[]>(() => {
   const allTags = new Set<string>()
-  announcements.value.forEach((announcement) => {
+  announcements.value.forEach((announcement: QueryAnnouncement) => {
     if (announcement.tags) {
-      announcement.tags.forEach(tag => allTags.add(tag))
+      announcement.tags.forEach((tag: string) => allTags.add(tag))
     }
   })
   return Array.from(allTags).sort().map(tag => ({
@@ -82,7 +82,7 @@ const tagOptions = computed<SelectOption[]>(() => {
 
 // Filter based on search, pinned status, and tags
 const filteredData = computed<TransformedAnnouncement[]>(() => {
-  const filtered = announcements.value.filter((item) => {
+  const filtered = announcements.value.filter((item: QueryAnnouncement) => {
     // Filter by search term
     if (search.value && !Object.values(item).some((value) => {
       if (value === null || value === undefined)
@@ -114,7 +114,7 @@ const filteredData = computed<TransformedAnnouncement[]>(() => {
   })
 
   // Transform the data into explicit key-value pairs
-  return filtered.map(announcement => ({
+  return filtered.map((announcement: QueryAnnouncement) => ({
     Title: announcement.title,
     Description: announcement.description || 'No description',
     Tags: announcement.tags || null,

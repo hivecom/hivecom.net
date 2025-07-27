@@ -30,24 +30,24 @@ const errorMessage = ref('')
 const totalComplaints = computed(() => complaints.value.length)
 
 const pendingComplaints = computed(() =>
-  complaints.value.filter(complaint => !complaint.acknowledged && complaint.response === null).length,
+  complaints.value.filter((complaint: QueryData<typeof complaintsQuery>[0]) => !complaint.acknowledged && complaint.response === null).length,
 )
 
 const acknowledgedComplaints = computed(() =>
-  complaints.value.filter(complaint =>
+  complaints.value.filter((complaint: QueryData<typeof complaintsQuery>[0]) =>
     complaint.acknowledged && !complaint.response,
   ).length,
 )
 
 const respondedComplaints = computed(() =>
-  complaints.value.filter(complaint => complaint.response !== null).length,
+  complaints.value.filter((complaint: QueryData<typeof complaintsQuery>[0]) => complaint.response !== null).length,
 )
 
 const recentComplaints = computed(() => {
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  return complaints.value.filter(complaint =>
+  return complaints.value.filter((complaint: QueryData<typeof complaintsQuery>[0]) =>
     new Date(complaint.created_at) >= thirtyDaysAgo,
   ).length
 })

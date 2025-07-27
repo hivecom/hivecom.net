@@ -94,7 +94,7 @@ const selectedRoleComputed = computed({
     return option ? [option] : []
   },
   set: (value: SelectOption[] | null | undefined) => {
-    selectedRole.value = (value && value.length > 0) ? value[0].value : 'user'
+    selectedRole.value = (value && value.length > 0 && value[0]) ? value[0].value : 'user'
   },
 })
 

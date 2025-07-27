@@ -76,7 +76,7 @@ const regionOptions: SelectOption[] = [
 // Compute unique game options for the filter
 const gameOptions = computed<SelectOption[]>(() => {
   const uniqueGames = new Map<number, string>()
-  gameservers.value.forEach((gameserver) => {
+  gameservers.value.forEach((gameserver: QueryGameserver) => {
     if (gameserver.game?.name) {
       uniqueGames.set(gameserver.game.id, gameserver.game.name)
     }
@@ -90,7 +90,7 @@ const gameOptions = computed<SelectOption[]>(() => {
 
 // Filter based on search, region, and game
 const filteredData = computed<TransformedGameserver[]>(() => {
-  const filtered = gameservers.value.filter((item) => {
+  const filtered = gameservers.value.filter((item: QueryGameserver) => {
     // Filter by search term
     if (search.value && !Object.values(item).some((value) => {
       if (value === null || value === undefined)
@@ -106,8 +106,8 @@ const filteredData = computed<TransformedGameserver[]>(() => {
     }
 
     // Filter by region
-    if (regionFilter.value) {
-      const regionFilterValue = regionFilter.value[0].value
+    if (regionFilter.value && regionFilter.value.length > 0) {
+      const regionFilterValue = regionFilter.value[0]?.value
       if (regionFilterValue === 'none') {
         // Filter for game servers with no region (null or undefined)
         if (item.region) {
@@ -120,8 +120,8 @@ const filteredData = computed<TransformedGameserver[]>(() => {
     }
 
     // Filter by game
-    if (gameFilter.value && item.game) {
-      const gameFilterValue = Number.parseInt(gameFilter.value[0].value)
+    if (gameFilter.value && gameFilter.value.length > 0 && item.game) {
+      const gameFilterValue = Number.parseInt(gameFilter.value[0]?.value || '0')
       if (item.game.id !== gameFilterValue) {
         return false
       }
@@ -131,7 +131,7 @@ const filteredData = computed<TransformedGameserver[]>(() => {
   })
 
   // Transform the data into explicit key-value pairs
-  return filtered.map(gameserver => ({
+  return filtered.map((gameserver: QueryGameserver) => ({
     Name: gameserver.name,
     Game: gameserver.game?.name || 'Unknown',
     Region: gameserver.region || 'Unknown',

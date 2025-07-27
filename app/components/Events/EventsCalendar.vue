@@ -124,7 +124,7 @@ function onDayClick(day: { attributes?: Array<{ customData?: Tables<'events'> }>
     ?.filter(attr => attr.customData)
     ?.map(attr => attr.customData!)
 
-  if (dayEvents && dayEvents.length > 0) {
+  if (dayEvents && dayEvents.length > 0 && dayEvents[0]) {
     // If only one event, open it directly
     if (dayEvents.length === 1) {
       emit('openEvent', dayEvents[0])

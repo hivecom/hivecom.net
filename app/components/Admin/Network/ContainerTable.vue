@@ -114,7 +114,7 @@ const containerAction = ref<ContainerAction | null>(null)
 // Compute unique server options for the filter
 const serverOptions = computed<SelectOption[]>(() => {
   const uniqueServers = new Set<string>()
-  containers.value.forEach((container) => {
+  containers.value.forEach((container: ContainerWithServer) => {
     if (container.server) {
       uniqueServers.add(container.server.address)
     }
@@ -140,7 +140,7 @@ const statusOptions: SelectOption[] = [
 
 // Filter based on search, server, and status
 const filteredData = computed<TransformedContainer[]>(() => {
-  const filtered = containers.value.filter((item) => {
+  const filtered = containers.value.filter((item: ContainerWithServer) => {
     // Filter by search term
     if (search.value && !Object.values(item).some((value) => {
       if (value === null || value === undefined)
@@ -151,8 +151,8 @@ const filteredData = computed<TransformedContainer[]>(() => {
     }
 
     // Filter by server
-    if (serverFilter.value) {
-      const serverFilterValue = serverFilter.value[0].value
+    if (serverFilter.value && serverFilter.value.length > 0) {
+      const serverFilterValue = serverFilter.value[0]!.value
       const serverAddress = item.server?.address || 'Unknown'
 
       if (serverAddress !== serverFilterValue) {
@@ -161,8 +161,8 @@ const filteredData = computed<TransformedContainer[]>(() => {
     }
 
     // Filter by status
-    if (statusFilter.value) {
-      const statusFilterValue = statusFilter.value[0].value
+    if (statusFilter.value && statusFilter.value.length > 0) {
+      const statusFilterValue = statusFilter.value[0]!.value
       const status = getContainerStatus(item.reported_at, item.running, item.healthy)
       if (status !== statusFilterValue) {
         return false
@@ -173,7 +173,7 @@ const filteredData = computed<TransformedContainer[]>(() => {
   })
 
   // Transform the data into explicit key-value pairs
-  return filtered.map(container => ({
+  return filtered.map((container: ContainerWithServer) => ({
     'Name': container.name,
     'Server': container.server ? container.server.address : 'Unknown',
     'Status': getContainerStatus(container.reported_at, container.running, container.healthy),
@@ -235,7 +235,7 @@ watch(refreshContainerDetails, async (shouldRefresh) => {
       await fetchContainers()
 
       // Then find and update the selected container with fresh data
-      const refreshedContainer = containers.value.find(c => c.name === containerName)
+      const refreshedContainer = containers.value.find((c: ContainerWithServer) => c.name === containerName)
 
       if (refreshedContainer) {
         // Update the selected container with the refreshed data
@@ -301,7 +301,7 @@ async function handleControl(container: ContainerWithServer, action: 'start' | '
     if (!actionLoading.value[container.name]) {
       actionLoading.value[container.name] = {}
     }
-    actionLoading.value[container.name][action] = true
+    actionLoading.value[container.name]![action] = true
 
     await props.controlContainer(container, action)
 
@@ -314,7 +314,7 @@ async function handleControl(container: ContainerWithServer, action: 'start' | '
   finally {
     // Clear loading state
     if (actionLoading.value[container.name]) {
-      actionLoading.value[container.name][action] = false
+      actionLoading.value[container.name]![action] = false
     }
   }
 }
@@ -327,7 +327,7 @@ async function handlePrune(container: ContainerWithServer) {
       actionLoading.value[container.name] = {}
     }
 
-    actionLoading.value[container.name].prune = true
+    actionLoading.value[container.name]!.prune = true
 
     // Only proceed if the container is stale
     const status = getContainerStatus(container.reported_at, container.running, container.healthy)
@@ -363,7 +363,7 @@ async function handlePrune(container: ContainerWithServer) {
   finally {
     // Clear loading state
     if (actionLoading.value[container.name]) {
-      actionLoading.value[container.name].prune = false
+      actionLoading.value[container.name]!.prune = false
     }
   }
 }

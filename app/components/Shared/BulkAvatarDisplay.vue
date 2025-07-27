@@ -45,8 +45,12 @@ const visibleUserIds = computed(() => {
     // Create a copy of the array and shuffle it
     const shuffled = [...props.userIds]
     for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+      const j = Math.floor(Math.random() * (i + 1))
+      const temp = shuffled[i]
+      if (temp !== undefined && shuffled[j] !== undefined) {
+        shuffled[i] = shuffled[j]
+        shuffled[j] = temp
+      }
     }
     return shuffled.slice(0, props.maxUsers)
   }

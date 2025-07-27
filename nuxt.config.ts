@@ -19,6 +19,9 @@ export default defineNuxtConfig({
   },
   devtools: { enabled: true },
   compatibilityDate: '2024-09-25',
+  typescript: {
+    typeCheck: true,
+  },
   modules: [
     '@nuxtjs/supabase',
     '@nuxtjs/sitemap',

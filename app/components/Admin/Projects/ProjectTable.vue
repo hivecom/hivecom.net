@@ -56,9 +56,9 @@ const tagFilter = ref<SelectOption[]>([])
 // Compute unique tag options from all projects
 const tagOptions = computed<SelectOption[]>(() => {
   const allTags = new Set<string>()
-  projects.value.forEach((project) => {
+  projects.value.forEach((project: QueryProject) => {
     if (project.tags) {
-      project.tags.forEach(tag => allTags.add(tag))
+      project.tags.forEach((tag: string) => allTags.add(tag))
     }
   })
   return Array.from(allTags).sort().map(tag => ({
@@ -77,7 +77,7 @@ const isEditMode = ref(false)
 
 // Filter based on search and tags
 const filteredData = computed<TransformedProject[]>(() => {
-  const filtered = projects.value.filter((item) => {
+  const filtered = projects.value.filter((item: QueryProject) => {
     // Filter by search term
     if (search.value && !Object.values(item).some((value) => {
       if (value === null || value === undefined)
@@ -99,7 +99,7 @@ const filteredData = computed<TransformedProject[]>(() => {
   })
 
   // Transform the data into explicit key-value pairs
-  return filtered.map(project => ({
+  return filtered.map((project: QueryProject) => ({
     Title: project.title,
     Tags: project.tags || null,
     Owner: project.owner || null, // Store the user ID, not the username

@@ -64,14 +64,14 @@ const filteredComplaints = computed(() => {
   // Apply search filter
   if (search.value) {
     const searchLower = search.value.toLowerCase()
-    filtered = filtered.filter(complaint =>
+    filtered = filtered.filter((complaint: QueryData<typeof complaintsQuery>[0]) =>
       complaint.message.toLowerCase().includes(searchLower),
     )
   }
 
   // Apply status filter
   if (statusFilter.value.length > 0) {
-    filtered = filtered.filter((complaint) => {
+    filtered = filtered.filter((complaint: QueryData<typeof complaintsQuery>[0]) => {
       const status = getComplaintStatus(complaint)
       return statusFilter.value.some(filter => filter.value === status)
     })
@@ -154,7 +154,7 @@ async function handleAcknowledge(complaintId: number) {
     }
 
     // Update local data
-    const complaint = complaints.value.find(c => c.id === complaintId)
+    const complaint = complaints.value.find((c: QueryData<typeof complaintsQuery>[0]) => c.id === complaintId)
     if (complaint) {
       complaint.acknowledged = true
     }
@@ -201,7 +201,7 @@ async function handleRespond(data: { id: number, response: string }) {
     }
 
     // Update local data
-    const complaint = complaints.value.find(c => c.id === data.id)
+    const complaint = complaints.value.find((c: QueryData<typeof complaintsQuery>[0]) => c.id === data.id)
     if (complaint) {
       complaint.response = data.response
       complaint.responded_at = updateData.responded_at!
@@ -253,7 +253,7 @@ async function handleUpdateResponse(data: { id: number, response: string }) {
     }
 
     // Update local data
-    const complaint = complaints.value.find(c => c.id === data.id)
+    const complaint = complaints.value.find((c: QueryData<typeof complaintsQuery>[0]) => c.id === data.id)
     if (complaint) {
       complaint.response = data.response
       complaint.responded_at = updateData.responded_at!
@@ -304,7 +304,7 @@ async function handleRemoveResponse(complaintId: number) {
     }
 
     // Update local data
-    const complaint = complaints.value.find(c => c.id === complaintId)
+    const complaint = complaints.value.find((c: QueryData<typeof complaintsQuery>[0]) => c.id === complaintId)
     if (complaint) {
       complaint.response = null
       complaint.responded_at = null
@@ -350,7 +350,7 @@ async function handleDeleteComplaint(complaintId: number) {
     }
 
     // Remove from local data
-    const index = complaints.value.findIndex(c => c.id === complaintId)
+    const index = complaints.value.findIndex((c: QueryData<typeof complaintsQuery>[0]) => c.id === complaintId)
     if (index !== -1) {
       complaints.value.splice(index, 1)
     }

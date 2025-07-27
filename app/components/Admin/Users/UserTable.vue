@@ -296,17 +296,20 @@ watch(() => userAction.value, (action) => {
     // Emit the action to the parent component
     emit('action', action)
 
+    const actionType = action.type // Store in variable for type safety
+    const userId = action.user.id
+
     // Set loading state
-    if (!actionLoading.value[action.user.id]) {
-      actionLoading.value[action.user.id] = {}
+    if (!actionLoading.value[userId]) {
+      actionLoading.value[userId] = {}
     }
-    actionLoading.value[action.user.id][action.type] = true
+    actionLoading.value[userId][actionType] = true
 
     // After action completes, refresh the data
     setTimeout(() => {
       fetchUsers()
-      if (actionLoading.value[action.user.id] && action.type !== null) {
-        actionLoading.value[action.user.id][action.type] = false
+      if (actionLoading.value[userId] && actionType) {
+        actionLoading.value[userId][actionType] = false
       }
     }, 1500)
   }

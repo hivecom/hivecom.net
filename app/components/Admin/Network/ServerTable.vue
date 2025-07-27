@@ -62,7 +62,7 @@ const statusOptions: SelectOption[] = [
 
 // Filter based on search and status
 const filteredData = computed<TransformedServer[]>(() => {
-  const filtered = servers.value.filter((item) => {
+  const filtered = servers.value.filter((item: Tables<'servers'>) => {
     // Filter by search term
     if (search.value && !Object.values(item).some((value) => {
       if (value === null || value === undefined)
@@ -73,8 +73,8 @@ const filteredData = computed<TransformedServer[]>(() => {
     }
 
     // Filter by status
-    if (statusFilter.value) {
-      const statusFilterValue = statusFilter.value[0].value
+    if (statusFilter.value && statusFilter.value.length > 0) {
+      const statusFilterValue = statusFilter.value[0]?.value
       const status = item.active ? 'active' : 'inactive'
       if (status !== statusFilterValue) {
         return false
@@ -85,7 +85,7 @@ const filteredData = computed<TransformedServer[]>(() => {
   })
 
   // Transform the data into explicit key-value pairs
-  return filtered.map(server => ({
+  return filtered.map((server: Tables<'servers'>) => ({
     'Address': server.address,
     'Status': server.active ? 'active' : 'inactive',
     'Docker Control': server.docker_control,

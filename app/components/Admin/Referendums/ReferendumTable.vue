@@ -96,7 +96,7 @@ function getVoteCount(referendum: QueryReferendum): number {
 
 // Filter based on search, status, and type
 const filteredData = computed<TransformedReferendum[]>(() => {
-  const filtered = referendums.value.filter((item) => {
+  const filtered = referendums.value.filter((item: QueryReferendum) => {
     // Filter by search term
     if (search.value && !Object.values(item).some((value) => {
       if (value === null || value === undefined)

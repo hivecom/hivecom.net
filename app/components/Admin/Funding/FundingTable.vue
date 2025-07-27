@@ -7,6 +7,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatCurrency } from '@/lib/utils/currency'
+import { formatMonth } from '@/lib/utils/date'
 import FundingDetails from './FundingDetails.vue'
 import FundingFilters from './FundingFilters.vue'
 

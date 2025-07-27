@@ -54,7 +54,7 @@ const state = computed(() => {
         <div class="region-badge">
           <RegionIndicator :region="props.gameserver.region" show-label />
         </div>
-        <div v-if="props.gameserver.addresses" data-dropdown-ignore @click.stop="noop">
+        <div v-if="props.gameserver.addresses" data-dropdown-ignore @click.stop="() => {}">
           <CopyClipboard v-if="props.gameserver.addresses.length === 1" :text="`${props.gameserver.addresses[0]}${props.gameserver.port ? `:${props.gameserver.port}` : ''}`" confirm>
             <Button size="s" variant="gray">
               Join

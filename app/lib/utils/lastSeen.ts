@@ -89,14 +89,29 @@ export async function updateCurrentUserLastSeen() {
  */
 export function useLastSeenTracking() {
   // Return user or null if we can't access it
+  function isRefUser(val: unknown): val is globalThis.Ref<User | null> {
+    return (
+      val !== null
+      && typeof val === 'object'
+      && Object.prototype.hasOwnProperty.call(val, 'value')
+      && (
+        (val as { value: unknown }).value === null
+        || typeof (val as { value: unknown }).value === 'object'
+        || typeof (val as { value: unknown }).value === 'string'
+      )
+    )
+  }
+
   const getCurrentUser = (): globalThis.Ref<User | null> => {
     try {
-      // Use proper type assertion for useSupabaseUser
-      const user = useSupabaseUser() as globalThis.Ref<User | null>
-      return user
+      const user = useSupabaseUser() as unknown
+      if (isRefUser(user)) {
+        return user
+      }
+      return ref(null)
     }
     catch {
-      return { value: null } as globalThis.Ref<User | null>
+      return ref(null)
     }
   }
 

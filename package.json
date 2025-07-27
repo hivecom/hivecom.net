@@ -11,7 +11,7 @@
     "preview": "nuxi preview",
     "postinstall": "nuxi prepare",
     "supabase": "npx supabase",
-    "lint": "eslint .",
+    "lint": "eslint . && nuxi typecheck",
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
@@ -48,6 +48,7 @@
     "eslint-plugin-format": "^1.0.1",
     "eslint-plugin-vue": "^10.3.0",
     "nuxi": "^3.26.4",
-    "supabase": "^2.30.4"
+    "supabase": "^2.30.4",
+    "vue-tsc": "^3.0.4"
   }
 }

@@ -86,7 +86,7 @@ const selectedOwnerComputed = computed({
     return option ? [option] : []
   },
   set: (value: SelectOption[] | null | undefined) => {
-    projectForm.value.owner = (value && value.length > 0) ? value[0].value : null
+    projectForm.value.owner = (value && value.length > 0 && value[0]) ? value[0].value : null
   },
 })
 
