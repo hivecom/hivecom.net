@@ -4,11 +4,6 @@ import { ref } from 'vue'
 import ComplaintKPIs from '@/components/Admin/Complaints/ComplaintKPIs.vue'
 import ComplaintList from '@/components/Admin/Complaints/ComplaintList.vue'
 
-// Define page metadata
-definePageMeta({
-  layout: 'admin',
-})
-
 // Refresh signal coordination between components
 const refreshSignal = ref(0)
 

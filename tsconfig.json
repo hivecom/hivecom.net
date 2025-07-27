@@ -41,7 +41,11 @@
         "./*"
       ]
     },
+    "resolveJsonModule": true,
     "strict": true,
     "noEmit": true
-  }
+  },
+  "files": [
+    "content.config.ts"
+  ]
 }

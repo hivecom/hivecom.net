@@ -45,7 +45,7 @@ const activeTab = ref('')
 
 // Watch for available tabs changes and set default
 watch(availableTabs, (newTabs) => {
-  if (newTabs.length > 0 && !activeTab.value) {
+  if (newTabs.length > 0 && !activeTab.value && newTabs[0]) {
     activeTab.value = newTabs[0].value
   }
 }, { immediate: true })

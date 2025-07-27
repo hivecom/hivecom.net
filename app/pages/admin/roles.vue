@@ -65,7 +65,9 @@ const permissionsByRole = computed(() => {
 
   // Sort permissions within each role
   Object.keys(grouped).forEach((role) => {
-    grouped[role].sort()
+    if (grouped[role]) {
+      grouped[role].sort()
+    }
   })
 
   return grouped
@@ -80,10 +82,16 @@ const groupedPermissions = computed(() => {
 
     permissions.forEach((permission) => {
       const [category] = permission.split('.')
-      if (!result[role][category]) {
-        result[role][category] = []
+      if (category) {
+        // Ensure role object exists
+        if (!result[role]) {
+          result[role] = {}
+        }
+        if (!result[role][category]) {
+          result[role][category] = []
+        }
+        result[role][category].push(permission)
       }
-      result[role][category].push(permission)
     })
   })
 
@@ -125,7 +133,7 @@ function formatPermissionName(permission: string): string {
   const [category, action, scope] = parts
 
   // Handle special formatting for user permissions with scope
-  if (scope === 'own') {
+  if (scope === 'own' && action) {
     return `${action.charAt(0).toUpperCase() + action.slice(1)} own ${category}`
   }
 
@@ -152,7 +160,10 @@ function formatPermissionName(permission: string): string {
   }
 
   // Default formatting
-  return `${action.charAt(0).toUpperCase() + action.slice(1)} ${category}`
+  if (action) {
+    return `${action.charAt(0).toUpperCase() + action.slice(1)} ${category}`
+  }
+  return category || permission
 }
 
 // Format category name for display

@@ -294,45 +294,47 @@ async function handleUserDelete(userId: string) {
 </script>
 
 <template>
-  <Flex column gap="l" expand>
-    <!-- Page Header -->
-    <Flex column :gap="0">
-      <h1>Users</h1>
-      <p class="color-text-light">
-        Manage user accounts, permissions, and ban status
-      </p>
+  <div>
+    <Flex column gap="l" expand>
+      <!-- Page Header -->
+      <Flex column :gap="0">
+        <h1>Users</h1>
+        <p class="color-text-light">
+          Manage user accounts, permissions, and ban status
+        </p>
+      </Flex>
+
+      <!-- KPIs Section -->
+      <UserKPIs v-model:refresh-signal="refreshSignal" />
+
+      <!-- Users Table -->
+      <UserTable
+        v-model:refresh-signal="refreshSignal"
+        @user-selected="handleUserSelected"
+        @action="handleUserAction"
+        @update:refresh-signal="handleRefreshSignal"
+      />
     </Flex>
 
-    <!-- KPIs Section -->
-    <UserKPIs v-model:refresh-signal="refreshSignal" />
-
-    <!-- Users Table -->
-    <UserTable
-      v-model:refresh-signal="refreshSignal"
-      @user-selected="handleUserSelected"
-      @action="handleUserAction"
-      @update:refresh-signal="handleRefreshSignal"
+    <!-- User Details Side Panel -->
+    <UserDetails
+      v-model:is-open="showUserDetails"
+      v-model:user-action="userAction"
+      v-model:refresh-user="userRefreshTrigger"
+      :user="selectedUser"
+      @edit="handleEditFromDetails"
     />
-  </Flex>
 
-  <!-- User Details Side Panel -->
-  <UserDetails
-    v-model:is-open="showUserDetails"
-    v-model:user-action="userAction"
-    v-model:refresh-user="userRefreshTrigger"
-    :user="selectedUser"
-    @edit="handleEditFromDetails"
-  />
-
-  <!-- User Form Modal -->
-  <UserForm
-    v-if="showUserForm"
-    v-model:is-open="showUserForm"
-    :user="userToEdit"
-    :is-edit-mode="isEditMode"
-    @save="handleUserSave"
-    @delete="handleUserDelete"
-  />
+    <!-- User Form Modal -->
+    <UserForm
+      v-if="showUserForm"
+      v-model:is-open="showUserForm"
+      :user="userToEdit"
+      :is-edit-mode="isEditMode"
+      @save="handleUserSave"
+      @delete="handleUserDelete"
+    />
+  </div>
 </template>
 
 <style lang="scss" scoped>

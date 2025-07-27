@@ -156,227 +156,229 @@ onMounted(async () => {
 </script>
 
 <template>
-  <!-- Hero section -->
-  <section class="hero-section">
-    <div class="hero-section__globe-container">
-      <NuxtImg src="landing/globe.svg" alt="Globe" class="hero-section__globe-image" />
-    </div>
-    <h1 class="hero-section__title">
-      HIVECOM
-    </h1>
-    <p class="hero-section__tagline">
-      A community of friends from all around the world. Creating a space to grow and projects to thrive.
-    </p>
-    <div class="hero-section__actions">
-      <Button variant="fill" color="primary" @click="scrollToPlatforms">
-        Join Community
-      </Button>
-      <Button variant="accent" @click="navigateTo('/community')">
-        Learn More
-      </Button>
-
-      <!-- Ultra compact announcement -->
-      <div v-if="pinnedAnnouncements.length > 0 && !loading" class="hero-section__latest-announcement">
-        <AnnouncementCard
-          :announcement="pinnedAnnouncements[0]"
-          :is-latest="true"
-          ultra-compact
-        />
+  <div class="page-landing">
+    <!-- Hero section -->
+    <section class="hero-section">
+      <div class="hero-section__globe-container">
+        <NuxtImg src="landing/globe.svg" alt="Globe" class="hero-section__globe-image" />
       </div>
-    </div>
+      <h1 class="hero-section__title">
+        HIVECOM
+      </h1>
+      <p class="hero-section__tagline">
+        A community of friends from all around the world. Creating a space to grow and projects to thrive.
+      </p>
+      <div class="hero-section__actions">
+        <Button variant="fill" color="primary" @click="scrollToPlatforms">
+          Join Community
+        </Button>
+        <Button variant="accent" @click="navigateTo('/community')">
+          Learn More
+        </Button>
 
-    <!-- Community Stats -->
-    <div class="hero-section__stats">
+        <!-- Ultra compact announcement -->
+        <div v-if="pinnedAnnouncements.length > 0 && !loading && pinnedAnnouncements[0]" class="hero-section__latest-announcement">
+          <AnnouncementCard
+            :announcement="pinnedAnnouncements[0]"
+            :is-latest="true"
+            ultra-compact
+          />
+        </div>
+      </div>
+
+      <!-- Community Stats -->
+      <div class="hero-section__stats">
+        <ClientOnly>
+          <Divider />
+        </ClientOnly>
+
+        <div class="hero-section__stats-grid">
+          <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
+            <Flex x-center class="hero-section__stats-value">
+              <template v-if="loading">
+                <Skeleton height="2.5rem" width="4rem" />
+              </template>
+              <template v-else>
+                {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
+              </template>
+            </Flex>
+            <span class="text-xs color-text-lighter">Community Members</span>
+          </NuxtLink>
+
+          <NuxtLink to="/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
+            <Flex x-center class="hero-section__stats-value">
+              <template v-if="loading">
+                <Skeleton height="2.5rem" width="2rem" />
+              </template>
+              <template v-else>
+                {{ communityStats.gameservers }}
+              </template>
+            </Flex>
+            <span class="text-xs color-text-lighter">Game Servers</span>
+          </NuxtLink>
+
+          <div class="hero-section__stats-card">
+            <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
+            <span class="text-xs color-text-lighter">Founded in 2013</span>
+          </div>
+
+          <NuxtLink to="/community/projects" class="hero-section__stats-card hero-section__stats-card--clickable">
+            <Flex x-center class="hero-section__stats-value">
+              <template v-if="loading">
+                <Skeleton height="2.5rem" width="2rem" />
+              </template>
+              <template v-else>
+                {{ communityStats.projects }}
+              </template>
+            </Flex>
+            <span class="text-xs color-text-lighter">Community Projects</span>
+          </NuxtLink>
+        </div>
+      </div>
+    </section>
+
+    <!-- About section -->
+    <section class="about-section">
+      <h2 class="heading">
+        About Us
+      </h2>
       <ClientOnly>
         <Divider />
       </ClientOnly>
 
-      <div class="hero-section__stats-grid">
-        <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
-          <Flex x-center class="hero-section__stats-value">
-            <template v-if="loading">
-              <Skeleton height="2.5rem" width="4rem" />
-            </template>
-            <template v-else>
-              {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
-            </template>
-          </Flex>
-          <span class="text-xs color-text-lighter">Community Members</span>
-        </NuxtLink>
-
-        <NuxtLink to="/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
-          <Flex x-center class="hero-section__stats-value">
-            <template v-if="loading">
-              <Skeleton height="2.5rem" width="2rem" />
-            </template>
-            <template v-else>
-              {{ communityStats.gameservers }}
-            </template>
-          </Flex>
-          <span class="text-xs color-text-lighter">Game Servers</span>
-        </NuxtLink>
-
-        <div class="hero-section__stats-card">
-          <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
-          <span class="text-xs color-text-lighter">Founded in 2013</span>
-        </div>
-
-        <NuxtLink to="/community/projects" class="hero-section__stats-card hero-section__stats-card--clickable">
-          <Flex x-center class="hero-section__stats-value">
-            <template v-if="loading">
-              <Skeleton height="2.5rem" width="2rem" />
-            </template>
-            <template v-else>
-              {{ communityStats.projects }}
-            </template>
-          </Flex>
-          <span class="text-xs color-text-lighter">Community Projects</span>
-        </NuxtLink>
+      <div class="about-section__content">
+        <p>
+          The community was originally created by the three server administrators: Catlinman (now zealsprince), Jokler and Trif.
+          All three started hosting a server back in 2013 on a in-home Raspberry Pi but the growing demand for a better connection
+          and 24/7 uptime made them reconsider this small hosting plan. They later that year went over to actually acquiring
+          a dedicated TeamSpeak server from Fragnet but later on switched to what is now a server entirely run and managed by
+          Hivecom itself.
+        </p>
+        <p>
+          Hivecom has come a long way since then and wouldn't be anything without its members. We're incredibly thankful
+          for what we have now considering this all started with three friends getting together to chat and hang out.
+        </p>
+        <p>
+          We are always happy to welcome anyone willing to join us for this journey.
+        </p>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- About section -->
-  <section class="about-section">
-    <h2 class="heading">
-      About Us
-    </h2>
-    <ClientOnly>
-      <Divider />
-    </ClientOnly>
+    <!-- Join us section -->
+    <section class="join-section">
+      <!-- <Card> -->
+      <h2 class="heading">
+        Join us
+      </h2>
+      <ClientOnly>
+        <Divider />
+      </ClientOnly>
+      <div class="join-section__container">
+        <p class="join-section__text">
+          We mainly talk on IRC and TeamSpeak. If Discord is your thing, we have a bot connecting both services so you won't be excluded.
+        </p>
 
-    <div class="about-section__content">
-      <p>
-        The community was originally created by the three server administrators: Catlinman (now zealsprince), Jokler and Trif.
-        All three started hosting a server back in 2013 on a in-home Raspberry Pi but the growing demand for a better connection
-        and 24/7 uptime made them reconsider this small hosting plan. They later that year went over to actually acquiring
-        a dedicated TeamSpeak server from Fragnet but later on switched to what is now a server entirely run and managed by
-        Hivecom itself.
-      </p>
-      <p>
-        Hivecom has come a long way since then and wouldn't be anything without its members. We're incredibly thankful
-        for what we have now considering this all started with three friends getting together to chat and hang out.
-      </p>
-      <p>
-        We are always happy to welcome anyone willing to join us for this journey.
-      </p>
-    </div>
-  </section>
-
-  <!-- Join us section -->
-  <section class="join-section">
-    <!-- <Card> -->
-    <h2 class="heading">
-      Join us
-    </h2>
-    <ClientOnly>
-      <Divider />
-    </ClientOnly>
-    <div class="join-section__container">
-      <p class="join-section__text">
-        We mainly talk on IRC and TeamSpeak. If Discord is your thing, we have a bot connecting both services so you won't be excluded.
-      </p>
-
-      <div id="platforms" class="join-section__platforms">
-        <Card v-for="platform in platforms" :key="platform.title">
-          <div class="join-section__platform-item">
-            <div class="join-section__platform-content">
-              <Icon :name="platform.icon" class="platform-icon" />
-              <h3 class="join-section__platform-title">
-                {{ platform.title }}
-              </h3>
-              <Tooltip v-if="platform.note !== ''" placement="top">
-                <Icon name="ph:info" class="join-section__platform-info" />
-                <template #tooltip>
-                  <p>{{ platform.note }}</p>
+        <div id="platforms" class="join-section__platforms">
+          <Card v-for="platform in platforms" :key="platform.title">
+            <div class="join-section__platform-item">
+              <div class="join-section__platform-content">
+                <Icon :name="platform.icon" class="platform-icon" />
+                <h3 class="join-section__platform-title">
+                  {{ platform.title }}
+                </h3>
+                <Tooltip v-if="platform.note !== ''" placement="top">
+                  <Icon name="ph:info" class="join-section__platform-info" />
+                  <template #tooltip>
+                    <p>{{ platform.note }}</p>
+                  </template>
+                </Tooltip>
+              </div>
+              <!-- Single URL: Direct link button -->
+              <Button
+                v-if="platform.urls.length === 1 && platform.urls[0]" @click="navigateTo(platform.urls[0].url, { external: true,
+                                                                                                                 open: { target: '_blank' } })"
+              >
+                {{ platform.action }}
+              </Button>
+              <!-- Multiple URLs: Dropdown menu -->
+              <Dropdown v-else>
+                <template #trigger="{ toggle }">
+                  <Button @click="toggle">
+                    <Flex row y-center gap="xs">
+                      {{ platform.action }}
+                      <Icon name="ph:caret-down" />
+                    </Flex>
+                  </Button>
                 </template>
-              </Tooltip>
+                <DropdownItem v-for="url in platform.urls" :key="url.title">
+                  <NuxtLink
+                    external
+                    no-prefetch
+                    :href="url.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    :aria-label="`Connect to ${platform.title} on ${url.title}`"
+                  >
+                    {{ url.title }}
+                  </NuxtLink>
+                </DropdownItem>
+              </Dropdown>
             </div>
-            <!-- Single URL: Direct link button -->
-            <Button
-              v-if="platform.urls.length === 1" @click="navigateTo(platform.urls[0].url, { external: true,
-                                                                                           open: { target: '_blank' } })"
-            >
-              {{ platform.action }}
-            </Button>
-            <!-- Multiple URLs: Dropdown menu -->
-            <Dropdown v-else>
-              <template #trigger="{ toggle }">
-                <Button @click="toggle">
-                  <Flex row y-center gap="xs">
-                    {{ platform.action }}
-                    <Icon name="ph:caret-down" />
-                  </Flex>
-                </Button>
-              </template>
-              <DropdownItem v-for="url in platform.urls" :key="url.title">
-                <NuxtLink
-                  external
-                  no-prefetch
-                  :href="url.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  :aria-label="`Connect to ${platform.title} on ${url.title}`"
-                >
-                  {{ url.title }}
-                </NuxtLink>
-              </DropdownItem>
-            </Dropdown>
-          </div>
+          </Card>
+        </div>
+      </div>
+    </section>
+
+    <!-- Events -->
+    <section class="events-section">
+      <h2 class="heading">
+        Events
+      </h2>
+      <ClientOnly>
+        <Divider />
+      </ClientOnly>
+
+      <Grid v-if="loading" class="events-section__list" :columns="3" gap="m">
+        <!-- Loading state -->
+        <Card v-for="i in 3" :key="i">
+          <Skeleton height="1.5rem" width="80%" class="mb-s" />
+          <Skeleton height="1rem" width="60%" />
+        </Card>
+      </Grid>
+
+      <div v-else-if="errorMessage" class="events-section__error">
+        <Card>
+          <p class="events-section__error-text">
+            Failed to load events: {{ errorMessage }}
+          </p>
         </Card>
       </div>
-    </div>
-  </section>
 
-  <!-- Events -->
-  <section class="events-section">
-    <h2 class="heading">
-      Events
-    </h2>
-    <ClientOnly>
-      <Divider />
-    </ClientOnly>
+      <div v-else-if="events.length === 0" class="events-section__empty">
+        <Card>
+          <p>No events scheduled.</p>
+        </Card>
+      </div>
 
-    <Grid v-if="loading" class="events-section__list" :columns="3" gap="m">
-      <!-- Loading state -->
-      <Card v-for="i in 3" :key="i">
-        <Skeleton height="1.5rem" width="80%" class="mb-s" />
-        <Skeleton height="1rem" width="60%" />
-      </Card>
-    </Grid>
+      <Grid v-else class="events-section__list" :columns="3" gap="m" expand>
+        <EventCard
+          v-for="event in events"
+          :key="event.id"
+          :event="event"
+          compact
+        />
+      </Grid>
 
-    <div v-else-if="errorMessage" class="events-section__error">
-      <Card>
-        <p class="events-section__error-text">
-          Failed to load events: {{ errorMessage }}
-        </p>
-      </Card>
-    </div>
-
-    <div v-else-if="events.length === 0" class="events-section__empty">
-      <Card>
-        <p>No events scheduled.</p>
-      </Card>
-    </div>
-
-    <Grid v-else class="events-section__list" :columns="3" gap="m" expand>
-      <EventCard
-        v-for="event in events"
-        :key="event.id"
-        :event="event"
-        compact
-      />
-    </Grid>
-
-    <div class="events-section__view-all mb-m">
-      <Button @click="navigateTo('/events')">
-        View All Events
-        <template #end>
-          <Icon name="ph:arrow-right" />
-        </template>
-      </Button>
-    </div>
-  </section>
+      <div class="events-section__view-all mb-m">
+        <Button @click="navigateTo('/events')">
+          View All Events
+          <template #end>
+            <Icon name="ph:arrow-right" />
+          </template>
+        </Button>
+      </div>
+    </section>
+  </div>
 </template>
 
 <style scoped lang="scss">

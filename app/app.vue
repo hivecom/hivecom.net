@@ -18,12 +18,29 @@ useLastSeenTracking()
 </template>
 
 <style>
-.page-enter-active,
-.page-leave-active {
-  transition: all 0.1s linear;
+/* Custom page transitions that work better with data fetching */
+.page-enter-active {
+  transition: all 0.2s ease-out;
+  transition-delay: 0.2s; /* Delay entry to ensure old page has unmounted */
 }
-.page-enter-from,
+
+.page-leave-active {
+  transition: all 0.15s ease-in;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
 .page-leave-to {
   opacity: 0;
+  transform: translateY(-5px);
+}
+
+.page-enter-to,
+.page-leave-from {
+  opacity: 1;
+  transform: translateY(0);
 }
 </style>

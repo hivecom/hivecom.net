@@ -13,6 +13,11 @@ const userPermissions = ref<string[]>([])
 const isLoading = ref(true)
 const isAuthorized = ref(false)
 
+defineOgImageComponent('Default', {
+  title: 'Hivecom',
+  description: 'A worldwide community of friends building projects together.',
+})
+
 // Check user role and permissions, redirect if not authorized
 onMounted(async () => {
   try {
