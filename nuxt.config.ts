@@ -38,8 +38,8 @@ export default defineNuxtConfig({
   ],
   icon: {
     serverBundle: {
-      collections: ['ph'] // Phosphor icons
-    }
+      collections: ['ph'], // Phosphor icons
+    },
   },
   css: [
     '@/assets/index.scss',
