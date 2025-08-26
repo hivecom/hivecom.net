@@ -36,6 +36,13 @@ export default defineNuxtConfig({
     '@nuxtjs/mdc',
     '@samk-dev/nuxt-vcalendar',
   ],
+  icon: {
+    serverBundle: 'remote',
+    clientBundle: {
+      scan: true,
+      sizeLimitKb: 256,
+    },
+  },
   css: [
     '@/assets/index.scss',
   ],
