@@ -36,6 +36,11 @@ export default defineNuxtConfig({
     '@nuxtjs/mdc',
     '@samk-dev/nuxt-vcalendar',
   ],
+  icon: {
+    serverBundle: {
+      collections: ['ph'] // Phosphor icons
+    }
+  },
   css: [
     '@/assets/index.scss',
   ],
