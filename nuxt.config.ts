@@ -37,8 +37,10 @@ export default defineNuxtConfig({
     '@samk-dev/nuxt-vcalendar',
   ],
   icon: {
-    serverBundle: {
-      collections: ['ph'], // Phosphor icons
+    serverBundle: 'remote',
+    clientBundle: {
+      scan: true,
+      sizeLimitKb: 256,
     },
   },
   css: [
