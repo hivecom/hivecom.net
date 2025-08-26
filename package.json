@@ -19,7 +19,7 @@
     "@iconify-json/ph": "^1.2.2",
     "@nuxt/content": "^3.6.3",
     "@nuxt/icon": "^1.15.0",
-    "@nuxt/image": "^1.10.0",
+    "@nuxt/image": "^1.11.0",
     "@nuxtjs/eslint-module": "^4.1.0",
     "@nuxtjs/mdc": "^0.17.2",
     "@nuxtjs/robots": "^5.4.0",
