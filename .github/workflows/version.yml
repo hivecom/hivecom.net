@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'package.json'
+      - 'package-lock.json'
 
 jobs:
   bump-version:
@@ -14,15 +17,20 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
+          fetch-depth: 0
 
+      # Optional visibility for debugging
       - name: cat package.json
         run: cat ./package.json
 
       - name: Automated Version Bump
         id: version-bump
-        uses: phips28/gh-action-bump-version@master
+        uses: phips28/gh-action-bump-version@v11.0.7
         with:
           tag-prefix: v
+          skip-commit: true
+          skip-tag: true
+          skip-push: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -34,6 +42,26 @@ jobs:
           NEW_TAG: ${{ steps.version-bump.outputs.newTag }}
         run: echo "new tag $NEW_TAG"
 
-    # Permissions to write to the repository.
+      - name: Create version bump PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/release-${{ steps.version-bump.outputs.newTag }}
+          title: "chore: release ${{ steps.version-bump.outputs.newTag }}"
+          commit-message: "ci: version bump to ${{ steps.version-bump.outputs.newTag }}"
+          body: |
+            Automated version bump to ${{ steps.version-bump.outputs.newTag }}.
+
+            This PR was created because direct pushes to `main` are restricted.
+          labels: |
+            automated
+            release
+          add-paths: |
+            package.json
+            package-lock.json
+          base: main
+
+    # Permissions to write to the repository and open PRs.
     permissions:
       contents: write
+      pull-requests: write
