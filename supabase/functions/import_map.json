@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "constants": "../../constants.json",
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
+    "database-types": "../../types/database.types.ts"
+  }
+}

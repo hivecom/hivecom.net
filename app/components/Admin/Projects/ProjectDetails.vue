@@ -1,0 +1,184 @@
+<script setup lang="ts">
+import type { Tables } from '@/types/database.types'
+import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import GitHubLink from '@/components/Shared/GitHubLink.vue'
+import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import Metadata from '@/components/Shared/Metadata.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import UserLink from '@/components/Shared/UserLink.vue'
+
+const props = defineProps<{
+  project: Tables<'projects'> | null
+}>()
+
+// Define emits
+const emit = defineEmits(['edit', 'delete'])
+
+// Define model for sheet visibility
+const isOpen = defineModel<boolean>('isOpen')
+
+// Handle closing the sheet
+function handleClose() {
+  isOpen.value = false
+}
+
+// Handle edit action from AdminActions
+function handleEdit(project: Tables<'projects'>) {
+  emit('edit', project)
+  isOpen.value = false
+}
+
+// Handle delete action from AdminActions
+function handleDelete(project: Tables<'projects'>) {
+  emit('delete', project)
+  isOpen.value = false
+}
+</script>
+
+<template>
+  <Sheet
+    :open="!!props.project && isOpen"
+    position="right"
+    separator
+    :size="600"
+    @close="handleClose"
+  >
+    <template #header>
+      <Flex x-between y-center>
+        <Flex column :gap="0">
+          <h4>Project Details</h4>
+          <span v-if="props.project" class="color-text-light text-xxs">
+            {{ props.project.title }}
+          </span>
+        </Flex>
+        <Flex y-center gap="s">
+          <AdminActions
+            v-if="props.project"
+            resource-type="announcements"
+            :item="props.project"
+            :show-labels="true"
+            @edit="(projectItem) => handleEdit(projectItem as Tables<'projects'>)"
+            @delete="(projectItem) => handleDelete(projectItem as Tables<'projects'>)"
+          />
+        </Flex>
+      </Flex>
+    </template>
+
+    <Flex v-if="props.project" column gap="m" class="project-details">
+      <Flex column gap="m" expand>
+        <!-- Basic info -->
+        <Card>
+          <Flex column gap="l" expand>
+            <Grid class="project-details__item" expand :columns="2">
+              <span class="color-text-light text-bold">ID:</span>
+              <span>{{ props.project.id }}</span>
+            </Grid>
+
+            <Grid class="project-details__item" expand :columns="2">
+              <span class="color-text-light text-bold">Title:</span>
+              <span>{{ props.project.title }}</span>
+            </Grid>
+
+            <Grid class="project-details__item" expand :columns="2">
+              <span class="color-text-light text-bold">Owner:</span>
+              <div :class="{ 'project-details__not-assigned': !props.project.owner }">
+                <UserLink v-if="props.project.owner" :user-id="props.project.owner" />
+                <span v-else>Not Assigned</span>
+              </div>
+            </Grid>
+
+            <Grid class="project-details__item" expand :columns="2">
+              <span class="color-text-light text-bold">Created:</span>
+              <TimestampDate
+                :date="props.project.created_at"
+                size="s"
+                class="color-text"
+              />
+            </Grid>
+
+            <Grid v-if="props.project.link" class="project-details__item" expand :columns="2">
+              <span class="color-text-light text-bold">Link:</span>
+              <NuxtLink external :href="props.project.link" target="_blank" class="color-accent text-m">
+                {{ props.project.link }}
+              </NuxtLink>
+            </Grid>
+
+            <Grid v-if="props.project.github" class="project-details__item" expand :columns="2" y-center>
+              <span class="color-text-light text-bold">GitHub:</span>
+              <GitHubLink :github="props.project.github" :show-icon="true" />
+            </Grid>
+
+            <Grid v-if="props.project.tags && props.project.tags.length > 0" class="project-details__item" expand :columns="2">
+              <span class="color-text-light text-bold">Tags:</span>
+              <div class="tags-display">
+                <Badge
+                  v-for="tag in props.project.tags"
+                  :key="tag"
+                  size="xs"
+                  variant="neutral"
+                >
+                  {{ tag }}
+                </Badge>
+              </div>
+            </Grid>
+          </Flex>
+        </Card>
+
+        <!-- Description -->
+        <Card v-if="props.project.description" separators>
+          <template #header>
+            <h6>Description</h6>
+          </template>
+
+          <p>{{ props.project.description }}</p>
+        </Card>
+
+        <!-- Markdown Content -->
+        <Card v-if="props.project.markdown" separators>
+          <template #header>
+            <h6>Content</h6>
+          </template>
+
+          <MDRenderer :md="props.project.markdown" class="project-details__markdown-content" />
+        </Card>
+
+        <!-- Metadata -->
+        <Metadata
+          :created-at="props.project.created_at"
+          :created-by="props.project.created_by"
+          :modified-at="props.project.modified_at"
+          :modified-by="props.project.modified_by"
+        />
+      </Flex>
+    </Flex>
+  </Sheet>
+</template>
+
+<style lang="scss" scoped>
+.project-details {
+  padding-bottom: var(--space);
+
+  &__markdown-content {
+    h1 {
+      margin-top: var(--space-s);
+      font-size: var(--font-size-xxl);
+    }
+
+    h2 {
+      margin-top: var(--space-s);
+      font-size: var(--font-size-xxl);
+    }
+  }
+
+  &__not-assigned {
+    opacity: 0.5;
+  }
+}
+
+.tags-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+</style>

@@ -1,0 +1,95 @@
+@use 'sass:meta';
+@use './breakpoints.scss' as *;
+
+@import url(@dolanske/vui/style);
+
+// Place global styles which should be available on all pages here
+:root {
+  // Main container sizes
+  --container-l: 1280px;
+  --container-m: 768px;
+
+  // Dark (default) theme colors
+  --dark-color-bg: #111;
+  --dark-color-fg: #0a0a0a;
+  --dark-color-accent: #a7fc2f;
+  --dark-color-text: #fff;
+
+  // Light theme colors
+  --light-color-bg: #eee;
+  --light-color-fg: #ddd;
+  --light-color-accent: #69883e;
+  --light-color-text: #000;
+
+  --navbar-offset: 64px;
+
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 768px;
+  --breakpoint-md: 1024px;
+  --breakpoint-lg: 1280px;
+  --breakpoint-xl: 1440px;
+}
+
+html,
+body {
+  font-size: 63.5%;
+  font-size: var(--font-size-l);
+}
+
+a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.link-line {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+.iconify {
+  color: var(--color-text);
+}
+
+.vui-badge {
+  line-height: 1.4em;
+}
+
+.vui-dropdown-item.selected {
+  .vui-dropdown-item-icon svg path,
+  .vui-dropdown-item-slot {
+    color: var(--color-accent);
+  }
+}
+
+table th,
+table td {
+  font-size: var(--font-size-s);
+}
+
+.inert {
+  pointer-events: none;
+}
+
+@media (max-width: $breakpoint-sm) {
+  .vui-table-container {
+    width: auto !important;
+  }
+}
+
+@include meta.load-css('./utilities.scss');
+
+@include meta.load-css('./elements/auth.scss');
+@include meta.load-css('./elements/main.scss');
+@include meta.load-css('./elements/page.scss');

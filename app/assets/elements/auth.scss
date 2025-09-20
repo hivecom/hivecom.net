@@ -1,0 +1,12 @@
+:root.dark .login-card {
+  --color-bg: var(--color-bg-medium);
+}
+
+.login-card {
+  // Adjust the color of the card's header
+  --color-bg: white;
+
+  width: 100%;
+  max-width: 400px; /* Added max-width for better responsiveness */
+  background-color: var(--color-bg);
+}

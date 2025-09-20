@@ -1,0 +1,22 @@
+{
+  // Use Deno for JavaScript and TypeScript files.
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "denoland.vscode-deno",
+  "deno.enable": true,
+  "deno.unstable": [
+    "bare-node-builtins",
+    "broadcast-channel",
+    "byonm",
+    "cron",
+    "ffi",
+    "fs",
+    "http",
+    "kv",
+    "net",
+    "sloppy-imports",
+    "unsafe-proto",
+    "webgpu",
+    "worker-options"
+  ],
+  "deno.importMap": "../import_map.json"
+}

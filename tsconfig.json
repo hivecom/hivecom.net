@@ -1,0 +1,58 @@
+{
+  // https://nuxt.com/docs/guide/concepts/typescript
+  "extends": "./.nuxt/tsconfig.json",
+  "compilerOptions": {
+    "incremental": true,
+    "target": "ES2018",
+    "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": [
+        "./app/*"
+      ],
+      "@/components/*": [
+        "./app/components/*"
+      ],
+      "@/lib/*": [
+        "./app/lib/*"
+      ],
+      "@/types/*": [
+        "./types/*"
+      ],
+      "@/composables/*": [
+        "./app/composables/*"
+      ],
+      "@/assets/*": [
+        "./app/assets/*"
+      ],
+      "@/layouts/*": [
+        "./app/layouts/*"
+      ],
+      "@/pages/*": [
+        "./app/pages/*"
+      ],
+      "@/utils/*": [
+        "./app/lib/utils/*"
+      ],
+      "~/*": [
+        "./*"
+      ],
+      "~~/*": [
+        "./*"
+      ],
+      "#imports": [ // Fixes "Cannot find module '#imports' or its corresponding type declarations."
+        ".nuxt/imports.d.ts"
+      ], // Fixes "Cannot find module '#app/nuxt' or its corresponding type declarations."
+      "#app/nuxt": [
+        "./node_modules/nuxt/dist/app/index"
+      ]
+    },
+    "resolveJsonModule": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "files": [
+    "content.config.ts"
+  ]
+}
