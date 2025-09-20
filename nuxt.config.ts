@@ -17,7 +17,13 @@ export default defineNuxtConfig({
     //   mode: 'out-in',
     // },
   },
-  devtools: { enabled: true },
+  devtools: {
+    enabled: true,
+
+    timeline: {
+      enabled: true,
+    },
+  },
   compatibilityDate: '2024-09-25',
   typescript: {
     typeCheck: true,
@@ -34,7 +40,7 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@vueuse/nuxt',
     '@nuxtjs/mdc',
-    '@samk-dev/nuxt-vcalendar',
+    '@yuta-inoue-ph/nuxt-vcalendar',
   ],
   icon: {
     serverBundle: 'remote',
