@@ -47,7 +47,7 @@
     "@antfu/eslint-config": "^5.4.1",
     "eslint": "^9.36.0",
     "eslint-plugin-format": "^1.0.2",
-    "eslint-plugin-vue": "^10.4.0",
+    "eslint-plugin-vue": "^10.5.0",
     "nuxi": "^3.28.0",
     "supabase": "^2.40.7",
     "vue-tsc": "^3.0.7"
