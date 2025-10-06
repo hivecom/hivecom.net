@@ -49,7 +49,7 @@
     "eslint-plugin-format": "^1.0.2",
     "eslint-plugin-vue": "^10.4.0",
     "nuxi": "^3.28.0",
-    "supabase": "^2.40.7",
+    "supabase": "^2.48.3",
     "vue-tsc": "^3.0.7"
   }
 }
