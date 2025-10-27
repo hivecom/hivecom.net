@@ -33,7 +33,7 @@
     "ansi-to-html": "^0.7.2",
     "chart.js": "^4.5.0",
     "dayjs": "^1.11.18",
-    "nuxt": "^4.1.2",
+    "nuxt": "^4.2.0",
     "nuxt-og-image": "^5.1.11",
     "nuxt-toc": "^2.7.2",
     "pinia": "^3.0.3",
