@@ -24,9 +24,11 @@ jobs:
       NUXT_PUBLIC_PATREON_CLIENT_ID: ${{ vars.NUXT_PUBLIC_PATREON_CLIENT_ID }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - run: corepack enable
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
