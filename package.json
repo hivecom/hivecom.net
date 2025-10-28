@@ -18,7 +18,7 @@
     "@dolanske/vui": "^1.4.7",
     "@iconify-json/ph": "^1.2.2",
     "@nuxt/content": "^3.7.1",
-    "@nuxt/icon": "^2.0.0",
+    "@nuxt/icon": "^2.1.0",
     "@nuxt/image": "^1.11.0",
     "@nuxtjs/eslint-module": "^4.1.0",
     "@nuxtjs/mdc": "^0.17.4",
