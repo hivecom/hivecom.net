@@ -46,7 +46,10 @@ jobs:
       - name: Check for file changes
         id: git_status
         run: |
-          echo "status=$(git status -s)" >> $GITHUB_OUTPUT
+          git_status=$(git status -s | grep 'types/database.types.ts' || true)
+          echo "status<<EOF" >> $GITHUB_OUTPUT
+          echo "$git_status" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Commit files
         if: ${{contains(steps.git_status.outputs.status, ' ')}}
