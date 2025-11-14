@@ -41,7 +41,7 @@ jobs:
         run: npx supabase gen types typescript --project-id $SUPABASE_PROJECT_REF --schema public > types/database.types.ts
 
       - name: Format Types
-        run: npm run lint:fix
+        run: npx eslint types/database.types.ts --fix
 
       - name: Check for file changes
         id: git_status
@@ -57,7 +57,7 @@ jobs:
           git add types/database.types.ts
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git commit -m "Update database types" -a
+          git commit -m "Update database types"
 
       - name: Push changes
         if: ${{contains(steps.git_status.outputs.status, ' ')}}
