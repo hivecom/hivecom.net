@@ -1,4 +1,9 @@
 {
+  "imports": {
+    "app-constants": "../../constants.json",
+    "database-types": "../../types/database.types.ts",
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2"
+  },
   "workspace": [
     "./_shared",
     "./admin-docker-control-container-restart",
