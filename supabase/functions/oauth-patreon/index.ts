@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
       // Supabase API URL - env var exported by default
       Deno.env.get("SUPABASE_URL") ?? "",
       // Supabase API ANON KEY - env var exported by default
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      Deno.env.get("SUPABASE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       // Create client with Auth context of the user that called the function
       {
         global: {
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
     // Create Supabase admin client for database operations
     const supabaseAdmin = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // Update the user's profile with Patreon data

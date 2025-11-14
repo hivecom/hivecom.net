@@ -46,6 +46,7 @@ const {
 } = useAdminPermissions()
 
 const currentUser = useSupabaseUser()
+const currentUserId = useUserId()
 const supabase = useSupabaseClient()
 
 // Ensure user has at least read permission for users
@@ -228,7 +229,7 @@ async function handleUserSave(userData: UserFormData) {
       }
 
       // Prevent users from modifying their own role
-      if (currentUser.value && currentUser.value.id === userToEdit.value.id) {
+      if (currentUser.value && currentUserId.value === userToEdit.value.id) {
         throw new Error('You cannot modify your own role')
       }
 

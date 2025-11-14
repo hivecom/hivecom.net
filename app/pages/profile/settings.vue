@@ -7,6 +7,7 @@ const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Pro
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const userId = useUserId()
 
 const profile = ref<Tables<'profiles'> | null>(null)
 const loading = ref(true)
@@ -100,7 +101,7 @@ async function fetchProfile() {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', user.value.id)
+      .eq('id', userId.value)
       .single()
 
     if (error) {

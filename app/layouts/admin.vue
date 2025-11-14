@@ -6,6 +6,7 @@ const router = useRouter()
 const route = useRoute()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const userId = useUserId()
 
 // Initialize user role and permissions from database
 const userRole = ref<string | null>(null)
@@ -31,7 +32,7 @@ onMounted(async () => {
     const { error, data: roleData } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.value.id)
+      .eq('user_id', userId.value)
       .single()
 
     if (error) {

@@ -19,6 +19,7 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 // Setup Supabase client
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const userId = useUserId()
 
 // Complaint query
 const complaintsQuery = supabase
@@ -187,7 +188,7 @@ async function handleRespond(data: { id: number, response: string }) {
     const updateData: TablesUpdate<'complaints'> = {
       response: data.response,
       responded_at: new Date().toISOString(),
-      responded_by: user.value.id,
+      responded_by: userId.value,
       acknowledged: true, // Ensure it's acknowledged when responded
     }
 
@@ -240,7 +241,7 @@ async function handleUpdateResponse(data: { id: number, response: string }) {
     const updateData: TablesUpdate<'complaints'> = {
       response: data.response,
       responded_at: new Date().toISOString(),
-      responded_by: user.value.id,
+      responded_by: userId.value,
     }
 
     const { error } = await supabase

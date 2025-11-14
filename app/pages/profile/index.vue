@@ -3,6 +3,7 @@ import { Spinner } from '@dolanske/vui'
 import ProfileDetail from '@/components/Profile/ProfileDetail.vue'
 
 const user = useSupabaseUser()
+const userId = useUserId()
 const client = useSupabaseClient()
 
 const loading = ref(true)
@@ -51,7 +52,7 @@ watch(user, (newUser) => {
     </template>
 
     <template v-else>
-      <ProfileDetail :user-id="user.id" />
+      <ProfileDetail :user-id="userId ?? undefined" />
     </template>
   </div>
 </template>

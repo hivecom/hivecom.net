@@ -40,6 +40,7 @@ const isOpen = defineModel<boolean>('isOpen')
 
 // Get current user and admin permissions
 const currentUser = useSupabaseUser()
+const currentUserId = useUserId()
 const { canModifyUsers, canDeleteUsers, canUpdateRoles } = useAdminPermissions()
 
 // Supabase client for role operations
@@ -261,7 +262,7 @@ const canEditRoles = computed(() => {
   }
 
   // Prevent users from modifying their own role
-  if (currentUser.value && props.user && currentUser.value.id === props.user.id) {
+  if (currentUser.value && props.user && currentUserId.value === props.user.id) {
     return false
   }
 
@@ -317,7 +318,7 @@ async function verifyRolePermissions() {
     const { data: userRoleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', currentUser.value.id)
+      .eq('user_id', currentUserId.value)
       .single()
 
     if (roleError && roleError.code !== 'PGRST116') { // PGRST116 = no rows returned

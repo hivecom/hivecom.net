@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       // For INSERT/UPDATE, fetch the data from the database
       const supabase = createClient<Database>(
         Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        Deno.env.get('SUPABASE_SECRET_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
       )
 
       const { data: event_data, error: eventError } = await supabase

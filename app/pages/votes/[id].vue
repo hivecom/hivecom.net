@@ -13,6 +13,7 @@ const route = useRoute()
 const router = useRouter()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const userId = useUserId()
 
 // Redirect to login if user is not authenticated
 watch(user, (newUser) => {
@@ -166,7 +167,7 @@ async function submitVote() {
   try {
     const voteData = {
       referendum_id: referendum.value.id,
-      user_id: user.value.id,
+      user_id: userId.value,
       choices: selectedChoices.value,
       comment: comment.value.trim() || null,
     }
