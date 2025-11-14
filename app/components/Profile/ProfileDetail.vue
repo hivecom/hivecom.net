@@ -22,6 +22,7 @@ const props = defineProps<Props>()
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const userId = useUserId() // Use helper to get ID from JWT claims
 const profile = ref<Tables<'profiles'>>()
 const loading = ref(true)
 const errorMessage = ref('')
@@ -40,17 +41,17 @@ const refreshTrigger = ref(0)
 
 // Computed property to check if this is the user's own profile
 const isOwnProfile = computed(() => {
-  if (!user.value || !profile.value)
+  if (!userId.value || !profile.value)
     return false
 
-  return user.value.id === profile.value.id
+  return userId.value === profile.value.id
 })
 
 // Get current user's data with caching
 const {
   user: currentUserData,
 } = useUserData(
-  computed(() => user.value?.id || null),
+  userId, // Use the computed user ID
   {
     includeRole: true,
     includeAvatar: false, // We don't need current user's avatar here
@@ -89,7 +90,7 @@ const {
     // We'll handle the complex OR logic in the computed
   },
 }, {
-  enabled: computed(() => !!user.value && !!profile.value && !isOwnProfile.value),
+  enabled: computed(() => !!userId.value && !!profile.value && !isOwnProfile.value),
   ttl: 2 * 60 * 1000, // 2 minutes for friendship data
 })
 
@@ -162,7 +163,7 @@ const pendingRequests = computed(() => {
   return pendingRequests
 })
 
-// Fetch profile data with caching based on props
+// Fetch profile data with caching based on props (fallback to current user if none provided)
 const profileQuery = computed(() => {
   if (props.userId) {
     return {
@@ -184,6 +185,15 @@ const profileQuery = computed(() => {
       single: true,
     }
   }
+  else if (user.value?.id) {
+    // Fallback: show current user's profile when no explicit props provided
+    return {
+      table: 'profiles' as const,
+      select: '*',
+      filters: { id: userId.value },
+      single: true,
+    }
+  }
   return null
 })
 
@@ -195,7 +205,7 @@ const {
 } = useCachedSupabaseQuery<Tables<'profiles'>>(
   profileQuery.value || { table: 'profiles', select: '*', filters: {} },
   {
-    enabled: computed(() => !!(props.userId || props.username)),
+    enabled: computed(() => !!(props.userId || props.username || user.value?.id)),
     ttl: 10 * 60 * 1000, // 10 minutes for profile data
   },
 )
@@ -226,11 +236,16 @@ watch(profileError, (error) => {
   }
 }, { immediate: true })
 
-// Handle missing props
-watch(() => [props.userId, props.username], ([userId, username]) => {
-  if (!userId && !username) {
+// Handle missing identifiers (only error if we can't infer current user)
+watch(() => [props.userId, props.username, user.value?.id], ([userId, username, currentUserId]) => {
+  if (!userId && !username && !currentUserId) {
     errorMessage.value = 'No user ID or username provided'
     loading.value = false
+  }
+  else {
+    // Clear message when we have enough info to load
+    if (errorMessage.value === 'No user ID or username provided')
+      errorMessage.value = ''
   }
 }, { immediate: true })
 
@@ -358,7 +373,7 @@ watch(() => profile.value?.id, async (newId, oldId) => {
 })
 
 // Watch for user authentication changes to recheck friendship status
-watch(() => user.value?.id, async (newUserId, oldUserId) => {
+watch(() => userId.value, async (newUserId, oldUserId) => {
   if (newUserId !== oldUserId) {
     await checkFriendshipStatus()
   }
@@ -392,7 +407,7 @@ async function checkFriendshipStatus() {
     const { data: friendships, error } = await supabase
       .from('friends')
       .select('id, friender, friend')
-      .or(`and(friender.eq.${user.value.id},friend.eq.${profile.value.id}),and(friender.eq.${profile.value.id},friend.eq.${user.value.id})`)
+      .or(`and(friender.eq.${userId.value},friend.eq.${profile.value.id}),and(friender.eq.${profile.value.id},friend.eq.${userId.value})`)
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
       console.error('Error checking friendship status:', error)
@@ -409,8 +424,8 @@ async function checkFriendshipStatus() {
     }
 
     // Check if we have friendships in both directions (mutual)
-    const sentByCurrentUser = friendships.find(f => f.friender === user.value!.id && f.friend === profile.value!.id)
-    const sentByOtherUser = friendships.find(f => f.friender === profile.value!.id && f.friend === user.value!.id)
+    const sentByCurrentUser = friendships.find(f => f.friender === userId.value && f.friend === profile.value!.id)
+    const sentByOtherUser = friendships.find(f => f.friender === profile.value!.id && f.friend === userId.value)
 
     if (sentByCurrentUser && sentByOtherUser) {
       // Mutual friendship
@@ -481,7 +496,7 @@ async function sendFriendRequest() {
     const { error } = await supabase
       .from('friends')
       .insert({
-        friender: user.value.id,
+        friender: userId.value,
         friend: profile.value.id,
       })
 
@@ -512,7 +527,7 @@ async function acceptFriendRequest() {
     const { error } = await supabase
       .from('friends')
       .insert({
-        friender: user.value.id,
+        friender: userId.value,
         friend: profile.value.id,
       })
 

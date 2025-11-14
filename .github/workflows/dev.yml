@@ -1,0 +1,40 @@
+name: Lint & Build
+
+on:
+  push:
+    branches:
+      - dev
+  # Optional manual trigger
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Mirror prod env needed for a full build
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      NUXT_PUBLIC_PATREON_CLIENT_ID: ${{ vars.NUXT_PUBLIC_PATREON_CLIENT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint and typecheck
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

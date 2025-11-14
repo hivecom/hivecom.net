@@ -29,11 +29,12 @@ const complaintToDelete = ref<number | null>(null)
 
 // Get current user and supabase client
 const user = useSupabaseUser()
+const userId = useUserId()
 const supabase = useSupabaseClient<Database>()
 
 // Fetch user's complaints
 async function fetchComplaints() {
-  if (!user.value)
+  if (!user.value || !userId.value)
     return
 
   isLoading.value = true
@@ -43,7 +44,7 @@ async function fetchComplaints() {
     const { data, error: fetchError } = await supabase
       .from('complaints')
       .select('*')
-      .eq('created_by', user.value.id)
+      .eq('created_by', userId.value)
       .order('created_at', { ascending: false })
 
     if (fetchError) {
@@ -98,7 +99,7 @@ function showDeleteConfirmation(complaintId: number) {
 
 // Actually delete the complaint after confirmation
 async function deleteComplaint() {
-  if (!user.value || !complaintToDelete.value)
+  if (!user.value || !userId.value || !complaintToDelete.value)
     return
 
   const complaintId = complaintToDelete.value
@@ -111,7 +112,7 @@ async function deleteComplaint() {
       .from('complaints')
       .delete()
       .eq('id', complaintId)
-      .eq('created_by', user.value.id) // Ensure user can only delete their own complaints
+      .eq('created_by', userId.value) // Ensure user can only delete their own complaints
 
     if (deleteError) {
       throw deleteError

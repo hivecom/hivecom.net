@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<Props>(), {
 // RSVP functionality
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const userId = useUserId()
 const rsvpStatus = ref<RSVPStatus | null>(null)
 const rsvpLoading = ref(false)
 const rsvpId = ref<number | null>(null)
@@ -68,7 +69,7 @@ const rsvpButtonIcon = computed(() => {
 
 // Functions
 async function checkRsvpStatus() {
-  if (!user.value || !props.event) {
+  if (!user.value || !userId.value || !props.event) {
     rsvpStatus.value = null
     return
   }
@@ -77,7 +78,7 @@ async function checkRsvpStatus() {
     const { data, error } = await supabase
       .from('events_rsvps')
       .select('id, rsvp')
-      .eq('user_id', user.value.id)
+      .eq('user_id', userId.value)
       .eq('event_id', props.event.id)
       .single()
 
@@ -101,7 +102,7 @@ async function checkRsvpStatus() {
 }
 
 async function updateRsvp(newStatus: RSVPStatus) {
-  if (!user.value || !props.event) {
+  if (!user.value || !userId.value || !props.event) {
     return
   }
 
@@ -114,7 +115,7 @@ async function updateRsvp(newStatus: RSVPStatus) {
         .from('events_rsvps')
         .update({
           rsvp: newStatus,
-          modified_by: user.value.id,
+          modified_by: userId.value,
         })
         .eq('id', rsvpId.value)
         .select('id, rsvp')
@@ -130,10 +131,10 @@ async function updateRsvp(newStatus: RSVPStatus) {
       const { data, error } = await supabase
         .from('events_rsvps')
         .insert({
-          user_id: user.value.id,
+          user_id: userId.value,
           event_id: props.event.id,
           rsvp: newStatus,
-          created_by: user.value.id,
+          created_by: userId.value,
         })
         .select('id, rsvp')
         .single()

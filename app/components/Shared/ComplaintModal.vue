@@ -21,10 +21,11 @@ const isSubmitting = ref(false)
 
 // Get current user
 const user = useSupabaseUser()
+const userId = useUserId()
 const supabase = useSupabaseClient()
 
 async function handleSubmit() {
-  if (!complaintMessage.value.trim() || !user.value) {
+  if (!complaintMessage.value.trim() || !user.value || !userId.value) {
     return
   }
 
@@ -37,7 +38,7 @@ async function handleSubmit() {
       context_user?: string
       context_gameserver?: number
     } = {
-      created_by: user.value.id,
+      created_by: userId.value,
       message: complaintMessage.value.trim(),
     }
 

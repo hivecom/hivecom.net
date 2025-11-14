@@ -32,7 +32,7 @@ You will probably have to login to your Supabase account via the CLI. You can do
 
 Ask your project admin for the necessary database credentials if you should have access to the Supabase instance.
 
-From there, it is recommended to configure your Supabase configuration. Add `SUPABASE_URL` and `SUPABASE_KEY` (your anon key) to your `.env` in the root of the project:
+From there, it is recommended to configure your Supabase configuration. Add `SUPABASE_URL` and `SUPABASE_KEY` (your publishable key) to your `.env` in the root of the project:
 
 ```env
 SUPABASE_URL="https://example.supabase.co"
@@ -92,7 +92,7 @@ You can then use cURL or any other HTTP client to test your edge functions. For 
 
 ```bash
 curl --request POST 'http://localhost:54321/functions/v1/ping' \
---header 'Authorization: Bearer SUPABASE_ANON_KEY' \
+--header 'Authorization: Bearer SUPABASE_KEY' \
 --header 'Content-Type: application/json' \
 --data '{ "who":"me" }'
 ```
@@ -190,7 +190,7 @@ The application requires several secrets to be configured in Supabase's Vault fo
 
 ### Required Secrets
 
-- `anon_key` - Supabase anonymous key used by cron jobs for authorization
+- `anon_key` - Supabase publishable (anon) key used by cron jobs for authorization
 - `project_url` - Base URL of your Supabase project
 - `system_cron_secret` - Secret token for authenticating system cron job requests
 - `system_trigger_secret` - Secret token for authenticating database trigger requests

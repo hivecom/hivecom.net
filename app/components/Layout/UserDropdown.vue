@@ -5,13 +5,14 @@ import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import { useUserData } from '@/composables/useUserData'
 
 const user = useSupabaseUser()
+const userId = useUserId()
 
 // Use cached user data for the current user
 const {
   user: userData,
   userInitials,
 } = useUserData(
-  computed(() => user.value?.id || null),
+  userId,
   {
     includeRole: true,
     includeAvatar: true,
@@ -22,6 +23,7 @@ const {
 
 // Complaint modal state
 const showComplaintModal = ref(false)
+
 // Check if user is admin or moderator
 const isAdminOrMod = computed(() => {
   return userData.value?.role === 'admin' || userData.value?.role === 'moderator'

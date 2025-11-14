@@ -4,6 +4,7 @@ import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const userId = useUserId()
 const router = useRouter()
 
 // Normal state variables
@@ -150,7 +151,7 @@ async function submitUsername() {
           username: username.value,
           username_set: true,
         })
-        .eq('id', user.value.id)
+        .eq('id', userId.value)
 
       if (updateError) {
         if (updateError.code === '23505') { // Unique constraint violation
@@ -286,7 +287,7 @@ async function checkUsernameStatus() {
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('username, username_set')
-      .eq('id', user.value.id)
+      .eq('id', userId.value)
       .single()
 
     if (profileError) {

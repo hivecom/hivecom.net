@@ -79,7 +79,7 @@ export async function authorizeAuthenticated(
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      Deno.env.get("SUPABASE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
         global: {
           headers: { Authorization: authHeader },
@@ -156,7 +156,7 @@ export async function authorizeAuthenticatedHasPermission(
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      Deno.env.get("SUPABASE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
         global: {
           headers: { Authorization: authHeader },
