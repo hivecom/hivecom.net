@@ -726,46 +726,19 @@ export interface Database {
         }
         Returns: boolean
       }
-      contains_html_tags: {
-        Args: { input_text: string }
-        Returns: boolean
-      }
-      custom_access_token_hook: {
-        Args: { event: Json }
-        Returns: Json
-      }
-      generate_username: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      contains_html_tags: { Args: { input_text: string }, Returns: boolean }
+      custom_access_token_hook: { Args: { event: Json }, Returns: Json }
+      generate_username: { Args: never, Returns: string }
       has_permission: {
         Args: { permission_name: Database['public']['Enums']['app_permission'] }
         Returns: boolean
       }
-      is_owner: {
-        Args: { record_user_id: string }
-        Returns: boolean
-      }
-      is_profile_owner: {
-        Args: { profile_id: string }
-        Returns: boolean
-      }
-      update_user_last_seen: {
-        Args: { user_id?: string }
-        Returns: undefined
-      }
-      validate_github_repo: {
-        Args: { github_repo: string }
-        Returns: boolean
-      }
-      validate_tag_format: {
-        Args: { tag: string }
-        Returns: boolean
-      }
-      validate_tags_array: {
-        Args: { tags: string[] }
-        Returns: boolean
-      }
+      is_owner: { Args: { record_user_id: string }, Returns: boolean }
+      is_profile_owner: { Args: { profile_id: string }, Returns: boolean }
+      update_user_last_seen: { Args: { user_id?: string }, Returns: undefined }
+      validate_github_repo: { Args: { github_repo: string }, Returns: boolean }
+      validate_tag_format: { Args: { tag: string }, Returns: boolean }
+      validate_tags_array: { Args: { tags: string[] }, Returns: boolean }
     }
     Enums: {
       app_permission:
