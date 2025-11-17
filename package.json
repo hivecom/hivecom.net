@@ -27,7 +27,7 @@
     "@nuxtjs/sitemap": "^7.4.7",
     "@nuxtjs/supabase": "^2.0.1",
     "@pinia/nuxt": "^0.11.2",
-    "@unhead/vue": "^2.0.17",
+    "@unhead/vue": "^2.0.19",
     "@vueuse/nuxt": "^14.0.0",
     "@yuta-inoue-ph/nuxt-vcalendar": "^1.1.2",
     "ansi-to-html": "^0.7.2",
