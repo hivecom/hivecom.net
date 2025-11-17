@@ -31,7 +31,7 @@
     "@vueuse/nuxt": "^14.0.0",
     "@yuta-inoue-ph/nuxt-vcalendar": "^1.1.2",
     "ansi-to-html": "^0.7.2",
-    "chart.js": "^4.5.0",
+    "chart.js": "^4.5.1",
     "dayjs": "^1.11.18",
     "nuxt": "^4.2.1",
     "nuxt-og-image": "^5.1.11",
