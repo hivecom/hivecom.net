@@ -124,7 +124,13 @@ const chartOptions: ChartOptions<'line'> = {
       callbacks: {
         label: (context) => {
           const label = context.dataset.label || ''
-          return `${label}: €${context.parsed.y.toFixed(2)}`
+          const value = context.parsed?.y
+
+          if (typeof value !== 'number') {
+            return label ? `${label}: —` : '—'
+          }
+
+          return `${label}: €${value.toFixed(2)}`
         },
       },
     },
