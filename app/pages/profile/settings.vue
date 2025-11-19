@@ -171,7 +171,7 @@ async function fetchProfile() {
           </Flex>
         </template>
         <Flex column gap="m">
-          <p class="text-s color-text-lighter">
+          <p class="text-s text-color-lighter">
             You can set or change your password to log in with email and password instead of just email links.
           </p>
           <Button :loading="passwordResetLoading" variant="accent" @click="sendPasswordReset">
@@ -205,7 +205,7 @@ async function fetchProfile() {
                 </div>
                 <div>
                   <strong>Patreon</strong>
-                  <p class="text-xs color-text-lighter">
+                  <p class="text-xs text-color-lighter">
                     Support the community and get supporter benefits
                   </p>
                 </div>
@@ -232,7 +232,7 @@ async function fetchProfile() {
                 </div>
                 <div>
                   <strong>Steam</strong>
-                  <p class="text-xs color-text-lighter">
+                  <p class="text-xs text-color-lighter">
                     Connect your gaming profile
                   </p>
                 </div>
@@ -259,7 +259,7 @@ async function fetchProfile() {
                 </div>
                 <div>
                   <strong>Discord</strong>
-                  <p class="text-xs color-text-lighter">
+                  <p class="text-xs text-color-lighter">
                     Join our community chat
                   </p>
                 </div>
@@ -285,7 +285,7 @@ async function fetchProfile() {
 <style lang="scss" scoped>
 .settings-title {
   margin-bottom: var(--space-l);
-  color: var(--color-text);
+  color: var(--text-color);
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
 }

@@ -11,7 +11,7 @@ const refreshSignal = ref(0)
   <Flex column gap="l">
     <Flex column :gap="0">
       <h1>Projects</h1>
-      <p class="color-text-light">
+      <p class="text-color-light">
         Manage Projects from the community
       </p>
     </Flex>

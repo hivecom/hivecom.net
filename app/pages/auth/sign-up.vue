@@ -93,7 +93,7 @@ async function signInWithOtp() {
   &__footer {
     padding: 1rem;
     text-align: center;
-    color: var(--color-text-light);
+    color: var(--text-color-light);
 
     p {
       font-size: 1rem;

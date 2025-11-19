@@ -117,7 +117,7 @@ const links = constants.LINKS
     position: relative;
     width: 1px;
     height: 16px;
-    background: var(--color-text);
+    background: var(--text-color);
     opacity: 0.25;
 
     @media screen and (max-width: $breakpoint-sm) {

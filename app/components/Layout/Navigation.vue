@@ -148,7 +148,7 @@ function toggleMobileMenu() {
     display: none;
     cursor: pointer;
     font-size: 24px;
-    color: var(--color-text);
+    color: var(--text-color);
   }
 
   &__logo {
@@ -180,7 +180,7 @@ function toggleMobileMenu() {
       display: block;
       padding: 0 12px;
       font-size: var(--font-size-m);
-      color: var(--color-text);
+      color: var(--text-color);
       text-decoration: none;
 
       &:hover,
@@ -195,7 +195,7 @@ function toggleMobileMenu() {
     position: relative;
     width: 1px;
     height: 16px;
-    background: var(--color-text);
+    background: var(--text-color);
     opacity: 0.5;
   }
 
@@ -241,7 +241,7 @@ function toggleMobileMenu() {
       display: block;
       padding: var(--space-s);
       font-size: var(--font-size-m);
-      color: var(--color-text);
+      color: var(--text-color);
 
       &:hover,
       &.router-link-active {
@@ -294,7 +294,7 @@ function toggleMobileMenu() {
     display: block;
     height: 1px;
     width: 100%;
-    background-color: color-mix(in srgb, var(--color-text) 20%, transparent);
+    background-color: color-mix(in srgb, var(--text-color) 20%, transparent);
     margin: var(--space-m) 0;
   }
 }

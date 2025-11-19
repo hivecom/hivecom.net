@@ -195,14 +195,14 @@ useHead({
 .project-header__title {
   font-size: var(--font-size-xxxl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text);
+  color: var(--text-color);
   margin: 0;
   line-height: 1.2;
 }
 
 .project-header__tags {
   opacity: 0.9;
-  color: var(--color-text-light);
+  color: var(--text-color-light);
 }
 
 .project-header__owner {
@@ -213,14 +213,14 @@ useHead({
 
 .project-header__label {
   font-size: var(--font-size-s);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   font-weight: var(--font-weight-medium);
   min-width: 80px;
 }
 
 .project-header__description {
   font-size: var(--font-size-l);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   margin: 0;
   line-height: 1.6;
 }

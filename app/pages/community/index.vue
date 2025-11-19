@@ -138,7 +138,7 @@ watch(user, () => {
             <h2 class="text-bold text-xxl">
               Community Members
             </h2>
-            <p class="color-text-light">
+            <p class="text-color-light">
               Meet some of our amazing community members from around the world
             </p>
           </Flex>
@@ -161,7 +161,7 @@ watch(user, () => {
           <h3 class="text-bold text-xl">
             Discover Our Community
           </h3>
-          <p class="color-text-light text-center">
+          <p class="text-color-light text-center">
             Sign in to see our supporters and meet community members from around the world
           </p>
           <NuxtLink to="/auth/sign-in">
@@ -348,7 +348,7 @@ watch(user, () => {
             <h2 class="text-bold text-xxl">
               Featured Projects
             </h2>
-            <p class="color-text-light">
+            <p class="text-color-light">
               Discover what our community has been building
             </p>
           </div>
@@ -452,7 +452,7 @@ watch(user, () => {
 }
 
 .about-description {
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   line-height: 1.6;
   font-size: var(--font-size-s);
 }
@@ -473,7 +473,7 @@ watch(user, () => {
   background: var(--color-bg-raised);
   border: 1px solid var(--color-border-weak);
   font-size: var(--font-size-xs);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   transition: all 0.2s ease;
 
   &:hover {
@@ -597,18 +597,18 @@ watch(user, () => {
 
   &__title {
     font-weight: var(--font-weight-bold);
-    color: var(--color-text);
+    color: var(--text-color);
     margin-bottom: 2px;
   }
 
   &__subtitle {
     font-size: var(--font-size-xs);
-    color: var(--color-text-light);
+    color: var(--text-color-light);
     line-height: 1.4;
   }
 
   &__arrow {
-    color: var(--color-text-light);
+    color: var(--text-color-light);
     opacity: 0.6;
     transition: all 0.3s ease;
     flex-shrink: 0;
@@ -683,13 +683,13 @@ watch(user, () => {
 }
 
 .project-title {
-  color: var(--color-text);
+  color: var(--text-color);
   font-size: var(--font-size-l);
   margin: 0;
 }
 
 .project-description {
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   flex: 1;
   margin: 0;
 }
@@ -716,7 +716,7 @@ watch(user, () => {
   padding: var(--space-xxs) var(--space-xs);
   border-radius: var(--border-radius-s);
   background: var(--color-bg-medium);
-  color: var(--color-text);
+  color: var(--text-color);
   font-size: var(--font-size-xs);
   margin-right: var(--space-xxs);
   margin-bottom: var(--space-xxs);

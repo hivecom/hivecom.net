@@ -131,14 +131,14 @@ onMounted(async () => {
 
 .callback-container p {
   margin-bottom: 1rem;
-  color: var(--color-text);
+  color: var(--text-color);
 }
 
 .success {
-  color: var(--color-text-green);
+  color: var(--text-color-green);
 }
 
 .error {
-  color: var(--color-text-red);
+  color: var(--text-color-red);
 }
 </style>

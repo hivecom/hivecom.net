@@ -8,7 +8,7 @@ import GameTable from '@/components/Admin/Games/GameTable.vue'
   <Flex column gap="l">
     <Flex column :gap="0">
       <h1>Games</h1>
-      <p class="color-text-light">
+      <p class="text-color-light">
         Create definitions for games, which will be highlighted and more
       </p>
     </Flex>

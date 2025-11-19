@@ -175,13 +175,13 @@ function formatCategoryName(category: string): string {
 function getRoleColor(role: string): string {
   switch (role) {
     case 'admin':
-      return 'var(--color-text-red)'
+      return 'var(--text-color-red)'
     case 'moderator':
-      return 'var(--color-text-blue)'
+      return 'var(--text-color-blue)'
     case 'user':
-      return 'var(--color-text-green)'
+      return 'var(--text-color-green)'
     default:
-      return 'var(--color-text)'
+      return 'var(--text-color)'
   }
 }
 
@@ -215,7 +215,7 @@ onBeforeMount(fetchRolePermissions)
   <Flex column gap="l" expand>
     <Flex column :gap="0">
       <h1>Roles & Permissions</h1>
-      <p class="color-text-light">
+      <p class="text-color-light">
         View role-based permissions and access control matrix
       </p>
     </Flex>
@@ -302,7 +302,7 @@ onBeforeMount(fetchRolePermissions)
                 <h4 class="category-title">
                   {{ formatCategoryName(category) }}
                 </h4>
-                <span class="color-text-light text-xs">({{ permissions.length }})</span>
+                <span class="text-color-light text-xs">({{ permissions.length }})</span>
               </Flex>
 
               <div class="permissions-list">
@@ -316,8 +316,8 @@ onBeforeMount(fetchRolePermissions)
 
           <!-- No permissions message -->
           <div v-else class="no-permissions">
-            <Icon name="ph:warning-circle" size="1.2rem" class="color-text-light" />
-            <span class="color-text-light">No permissions assigned</span>
+            <Icon name="ph:warning-circle" size="1.2rem" class="text-color-light" />
+            <span class="text-color-light">No permissions assigned</span>
           </div>
         </Card>
       </Flex>
@@ -361,7 +361,7 @@ onBeforeMount(fetchRolePermissions)
   font-size: var(--font-size-m);
   font-weight: var(--font-weight-medium);
   margin: 0;
-  color: var(--color-text);
+  color: var(--text-color);
 }
 
 .permissions-list {
@@ -388,7 +388,7 @@ onBeforeMount(fetchRolePermissions)
 
 .permission-text {
   font-size: var(--font-size-s);
-  color: var(--color-text);
+  color: var(--text-color);
 }
 
 .no-permissions {

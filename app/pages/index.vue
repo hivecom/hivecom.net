@@ -202,7 +202,7 @@ onMounted(async () => {
                 {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
               </template>
             </Flex>
-            <span class="text-xs color-text-lighter">Community Members</span>
+            <span class="text-xs text-color-lighter">Community Members</span>
           </NuxtLink>
 
           <NuxtLink to="/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
@@ -214,12 +214,12 @@ onMounted(async () => {
                 {{ communityStats.gameservers }}
               </template>
             </Flex>
-            <span class="text-xs color-text-lighter">Game Servers</span>
+            <span class="text-xs text-color-lighter">Game Servers</span>
           </NuxtLink>
 
           <div class="hero-section__stats-card">
             <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
-            <span class="text-xs color-text-lighter">Founded in 2013</span>
+            <span class="text-xs text-color-lighter">Founded in 2013</span>
           </div>
 
           <NuxtLink to="/community/projects" class="hero-section__stats-card hero-section__stats-card--clickable">
@@ -231,7 +231,7 @@ onMounted(async () => {
                 {{ communityStats.projects }}
               </template>
             </Flex>
-            <span class="text-xs color-text-lighter">Community Projects</span>
+            <span class="text-xs text-color-lighter">Community Projects</span>
           </NuxtLink>
         </div>
       </div>
@@ -667,7 +667,7 @@ h4 {
   }
 
   &__error-text {
-    color: var(--color-text-red);
+    color: var(--text-color-red);
     font-weight: var(--font-weight-medium);
   }
 

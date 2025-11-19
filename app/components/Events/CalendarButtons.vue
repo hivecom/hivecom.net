@@ -45,7 +45,7 @@ withDefaults(defineProps<CalendarButtonsProps>(), {
         <template v-if="showLabels" #start>
           <Icon name="ph:calendar" />
         </template>
-        <span v-if="showLabels">Subscribe</span>
+        <span v-if="showLabels" class="text-s">Subscribe</span>
       </Button>
     </NuxtLink>
 
@@ -65,7 +65,7 @@ withDefaults(defineProps<CalendarButtonsProps>(), {
         <template v-if="showLabels" #start>
           <Icon name="ph:download" />
         </template>
-        <span v-if="showLabels">Export</span>
+        <span v-if="showLabels" class="text-s">Export</span>
       </Button>
     </NuxtLink>
   </Flex>

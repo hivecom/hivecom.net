@@ -157,10 +157,10 @@ const currentUser = useSupabaseUser()
 .user-display {
   &__username {
     font-weight: var(--font-weight-medium);
-    color: var(--color-text);
+    color: var(--text-color);
 
     &--error {
-      color: var(--color-text-red);
+      color: var(--text-color-red);
     }
   }
 

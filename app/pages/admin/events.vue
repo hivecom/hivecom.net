@@ -20,7 +20,7 @@ const refreshSignal = ref(0)
   <Flex column gap="l">
     <Flex column :gap="0">
       <h1>Events</h1>
-      <p class="color-text-light">
+      <p class="text-color-light">
         Manage and schedule events for the community
       </p>
     </Flex>

@@ -464,7 +464,7 @@ onMounted(() => {
 
       <template #footer>
         <Flex x-center>
-          <p v-if="processComplete && !error" class="text-s color-text-light">
+          <p v-if="processComplete && !error" class="text-s text-color-light">
             {{ isDev && debugOptions.skipRedirect ? 'Redirect disabled in debug mode' : 'You will momentarily be redirected to your profile' }}
           </p>
         </Flex>
@@ -550,20 +550,20 @@ onMounted(() => {
 
   p {
     margin-bottom: 1rem;
-    color: var(--color-text);
+    color: var(--text-color);
   }
 
   &.success {
-    color: var(--color-text-green);
+    color: var(--text-color-green);
 
     .icon {
-      color: var(--color-text-green);
+      color: var(--text-color-green);
     }
   }
 
   &.error {
     .icon {
-      color: var(--color-text-red);
+      color: var(--text-color-red);
     }
   }
 }

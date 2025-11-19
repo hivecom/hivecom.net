@@ -14,7 +14,7 @@ const refreshSignal = ref(0)
   <Flex column gap="xl">
     <Flex column :gap="0">
       <h1>Dashboard</h1>
-      <p class="color-text-light">
+      <p class="text-color-light">
         Welcome to the admin panel have a look around, any KPI you can think of can be found
       </p>
     </Flex>

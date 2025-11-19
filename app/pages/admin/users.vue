@@ -300,7 +300,7 @@ async function handleUserDelete(userId: string) {
       <!-- Page Header -->
       <Flex column :gap="0">
         <h1>Users</h1>
-        <p class="color-text-light">
+        <p class="text-color-light">
           Manage user accounts, permissions, and ban status
         </p>
       </Flex>

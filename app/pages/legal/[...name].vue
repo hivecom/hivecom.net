@@ -111,7 +111,7 @@ useHead(() => ({
     }
 
     p {
-      color: var(--color-text-lightest);
+      color: var(--text-color-lightest);
     }
   }
 }
