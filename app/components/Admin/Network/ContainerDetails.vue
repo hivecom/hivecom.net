@@ -234,7 +234,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
       <Flex x-between y-center expand>
         <Flex column :gap="0">
           <h4>Container Details</h4>
-          <span v-if="container" class="color-text-light text-xxs">
+          <span v-if="container" class="text-color-light text-xxs">
             {{ container.name }}
           </span>
         </Flex>
@@ -263,32 +263,32 @@ watch(() => useCustomDateRange.value, (newValue) => {
         <Card class="container-info" separators>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Name:</span>
+              <span class="text-color-light text-bold">Name:</span>
               <span class="container-name">{{ container.name }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Status:</span>
+              <span class="text-color-light text-bold">Status:</span>
               <ContainerStatusIndicator :status="containerStatus" :show-label="true" />
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Server:</span>
+              <span class="text-color-light text-bold">Server:</span>
               <span>{{ container.server?.address || 'Unknown' }}</span>
             </Grid>
 
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Started:</span>
+              <span class="text-color-light text-bold">Started:</span>
               <TimestampDate :date="container.started_at" fallback="Not started" />
             </Grid>
 
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Last Report:</span>
+              <span class="text-color-light text-bold">Last Report:</span>
               <TimestampDate :date="container.reported_at" />
             </Grid>
 
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Created:</span>
+              <span class="text-color-light text-bold">Created:</span>
               <TimestampDate :date="container.created_at" />
             </Grid>
           </Flex>
@@ -397,7 +397,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
   align-items: center;
   gap: var(--space-xs);
   font-size: var(--font-size-l);
-  color: var(--color-text-lightest);
+  color: var(--text-color-lightest);
 }
 .w-100 {
   width: 100%;
@@ -405,6 +405,6 @@ watch(() => useCustomDateRange.value, (newValue) => {
 .container-name {
   font-family: monospace;
   font-weight: bold;
-  color: var(--color-text);
+  color: var(--text-color);
 }
 </style>

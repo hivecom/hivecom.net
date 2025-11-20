@@ -193,7 +193,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     <template #header>
       <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit Game' : 'Add Game' }}</h4>
-        <span v-if="props.isEditMode && props.game" class="color-text-light text-xxs">
+        <span v-if="props.isEditMode && props.game" class="text-color-light text-xxs">
           {{ props.game.name }}
         </span>
       </Flex>
@@ -236,10 +236,10 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
       <!-- Asset Upload Section -->
       <Flex v-if="gameForm.shorthand" column gap="m" expand>
         <h4>Game Assets</h4>
-        <p class="text-s color-text-light">
+        <p class="text-s text-color-light">
           Upload visual assets for the game. These will be displayed throughout the platform.
         </p>
-        <p class="text-xs color-text-light">
+        <p class="text-xs text-color-light">
           Note: Uploading assets will immediately apply them, even if this dialog is cancelled or closed.
         </p>
 
@@ -258,7 +258,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 @upload="(file) => handleAssetUpload('icon', file)"
                 @remove="() => handleAssetRemove('icon')"
               />
-              <span class="text-xs color-text-light">Recommended: 512x512px square image</span>
+              <span class="text-xs text-color-light">Recommended: 512x512px square image</span>
             </Flex>
 
             <!-- Cover Upload -->
@@ -273,7 +273,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 @upload="(file) => handleAssetUpload('cover', file)"
                 @remove="() => handleAssetRemove('cover')"
               />
-              <span class="text-xs color-text-light">Recommended: 600x900px portrait image</span>
+              <span class="text-xs text-color-light">Recommended: 600x900px portrait image</span>
             </Flex>
           </Flex>
 
@@ -290,7 +290,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
               @upload="(file) => handleAssetUpload('background', file)"
               @remove="() => handleAssetRemove('background')"
             />
-            <span class="text-xs color-text-light">Recommended: 1920x1080px wide image</span>
+            <span class="text-xs text-color-light">Recommended: 1920x1080px wide image</span>
           </Flex>
         </Flex>
       </Flex>
@@ -359,7 +359,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
 .asset-label {
   font-size: var(--font-size-s);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text);
+  color: var(--text-color);
   margin-bottom: var(--space-xs);
 }
 
@@ -371,11 +371,11 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
   background: var(--color-bg-subtle);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-s);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   font-size: var(--font-size-s);
 
   .iconify {
-    color: var(--color-text-blue);
+    color: var(--text-color-blue);
   }
 }
 </style>

@@ -172,7 +172,7 @@ function handleClose() {
           <Flex column y-center x-center gap="m">
             <Icon name="ph:users-three" size="48" class="rsvp-modal__empty-icon" />
             <h4>No RSVPs yet</h4>
-            <p class="color-text-light text-center">
+            <p class="text-color-light text-center">
               Be the first to RSVP to this event!
             </p>
           </Flex>
@@ -219,9 +219,9 @@ function handleClose() {
                 <Icon
                   :name="activeTab === 'yes' ? 'ph:check-circle' : activeTab === 'tentative' ? 'ph:question' : 'ph:x-circle'"
                   size="32"
-                  class="color-text-light"
+                  class="text-color-light"
                 />
-                <p class="color-text-light text-center">
+                <p class="text-color-light text-center">
                   No one has RSVP'd
                   {{ activeTab === 'yes' ? 'as going' : activeTab === 'tentative' ? 'as maybe' : 'as not going' }}
                   yet.
@@ -269,12 +269,12 @@ function handleClose() {
   text-align: center;
 
   &-icon {
-    color: var(--color-text-light);
+    color: var(--text-color-light);
   }
 
   h4 {
     margin: 0;
-    color: var(--color-text);
+    color: var(--text-color);
   }
 
   p {

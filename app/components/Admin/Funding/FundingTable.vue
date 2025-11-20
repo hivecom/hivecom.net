@@ -159,16 +159,16 @@ onBeforeMount(fetchMonthlyFundings)
             <Table.Cell>
               <Badge v-if="funding['Patreon Amount'] !== '€0'" variant="success">
                 {{ funding['Patreon Amount'] }}
-                <span v-if="funding._patronCount > 0" class="text-xs color-text-light ml-xs">({{ funding._patronCount }})</span>
+                <span v-if="funding._patronCount > 0" class="text-xs text-color-light ml-xs">({{ funding._patronCount }})</span>
               </Badge>
-              <span v-else class="color-text-light">-</span>
+              <span v-else class="text-color-light">-</span>
             </Table.Cell>
             <Table.Cell>
               <Badge v-if="funding['Donation Amount'] !== '€0'" variant="info">
                 {{ funding['Donation Amount'] }}
-                <span v-if="funding._donationCount > 0" class="text-xs color-text-light ml-xs">({{ funding._donationCount }})</span>
+                <span v-if="funding._donationCount > 0" class="text-xs text-color-light ml-xs">({{ funding._donationCount }})</span>
               </Badge>
-              <span v-else class="color-text-light">-</span>
+              <span v-else class="text-color-light">-</span>
             </Table.Cell>
             <Table.Cell>
               <strong>{{ funding['Total Monthly'] }}</strong>

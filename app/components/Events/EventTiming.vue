@@ -97,7 +97,7 @@ defineProps<Props>()
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-semibold);
     margin: 0;
-    color: var(--color-text);
+    color: var(--text-color);
 
     svg {
       color: var(--color-accent);
@@ -109,7 +109,7 @@ defineProps<Props>()
       font-size: var(--font-size-l);
       font-weight: var(--font-weight-semibold);
       margin: 0 0 var(--space-m) 0;
-      color: var(--color-text);
+      color: var(--text-color);
     }
   }
 
@@ -137,7 +137,7 @@ defineProps<Props>()
 
   &__countdown-label {
     font-size: var(--font-size-s);
-    color: var(--color-text-lightest);
+    color: var(--text-color-lightest);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: var(--font-weight-semibold);
@@ -147,13 +147,13 @@ defineProps<Props>()
     font-size: var(--font-size-l);
     font-weight: var(--font-weight-semibold);
     margin: 0 0 var(--space-s) 0;
-    color: var(--color-text);
+    color: var(--text-color);
   }
 
   &__time-ago-text {
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-semibold);
-    color: var(--color-text-lightest);
+    color: var(--text-color-lightest);
   }
 }
 </style>

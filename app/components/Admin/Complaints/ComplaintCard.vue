@@ -32,28 +32,28 @@ const statusConfig = computed(() => {
         label: 'Pending',
         variant: 'warning' as const,
         icon: 'ph:bell',
-        color: 'var(--color-text-yellow)',
+        color: 'var(--text-color-yellow)',
       }
     case 'acknowledged':
       return {
         label: 'Acknowledged',
         variant: 'info' as const,
         icon: 'ph:check-circle',
-        color: 'var(--color-text-blue)',
+        color: 'var(--text-color-blue)',
       }
     case 'responded':
       return {
         label: 'Responded',
         variant: 'success' as const,
         icon: 'ph:chat-circle-dots',
-        color: 'var(--color-text-green)',
+        color: 'var(--text-color-green)',
       }
     default:
       return {
         label: 'Unknown',
         variant: 'neutral' as const,
         icon: 'ph:question',
-        color: 'var(--color-text)',
+        color: 'var(--text-color)',
       }
   }
 })
@@ -97,7 +97,7 @@ function handleAcknowledge(event: Event) {
               :date="complaint.created_at"
               relative
               size="xxs"
-              class="color-text-light"
+              class="text-color-light"
             />
           </Flex>
           <Badge :variant="statusConfig.variant" size="s">
@@ -128,8 +128,8 @@ function handleAcknowledge(event: Event) {
       <Flex gap="xs" x-end>
         <div v-if="complaint.response" class="complaint-card__response-indicator">
           <Flex gap="xs" y-center>
-            <Icon name="ph:arrow-bend-down-left" class="color-text-light" />
-            <span class="text-s color-text-light">Response provided</span>
+            <Icon name="ph:arrow-bend-down-left" class="text-color-light" />
+            <span class="text-s text-color-light">Response provided</span>
             <TimestampDate
               v-if="complaint.responded_at"
               :date="complaint.responded_at"
@@ -140,8 +140,8 @@ function handleAcknowledge(event: Event) {
         </div>
         <div v-else-if="complaint.acknowledged" class="complaint-card__response-indicator">
           <Flex gap="xs" y-center>
-            <Icon name="ph:arrow-bend-up-right" class="color-text-light" />
-            <span class="text-s color-text-light">No response yet</span>
+            <Icon name="ph:arrow-bend-up-right" class="text-color-light" />
+            <span class="text-s text-color-light">No response yet</span>
           </Flex>
         </div>
         <Button
@@ -183,15 +183,15 @@ function handleAcknowledge(event: Event) {
 }
 
 .complaint-card--pending {
-  border-left-color: var(--color-text-yellow);
+  border-left-color: var(--text-color-yellow);
 }
 
 .complaint-card--acknowledged {
-  border-left-color: var(--color-text-blue);
+  border-left-color: var(--text-color-blue);
 }
 
 .complaint-card--responded {
-  border-left-color: var(--color-text-green);
+  border-left-color: var(--text-color-green);
 }
 
 .complaint-card__header {
@@ -200,7 +200,7 @@ function handleAcknowledge(event: Event) {
 
 .complaint-card__id {
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
+  color: var(--text-color);
   font-size: var(--font-size-s);
 }
 
@@ -219,7 +219,7 @@ function handleAcknowledge(event: Event) {
 .complaint-card__message p {
   margin: 0;
   line-height: 1.5;
-  color: var(--color-text);
+  color: var(--text-color);
 }
 
 .complaint-card__response-indicator {
@@ -233,7 +233,7 @@ function handleAcknowledge(event: Event) {
   top: 50%;
   right: var(--space-m);
   transform: translateY(-50%);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   transition: color 0.2s ease;
 }
 
@@ -245,7 +245,7 @@ function handleAcknowledge(event: Event) {
   left: -4px;
   right: -4px;
   bottom: -4px;
-  background: linear-gradient(45deg, transparent, var(--color-text-yellow), transparent);
+  background: linear-gradient(45deg, transparent, var(--text-color-yellow), transparent);
   opacity: 0.1;
   border-radius: var(--border-radius-m);
   animation: pulse 2s infinite;

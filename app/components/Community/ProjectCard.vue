@@ -206,7 +206,7 @@ function handleClick() {
   justify-content: center;
   border-radius: 50%;
   background: rgba(var(--color-accent-rgb), 0.1);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   transition: all 0.3s ease;
 
   svg {
@@ -216,7 +216,7 @@ function handleClick() {
 
 .project-card__title {
   font-weight: var(--font-weight-bold);
-  color: var(--color-text);
+  color: var(--text-color);
   margin: 0;
   line-height: 1.3;
   transition: color 0.2s ease;
@@ -238,7 +238,7 @@ function handleClick() {
 }
 
 .project-card__date {
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   flex-shrink: 0; // Prevent date from shrinking
   font-size: var(--font-size-s);
 }
@@ -275,7 +275,7 @@ function handleClick() {
 }
 
 .project-card__description {
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   line-height: 1.6;
   margin: 0;
   font-size: var(--font-size-m);
@@ -310,7 +310,7 @@ function handleClick() {
 .project-card__ultra-compact-title {
   font-size: var(--font-size-s);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text);
+  color: var(--text-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -333,7 +333,7 @@ function handleClick() {
 }
 
 .project-card__ultra-compact-date {
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   font-size: var(--font-size-xs); // Use CSS variable
   flex-shrink: 0;
   line-height: 1;

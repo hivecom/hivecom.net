@@ -349,11 +349,11 @@ onBeforeMount(fetchAnnouncements)
                   {{ tag }}
                 </Badge>
               </div>
-              <span v-else class="color-text-light">No tags</span>
+              <span v-else class="text-color-light">No tags</span>
             </Table.Cell>
             <Table.Cell>
               <Icon v-if="announcement.Pinned" name="ph:push-pin-fill" class="color-accent" />
-              <span v-else class="color-text-light">—</span>
+              <span v-else class="text-color-light">—</span>
             </Table.Cell>
             <Table.Cell>
               <TimestampDate :date="announcement.Created" />

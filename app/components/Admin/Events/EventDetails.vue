@@ -114,7 +114,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>Event Details</h4>
-          <span v-if="props.event" class="color-text-light text-xxs">
+          <span v-if="props.event" class="text-color-light text-xxs">
             {{ props.event.title }}
           </span>
         </Flex>
@@ -143,37 +143,37 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
         <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">ID:</span>
+              <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.event.id }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Title:</span>
+              <span class="text-color-light text-bold">Title:</span>
               <span>{{ props.event.title }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Date:</span>
+              <span class="text-color-light text-bold">Date:</span>
               <TimestampDate size="m" :date="props.event.date" />
             </Grid>
 
             <Grid v-if="props.event.duration_minutes" class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Duration:</span>
+              <span class="text-color-light text-bold">Duration:</span>
               <span>{{ formatDurationFromMinutes(props.event.duration_minutes) }}</span>
             </Grid>
 
             <Grid v-if="props.event.location" class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Location:</span>
+              <span class="text-color-light text-bold">Location:</span>
               <span>{{ props.event.location }}</span>
             </Grid>
 
             <Grid v-if="props.event.note" class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Note:</span>
+              <span class="text-color-light text-bold">Note:</span>
               <span>{{ props.event.note }}</span>
             </Grid>
 
             <Grid v-if="props.event.link" class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Link:</span>
+              <span class="text-color-light text-bold">Link:</span>
               <NuxtLink external :href="props.event.link" target="_blank" rel="noopener noreferrer" class="link text-m">
                 {{ props.event.link }}
                 <Icon name="ph:arrow-square-out" />
@@ -181,7 +181,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">RSVPs:</span>
+              <span class="text-color-light text-bold">RSVPs:</span>
               <Flex gap="xs" y-center>
                 <EventRSVPCount
                   :event="props.event"
@@ -201,7 +201,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 
             <!-- Games -->
             <Grid v-if="props.event.games && props.event.games.length > 0" class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Games:</span>
+              <span class="text-color-light text-bold">Games:</span>
               <Flex gap="xs" y-center>
                 <!-- Loading state -->
                 <div v-if="loadingGames" class="game-skeleton-container">

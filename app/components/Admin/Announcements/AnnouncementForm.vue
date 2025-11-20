@@ -160,7 +160,7 @@ function handleTagInputEnter() {
     <template #header>
       <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit Announcement' : 'Add Announcement' }}</h4>
-        <span v-if="props.isEditMode && props.announcement" class="color-text-light text-xxs">
+        <span v-if="props.isEditMode && props.announcement" class="text-color-light text-xxs">
           {{ props.announcement.title }}
         </span>
       </Flex>
@@ -185,7 +185,7 @@ function handleTagInputEnter() {
 
         <Flex column class="announcement-form__date-picker-container" expand>
           <label for="published-date-picker" class="announcement-form__date-picker-label">
-            Publish Date <span class="required" style="color: var(--color-text-red);">*</span>
+            Publish Date <span class="required" style="color: var(--text-color-red);">*</span>
           </label>
           <Calendar
             v-model="announcementForm.published_at"
@@ -310,7 +310,7 @@ function handleTagInputEnter() {
           />
           <Flex column :gap="0">
             <label for="pinned" class="toggle-label">Pin Announcement</label>
-            <span class="color-text-light text-xs">Pinned announcements appear at the top</span>
+            <span class="text-color-light text-xs">Pinned announcements appear at the top</span>
           </Flex>
         </Flex>
       </Flex>
@@ -375,7 +375,7 @@ function handleTagInputEnter() {
   &__date-picker-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--color-text);
+    color: var(--text-color);
   }
 }
 
@@ -389,7 +389,7 @@ function handleTagInputEnter() {
 
 .toggle-label {
   font-weight: var(--font-weight-medium);
-  color: var(--color-text);
+  color: var(--text-color);
   cursor: pointer;
 }
 
@@ -405,7 +405,7 @@ function handleTagInputEnter() {
   .input-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--color-text);
+    color: var(--text-color);
     margin-bottom: var(--space-xs);
   }
 

@@ -97,19 +97,19 @@ updateTime()
     <Flex v-if="!isPast && !isOngoing" column gap="xs" class="event-item__countdown-container">
       <Grid :columns="4" gap="l" class="event-item__countdown" expand>
         <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
-          <span class="event-item__countdown-label text-xs color-text-lighter">Days</span>
+          <span class="event-item__countdown-label text-xs text-color-lighter">Days</span>
           <span class="text-bold text-xxxl">{{ countdown.days }}</span>
         </Flex>
         <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
-          <span class="event-item__countdown-label text-xs color-text-lighter">Hours</span>
+          <span class="event-item__countdown-label text-xs text-color-lighter">Hours</span>
           <span class="text-bold text-xxxl">{{ countdown.hours }}</span>
         </Flex>
         <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
-          <span class="event-item__countdown-label text-xs color-text-lighter">Minutes</span>
+          <span class="event-item__countdown-label text-xs text-color-lighter">Minutes</span>
           <span class="text-bold text-xxxl">{{ countdown.minutes }}</span>
         </Flex>
         <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
-          <span class="event-item__countdown-label text-xs color-text-lighter">Seconds</span>
+          <span class="event-item__countdown-label text-xs text-color-lighter">Seconds</span>
           <span class="text-bold text-xxxl">{{ countdown.seconds }}</span>
         </Flex>
       </Grid>
@@ -117,7 +117,7 @@ updateTime()
         <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY [at] HH:mm" />
       </Flex>
       <Flex v-if="props.data.duration_minutes" x-center expand class="event-item__event-duration">
-        <span class="text-xs color-text-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
+        <span class="text-xs text-color-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
       </Flex>
     </Flex>
 
@@ -130,20 +130,20 @@ updateTime()
         <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY [at] HH:mm" />
       </Flex>
       <Flex v-if="props.data.duration_minutes" x-center expand class="event-item__event-duration">
-        <span class="text-xs color-text-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
+        <span class="text-xs text-color-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
       </Flex>
     </Flex>
 
     <!-- Time ago for past events -->
     <Flex v-else column gap="xs" class="event-item__time-ago">
       <Flex x-center class="event-item__time-ago-text" expand>
-        <span class="text-bold text-xxxl color-text-lighter">{{ timeAgo }}</span>
+        <span class="text-bold text-xxxl text-color-lighter">{{ timeAgo }}</span>
       </Flex>
       <Flex x-center expand class="event-item__event-date">
         <TimestampDate :date="props.data.date" format="MMM D, YYYY" />
       </Flex>
       <Flex v-if="props.data.duration_minutes" x-center expand class="event-item__event-duration">
-        <span class="text-xs color-text-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
+        <span class="text-xs text-color-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
       </Flex>
     </Flex>
 
@@ -296,7 +296,7 @@ updateTime()
 
     span {
       font-size: var(--font-size-xs);
-      color: var(--color-text-lighter);
+      color: var(--text-color-lighter);
     }
   }
 
@@ -311,7 +311,7 @@ updateTime()
 
   &__arrow {
     font-size: 20px;
-    color: var(--color-text-lighter);
+    color: var(--text-color-lighter);
     transition:
       transform 0.2s ease,
       color 0.2s ease;
@@ -319,7 +319,7 @@ updateTime()
 
   &__event-date span {
     font-size: var(--font-size-xs) !important;
-    color: var(--color-text-lighter) !important;
+    color: var(--text-color-lighter) !important;
   }
 
   &__note-badge {

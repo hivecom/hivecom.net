@@ -135,8 +135,8 @@ const statusMessage = computed(() => {
             </Flex>
             <Flex y-center gap="s" class="funding-amounts">
               <strong class="text-bold text-xxxl">{{ formatCurrency(fundingProgress.current) }}</strong>
-              <span class="color-text-light text-xxxl">/</span>
-              <strong class="color-text-light text-xxxl">{{ formatCurrency(fundingProgress.goal) }}</strong>
+              <span class="text-color-light text-xxxl">/</span>
+              <strong class="text-color-light text-xxxl">{{ formatCurrency(fundingProgress.goal) }}</strong>
             </Flex>
           </Flex>
 
@@ -207,8 +207,8 @@ const statusMessage = computed(() => {
             </Flex>
             <Flex y-center gap="s" class="funding-amounts">
               <strong class="text-bold text-xxxl">{{ formatCurrency(fundingProgress.current) }}</strong>
-              <span class="color-text-light text-xxxl">/</span>
-              <strong class="color-text-light text-xxxl">{{ formatCurrency(fundingProgress.goal) }}</strong>
+              <span class="text-color-light text-xxxl">/</span>
+              <strong class="text-color-light text-xxxl">{{ formatCurrency(fundingProgress.goal) }}</strong>
             </Flex>
           </Flex>
 

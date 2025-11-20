@@ -333,12 +333,12 @@ function clearFilters() {
 // Get platform icon name and display info
 function getPlatformInfo(platform: string) {
   const platformIcons: Record<string, { icon: string, label: string, color: string }> = {
-    steam: { icon: 'ph:steam-logo', label: 'Steam', color: 'var(--color-text-blue)' },
-    discord: { icon: 'ph:discord-logo', label: 'Discord', color: 'var(--color-text-purple)' },
+    steam: { icon: 'ph:steam-logo', label: 'Steam', color: 'var(--text-color-blue)' },
+    discord: { icon: 'ph:discord-logo', label: 'Discord', color: 'var(--text-color-purple)' },
     patreon: { icon: 'ph:patreon-logo', label: 'Patreon', color: 'var(--color-accent)' },
   }
 
-  return platformIcons[platform] || { icon: 'ph:question', label: 'Unknown', color: 'var(--color-text-light)' }
+  return platformIcons[platform] || { icon: 'ph:question', label: 'Unknown', color: 'var(--text-color-light)' }
 }
 
 // Lifecycle
@@ -433,8 +433,8 @@ defineExpose({
                 class="text-s"
                 :class="{
                   'color-accent': user['Last Seen'] && user['Last Seen'].includes('Online'),
-                  'color-text': user['Last Seen'] && !user['Last Seen'].includes('Online'),
-                  'color-text-light': !user['Last Seen'] || user['Last Seen'] === 'Never',
+                  'text-color': user['Last Seen'] && !user['Last Seen'].includes('Online'),
+                  'text-color-light': !user['Last Seen'] || user['Last Seen'] === 'Never',
                 }"
               >
                 {{ user['Last Seen'] }}
@@ -480,7 +480,7 @@ defineExpose({
                 </Tooltip>
 
                 <!-- No connections indicator -->
-                <span v-if="!user.Platforms.steam && !user.Platforms.discord && !user.Platforms.patreon" class="color-text-light text-s">
+                <span v-if="!user.Platforms.steam && !user.Platforms.discord && !user.Platforms.patreon" class="text-color-light text-s">
                   No connections
                 </span>
               </Flex>
@@ -553,7 +553,7 @@ defineExpose({
 }
 
 .uuid-text {
-  color: var(--color-text-light);
+  color: var(--text-color-light);
 }
 
 .username-content {
@@ -564,12 +564,12 @@ defineExpose({
 
 .username {
   font-weight: var(--font-weight-medium);
-  color: var(--color-text);
+  color: var(--text-color);
 }
 
 .email {
   font-size: var(--font-size-s);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   font-family: monospace;
 }
 
@@ -606,14 +606,14 @@ defineExpose({
   &.steam {
     &:hover {
       background-color: var(--color-bg-blue-lowered);
-      color: var(--color-text-blue);
+      color: var(--text-color-blue);
     }
   }
 
   &.discord {
     &:hover {
       background-color: var(--color-bg-purple-lowered);
-      color: var(--color-text-purple);
+      color: var(--text-color-purple);
     }
   }
 
@@ -635,14 +635,14 @@ defineExpose({
 }
 
 .supporter-no {
-  color: var(--color-text-light);
+  color: var(--text-color-light);
 }
 
 .joined-cell,
 .last-signin-cell {
   min-width: 120px;
   font-size: var(--font-size-s);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
 }
 
 .actions-cell {
@@ -653,7 +653,7 @@ defineExpose({
 .no-users {
   text-align: center;
   padding: var(--space-xl);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
 }
 
 .clickable-row:hover {

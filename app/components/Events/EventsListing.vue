@@ -147,7 +147,7 @@ const pastEvents = computed(() => {
 
     <!-- No Events Message -->
     <div v-if="upcomingEvents.length === 0 && pastEvents.length === 0 && ongoingEvents.length === 0" class="events-section__no-events">
-      <p class="color-text-lighter">
+      <p class="text-color-lighter">
         No events found.
       </p>
     </div>
@@ -168,7 +168,7 @@ const pastEvents = computed(() => {
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-semibold);
     margin-bottom: 1.5rem;
-    color: var(--color-text);
+    color: var(--text-color);
   }
 
   &__list {
@@ -182,7 +182,7 @@ const pastEvents = computed(() => {
       text-align: center;
       display: block;
       width: 56px;
-      color: var(--color-text-lighter) !important;
+      color: var(--text-color-lighter) !important;
 
       @media (max-width: $breakpoint-sm) {
         min-width: 80px;
@@ -196,13 +196,13 @@ const pastEvents = computed(() => {
 
   &__event-header {
     flex: 1;
-    color: var(--color-text-lighter);
+    color: var(--text-color-lighter);
     text-align: left;
   }
 
   &__time-header {
     text-align: center;
-    color: var(--color-text-lighter);
+    color: var(--text-color-lighter);
 
     min-width: 294px;
   }
@@ -215,7 +215,7 @@ const pastEvents = computed(() => {
   // Past events styling - grayed out with hover effect
   &--past {
     .events-section__title {
-      color: var(--color-text-lighter);
+      color: var(--text-color-lighter);
     }
 
     .events-section__list {
@@ -249,7 +249,7 @@ const pastEvents = computed(() => {
         position: relative;
         width: 8px;
         height: 8px;
-        background: var(--color-text-red);
+        background: var(--text-color-red);
         border-radius: 50%;
         animation: pulse 2s infinite;
       }

@@ -21,7 +21,7 @@ const fundingUsers = ['dolanske', 'Zealsprince', 'Felix', 'Yuki', 'Jokler', 'Joe
       <Flex>
         <strong class="text-bold">$251</strong>
         /
-        <strong class="color-text-light">$400</strong>
+        <strong class="text-color-light">$400</strong>
       </Flex>
     </Flex>
     <Progress class="mb-s" :height="8" :model-value="funding" />

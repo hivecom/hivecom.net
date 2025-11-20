@@ -338,11 +338,11 @@ onBeforeMount(fetchProjects)
                   {{ tag }}
                 </Badge>
               </div>
-              <span v-else class="color-text-light">No tags</span>
+              <span v-else class="text-color-light">No tags</span>
             </Table.Cell>
             <Table.Cell>
               <UserLink v-if="project.Owner" :user-id="project.Owner" />
-              <span v-else class="color-text-light">No owner</span>
+              <span v-else class="text-color-light">No owner</span>
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions

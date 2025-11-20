@@ -283,7 +283,7 @@ onBeforeMount(fetchMonthlyFundings)
   align-items: center;
   justify-content: center;
   height: 400px;
-  color: var(--color-text-light);
+  color: var(--text-color-light);
 }
 
 .chart-skeleton {
@@ -325,6 +325,6 @@ onBeforeMount(fetchMonthlyFundings)
 }
 
 .chart-error {
-  color: var(--color-text-danger);
+  color: var(--text-color-danger);
 }
 </style>

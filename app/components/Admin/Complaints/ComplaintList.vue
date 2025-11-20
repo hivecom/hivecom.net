@@ -448,7 +448,7 @@ onMounted(fetchComplaints)
       <!-- Pagination -->
       <Flex v-if="totalPages > 1" x-center class="pagination-container">
         <div class="pagination-placeholder">
-          <p class="text-s color-text-light">
+          <p class="text-s text-color-light">
             Showing {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredComplaints.length) }} of {{ filteredComplaints.length }} complaints
           </p>
           <div class="pagination-buttons">

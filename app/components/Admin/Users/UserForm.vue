@@ -496,7 +496,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
     <template #header>
       <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit User' : 'Add User' }}</h4>
-        <span v-if="props.isEditMode && props.user" class="color-text-light text-xxs">
+        <span v-if="props.isEditMode && props.user" class="text-color-light text-xxs">
           {{ props.user.username }}
         </span>
       </Flex>
@@ -822,14 +822,14 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
 
   h4 {
     margin: 0 0 var(--space-xs) 0;
-    color: var(--color-text);
+    color: var(--text-color);
     font-size: var(--font-size-l);
     font-weight: var(--font-weight-semibold);
   }
 
   h5 {
     margin: 0 0 var(--space-xs) 0;
-    color: var(--color-text);
+    color: var(--text-color);
     font-size: var(--font-size-m);
     font-weight: var(--font-weight-semibold);
   }
@@ -848,10 +848,10 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
   justify-content: flex-end;
   margin-top: var(--space-xs);
   font-size: var(--font-size-xs);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
 
   .over-limit {
-    color: var(--color-text-red);
+    color: var(--text-color-red);
     font-weight: var(--font-weight-semibold);
   }
 }
@@ -862,13 +862,13 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
   gap: var(--space-xs);
   margin-top: var(--space-xs);
   font-size: var(--font-size-s);
-  color: var(--color-text-lightest);
+  color: var(--text-color-lightest);
 
   &.error {
-    color: var(--color-text-red);
+    color: var(--text-color-red);
 
     .iconify {
-      color: var(--color-text-red);
+      color: var(--text-color-red);
     }
   }
 }
@@ -892,17 +892,17 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
       align-items: center;
       gap: var(--space-s);
       font-size: var(--font-size-s);
-      color: var(--color-text-light);
+      color: var(--text-color-light);
 
       .iconify {
         font-size: var(--font-size-m);
 
         &[name='ph:warning-circle'] {
-          color: var(--color-text-yellow);
+          color: var(--text-color-yellow);
         }
 
         &[name='ph:check-circle'] {
-          color: var(--color-text-green);
+          color: var(--text-color-green);
         }
       }
     }
@@ -915,7 +915,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
     align-items: center;
     gap: var(--space-s);
     padding: var(--space-m);
-    color: var(--color-text-light);
+    color: var(--text-color-light);
   }
 
   .role-dropdown {
@@ -926,7 +926,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
 
     .role-description {
       font-size: var(--font-size-s);
-      color: var(--color-text-light);
+      color: var(--text-color-light);
       font-style: italic;
     }
   }

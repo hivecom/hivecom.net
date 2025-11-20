@@ -227,7 +227,7 @@ function handleTagInputEnter() {
     <template #header>
       <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit Project' : 'Add Project' }}</h4>
-        <span v-if="props.isEditMode && props.project" class="color-text-light text-xxs">
+        <span v-if="props.isEditMode && props.project" class="text-color-light text-xxs">
           {{ props.project.title }}
         </span>
       </Flex>
@@ -425,7 +425,7 @@ function handleTagInputEnter() {
   .input-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--color-text);
+    color: var(--text-color);
     margin-bottom: var(--space-xs);
   }
 

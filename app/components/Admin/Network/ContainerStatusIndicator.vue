@@ -53,29 +53,29 @@ const statusDescriptions = {
   border-radius: 50%;
 
   &.running {
-    background-color: var(--color-text-green);
+    background-color: var(--text-color-green);
   }
 
   &.healthy {
-    background-color: var(--color-text-green);
+    background-color: var(--text-color-green);
   }
 
   &.unhealthy,
   &.unknown {
-    background-color: var(--color-text-red);
+    background-color: var(--text-color-red);
   }
 
   &.stopped {
-    background-color: var(--color-text);
+    background-color: var(--text-color);
   }
 
   &.stale {
-    background-color: var(--color-text-yellow);
+    background-color: var(--text-color-yellow);
   }
 }
 
 .tooltip-content {
-  color: var(--color-text-light);
+  color: var(--text-color-light);
   font-size: var(--font-size-xs);
   line-height: 1.4;
 }

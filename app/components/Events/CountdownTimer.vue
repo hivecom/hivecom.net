@@ -218,7 +218,7 @@ const timeProgressPercentage = computed(() => {
 
   &__label {
     font-size: var(--font-size-xxs);
-    color: var(--color-text-lightest) !important;
+    color: var(--text-color-lightest) !important;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 
@@ -238,7 +238,7 @@ const timeProgressPercentage = computed(() => {
     transform: scale(1.1);
   }
   50% {
-    color: var(--color-text-white);
+    color: var(--text-color-white);
   }
   100% {
     transform: scale(1);

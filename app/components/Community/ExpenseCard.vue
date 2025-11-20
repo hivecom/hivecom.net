@@ -61,16 +61,16 @@ const expenseStatus = computed(() => {
       <!-- Amount -->
       <div>
         <span class="text-l text-bold">{{ formatCurrency(expense.amount_cents) }}</span>
-        <span class="color-text-light text-s">/month</span>
+        <span class="text-color-light text-s">/month</span>
       </div>
 
       <!-- Description -->
-      <p v-if="expense.description" class="color-text-light text-s">
+      <p v-if="expense.description" class="text-color-light text-s">
         {{ expense.description }}
       </p>
 
       <!-- Date range -->
-      <Flex x-between y-center class="text-xs color-text-light">
+      <Flex x-between y-center class="text-xs text-color-light">
         <span v-if="isPlannedExpense">Starts {{ formatDate(expense.started_at) }}</span>
         <span v-else>Since {{ formatDate(expense.started_at) }}</span>
         <span v-if="expense.ended_at">Ended {{ formatDate(expense.ended_at) }}</span>

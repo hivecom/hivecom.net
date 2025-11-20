@@ -315,17 +315,17 @@ function handleRemoveFriend() {
           <Flex x-between y-center class="profile-meta" expand>
             <Flex gap="l">
               <Flex gap="xs" y-center>
-                <Icon class="color-text-lighter" name="ph:calendar" size="16" />
-                <span class="text-s color-text-lighter">Joined {{ getAccountAge(profile.created_at) }}</span>
+                <Icon class="text-color-lighter" name="ph:calendar" size="16" />
+                <span class="text-s text-color-lighter">Joined {{ getAccountAge(profile.created_at) }}</span>
               </Flex>
 
               <Flex v-if="profile.modified_at && profile.modified_at !== profile.created_at" gap="xs" y-center>
-                <Icon class="color-text-lighter" name="ph:pencil" size="16" />
-                <span class="color-text-lighter text-s">Last updated <TimestampDate size="s" class="color-text-light text-s" :date="profile.modified_at" relative /></span>
+                <Icon class="text-color-lighter" name="ph:pencil" size="16" />
+                <span class="text-color-lighter text-s">Last updated <TimestampDate size="s" class="text-color-light text-s" :date="profile.modified_at" relative /></span>
               </Flex>
 
               <Flex v-if="(profile as any).website" gap="xs" y-center>
-                <Icon class="color-text-lighter" name="ph:link" size="16" />
+                <Icon class="text-color-lighter" name="ph:link" size="16" />
                 <a
                   :href="(profile as any).website"
                   target="_blank"
@@ -339,10 +339,10 @@ function handleRemoveFriend() {
 
             <!-- Admin-only UUID display -->
             <Flex v-if="isCurrentUserAdmin" gap="xs" y-center>
-              <Icon class="color-text-lighter" name="ph:hash" size="16" />
-              <span class="text-xs color-text-lighter font-mono">{{ profile.id }}</span>
+              <Icon class="text-color-lighter" name="ph:hash" size="16" />
+              <span class="text-xs text-color-lighter font-mono">{{ profile.id }}</span>
               <CopyClipboard :text="profile.id" size="s" confirm>
-                <Icon class="color-text-lighter" name="ph:copy" size="12" />
+                <Icon class="text-color-lighter" name="ph:copy" size="12" />
               </CopyClipboard>
             </Flex>
           </Flex>
@@ -378,14 +378,14 @@ function handleRemoveFriend() {
         right: 4px;
         width: 16px;
         height: 16px;
-        background-color: var(--color-text-lighter);
+        background-color: var(--text-color-lighter);
         border: 3px solid var(--color-bg);
         border-radius: 50%;
         box-shadow: 0 0 0 1px var(--color-border);
         transition: background-color 0.2s ease;
 
         &.active {
-          background-color: var(--color-text-green);
+          background-color: var(--text-color-green);
         }
       }
     }
@@ -395,21 +395,21 @@ function handleRemoveFriend() {
     margin: 0;
     font-size: var(--font-size-xxl);
     font-weight: var(--font-weight-bold);
-    color: var(--color-text);
+    color: var(--text-color);
   }
 
   .profile-description {
     margin: 0;
-    color: var(--color-text-light);
+    color: var(--text-color-light);
     line-height: 1.5;
   }
 
   .profile-meta {
-    color: var(--color-text-light);
+    color: var(--text-color-light);
     font-size: var(--font-size-s);
 
     .website-link {
-      color: var(--color-text-accent);
+      color: var(--text-color-accent);
       text-decoration: none;
       max-width: 200px;
       overflow: hidden;

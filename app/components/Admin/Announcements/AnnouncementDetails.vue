@@ -46,7 +46,7 @@ function handleDelete(announcement: Tables<'announcements'>) {
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>Announcement Details</h4>
-          <span v-if="props.announcement" class="color-text-light text-xxs">
+          <span v-if="props.announcement" class="text-color-light text-xxs">
             {{ props.announcement.title }}
           </span>
         </Flex>
@@ -69,39 +69,39 @@ function handleDelete(announcement: Tables<'announcements'>) {
         <Card>
           <Flex column gap="l" expand>
             <Grid class="announcement-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">ID:</span>
+              <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.announcement.id }}</span>
             </Grid>
 
             <Grid class="announcement-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Title:</span>
+              <span class="text-color-light text-bold">Title:</span>
               <span>{{ props.announcement.title }}</span>
             </Grid>
 
             <Grid class="announcement-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Pinned:</span>
+              <span class="text-color-light text-bold">Pinned:</span>
               <Icon v-if="props.announcement.pinned" name="ph:push-pin-fill" class="color-accent" />
-              <span v-else class="color-text-light">No</span>
+              <span v-else class="text-color-light">No</span>
             </Grid>
 
             <Grid class="announcement-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Published:</span>
+              <span class="text-color-light text-bold">Published:</span>
               <TimestampDate
                 :date="props.announcement.published_at"
                 size="s"
-                class="color-text"
+                class="text-color"
               />
             </Grid>
 
             <Grid v-if="props.announcement.link" class="announcement-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Link:</span>
+              <span class="text-color-light text-bold">Link:</span>
               <NuxtLink external :href="props.announcement.link" target="_blank" class="color-accent text-m">
                 {{ props.announcement.link }}
               </NuxtLink>
             </Grid>
 
             <Grid v-if="props.announcement.tags && props.announcement.tags.length > 0" class="announcement-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Tags:</span>
+              <span class="text-color-light text-bold">Tags:</span>
               <div class="tags-display">
                 <Badge
                   v-for="tag in props.announcement.tags"

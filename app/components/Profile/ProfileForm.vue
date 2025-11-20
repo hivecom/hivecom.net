@@ -274,7 +274,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
     <template #header>
       <Flex column :gap="0">
         <h4>Edit Profile</h4>
-        <span v-if="props.profile" class="color-text-light text-xxs">
+        <span v-if="props.profile" class="text-color-light text-xxs">
           {{ props.profile.username }}
         </span>
       </Flex>
@@ -487,7 +487,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
         align-items: center;
         justify-content: center;
         border: 2px dashed var(--color-border);
-        color: var(--color-text-light);
+        color: var(--text-color-light);
         font-size: var(--font-size-m);
       }
     }
@@ -502,14 +502,14 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
 
   h4 {
     margin: 0 0 var(--space-xs) 0;
-    color: var(--color-text);
+    color: var(--text-color);
     font-size: var(--font-size-l);
     font-weight: var(--font-weight-semibold);
   }
 
   h5 {
     margin: 0 0 var(--space-xs) 0;
-    color: var(--color-text);
+    color: var(--text-color);
     font-size: var(--font-size-m);
     font-weight: var(--font-weight-semibold);
   }
@@ -520,10 +520,10 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
   justify-content: flex-end;
   margin-top: var(--space-xs);
   font-size: var(--font-size-xs);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
 
   .over-limit {
-    color: var(--color-text-red);
+    color: var(--text-color-red);
     font-weight: var(--font-weight-semibold);
   }
 }
@@ -534,13 +534,13 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
   gap: var(--space-xs);
   margin-top: var(--space-xs);
   font-size: var(--font-size-s);
-  color: var(--color-text-lightest);
+  color: var(--text-color-lightest);
 
   &.error {
-    color: var(--color-text-red);
+    color: var(--text-color-red);
 
     .iconify {
-      color: var(--color-text-red);
+      color: var(--text-color-red);
     }
   }
 }
@@ -564,10 +564,10 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
       align-items: center;
       gap: var(--space-s);
       font-size: var(--font-size-s);
-      color: var(--color-text-light);
+      color: var(--text-color-light);
 
       .iconify {
-        color: var(--color-text-green);
+        color: var(--text-color-green);
         font-size: var(--font-size-m);
       }
     }

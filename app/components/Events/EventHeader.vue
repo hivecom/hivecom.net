@@ -258,7 +258,7 @@ onUnmounted(() => {
 
   &__description {
     font-size: var(--font-size-l);
-    color: var(--color-text-light);
+    color: var(--text-color-light);
     line-height: 1.5;
 
     @media (max-width: $breakpoint-sm) {
@@ -291,7 +291,7 @@ onUnmounted(() => {
   &__date-time {
     font-size: var(--font-size-m);
     font-weight: var(--font-weight-semibold);
-    color: var(--color-text);
+    color: var(--text-color);
   }
 
   &__duration {

@@ -190,7 +190,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
     <template #header>
       <Flex column :gap="0">
         <h4>{{ formTitle }}</h4>
-        <span v-if="props.isEditMode && props.referendum" class="color-text-light text-xxs">
+        <span v-if="props.isEditMode && props.referendum" class="text-color-light text-xxs">
           {{ props.referendum.title }}
         </span>
       </Flex>
@@ -225,7 +225,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
         <!-- End Date -->
         <Flex column class="date-picker-container" expand :gap="0">
           <label for="end-date-picker" class="input-label">
-            End Date <span class="required" style="color: var(--color-text-red);">*</span>
+            End Date <span class="required" style="color: var(--text-color-red);">*</span>
           </label>
           <Calendar
             v-model="referendumForm.date_end"
@@ -395,7 +395,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
   .input-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--color-text);
+    color: var(--text-color);
     margin-bottom: var(--space-xs);
     display: block;
   }
@@ -413,26 +413,26 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
   .choices-section {
     .warning-box {
       background-color: var(--color-bg-lowered);
-      border: 1px solid var(--color-text-red);
+      border: 1px solid var(--text-color-red);
       border-radius: var(--border-radius-s);
       padding: var(--space-m);
       margin-bottom: var(--space-m);
 
       .warning-icon {
-        color: var(--color-text-red);
+        color: var(--text-color-red);
         font-size: var(--font-size-l);
         flex-shrink: 0;
       }
 
       .warning-text {
-        color: var(--color-text);
+        color: var(--text-color);
         font-size: var(--font-size-s);
         margin: 0 0 var(--space-xs) 0;
         font-weight: var(--font-weight-medium);
       }
 
       .warning-subtext {
-        color: var(--color-text-light);
+        color: var(--text-color-light);
         font-size: var(--font-size-xs);
         margin: 0;
       }
@@ -455,17 +455,17 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
         min-width: auto;
         height: auto;
         background: transparent;
-        color: var(--color-text-red);
+        color: var(--text-color-red);
 
         &:hover {
-          background: var(--color-text-red);
-          color: var(--color-text-inverse);
+          background: var(--text-color-red);
+          color: var(--text-color-inverse);
         }
       }
     }
 
     .error-text {
-      color: var(--color-text-red);
+      color: var(--text-color-red);
       font-size: var(--font-size-xs);
       margin-top: var(--space-xs);
     }
@@ -473,14 +473,14 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
 
   .date-picker-container {
     .error-text {
-      color: var(--color-text-red);
+      color: var(--text-color-red);
       font-size: var(--font-size-xs);
       margin-top: var(--space-xs);
       display: block;
     }
 
     .required {
-      color: var(--color-text-red);
+      color: var(--text-color-red);
     }
   }
 

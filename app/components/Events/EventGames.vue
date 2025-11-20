@@ -69,7 +69,7 @@ const hiddenCount = computed(() => {
     font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--color-text-secondary);
+    color: var(--text-color-secondary);
     margin-bottom: var(--space-s);
   }
 
@@ -95,7 +95,7 @@ const hiddenCount = computed(() => {
     border-radius: var(--border-radius-m);
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
-    color: var(--color-text-secondary);
+    color: var(--text-color-secondary);
     cursor: pointer;
     transition: all 0.2s ease;
 

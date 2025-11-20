@@ -71,12 +71,12 @@ function getBanEndDate() {
         <p v-if="profile.ban_reason" class="ban-reason">
           <strong>Reason:</strong> {{ profile.ban_reason }}
         </p>
-        <p class="text-s color-text-light">
+        <p class="text-s text-color-light">
           {{ getBanDuration() }}
-          <span v-if="getBanEndDate() && isBanActive()" class="text-xs color-text-lighter">
+          <span v-if="getBanEndDate() && isBanActive()" class="text-xs text-color-lighter">
             - expires <TimestampDate :date="getBanEndDate()!" size="xs" relative />
           </span>
-          <span v-else-if="getBanEndDate() && !isBanActive()" class="text-xs color-text-lighter">
+          <span v-else-if="getBanEndDate() && !isBanActive()" class="text-xs text-color-lighter">
             - expired <TimestampDate :date="getBanEndDate()!" size="xs" relative />
           </span>
         </p>
@@ -87,28 +87,28 @@ function getBanEndDate() {
 
 <style lang="scss" scoped>
 .ban-status-card {
-  border: 2px solid var(--color-text-red);
+  border: 2px solid var(--text-color-red);
   background: var(--color-bg-danger);
 
   &.ban-expired {
-    border: 2px solid var(--color-text-orange);
+    border: 2px solid var(--text-color-orange);
     background: var(--color-bg-warning);
 
     .ban-icon {
-      color: var(--color-text-orange);
+      color: var(--text-color-orange);
     }
 
     .ban-title {
-      color: var(--color-text-orange);
+      color: var(--text-color-orange);
     }
 
     .ban-reason strong {
-      color: var(--color-text-orange);
+      color: var(--text-color-orange);
     }
   }
 
   .ban-icon {
-    color: var(--color-text-red);
+    color: var(--text-color-red);
     flex-shrink: 0;
   }
 
@@ -116,16 +116,16 @@ function getBanEndDate() {
     margin: 0;
     font-size: var(--font-size-l);
     font-weight: var(--font-weight-bold);
-    color: var(--color-text-red);
+    color: var(--text-color-red);
   }
 
   .ban-reason {
     margin: 0;
-    color: var(--color-text);
+    color: var(--text-color);
     font-size: var(--font-size-s);
 
     strong {
-      color: var(--color-text-red);
+      color: var(--text-color-red);
     }
   }
 }

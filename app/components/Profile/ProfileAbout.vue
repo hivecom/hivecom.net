@@ -33,11 +33,11 @@ const emit = defineEmits<{
       <MDRenderer skeleton-height="504px" :md="profile.markdown" />
     </div>
     <div v-else-if="isOwnProfile" class="empty-state">
-      <p class="color-text-lighter text-s">
+      <p class="text-color-lighter text-s">
         Add content to your profile to tell others about yourself!
       </p>
     </div>
-    <p v-else class="color-text-lighter text-s">
+    <p v-else class="text-color-lighter text-s">
       This user hasn't added any content yet. Surely they will soon!
     </p>
   </Card>

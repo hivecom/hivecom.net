@@ -243,8 +243,8 @@ function confirmDeleteComplaint() {
             <Flex gap="l" wrap expand>
               <Flex gap="xs" y-center expand x-between>
                 <Flex y-center>
-                  <Icon name="ph:calendar" class="color-text-light" />
-                  <span class="text-s color-text-light">
+                  <Icon name="ph:calendar" class="text-color-light" />
+                  <span class="text-s text-color-light">
                     Created <TimestampDate :date="complaint.created_at" relative />
                   </span>
                 </Flex>
@@ -254,15 +254,15 @@ function confirmDeleteComplaint() {
                   <Flex gap="m" wrap>
                     <div v-if="complaint.context_user">
                       <Flex gap="xs" y-center>
-                        <Icon name="ph:user" class="color-text-light" />
-                        <span class="text-s color-text-light">About:</span>
+                        <Icon name="ph:user" class="text-color-light" />
+                        <span class="text-s text-color-light">About:</span>
                         <UserLink :user-id="complaint.context_user" />
                       </Flex>
                     </div>
                     <div v-if="complaint.context_gameserver">
                       <Flex gap="xs" y-center>
-                        <Icon name="ph:game-controller" class="color-text-light" />
-                        <span class="text-s color-text-light">Game Server:</span>
+                        <Icon name="ph:game-controller" class="text-color-light" />
+                        <span class="text-s text-color-light">Game Server:</span>
                         <GameServerLink :gameserver-id="complaint.context_gameserver" />
                       </Flex>
                     </div>
@@ -314,8 +314,8 @@ function confirmDeleteComplaint() {
 
         <template #footer>
           <Flex gap="xs" y-center>
-            <Icon name="ph:calendar" class="color-text-light" />
-            <span v-if="complaint.responded_at" class="text-s color-text-light">
+            <Icon name="ph:calendar" class="text-color-light" />
+            <span v-if="complaint.responded_at" class="text-s text-color-light">
               Responded <TimestampDate :date="complaint.responded_at" relative />
             </span>
           </Flex>
@@ -417,13 +417,13 @@ function confirmDeleteComplaint() {
 
 .complaint-message p {
   margin: 0;
-  color: var(--color-text);
+  color: var(--text-color);
   white-space: pre-wrap;
 }
 
 .response-content p {
   margin: 0;
-  color: var(--color-text);
+  color: var(--text-color);
   white-space: pre-wrap;
   line-height: 1.6;
 }
