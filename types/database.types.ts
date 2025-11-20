@@ -729,6 +729,13 @@ export interface Database {
       contains_html_tags: { Args: { input_text: string }, Returns: boolean }
       custom_access_token_hook: { Args: { event: Json }, Returns: Json }
       generate_username: { Args: never, Returns: string }
+      get_user_emails: {
+        Args: never
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       has_permission: {
         Args: { permission_name: Database['public']['Enums']['app_permission'] }
         Returns: boolean

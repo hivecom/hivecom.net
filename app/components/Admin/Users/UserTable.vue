@@ -33,9 +33,19 @@ type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
   | 'last_seen'
   | 'website'>
 
+type AdminUserProfile = QueryUserProfile & {
+  email: string | null
+  role?: string | null
+}
+
+interface UserEmailRecord {
+  user_id: string
+  email: string | null
+}
+
 // Type for user action
 interface UserAction {
-  user: QueryUserProfile
+  user: AdminUserProfile
   type: 'ban' | 'unban' | 'edit' | 'delete' | null
   banDuration?: string
   banReason?: string
@@ -49,7 +59,7 @@ interface SelectOption {
 
 // Emits
 const emit = defineEmits<{
-  userSelected: [user: QueryUserProfile]
+  userSelected: [user: AdminUserProfile]
   action: [action: UserAction]
 }>()
 
@@ -86,6 +96,7 @@ const _profilesQuery = supabase.from('profiles').select(`
 interface TransformedUser {
   'Username': string
   'UUID': string
+  'Email': string | null
   'Role': string | null
   'Status': 'active' | 'banned'
   'Last Seen': string
@@ -96,7 +107,7 @@ interface TransformedUser {
   }
   'Supporter': boolean
   'Joined': string
-  '_original': QueryUserProfile
+  '_original': AdminUserProfile
 }
 
 // Data states
@@ -104,6 +115,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const users = ref<QueryUserProfile[]>([])
 const userRoles = ref<Record<string, string | null>>({})
+const userEmails = ref<Record<string, string | null>>({})
 const search = ref('')
 const roleFilter = ref<SelectOption[]>()
 const statusFilter = ref<SelectOption[]>()
@@ -176,6 +188,18 @@ async function fetchUsers() {
       })
       userRoles.value = rolesMap
     }
+
+    const { data: emailsData, error: emailsError } = await supabase.rpc('get_user_emails')
+
+    if (emailsError)
+      throw emailsError
+
+    const emailsMap: Record<string, string | null> = {}
+    const emailRows = (emailsData ?? []) as UserEmailRecord[]
+    emailRows.forEach(({ user_id, email }) => {
+      emailsMap[user_id] = email
+    })
+    userEmails.value = emailsMap
   }
   catch (error: unknown) {
     console.error('Error fetching users:', error)
@@ -199,10 +223,13 @@ const filteredData = computed<TransformedUser[]>(() => {
   // Apply search filter
   if (search.value) {
     const searchTerm = search.value.toLowerCase()
-    filtered = filtered.filter((user: QueryUserProfile) =>
-      user.username?.toLowerCase().includes(searchTerm)
-      || user.id?.toLowerCase().includes(searchTerm),
-    )
+    filtered = filtered.filter((user: QueryUserProfile) => {
+      const usernameMatch = user.username?.toLowerCase().includes(searchTerm)
+      const idMatch = user.id?.toLowerCase().includes(searchTerm)
+      const emailValue = getUserEmail(user.id)?.toLowerCase() ?? ''
+      const emailMatch = emailValue.includes(searchTerm)
+      return Boolean(usernameMatch || idMatch || emailMatch)
+    })
   }
 
   // Apply role filters
@@ -228,9 +255,11 @@ const filteredData = computed<TransformedUser[]>(() => {
     const status = getUserStatus(user, role)
     const isSupporter = !!(user.supporter_lifetime || user.supporter_patreon)
     const activityStatus = user.last_seen ? getUserActivityStatus(user.last_seen) : null
+    const email = getUserEmail(user.id)
 
     return {
       'Username': user.username || 'Unknown',
+      'Email': email,
       'UUID': user.id,
       'Role': role,
       'Status': status,
@@ -262,6 +291,7 @@ const filteredData = computed<TransformedUser[]>(() => {
         last_seen: user.last_seen,
         website: user.website || null,
         role,
+        email,
       },
     }
   })
@@ -281,7 +311,7 @@ setSort('Username', 'asc')
 
 function handleUserClick(userData: unknown) {
   // userData might be transformed by defineTable, so we need to check its structure
-  const user = (userData as TransformedUser)._original || (userData as QueryUserProfile)
+  const user = (userData as TransformedUser)._original || (userData as AdminUserProfile)
   emit('userSelected', user)
 }
 
@@ -328,6 +358,10 @@ function clearFilters() {
   search.value = ''
   roleFilter.value = undefined
   statusFilter.value = undefined
+}
+
+function getUserEmail(userId: string): string | null {
+  return userEmails.value[userId] ?? null
 }
 
 // Get platform icon name and display info
@@ -407,6 +441,19 @@ defineExpose({
               <div class="username-content">
                 <UserLink :user-id="user._original.id" />
               </div>
+            </Table.Cell>
+
+            <Table.Cell class="email-cell" @click.stop>
+              <template v-if="user.Email">
+                <CopyClipboard :text="user.Email" confirm>
+                  <Button variant="gray" size="s" class="email-button">
+                    <span class="text-xxs">{{ user.Email }}</span>
+                  </Button>
+                </CopyClipboard>
+              </template>
+              <span v-else class="text-color-light text-xxs">
+                No email on file
+              </span>
             </Table.Cell>
 
             <Table.Cell class="uuid-cell" @click.stop>
@@ -567,14 +614,17 @@ defineExpose({
   color: var(--text-color);
 }
 
-.email {
-  font-size: var(--font-size-s);
-  color: var(--text-color-light);
-  font-family: monospace;
-}
-
 .status-cell {
   min-width: 120px;
+}
+
+.email-cell {
+  min-width: 220px;
+}
+
+.email-button {
+  font-family: monospace;
+  font-size: var(--font-size-xs);
 }
 
 .role-cell {

@@ -32,7 +32,7 @@ function clearFilters() {
     <!-- Search input -->
     <Input
       v-model="search"
-      placeholder="Search users..."
+      placeholder="Search by username, email, or UUID"
     >
       <template #start>
         <Icon name="ph:magnifying-glass" />

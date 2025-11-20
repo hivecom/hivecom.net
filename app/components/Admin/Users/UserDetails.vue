@@ -18,6 +18,7 @@ const props = defineProps<{
   user: {
     id: string
     username: string
+    email: string | null
     created_at: string
     modified_at: string | null
     modified_by: string | null
@@ -268,13 +269,25 @@ function getUserInitials(username: string): string {
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
+              <span class="text-color-light text-bold">Email:</span>
+              <template v-if="user.email">
+                <CopyClipboard :text="user.email" variant="outline" size="xs" confirm>
+                  <span class="user-email">{{ user.email }}</span>
+                </CopyClipboard>
+              </template>
+              <span v-else class="text-color-light text-s">No email on file</span>
+            </Grid>
+
+            <Grid class="detail-item" expand :columns="2">
               <span class="text-color-light text-bold">Status:</span>
               <UserStatusIndicator :status="userStatus" :show-label="true" />
             </Grid>
 
             <Grid class="detail-item" :columns="2" expand>
               <span class="text-color-light text-bold">Role:</span>
-              <RoleIndicator :role="user.role" />
+              <span>
+                <RoleIndicator :role="user.role" />
+              </span>
             </Grid>
 
             <Grid class="detail-item" :columns="2" expand>
@@ -466,7 +479,8 @@ function getUserInitials(username: string): string {
 }
 
 .user-id,
-.platform-id {
+.platform-id,
+.user-email {
   font-family: monospace;
   font-size: var(--font-size-s);
   background-color: var(--color-bg-light);
