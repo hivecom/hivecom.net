@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ReferendumResults from '@/components/Shared/ReferendumResults.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
+import { formatDuration } from '@/lib/utils/duration'
 
 const route = useRoute()
 const router = useRouter()
@@ -103,34 +104,59 @@ const isActive = computed(() => {
   return now.isAfter(start) && now.isBefore(end)
 })
 
+const isUpcoming = computed(() => {
+  if (!referendum.value)
+    return false
+  const now = dayjs()
+  const start = dayjs(referendum.value.date_start)
+  return now.isBefore(start)
+})
+
+const statusVariant = computed(() => {
+  if (isUpcoming.value)
+    return 'warning'
+  return isActive.value ? 'success' : 'neutral'
+})
+
+const statusLabel = computed(() => {
+  if (isUpcoming.value)
+    return 'Upcoming'
+  return isActive.value ? 'Active' : 'Concluded'
+})
+
 const hasVoted = computed(() => !!userVote.value)
 
 const timeRemaining = computed(() => {
   if (!referendum.value)
     return ''
-  const end = dayjs(referendum.value.date_end)
-  const now = dayjs()
-  const diff = end.diff(now)
+
+  const diff = dayjs(referendum.value.date_end).diff(dayjs())
 
   if (diff <= 0)
     return 'Voting has ended'
 
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const formatted = formatDuration(diff)
+  return formatted ? `${formatted} remaining` : 'Less than 1 minute remaining'
+})
 
-  if (days > 0)
-    return `${days} day${days === 1 ? '' : 's'}, ${hours} hour${hours === 1 ? '' : 's'} remaining`
-  if (hours > 0)
-    return `${hours} hour${hours === 1 ? '' : 's'}, ${minutes} minute${minutes === 1 ? '' : 's'} remaining`
-  return `${minutes} minute${minutes === 1 ? '' : 's'} remaining`
+const timeUntilStart = computed(() => {
+  if (!referendum.value)
+    return ''
+
+  const diff = dayjs(referendum.value.date_start).diff(dayjs())
+
+  if (diff <= 0)
+    return ''
+
+  const formatted = formatDuration(diff)
+  return formatted ? `${formatted} until voting opens` : 'Less than 1 minute until voting opens'
 })
 
 const totalVoters = computed(() => allVotes.value?.length || 0)
 
 const shouldShowResults = computed(() => {
   // Always show results if user has voted or if the referendum has concluded
-  return hasVoted.value || !isActive.value || showResults.value
+  return hasVoted.value || (!isActive.value && !isUpcoming.value) || showResults.value
 })
 
 const isLoadingResults = computed(() => {
@@ -377,11 +403,8 @@ useHead({
 
           <Flex x-between y-center expand class="mt-m">
             <Flex gap="xs">
-              <Badge v-if="isActive" variant="success">
-                Active
-              </Badge>
-              <Badge v-else variant="neutral">
-                Concluded
+              <Badge :variant="statusVariant">
+                {{ statusLabel }}
               </Badge>
 
               <Badge v-if="referendum.multiple_choice">
@@ -391,13 +414,17 @@ useHead({
                 Single Choice
               </Badge>
 
-              <Badge>
+              <Badge v-if="!isUpcoming">
                 {{ totalVoters }} vote{{ totalVoters !== 1 ? 's' : '' }}
               </Badge>
             </Flex>
-            <p v-if="isActive" class="text-s text-color-light mt-s">
+            <p v-if="isActive" class="flex align-center text-s text-color-light mt-s">
               <Icon name="ph:clock" />
               {{ timeRemaining }}
+            </p>
+            <p v-else-if="isUpcoming" class="text-s text-color-light mt-s">
+              <Icon name="ph:calendar" />
+              {{ timeUntilStart }}
             </p>
           </Flex>
         </Flex>
@@ -517,9 +544,12 @@ useHead({
           <div class="text-center p-l">
             <Icon name="ph:eye-slash" size="2rem" class="text-color-light mb-s" />
             <h4 class="mb-s">
-              Results Hidden
+              {{ isUpcoming ? 'Referendum hasn\'t started' : 'Results require a vote' }}
             </h4>
-            <p class="text-color-light">
+            <p v-if="isUpcoming" class="text-color-light">
+              Results will be available once voting opens.
+            </p>
+            <p v-else class="text-color-light">
               Vote to see the current results, or reveal them early using the button above.
             </p>
           </div>

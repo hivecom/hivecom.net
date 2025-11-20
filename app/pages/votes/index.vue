@@ -24,6 +24,8 @@ useHead({
 const tab = ref<'Active' | 'Concluded'>('Active')
 const search = ref('')
 
+type ReferendumStatus = 'active' | 'upcoming' | 'concluded'
+
 // Get current date for filtering
 const currentDate = new Date().toISOString()
 
@@ -137,6 +139,18 @@ const currentReferendums = computed(() => {
     || referendum.description?.toLowerCase().includes(searchLower),
   )
 })
+
+function getReferendumStatus(referendum: { date_start: string, date_end: string }): ReferendumStatus {
+  const now = new Date()
+  const start = new Date(referendum.date_start)
+  const end = new Date(referendum.date_end)
+
+  if (now < start)
+    return 'upcoming'
+  if (now > end)
+    return 'concluded'
+  return 'active'
+}
 </script>
 
 <template>
@@ -195,7 +209,7 @@ const currentReferendums = computed(() => {
           :referendum="referendum"
           :vote-count="getVoteCount(referendum.id)"
           :voter-ids="getVoterIds(referendum.id)"
-          :is-active="true"
+          :status="getReferendumStatus(referendum)"
         />
       </Grid>
     </template>
@@ -225,7 +239,7 @@ const currentReferendums = computed(() => {
           :referendum="referendum"
           :vote-count="getVoteCount(referendum.id)"
           :voter-ids="getVoterIds(referendum.id)"
-          :is-active="false"
+          :status="getReferendumStatus(referendum)"
         />
       </Grid>
     </template>

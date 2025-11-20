@@ -3,9 +3,14 @@ import type { Tables } from '@/types/database.types'
 
 import { Badge, Card, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import { computed } from 'vue'
 
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { formatDuration } from '@/lib/utils/duration'
+
+type ReferendumStatus = 'active' | 'upcoming' | 'concluded'
 
 interface Props {
   referendum: Tables<'referendums'> | {
@@ -22,7 +27,7 @@ interface Props {
     readonly title: string
   }
   voteCount: number
-  isActive: boolean
+  status: ReferendumStatus
   voterIds?: string[]
 }
 
@@ -30,22 +35,30 @@ const props = defineProps<Props>()
 
 // Calculate time remaining for active referendums
 function getTimeRemaining(dateEnd: string) {
-  const end = dayjs(dateEnd)
-  const now = dayjs()
-  const diff = end.diff(now)
+  const diff = dayjs(dateEnd).diff(dayjs())
 
   if (diff <= 0)
     return 'Concluded'
 
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-
-  if (days > 0)
-    return `${days} day${days === 1 ? '' : 's'} left`
-  if (hours > 0)
-    return `${hours} hour${hours === 1 ? '' : 's'} left`
-  return 'Less than 1 hour left'
+  const formatted = formatDuration(diff)
+  return formatted ? `${formatted} left` : 'Less than 1 minute left'
 }
+
+const statusVariant = computed(() => {
+  if (props.status === 'active')
+    return 'info'
+  if (props.status === 'upcoming')
+    return 'warning'
+  return 'neutral'
+})
+
+const statusText = computed(() => {
+  if (props.status === 'active')
+    return getTimeRemaining(props.referendum.date_end)
+  if (props.status === 'upcoming')
+    return 'Upcoming'
+  return 'Concluded'
+})
 
 // Navigate to referendum detail
 function goToReferendum() {
@@ -74,11 +87,8 @@ function goToReferendum() {
       <Flex x-between y-center expand>
         <Flex column gap="xs">
           <Flex gap="xs">
-            <Badge v-if="isActive" variant="info">
-              {{ getTimeRemaining(referendum.date_end) }}
-            </Badge>
-            <Badge v-else variant="neutral">
-              Concluded
+            <Badge :variant="statusVariant">
+              {{ statusText }}
             </Badge>
             <Badge v-if="referendum.multiple_choice" variant="neutral">
               Multiple choice
@@ -90,7 +100,9 @@ function goToReferendum() {
         </Flex>
 
         <Flex gap="xs" y-center x-center>
-          <span class="text-xs text-color-light">{{ voteCount }} vote{{ voteCount !== 1 ? 's' : '' }}</span>
+          <span v-if="status !== 'upcoming'" class="text-xs text-color-light">
+            {{ voteCount }} vote{{ voteCount !== 1 ? 's' : '' }}
+          </span>
           <BulkAvatarDisplay
             v-if="voterIds && voterIds.length > 0"
             :user-ids="voterIds"

@@ -23,6 +23,7 @@ const canDeleteReferendums = computed(() => hasPermission('referendums.delete'))
 const referendumForm = ref({
   title: '',
   description: '',
+  date_start: new Date() as Date | null,
   date_end: null as Date | null,
   multiple_choice: false,
   choices: [] as string[],
@@ -39,18 +40,25 @@ const saveLoading = ref(false)
 const deleteLoading = ref(false)
 
 // Form validation
-const validation = computed(() => ({
-  title: !!referendumForm.value.title.trim(),
-  date_end: !!referendumForm.value.date_end,
-  choices: referendumForm.value.choices.length >= 2,
-  dateRange: referendumForm.value.date_end ? referendumForm.value.date_end > new Date() : false,
-}))
+const validation = computed(() => {
+  const { date_start, date_end } = referendumForm.value
+  return {
+    title: !!referendumForm.value.title.trim(),
+    date_start: !!date_start,
+    date_end: !!date_end,
+    choices: referendumForm.value.choices.length >= 2,
+    dateRange: date_end ? date_end > new Date() : false,
+    startBeforeEnd: date_start && date_end ? date_end > date_start : true,
+  }
+})
 
 const isValid = computed(() =>
   validation.value.title
+  && validation.value.date_start
   && validation.value.date_end
   && validation.value.choices
-  && validation.value.dateRange,
+  && validation.value.dateRange
+  && validation.value.startBeforeEnd,
 )
 
 // Check if choices are being removed in edit mode
@@ -71,6 +79,7 @@ function updateFormData(newReferendum: Tables<'referendums'> | null) {
     referendumForm.value = {
       title: newReferendum.title,
       description: newReferendum.description || '',
+      date_start: newReferendum.date_start ? new Date(newReferendum.date_start) : new Date(),
       date_end: newReferendum.date_end ? new Date(newReferendum.date_end) : null,
       multiple_choice: newReferendum.multiple_choice,
       choices: [...(newReferendum.choices || [])],
@@ -81,6 +90,7 @@ function updateFormData(newReferendum: Tables<'referendums'> | null) {
     referendumForm.value = {
       title: '',
       description: '',
+      date_start: new Date(),
       date_end: null,
       multiple_choice: false,
       choices: [],
@@ -139,6 +149,12 @@ function handleSubmit() {
   if (!isValid.value)
     return
 
+  const dateStart = referendumForm.value.date_start?.toISOString()
+  const dateEnd = referendumForm.value.date_end?.toISOString()
+
+  if (!dateStart || !dateEnd)
+    return
+
   // Set loading state
   saveLoading.value = true
 
@@ -146,8 +162,8 @@ function handleSubmit() {
   const referendumData = {
     title: referendumForm.value.title.trim(),
     description: referendumForm.value.description.trim() || null,
-    date_start: new Date().toISOString(), // Always start immediately
-    date_end: referendumForm.value.date_end ? referendumForm.value.date_end.toISOString() : '',
+    date_start: dateStart,
+    date_end: dateEnd,
     multiple_choice: referendumForm.value.multiple_choice,
     choices: referendumForm.value.choices,
   }
@@ -222,6 +238,45 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
           :rows="3"
         />
 
+        <!-- Start Date -->
+        <Flex column class="date-picker-container" expand :gap="0">
+          <label for="start-date-picker" class="input-label">
+            Start Date <span class="required" style="color: var(--text-color-red);">*</span>
+          </label>
+          <Calendar
+            v-model="referendumForm.date_start"
+            expand
+            enable-time-picker
+            time-picker-inline
+            enable-minutes
+            is24
+            format="yyyy-MM-dd-HH:mm"
+            :class="{ invalid: !validation.date_start }"
+          >
+            <template #trigger>
+              <Button
+                id="start-date-picker"
+                class="date-picker-button"
+                expand
+                :class="{ error: !validation.date_start }"
+              >
+                {{ referendumForm.date_start ? referendumForm.date_start.toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                }) : 'Choose start date and time' }}
+                <template #end>
+                  <Icon name="ph:calendar" />
+                </template>
+              </Button>
+            </template>
+          </Calendar>
+          <span v-if="!validation.date_start" class="error-text">Start date is required</span>
+        </Flex>
+
         <!-- End Date -->
         <Flex column class="date-picker-container" expand :gap="0">
           <label for="end-date-picker" class="input-label">
@@ -235,14 +290,14 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
             enable-minutes
             is24
             format="yyyy-MM-dd-HH:mm"
-            :class="{ invalid: !validation.date_end }"
+            :class="{ invalid: !validation.date_end || !validation.startBeforeEnd }"
           >
             <template #trigger>
               <Button
                 id="end-date-picker"
                 class="date-picker-button"
                 expand
-                :class="{ error: !validation.date_end || !validation.dateRange }"
+                :class="{ error: !validation.date_end || !validation.dateRange || !validation.startBeforeEnd }"
               >
                 {{ referendumForm.date_end ? referendumForm.date_end.toLocaleString('en-US', {
                   year: 'numeric',
@@ -259,6 +314,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
             </template>
           </Calendar>
           <span v-if="!validation.date_end" class="error-text">End date is required</span>
+          <span v-else-if="!validation.startBeforeEnd" class="error-text">End date must be after the start date</span>
           <span v-else-if="!validation.dateRange" class="error-text">End date must be in the future</span>
         </Flex>
 

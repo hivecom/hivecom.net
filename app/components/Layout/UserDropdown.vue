@@ -116,6 +116,10 @@ async function signOut() {
 
 <style lang="scss" scoped>
 .user-dropdown {
+  .vui-dropdown-title {
+    text-transform: none !important;
+  }
+
   img {
     border-radius: 999px;
   }
@@ -136,6 +140,8 @@ async function signOut() {
   }
 
   &__username {
+    font-size: var(--font-size-m);
+    padding-left: 5px;
     text-decoration: none;
     color: inherit;
 
