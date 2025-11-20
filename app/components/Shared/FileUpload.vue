@@ -400,24 +400,24 @@ onUnmounted(() => {
 
   &__icon {
     font-size: 2rem;
-    color: var(--color-text-light);
+    color: var(--text-color-light);
   }
 
   &__label {
     font-weight: var(--font-weight-medium);
-    color: var(--color-text);
+    color: var(--text-color);
     margin: 0;
   }
 
   &__hint {
     font-size: var(--font-size-s);
-    color: var(--color-text-light);
+    color: var(--text-color-light);
     margin: 0;
   }
 
   &__size-hint {
     font-size: var(--font-size-xs);
-    color: var(--color-text-lightest);
+    color: var(--text-color-lightest);
     margin: 0;
   }
 
@@ -429,11 +429,11 @@ onUnmounted(() => {
     background: var(--color-bg-red-subtle);
     border: 1px solid var(--color-border-red);
     border-radius: var(--border-radius-s);
-    color: var(--color-text-red);
+    color: var(--text-color-red);
     font-size: var(--font-size-xs);
 
     .iconify {
-      color: var(--color-text-red);
+      color: var(--text-color-red);
     }
   }
 

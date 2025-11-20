@@ -13,13 +13,13 @@
   --dark-color-bg: #111;
   --dark-color-fg: #0a0a0a;
   --dark-color-accent: #a7fc2f;
-  --dark-color-text: #fff;
+  --dark-text-color: #fff;
 
   // Light theme colors
   --light-color-bg: #eee;
   --light-color-fg: #ddd;
   --light-color-accent: #69883e;
-  --light-color-text: #000;
+  --light-text-color: #000;
 
   --navbar-offset: 64px;
 
@@ -37,7 +37,7 @@ body {
 }
 
 a {
-  color: var(--color-text);
+  color: var(--text-color);
   text-decoration: none;
 }
 
@@ -59,7 +59,7 @@ button {
 }
 
 .iconify {
-  color: var(--color-text);
+  color: var(--text-color);
 }
 
 .vui-badge {

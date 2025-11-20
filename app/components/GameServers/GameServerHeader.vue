@@ -223,7 +223,7 @@ function openComplaintModal() {
 
   &__description {
     font-size: var(--font-size-l);
-    color: var(--color-text-light);
+    color: var(--text-color-light);
     line-height: 1.5;
   }
 
@@ -285,7 +285,7 @@ function openComplaintModal() {
 
   &__status-label {
     font-size: var(--font-size-xxs);
-    color: var(--color-text-light);
+    color: var(--text-color-light);
     font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     // letter-spacing: 0.5px;
@@ -293,7 +293,7 @@ function openComplaintModal() {
 
   &__status-value {
     font-size: var(--font-size-s);
-    color: var(--color-text);
+    color: var(--text-color);
     font-weight: var(--font-weight-medium);
   }
 

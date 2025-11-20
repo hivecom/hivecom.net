@@ -81,7 +81,7 @@ defineExpose({
 
     <!-- Error State -->
     <div v-else-if="error" class="bulk-user-display__error">
-      <p class="color-text-danger">
+      <p class="text-color-danger">
         {{ error }}
       </p>
       <button class="bulk-user-display__retry" @click="refetch">
@@ -92,7 +92,7 @@ defineExpose({
     <!-- Empty State -->
     <div v-else-if="userIds.length === 0" class="bulk-user-display__empty">
       <slot name="empty">
-        <p class="color-text-light">
+        <p class="text-color-light">
           No users to display
         </p>
       </slot>
@@ -143,7 +143,7 @@ defineExpose({
 
   &__retry {
     background: var(--color-bg-accent);
-    color: var(--color-text-on-accent);
+    color: var(--text-color-on-accent);
     border: none;
     padding: var(--space-xs) var(--space-s);
     border-radius: var(--border-radius-s);

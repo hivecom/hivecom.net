@@ -108,7 +108,7 @@ const state = computed(() => {
 }
 
 .gameserver-row-arrow {
-  color: var(--color-text-lighter);
+  color: var(--text-color-lighter);
   transition: all 0.2s ease-in-out;
 }
 
@@ -119,7 +119,7 @@ const state = computed(() => {
 
   .description-text {
     font-size: var(--font-size-s);
-    color: var(--color-text-lighter);
+    color: var(--text-color-lighter);
     font-style: italic;
     white-space: nowrap;
     overflow: hidden;
@@ -139,19 +139,19 @@ const state = computed(() => {
 
   &.healthy,
   &.running {
-    background-color: var(--color-text-green);
+    background-color: var(--text-color-green);
   }
 
   &.unhealthy {
-    background-color: var(--color-text-red);
+    background-color: var(--text-color-red);
   }
 
   &.unknown {
-    background-color: var(--color-text-yellow);
+    background-color: var(--text-color-yellow);
   }
 
   &.offline {
-    background-color: var(--color-text-lighter);
+    background-color: var(--text-color-lighter);
   }
 }
 
@@ -166,6 +166,6 @@ const state = computed(() => {
 
 .region-badge .region-indicator {
   font-size: var(--font-size-s);
-  color: var(--color-text-light);
+  color: var(--text-color-light);
 }
 </style>

@@ -35,7 +35,7 @@ p {
 }
 
 .text {
-  color: var(--color-text) !important;
+  color: var(--text-color) !important;
 }
 
 .contact {

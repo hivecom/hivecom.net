@@ -405,7 +405,7 @@ function isCoverLoading(gameId: number): boolean {
   font-size: var(--font-size-m);
   font-weight: 600;
   line-height: 1.2;
-  color: var(--color-text);
+  color: var(--text-color);
   flex: 1;
   min-width: 0; /* Allow text truncation */
 }
@@ -417,7 +417,7 @@ function isCoverLoading(gameId: number): boolean {
 
   .shorthand {
     font-size: var(--font-size-s);
-    color: var(--color-text-secondary);
+    color: var(--text-color-secondary);
     background: var(--color-background-tertiary);
     padding: var(--space-xs) var(--space-s);
     border-radius: var(--border-radius-m);
@@ -426,10 +426,10 @@ function isCoverLoading(gameId: number): boolean {
 
 .modal-content {
   &[style*='background-image'] {
-    color: var(--color-text-inverse);
+    color: var(--text-color-inverse);
 
     h3 {
-      color: var(--color-text-inverse);
+      color: var(--text-color-inverse);
     }
 
     .text-muted {

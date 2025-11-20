@@ -45,17 +45,17 @@ const variant = computed(() => {
 
   &--admin {
     background-color: var(--color-bg-red-lowered);
-    color: var(--color-text-red);
+    color: var(--text-color-red);
   }
 
   &--moderator {
     background-color: var(--color-bg-blue-lowered);
-    color: var(--color-text-blue);
+    color: var(--text-color-blue);
   }
 
   &--user {
     background-color: var(--color-bg-green-lowered);
-    color: var(--color-text-green);
+    color: var(--text-color-green);
   }
 }
 
@@ -63,17 +63,17 @@ const variant = computed(() => {
   .role-indicator {
     &--admin {
       background-color: var(--color-bg-red-raised);
-      color: var(--color-text-invert);
+      color: var(--text-color-invert);
     }
 
     &--moderator {
       background-color: var(--color-bg-blue-raised);
-      color: var(--color-text-invert);
+      color: var(--text-color-invert);
     }
 
     &--user {
       background-color: var(--color-bg-green-raised);
-      color: var(--color-text-invert);
+      color: var(--text-color-invert);
     }
   }
 }

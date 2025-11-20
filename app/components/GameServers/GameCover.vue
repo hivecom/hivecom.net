@@ -167,7 +167,7 @@ defineExpose({
 .game-cover-fallback-text {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-color-secondary);
   text-align: center;
   padding: 0.25rem;
   line-height: 1.2;

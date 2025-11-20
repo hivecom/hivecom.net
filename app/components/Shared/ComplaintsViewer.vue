@@ -179,7 +179,7 @@ onMounted(() => {
       </div>
 
       <div v-else-if="error" class="error-state">
-        <p class="color-text-error">
+        <p class="text-color-error">
           {{ error }}
         </p>
         <Button variant="gray" size="s" @click="fetchComplaints">
@@ -188,7 +188,7 @@ onMounted(() => {
       </div>
 
       <div v-else-if="complaints.length === 0" class="empty-state">
-        <p class="color-text-light">
+        <p class="text-color-light">
           You haven't submitted any complaints yet.
         </p>
         <Button variant="accent" @click="handleNewComplaint">
@@ -248,7 +248,7 @@ onMounted(() => {
 
             <!-- Original complaint message (always shown) -->
             <div>
-              <p class="color-text-light text-s quote quote-border">
+              <p class="text-color-light text-s quote quote-border">
                 {{ complaint.message }}
               </p>
             </div>
@@ -258,15 +258,15 @@ onMounted(() => {
               <Flex gap="m" wrap>
                 <div v-if="complaint.context_user">
                   <Flex gap="xs" y-center>
-                    <Icon name="ph:user" class="color-text-light" size="14" />
-                    <span class="text-s color-text-light">Related User:</span>
+                    <Icon name="ph:user" class="text-color-light" size="14" />
+                    <span class="text-s text-color-light">Related User:</span>
                     <UserLink :user-id="complaint.context_user" />
                   </Flex>
                 </div>
                 <div v-if="complaint.context_gameserver">
                   <Flex gap="xs" y-center>
-                    <Icon name="ph:game-controller" class="color-text-light" size="14" />
-                    <span class="text-s color-text-light">Related Game Server:</span>
+                    <Icon name="ph:game-controller" class="text-color-light" size="14" />
+                    <span class="text-s text-color-light">Related Game Server:</span>
                     <GameServerLink :gameserver-id="complaint.context_gameserver" />
                   </Flex>
                 </div>
@@ -333,7 +333,7 @@ onMounted(() => {
 }
 
 .quote-border {
-  border-left: 3px solid var(--color-text-lighter);
+  border-left: 3px solid var(--text-color-lighter);
   padding-left: 12px;
 }
 </style>

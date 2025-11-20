@@ -105,7 +105,7 @@ defineExpose({
 
     <!-- Error State -->
     <div v-else-if="error" class="bulk-avatar-display__error">
-      <p class="color-text-danger text-s">
+      <p class="text-color-danger text-s">
         {{ error }}
       </p>
     </div>
@@ -113,7 +113,7 @@ defineExpose({
     <!-- Empty State -->
     <div v-else-if="userIds.length === 0" class="bulk-avatar-display__empty">
       <slot name="empty">
-        <p class="color-text-light text-s">
+        <p class="text-color-light text-s">
           No users to display
         </p>
       </slot>
@@ -242,7 +242,7 @@ defineExpose({
     border: 2px solid var(--color-bg);
     font-size: calc(var(--avatar-size, 40px) * 0.3);
     font-weight: var(--font-weight-medium);
-    color: var(--color-text-light);
+    color: var(--text-color-light);
     transition: background-color 0.2s ease;
 
     &:hover {
