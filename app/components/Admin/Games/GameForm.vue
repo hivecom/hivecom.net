@@ -128,7 +128,7 @@ function confirmDelete() {
 
 // Handle asset upload
 async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', file: File) {
-  if (!gameForm.value.shorthand || !props.game)
+  if (!gameForm.value.shorthand)
     return
 
   try {
@@ -141,7 +141,8 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
     if (result.success && result.url) {
       assetsUrl.value[assetType] = result.url
       // Clear cache for this game to ensure fresh data
-      clearGameAssets(props.game.id)
+      if (props.game?.id)
+        clearGameAssets(props.game.id)
     }
     else {
       assetsError.value[assetType] = result.error || `Failed to upload ${assetType}`
@@ -158,7 +159,7 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 
 // Handle asset removal
 async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
-  if (!gameForm.value.shorthand || !props.game)
+  if (!gameForm.value.shorthand)
     return
 
   try {
@@ -169,7 +170,8 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
       assetsUrl.value[assetType] = null
       assetsError.value[assetType] = null
       // Clear cache for this game to ensure fresh data
-      clearGameAssets(props.game.id)
+      if (props.game?.id)
+        clearGameAssets(props.game.id)
     }
     else {
       assetsError.value[assetType] = result.error || 'Failed to remove asset'

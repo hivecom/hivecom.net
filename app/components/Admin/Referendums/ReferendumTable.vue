@@ -39,7 +39,7 @@ const { canManageResource, canCreate } = useTableActions('referendums')
 
 // Define query
 const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+const userId = useUserId()
 const referendumsQuery = supabase.from('referendums').select(`
   *,
   vote_count:referendum_votes(count)
@@ -209,7 +209,7 @@ async function handleReferendumSave(referendumData: TablesInsert<'referendums'> 
       const updateData = {
         ...referendumData,
         modified_at: new Date().toISOString(),
-        modified_by: user.value?.id,
+        modified_by: userId.value ?? null,
       }
 
       const { error } = await supabase
@@ -224,8 +224,8 @@ async function handleReferendumSave(referendumData: TablesInsert<'referendums'> 
       // Create new referendum with creation and modification tracking
       const createData = {
         ...referendumData,
-        created_by: user.value?.id,
-        modified_by: user.value?.id,
+        created_by: userId.value ?? null,
+        modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
 

@@ -32,7 +32,7 @@ const { canManageResource, canCreate } = useTableActions('expenses')
 
 // Setup client and state
 const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+const userId = useUserId()
 const loading = ref(true)
 const errorMessage = ref('')
 const expenses = ref<Expense[]>([])
@@ -198,7 +198,7 @@ async function handleExpenseSave(expenseData: Partial<Expense>) {
       const updateData = {
         ...expenseData,
         modified_at: new Date().toISOString(),
-        modified_by: user.value?.id,
+        modified_by: userId.value ?? null,
       }
 
       const { error } = await supabase
@@ -213,8 +213,8 @@ async function handleExpenseSave(expenseData: Partial<Expense>) {
       // Create new expense with creation and modification tracking
       const createData = {
         ...expenseData,
-        created_by: user.value?.id,
-        modified_by: user.value?.id,
+        created_by: userId.value ?? null,
+        modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
 

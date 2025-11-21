@@ -39,7 +39,7 @@ const { canManageResource, canCreate } = useTableActions('gameservers')
 
 // Define query
 const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+const userId = useUserId()
 const gameserversQuery = supabase.from('gameservers').select(`
   *,
   game (
@@ -217,7 +217,7 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
       const updateData = {
         ...gameserverData,
         modified_at: new Date().toISOString(),
-        modified_by: user.value?.id,
+        modified_by: userId.value ?? null,
       }
 
       const { error } = await supabase
@@ -232,8 +232,8 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
       // Create new gameserver with creation and modification tracking
       const createData = {
         ...gameserverData,
-        created_by: user.value?.id,
-        modified_by: user.value?.id,
+        created_by: userId.value ?? null,
+        modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
 

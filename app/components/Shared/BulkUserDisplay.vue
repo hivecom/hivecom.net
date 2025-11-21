@@ -143,7 +143,7 @@ defineExpose({
 
   &__retry {
     background: var(--color-bg-accent);
-    color: var(--text-color-on-accent);
+    color: var(--color-text-on-accent);
     border: none;
     padding: var(--space-xs) var(--space-s);
     border-radius: var(--border-radius-s);

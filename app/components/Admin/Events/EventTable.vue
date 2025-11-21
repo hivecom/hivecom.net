@@ -27,7 +27,7 @@ const { canManageResource, canCreate } = useTableActions('events')
 
 // Setup client and state
 const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+const userId = useUserId()
 const loading = ref(true)
 const errorMessage = ref('')
 const events = ref<Event[]>([])
@@ -155,7 +155,7 @@ async function handleEventSave(eventData: Partial<Event>) {
       const updateData: TablesUpdate<'events'> = {
         ...eventData,
         modified_at: new Date().toISOString(),
-        modified_by: user.value?.id || null,
+        modified_by: userId.value ?? null,
       }
 
       const { error } = await supabase
@@ -173,8 +173,8 @@ async function handleEventSave(eventData: Partial<Event>) {
         title: eventData.title || '',
         description: eventData.description || '',
         date: eventData.date || '',
-        created_by: user.value?.id || null,
-        modified_by: user.value?.id || null,
+        created_by: userId.value ?? null,
+        modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
 

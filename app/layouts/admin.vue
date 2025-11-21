@@ -7,6 +7,8 @@ const route = useRoute()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
+const sessionUserId = ref<string | null>(null)
+const resolvedUserId = computed(() => userId.value ?? sessionUserId.value)
 
 // Initialize user role and permissions from database
 const userRole = ref<string | null>(null)
@@ -19,10 +21,33 @@ defineOgImageComponent('Default', {
   description: 'A worldwide community of friends building projects together.',
 })
 
+async function getAuthenticatedUserId(): Promise<string | null> {
+  if (resolvedUserId.value)
+    return resolvedUserId.value
+
+  try {
+    const { data, error } = await supabase.auth.getSession()
+
+    if (error) {
+      console.error('Error fetching auth session:', error)
+      return null
+    }
+
+    sessionUserId.value = data.session?.user?.id ?? null
+    return resolvedUserId.value
+  }
+  catch (sessionError) {
+    console.error('Error resolving auth session:', sessionError)
+    return null
+  }
+}
+
 // Check user role and permissions, redirect if not authorized
 onMounted(async () => {
   try {
-    if (!user.value) {
+    const targetUserId = await getAuthenticatedUserId()
+
+    if (!targetUserId) {
       // User not authenticated, redirect to landing page
       await router.push('/')
       return
@@ -32,7 +57,7 @@ onMounted(async () => {
     const { error, data: roleData } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId.value)
+      .eq('user_id', targetUserId)
       .single()
 
     if (error) {
@@ -82,6 +107,7 @@ onMounted(async () => {
 // Watch for user changes (login/logout)
 watch(user, async (newUser) => {
   if (!newUser) {
+    sessionUserId.value = null
     // User logged out, redirect to landing page
     isAuthorized.value = false
     await router.push('/')

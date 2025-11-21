@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Avatar, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import type { UserDisplayData } from '@/composables/useUserData'
+import { Avatar, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import { useBulkUserData } from '@/composables/useUserData'
 
@@ -9,6 +10,8 @@ interface Props {
   avatarSize?: number
   showNames?: boolean
   random?: boolean
+  maxRows?: number
+  avatarsPerRow?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -16,6 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
   avatarSize: 40,
   showNames: true,
   random: false,
+  maxRows: 2,
 })
 
 // Convert userIds array to reactive ref
@@ -62,15 +66,87 @@ const remainingCount = computed(() => {
   return Math.max(0, props.userIds.length - props.maxUsers)
 })
 
+interface UserListEntry {
+  id: string
+  profile: UserDisplayData
+}
+
 // Convert users map to array for template iteration
-const usersList = computed(() => {
+const usersList = computed<UserListEntry[]>(() => {
   return visibleUserIds.value
-    .map(id => ({
-      id,
-      profile: users.value.get(id) || null,
-    }))
-    .filter(user => user.profile !== null)
+    .map((id) => {
+      const profile = users.value.get(id) || null
+      return profile ? { id, profile } : null
+    })
+    .filter((entry): entry is UserListEntry => entry !== null)
 })
+
+// Helper to chunk an array into equal sized rows
+function chunkArray<T>(array: T[], chunkSize: number): T[][] {
+  if (chunkSize <= 0) {
+    return array.length ? [array] : []
+  }
+
+  const chunks: T[][] = []
+  for (let i = 0; i < array.length; i += chunkSize) {
+    chunks.push(array.slice(i, i + chunkSize))
+  }
+  return chunks
+}
+
+const desiredRows = computed(() => Math.max(1, props.maxRows ?? 1))
+
+const explicitPerRow = computed(() => {
+  if (props.avatarsPerRow && props.avatarsPerRow > 0) {
+    return props.avatarsPerRow
+  }
+  return null
+})
+
+function getPerRow(count: number) {
+  if (explicitPerRow.value) {
+    return explicitPerRow.value
+  }
+
+  const baseSource = props.maxUsers ?? count
+  const base = Math.ceil(baseSource / desiredRows.value)
+  return Math.max(1, base)
+}
+
+type DisplayEntry
+  = | { kind: 'user', user: UserListEntry }
+    | { kind: 'remaining', count: number }
+
+const displayEntries = computed<DisplayEntry[]>(() => {
+  const entries: DisplayEntry[] = usersList.value.map(user => ({
+    kind: 'user',
+    user,
+  }))
+
+  if (remainingCount.value > 0) {
+    entries.push({
+      kind: 'remaining',
+      count: remainingCount.value,
+    })
+  }
+
+  return entries
+})
+
+const avatarRows = computed(() => {
+  const perRow = getPerRow(displayEntries.value.length)
+  return chunkArray(displayEntries.value, perRow)
+})
+
+const loadingRows = computed(() => {
+  const placeholderCount = Math.min(props.userIds.length, props.maxUsers)
+  const placeholders = Array.from({ length: placeholderCount }, (_, index) => index)
+  const perRow = getPerRow(placeholderCount)
+  return chunkArray(placeholders, perRow)
+})
+
+const hasMultipleAvatarRows = computed(() => avatarRows.value.length > 1)
+const hasMultipleLoadingRows = computed(() => loadingRows.value.length > 1)
 
 // Get user initials
 function getUserInitials(username: string): string {
@@ -91,15 +167,28 @@ defineExpose({
 <template>
   <div class="bulk-avatar-display">
     <!-- Loading State -->
-    <div v-if="loading && userIds.length > 0" class="bulk-avatar-display__loading">
+    <div
+      v-if="loading && userIds.length > 0"
+      class="bulk-avatar-display__rows"
+      :class="{ 'bulk-avatar-display__rows--multi': hasMultipleLoadingRows }"
+    >
       <div
-        v-for="_ in Math.min(userIds.length, maxUsers)"
-        :key="`skeleton-${_}`"
-        class="bulk-avatar-display__avatar"
+        v-for="(row, rowIndex) in loadingRows"
+        :key="`loading-row-${rowIndex}`"
+        class="bulk-avatar-display__row"
+        :class="{ 'bulk-avatar-display__row--overlay': hasMultipleLoadingRows }"
         :style="{ '--avatar-size': `${avatarSize}px`,
-                  '--index': _ - 1 }"
+                  '--row-index': rowIndex }"
       >
-        <Skeleton :width="`${avatarSize}px`" :height="`${avatarSize}px`" style="border-radius: 50%;" />
+        <div
+          v-for="(placeholder, index) in row"
+          :key="`skeleton-${rowIndex}-${placeholder}`"
+          class="bulk-avatar-display__avatar"
+          :style="{ '--avatar-size': `${avatarSize}px`,
+                    '--item-index': index }"
+        >
+          <Skeleton :width="`${avatarSize}px`" :height="`${avatarSize}px`" style="border-radius: 50%;" />
+        </div>
       </div>
     </div>
 
@@ -120,73 +209,109 @@ defineExpose({
     </div>
 
     <!-- Avatars -->
-    <Flex v-else x-center y-center class="bulk-avatar-display__avatars">
-      <!-- User Avatars -->
-      <Tooltip
-        v-for="(user, index) in usersList"
-        :key="user.id"
-        class="bulk-avatar-display__avatar"
-        :style="{ '--avatar-size': `${avatarSize}px`,
-                  '--index': index }"
-      >
-        <template #tooltip>
-          <p v-if="showNames && user.profile">
-            {{ user.profile.username }}
-          </p>
-        </template>
-
-        <NuxtLink
-          v-if="user.profile?.username"
-          :to="`/profile/${user.profile.username}`"
-          class="bulk-avatar-display__link"
-        >
-          <Avatar
-            :size="avatarSize"
-            :url="user.profile?.avatarUrl || undefined"
-            class="bulk-avatar-display__avatar-item"
-          >
-            <template v-if="!user.profile?.avatarUrl" #default>
-              {{ getUserInitials(user.profile.username) }}
-            </template>
-          </Avatar>
-        </NuxtLink>
-
-        <!-- Fallback for users without username -->
-        <Avatar
-          v-else
-          :size="avatarSize"
-          :url="user.profile?.avatarUrl || undefined"
-          class="bulk-avatar-display__avatar-item"
-        >
-          <template v-if="!user.profile?.avatarUrl" #default>
-            {{ user.profile ? getUserInitials(user.profile.username || 'User') : '?' }}
-          </template>
-        </Avatar>
-      </Tooltip>
-
-      <!-- Remaining Count -->
+    <div
+      v-else
+      class="bulk-avatar-display__rows"
+      :class="{ 'bulk-avatar-display__rows--multi': hasMultipleAvatarRows }"
+    >
       <div
-        v-if="remainingCount > 0"
-        class="bulk-avatar-display__avatar bulk-avatar-display__remaining"
+        v-for="(row, rowIndex) in avatarRows"
+        :key="`row-${rowIndex}`"
+        class="bulk-avatar-display__row"
+        :class="{ 'bulk-avatar-display__row--overlay': hasMultipleAvatarRows }"
         :style="{ '--avatar-size': `${avatarSize}px`,
-                  '--index': usersList.length }"
+                  '--row-index': rowIndex }"
       >
-        <div class="bulk-avatar-display__remaining-count">
-          +{{ remainingCount }}
-        </div>
+        <template v-for="(entry, index) in row">
+          <Tooltip
+            v-if="entry.kind === 'user'"
+            :key="entry.user.id"
+            class="bulk-avatar-display__avatar"
+            :style="{ '--avatar-size': `${avatarSize}px`,
+                      '--item-index': index }"
+          >
+            <template #tooltip>
+              <p v-if="showNames && entry.user.profile">
+                {{ entry.user.profile.username }}
+              </p>
+            </template>
+
+            <NuxtLink
+              v-if="entry.user.profile?.username"
+              :to="`/profile/${entry.user.profile.username}`"
+              class="bulk-avatar-display__link"
+            >
+              <Avatar
+                :size="avatarSize"
+                :url="entry.user.profile?.avatarUrl || undefined"
+                class="bulk-avatar-display__avatar-item"
+              >
+                <template v-if="!entry.user.profile?.avatarUrl" #default>
+                  {{ getUserInitials(entry.user.profile.username) }}
+                </template>
+              </Avatar>
+            </NuxtLink>
+
+            <!-- Fallback for users without username -->
+            <Avatar
+              v-else
+              :size="avatarSize"
+              :url="entry.user.profile?.avatarUrl || undefined"
+              class="bulk-avatar-display__avatar-item"
+            >
+              <template v-if="!entry.user.profile?.avatarUrl" #default>
+                {{ entry.user.profile ? getUserInitials(entry.user.profile.username || 'User') : '?' }}
+              </template>
+            </Avatar>
+          </Tooltip>
+
+          <div
+            v-else
+            :key="`remaining-${rowIndex}-${index}`"
+            class="bulk-avatar-display__avatar bulk-avatar-display__remaining"
+            :style="{ '--avatar-size': `${avatarSize}px`,
+                      '--item-index': index }"
+          >
+            <div class="bulk-avatar-display__remaining-count">
+              +{{ entry.count }}
+            </div>
+          </div>
+        </template>
       </div>
-    </Flex>
+    </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
 .bulk-avatar-display {
-  &__loading,
-  &__avatars {
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    gap: calc(var(--avatar-size, 40px) * 0.2);
+  }
+
+  &__row {
     display: flex;
     align-items: center;
     position: relative;
     height: var(--avatar-size, 40px);
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+  }
+
+  &__row--overlay {
+    transform: translateX(calc(var(--row-index, 0) * var(--avatar-size, 40px) * 0.25));
+
+    &:not(:first-child) {
+      margin-top: calc(var(--avatar-size, 40px) * -0.35);
+    }
   }
 
   &__error,
@@ -201,12 +326,8 @@ defineExpose({
 
   &__avatar {
     position: relative;
-    z-index: calc(10 - var(--index, 0));
-    margin-left: calc(var(--index, 0) * -8px);
-
-    &:first-child {
-      margin-left: 0;
-    }
+    z-index: calc(100 - (var(--row-index, 0) * 10 + var(--item-index, 0)));
+    margin-left: calc(var(--item-index, 0) * -8px);
   }
 
   &__avatar-item {

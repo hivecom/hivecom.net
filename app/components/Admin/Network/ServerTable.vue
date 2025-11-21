@@ -37,6 +37,7 @@ const { canManageResource, canCreate } = useTableActions('servers')
 
 // Define query
 const supabase = useSupabaseClient()
+const userId = useUserId()
 const serversQuery = supabase.from('servers').select('*')
 
 // Data states
@@ -168,7 +169,7 @@ async function handleServerSave(serverData: TablesInsert<'servers'> | TablesUpda
       const updateData = {
         ...serverData,
         modified_at: new Date().toISOString(),
-        modified_by: null, // Set to user id if available
+        modified_by: userId.value ?? null,
       }
       const { error } = await supabase
         .from('servers')
@@ -187,7 +188,9 @@ async function handleServerSave(serverData: TablesInsert<'servers'> | TablesUpda
         docker_control_port: serverData.docker_control_port ?? undefined,
         docker_control_secure: serverData.docker_control_secure ?? false,
         docker_control_subdomain: serverData.docker_control_subdomain ?? undefined,
-        created_by: null, // Set to user id if available
+        created_by: userId.value ?? null,
+        modified_by: userId.value ?? null,
+        modified_at: new Date().toISOString(),
       }
       const { error } = await supabase
         .from('servers')

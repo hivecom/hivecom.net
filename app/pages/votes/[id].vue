@@ -418,14 +418,18 @@ useHead({
                 {{ totalVoters }} vote{{ totalVoters !== 1 ? 's' : '' }}
               </Badge>
             </Flex>
-            <p v-if="isActive" class="flex align-center text-s text-color-light mt-s">
+            <Flex v-if="isActive" gap="s" y-center>
               <Icon name="ph:clock" />
-              {{ timeRemaining }}
-            </p>
-            <p v-else-if="isUpcoming" class="text-s text-color-light mt-s">
+              <p class="flex align-center text-s text-color-light">
+                {{ timeRemaining }}
+              </p>
+            </Flex>
+            <Flex v-else-if="isUpcoming" gap="s" y-center>
               <Icon name="ph:calendar" />
-              {{ timeUntilStart }}
-            </p>
+              <p class="text-s text-color-light">
+                {{ timeUntilStart }}
+              </p>
+            </Flex>
           </Flex>
         </Flex>
       </section>
@@ -495,10 +499,12 @@ useHead({
               </Button>
             </Flex>
 
-            <span v-if="hasVoted" class="text-s color-accent flex items-center">
-              <Icon name="ph:check-circle" class="text-color-success mr-xs" />
-              You have voted
-            </span>
+            <Flex gap="s" y-center>
+              <Icon name="ph:check-circle" class="text-color-success" />
+              <span v-if="hasVoted" class="text-s color-accent flex items-center">
+                You have voted
+              </span>
+            </Flex>
           </Flex>
         </Card>
       </section>
