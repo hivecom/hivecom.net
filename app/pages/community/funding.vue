@@ -124,7 +124,7 @@ const filteredExpenses = computed(() => {
               <h2 class="text-bold text-xxl">
                 Our Supporters
               </h2>
-              <p class="color-text-light">
+              <p class="text-color-light">
                 Thank you to our amazing supporters who help keep Hivecom running!
               </p>
             </Flex>

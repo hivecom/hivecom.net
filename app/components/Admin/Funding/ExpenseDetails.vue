@@ -83,7 +83,7 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>Expense Details</h4>
-          <span v-if="props.expense" class="color-text-light text-xxs">
+          <span v-if="props.expense" class="text-color-light text-xxs">
             {{ props.expense.name }}
           </span>
         </Flex>
@@ -127,7 +127,7 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
 
             <Grid class="expense-details__item" expand :columns="2">
               <span class="expense-details__label">Status:</span>
-              <span :class="props.expense.ended_at ? 'color-text-light' : 'color-success'">
+              <span :class="props.expense.ended_at ? 'text-color-light' : 'color-success'">
                 {{ props.expense.ended_at ? 'Ended' : 'Active' }}
               </span>
             </Grid>

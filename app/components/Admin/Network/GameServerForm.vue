@@ -307,7 +307,7 @@ onMounted(fetchDropdownData)
     <template #header>
       <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit Game Server' : 'Add Game Server' }}</h4>
-        <span v-if="props.isEditMode && props.gameserver" class="color-text-light text-xxs">
+        <span v-if="props.isEditMode && props.gameserver" class="text-color-light text-xxs">
           {{ props.gameserver.name }}
         </span>
       </Flex>
@@ -530,6 +530,6 @@ onMounted(fetchDropdownData)
 .address-text {
   font-family: monospace;
   font-size: var(--font-size-s);
-  color: var(--color-text);
+  color: var(--text-color);
 }
 </style>

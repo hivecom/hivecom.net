@@ -26,8 +26,13 @@ type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
   | 'ban_end'
   | 'last_seen'>
 
+type AdminUserProfile = QueryUserProfile & {
+  email: string | null
+  role?: string | null
+}
+
 interface UserAction {
-  user: QueryUserProfile
+  user: AdminUserProfile
   type: 'ban' | 'unban' | 'edit' | 'delete' | null
   banDuration?: string
   banReason?: string
@@ -58,7 +63,7 @@ if (!canViewUsers.value) {
 }
 
 // Reactive state
-const selectedUser = ref<QueryUserProfile | null>(null)
+const selectedUser = ref<AdminUserProfile | null>(null)
 const showUserDetails = ref(false)
 const userAction = ref<UserAction | null>(null)
 const refreshSignal = ref(0)
@@ -67,10 +72,10 @@ const userRefreshTrigger = ref(false)
 // UserForm state
 const showUserForm = ref(false)
 const isEditMode = ref(false)
-const userToEdit = ref<QueryUserProfile | null>(null)
+const userToEdit = ref<AdminUserProfile | null>(null)
 
 // Handle user selection from table
-function handleUserSelected(user: QueryUserProfile) {
+function handleUserSelected(user: AdminUserProfile) {
   selectedUser.value = user
   showUserDetails.value = true
 }
@@ -194,7 +199,7 @@ async function handleUserAction(action: UserAction) {
 }
 
 // Handle edit from UserDetails
-function handleEditFromDetails(user: QueryUserProfile) {
+function handleEditFromDetails(user: AdminUserProfile) {
   userToEdit.value = user
   isEditMode.value = true
   showUserForm.value = true
@@ -300,7 +305,7 @@ async function handleUserDelete(userId: string) {
       <!-- Page Header -->
       <Flex column :gap="0">
         <h1>Users</h1>
-        <p class="color-text-light">
+        <p class="text-color-light">
           Manage user accounts, permissions, and ban status
         </p>
       </Flex>

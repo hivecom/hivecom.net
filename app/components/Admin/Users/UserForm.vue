@@ -496,7 +496,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
     <template #header>
       <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit User' : 'Add User' }}</h4>
-        <span v-if="props.isEditMode && props.user" class="color-text-light text-xxs">
+        <span v-if="props.isEditMode && props.user" class="text-color-light text-xxs">
           {{ props.user.username }}
         </span>
       </Flex>
@@ -567,7 +567,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           </div>
 
           <Flex v-else class="roles-section" column expand>
-            <Flex class="role-dropdown" expand y-end>
+            <Flex class="role-dropdown" expand y-center>
               <Select
                 v-model="selectedRoleComputed"
                 label="User Role"
@@ -576,7 +576,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
                 :disabled="!canEditRoles"
                 expand
               />
-              <Flex v-if="!canEditRoles" class="help-text">
+              <Flex v-if="!canEditRoles" class="help-text help-text-input mt-m">
                 <Icon name="ph:lock" />
                 <span v-if="currentUser && props.user && currentUser.id === props.user.id">
                   You cannot modify your own role
@@ -863,6 +863,10 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
   margin-top: var(--space-xs);
   font-size: var(--font-size-s);
   color: var(--color-text-lightest);
+
+  &-input {
+    margin-top: var(--space-l);
+  }
 
   &.error {
     color: var(--color-text-red);

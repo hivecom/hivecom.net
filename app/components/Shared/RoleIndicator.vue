@@ -33,48 +33,7 @@ const variant = computed(() => {
   <Badge
     :variant="variant"
     :size="size"
-    :class="`role-indicator role-indicator--${role || 'user'}`"
   >
     {{ roleDisplay }}
   </Badge>
 </template>
-
-<style lang="scss" scoped>
-.role-indicator {
-  width: fit-content;
-
-  &--admin {
-    background-color: var(--color-bg-red-lowered);
-    color: var(--color-text-red);
-  }
-
-  &--moderator {
-    background-color: var(--color-bg-blue-lowered);
-    color: var(--color-text-blue);
-  }
-
-  &--user {
-    background-color: var(--color-bg-green-lowered);
-    color: var(--color-text-green);
-  }
-}
-
-:root.light {
-  .role-indicator {
-    &--admin {
-      background-color: var(--color-bg-red-raised);
-      color: var(--color-text-invert);
-    }
-
-    &--moderator {
-      background-color: var(--color-bg-blue-raised);
-      color: var(--color-text-invert);
-    }
-
-    &--user {
-      background-color: var(--color-bg-green-raised);
-      color: var(--color-text-invert);
-    }
-  }
-}
-</style>

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ChartOptions } from 'chart.js'
+import type { ChartComponentRef } from 'vue-chartjs'
 import type { Database } from '@/types/database.types'
 import { Skeleton } from '@dolanske/vui'
+import { useElementSize } from '@vueuse/core'
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -14,7 +16,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import dayjs from 'dayjs'
-import { computed, onBeforeMount, ref, watch } from 'vue'
+import { computed, onBeforeMount, ref, watch, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
 
 const props = defineProps<Props>()
@@ -43,6 +45,9 @@ const supabase = useSupabaseClient()
 const loading = ref(true)
 const errorMessage = ref('')
 const monthlyFundings = ref<MonthlyFunding[]>([])
+const chartWrapperRef = ref<HTMLElement | null>(null)
+const chartRef = ref<ChartComponentRef<'line'> | null>(null)
+const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 
 // Chart data
 const chartData = computed(() => {
@@ -124,7 +129,13 @@ const chartOptions: ChartOptions<'line'> = {
       callbacks: {
         label: (context) => {
           const label = context.dataset.label || ''
-          return `${label}: €${context.parsed.y.toFixed(2)}`
+          const value = context.parsed?.y
+
+          if (typeof value !== 'number') {
+            return label ? `${label}: —` : '—'
+          }
+
+          return `${label}: €${value.toFixed(2)}`
         },
       },
     },
@@ -199,6 +210,17 @@ watch(() => props.refreshSignal, () => {
   }
 })
 
+watchEffect(() => {
+  const width = chartWrapperWidth.value
+  const chart = chartRef.value?.chart
+
+  if (!width || !chart)
+    return
+
+  const containerHeight = chartWrapperRef.value?.clientHeight
+  chart.resize(Math.floor(width), containerHeight)
+})
+
 // Lifecycle hooks
 onBeforeMount(fetchMonthlyFundings)
 </script>
@@ -249,8 +271,12 @@ onBeforeMount(fetchMonthlyFundings)
       <p>No funding data available for chart</p>
     </div>
 
-    <div v-else class="chart-wrapper">
-      <Line :data="chartData" :options="chartOptions" />
+    <div v-else ref="chartWrapperRef" class="chart-wrapper">
+      <Line
+        ref="chartRef"
+        :data="chartData"
+        :options="chartOptions"
+      />
     </div>
   </div>
 </template>
@@ -268,6 +294,12 @@ onBeforeMount(fetchMonthlyFundings)
 .chart-wrapper {
   height: 320px;
   width: 100%;
+  position: relative;
+}
+
+.chart-wrapper :deep(canvas) {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .chart-loading,

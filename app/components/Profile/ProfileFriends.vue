@@ -48,8 +48,8 @@ const emit = defineEmits<{
       <!-- Pending Invites (only visible to own profile) -->
       <div v-if="isOwnProfile && pendingRequests.length > 0" class="friends-requests">
         <Flex gap="xs" y-center class="friends-requests__header">
-          <Icon name="ph:bell" size="16" class="color-text-orange" />
-          <span class="text-s color-text-light">Pending friend requests:</span>
+          <Icon name="ph:bell" size="16" class="text-color-orange" />
+          <span class="text-s text-color-light">Pending friend requests:</span>
           <Badge variant="warning" size="s">
             {{ pendingRequests.length }}
           </Badge>
@@ -66,8 +66,8 @@ const emit = defineEmits<{
     <!-- Empty State -->
     <div v-else class="friends-empty">
       <Flex column y-center x-center gap="s">
-        <Icon name="ph:users" size="32" class="color-text-light" />
-        <p class="color-text-light text-s text-center">
+        <Icon name="ph:users" size="32" class="text-color-light" />
+        <p class="text-color-light text-s text-center">
           <template v-if="isOwnProfile">
             You haven't made any friends yet. Start connecting with other community members!
           </template>
@@ -79,8 +79,8 @@ const emit = defineEmits<{
         <!-- Show pending requests even if no friends (only for own profile) -->
         <div v-if="isOwnProfile && pendingRequests.length > 0" class="friends-requests friends-requests--empty-state">
           <Flex gap="xs" y-center class="friends-requests__header">
-            <Icon name="ph:bell" size="16" class="color-text-orange" />
-            <span class="text-s color-text-light">Pending friend requests:</span>
+            <Icon name="ph:bell" size="16" class="text-color-orange" />
+            <span class="text-s text-color-light">Pending friend requests:</span>
             <Badge variant="warning" size="s">
               {{ pendingRequests.length }}
             </Badge>

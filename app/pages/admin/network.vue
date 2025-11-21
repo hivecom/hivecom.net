@@ -85,7 +85,7 @@ async function handleContainerControl(container: ContainerWithServer, action: 's
   <Flex column gap="m">
     <Flex column :gap="0">
       <h1>Network</h1>
-      <p class="color-text-light">
+      <p class="text-color-light">
         Define servers, monitor containers and manage game servers
       </p>
     </Flex>

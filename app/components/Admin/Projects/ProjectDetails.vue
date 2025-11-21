@@ -48,7 +48,7 @@ function handleDelete(project: Tables<'projects'>) {
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>Project Details</h4>
-          <span v-if="props.project" class="color-text-light text-xxs">
+          <span v-if="props.project" class="text-color-light text-xxs">
             {{ props.project.title }}
           </span>
         </Flex>
@@ -71,17 +71,17 @@ function handleDelete(project: Tables<'projects'>) {
         <Card>
           <Flex column gap="l" expand>
             <Grid class="project-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">ID:</span>
+              <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.project.id }}</span>
             </Grid>
 
             <Grid class="project-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Title:</span>
+              <span class="text-color-light text-bold">Title:</span>
               <span>{{ props.project.title }}</span>
             </Grid>
 
             <Grid class="project-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Owner:</span>
+              <span class="text-color-light text-bold">Owner:</span>
               <div :class="{ 'project-details__not-assigned': !props.project.owner }">
                 <UserLink v-if="props.project.owner" :user-id="props.project.owner" />
                 <span v-else>Not Assigned</span>
@@ -89,28 +89,28 @@ function handleDelete(project: Tables<'projects'>) {
             </Grid>
 
             <Grid class="project-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Created:</span>
+              <span class="text-color-light text-bold">Created:</span>
               <TimestampDate
                 :date="props.project.created_at"
                 size="s"
-                class="color-text"
+                class="text-color"
               />
             </Grid>
 
             <Grid v-if="props.project.link" class="project-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Link:</span>
+              <span class="text-color-light text-bold">Link:</span>
               <NuxtLink external :href="props.project.link" target="_blank" class="color-accent text-m">
                 {{ props.project.link }}
               </NuxtLink>
             </Grid>
 
             <Grid v-if="props.project.github" class="project-details__item" expand :columns="2" y-center>
-              <span class="color-text-light text-bold">GitHub:</span>
+              <span class="text-color-light text-bold">GitHub:</span>
               <GitHubLink :github="props.project.github" :show-icon="true" />
             </Grid>
 
             <Grid v-if="props.project.tags && props.project.tags.length > 0" class="project-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Tags:</span>
+              <span class="text-color-light text-bold">Tags:</span>
               <div class="tags-display">
                 <Badge
                   v-for="tag in props.project.tags"

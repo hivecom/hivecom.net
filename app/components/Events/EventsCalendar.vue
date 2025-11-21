@@ -174,8 +174,8 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
   <div class="events-calendar">
     <div v-if="loading" class="calendar-loading">
       <Flex column gap="l" y-center>
-        <Icon name="ph:calendar" size="64" class="color-text-lighter" />
-        <p class="color-text-lighter">
+        <Icon name="ph:calendar" size="64" class="text-color-lighter" />
+        <p class="text-color-lighter">
           Loading events...
         </p>
       </Flex>
@@ -183,8 +183,8 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 
     <div v-else-if="errorMessage" class="calendar-error">
       <Flex column gap="l" y-center>
-        <Icon name="ph:warning" size="64" class="color-text-red" />
-        <p class="color-text-red">
+        <Icon name="ph:warning" size="64" class="text-color-red" />
+        <p class="text-color-red">
           {{ errorMessage }}
         </p>
       </Flex>

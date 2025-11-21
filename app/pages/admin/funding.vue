@@ -13,7 +13,7 @@ const refreshSignal = ref(0)
   <Flex column gap="l" expand>
     <Flex column :gap="0">
       <h1>Funding</h1>
-      <p class="color-text-light">
+      <p class="text-color-light">
         Manage expenses and view our funding history
       </p>
     </Flex>

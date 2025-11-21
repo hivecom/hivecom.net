@@ -215,7 +215,7 @@ onBeforeMount(fetchRolePermissions)
   <Flex column gap="l" expand>
     <Flex column :gap="0">
       <h1>Roles & Permissions</h1>
-      <p class="color-text-light">
+      <p class="text-color-light">
         View role-based permissions and access control matrix
       </p>
     </Flex>
@@ -302,7 +302,7 @@ onBeforeMount(fetchRolePermissions)
                 <h4 class="category-title">
                   {{ formatCategoryName(category) }}
                 </h4>
-                <span class="color-text-light text-xs">({{ permissions.length }})</span>
+                <span class="text-color-light text-xs">({{ permissions.length }})</span>
               </Flex>
 
               <div class="permissions-list">
@@ -316,8 +316,8 @@ onBeforeMount(fetchRolePermissions)
 
           <!-- No permissions message -->
           <div v-else class="no-permissions">
-            <Icon name="ph:warning-circle" size="1.2rem" class="color-text-light" />
-            <span class="color-text-light">No permissions assigned</span>
+            <Icon name="ph:warning-circle" size="1.2rem" class="text-color-light" />
+            <span class="text-color-light">No permissions assigned</span>
           </div>
         </Card>
       </Flex>

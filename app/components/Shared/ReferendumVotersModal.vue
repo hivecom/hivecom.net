@@ -139,7 +139,7 @@ function handleClose() {
           <Flex column y-center x-center gap="m">
             <Icon name="ph:vote" size="48" class="voters-modal__empty-icon" />
             <h4>No votes yet</h4>
-            <p class="color-text-light text-center">
+            <p class="text-color-light text-center">
               Be the first to vote on this referendum!
             </p>
           </Flex>
@@ -149,7 +149,7 @@ function handleClose() {
         <div v-else class="voters-modal__content">
           <!-- Show vote details header if enabled -->
           <div v-if="showDetailsLocally && totalCount > 0" class="voters-modal__header">
-            <p class="color-text-light text-s">
+            <p class="text-color-light text-s">
               <Icon name="ph:eye" class="mr-xs" />
               Vote selections are visible
             </p>
@@ -175,14 +175,14 @@ function handleClose() {
                 <!-- Vote details -->
                 <div class="voters-modal__vote-details">
                   <div class="voters-modal__vote-choices">
-                    <span class="color-text-light text-xs">Voted for:</span>
+                    <span class="text-color-light text-xs">Voted for:</span>
                     <span class="voters-modal__choices-text">
                       {{ getVoteChoicesText(voter.choices) }}
                     </span>
                   </div>
 
                   <div v-if="voter.comment" class="voters-modal__vote-comment">
-                    <span class="color-text-light text-xs">Comment:</span>
+                    <span class="text-color-light text-xs">Comment:</span>
                     <span class="voters-modal__comment-text">
                       "{{ voter.comment }}"
                     </span>

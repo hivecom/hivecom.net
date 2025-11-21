@@ -155,7 +155,7 @@ watchEffect(async () => {
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>Game Details</h4>
-          <span v-if="props.game" class="color-text-light text-xxs">
+          <span v-if="props.game" class="text-color-light text-xxs">
             {{ props.game.name }}
           </span>
         </Flex>

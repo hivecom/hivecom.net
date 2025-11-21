@@ -168,7 +168,6 @@ function getItemDisplayName(): string {
       v-if="showEditAction"
       :size="buttonSize"
       variant="gray"
-      :icon="props.showLabels ? undefined : 'ph:pencil-simple'"
       :square="!showLabels"
       :data-title-top="!showLabels ? `Edit ${resourceType.slice(0, -1)}` : undefined"
       :loading="isActionLoading('edit')"
@@ -177,6 +176,7 @@ function getItemDisplayName(): string {
       <template v-if="props.showLabels" #start>
         <Icon name="ph:pencil-simple" />
       </template>
+      <Icon v-if="!props.showLabels" name="ph:pencil-simple" />
       <template v-if="showLabels">
         Edit
       </template>
@@ -188,7 +188,6 @@ function getItemDisplayName(): string {
       :key="index"
       :size="buttonSize"
       :variant="action.variant || 'gray'"
-      :icon="props.showLabels ? undefined : action.icon"
       :square="!showLabels"
       :data-title-top="!showLabels ? action.label : undefined"
       :loading="action.loading"
@@ -197,6 +196,7 @@ function getItemDisplayName(): string {
       <template v-if="props.showLabels" #start>
         <Icon :name="action.icon" />
       </template>
+      <Icon v-if="!props.showLabels" :name="action.icon" />
       <template v-if="showLabels">
         {{ action.label }}
       </template>
@@ -207,7 +207,6 @@ function getItemDisplayName(): string {
       v-if="showDeleteAction"
       :size="buttonSize"
       variant="danger"
-      :icon="props.showLabels ? undefined : 'ph:trash'"
       :square="!showLabels"
       :data-title-top="!showLabels ? `Delete ${resourceType.slice(0, -1)}` : undefined"
       :loading="isActionLoading('delete')"
@@ -216,6 +215,7 @@ function getItemDisplayName(): string {
       <template v-if="props.showLabels" #start>
         <Icon name="ph:trash" />
       </template>
+      <Icon v-if="!props.showLabels" name="ph:trash" />
       <template v-if="showLabels">
         Delete
       </template>

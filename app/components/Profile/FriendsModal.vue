@@ -103,9 +103,9 @@ function handleClose() {
             <Icon
               :name="!showAllTabs || activeTab === 'friends' ? 'ph:users' : activeTab === 'sent' ? 'ph:paper-plane-tilt' : 'ph:bell'"
               size="32"
-              class="color-text-light"
+              class="text-color-light"
             />
-            <p class="color-text-light text-center">
+            <p class="text-color-light text-center">
               <template v-if="!showAllTabs || activeTab === 'friends'">
                 No friends yet.
               </template>

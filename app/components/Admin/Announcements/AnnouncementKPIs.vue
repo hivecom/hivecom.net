@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Flex } from '@dolanske/vui'
 import { ref, watch } from 'vue'
 
 import KPICard from '../KPICard.vue'
+import KPIContainer from '../KPIContainer.vue'
 
 const refreshSignal = defineModel<number>('refreshSignal')
 
@@ -74,7 +74,7 @@ onBeforeMount(fetchAnnouncementMetrics)
 </script>
 
 <template>
-  <Flex gap="m" class="kpi-container" expand>
+  <KPIContainer>
     <KPICard
       label="Total Announcements"
       :value="metrics.totalAnnouncements"
@@ -98,7 +98,7 @@ onBeforeMount(fetchAnnouncementMetrics)
       variant="success"
       :is-loading="loading"
     />
-  </Flex>
+  </KPIContainer>
 </template>
 
 <style scoped lang="scss">

@@ -91,7 +91,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>Referendum Details</h4>
-          <span v-if="props.referendum" class="color-text-light text-xxs">
+          <span v-if="props.referendum" class="text-color-light text-xxs">
             {{ props.referendum.title }}
           </span>
         </Flex>
@@ -114,17 +114,17 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
         <Card>
           <Flex column gap="l" expand>
             <Grid class="referendum-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">ID:</span>
+              <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.referendum.id }}</span>
             </Grid>
 
             <Grid class="referendum-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Title:</span>
+              <span class="text-color-light text-bold">Title:</span>
               <span>{{ props.referendum.title }}</span>
             </Grid>
 
             <Grid class="referendum-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Status:</span>
+              <span class="text-color-light text-bold">Status:</span>
               <span>
 
                 <Badge
@@ -137,7 +137,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
             </Grid>
 
             <Grid class="referendum-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Type:</span>
+              <span class="text-color-light text-bold">Type:</span>
               <span>
                 <Badge
                   size="xs"
@@ -149,25 +149,25 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
             </Grid>
 
             <Grid class="referendum-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Start Date:</span>
+              <span class="text-color-light text-bold">Start Date:</span>
               <TimestampDate
                 :date="props.referendum.date_start"
                 size="s"
-                class="color-text"
+                class="text-color"
               />
             </Grid>
 
             <Grid class="referendum-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">End Date:</span>
+              <span class="text-color-light text-bold">End Date:</span>
               <TimestampDate
                 :date="props.referendum.date_end"
                 size="s"
-                class="color-text"
+                class="text-color"
               />
             </Grid>
 
             <Grid class="referendum-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Votes:</span>
+              <span class="text-color-light text-bold">Votes:</span>
               <span>{{ voteCount }} vote{{ voteCount !== 1 ? 's' : '' }}</span>
             </Grid>
           </Flex>

@@ -160,7 +160,7 @@ function handleTagInputEnter() {
     <template #header>
       <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit Announcement' : 'Add Announcement' }}</h4>
-        <span v-if="props.isEditMode && props.announcement" class="color-text-light text-xxs">
+        <span v-if="props.isEditMode && props.announcement" class="text-color-light text-xxs">
           {{ props.announcement.title }}
         </span>
       </Flex>
@@ -310,7 +310,7 @@ function handleTagInputEnter() {
           />
           <Flex column :gap="0">
             <label for="pinned" class="toggle-label">Pin Announcement</label>
-            <span class="color-text-light text-xs">Pinned announcements appear at the top</span>
+            <span class="text-color-light text-xs">Pinned announcements appear at the top</span>
           </Flex>
         </Flex>
       </Flex>

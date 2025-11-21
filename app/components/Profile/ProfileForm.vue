@@ -274,7 +274,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
     <template #header>
       <Flex column :gap="0">
         <h4>Edit Profile</h4>
-        <span v-if="props.profile" class="color-text-light text-xxs">
+        <span v-if="props.profile" class="text-color-light text-xxs">
           {{ props.profile.username }}
         </span>
       </Flex>

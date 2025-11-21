@@ -94,15 +94,15 @@ function handleClose() {
     </template>
 
     <Flex column gap="m" class="complaint-modal-content">
-      <p v-if="targetUserName" class="color-text-light">
+      <p v-if="targetUserName" class="text-color-light">
         You are submitting a complaint about <strong>{{ targetUserName }}</strong>.
         This will be reviewed by our staff.
       </p>
-      <p v-else-if="contextGameserverName" class="color-text-light">
+      <p v-else-if="contextGameserverName" class="text-color-light">
         You are submitting a complaint about the game server <strong>{{ contextGameserverName }}</strong>.
         This will be reviewed by our staff.
       </p>
-      <p v-else class="color-text-light">
+      <p v-else class="text-color-light">
         Please describe your complaint in detail. This will be reviewed by our staff.
       </p>
 

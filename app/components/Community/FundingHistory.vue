@@ -61,6 +61,11 @@ const historicalData = computed(() => {
   })
 })
 
+function normalizeToDisplayedEuros(amountCents: number) {
+  // Match formatCurrency default rounding (whole-unit display)
+  return Math.round(amountCents / 100)
+}
+
 // Transform data for table (previous months only)
 const transformedTableData = computed<TransformedFunding[]>(() => {
   if (historicalData.value.length <= 1)
@@ -95,10 +100,13 @@ function getGrowthFromPrevious(currentAmount: number, index: number) {
     return null
 
   const previousAmount = historicalData.value[index + 1]?.totalMonthly || 0
-  if (previousAmount === 0)
+  const currentDisplay = normalizeToDisplayedEuros(currentAmount)
+  const previousDisplay = normalizeToDisplayedEuros(previousAmount)
+
+  if (previousDisplay === 0)
     return null
 
-  const growth = ((currentAmount - previousAmount) / previousAmount) * 100
+  const growth = ((currentDisplay - previousDisplay) / previousDisplay) * 100
   return growth
 }
 
@@ -148,7 +156,7 @@ function getGrowthIndicator(growth: number | null) {
 
           <!-- Total monthly funding highlight -->
           <div class="text-right">
-            <div class="text-xs color-text-light mb-xs">
+            <div class="text-xs text-color-light mb-xs">
               Month-to-date
             </div>
             <div class="text-bold text-xxxl">
@@ -162,7 +170,7 @@ function getGrowthIndicator(growth: number | null) {
           <!-- Patreon Card -->
           <Card class="p-m">
             <Flex x-between y-start class="mb-s">
-              <div class="text-s text-bold color-text-light">
+              <div class="text-s text-bold text-color-light">
                 Patreon
               </div>
               <Icon name="ph:patreon-logo" size="2rem" class="color-accent" />
@@ -170,7 +178,7 @@ function getGrowthIndicator(growth: number | null) {
             <div class="text-l text-bold mb-xs">
               {{ formatCurrency(historicalData[0].patreonMonthly) }}
             </div>
-            <div class="text-xs color-text-light">
+            <div class="text-xs text-color-light">
               {{ historicalData[0].supporterCount || 0 }} {{ historicalData[0].supporterCount === 1 ? 'patron' : 'patrons' }}
             </div>
           </Card>
@@ -178,7 +186,7 @@ function getGrowthIndicator(growth: number | null) {
           <!-- Single Donations Card -->
           <Card class="p-m">
             <Flex x-between y-start class="mb-s">
-              <div class="text-s text-bold color-text-light">
+              <div class="text-s text-bold text-color-light">
                 Single Donations
               </div>
               <Icon name="ph:coin-fill" size="2rem" class="color-accent" />
@@ -186,7 +194,7 @@ function getGrowthIndicator(growth: number | null) {
             <div class="text-l text-bold mb-xs">
               {{ formatCurrency(historicalData[0].donationMonthly) }}
             </div>
-            <div class="text-xs color-text-light">
+            <div class="text-xs text-color-light">
               {{ historicalData[0].donationCount || 0 }} {{ historicalData[0].donationCount === 1 ? 'donation' : 'donations' }}
             </div>
           </Card>
@@ -212,16 +220,16 @@ function getGrowthIndicator(growth: number | null) {
                 <Table.Cell>
                   <Flex v-if="funding.Patreon > 0" gap="xxs" y-center>
                     <span class="text-bold text-s">{{ formatCurrency(funding.Patreon) }}</span>
-                    <span class="text-xs color-text-light ml-xs">({{ funding._original.patreon_count || 0 }})</span>
+                    <span class="text-xs text-color-light ml-xs">({{ funding._original.patreon_count || 0 }})</span>
                   </Flex>
-                  <span v-else class="text-xs color-text-light">-</span>
+                  <span v-else class="text-xs text-color-light">-</span>
                 </Table.Cell>
                 <Table.Cell>
                   <Flex v-if="funding.Donations > 0" gap="xxs" y-center>
                     <span class="text-bold text-s">{{ formatCurrency(funding.Donations) }}</span>
-                    <span class="text-xs color-text-light ml-xs">({{ funding._original.donation_count || 0 }})</span>
+                    <span class="text-xs text-color-light ml-xs">({{ funding._original.donation_count || 0 }})</span>
                   </Flex>
-                  <span v-else class="text-xs color-text-light">-</span>
+                  <span v-else class="text-xs text-color-light">-</span>
                 </Table.Cell>
                 <Table.Cell>
                   <span class="text-s text-bold">{{ formatCurrency(funding['Monthly Total']) }}</span>
@@ -238,7 +246,7 @@ function getGrowthIndicator(growth: number | null) {
                     />
                     {{ getGrowthIndicator(funding.Growth).text }}
                   </Badge>
-                  <span v-else class="text-xs color-text-light">-</span>
+                  <span v-else class="text-xs text-color-light">-</span>
                 </Table.Cell>
                 <Table.Cell>
                   <span class="text-s text-bold">{{ formatCurrency(funding['Lifetime Total']) }}</span>
@@ -253,7 +261,7 @@ function getGrowthIndicator(growth: number | null) {
     <!-- Show more message if there's more data -->
     <Card v-if="historicalData.length > 25" class="mt-m">
       <Flex x-center>
-        <p class="color-text-light text-s">
+        <p class="text-color-light text-s">
           Showing recent 25 months • {{ historicalData.length - 25 }} more months available
         </p>
       </Flex>

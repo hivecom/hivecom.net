@@ -272,7 +272,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
     <template #header>
       <Flex column :gap="0">
         <h4>{{ formTitle }}</h4>
-        <span v-if="props.isEditMode && props.event" class="color-text-light text-xxs">
+        <span v-if="props.isEditMode && props.event" class="text-color-light text-xxs">
           {{ props.event.title }}
         </span>
       </Flex>
@@ -331,7 +331,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
                 </Button>
               </template>
             </Calendar>
-            <span v-if="!validation.date" class="text-xs color-text-red">Date is required</span>
+            <span v-if="!validation.date" class="text-xs text-color-red">Date is required</span>
           </div>
         </Grid>
 

@@ -71,12 +71,12 @@ function getBanEndDate() {
         <p v-if="profile.ban_reason" class="ban-reason">
           <strong>Reason:</strong> {{ profile.ban_reason }}
         </p>
-        <p class="text-s color-text-light">
+        <p class="text-s text-color-light">
           {{ getBanDuration() }}
-          <span v-if="getBanEndDate() && isBanActive()" class="text-xs color-text-lighter">
+          <span v-if="getBanEndDate() && isBanActive()" class="text-xs text-color-lighter">
             - expires <TimestampDate :date="getBanEndDate()!" size="xs" relative />
           </span>
-          <span v-else-if="getBanEndDate() && !isBanActive()" class="text-xs color-text-lighter">
+          <span v-else-if="getBanEndDate() && !isBanActive()" class="text-xs text-color-lighter">
             - expired <TimestampDate :date="getBanEndDate()!" size="xs" relative />
           </span>
         </p>

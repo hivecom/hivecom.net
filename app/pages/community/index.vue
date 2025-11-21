@@ -138,7 +138,7 @@ watch(user, () => {
             <h2 class="text-bold text-xxl">
               Community Members
             </h2>
-            <p class="color-text-light">
+            <p class="text-color-light">
               Meet some of our amazing community members from around the world
             </p>
           </Flex>
@@ -161,7 +161,7 @@ watch(user, () => {
           <h3 class="text-bold text-xl">
             Discover Our Community
           </h3>
-          <p class="color-text-light text-center">
+          <p class="text-color-light text-center">
             Sign in to see our supporters and meet community members from around the world
           </p>
           <NuxtLink to="/auth/sign-in">
@@ -348,7 +348,7 @@ watch(user, () => {
             <h2 class="text-bold text-xxl">
               Featured Projects
             </h2>
-            <p class="color-text-light">
+            <p class="text-color-light">
               Discover what our community has been building
             </p>
           </div>

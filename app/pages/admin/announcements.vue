@@ -12,7 +12,7 @@ const refreshSignal = ref(0)
   <Flex column gap="l">
     <Flex column :gap="0">
       <h1>Announcements</h1>
-      <p class="color-text-light">
+      <p class="text-color-light">
         Write and manage announcements for the community
       </p>
     </Flex>

@@ -55,10 +55,10 @@ onMounted(async () => {
         <h3 class="text-bold text-xl mb-s">
           Support Hivecom
         </h3>
-        <p class="color-text-light text-l">
+        <p class="text-color-light text-l">
           Help us maintain servers, support projects, and keep the community thriving
         </p>
-        <p class="color-text-lighter text-s">
+        <p class="text-color-lighter text-s">
           You'll also receive a supporter badge on your Hivecom profile as well as a Discord and TeamSpeak role to represent your contribution
         </p>
       </Flex>
@@ -77,7 +77,7 @@ onMounted(async () => {
             <span class="text-l text-bold">Become a Patron</span>
           </Flex>
         </NuxtLink>
-        <p class="mt-s text-s color-text-light">
+        <p class="mt-s text-s text-color-light">
           Join {{ actualSupporterCount }} supporters helping fund our community
         </p>
         <BulkAvatarDisplay
@@ -92,21 +92,21 @@ onMounted(async () => {
 
       <!-- Benefits -->
       <Flex column y-center class="support-benefits" expand>
-        <h4 class="text-bold mb-s color-text-light text-s">
+        <h4 class="text-bold mb-s text-color-light text-s">
           Your support helps with
         </h4>
         <Flex x-center gap="l" class="benefits-list" expand>
           <Flex column y-center gap="xs">
             <Icon name="ph:database" size="1.8rem" class="color-accent" />
-            <span class="text-xs color-text-light">Server Costs</span>
+            <span class="text-xs text-color-light">Server Costs</span>
           </Flex>
           <Flex column y-center gap="xs">
             <Icon name="ph:code" size="1.8rem" class="color-accent" />
-            <span class="text-xs color-text-light">Development</span>
+            <span class="text-xs text-color-light">Development</span>
           </Flex>
           <Flex column y-center gap="xs">
             <Icon name="ph:users" size="1.8rem" class="color-accent" />
-            <span class="text-xs color-text-light">Community</span>
+            <span class="text-xs text-color-light">Community</span>
           </Flex>
         </Flex>
       </Flex>
@@ -139,7 +139,7 @@ onMounted(async () => {
   border: none;
   border-radius: var(--border-radius-m);
   padding: var(--space-m) var(--space-l);
-  color: var(--color-text-invert);
+  color: var(--text-color-invert);
   text-decoration: none;
   transition: all 0.3s ease;
   box-shadow:

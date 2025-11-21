@@ -234,7 +234,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
       <Flex x-between y-center expand>
         <Flex column :gap="0">
           <h4>Container Details</h4>
-          <span v-if="container" class="color-text-light text-xxs">
+          <span v-if="container" class="text-color-light text-xxs">
             {{ container.name }}
           </span>
         </Flex>
@@ -263,32 +263,32 @@ watch(() => useCustomDateRange.value, (newValue) => {
         <Card class="container-info" separators>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Name:</span>
+              <span class="text-color-light text-bold">Name:</span>
               <span class="container-name">{{ container.name }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Status:</span>
+              <span class="text-color-light text-bold">Status:</span>
               <ContainerStatusIndicator :status="containerStatus" :show-label="true" />
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Server:</span>
+              <span class="text-color-light text-bold">Server:</span>
               <span>{{ container.server?.address || 'Unknown' }}</span>
             </Grid>
 
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Started:</span>
+              <span class="text-color-light text-bold">Started:</span>
               <TimestampDate :date="container.started_at" fallback="Not started" />
             </Grid>
 
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Last Report:</span>
+              <span class="text-color-light text-bold">Last Report:</span>
               <TimestampDate :date="container.reported_at" />
             </Grid>
 
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Created:</span>
+              <span class="text-color-light text-bold">Created:</span>
               <TimestampDate :date="container.created_at" />
             </Grid>
           </Flex>
@@ -299,9 +299,39 @@ watch(() => useCustomDateRange.value, (newValue) => {
           <Flex x-between y-center class="mb-s" expand>
             <h4>Logs</h4>
             <ButtonGroup :gap="1">
-              <Button square icon="ph:calendar-dots" size="s" :variant="useCustomDateRange ? 'accent' : 'gray'" :disabled="!props.logs || props.logsLoading" data-title-bottom="Custom date range" aria-label="Toggle custom date range" @click="useCustomDateRange = !useCustomDateRange" />
-              <Button square icon="ph:copy" size="s" variant="gray" :disabled="!props.logs || props.logsLoading" data-title-bottom="Copy logs" aria-label="Copy logs to clipboard" @click="copyLogsToClipboard" />
-              <Button square icon="ph:arrow-clockwise" size="s" variant="gray" :disabled="!props.logs || props.logsLoading" data-title-bottom-right="Refresh logs" aria-label="Refresh logs" @click="handleRefreshLogs" />
+              <Button
+                square
+                size="s"
+                :variant="useCustomDateRange ? 'accent' : 'gray'"
+                :disabled="!props.logs || props.logsLoading"
+                data-title-bottom="Custom date range"
+                aria-label="Toggle custom date range"
+                @click="useCustomDateRange = !useCustomDateRange"
+              >
+                <Icon name="ph:calendar-dots" />
+              </Button>
+              <Button
+                square
+                size="s"
+                variant="gray"
+                :disabled="!props.logs || props.logsLoading"
+                data-title-bottom="Copy logs"
+                aria-label="Copy logs to clipboard"
+                @click="copyLogsToClipboard"
+              >
+                <Icon name="ph:copy" />
+              </Button>
+              <Button
+                square
+                size="s"
+                variant="gray"
+                :disabled="!props.logs || props.logsLoading"
+                data-title-bottom-right="Refresh logs"
+                aria-label="Refresh logs"
+                @click="handleRefreshLogs"
+              >
+                <Icon name="ph:arrow-clockwise" />
+              </Button>
             </ButtonGroup>
           </Flex>
 

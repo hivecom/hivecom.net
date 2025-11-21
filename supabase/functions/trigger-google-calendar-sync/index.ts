@@ -164,14 +164,19 @@ async function createGoogleEvent(
   const eventEnd = eventData.duration_minutes
     ? new Date(eventStart.getTime() + eventData.duration_minutes * 60000)
     : new Date(eventStart.getTime() + 60 * 60000) // Default 1 hour if no duration
+  const eventPageUrl = `https://hivecom.net/events/${eventData.id}`
+  const eventLink = eventData.link?.trim()
+  const descriptionParts = [
+    eventData.description,
+    eventData.note,
+    eventLink ? `Event Link: ${eventLink}` : undefined,
+    `Event Page: ${eventPageUrl}`
+  ].filter(Boolean)
+  const primarySourceUrl = eventLink || eventPageUrl
 
   const googleEvent = {
     summary: eventData.title,
-    description: [
-      eventData.description,
-      eventData.note,
-      eventData.link ? `Event Link: ${eventData.link}` : `Event Page: https://hivecom.net/events/${eventData.id}`
-    ].filter(Boolean).join('\n\n'),
+    description: descriptionParts.join('\n\n'),
     start: {
       dateTime: eventStart.toISOString(),
       timeZone: 'UTC'
@@ -186,7 +191,7 @@ async function createGoogleEvent(
     visibility: 'public', // Community events are public
     source: {
       title: 'Hivecom Event',
-      url: `https://hivecom.net/events/${eventData.id}`
+      url: primarySourceUrl
     },
     extendedProperties: {
       shared: {
@@ -240,15 +245,19 @@ async function updateGoogleEvent(
   const eventEnd = eventData.duration_minutes
     ? new Date(eventStart.getTime() + eventData.duration_minutes * 60000)
     : new Date(eventStart.getTime() + 60 * 60000)
+  const eventPageUrl = `https://hivecom.net/events/${eventData.id}`
+  const eventLink = eventData.link?.trim()
+  const descriptionParts = [
+    eventData.description,
+    eventLink ? `Event Link: ${eventLink}` : undefined,
+    `Event Page: ${eventPageUrl}`,
+    eventData.note
+  ].filter(Boolean)
+  const primarySourceUrl = eventLink || eventPageUrl
 
   const googleEvent = {
     summary: eventData.title,
-    description: [
-      eventData.description,
-      `Event Link: ${eventData.link}`,
-      `Event Page: https://hivecom.net/events/${eventData.id}`,
-      eventData.note,
-    ].filter(Boolean).join('\n\n'),
+    description: descriptionParts.join('\n\n'),
     start: {
       dateTime: eventStart.toISOString(),
       timeZone: 'UTC'
@@ -263,7 +272,7 @@ async function updateGoogleEvent(
     visibility: 'public', // Community events are public
     source: {
       title: 'Hivecom Event',
-      url: eventData.link || `https://hivecom.net/events/${eventData.id}`
+      url: primarySourceUrl
     },
     extendedProperties: {
       shared: {

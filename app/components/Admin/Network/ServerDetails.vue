@@ -38,7 +38,7 @@ function handleEdit() {
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>Server Details</h4>
-          <span v-if="props.server" class="color-text-light text-xxs">
+          <span v-if="props.server" class="text-color-light text-xxs">
             {{ props.server.address }}
           </span>
         </Flex>
@@ -62,22 +62,22 @@ function handleEdit() {
         <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">ID:</span>
+              <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.server.id }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Address:</span>
+              <span class="text-color-light text-bold">Address:</span>
               <span>{{ props.server.address }}</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Status:</span>
+              <span class="text-color-light text-bold">Status:</span>
               <ServerStatusIndicator :status="props.server.active ? 'active' : 'inactive'" show-label />
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Created:</span>
+              <span class="text-color-light text-bold">Created:</span>
               <TimestampDate :date="props.server.created_at" />
             </Grid>
           </Flex>
@@ -91,23 +91,23 @@ function handleEdit() {
 
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Enabled:</span>
+              <span class="text-color-light text-bold">Enabled:</span>
               <span>{{ props.server.docker_control ? 'Yes' : 'No' }}</span>
             </Grid>
 
             <template v-if="props.server.docker_control">
               <Grid class="detail-item" expand :columns="2">
-                <span class="color-text-light text-bold">Port:</span>
+                <span class="text-color-light text-bold">Port:</span>
                 <span>{{ props.server.docker_control_port || 'Default' }}</span>
               </Grid>
 
               <Grid class="detail-item" expand :columns="2">
-                <span class="color-text-light text-bold">Secure:</span>
+                <span class="text-color-light text-bold">Secure:</span>
                 <span>{{ props.server.docker_control_secure ? 'Yes' : 'No' }}</span>
               </Grid>
 
               <Grid class="detail-item" expand :columns="2">
-                <span class="color-text-light text-bold">Subdomain:</span>
+                <span class="text-color-light text-bold">Subdomain:</span>
                 <span>{{ props.server.docker_control_subdomain || 'None' }}</span>
               </Grid>
             </template>

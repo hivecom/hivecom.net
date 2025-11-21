@@ -147,7 +147,7 @@ function confirmDelete() {
       <Flex align="center" gap="m">
         <Flex column :gap="0">
           <h4>{{ props.isEditMode ? 'Edit Expense' : 'Add Expense' }}</h4>
-          <span v-if="props.isEditMode && props.expense" class="color-text-light text-xxs">
+          <span v-if="props.isEditMode && props.expense" class="text-color-light text-xxs">
             {{ props.expense.description || props.expense.name }}
           </span>
         </Flex>
@@ -225,7 +225,7 @@ function confirmDelete() {
                 </Button>
               </template>
             </Calendar>
-            <span v-if="!validation.started_at" class="text-xs color-text-red">Start date is required</span>
+            <span v-if="!validation.started_at" class="text-xs text-color-red">Start date is required</span>
           </Flex>
 
           <Flex column expand class="expense-form__date-picker-container">
@@ -267,7 +267,7 @@ function confirmDelete() {
                 <Icon name="ph:x" />
               </Button>
             </Flex>
-            <span v-if="!validation.ended_at && expenseForm.ended_at" class="text-xs color-text-red">
+            <span v-if="!validation.ended_at && expenseForm.ended_at" class="text-xs text-color-red">
               End date cannot be before start date
             </span>
           </Flex>

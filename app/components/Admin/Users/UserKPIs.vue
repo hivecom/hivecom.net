@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Flex } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
 import KPICard from '../KPICard.vue'
+import KPIContainer from '../KPIContainer.vue'
 
 const refreshSignal = defineModel<number>('refreshSignal')
 
@@ -140,7 +140,7 @@ onBeforeMount(fetchUserMetrics)
 </script>
 
 <template>
-  <Flex gap="m" class="kpi-container" expand>
+  <KPIContainer>
     <KPICard
       label="Active Users"
       :value="metrics.active"
@@ -173,7 +173,7 @@ onBeforeMount(fetchUserMetrics)
       :description="`${metrics.admins} admins, ${metrics.moderators} moderators`"
       :is-loading="loading"
     />
-  </Flex>
+  </KPIContainer>
 </template>
 
 <style scoped lang="scss">

@@ -79,7 +79,7 @@ const hasAchievements = computed(() => {
 
       <!-- Show a placeholder if no achievements -->
       <Flex v-if="!hasAchievements" column y-center x-center class="achievements-empty">
-        <p class="color-text-lighter text-s">
+        <p class="text-color-lighter text-s">
           Achievements will appear here as you participate in the community!
         </p>
       </Flex>

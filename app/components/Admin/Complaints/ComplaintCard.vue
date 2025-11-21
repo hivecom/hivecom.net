@@ -97,7 +97,7 @@ function handleAcknowledge(event: Event) {
               :date="complaint.created_at"
               relative
               size="xxs"
-              class="color-text-light"
+              class="text-color-light"
             />
           </Flex>
           <Badge :variant="statusConfig.variant" size="s">
@@ -128,8 +128,8 @@ function handleAcknowledge(event: Event) {
       <Flex gap="xs" x-end>
         <div v-if="complaint.response" class="complaint-card__response-indicator">
           <Flex gap="xs" y-center>
-            <Icon name="ph:arrow-bend-down-left" class="color-text-light" />
-            <span class="text-s color-text-light">Response provided</span>
+            <Icon name="ph:arrow-bend-down-left" class="text-color-light" />
+            <span class="text-s text-color-light">Response provided</span>
             <TimestampDate
               v-if="complaint.responded_at"
               :date="complaint.responded_at"
@@ -140,8 +140,8 @@ function handleAcknowledge(event: Event) {
         </div>
         <div v-else-if="complaint.acknowledged" class="complaint-card__response-indicator">
           <Flex gap="xs" y-center>
-            <Icon name="ph:arrow-bend-up-right" class="color-text-light" />
-            <span class="text-s color-text-light">No response yet</span>
+            <Icon name="ph:arrow-bend-up-right" class="text-color-light" />
+            <span class="text-s text-color-light">No response yet</span>
           </Flex>
         </div>
         <Button

@@ -49,7 +49,7 @@ function handleEdit() {
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>Game Server Details</h4>
-          <span v-if="props.gameserver" class="color-text-light text-xxs">
+          <span v-if="props.gameserver" class="text-color-light text-xxs">
             {{ props.gameserver.name }}
           </span>
         </Flex>
@@ -73,27 +73,27 @@ function handleEdit() {
         <Card>
           <Flex column gap="l" expand>
             <Grid class="gameserver-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">ID:</span>
+              <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.gameserver.id }}</span>
             </Grid>
 
             <Grid class="gameserver-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Name:</span>
+              <span class="text-color-light text-bold">Name:</span>
               <span>{{ props.gameserver.name }}</span>
             </Grid>
 
             <Grid class="gameserver-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Game:</span>
+              <span class="text-color-light text-bold">Game:</span>
               <span>{{ props.gameserver.game_name || 'Unknown' }}</span>
             </Grid>
 
             <Grid class="gameserver-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Region:</span>
+              <span class="text-color-light text-bold">Region:</span>
               <RegionIndicator :region="props.gameserver.region" show-label />
             </Grid>
 
             <Grid class="gameserver-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Administrator:</span>
+              <span class="text-color-light text-bold">Administrator:</span>
               <div :class="{ 'gameserver-details__not-assigned': !props.gameserver.administrator }">
                 <UserLink v-if="props.gameserver.administrator" :user-id="props.gameserver.administrator" />
                 <span v-else>Not Assigned</span>
@@ -128,7 +128,7 @@ function handleEdit() {
 
           <Flex column gap="l" expand>
             <Grid class="gameserver-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Addresses:</span>
+              <span class="text-color-light text-bold">Addresses:</span>
               <Flex v-if="props.gameserver.addresses && props.gameserver.addresses.length" gap="xs" wrap>
                 <Badge v-for="address in props.gameserver.addresses" :key="address">
                   {{ address }}
@@ -138,12 +138,12 @@ function handleEdit() {
             </Grid>
 
             <Grid class="gameserver-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Port:</span>
+              <span class="text-color-light text-bold">Port:</span>
               <span>{{ props.gameserver.port || 'Not specified' }}</span>
             </Grid>
 
             <Grid class="gameserver-details__item" expand :columns="2">
-              <span class="color-text-light text-bold">Container:</span>
+              <span class="text-color-light text-bold">Container:</span>
               <Flex>
                 <Badge v-if="props.gameserver.container">
                   {{ props.gameserver.container }}
@@ -172,7 +172,7 @@ function handleEdit() {
 
   &__metadata-by {
     font-size: var(--font-size-l);
-    color: var(--color-text-light);
+    color: var(--text-color-light);
   }
 
   &__markdown {

@@ -18,6 +18,7 @@ const props = defineProps<{
   user: {
     id: string
     username: string
+    email: string | null
     created_at: string
     modified_at: string | null
     modified_by: string | null
@@ -235,7 +236,7 @@ function getUserInitials(username: string): string {
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>User Details</h4>
-          <span v-if="user" class="color-text-light text-xxs">
+          <span v-if="user" class="text-color-light text-xxs">
             <UserLink :user-id="user.id" />
           </span>
         </Flex>
@@ -256,35 +257,47 @@ function getUserInitials(username: string): string {
         <Card>
           <Flex column gap="l" expand>
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">UUID:</span>
+              <span class="text-color-light text-bold">UUID:</span>
               <CopyClipboard :text="user.id" variant="outline" size="xs">
                 <span class="user-id">{{ user.id }}</span>
               </CopyClipboard>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Username:</span>
+              <span class="text-color-light text-bold">Username:</span>
               <UserLink :user-id="user.id" />
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">
-              <span class="color-text-light text-bold">Status:</span>
+              <span class="text-color-light text-bold">Email:</span>
+              <template v-if="user.email">
+                <CopyClipboard :text="user.email" variant="outline" size="xs" confirm>
+                  <span class="user-email">{{ user.email }}</span>
+                </CopyClipboard>
+              </template>
+              <span v-else class="text-color-light text-s">No email on file</span>
+            </Grid>
+
+            <Grid class="detail-item" expand :columns="2">
+              <span class="text-color-light text-bold">Status:</span>
               <UserStatusIndicator :status="userStatus" :show-label="true" />
             </Grid>
 
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Role:</span>
-              <RoleIndicator :role="user.role" />
+              <span class="text-color-light text-bold">Role:</span>
+              <span>
+                <RoleIndicator :role="user.role" />
+              </span>
             </Grid>
 
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Last Seen:</span>
+              <span class="text-color-light text-bold">Last Seen:</span>
               <span
                 class="text-s"
                 :class="{
                   'color-accent': activityStatus?.isActive,
-                  'color-text': activityStatus && !activityStatus.isActive,
-                  'color-text-light': !activityStatus,
+                  'text-color': activityStatus && !activityStatus.isActive,
+                  'text-color-light': !activityStatus,
                 }"
               >
                 {{ activityStatus?.lastSeenText || 'Never' }}
@@ -293,7 +306,7 @@ function getUserInitials(username: string): string {
 
             <!-- Website Information -->
             <Grid v-if="(user as any).website" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Website:</span>
+              <span class="text-color-light text-bold">Website:</span>
               <a
                 :href="(user as any).website"
                 target="_blank"
@@ -306,15 +319,15 @@ function getUserInitials(username: string): string {
 
             <!-- Friends Information -->
             <Grid class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Friends:</span>
+              <span class="text-color-light text-bold">Friends:</span>
               <Flex gap="xs" y-center>
                 <span class="text-s">
                   {{ friends.length }} {{ friends.length === 1 ? 'friend' : 'friends' }}
                 </span>
-                <span v-if="sentRequests.length > 0" class="text-s color-text-light">
+                <span v-if="sentRequests.length > 0" class="text-s text-color-light">
                   • {{ sentRequests.length }} sent
                 </span>
-                <span v-if="pendingRequests.length > 0" class="text-s color-text-light">
+                <span v-if="pendingRequests.length > 0" class="text-s text-color-light">
                   • {{ pendingRequests.length }} pending
                 </span>
                 <Button
@@ -329,7 +342,7 @@ function getUserInitials(username: string): string {
             </Grid>
 
             <Grid v-if="user.banned && user.ban_duration" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Ban Duration:</span>
+              <span class="text-color-light text-bold">Ban Duration:</span>
               <span class="ban-duration">{{ user.ban_duration }}</span>
             </Grid>
           </Flex>
@@ -345,27 +358,27 @@ function getUserInitials(username: string): string {
 
           <Flex column gap="l" expand>
             <Grid v-if="user.ban_reason" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Reason:</span>
+              <span class="text-color-light text-bold">Reason:</span>
               <span class="ban-reason-text">{{ user.ban_reason }}</span>
             </Grid>
 
             <Grid v-if="user.ban_start" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Ban Start:</span>
+              <span class="text-color-light text-bold">Ban Start:</span>
               <TimestampDate :date="user.ban_start" />
             </Grid>
 
             <Grid v-if="user.ban_end" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Ban End:</span>
+              <span class="text-color-light text-bold">Ban End:</span>
               <TimestampDate :date="user.ban_end" />
             </Grid>
 
             <Grid v-else-if="user.banned" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Ban Type:</span>
+              <span class="text-color-light text-bold">Ban Type:</span>
               <span class="ban-permanent">Permanent</span>
             </Grid>
 
             <Grid v-if="user.ban_duration" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Duration:</span>
+              <span class="text-color-light text-bold">Duration:</span>
               <span class="ban-duration">{{ user.ban_duration }}</span>
             </Grid>
           </Flex>
@@ -382,21 +395,21 @@ function getUserInitials(username: string): string {
 
           <Flex column gap="l" expand>
             <Grid v-if="user.patreon_id" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Patreon ID:</span>
+              <span class="text-color-light text-bold">Patreon ID:</span>
               <CopyClipboard :text="user.patreon_id" variant="outline" size="xs" confirm>
                 <span class="platform-id">{{ user.patreon_id }}</span>
               </CopyClipboard>
             </Grid>
 
             <Grid v-if="user.discord_id" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Discord ID:</span>
+              <span class="text-color-light text-bold">Discord ID:</span>
               <CopyClipboard :text="user.discord_id" variant="outline" size="xs" confirm>
                 <span class="platform-id">{{ user.discord_id }}</span>
               </CopyClipboard>
             </Grid>
 
             <Grid v-if="user.steam_id" class="detail-item" :columns="2" expand>
-              <span class="color-text-light text-bold">Steam ID:</span>
+              <span class="text-color-light text-bold">Steam ID:</span>
               <CopyClipboard :text="user.steam_id" variant="outline" size="xs" confirm>
                 <span class="platform-id">{{ user.steam_id }}</span>
               </CopyClipboard>
@@ -410,7 +423,7 @@ function getUserInitials(username: string): string {
             <template #header>
               <h6>Introduction</h6>
             </template>
-            <div :class="`introduction-text ${!user.introduction ? 'color-text-lighter' : ''}`">
+            <div :class="`introduction-text ${!user.introduction ? 'text-color-lighter' : ''}`">
               {{ user.introduction ? user.introduction : 'No introduction provided.' }}
             </div>
           </Card>
@@ -466,7 +479,8 @@ function getUserInitials(username: string): string {
 }
 
 .user-id,
-.platform-id {
+.platform-id,
+.user-email {
   font-family: monospace;
   font-size: var(--font-size-s);
   background-color: var(--color-bg-light);

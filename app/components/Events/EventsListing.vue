@@ -147,7 +147,7 @@ const pastEvents = computed(() => {
 
     <!-- No Events Message -->
     <div v-if="upcomingEvents.length === 0 && pastEvents.length === 0 && ongoingEvents.length === 0" class="events-section__no-events">
-      <p class="color-text-lighter">
+      <p class="text-color-lighter">
         No events found.
       </p>
     </div>

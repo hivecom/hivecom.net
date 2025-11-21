@@ -334,6 +334,10 @@ watch(user, (newUser) => {
     return
   }
 
+  // During password reset flows we never want to trigger username checks
+  if (isPasswordReset.value)
+    return
+
   if (newUser && !usernameStep.value && !loading.value) {
     checkUsernameStatus()
   }
@@ -358,6 +362,13 @@ onMounted(() => {
 
   // Let's wait a bit to ensure Supabase has time to process the email link
   setTimeout(async () => {
+    // Password reset confirmations should always enter the reset flow,
+    // even if Supabase already signed the user in behind the scenes.
+    if (isPasswordReset.value) {
+      await handleEmailConfirmation()
+      return
+    }
+
     if (!user.value && !debugOptions.bypassAuth) {
       await handleEmailConfirmation()
     }
@@ -464,7 +475,7 @@ onMounted(() => {
 
       <template #footer>
         <Flex x-center>
-          <p v-if="processComplete && !error" class="text-s color-text-light">
+          <p v-if="processComplete && !error" class="text-s text-color-light">
             {{ isDev && debugOptions.skipRedirect ? 'Redirect disabled in debug mode' : 'You will momentarily be redirected to your profile' }}
           </p>
         </Flex>
