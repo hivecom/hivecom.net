@@ -32,28 +32,28 @@ const statusConfig = computed(() => {
         label: 'Pending',
         variant: 'warning' as const,
         icon: 'ph:bell',
-        color: 'var(--text-color-yellow)',
+        color: 'var(--color-text-yellow)',
       }
     case 'acknowledged':
       return {
         label: 'Acknowledged',
         variant: 'info' as const,
         icon: 'ph:check-circle',
-        color: 'var(--text-color-blue)',
+        color: 'var(--color-text-blue)',
       }
     case 'responded':
       return {
         label: 'Responded',
         variant: 'success' as const,
         icon: 'ph:chat-circle-dots',
-        color: 'var(--text-color-green)',
+        color: 'var(--color-text-green)',
       }
     default:
       return {
         label: 'Unknown',
         variant: 'neutral' as const,
         icon: 'ph:question',
-        color: 'var(--text-color)',
+        color: 'var(--color-text)',
       }
   }
 })
@@ -183,15 +183,15 @@ function handleAcknowledge(event: Event) {
 }
 
 .complaint-card--pending {
-  border-left-color: var(--text-color-yellow);
+  border-left-color: var(--color-text-yellow);
 }
 
 .complaint-card--acknowledged {
-  border-left-color: var(--text-color-blue);
+  border-left-color: var(--color-text-blue);
 }
 
 .complaint-card--responded {
-  border-left-color: var(--text-color-green);
+  border-left-color: var(--color-text-green);
 }
 
 .complaint-card__header {
@@ -200,7 +200,7 @@ function handleAcknowledge(event: Event) {
 
 .complaint-card__id {
   font-weight: var(--font-weight-semibold);
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: var(--font-size-s);
 }
 
@@ -219,7 +219,7 @@ function handleAcknowledge(event: Event) {
 .complaint-card__message p {
   margin: 0;
   line-height: 1.5;
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .complaint-card__response-indicator {
@@ -233,7 +233,7 @@ function handleAcknowledge(event: Event) {
   top: 50%;
   right: var(--space-m);
   transform: translateY(-50%);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   transition: color 0.2s ease;
 }
 
@@ -245,7 +245,7 @@ function handleAcknowledge(event: Event) {
   left: -4px;
   right: -4px;
   bottom: -4px;
-  background: linear-gradient(45deg, transparent, var(--text-color-yellow), transparent);
+  background: linear-gradient(45deg, transparent, var(--color-text-yellow), transparent);
   opacity: 0.1;
   border-radius: var(--border-radius-m);
   animation: pulse 2s infinite;

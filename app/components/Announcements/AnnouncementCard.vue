@@ -197,7 +197,7 @@ function handleClick() {
   justify-content: center;
   border-radius: 50%;
   background: rgba(var(--color-accent-rgb), 0.1);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   transition: all 0.3s ease;
 
   svg {
@@ -212,7 +212,7 @@ function handleClick() {
 .announcement-card__title {
   font-size: var(--font-size-l);
   font-weight: var(--font-weight-bold);
-  color: var(--text-color);
+  color: var(--color-text);
   margin: 0 32px 0 0; // Add right margin for icon space
   line-height: 1.3;
   transition: color 0.2s ease;
@@ -229,7 +229,7 @@ function handleClick() {
 }
 
 .announcement-card__date {
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 }
 
 .announcement-card__link-indicator {
@@ -243,7 +243,7 @@ function handleClick() {
 }
 
 .announcement-card__description {
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   line-height: 1.6;
   margin: 0;
   font-size: var(--font-size-m);
@@ -276,7 +276,7 @@ function handleClick() {
 .announcement-card__ultra-compact-title {
   font-size: var(--font-size-s);
   font-weight: var(--font-weight-medium);
-  color: var(--text-color);
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -299,7 +299,7 @@ function handleClick() {
 }
 
 .announcement-card__ultra-compact-date {
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   font-size: var(--font-size-xs); // Use CSS variable
   flex-shrink: 0;
   line-height: 1;

@@ -105,7 +105,7 @@ onMounted(() => {
           <Button variant="fill" :loading="loading" :disabled="tab === 'Password' ? !(email && password) : !email" @click="signIn">
             Sign in
             <template #end>
-              <Icon name="ph:sign-in" color="white" />
+              <Icon name="ph:sign-in" class="color-text-black" />
             </template>
           </Button>
           <Alert v-if="showEmailNotice" filled variant="info">

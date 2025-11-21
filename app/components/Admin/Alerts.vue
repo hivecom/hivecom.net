@@ -129,10 +129,10 @@ function getSeverityClass(severity: string) {
 // Get severity icon color
 function getSeverityIconColor(severity: string) {
   switch (severity) {
-    case 'critical': return 'var(--text-color-red)'
-    case 'warning': return 'var(--text-color-yellow)'
-    case 'info': return 'var(--text-color-blue)'
-    default: return 'var(--text-color-light)'
+    case 'critical': return 'var(--color-text-red)'
+    case 'warning': return 'var(--color-text-yellow)'
+    case 'info': return 'var(--color-text-blue)'
+    default: return 'var(--color-text-light)'
   }
 }
 
@@ -256,7 +256,7 @@ onBeforeMount(() => {
     margin: 0;
     font-size: var(--font-size-l);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color);
+    color: var(--color-text);
   }
 }
 
@@ -276,7 +276,7 @@ onBeforeMount(() => {
 
 .alerts-empty {
   padding: var(--space-xl);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   font-size: var(--font-size-s);
 }
 
@@ -292,7 +292,7 @@ onBeforeMount(() => {
     div {
       font-size: var(--font-size-xs);
       font-weight: var(--font-weight-medium);
-      color: var(--text-color-light);
+      color: var(--color-text-light);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
@@ -339,7 +339,7 @@ onBeforeMount(() => {
 
 .alert-title {
   font-weight: var(--font-weight-medium);
-  color: var(--text-color);
+  color: var(--color-text);
   margin-bottom: var(--space-xs);
   white-space: nowrap;
   overflow: hidden;
@@ -348,7 +348,7 @@ onBeforeMount(() => {
 
 .alert-message {
   font-size: var(--font-size-s);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
@@ -357,7 +357,7 @@ onBeforeMount(() => {
 
 .alert-timestamp {
   font-size: var(--font-size-xs);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   font-family: var(--font-family-mono);
 }
 </style>

@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import { Flex, Grid } from '@dolanske/vui'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import Alerts from '@/components/Admin/Alerts.vue'
 import IncomeChart from '@/components/Admin/Funding/IncomeChart.vue'
 import UserChart from '@/components/Admin/Funding/UserChart.vue'
 import KPIOverview from '@/components/Admin/KPIOverview.vue'
+import { useBreakpoint } from '@/lib/utils/mediaQuery'
 
 // State for refresh coordination between components
 const refreshSignal = ref(0)
+
+// Keep JS breakpoints aligned with app/assets/breakpoints.scss
+const isBelowSm = useBreakpoint('<md')
+const chartColumns = computed(() => (isBelowSm.value ? 1 : 2))
 </script>
 
 <template>
@@ -23,7 +28,7 @@ const refreshSignal = ref(0)
     <KPIOverview :refresh-signal="refreshSignal" />
 
     <!-- Charts Section -->
-    <Grid :columns="2" expand y-stretch>
+    <Grid :columns="chartColumns" expand y-stretch>
       <!-- Income Chart -->
       <IncomeChart :refresh-signal="refreshSignal" />
 

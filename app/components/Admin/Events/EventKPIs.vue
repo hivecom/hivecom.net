@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Grid } from '@dolanske/vui'
 import { computed, onMounted, ref } from 'vue'
 
 import KPICard from '../KPICard.vue'
+import KPIContainer from '../KPIContainer.vue'
 
 type Event = Tables<'events'>
 
@@ -85,7 +85,7 @@ onMounted(fetchEvents)
 </script>
 
 <template>
-  <Grid :columns="4" gap="m" class="kpi-container" expand>
+  <KPIContainer>
     <KPICard
       label="Total Events"
       :value="totalEvents"
@@ -116,5 +116,5 @@ onMounted(fetchEvents)
       :is-loading="loading"
       variant="warning"
     />
-  </Grid>
+  </KPIContainer>
 </template>

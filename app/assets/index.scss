@@ -37,7 +37,7 @@ body {
 }
 
 a {
-  color: var(--text-color);
+  color: var(--color-text);
   text-decoration: none;
 }
 
@@ -59,7 +59,7 @@ button {
 }
 
 .iconify {
-  color: var(--text-color);
+  color: unset;
 }
 
 .vui-badge {

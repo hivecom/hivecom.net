@@ -164,7 +164,7 @@ function handleClose() {
 
 .complaint-modal-guidelines h6 {
   margin: 0 0 8px 0;
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .complaint-modal-guidelines ul {
@@ -173,7 +173,7 @@ function handleClose() {
   font-size: var(--font-size-s);
   line-height: 1.5;
   list-style-type: disc;
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 }
 
 .complaint-modal-guidelines li {

@@ -261,7 +261,7 @@ function handleClick() {
   &__live-dot {
     width: 8px;
     height: 8px;
-    background: var(--text-color-red);
+    background: var(--color-text-red);
     border-radius: 50%;
     animation: pulse 2s infinite;
   }
@@ -278,7 +278,7 @@ function handleClick() {
     margin-bottom: var(--space-s);
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-semibold);
-    color: var(--text-color-green);
+    color: var(--color-text-green);
   }
 
   &__upcoming-text {
@@ -293,7 +293,7 @@ function handleClick() {
     margin-bottom: var(--space-s);
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-semibold);
-    color: var(--text-color-lighter);
+    color: var(--color-text-lighter);
   }
 
   &__past-text {
@@ -314,7 +314,7 @@ function handleClick() {
     font-weight: var(--font-weight-semibold);
     line-height: 1.3;
     margin: 0;
-    color: var(--text-color);
+    color: var(--color-text);
     flex: 1;
 
     .event-card--ongoing & {
@@ -338,7 +338,7 @@ function handleClick() {
     gap: var(--space-xs);
     margin-bottom: var(--space-m);
     font-size: var(--font-size-s);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   &__date,
@@ -373,7 +373,7 @@ function handleClick() {
 
   &__countdown-label {
     font-size: var(--font-size-xs);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-top: var(--space-xxs);
@@ -382,7 +382,7 @@ function handleClick() {
   &__description {
     font-size: var(--font-size-s);
     line-height: 1.5;
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     margin: 0 0 var(--space-m) 0;
   }
 
@@ -396,7 +396,7 @@ function handleClick() {
   &__rsvp-count {
     margin-top: var(--space-xs);
     font-size: var(--font-size-s);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   &__hover-indicator {

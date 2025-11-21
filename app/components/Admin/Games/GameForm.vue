@@ -359,7 +359,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
 .asset-label {
   font-size: var(--font-size-s);
   font-weight: var(--font-weight-medium);
-  color: var(--text-color);
+  color: var(--color-text);
   margin-bottom: var(--space-xs);
 }
 
@@ -371,11 +371,11 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
   background: var(--color-bg-subtle);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-s);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   font-size: var(--font-size-s);
 
   .iconify {
-    color: var(--text-color-blue);
+    color: var(--color-text-blue);
   }
 }
 </style>

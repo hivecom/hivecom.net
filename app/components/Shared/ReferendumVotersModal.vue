@@ -232,12 +232,12 @@ function handleClose() {
   text-align: center;
 
   &-icon {
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   h4 {
     margin: 0;
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   p {
@@ -311,7 +311,7 @@ function handleClose() {
 .voters-modal__comment-text {
   font-style: italic;
   word-wrap: break-word;
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 }
 
 .voters-modal__user-item {

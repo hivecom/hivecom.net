@@ -168,7 +168,7 @@ const pastEvents = computed(() => {
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-semibold);
     margin-bottom: 1.5rem;
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   &__list {
@@ -182,7 +182,7 @@ const pastEvents = computed(() => {
       text-align: center;
       display: block;
       width: 56px;
-      color: var(--text-color-lighter) !important;
+      color: var(--color-text-lighter) !important;
 
       @media (max-width: $breakpoint-sm) {
         min-width: 80px;
@@ -196,13 +196,13 @@ const pastEvents = computed(() => {
 
   &__event-header {
     flex: 1;
-    color: var(--text-color-lighter);
+    color: var(--color-text-lighter);
     text-align: left;
   }
 
   &__time-header {
     text-align: center;
-    color: var(--text-color-lighter);
+    color: var(--color-text-lighter);
 
     min-width: 294px;
   }
@@ -215,7 +215,7 @@ const pastEvents = computed(() => {
   // Past events styling - grayed out with hover effect
   &--past {
     .events-section__title {
-      color: var(--text-color-lighter);
+      color: var(--color-text-lighter);
     }
 
     .events-section__list {
@@ -249,7 +249,7 @@ const pastEvents = computed(() => {
         position: relative;
         width: 8px;
         height: 8px;
-        background: var(--text-color-red);
+        background: var(--color-text-red);
         border-radius: 50%;
         animation: pulse 2s infinite;
       }

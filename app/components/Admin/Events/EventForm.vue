@@ -297,7 +297,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
         <Grid expand>
           <div class="event-form__date-picker-container">
             <label for="date-picker" class="event-form__date-picker-label">
-              Date <span class="required" style="color: var(--text-color-red);">*</span>
+              Date <span class="required" style="color: var(--color-text-red);">*</span>
             </label>
             <Calendar
               v-model="eventForm.date"
@@ -494,19 +494,19 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
   &__date-picker-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   &__duration-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color);
+    color: var(--color-text);
   }
 }
 
 .help-text {
   font-size: var(--font-size-s);
-  color: var(--text-color-lightest);
+  color: var(--color-text-lightest);
   margin-top: var(--space-xs);
 }
 

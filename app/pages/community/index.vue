@@ -452,7 +452,7 @@ watch(user, () => {
 }
 
 .about-description {
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   line-height: 1.6;
   font-size: var(--font-size-s);
 }
@@ -473,7 +473,7 @@ watch(user, () => {
   background: var(--color-bg-raised);
   border: 1px solid var(--color-border-weak);
   font-size: var(--font-size-xs);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   transition: all 0.2s ease;
 
   &:hover {
@@ -597,18 +597,18 @@ watch(user, () => {
 
   &__title {
     font-weight: var(--font-weight-bold);
-    color: var(--text-color);
+    color: var(--color-text);
     margin-bottom: 2px;
   }
 
   &__subtitle {
     font-size: var(--font-size-xs);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     line-height: 1.4;
   }
 
   &__arrow {
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     opacity: 0.6;
     transition: all 0.3s ease;
     flex-shrink: 0;
@@ -683,13 +683,13 @@ watch(user, () => {
 }
 
 .project-title {
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: var(--font-size-l);
   margin: 0;
 }
 
 .project-description {
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   flex: 1;
   margin: 0;
 }
@@ -716,7 +716,7 @@ watch(user, () => {
   padding: var(--space-xxs) var(--space-xs);
   border-radius: var(--border-radius-s);
   background: var(--color-bg-medium);
-  color: var(--text-color);
+  color: var(--color-text);
   font-size: var(--font-size-xs);
   margin-right: var(--space-xxs);
   margin-bottom: var(--space-xxs);

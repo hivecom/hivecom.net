@@ -487,7 +487,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
         align-items: center;
         justify-content: center;
         border: 2px dashed var(--color-border);
-        color: var(--text-color-light);
+        color: var(--color-text-light);
         font-size: var(--font-size-m);
       }
     }
@@ -502,14 +502,14 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
 
   h4 {
     margin: 0 0 var(--space-xs) 0;
-    color: var(--text-color);
+    color: var(--color-text);
     font-size: var(--font-size-l);
     font-weight: var(--font-weight-semibold);
   }
 
   h5 {
     margin: 0 0 var(--space-xs) 0;
-    color: var(--text-color);
+    color: var(--color-text);
     font-size: var(--font-size-m);
     font-weight: var(--font-weight-semibold);
   }
@@ -520,10 +520,10 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
   justify-content: flex-end;
   margin-top: var(--space-xs);
   font-size: var(--font-size-xs);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 
   .over-limit {
-    color: var(--text-color-red);
+    color: var(--color-text-red);
     font-weight: var(--font-weight-semibold);
   }
 }
@@ -534,13 +534,13 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
   gap: var(--space-xs);
   margin-top: var(--space-xs);
   font-size: var(--font-size-s);
-  color: var(--text-color-lightest);
+  color: var(--color-text-lightest);
 
   &.error {
-    color: var(--text-color-red);
+    color: var(--color-text-red);
 
     .iconify {
-      color: var(--text-color-red);
+      color: var(--color-text-red);
     }
   }
 }
@@ -564,10 +564,10 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
       align-items: center;
       gap: var(--space-s);
       font-size: var(--font-size-s);
-      color: var(--text-color-light);
+      color: var(--color-text-light);
 
       .iconify {
-        color: var(--text-color-green);
+        color: var(--color-text-green);
         font-size: var(--font-size-m);
       }
     }

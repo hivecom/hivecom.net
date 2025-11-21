@@ -107,7 +107,7 @@ defineProps<Props>()
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-semibold);
     margin: 0;
-    color: var(--text-color);
+    color: var(--color-text);
 
     svg {
       color: var(--color-accent);
@@ -118,7 +118,7 @@ defineProps<Props>()
     font-size: var(--font-size-l);
     font-weight: var(--font-weight-semibold);
     margin: 0 0 var(--space-m) 0;
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   &__addresses-grid {
@@ -140,13 +140,13 @@ defineProps<Props>()
   &__address-text {
     font-size: var(--font-size-m);
     font-weight: var(--font-weight-semibold);
-    color: var(--text-color);
+    color: var(--color-text);
     margin-bottom: var(--space-xs);
   }
 
   &__address-label {
     font-size: var(--font-size-s);
-    color: var(--text-color-lightest);
+    color: var(--color-text-lightest);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }

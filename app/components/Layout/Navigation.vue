@@ -16,7 +16,9 @@ function toggleMobileMenu() {
   <nav class="navigation">
     <div class="container container-l">
       <div class="navigation__items">
-        <Button class="navigation__hamburger" icon="ph:list" aria-label="Open mobile menu" @click="toggleMobileMenu" />
+        <Button class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
+          <Icon name="ph:list" />
+        </Button>
 
         <SharedLogo class="navigation__logo" />
 
@@ -117,7 +119,9 @@ function toggleMobileMenu() {
 
           <!-- On mobile we just have a little user icon -->
           <div class="navigation__auth-mobile-button">
-            <Button square icon="ph:sign-in" aria-label="Sign in" @click="$router.push('/auth/sign-in')" />
+            <Button square aria-label="Sign in" @click="$router.push('/auth/sign-in')">
+              <Icon name="ph:sign-in" />
+            </Button>
           </div>
         </div>
       </div>
@@ -148,7 +152,7 @@ function toggleMobileMenu() {
     display: none;
     cursor: pointer;
     font-size: 24px;
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   &__logo {
@@ -180,7 +184,7 @@ function toggleMobileMenu() {
       display: block;
       padding: 0 12px;
       font-size: var(--font-size-m);
-      color: var(--text-color);
+      color: var(--color-text);
       text-decoration: none;
 
       &:hover,
@@ -195,7 +199,7 @@ function toggleMobileMenu() {
     position: relative;
     width: 1px;
     height: 16px;
-    background: var(--text-color);
+    background: var(--color-text);
     opacity: 0.5;
   }
 
@@ -241,7 +245,7 @@ function toggleMobileMenu() {
       display: block;
       padding: var(--space-s);
       font-size: var(--font-size-m);
-      color: var(--text-color);
+      color: var(--color-text);
 
       &:hover,
       &.router-link-active {
@@ -294,7 +298,7 @@ function toggleMobileMenu() {
     display: block;
     height: 1px;
     width: 100%;
-    background-color: color-mix(in srgb, var(--text-color) 20%, transparent);
+    background-color: color-mix(in srgb, var(--color-text) 20%, transparent);
     margin: var(--space-m) 0;
   }
 }

@@ -367,12 +367,12 @@ function getUserEmail(userId: string): string | null {
 // Get platform icon name and display info
 function getPlatformInfo(platform: string) {
   const platformIcons: Record<string, { icon: string, label: string, color: string }> = {
-    steam: { icon: 'ph:steam-logo', label: 'Steam', color: 'var(--text-color-blue)' },
-    discord: { icon: 'ph:discord-logo', label: 'Discord', color: 'var(--text-color-purple)' },
+    steam: { icon: 'ph:steam-logo', label: 'Steam', color: 'var(--color-text-blue)' },
+    discord: { icon: 'ph:discord-logo', label: 'Discord', color: 'var(--color-text-purple)' },
     patreon: { icon: 'ph:patreon-logo', label: 'Patreon', color: 'var(--color-accent)' },
   }
 
-  return platformIcons[platform] || { icon: 'ph:question', label: 'Unknown', color: 'var(--text-color-light)' }
+  return platformIcons[platform] || { icon: 'ph:question', label: 'Unknown', color: 'var(--color-text-light)' }
 }
 
 // Lifecycle
@@ -600,7 +600,7 @@ defineExpose({
 }
 
 .uuid-text {
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 }
 
 .username-content {
@@ -611,7 +611,7 @@ defineExpose({
 
 .username {
   font-weight: var(--font-weight-medium);
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .status-cell {
@@ -656,14 +656,14 @@ defineExpose({
   &.steam {
     &:hover {
       background-color: var(--color-bg-blue-lowered);
-      color: var(--text-color-blue);
+      color: var(--color-text-blue);
     }
   }
 
   &.discord {
     &:hover {
       background-color: var(--color-bg-purple-lowered);
-      color: var(--text-color-purple);
+      color: var(--color-text-purple);
     }
   }
 
@@ -685,14 +685,14 @@ defineExpose({
 }
 
 .supporter-no {
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 }
 
 .joined-cell,
 .last-signin-cell {
   min-width: 120px;
   font-size: var(--font-size-s);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 }
 
 .actions-cell {
@@ -703,7 +703,7 @@ defineExpose({
 .no-users {
   text-align: center;
   padding: var(--space-xl);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 }
 
 .clickable-row:hover {

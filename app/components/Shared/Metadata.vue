@@ -86,7 +86,7 @@ const isSameUser = computed(() => {
   &__timestamp-label {
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color-lighter);
+    color: var(--color-text-lighter);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }

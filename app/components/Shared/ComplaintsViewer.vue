@@ -233,9 +233,11 @@ onMounted(() => {
                   variant="danger"
                   :disabled="isDeleting(complaint.id)"
                   :loading="isDeleting(complaint.id)"
-                  icon="ph:trash"
+                  aria-label="Delete complaint"
                   @click="showDeleteConfirmation(complaint.id)"
-                />
+                >
+                  <Icon name="ph:trash" />
+                </Button>
               </Flex>
             </Flex>
 
@@ -333,7 +335,7 @@ onMounted(() => {
 }
 
 .quote-border {
-  border-left: 3px solid var(--text-color-lighter);
+  border-left: 3px solid var(--color-text-lighter);
   padding-left: 12px;
 }
 </style>

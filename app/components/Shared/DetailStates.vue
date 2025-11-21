@@ -62,11 +62,11 @@ defineProps<Props>()
   }
 
   &__error-icon {
-    color: var(--text-color-red);
+    color: var(--color-text-red);
   }
 
   &__error-message {
-    color: var(--text-color-lightest);
+    color: var(--color-text-lightest);
     text-align: center;
     margin: 0;
   }

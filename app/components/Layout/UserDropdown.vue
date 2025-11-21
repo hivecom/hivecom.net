@@ -86,25 +86,39 @@ async function signOut() {
           <RoleIndicator v-if="isAdminOrMod && userData?.role" :role="userData.role" size="s" />
         </div>
       </DropdownTitle>
-      <DropdownItem icon="ph:user" @click="navigateTo('/profile')">
+      <DropdownItem @click="navigateTo('/profile')">
+        <template #icon>
+          <Icon name="ph:user" />
+        </template>
         Profile
       </DropdownItem>
-      <DropdownItem icon="ph:gear-six" @click="navigateTo('/profile/settings')">
+      <DropdownItem @click="navigateTo('/profile/settings')">
+        <template #icon>
+          <Icon name="ph:gear-six" />
+        </template>
         Settings
       </DropdownItem>
-      <DropdownItem icon="ph:chat-circle-text" @click="openComplaintModal">
+      <DropdownItem @click="openComplaintModal">
+        <template #icon>
+          <Icon name="ph:chat-circle-text" />
+        </template>
         Complaints
       </DropdownItem>
       <template v-if="isAdminOrMod">
         <Divider size="4" style="margin-bottom: 4px;" />
-        <DropdownItem icon="ph:faders" @click="navigateTo('/admin')">
+        <DropdownItem @click="navigateTo('/admin')">
+          <template #icon>
+            <Icon name="ph:faders" />
+          </template>
           Admin Panel
         </DropdownItem>
       </template>
       <Divider size="4" />
       <div class="user-dropdown__footer">
         <SharedThemeToggle no-text />
-        <Button square icon="ph:sign-out" aria-label="Sign out" @click="signOut" />
+        <Button square aria-label="Sign out" @click="signOut">
+          <Icon name="ph:sign-out" />
+        </Button>
       </div>
     </Dropdown>
     <ComplaintsManager

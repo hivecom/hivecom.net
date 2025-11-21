@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-import { Grid } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import KPICard from '@/components/Admin/KPICard.vue'
+import KPIContainer from '../KPIContainer.vue'
 
 // Props for refresh signal
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
@@ -87,7 +87,7 @@ onMounted(fetchComplaints)
 </script>
 
 <template>
-  <Grid :columns="5" gap="m" class="kpi-container" expand>
+  <KPIContainer>
     <KPICard
       label="Total Complaints"
       :value="totalComplaints"
@@ -132,5 +132,5 @@ onMounted(fetchComplaints)
       variant="gray"
       description="Complaints submitted in the last 30 days"
     />
-  </Grid>
+  </KPIContainer>
 </template>

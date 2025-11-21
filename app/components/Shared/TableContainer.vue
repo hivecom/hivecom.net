@@ -1,19 +1,26 @@
 <script setup lang="ts">
-import { Flex } from '@dolanske/vui'
-
 defineProps<{ class?: string }>()
 </script>
 
 <template>
-  <Flex :class="`table-overflow ${$props.class}`" expand>
+  <div class="table-scroll-wrapper" :class="$props.class">
     <slot />
-  </Flex>
+  </div>
 </template>
 
 <style scoped lang="scss">
-.table-overflow {
-  display: flex;
-  /* overflow-x: auto; */
-  max-width: 94vw;
+.table-scroll-wrapper {
+  width: 100%;
+}
+
+.table-scroll-wrapper :deep(.vui-table-container) {
+  width: 100%;
+  overflow-x: auto;
+  display: block;
+  scrollbar-gutter: stable both-edges;
+}
+
+.table-scroll-wrapper :deep(.vui-table-container table) {
+  min-width: 100%;
 }
 </style>

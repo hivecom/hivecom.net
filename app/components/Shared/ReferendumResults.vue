@@ -173,7 +173,7 @@ function handleRevealResults() {
   }
 
   .vote-count {
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     font-size: var(--font-size-s);
   }
 
@@ -192,7 +192,7 @@ function handleRevealResults() {
   }
 
   .percentage {
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     font-size: var(--font-size-s);
     font-weight: 500;
   }

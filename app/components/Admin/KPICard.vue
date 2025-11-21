@@ -67,22 +67,22 @@ defineProps<{
     &--primary,
     &--success {
       background-color: var(--color-bg-green-lowered);
-      color: var(--text-color-green);
+      color: var(--color-text-green);
     }
 
     &--warning {
       background-color: var(--color-bg-yellow-lowered);
-      color: var(--text-color-yellow);
+      color: var(--color-text-yellow);
     }
 
     &--danger {
       background-color: var(--color-bg-red-lowered);
-      color: var(--text-color-red);
+      color: var(--color-text-red);
     }
 
     &--gray {
       background-color: var(--color-bg-medium);
-      color: var(--text-color-light);
+      color: var(--color-text-light);
     }
   }
 
@@ -95,7 +95,7 @@ defineProps<{
   &__label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   &__value-container {
@@ -116,19 +116,19 @@ defineProps<{
 
     &--primary,
     &--success {
-      color: var(--text-color-green);
+      color: var(--color-text-green);
     }
 
     &--warning {
-      color: var(--text-color-yellow);
+      color: var(--color-text-yellow);
     }
 
     &--danger {
-      color: var(--text-color-red);
+      color: var(--color-text-red);
     }
 
     &--gray {
-      color: var(--text-color);
+      color: var(--color-text);
     }
   }
 
@@ -138,7 +138,7 @@ defineProps<{
   }
 
   &__info-icon {
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     opacity: 0.7;
     cursor: help;
     transition: opacity 0.2s ease;

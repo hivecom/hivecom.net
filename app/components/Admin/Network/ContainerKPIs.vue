@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { Flex } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
 import constants from '~~/constants.json'
 import { getContainerStatus } from '@/lib/utils/containerStatus'
 
 import KPICard from '../KPICard.vue'
+import KPIContainer from '../KPIContainer.vue'
 
 const refreshSignal = defineModel<number>('refreshSignal')
 
@@ -104,7 +104,7 @@ onBeforeMount(fetchContainerMetrics)
 </script>
 
 <template>
-  <Flex gap="m" class="kpi-container" expand>
+  <KPIContainer>
     <KPICard
       label="Active Containers"
       :value="activeContainers"
@@ -137,7 +137,7 @@ onBeforeMount(fetchContainerMetrics)
       :description="`Containers not reporting for ${constants.CONTAINERS.STALE_HOURS}+ hours`"
       :is-loading="loading"
     />
-  </Flex>
+  </KPIContainer>
 </template>
 
 <style scoped lang="scss">

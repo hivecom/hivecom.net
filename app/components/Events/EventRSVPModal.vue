@@ -269,12 +269,12 @@ function handleClose() {
   text-align: center;
 
   &-icon {
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   h4 {
     margin: 0;
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   p {

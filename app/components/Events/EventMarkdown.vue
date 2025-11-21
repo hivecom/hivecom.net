@@ -32,7 +32,7 @@ defineProps<Props>()
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-semibold);
     margin: 0;
-    color: var(--text-color);
+    color: var(--color-text);
 
     svg {
       color: var(--color-accent);

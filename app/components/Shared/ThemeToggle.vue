@@ -56,7 +56,7 @@ const isLight = computed({
     align-items: center;
     justify-content: center;
     gap: var(--space-xs);
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   // This is a super scuffed way of doing this but until VUI has a smaller switch we will be doing this.

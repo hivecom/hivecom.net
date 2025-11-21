@@ -185,7 +185,7 @@ function handleTagInputEnter() {
 
         <Flex column class="announcement-form__date-picker-container" expand>
           <label for="published-date-picker" class="announcement-form__date-picker-label">
-            Publish Date <span class="required" style="color: var(--text-color-red);">*</span>
+            Publish Date <span class="required" style="color: var(--color-text-red);">*</span>
           </label>
           <Calendar
             v-model="announcementForm.published_at"
@@ -375,7 +375,7 @@ function handleTagInputEnter() {
   &__date-picker-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color);
+    color: var(--color-text);
   }
 }
 
@@ -389,7 +389,7 @@ function handleTagInputEnter() {
 
 .toggle-label {
   font-weight: var(--font-weight-medium);
-  color: var(--text-color);
+  color: var(--color-text);
   cursor: pointer;
 }
 
@@ -405,7 +405,7 @@ function handleTagInputEnter() {
   .input-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color);
+    color: var(--color-text);
     margin-bottom: var(--space-xs);
   }
 

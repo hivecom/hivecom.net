@@ -198,57 +198,69 @@ const open = ref(true)
 
   <!-- Show admin layout only if authorized -->
   <div v-else-if="isAuthorized" class="admin-layout vui-sidebar-layout">
-    <ClientOnly>
-      <Sidebar v-model="open" :mini="miniSidebar" style="position: static">
-        <template #header>
-          <Flex y-center class="mb-s">
-            <Flex y-center gap="s" expand>
-              <SharedIcon />
-              <h5 v-if="!miniSidebar" class="flex-1">
-                Admin
-              </h5>
+    <div class="admin-layout__sidebar-wrapper">
+      <ClientOnly>
+        <Sidebar v-model="open" :mini="miniSidebar" class="admin-layout__sidebar">
+          <template #header>
+            <Flex y-center class="mb-s">
+              <Flex y-center gap="s" expand>
+                <SharedIcon />
+                <h5 v-if="!miniSidebar" class="flex-1">
+                  Admin
+                </h5>
+              </Flex>
+              <Button v-if="!miniSidebar" square plain @click="miniSidebar = !miniSidebar">
+                <Icon name="tabler:layout-sidebar-left-collapse" />
+              </Button>
             </Flex>
-            <Button v-if="!miniSidebar" square plain @click="miniSidebar = !miniSidebar">
-              <Icon name="tabler:layout-sidebar-left-collapse" />
-            </Button>
-          </Flex>
-          <Divider :size="0" />
-        </template>
+            <Divider :size="0" />
+          </template>
 
-        <!-- Only show menu items the user has permissions for -->
-        <DropdownItem
-          v-for="item in accessibleMenuItems"
-          :key="item.path"
-          :icon="item.icon"
-          :class="{ selected: route.path === item.path }"
-          @click="navigateTo(item.path)"
-        >
-          {{ item.name }}
-        </DropdownItem>
+          <!-- Only show menu items the user has permissions for -->
+          <DropdownItem
+            v-for="item in accessibleMenuItems"
+            :key="item.path"
+            :class="{ selected: route.path === item.path }"
+            @click="navigateTo(item.path)"
+          >
+            <template v-if="item.icon" #icon>
+              <Icon :name="item.icon" />
+            </template>
+            {{ item.name }}
+          </DropdownItem>
 
-        <template v-if="miniSidebar">
-          <Divider />
-          <DropdownItem square icon="tabler:layout-sidebar-left-expand" @click="miniSidebar = !miniSidebar" />
-        </template>
-
-        <template #footer>
-          <Flex v-if="miniSidebar" column x-center y-center gap="m">
-            <SharedThemeToggle no-text small />
-            <DropdownItem square icon="ph:caret-left" data-title-right="Close admin console" aria-label="Close admin console" @click="router.push('/')" />
-          </Flex>
-          <Flex v-else x-between y-center>
-            <Button size="s" outline @click="router.push('/')">
-              <template #start>
-                <Icon name="ph:caret-left" />
+          <template v-if="miniSidebar">
+            <Divider />
+            <DropdownItem square @click="miniSidebar = !miniSidebar">
+              <template #icon>
+                <Icon name="tabler:layout-sidebar-left-expand" />
               </template>
-              Close
-            </Button>
-            <SharedThemeToggle no-text small />
-          </Flex>
-        </template>
-      </Sidebar>
-    </ClientOnly>
-    <main>
+            </DropdownItem>
+          </template>
+
+          <template #footer>
+            <Flex v-if="miniSidebar" column x-center y-center gap="m">
+              <SharedThemeToggle no-text small />
+              <DropdownItem square data-title-right="Close admin console" aria-label="Close admin console" @click="router.push('/')">
+                <template #icon>
+                  <Icon name="ph:caret-left" />
+                </template>
+              </DropdownItem>
+            </Flex>
+            <Flex v-else x-between y-center>
+              <Button size="s" outline @click="router.push('/')">
+                <template #start>
+                  <Icon name="ph:caret-left" />
+                </template>
+                Close
+              </Button>
+              <SharedThemeToggle no-text small />
+            </Flex>
+          </template>
+        </Sidebar>
+      </ClientOnly>
+    </div>
+    <main class="admin-layout__content">
       <div class="container container-l pt-xl pb-l">
         <ClientOnly>
           <slot />
@@ -264,12 +276,35 @@ const open = ref(true)
 
 <style lang="scss" scoped>
 .admin-layout {
+  min-height: 100vh;
+  display: flex;
+
   &__loading {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     width: 100vw;
+  }
+
+  &__sidebar-wrapper {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+  }
+
+  &__sidebar {
+    height: 100%;
+  }
+
+  &__content {
+    flex: 1;
+    height: 100vh;
+    overflow-y: auto;
   }
 }
 </style>

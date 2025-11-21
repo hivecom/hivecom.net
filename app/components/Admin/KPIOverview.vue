@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Grid } from '@dolanske/vui'
 import { onBeforeMount, ref, watch } from 'vue'
 import KPICard from './KPICard.vue'
+import KPIContainer from './KPIContainer.vue'
 
 // Props
 interface Props {
@@ -108,7 +108,7 @@ onBeforeMount(() => {
 </script>
 
 <template>
-  <Grid :columns="5" gap="l" expand>
+  <KPIContainer>
     <KPICard
       label="New Users"
       :value="newUsersCount"
@@ -153,5 +153,5 @@ onBeforeMount(() => {
       :variant="upcomingEventsCount === 0 ? 'warning' : 'success'"
       description="Events scheduled for the future"
     />
-  </Grid>
+  </KPIContainer>
 </template>

@@ -503,7 +503,7 @@ function getUserInitials(username: string): string {
 }
 
 .ban-reason-text {
-  color: var(--text-color);
+  color: var(--color-text);
   line-height: 1.4;
 }
 
@@ -515,7 +515,7 @@ function getUserInitials(username: string): string {
 .introduction-text {
   font-size: var(--font-size-m);
   line-height: 1.6;
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .profile-markdown {
@@ -549,7 +549,7 @@ function getUserInitials(username: string): string {
 }
 
 .website-link {
-  color: var(--text-color-accent);
+  color: var(--color-text-accent);
   text-decoration: none;
   font-size: var(--font-size-s);
 

@@ -40,11 +40,11 @@ withDefaults(defineProps<CalendarButtonsProps>(), {
         :size="size"
         :href="constants.EVENT_CALENDAR.GOOGLE"
         data-title-bottom="Add to your Google Calendar"
-        :icon="showLabels ? undefined : 'ph:calendar'"
       >
         <template v-if="showLabels" #start>
           <Icon name="ph:calendar" />
         </template>
+        <Icon v-if="!showLabels" name="ph:calendar" />
         <span v-if="showLabels" class="text-s">Subscribe</span>
       </Button>
     </NuxtLink>
@@ -60,11 +60,11 @@ withDefaults(defineProps<CalendarButtonsProps>(), {
         :size="size"
         :href="constants.EVENT_CALENDAR.ICAL"
         data-title-bottom="Export ICAL"
-        :icon="showLabels ? undefined : 'ph:download'"
       >
         <template v-if="showLabels" #start>
           <Icon name="ph:download" />
         </template>
+        <Icon v-if="!showLabels" name="ph:download" />
         <span v-if="showLabels" class="text-s">Export</span>
       </Button>
     </NuxtLink>

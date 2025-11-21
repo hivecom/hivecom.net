@@ -378,14 +378,14 @@ function handleRemoveFriend() {
         right: 4px;
         width: 16px;
         height: 16px;
-        background-color: var(--text-color-lighter);
+        background-color: var(--color-text-lighter);
         border: 3px solid var(--color-bg);
         border-radius: 50%;
         box-shadow: 0 0 0 1px var(--color-border);
         transition: background-color 0.2s ease;
 
         &.active {
-          background-color: var(--text-color-green);
+          background-color: var(--color-text-green);
         }
       }
     }
@@ -395,21 +395,21 @@ function handleRemoveFriend() {
     margin: 0;
     font-size: var(--font-size-xxl);
     font-weight: var(--font-weight-bold);
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   .profile-description {
     margin: 0;
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     line-height: 1.5;
   }
 
   .profile-meta {
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     font-size: var(--font-size-s);
 
     .website-link {
-      color: var(--text-color-accent);
+      color: var(--color-text-accent);
       text-decoration: none;
       max-width: 200px;
       overflow: hidden;

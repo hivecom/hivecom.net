@@ -417,13 +417,13 @@ function confirmDeleteComplaint() {
 
 .complaint-message p {
   margin: 0;
-  color: var(--text-color);
+  color: var(--color-text);
   white-space: pre-wrap;
 }
 
 .response-content p {
   margin: 0;
-  color: var(--text-color);
+  color: var(--color-text);
   white-space: pre-wrap;
   line-height: 1.6;
 }

@@ -189,7 +189,7 @@ useHead({
 .announcement-header__title {
   font-size: var(--font-size-xxxl);
   font-weight: var(--font-weight-bold);
-  color: var(--text-color);
+  color: var(--color-text);
   margin: 0;
   line-height: 1.2;
 }
@@ -208,20 +208,20 @@ useHead({
 
 .announcement-header__posted-by-label {
   font-size: var(--font-size-s);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   font-weight: var(--font-weight-medium);
 }
 
 .announcement-header__description {
   font-size: var(--font-size-l);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   margin: 0;
   line-height: 1.6;
 }
 
 .announcement-header__meta {
   font-size: var(--font-size-s);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 
   svg {
     color: var(--color-accent);

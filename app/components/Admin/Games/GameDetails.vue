@@ -341,20 +341,20 @@ watchEffect(async () => {
 
   &__label {
     font-weight: var(--font-weight-medium);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   &__metadata-by {
     font-size: var(--font-size-l);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   &__placeholder-text {
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     font-style: italic;
 
     &--error {
-      color: var(--text-color-red);
+      color: var(--color-text-red);
     }
   }
 
@@ -369,19 +369,19 @@ watchEffect(async () => {
   &__gameserver-name {
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   &__gameserver-description {
     font-size: var(--font-size-s);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     margin: 0;
   }
 
   &__gameserver-address {
     font-family: monospace;
     font-size: var(--font-size-xs);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     background-color: var(--color-bg-raised);
     padding: var(--space-xs) var(--space-s);
     border-radius: var(--border-radius-s);
@@ -389,13 +389,13 @@ watchEffect(async () => {
 
   &__address-count {
     font-size: var(--font-size-s);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   &__asset-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   &__asset-image {
@@ -418,7 +418,7 @@ watchEffect(async () => {
 
   &__asset-missing {
     font-size: var(--font-size-s);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     font-style: italic;
   }
 
@@ -429,19 +429,19 @@ watchEffect(async () => {
     flex-shrink: 0;
 
     &--healthy {
-      background-color: var(--text-color-green);
+      background-color: var(--color-text-green);
     }
 
     &--unhealthy {
-      background-color: var(--text-color-orange);
+      background-color: var(--color-text-orange);
     }
 
     &--offline {
-      background-color: var(--text-color-red);
+      background-color: var(--color-text-red);
     }
 
     &--unknown {
-      background-color: var(--text-color-light);
+      background-color: var(--color-text-light);
     }
   }
 }

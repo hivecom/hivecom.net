@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ChartOptions } from 'chart.js'
+import type { ChartComponentRef } from 'vue-chartjs'
 import { Skeleton } from '@dolanske/vui'
+import { useElementSize } from '@vueuse/core'
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -13,7 +15,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import dayjs from 'dayjs'
-import { computed, onBeforeMount, ref, watch } from 'vue'
+import { computed, onBeforeMount, ref, watch, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
 
 const props = defineProps<Props>()
@@ -47,6 +49,9 @@ const supabase = useSupabaseClient()
 const loading = ref(true)
 const errorMessage = ref('')
 const monthlyData = ref<MonthlyUserData[]>([])
+const chartWrapperRef = ref<HTMLElement | null>(null)
+const chartRef = ref<ChartComponentRef<'line'> | null>(null)
+const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 
 // Fetch users data and group by month
 async function fetchUsersData() {
@@ -271,6 +276,17 @@ watch(() => props.refreshSignal, () => {
   }
 })
 
+watchEffect(() => {
+  const width = chartWrapperWidth.value
+  const chart = chartRef.value?.chart
+
+  if (!width || !chart)
+    return
+
+  const containerHeight = chartWrapperRef.value?.clientHeight
+  chart.resize(Math.floor(width), containerHeight)
+})
+
 // Lifecycle hooks
 onBeforeMount(fetchAllData)
 </script>
@@ -317,8 +333,12 @@ onBeforeMount(fetchAllData)
       <p>No user data available for chart</p>
     </div>
 
-    <div v-else class="chart-wrapper">
-      <Line :data="chartData" :options="chartOptions" />
+    <div v-else ref="chartWrapperRef" class="chart-wrapper">
+      <Line
+        ref="chartRef"
+        :data="chartData"
+        :options="chartOptions"
+      />
     </div>
   </div>
 </template>
@@ -336,6 +356,12 @@ onBeforeMount(fetchAllData)
 .chart-wrapper {
   height: 320px;
   width: 100%;
+  position: relative;
+}
+
+.chart-wrapper :deep(canvas) {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .chart-loading,
@@ -345,7 +371,7 @@ onBeforeMount(fetchAllData)
   align-items: center;
   justify-content: center;
   height: 400px;
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 }
 
 .chart-skeleton {
@@ -387,6 +413,6 @@ onBeforeMount(fetchAllData)
 }
 
 .chart-error {
-  color: var(--text-color-danger);
+  color: var(--color-text-danger);
 }
 </style>

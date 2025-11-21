@@ -343,7 +343,7 @@ function confirmDelete() {
   &__date-picker-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color);
+    color: var(--color-text);
   }
 
   &__planned-badge {
@@ -365,7 +365,7 @@ function confirmDelete() {
 }
 
 .required {
-  color: var(--text-color-red);
+  color: var(--color-text-red);
 }
 
 .error {

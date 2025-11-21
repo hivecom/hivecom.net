@@ -45,16 +45,16 @@ const statusDescriptions = {
   border-radius: 50%;
 
   &.active {
-    background-color: var(--text-color-green);
+    background-color: var(--color-text-green);
   }
 
   &.banned {
-    background-color: var(--text-color-red);
+    background-color: var(--color-text-red);
   }
 }
 
 .tooltip-content {
-  color: var(--text-color-light);
+  color: var(--color-text-light);
   font-size: var(--font-size-xs);
   line-height: 1.4;
 }

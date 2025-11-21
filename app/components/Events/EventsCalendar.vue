@@ -293,7 +293,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 
   &__header {
     font-weight: var(--font-weight-semibold);
-    color: var(--text-color);
+    color: var(--color-text);
     font-size: var(--font-size-s);
     padding: var(--space-m) var(--space-m) var(--space-s);
     background: var(--color-bg-medium);
@@ -316,7 +316,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 
   &__count {
     font-size: var(--font-size-xs);
-    color: var(--text-color-lighter);
+    color: var(--color-text-lighter);
     margin-bottom: var(--space-s);
     font-weight: var(--font-weight-medium);
   }
@@ -324,7 +324,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
   &__empty {
     padding: var(--space-l);
     text-align: center;
-    color: var(--text-color-lighter);
+    color: var(--color-text-lighter);
     font-size: var(--font-size-s);
     font-style: italic;
   }
@@ -368,7 +368,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 
   &__title {
     font-weight: var(--font-weight-semibold);
-    color: var(--text-color);
+    color: var(--color-text);
     font-size: var(--font-size-s);
     line-height: 1.3;
     flex: 1;
@@ -387,7 +387,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 
   &__location,
   &__duration {
-    color: var(--text-color-lighter);
+    color: var(--color-text-lighter);
     font-size: var(--font-size-xs);
     display: flex;
     align-items: center;
@@ -468,7 +468,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 }
 
 .vc-title {
-  color: var(--text-color);
+  color: var(--color-text);
   font-weight: var(--font-weight-semibold);
 
   @media (max-width: $breakpoint-sm) {
@@ -477,15 +477,15 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 }
 
 .vc-arrow {
-  color: var(--text-color-lighter);
+  color: var(--color-text-lighter);
 
   &:hover {
-    color: var(--text-color);
+    color: var(--color-text);
   }
 }
 
 .vc-weekday {
-  color: var(--text-color-lighter);
+  color: var(--color-text-lighter);
   font-weight: var(--font-weight-medium);
   font-size: var(--font-size-xs);
   padding: var(--space-xs);
@@ -503,7 +503,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 }
 
 .vc-day-content {
-  color: var(--text-color);
+  color: var(--color-text);
   border-radius: var(--border-radius-s);
   transition: all 0.2s ease;
 
@@ -517,7 +517,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
   }
 
   &.is-disabled {
-    color: var(--text-color-lighter);
+    color: var(--color-text-lighter);
   }
 }
 
@@ -570,7 +570,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 
   &.vc-day-content {
     background-color: var(--color-border) !important;
-    color: var(--text-color-lighter) !important;
+    color: var(--color-text-lighter) !important;
   }
 }
 
@@ -603,7 +603,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 
   &.vc-day-content {
     background-color: var(--color-bg-raised) !important;
-    color: var(--text-color) !important;
+    color: var(--color-text) !important;
   }
 }
 

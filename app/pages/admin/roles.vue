@@ -175,13 +175,13 @@ function formatCategoryName(category: string): string {
 function getRoleColor(role: string): string {
   switch (role) {
     case 'admin':
-      return 'var(--text-color-red)'
+      return 'var(--color-text-red)'
     case 'moderator':
-      return 'var(--text-color-blue)'
+      return 'var(--color-text-blue)'
     case 'user':
-      return 'var(--text-color-green)'
+      return 'var(--color-text-green)'
     default:
-      return 'var(--text-color)'
+      return 'var(--color-text)'
   }
 }
 
@@ -361,7 +361,7 @@ onBeforeMount(fetchRolePermissions)
   font-size: var(--font-size-m);
   font-weight: var(--font-weight-medium);
   margin: 0;
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .permissions-list {
@@ -388,7 +388,7 @@ onBeforeMount(fetchRolePermissions)
 
 .permission-text {
   font-size: var(--font-size-s);
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 .no-permissions {

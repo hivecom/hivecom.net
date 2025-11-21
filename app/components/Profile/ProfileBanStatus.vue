@@ -87,28 +87,28 @@ function getBanEndDate() {
 
 <style lang="scss" scoped>
 .ban-status-card {
-  border: 2px solid var(--text-color-red);
+  border: 2px solid var(--color-text-red);
   background: var(--color-bg-danger);
 
   &.ban-expired {
-    border: 2px solid var(--text-color-orange);
+    border: 2px solid var(--color-text-orange);
     background: var(--color-bg-warning);
 
     .ban-icon {
-      color: var(--text-color-orange);
+      color: var(--color-text-orange);
     }
 
     .ban-title {
-      color: var(--text-color-orange);
+      color: var(--color-text-orange);
     }
 
     .ban-reason strong {
-      color: var(--text-color-orange);
+      color: var(--color-text-orange);
     }
   }
 
   .ban-icon {
-    color: var(--text-color-red);
+    color: var(--color-text-red);
     flex-shrink: 0;
   }
 
@@ -116,16 +116,16 @@ function getBanEndDate() {
     margin: 0;
     font-size: var(--font-size-l);
     font-weight: var(--font-weight-bold);
-    color: var(--text-color-red);
+    color: var(--color-text-red);
   }
 
   .ban-reason {
     margin: 0;
-    color: var(--text-color);
+    color: var(--color-text);
     font-size: var(--font-size-s);
 
     strong {
-      color: var(--text-color-red);
+      color: var(--color-text-red);
     }
   }
 }

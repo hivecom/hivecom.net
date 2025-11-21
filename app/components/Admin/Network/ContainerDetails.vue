@@ -299,9 +299,39 @@ watch(() => useCustomDateRange.value, (newValue) => {
           <Flex x-between y-center class="mb-s" expand>
             <h4>Logs</h4>
             <ButtonGroup :gap="1">
-              <Button square icon="ph:calendar-dots" size="s" :variant="useCustomDateRange ? 'accent' : 'gray'" :disabled="!props.logs || props.logsLoading" data-title-bottom="Custom date range" aria-label="Toggle custom date range" @click="useCustomDateRange = !useCustomDateRange" />
-              <Button square icon="ph:copy" size="s" variant="gray" :disabled="!props.logs || props.logsLoading" data-title-bottom="Copy logs" aria-label="Copy logs to clipboard" @click="copyLogsToClipboard" />
-              <Button square icon="ph:arrow-clockwise" size="s" variant="gray" :disabled="!props.logs || props.logsLoading" data-title-bottom-right="Refresh logs" aria-label="Refresh logs" @click="handleRefreshLogs" />
+              <Button
+                square
+                size="s"
+                :variant="useCustomDateRange ? 'accent' : 'gray'"
+                :disabled="!props.logs || props.logsLoading"
+                data-title-bottom="Custom date range"
+                aria-label="Toggle custom date range"
+                @click="useCustomDateRange = !useCustomDateRange"
+              >
+                <Icon name="ph:calendar-dots" />
+              </Button>
+              <Button
+                square
+                size="s"
+                variant="gray"
+                :disabled="!props.logs || props.logsLoading"
+                data-title-bottom="Copy logs"
+                aria-label="Copy logs to clipboard"
+                @click="copyLogsToClipboard"
+              >
+                <Icon name="ph:copy" />
+              </Button>
+              <Button
+                square
+                size="s"
+                variant="gray"
+                :disabled="!props.logs || props.logsLoading"
+                data-title-bottom-right="Refresh logs"
+                aria-label="Refresh logs"
+                @click="handleRefreshLogs"
+              >
+                <Icon name="ph:arrow-clockwise" />
+              </Button>
             </ButtonGroup>
           </Flex>
 
@@ -397,7 +427,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
   align-items: center;
   gap: var(--space-xs);
   font-size: var(--font-size-l);
-  color: var(--text-color-lightest);
+  color: var(--color-text-lightest);
 }
 .w-100 {
   width: 100%;
@@ -405,6 +435,6 @@ watch(() => useCustomDateRange.value, (newValue) => {
 .container-name {
   font-family: monospace;
   font-weight: bold;
-  color: var(--text-color);
+  color: var(--color-text);
 }
 </style>

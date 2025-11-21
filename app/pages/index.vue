@@ -667,7 +667,7 @@ h4 {
   }
 
   &__error-text {
-    color: var(--text-color-red);
+    color: var(--color-text-red);
     font-weight: var(--font-weight-medium);
   }
 

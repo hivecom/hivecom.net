@@ -296,7 +296,7 @@ updateTime()
 
     span {
       font-size: var(--font-size-xs);
-      color: var(--text-color-lighter);
+      color: var(--color-text-lighter);
     }
   }
 
@@ -311,7 +311,7 @@ updateTime()
 
   &__arrow {
     font-size: 20px;
-    color: var(--text-color-lighter);
+    color: var(--color-text-lighter);
     transition:
       transform 0.2s ease,
       color 0.2s ease;
@@ -319,7 +319,7 @@ updateTime()
 
   &__event-date span {
     font-size: var(--font-size-xs) !important;
-    color: var(--text-color-lighter) !important;
+    color: var(--color-text-lighter) !important;
   }
 
   &__note-badge {

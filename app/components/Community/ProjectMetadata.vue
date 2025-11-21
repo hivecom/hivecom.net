@@ -39,7 +39,7 @@ defineProps<{
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
   margin: 0;
-  color: var(--text-color);
+  color: var(--color-text);
 
   svg {
     color: var(--color-accent);
@@ -68,7 +68,7 @@ defineProps<{
 .project-metadata__timestamp-label {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  color: var(--text-color-lighter);
+  color: var(--color-text-lighter);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

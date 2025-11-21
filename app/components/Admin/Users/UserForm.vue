@@ -567,7 +567,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
           </div>
 
           <Flex v-else class="roles-section" column expand>
-            <Flex class="role-dropdown" expand y-end>
+            <Flex class="role-dropdown" expand y-center>
               <Select
                 v-model="selectedRoleComputed"
                 label="User Role"
@@ -576,7 +576,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
                 :disabled="!canEditRoles"
                 expand
               />
-              <Flex v-if="!canEditRoles" class="help-text">
+              <Flex v-if="!canEditRoles" class="help-text help-text-input mt-m">
                 <Icon name="ph:lock" />
                 <span v-if="currentUser && props.user && currentUser.id === props.user.id">
                   You cannot modify your own role
@@ -822,14 +822,14 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
 
   h4 {
     margin: 0 0 var(--space-xs) 0;
-    color: var(--text-color);
+    color: var(--color-text);
     font-size: var(--font-size-l);
     font-weight: var(--font-weight-semibold);
   }
 
   h5 {
     margin: 0 0 var(--space-xs) 0;
-    color: var(--text-color);
+    color: var(--color-text);
     font-size: var(--font-size-m);
     font-weight: var(--font-weight-semibold);
   }
@@ -848,10 +848,10 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
   justify-content: flex-end;
   margin-top: var(--space-xs);
   font-size: var(--font-size-xs);
-  color: var(--text-color-light);
+  color: var(--color-text-light);
 
   .over-limit {
-    color: var(--text-color-red);
+    color: var(--color-text-red);
     font-weight: var(--font-weight-semibold);
   }
 }
@@ -862,13 +862,17 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
   gap: var(--space-xs);
   margin-top: var(--space-xs);
   font-size: var(--font-size-s);
-  color: var(--text-color-lightest);
+  color: var(--color-text-lightest);
+
+  &-input {
+    margin-top: var(--space-l);
+  }
 
   &.error {
-    color: var(--text-color-red);
+    color: var(--color-text-red);
 
     .iconify {
-      color: var(--text-color-red);
+      color: var(--color-text-red);
     }
   }
 }
@@ -892,17 +896,17 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
       align-items: center;
       gap: var(--space-s);
       font-size: var(--font-size-s);
-      color: var(--text-color-light);
+      color: var(--color-text-light);
 
       .iconify {
         font-size: var(--font-size-m);
 
         &[name='ph:warning-circle'] {
-          color: var(--text-color-yellow);
+          color: var(--color-text-yellow);
         }
 
         &[name='ph:check-circle'] {
-          color: var(--text-color-green);
+          color: var(--color-text-green);
         }
       }
     }
@@ -915,7 +919,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
     align-items: center;
     gap: var(--space-s);
     padding: var(--space-m);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   .role-dropdown {
@@ -926,7 +930,7 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
 
     .role-description {
       font-size: var(--font-size-s);
-      color: var(--text-color-light);
+      color: var(--color-text-light);
       font-style: italic;
     }
   }

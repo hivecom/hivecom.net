@@ -242,7 +242,7 @@ defineExpose({
     border: 2px solid var(--color-bg);
     font-size: calc(var(--avatar-size, 40px) * 0.3);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
     transition: background-color 0.2s ease;
 
     &:hover {

@@ -131,12 +131,12 @@ function formatMonth(month: string): string {
 
   &__label {
     font-weight: var(--font-weight-medium);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   &__metadata-by {
     font-size: var(--font-size-l);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 }
 </style>
