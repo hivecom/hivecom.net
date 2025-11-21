@@ -38,7 +38,7 @@ const { canManageResource, canCreate } = useTableActions('projects')
 
 // Define query
 const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+const userId = useUserId()
 const projectsQuery = supabase.from('projects').select(`
   *,
   owner_profile:owner(username)
@@ -181,7 +181,7 @@ async function handleProjectSave(projectData: TablesInsert<'projects'> | TablesU
       const updateData = {
         ...projectData,
         modified_at: new Date().toISOString(),
-        modified_by: user.value?.id,
+        modified_by: userId.value ?? null,
       }
 
       const { error } = await supabase
@@ -196,8 +196,8 @@ async function handleProjectSave(projectData: TablesInsert<'projects'> | TablesU
       // Create new project with creation and modification tracking
       const createData = {
         ...projectData,
-        created_by: user.value?.id,
-        modified_by: user.value?.id,
+        created_by: userId.value ?? null,
+        modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
 

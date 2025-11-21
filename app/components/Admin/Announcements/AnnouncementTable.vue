@@ -39,7 +39,7 @@ const { canManageResource, canCreate } = useTableActions('announcements')
 
 // Define query
 const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+const userId = useUserId()
 const announcementsQuery = supabase.from('announcements').select(`
   *
 `)
@@ -198,7 +198,7 @@ async function handleAnnouncementSave(announcementData: TablesInsert<'announceme
       const updateData = {
         ...announcementData,
         modified_at: new Date().toISOString(),
-        modified_by: user.value?.id,
+        modified_by: userId.value ?? null,
       }
 
       const { error } = await supabase
@@ -213,8 +213,8 @@ async function handleAnnouncementSave(announcementData: TablesInsert<'announceme
       // Create new announcement with creation and modification tracking
       const createData = {
         ...announcementData,
-        created_by: user.value?.id,
-        modified_by: user.value?.id,
+        created_by: userId.value ?? null,
+        modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
 

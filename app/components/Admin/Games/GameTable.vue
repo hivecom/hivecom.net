@@ -30,7 +30,7 @@ const { canManageResource, canCreate } = useTableActions('games')
 
 // Setup client and state
 const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+const userId = useUserId()
 const loading = ref(true)
 const errorMessage = ref('')
 const games = ref<Game[]>([])
@@ -155,7 +155,7 @@ async function handleGameSave(gameData: Partial<Game>) {
       const updateData = {
         ...normalizedData,
         modified_at: new Date().toISOString(),
-        modified_by: user.value?.id,
+        modified_by: userId.value ?? null,
       }
 
       const { error } = await supabase
@@ -170,8 +170,8 @@ async function handleGameSave(gameData: Partial<Game>) {
       // Create new game with creation and modification tracking
       const createData = {
         ...normalizedData,
-        created_by: user.value?.id,
-        modified_by: user.value?.id,
+        created_by: userId.value ?? null,
+        modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
 
