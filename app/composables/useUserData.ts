@@ -285,7 +285,15 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
  * Bulk user data loader for efficiency when loading multiple users
  */
 export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOptions = {}) {
-  const cache = useSupabaseCache(options)
+  const {
+    includeRole = false,
+    includeAvatar = true,
+    userTtl = 10 * 60 * 1000,
+    avatarTtl = 30 * 60 * 1000,
+    ...cacheConfig
+  } = options
+
+  const cache = useSupabaseCache(cacheConfig)
   const supabase = useSupabaseClient<Database>()
   const currentUser = useSupabaseUser()
 
@@ -309,51 +317,74 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
       return
     }
 
+    if (force) {
+      ids.forEach((id) => {
+        cache.delete(`user:profile:${id}`)
+        if (includeRole) {
+          cache.delete(`user:role:${id}`)
+        }
+        if (includeAvatar) {
+          cache.delete(`user:avatar:${id}`)
+        }
+      })
+    }
+
     loading.value = true
     error.value = null
 
     try {
-      // Determine which users need to be fetched
-      const uncachedIds = force
-        ? ids
-        : ids.filter((id) => {
-            const profileKey = `user:profile:${id}`
-            return !cache.has(profileKey)
-          })
+      const profileIdsToFetch = ids.filter(id => !cache.has(`user:profile:${id}`))
+      const roleIdsToFetch = includeRole ? ids.filter(id => !cache.has(`user:role:${id}`)) : []
+      const avatarIdsToFetch = includeAvatar ? ids.filter(id => !cache.has(`user:avatar:${id}`)) : []
 
-      let profiles: Array<{ id: string, username: string }> = []
-      let roles: Array<{ user_id: string, role: string }> = []
+      const [profileResults, roleResults] = await Promise.all([
+        profileIdsToFetch.length > 0
+          ? supabase
+              .from('profiles')
+              .select('id, username')
+              .in('id', profileIdsToFetch)
+          : Promise.resolve({ data: [], error: null }),
+        includeRole && roleIdsToFetch.length > 0
+          ? supabase
+              .from('user_roles')
+              .select('user_id, role')
+              .in('user_id', roleIdsToFetch)
+          : Promise.resolve({ data: [], error: null }),
+      ])
 
-      // Fetch uncached profiles in bulk
-      if (uncachedIds.length > 0) {
-        const [profileResults, roleResults] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('id, username')
-            .in('id', uncachedIds),
-          options.includeRole
-            ? supabase
-                .from('user_roles')
-                .select('user_id, role')
-                .in('user_id', uncachedIds)
-            : Promise.resolve({ data: [] }),
-        ])
+      if (profileResults.error) {
+        throw profileResults.error
+      }
 
-        if (profileResults.error) {
-          throw profileResults.error
-        }
+      if (roleResults.error) {
+        throw roleResults.error
+      }
 
-        profiles = profileResults.data ?? []
-        roles = roleResults.data ?? []
+      const profiles = profileResults.data ?? []
+      const roles = roleResults.data ?? []
 
-        // Cache the results
-        profiles.forEach((profile) => {
-          cache.set(`user:profile:${profile.id}`, profile, options.userTtl)
+      profiles.forEach((profile) => {
+        cache.set(`user:profile:${profile.id}`, profile, userTtl)
+      })
+
+      if (includeRole) {
+        const roleMap = new Map(roles.map(role => [role.user_id, role.role]))
+        roleIdsToFetch.forEach((id) => {
+          cache.set(`user:role:${id}`, roleMap.get(id) ?? null, userTtl)
         })
+      }
 
-        roles.forEach((role) => {
-          cache.set(`user:role:${role.user_id}`, role.role, options.userTtl)
-        })
+      if (includeAvatar && avatarIdsToFetch.length > 0) {
+        await Promise.all(avatarIdsToFetch.map(async (id) => {
+          try {
+            const avatarUrl = await getUserAvatarUrl(supabase, id)
+            cache.set(`user:avatar:${id}`, avatarUrl, avatarTtl)
+          }
+          catch (err) {
+            console.warn('Failed to fetch avatar URL for bulk user:', err)
+            cache.set(`user:avatar:${id}`, null, avatarTtl)
+          }
+        }))
       }
 
       // Build user map from cache and new data
@@ -361,8 +392,8 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
 
       for (const id of ids) {
         const profile = cache.get<{ id: string, username: string }>(`user:profile:${id}`)
-        const role = options.includeRole ? cache.get<string | null>(`user:role:${id}`) : null
-        const avatarUrl = options.includeAvatar ? cache.get<string | null>(`user:avatar:${id}`) : null
+        const role = includeRole ? cache.get<string | null>(`user:role:${id}`) : null
+        const avatarUrl = includeAvatar ? cache.get<string | null>(`user:avatar:${id}`) : null
 
         if (profile) {
           userMap.set(id, {
