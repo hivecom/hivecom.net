@@ -86,6 +86,7 @@ onMounted(async () => {
           :max-users="16"
           :avatar-size="48"
           :random="true"
+          :gap="4"
           class="pt-m"
         />
       </div>
@@ -139,7 +140,7 @@ onMounted(async () => {
   border: none;
   border-radius: var(--border-radius-m);
   padding: var(--space-m) var(--space-l);
-  color: var(--text-color-invert);
+  color: var(--color-text-invert);
   text-decoration: none;
   transition: all 0.3s ease;
   box-shadow:

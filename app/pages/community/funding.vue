@@ -132,8 +132,9 @@ const filteredExpenses = computed(() => {
           <BulkAvatarDisplay
             :user-ids="supporters"
             :max-users="24"
-            :avatar-size="56"
+            :avatar-size="64"
             :random="true"
+            :gap="4"
           />
         </Flex>
       </Card>

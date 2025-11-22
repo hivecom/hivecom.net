@@ -101,6 +101,7 @@ const isCurrentUserAdmin = computed(() => {
 
 // Computed properties for friends data
 const allFriendships = ref<Array<{ id: number, friender: string, friend: string }>>([])
+const friendsLoading = ref(true)
 
 // Get friends (mutual friendships)
 const friends = computed(() => {
@@ -459,8 +460,12 @@ async function checkFriendshipStatus() {
 }
 
 async function fetchAllFriendships() {
-  if (!profile.value)
+  if (!profile.value) {
+    friendsLoading.value = false
     return
+  }
+
+  friendsLoading.value = true
 
   try {
     // Fetch all friendships for this profile
@@ -478,6 +483,9 @@ async function fetchAllFriendships() {
   }
   catch (error) {
     console.error('Error fetching friendships:', error)
+  }
+  finally {
+    friendsLoading.value = false
   }
 }
 
@@ -788,6 +796,7 @@ async function ignoreFriendRequest() {
             :friends="friends"
             :pending-requests="pendingRequests"
             :is-own-profile="isOwnProfile"
+            :loading="friendsLoading"
             @open-friends-modal="openFriendsModal"
           />
         </Flex>

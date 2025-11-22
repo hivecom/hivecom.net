@@ -3,6 +3,7 @@ import { Button, Flex, Input, Select, Sheet, Switch, Textarea } from '@dolanske/
 import { computed, ref, watch } from 'vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
 import { deleteUserAvatar, getUserAvatarUrl } from '@/lib/utils/storage'
 
@@ -28,6 +29,7 @@ const props = defineProps<{
     banned: boolean
     ban_duration?: string
     roles?: string[]
+    country?: string | null
   } | null
   isEditMode: boolean
 }>()
@@ -71,6 +73,7 @@ const userForm = ref({
   introduction: '',
   markdown: '',
   website: '',
+  country: '',
   supporter_patreon: false,
   supporter_lifetime: false,
   patreon_id: '',
@@ -217,6 +220,21 @@ const websiteValidation = computed(() => {
   }
 })
 
+const countryValidation = computed(() => {
+  const country = userForm.value.country.trim()
+
+  if (!country)
+    return { valid: true, error: null }
+
+  const normalized = country.toUpperCase()
+  const match = COUNTRY_SELECT_OPTIONS.some(option => option.value === normalized)
+
+  if (!match)
+    return { valid: false, error: 'Please select a valid country' }
+
+  return { valid: true, error: null }
+})
+
 // Function to normalize website URL
 function normalizeWebsiteUrl(url: string): string {
   const trimmed = url.trim()
@@ -239,6 +257,7 @@ const validation = computed(() => ({
   markdown: markdownValidation.value.valid,
   introduction: introductionValidation.value.valid,
   website: websiteValidation.value.valid,
+  country: countryValidation.value.valid,
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -359,11 +378,15 @@ watch(
   () => props.user,
   async (newUser) => {
     if (newUser) {
+      const normalizedCountry = newUser.country?.toUpperCase() ?? ''
+      const hasValidCountry = COUNTRY_SELECT_OPTIONS.some(option => option.value === normalizedCountry)
+
       userForm.value = {
         username: newUser.username,
         introduction: newUser.introduction || '',
         markdown: newUser.markdown || '',
         website: (newUser as typeof newUser & { website?: string }).website || '',
+        country: hasValidCountry ? normalizedCountry : '',
         supporter_patreon: newUser.supporter_patreon,
         supporter_lifetime: newUser.supporter_lifetime,
         patreon_id: newUser.patreon_id || '',
@@ -388,6 +411,7 @@ watch(
         introduction: '',
         markdown: '',
         website: '',
+        country: '',
         supporter_patreon: false,
         supporter_lifetime: false,
         patreon_id: '',
@@ -431,6 +455,7 @@ function handleSubmit() {
     introduction: userForm.value.introduction.trim() ? stripHtmlTags(userForm.value.introduction.trim()) : null,
     markdown: userForm.value.markdown.trim() ? stripHtmlTags(userForm.value.markdown.trim()) : null,
     website: userForm.value.website.trim() ? normalizeWebsiteUrl(userForm.value.website.trim()) : null,
+    country: userForm.value.country.trim() ? userForm.value.country.trim().toUpperCase() : null,
     supporter_patreon: userForm.value.supporter_patreon,
     supporter_lifetime: userForm.value.supporter_lifetime,
     patreon_id: userForm.value.patreon_id.trim() || null,
@@ -483,6 +508,22 @@ async function handleAvatarDelete() {
 // Character counts for text areas
 const markdownCharCount = computed(() => userForm.value.markdown.length)
 const introductionCharCount = computed(() => userForm.value.introduction.length)
+
+type CountrySelectOption = (typeof COUNTRY_SELECT_OPTIONS)[number]
+
+const countrySelectModel = computed<CountrySelectOption[] | undefined>({
+  get() {
+    if (!userForm.value.country)
+      return undefined
+
+    const match = COUNTRY_SELECT_OPTIONS.find(option => option.value === userForm.value.country)
+    return match ? [match] : undefined
+  },
+  set(value) {
+    const selection = value?.[0]
+    userForm.value.country = selection?.value ?? ''
+  },
+})
 </script>
 
 <template>
@@ -654,6 +695,19 @@ const introductionCharCount = computed(() => userForm.value.introduction.length)
             </div>
           </template>
         </Input>
+
+        <Select
+          v-model="countrySelectModel"
+          expand
+          label="Country"
+          placeholder="Select country (optional)"
+          single
+          search
+          show-clear
+          :options="COUNTRY_SELECT_OPTIONS"
+          :errors="countryValidation.valid ? undefined : [countryValidation.error ?? 'Please select a valid country']"
+          :disabled="!canEditForm"
+        />
 
         <Textarea
           v-model="userForm.markdown"

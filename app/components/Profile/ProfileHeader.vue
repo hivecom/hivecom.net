@@ -4,6 +4,7 @@ import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Tooltip } from '@dola
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { getCountryInfo } from '@/lib/utils/country'
 import { getUserActivityStatus } from '@/lib/utils/lastSeen'
 
 interface Props {
@@ -37,6 +38,8 @@ const activityStatus = computed(() => {
     return null
   return getUserActivityStatus(props.profile.last_seen)
 })
+
+const countryInfo = computed(() => getCountryInfo(props.profile.country ?? null))
 
 // Computed properties for friendship status
 const canSendFriendRequest = computed(() => {
@@ -313,7 +316,20 @@ function handleRemoveFriend() {
 
           <!-- Account Info (Full Width) -->
           <Flex x-between y-center class="profile-meta" expand>
-            <Flex gap="l">
+            <Flex gap="m">
+              <Flex v-if="countryInfo" gap="xs" y-center class="profile-country">
+                <span
+                  class="country-emoji"
+                  role="img"
+                  :aria-label="countryInfo.name"
+                >
+                  {{ countryInfo.emoji }}
+                </span>
+                <span class="text-color-lighter text-s">
+                  {{ countryInfo.name }}
+                </span>
+              </Flex>
+
               <Flex gap="xs" y-center>
                 <Icon class="text-color-lighter" name="ph:calendar" size="16" />
                 <span class="text-s text-color-lighter">Joined {{ getAccountAge(profile.created_at) }}</span>
@@ -321,7 +337,7 @@ function handleRemoveFriend() {
 
               <Flex v-if="profile.modified_at && profile.modified_at !== profile.created_at" gap="xs" y-center>
                 <Icon class="text-color-lighter" name="ph:pencil" size="16" />
-                <span class="text-color-lighter text-s">Last updated <TimestampDate size="s" class="text-color-light text-s" :date="profile.modified_at" relative /></span>
+                <span class="text-color-lighter text-s">Last updated <TimestampDate size="s" class="text-color-lighter text-s" :date="profile.modified_at" relative /></span>
               </Flex>
 
               <Flex v-if="(profile as any).website" gap="xs" y-center>
@@ -419,6 +435,13 @@ function handleRemoveFriend() {
 
       &:hover {
         text-decoration: underline;
+      }
+    }
+
+    .profile-country {
+      .country-emoji {
+        font-size: var(--font-size-m);
+        line-height: 1;
       }
     }
   }

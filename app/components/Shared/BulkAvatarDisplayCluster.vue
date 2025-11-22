@@ -11,7 +11,6 @@ interface Props {
   showNames?: boolean
   random?: boolean
   gap?: number
-  hideGenericUsers?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -20,10 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
   showNames: true,
   random: false,
   gap: 0,
-  hideGenericUsers: true,
 })
-
-const GENERIC_USERNAME_REGEX = /^user\d+$/i
 
 // Convert userIds array to reactive ref
 const userIdsRef = ref(props.userIds)
@@ -46,8 +42,8 @@ const {
   avatarTtl: 30 * 60 * 1000, // 30 minutes
 })
 
-// Determine user ordering (optionally randomized)
-const orderedUserIds = computed(() => {
+// Get visible users (up to maxUsers)
+const visibleUserIds = computed(() => {
   if (props.random) {
     // Create a copy of the array and shuffle it
     const shuffled = [...props.userIds]
@@ -59,25 +55,14 @@ const orderedUserIds = computed(() => {
         shuffled[j] = temp
       }
     }
-    return shuffled
+    return shuffled.slice(0, props.maxUsers)
   }
-  return [...props.userIds]
+  return props.userIds.slice(0, props.maxUsers)
 })
 
 // Get remaining count
 const remainingCount = computed(() => {
-  const eligibleCount = orderedUserIds.value.reduce((count, id) => {
-    const profile = users.value.get(id)
-    if (!profile)
-      return count
-
-    if (props.hideGenericUsers && profile.username && GENERIC_USERNAME_REGEX.test(profile.username))
-      return count
-
-    return count + 1
-  }, 0)
-
-  return Math.max(0, eligibleCount - props.maxUsers)
+  return Math.max(0, props.userIds.length - props.maxUsers)
 })
 
 interface UserListEntry {
@@ -87,23 +72,12 @@ interface UserListEntry {
 
 // Convert users map to array for template iteration
 const usersList = computed<UserListEntry[]>(() => {
-  const entries: UserListEntry[] = []
-
-  for (const id of orderedUserIds.value) {
-    if (entries.length >= props.maxUsers)
-      break
-
-    const profile = users.value.get(id)
-    if (!profile)
-      continue
-
-    if (props.hideGenericUsers && profile.username && GENERIC_USERNAME_REGEX.test(profile.username))
-      continue
-
-    entries.push({ id, profile })
-  }
-
-  return entries
+  return visibleUserIds.value
+    .map((id) => {
+      const profile = users.value.get(id) || null
+      return profile ? { id, profile } : null
+    })
+    .filter((entry): entry is UserListEntry => entry !== null)
 })
 
 const loadingPlaceholderCount = computed(() => {

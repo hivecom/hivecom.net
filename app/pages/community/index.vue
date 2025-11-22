@@ -147,6 +147,7 @@ watch(user, () => {
           :user-ids="randomUsers"
           :max-users="32"
           :avatar-size="64"
+          :gap="12"
         />
       </Flex>
     </Card>

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Flex, Input, Sheet, Textarea } from '@dolanske/vui'
+import { Button, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
+import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/utils/storage'
 
@@ -27,7 +28,10 @@ const profileForm = ref({
   introduction: '',
   markdown: '',
   website: '',
+  country: '',
 })
+
+type CountrySelectOption = (typeof COUNTRY_SELECT_OPTIONS)[number]
 
 // Username validation rules based on database constraints
 const usernameValidation = computed(() => {
@@ -95,6 +99,21 @@ const websiteValidation = computed(() => {
   }
 })
 
+// Country validation (optional)
+const countryValidation = computed(() => {
+  const country = profileForm.value.country.trim()
+
+  if (!country)
+    return { valid: true, error: null }
+
+  const match = COUNTRY_SELECT_OPTIONS.some(option => option.value === country.toUpperCase())
+
+  if (!match)
+    return { valid: false, error: 'Please select a valid country' }
+
+  return { valid: true, error: null }
+})
+
 // Function to normalize website URL
 function normalizeWebsiteUrl(url: string): string {
   const trimmed = url.trim()
@@ -113,6 +132,7 @@ const validation = computed(() => ({
   username: usernameValidation.value.valid,
   markdown: markdownValidation.value.valid,
   website: websiteValidation.value.valid,
+  country: countryValidation.value.valid,
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -126,16 +146,34 @@ const avatarUrl = ref<string | null>(null)
 const showDeleteConfirm = ref(false)
 const avatarDeleting = ref(false)
 
+const countrySelectModel = computed<CountrySelectOption[] | undefined>({
+  get() {
+    if (!profileForm.value.country)
+      return undefined
+
+    const match = COUNTRY_SELECT_OPTIONS.find(option => option.value === profileForm.value.country)
+    return match ? [match] : undefined
+  },
+  set(value) {
+    const selection = value?.[0]
+    profileForm.value.country = selection?.value ?? ''
+  },
+})
+
 // Update form data when profile prop changes
 watch(
   () => props.profile,
   async (newProfile) => {
     if (newProfile) {
+      const normalizedCountry = newProfile.country?.toUpperCase() ?? ''
+      const hasValidCountry = COUNTRY_SELECT_OPTIONS.some(option => option.value === normalizedCountry)
+
       profileForm.value = {
         username: newProfile.username,
         introduction: newProfile.introduction || '',
         markdown: newProfile.markdown || '',
         website: (newProfile as Tables<'profiles'> & { website?: string }).website || '',
+        country: hasValidCountry ? normalizedCountry : '',
       }
 
       // Initialize avatar URL
@@ -149,6 +187,7 @@ watch(
         introduction: '',
         markdown: '',
         website: '',
+        country: '',
       }
 
       avatarUrl.value = null
@@ -181,6 +220,7 @@ function handleSubmit() {
     introduction: profileForm.value.introduction.trim() || null,
     markdown: profileForm.value.markdown.trim() ? stripHtmlTags(profileForm.value.markdown.trim()) : null,
     website: profileForm.value.website.trim() ? normalizeWebsiteUrl(profileForm.value.website.trim()) : null,
+    country: profileForm.value.country.trim() ? profileForm.value.country.trim().toUpperCase() : null,
   }
 
   emit('save', profileData)
@@ -349,6 +389,20 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
               :error="websiteValidation.error"
             />
           </Flex>
+          <Flex expand class="profile-edit-form__country-container">
+            <Select
+              v-model="countrySelectModel"
+              expand
+              name="country"
+              label="Country"
+              placeholder="Select your country (optional)"
+              single
+              search
+              show-clear
+              :options="COUNTRY_SELECT_OPTIONS"
+              :errors="countryValidation.valid ? undefined : [countryValidation.error ?? 'Please select a valid country']"
+            />
+          </Flex>
         </Flex>
         <Flex column gap="m">
           <h4>Avatar</h4>
@@ -401,33 +455,17 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
         </Flex>
       </Flex>
 
-      <!-- Profile Tips -->
+      <!-- Tips -->
       <Flex column gap="s" class="profile-tips" expand>
-        <h5>Profile Tips</h5>
+        <h5>Tips</h5>
         <ul class="tips-list">
           <li>
             <Icon name="ph:check-circle" />
-            Use a clear, memorable username (letters, numbers, and underscores only)
-          </li>
-          <li>
-            <Icon name="ph:check-circle" />
-            Write a compelling introduction that summarizes who you are (128 characters max)
-          </li>
-          <li>
-            <Icon name="ph:check-circle" />
-            Add your website URL to showcase your work or portfolio
-          </li>
-          <li>
-            <Icon name="ph:check-circle" />
-            Use markdown in your content for rich formatting
+            You can use @username to mention other users in your profile
           </li>
           <li>
             <Icon name="ph:warning-circle" />
             HTML tags are not allowed and will be removed for security
-          </li>
-          <li>
-            <Icon name="ph:check-circle" />
-            Connect your social accounts for better discoverability
           </li>
         </ul>
       </Flex>
@@ -496,7 +534,8 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
   &__introduction-container,
   &__markdown-container,
   &__username-container,
-  &__website-container {
+  &__website-container,
+  &__country-container {
     position: relative;
   }
 

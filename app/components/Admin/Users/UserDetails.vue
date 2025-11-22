@@ -9,6 +9,7 @@ import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
+import { getCountryInfo } from '@/lib/utils/country'
 import { getUserActivityStatus } from '@/lib/utils/lastSeen'
 import { getUserAvatarUrl } from '@/lib/utils/storage'
 import UserActions from './UserActions.vue'
@@ -36,6 +37,7 @@ const props = defineProps<{
     last_seen: string
     ban_duration?: string
     role?: string | null
+    country?: string | null
   } | null
 }>()
 
@@ -208,6 +210,8 @@ const activityStatus = computed(() => {
   return getUserActivityStatus(props.user.last_seen)
 })
 
+const countryInfo = computed(() => (props.user ? getCountryInfo(props.user.country ?? null) : null))
+
 // Handle closing the sheet
 function handleClose() {
   isOpen.value = false
@@ -344,6 +348,18 @@ function getUserInitials(username: string): string {
             <Grid v-if="user.banned && user.ban_duration" class="detail-item" :columns="2" expand>
               <span class="text-color-light text-bold">Ban Duration:</span>
               <span class="ban-duration">{{ user.ban_duration }}</span>
+            </Grid>
+
+            <Grid v-if="countryInfo" class="detail-item" :columns="2" expand>
+              <span class="text-color-light text-bold">Country:</span>
+              <Flex gap="xs" y-center class="country-display">
+                <span class="country-emoji" role="img" :aria-label="countryInfo.name">
+                  {{ countryInfo.emoji }}
+                </span>
+                <span class="text-s">
+                  {{ countryInfo.name }} ({{ countryInfo.code }})
+                </span>
+              </Flex>
             </Grid>
           </Flex>
         </Card>
@@ -555,6 +571,13 @@ function getUserInitials(username: string): string {
 
   &:hover {
     text-decoration: underline;
+  }
+}
+
+.country-display {
+  .country-emoji {
+    font-size: var(--font-size-m);
+    line-height: 1;
   }
 }
 </style>

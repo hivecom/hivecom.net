@@ -425,7 +425,7 @@ function handleTagInputEnter() {
   .input-label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    color: var(--text-color);
+    color: var(--color-text);
     margin-bottom: var(--space-xs);
   }
 

@@ -16,6 +16,7 @@ import UserStatusIndicator from './UserStatusIndicator.vue'
 // Type for user profile from query - only includes fields we actually select
 type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
   | 'username'
+  | 'country'
   | 'created_at'
   | 'modified_at'
   | 'modified_by'
@@ -74,6 +75,7 @@ const supabase = useSupabaseClient()
 const _profilesQuery = supabase.from('profiles').select(`
   id,
   username,
+  country,
   created_at,
   modified_at,
   modified_by,
@@ -147,6 +149,7 @@ async function fetchUsers() {
       .select(`
         id,
         username,
+        country,
         created_at,
         modified_at,
         modified_by,
@@ -274,6 +277,7 @@ const filteredData = computed<TransformedUser[]>(() => {
       '_original': {
         id: user.id,
         username: user.username || 'Unknown',
+        country: user.country,
         created_at: user.created_at,
         modified_at: user.modified_at,
         modified_by: user.modified_by,

@@ -530,6 +530,6 @@ onMounted(fetchDropdownData)
 .address-text {
   font-family: monospace;
   font-size: var(--font-size-s);
-  color: var(--text-color);
+  color: var(--color-text);
 }
 </style>

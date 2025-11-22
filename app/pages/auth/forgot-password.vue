@@ -12,8 +12,8 @@ async function resetPassword() {
   loading.value = true
 
   const redirectUrl = process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000/auth/confirm'
-    : `${window.location.origin}/auth/confirm`
+    ? 'http://localhost:3000/auth/confirm-password'
+    : `${window.location.origin}/auth/confirm-password`
 
   const { error } = await supabase.auth.resetPasswordForEmail(email.value, {
     redirectTo: redirectUrl,

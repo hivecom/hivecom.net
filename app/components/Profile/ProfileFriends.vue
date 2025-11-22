@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Card, Flex } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 
 interface Props {
@@ -8,9 +8,12 @@ interface Props {
   friends: string[]
   pendingRequests: string[]
   isOwnProfile: boolean
+  loading?: boolean
 }
 
-const _props = defineProps<Props>()
+const _props = withDefaults(defineProps<Props>(), {
+  loading: false,
+})
 
 const emit = defineEmits<{
   openFriendsModal: []
@@ -18,7 +21,11 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Card separators class="friends-section">
+  <Card
+    separators
+    class="friends-section"
+    :class="{ 'friends-section--loading': loading }"
+  >
     <template #header>
       <Flex x-between y-center>
         <Flex gap="xs" y-center>
@@ -36,8 +43,21 @@ const emit = defineEmits<{
       </Flex>
     </template>
 
+    <!-- Loading State -->
+    <div v-if="loading" class="friends-loading">
+      <div class="friends-loading__avatars">
+        <div
+          v-for="index in 5"
+          :key="`friends-loading-avatar-${index}`"
+          class="friends-loading__avatar"
+        >
+          <Skeleton width="100%" height="100%" class="friends-loading__avatar-skeleton" />
+        </div>
+      </div>
+    </div>
+
     <!-- Friends Avatar Display -->
-    <div v-if="friends.length > 0" class="friends-content">
+    <div v-else-if="friends.length > 0" class="friends-content">
       <BulkAvatarDisplay
         :user-ids="friends"
         :max-users="10"
@@ -98,10 +118,44 @@ const emit = defineEmits<{
 </template>
 
 <style lang="scss" scoped>
+.friends-section {
+  transition: min-height 0.25s ease;
+
+  &--loading {
+    min-height: 120px;
+  }
+}
+
 .friends-content {
   display: flex;
   flex-direction: column;
   gap: var(--space-m);
+}
+
+.friends-loading {
+  display: flex;
+  justify-content: center;
+}
+
+.friends-loading__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.friends-loading__avatar-skeleton {
+  border-radius: 50%;
+}
+
+.friends-loading__avatars {
+  display: inline-flex;
+  gap: 0;
+  min-height: 36px;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  margin: 0 auto;
 }
 
 .friends-requests {

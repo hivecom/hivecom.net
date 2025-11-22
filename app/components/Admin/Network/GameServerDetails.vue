@@ -172,7 +172,7 @@ function handleEdit() {
 
   &__metadata-by {
     font-size: var(--font-size-l);
-    color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 
   &__markdown {

@@ -10,6 +10,7 @@ import UserTable from '@/components/Admin/Users/UserTable.vue'
 // Define types for user data and actions - matching what UserTable expects
 type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
   | 'username'
+  | 'country'
   | 'created_at'
   | 'modified_at'
   | 'modified_by'
