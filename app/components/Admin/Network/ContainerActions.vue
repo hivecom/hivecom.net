@@ -70,10 +70,10 @@ function isActionLoading(actionType: string): boolean {
       v-if="['stopped'].includes(props.status)"
       :size="props.showLabels ? 'm' : 's'"
       variant="success"
-      :icon="props.showLabels ? undefined : 'ph:play'"
       :loading="isActionLoading('start')"
       @click="handleAction('start')"
     >
+      <Icon v-if="!props.showLabels" name="ph:play" />
       <template v-if="props.showLabels" #start>
         <Icon name="ph:play" />
       </template>
