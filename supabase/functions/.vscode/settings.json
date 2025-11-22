@@ -17,6 +17,5 @@
     "unsafe-proto",
     "webgpu",
     "worker-options"
-  ],
-  "deno.importMap": "../import_map.json"
+  ]
 }
