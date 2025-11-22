@@ -3,8 +3,8 @@
  */
 
 import type { User } from '@supabase/supabase-js'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
 import type { WatchStopHandle } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 
 export interface UserActivityStatus {
   isActive: boolean
@@ -164,20 +164,18 @@ export function useLastSeenTracking() {
     if (import.meta.server === true)
       return
 
-    if (unwatchUser === null) {
-      unwatchUser = watch(
-        () => user.value,
-        (currentUser) => {
-          if (currentUser) {
-            startTracking()
-          }
-          else {
-            stopTracking()
-          }
-        },
-        { immediate: true }
-      )
-    }
+    unwatchUser ??= watch(
+      () => user.value,
+      (currentUser) => {
+        if (currentUser) {
+          startTracking()
+        }
+        else {
+          stopTracking()
+        }
+      },
+      { immediate: true },
+    )
 
     // These are client-side only APIs
     document.addEventListener('visibilitychange', handleVisibilityChange)
