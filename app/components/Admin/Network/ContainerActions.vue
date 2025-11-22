@@ -84,11 +84,11 @@ function isActionLoading(actionType: string): boolean {
     <Button
       v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
       :size="props.showLabels ? 'm' : 's'"
-      :icon="props.showLabels ? undefined : 'ph:arrow-clockwise'"
       variant="danger"
       :loading="isActionLoading('restart')"
       @click="handleAction('restart')"
     >
+      <Icon v-if="!props.showLabels" name="ph:arrow-clockwise" />
       <template v-if="props.showLabels" #start>
         <Icon name="ph:arrow-clockwise" />
       </template>
@@ -100,10 +100,10 @@ function isActionLoading(actionType: string): boolean {
       v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
       :size="props.showLabels ? 'm' : 's'"
       variant="danger"
-      :icon="props.showLabels ? undefined : 'ph:stop'"
       :loading="isActionLoading('stop')"
       @click="handleAction('stop')"
     >
+      <Icon v-if="!props.showLabels" name="ph:stop" />
       <template v-if="props.showLabels" #start>
         <Icon name="ph:stop" />
       </template>
@@ -117,11 +117,11 @@ function isActionLoading(actionType: string): boolean {
       :size="props.showLabels ? 'm' : 's'"
       variant="danger"
       :loading="isActionLoading('prune')"
-      :icon="props.showLabels ? undefined : 'ph:trash'"
       :square="!props.showLabels"
       :data-title-top="props.showLabels ? undefined : 'Prune Container'"
       @click="openPruneConfirm"
     >
+      <Icon v-if="!props.showLabels" name="ph:trash" />
       <template v-if="props.showLabels" #start>
         <Icon name="ph:trash" />
       </template>

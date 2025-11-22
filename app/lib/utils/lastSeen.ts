@@ -3,7 +3,8 @@
  */
 
 import type { User } from '@supabase/supabase-js'
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+import type { WatchStopHandle } from 'vue'
 
 export interface UserActivityStatus {
   isActive: boolean
@@ -115,12 +116,13 @@ export function useLastSeenTracking() {
     }
   }
 
+  const user = getCurrentUser()
   let intervalId: ReturnType<typeof setInterval> | null = null
+  let unwatchUser: WatchStopHandle | null = null
 
   const startTracking = () => {
     // Only run on client side
-    const user = getCurrentUser()
-    if (import.meta.server === true || user.value === null)
+    if (import.meta.server === true || user.value === null || intervalId !== null)
       return
 
     // Update immediately
@@ -143,7 +145,6 @@ export function useLastSeenTracking() {
   const handleVisibilityChange = () => {
     if (import.meta.server === true)
       return
-    const user = getCurrentUser()
     if (!document.hidden && user.value !== null) {
       void updateCurrentUserLastSeen()
     }
@@ -153,7 +154,6 @@ export function useLastSeenTracking() {
   const handleFocus = () => {
     if (import.meta.server === true)
       return
-    const user = getCurrentUser()
     if (user.value !== null) {
       void updateCurrentUserLastSeen()
     }
@@ -161,7 +161,24 @@ export function useLastSeenTracking() {
 
   // Start tracking when mounted
   onMounted(() => {
-    startTracking()
+    if (import.meta.server === true)
+      return
+
+    if (unwatchUser === null) {
+      unwatchUser = watch(
+        () => user.value,
+        (currentUser) => {
+          if (currentUser) {
+            startTracking()
+          }
+          else {
+            stopTracking()
+          }
+        },
+        { immediate: true }
+      )
+    }
+
     // These are client-side only APIs
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleFocus)
@@ -169,6 +186,10 @@ export function useLastSeenTracking() {
 
   onUnmounted(() => {
     stopTracking()
+    if (unwatchUser) {
+      unwatchUser()
+      unwatchUser = null
+    }
     if (import.meta.client) {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
