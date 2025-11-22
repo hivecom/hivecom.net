@@ -5,6 +5,7 @@ import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const router = useRouter()
+const route = useRoute()
 
 const loading = ref(true)
 const error = ref('')
@@ -16,19 +17,34 @@ const passwordResetSuccess = ref(false)
 const passwordResetError = ref('')
 
 const hasRecoveryParams = computed(() => {
-  if (typeof window === 'undefined')
-    return false
-  const hash = window.location.hash
-  return hash && hash.includes('type=recovery')
+  const hashSource = route.hash || (typeof window !== 'undefined' ? window.location.hash : '')
+  const hashIncludesRecovery = typeof hashSource === 'string' && hashSource.includes('type=recovery')
+  const query = route.query || {}
+  const hasCode = typeof query.code === 'string'
+  const hasTokenHash = typeof query.token_hash === 'string'
+  const hasTypeRecovery = typeof query.type === 'string' && query.type === 'recovery'
+
+  return Boolean(hashIncludesRecovery || hasCode || hasTokenHash || hasTypeRecovery)
 })
 
 let authSubscription: { unsubscribe: () => void } | null = null
 let recoveryTimeout: ReturnType<typeof setTimeout> | null = null
 
+function clearRecoveryTimeout() {
+  if (recoveryTimeout) {
+    clearTimeout(recoveryTimeout)
+    recoveryTimeout = null
+  }
+}
+
+function clearAuthSubscription() {
+  authSubscription?.unsubscribe()
+  authSubscription = null
+}
+
 async function initializeRecoveryFlow() {
   if (!hasRecoveryParams.value) {
-    error.value = 'Password reset link is invalid or expired.'
-    loading.value = false
+    router.replace('/auth/forgot-password')
     return
   }
 
@@ -40,6 +56,9 @@ async function initializeRecoveryFlow() {
     if (data.session || user.value) {
       passwordResetReady.value = true
       loading.value = false
+      error.value = ''
+      clearRecoveryTimeout()
+      clearAuthSubscription()
       return
     }
 
@@ -47,6 +66,9 @@ async function initializeRecoveryFlow() {
       if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
         passwordResetReady.value = true
         loading.value = false
+        error.value = ''
+        clearRecoveryTimeout()
+        clearAuthSubscription()
       }
 
       if (event === 'SIGNED_OUT') {
@@ -60,8 +82,7 @@ async function initializeRecoveryFlow() {
       if (!passwordResetReady.value) {
         error.value = 'Password reset link is invalid or expired.'
         loading.value = false
-        authSubscription?.unsubscribe()
-        authSubscription = null
+        clearAuthSubscription()
       }
     }, 10000)
   }
@@ -113,6 +134,8 @@ watch(user, (newUser) => {
   if (newUser && !passwordResetReady.value) {
     passwordResetReady.value = true
     loading.value = false
+    error.value = ''
+    clearRecoveryTimeout()
   }
 })
 
@@ -121,11 +144,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  authSubscription?.unsubscribe()
-  authSubscription = null
-
-  if (recoveryTimeout)
-    clearTimeout(recoveryTimeout)
+  clearAuthSubscription()
+  clearRecoveryTimeout()
 })
 </script>
 
