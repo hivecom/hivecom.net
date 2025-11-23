@@ -440,8 +440,8 @@ export interface Database {
           ban_reason: string | null
           ban_start: string | null
           banned: boolean
-          created_at: string
           country: string | null
+          created_at: string
           discord_id: string | null
           id: string
           introduction: string | null
@@ -462,8 +462,8 @@ export interface Database {
           ban_reason?: string | null
           ban_start?: string | null
           banned?: boolean
-          created_at?: string
           country?: string | null
+          created_at?: string
           discord_id?: string | null
           id: string
           introduction?: string | null
@@ -484,8 +484,8 @@ export interface Database {
           ban_reason?: string | null
           ban_start?: string | null
           banned?: boolean
-          created_at?: string
           country?: string | null
+          created_at?: string
           discord_id?: string | null
           id?: string
           introduction?: string | null
