@@ -22,6 +22,30 @@ const userId = useUserId()
 const rsvpStatus = ref<RSVPStatus | null>(null)
 const rsvpLoading = ref(false)
 const rsvpId = ref<number | null>(null)
+const now = ref(new Date())
+
+const eventStart = computed(() => props.event ? new Date(props.event.date) : null)
+const eventEnd = computed(() => {
+  if (!eventStart.value)
+    return null
+
+  if (props.event.duration_minutes) {
+    return new Date(eventStart.value.getTime() + props.event.duration_minutes * 60 * 1000)
+  }
+
+  return eventStart.value
+})
+
+const hasEventEnded = computed(() => {
+  if (!eventEnd.value)
+    return false
+
+  return now.value >= eventEnd.value
+})
+
+useIntervalFn(() => {
+  now.value = new Date()
+}, 60_000, { immediate: true })
 
 // Computed properties
 const canRsvp = computed(() => {
@@ -29,6 +53,9 @@ const canRsvp = computed(() => {
 })
 
 const rsvpButtonText = computed(() => {
+  if (!rsvpStatus.value && hasEventEnded.value)
+    return 'RSVP closed'
+
   switch (rsvpStatus.value) {
     case 'yes':
       return 'Going'
@@ -67,6 +94,16 @@ const rsvpButtonIcon = computed(() => {
   }
 })
 
+const rsvpDisabled = computed(() => {
+  if (rsvpLoading.value)
+    return true
+
+  if (!user.value || !props.event)
+    return true
+
+  return hasEventEnded.value
+})
+
 // Functions
 async function checkRsvpStatus() {
   if (!user.value || !userId.value || !props.event) {
@@ -103,6 +140,11 @@ async function checkRsvpStatus() {
 
 async function updateRsvp(newStatus: RSVPStatus) {
   if (!user.value || !userId.value || !props.event) {
+    return
+  }
+
+  if (hasEventEnded.value) {
+    console.warn('RSVP updates are disabled because the event has ended.')
     return
   }
 
@@ -164,6 +206,11 @@ async function removeRsvp() {
     return
   }
 
+  if (hasEventEnded.value) {
+    console.warn('RSVP removals are disabled because the event has ended.')
+    return
+  }
+
   rsvpLoading.value = true
 
   try {
@@ -193,6 +240,11 @@ async function removeRsvp() {
 
 // Simple toggle for non-dropdown variant
 function toggleRsvp() {
+  if (hasEventEnded.value) {
+    console.warn('RSVP updates are disabled because the event has ended.')
+    return
+  }
+
   if (!rsvpStatus.value) {
     updateRsvp('yes')
   }
@@ -227,6 +279,7 @@ watch(() => props.event?.id, () => {
       v-if="variant === 'simple'"
       :variant="rsvpButtonVariant"
       :loading="rsvpLoading"
+      :disabled="rsvpDisabled"
       :size="size"
       @click="toggleRsvp"
     >
@@ -243,9 +296,9 @@ watch(() => props.event?.id, () => {
         <template #trigger="{ toggle }">
           <Button
             :variant="rsvpButtonVariant"
-            :disabled="rsvpLoading"
+            :disabled="rsvpDisabled"
             :size="size"
-            @click="toggle"
+            @click="() => !rsvpDisabled && toggle()"
           >
             <template #start>
               <Icon :name="rsvpButtonIcon" />
@@ -261,7 +314,7 @@ watch(() => props.event?.id, () => {
 
         <DropdownItem
           icon="ph:check-circle"
-          :disabled="rsvpLoading"
+          :disabled="rsvpDisabled"
           @click="updateRsvp('yes')"
         >
           Going
@@ -272,7 +325,7 @@ watch(() => props.event?.id, () => {
 
         <DropdownItem
           icon="ph:question"
-          :disabled="rsvpLoading"
+          :disabled="rsvpDisabled"
           @click="updateRsvp('tentative')"
         >
           Maybe
@@ -283,7 +336,7 @@ watch(() => props.event?.id, () => {
 
         <DropdownItem
           icon="ph:x-circle"
-          :disabled="rsvpLoading"
+          :disabled="rsvpDisabled"
           @click="updateRsvp('no')"
         >
           Not Going
@@ -299,7 +352,7 @@ watch(() => props.event?.id, () => {
         <DropdownItem
           v-if="rsvpStatus"
           icon="ph:trash"
-          :disabled="rsvpLoading"
+          :disabled="rsvpDisabled"
           @click="removeRsvp()"
         >
           Remove RSVP

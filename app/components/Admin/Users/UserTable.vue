@@ -17,6 +17,7 @@ import UserStatusIndicator from './UserStatusIndicator.vue'
 type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
   | 'username'
   | 'country'
+  | 'birthday'
   | 'created_at'
   | 'modified_at'
   | 'modified_by'
@@ -76,6 +77,7 @@ const _profilesQuery = supabase.from('profiles').select(`
   id,
   username,
   country,
+  birthday,
   created_at,
   modified_at,
   modified_by,
@@ -150,6 +152,7 @@ async function fetchUsers() {
         id,
         username,
         country,
+        birthday,
         created_at,
         modified_at,
         modified_by,
@@ -278,6 +281,7 @@ const filteredData = computed<TransformedUser[]>(() => {
         id: user.id,
         username: user.username || 'Unknown',
         country: user.country,
+        birthday: user.birthday,
         created_at: user.created_at,
         modified_at: user.modified_at,
         modified_by: user.modified_by,
@@ -595,7 +599,7 @@ defineExpose({
 }
 
 .uuid-cell {
-  min-width: 280px;
+  min-width: 292px;
 }
 
 .uuid-button {

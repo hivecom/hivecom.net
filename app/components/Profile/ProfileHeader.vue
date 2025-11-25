@@ -3,7 +3,6 @@ import type { Tables } from '@/types/database.types'
 import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { getCountryInfo } from '@/lib/utils/country'
 import { getUserActivityStatus } from '@/lib/utils/lastSeen'
 
@@ -18,28 +17,79 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
 const emit = defineEmits<{
-  openEditSheet: []
-  sendFriendRequest: []
-  acceptFriendRequest: []
-  revokeFriendRequest: []
-  removeFriend: []
-  ignoreFriendRequest: []
-  openComplaintModal: []
+  (event: 'openEditSheet'): void
+  (event: 'sendFriendRequest'): void
+  (event: 'acceptFriendRequest'): void
+  (event: 'ignoreFriendRequest'): void
+  (event: 'revokeFriendRequest'): void
+  (event: 'removeFriend'): void
+  (event: 'openComplaintModal'): void
 }>()
-
-// Modal state
 const showRemoveFriendConfirm = ref(false)
 
-// Computed property for user activity status
 const activityStatus = computed(() => {
   if (!props.profile?.last_seen)
     return null
+
   return getUserActivityStatus(props.profile.last_seen)
 })
 
 const countryInfo = computed(() => getCountryInfo(props.profile.country ?? null))
+const birthdayInfo = computed(() => {
+  if (!props.profile?.birthday)
+    return null
+
+  const parsed = new Date(props.profile.birthday)
+  if (Number.isNaN(parsed.getTime()))
+    return null
+
+  const today = new Date()
+  let age = today.getFullYear() - parsed.getFullYear()
+  const hasHadBirthdayThisYear
+    = today.getMonth() > parsed.getMonth()
+      || (today.getMonth() === parsed.getMonth() && today.getDate() >= parsed.getDate())
+
+  if (!hasHadBirthdayThisYear)
+    age -= 1
+
+  if (age < 0)
+    age = 0
+
+  return {
+    formatted: parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+    age,
+  }
+})
+
+const birthdayTooltipText = computed(() => {
+  if (!birthdayInfo.value)
+    return ''
+
+  const ageText = `${birthdayInfo.value.age} year${birthdayInfo.value.age === 1 ? '' : 's'} old`
+  if (birthdayInfo.value.age < 6) {
+    return `${ageText} · Suspiciously young`
+  }
+
+  return ageText
+})
+
+const joinedTooltip = computed(() => {
+  if (!props.profile?.created_at)
+    return ''
+
+  const created = new Date(props.profile.created_at)
+  if (Number.isNaN(created.getTime()))
+    return ''
+
+  return created.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+})
 
 // Computed properties for friendship status
 const canSendFriendRequest = computed(() => {
@@ -316,7 +366,7 @@ function handleRemoveFriend() {
 
           <!-- Account Info (Full Width) -->
           <Flex x-between y-center class="profile-meta" expand>
-            <Flex gap="m">
+            <Flex gap="m" y-center wrap>
               <Flex v-if="countryInfo" gap="xs" y-center class="profile-country">
                 <span
                   class="country-emoji"
@@ -330,15 +380,29 @@ function handleRemoveFriend() {
                 </span>
               </Flex>
 
-              <Flex gap="xs" y-center>
-                <Icon class="text-color-lighter" name="ph:calendar" size="16" />
-                <span class="text-s text-color-lighter">Joined {{ getAccountAge(profile.created_at) }}</span>
-              </Flex>
+              <Tooltip v-if="profile.created_at">
+                <template #tooltip>
+                  <span>Joined {{ joinedTooltip || profile.created_at }}</span>
+                </template>
+                <Flex gap="xs" y-center>
+                  <Icon class="text-color-lighter" name="ph:calendar" size="16" />
+                  <span class="text-s text-color-lighter">
+                    Joined {{ getAccountAge(profile.created_at) }}
+                  </span>
+                </Flex>
+              </Tooltip>
 
-              <Flex v-if="profile.modified_at && profile.modified_at !== profile.created_at" gap="xs" y-center>
-                <Icon class="text-color-lighter" name="ph:pencil" size="16" />
-                <span class="text-color-lighter text-s">Last updated <TimestampDate size="s" class="text-color-lighter text-s" :date="profile.modified_at" relative /></span>
-              </Flex>
+              <Tooltip v-if="birthdayInfo">
+                <template #tooltip>
+                  <span>{{ birthdayTooltipText }}</span>
+                </template>
+                <Flex gap="xs" y-center>
+                  <Icon class="text-color-lighter" name="ph:cake" size="16" />
+                  <span class="text-s text-color-lighter">
+                    {{ birthdayInfo.formatted }}
+                  </span>
+                </Flex>
+              </Tooltip>
 
               <Flex v-if="(profile as any).website" gap="xs" y-center>
                 <Icon class="text-color-lighter" name="ph:link" size="16" />

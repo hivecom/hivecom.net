@@ -1,7 +1,7 @@
 -- Insert RBAC roles.
 INSERT INTO public.role_permissions(role, permission)
-  VALUES
-    -- Admin permissions - full access to all resources
+VALUES
+  -- Admin permissions - full access to all resources
 ('admin', 'announcements.create'),
 ('admin', 'announcements.delete'),
 ('admin', 'announcements.read'),
@@ -56,7 +56,7 @@ INSERT INTO public.role_permissions(role, permission)
 ('admin', 'users.delete'),
 ('admin', 'users.read'),
 ('admin', 'users.update'),
-    -- Moderator permissions - content management with delete access but no role management
+  -- Moderator permissions - content management with delete access but no role management
 ('moderator', 'announcements.create'),
 ('moderator', 'announcements.delete'),
 ('moderator', 'announcements.read'),
@@ -92,7 +92,8 @@ INSERT INTO public.role_permissions(role, permission)
 
 -- Create the storage buckets
 INSERT INTO "storage"."buckets"("id", "name", "owner", "created_at", "updated_at", "public", "avif_autodetection", "file_size_limit", "allowed_mime_types", "owner_id")
-  VALUES ('hivecom-content-static', 'hivecom-content-static', NULL, '2025-04-13 21:02:43.930594+00', '2025-04-13 21:02:43.930594+00', 'true', 'false', '1048576', '{"image/*"}', NULL),
+VALUES
+  ('hivecom-content-static', 'hivecom-content-static', NULL, '2025-04-13 21:02:43.930594+00', '2025-04-13 21:02:43.930594+00', 'true', 'false', '1048576', '{"image/*"}', NULL),
 ('hivecom-content-users', 'hivecom-content-users', NULL, '2025-04-13 21:02:26.456458+00', '2025-04-13 21:02:26.456458+00', 'true', 'false', '1048576', '{"image/*"}', NULL);
 
 -- Insert our admin seed user.
@@ -358,13 +359,30 @@ Join us for an amazing 4-day hiking adventure in the Harz National Park, Germany
 This will be a multi-day expedition with camping opportunities. Let me know if you have any questions or suggestions for the hike. Please also RSVP so I can plan accordingly!
   ', 5760);
 
+-- Mark the test user as having RSVP'd to the past event
+INSERT INTO public.events_rsvps(user_id, event_id, rsvp, created_at, created_by)
+SELECT
+  '018d224c-0e49-4b6d-b57a-87299605c2b3',
+  id,
+  'yes',
+  NOW() - INTERVAL '6 days',
+  '018d224c-0e49-4b6d-b57a-87299605c2b3'
+FROM
+  public.events
+WHERE
+  title = 'Hike in Harz National Park'
+ORDER BY
+  id DESC
+LIMIT 1;
+
 -- Insert a test server
 INSERT INTO public.servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port)
   VALUES (TRUE, 'host.docker.internal', NOW(), TRUE, FALSE, 54320);
 
 -- Insert test games
 INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'cs2', 730),
+VALUES
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'cs2', 730),
 (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Garrys Mod', 'gmod', 4000);
 
 -- Insert a test container for our gameserver
@@ -397,14 +415,16 @@ INSERT INTO public.gameservers(addresses, created_at, created_by, description, g
 
 -- Insert a test expense
 INSERT INTO public.expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 100, NOW() - INTERVAL '1 month', NULL),
+VALUES
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 100, NOW() - INTERVAL '1 month', NULL),
 (NOW() - INTERVAL '1 month', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Game Server Hosting', 'Monthly server hosting fees', NULL, 5000, NOW() - INTERVAL '6 months', NULL),
 (NOW() - INTERVAL '3 months', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Hivecom Supabase', 'Monthly Supabase hosting fees', NULL, 2000, NOW() - INTERVAL '3 months', NULL),
 (NOW() - INTERVAL '12 months', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'VPS Web Hosting', 'VPS hosting fees for Hivecom website', NULL, 3000, NOW() - INTERVAL '12 months', NOW() - INTERVAL '3 months');
 
 -- Insert monthly funding records
 INSERT INTO public.monthly_funding(month, patreon_month_amount_cents, patreon_lifetime_amount_cents, patreon_count, donation_month_amount_cents, donation_lifetime_amount_cents, donation_count)
-  VALUES (DATE_TRUNC('month', NOW()), 3000, 9000, 3, 5000, 20000, 1),
+VALUES
+  (DATE_TRUNC('month', NOW()), 3000, 9000, 3, 5000, 20000, 1),
 (DATE_TRUNC('month', NOW()) - INTERVAL '1 month', 2000, 6000, 2, 5000, 15000, 1),
 (DATE_TRUNC('month', NOW()) - INTERVAL '2 months', 2000, 4000, 2, 0, 10000, 0),
 (DATE_TRUNC('month', NOW()) - INTERVAL '3 months', 1000, 2000, 1, 0, 10000, 0),
@@ -421,7 +441,8 @@ INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices,
 
 -- Insert test announcements
 INSERT INTO public.announcements(created_at, created_by, title, description, markdown, pinned, tags)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Welcome to Hivecom', 'Welcome to our gaming community platform!', '
+VALUES
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Welcome to Hivecom', 'Welcome to our gaming community platform!', '
 # Welcome to Hivecom
 
 We are excited to have you join our gaming community! This platform serves as the central hub for all our community activities, events, and server information.

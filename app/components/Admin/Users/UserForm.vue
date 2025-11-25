@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Select, Sheet, Switch, Textarea } from '@dolanske/vui'
+import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -30,6 +30,7 @@ const props = defineProps<{
     ban_duration?: string
     roles?: string[]
     country?: string | null
+    birthday?: string | null
   } | null
   isEditMode: boolean
 }>()
@@ -52,6 +53,21 @@ const supabase = useSupabaseClient()
 const avatarUrl = ref<string | null>(null)
 const avatarDeleting = ref(false)
 
+// Form state
+const userForm = ref({
+  username: '',
+  introduction: '',
+  markdown: '',
+  website: '',
+  country: '',
+  birthday: '',
+  supporter_patreon: false,
+  supporter_lifetime: false,
+  patreon_id: '',
+  discord_id: '',
+  steam_id: '',
+})
+
 // Available roles - "User" means no role in database
 const availableRoles = [
   { value: 'user', label: 'User', description: 'Standard user with no admin privileges' },
@@ -66,20 +82,6 @@ const roleSelectOptions = computed(() =>
     value: role.value,
   })),
 )
-
-// Form state
-const userForm = ref({
-  username: '',
-  introduction: '',
-  markdown: '',
-  website: '',
-  country: '',
-  supporter_patreon: false,
-  supporter_lifetime: false,
-  patreon_id: '',
-  discord_id: '',
-  steam_id: '',
-})
 
 // Role management state
 const selectedRole = ref<string>('user')
@@ -109,6 +111,7 @@ const showDeleteConfirm = ref(false)
 const USERNAME_LIMIT = 32
 const INTRODUCTION_LIMIT = 128
 const MARKDOWN_LIMIT = 8128
+const BIRTHDAY_MIN_VALUE = '1900-01-01' as const
 
 // Username validation rules based on database constraints
 const usernameValidation = computed(() => {
@@ -235,6 +238,33 @@ const countryValidation = computed(() => {
   return { valid: true, error: null }
 })
 
+const birthdayValidation = computed(() => {
+  const birthday = userForm.value.birthday.trim()
+
+  if (!birthday)
+    return { valid: true, error: null }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+    return { valid: false, error: 'Please enter a valid date (YYYY-MM-DD)' }
+  }
+
+  const parsed = new Date(birthday)
+  if (Number.isNaN(parsed.getTime())) {
+    return { valid: false, error: 'Please enter a valid date' }
+  }
+
+  const today = new Date()
+  if (parsed > today) {
+    return { valid: false, error: 'Birthday cannot be in the future' }
+  }
+
+  if (birthday < BIRTHDAY_MIN_VALUE) {
+    return { valid: false, error: `Birthday cannot be before ${BIRTHDAY_MIN_VALUE}` }
+  }
+
+  return { valid: true, error: null }
+})
+
 // Function to normalize website URL
 function normalizeWebsiteUrl(url: string): string {
   const trimmed = url.trim()
@@ -258,6 +288,7 @@ const validation = computed(() => ({
   introduction: introductionValidation.value.valid,
   website: websiteValidation.value.valid,
   country: countryValidation.value.valid,
+  birthday: birthdayValidation.value.valid,
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -387,6 +418,7 @@ watch(
         markdown: newUser.markdown || '',
         website: (newUser as typeof newUser & { website?: string }).website || '',
         country: hasValidCountry ? normalizedCountry : '',
+        birthday: newUser.birthday || '',
         supporter_patreon: newUser.supporter_patreon,
         supporter_lifetime: newUser.supporter_lifetime,
         patreon_id: newUser.patreon_id || '',
@@ -412,6 +444,7 @@ watch(
         markdown: '',
         website: '',
         country: '',
+        birthday: '',
         supporter_patreon: false,
         supporter_lifetime: false,
         patreon_id: '',
@@ -456,6 +489,7 @@ function handleSubmit() {
     markdown: userForm.value.markdown.trim() ? stripHtmlTags(userForm.value.markdown.trim()) : null,
     website: userForm.value.website.trim() ? normalizeWebsiteUrl(userForm.value.website.trim()) : null,
     country: userForm.value.country.trim() ? userForm.value.country.trim().toUpperCase() : null,
+    birthday: userForm.value.birthday.trim() ? userForm.value.birthday.trim() : null,
     supporter_patreon: userForm.value.supporter_patreon,
     supporter_lifetime: userForm.value.supporter_lifetime,
     patreon_id: userForm.value.patreon_id.trim() || null,
@@ -524,6 +558,59 @@ const countrySelectModel = computed<CountrySelectOption[] | undefined>({
     userForm.value.country = selection?.value ?? ''
   },
 })
+
+function parseDateOnly(value: string): Date | null {
+  if (!value)
+    return null
+
+  const parts = value.split('-')
+  if (parts.length !== 3)
+    return null
+
+  const [yearStr, monthStr, dayStr] = parts
+  const year = Number(yearStr)
+  const month = Number(monthStr)
+  const day = Number(dayStr)
+
+  if ([year, month, day].some(num => Number.isNaN(num)))
+    return null
+
+  const date = new Date(year, month - 1, day)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatDateOnly(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const birthdayDateModel = computed<Date | null>({
+  get() {
+    return parseDateOnly(userForm.value.birthday)
+  },
+  set(value) {
+    userForm.value.birthday = value ? formatDateOnly(value) : ''
+  },
+})
+
+const birthdayButtonLabel = computed(() => {
+  if (!birthdayDateModel.value)
+    return 'Choose birthday (optional)'
+
+  return birthdayDateModel.value.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+})
+
+const hasBirthday = computed(() => !!userForm.value.birthday)
+
+function clearBirthday() {
+  userForm.value.birthday = ''
+}
 </script>
 
 <template>
@@ -695,6 +782,45 @@ const countrySelectModel = computed<CountrySelectOption[] | undefined>({
             </div>
           </template>
         </Input>
+
+        <Flex column gap="xs" expand>
+          <label class="text-m">Birthday</label>
+          <Flex gap="xs" y-center expand>
+            <Calendar
+              v-model="birthdayDateModel"
+              expand
+              format="yyyy-MM-dd"
+              :class="{ invalid: !birthdayValidation.valid && hasBirthday }"
+            >
+              <template #trigger>
+                <Button
+                  class="user-form__date-picker-button"
+                  expand
+                  :class="{ error: !birthdayValidation.valid && hasBirthday }"
+                  :disabled="!canEditForm"
+                >
+                  {{ birthdayButtonLabel }}
+                  <template #end>
+                    <Icon name="ph:calendar" />
+                  </template>
+                </Button>
+              </template>
+            </Calendar>
+            <Button
+              v-if="hasBirthday"
+              variant="link"
+              square
+              :disabled="!canEditForm"
+              data-title-left="Clear birthday"
+              @click="clearBirthday"
+            >
+              <Icon name="ph:x" />
+            </Button>
+          </Flex>
+          <span v-if="!birthdayValidation.valid && hasBirthday" class="text-xs text-color-red">
+            {{ birthdayValidation.error }}
+          </span>
+        </Flex>
 
         <Select
           v-model="countrySelectModel"

@@ -49,6 +49,12 @@ button {
   }
 }
 
+.vui-button-variant-accent {
+  .iconify {
+    color: var(--color-text);
+  }
+}
+
 .link-line {
   text-decoration: underline;
   text-underline-offset: 4px;

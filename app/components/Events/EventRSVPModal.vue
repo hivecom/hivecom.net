@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Button, Flex, Modal, Skeleton, Tab, Tabs } from '@dolanske/vui'
+import { useIntervalFn } from '@vueuse/core'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
 
@@ -24,6 +25,7 @@ const activeTab = ref<'yes' | 'tentative' | 'no'>('yes')
 const supabase = useSupabaseClient()
 const loading = ref(true)
 const error = ref('')
+const now = ref(new Date())
 
 // RSVP data by status
 const rsvpData = ref<{
@@ -46,6 +48,32 @@ const totalCount = computed(() => yesCount.value + tentativeCount.value + noCoun
 const currentTabData = computed(() => {
   return rsvpData.value[activeTab.value] || []
 })
+
+const eventStart = computed(() => props.event ? new Date(props.event.date) : null)
+const eventEnd = computed(() => {
+  if (!eventStart.value)
+    return null
+
+  if (props.event.duration_minutes) {
+    return new Date(eventStart.value.getTime() + props.event.duration_minutes * 60 * 1000)
+  }
+
+  return eventStart.value
+})
+
+const hasEventEnded = computed(() => {
+  if (!eventEnd.value)
+    return false
+
+  return now.value >= eventEnd.value
+})
+
+const yesTabLabel = computed(() => hasEventEnded.value ? 'Went' : 'Going')
+const yesEmptyCopy = computed(() => hasEventEnded.value ? 'as having gone' : 'as going')
+
+useIntervalFn(() => {
+  now.value = new Date()
+}, 60_000, { immediate: true })
 
 // Fetch RSVP data
 async function fetchRSVPs() {
@@ -171,8 +199,8 @@ function handleClose() {
         <div v-if="totalCount === 0" class="rsvp-modal__empty">
           <Flex column y-center x-center gap="m">
             <Icon name="ph:users-three" size="48" class="rsvp-modal__empty-icon" />
-            <h4>No RSVPs yet</h4>
-            <p class="text-color-light text-center">
+            <h4>No RSVPs {{ hasEventEnded ? "" : "yet" }}</h4>
+            <p v-if="!hasEventEnded" class="text-color-light text-center">
               Be the first to RSVP to this event!
             </p>
           </Flex>
@@ -185,7 +213,7 @@ function handleClose() {
             <Tab value="yes">
               <Flex y-center gap="xs">
                 <Icon name="ph:check-circle" />
-                Going
+                {{ yesTabLabel }}
                 <Badge v-if="yesCount > 0" variant="success" size="s">
                   {{ yesCount }}
                 </Badge>
@@ -223,7 +251,7 @@ function handleClose() {
                 />
                 <p class="text-color-light text-center">
                   No one has RSVP'd
-                  {{ activeTab === 'yes' ? 'as going' : activeTab === 'tentative' ? 'as maybe' : 'as not going' }}
+                  {{ activeTab === 'yes' ? yesEmptyCopy : activeTab === 'tentative' ? 'as maybe' : 'as not going' }}
                   yet.
                 </p>
               </Flex>

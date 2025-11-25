@@ -282,7 +282,7 @@ onMounted(async () => {
           <Card v-for="platform in platforms" :key="platform.title">
             <div class="join-section__platform-item">
               <div class="join-section__platform-content">
-                <Icon :name="platform.icon" class="platform-icon" />
+                <Icon :name="platform.icon" size="32" class="platform-icon" />
                 <h3 class="join-section__platform-title">
                   {{ platform.title }}
                 </h3>

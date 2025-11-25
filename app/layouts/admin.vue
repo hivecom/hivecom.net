@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Divider, DropdownItem, Flex, Sidebar, Spinner } from '@dolanske/vui'
 import { useStorage as useLocalStorage } from '@vueuse/core'
+import IconLogo from '@/components/Shared/IconLogo.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -230,7 +231,7 @@ const open = ref(true)
           <template #header>
             <Flex y-center class="mb-s">
               <Flex y-center gap="s" expand>
-                <SharedIcon />
+                <IconLogo />
                 <h5 v-if="!miniSidebar" class="flex-1">
                   Admin
                 </h5>

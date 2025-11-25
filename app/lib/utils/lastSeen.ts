@@ -4,7 +4,7 @@
 
 import type { User } from '@supabase/supabase-js'
 import type { WatchStopHandle } from 'vue'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { isRef, onMounted, onUnmounted, ref, watch } from 'vue'
 
 export interface UserActivityStatus {
   isActive: boolean
@@ -91,16 +91,7 @@ export async function updateCurrentUserLastSeen() {
 export function useLastSeenTracking() {
   // Return user or null if we can't access it
   function isRefUser(val: unknown): val is globalThis.Ref<User | null> {
-    return (
-      val !== null
-      && typeof val === 'object'
-      && Object.prototype.hasOwnProperty.call(val, 'value')
-      && (
-        (val as { value: unknown }).value === null
-        || typeof (val as { value: unknown }).value === 'object'
-        || typeof (val as { value: unknown }).value === 'string'
-      )
-    )
+    return isRef(val)
   }
 
   const getCurrentUser = (): globalThis.Ref<User | null> => {

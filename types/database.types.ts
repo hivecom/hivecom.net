@@ -439,6 +439,7 @@ export interface Database {
           ban_end: string | null
           ban_reason: string | null
           ban_start: string | null
+          birthday: string | null
           banned: boolean
           country: string | null
           created_at: string
@@ -461,6 +462,7 @@ export interface Database {
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
+          birthday?: string | null
           banned?: boolean
           country?: string | null
           created_at?: string
@@ -483,6 +485,7 @@ export interface Database {
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
+          birthday?: string | null
           banned?: boolean
           country?: string | null
           created_at?: string

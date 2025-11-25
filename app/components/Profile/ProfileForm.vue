@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
+import { Button, Calendar, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
@@ -21,6 +21,7 @@ const emit = defineEmits(['save', 'close', 'update:isOpen', 'clearError'])
 const USERNAME_LIMIT = 32
 const INTRODUCTION_LIMIT = 128
 const MARKDOWN_LIMIT = 8128
+const BIRTHDAY_MIN_VALUE = '1900-01-01' as const
 
 // Form state
 const profileForm = ref({
@@ -29,6 +30,7 @@ const profileForm = ref({
   markdown: '',
   website: '',
   country: '',
+  birthday: '',
 })
 
 type CountrySelectOption = (typeof COUNTRY_SELECT_OPTIONS)[number]
@@ -114,6 +116,33 @@ const countryValidation = computed(() => {
   return { valid: true, error: null }
 })
 
+const birthdayValidation = computed(() => {
+  const birthday = profileForm.value.birthday.trim()
+
+  if (!birthday)
+    return { valid: true, error: null }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+    return { valid: false, error: 'Please enter a valid date (YYYY-MM-DD)' }
+  }
+
+  const parsed = new Date(birthday)
+  if (Number.isNaN(parsed.getTime())) {
+    return { valid: false, error: 'Please enter a valid date' }
+  }
+
+  const today = new Date()
+  if (parsed > today) {
+    return { valid: false, error: 'Birthday cannot be in the future' }
+  }
+
+  if (birthday < BIRTHDAY_MIN_VALUE) {
+    return { valid: false, error: `Birthday cannot be before ${BIRTHDAY_MIN_VALUE}` }
+  }
+
+  return { valid: true, error: null }
+})
+
 // Function to normalize website URL
 function normalizeWebsiteUrl(url: string): string {
   const trimmed = url.trim()
@@ -133,6 +162,7 @@ const validation = computed(() => ({
   markdown: markdownValidation.value.valid,
   website: websiteValidation.value.valid,
   country: countryValidation.value.valid,
+  birthday: birthdayValidation.value.valid,
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -160,6 +190,59 @@ const countrySelectModel = computed<CountrySelectOption[] | undefined>({
   },
 })
 
+function parseDateOnly(value: string): Date | null {
+  if (!value)
+    return null
+
+  const parts = value.split('-')
+  if (parts.length !== 3)
+    return null
+
+  const [yearStr, monthStr, dayStr] = parts
+  const year = Number(yearStr)
+  const month = Number(monthStr)
+  const day = Number(dayStr)
+
+  if ([year, month, day].some(num => Number.isNaN(num)))
+    return null
+
+  const date = new Date(year, month - 1, day)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatDateOnly(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const birthdayDateModel = computed<Date | null>({
+  get() {
+    return parseDateOnly(profileForm.value.birthday)
+  },
+  set(value) {
+    profileForm.value.birthday = value ? formatDateOnly(value) : ''
+  },
+})
+
+const birthdayButtonLabel = computed(() => {
+  if (!birthdayDateModel.value)
+    return 'Choose birthday (optional)'
+
+  return birthdayDateModel.value.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+})
+
+const hasBirthday = computed(() => !!profileForm.value.birthday)
+
+function clearBirthday() {
+  profileForm.value.birthday = ''
+}
+
 // Update form data when profile prop changes
 watch(
   () => props.profile,
@@ -174,6 +257,7 @@ watch(
         markdown: newProfile.markdown || '',
         website: (newProfile as Tables<'profiles'> & { website?: string }).website || '',
         country: hasValidCountry ? normalizedCountry : '',
+        birthday: newProfile.birthday || '',
       }
 
       // Initialize avatar URL
@@ -188,6 +272,7 @@ watch(
         markdown: '',
         website: '',
         country: '',
+        birthday: '',
       }
 
       avatarUrl.value = null
@@ -221,6 +306,7 @@ function handleSubmit() {
     markdown: profileForm.value.markdown.trim() ? stripHtmlTags(profileForm.value.markdown.trim()) : null,
     website: profileForm.value.website.trim() ? normalizeWebsiteUrl(profileForm.value.website.trim()) : null,
     country: profileForm.value.country.trim() ? profileForm.value.country.trim().toUpperCase() : null,
+    birthday: profileForm.value.birthday.trim() ? profileForm.value.birthday.trim() : null,
   }
 
   emit('save', profileData)
@@ -389,6 +475,46 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
               :error="websiteValidation.error"
             />
           </Flex>
+          <Flex column gap="xs" expand class="profile-edit-form__birthday-container">
+            <label class="text-s text-color-lighter">Birthday</label>
+            <Flex expand gap="xs" y-center>
+              <Calendar
+                v-model="birthdayDateModel"
+                expand
+                format="yyyy-MM-dd"
+                :class="{ invalid: !birthdayValidation.valid && hasBirthday }"
+              >
+                <template #trigger>
+                  <Button
+                    class="profile-edit-form__date-picker-button"
+                    expand
+                    :class="{ error: !birthdayValidation.valid && hasBirthday }"
+                  >
+                    {{ birthdayButtonLabel }}
+                    <template #end>
+                      <Icon name="ph:calendar" />
+                    </template>
+                  </Button>
+                </template>
+              </Calendar>
+              <Button
+                v-if="hasBirthday"
+                variant="link"
+                square
+                data-title-left="Clear birthday"
+                @click="clearBirthday"
+              >
+                <Icon name="ph:x" />
+              </Button>
+            </Flex>
+            <span v-if="!birthdayValidation.valid && hasBirthday" class="text-xs text-color-red">
+              {{ birthdayValidation.error }}
+            </span>
+            <div v-else class="help-text">
+              <Icon name="ph:info" />
+              Optional; not shown publicly if left blank.
+            </div>
+          </Flex>
           <Flex expand class="profile-edit-form__country-container">
             <Select
               v-model="countrySelectModel"
@@ -535,6 +661,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
   &__markdown-container,
   &__username-container,
   &__website-container,
+  &__birthday-container,
   &__country-container {
     position: relative;
   }
