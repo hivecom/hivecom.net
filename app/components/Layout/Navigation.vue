@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { Button, Flex, Sheet } from '@dolanske/vui'
+import { Button, Flex, Sheet, Skeleton } from '@dolanske/vui'
 
 // Listen for auth events
 const user = useSupabaseUser()
+const supabase = useSupabaseClient()
+const authReady = ref(false)
 
 // Mobile menu state
 const mobileMenuOpen = ref(false)
@@ -10,6 +12,11 @@ const mobileMenuOpen = ref(false)
 function toggleMobileMenu() {
   mobileMenuOpen.value = !mobileMenuOpen.value
 }
+
+onMounted(async () => {
+  await supabase.auth.getSession().catch(() => null)
+  authReady.value = true
+})
 </script>
 
 <template>
@@ -48,7 +55,7 @@ function toggleMobileMenu() {
               Game Servers
             </NuxtLink>
           </li>
-          <template v-if="user">
+          <template v-if="authReady && user">
             <span class="navigation__links-separator" />
             <li>
               <NuxtLink to="/votes">
@@ -91,7 +98,7 @@ function toggleMobileMenu() {
               <Icon name="ph:game-controller" />
               <span>Game Servers</span>
             </NuxtLink>
-            <template v-if="user">
+            <template v-if="authReady && user">
               <span class="navigation__mobile-menu-separator" />
               <NuxtLink to="/votes" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
                 <Icon name="ph:check-square" />
@@ -102,7 +109,17 @@ function toggleMobileMenu() {
         </Sheet>
 
         <!-- User dropdown on right side -->
-        <div v-if="user" class="navigation__user">
+        <div v-if="!authReady" class="navigation__auth navigation__auth--loading">
+          <div class="navigation__auth-buttons">
+            <Skeleton :height="36" :width="76" :radius="8" />
+            <Skeleton :height="36" :width="92" :radius="8" />
+          </div>
+          <div class="navigation__auth-mobile-button">
+            <Skeleton :height="44" :width="44" :radius="12" />
+          </div>
+        </div>
+
+        <div v-else-if="user" class="navigation__user">
           <LayoutUserDropdown />
         </div>
 
@@ -212,6 +229,13 @@ function toggleMobileMenu() {
 
     &-mobile-button {
       display: none;
+    }
+
+    &--loading {
+      .navigation__auth-buttons,
+      .navigation__auth-mobile-button {
+        align-items: center;
+      }
     }
   }
 

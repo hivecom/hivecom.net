@@ -231,7 +231,7 @@ const open = ref(true)
           <template #header>
             <Flex y-center class="mb-s">
               <Flex y-center gap="s" expand>
-                <IconLogo />
+                <IconLogo style="margin-left: 2px" />
                 <h5 v-if="!miniSidebar" class="flex-1">
                   Admin
                 </h5>
