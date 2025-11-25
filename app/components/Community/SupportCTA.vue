@@ -180,6 +180,18 @@ onMounted(async () => {
 .support-button-content {
   position: relative;
   z-index: 1;
+
+  .iconify {
+    color: white;
+  }
+}
+
+:root.dark {
+  .support-button-content {
+    .iconify {
+      color: black;
+    }
+  }
 }
 
 .support-benefits {

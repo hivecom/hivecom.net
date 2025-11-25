@@ -542,6 +542,13 @@ watch(user, () => {
   flex-shrink: 0;
 }
 
+.links-icon,
+.about-icon {
+  .iconify {
+    color: white;
+  }
+}
+
 // Community Links Styling
 .community-link {
   display: block;
