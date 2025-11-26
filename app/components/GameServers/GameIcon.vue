@@ -4,7 +4,7 @@ import { useGameAssets } from '@/composables/useGameAssets'
 
 interface Props {
   game: Tables<'games'>
-  size?: 'small' | 'medium' | 'large'
+  size?: 'small' | 'medium' | 'large' | 'xl'
   showFallback?: boolean
 }
 
@@ -25,6 +25,7 @@ const sizeClasses = computed(() => {
     small: 'w-6 h-6', // 24px
     medium: 'w-8 h-8', // 32px
     large: 'w-12 h-12', // 48px
+    xl: 'w-18 h-18', // 72px
   }
   return sizes[props.size]
 })
@@ -141,5 +142,11 @@ watch(() => props.game, () => {
 }
 .h-12 {
   height: 48px;
+}
+.w-18 {
+  width: 72px;
+}
+.h-18 {
+  height: 72px;
 }
 </style>

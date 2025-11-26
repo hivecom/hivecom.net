@@ -36,12 +36,33 @@ const activityStatus = computed(() => {
 })
 
 const countryInfo = computed(() => getCountryInfo(props.profile.country ?? null))
+// Treat YYYY-MM-DD birthdays as date-only values so timezone offsets do not shift the day
+function parseBirthdayDate(value: string | null): Date | null {
+  if (!value)
+    return null
+
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (dateOnlyMatch) {
+    const [, yearStr, monthStr, dayStr] = dateOnlyMatch
+    const year = Number(yearStr)
+    const month = Number(monthStr) - 1
+    const day = Number(dayStr)
+
+    const date = new Date(year, month, day)
+    if (!Number.isNaN(date.getTime()))
+      return date
+  }
+
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
 const birthdayInfo = computed(() => {
   if (!props.profile?.birthday)
     return null
 
-  const parsed = new Date(props.profile.birthday)
-  if (Number.isNaN(parsed.getTime()))
+  const parsed = parseBirthdayDate(props.profile.birthday)
+  if (!parsed)
     return null
 
   const today = new Date()

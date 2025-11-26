@@ -25,6 +25,7 @@ const gameForm = ref({
   name: '',
   shorthand: '',
   steam_id: '',
+  website: '',
 })
 
 // State for delete confirmation modal
@@ -63,6 +64,7 @@ watch(
         name: newGame.name || '',
         shorthand: newGame.shorthand || '',
         steam_id: newGame.steam_id ? String(newGame.steam_id) : '',
+        website: newGame.website || '',
       }
 
       // Initialize asset URLs if shorthand exists
@@ -78,6 +80,7 @@ watch(
         name: '',
         shorthand: '',
         steam_id: '',
+        website: '',
       }
 
       assetsUrl.value = {
@@ -105,6 +108,7 @@ function handleSubmit() {
     name: gameForm.value.name,
     shorthand: gameForm.value.shorthand || null,
     steam_id: gameForm.value.steam_id ? Number(gameForm.value.steam_id) : null,
+    website: gameForm.value.website?.trim() ? gameForm.value.website.trim() : null,
   }
 
   emit('save', gameData)
@@ -232,6 +236,15 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           label="Steam ID"
           type="number"
           placeholder="Enter Steam app ID (optional)"
+        />
+
+        <Input
+          v-model="gameForm.website"
+          expand
+          name="website"
+          label="Website"
+          type="url"
+          placeholder="https://example.com (optional)"
         />
       </Flex>
 

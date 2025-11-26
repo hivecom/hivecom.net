@@ -148,7 +148,9 @@ function handleEdit() {
                 <Badge v-if="props.gameserver.container">
                   {{ props.gameserver.container }}
                 </Badge>
-                <span v-else>Not linked</span>
+                <Badge v-if="!props.gameserver.container" variant="neutral">
+                  Not linked
+                </Badge>
               </Flex>
             </Grid>
           </Flex>

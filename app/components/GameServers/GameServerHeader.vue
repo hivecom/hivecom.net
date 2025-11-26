@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Button, CopyClipboard, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
+import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '../Shared/UserLink.vue'
@@ -63,8 +64,21 @@ function openComplaintModal() {
     <!-- Title and actions row -->
     <Flex x-between align="start" gap="l" class="gameserver-header__title-row">
       <div class="gameserver-header__title-section">
-        <Flex gap="m" y-start class="gameserver-header__title-container">
-          <GameIcon v-if="game" :game="game" size="large" />
+        <Flex gap="l" y-start class="gameserver-header__title-container">
+          <GameDetailsModalTrigger
+            v-if="game"
+            v-slot="{ open }"
+            :game-id="game.id"
+          >
+            <button
+              type="button"
+              class="gameserver-header__game-icon-button"
+              :aria-label="`Open details for ${game.name ?? 'game'}`"
+              @click.stop="open"
+            >
+              <GameIcon :game="game" size="xl" />
+            </button>
+          </GameDetailsModalTrigger>
           <div>
             <h1 class="gameserver-header__title">
               {{ gameserver.name }}
@@ -73,55 +87,54 @@ function openComplaintModal() {
             <p v-if="gameserver.description" class="gameserver-header__description">
               {{ gameserver.description }}
             </p>
-            <!-- Connect Button -->
-            <div v-if="gameserver.addresses && gameserver.addresses.length" class="gameserver-header__connect-button">
-              <CopyClipboard
-                v-if="gameserver.addresses.length === 1"
-                :text="`${gameserver.addresses[0]}${gameserver.port ? `:${gameserver.port}` : ''}`"
-                confirm
-              >
-                <Button variant="accent">
-                  <template #start>
-                    <Icon name="ph:play" />
-                  </template>
-                  Connect
-                </Button>
-              </CopyClipboard>
-
-              <Dropdown v-else>
-                <template #trigger="{ toggle }">
-                  <Button variant="accent" @click="toggle">
-                    <Flex y-center gap="xs">
-                      Connect
-                      <Icon name="ph:caret-down" size="s" />
-                    </Flex>
-                  </Button>
-                </template>
-                <DropdownItem v-for="address in gameserver.addresses" :key="address">
-                  <CopyClipboard :text="`${address}${gameserver.port ? `:${gameserver.port}` : ''}`" confirm>
-                    <Flex y-center gap="xs">
-                      <Icon name="ph:copy" size="s" />
-                      {{ `${address}${gameserver.port ? `:${gameserver.port}` : ''}` }}
-                    </Flex>
-                  </CopyClipboard>
-                </DropdownItem>
-              </Dropdown>
-            </div>
           </div>
         </Flex>
       </div>
 
-      <Flex gap="m">
+      <Flex gap="m" class="gameserver-header__aside" y-start>
         <!-- Administrator -->
         <div v-if="gameserver.administrator" class="gameserver-header__administrator-info">
           <span class="gameserver-header__administrator-label">Administrator</span>
           <UserLink :user-id="gameserver.administrator" size="s" />
         </div>
 
-        <!-- Action Buttons -->
-        <Flex gap="s" class="gameserver-header__actions">
-          <!-- Complaint Button -->
-        </Flex>
+        <!-- Connect Button -->
+        <div
+          v-if="gameserver.addresses && gameserver.addresses.length"
+          class="gameserver-header__connect-button"
+        >
+          <CopyClipboard
+            v-if="gameserver.addresses.length === 1"
+            :text="`${gameserver.addresses[0]}${gameserver.port ? `:${gameserver.port}` : ''}`"
+            confirm
+          >
+            <Button variant="accent" size="m">
+              <template #start>
+                <Icon name="ph:play" />
+              </template>
+              Connect
+            </Button>
+          </CopyClipboard>
+
+          <Dropdown v-else>
+            <template #trigger="{ toggle }">
+              <Button variant="accent" size="m" @click="toggle">
+                <Flex y-center gap="xs">
+                  Connect
+                  <Icon name="ph:caret-down" size="s" />
+                </Flex>
+              </Button>
+            </template>
+            <DropdownItem v-for="address in gameserver.addresses" :key="address">
+              <CopyClipboard :text="`${address}${gameserver.port ? `:${gameserver.port}` : ''}`" confirm>
+                <Flex y-center gap="xs">
+                  <Icon name="ph:copy" size="s" />
+                  {{ `${address}${gameserver.port ? `:${gameserver.port}` : ''}` }}
+                </Flex>
+              </CopyClipboard>
+            </DropdownItem>
+          </Dropdown>
+        </div>
       </Flex>
     </Flex>
 
@@ -129,27 +142,24 @@ function openComplaintModal() {
       <Flex column gap="xs" expand>
         <!-- Quick info badges and status -->
         <div class="gameserver-header__info-section">
-          <!-- <Flex gap="xs" wrap class="gameserver-header__badges-section" y-center>
-            <Badge v-if="game" variant="neutral" size="l">
-              <Icon name="ph:game-controller" />
-              {{ game.name }}
-            </Badge>
-
-            <Badge v-if="gameserver.region" variant="neutral" size="l">
-              <RegionIndicator :region="gameserver.region" show-label />
-            </Badge>
-            <SteamLink v-if="game?.steam_id" :steam-id="game.steam_id" show-icon hide-id />
-          </Flex> -->
-
           <!-- Status Information -->
-          <div v-if="container" class="gameserver-header__status-info">
+          <div class="gameserver-header__status-info">
             <Flex gap="m" wrap y-end>
               <div v-if="game" class="gameserver-header__status-item">
                 <span class="gameserver-header__status-label">Game</span>
-                <Badge>
-                  <Icon name="ph:game-controller" />
-                  {{ game.name }}
-                </Badge>
+                <GameDetailsModalTrigger v-slot="{ open }" :game-id="game.id">
+                  <button
+                    type="button"
+                    class="gameserver-header__game-badge-button"
+                    :aria-label="`Open details for ${game.name ?? 'game'}`"
+                    @click.stop="open"
+                  >
+                    <Badge>
+                      <Icon name="ph:game-controller" />
+                      {{ game.name }}
+                    </Badge>
+                  </button>
+                </GameDetailsModalTrigger>
               </div>
 
               <div v-if="gameserver.region" class="gameserver-header__status-item">
@@ -159,7 +169,7 @@ function openComplaintModal() {
                 </Badge>
               </div>
 
-              <div class="gameserver-header__status-item">
+              <div v-if="container" class="gameserver-header__status-item">
                 <span class="gameserver-header__status-label">Running</span>
                 <Badge :variant="container.running ? 'success' : 'neutral'" size="s">
                   <Icon :name="container.running ? 'ph:check' : 'ph:x'" />
@@ -167,7 +177,10 @@ function openComplaintModal() {
                 </Badge>
               </div>
 
-              <div v-if="container.healthy !== null && container.running" class="gameserver-header__status-item">
+              <div
+                v-if="container && container.healthy !== null && container.running"
+                class="gameserver-header__status-item"
+              >
                 <span class="gameserver-header__status-label">Healthy</span>
                 <Badge :variant="container.healthy ? 'success' : 'warning'" size="s">
                   <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
@@ -175,17 +188,15 @@ function openComplaintModal() {
                 </Badge>
               </div>
 
-              <div class="gameserver-header__status-item">
+              <div v-if="container" class="gameserver-header__status-item">
                 <span class="gameserver-header__status-label">Last Reported</span>
-                <!-- <span class="gameserver-header__status-value"> -->
-                <Badge>
+                <Badge v-if="container.reported_at">
                   <TimestampDate size="xs" :date="container.reported_at" />
                 </Badge>
-                <!-- </span> -->
               </div>
 
               <div class="flex-1" />
-              <Button variant="gray" plain size="s" @click="openComplaintModal">
+              <Button variant="danger" size="s" @click="openComplaintModal">
                 <template #start>
                   <Icon name="ph:chat-circle-text" />
                 </template>
@@ -212,6 +223,29 @@ function openComplaintModal() {
 .gameserver-header {
   &__title-container {
     margin-bottom: var(--space-l);
+  }
+
+  &__game-icon-button {
+    border: none;
+    background: transparent;
+    padding: 0;
+    display: flex;
+    cursor: pointer;
+
+    .game-icon-container,
+    .game-icon,
+    .game-icon-skeleton {
+      width: 72px;
+      height: 72px;
+    }
+  }
+
+  &__game-badge-button {
+    border: none;
+    background: transparent;
+    padding: 0;
+    display: inline-flex;
+    cursor: pointer;
   }
 
   &__title {
@@ -251,6 +285,10 @@ function openComplaintModal() {
     flex-direction: column;
     align-items: flex-end;
     gap: var(--space-xs);
+  }
+
+  &__aside {
+    align-items: flex-start;
   }
 
   &__administrator-label {
@@ -307,7 +345,7 @@ function openComplaintModal() {
 
   &__connect-button {
     display: flex;
-    margin-top: var(--space-s);
+    margin-top: 0;
 
     .vui-button {
       font-size: var(--font-size-m);

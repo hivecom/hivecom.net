@@ -2,9 +2,10 @@
 import type { QueryData } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.types'
 
-import { Tab, Tabs } from '@dolanske/vui'
+import { Button, Tab, Tabs } from '@dolanske/vui'
 import GameLibrary from '@/components/GameServers/GameServerLibrary.vue'
 import GameListing from '@/components/GameServers/GameServerListing.vue'
+import SupportModal from '@/components/Shared/SupportModal.vue'
 
 const supabase = useSupabaseClient()
 const gameserversQuery = supabase.from('gameservers').select(`
@@ -34,6 +35,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const games = ref<Tables<'games'>[]>()
 const gameservers = ref<GameserversType>()
+const supportModalOpen = ref(false)
 
 onBeforeMount(async () => {
   // Make our requests at the same time.
@@ -197,10 +199,14 @@ function clearFilters() {
 <template>
   <div class="page">
     <section class="page-title">
-      <h1>Game Servers</h1>
-      <p>
-        Hop on. Get in.
-      </p>
+      <div class="page-title__header">
+        <div>
+          <h1>Game Servers</h1>
+          <p>
+            Hop on. Get in.
+          </p>
+        </div>
+      </div>
     </section>
 
     <!-- Tabs Navigation -->
@@ -211,6 +217,18 @@ function clearFilters() {
       <Tab value="list">
         List
       </Tab>
+      <template #end>
+        <Button
+          class="page-title__cta"
+          size="s"
+          @click="supportModalOpen = true"
+        >
+          <template #start>
+            <Icon name="ph:lifebuoy" />
+          </template>
+          Request Game Server
+        </Button>
+      </template>
     </Tabs>
 
     <div class="game-servers">
@@ -245,5 +263,29 @@ function clearFilters() {
         :filtered-games="filteredGames"
       />
     </div>
+
+    <SupportModal
+      v-model:open="supportModalOpen"
+      title="Request Game Server"
+      message="Got an idea for a game server? Let us know!"
+    />
   </div>
 </template>
+
+<style scoped lang="scss">
+.page-title {
+  margin-bottom: var(--space-m);
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-m);
+    flex-wrap: wrap;
+  }
+
+  &__cta {
+    flex-shrink: 0;
+  }
+}
+</style>

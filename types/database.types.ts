@@ -315,6 +315,7 @@ export interface Database {
           name: string | null
           shorthand: string | null
           steam_id: number | null
+          website: string | null
         }
         Insert: {
           created_at?: string
@@ -325,6 +326,7 @@ export interface Database {
           name?: string | null
           shorthand?: string | null
           steam_id?: number | null
+          website?: string | null
         }
         Update: {
           created_at?: string
@@ -335,6 +337,7 @@ export interface Database {
           name?: string | null
           shorthand?: string | null
           steam_id?: number | null
+          website?: string | null
         }
         Relationships: []
       }

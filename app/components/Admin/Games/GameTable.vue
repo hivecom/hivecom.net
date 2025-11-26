@@ -86,7 +86,7 @@ async function fetchGames() {
   try {
     const { data, error } = await supabase
       .from('games')
-      .select('*')
+      .select('id, name, shorthand, steam_id, website, created_at, created_by, modified_at, modified_by')
       .order('name')
 
     if (error)

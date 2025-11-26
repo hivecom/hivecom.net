@@ -196,6 +196,18 @@ watchEffect(async () => {
               <span class="game-details__label">Steam ID:</span>
               <SteamLink :steam-id="props.game.steam_id" show-icon />
             </Grid>
+
+            <Grid v-if="props.game.website" class="game-details__item" expand :columns="2">
+              <span class="game-details__label">Website:</span>
+              <NuxtLink
+                :to="props.game.website"
+                class="game-details__link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {{ props.game.website }}
+              </NuxtLink>
+            </Grid>
           </Flex>
         </Card>
 
@@ -342,6 +354,11 @@ watchEffect(async () => {
   &__label {
     font-weight: var(--font-weight-medium);
     color: var(--color-text-light);
+  }
+
+  &__link {
+    color: var(--color-text-blue);
+    word-break: break-all;
   }
 
   &__metadata-by {

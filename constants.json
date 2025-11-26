@@ -1,8 +1,10 @@
 {
   "API_ERROR": "Internal server error - please email contact@hivecom.net or visit #staff on irc.hivecom.net for support",
   "UI_ERROR": "Email contact@hivecom.net or visit #staff on irc.hivecom.net for support",
-  "EMAIL": {
-    "SUPPORT": "contact@hivecom.net"
+  "SUPPORT": {
+    "EMAIL": "contact@hivecom.net",
+    "IRC_CHANNEL": "#staff",
+    "IRC_URL": "irc://irc.hivecom.net:6697/#staff"
   },
 
   "EVENT_CALENDAR": {

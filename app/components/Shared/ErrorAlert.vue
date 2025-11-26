@@ -22,7 +22,7 @@ const props = defineProps({
     <Flex y-center x-between>
       <p>{{ props.message }}</p>
       <NuxtLink
-        :to="`mailto:${constants.EMAIL.SUPPORT}`"
+        :to="`mailto:${constants.SUPPORT.EMAIL}`"
       >
         <Button variant="link" size="s">
           <template #start>
