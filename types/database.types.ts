@@ -439,8 +439,8 @@ export interface Database {
           ban_end: string | null
           ban_reason: string | null
           ban_start: string | null
-          birthday: string | null
           banned: boolean
+          birthday: string | null
           country: string | null
           created_at: string
           discord_id: string | null
@@ -462,8 +462,8 @@ export interface Database {
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
-          birthday?: string | null
           banned?: boolean
+          birthday?: string | null
           country?: string | null
           created_at?: string
           discord_id?: string | null
@@ -485,8 +485,8 @@ export interface Database {
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
-          birthday?: string | null
           banned?: boolean
+          birthday?: string | null
           country?: string | null
           created_at?: string
           discord_id?: string | null
@@ -734,6 +734,10 @@ export interface Database {
       }
       contains_html_tags: { Args: { input_text: string }, Returns: boolean }
       custom_access_token_hook: { Args: { event: Json }, Returns: Json }
+      event_rsvp_window_open: {
+        Args: { target_event_id: number }
+        Returns: boolean
+      }
       generate_username: { Args: never, Returns: string }
       get_user_emails: {
         Args: never
