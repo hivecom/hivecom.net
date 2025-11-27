@@ -1,6 +1,6 @@
 <template>
   <NuxtLink to="/" aria-label="Hivecom home">
-    <NuxtImg src="/icon.svg" alt="Hivecom" class="icon" decoding="async" />
+    <img src="/icon.svg" alt="Hivecom" class="icon" decoding="async">
   </NuxtLink>
 </template>
 
