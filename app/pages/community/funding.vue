@@ -197,7 +197,7 @@ const filteredExpenses = computed(() => {
   // Ensure cards stretch to fill grid height
   align-items: stretch;
 
-  @media screen and (max-width: $breakpoint-sm) {
+  @media screen and (max-width: $breakpoint-s) {
     grid-template-columns: 1fr !important;
   }
 

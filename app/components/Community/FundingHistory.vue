@@ -130,7 +130,7 @@ function getGrowthIndicator(growth: number | null) {
       <div v-if="availableYears.length > 1" class="w-40">
         <select
           v-model="selectedYear"
-          class="w-full px-3 py-2 border border-border rounded-lg bg-surface text-text text-s"
+          class="w-full px-3 py-2 border border-border rounded-l bg-surface text-text text-s"
         >
           <option v-for="year in availableYears" :key="year" :value="year">
             {{ year }}

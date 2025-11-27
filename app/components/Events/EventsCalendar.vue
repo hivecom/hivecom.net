@@ -451,7 +451,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 .vc-header {
   padding: var(--space-m);
 
-  @media (max-width: $breakpoint-sm) {
+  @media (max-width: $breakpoint-s) {
     padding: var(--space-s);
   }
 }
@@ -471,7 +471,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
   color: var(--color-text);
   font-weight: var(--font-weight-semibold);
 
-  @media (max-width: $breakpoint-sm) {
+  @media (max-width: $breakpoint-s) {
     font-size: var(--font-size-m);
   }
 }
@@ -490,7 +490,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
   font-size: var(--font-size-xs);
   padding: var(--space-xs);
 
-  @media (max-width: $breakpoint-sm) {
+  @media (max-width: $breakpoint-s) {
     font-size: var(--font-size-xxs);
     padding: var(--space-xxs);
   }
@@ -511,7 +511,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
     background-color: var(--color-surface-lighter);
   }
 
-  @media (max-width: $breakpoint-sm) {
+  @media (max-width: $breakpoint-s) {
     font-size: var(--font-size-xs);
     min-height: 32px;
   }
@@ -538,7 +538,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
   width: 6px;
   height: 6px;
 
-  @media (max-width: $breakpoint-sm) {
+  @media (max-width: $breakpoint-s) {
     width: 4px;
     height: 4px;
   }
@@ -612,7 +612,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 }
 
 // Mobile optimizations
-@media (max-width: $breakpoint-sm) {
+@media (max-width: $breakpoint-s) {
   .events-calendar {
     min-height: 300px;
   }

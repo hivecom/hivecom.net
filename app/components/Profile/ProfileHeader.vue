@@ -415,13 +415,13 @@ function handleRemoveFriend() {
                 <Flex gap="xs" y-center>
                   <Icon
                     class="text-color-lighter"
-                    :class="{ 'birthday-icon': isBirthdayToday }"
+                    :class="{ 'shiny-icon': isBirthdayToday }"
                     name="ph:cake"
                     size="16"
                   />
                   <span
                     class="text-s text-color-lighter"
-                    :class="{ 'birthday-text': isBirthdayToday }"
+                    :class="{ 'shiny-text': isBirthdayToday }"
                   >
                     {{ birthdayInfo.formatted }}
                   </span>
@@ -524,24 +524,6 @@ function handleRemoveFriend() {
     color: var(--color-text-light);
     font-size: var(--font-size-s);
 
-    .birthday-text {
-      font-weight: 600;
-      background-image: linear-gradient(100deg, #59d7f7, #3afea2, #a7fc2f);
-      background-size: 100% auto;
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-      -webkit-text-fill-color: transparent;
-      display: inline-block;
-      animation: birthdayHueRotate 8s linear infinite;
-    }
-
-    .birthday-icon {
-      color: #59d7f7;
-      display: inline-block;
-      animation: birthdayHueRotate 8s linear infinite;
-    }
-
     .website-link {
       color: var(--color-text-accent);
       text-decoration: none;
@@ -562,16 +544,6 @@ function handleRemoveFriend() {
         line-height: 1;
       }
     }
-  }
-}
-
-@keyframes birthdayHueRotate {
-  0% {
-    filter: hue-rotate(0deg);
-  }
-
-  100% {
-    filter: hue-rotate(-360deg);
   }
 }
 </style>

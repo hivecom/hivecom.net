@@ -476,7 +476,7 @@ h4 {
     margin-bottom: 1rem;
     z-index: 1;
 
-    @media screen and (max-width: $breakpoint-lg) {
+    @media screen and (max-width: $breakpoint-l) {
       text-align: center;
       font-size: 8rem;
       line-height: 6rem;
@@ -488,7 +488,7 @@ h4 {
     margin: 1rem 0 2rem;
     opacity: 0.8;
 
-    @media screen and (max-width: $breakpoint-lg) {
+    @media screen and (max-width: $breakpoint-l) {
       text-align: center;
     }
   }
@@ -500,7 +500,7 @@ h4 {
     align-items: center;
     flex-wrap: wrap;
 
-    @media screen and (max-width: $breakpoint-lg) {
+    @media screen and (max-width: $breakpoint-l) {
       justify-content: center;
     }
   }
@@ -509,7 +509,7 @@ h4 {
     .announcement-card {
       max-width: 350px;
 
-      @media screen and (max-width: $breakpoint-sm) {
+      @media screen and (max-width: $breakpoint-s) {
         max-width: 100%;
         margin-top: var(--space-s);
       }
@@ -602,7 +602,7 @@ h4 {
     gap: var(--space-m);
     grid-template-columns: 2fr 2fr;
 
-    @media screen and (max-width: $breakpoint-sm) {
+    @media screen and (max-width: $breakpoint-s) {
       grid-template-columns: 1fr; /* Stack on smaller screens */
     }
   }
@@ -646,7 +646,7 @@ h4 {
     max-width: 900px;
     text-align: left;
 
-    @media screen and (max-width: $breakpoint-sm) {
+    @media screen and (max-width: $breakpoint-s) {
       grid-template-columns: 1fr !important;
     }
   }

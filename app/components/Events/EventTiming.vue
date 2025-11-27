@@ -114,7 +114,7 @@ defineProps<Props>()
   }
 
   &__countdown-grid {
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       grid-template-columns: repeat(2, 1fr) !important;
     }
 
