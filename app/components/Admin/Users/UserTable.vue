@@ -647,7 +647,6 @@ defineExpose({
 
 .role-badge {
   background-color: var(--color-accent);
-  color: var(--color-accent-contrast);
   padding: 2px 6px;
   border-radius: var(--border-radius-xs);
   font-size: var(--font-size-xs);

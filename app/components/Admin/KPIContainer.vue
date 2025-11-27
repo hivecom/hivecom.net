@@ -31,7 +31,7 @@ const attrs = useAttrs()
   width: 100%;
   flex-wrap: nowrap !important;
 
-  @media (max-width: $breakpoint-md) {
+  @media (max-width: $breakpoint-m) {
     flex-wrap: wrap !important;
   }
 }

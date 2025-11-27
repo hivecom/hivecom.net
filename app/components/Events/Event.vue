@@ -238,14 +238,14 @@ updateTime()
       .event-item__arrow {
         color: var(--color-accent);
 
-        @media screen and (max-width: $breakpoint-sm) {
+        @media screen and (max-width: $breakpoint-s) {
           transform: rotate(90deg);
         }
       }
     }
 
     // Mobile touch states
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       &:active {
         background-color: var(--color-bg-raised) !important;
         transform: scale(0.98) !important;
@@ -304,7 +304,7 @@ updateTime()
     padding: var(--space-s);
     padding-left: 0;
 
-    @media screen and (max-width: $breakpoint-sm) {
+    @media screen and (max-width: $breakpoint-s) {
       align-items: center !important;
     }
   }
@@ -327,7 +327,7 @@ updateTime()
     transition: all 0.2s ease;
 
     // On mobile, make tooltips more accessible
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       cursor: pointer !important;
 
       &:active {
@@ -362,7 +362,7 @@ updateTime()
   }
 }
 
-@media (max-width: $breakpoint-sm) {
+@media (max-width: $breakpoint-s) {
   .event-item {
     flex-direction: column !important;
     gap: var(--space-m) !important;
@@ -438,7 +438,7 @@ updateTime()
     &:hover .event-item__arrow {
       transform: rotate(90deg) !important;
 
-      @media screen and (max-width: $breakpoint-sm) {
+      @media screen and (max-width: $breakpoint-s) {
         transform: rotate(90deg) !important;
       }
     }

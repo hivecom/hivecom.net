@@ -106,7 +106,7 @@ onMounted(async () => {
 }
 
 // Mobile responsiveness for page header
-@media (max-width: $breakpoint-sm) {
+@media (max-width: $breakpoint-s) {
   .page section:first-child {
     text-align: center !important;
 

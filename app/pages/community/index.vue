@@ -393,7 +393,7 @@ watch(user, () => {
 .community-grid {
   align-items: stretch; // Ensure all grid items stretch to the same height
 
-  @media screen and (max-width: $breakpoint-sm) {
+  @media screen and (max-width: $breakpoint-s) {
     grid-template-columns: 1fr !important;
   }
 }
@@ -664,11 +664,11 @@ watch(user, () => {
 
 // Projects Grid Styling
 .projects-grid {
-  @media screen and (max-width: $breakpoint-md) {
+  @media screen and (max-width: $breakpoint-m) {
     grid-template-columns: 1fr 1fr !important;
   }
 
-  @media screen and (max-width: $breakpoint-sm) {
+  @media screen and (max-width: $breakpoint-s) {
     grid-template-columns: 1fr !important;
   }
 }

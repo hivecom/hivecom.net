@@ -435,7 +435,7 @@ function handleClick() {
 }
 
 // Mobile responsiveness
-@media (max-width: $breakpoint-sm) {
+@media (max-width: $breakpoint-s) {
   .event-card {
     &__countdown {
       gap: var(--space-s);

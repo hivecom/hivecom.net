@@ -74,7 +74,7 @@ const links = constants.LINKS
     width: 100%;
     gap: var(--space-s);
 
-    @media screen and (max-width: $breakpoint-sm) {
+    @media screen and (max-width: $breakpoint-s) {
       flex-direction: column;
       align-items: center;
     }
@@ -85,7 +85,7 @@ const links = constants.LINKS
     flex-direction: row;
     gap: var(--space-s);
 
-    @media screen and (max-width: $breakpoint-sm) {
+    @media screen and (max-width: $breakpoint-s) {
       // On mobile, stack the links. Make sure the width is 100% and center them.
       width: 100%;
       flex-direction: column;
@@ -100,7 +100,7 @@ const links = constants.LINKS
     display: flex;
     gap: var(--space-s);
 
-    @media screen and (max-width: $breakpoint-sm) {
+    @media screen and (max-width: $breakpoint-s) {
       width: 95%;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -120,7 +120,7 @@ const links = constants.LINKS
     background: var(--text-color);
     opacity: 0.25;
 
-    @media screen and (max-width: $breakpoint-sm) {
+    @media screen and (max-width: $breakpoint-s) {
       display: none;
     }
   }
@@ -129,7 +129,7 @@ const links = constants.LINKS
     display: flex;
     flex-direction: row;
 
-    @media screen and (max-width: $breakpoint-sm) {
+    @media screen and (max-width: $breakpoint-s) {
       width: 100%;
       justify-content: space-between;
       padding: 0 var(--space-m);
@@ -162,7 +162,7 @@ const links = constants.LINKS
       font-size: 16px;
     }
 
-    @media screen and (max-width: $breakpoint-sm) {
+    @media screen and (max-width: $breakpoint-s) {
       width: 100%;
       height: 64px;
       background-color: var(--color-bg-raised);

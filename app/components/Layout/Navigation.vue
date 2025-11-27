@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Button, Flex, Sheet, Skeleton } from '@dolanske/vui'
 
+import NotificationDropdown from './NotificationDropdown.vue'
+import UserDropdown from './UserDropdown.vue'
+
 // Listen for auth events
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
@@ -120,7 +123,8 @@ onMounted(async () => {
         </div>
 
         <div v-else-if="user" class="navigation__user">
-          <LayoutUserDropdown />
+          <NotificationDropdown />
+          <UserDropdown />
         </div>
 
         <div v-else class="navigation__auth">
@@ -239,6 +243,12 @@ onMounted(async () => {
     }
   }
 
+  &__user {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+  }
+
   &__dropdown {
     position: absolute;
     top: 64px;
@@ -327,7 +337,7 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: $breakpoint-lg) {
+@media (max-width: $breakpoint-l) {
   .navigation {
     &__items {
       justify-content: space-between;

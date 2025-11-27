@@ -142,7 +142,7 @@ const timeProgressPercentage = computed(() => {
   &__now {
     min-width: 356px;
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       min-width: auto;
     }
   }
@@ -158,7 +158,7 @@ const timeProgressPercentage = computed(() => {
     letter-spacing: 0.2em;
     text-shadow: 0 0 20px var(--color-accent);
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       font-size: 2rem;
     }
 
@@ -183,7 +183,7 @@ const timeProgressPercentage = computed(() => {
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     }
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       min-width: auto;
       padding: var(--space-xs);
     }
@@ -207,7 +207,7 @@ const timeProgressPercentage = computed(() => {
     transition: all 0.3s ease;
     animation: whiteFlash 0.6s ease-out;
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       font-size: var(--font-size-l);
     }
 
@@ -222,7 +222,7 @@ const timeProgressPercentage = computed(() => {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       font-size: 10px;
     }
 

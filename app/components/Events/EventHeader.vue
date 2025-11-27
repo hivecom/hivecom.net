@@ -230,7 +230,7 @@ onUnmounted(() => {
   &__title-row {
     align-items: flex-start;
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       align-items: center;
       flex-direction: column-reverse !important;
       gap: var(--space-m);
@@ -247,7 +247,7 @@ onUnmounted(() => {
     margin: 0;
     line-height: 1.2;
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       font-size: var(--font-size-xxl);
     }
 
@@ -261,7 +261,7 @@ onUnmounted(() => {
     color: var(--color-text-light);
     line-height: 1.5;
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       font-size: var(--font-size-m);
     }
   }
@@ -273,7 +273,7 @@ onUnmounted(() => {
     gap: var(--space-s);
     min-width: fit-content;
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       align-items: flex-start;
       width: 100%;
     }
@@ -283,7 +283,7 @@ onUnmounted(() => {
     text-align: right;
     gap: 0.5rem !important;
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       text-align: left;
     }
   }
@@ -298,7 +298,7 @@ onUnmounted(() => {
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
 
-    @media (max-width: $breakpoint-sm) {
+    @media (max-width: $breakpoint-s) {
       font-size: var(--font-size-s);
     }
   }

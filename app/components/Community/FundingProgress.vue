@@ -253,7 +253,7 @@ const statusMessage = computed(() => {
 }
 
 // Responsive text sizing
-@media screen and (max-width: $breakpoint-sm) {
+@media screen and (max-width: $breakpoint-s) {
   .text-xxxl {
     font-size: var(--font-size-xl) !important;
   }

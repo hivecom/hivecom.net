@@ -5,6 +5,40 @@
 //   width: 100% !important;
 // }
 
+@keyframes shinyHueRotate {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+
+  100% {
+    filter: hue-rotate(-360deg);
+  }
+}
+
+.shiny-text {
+  font-weight: var(--font-weight-semibold);
+  background-image: var(--shiny-gradient);
+  background-size: 100% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  animation: shinyHueRotate 8s linear infinite;
+}
+
+.shiny-icon {
+  color: #59d7f7;
+  display: inline-flex;
+  animation: shinyHueRotate 8s linear infinite;
+}
+
+.shiny-surface {
+  background-image: var(--shiny-gradient);
+  background-size: 200% 200%;
+  animation: shinyHueRotate 8s linear infinite;
+}
+
 .flex-1 {
   flex: 1;
 }

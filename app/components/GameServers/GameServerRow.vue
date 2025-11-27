@@ -127,7 +127,7 @@ const state = computed(() => {
     max-width: 400px;
   }
 
-  @media screen and (max-width: $breakpoint-md) {
+  @media screen and (max-width: $breakpoint-m) {
     display: none;
   }
 }

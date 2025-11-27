@@ -24,10 +24,12 @@
   --navbar-offset: 64px;
 
   --breakpoint-xs: 480px;
-  --breakpoint-sm: 768px;
-  --breakpoint-md: 1024px;
-  --breakpoint-lg: 1280px;
+  --breakpoint-s: 768px;
+  --breakpoint-m: 1024px;
+  --breakpoint-l: 1280px;
   --breakpoint-xl: 1440px;
+
+  --shiny-gradient: linear-gradient(100deg, #59d7f7, #3afea2, #a7fc2f);
 }
 
 html,
@@ -84,7 +86,7 @@ table td {
   pointer-events: none;
 }
 
-@media (max-width: $breakpoint-sm) {
+@media (max-width: $breakpoint-s) {
   .vui-table-container {
     width: auto !important;
   }

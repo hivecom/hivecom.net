@@ -349,10 +349,10 @@ function confirmDelete() {
   &__planned-badge {
     display: inline-flex;
     align-items: center;
-    padding: var(--space-xs) var(--space-sm);
+    padding: var(--space-xs) var(--space-s);
     background-color: var(--color-accent-subtle);
     color: var(--color-accent);
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius-s);
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
     text-transform: uppercase;

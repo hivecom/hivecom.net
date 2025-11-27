@@ -184,7 +184,7 @@ const pastEvents = computed(() => {
       width: 56px;
       color: var(--color-text-lighter) !important;
 
-      @media (max-width: $breakpoint-sm) {
+      @media (max-width: $breakpoint-s) {
         min-width: 80px;
       }
 
@@ -267,7 +267,7 @@ const pastEvents = computed(() => {
 }
 
 // Mobile responsiveness
-@media (max-width: $breakpoint-sm) {
+@media (max-width: $breakpoint-s) {
   .events-section {
     text-align: center !important;
   }
