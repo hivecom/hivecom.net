@@ -66,6 +66,7 @@ const birthdayInfo = computed(() => {
     return null
 
   const today = new Date()
+  const birthdayIsToday = today.getMonth() === parsed.getMonth() && today.getDate() === parsed.getDate()
   let age = today.getFullYear() - parsed.getFullYear()
   const hasHadBirthdayThisYear
     = today.getMonth() > parsed.getMonth()
@@ -80,12 +81,18 @@ const birthdayInfo = computed(() => {
   return {
     formatted: parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
     age,
+    isToday: birthdayIsToday,
   }
 })
+
+const isBirthdayToday = computed(() => birthdayInfo.value?.isToday ?? false)
 
 const birthdayTooltipText = computed(() => {
   if (!birthdayInfo.value)
     return ''
+
+  if (birthdayInfo.value.isToday)
+    return 'Happy birthday!'
 
   const ageText = `${birthdayInfo.value.age} year${birthdayInfo.value.age === 1 ? '' : 's'} old`
   if (birthdayInfo.value.age < 6) {
@@ -401,25 +408,21 @@ function handleRemoveFriend() {
                 </span>
               </Flex>
 
-              <Tooltip v-if="profile.created_at">
-                <template #tooltip>
-                  <span>Joined {{ joinedTooltip || profile.created_at }}</span>
-                </template>
-                <Flex gap="xs" y-center>
-                  <Icon class="text-color-lighter" name="ph:calendar" size="16" />
-                  <span class="text-s text-color-lighter">
-                    Joined {{ getAccountAge(profile.created_at) }}
-                  </span>
-                </Flex>
-              </Tooltip>
-
               <Tooltip v-if="birthdayInfo">
                 <template #tooltip>
                   <span>{{ birthdayTooltipText }}</span>
                 </template>
                 <Flex gap="xs" y-center>
-                  <Icon class="text-color-lighter" name="ph:cake" size="16" />
-                  <span class="text-s text-color-lighter">
+                  <Icon
+                    class="text-color-lighter"
+                    :class="{ 'birthday-icon': isBirthdayToday }"
+                    name="ph:cake"
+                    size="16"
+                  />
+                  <span
+                    class="text-s text-color-lighter"
+                    :class="{ 'birthday-text': isBirthdayToday }"
+                  >
                     {{ birthdayInfo.formatted }}
                   </span>
                 </Flex>
@@ -436,6 +439,18 @@ function handleRemoveFriend() {
                   {{ (profile as any).website }}
                 </a>
               </Flex>
+
+              <Tooltip v-if="profile.created_at">
+                <template #tooltip>
+                  <span>Joined {{ joinedTooltip || profile.created_at }}</span>
+                </template>
+                <Flex gap="xs" y-center>
+                  <Icon class="text-color-lighter" name="ph:calendar" size="16" />
+                  <span class="text-s text-color-lighter">
+                    Joined {{ getAccountAge(profile.created_at) }}
+                  </span>
+                </Flex>
+              </Tooltip>
             </Flex>
 
             <!-- Admin-only UUID display -->
@@ -509,6 +524,24 @@ function handleRemoveFriend() {
     color: var(--color-text-light);
     font-size: var(--font-size-s);
 
+    .birthday-text {
+      font-weight: 600;
+      background-image: linear-gradient(100deg, #59d7f7, #3afea2, #a7fc2f);
+      background-size: 100% auto;
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+      animation: birthdayHueRotate 8s linear infinite;
+    }
+
+    .birthday-icon {
+      color: #59d7f7;
+      display: inline-block;
+      animation: birthdayHueRotate 8s linear infinite;
+    }
+
     .website-link {
       color: var(--color-text-accent);
       text-decoration: none;
@@ -529,6 +562,16 @@ function handleRemoveFriend() {
         line-height: 1;
       }
     }
+  }
+}
+
+@keyframes birthdayHueRotate {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+
+  100% {
+    filter: hue-rotate(-360deg);
   }
 }
 </style>
