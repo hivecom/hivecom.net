@@ -42,6 +42,10 @@ export default defineNuxtConfig({
     '@nuxtjs/mdc',
     '@yuta-inoue-ph/nuxt-vcalendar',
   ],
+  image: {
+    provider: 'static',
+    dir: 'public',
+  },
   icon: {
     serverBundle: 'remote',
     clientBundle: {
