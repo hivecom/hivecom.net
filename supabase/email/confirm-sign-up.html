@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Confirm Your Signup</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #0e0e0e;
+        color: #fff;
+        font-family: 'Segoe UI', Arial, sans-serif;
+      }
+    </style>
+  </head>
+  <body style="margin: 0; padding: 0; background: #0e0e0e; color: #fff; font-family: 'Segoe UI', Arial, sans-serif">
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="width: 100%; border-collapse: collapse; background: #0e0e0e"
+    >
+      <tr>
+        <td align="center" style="padding: 40px 0">
+          <table
+            role="presentation"
+            width="480"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              width: 100%;
+              max-width: 480px;
+              background: #181818;
+              border-radius: 16px;
+              box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+              text-align: center;
+            "
+          >
+            <tr>
+              <td style="padding: 36px 32px 28px 32px">
+                <a
+                  href="https://dev.hivecom.net"
+                  style="display: inline-block; margin: 0 auto 24px auto; text-decoration: none"
+                >
+                  <img
+                    src="https://hivecom.supabase.co/storage/v1/object/public/hivecom-content-static/emails/logo.png"
+                    alt="Hivecom"
+                    width="200"
+                    height="48"
+                    style="display: block; width: 200px; height: 48px; margin: 0 auto 10px auto; border: 0"
+                  />
+                </a>
+                <div style="color: #fff; font-size: 1.13em; margin-bottom: 26px; line-height: 1.5">
+                  Welcome to Hivecom!<br />
+                  Please confirm your email address to activate your account.
+                </div>
+                <a
+                  href="{{ .ConfirmationURL }}"
+                  style="
+                    display: inline-block;
+                    background: #a5fc32;
+                    color: #0e0e0e !important;
+                    padding: 14px 32px;
+                    border-radius: 6px;
+                    text-decoration: none;
+                    font-weight: bold;
+                    font-size: 1.1em;
+                    margin: 10px 0 18px 0;
+                  "
+                >
+                  Confirm Email
+                </a>
+                <div style="color: #ccc; font-size: 0.98em; margin: 16px 0 24px 0">
+                  If you did not sign up for Hivecom, you can safely ignore this email.
+                </div>
+                <div style="color: #888; font-size: 0.85em; margin-bottom: 4px">
+                  If the button doesn't work, copy and paste this link into your browser:
+                </div>
+                <a
+                  href="{{ .ConfirmationURL }}"
+                  style="
+                    word-break: break-all;
+                    color: #7da360;
+                    text-decoration: none;
+                    font-size: 0.8em;
+                    display: inline-block;
+                    margin-bottom: 18px;
+                  "
+                >
+                  {{ .ConfirmationURL }}
+                </a>
+                <div style="color: #888; font-size: 12px; margin-top: 32px; text-align: center">
+                  &copy; 2013–2025 Hivecom
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
