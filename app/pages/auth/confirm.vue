@@ -72,7 +72,7 @@ async function submitUsername() {
   }
 
   usernameLoading.value = true
-  if (!user.value?.id && !debugOptions.bypassAuth) {
+  if (!userId.value && !debugOptions.bypassAuth) {
     usernameError.value = 'User ID not found'
     usernameLoading.value = false
     return
@@ -83,7 +83,7 @@ async function submitUsername() {
       await new Promise(resolve => setTimeout(resolve, 800))
     }
     else {
-      if (!user.value?.id)
+      if (!userId.value)
         throw new Error('User ID not found')
 
       const { error: updateError } = await supabase
