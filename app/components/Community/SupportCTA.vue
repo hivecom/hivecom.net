@@ -56,20 +56,19 @@ onMounted(async () => {
         <h3 class="text-bold text-xl mb-s">
           <span class="gold-text">Support Hivecom</span>
         </h3>
-        <p class="text-color-light text-l">
+        <p class="text-color text-l">
           Help us maintain servers, support projects, and keep the community thriving
         </p>
-        <p class="text-color-lighter text-s">
-          You'll also receive a supporter badge on your Hivecom profile as well as a Discord and TeamSpeak role to represent your contribution
+        <p class="text-color-light text-s">
+          You'll also receive a supporter badge on your Hivecom profile as well as a Discord and TeamSpeak role to
+          represent your contribution
         </p>
       </Flex>
 
       <!-- Call to Action -->
       <div>
         <NuxtLink
-          :to="constants.PATREON.URL"
-          external
-          target="_blank"
+          :to="constants.PATREON.URL" external target="_blank"
           class="support-button support-button--gold gold-surface"
           aria-label="Become a Patron on Patreon to support our community"
         >
@@ -82,13 +81,8 @@ onMounted(async () => {
           Join <span class="gold-text">{{ actualSupporterCount }}</span> supporters helping fund our community
         </p>
         <BulkAvatarDisplay
-          v-if="currentUser"
-          :user-ids="props.supporterIds"
-          :max-users="16"
-          :avatar-size="48"
-          :random="true"
-          :gap="4"
-          class="pt-m"
+          v-if="currentUser" :user-ids="props.supporterIds" :max-users="16" :avatar-size="48"
+          :random="true" :gap="4" class="pt-m"
         />
       </div>
 
@@ -131,7 +125,7 @@ onMounted(async () => {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #fdf4d4 0%, #f2c15a 45%, #c88a2a 100%);
+    background: linear-gradient(90deg, #ddce97 0%, #f2c15a 45%, #c57f17 100%);
   }
 }
 

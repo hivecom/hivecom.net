@@ -101,7 +101,7 @@ onMounted(() => {
             <Tab value="E-mail" />
           </Tabs>
           <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
-          <Input v-if="tab === 'Password'" v-model="password" expand placeholder="************" label="Password" type="password" />
+          <Input v-if="tab === 'Password'" v-model="password" expand placeholder="●●●●●●●●●●●●●" label="Password" type="password" />
           <Button variant="fill" :loading="loading" :disabled="tab === 'Password' ? !(email && password) : !email" @click="signIn">
             Sign in
             <template #end>

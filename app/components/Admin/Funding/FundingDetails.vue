@@ -35,9 +35,6 @@ function formatMonth(month: string): string {
     <template #header>
       <Flex column :gap="0">
         <h4>Funding Details</h4>
-        <span v-if="props.funding" class="text-color-light text-xxs">
-          {{ formatMonth(props.funding.month) }}
-        </span>
       </Flex>
     </template>
 

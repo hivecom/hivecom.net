@@ -54,7 +54,7 @@ async function signOut() {
 
 <template>
   <div class="user-dropdown">
-    <Dropdown min-width="300px" placement="bottom-end">
+    <Dropdown min-width="268px" placement="bottom-end">
       <template #trigger="{ toggle }">
         <button class="user-dropdown__trigger" @click="toggle">
           <Avatar
@@ -116,7 +116,7 @@ async function signOut() {
       <Divider size="4" />
       <div class="user-dropdown__footer">
         <SharedThemeToggle no-text />
-        <Button square aria-label="Sign out" @click="signOut">
+        <Button square plain aria-label="Sign out" @click="signOut">
           <Icon name="ph:sign-out" />
         </Button>
       </div>
@@ -165,7 +165,8 @@ async function signOut() {
   }
 
   &__footer {
-    padding: 8px;
+    padding: 4px 8px;
+    padding-left: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;

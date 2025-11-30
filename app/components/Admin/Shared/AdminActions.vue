@@ -189,7 +189,7 @@ function getItemDisplayName(): string {
       :size="buttonSize"
       :variant="action.variant || 'gray'"
       :square="!showLabels"
-      :data-title-top="!showLabels ? action.label : undefined"
+      :data-title-top-right="!showLabels ? action.label : undefined"
       :loading="action.loading"
       @click="action.handler"
     >
@@ -208,7 +208,7 @@ function getItemDisplayName(): string {
       :size="buttonSize"
       variant="danger"
       :square="!showLabels"
-      :data-title-top="!showLabels ? `Delete ${resourceType.slice(0, -1)}` : undefined"
+      :data-title-top-right="!showLabels ? `Delete ${resourceType.slice(0, -1)}` : undefined"
       :loading="isActionLoading('delete')"
       @click="handleDelete"
     >

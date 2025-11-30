@@ -19,10 +19,10 @@ const isLight = computed({
 </script>
 
 <template>
-  <div :class="`theme-toggle ${props.small ? 'theme-toggle--small' : ''}` ">
+  <div class="theme-toggle" :class="{ 'theme-toggle--small': props.small }">
     <ClientOnly>
       <div class="theme-toggle__label">
-        <Icon :name="isLight ? 'ph:sun' : 'ph:moon'" />
+        <Icon size="1.6rem" :name="isLight ? 'ph:sun' : 'ph:moon'" />
         <template v-if="!props.noText">
           Theme
         </template>
@@ -43,6 +43,12 @@ const isLight = computed({
   align-items: center;
   justify-content: space-between;
   gap: var(--space-xs);
+
+  &:hover {
+    .vui-switch .vui-switch-icon .vui-switch-indicator {
+      background-color: var(--color-text-light);
+    }
+  }
 
   &__switch {
     display: flex;
