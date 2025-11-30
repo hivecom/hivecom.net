@@ -439,11 +439,11 @@ export interface Database {
       }
       profiles: {
         Row: {
+          badges: Database['public']['Enums']['profile_badge'][]
           ban_end: string | null
           ban_reason: string | null
           ban_start: string | null
           banned: boolean
-          badges: Database['public']['Enums']['profile_badge'][]
           birthday: string | null
           country: string | null
           created_at: string
@@ -463,11 +463,11 @@ export interface Database {
           website: string | null
         }
         Insert: {
+          badges?: Database['public']['Enums']['profile_badge'][]
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
           banned?: boolean
-          badges?: Database['public']['Enums']['profile_badge'][]
           birthday?: string | null
           country?: string | null
           created_at?: string
@@ -487,11 +487,11 @@ export interface Database {
           website?: string | null
         }
         Update: {
+          badges?: Database['public']['Enums']['profile_badge'][]
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
           banned?: boolean
-          badges?: Database['public']['Enums']['profile_badge'][]
           birthday?: string | null
           country?: string | null
           created_at?: string
@@ -826,7 +826,7 @@ export interface Database {
         | 'projects.delete'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
-      profile_badge: 'builder' | 'earlybird' | 'founder' | 'host'
+      profile_badge: 'founder' | 'earlybird' | 'builder'
       region: 'eu' | 'na' | 'all'
     }
     CompositeTypes: {
@@ -1018,7 +1018,7 @@ export const Constants = {
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],
-      profile_badge: ['builder', 'earlybird', 'founder', 'host'],
+      profile_badge: ['founder', 'earlybird', 'builder'],
       region: ['eu', 'na', 'all'],
     },
   },
