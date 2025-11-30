@@ -57,6 +57,16 @@ button {
   }
 }
 
+.vui-button-variant-danger {
+  .iconify {
+    color: var(--color-white);
+  }
+}
+
+.vui-card-content {
+  position: relative;
+}
+
 .link-line {
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -66,15 +76,8 @@ button {
   }
 }
 
-.vui-badge {
-  line-height: 1.4em;
-}
-
-.vui-dropdown-item.selected {
-  .vui-dropdown-item-icon svg path,
-  .vui-dropdown-item-slot {
-    color: var(--color-accent);
-  }
+.vui-tooltip {
+  z-index: 9999 !important;
 }
 
 table th,

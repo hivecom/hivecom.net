@@ -39,6 +39,74 @@
   animation: shinyHueRotate 8s linear infinite;
 }
 
+@keyframes goldShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+// Gold metallic sheen helpers
+:where(.gold, .gold-text, .gold-icon, .gold-surface) {
+  --gold-light: #fdf4d4;
+  --gold-highlight: #ffe9a8;
+  --gold-mid: #f2c15a;
+  --gold-deep: #c88a2a;
+  --gold-shadow: rgba(200, 138, 42, 0.35);
+  --gold-gradient: linear-gradient(
+    125deg,
+    var(--gold-light) 0%,
+    var(--gold-highlight) 18%,
+    var(--gold-mid) 42%,
+    var(--gold-deep) 65%,
+    var(--gold-mid) 82%,
+    var(--gold-light) 100%
+  );
+}
+
+.gold-surface {
+  background-image: var(--gold-gradient);
+  background-size: 250% 250%;
+  animation: goldShimmer 10s ease-in-out infinite;
+}
+
+// Legacy .gold class keeps framing/border styles but now inherits the gold surface treatment.
+.gold {
+  @extend .gold-surface;
+  color: #2b1a05;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    inset 0 1px 4px rgba(255, 255, 255, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.gold-text {
+  font-weight: var(--font-weight-semibold);
+  background-image: var(--gold-gradient);
+  background-size: 250% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  animation: goldShimmer 8s linear infinite;
+}
+
+.gold-icon {
+  display: inline-flex;
+  color: var(--gold-highlight);
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
+  animation: goldShimmer 8s linear infinite;
+}
+
 .flex-1 {
   flex: 1;
 }

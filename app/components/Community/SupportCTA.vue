@@ -48,12 +48,13 @@ onMounted(async () => {
 
 <template>
   <Card class="support-card" expand>
-    <Flex column gap="l" y-center expand>
+    <div class="support-card__sheen gold-surface" aria-hidden="true" />
+    <Flex column gap="l" y-center expand class="support-card__content">
       <!-- Header -->
       <Flex column y-center gap="s" class="mb-l">
-        <Icon name="ph:heart" size="3rem" />
+        <Icon name="ph:heart" size="3rem" class="gold-icon support-card__heart" />
         <h3 class="text-bold text-xl mb-s">
-          Support Hivecom
+          <span class="gold-text">Support Hivecom</span>
         </h3>
         <p class="text-color-light text-l">
           Help us maintain servers, support projects, and keep the community thriving
@@ -69,16 +70,16 @@ onMounted(async () => {
           :to="constants.PATREON.URL"
           external
           target="_blank"
-          class="support-button"
+          class="support-button support-button--gold gold-surface"
           aria-label="Become a Patron on Patreon to support our community"
         >
           <Flex y-center x-center gap="s" class="support-button-content">
-            <Icon name="ph:heart-fill" size="1.6rem" />
+            <Icon name="ph:heart-fill" size="1.6rem" class="gold-icon" />
             <span class="text-l text-bold">Become a Patron</span>
           </Flex>
         </NuxtLink>
         <p class="mt-s text-s text-color-light">
-          Join {{ actualSupporterCount }} supporters helping fund our community
+          Join <span class="gold-text">{{ actualSupporterCount }}</span> supporters helping fund our community
         </p>
         <BulkAvatarDisplay
           v-if="currentUser"
@@ -98,15 +99,15 @@ onMounted(async () => {
         </h4>
         <Flex x-center gap="l" class="benefits-list" expand>
           <Flex column y-center gap="xs">
-            <Icon name="ph:database" size="1.8rem" class="color-accent" />
+            <Icon name="ph:database" size="1.8rem" class="gold-icon" />
             <span class="text-xs text-color-light">Server Costs</span>
           </Flex>
           <Flex column y-center gap="xs">
-            <Icon name="ph:code" size="1.8rem" class="color-accent" />
+            <Icon name="ph:code" size="1.8rem" class="gold-icon" />
             <span class="text-xs text-color-light">Development</span>
           </Flex>
           <Flex column y-center gap="xs">
-            <Icon name="ph:users" size="1.8rem" class="color-accent" />
+            <Icon name="ph:users" size="1.8rem" class="gold-icon" />
             <span class="text-xs text-color-light">Community</span>
           </Flex>
         </Flex>
@@ -130,13 +131,31 @@ onMounted(async () => {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--color-accent), var(--color-bg-accent-raised));
+    background: linear-gradient(90deg, #fdf4d4 0%, #f2c15a 45%, #c88a2a 100%);
   }
+}
+
+.support-card__sheen {
+  position: absolute;
+  inset: 12% 8%;
+  border-radius: 999px;
+  opacity: 0.2;
+  filter: blur(36px);
+  transform: scale(1.1);
+}
+
+.support-card__content {
+  position: relative;
+  z-index: 1;
+}
+
+.support-card__heart {
+  font-size: clamp(2.4rem, 2.8vw, 3.2rem);
 }
 
 .support-button {
   display: inline-block;
-  background: var(--color-accent);
+  background-color: var(--color-accent);
   border: none;
   border-radius: var(--border-radius-m);
   padding: var(--space-m) var(--space-l);
@@ -162,7 +181,7 @@ onMounted(async () => {
 
   &:hover {
     transform: translateY(-2px);
-    background: var(--color-accent);
+    background-color: var(--color-accent);
     box-shadow:
       0 6px 20px var(--color-bg-accent-lowered),
       0 4px 8px rgba(0, 0, 0, 0.15);
@@ -174,6 +193,32 @@ onMounted(async () => {
 
   &:active {
     transform: translateY(0);
+  }
+}
+
+.support-button--gold {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #0c0b09;
+  box-shadow:
+    inset 0 1px 4px rgba(255, 255, 255, 0.3),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+
+  &:hover {
+    box-shadow:
+      inset 0 1px 6px rgba(255, 255, 255, 0.4),
+      0 10px 28px rgba(0, 0, 0, 0.4);
+  }
+
+  &:active {
+    box-shadow:
+      inset 0 1px 6px rgba(255, 255, 255, 0.35),
+      0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+
+  .support-button-content {
+    .iconify {
+      color: #0c0b09;
+    }
   }
 }
 
@@ -190,6 +235,14 @@ onMounted(async () => {
   .support-button-content {
     .iconify {
       color: black;
+    }
+  }
+
+  .support-button--gold {
+    .support-button-content {
+      .iconify {
+        color: #0c0b09;
+      }
     }
   }
 }

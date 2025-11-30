@@ -23,6 +23,7 @@ type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
   | 'modified_by'
   | 'supporter_lifetime'
   | 'supporter_patreon'
+  | 'badges'
   | 'patreon_id'
   | 'steam_id'
   | 'discord_id'
@@ -83,6 +84,7 @@ const _profilesQuery = supabase.from('profiles').select(`
   modified_by,
   supporter_lifetime,
   supporter_patreon,
+  badges,
   patreon_id,
   steam_id,
   discord_id,
@@ -158,6 +160,7 @@ async function fetchUsers() {
         modified_by,
         supporter_lifetime,
         supporter_patreon,
+        badges,
         patreon_id,
         steam_id,
         discord_id,
@@ -287,6 +290,7 @@ const filteredData = computed<TransformedUser[]>(() => {
         modified_by: user.modified_by,
         supporter_patreon: user.supporter_patreon || false,
         supporter_lifetime: user.supporter_lifetime || false,
+        badges: user.badges || [],
         patreon_id: user.patreon_id,
         steam_id: user.steam_id,
         discord_id: user.discord_id,

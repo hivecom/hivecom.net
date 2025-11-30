@@ -160,7 +160,7 @@ onMounted(async () => {
     <!-- Hero section -->
     <section class="hero-section">
       <div class="hero-section__globe-container">
-        <NuxtImg src="landing/globe.svg" alt="Globe" class="hero-section__globe-image" />
+        <img src="/landing/globe.svg" alt="Globe" class="hero-section__globe-image">
       </div>
       <h1 class="hero-section__title">
         HIVECOM
@@ -217,10 +217,10 @@ onMounted(async () => {
             <span class="text-xs text-color-lighter">Game Servers</span>
           </NuxtLink>
 
-          <div class="hero-section__stats-card">
+          <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
             <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
             <span class="text-xs text-color-lighter">Founded in 2013</span>
-          </div>
+          </NuxtLink>
 
           <NuxtLink to="/community/projects" class="hero-section__stats-card hero-section__stats-card--clickable">
             <Flex x-center class="hero-section__stats-value">

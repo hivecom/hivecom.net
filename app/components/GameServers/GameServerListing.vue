@@ -5,6 +5,7 @@ import { Alert, Badge, Button, Card, Flex, Input, Select, Skeleton } from '@dola
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
@@ -119,7 +120,16 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
               <h3 class="mb-s text-l">
                 <Flex gap="m" y-center x-between>
                   <Flex gap="s" y-center>
-                    <GameIcon :game="game" size="medium" />
+                    <GameDetailsModalTrigger v-slot="{ open }" :game-id="game.id">
+                      <button
+                        type="button"
+                        class="game-listing__game-icon-button"
+                        :aria-label="`Open details for ${game.name ?? 'game'}`"
+                        @click.stop="open"
+                      >
+                        <GameIcon :game="game" size="medium" />
+                      </button>
+                    </GameDetailsModalTrigger>
                     {{ game.name }}
                     <div class="counter">
                       {{ getServersByGameId(game.id).length }}
@@ -171,4 +181,11 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
 </template>
 
 <style lang="scss" scoped>
+.game-listing__game-icon-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  cursor: pointer;
+}
 </style>

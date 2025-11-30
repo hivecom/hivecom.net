@@ -93,6 +93,8 @@ const avatarStyleVars = computed(() => ({
   '--avatar-size': `${props.avatarSize}px`,
 }))
 
+const isSupporter = (profile?: UserDisplayData | null) => Boolean(profile?.supporter_lifetime || profile?.supporter_patreon)
+
 // Get user initials
 function getUserInitials(username: string): string {
   return username
@@ -159,6 +161,7 @@ defineExpose({
         v-for="entry in usersList"
         :key="entry.id"
         class="bulk-avatar-display__avatar"
+        :class="{ 'bulk-avatar-display__avatar--supporter': isSupporter(entry.profile) }"
         :style="avatarStyleVars"
       >
         <template #tooltip>
@@ -237,16 +240,40 @@ defineExpose({
 
   &__avatar {
     position: relative;
-    z-index: 1;
+    z-index: 0;
     flex: 0 0 auto;
     width: var(--avatar-size, 40px);
     height: var(--avatar-size, 40px);
+    border-radius: 50%;
+    overflow: visible;
+  }
+
+  &__avatar--supporter {
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      background: linear-gradient(120deg, #fdf4d4 0%, #f2c15a 45%, #c88a2a 100%);
+      background-size: 200% 200%;
+      opacity: 0.9;
+      z-index: 0;
+      pointer-events: none;
+      box-shadow:
+        0 0 20px rgba(0, 0, 0, 0.35),
+        0 0 8px rgba(253, 244, 212, 0.6);
+      animation: goldShimmer 14s ease-in-out infinite;
+    }
   }
 
   &__avatar-item {
     transition:
       transform 0.2s ease,
       z-index 0.2s ease;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
 
     &:hover {
       transform: scale(1.1);

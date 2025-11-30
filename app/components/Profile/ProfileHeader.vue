@@ -269,14 +269,9 @@ function handleRemoveFriend() {
               </Badge>
               <!-- Supporter Badges -->
               <Flex gap="xs" y-center>
-                <Badge v-if="profile.supporter_patreon" variant="accent" size="s">
-                  <Icon name="ph:heart-fill" />
-                  Patreon Supporter
-                </Badge>
-
-                <Badge v-if="profile.supporter_lifetime" variant="success" size="s">
-                  <Icon name="ph:crown-simple" />
-                  Lifetime Supporter
+                <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
+                  <Icon name="ph:heart" class="gold" />
+                  Supporter
                 </Badge>
               </Flex>
             </Flex>

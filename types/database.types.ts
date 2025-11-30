@@ -443,6 +443,7 @@ export interface Database {
           ban_reason: string | null
           ban_start: string | null
           banned: boolean
+          badges: Database['public']['Enums']['profile_badge'][]
           birthday: string | null
           country: string | null
           created_at: string
@@ -466,6 +467,7 @@ export interface Database {
           ban_reason?: string | null
           ban_start?: string | null
           banned?: boolean
+          badges?: Database['public']['Enums']['profile_badge'][]
           birthday?: string | null
           country?: string | null
           created_at?: string
@@ -489,6 +491,7 @@ export interface Database {
           ban_reason?: string | null
           ban_start?: string | null
           banned?: boolean
+          badges?: Database['public']['Enums']['profile_badge'][]
           birthday?: string | null
           country?: string | null
           created_at?: string
@@ -823,6 +826,7 @@ export interface Database {
         | 'projects.delete'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
+      profile_badge: 'builder' | 'earlybird' | 'founder' | 'host'
       region: 'eu' | 'na' | 'all'
     }
     CompositeTypes: {
@@ -1014,6 +1018,7 @@ export const Constants = {
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],
+      profile_badge: ['builder', 'earlybird', 'founder', 'host'],
       region: ['eu', 'na', 'all'],
     },
   },

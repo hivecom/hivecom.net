@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Button, Dropdown, DropdownTitle, Flex, Spinner, Tooltip } from '@dolanske/vui'
-import NotificationCard from '@/components/Layout/NotificationCard.vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { Dropdown, DropdownTitle } from '@dolanske/vui'
+import NotificationCardBirthday from '@/components/Notifications/NotificationCardBirthday.vue'
+import NotificationCardEmpty from '@/components/Notifications/NotificationCardEmpty.vue'
+import NotificationCardError from '@/components/Notifications/NotificationCardError.vue'
+import NotificationCardInvite from '@/components/Notifications/NotificationCardInvite.vue'
+import NotificationCardLoading from '@/components/Notifications/NotificationCardLoading.vue'
 
 const supabase = useSupabaseClient<Database>()
 const user = useSupabaseUser()
@@ -154,6 +157,16 @@ const showEmptyCard = computed(() => {
   return !loading.value && !error.value && pendingRequestIds.value.length === 0 && !birthdayWidget.value
 })
 
+const loadingCardCount = computed(() => {
+  if (!loading.value)
+    return 0
+
+  const inviteCount = pendingRequestIds.value.length
+  const birthdayCount = birthdayWidget.value ? 1 : 0
+  const total = inviteCount + birthdayCount
+  return total > 0 ? total : 1
+})
+
 function setInviteLoading(id: string, state: boolean) {
   inviteActionLoading.value = {
     ...inviteActionLoading.value,
@@ -232,87 +245,32 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
 
         <div class="notification-menu__body">
           <template v-if="loading">
-            <NotificationCard
-              v-for="index in 2"
+            <NotificationCardLoading
+              v-for="index in loadingCardCount"
               :key="`loading-${index}`"
-              text="Loading updates"
-              icon="ph:bell"
-            >
-              <Flex gap="s" y-center>
-                <Spinner size="s" />
-              </Flex>
-            </NotificationCard>
+            />
           </template>
 
           <template v-else>
-            <NotificationCard
-              v-if="error"
-              to="/profile"
-              text="Unable to refresh"
-              icon="ph:warning-circle"
-            >
-              <template #actions>
-                <Button size="s" variant="gray" @click="fetchNotifications">
-                  Retry
-                </Button>
-              </template>
-            </NotificationCard>
+            <NotificationCardError v-if="error" @retry="fetchNotifications" />
 
-            <NotificationCard
+            <NotificationCardInvite
               v-for="requestId in pendingRequestIds"
               :key="`invite-${requestId}`"
-              icon="ph:user-plus"
-            >
-              <Flex class="w-full" x-end>
-                <UserDisplay :user-id="requestId" size="s" />
-              </Flex>
-              <template #actions>
-                <Tooltip placement="top">
-                  <Button
-                    square
-                    size="s"
-                    variant="gray"
-                    :loading="isInviteLoading(requestId)"
-                    aria-label="Ignore invite"
-                    @click="handleInviteAction(requestId, 'ignore')"
-                  >
-                    <Icon name="ph:x" />
-                  </Button>
-                  <template #tooltip>
-                    <p>Ignore invite</p>
-                  </template>
-                </Tooltip>
-                <Tooltip placement="top">
-                  <Button
-                    square
-                    size="s"
-                    variant="accent"
-                    :loading="isInviteLoading(requestId)"
-                    aria-label="Accept invite"
-                    @click="handleInviteAction(requestId, 'accept')"
-                  >
-                    <Icon name="ph:check" />
-                  </Button>
-                  <template #tooltip>
-                    <p>Accept invite</p>
-                  </template>
-                </Tooltip>
-              </template>
-            </NotificationCard>
+              :request-id="requestId"
+              :loading="isInviteLoading(requestId)"
+              @accept="handleInviteAction(requestId, 'accept')"
+              @ignore="handleInviteAction(requestId, 'ignore')"
+            />
 
-            <NotificationCard
+            <NotificationCardBirthday
               v-if="birthdayWidget"
-              :text="birthdayWidget.title"
-              icon="ph:cake"
+              :title="birthdayWidget.title"
+              :description="birthdayWidget.description"
               to="/profile"
-              shiny
             />
 
-            <NotificationCard
-              v-if="showEmptyCard"
-              text="All caught up"
-              icon="ph:smiley"
-            />
+            <NotificationCardEmpty v-if="showEmptyCard" />
           </template>
         </div>
       </div>

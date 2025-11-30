@@ -163,7 +163,7 @@ function openComplaintModal() {
               </div>
 
               <div v-if="gameserver.region" class="gameserver-header__status-item">
-                <span class="gameserver-header__status-label">Country</span>
+                <span class="gameserver-header__status-label">Region</span>
                 <Badge v-if="gameserver.region" variant="neutral" size="l">
                   <RegionIndicator :region="gameserver.region" show-label />
                 </Badge>

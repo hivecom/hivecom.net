@@ -15,6 +15,15 @@ export interface UserDisplayData {
   username: string
   role: string | null
   avatarUrl: string | null
+  supporter_lifetime: boolean
+  supporter_patreon: boolean
+}
+
+interface ProfileCacheEntry {
+  id: string
+  username: string
+  supporter_lifetime: boolean
+  supporter_patreon: boolean
 }
 
 export interface UseUserDataOptions extends CacheConfig {
@@ -62,13 +71,13 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
     const cacheKey = getCacheKeys(id).profile
 
     // Check cache first
-    let profile = cache.get<{ id: string, username: string }>(cacheKey)
+    let profile = cache.get<ProfileCacheEntry>(cacheKey)
 
     if (!profile) {
       // Fetch from database
       const { data, error: profileError } = await supabase
         .from('profiles')
-        .select('id, username')
+        .select('id, username, supporter_lifetime, supporter_patreon')
         .eq('id', id)
         .single()
 
@@ -79,6 +88,8 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
       profile = {
         id: data.id,
         username: data.username || 'Unknown',
+        supporter_lifetime: data.supporter_lifetime ?? false,
+        supporter_patreon: data.supporter_patreon ?? false,
       }
 
       // Cache the result
@@ -194,6 +205,8 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
         username: profile.username,
         role,
         avatarUrl,
+        supporter_lifetime: profile.supporter_lifetime ?? false,
+        supporter_patreon: profile.supporter_patreon ?? false,
       }
     }
     catch (err) {
@@ -341,7 +354,7 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
         profileIdsToFetch.length > 0
           ? supabase
               .from('profiles')
-              .select('id, username')
+              .select('id, username, supporter_lifetime, supporter_patreon')
               .in('id', profileIdsToFetch)
           : Promise.resolve({ data: [], error: null }),
         includeRole && roleIdsToFetch.length > 0
@@ -364,7 +377,12 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
       const roles = roleResults.data ?? []
 
       profiles.forEach((profile) => {
-        cache.set(`user:profile:${profile.id}`, profile, userTtl)
+        cache.set(`user:profile:${profile.id}`, {
+          id: profile.id,
+          username: profile.username ?? 'Unknown',
+          supporter_lifetime: profile.supporter_lifetime ?? false,
+          supporter_patreon: profile.supporter_patreon ?? false,
+        }, userTtl)
       })
 
       if (includeRole) {
@@ -391,7 +409,7 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
       const userMap = new Map<string, UserDisplayData>()
 
       for (const id of ids) {
-        const profile = cache.get<{ id: string, username: string }>(`user:profile:${id}`)
+        const profile = cache.get<ProfileCacheEntry>(`user:profile:${id}`)
         const role = includeRole ? cache.get<string | null>(`user:role:${id}`) : null
         const avatarUrl = includeAvatar ? cache.get<string | null>(`user:avatar:${id}`) : null
 
@@ -401,6 +419,8 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
             username: profile.username,
             role: role ?? null,
             avatarUrl: avatarUrl ?? null,
+            supporter_lifetime: profile.supporter_lifetime ?? false,
+            supporter_patreon: profile.supporter_patreon ?? false,
           })
         }
       }

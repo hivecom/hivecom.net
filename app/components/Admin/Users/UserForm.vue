@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Enums } from '@/types/database.types'
 import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
@@ -11,6 +12,12 @@ import { deleteUserAvatar, getUserAvatarUrl } from '@/lib/utils/storage'
 interface SelectOption {
   label: string
   value: string
+  description?: string
+}
+
+type ProfileBadge = Enums<'profile_badge'>
+interface BadgeSelectOption extends SelectOption {
+  value: ProfileBadge
 }
 
 const props = defineProps<{
@@ -18,9 +25,9 @@ const props = defineProps<{
     id: string
     username: string
     created_at: string
-    modified_at: string | null
     supporter_patreon: boolean
     supporter_lifetime: boolean
+
     patreon_id: string | null
     discord_id: string | null
     steam_id: string | null
@@ -31,12 +38,31 @@ const props = defineProps<{
     roles?: string[]
     country?: string | null
     birthday?: string | null
+    badges?: ProfileBadge[]
+    website?: string | null
   } | null
   isEditMode: boolean
 }>()
 
 // Define emits
 const emit = defineEmits(['save', 'delete'])
+
+const BADGE_VALUES = ['builder', 'earlybird', 'founder', 'host'] as const satisfies ReadonlyArray<ProfileBadge>
+
+interface UserFormState {
+  username: string
+  introduction: string
+  markdown: string
+  website: string
+  country: string
+  birthday: string
+  supporter_patreon: boolean
+  supporter_lifetime: boolean
+  patreon_id: string
+  discord_id: string
+  steam_id: string
+  badges: ProfileBadge[]
+}
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -54,19 +80,24 @@ const avatarUrl = ref<string | null>(null)
 const avatarDeleting = ref(false)
 
 // Form state
-const userForm = ref({
-  username: '',
-  introduction: '',
-  markdown: '',
-  website: '',
-  country: '',
-  birthday: '',
-  supporter_patreon: false,
-  supporter_lifetime: false,
-  patreon_id: '',
-  discord_id: '',
-  steam_id: '',
-})
+function createDefaultUserFormState(): UserFormState {
+  return {
+    username: '',
+    introduction: '',
+    markdown: '',
+    website: '',
+    country: '',
+    birthday: '',
+    supporter_patreon: false,
+    supporter_lifetime: false,
+    patreon_id: '',
+    discord_id: '',
+    steam_id: '',
+    badges: [],
+  }
+}
+
+const userForm = ref<UserFormState>(createDefaultUserFormState())
 
 // Available roles - "User" means no role in database
 const availableRoles = [
@@ -74,6 +105,31 @@ const availableRoles = [
   { value: 'admin', label: 'Admin', description: 'Full administrative access' },
   { value: 'moderator', label: 'Moderator', description: 'Content moderation privileges' },
 ] as const
+
+const BADGE_DESCRIPTIONS: Record<ProfileBadge, string> = {
+  builder: 'Contributed to open-source projects and infrastructure',
+  earlybird: 'Joined in the early days of the community',
+  founder: 'One of the original founders',
+  host: 'Hosted or organized multiple events for the community',
+}
+
+function formatBadgeLabel(badge: ProfileBadge) {
+  return badge
+    .split('_')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const badgeSelectOptions: BadgeSelectOption[] = BADGE_VALUES.map(badge => ({
+  label: formatBadgeLabel(badge),
+  value: badge,
+  description: BADGE_DESCRIPTIONS[badge] ?? 'Supporter badge',
+}))
+
+const badgeLabelMap = badgeSelectOptions.reduce<Record<ProfileBadge, string>>((acc, option) => {
+  acc[option.value as ProfileBadge] = option.label
+  return acc
+}, {} as Record<ProfileBadge, string>)
 
 // Convert roles to Select component options format
 const roleSelectOptions = computed(() =>
@@ -112,6 +168,23 @@ const USERNAME_LIMIT = 32
 const INTRODUCTION_LIMIT = 128
 const MARKDOWN_LIMIT = 8128
 const BIRTHDAY_MIN_VALUE = '1900-01-01' as const
+
+function dedupeBadges(badges?: readonly ProfileBadge[]) {
+  return Array.from(new Set(badges ?? [])) as ProfileBadge[]
+}
+const selectedBadges = ref<BadgeSelectOption[]>([])
+
+watch(selectedBadges, (newSelection) => {
+  if (newSelection && Array.isArray(newSelection))
+    userForm.value.badges = dedupeBadges(newSelection.map(option => option.value))
+  else
+    userForm.value.badges = []
+}, { deep: true })
+
+function syncSelectedBadges() {
+  const formBadges = userForm.value.badges || []
+  selectedBadges.value = badgeSelectOptions.filter(option => formBadges.includes(option.value))
+}
 
 // Username validation rules based on database constraints
 const usernameValidation = computed(() => {
@@ -293,6 +366,14 @@ const validation = computed(() => ({
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
+const badgeSummaryText = computed(() => {
+  if (!userForm.value.badges.length)
+    return 'No badges assigned'
+
+  const labels = userForm.value.badges.map(badge => badgeLabelMap[badge] ?? formatBadgeLabel(badge))
+  return `Assigned badges: ${labels.join(', ')}`
+})
+
 // Permission-based access control
 const canEditForm = computed(() => {
   if (!props.isEditMode)
@@ -411,12 +492,13 @@ watch(
     if (newUser) {
       const normalizedCountry = newUser.country?.toUpperCase() ?? ''
       const hasValidCountry = COUNTRY_SELECT_OPTIONS.some(option => option.value === normalizedCountry)
+      const sanitizedBadges = dedupeBadges(newUser.badges)
 
       userForm.value = {
         username: newUser.username,
         introduction: newUser.introduction || '',
         markdown: newUser.markdown || '',
-        website: (newUser as typeof newUser & { website?: string }).website || '',
+        website: newUser.website || '',
         country: hasValidCountry ? normalizedCountry : '',
         birthday: newUser.birthday || '',
         supporter_patreon: newUser.supporter_patreon,
@@ -424,7 +506,9 @@ watch(
         patreon_id: newUser.patreon_id || '',
         discord_id: newUser.discord_id || '',
         steam_id: newUser.steam_id || '',
+        badges: sanitizedBadges,
       }
+      syncSelectedBadges()
       // Fetch user roles when editing existing user
       if (props.isEditMode) {
         fetchUserRoles()
@@ -438,19 +522,8 @@ watch(
     }
     else {
       // Reset form for new user
-      userForm.value = {
-        username: '',
-        introduction: '',
-        markdown: '',
-        website: '',
-        country: '',
-        birthday: '',
-        supporter_patreon: false,
-        supporter_lifetime: false,
-        patreon_id: '',
-        discord_id: '',
-        steam_id: '',
-      }
+      userForm.value = createDefaultUserFormState()
+      selectedBadges.value = []
       // Reset role for new user
       selectedRole.value = 'user'
       originalRole.value = 'user'
@@ -495,6 +568,7 @@ function handleSubmit() {
     patreon_id: userForm.value.patreon_id.trim() || null,
     discord_id: userForm.value.discord_id.trim() || null,
     steam_id: userForm.value.steam_id.trim() || null,
+    badges: dedupeBadges(userForm.value.badges),
     // Only include role if user has permission to modify roles
     ...(canEditRoles.value && { role: selectedRole.value }),
   }
@@ -948,6 +1022,24 @@ function clearBirthday() {
             description="User has lifetime supporter status"
             :disabled="!canEditForm"
           />
+        </Flex>
+
+        <Flex column gap="xs">
+          <Select
+            v-model="selectedBadges"
+            label="Badges"
+            placeholder="Select badges"
+            :options="badgeSelectOptions"
+            :disabled="!canEditForm"
+            :single="false"
+            expand
+            search
+            show-clear
+          />
+          <div class="help-text">
+            <Icon name="ph:info" />
+            {{ badgeSummaryText }}
+          </div>
         </Flex>
       </Flex>
     </Flex>

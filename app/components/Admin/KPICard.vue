@@ -64,6 +64,10 @@ defineProps<{
     min-width: 44px;
     border-radius: var(--border-radius-m);
 
+    .iconify {
+      color: white;
+    }
+
     &--primary,
     &--success {
       background-color: var(--color-bg-green-lowered);

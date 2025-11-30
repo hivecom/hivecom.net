@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Card, Flex, Skeleton } from '@dolanske/vui'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import ProfileAbout from '@/components/Profile/ProfileAbout.vue'
-import ProfileAchievements from '@/components/Profile/ProfileAchievements.vue'
+import ProfileBadges from '@/components/Profile/ProfileBadges.vue'
 import ProfileBanStatus from '@/components/Profile/ProfileBanStatus.vue'
 import ProfileForm from '@/components/Profile/ProfileForm.vue'
 import ProfileFriends from '@/components/Profile/ProfileFriends.vue'
@@ -23,7 +23,10 @@ const props = defineProps<Props>()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId() // Use helper to get ID from JWT claims
-const profile = ref<Tables<'profiles'>>()
+type ProfileRecord = Tables<'profiles'>
+type ProfileRecordWithReadonlyBadges = Omit<ProfileRecord, 'badges'> & { badges: ReadonlyArray<ProfileRecord['badges'][number]> }
+
+const profile = ref<ProfileRecord>()
 const loading = ref(true)
 const errorMessage = ref('')
 const isEditSheetOpen = ref(false)
@@ -38,6 +41,13 @@ const receivedFriendshipId = ref<number | null>(null)
 
 // Add refresh functionality for avatar updates
 const refreshTrigger = ref(0)
+
+function cloneProfileRecord(record: ProfileRecord | ProfileRecordWithReadonlyBadges): ProfileRecord {
+  return {
+    ...record,
+    badges: [...record.badges],
+  }
+}
 
 // Computed property to check if this is the user's own profile
 const isOwnProfile = computed(() => {
@@ -214,7 +224,7 @@ const {
 // Set profile from cached data
 watch(profileData, (newData) => {
   if (newData) {
-    profile.value = newData
+    profile.value = cloneProfileRecord(newData)
     // Check friendship status after profile is loaded
     checkFriendshipStatus()
   }
@@ -306,7 +316,7 @@ async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
       throw error
 
     // Update local profile data
-    profile.value = data
+    profile.value = cloneProfileRecord(data)
 
     // Refresh cached user data in case it was updated
     await refetchProfileUserData()
@@ -729,8 +739,31 @@ async function ignoreFriendRequest() {
           </Flex>
         </Card>
 
-        <!-- Achievements Section Skeleton -->
-        <Card separators class="achievements-section">
+        <!-- Friends Section Skeleton -->
+        <Card separators class="friends-section-skeleton">
+          <template #header>
+            <Flex x-between y-center>
+              <Flex gap="xs" y-center>
+                <Skeleton height="1.5rem" width="6rem" />
+                <Skeleton height="1.5rem" width="3rem" style="border-radius: 1rem;" />
+              </Flex>
+              <Skeleton height="2rem" width="6rem" style="border-radius: 0.5rem;" />
+            </Flex>
+          </template>
+
+          <Flex gap="s" wrap y-center x-center class="friends-avatars-skeleton">
+            <div
+              v-for="index in 6"
+              :key="`friends-skeleton-avatar-${index}`"
+              class="friends-avatars-skeleton__avatar"
+            >
+              <Skeleton width="100%" height="100%" />
+            </div>
+          </Flex>
+        </Card>
+
+        <!-- Badges Section Skeleton -->
+        <Card separators class="badges-section">
           <template #header>
             <Flex x-between y-center>
               <Skeleton height="1.5rem" width="8rem" />
@@ -787,9 +820,6 @@ async function ignoreFriendRequest() {
 
         <!-- (Right) -->
         <Flex column>
-          <!-- Achievements -->
-          <ProfileAchievements :profile="profile" />
-
           <!-- Friends Section -->
           <ProfileFriends
             :profile="profile"
@@ -799,6 +829,9 @@ async function ignoreFriendRequest() {
             :loading="friendsLoading"
             @open-friends-modal="openFriendsModal"
           />
+
+          <!-- Badges -->
+          <ProfileBadges :profile="profile" />
         </Flex>
       </div>
     </template>
@@ -850,8 +883,20 @@ async function ignoreFriendRequest() {
   gap: var(--space-l);
 
   .about-section,
-  .achievements-section {
+  .badges-section,
+  .friends-section-skeleton {
     min-height: 600px;
+  }
+
+  .friends-avatars-skeleton {
+    justify-content: center;
+  }
+
+  .friends-avatars-skeleton__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
   }
 
   @media (max-width: 768px) {
