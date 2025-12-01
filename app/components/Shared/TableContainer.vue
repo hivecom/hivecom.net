@@ -17,7 +17,6 @@ defineProps<{ class?: string }>()
   width: 100%;
   overflow-x: auto;
   display: block;
-  scrollbar-gutter: stable both-edges;
 }
 
 .table-scroll-wrapper :deep(.vui-table-container table) {

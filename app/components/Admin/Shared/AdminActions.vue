@@ -7,7 +7,7 @@ interface AdminActionsProps {
   /**
    * Type of resource (used for permission checking)
    */
-  resourceType: 'games' | 'events' | 'gameservers' | 'profiles' | 'expenses' | 'announcements' | 'referendums' | 'servers'
+  resourceType: 'games' | 'events' | 'gameservers' | 'profiles' | 'expenses' | 'announcements' | 'referendums' | 'servers' | 'assets'
 
   /**
    * The item being acted upon
@@ -139,6 +139,7 @@ function getResourceDisplayName(): string {
     announcements: 'Announcement',
     referendums: 'Referendum',
     servers: 'Server',
+    assets: 'Asset',
   }
 
   return resourceMap[props.resourceType] || 'Item'

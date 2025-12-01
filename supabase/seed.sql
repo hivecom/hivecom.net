@@ -56,6 +56,10 @@ VALUES
 ('admin', 'users.delete'),
 ('admin', 'users.read'),
 ('admin', 'users.update'),
+('admin', 'assets.create'),
+('admin', 'assets.delete'),
+('admin', 'assets.read'),
+('admin', 'assets.update'),
   -- Moderator permissions - content management with delete access but no role management
 ('moderator', 'announcements.create'),
 ('moderator', 'announcements.delete'),
@@ -88,13 +92,22 @@ VALUES
 ('moderator', 'roles.read'),
 ('moderator', 'users.create'),
 ('moderator', 'users.read'),
-('moderator', 'users.update');
+('moderator', 'users.update'),
+('moderator', 'assets.create'),
+('moderator', 'assets.delete'),
+('moderator', 'assets.read'),
+('moderator', 'assets.update')
+ON CONFLICT (role, permission)
+  DO NOTHING;
 
 -- Create the storage buckets
 INSERT INTO "storage"."buckets"("id", "name", "owner", "created_at", "updated_at", "public", "avif_autodetection", "file_size_limit", "allowed_mime_types", "owner_id")
 VALUES
   ('hivecom-content-static', 'hivecom-content-static', NULL, '2025-04-13 21:02:43.930594+00', '2025-04-13 21:02:43.930594+00', 'true', 'false', '1048576', '{"image/*"}', NULL),
-('hivecom-content-users', 'hivecom-content-users', NULL, '2025-04-13 21:02:26.456458+00', '2025-04-13 21:02:26.456458+00', 'true', 'false', '1048576', '{"image/*"}', NULL);
+('hivecom-content-users', 'hivecom-content-users', NULL, '2025-04-13 21:02:26.456458+00', '2025-04-13 21:02:26.456458+00', 'true', 'false', '1048576', '{"image/*"}', NULL),
+('hivecom-cms', 'hivecom-cms', NULL, NOW(), NOW(), 'true', 'false', '5242880', '{"image/*"}', NULL)
+ON CONFLICT (id)
+  DO NOTHING;
 
 -- Insert our admin seed user.
 INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous")

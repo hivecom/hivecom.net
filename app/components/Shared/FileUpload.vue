@@ -16,6 +16,8 @@ interface Props {
   aspectRatio?: number // Width/height ratio (e.g., 16/9 = 1.778, 9/16 = 0.5625)
   minHeight?: number // Minimum height in pixels
   maxHeight?: number // Maximum height in pixels
+  multiple?: boolean
+  persistentDropzone?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -26,12 +28,15 @@ const props = withDefaults(defineProps<Props>(), {
   showDelete: false,
   deleting: false,
   minHeight: 160,
+  multiple: false,
+  persistentDropzone: false,
 })
 
 const emit = defineEmits<{
   upload: [file: File]
   remove: []
   delete: []
+  invalid: [message: string]
 }>()
 
 const fileInput = ref<HTMLInputElement>()
@@ -44,6 +49,8 @@ const maxSizeBytes = computed(() => props.maxSizeMB * 1024 * 1024)
 const currentPreviewUrl = computed(() => localPreviewUrl.value || props.previewUrl)
 const hasPreview = computed(() => !!currentPreviewUrl.value && imageExists.value)
 const isAvatarVariant = computed(() => props.variant === 'avatar')
+const allowedTypes = computed(() => props.accept.split(',').map(type => type.trim()).filter(Boolean))
+const shouldShowPreview = computed(() => hasPreview.value && !props.persistentDropzone)
 
 // Computed style for aspect ratio
 const aspectRatioStyle = computed(() => {
@@ -76,10 +83,13 @@ const aspectRatioStyle = computed(() => {
 // Handle file selection
 function handleFileSelect(event: Event) {
   const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    processFile(file)
-  }
+  const files = target.files ? Array.from(target.files) : []
+  if (!files.length)
+    return
+
+  const selection = props.multiple ? files : files.slice(0, 1)
+  selection.forEach(processFile)
+  target.value = ''
 }
 
 // Handle drag and drop
@@ -88,10 +98,12 @@ function handleDrop(event: DragEvent) {
   dragOver.value = false
 
   const files = event.dataTransfer?.files
-  const file = files?.[0]
-  if (file) {
-    processFile(file)
-  }
+  if (!files || !files.length)
+    return
+
+  const fileArray = Array.from(files)
+  const selection = props.multiple ? fileArray : fileArray.slice(0, 1)
+  selection.forEach(processFile)
 }
 
 function handleDragOver(event: DragEvent) {
@@ -104,27 +116,38 @@ function handleDragLeave() {
 }
 
 // Process and validate file
+function isAcceptedType(fileType: string): boolean {
+  if (!fileType)
+    return false
+  return allowedTypes.value.some((type) => {
+    if (type.endsWith('/*'))
+      return fileType.startsWith(type.slice(0, -2))
+    return type === fileType
+  })
+}
+
 function processFile(file: File) {
-  // Validate file type
-  const allowedTypes = props.accept.split(',').map(type => type.trim())
-  if (!allowedTypes.includes(file.type)) {
-    console.error('Invalid file type')
+  if (!isAcceptedType(file.type)) {
+    emit('invalid', 'Unsupported file type. Please upload an accepted image format.')
     return
   }
 
-  // Validate file size
   if (file.size > maxSizeBytes.value) {
-    console.error(`File size must be less than ${props.maxSizeMB}MB`)
+    emit('invalid', `Files must be smaller than ${props.maxSizeMB}MB.`)
     return
   }
 
-  // Create local preview URL
-  if (localPreviewUrl.value) {
-    URL.revokeObjectURL(localPreviewUrl.value)
+  if (!props.persistentDropzone) {
+    if (localPreviewUrl.value)
+      URL.revokeObjectURL(localPreviewUrl.value)
+    localPreviewUrl.value = URL.createObjectURL(file)
   }
-  localPreviewUrl.value = URL.createObjectURL(file)
-  imageExists.value = true // Local file always exists
+  else if (localPreviewUrl.value) {
+    URL.revokeObjectURL(localPreviewUrl.value)
+    localPreviewUrl.value = null
+  }
 
+  imageExists.value = true
   emit('upload', file)
 }
 
@@ -204,6 +227,7 @@ onUnmounted(() => {
       ref="fileInput"
       type="file"
       :accept="accept"
+      :multiple="multiple"
       :disabled="disabled || loading"
       hidden
       @change="handleFileSelect"
@@ -211,7 +235,7 @@ onUnmounted(() => {
 
     <!-- Preview Image (if exists) -->
     <div
-      v-if="hasPreview"
+      v-if="shouldShowPreview"
       class="file-upload__preview"
       :class="{ 'file-upload__preview--avatar': isAvatarVariant }"
       :style="aspectRatioStyle"

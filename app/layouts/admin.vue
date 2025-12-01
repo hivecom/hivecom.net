@@ -140,6 +140,12 @@ const menuItems = [
     permissions: ['announcements.read', 'announcements.create', 'announcements.update', 'announcements.delete'],
   },
   {
+    name: 'Assets',
+    path: '/admin/assets',
+    icon: 'ph:images-square',
+    permissions: ['assets.read', 'assets.create', 'assets.update', 'assets.delete'],
+  },
+  {
     name: 'Complaints',
     path: '/admin/complaints',
     icon: 'ph:flag',
