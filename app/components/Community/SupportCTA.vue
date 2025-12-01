@@ -13,14 +13,10 @@ const props = withDefaults(defineProps<Props>(), {
   supporterIds: () => [],
 })
 
-// Fetch supporter count if not provided
 const actualSupporterCount = ref(props.supporterCount)
-
-// Get current user for authentication check
 const currentUser = useSupabaseUser()
 
 onMounted(async () => {
-  // Only fetch if supporter count is not provided (defaulted to 0)
   if (props.supporterCount === 0) {
     try {
       const supabase = useSupabaseClient()
@@ -36,7 +32,6 @@ onMounted(async () => {
       }
     }
     catch (error) {
-      // Silently fail - supporter count will remain 0
       console.warn('Failed to fetch supporter count:', error)
     }
   }
@@ -50,7 +45,6 @@ onMounted(async () => {
   <Card class="support-card" expand>
     <div class="support-card__sheen gold-surface" aria-hidden="true" />
     <Flex column gap="l" y-center expand class="support-card__content">
-      <!-- Header -->
       <Flex column y-center gap="s" class="mb-l">
         <Icon name="ph:heart" size="3rem" class="gold-icon support-card__heart" />
         <h3 class="text-bold text-xl mb-s">
@@ -64,7 +58,6 @@ onMounted(async () => {
         </p>
       </Flex>
 
-      <!-- Call to Action -->
       <div>
         <NuxtLink
           :to="constants.PATREON.URL"
@@ -88,11 +81,11 @@ onMounted(async () => {
           :avatar-size="48"
           :random="true"
           :gap="4"
+          :supporter-highlight="true"
           class="pt-m"
         />
       </div>
 
-      <!-- Benefits -->
       <Flex column y-center class="support-benefits" expand>
         <h4 class="text-bold mb-s text-color-light text-s">
           Your support helps with
@@ -214,12 +207,6 @@ onMounted(async () => {
       inset 0 1px 6px rgba(255, 255, 255, 0.35),
       0 4px 12px rgba(0, 0, 0, 0.35);
   }
-
-  .support-button-content {
-    .iconify {
-      color: #0c0b09;
-    }
-  }
 }
 
 .support-button-content {
@@ -227,23 +214,46 @@ onMounted(async () => {
   z-index: 1;
 
   .iconify {
-    color: white;
+    color: currentColor;
+    transition: color 0.3s ease;
   }
 }
 
-:root.dark {
-  .support-button-content {
-    .iconify {
-      color: black;
-    }
+:root:not(.dark) {
+  .support-card {
+    background: radial-gradient(
+      circle at 20% 0%,
+      rgba(255, 255, 255, 0.95),
+      rgba(253, 244, 212, 0.85) 55%,
+      var(--color-bg-raised) 100%
+    );
+    border-color: rgba(12, 11, 9, 0.15);
+    box-shadow:
+      0 18px 45px rgba(12, 11, 9, 0.08),
+      0 6px 18px rgba(12, 11, 9, 0.04);
+  }
+
+  .support-card__sheen {
+    opacity: 0.32;
+  }
+
+  .support-button {
+    color: #2b1600;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
   }
 
   .support-button--gold {
-    .support-button-content {
-      .iconify {
-        color: #0c0b09;
-      }
-    }
+    background-image: linear-gradient(125deg, #fff0c7 0%, #ffd374 38%, #f0b036 68%, #c27a17 100%);
+    border-color: rgba(139, 94, 17, 0.65);
+    box-shadow:
+      inset 0 1px 4px rgba(255, 255, 255, 0.4),
+      0 12px 28px rgba(12, 11, 9, 0.25);
+  }
+
+  .support-benefits {
+    background: rgba(255, 255, 255, 0.82);
+    border-color: rgba(12, 11, 9, 0.08);
+    box-shadow: 0 10px 25px rgba(12, 11, 9, 0.05);
   }
 }
 

@@ -1,48 +1,12 @@
 <script setup lang="ts">
 import { Card, Flex } from '@dolanske/vui'
-import ProfileBadge from '@/components/Profile/Badges/ProfileBadge.vue'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
 import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
 import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
 import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
-import ProfileBadgeLifetime from '@/components/Profile/Badges/ProfileBadgeLifetime.vue'
+import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
+import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
 import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
-
-type BadgeVariant = 'bronze' | 'silver' | 'gold' | 'shiny'
-
-interface PlaygroundBadge {
-  label: string
-  description: string
-  variant: BadgeVariant
-  icon: string
-}
-
-const baseBadges: PlaygroundBadge[] = [
-  {
-    label: 'Bronze',
-    description: 'Baseline copper finish.',
-    variant: 'bronze',
-    icon: 'ph:medal',
-  },
-  {
-    label: 'Silver',
-    description: 'Cool-toned silver palette.',
-    variant: 'silver',
-    icon: 'ph:shield',
-  },
-  {
-    label: 'Gold',
-    description: 'Premium gold surface.',
-    variant: 'gold',
-    icon: 'ph:star-four',
-  },
-  {
-    label: 'Opal',
-    description: 'Opal/shiny material.',
-    variant: 'shiny',
-    icon: 'ph:sketch-logo',
-  },
-]
 
 function memberSinceYearsAgo(years: number) {
   const date = new Date()
@@ -50,7 +14,7 @@ function memberSinceYearsAgo(years: number) {
   return date.toISOString()
 }
 
-const membershipSnapshots = [1, 3, 7, 13].map(years => ({
+const membershipSnapshots = [1, 5, 10, 20].map(years => ({
   years,
   memberSince: memberSinceYearsAgo(years),
 }))
@@ -60,51 +24,35 @@ const membershipSnapshots = [1, 3, 7, 13].map(years => ({
   <div class="badges-playground page">
     <section class="page-title">
       <div>
-        <h1>Badge Playground</h1>
-        <p>Use this sandbox to test iconography, descriptions, and materials.</p>
+        <h1>Badges</h1>
+        <p>These are all the badges available in the community.</p>
       </div>
     </section>
 
     <section class="playground-section">
       <Flex class="section-heading" column gap="xxs">
-        <h2>Material Variants</h2>
-        <p>Swap icons/labels to confirm sizing and pointer interaction per surface.</p>
+        <h2>Special Recognition</h2>
+        <p>These badges recognize special contributions and statuses within the community.</p>
       </Flex>
       <Card class="playground-card">
         <div class="badge-grid">
-          <div v-for="badge in baseBadges" :key="badge.label" class="badge-preview">
-            <ProfileBadge
-              :label="badge.label"
-              :description="badge.description"
-              :icon="badge.icon"
-              :variant="badge.variant"
-            />
-          </div>
-        </div>
-      </Card>
-    </section>
-
-    <section class="playground-section">
-      <Flex class="section-heading" column gap="xxs">
-        <h2>Preset Badges</h2>
-        <p>Ready-made badge components wired to the latest copy and icons.</p>
-      </Flex>
-      <Card class="playground-card">
-        <div class="badge-grid">
-          <div class="badge-preview">
-            <ProfileBadgeEarlybird />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeLifetime />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeFounder />
-          </div>
           <div class="badge-preview">
             <ProfileBadgeHost />
           </div>
           <div class="badge-preview">
             <ProfileBadgeBuilder />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeEarlybird />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeSupporter />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeSupporterLifetime />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeFounder />
           </div>
         </div>
       </Card>
@@ -113,7 +61,7 @@ const membershipSnapshots = [1, 3, 7, 13].map(years => ({
     <section class="playground-section">
       <Flex class="section-heading" column gap="xxs">
         <h2>Membership Years</h2>
-        <p>Visualize the "One of Us" badge tiers for different member ages.</p>
+        <p>These badges represent the length of time a member has been part of the community.</p>
       </Flex>
       <Card class="playground-card">
         <div class="badge-grid">

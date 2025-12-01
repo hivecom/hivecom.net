@@ -23,6 +23,13 @@ const countdown = ref({
   seconds: 0,
 })
 
+const isCountdownComplete = computed(() =>
+  countdown.value.days === 0
+  && countdown.value.hours === 0
+  && countdown.value.minutes === 0
+  && countdown.value.seconds === 0,
+)
+
 function updateTime() {
   const now = new Date()
   const eventDate = new Date(props.data.date)
@@ -94,7 +101,12 @@ updateTime()
     @click="navigateTo(`/events/${data.id}`)"
   >
     <!-- Countdown for upcoming events -->
-    <Flex v-if="!isPast && !isOngoing" column gap="xs" class="event-item__countdown-container">
+    <Flex
+      v-if="!isPast && !isOngoing && !isCountdownComplete"
+      column
+      gap="xs"
+      class="event-item__countdown-container"
+    >
       <Grid :columns="4" gap="l" class="event-item__countdown" expand>
         <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
           <span class="event-item__countdown-label text-xs text-color-lighter">Days</span>
@@ -122,7 +134,12 @@ updateTime()
     </Flex>
 
     <!-- Ongoing event status -->
-    <Flex v-else-if="isOngoing" column gap="xs" class="event-item__ongoing-container">
+    <Flex
+      v-else-if="isOngoing || (!isPast && isCountdownComplete)"
+      column
+      gap="xs"
+      class="event-item__ongoing-container"
+    >
       <Flex x-center class="event-item__ongoing-text" expand>
         <span class="text-bold text-xxxl color-accent">NOW</span>
       </Flex>

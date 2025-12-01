@@ -12,6 +12,7 @@ interface Props {
   random?: boolean
   gap?: number
   hideGenericUsers?: boolean
+  supporterHighlight?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -21,6 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
   random: false,
   gap: 0,
   hideGenericUsers: true,
+  supporterHighlight: false,
 })
 
 const GENERIC_USERNAME_REGEX = /^user\d+$/i
@@ -183,47 +185,51 @@ defineExpose({
       y-center
       :gap="gapValue"
     >
-      <Tooltip
+      <div
         v-for="entry in usersList"
         :key="entry.id"
         class="bulk-avatar-display__avatar"
-        :class="{ 'bulk-avatar-display__avatar--supporter': isSupporter(entry.profile) }"
+        :class="{
+          'bulk-avatar-display__avatar--supporter': supporterHighlight && isSupporter(entry.profile),
+        }"
         :style="avatarStyleVars"
       >
-        <template #tooltip>
-          <p v-if="showNames && entry.profile">
-            {{ entry.profile.username }}
-          </p>
-        </template>
+        <Tooltip>
+          <template #tooltip>
+            <p v-if="showNames && entry.profile">
+              {{ entry.profile.username }}
+            </p>
+          </template>
 
-        <NuxtLink
-          v-if="entry.profile?.username"
-          :to="`/profile/${entry.profile.username}`"
-          class="bulk-avatar-display__link"
-        >
+          <NuxtLink
+            v-if="entry.profile?.username"
+            :to="`/profile/${entry.profile.username}`"
+            class="bulk-avatar-display__link"
+          >
+            <Avatar
+              :size="avatarSize"
+              :url="entry.profile?.avatarUrl || undefined"
+              class="bulk-avatar-display__avatar-item"
+            >
+              <template v-if="!entry.profile?.avatarUrl" #default>
+                {{ getUserInitials(entry.profile.username) }}
+              </template>
+            </Avatar>
+          </NuxtLink>
+
+          <!-- Fallback for users without username -->
           <Avatar
+            v-else
             :size="avatarSize"
             :url="entry.profile?.avatarUrl || undefined"
             class="bulk-avatar-display__avatar-item"
           >
             <template v-if="!entry.profile?.avatarUrl" #default>
-              {{ getUserInitials(entry.profile.username) }}
+              {{ entry.profile ? getUserInitials(entry.profile.username || 'User') : '?' }}
             </template>
           </Avatar>
-        </NuxtLink>
-
-        <!-- Fallback for users without username -->
-        <Avatar
-          v-else
-          :size="avatarSize"
-          :url="entry.profile?.avatarUrl || undefined"
-          class="bulk-avatar-display__avatar-item"
-        >
-          <template v-if="!entry.profile?.avatarUrl" #default>
-            {{ entry.profile ? getUserInitials(entry.profile.username || 'User') : '?' }}
-          </template>
-        </Avatar>
-      </Tooltip>
+        </Tooltip>
+      </div>
 
       <div
         v-if="remainingCount > 0"
@@ -274,24 +280,6 @@ defineExpose({
     overflow: visible;
   }
 
-  &__avatar--supporter {
-    &::before {
-      content: '';
-      position: absolute;
-      inset: -4px;
-      border-radius: 50%;
-      background: linear-gradient(120deg, #fdf4d4 0%, #f2c15a 45%, #c88a2a 100%);
-      background-size: 200% 200%;
-      opacity: 0.9;
-      z-index: 0;
-      pointer-events: none;
-      box-shadow:
-        0 0 20px rgba(0, 0, 0, 0.35),
-        0 0 8px rgba(253, 244, 212, 0.6);
-      animation: goldShimmer 14s ease-in-out infinite;
-    }
-  }
-
   &__avatar-item {
     transition:
       transform 0.2s ease,
@@ -304,6 +292,23 @@ defineExpose({
     &:hover {
       transform: scale(1.1);
       z-index: 20;
+    }
+  }
+
+  &__avatar--supporter {
+    .bulk-avatar-display__avatar-item {
+      border: 2px solid transparent;
+      background:
+        linear-gradient(var(--color-bg), var(--color-bg)) padding-box,
+        linear-gradient(120deg, #fdf4d4 0%, #f2c15a 45%, #c88a2a 100%) border-box;
+      background-size:
+        100% 100%,
+        220% 220%;
+      background-origin: border-box;
+      box-shadow:
+        0 0 16px rgba(253, 244, 212, 0.45),
+        0 0 20px rgba(0, 0, 0, 0.25);
+      animation: goldShimmer 14s ease-in-out infinite;
     }
   }
 

@@ -25,6 +25,12 @@ Deno.serve(async (req: Request) => {
     const body: BanUserRequest = await req.json();
     const { userId, banDuration, banReason } = body;
 
+    // Normalize ban duration for Supabase Auth (it expects values like 1h, 7d, 100y, or none)
+    let normalizedBanDuration = banDuration;
+    if (banDuration === 'permanent') {
+      normalizedBanDuration = '100y';
+    }
+
     if (!userId || typeof userId !== "string") {
       return new Response(
         JSON.stringify({
@@ -227,7 +233,7 @@ Deno.serve(async (req: Request) => {
     // Ban the user using Supabase Auth Admin API
     const { error: banError } = await supabaseClient.auth.admin.updateUserById(
       userId,
-      { ban_duration: banDuration }
+      { ban_duration: normalizedBanDuration }
     );
 
     if (banError) {

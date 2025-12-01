@@ -192,7 +192,7 @@ onMounted(() => {
           You haven't submitted any complaints yet.
         </p>
         <Button variant="accent" @click="handleNewComplaint">
-          Submit Your First Complaint
+          Submit a Complaint
         </Button>
       </div>
 

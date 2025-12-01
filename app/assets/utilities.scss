@@ -60,6 +60,10 @@
   --gold-mid: #f2c15a;
   --gold-deep: #c88a2a;
   --gold-shadow: rgba(200, 138, 42, 0.35);
+  --gold-icon-color: var(--gold-highlight);
+  --gold-icon-shadow: rgba(0, 0, 0, 0.35);
+  --gold-icon-glow: rgba(255, 255, 255, 0.45);
+  --gold-text-shadow: rgba(0, 0, 0, 0.2);
   --gold-gradient: linear-gradient(
     125deg,
     var(--gold-light) 0%,
@@ -69,6 +73,30 @@
     var(--gold-mid) 82%,
     var(--gold-light) 100%
   );
+}
+
+:root.dark :where(.gold, .gold-text, .gold-icon, .gold-surface) {
+  --gold-light: #fff8e8;
+  --gold-highlight: #ffe7ad;
+  --gold-mid: #f7c86c;
+  --gold-deep: #dca040;
+  --gold-shadow: rgba(0, 0, 0, 0.6);
+  --gold-icon-color: #ffe7ad;
+  --gold-icon-shadow: rgba(0, 0, 0, 0.5);
+  --gold-icon-glow: rgba(255, 230, 190, 0.75);
+  --gold-text-shadow: rgba(0, 0, 0, 0.35);
+}
+
+:root:not(.dark) :where(.gold, .gold-text, .gold-icon, .gold-surface) {
+  --gold-light: #fff3d0;
+  --gold-highlight: #f3c06c;
+  --gold-mid: #d89238;
+  --gold-deep: #8b540d;
+  --gold-shadow: rgba(139, 84, 13, 0.3);
+  --gold-icon-color: #6b3d00;
+  --gold-icon-shadow: rgba(139, 84, 13, 0.35);
+  --gold-icon-glow: rgba(255, 246, 227, 0.9);
+  --gold-text-shadow: rgba(139, 84, 13, 0.35);
 }
 
 .gold-surface {
@@ -97,13 +125,14 @@
   -webkit-text-fill-color: transparent;
   display: inline-block;
   animation: goldShimmer 8s linear infinite;
+  text-shadow: 0 1px 1px var(--gold-text-shadow);
 }
 
 .gold-icon {
   display: inline-flex;
-  color: var(--gold-highlight);
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
-  text-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
+  color: var(--gold-icon-color);
+  filter: drop-shadow(0 3px 6px var(--gold-icon-shadow));
+  text-shadow: 0 0 6px var(--gold-icon-glow);
   animation: goldShimmer 8s linear infinite;
 }
 

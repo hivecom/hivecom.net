@@ -3,10 +3,11 @@
  * Provides efficient caching for user profile and role data
  */
 
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
 import type { CacheConfig } from './useSupabaseCache'
 import type { Database } from '@/types/database.types'
-import { computed, readonly, ref, unref, watch } from 'vue'
+import { computed, onScopeDispose, readonly, ref, unref, watch } from 'vue'
 import { getUserAvatarUrl } from '@/lib/utils/storage'
 import { useSupabaseCache } from './useSupabaseCache'
 
@@ -22,8 +23,12 @@ export interface UserDisplayData {
 interface ProfileCacheEntry {
   id: string
   username: string
-  supporter_lifetime: boolean
-  supporter_patreon: boolean
+  supporter_lifetime?: boolean
+  supporter_patreon?: boolean
+}
+
+function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is ProfileCacheEntry {
+  return typeof profile?.supporter_lifetime === 'boolean' && typeof profile?.supporter_patreon === 'boolean'
 }
 
 export interface UseUserDataOptions extends CacheConfig {
@@ -48,10 +53,13 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
   const cache = useSupabaseCache(cacheConfig)
   const supabase = useSupabaseClient<Database>()
   const currentUser = useSupabaseUser()
+  const isClient = typeof window !== 'undefined'
 
   const user = ref<UserDisplayData | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  let profileChannel: RealtimeChannel | null = null
+  let subscribedProfileId: string | null = null
 
   /**
    * Generate cache keys for different data types
@@ -72,6 +80,10 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
 
     // Check cache first
     let profile = cache.get<ProfileCacheEntry>(cacheKey)
+    if (profile && !hasSupporterMetadata(profile)) {
+      cache.delete(cacheKey)
+      profile = null
+    }
 
     if (!profile) {
       // Fetch from database
@@ -219,6 +231,46 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
     }
   }
 
+  async function cleanupProfileChannel(): Promise<void> {
+    if (!profileChannel)
+      return
+
+    try {
+      await supabase.removeChannel(profileChannel)
+    }
+    finally {
+      profileChannel = null
+      subscribedProfileId = null
+    }
+  }
+
+  function setupProfileSubscription(id: string | null | undefined): void {
+    const normalizedId = typeof id === 'string' ? id.trim() : ''
+
+    if (!isClient || normalizedId === '') {
+      void cleanupProfileChannel()
+      return
+    }
+
+    if (profileChannel && subscribedProfileId === normalizedId)
+      return
+
+    void cleanupProfileChannel()
+
+    profileChannel = supabase.channel(`user-profile:${normalizedId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: `id=eq.${normalizedId}`,
+      }, () => {
+        void fetchUserData(true)
+      })
+      .subscribe()
+
+    subscribedProfileId = normalizedId
+  }
+
   /**
    * Refetch user data (bypasses cache)
    */
@@ -248,13 +300,19 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
   }
 
   // Watch for userId changes
-  watch(() => unref(userId), () => {
+  watch(() => unref(userId), (id) => {
+    setupProfileSubscription(id)
     void fetchUserData()
   }, { immediate: true })
 
   // Watch for authentication changes
   watch(currentUser, () => {
+    setupProfileSubscription(unref(userId))
     void fetchUserData()
+  })
+
+  onScopeDispose(() => {
+    void cleanupProfileChannel()
   })
 
   // Computed helpers
@@ -346,7 +404,19 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
     error.value = null
 
     try {
-      const profileIdsToFetch = ids.filter(id => !cache.has(`user:profile:${id}`))
+      const profileIdsToFetch = ids.filter((id) => {
+        const cacheKey = `user:profile:${id}`
+        const cachedProfile = cache.get<ProfileCacheEntry>(cacheKey)
+        if (!cachedProfile)
+          return true
+
+        if (!hasSupporterMetadata(cachedProfile)) {
+          cache.delete(cacheKey)
+          return true
+        }
+
+        return false
+      })
       const roleIdsToFetch = includeRole ? ids.filter(id => !cache.has(`user:role:${id}`)) : []
       const avatarIdsToFetch = includeAvatar ? ids.filter(id => !cache.has(`user:avatar:${id}`)) : []
 

@@ -1,22 +1,27 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { Enums, Tables } from '@/types/database.types'
-import { Card, Flex } from '@dolanske/vui'
+import { Button, Card, Flex } from '@dolanske/vui'
 import { computed } from 'vue'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
 import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
 import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
-import ProfileBadgeLifetime from '@/components/Profile/Badges/ProfileBadgeLifetime.vue'
+import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
+import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
 import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
 import ProfileBadgeHost from './Badges/ProfileBadgeHost.vue'
 
 interface Props {
   profile: Tables<'profiles'>
+  isOwnProfile?: boolean
 }
 
 type ProfileBadgeSlug = Enums<'profile_badge'>
+interface BadgeEntry { slug: ProfileBadgeSlug, component: Component }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  isOwnProfile: false,
+})
 
 const badgeComponentMap: Record<ProfileBadgeSlug, Component> = {
   builder: ProfileBadgeBuilder,
@@ -24,6 +29,8 @@ const badgeComponentMap: Record<ProfileBadgeSlug, Component> = {
   founder: ProfileBadgeFounder,
   host: ProfileBadgeHost,
 }
+
+const shinyBadgeSlugs = new Set<ProfileBadgeSlug>(['founder'])
 
 const uniqueProfileBadges = computed<ProfileBadgeSlug[]>(() => {
   const rawBadges = props.profile.badges ?? []
@@ -38,10 +45,19 @@ const profileBadgesToRender = computed(() =>
         return null
       return { slug, component }
     })
-    .filter((entry): entry is { slug: ProfileBadgeSlug, component: Component } => !!entry),
+    .filter((entry): entry is BadgeEntry => !!entry),
+)
+
+const shinyProfileBadges = computed(() =>
+  profileBadgesToRender.value.filter(badge => shinyBadgeSlugs.has(badge.slug)),
+)
+
+const standardProfileBadges = computed(() =>
+  profileBadgesToRender.value.filter(badge => !shinyBadgeSlugs.has(badge.slug)),
 )
 
 const YEARS_BADGE_THRESHOLD_DAYS = 365
+const YEARS_BADGE_SHINY_THRESHOLD_YEARS = 15
 
 function getDaysSince(dateString: string): number {
   const created = new Date(dateString)
@@ -56,6 +72,7 @@ function getDaysSince(dateString: string): number {
 const memberDays = computed(() => getDaysSince(props.profile.created_at))
 const memberYears = computed(() => Math.floor(memberDays.value / 365))
 const hasYearsBadge = computed(() => memberYears.value >= 1 && memberDays.value >= YEARS_BADGE_THRESHOLD_DAYS)
+const isYearsBadgeShiny = computed(() => hasYearsBadge.value && memberYears.value >= YEARS_BADGE_SHINY_THRESHOLD_YEARS)
 
 const hasBadges = computed(() => {
   return profileBadgesToRender.value.length > 0
@@ -63,6 +80,14 @@ const hasBadges = computed(() => {
     || props.profile.supporter_patreon
     || hasYearsBadge.value
 })
+
+const emptyStateText = computed(() => {
+  if (props.isOwnProfile)
+    return 'Earn badges by participating in the community!'
+  return 'This member has not earned any badges yet.'
+})
+
+const goToBadgeDirectory = () => navigateTo('/community/badges')
 </script>
 
 <template>
@@ -70,17 +95,38 @@ const hasBadges = computed(() => {
     <template #header>
       <Flex x-between y-center>
         <h3>Badges</h3>
-        <Icon name="ph:hexagon" />
+
+        <Button size="s" variant="gray" aria-label="See all community badges" @click="goToBadgeDirectory">
+          <template #start>
+            <Icon name="ph:hexagon" />
+          </template>
+          Preview All
+        </Button>
       </Flex>
     </template>
 
     <div v-if="hasBadges" class="badges-stack">
-      <div v-if="profile.supporter_lifetime" class="badges-stack__item">
-        <ProfileBadgeLifetime />
+      <div v-if="isYearsBadgeShiny" class="badges-stack__item">
+        <ProfileBadgeYears
+          :years="memberYears"
+          :member-since="profile.created_at"
+        />
       </div>
 
       <div
-        v-for="badge in profileBadgesToRender"
+        v-for="badge in shinyProfileBadges"
+        :key="`profile-badge-${badge.slug}`"
+        class="badges-stack__item"
+      >
+        <component :is="badge.component" />
+      </div>
+
+      <div v-if="profile.supporter_lifetime" class="badges-stack__item">
+        <ProfileBadgeSupporterLifetime />
+      </div>
+
+      <div
+        v-for="badge in standardProfileBadges"
         :key="`profile-badge-${badge.slug}`"
         class="badges-stack__item"
       >
@@ -88,10 +134,10 @@ const hasBadges = computed(() => {
       </div>
 
       <div v-if="profile.supporter_patreon" class="badges-stack__item">
-        <ProfileBadgePatreon />
+        <ProfileBadgeSupporter />
       </div>
 
-      <div v-if="hasYearsBadge" class="badges-stack__item">
+      <div v-if="!isYearsBadgeShiny && hasYearsBadge" class="badges-stack__item">
         <ProfileBadgeYears
           :years="memberYears"
           :member-since="profile.created_at"
@@ -102,7 +148,7 @@ const hasBadges = computed(() => {
     <Flex v-else column y-center x-center class="badges-empty">
       <Icon name="ph:hexagon" size="56" />
       <p class="text-color-lighter text-s">
-        Badges will appear here as you participate in the community!
+        {{ emptyStateText }}
       </p>
     </Flex>
   </Card>

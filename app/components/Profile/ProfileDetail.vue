@@ -831,7 +831,7 @@ async function ignoreFriendRequest() {
           />
 
           <!-- Badges -->
-          <ProfileBadges :profile="profile" />
+          <ProfileBadges :profile="profile" :is-own-profile="isOwnProfile" />
         </Flex>
       </div>
     </template>

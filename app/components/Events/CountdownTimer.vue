@@ -21,16 +21,25 @@ const isImminent = computed(() => {
   return props.countdown.days === 0 && props.countdown.hours < 24
 })
 
-// Calculate total remaining time as percentage for border animation (reversed)
-const timeProgressPercentage = computed(() => {
+const remainingSeconds = computed(() => {
   if (!props.countdown)
-    return 100
+    return null
 
-  const totalSeconds = props.countdown.days * 24 * 60 * 60
+  return props.countdown.days * 24 * 60 * 60
     + props.countdown.hours * 60 * 60
     + props.countdown.minutes * 60
     + props.countdown.seconds
+})
 
+const isCountdownComplete = computed(() => (remainingSeconds.value ?? 1) <= 0)
+const shouldShowNow = computed(() => props.isOngoing || isCountdownComplete.value)
+
+// Calculate total remaining time as percentage for border animation (reversed)
+const timeProgressPercentage = computed(() => {
+  if (remainingSeconds.value === null)
+    return 100
+
+  const totalSeconds = Math.max(remainingSeconds.value, 0)
   // Assume max deadline is 30 days for visual purposes
   const maxSeconds = 30 * 24 * 60 * 60
   // Reverse the percentage so it fills up as time decreases
@@ -64,12 +73,18 @@ const timeProgressPercentage = computed(() => {
       </Flex>
     </Flex>
   </Flex>  <!-- Actual countdown when data is available -->
-  <Flex v-else expand class="countdown-timer" :class="{ 'countdown-timer--ongoing': isOngoing }" :style="{ '--time-progress': `${timeProgressPercentage}%` }">
+  <Flex
+    v-else
+    expand
+    class="countdown-timer"
+    :class="{ 'countdown-timer--ongoing': shouldShowNow }"
+    :style="{ '--time-progress': `${timeProgressPercentage}%` }"
+  >
     <!-- Border animation - only show when imminent -->
     <div v-if="isImminent" class="countdown-timer__border" />
 
-    <!-- Show "NOW" when event is ongoing -->
-    <Flex v-if="isOngoing" y-center x-center class="countdown-timer__now" expand>
+    <!-- Show "NOW" when event is ongoing or countdown finishes -->
+    <Flex v-if="shouldShowNow" y-center x-center class="countdown-timer__now" expand>
       <span class="countdown-timer__now-text">NOW</span>
     </Flex>
 
