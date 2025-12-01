@@ -21,6 +21,7 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      NUXT_PUBLIC_SUPABASE_PROJECT_REF: ${{ vars.NUXT_PUBLIC_SUPABASE_PROJECT_REF }}
       NUXT_PUBLIC_PATREON_CLIENT_ID: ${{ vars.NUXT_PUBLIC_PATREON_CLIENT_ID }}
 
     steps:
