@@ -4,7 +4,6 @@ import { Button, Card, Flex, Grid } from '@dolanske/vui'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
-import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
 
 // Get current user for authentication checks

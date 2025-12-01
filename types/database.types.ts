@@ -826,7 +826,7 @@ export interface Database {
         | 'projects.delete'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
-      profile_badge: 'founder' | 'earlybird' | 'builder'
+      profile_badge: 'founder' | 'earlybird' | 'builder' | 'host'
       region: 'eu' | 'na' | 'all'
     }
     CompositeTypes: {
@@ -1018,7 +1018,7 @@ export const Constants = {
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],
-      profile_badge: ['founder', 'earlybird', 'builder'],
+      profile_badge: ['founder', 'earlybird', 'builder', 'host'],
       region: ['eu', 'na', 'all'],
     },
   },
