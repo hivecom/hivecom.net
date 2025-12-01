@@ -17,47 +17,52 @@ interface Props {
 }
 
 type ProfileBadgeSlug = Enums<'profile_badge'>
-interface BadgeEntry { slug: ProfileBadgeSlug, component: Component }
+type BadgeVariant = 'shiny' | 'gold' | 'silver' | 'bronze'
+
+interface BadgeDefinition {
+  id: string
+  component: Component
+  slug?: ProfileBadgeSlug
+  isVisible?: () => boolean
+}
+
+interface RenderableBadgeEntry {
+  id: string
+  component: Component
+  componentProps?: Record<string, unknown>
+}
 
 const props = withDefaults(defineProps<Props>(), {
   isOwnProfile: false,
 })
 
-const badgeComponentMap: Record<ProfileBadgeSlug, Component> = {
-  builder: ProfileBadgeBuilder,
-  earlybird: ProfileBadgeEarlybird,
-  founder: ProfileBadgeFounder,
-  host: ProfileBadgeHost,
-}
+const badgeVariantOrder: BadgeVariant[] = ['shiny', 'gold', 'silver', 'bronze']
 
-const shinyBadgeSlugs = new Set<ProfileBadgeSlug>(['founder'])
+type BadgeDefinitionsByVariant = Record<BadgeVariant, BadgeDefinition[]>
+
+// Reorder or extend these lists to control badge ordering (years badge handled separately below).
+const badgeDefinitionsByVariant: BadgeDefinitionsByVariant = {
+  shiny: [
+    { id: 'founder', slug: 'founder', component: ProfileBadgeFounder },
+  ],
+  gold: [
+    { id: 'supporter_lifetime', component: ProfileBadgeSupporterLifetime, isVisible: () => props.profile.supporter_lifetime },
+    { id: 'supporter', component: ProfileBadgeSupporter, isVisible: () => props.profile.supporter_patreon },
+    { id: 'earlybird', slug: 'earlybird', component: ProfileBadgeEarlybird },
+  ],
+  silver: [
+    { id: 'host', slug: 'host', component: ProfileBadgeHost },
+    { id: 'builder', slug: 'builder', component: ProfileBadgeBuilder },
+  ],
+  bronze: [],
+}
 
 const uniqueProfileBadges = computed<ProfileBadgeSlug[]>(() => {
   const rawBadges = props.profile.badges ?? []
   return Array.from(new Set(rawBadges)) as ProfileBadgeSlug[]
 })
 
-const profileBadgesToRender = computed(() =>
-  uniqueProfileBadges.value
-    .map((slug) => {
-      const component = badgeComponentMap[slug]
-      if (!component)
-        return null
-      return { slug, component }
-    })
-    .filter((entry): entry is BadgeEntry => !!entry),
-)
-
-const shinyProfileBadges = computed(() =>
-  profileBadgesToRender.value.filter(badge => shinyBadgeSlugs.has(badge.slug)),
-)
-
-const standardProfileBadges = computed(() =>
-  profileBadgesToRender.value.filter(badge => !shinyBadgeSlugs.has(badge.slug)),
-)
-
 const YEARS_BADGE_THRESHOLD_DAYS = 365
-const YEARS_BADGE_SHINY_THRESHOLD_YEARS = 15
 
 function getDaysSince(dateString: string): number {
   const created = new Date(dateString)
@@ -72,14 +77,53 @@ function getDaysSince(dateString: string): number {
 const memberDays = computed(() => getDaysSince(props.profile.created_at))
 const memberYears = computed(() => Math.floor(memberDays.value / 365))
 const hasYearsBadge = computed(() => memberYears.value >= 1 && memberDays.value >= YEARS_BADGE_THRESHOLD_DAYS)
-const isYearsBadgeShiny = computed(() => hasYearsBadge.value && memberYears.value >= YEARS_BADGE_SHINY_THRESHOLD_YEARS)
+const yearsBadgeVariant = computed<BadgeVariant | null>(() => {
+  if (!hasYearsBadge.value)
+    return null
 
-const hasBadges = computed(() => {
-  return profileBadgesToRender.value.length > 0
-    || props.profile.supporter_lifetime
-    || props.profile.supporter_patreon
-    || hasYearsBadge.value
+  if (memberYears.value >= 20)
+    return 'shiny'
+  if (memberYears.value >= 10)
+    return 'gold'
+  if (memberYears.value >= 5)
+    return 'silver'
+  return 'bronze'
 })
+
+const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
+  const memberBadges = new Set(uniqueProfileBadges.value)
+  const entries: RenderableBadgeEntry[] = []
+  const currentYearsVariant = yearsBadgeVariant.value
+
+  badgeVariantOrder.forEach((variant) => {
+    badgeDefinitionsByVariant[variant].forEach((definition) => {
+      if (definition.slug && !memberBadges.has(definition.slug))
+        return
+      if (definition.isVisible && !definition.isVisible())
+        return
+
+      entries.push({
+        id: definition.id,
+        component: definition.component,
+      })
+    })
+
+    if (hasYearsBadge.value && currentYearsVariant === variant) {
+      entries.push({
+        id: 'years',
+        component: ProfileBadgeYears,
+        componentProps: {
+          years: memberYears.value,
+          memberSince: props.profile.created_at,
+        },
+      })
+    }
+  })
+
+  return entries
+})
+
+const hasBadges = computed(() => profileBadgesToRender.value.length > 0)
 
 const emptyStateText = computed(() => {
   if (props.isOwnProfile)
@@ -106,42 +150,12 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
     </template>
 
     <div v-if="hasBadges" class="badges-stack">
-      <div v-if="isYearsBadgeShiny" class="badges-stack__item">
-        <ProfileBadgeYears
-          :years="memberYears"
-          :member-since="profile.created_at"
-        />
-      </div>
-
       <div
-        v-for="badge in shinyProfileBadges"
-        :key="`profile-badge-${badge.slug}`"
+        v-for="badge in profileBadgesToRender"
+        :key="`profile-badge-${badge.id}`"
         class="badges-stack__item"
       >
-        <component :is="badge.component" />
-      </div>
-
-      <div v-if="profile.supporter_lifetime" class="badges-stack__item">
-        <ProfileBadgeSupporterLifetime />
-      </div>
-
-      <div
-        v-for="badge in standardProfileBadges"
-        :key="`profile-badge-${badge.slug}`"
-        class="badges-stack__item"
-      >
-        <component :is="badge.component" />
-      </div>
-
-      <div v-if="profile.supporter_patreon" class="badges-stack__item">
-        <ProfileBadgeSupporter />
-      </div>
-
-      <div v-if="!isYearsBadgeShiny && hasYearsBadge" class="badges-stack__item">
-        <ProfileBadgeYears
-          :years="memberYears"
-          :member-since="profile.created_at"
-        />
+        <component :is="badge.component" v-bind="badge.componentProps ?? {}" />
       </div>
     </div>
 
