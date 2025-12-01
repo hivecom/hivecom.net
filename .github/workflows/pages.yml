@@ -13,8 +13,8 @@ on:
 
 jobs:
   build:
-    # Only run if the Supabase push was successful
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # Only allow manual runs or successful Supabase runs from main
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
 
     environment: github_pages
