@@ -1,20 +1,16 @@
 # https://github.com/actions/deploy-pages#usage
 name: Deploy to GitHub pages
 on:
-  workflow_run:
-    workflows: [Push Supabase]
-    types:
-      - completed
-    branches:
-      - main
+  # Reusable entrypoint so Supabase workflow can call this after a successful run
+  workflow_call:
 
-  # Or trigger manually
+  # Or trigger manually (must target main branch)
   workflow_dispatch:
 
 jobs:
   build:
-    # Only allow manual runs or successful Supabase runs from main
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    # Allow reusable invocation or manual runs that target the main branch
+    if: ${{ github.event_name == 'workflow_call' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
 
     environment: github_pages
