@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { CmsAsset } from '@/lib/utils/cmsAssets'
-import { Alert, Badge, Button, Card, defineTable, Flex, Input, pushToast, Select, Table, Toasts } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Toasts } from '@dolanske/vui'
 
 import { computed, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
+import AssetRenameModal from '@/components/Admin/Assets/AssetRenameModal.vue'
 import AssetUpload from '@/components/Admin/Assets/AssetUpload.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { CMS_BUCKET_ID, formatBytes, isImageAsset, listCmsDirectory, listCmsFilesRecursive, normalizePrefix } from '@/lib/utils/cmsAssets'
 
@@ -29,6 +31,13 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const supabase = useSupabaseClient()
+const runtimeConfig = useRuntimeConfig()
+const storageConsoleUrl = computed(() => {
+  const projectRef = runtimeConfig.public?.supabaseProjectRef
+  if (typeof projectRef !== 'string' || projectRef.length === 0)
+    return ''
+  return `https://supabase.com/dashboard/project/${projectRef}/storage/buckets/${CMS_BUCKET_ID}`
+})
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 const loading = ref(true)
@@ -39,12 +48,19 @@ const searchQuery = ref('')
 const typeFilter = ref<TypeFilterValue>('all')
 const sortOption = ref<SortOptionValue>('name-asc')
 const viewMode = ref<'table' | 'grid'>('table')
-const actionLoading = ref<Record<string, boolean>>({})
+type AssetActionKey = 'delete' | 'rename'
+
+const actionLoading = ref<Record<string, Partial<Record<AssetActionKey, boolean>>>>({})
 
 const showUploadDrawer = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedAsset = ref<CmsAsset | null>(null)
 const skipNextRefresh = ref(false)
+const assetPendingDeletion = ref<CmsAsset | null>(null)
+const showDeleteConfirmModal = ref(false)
+const assetPendingRename = ref<CmsAsset | null>(null)
+const showRenameModal = ref(false)
+const renameLoading = ref(false)
 
 const typeFilterOptions: SelectOption<TypeFilterValue>[] = [
   { label: 'All types', value: 'all' },
@@ -136,12 +152,22 @@ const filteredAssets = computed(() => {
   return [...directories, ...files]
 })
 
-const { rows: tableRows } = defineTable(filteredAssets, {
+const tableData = computed(() => filteredAssets.value.map(asset => ({
+  'Name': asset.name,
+  'Type': getAssetTypeLabel(asset),
+  'Size': asset.type === 'folder' ? 0 : asset.size,
+  'Last Modified': asset.updated_at ?? asset.created_at ?? '',
+  '_original': asset,
+})))
+
+const { headers, rows: tableRows, setSort } = defineTable(tableData, {
   pagination: {
     enabled: false,
   },
   select: false,
 })
+
+setSort('Name', 'asc')
 
 function sortFiles(a: CmsAsset, b: CmsAsset) {
   switch (sortOption.value) {
@@ -198,21 +224,8 @@ function openDetails(asset: CmsAsset) {
   showDetailsDrawer.value = true
 }
 
-async function copyValue(value: string, label: string) {
-  if (!value)
-    return
-  try {
-    await navigator.clipboard.writeText(value)
-    pushToast(`${label} copied`)
-  }
-  catch (error) {
-    console.error('Clipboard error', error)
-    pushToast('Failed to copy value')
-  }
-}
-
 async function deleteAsset(asset: CmsAsset) {
-  setActionLoading(asset.path, true)
+  setActionLoading(asset.path, 'delete', true)
   try {
     if (asset.type === 'folder') {
       const files = await listCmsFilesRecursive(supabase, asset.path)
@@ -241,19 +254,111 @@ async function deleteAsset(asset: CmsAsset) {
     pushToast('Unable to delete asset')
   }
   finally {
-    setActionLoading(asset.path, false)
+    setActionLoading(asset.path, 'delete', false)
   }
 }
 
-function setActionLoading(path: string, state: boolean) {
+function promptDeleteAsset(asset: CmsAsset) {
+  assetPendingDeletion.value = asset
+  showDeleteConfirmModal.value = true
+}
+
+function confirmDeleteAsset() {
+  if (!assetPendingDeletion.value)
+    return
+  deleteAsset(assetPendingDeletion.value)
+  showDeleteConfirmModal.value = false
+  assetPendingDeletion.value = null
+}
+
+function canRenameAsset(asset: CmsAsset): boolean {
+  return props.canDelete && asset.type === 'file'
+}
+
+function promptRenameAsset(asset: CmsAsset) {
+  if (!canRenameAsset(asset))
+    return
+  assetPendingRename.value = asset
+  showRenameModal.value = true
+  showDetailsDrawer.value = false
+}
+
+async function handleRenameSubmit(newName: string) {
+  const target = assetPendingRename.value
+  if (!target)
+    return
+  if (target.type !== 'file') {
+    pushToast('Only files can be renamed at this time')
+    return
+  }
+
+  const newPath = await renameFileAsset(target, newName)
+  if (!newPath)
+    return
+
+  if (selectedAsset.value && selectedAsset.value.path === target.path) {
+    selectedAsset.value = {
+      ...selectedAsset.value,
+      name: newName,
+      path: newPath,
+    }
+  }
+
+  showRenameModal.value = false
+  assetPendingRename.value = null
+  showDetailsDrawer.value = false
+}
+
+async function renameFileAsset(asset: CmsAsset, newPathInput: string): Promise<string | null> {
+  const trimmed = normalizePrefix(newPathInput)
+  if (!trimmed) {
+    pushToast('Path is required')
+    return null
+  }
+
+  const targetPath = trimmed
+  if (targetPath === asset.path) {
+    pushToast('Path is unchanged')
+    return null
+  }
+
+  renameLoading.value = true
+  setActionLoading(asset.path, 'rename', true)
+  try {
+    const { error } = await supabase.storage
+      .from(CMS_BUCKET_ID)
+      .move(asset.path, targetPath)
+    if (error)
+      throw error
+
+    pushToast('File renamed')
+    await fetchAssets()
+    notifyPeers()
+    return targetPath
+  }
+  catch (error) {
+    console.error('Failed to rename asset', error)
+    pushToast('Unable to rename asset')
+    return null
+  }
+  finally {
+    renameLoading.value = false
+    setActionLoading(asset.path, 'rename', false)
+  }
+}
+
+function setActionLoading(path: string, action: AssetActionKey, state: boolean) {
   actionLoading.value = {
     ...actionLoading.value,
-    [path]: state,
+    [path]: {
+      ...(actionLoading.value[path] ?? {}),
+      [action]: state,
+    },
   }
 }
 
-function isActionLoading(path: string): boolean {
-  return !!actionLoading.value[path]
+function isActionLoading(path: string, action: AssetActionKey): boolean {
+  return !!actionLoading.value[path]?.[action]
 }
 
 function handleRowClick(asset: CmsAsset) {
@@ -275,10 +380,26 @@ function notifyPeers() {
   refreshSignal.value = (refreshSignal.value || 0) + 1
 }
 
+function openStorageConsole() {
+  if (!storageConsoleUrl.value)
+    return
+  window.open(storageConsoleUrl.value, '_blank', 'noopener')
+}
+
 function getAssetBadgeVariant(asset: CmsAsset): BadgeVariant {
   if (asset.type === 'folder')
     return 'info'
   return isImageAsset(asset) ? 'success' : 'neutral'
+}
+
+function getAssetTypeLabel(asset: CmsAsset): string {
+  if (asset.type === 'folder')
+    return 'Folder'
+  if (isImageAsset(asset))
+    return 'Image'
+  if (documentExtensions.includes(asset.extension ?? ''))
+    return 'Document'
+  return 'File'
 }
 
 watch(currentPrefix, () => {
@@ -297,6 +418,11 @@ watch(() => refreshSignal.value, (newValue, oldValue) => {
 watch(showDetailsDrawer, (isOpen) => {
   if (!isOpen)
     selectedAsset.value = null
+})
+
+watch(showRenameModal, (isOpen) => {
+  if (!isOpen)
+    assetPendingRename.value = null
 })
 
 onBeforeMount(fetchAssets)
@@ -345,6 +471,7 @@ onBeforeMount(fetchAssets)
           />
 
           <Select
+            v-if="viewMode === 'grid'"
             v-model="sortOptionModel"
             :options="sortSelectOptions"
             placeholder="Sort files"
@@ -377,6 +504,17 @@ onBeforeMount(fetchAssets)
               Refresh
             </Button>
             <Button
+              v-if="storageConsoleUrl"
+              variant="gray"
+              :disabled="!storageConsoleUrl"
+              @click="openStorageConsole"
+            >
+              <template #start>
+                <Icon name="ph:folder-open" />
+              </template>
+              Supabase Files
+            </Button>
+            <Button
               v-if="props.canUpload"
               variant="accent"
               @click="showUploadDrawer = true"
@@ -401,57 +539,77 @@ onBeforeMount(fetchAssets)
       <TableContainer v-if="viewMode === 'table'">
         <Table.Root v-if="tableRows.length" separate-cells>
           <template #header>
-            <Table.Head>Name</Table.Head>
-            <Table.Head>Type</Table.Head>
-            <Table.Head>Size</Table.Head>
-            <Table.Head>Last Modified</Table.Head>
-            <Table.Head>Actions</Table.Head>
+            <Table.Head
+              v-for="header in headers.filter(header => header.label !== '_original')"
+              :key="header.label"
+              sort
+              :header="header"
+            />
+            <Table.Head
+              key="actions"
+              :header="{ label: 'Actions',
+                         sortToggle: () => {} }"
+            />
           </template>
 
           <template #body>
             <tr
-              v-for="asset in tableRows"
-              :key="asset.path || asset.name"
+              v-for="row in tableRows"
+              :key="row._original.path || row._original.name"
               class="asset-manager__row"
-              @click="handleRowClick(asset)"
+              @click="handleRowClick(row._original)"
             >
               <Table.Cell>
                 <Flex gap="xs" y-center>
-                  <Icon :name="asset.type === 'folder' ? 'ph:folder-simple' : 'ph:file'" />
-                  <span>{{ asset.name }}</span>
+                  <Icon :name="row._original.type === 'folder' ? 'ph:folder-simple' : 'ph:file'" />
+                  <span>{{ row._original.name }}</span>
                 </Flex>
               </Table.Cell>
               <Table.Cell>
-                <Badge :variant="getAssetBadgeVariant(asset)">
-                  {{ asset.type === 'folder' ? 'Folder' : (isImageAsset(asset) ? 'Image' : (documentExtensions.includes(asset.extension ?? '') ? 'Document' : 'File')) }}
+                <Badge :variant="getAssetBadgeVariant(row._original)">
+                  {{ getAssetTypeLabel(row._original) }}
                 </Badge>
               </Table.Cell>
               <Table.Cell>
-                {{ asset.type === 'folder' ? '—' : formatBytes(asset.size) }}
+                {{ row._original.type === 'folder' ? '—' : formatBytes(row._original.size) }}
               </Table.Cell>
-              <Table.Cell>{{ asset.updated_at ? new Date(asset.updated_at).toLocaleString() : '—' }}</Table.Cell>
+              <Table.Cell>{{ row._original.updated_at ? new Date(row._original.updated_at).toLocaleString() : '—' }}</Table.Cell>
               <Table.Cell @click.stop>
                 <Flex gap="xs">
-                  <Button size="s" variant="gray" square @click="asset.type === 'folder' ? openFolder(asset) : openDetails(asset)">
-                    <Icon :name="asset.type === 'folder' ? 'ph:folder-simple' : 'ph:eye'" />
-                  </Button>
+                  <CopyClipboard
+                    v-if="row._original.type === 'file'"
+                    :text="row._original.publicUrl || ''"
+                    confirm
+                  >
+                    <Button
+                      size="s"
+                      variant="gray"
+                      square
+                      :disabled="!row._original.publicUrl"
+                      data-title-top="Copy URL"
+                    >
+                      <Icon name="ph:link-simple" />
+                    </Button>
+                  </CopyClipboard>
                   <Button
-                    v-if="asset.type === 'file'"
+                    v-if="canRenameAsset(row._original)"
                     size="s"
                     variant="gray"
                     square
-                    :disabled="!asset.publicUrl"
-                    @click="copyValue(asset.publicUrl || '', 'URL')"
+                    :loading="isActionLoading(row._original.path, 'rename')"
+                    data-title-top="Rename"
+                    @click="promptRenameAsset(row._original)"
                   >
-                    <Icon name="ph:link-simple" />
+                    <Icon name="ph:text-t" />
                   </Button>
                   <Button
                     v-if="props.canDelete"
                     size="s"
                     variant="danger"
                     square
-                    :loading="isActionLoading(asset.path)"
-                    @click="deleteAsset(asset)"
+                    :loading="isActionLoading(row._original.path, 'delete')"
+                    data-title-top="Delete"
+                    @click="promptDeleteAsset(row._original)"
                   >
                     <Icon name="ph:trash" />
                   </Button>
@@ -467,7 +625,12 @@ onBeforeMount(fetchAssets)
       </TableContainer>
 
       <div v-else>
-        <div v-if="filteredAssets.length" class="asset-manager__grid">
+        <Grid
+          v-if="filteredAssets.length"
+          class="asset-manager__grid"
+          expand
+          :columns="4"
+        >
           <Card
             v-for="asset in filteredAssets"
             :key="asset.path"
@@ -490,7 +653,7 @@ onBeforeMount(fetchAssets)
               <span class="text-xxs text-color-light">{{ asset.type === 'folder' ? 'Folder' : formatBytes(asset.size) }}</span>
             </Flex>
           </Card>
-        </div>
+        </Grid>
         <Alert v-else variant="info">
           No assets found in this folder.
         </Alert>
@@ -509,7 +672,26 @@ onBeforeMount(fetchAssets)
     v-model:is-open="showDetailsDrawer"
     :asset="selectedAsset"
     :can-delete="props.canDelete"
-    @delete="deleteAsset"
+    :can-rename="props.canDelete"
+    @delete="promptDeleteAsset"
+    @rename="promptRenameAsset"
+  />
+
+  <AssetRenameModal
+    v-model:open="showRenameModal"
+    :asset="assetPendingRename"
+    :loading="renameLoading"
+    @submit="handleRenameSubmit"
+  />
+
+  <ConfirmModal
+    v-model:open="showDeleteConfirmModal"
+    v-model:confirm="confirmDeleteAsset"
+    :title="assetPendingDeletion?.type === 'folder' ? 'Delete Folder' : 'Delete File'"
+    :description="assetPendingDeletion ? `Are you sure you want to delete '${assetPendingDeletion.name}'? This action cannot be undone.` : ''"
+    confirm-text="Delete"
+    cancel-text="Cancel"
+    :destructive="true"
   />
 
   <Toasts />

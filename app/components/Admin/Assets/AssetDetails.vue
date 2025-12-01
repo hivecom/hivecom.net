@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CmsAsset } from '@/lib/utils/cmsAssets'
-import { Badge, Button, Card, Flex, pushToast, Sheet } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 
 import { computed } from 'vue'
 import { formatBytes, isImageAsset } from '@/lib/utils/cmsAssets'
@@ -8,12 +8,15 @@ import { formatBytes, isImageAsset } from '@/lib/utils/cmsAssets'
 const props = withDefaults(defineProps<{
   asset: CmsAsset | null
   canDelete?: boolean
+  canRename?: boolean
 }>(), {
   canDelete: false,
+  canRename: false,
 })
 
 const emit = defineEmits<{
   delete: [asset: CmsAsset]
+  rename: [asset: CmsAsset]
 }>()
 
 const isOpen = defineModel<boolean>('isOpen', { default: false })
@@ -26,19 +29,6 @@ function closeDrawer() {
   isOpen.value = false
 }
 
-async function copyToClipboard(value: string, label: string) {
-  if (!value)
-    return
-  try {
-    await navigator.clipboard.writeText(value)
-    pushToast(`${label} copied to clipboard`)
-  }
-  catch (error) {
-    console.error('Failed to copy text', error)
-    pushToast('Unable to copy value')
-  }
-}
-
 function openInNewTab() {
   if (assetUrl.value)
     window.open(assetUrl.value, '_blank', 'noopener')
@@ -48,7 +38,12 @@ function requestDelete() {
   if (!props.asset)
     return
   emit('delete', props.asset)
-  isOpen.value = false
+}
+
+function requestRename() {
+  if (!props.asset)
+    return
+  emit('rename', props.asset)
 }
 </script>
 
@@ -63,12 +58,23 @@ function requestDelete() {
     <template #header>
       <Flex x-between y-center>
         <Flex column gap="xxs">
-          <h4>{{ props.asset?.name ?? 'Asset details' }}</h4>
-          <span class="text-xs text-color-light">{{ props.asset?.path }}</span>
+          <h4>Asset Details</h4>
+          <span class="text-xs text-color-light">{{ props.asset?.name }}</span>
         </Flex>
-        <Badge v-if="props.asset?.extension" variant="neutral">
-          .{{ props.asset.extension }}
-        </Badge>
+        <Flex gap="xs" y-center>
+          <Button v-if="props.canRename" variant="gray" @click="requestRename">
+            <template #start>
+              <Icon name="ph:text-t" />
+            </template>
+            Rename
+          </Button>
+          <Button v-if="props.canDelete" variant="danger" @click="requestDelete">
+            <template #start>
+              <Icon name="ph:trash" />
+            </template>
+            Delete
+          </Button>
+        </Flex>
       </Flex>
     </template>
 
@@ -78,35 +84,49 @@ function requestDelete() {
       </div>
 
       <Card>
-        <Flex column gap="s">
-          <Flex x-between>
-            <span class="text-color-light">File Size</span>
-            <strong>{{ formatBytes(props.asset.size) }}</strong>
-          </Flex>
-          <Flex x-between>
-            <span class="text-color-light">Content Type</span>
-            <strong>{{ props.asset.mimeType ?? 'Unknown' }}</strong>
-          </Flex>
-          <Flex x-between>
-            <span class="text-color-light">Created</span>
-            <strong>{{ props.asset.created_at ? new Date(props.asset.created_at).toLocaleString() : '—' }}</strong>
-          </Flex>
-          <Flex x-between>
-            <span class="text-color-light">Updated</span>
-            <strong>{{ props.asset.updated_at ? new Date(props.asset.updated_at).toLocaleString() : '—' }}</strong>
-          </Flex>
+        <Flex column gap="l" expand>
+          <Grid class="asset-details__item" expand :columns="2">
+            <span class="text-color-light text-bold">Path:</span>
+            <span>{{ props.asset?.path }}</span>
+          </Grid>
+
+          <Grid class="asset-details__item" expand :columns="2">
+            <span class="text-color-light text-bold">Size:</span>
+            <span>{{ formatBytes(props.asset.size) }}</span>
+          </Grid>
+
+          <Grid class="asset-details__item" expand :columns="2">
+            <span class="text-color-light text-bold">Content Type:</span>
+            <span>{{ props.asset.mimeType ?? 'Unknown' }}</span>
+          </Grid>
+
+          <Grid class="asset-details__item" expand :columns="2">
+            <span class="text-color-light text-bold">Created:</span>
+            <span>
+              {{ props.asset.created_at ? new Date(props.asset.created_at).toLocaleString() : '—' }}
+            </span>
+          </Grid>
+
+          <Grid class="asset-details__item" expand :columns="2">
+            <span class="text-color-light text-bold">Updated:</span>
+            <span>
+              {{ props.asset.updated_at ? new Date(props.asset.updated_at).toLocaleString() : '—' }}
+            </span>
+          </Grid>
         </Flex>
       </Card>
 
       <Card v-if="assetUrl" class="asset-details__clipboard">
-        <Flex column gap="s">
+        <Flex column gap="s" expand>
           <div>
             <span class="text-xs text-color-light">Public URL</span>
             <Flex gap="s" class="mt-xxs">
-              <Button size="s" variant="gray" @click="copyToClipboard(assetUrl, 'Public URL')">
-                Copy URL
-              </Button>
-              <Button size="s" variant="gray" @click="openInNewTab">
+              <CopyClipboard :text="assetUrl" confirm>
+                <Button variant="gray">
+                  Copy URL
+                </Button>
+              </CopyClipboard>
+              <Button variant="gray" @click="openInNewTab">
                 Open
               </Button>
             </Flex>
@@ -118,9 +138,11 @@ function requestDelete() {
           <div v-if="markdownSnippet">
             <span class="text-xs text-color-light">Markdown Snippet</span>
             <Flex gap="s" class="mt-xxs">
-              <Button size="s" variant="gray" @click="copyToClipboard(markdownSnippet, 'Markdown snippet')">
-                Copy Markdown
-              </Button>
+              <CopyClipboard :text="markdownSnippet" confirm>
+                <Button variant="gray">
+                  Copy Markdown
+                </Button>
+              </CopyClipboard>
             </Flex>
             <div class="asset-details__code mt-xs">
               {{ markdownSnippet }}
@@ -128,16 +150,6 @@ function requestDelete() {
           </div>
         </Flex>
       </Card>
-
-      <Flex x-between>
-        <div />
-        <Button v-if="props.canDelete" variant="danger" @click="requestDelete">
-          <template #start>
-            <Icon name="ph:trash" />
-          </template>
-          Delete File
-        </Button>
-      </Flex>
     </Flex>
   </Sheet>
 </template>

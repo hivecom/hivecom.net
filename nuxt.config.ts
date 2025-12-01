@@ -61,6 +61,7 @@ export default defineNuxtConfig({
     public: {
       patreonClientId: process.env.NUXT_PUBLIC_PATREON_CLIENT_ID ?? '',
       baseUrl: process.env.NUXT_PUBLIC_BASE_URL ?? 'https://hivecom.net',
+      supabaseProjectRef: process.env.NUXT_PUBLIC_SUPABASE_PROJECT_REF ?? '',
     },
   },
   nitro: {

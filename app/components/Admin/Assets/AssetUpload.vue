@@ -216,7 +216,7 @@ function updateFileName(id: string, value: string) {
           <span class="text-xs text-color-light">Destination Folder</span>
           <Input
             v-model="targetFolder"
-            placeholder="Optional subfolder (e.g. events/prague)"
+            placeholder="Optional subfolder (e.g. banners/motd)"
             :disabled="uploading"
             expand
           >
@@ -235,7 +235,7 @@ function updateFileName(id: string, value: string) {
         :disabled="!props.canUpload || uploading"
         :loading="uploading"
         variant="asset"
-        :max-size-m-b="5"
+        :max-size-m-b="50"
         :multiple="true"
         :persistent-dropzone="true"
         :show-delete="false"
@@ -255,10 +255,10 @@ function updateFileName(id: string, value: string) {
             <span class="text-xxs text-color-light">{{ replaceExisting ? 'Existing files will be overwritten' : 'Duplicates will be rejected' }}</span>
           </Flex>
 
-          <div v-for="item in fileQueue" :key="item.id" class="upload-drawer__queue-item">
-            <Flex column gap="xs">
-              <Flex gap="s" y-center x-between>
-                <Flex gap="xs" y-center>
+          <Flex v-for="item in fileQueue" :key="item.id" class="upload-drawer__queue-item" expand>
+            <Flex column gap="xs" expand>
+              <Flex gap="s" y-center x-between expand>
+                <Flex gap="xs" y-center expand>
                   <Icon :name="item.file.type.startsWith('image/') ? 'ph:image' : 'ph:file'" />
                   <span class="text-s">{{ item.file.name }}</span>
                 </Flex>
@@ -273,9 +273,16 @@ function updateFileName(id: string, value: string) {
                 </Button>
               </Flex>
 
+              <Progress
+                v-if="typeof uploadProgress[item.id] === 'number'"
+                :model-value="uploadProgress[item.id] ?? 0"
+                :height="6"
+              />
+
               <Input
                 :model-value="item.targetName"
                 :disabled="uploading"
+                expand
                 @update:model-value="value => updateFileName(item.id, typeof value === 'string' ? value : String(value ?? ''))"
               >
                 <template #start>
@@ -283,18 +290,12 @@ function updateFileName(id: string, value: string) {
                 </template>
               </Input>
 
-              <Flex x-between y-center class="text-xxs text-color-light">
-                <span>{{ formatBytes(item.file.size) }}</span>
-                <span>{{ item.file.type || 'Unknown' }}</span>
+              <Flex x-between y-center expand class="text-xxs text-color-light">
+                <span class="text-xs">{{ formatBytes(item.file.size) }}</span>
+                <span class="text-xs">{{ item.file.type || 'Unknown' }}</span>
               </Flex>
-
-              <Progress
-                v-if="typeof uploadProgress[item.id] === 'number'"
-                :model-value="uploadProgress[item.id] ?? 0"
-                :height="6"
-              />
             </Flex>
-          </div>
+          </Flex>
         </Flex>
       </Card>
     </Flex>
@@ -332,7 +333,6 @@ function updateFileName(id: string, value: string) {
 <style scoped lang="scss">
 .upload-drawer {
   &__queue {
-    max-height: 320px;
     overflow-y: auto;
   }
 
