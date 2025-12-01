@@ -105,8 +105,8 @@ INSERT INTO public.user_roles(role, user_id)
   VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Create or update a profile for our admin user
-INSERT INTO public.profiles(id, created_at, username, introduction, markdown)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), 'Hivecom', 'Local develop and test user', '# whoami
+INSERT INTO public.profiles(id, created_at, username, introduction, supporter_lifetime, markdown)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), 'Hivecom', 'Local develop and test user', 'true', '# whoami
 
 ```javascript
 console.log("Hello, Hivecom!");

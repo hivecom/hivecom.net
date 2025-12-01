@@ -69,14 +69,16 @@ onMounted(async () => {
         </ul>
 
         <!-- Mobile menu -->
-        <Sheet :open="mobileMenuOpen" position="left" separator @close="mobileMenuOpen = false">
-          <template #header="{ close }">
+        <Sheet
+          class="navigation__mobile-sheet"
+          :open="mobileMenuOpen"
+          position="left"
+          separator
+          @close="mobileMenuOpen = false"
+        >
+          <template #header>
             <Flex x-between style="padding-top:3px">
-              <Button square @click="close">
-                <Icon name="ph:x" />
-              </Button>
               <SharedLogo />
-              <span />
             </Flex>
           </template>
           <template #header-end />
@@ -222,6 +224,16 @@ onMounted(async () => {
     height: 16px;
     background: var(--color-text);
     opacity: 0.5;
+  }
+
+  &__mobile-sheet {
+    :deep(.vui-card-header > button) {
+      display: none !important;
+    }
+
+    :deep(.vui-card-header > button.navigation__mobile-close) {
+      display: inline-flex !important;
+    }
   }
 
   &__auth {

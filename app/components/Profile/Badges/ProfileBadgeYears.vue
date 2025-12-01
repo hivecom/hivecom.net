@@ -10,7 +10,7 @@ const props = defineProps<{
 }>()
 
 const variant = computed<BadgeVariant>(() => {
-  if (props.years >= 15)
+  if (props.years >= 20)
     return 'shiny'
   if (props.years >= 10)
     return 'gold'

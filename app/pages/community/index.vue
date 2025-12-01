@@ -5,6 +5,7 @@ import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
 
 // Get current user for authentication checks
 const user = useSupabaseUser()
@@ -143,11 +144,12 @@ watch(user, () => {
             </p>
           </Flex>
         </Flex>
-        <BulkAvatarDisplay
+        <BulkAvatarDisplayCluster
           :user-ids="randomUsers"
           :max-users="32"
           :avatar-size="64"
           :gap="12"
+          :supporter-highlight="true"
         />
       </Flex>
     </Card>

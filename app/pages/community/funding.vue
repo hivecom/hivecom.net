@@ -135,6 +135,7 @@ const filteredExpenses = computed(() => {
             :avatar-size="64"
             :random="true"
             :gap="4"
+            :supporter-highlight="true"
           />
         </Flex>
       </Card>

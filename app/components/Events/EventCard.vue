@@ -41,6 +41,13 @@ const countdown = ref({
   seconds: 0,
 })
 
+const isCountdownComplete = computed(() =>
+  countdown.value.days === 0
+  && countdown.value.hours === 0
+  && countdown.value.minutes === 0
+  && countdown.value.seconds === 0,
+)
+
 function updateCountdown() {
   if (eventStatus.value.type !== 'upcoming')
     return
@@ -124,17 +131,22 @@ function handleClick() {
 
       <!-- Countdown for upcoming events -->
       <div v-if="eventStatus.type === 'upcoming' && !compact" class="event-card__countdown">
-        <div class="event-card__countdown-item">
-          <span class="event-card__countdown-value">{{ countdown.days }}</span>
-          <span class="event-card__countdown-label">Days</span>
-        </div>
-        <div class="event-card__countdown-item">
-          <span class="event-card__countdown-value">{{ countdown.hours }}</span>
-          <span class="event-card__countdown-label">Hours</span>
-        </div>
-        <div class="event-card__countdown-item">
-          <span class="event-card__countdown-value">{{ countdown.minutes }}</span>
-          <span class="event-card__countdown-label">Min</span>
+        <template v-if="!isCountdownComplete">
+          <div class="event-card__countdown-item">
+            <span class="event-card__countdown-value">{{ countdown.days }}</span>
+            <span class="event-card__countdown-label">Days</span>
+          </div>
+          <div class="event-card__countdown-item">
+            <span class="event-card__countdown-value">{{ countdown.hours }}</span>
+            <span class="event-card__countdown-label">Hours</span>
+          </div>
+          <div class="event-card__countdown-item">
+            <span class="event-card__countdown-value">{{ countdown.minutes }}</span>
+            <span class="event-card__countdown-label">Min</span>
+          </div>
+        </template>
+        <div v-else class="event-card__countdown-now">
+          <span class="event-card__countdown-now-text">NOW</span>
         </div>
       </div>
 
@@ -258,6 +270,23 @@ function handleClick() {
     color: var(--color-accent);
   }
 
+  &__countdown-now {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    border-radius: var(--vui-radius-lg);
+    background: rgb(var(--vui-color-success-50));
+    border: 1px solid rgb(var(--vui-color-success-200));
+  }
+
+  &__countdown-now-text {
+    font-size: clamp(1.5rem, 2vw, 2rem);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: rgb(var(--vui-color-success-600));
+  }
   &__live-dot {
     width: 8px;
     height: 8px;

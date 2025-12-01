@@ -4,15 +4,15 @@ import ProfileBadge from '@/components/Profile/Badges/ProfileBadge.vue'
 const props = withDefaults(defineProps<{
   description?: string
 }>(), {
-  description: 'Contributed to open source development or infrastructure',
+  description: 'Monthly Patreon supporter of the community',
 })
 </script>
 
 <template>
   <ProfileBadge
-    label="Builder"
+    label="Supporter"
     :description="props.description"
-    icon="ph:barbell"
-    variant="silver"
+    icon="ph:heart-bold"
+    variant="gold"
   />
 </template>

@@ -10,7 +10,7 @@ const props = withDefaults(defineProps<{
 
 <template>
   <ProfileBadge
-    label="Lifetime"
+    label="Lifetime Supporter"
     :description="props.description"
     icon="ph:infinity-bold"
     variant="gold"

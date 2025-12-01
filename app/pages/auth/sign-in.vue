@@ -3,6 +3,7 @@ import { Alert, Button, Card, Flex, Input, Tab, Tabs } from '@dolanske/vui'
 
 import '@/assets/elements/auth.scss'
 
+const route = useRoute()
 const supabase = useSupabaseClient()
 const loading = ref(false)
 const email = ref('')
@@ -13,6 +14,14 @@ const tab = ref('Password')
 const showEmailNotice = ref(false)
 
 watch(tab, () => showEmailNotice.value = false)
+
+watchEffect(() => {
+  if (route.query.banned === '1') {
+    errorMessage.value = typeof route.query.message === 'string'
+      ? route.query.message
+      : 'Your account is currently suspended. Please contact support.'
+  }
+})
 
 async function signIn() {
   loading.value = true

@@ -162,6 +162,7 @@ const selectedRoleComputed = computed({
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
+const deleteLoading = ref(false)
 
 // Limits (matching database constraints)
 const USERNAME_LIMIT = 32
@@ -545,6 +546,16 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => isOpen.value,
+  (open) => {
+    if (!open) {
+      deleteLoading.value = false
+      showDeleteConfirm.value = false
+    }
+  },
+)
+
 // Handle closing the sheet
 function handleClose() {
   isOpen.value = false
@@ -589,6 +600,10 @@ function confirmDelete() {
   if (!props.user)
     return
 
+  if (deleteLoading.value)
+    return
+
+  deleteLoading.value = true
   emit('delete', props.user.id)
 }
 
@@ -1067,6 +1082,7 @@ function clearBirthday() {
           v-if="showDeleteButton"
           variant="danger"
           square
+          :loading="deleteLoading"
           data-title-left="Delete user"
           @click="handleDelete"
         >
