@@ -18,6 +18,7 @@
     "./oauth-patreon",
     "./ping",
     "./trigger-google-calendar-sync",
+    "./trigger-discord-event-sync",
     "./userinfo"
   ]
 }

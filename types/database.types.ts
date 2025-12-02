@@ -152,6 +152,8 @@ export interface Database {
           description: string
           duration_minutes: number | null
           games: number[] | null
+          discord_event_id: string | null
+          discord_last_synced_at: string | null
           google_event_id: string | null
           google_last_synced_at: string | null
           id: number
@@ -170,6 +172,8 @@ export interface Database {
           description?: string
           duration_minutes?: number | null
           games?: number[] | null
+          discord_event_id?: string | null
+          discord_last_synced_at?: string | null
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
@@ -188,6 +192,8 @@ export interface Database {
           description?: string
           duration_minutes?: number | null
           games?: number[] | null
+          discord_event_id?: string | null
+          discord_last_synced_at?: string | null
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
