@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Button } from '@dolanske/vui'
-import Loading from '@/components/Layout/Loading.vue'
+import { Button, Card, Flex, Spinner } from '@dolanske/vui'
+
+import '@/assets/elements/auth.scss'
 
 const supabase = useSupabaseClient()
 const route = useRoute()
@@ -20,9 +21,9 @@ async function finishLinking() {
     return
 
   try {
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(window.location.href)
-    if (exchangeError)
-      throw exchangeError
+    await resolveOAuthSession()
+
+    cleanOAuthParams()
 
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError)
@@ -76,67 +77,128 @@ async function finishLinking() {
 onMounted(() => {
   finishLinking()
 })
+
+function cleanOAuthParams() {
+  if (typeof window === 'undefined')
+    return
+
+  const url = new URL(window.location.href)
+  const paramsToClear: Array<'code' | 'state' | 'scope'> = ['code', 'state', 'scope']
+  paramsToClear.forEach(param => url.searchParams.delete(param))
+  url.hash = ''
+
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}`)
+}
+
+interface FragmentSessionTokens {
+  access_token: string
+  refresh_token: string
+}
+
+async function resolveOAuthSession() {
+  if (typeof window === 'undefined')
+    throw new Error('OAuth session resolution requires a browser context.')
+
+  const { href, hash } = window.location
+  const url = new URL(href)
+  const hasCode = url.searchParams.has('code')
+  const fragmentSession = parseFragmentSession(hash)
+
+  if (hasCode) {
+    const { error } = await supabase.auth.exchangeCodeForSession(href)
+    if (error)
+      throw error
+    return
+  }
+
+  if (fragmentSession) {
+    const { access_token: accessToken, refresh_token: refreshToken } = fragmentSession
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    })
+    if (error)
+      throw error
+    return
+  }
+
+  throw new Error('Missing OAuth callback parameters. Please restart the Discord link.')
+}
+
+function parseFragmentSession(fragment: string): FragmentSessionTokens | null {
+  if (!fragment?.startsWith('#'))
+    return null
+
+  const params = new URLSearchParams(fragment.slice(1))
+  const accessToken = params.get('access_token')
+  const refreshToken = params.get('refresh_token')
+
+  if (!accessToken || !refreshToken)
+    return null
+
+  return {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  }
+}
 </script>
 
 <template>
-  <div class="discord-callback">
-    <div v-if="status === 'loading'" class="callback-container">
-      <Loading />
-      <h2>Connecting your Discord account</h2>
-      <p>Please wait while we link your profile...</p>
-    </div>
+  <Flex y-center x-center class="flex-1 w-100 discord-callback" column>
+    <Card class="callback-card" separators>
+      <Flex column gap="m" x-center y-center class="py-xl text-center">
+        <template v-if="status === 'loading'">
+          <Spinner size="l" />
+          <div>
+            <h3>Connecting your Discord account</h3>
+            <p class="text-color-light">
+              Please wait while we link your profile.
+            </p>
+          </div>
+        </template>
 
-    <div v-else-if="status === 'success'" class="callback-container success">
-      <Icon name="mdi:check-circle" size="48" />
-      <h2>Discord connected!</h2>
-      <p>Your Discord account has been linked successfully.</p>
-      <p>Redirecting you back...</p>
-    </div>
+        <template v-else-if="status === 'success'">
+          <Icon name="mdi:check-circle" size="48" class="status-icon success" />
+          <div>
+            <h3>Discord connected!</h3>
+            <p class="text-color-light">
+              Your Discord account has been linked successfully. Redirecting you shortly.
+            </p>
+          </div>
+        </template>
 
-    <div v-else class="callback-container error">
-      <Icon name="mdi:alert-circle" size="48" />
-      <h2>Connection failed</h2>
-      <p>{{ errorMessage }}</p>
-      <Button variant="fill" @click="navigateTo('/profile/settings')">
-        Return to Settings
-      </Button>
-    </div>
-  </div>
+        <template v-else>
+          <Icon name="mdi:alert-circle" size="48" class="status-icon error" />
+          <div>
+            <h3>Connection failed</h3>
+            <p class="text-color-light">
+              {{ errorMessage }}
+            </p>
+          </div>
+          <Button variant="fill" @click="navigateTo('/profile/settings')">
+            Return to Settings
+          </Button>
+        </template>
+      </Flex>
+    </Card>
+  </Flex>
 </template>
 
 <style scoped lang="scss">
 .discord-callback {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 50vh;
-  padding: 2rem;
+  min-height: 60vh;
+  padding: var(--space-xl);
 }
 
-.callback-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  max-width: 500px;
+.callback-card {
+  width: min(480px, 100%);
 }
 
-.callback-container h2 {
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.callback-container p {
-  margin-bottom: 1rem;
-  color: var(--color-text);
-}
-
-.success {
+.status-icon.success {
   color: var(--color-text-green);
 }
 
-.error {
+.status-icon.error {
   color: var(--color-text-red);
 }
 </style>
