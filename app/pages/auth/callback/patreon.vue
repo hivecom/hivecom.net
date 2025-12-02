@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@dolanske/vui'
+import Loading from '@/components/Layout/Loading.vue'
 
 // Set up the loading state for our spinner
 const isLoading = ref(true)
@@ -85,14 +86,14 @@ onMounted(async () => {
     <div v-if="isLoading && !error" class="callback-container">
       <Loading />
       <h2>Connecting your Patreon account</h2>
-      <p>Please wait while we link your account...</p>
+      <p>Please wait while we link your account</p>
     </div>
 
     <div v-else-if="success" class="callback-container success">
       <Icon name="mdi:check-circle" size="48" />
       <h2>Successfully connected!</h2>
       <p>Your Patreon account has been linked to your Hivecom profile.</p>
-      <p>Redirecting you back...</p>
+      <p>Redirecting you back</p>
     </div>
 
     <div v-else class="callback-container error">

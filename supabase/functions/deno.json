@@ -1,4 +1,5 @@
 {
+  "version": "2.1.4",
   "imports": {
     "app-constants": "../../constants.json",
     "database-types": "../../types/database.types.ts",
@@ -15,9 +16,11 @@
     "./admin-user-delete",
     "./cron-docker-control-container-fetch",
     "./cron-patreon-fetch",
+    "./link-discord",
     "./oauth-patreon",
     "./ping",
     "./trigger-google-calendar-sync",
+    "./trigger-discord-event-sync",
     "./userinfo"
   ]
 }

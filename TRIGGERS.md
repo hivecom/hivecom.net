@@ -71,3 +71,12 @@ This eliminates the need for application-level audit field management and ensure
 - referendums
 - referendum_votes
 - servers
+
+## Event Sync Automation
+
+Community events are mirrored to external services via trigger-backed edge function calls:
+
+- `trigger_sync_google_calendar_insert`, `trigger_sync_google_calendar_update`, and `trigger_sync_google_calendar_delete` call the `/functions/v1/trigger-google-calendar-sync` edge function whenever relevant fields change. Delete triggers include the stored `google_event_id` so the edge function can remove the remote event even after the row is gone.
+- `trigger_sync_discord_events_insert`, `trigger_sync_discord_events_update`, and `trigger_sync_discord_events_delete` call `/functions/v1/trigger-discord-event-sync` to create, update, or delete Discord scheduled events. Updates are column-scoped to avoid loops, and delete hooks only fire when a `discord_event_id` exists.
+
+Both trigger groups rely on the vault-stored `project_url`, `anon_key`, and `system_trigger_secret` values so the database never needs to store service role keys in plain text while still allowing asynchronous syncs through `net.http_post`.

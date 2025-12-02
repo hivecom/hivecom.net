@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, pushToast, Skeleton, Toasts } from '@dolanske/vui'
+import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 
 // Async component
 const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Profile/ConnectPatreon.vue'))
+const ConnectDiscord = defineAsyncComponent(() => import('@/components/Profile/ConnectDiscord.vue'))
+const ConnectSteam = defineAsyncComponent(() => import('@/components/Profile/ConnectSteam.vue'))
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -13,11 +16,24 @@ const profile = ref<Tables<'profiles'> | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
 const authReady = ref(false)
+const disconnectLoading = reactive({
+  patreon: false,
+  discord: false,
+})
 
 // Password reset state
 const passwordResetLoading = ref(false)
 const passwordResetSent = ref(false)
 const passwordResetError = ref('')
+
+function showErrorToast(message: string) {
+  pushToast('', {
+    body: SharedErrorToast,
+    bodyProps: {
+      error: message,
+    },
+  })
+}
 
 async function sendPasswordReset() {
   passwordResetLoading.value = true
@@ -118,6 +134,90 @@ async function fetchProfile() {
     loading.value = false
   }
 }
+
+async function disconnectPatreon() {
+  if (disconnectLoading.patreon)
+    return
+
+  disconnectLoading.patreon = true
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error)
+      throw error
+    if (!user)
+      throw new Error('You must be signed in to disconnect Patreon.')
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        patreon_id: null,
+        supporter_patreon: false,
+      })
+      .eq('id', user.id)
+
+    if (updateError)
+      throw updateError
+
+    if (profile.value)
+      profile.value = { ...profile.value, patreon_id: null, supporter_patreon: false }
+
+    pushToast('Patreon disconnected successfully.')
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to disconnect Patreon.'
+    showErrorToast(message)
+  }
+  finally {
+    disconnectLoading.patreon = false
+  }
+}
+
+async function disconnectDiscord() {
+  if (disconnectLoading.discord)
+    return
+
+  disconnectLoading.discord = true
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error)
+      throw error
+    if (!user)
+      throw new Error('You must be signed in to disconnect Discord.')
+
+    const discordIdentity = user.identities?.find(identity => identity.provider === 'discord')
+    if (discordIdentity) {
+      const identityId = ('identity_id' in discordIdentity && discordIdentity.identity_id)
+        || discordIdentity.id
+
+      if (!identityId)
+        throw new Error('Unable to resolve Discord identity.')
+
+      const { error: unlinkError } = await supabase.auth.unlinkIdentity(discordIdentity)
+      if (unlinkError)
+        throw unlinkError
+    }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ discord_id: null })
+      .eq('id', user.id)
+
+    if (updateError)
+      throw updateError
+
+    if (profile.value)
+      profile.value = { ...profile.value, discord_id: null }
+
+    pushToast('Discord disconnected successfully.')
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to disconnect Discord.'
+    showErrorToast(message)
+  }
+  finally {
+    disconnectLoading.discord = false
+  }
+}
 </script>
 
 <template>
@@ -212,10 +312,15 @@ async function fetchProfile() {
               </Flex>
 
               <div class="account-status">
-                <Badge v-if="profile?.patreon_id" variant="success" size="s">
-                  <Icon name="ph:check" />
-                  Connected
-                </Badge>
+                <Flex v-if="profile?.patreon_id" gap="s" y-center>
+                  <Badge variant="success" size="s">
+                    <Icon name="ph:check" />
+                    Connected
+                  </Badge>
+                  <Button variant="danger" :loading="disconnectLoading.patreon" @click="disconnectPatreon">
+                    Disconnect
+                  </Button>
+                </Flex>
                 <ClientOnly v-else>
                   <ConnectPatreonButton />
                 </ClientOnly>
@@ -243,9 +348,9 @@ async function fetchProfile() {
                   <Icon name="ph:check" />
                   Connected
                 </Badge>
-                <Button v-else size="s" variant="gray" disabled aria-label="Steam integration coming soon">
-                  Coming Soon
-                </Button>
+                <ClientOnly v-else>
+                  <ConnectSteam />
+                </ClientOnly>
               </div>
             </Flex>
           </Flex>
@@ -266,13 +371,18 @@ async function fetchProfile() {
               </Flex>
 
               <div class="account-status">
-                <Badge v-if="profile?.discord_id" variant="success" size="s">
-                  <Icon name="ph:check" />
-                  Connected
-                </Badge>
-                <Button v-else size="s" variant="gray" disabled aria-label="Discord integration coming soon">
-                  Coming Soon
-                </Button>
+                <Flex v-if="profile?.discord_id" gap="s" y-center>
+                  <Badge variant="success" size="s">
+                    <Icon name="ph:check" />
+                    Connected
+                  </Badge>
+                  <Button variant="danger" :loading="disconnectLoading.discord" @click="disconnectDiscord">
+                    Disconnect
+                  </Button>
+                </Flex>
+                <ClientOnly v-else>
+                  <ConnectDiscord @linked="fetchProfile" />
+                </ClientOnly>
               </div>
             </Flex>
           </Flex>
@@ -280,6 +390,7 @@ async function fetchProfile() {
       </Card>
     </template>
   </div>
+  <Toasts />
 </template>
 
 <style lang="scss" scoped>

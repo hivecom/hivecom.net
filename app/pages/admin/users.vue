@@ -40,6 +40,8 @@ interface UserAction {
   banReason?: string
 }
 
+type ActionType = NonNullable<UserAction['type']>
+
 // Interface for user form data
 interface UserFormData {
   role?: string
@@ -70,6 +72,7 @@ const showUserDetails = ref(false)
 const userAction = ref<UserAction | null>(null)
 const refreshSignal = ref(0)
 const userRefreshTrigger = ref(false)
+const detailActionLoading = ref<Partial<Record<ActionType, boolean>>>({})
 
 // UserForm state
 const showUserForm = ref(false)
@@ -93,6 +96,10 @@ watch(userRefreshTrigger, (shouldRefresh) => {
     refreshSignal.value++
     userRefreshTrigger.value = false
   }
+})
+
+watch(() => selectedUser.value?.id, () => {
+  detailActionLoading.value = {}
 })
 
 // Watch for userAction changes from UserDetails to handle edit actions
@@ -121,20 +128,22 @@ async function handleUserAction(action: UserAction) {
   // Handle ban action
   if (action.type === 'ban') {
     try {
-      const { error } = await supabase.functions.invoke('admin-user-ban', {
-        method: 'POST',
-        body: {
-          userId: action.user.id,
-          banDuration: action.banDuration,
-          banReason: action.banReason,
-        },
+      await runActionWithDetailLoading(action, 'ban', async () => {
+        const { error } = await supabase.functions.invoke('admin-user-ban', {
+          method: 'POST',
+          body: {
+            userId: action.user.id,
+            banDuration: action.banDuration,
+            banReason: action.banReason,
+          },
+        })
+
+        if (error)
+          throw error
+
+        // Trigger refresh after successful ban
+        refreshSignal.value++
       })
-
-      if (error)
-        throw error
-
-      // Trigger refresh after successful ban
-      refreshSignal.value++
     }
     catch (error: unknown) {
       console.error('Error banning user:', (error as Error).message)
@@ -146,19 +155,21 @@ async function handleUserAction(action: UserAction) {
   // Handle unban action
   if (action.type === 'unban') {
     try {
-      const { error } = await supabase.functions.invoke('admin-user-ban', {
-        method: 'POST',
-        body: {
-          userId: action.user.id,
-          banDuration: 'none', // Special value to unban
-        },
+      await runActionWithDetailLoading(action, 'unban', async () => {
+        const { error } = await supabase.functions.invoke('admin-user-ban', {
+          method: 'POST',
+          body: {
+            userId: action.user.id,
+            banDuration: 'none', // Special value to unban
+          },
+        })
+
+        if (error)
+          throw error
+
+        // Trigger refresh after successful unban
+        refreshSignal.value++
       })
-
-      if (error)
-        throw error
-
-      // Trigger refresh after successful unban
-      refreshSignal.value++
     }
     catch (error: unknown) {
       console.error('Error unbanning user:', (error as Error).message)
@@ -170,18 +181,25 @@ async function handleUserAction(action: UserAction) {
   // Handle delete action
   if (action.type === 'delete') {
     try {
-      const { error } = await supabase.functions.invoke('admin-user-delete', {
-        method: 'POST',
-        body: {
-          userId: action.user.id,
-        },
+      await runActionWithDetailLoading(action, 'delete', async () => {
+        const { error } = await supabase.functions.invoke('admin-user-delete', {
+          method: 'POST',
+          body: {
+            userId: action.user.id,
+          },
+        })
+
+        if (error)
+          throw error
+
+        if (selectedUser.value?.id === action.user.id) {
+          selectedUser.value = null
+          showUserDetails.value = false
+        }
+
+        // Trigger refresh after successful delete
+        refreshSignal.value++
       })
-
-      if (error)
-        throw error
-
-      // Trigger refresh after successful delete
-      refreshSignal.value++
     }
     catch (error: unknown) {
       console.error('Error deleting user:', (error as Error).message)
@@ -299,6 +317,28 @@ async function handleUserDelete(userId: string) {
     console.error('Error deleting user:', (error as Error).message)
   }
 }
+
+function setDetailActionLoading(actionType: ActionType, state: boolean) {
+  detailActionLoading.value = {
+    ...detailActionLoading.value,
+    [actionType]: state,
+  }
+}
+
+async function runActionWithDetailLoading(action: UserAction, actionType: ActionType, operation: () => Promise<void>) {
+  const shouldShowDetailLoading = selectedUser.value?.id === action.user.id
+
+  if (shouldShowDetailLoading)
+    setDetailActionLoading(actionType, true)
+
+  try {
+    await operation()
+  }
+  finally {
+    if (shouldShowDetailLoading)
+      setDetailActionLoading(actionType, false)
+  }
+}
 </script>
 
 <template>
@@ -330,6 +370,7 @@ async function handleUserDelete(userId: string) {
       v-model:user-action="userAction"
       v-model:refresh-user="userRefreshTrigger"
       :user="selectedUser"
+      :action-loading="detailActionLoading"
       @edit="handleEditFromDetails"
     />
 

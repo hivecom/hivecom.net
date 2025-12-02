@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import type { UserIdentity } from '@supabase/supabase-js'
+
 import { Alert, Button, Card, Flex, Input, Spinner, Switch } from '@dolanske/vui'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import { useSupabaseCache } from '@/composables/useSupabaseCache'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -15,6 +18,8 @@ const usernameStep = ref(false)
 const username = ref('')
 const usernameError = ref('')
 const usernameLoading = ref(false)
+const resolvedDiscordIdentity = ref<UserIdentity | null>(null)
+let discordIdentityFetchPromise: Promise<UserIdentity | null> | null = null
 
 const isDev = process.env.NODE_ENV === 'development'
 const showDebugPanel = ref(isDev)
@@ -26,6 +31,31 @@ const debugOptions = reactive({
   customError: 'Authentication failed due to an expired token',
   skipRedirect: false,
 })
+
+const USERNAME_LIMIT = 32
+
+const cache = useSupabaseCache()
+let discordUsernameAttempted = false
+let discordIdSyncInFlight = false
+
+function invalidateUserProfileCache() {
+  const normalizedId = userId.value?.trim()
+  if (!normalizedId)
+    return
+
+  cache.delete(`user:profile:${normalizedId}`)
+  cache.delete(`user:role:${normalizedId}`)
+  cache.delete(`user:avatar:${normalizedId}`)
+}
+
+function scheduleProfileRedirect() {
+  if (debugOptions.skipRedirect)
+    return
+
+  setTimeout(() => {
+    navigateTo('/profile')
+  }, 1500)
+}
 
 function applyDebugOptions() {
   if (!isDev)
@@ -58,6 +88,242 @@ function toggleDebugPanel() {
   showDebugPanel.value = !showDebugPanel.value
 }
 
+function getDiscordIdentity(): UserIdentity | null {
+  if (resolvedDiscordIdentity.value)
+    return resolvedDiscordIdentity.value
+
+  const identity = user.value?.identities?.find((candidate: UserIdentity) => candidate.provider === 'discord') ?? null
+
+  if (identity)
+    resolvedDiscordIdentity.value = identity
+
+  return identity
+}
+
+async function ensureDiscordIdentity(): Promise<UserIdentity | null> {
+  if (isDev && debugOptions.bypassAuth)
+    return getDiscordIdentity()
+
+  const existing = getDiscordIdentity()
+  if (existing || !user.value)
+    return existing
+
+  if (discordIdentityFetchPromise)
+    return discordIdentityFetchPromise
+
+  discordIdentityFetchPromise = (async () => {
+    try {
+      const { data, error: userError } = await supabase.auth.getUser()
+
+      if (userError) {
+        console.error('Failed to load Supabase user identities:', userError)
+        return null
+      }
+
+      const freshIdentity = data.user?.identities?.find((candidate: UserIdentity) => candidate.provider === 'discord') ?? null
+
+      if (freshIdentity)
+        resolvedDiscordIdentity.value = freshIdentity
+
+      return resolvedDiscordIdentity.value
+    }
+    catch (fetchError) {
+      console.error('Unexpected error while fetching Supabase user identities:', fetchError)
+      return null
+    }
+    finally {
+      discordIdentityFetchPromise = null
+    }
+  })()
+
+  return discordIdentityFetchPromise
+}
+
+function extractDiscordId(identity?: UserIdentity | null) {
+  if (!identity)
+    return null
+
+  const identityData = identity.identity_data as Record<string, unknown> | null
+  const getField = (key: string) => {
+    const value = identityData?.[key]
+    return typeof value === 'string' ? value : undefined
+  }
+
+  return getField('id')
+    || getField('user_id')
+    || getField('sub')
+    || getField('provider_id')
+    || null
+}
+
+function extractDiscordUsername(identity?: UserIdentity | null) {
+  if (!identity)
+    return null
+
+  const identityData = identity.identity_data as Record<string, unknown> | null
+  const candidateKeys = ['global_name', 'username', 'user_name', 'display_name', 'name', 'preferred_username']
+
+  for (const key of candidateKeys) {
+    const value = identityData?.[key]
+    if (typeof value === 'string' && value.trim().length)
+      return value
+  }
+
+  return null
+}
+
+function sanitizeUsernameCandidate(rawValue: string | null) {
+  if (!rawValue)
+    return null
+
+  const trimmed = rawValue.trim()
+  if (!trimmed)
+    return null
+
+  const cleaned = trimmed
+    .replace(/\s+/g, '_')
+    .replace(/\W+/g, '')
+    .slice(0, USERNAME_LIMIT)
+
+  return cleaned.length >= 3 ? cleaned : null
+}
+
+function getDiscordUsernameSuggestion() {
+  const discordIdentity = getDiscordIdentity()
+  return sanitizeUsernameCandidate(extractDiscordUsername(discordIdentity))
+}
+
+interface UpdateUsernameResult {
+  success: boolean
+  message?: string
+  code?: string
+}
+
+async function updateUsernameValue(newUsername: string): Promise<UpdateUsernameResult> {
+  const normalized = newUsername.trim()
+
+  if (normalized.length < 3)
+    return { success: false, message: 'Username must be at least 3 characters long' }
+
+  if (normalized.length > USERNAME_LIMIT)
+    return { success: false, message: `Username must be ${USERNAME_LIMIT} characters or less` }
+
+  if (!/^\w+$/.test(normalized))
+    return { success: false, message: 'Username can only contain letters, numbers, and underscores' }
+
+  if (!userId.value && !debugOptions.bypassAuth)
+    return { success: false, message: 'User ID not found' }
+
+  try {
+    if (isDev && debugOptions.bypassAuth) {
+      await new Promise(resolve => setTimeout(resolve, 400))
+      return { success: true }
+    }
+
+    if (!userId.value)
+      return { success: false, message: 'User ID not found' }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        username: normalized,
+        username_set: true,
+      })
+      .eq('id', userId.value)
+
+    if (updateError) {
+      if (updateError.code === '23505') {
+        return { success: false, message: 'This username is already taken', code: updateError.code }
+      }
+
+      return { success: false, message: updateError.message, code: updateError.code }
+    }
+
+    invalidateUserProfileCache()
+    return { success: true }
+  }
+  catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update username'
+    return { success: false, message }
+  }
+}
+
+interface AutoUsernameAttemptResult {
+  attempted: boolean
+  success: boolean
+  errorMessage?: string
+  suggestion?: string
+  code?: string
+}
+
+async function attemptDiscordAutoUsername(): Promise<AutoUsernameAttemptResult> {
+  if (discordUsernameAttempted)
+    return { attempted: false, success: false }
+
+  await ensureDiscordIdentity()
+  const suggestion = getDiscordUsernameSuggestion()
+  if (!suggestion)
+    return { attempted: false, success: false }
+
+  discordUsernameAttempted = true
+
+  const result = await updateUsernameValue(suggestion)
+
+  if (result.success)
+    return { attempted: true, success: true }
+
+  return {
+    attempted: true,
+    success: false,
+    errorMessage: result.message,
+    suggestion,
+    code: result.code,
+  }
+}
+
+async function ensureProfileDiscordId(currentDiscordId: string | null) {
+  if (!user.value || !userId.value)
+    return currentDiscordId
+
+  await ensureDiscordIdentity()
+  const discordIdentity = getDiscordIdentity()
+  const discordId = extractDiscordId(discordIdentity)
+
+  if (!discordId)
+    return currentDiscordId
+
+  if (isDev && debugOptions.bypassAuth)
+    return discordId
+
+  if (discordId === currentDiscordId || discordIdSyncInFlight)
+    return currentDiscordId
+
+  try {
+    discordIdSyncInFlight = true
+    const { data, error: fnError } = await supabase.functions.invoke('link-discord')
+
+    if (fnError) {
+      console.error('Error syncing Discord identity via function:', fnError)
+      return currentDiscordId
+    }
+
+    if (data?.success && typeof data.discordId === 'string')
+      return data.discordId
+
+    if (data?.error)
+      console.warn('Discord link function responded without success:', data.error)
+
+    return currentDiscordId
+  }
+  catch (err) {
+    console.error('Error syncing Discord identity:', err)
+    return currentDiscordId
+  }
+  finally {
+    discordIdSyncInFlight = false
+  }
+}
+
 const hasAuthParams = computed(() => {
   if (typeof window === 'undefined')
     return false
@@ -66,56 +332,20 @@ const hasAuthParams = computed(() => {
 })
 
 async function submitUsername() {
-  if (!username.value || username.value.length < 3) {
-    usernameError.value = 'Username must be at least 3 characters long'
-    return
-  }
-
+  usernameError.value = ''
   usernameLoading.value = true
-  if (!userId.value && !debugOptions.bypassAuth) {
-    usernameError.value = 'User ID not found'
-    usernameLoading.value = false
-    return
-  }
 
   try {
-    if (isDev && debugOptions.bypassAuth) {
-      await new Promise(resolve => setTimeout(resolve, 800))
-    }
-    else {
-      if (!userId.value)
-        throw new Error('User ID not found')
+    const result = await updateUsernameValue(username.value)
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          username: username.value,
-          username_set: true,
-        })
-        .eq('id', userId.value)
-
-      if (updateError) {
-        if (updateError.code === '23505') {
-          usernameError.value = 'This username is already taken'
-        }
-        else {
-          usernameError.value = updateError.message
-        }
-        return
-      }
+    if (!result.success) {
+      usernameError.value = result.message ?? 'An error occurred'
+      return
     }
 
     usernameStep.value = false
     processComplete.value = true
-
-    if (!debugOptions.skipRedirect) {
-      setTimeout(() => {
-        navigateTo('/profile')
-      }, 1500)
-    }
-  }
-  catch (err) {
-    usernameError.value = err instanceof Error ? err.message : 'An error occurred'
+    scheduleProfileRedirect()
   }
   finally {
     usernameLoading.value = false
@@ -185,27 +415,57 @@ async function checkUsernameStatus() {
     if (!user.value)
       throw new Error('User not found')
 
+    await ensureDiscordIdentity()
+
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('username, username_set')
+      .select('username, username_set, discord_id')
       .eq('id', userId.value)
       .single()
 
     if (profileError)
       throw profileError
 
+    const updatedDiscordId = await ensureProfileDiscordId(profileData?.discord_id ?? null)
+    if (profileData && updatedDiscordId && profileData.discord_id !== updatedDiscordId)
+      profileData.discord_id = updatedDiscordId
+
     if (!profileData || !profileData.username_set) {
+      usernameError.value = ''
+
+      const shouldAttemptAuto = !debugOptions.forceUsernameStep && !profileData?.username
+      if (shouldAttemptAuto) {
+        const autoResult = await attemptDiscordAutoUsername()
+
+        if (autoResult.success) {
+          usernameStep.value = false
+          processComplete.value = true
+          scheduleProfileRedirect()
+          return
+        }
+
+        if (autoResult.attempted) {
+          if (autoResult.suggestion)
+            username.value = autoResult.suggestion
+          if (autoResult.errorMessage)
+            usernameError.value = autoResult.errorMessage
+        }
+      }
+
       usernameStep.value = true
-      if (profileData?.username)
+
+      if (profileData?.username) {
         username.value = profileData.username
+      }
+      else if (!username.value) {
+        const suggestion = getDiscordUsernameSuggestion()
+        if (suggestion)
+          username.value = suggestion
+      }
     }
     else {
       processComplete.value = true
-      if (!debugOptions.skipRedirect) {
-        setTimeout(() => {
-          navigateTo('/profile')
-        }, 1500)
-      }
+      scheduleProfileRedirect()
     }
   }
   catch (err) {
@@ -217,7 +477,12 @@ async function checkUsernameStatus() {
   }
 }
 
-watch(user, (newUser) => {
+watch(user, (newUser, oldUser) => {
+  if (!newUser || oldUser?.id !== newUser.id) {
+    resolvedDiscordIdentity.value = null
+    discordIdentityFetchPromise = null
+  }
+
   if (isDev && debugOptions.bypassAuth) {
     applyDebugOptions()
     return

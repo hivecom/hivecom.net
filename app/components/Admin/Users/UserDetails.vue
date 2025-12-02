@@ -15,6 +15,8 @@ import { getUserAvatarUrl } from '@/lib/utils/storage'
 import UserActions from './UserActions.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
 
+type UserActionType = 'ban' | 'unban' | 'edit' | 'delete'
+
 const props = defineProps<{
   user: {
     id: string
@@ -39,6 +41,7 @@ const props = defineProps<{
     role?: string | null
     country?: string | null
   } | null
+  actionLoading?: Partial<Record<UserActionType, boolean>>
 }>()
 
 // Define emits
@@ -150,7 +153,7 @@ const isOpen = defineModel<boolean>('isOpen', { default: false })
 // Type that specifically allows null
 type UserAction = {
   user: NonNullable<typeof props.user>
-  type: 'ban' | 'unban' | 'edit' | 'delete' | null
+  type: UserActionType | null
   banDuration?: string
   banReason?: string
 } | null
@@ -217,6 +220,10 @@ function handleClose() {
   isOpen.value = false
 }
 
+function isDetailActionLoading(actionType: string) {
+  return !!props.actionLoading?.[actionType as UserActionType]
+}
+
 // Get user initials for avatar fallback
 function getUserInitials(username: string): string {
   return username
@@ -251,6 +258,7 @@ function getUserInitials(username: string): string {
           :status="userStatus"
           :show-labels="true"
           :current-user-id="currentUser?.id"
+          :is-loading="isDetailActionLoading"
         />
       </Flex>
     </template>
