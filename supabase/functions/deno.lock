@@ -199,11 +199,6 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
-      "link-discord": {
-        "dependencies": [
-          "jsr:@supabase/supabase-js@2"
-        ]
-      },
       "oauth-patreon": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
@@ -219,7 +214,22 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
-      "userinfo": {
+      "user-change-email": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "user-delete-account": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "user-info": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "user-link-discord": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
         ]

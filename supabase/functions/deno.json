@@ -16,11 +16,13 @@
     "./admin-user-delete",
     "./cron-docker-control-container-fetch",
     "./cron-patreon-fetch",
-    "./link-discord",
     "./oauth-patreon",
     "./ping",
     "./trigger-google-calendar-sync",
     "./trigger-discord-event-sync",
-    "./userinfo"
+    "./user-change-email",
+    "./user-delete-account",
+    "./user-info",
+    "./user-link-discord"
   ]
 }

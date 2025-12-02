@@ -66,7 +66,7 @@ async function startDiscordOAuth() {
 type DiscordLinkAttempt = 'linked' | 'needs-oauth'
 
 async function tryDirectDiscordLink(): Promise<DiscordLinkAttempt> {
-  const { data, error } = await supabase.functions.invoke('link-discord')
+  const { data, error } = await supabase.functions.invoke('user-link-discord')
 
   if (error)
     throw error

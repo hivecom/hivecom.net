@@ -300,7 +300,7 @@ async function ensureProfileDiscordId(currentDiscordId: string | null) {
 
   try {
     discordIdSyncInFlight = true
-    const { data, error: fnError } = await supabase.functions.invoke('link-discord')
+    const { data, error: fnError } = await supabase.functions.invoke('user-link-discord')
 
     if (fnError) {
       console.error('Error syncing Discord identity via function:', fnError)

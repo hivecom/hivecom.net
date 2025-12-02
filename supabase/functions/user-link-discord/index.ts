@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
     );
   }
   catch (error) {
-    console.error("Error in link-discord function:", error);
+    console.error("Error in user-link-discord function:", error);
     return new Response(
       JSON.stringify({ success: false, error: constants.default.API_ERROR }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },

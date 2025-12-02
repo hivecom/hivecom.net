@@ -318,8 +318,8 @@ const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData
   select: false,
 })
 
-// Set default sorting
-setSort('Username', 'asc')
+// Set default sorting to newest join date
+setSort('Joined', 'desc')
 
 function handleUserClick(userData: unknown) {
   // userData might be transformed by defineTable, so we need to check its structure

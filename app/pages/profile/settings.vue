@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, Button, Card, Flex, pushToast, Skeleton, Toasts } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Input, pushToast, Skeleton, Toasts } from '@dolanske/vui'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 
 // Async component
@@ -25,6 +26,26 @@ const disconnectLoading = reactive({
 const passwordResetLoading = ref(false)
 const passwordResetSent = ref(false)
 const passwordResetError = ref('')
+
+// Email change state
+const newEmail = ref('')
+const confirmNewEmail = ref('')
+const emailChangeLoading = ref(false)
+const emailChangeSent = ref(false)
+const emailChangeError = ref('')
+const deleteAccountConfirm = ref('')
+const deleteAccountLoading = ref(false)
+const deleteAccountError = ref('')
+const deleteAccountModalOpen = ref(false)
+
+function isValidEmail(value: string): boolean {
+  const [local, domain, ...rest] = value.split('@')
+  if (!local || !domain || rest.length > 0)
+    return false
+  if (domain.startsWith('.') || domain.endsWith('.'))
+    return false
+  return domain.includes('.')
+}
 
 function showErrorToast(message: string) {
   pushToast('', {
@@ -60,6 +81,123 @@ async function sendPasswordReset() {
   }
   finally {
     passwordResetLoading.value = false
+  }
+}
+
+async function requestEmailChange() {
+  emailChangeError.value = ''
+  emailChangeSent.value = false
+
+  if (!user.value?.email) {
+    emailChangeError.value = 'No email found for your account.'
+    return
+  }
+
+  const normalizedNewEmail = newEmail.value.trim().toLowerCase()
+  const normalizedConfirmEmail = confirmNewEmail.value.trim().toLowerCase()
+
+  if (!normalizedNewEmail || !normalizedConfirmEmail) {
+    emailChangeError.value = 'Please enter your new email twice.'
+    return
+  }
+
+  if (normalizedNewEmail !== normalizedConfirmEmail) {
+    emailChangeError.value = 'Email addresses do not match.'
+    return
+  }
+
+  if (normalizedNewEmail === user.value.email.toLowerCase()) {
+    emailChangeError.value = 'Please enter a different email address.'
+    return
+  }
+
+  if (!isValidEmail(normalizedNewEmail)) {
+    emailChangeError.value = 'Please enter a valid email address.'
+    return
+  }
+
+  emailChangeLoading.value = true
+
+  try {
+    const origin = import.meta.client ? window.location.origin : undefined
+    const { error } = await supabase.functions.invoke('user-change-email', {
+      body: {
+        newEmail: normalizedNewEmail,
+        origin,
+      },
+    })
+
+    if (error)
+      throw error
+
+    emailChangeSent.value = true
+    newEmail.value = ''
+    confirmNewEmail.value = ''
+  }
+  catch (error: unknown) {
+    emailChangeError.value = error instanceof Error ? error.message : 'Unable to request email change.'
+  }
+  finally {
+    emailChangeLoading.value = false
+  }
+}
+
+function validateDeleteAccountInput(): boolean {
+  deleteAccountError.value = ''
+
+  if (!user.value?.email) {
+    deleteAccountError.value = 'No email found for your account.'
+    return false
+  }
+
+  if (!deleteAccountConfirm.value) {
+    deleteAccountError.value = 'Please confirm your current email to continue.'
+    return false
+  }
+
+  const normalizedConfirm = deleteAccountConfirm.value.trim().toLowerCase()
+  const normalizedCurrent = user.value.email.toLowerCase()
+
+  if (normalizedConfirm !== normalizedCurrent) {
+    deleteAccountError.value = 'Confirmation email does not match your current email.'
+    return false
+  }
+
+  return true
+}
+
+function promptDeleteAccount() {
+  if (validateDeleteAccountInput())
+    deleteAccountModalOpen.value = true
+}
+
+async function deleteAccount() {
+  if (!validateDeleteAccountInput())
+    return
+
+  deleteAccountLoading.value = true
+
+  try {
+    const { error } = await supabase.functions.invoke('user-delete-account', {
+      body: {
+        confirmEmail: deleteAccountConfirm.value.trim(),
+      },
+    })
+
+    if (error)
+      throw error
+
+    pushToast('Account deleted successfully. Goodbye!')
+    deleteAccountConfirm.value = ''
+
+    await supabase.auth.signOut()
+    navigateTo('/')
+  }
+  catch (error: unknown) {
+    deleteAccountError.value = error instanceof Error ? error.message : 'Unable to delete account.'
+  }
+  finally {
+    deleteAccountLoading.value = false
   }
 }
 
@@ -258,139 +396,240 @@ async function disconnectDiscord() {
     </template>
 
     <template v-else>
-      <h1 class="settings-title">
-        Profile Settings
-      </h1>
+      <!-- Hero section -->
+      <section class="page-title">
+        <h1>
+          Settings
+        </h1>
+        <p>
+          Manage your account settings and connected accounts.
+        </p>
+      </section>
 
-      <!-- Change Password Section -->
-      <Card separators class="mb-l">
-        <template #header>
-          <Flex x-between y-center>
-            <h3>Change Password</h3>
-            <Icon name="ph:key" />
-          </Flex>
-        </template>
-        <Flex column gap="m">
-          <p class="text-s text-color-lighter">
-            You can set or change your password to log in with email and password instead of just email links.
-          </p>
-          <Button :loading="passwordResetLoading" variant="accent" @click="sendPasswordReset">
-            Send Password Reset Email
-          </Button>
-          <Alert v-if="passwordResetSent" filled variant="info">
-            A password reset link has been sent to your email address.
-          </Alert>
-          <Alert v-if="passwordResetError" filled variant="danger">
-            {{ passwordResetError }}
-          </Alert>
+      <Flex class="settings-row" gap="l" wrap>
+        <Flex class="settings-column" column gap="l">
+          <!-- Change Password Section -->
+          <Card separators>
+            <template #header>
+              <Flex x-between y-center>
+                <h3>Change Password</h3>
+                <Icon name="ph:key" />
+              </Flex>
+            </template>
+            <Flex column gap="m">
+              <p class="text-s text-color-lighter">
+                You can set or change your password to log in with email and password instead of just email links.
+              </p>
+              <Button :loading="passwordResetLoading" variant="accent" @click="sendPasswordReset">
+                Send Password Reset Email
+              </Button>
+              <Alert v-if="passwordResetSent" filled variant="info">
+                A password reset link has been sent to your email address.
+              </Alert>
+              <Alert v-if="passwordResetError" filled variant="danger">
+                {{ passwordResetError }}
+              </Alert>
+            </Flex>
+          </Card>
+
+          <!-- Change Email Section -->
+          <Card separators>
+            <template #header>
+              <Flex x-between y-center>
+                <h3>Change Email</h3>
+                <Icon name="ph:envelope-simple" />
+              </Flex>
+            </template>
+            <Flex column gap="m">
+              <p class="text-s text-color-lighter">
+                Update your login email. We will send confirmation links to both your current and new addresses.
+              </p>
+              <div class="current-email-block">
+                <span class="text-xs text-color-lighter">Current Email</span>
+                <p class="text-s">
+                  {{ user?.email || 'No email on file' }}
+                </p>
+              </div>
+              <Input
+                v-model="newEmail"
+                label="New Email"
+                placeholder="new.email@example.com"
+                type="email"
+                expand
+              />
+              <Input
+                v-model="confirmNewEmail"
+                label="Confirm New Email"
+                placeholder="Confirm new email"
+                type="email"
+                expand
+              />
+              <Button :loading="emailChangeLoading" variant="accent" @click="requestEmailChange">
+                Send Email Change Links
+              </Button>
+              <Alert v-if="emailChangeSent" filled variant="info">
+                Check both your current and new inboxes to confirm the change.
+              </Alert>
+              <Alert v-if="emailChangeError" filled variant="danger">
+                {{ emailChangeError }}
+              </Alert>
+            </Flex>
+          </Card>
+
+          <!-- Delete Account Section -->
+          <Card separators class="danger-card">
+            <template #header>
+              <Flex x-between y-center>
+                <h3>Delete Account</h3>
+                <Icon name="ph:warning" />
+              </Flex>
+            </template>
+            <Flex column gap="m">
+              <p class="text-s danger-text">
+                Deleting your account removes your profile, connected accounts, and access to Hivecom services. This action cannot be undone.
+              </p>
+              <p class="text-xs text-color-lighter">
+                Type your current email to confirm you understand the consequences.
+              </p>
+              <Input
+                v-model="deleteAccountConfirm"
+                label="Confirm Email"
+                placeholder="your.email@example.com"
+                type="email"
+                expand
+              />
+              <Button
+                variant="danger"
+                :loading="deleteAccountLoading"
+                :disabled="!deleteAccountConfirm || deleteAccountConfirm.toLowerCase() !== (user?.email || '').toLowerCase()"
+                @click="promptDeleteAccount"
+              >
+                Permanently Delete Account
+              </Button>
+              <Alert v-if="deleteAccountError" filled variant="danger">
+                {{ deleteAccountError }}
+              </Alert>
+            </Flex>
+          </Card>
         </Flex>
-      </Card>
 
-      <!-- Connected Accounts Section -->
-      <Card separators>
-        <template #header>
-          <Flex x-between y-center>
-            <h3>Connected Accounts</h3>
-            <Icon name="ph:link" />
-          </Flex>
-        </template>
-
-        <Flex column gap="m">
-          <!-- Patreon -->
-          <Flex expand class="account-connection-row">
-            <Flex x-between y-center expand>
-              <Flex gap="m" y-center>
-                <div class="account-icon patreon">
-                  <Icon name="ph:patreon-logo" size="20" />
-                </div>
-                <div>
-                  <strong>Patreon</strong>
-                  <p class="text-xs text-color-lighter">
-                    Support the community and get supporter benefits
-                  </p>
-                </div>
+        <Flex class="settings-column" column>
+          <!-- Connected Accounts Section -->
+          <Card separators class="connected-card">
+            <template #header>
+              <Flex x-between y-center>
+                <h3>Connected Accounts</h3>
+                <Icon name="ph:link" />
               </Flex>
+            </template>
 
-              <div class="account-status">
-                <Flex v-if="profile?.patreon_id" gap="s" y-center>
-                  <Badge variant="success" size="s">
-                    <Icon name="ph:check" />
-                    Connected
-                  </Badge>
-                  <Button variant="danger" :loading="disconnectLoading.patreon" @click="disconnectPatreon">
-                    Disconnect
-                  </Button>
+            <Flex column gap="m">
+              <!-- Patreon -->
+              <Flex expand class="account-connection-row">
+                <Flex x-between y-center expand>
+                  <Flex gap="m" y-center>
+                    <div class="account-icon patreon">
+                      <Icon name="ph:patreon-logo" size="20" />
+                    </div>
+                    <div>
+                      <strong>Patreon</strong>
+                      <p class="text-xs text-color-lighter">
+                        Support the community and get supporter benefits
+                      </p>
+                    </div>
+                  </Flex>
+
+                  <div class="account-status">
+                    <Flex v-if="profile?.patreon_id" gap="s" y-center>
+                      <Badge variant="success" size="s">
+                        <Icon name="ph:check" />
+                        Connected
+                      </Badge>
+                      <Button variant="danger" :loading="disconnectLoading.patreon" @click="disconnectPatreon">
+                        Disconnect
+                      </Button>
+                    </Flex>
+                    <ClientOnly v-else>
+                      <ConnectPatreonButton />
+                    </ClientOnly>
+                  </div>
                 </Flex>
-                <ClientOnly v-else>
-                  <ConnectPatreonButton />
-                </ClientOnly>
-              </div>
-            </Flex>
-          </Flex>
-
-          <!-- Steam -->
-          <Flex expand class="account-connection-row">
-            <Flex x-between y-center expand>
-              <Flex gap="m" y-center>
-                <div class="account-icon steam">
-                  <Icon name="ph:game-controller" size="20" />
-                </div>
-                <div>
-                  <strong>Steam</strong>
-                  <p class="text-xs text-color-lighter">
-                    Connect your gaming profile
-                  </p>
-                </div>
               </Flex>
 
-              <div class="account-status">
-                <Badge v-if="profile?.steam_id" variant="success" size="s">
-                  <Icon name="ph:check" />
-                  Connected
-                </Badge>
-                <ClientOnly v-else>
-                  <ConnectSteam />
-                </ClientOnly>
-              </div>
-            </Flex>
-          </Flex>
+              <!-- Steam -->
+              <Flex expand class="account-connection-row">
+                <Flex x-between y-center expand>
+                  <Flex gap="m" y-center>
+                    <div class="account-icon steam">
+                      <Icon name="ph:game-controller" size="20" />
+                    </div>
+                    <div>
+                      <strong>Steam</strong>
+                      <p class="text-xs text-color-lighter">
+                        Connect your gaming profile
+                      </p>
+                    </div>
+                  </Flex>
 
-          <!-- Discord -->
-          <Flex expand class="account-connection-row">
-            <Flex x-between y-center expand>
-              <Flex gap="m" y-center>
-                <div class="account-icon discord">
-                  <Icon name="ph:discord-logo" size="20" />
-                </div>
-                <div>
-                  <strong>Discord</strong>
-                  <p class="text-xs text-color-lighter">
-                    Join our community chat
-                  </p>
-                </div>
-              </Flex>
-
-              <div class="account-status">
-                <Flex v-if="profile?.discord_id" gap="s" y-center>
-                  <Badge variant="success" size="s">
-                    <Icon name="ph:check" />
-                    Connected
-                  </Badge>
-                  <Button variant="danger" :loading="disconnectLoading.discord" @click="disconnectDiscord">
-                    Disconnect
-                  </Button>
+                  <div class="account-status">
+                    <Badge v-if="profile?.steam_id" variant="success" size="s">
+                      <Icon name="ph:check" />
+                      Connected
+                    </Badge>
+                    <ClientOnly v-else>
+                      <ConnectSteam />
+                    </ClientOnly>
+                  </div>
                 </Flex>
-                <ClientOnly v-else>
-                  <ConnectDiscord @linked="fetchProfile" />
-                </ClientOnly>
-              </div>
+              </Flex>
+
+              <!-- Discord -->
+              <Flex expand class="account-connection-row">
+                <Flex x-between y-center expand>
+                  <Flex gap="m" y-center>
+                    <div class="account-icon discord">
+                      <Icon name="ph:discord-logo" size="20" />
+                    </div>
+                    <div>
+                      <strong>Discord</strong>
+                      <p class="text-xs text-color-lighter">
+                        Sign-in through Discord
+                      </p>
+                    </div>
+                  </Flex>
+
+                  <div class="account-status">
+                    <Flex v-if="profile?.discord_id" gap="s" y-center>
+                      <Badge variant="success" size="s">
+                        <Icon name="ph:check" />
+                        Connected
+                      </Badge>
+                      <Button variant="danger" :loading="disconnectLoading.discord" @click="disconnectDiscord">
+                        Disconnect
+                      </Button>
+                    </Flex>
+                    <ClientOnly v-else>
+                      <ConnectDiscord @linked="fetchProfile" />
+                    </ClientOnly>
+                  </div>
+                </Flex>
+              </Flex>
             </Flex>
-          </Flex>
+          </Card>
         </Flex>
-      </Card>
+      </Flex>
     </template>
   </div>
   <Toasts />
+  <ConfirmModal
+    v-model:open="deleteAccountModalOpen"
+    v-model:confirm="deleteAccount"
+    title="Delete Account"
+    description="This will permanently remove your Hivecom account, connected identities, and any associated data. This action cannot be undone."
+    confirm-text="Delete Account"
+    cancel-text="Cancel"
+    :destructive="true"
+  />
 </template>
 
 <style lang="scss" scoped>
@@ -399,6 +638,27 @@ async function disconnectDiscord() {
   color: var(--text-color);
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
+}
+
+.settings-row {
+  margin-bottom: var(--space-l);
+}
+
+.settings-column {
+  flex: 1 1 360px;
+  min-width: 280px;
+}
+
+.current-email-block {
+  line-height: 1.4;
+}
+
+.danger-card {
+  border-color: var(--color-danger, #ff424d);
+}
+
+.danger-text {
+  color: var(--color-danger, #ff424d);
 }
 
 .loading-container {

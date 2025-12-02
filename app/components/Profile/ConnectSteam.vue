@@ -1,20 +1,27 @@
 <script setup lang="ts">
-import { Button } from '@dolanske/vui'
+import { Button, Tooltip } from '@dolanske/vui'
 </script>
 
 <template>
   <div>
-    <Button
-      variant="fill"
-      disabled
-      aria-disabled="true"
-      aria-label="Steam integration coming soon"
+    <Tooltip
+      placement="top"
     >
-      <template #start>
-        <Icon name="ph:steam-logo" />
+      <template #tooltip>
+        Steam login coming soon (Valve time)!
       </template>
-      Connect Steam (Coming Soon)
-    </Button>
+      <Button
+        variant="fill"
+        disabled
+        aria-disabled="true"
+        aria-label="Steam integration coming soon"
+      >
+        <template #start>
+          <Icon name="ph:steam-logo" />
+        </template>
+        Connect Steam
+      </Button>
+    </Tooltip>
   </div>
 </template>
 
