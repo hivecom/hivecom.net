@@ -824,6 +824,10 @@ export interface Database {
         | 'projects.create'
         | 'projects.update'
         | 'projects.delete'
+        | 'assets.create'
+        | 'assets.delete'
+        | 'assets.read'
+        | 'assets.update'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       profile_badge: 'founder' | 'earlybird' | 'builder' | 'host'
@@ -1015,6 +1019,10 @@ export const Constants = {
         'projects.create',
         'projects.update',
         'projects.delete',
+        'assets.create',
+        'assets.delete',
+        'assets.read',
+        'assets.update',
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],
