@@ -85,6 +85,7 @@ async function signInWithDiscord() {
       provider: 'discord',
       options: {
         redirectTo: getAuthRedirectUrl(),
+        scopes: 'identify',
       },
     })
 

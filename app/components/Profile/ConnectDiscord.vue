@@ -46,6 +46,7 @@ async function startDiscordOAuth() {
     options: {
       redirectTo,
       skipBrowserRedirect: true,
+      scopes: 'identify',
     },
   })
 
