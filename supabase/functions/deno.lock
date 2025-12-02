@@ -1,5 +1,5 @@
 {
-  "version": "5",
+  "version": "4",
   "specifiers": {
     "jsr:@supabase/functions-js@^0.0.0-automated": "0.0.0-jsr-test.1",
     "jsr:@supabase/supabase-js@2": "2.86.0",

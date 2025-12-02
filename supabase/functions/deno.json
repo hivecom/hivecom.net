@@ -1,4 +1,5 @@
 {
+  "version": "2.1.4",
   "imports": {
     "app-constants": "../../constants.json",
     "database-types": "../../types/database.types.ts",
