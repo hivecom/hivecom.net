@@ -6,6 +6,7 @@ import '@/assets/elements/auth.scss'
 const route = useRoute()
 const supabase = useSupabaseClient()
 const loading = ref(false)
+const discordLoading = ref(false)
 const email = ref('')
 const password = ref('')
 const errorMessage = ref('')
@@ -42,15 +43,23 @@ async function signIn() {
   }
 }
 
+function getAuthRedirectUrl() {
+  if (process.env.NODE_ENV === 'development')
+    return 'http://localhost:3000/auth/confirm'
+
+  if (typeof window !== 'undefined')
+    return `${window.location.origin}/auth/confirm`
+
+  return '/auth/confirm'
+}
+
 async function signInWithOtp() {
   // Make sure that the following URLs are whitelisted in your Supabase project settings
   // http://localhost:3000/auth/*
   // https://dev.hivecom.net/auth/*
   // https://hivecom.net/auth/*
 
-  const redirectUrl = process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000/auth/confirm'
-    : `${window.location.origin}/auth/confirm`
+  const redirectUrl = getAuthRedirectUrl()
 
   const { error } = await supabase.auth.signInWithOtp({
     email: email.value,
@@ -64,6 +73,30 @@ async function signInWithOtp() {
   }
   else {
     showEmailNotice.value = true
+  }
+}
+
+async function signInWithDiscord() {
+  errorMessage.value = ''
+  discordLoading.value = true
+
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'discord',
+      options: {
+        redirectTo: getAuthRedirectUrl(),
+      },
+    })
+
+    if (error)
+      throw error
+  }
+  catch (error) {
+    console.error('Discord sign-in error:', error)
+    errorMessage.value = error instanceof Error ? error.message : 'Unable to sign in with Discord.'
+  }
+  finally {
+    discordLoading.value = false
   }
 }
 
@@ -105,6 +138,12 @@ onMounted(() => {
       </template>
       <div class="container container-xs" style="min-height:356px">
         <Flex x-center y-center column gap="l" class="py-l">
+          <Button variant="gray" :loading="discordLoading" class="w-100" @click="signInWithDiscord">
+            <Flex y-center gap="s">
+              <Icon name="ph:discord-logo" />
+              Continue with Discord
+            </Flex>
+          </Button>
           <Tabs v-model="tab" variant="filled" expand>
             <Tab value="Password" />
             <Tab value="E-mail" />

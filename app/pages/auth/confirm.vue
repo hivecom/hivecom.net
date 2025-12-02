@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { UserIdentity } from '@supabase/supabase-js'
+
 import { Alert, Button, Card, Flex, Input, Spinner, Switch } from '@dolanske/vui'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 
@@ -56,6 +58,46 @@ function applyDebugOptions() {
 
 function toggleDebugPanel() {
   showDebugPanel.value = !showDebugPanel.value
+}
+
+function extractDiscordId(identity?: UserIdentity | null) {
+  if (!identity)
+    return null
+
+  const identityData = identity.identity_data as Record<string, unknown> | null
+  const getField = (key: string) => {
+    const value = identityData?.[key]
+    return typeof value === 'string' ? value : undefined
+  }
+
+  return getField('id')
+    || getField('user_id')
+    || getField('sub')
+    || getField('provider_id')
+    || null
+}
+
+async function ensureProfileDiscordId(currentDiscordId: string | null) {
+  if (!user.value || !userId.value)
+    return currentDiscordId
+
+  const discordIdentity = user.value.identities?.find((identity: UserIdentity) => identity.provider === 'discord')
+  const discordId = extractDiscordId(discordIdentity)
+
+  if (!discordId || discordId === currentDiscordId)
+    return currentDiscordId
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ discord_id: discordId })
+    .eq('id', userId.value)
+
+  if (error) {
+    console.error('Error syncing Discord identity:', error)
+    return currentDiscordId
+  }
+
+  return discordId
 }
 
 const hasAuthParams = computed(() => {
@@ -187,12 +229,16 @@ async function checkUsernameStatus() {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('username, username_set')
+      .select('username, username_set, discord_id')
       .eq('id', userId.value)
       .single()
 
     if (profileError)
       throw profileError
+
+    const updatedDiscordId = await ensureProfileDiscordId(profileData?.discord_id ?? null)
+    if (profileData && updatedDiscordId && profileData.discord_id !== updatedDiscordId)
+      profileData.discord_id = updatedDiscordId
 
     if (!profileData || !profileData.username_set) {
       usernameStep.value = true
