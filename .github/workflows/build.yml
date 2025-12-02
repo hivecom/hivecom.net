@@ -11,6 +11,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    environment: production
+
     # Mirror prod env needed for a full build
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
