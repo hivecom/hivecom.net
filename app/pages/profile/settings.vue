@@ -381,7 +381,7 @@ async function disconnectDiscord() {
                   </Button>
                 </Flex>
                 <ClientOnly v-else>
-                  <ConnectDiscord />
+                  <ConnectDiscord @linked="fetchProfile" />
                 </ClientOnly>
               </div>
             </Flex>

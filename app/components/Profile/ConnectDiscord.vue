@@ -7,10 +7,23 @@ const props = withDefaults(defineProps<{ redirectTo?: string }>(), {
   redirectTo: '/profile/settings',
 })
 
+const emit = defineEmits<{
+  (e: 'linked'): void
+}>()
+
 const runtimeConfig = useRuntimeConfig()
 const supabase = useSupabaseClient()
 
 const isLinking = ref(false)
+
+function showErrorToast(message: string) {
+  pushToast('', {
+    body: SharedErrorToast,
+    bodyProps: {
+      error: message,
+    },
+  })
+}
 
 function getRedirectUri() {
   const target = props.redirectTo.startsWith('/') ? props.redirectTo : '/profile/settings'
@@ -26,39 +39,71 @@ function getRedirectUri() {
   return `${baseUrl}/auth/callback/discord?${query.toString()}`
 }
 
+async function startDiscordOAuth() {
+  const redirectTo = getRedirectUri()
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider: 'discord',
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+    },
+  })
+
+  if (error)
+    throw error
+
+  let didRedirect = false
+
+  if (import.meta.client) {
+    window.location.assign(data?.url ?? redirectTo)
+    didRedirect = true
+  }
+
+  return didRedirect
+}
+
+type DiscordLinkAttempt = 'linked' | 'needs-oauth'
+
+async function tryDirectDiscordLink(): Promise<DiscordLinkAttempt> {
+  const { data, error } = await supabase.functions.invoke('link-discord')
+
+  if (error)
+    throw error
+
+  if (data?.success) {
+    pushToast('Discord connected successfully.')
+    emit('linked')
+    return 'linked'
+  }
+
+  if (data?.error === 'Discord identity not linked')
+    return 'needs-oauth'
+
+  throw new Error(data?.error ?? 'Failed to link Discord account.')
+}
+
 async function connectDiscord() {
   if (isLinking.value)
     return
 
   isLinking.value = true
+  let redirected = false
 
   try {
-    const redirectTo = getRedirectUri()
-    const { data, error } = await supabase.auth.linkIdentity({
-      provider: 'discord',
-      options: {
-        redirectTo,
-        skipBrowserRedirect: true,
-      },
-    })
+    const result = await tryDirectDiscordLink()
 
-    if (error)
-      throw error
+    if (result === 'linked')
+      return
 
-    if (import.meta.client) {
-      window.location.assign(data?.url ?? redirectTo)
-    }
+    redirected = await startDiscordOAuth()
   }
   catch (err) {
     console.error('Error initiating Discord connection:', err)
-    isLinking.value = false
-
-    pushToast('', {
-      body: SharedErrorToast,
-      bodyProps: {
-        error: err instanceof Error ? err.message : 'Unable to begin Discord connection.',
-      },
-    })
+    showErrorToast(err instanceof Error ? err.message : 'Unable to begin Discord connection.')
+  }
+  finally {
+    if (!redirected)
+      isLinking.value = false
   }
 }
 </script>
