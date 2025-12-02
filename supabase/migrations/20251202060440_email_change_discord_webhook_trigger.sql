@@ -8,7 +8,7 @@
 --     RAISE NOTICE 'Discord email change webhook secret might already exist: %', SQLERRM;
 -- END
 -- $$;
-CREATE OR REPLACE FUNCTION auth.notify_discord_email_change()
+CREATE OR REPLACE FUNCTION public.notify_discord_email_change()
   RETURNS TRIGGER
   SECURITY DEFINER
   SET search_path = public
@@ -58,7 +58,7 @@ CREATE TRIGGER trigger_notify_discord_email_change
   AFTER UPDATE ON auth.users
   FOR EACH ROW
   WHEN(NEW.email IS DISTINCT FROM OLD.email)
-  EXECUTE FUNCTION auth.notify_discord_email_change();
+  EXECUTE FUNCTION public.notify_discord_email_change();
 
-GRANT EXECUTE ON FUNCTION auth.notify_discord_email_change() TO service_role;
+GRANT EXECUTE ON FUNCTION public.notify_discord_email_change() TO service_role;
 
