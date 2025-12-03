@@ -181,12 +181,11 @@ const badgeEntries = computed<RenderableBadgeEntry[]>(() => {
 })
 
 const visibleBadges = computed(() => badgeEntries.value.slice(0, props.maxBadges))
-const overflowCount = computed(() => Math.max(0, badgeEntries.value.length - props.maxBadges))
 const hasBadges = computed(() => badgeEntries.value.length > 0)
 </script>
 
 <template>
-  <Flex v-if="hasBadges" :gap="0" expand role="list" aria-label="User badges">
+  <Flex v-if="hasBadges" :gap="0" role="list" aria-label="User badges">
     <Flex
       v-for="badge in visibleBadges"
       :key="`preview-card-badge-${badge.id}`"
@@ -196,15 +195,6 @@ const hasBadges = computed(() => badgeEntries.value.length > 0)
         :is="badge.component"
         v-bind="badge.componentProps ?? {}"
       />
-    </Flex>
-
-    <Flex
-      v-if="overflowCount > 0"
-      class="user-preview-card-badges__overflow text-xs"
-      role="status"
-      aria-live="polite"
-    >
-      +{{ overflowCount }} more
     </Flex>
   </Flex>
 </template>
@@ -234,6 +224,11 @@ const hasBadges = computed(() => badgeEntries.value.length > 0)
   width: 100%;
   max-width: 140px;
   margin-inline: auto;
+}
+
+.user-preview-card-badges__item :deep(.profile-badge.profile-badge--compact .profile-badge__hex-wrapper) {
+  width: 100%;
+  max-width: 100%;
 }
 
 .user-preview-card-badges__item :deep(.profile-badge__label) {
