@@ -10,7 +10,7 @@ export interface Database {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '12.2.3 (519615d)'
+    PostgrestVersion: '13.0.5'
   }
   public: {
     Tables: {
@@ -150,10 +150,10 @@ export interface Database {
           created_by: string | null
           date: string
           description: string
-          duration_minutes: number | null
-          games: number[] | null
           discord_event_id: string | null
           discord_last_synced_at: string | null
+          duration_minutes: number | null
+          games: number[] | null
           google_event_id: string | null
           google_last_synced_at: string | null
           id: number
@@ -170,10 +170,10 @@ export interface Database {
           created_by?: string | null
           date: string
           description?: string
-          duration_minutes?: number | null
-          games?: number[] | null
           discord_event_id?: string | null
           discord_last_synced_at?: string | null
+          duration_minutes?: number | null
+          games?: number[] | null
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
@@ -190,10 +190,10 @@ export interface Database {
           created_by?: string | null
           date?: string
           description?: string
-          duration_minutes?: number | null
-          games?: number[] | null
           discord_event_id?: string | null
           discord_last_synced_at?: string | null
+          duration_minutes?: number | null
+          games?: number[] | null
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
