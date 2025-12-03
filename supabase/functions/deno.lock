@@ -214,11 +214,6 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
-      "user-change-email": {
-        "dependencies": [
-          "jsr:@supabase/supabase-js@2"
-        ]
-      },
       "user-delete-account": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"

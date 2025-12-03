@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Alert, Button, Card, Flex, Input, Tab, Tabs } from '@dolanske/vui'
+import SupportModal from '@/components/Shared/SupportModal.vue'
 
 import '@/assets/elements/auth.scss'
 
@@ -11,10 +12,26 @@ const email = ref('')
 const password = ref('')
 const errorMessage = ref('')
 const tab = ref('Password')
+const supportModalOpen = ref(false)
 
 const showEmailNotice = ref(false)
+const mfaCode = ref('')
+const mfaError = ref('')
+const mfaVerifying = ref(false)
+const restoringMfaChallenge = ref(false)
+const pendingMfa = reactive({
+  factorId: '',
+  factorLabel: '',
+})
+const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
+const requiresMfaChallenge = computed(() => Boolean(pendingMfa.factorId))
+const mfaPromptCopy = 'Finish verification to sign-in.'
 
-watch(tab, () => showEmailNotice.value = false)
+watch(tab, (newTab: string) => {
+  showEmailNotice.value = false
+  if (newTab !== 'Password' && requiresMfaChallenge.value)
+    void cancelMfaChallenge()
+})
 
 watchEffect(() => {
   if (route.query.banned === '1') {
@@ -22,9 +39,29 @@ watchEffect(() => {
       ? route.query.message
       : 'Your account is currently suspended. Please contact support.'
   }
+  else if (requiresMfaChallenge.value && route.query.mfa === '1') {
+    errorMessage.value = mfaPromptCopy
+  }
+  else if (errorMessage.value === mfaPromptCopy) {
+    errorMessage.value = ''
+  }
 })
 
+watch(
+  () => route.query.mfa,
+  (mfaFlag) => {
+    if (mfaFlag === '1' && !requiresMfaChallenge.value)
+      void restorePendingMfaChallenge()
+  },
+  { immediate: true },
+)
+
 async function signIn() {
+  if (requiresMfaChallenge.value) {
+    await verifyMfaCode()
+    return
+  }
+
   loading.value = true
 
   try {
@@ -102,6 +139,7 @@ async function signInWithDiscord() {
 }
 
 async function signInWithPassword() {
+  resetMfaState()
   const { error } = await supabase.auth.signInWithPassword({
     email: email.value,
     password: password.value,
@@ -111,12 +149,123 @@ async function signInWithPassword() {
     errorMessage.value = error.message
   }
   else {
+    const needsMfa = await prepareMfaRequirement()
+    if (!needsMfa)
+      navigateTo('/')
+  }
+}
+
+async function restorePendingMfaChallenge() {
+  if (restoringMfaChallenge.value || requiresMfaChallenge.value || !hasMfaSupport.value)
+    return
+
+  restoringMfaChallenge.value = true
+
+  try {
+    await prepareMfaRequirement()
+  }
+  finally {
+    restoringMfaChallenge.value = false
+  }
+}
+
+function resetMfaState() {
+  pendingMfa.factorId = ''
+  pendingMfa.factorLabel = ''
+  mfaCode.value = ''
+  mfaError.value = ''
+}
+
+async function prepareMfaRequirement() {
+  if (!hasMfaSupport.value)
+    return false
+
+  try {
+    const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aalError)
+      throw aalError
+
+    const needsAal2 = aalData?.nextLevel === 'aal2' && aalData?.currentLevel !== 'aal2'
+    if (!needsAal2)
+      return false
+
+    const { data, error: factorsError } = await supabase.auth.mfa.listFactors()
+    if (factorsError)
+      throw factorsError
+
+    const factors = Array.isArray(data?.totp) && data.totp.length ? data.totp : data?.all || []
+    const verifiedTotp = factors.find(factor => factor.factor_type === 'totp' && factor.status === 'verified')
+
+    if (!verifiedTotp)
+      throw new Error('No verified authenticator is configured for this account.')
+
+    pendingMfa.factorId = verifiedTotp.id
+    pendingMfa.factorLabel = verifiedTotp.friendly_name || email.value
+
+    return true
+  }
+  catch (error) {
+    console.error('Unable to determine MFA status:', error)
+    errorMessage.value = error instanceof Error ? error.message : 'Unable to complete multi-factor verification. Please try again.'
+    await supabase.auth.signOut({ scope: 'local' })
+    resetMfaState()
+    return false
+  }
+}
+
+async function verifyMfaCode() {
+  if (!requiresMfaChallenge.value)
+    return
+
+  const code = mfaCode.value.trim()
+  if (!code) {
+    mfaError.value = 'Enter the 6-digit code from your authenticator app.'
+    return
+  }
+
+  mfaVerifying.value = true
+  mfaError.value = ''
+
+  try {
+    const { error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: pendingMfa.factorId,
+      code,
+    })
+
+    if (error)
+      throw error
+
+    resetMfaState()
     navigateTo('/')
+  }
+  catch (error) {
+    mfaError.value = error instanceof Error ? error.message : 'The provided code was invalid or expired.'
+  }
+  finally {
+    mfaVerifying.value = false
+  }
+}
+
+async function cancelMfaChallenge() {
+  if (!requiresMfaChallenge.value)
+    return
+
+  await supabase.auth.signOut({ scope: 'local' })
+  resetMfaState()
+
+  if ('mfa' in route.query) {
+    const updatedQuery = { ...route.query }
+    delete updatedQuery.mfa
+    navigateTo({ path: route.path, query: updatedQuery }, { replace: true })
   }
 }
 
 // Clear errors when properties change
-watch([email, password], () => errorMessage.value = '')
+watch([email, password], () => {
+  errorMessage.value = ''
+  if (requiresMfaChallenge.value)
+    void cancelMfaChallenge()
+})
 
 // Auto-focus email input on page load
 const emailInputRef = useTemplateRef('email-input')
@@ -137,9 +286,50 @@ onMounted(() => {
       <template #header>
         <h4>Sign in</h4>
       </template>
-      <div class="container container-xs" style="min-height:356px">
+      <div v-if="requiresMfaChallenge" class="container container-xs" style="min-height:356px">
+        <Flex column gap="l" class="py-l">
+          <Flex column gap="xs">
+            <span class="text-s text-color-muted">Step 2 of 2</span>
+            <h5 class="mfa-heading">
+              Enter your authenticator code
+            </h5>
+          </Flex>
+          <Input
+            v-model="mfaCode"
+            label="One-time code"
+            placeholder="123456"
+            inputmode="numeric"
+            maxlength="8"
+            :disabled="mfaVerifying"
+            expand
+            @keyup.enter="verifyMfaCode"
+          />
+          <Flex column gap="s" expand>
+            <Button expand variant="fill" :loading="mfaVerifying" @click="verifyMfaCode">
+              Verify code
+            </Button>
+            <Button expand variant="gray" :disabled="mfaVerifying" @click="cancelMfaChallenge">
+              Cancel sign-in
+            </Button>
+          </Flex>
+          <Alert v-if="mfaError" filled variant="danger">
+            {{ mfaError }}
+          </Alert>
+          <Alert v-else-if="errorMessage && route.query.mfa === '1'" filled variant="danger">
+            {{ errorMessage }}
+          </Alert>
+          <Flex column y-center expand>
+            <Button variant="link" @click="supportModalOpen = true">
+              <p class="text-color-lighter text-s">
+                Having trouble signing in?
+              </p>
+            </Button>
+          </Flex>
+        </Flex>
+      </div>
+      <div v-else class="container container-xs" style="min-height:356px">
         <Flex x-center y-center column gap="l" class="py-l">
-          <Button variant="gray" :loading="discordLoading" class="w-100" @click="signInWithDiscord">
+          <Button variant="gray" :loading="discordLoading" expand @click="signInWithDiscord">
             <Flex y-center gap="s">
               <Icon name="ph:discord-logo" />
               Continue with Discord
@@ -151,7 +341,13 @@ onMounted(() => {
           </Tabs>
           <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
           <Input v-if="tab === 'Password'" v-model="password" expand placeholder="●●●●●●●●●●●●●" label="Password" type="password" />
-          <Button variant="fill" :loading="loading" :disabled="tab === 'Password' ? !(email && password) : !email" @click="signIn">
+          <Button
+            variant="fill"
+            :loading="loading"
+            :disabled="tab === 'Password' ? !(email && password) : !email"
+            expand
+            @click="signIn"
+          >
             Sign in
             <template #end>
               <Icon name="ph:sign-in" class="color-text-black" />
@@ -167,17 +363,25 @@ onMounted(() => {
               {{ errorMessage }}
             </p>
           </Alert>
+          <Button v-if="tab === 'Password'" variant="link">
+            <NuxtLink to="/auth/forgot-password" class="text-color-lighter" aria-label="Reset your password">
+              Forgot your password?
+            </NuxtLink>
+          </Button>
+          <Button v-else variant="link" @click="supportModalOpen = true">
+            <p class="text-color-lighter text-s">
+              Having trouble signing in?
+            </p>
+          </Button>
         </Flex>
       </div>
-      <template #footer>
-        <NuxtLink to="/auth/sign-up" class="auth-link color-accent" aria-label="Sign up for a new account">
+      <template v-if="!requiresMfaChallenge" #footer>
+        <NuxtLink to="/auth/sign-up" class="auth-link text-color-accent" aria-label="Sign up for a new account">
           Don't have an account? Click to sign-up!
-        </NuxtLink>
-        <NuxtLink to="/auth/forgot-password" class="auth-link" aria-label="Reset your password">
-          Forgot your password?
         </NuxtLink>
       </template>
     </Card>
+    <SupportModal v-model:open="supportModalOpen" />
   </Flex>
 </template>
 
@@ -195,5 +399,10 @@ onMounted(() => {
   &:hover {
     background-color: var(--color-bg-raised);
   }
+}
+
+.mfa-heading {
+  font-size: var(--font-size-l);
+  margin: 0;
 }
 </style>

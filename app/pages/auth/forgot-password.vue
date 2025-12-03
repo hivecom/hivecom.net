@@ -53,10 +53,10 @@ onMounted(() => {
       <template #header>
         <h4>Reset Password</h4>
       </template>
-      <div class="container container-xs" style="min-height:280px">
+      <div class="container container-xs">
         <Flex x-center y-center column gap="l" class="py-l">
           <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
-          <Button variant="fill" :loading="loading" :disabled="!email" @click="resetPassword">
+          <Button expand variant="fill" :loading="loading" :disabled="!email" @click="resetPassword">
             Reset Password
             <template #end>
               <Icon name="ph:envelope" color="white" />
@@ -75,7 +75,7 @@ onMounted(() => {
         </Flex>
       </div>
       <template #footer>
-        <NuxtLink to="/auth/sign-in" class="auth-link color-accent" aria-label="Return to sign in page">
+        <NuxtLink to="/auth/sign-in" class="auth-link text-color-accent" aria-label="Return to sign in page">
           Back to Sign In
         </NuxtLink>
       </template>

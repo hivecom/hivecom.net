@@ -20,7 +20,6 @@
     "./ping",
     "./trigger-google-calendar-sync",
     "./trigger-discord-event-sync",
-    "./user-change-email",
     "./user-delete-account",
     "./user-info",
     "./user-link-discord"

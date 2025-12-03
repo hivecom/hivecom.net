@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { Provider } from '@supabase/supabase-js'
 import { Alert, Button, Card, Flex, Input } from '@dolanske/vui'
 import '@/assets/elements/auth.scss'
 
@@ -8,7 +7,6 @@ const email = ref('')
 const err = ref('')
 const loading = ref(false)
 const discordLoading = ref(false)
-const patreonLoading = ref(false)
 const showEmailNotice = ref(false)
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -75,89 +73,57 @@ async function signUpWithDiscord() {
     discordLoading.value = false
   }
 }
-
-async function signUpWithPatreon() {
-  err.value = ''
-  showEmailNotice.value = false
-  patreonLoading.value = true
-
-  try {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'patreon' as unknown as Provider,
-      options: {
-        redirectTo: getAuthRedirectUrl(),
-      },
-    })
-
-    if (error)
-      throw error
-  }
-  catch (error) {
-    console.error('Patreon sign-up error:', error)
-    err.value = error instanceof Error ? error.message : 'Unable to continue with Patreon.'
-  }
-  finally {
-    patreonLoading.value = false
-  }
-}
 </script>
 
 <template>
   <Flex y-center x-center class="flex-1 w-100" column>
-    <Card class="login-card" separators style="height:424px">
+    <Card class="login-card" separators>
       <template #header>
         <h4>Sign up</h4>
       </template>
       <div class="container container-xs">
         <Flex x-center y-center column :style="{ paddingBlock: '64px' }" gap="l">
+          <Flex column gap="s" class="w-100">
+            <Button variant="gray" :loading="discordLoading" class="w-100" @click="signUpWithDiscord">
+              <Flex y-center gap="s">
+                <Icon name="ph:discord-logo" />
+                Sign-up through Discord
+              </Flex>
+            </Button>
+          </Flex>
+          <Separator>or</Separator>
           <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
-          <Button variant="fill" :loading="loading" :disabled="!email" @click="signInWithOtp">
+          <Button expand variant="fill" :loading="loading" :disabled="!email" @click="signInWithOtp">
             Sign up
             <template #end>
               <Icon name="ph:sign-in" color="white" />
             </template>
           </Button>
-          <Flex column gap="s" class="w-100">
-            <Button variant="gray" :loading="discordLoading" class="w-100" @click="signUpWithDiscord">
-              <Flex y-center gap="s">
-                <Icon name="ph:discord-logo" />
-                Continue with Discord
-              </Flex>
-            </Button>
-            <Button variant="gray" :loading="patreonLoading" class="w-100" @click="signUpWithPatreon">
-              <Flex y-center gap="s">
-                <Icon name="simple-icons:patreon" />
-                Continue with Patreon
-              </Flex>
-            </Button>
-          </Flex>
-          <Button v-if="isDev" variant="link" @click="skipToConfirm">
-            Skip to Confirm
-            <template #end>
-              <Icon name="ph:arrow-right" />
-            </template>
-          </Button>
+          <p class="text-xxs text-color-lighter text-center">
+            By signing up you agree to our <NuxtLink to="/legal/terms">
+              Terms of Service
+            </NuxtLink> &amp; <NuxtLink to="/legal/privacy">
+              Privacy Policy
+            </NuxtLink>.
+          </p>
           <Alert v-if="showEmailNotice" filled variant="info">
             An email with a sign-up link has been sent to your inbox! (check spam just in case)
           </Alert>
           <Alert v-if="err" variant="danger" filled>
             {{ err }}
           </Alert>
+          <Button v-if="isDev" variant="link" @click="skipToConfirm">
+            Skip to Confirm
+            <template #end>
+              <Icon name="ph:arrow-right" />
+            </template>
+          </Button>
         </Flex>
       </div>
       <template #footer>
-        <div class="sign-up__footer">
-          <p>
-            By signing up, you agree to our <NuxtLink to="/legal/terms">
-              Terms of Service
-            </NuxtLink> and <NuxtLink to="/legal/privacy">
-              Privacy Policy
-            </NuxtLink>.
-          </p>
-          <NuxtLink to="/auth/sign-in" class="auth-link color-accent" aria-label="Sign in to existing account">
-            Already have an account? Click to sign in!
-          </NuxtLink>
-        </div>
+        <NuxtLink to="/auth/sign-in" class="auth-link text-color-accent" aria-label="Sign in to existing account">
+          Already have an account? Click to sign in!
+        </NuxtLink>
       </template>
     </Card>
   </Flex>

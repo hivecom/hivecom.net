@@ -84,10 +84,6 @@ function applyDebugOptions() {
   }
 }
 
-function toggleDebugPanel() {
-  showDebugPanel.value = !showDebugPanel.value
-}
-
 function getDiscordIdentity(): UserIdentity | null {
   if (resolvedDiscordIdentity.value)
     return resolvedDiscordIdentity.value
@@ -493,13 +489,6 @@ watch(user, (newUser, oldUser) => {
 }, { immediate: true })
 
 onMounted(() => {
-  if (isDev) {
-    window.addEventListener('keydown', (e) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'D')
-        toggleDebugPanel()
-    })
-  }
-
   if (isDev && (debugOptions.forceUsernameStep || debugOptions.forceSuccess || debugOptions.forceError)) {
     applyDebugOptions()
     return
@@ -590,7 +579,6 @@ onMounted(() => {
           <Icon name="ph:bug" size="64" />
           <Flex column>
             <h3>Debug Panel</h3>
-            <span class="text-s ml-auto">(Press Ctrl+Shift+D to toggle)</span>
           </Flex>
         </Flex>
       </template>

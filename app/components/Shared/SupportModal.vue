@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Button, Flex, Modal } from '@dolanske/vui'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import UserLink from '@/components/Shared/UserLink.vue'
 
@@ -28,6 +28,8 @@ const ircUrl = supportDetails.IRC_URL ?? 'irc://irc.hivecom.net:6697/#staff'
 const admins = ref<Tables<'profiles'>[]>([])
 const adminsLoading = ref(false)
 const adminsError = ref('')
+const user = useSupabaseUser()
+const canViewAdmins = computed(() => Boolean(user.value))
 
 const discordUrl = constants.LINKS?.DISCORD?.url
   ?? constants.PLATFORMS?.DISCORD?.urls?.[0]?.url
@@ -38,6 +40,13 @@ const teamspeakUrl = constants.PLATFORMS?.TEAMSPEAK?.urls?.[0]?.url
 const supabase = useSupabaseClient()
 
 async function loadAdmins() {
+  if (!canViewAdmins.value) {
+    admins.value = []
+    adminsError.value = ''
+    adminsLoading.value = false
+    return
+  }
+
   adminsLoading.value = true
   adminsError.value = ''
 
@@ -77,7 +86,19 @@ async function loadAdmins() {
 }
 
 onMounted(() => {
-  loadAdmins()
+  if (canViewAdmins.value)
+    loadAdmins()
+})
+
+watch(user, (newUser) => {
+  if (newUser) {
+    loadAdmins()
+  }
+  else {
+    admins.value = []
+    adminsError.value = ''
+    adminsLoading.value = false
+  }
 })
 
 function handleClose() {
@@ -112,20 +133,22 @@ function handleClose() {
         <p>
           Reach out to any of the admins below on Discord or TeamSpeak if that works better for you.
         </p>
-        <div v-if="adminsLoading" class="support-modal__admin-loading">
-          Loading admin list...
+        <div v-if="!canViewAdmins" class="support-modal__admin-placeholder">
+          Sign in to view the current admin roster.
         </div>
-        <div v-else-if="adminsError" class="support-modal__admin-error">
-          {{ adminsError }}
-        </div>
-        <div v-else-if="admins.length === 0" class="support-modal__admin-loading">
-          No admins are currently listed. Please reach out via email or IRC.
-        </div>
-        <ul v-else class="support-modal__admin-list">
-          <li v-for="admin in admins" :key="admin.id">
-            <UserLink :user-id="admin.id" size="s" />
-          </li>
-        </ul>
+        <template v-else>
+          <div v-if="adminsLoading" class="support-modal__admin-loading">
+            Loading admin list...
+          </div>
+          <div v-else-if="adminsError" class="support-modal__admin-error">
+            {{ adminsError }}
+          </div>
+          <ul v-else class="support-modal__admin-list">
+            <li v-for="admin in admins" :key="admin.id">
+              <UserLink :user-id="admin.id" size="s" />
+            </li>
+          </ul>
+        </template>
       </div>
     </div>
 
@@ -226,6 +249,11 @@ function handleClose() {
 
   &__admin-error {
     color: var(--color-text-red);
+  }
+
+  &__admin-placeholder {
+    font-size: var(--font-size-s);
+    color: var(--color-text-light);
   }
 }
 </style>
