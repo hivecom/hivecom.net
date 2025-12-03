@@ -10,6 +10,26 @@ interface BanUserRequest {
   banReason?: string; // Optional reason for the ban
 }
 
+type AuthSchema = {
+  auth: {
+    Tables: {
+      sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
 Deno.serve(async (req: Request) => {
   // This is needed if you're planning to invoke your function from a browser. Which we are.
   if (req.method === "OPTIONS") {
@@ -82,10 +102,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey =
+      Deno.env.get("SUPABASE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseServiceRoleKey =
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+      "";
+
     const tempClient = createClient<Database>(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      // Prefer new publishable key name, fallback to legacy anon key for BC
-      Deno.env.get("SUPABASE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: {
           headers: { Authorization: authHeader },
@@ -124,9 +151,8 @@ Deno.serve(async (req: Request) => {
 
     // Create a Supabase client with service role key for admin operations
     const supabaseClient = createClient<Database>(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      // Prefer new secret key name, fallback to legacy service role key for BC
-      Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      supabaseUrl,
+      supabaseServiceRoleKey,
     );
 
     // First, check if the user exists by looking up their profile
@@ -249,6 +275,38 @@ Deno.serve(async (req: Request) => {
           status: 500,
         },
       );
+    }
+
+    if (banDuration !== 'none') {
+      const authSchemaClient = createClient<AuthSchema>(
+        supabaseUrl,
+        supabaseServiceRoleKey,
+        { db: { schema: "auth" } },
+      );
+
+      // Removing auth.sessions rows forces refresh tokens to become invalid immediately.
+      const { error: sessionDeleteError } = await authSchemaClient
+        .from("sessions")
+        .delete()
+        .eq("user_id", userId);
+
+      if (sessionDeleteError) {
+        console.error(
+          "Error destroying active sessions for banned user:",
+          sessionDeleteError,
+        );
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Failed to destroy active sessions for banned user",
+            details: sessionDeleteError.message,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          },
+        );
+      }
     }
 
     const action = banDuration === 'none' ? 'unbanned' : 'banned';
