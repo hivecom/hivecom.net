@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { CopyClipboard, Flex, Skeleton } from '@dolanske/vui'
+import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useUserData } from '@/composables/useUserData'
 
 const props = defineProps<{
@@ -47,24 +48,30 @@ const currentUser = useSupabaseUser()
   </div>
 
   <div v-else class="user-display">
-    <Flex gap="xs" y-center>
-      <NuxtLink
-        :to="`/profile/${props.userId}`"
-        class="username-link text-s"
-        :aria-label="`View profile of ${user.username || 'user'}`"
-      >
-        {{ user.username || props.userId }}
-      </NuxtLink>
-      <CopyClipboard :text="props.userId" confirm>
-        <Icon name="ph:copy" size="14" />
-      </CopyClipboard>
-    </Flex>
+    <UserPreviewHover :user-id="props.userId" class="user-link__hover">
+      <Flex gap="xs" y-center>
+        <NuxtLink
+          :to="`/profile/${props.userId}`"
+          class="username-link text-s"
+          :aria-label="`View profile of ${user.username || 'user'}`"
+        >
+          {{ user.username || props.userId }}
+        </NuxtLink>
+        <CopyClipboard :text="props.userId" confirm>
+          <Icon name="ph:copy" size="14" />
+        </CopyClipboard>
+      </Flex>
+    </UserPreviewHover>
   </div>
 </template>
 
 <style scoped lang="scss">
 .user-display {
   display: inline-block;
+}
+
+.user-link__hover {
+  display: inline-flex;
 }
 
 .username-link {

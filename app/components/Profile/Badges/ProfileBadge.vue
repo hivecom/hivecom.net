@@ -9,12 +9,19 @@ const props = withDefaults(defineProps<{
   description?: string
   icon?: string
   variant?: BadgeVariant
+  compact?: boolean
 }>(), {
   description: '',
   variant: 'bronze',
+  compact: false,
 })
 
-const badgeClasses = computed(() => ['profile-badge', `profile-badge--${props.variant}`])
+const badgeClasses = computed(() => {
+  const classes = ['profile-badge', `profile-badge--${props.variant}`]
+  if (props.compact)
+    classes.push('profile-badge--compact')
+  return classes
+})
 const ariaLabel = computed(() => props.description ? `${props.label} - ${props.description}` : props.label)
 
 const labelClasses = computed(() => {
@@ -128,7 +135,7 @@ const tooltipBindings = computed(() => props.description ? { placement: 'bottom'
         </defs>
       </svg>
 
-      <div class="profile-badge__body">
+      <div v-if="!props.compact" class="profile-badge__body">
         <p :class="labelClasses">
           {{ props.label }}
         </p>
@@ -352,6 +359,23 @@ const tooltipBindings = computed(() => props.description ? { placement: 'bottom'
   --badge-border: rgba(255, 181, 138, 0.45);
   --badge-glow: rgba(255, 181, 138, 0.2);
   --badge-icon-color: #ffdec8;
+}
+
+.profile-badge.profile-badge--compact {
+  padding: 0;
+  border: none;
+  background: none;
+  background-image: none;
+  box-shadow: none;
+  gap: var(--space-xs);
+}
+
+.profile-badge--compact .profile-badge__body {
+  display: none;
+}
+
+.profile-badge--compact .profile-badge__hex-wrapper {
+  width: clamp(90px, 26vw, 160px);
 }
 
 @media (max-width: 640px) {

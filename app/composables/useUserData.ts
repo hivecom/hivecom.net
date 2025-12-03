@@ -11,6 +11,8 @@ import { computed, onScopeDispose, readonly, ref, unref, watch } from 'vue'
 import { getUserAvatarUrl } from '@/lib/utils/storage'
 import { useSupabaseCache } from './useSupabaseCache'
 
+type ProfileBadgeSlug = Database['public']['Enums']['profile_badge']
+
 export interface UserDisplayData {
   id: string
   username: string
@@ -18,6 +20,10 @@ export interface UserDisplayData {
   avatarUrl: string | null
   supporter_lifetime: boolean
   supporter_patreon: boolean
+  badges: readonly ProfileBadgeSlug[]
+  introduction: string | null
+  country: string | null
+  created_at: string | null
 }
 
 interface ProfileCacheEntry {
@@ -25,10 +31,18 @@ interface ProfileCacheEntry {
   username: string
   supporter_lifetime?: boolean
   supporter_patreon?: boolean
+  badges?: ProfileBadgeSlug[]
+  introduction?: string | null
+  country?: string | null
+  created_at?: string | null
 }
 
 function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is ProfileCacheEntry {
-  return typeof profile?.supporter_lifetime === 'boolean' && typeof profile?.supporter_patreon === 'boolean'
+  return (
+    typeof profile?.supporter_lifetime === 'boolean'
+    && typeof profile?.supporter_patreon === 'boolean'
+    && Array.isArray(profile?.badges)
+  )
 }
 
 export interface UseUserDataOptions extends CacheConfig {
@@ -89,7 +103,7 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
       // Fetch from database
       const { data, error: profileError } = await supabase
         .from('profiles')
-        .select('id, username, supporter_lifetime, supporter_patreon')
+        .select('id, username, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at')
         .eq('id', id)
         .single()
 
@@ -102,6 +116,10 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
         username: data.username || 'Unknown',
         supporter_lifetime: data.supporter_lifetime ?? false,
         supporter_patreon: data.supporter_patreon ?? false,
+        badges: Array.isArray(data.badges) ? [...data.badges] : [],
+        introduction: data.introduction ?? null,
+        country: data.country ?? null,
+        created_at: data.created_at ?? null,
       }
 
       // Cache the result
@@ -219,6 +237,10 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
         avatarUrl,
         supporter_lifetime: profile.supporter_lifetime ?? false,
         supporter_patreon: profile.supporter_patreon ?? false,
+        badges: profile.badges ? [...profile.badges] : [],
+        introduction: profile.introduction ?? null,
+        country: profile.country ?? null,
+        created_at: profile.created_at ?? null,
       }
     }
     catch (err) {
@@ -424,7 +446,7 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
         profileIdsToFetch.length > 0
           ? supabase
               .from('profiles')
-              .select('id, username, supporter_lifetime, supporter_patreon')
+              .select('id, username, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at')
               .in('id', profileIdsToFetch)
           : Promise.resolve({ data: [], error: null }),
         includeRole && roleIdsToFetch.length > 0
@@ -452,6 +474,10 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
           username: profile.username ?? 'Unknown',
           supporter_lifetime: profile.supporter_lifetime ?? false,
           supporter_patreon: profile.supporter_patreon ?? false,
+          badges: Array.isArray(profile.badges) ? [...profile.badges] : [],
+          introduction: profile.introduction ?? null,
+          country: profile.country ?? null,
+          created_at: profile.created_at ?? null,
         }, userTtl)
       })
 
@@ -491,6 +517,10 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
             avatarUrl: avatarUrl ?? null,
             supporter_lifetime: profile.supporter_lifetime ?? false,
             supporter_patreon: profile.supporter_patreon ?? false,
+            badges: profile.badges ? [...profile.badges] : [],
+            introduction: profile.introduction ?? null,
+            country: profile.country ?? null,
+            created_at: profile.created_at ?? null,
           })
         }
       }

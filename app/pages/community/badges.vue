@@ -4,6 +4,7 @@ import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder
 import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
 import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
 import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
+import ProfileBadgeRSVPs from '@/components/Profile/Badges/ProfileBadgeRSVPs.vue'
 import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
 import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
 import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
@@ -36,6 +37,9 @@ const membershipSnapshots = [1, 5, 10, 20].map(years => ({
       </Flex>
       <Card class="playground-card">
         <div class="badge-grid">
+          <div class="badge-preview">
+            <ProfileBadgeRSVPs :rsvps="12" />
+          </div>
           <div class="badge-preview">
             <ProfileBadgeHost />
           </div>

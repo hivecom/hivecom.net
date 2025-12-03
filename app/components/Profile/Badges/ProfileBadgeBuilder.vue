@@ -3,8 +3,10 @@ import ProfileBadge from '@/components/Profile/Badges/ProfileBadge.vue'
 
 const props = withDefaults(defineProps<{
   description?: string
+  compact?: boolean
 }>(), {
   description: 'Contributed to open source development or infrastructure',
+  compact: false,
 })
 </script>
 
@@ -14,5 +16,6 @@ const props = withDefaults(defineProps<{
     :description="props.description"
     icon="ph:barbell"
     variant="silver"
+    :compact="props.compact"
   />
 </template>

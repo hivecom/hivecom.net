@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { UserDisplayData } from '@/composables/useUserData'
-import { Avatar, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import { Avatar, Flex, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useBulkUserData } from '@/composables/useUserData'
 
 interface Props {
@@ -193,13 +194,7 @@ defineExpose({
         }"
         :style="avatarStyleVars"
       >
-        <Tooltip>
-          <template #tooltip>
-            <p v-if="showNames && entry.profile">
-              {{ entry.profile.username }}
-            </p>
-          </template>
-
+        <UserPreviewHover :user-id="entry.profile?.id || entry.id" class="bulk-avatar-display__hover">
           <NuxtLink
             v-if="entry.profile?.username"
             :to="`/profile/${entry.profile.username}`"
@@ -227,7 +222,7 @@ defineExpose({
               {{ entry.profile ? getUserInitials(entry.profile.username || 'User') : '?' }}
             </template>
           </Avatar>
-        </Tooltip>
+        </UserPreviewHover>
       </div>
 
       <div
@@ -277,6 +272,10 @@ defineExpose({
     height: var(--avatar-size, 40px);
     border-radius: 50%;
     overflow: visible;
+  }
+
+  &__hover {
+    width: 100%;
   }
 
   &__avatar-item {

@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import type { Session } from '@supabase/supabase-js'
 import { Alert, Button, Card, Flex, Input, Tab, Tabs } from '@dolanske/vui'
 import SupportModal from '@/components/Shared/SupportModal.vue'
+import { useMfaStatusCache } from '@/composables/useMfaStatusCache'
 
 import '@/assets/elements/auth.scss'
 
@@ -19,10 +21,12 @@ const mfaCode = ref('')
 const mfaError = ref('')
 const mfaVerifying = ref(false)
 const restoringMfaChallenge = ref(false)
+const showMfaReminder = ref(false)
 const pendingMfa = reactive({
   factorId: '',
   factorLabel: '',
 })
+const mfaCache = useMfaStatusCache()
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
 const requiresMfaChallenge = computed(() => Boolean(pendingMfa.factorId))
 const mfaPromptCopy = 'Finish verification to sign-in.'
@@ -39,7 +43,7 @@ watchEffect(() => {
       ? route.query.message
       : 'Your account is currently suspended. Please contact support.'
   }
-  else if (requiresMfaChallenge.value && route.query.mfa === '1') {
+  else if (requiresMfaChallenge.value && showMfaReminder.value) {
     errorMessage.value = mfaPromptCopy
   }
   else if (errorMessage.value === mfaPromptCopy) {
@@ -162,11 +166,19 @@ async function restorePendingMfaChallenge() {
   restoringMfaChallenge.value = true
 
   try {
-    await prepareMfaRequirement()
+    await prepareMfaRequirement({ remindUser: true })
   }
   finally {
     restoringMfaChallenge.value = false
   }
+}
+
+async function ensureMfaQueryFlag() {
+  if (route.query.mfa === '1')
+    return
+
+  const updatedQuery = { ...route.query, mfa: '1' }
+  await navigateTo({ path: route.path, query: updatedQuery }, { replace: true })
 }
 
 function resetMfaState() {
@@ -174,9 +186,14 @@ function resetMfaState() {
   pendingMfa.factorLabel = ''
   mfaCode.value = ''
   mfaError.value = ''
+  showMfaReminder.value = false
 }
 
-async function prepareMfaRequirement() {
+interface PrepareMfaOptions {
+  remindUser?: boolean
+}
+
+async function prepareMfaRequirement(options: PrepareMfaOptions = {}) {
   if (!hasMfaSupport.value)
     return false
 
@@ -201,6 +218,17 @@ async function prepareMfaRequirement() {
 
     pendingMfa.factorId = verifiedTotp.id
     pendingMfa.factorLabel = verifiedTotp.friendly_name || email.value
+    await ensureMfaQueryFlag()
+
+    if (options.remindUser) {
+      showMfaReminder.value = true
+      errorMessage.value = mfaPromptCopy
+    }
+    else {
+      showMfaReminder.value = false
+      if (errorMessage.value === mfaPromptCopy)
+        errorMessage.value = ''
+    }
 
     return true
   }
@@ -235,6 +263,11 @@ async function verifyMfaCode() {
     if (error)
       throw error
 
+    const { data: sessionResult, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError)
+      console.warn('Unable to fetch upgraded MFA session:', sessionError)
+
+    await persistVerifiedMfaSession(sessionResult?.session ?? null)
     resetMfaState()
     navigateTo('/')
   }
@@ -257,6 +290,27 @@ async function cancelMfaChallenge() {
     const updatedQuery = { ...route.query }
     delete updatedQuery.mfa
     navigateTo({ path: route.path, query: updatedQuery }, { replace: true })
+  }
+}
+
+async function persistVerifiedMfaSession(session: Session | null) {
+  if (!session)
+    return
+
+  try {
+    await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    })
+
+    mfaCache.value = {
+      currentLevel: 'aal2',
+      nextLevel: 'aal2',
+      fetchedAt: Date.now(),
+    }
+  }
+  catch (error) {
+    console.error('Unable to persist upgraded MFA session:', error)
   }
 }
 

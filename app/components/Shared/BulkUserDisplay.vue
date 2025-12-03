@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Card, Grid, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useBulkUserData } from '@/composables/useUserData'
 import UserDisplay from './UserDisplay.vue'
 
@@ -112,17 +113,20 @@ defineExpose({
         :to="`/profile/${user.profile?.username || user.id}`"
         class="bulk-user-display__link"
       >
-        <Card
-          :class="itemClass"
-          class="bulk-user-display__item"
-        >
-          <UserDisplay
-            :user-id="user.id"
-            :user-profile="user.profile"
-            :show-role="showRole"
-            :size="userSize"
-          />
-        </Card>
+        <UserPreviewHover :user-id="user.profile?.id || user.id" class="bulk-user-display__hover">
+          <Card
+            :class="itemClass"
+            class="bulk-user-display__item"
+          >
+            <UserDisplay
+              :user-id="user.id"
+              :user-profile="user.profile"
+              :show-role="showRole"
+              :size="userSize"
+              :show-profile-preview="false"
+            />
+          </Card>
+        </UserPreviewHover>
       </NuxtLink>
     </Grid>
   </div>
@@ -166,6 +170,11 @@ defineExpose({
 
   &__skeleton-item {
     padding: var(--space-s);
+  }
+
+  &__hover {
+    display: block;
+    width: 100%;
   }
 }
 </style>

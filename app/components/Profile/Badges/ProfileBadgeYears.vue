@@ -7,6 +7,7 @@ type BadgeVariant = 'shiny' | 'gold' | 'silver' | 'bronze'
 const props = defineProps<{
   years: number
   memberSince: string
+  compact?: boolean
 }>()
 
 const variant = computed<BadgeVariant>(() => {
@@ -50,6 +51,7 @@ const description = computed(() => {
     :description="description"
     icon="ph:calendar-blank"
     :variant="variant"
+    :compact="props.compact"
   >
     <template #hex>
       <div class="profile-badge-years__value">

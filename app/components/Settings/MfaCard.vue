@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import type { Session } from '@supabase/supabase-js'
 import { Alert, Badge, Button, Card, Flex, Input, pushToast, Skeleton } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useMfaStatusCache } from '@/composables/useMfaStatusCache'
 import { useUserData } from '@/composables/useUserData'
 import { useUserId } from '@/composables/useUserId'
 
@@ -38,6 +40,7 @@ const totpSetup = reactive({
   enrolling: false,
   verifying: false,
 })
+const mfaCache = useMfaStatusCache()
 
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
 const verifiedTotpFactor = computed(() => mfaFactors.value.find(f => f.factor_type === 'totp' && f.status === 'verified') || null)
@@ -195,6 +198,11 @@ async function verifyTotpEnrollment() {
     if (error)
       throw error
 
+    const { data: sessionResult, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError)
+      console.warn('Unable to fetch upgraded MFA session:', sessionError)
+
+    await persistVerifiedMfaSession(sessionResult?.session ?? null)
     totpSuccess.value = 'Authenticator app confirmed. MFA is now enabled.'
     pushToast('Multi-factor authentication enabled.')
     resetTotpSetup()
@@ -223,12 +231,34 @@ async function disableTotp() {
 
     pushToast('Multi-factor authentication disabled.')
     await loadMfaFactors()
+    mfaCache.value = { currentLevel: null, nextLevel: null, fetchedAt: 0 }
   }
   catch (error) {
     disableTotpError.value = resolveErrorMessage(error, 'Unable to disable multi-factor authentication right now.')
   }
   finally {
     disableTotpLoading.value = false
+  }
+}
+
+async function persistVerifiedMfaSession(session: Session | null) {
+  if (!session)
+    return
+
+  try {
+    await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    })
+
+    mfaCache.value = {
+      currentLevel: 'aal2',
+      nextLevel: 'aal2',
+      fetchedAt: Date.now(),
+    }
+  }
+  catch (error) {
+    console.error('Unable to persist upgraded MFA session:', error)
   }
 }
 
@@ -255,19 +285,6 @@ onMounted(() => {
     </template>
 
     <Flex column gap="l">
-      <Alert v-if="mfaError" filled variant="danger">
-        {{ mfaError }}
-      </Alert>
-      <Alert v-if="totpError" filled variant="danger">
-        {{ totpError }}
-      </Alert>
-      <Alert v-if="disableTotpError" filled variant="danger">
-        {{ disableTotpError }}
-      </Alert>
-      <Alert v-if="totpSuccess" filled variant="success">
-        {{ totpSuccess }}
-      </Alert>
-
       <template v-if="hasMfaSupport">
         <Flex v-if="mfaLoading" column gap="s">
           <Skeleton width="50%" height="1rem" />
@@ -354,6 +371,15 @@ onMounted(() => {
       <Alert v-else filled variant="warning">
         Your current frontend build does not support authenticator-based MFA. Update @nuxtjs/supabase to enable it.
       </Alert>
+      <Alert v-if="mfaError" filled variant="danger">
+        {{ mfaError }}
+      </Alert>
+      <Alert v-if="totpError" filled variant="danger">
+        {{ totpError }}
+      </Alert>
+      <Alert v-if="disableTotpError" filled variant="danger">
+        {{ disableTotpError }}
+      </Alert>
     </Flex>
   </Card>
 
@@ -395,7 +421,6 @@ onMounted(() => {
 
 .security-panel__icon.is-active {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 1px var(--color-accent-alpha, rgba(101, 108, 255, 0.35));
 }
 
 .security-panel__actions {

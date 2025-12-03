@@ -3,8 +3,10 @@ import ProfileBadge from '@/components/Profile/Badges/ProfileBadge.vue'
 
 const props = withDefaults(defineProps<{
   description?: string
+  compact?: boolean
 }>(), {
   description: 'Contributed to the community in a significant way',
+  compact: false,
 })
 </script>
 
@@ -14,5 +16,6 @@ const props = withDefaults(defineProps<{
     :description="props.description"
     icon="ph:infinity-bold"
     variant="gold"
+    :compact="props.compact"
   />
 </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Avatar, Flex, Skeleton } from '@dolanske/vui'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
+import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useUserData } from '@/composables/useUserData'
 
 interface Props {
@@ -13,11 +14,13 @@ interface Props {
   } | null
   showRole?: boolean
   size?: 's' | 'm' | 'l'
+  showProfilePreview?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showRole: false,
   size: 'm',
+  showProfilePreview: true,
 })
 
 // Determine what data we need to fetch
@@ -122,17 +125,36 @@ const currentUser = useSupabaseUser()
 
     <!-- User data -->
     <Flex v-else-if="user" gap="m" y-center class="user-display__header">
-      <NuxtLink
-        :to="`/profile/${user.id}`"
-        class="user-display__link"
-        :aria-label="`View profile of ${user.username}`"
+      <UserPreviewHover
+        v-if="showProfilePreview"
+        :user-id="user.id"
+        class="user-display__avatar-wrapper"
       >
-        <Avatar :size="size" :url="user.avatarUrl || undefined">
-          <template v-if="!user.avatarUrl" #default>
-            {{ userInitials }}
-          </template>
-        </Avatar>
-      </NuxtLink>
+        <NuxtLink
+          :to="`/profile/${user.id}`"
+          class="user-display__link"
+          :aria-label="`View profile of ${user.username}`"
+        >
+          <Avatar :size="size" :url="user.avatarUrl || undefined">
+            <template v-if="!user.avatarUrl" #default>
+              {{ userInitials }}
+            </template>
+          </Avatar>
+        </NuxtLink>
+      </UserPreviewHover>
+      <div v-else class="user-display__avatar-wrapper">
+        <NuxtLink
+          :to="`/profile/${user.id}`"
+          class="user-display__link"
+          :aria-label="`View profile of ${user.username}`"
+        >
+          <Avatar :size="size" :url="user.avatarUrl || undefined">
+            <template v-if="!user.avatarUrl" #default>
+              {{ userInitials }}
+            </template>
+          </Avatar>
+        </NuxtLink>
+      </div>
       <div class="user-display__info">
         <Flex gap="xs" x-start y-center wrap>
           <NuxtLink
@@ -178,6 +200,10 @@ const currentUser = useSupabaseUser()
         text-decoration: underline;
       }
     }
+  }
+
+  &__avatar-wrapper {
+    display: inline-flex;
   }
 }
 </style>
