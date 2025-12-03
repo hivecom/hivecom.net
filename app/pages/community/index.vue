@@ -5,6 +5,7 @@ import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
+import { isBanActive } from '@/lib/utils/banStatus'
 
 // Get current user for authentication checks
 const user = useSupabaseUser()
@@ -19,6 +20,64 @@ const error = ref('')
 // State for recent projects
 const recentProjects = ref<Database['public']['Tables']['projects']['Row'][]>([])
 
+interface SupporterProfile {
+  id: string
+  supporter_lifetime: boolean | null
+  supporter_patreon: boolean | null
+  banned: boolean | null
+  ban_end: string | null
+}
+
+const MAX_RANDOM_COMMUNITY_MEMBERS = 50
+
+function buildActiveProfileFilter(timestamp: string) {
+  return `banned.eq.false,ban_end.lte.${timestamp}`
+}
+
+async function fetchRandomActiveCommunityMembers(filterClause: string) {
+  try {
+    const { count, error: countError } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .or(filterClause)
+
+    if (countError) {
+      console.warn('Error counting community members:', countError)
+      return []
+    }
+
+    const totalEligible = count ?? 0
+
+    if (totalEligible === 0)
+      return []
+
+    const fetchSize = Math.min(totalEligible, MAX_RANDOM_COMMUNITY_MEMBERS)
+    const maxOffset = Math.max(totalEligible - fetchSize, 0)
+    const randomOffset = maxOffset > 0 ? Math.floor(Math.random() * (maxOffset + 1)) : 0
+
+    const { data, error: rangeError } = await supabase
+      .from('profiles')
+      .select('id')
+      .or(filterClause)
+      .range(randomOffset, randomOffset + fetchSize - 1)
+
+    if (rangeError) {
+      console.warn('Error fetching random community members:', rangeError)
+      return []
+    }
+
+    return ((data ?? []) as Array<{ id: string }>)
+      .map(({ id }) => ({ id, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(entry => entry.id)
+      .slice(0, MAX_RANDOM_COMMUNITY_MEMBERS)
+  }
+  catch (error) {
+    console.warn('Unexpected error fetching random community members:', error)
+    return []
+  }
+}
+
 // Fetch community data
 async function fetchCommunityData() {
   try {
@@ -26,22 +85,20 @@ async function fetchCommunityData() {
     error.value = ''
 
     if (user.value) {
+      const nowIso = new Date().toISOString()
+      const activeProfilesFilter = buildActiveProfileFilter(nowIso)
+
       // Fetch supporters, random users, and recent projects in parallel for authenticated users
-      const [supportersResult, randomUsersResult, projectsResult] = await Promise.all([
+      const [supportersResult, randomUserIds, projectsResult] = await Promise.all([
         // Fetch supporters (lifetime and patreon)
         supabase
           .from('profiles')
-          .select('id, supporter_lifetime, supporter_patreon')
-          .eq('banned', false)
+          .select('id, supporter_lifetime, supporter_patreon, banned, ban_end')
           .or('supporter_lifetime.eq.true,supporter_patreon.eq.true')
           .order('created_at', { ascending: true }), // Show earliest supporters first
 
         // Fetch random selection of users
-        supabase
-          .from('profiles')
-          .select('id')
-          .eq('banned', false)
-          .limit(200), // Get more to randomize from
+        fetchRandomActiveCommunityMembers(activeProfilesFilter),
 
         // Fetch random projects
         supabase
@@ -54,22 +111,13 @@ async function fetchCommunityData() {
         console.warn('Error fetching supporters:', supportersResult.error)
       }
       else if (supportersResult.data) {
-        supporters.value = supportersResult.data.map(u => u.id)
+        const supporterRows = supportersResult.data as SupporterProfile[]
+        supporters.value = supporterRows
+          .filter(profile => !isBanActive(profile.banned, profile.ban_end))
+          .map(profile => profile.id)
       }
 
-      if (randomUsersResult.error) {
-        console.warn('Error fetching random users:', randomUsersResult.error)
-      }
-      else if (randomUsersResult.data) {
-        // Shuffle and take max 50 users
-        const shuffled = (randomUsersResult.data as Array<{ id: string }>)
-          .map(user => ({ user, sort: Math.random() }))
-          .sort((a, b) => a.sort - b.sort)
-          .map(({ user }) => user)
-          .slice(0, 50)
-
-        randomUsers.value = shuffled.map(u => u.id)
-      }
+      randomUsers.value = randomUserIds
 
       if (projectsResult.error) {
         console.warn('Error fetching random projects:', projectsResult.error)

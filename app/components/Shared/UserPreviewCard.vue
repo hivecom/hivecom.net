@@ -104,7 +104,7 @@ function handleRetry() {
             class="user-preview-card__avatar-link"
             :aria-label="`View profile of ${user.username}`"
           >
-            <Avatar size="l" :url="user.avatarUrl || undefined">
+            <Avatar class="user-preview-card__avatar" size="l" :url="user.avatarUrl || undefined">
               <template v-if="!user.avatarUrl" #default>
                 {{ userInitials }}
               </template>
@@ -173,6 +173,11 @@ function handleRetry() {
   gap: var(--space-m);
   width: 320px;
   max-width: 100%;
+}
+
+.user-preview-card__avatar {
+  min-width: 64px;
+  min-height: 64px;
 }
 
 .user-preview-card__content {

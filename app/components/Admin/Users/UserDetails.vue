@@ -9,6 +9,7 @@ import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
+import { isBanActive } from '@/lib/utils/banStatus'
 import { getCountryInfo } from '@/lib/utils/country'
 import { getUserActivityStatus } from '@/lib/utils/lastSeen'
 import { getUserAvatarUrl } from '@/lib/utils/storage'
@@ -193,18 +194,14 @@ watch(() => props.user, async (newUser) => {
   }
 }, { immediate: true })
 
-// Computed property for user status
-const userStatus = computed(() => {
-  if (!props.user) {
-    return 'active'
-  }
-
-  if (props.user.banned) {
-    return 'banned'
-  }
-
-  return 'active'
+const hasActiveBan = computed(() => {
+  if (!props.user)
+    return false
+  return isBanActive(props.user.banned, props.user.ban_end)
 })
+
+// Computed property for user status
+const userStatus = computed(() => (hasActiveBan.value ? 'banned' : 'active'))
 
 // Computed property for user activity status
 const activityStatus = computed(() => {
@@ -353,7 +350,7 @@ function getUserInitials(username: string): string {
               </Flex>
             </Grid>
 
-            <Grid v-if="user.banned && user.ban_duration" class="detail-item" :columns="2" expand>
+            <Grid v-if="hasActiveBan && user.ban_duration" class="detail-item" :columns="2" expand>
               <span class="text-color-light text-bold">Ban Duration:</span>
               <span class="ban-duration">{{ user.ban_duration }}</span>
             </Grid>

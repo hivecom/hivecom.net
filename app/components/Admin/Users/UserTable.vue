@@ -8,6 +8,7 @@ import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { isBanActive } from '@/lib/utils/banStatus'
 import { getUserActivityStatus } from '@/lib/utils/lastSeen'
 import UserActions from './UserActions.vue'
 import UserFilters from './UserFilters.vue'
@@ -221,8 +222,8 @@ async function fetchUsers() {
 
 // Helper function to get user status
 function getUserStatus(user: QueryUserProfile, _role: string | null): 'active' | 'banned' {
-  // Check if user is actually banned
-  return user.banned ? 'banned' : 'active'
+  const activeBan = isBanActive(user.banned ?? false, user.ban_end ?? null)
+  return activeBan ? 'banned' : 'active'
 }
 
 // Filter based on search and filters

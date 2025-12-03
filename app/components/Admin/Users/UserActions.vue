@@ -12,7 +12,7 @@ const props = defineProps<{
     patreon_id: string | null
     banned: boolean
   }
-  status: string
+  status: 'active' | 'banned'
   isLoading?: (action: string) => Record<string, boolean> | boolean
   showLabels?: boolean
   currentUserId?: string // Add current user ID to hide ban/delete for self
@@ -36,6 +36,8 @@ const showBanModal = ref(false)
 const showUnbanConfirm = ref(false)
 const showDeleteConfirm = ref(false)
 const showEditConfirm = ref(false)
+
+const isCurrentlyBanned = computed(() => props.status === 'banned')
 
 function handleBan(banData: { duration: string, reason?: string }) {
   action.value = {
@@ -114,7 +116,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
     </Button>
 
     <Button
-      v-if="!props.user.banned && canModifyUsers && !isCurrentUser"
+      v-if="!isCurrentlyBanned && canModifyUsers && !isCurrentUser"
       :size="buttonSize"
       variant="danger"
       :loading="isActionLoading('ban')"
@@ -132,7 +134,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
     </Button>
 
     <Button
-      v-if="props.user.banned && canModifyUsers && !isCurrentUser"
+      v-if="isCurrentlyBanned && canModifyUsers && !isCurrentUser"
       :size="buttonSize"
       variant="success"
       :loading="isActionLoading('unban')"
