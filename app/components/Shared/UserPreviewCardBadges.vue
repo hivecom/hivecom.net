@@ -212,7 +212,9 @@ const hasBadges = computed(() => badgeEntries.value.length > 0)
 <style scoped lang="scss">
 .user-preview-card-badges__item {
   min-width: 72px;
+  max-width: 72px;
   min-height: 72px;
+  max-height: 72px;
   margin-left: -22px;
   margin-top: -12px;
 }
