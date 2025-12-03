@@ -346,7 +346,7 @@ onBeforeMount(fetchProjects)
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
-                resource-type="announcements"
+                resource-type="projects"
                 :item="project._original"
                 @edit="(projectItem) => openEditProjectForm(projectItem as QueryProject)"
                 @delete="(projectItem) => handleProjectDelete((projectItem as QueryProject).id)"
@@ -379,7 +379,7 @@ onBeforeMount(fetchProjects)
 
   <!-- Project Form Sheet (for both create and edit) -->
   <ProjectForm
-    v-model:is-open="showProjectForm"
+    v-model:open="showProjectForm"
     :project="selectedProject"
     :is-edit-mode="isEditMode"
     @save="handleProjectSave"

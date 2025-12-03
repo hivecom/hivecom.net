@@ -3,6 +3,15 @@ import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Badge, Button, Calendar, Flex, Input, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import FileUpload from '@/components/Shared/FileUpload.vue'
+import {
+  deleteAnnouncementBackground,
+  deleteAnnouncementBanner,
+  getAnnouncementBackgroundUrl,
+  getAnnouncementBannerUrl,
+  uploadAnnouncementBackground,
+  uploadAnnouncementBanner,
+} from '@/lib/storage'
 
 // Interface for announcement query result
 interface QueryAnnouncement {
@@ -31,6 +40,8 @@ const emit = defineEmits(['save', 'delete'])
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
+const supabase = useSupabaseClient()
+
 // Form state
 const announcementForm = ref({
   title: '',
@@ -47,6 +58,16 @@ const newTagInput = ref('')
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
+
+const bannerUrl = ref<string | null>(null)
+const backgroundUrl = ref<string | null>(null)
+const bannerUploading = ref(false)
+const backgroundUploading = ref(false)
+const bannerDeleting = ref(false)
+const backgroundDeleting = ref(false)
+const bannerError = ref<string | null>(null)
+const backgroundError = ref<string | null>(null)
+const canManageAssets = computed(() => !!props.announcement)
 
 // Form validation
 const validation = computed(() => ({
@@ -71,6 +92,8 @@ watch(
         published_at: newAnnouncement.published_at ? new Date(newAnnouncement.published_at) : new Date(),
         tags: newAnnouncement.tags || [],
       }
+      void refreshBannerPreview(newAnnouncement.id)
+      void refreshBackgroundPreview(newAnnouncement.id)
     }
     else {
       announcementForm.value = {
@@ -82,10 +105,134 @@ watch(
         published_at: new Date(),
         tags: [],
       }
+      bannerUrl.value = null
+      backgroundUrl.value = null
+      bannerError.value = null
+      backgroundError.value = null
     }
   },
   { immediate: true },
 )
+
+async function refreshBannerPreview(announcementId: number | null | undefined) {
+  if (!announcementId) {
+    bannerUrl.value = null
+    return
+  }
+
+  try {
+    bannerError.value = null
+    bannerUrl.value = await getAnnouncementBannerUrl(supabase, announcementId)
+  }
+  catch (error) {
+    console.error('Error loading announcement banner:', error)
+    bannerUrl.value = null
+  }
+}
+
+async function refreshBackgroundPreview(announcementId: number | null | undefined) {
+  if (!announcementId) {
+    backgroundUrl.value = null
+    return
+  }
+
+  try {
+    backgroundError.value = null
+    backgroundUrl.value = await getAnnouncementBackgroundUrl(supabase, announcementId)
+  }
+  catch (error) {
+    console.error('Error loading announcement background:', error)
+    backgroundUrl.value = null
+  }
+}
+
+async function handleBannerUpload(file: File) {
+  if (!props.announcement) {
+    bannerError.value = 'Save the announcement before uploading a banner.'
+    return
+  }
+
+  try {
+    bannerUploading.value = true
+    bannerError.value = null
+    await uploadAnnouncementBanner(supabase, props.announcement.id, file)
+    await refreshBannerPreview(props.announcement.id)
+  }
+  catch (error) {
+    console.error('Error uploading announcement banner:', error)
+    bannerError.value = 'Failed to upload banner. Please try again.'
+  }
+  finally {
+    bannerUploading.value = false
+  }
+}
+
+async function handleBackgroundUpload(file: File) {
+  if (!props.announcement) {
+    backgroundError.value = 'Save the announcement before uploading a background.'
+    return
+  }
+
+  try {
+    backgroundUploading.value = true
+    backgroundError.value = null
+    await uploadAnnouncementBackground(supabase, props.announcement.id, file)
+    await refreshBackgroundPreview(props.announcement.id)
+  }
+  catch (error) {
+    console.error('Error uploading announcement background:', error)
+    backgroundError.value = 'Failed to upload background. Please try again.'
+  }
+  finally {
+    backgroundUploading.value = false
+  }
+}
+
+async function handleBannerDelete() {
+  if (!props.announcement)
+    return
+
+  try {
+    bannerDeleting.value = true
+    bannerError.value = null
+    await deleteAnnouncementBanner(supabase, props.announcement.id)
+    bannerUrl.value = null
+  }
+  catch (error) {
+    console.error('Error deleting announcement banner:', error)
+    bannerError.value = 'Failed to delete banner. Please try again.'
+  }
+  finally {
+    bannerDeleting.value = false
+  }
+}
+
+async function handleBackgroundDelete() {
+  if (!props.announcement)
+    return
+
+  try {
+    backgroundDeleting.value = true
+    backgroundError.value = null
+    await deleteAnnouncementBackground(supabase, props.announcement.id)
+    backgroundUrl.value = null
+  }
+  catch (error) {
+    console.error('Error deleting announcement background:', error)
+    backgroundError.value = 'Failed to delete background. Please try again.'
+  }
+  finally {
+    backgroundDeleting.value = false
+  }
+}
+
+function handleBannerInvalid(message: string) {
+  bannerError.value = message
+}
+
+function handleBackgroundInvalid(message: string) {
+  backgroundError.value = message
+}
 
 // Handle closing the sheet
 function handleClose() {
@@ -282,6 +429,54 @@ function handleTagInputEnter() {
         </div>
       </Flex>
 
+      <!-- Media Section -->
+      <Flex column gap="m" expand>
+        <h4>Media</h4>
+
+        <Flex column gap="xs" expand>
+          <label class="input-label">Banner Image</label>
+          <FileUpload
+            label="Upload banner"
+            :preview-url="bannerUrl"
+            :loading="bannerUploading"
+            :deleting="bannerDeleting"
+            :error="bannerError"
+            :disabled="!canManageAssets"
+            :show-delete="!!bannerUrl && canManageAssets"
+            :aspect-ratio="16 / 9"
+            @upload="handleBannerUpload"
+            @delete="handleBannerDelete"
+            @invalid="handleBannerInvalid"
+          />
+          <p v-if="!canManageAssets" class="media-upload__notice">
+            Save the announcement before uploading media assets.
+          </p>
+          <p class="media-upload__hint">
+            Displayed on pinned announcement cards and the announcement page hero.
+          </p>
+        </Flex>
+
+        <Flex column gap="xs" expand>
+          <label class="input-label">Background Image</label>
+          <FileUpload
+            label="Upload background"
+            :preview-url="backgroundUrl"
+            :loading="backgroundUploading"
+            :deleting="backgroundDeleting"
+            :error="backgroundError"
+            :disabled="!canManageAssets"
+            :show-delete="!!backgroundUrl && canManageAssets"
+            :aspect-ratio="21 / 9"
+            @upload="handleBackgroundUpload"
+            @delete="handleBackgroundDelete"
+            @invalid="handleBackgroundInvalid"
+          />
+          <p class="media-upload__hint">
+            Appears behind regular announcement cards for additional visual context.
+          </p>
+        </Flex>
+      </Flex>
+
       <!-- Content Section -->
       <Flex column gap="m" expand>
         <h4>Content</h4>
@@ -397,17 +592,17 @@ function handleTagInputEnter() {
   color: var(--color-danger);
 }
 
+.input-label {
+  font-size: var(--font-size-m);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-xs);
+}
+
 .tags-section {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-
-  .input-label {
-    font-size: var(--font-size-s);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text);
-    margin-bottom: var(--space-xs);
-  }
 
   .tags-display {
     display: flex;
@@ -442,5 +637,17 @@ function handleTagInputEnter() {
       }
     }
   }
+}
+
+.media-upload__notice {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-light);
+  margin: 0;
+}
+
+.media-upload__hint {
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-light);
+  margin: 0;
 }
 </style>

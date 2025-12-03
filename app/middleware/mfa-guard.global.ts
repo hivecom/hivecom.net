@@ -4,7 +4,7 @@ import type { RouteLocationNormalizedLoaded } from 'vue-router'
 
 import { useSupabaseClient, useSupabaseUser } from '#imports'
 import { defineNuxtRouteMiddleware, navigateTo } from 'nuxt/app'
-import { useMfaStatusCache } from '@/composables/useMfaStatusCache'
+import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
 
 const getSupabaseClient = useSupabaseClient as () => SupabaseClient
 const getSupabaseUser = useSupabaseUser as () => Ref<User | null>
@@ -15,7 +15,7 @@ export default defineNuxtRouteMiddleware(async (to: RouteLocationNormalizedLoade
 
   const supabase = getSupabaseClient()
   const user = getSupabaseUser()
-  const mfaCache = useMfaStatusCache()
+  const mfaCache = useCacheMfaStatus()
 
   if (!user.value) {
     mfaCache.value = { currentLevel: null, nextLevel: null, fetchedAt: 0 }

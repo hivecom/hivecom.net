@@ -2,7 +2,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { Alert, Button, Card, Flex, Input, Tab, Tabs } from '@dolanske/vui'
 import SupportModal from '@/components/Shared/SupportModal.vue'
-import { useMfaStatusCache } from '@/composables/useMfaStatusCache'
+import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
 
 import '@/assets/elements/auth.scss'
 
@@ -26,7 +26,7 @@ const pendingMfa = reactive({
   factorId: '',
   factorLabel: '',
 })
-const mfaCache = useMfaStatusCache()
+const mfaCache = useCacheMfaStatus()
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
 const requiresMfaChallenge = computed(() => Boolean(pendingMfa.factorId))
 const mfaPromptCopy = 'Finish verification to sign-in.'

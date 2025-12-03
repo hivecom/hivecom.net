@@ -4,7 +4,7 @@ import type { Tables } from '@/types/database.types'
 import { Flex, Grid, Input, Skeleton, Tab, Tabs } from '@dolanske/vui'
 
 import ReferendumCard from '@/components/Shared/ReferendumCard.vue'
-import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
+import { useCacheQuery } from '@/composables/useCache'
 
 // Redirect to login if user is not authenticated
 const user = useSupabaseUser()
@@ -30,7 +30,7 @@ type ReferendumStatus = 'active' | 'upcoming' | 'concluded'
 const currentDate = new Date().toISOString()
 
 // Fetch active referendums
-const { data: activeReferendums, loading: loadingActive, refetch: _refetchActive } = useCachedSupabaseQuery<Tables<'referendums'>[]>(
+const { data: activeReferendums, loading: loadingActive, refetch: _refetchActive } = useCacheQuery<Tables<'referendums'>[]>(
   {
     table: 'referendums',
     select: '*',
@@ -49,7 +49,7 @@ const { data: activeReferendums, loading: loadingActive, refetch: _refetchActive
 )
 
 // Fetch concluded referendums
-const { data: concludedReferendums, loading: loadingConcluded, refetch: _refetchConcluded } = useCachedSupabaseQuery<Tables<'referendums'>[]>(
+const { data: concludedReferendums, loading: loadingConcluded, refetch: _refetchConcluded } = useCacheQuery<Tables<'referendums'>[]>(
   {
     table: 'referendums',
     select: '*',
@@ -68,7 +68,7 @@ const { data: concludedReferendums, loading: loadingConcluded, refetch: _refetch
 )
 
 // Simple vote count fetching - get all votes and count per referendum
-const { data: allVotesForCounting } = useCachedSupabaseQuery<Tables<'referendum_votes'>[]>(
+const { data: allVotesForCounting } = useCacheQuery<Tables<'referendum_votes'>[]>(
   {
     table: 'referendum_votes',
     select: 'referendum_id, user_id',

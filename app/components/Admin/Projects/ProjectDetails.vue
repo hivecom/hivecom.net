@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { computed } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
 
 const props = defineProps<{
   project: Tables<'projects'> | null
@@ -17,6 +19,10 @@ const emit = defineEmits(['edit', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(
+  computed(() => props.project?.id ?? null),
+)
 
 // Handle closing the sheet
 function handleClose() {
@@ -78,6 +84,20 @@ function handleDelete(project: Tables<'projects'>) {
             <Grid class="project-details__item" expand :columns="2">
               <span class="text-color-light text-bold">Title:</span>
               <span>{{ props.project.title }}</span>
+            </Grid>
+
+            <Grid class="project-details__item" expand :columns="2">
+              <span class="text-color-light text-bold">Banner:</span>
+              <div class="project-details__banner">
+                <div
+                  v-if="projectBannerUrl"
+                  class="project-details__banner-preview"
+                  :style="{ backgroundImage: `url(${projectBannerUrl})` }"
+                  role="img"
+                  :aria-label="`${props.project.title} banner preview`"
+                />
+                <span v-else class="project-details__not-assigned">No banner provided</span>
+              </div>
             </Grid>
 
             <Grid class="project-details__item" expand :columns="2">
@@ -180,5 +200,18 @@ function handleDelete(project: Tables<'projects'>) {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
+}
+
+.project-details__banner {
+  width: 100%;
+}
+
+.project-details__banner-preview {
+  width: 100%;
+  height: 120px;
+  border-radius: var(--border-radius-s);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--color-border);
 }
 </style>

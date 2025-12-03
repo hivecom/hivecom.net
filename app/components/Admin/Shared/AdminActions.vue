@@ -7,7 +7,7 @@ interface AdminActionsProps {
   /**
    * Type of resource (used for permission checking)
    */
-  resourceType: 'games' | 'events' | 'gameservers' | 'profiles' | 'expenses' | 'announcements' | 'referendums' | 'servers' | 'assets'
+  resourceType: 'games' | 'events' | 'gameservers' | 'profiles' | 'expenses' | 'announcements' | 'referendums' | 'servers' | 'assets' | 'projects'
 
   /**
    * The item being acted upon

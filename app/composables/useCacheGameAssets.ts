@@ -19,7 +19,7 @@ export interface GameAssetOptions {
   negativeTtl?: number
 }
 
-export function useGameAssets(options: GameAssetOptions = {}) {
+export function useCacheGameAssets(options: GameAssetOptions = {}) {
   const {
     ttl = 30 * 60 * 1000, // 30 minutes
     negativeTtl = 5 * 60 * 1000, // 5 minutes

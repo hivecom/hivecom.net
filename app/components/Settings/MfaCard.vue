@@ -2,8 +2,8 @@
 import type { Session } from '@supabase/supabase-js'
 import { Alert, Badge, Button, Card, Flex, Input, pushToast, Skeleton } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useMfaStatusCache } from '@/composables/useMfaStatusCache'
-import { useUserData } from '@/composables/useUserData'
+import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 import { useUserId } from '@/composables/useUserId'
 
 interface MfaFactor {
@@ -18,7 +18,7 @@ const user = useSupabaseUser()
 const isClient = import.meta.client
 const userId = useUserId()
 
-const { user: currentUserData } = useUserData(userId, {
+const { user: currentUserData } = useCacheUserData(userId, {
   includeRole: true,
   includeAvatar: false,
 })
@@ -40,7 +40,7 @@ const totpSetup = reactive({
   enrolling: false,
   verifying: false,
 })
-const mfaCache = useMfaStatusCache()
+const mfaCache = useCacheMfaStatus()
 
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
 const verifiedTotpFactor = computed(() => mfaFactors.value.find(f => f.factor_type === 'totp' && f.status === 'verified') || null)

@@ -6,6 +6,8 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useCacheAnnouncementBanner } from '@/composables/useCacheAnnouncementAssets'
+import { getAnnouncementPlaceholderBanner } from '@/lib/announcementPlaceholderBanner'
 
 // Get route parameter
 const route = useRoute()
@@ -18,6 +20,17 @@ const supabase = useSupabaseClient()
 const announcement = ref<Tables<'announcements'> | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+const { assetUrl: announcementBannerUrl } = useCacheAnnouncementBanner(
+  computed(() => announcement.value?.id ?? null),
+)
+
+const placeholderBanner = computed(() => getAnnouncementPlaceholderBanner(announcement.value?.id ?? null))
+
+const heroBannerStyle = computed(() => {
+  const source = announcementBannerUrl.value ?? placeholderBanner.value
+  return { backgroundImage: `url(${source})` }
+})
 
 // Fetch announcement data
 async function fetchAnnouncement() {
@@ -103,52 +116,58 @@ useHead({
 
       <!-- Header -->
       <Card class="announcement-header" expand>
-        <Flex column gap="m" expand>
-          <!-- Title, pinned badge, and posted by -->
-          <Flex gap="m" y-center x-between expand>
-            <div class="announcement-header__title-group">
-              <h1 class="announcement-header__title">
-                {{ announcement.title }}
-              </h1>
-              <Badge v-if="announcement.pinned" variant="accent" class="announcement-header__pinned-badge">
-                <Icon name="ph:push-pin-fill" />
-                Pinned
-              </Badge>
-            </div>
-            <Flex gap="s" y-center>
-              <Icon name="ph:calendar" />
-              <TimestampDate :date="announcement.created_at" format="dddd, MMM D, YYYY [at] HH:mm" />
+        <div class="announcement-header__banner" aria-hidden="true">
+          <div class="announcement-header__banner-surface" :style="heroBannerStyle" />
+        </div>
+
+        <div class="announcement-header__body">
+          <Flex column gap="m" expand>
+            <!-- Title, pinned badge, and posted by -->
+            <Flex gap="m" y-center x-between expand>
+              <div class="announcement-header__title-group">
+                <h1 class="announcement-header__title">
+                  {{ announcement.title }}
+                </h1>
+                <Badge v-if="announcement.pinned" variant="accent" class="announcement-header__pinned-badge">
+                  <Icon name="ph:push-pin-fill" />
+                  Pinned
+                </Badge>
+              </div>
+              <Flex gap="s" y-center>
+                <Icon name="ph:calendar" />
+                <TimestampDate :date="announcement.created_at" format="dddd, MMM D, YYYY [at] HH:mm" />
+              </Flex>
+            </Flex>
+
+            <!-- Description -->
+            <p v-if="announcement.description" class="announcement-header__description">
+              {{ announcement.description }}
+            </p>
+
+            <!-- Meta information -->
+            <Flex gap="l" x-between y-center class="announcement-header__meta">
+              <div v-if="announcement.created_by" class="announcement-header__posted-by">
+                <UserDisplay :user-id="announcement.created_by" show-role />
+              </div>
+              <NuxtLink
+                v-if="announcement.link"
+                :href="announcement.link"
+                external
+                target="_blank"
+              >
+                <Button
+                  outline
+                  size="s"
+                >
+                  <template #start>
+                    <Icon name="ph:arrow-square-out" />
+                  </template>
+                  Open Link
+                </Button>
+              </NuxtLink>
             </Flex>
           </Flex>
-
-          <!-- Description -->
-          <p v-if="announcement.description" class="announcement-header__description">
-            {{ announcement.description }}
-          </p>
-
-          <!-- Meta information -->
-          <Flex gap="l" x-between y-center class="announcement-header__meta">
-            <div v-if="announcement.created_by" class="announcement-header__posted-by">
-              <UserDisplay :user-id="announcement.created_by" show-role />
-            </div>
-            <NuxtLink
-              v-if="announcement.link"
-              :href="announcement.link"
-              external
-              target="_blank"
-            >
-              <Button
-                outline
-                size="s"
-              >
-                <template #start>
-                  <Icon name="ph:arrow-square-out" />
-                </template>
-                Open Link
-              </Button>
-            </NuxtLink>
-          </Flex>
-        </Flex>
+        </div>
       </Card>
 
       <!-- Announcement Content (Markdown) -->
@@ -177,6 +196,35 @@ useHead({
 
 .announcement-header {
   position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.announcement-header__banner {
+  position: relative;
+  width: 100%;
+  height: 260px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.announcement-header__banner-surface {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1);
+  transition: transform 0.4s ease;
+}
+
+.announcement-header:hover .announcement-header__banner-surface {
+  transform: scale(1.05);
+}
+
+.announcement-header__body {
+  padding: var(--space-l);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-l);
 }
 
 .announcement-header__title-group {
@@ -235,6 +283,14 @@ useHead({
 @media (max-width: 768px) {
   .announcement-header__title {
     font-size: var(--font-size-xxl);
+  }
+
+  .announcement-header__banner {
+    height: 180px;
+  }
+
+  .announcement-header__body {
+    padding: var(--space-m);
   }
 
   .announcement-header__title-group {

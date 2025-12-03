@@ -3,7 +3,7 @@ import type { UserIdentity } from '@supabase/supabase-js'
 
 import { Alert, Button, Card, Flex, Input, Spinner, Switch } from '@dolanske/vui'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
-import { useSupabaseCache } from '@/composables/useSupabaseCache'
+import { useCache } from '@/composables/useCache'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -34,7 +34,7 @@ const debugOptions = reactive({
 
 const USERNAME_LIMIT = 32
 
-const cache = useSupabaseCache()
+const cache = useCache()
 let discordUsernameAttempted = false
 let discordIdSyncInFlight = false
 

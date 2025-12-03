@@ -2,7 +2,7 @@
 import { Avatar, Flex, Skeleton } from '@dolanske/vui'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
-import { useUserData } from '@/composables/useUserData'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 
 interface Props {
   userId?: string | null
@@ -31,7 +31,7 @@ const {
   user: fetchedUser,
   loading: userLoading,
   userInitials: fetchedUserInitials,
-} = useUserData(
+} = useCacheUserData(
   computed(() => shouldFetchUser.value ? props.userId : null),
   {
     includeRole: props.showRole,

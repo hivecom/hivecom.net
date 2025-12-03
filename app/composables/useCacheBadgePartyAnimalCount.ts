@@ -4,10 +4,10 @@
  */
 
 import type { Ref } from 'vue'
-import type { CacheConfig } from './useSupabaseCache'
+import type { CacheConfig } from './useCache'
 import type { Database } from '@/types/database.types'
 import { computed, readonly, ref, unref, watch } from 'vue'
-import { useSupabaseCache } from './useSupabaseCache'
+import { useCache } from './useCache'
 
 interface PartyAnimalCountOptions extends Omit<CacheConfig, 'ttl'> {
   enabled?: Ref<boolean> | boolean
@@ -17,7 +17,7 @@ interface PartyAnimalCountOptions extends Omit<CacheConfig, 'ttl'> {
 
 const DEFAULT_CACHE_TTL = 10 * 60 * 1000 // 10 minutes
 
-export function usePartyAnimalCount(
+export function useCacheBadgePartyAnimalCount(
   userId: Ref<string | null | undefined> | string | null | undefined,
   options: PartyAnimalCountOptions = {},
 ) {
@@ -30,7 +30,7 @@ export function usePartyAnimalCount(
 
   const normalizedEnabled = computed(() => Boolean(unref(enabled)))
   const supabase = useSupabaseClient<Database>()
-  const cache = useSupabaseCache({ ttl, ...cacheConfig })
+  const cache = useCache({ ttl, ...cacheConfig })
 
   const count = ref(0)
   const loading = ref(false)

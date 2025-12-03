@@ -8,7 +8,7 @@ import Metadata from '@/components/Shared/Metadata.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
+import { useCacheQuery } from '@/composables/useCache'
 import { isBanActive } from '@/lib/banStatus'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getUserAvatarUrl } from '@/lib/storage'
@@ -65,7 +65,7 @@ const allFriendships = ref<Array<{ id: number, friender: string, friend: string 
 const {
   data: friendshipsData,
   refetch: refetchFriendships,
-} = useCachedSupabaseQuery<Array<{ id: number, friender: string, friend: string }>>({
+} = useCacheQuery<Array<{ id: number, friender: string, friend: string }>>({
   table: 'friends',
   select: 'id, friender, friend',
   filters: {},

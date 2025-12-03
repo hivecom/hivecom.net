@@ -7,7 +7,7 @@ import dayjs from 'dayjs'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ReferendumResults from '@/components/Shared/ReferendumResults.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
-import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
+import { useCacheQuery } from '@/composables/useCache'
 import { formatDuration } from '@/lib/utils/duration'
 
 const route = useRoute()
@@ -26,7 +26,7 @@ watch(user, (newUser) => {
 const referendumId = computed(() => Number(route.params.id))
 
 // Fetch referendum details
-const { data: referendum, loading: loadingReferendum, refetch: _refetchReferendum } = useCachedSupabaseQuery<Tables<'referendums'>>(
+const { data: referendum, loading: loadingReferendum, refetch: _refetchReferendum } = useCacheQuery<Tables<'referendums'>>(
   {
     table: 'referendums',
     select: '*',
@@ -42,7 +42,7 @@ const { data: referendum, loading: loadingReferendum, refetch: _refetchReferendu
 )
 
 // Fetch user's existing vote
-const { data: userVote, loading: _loadingVote, refetch: refetchVote } = useCachedSupabaseQuery<Tables<'referendum_votes'>>(
+const { data: userVote, loading: _loadingVote, refetch: refetchVote } = useCacheQuery<Tables<'referendum_votes'>>(
   {
     table: 'referendum_votes',
     select: '*',
@@ -59,7 +59,7 @@ const { data: userVote, loading: _loadingVote, refetch: refetchVote } = useCache
 )
 
 // Fetch all votes for this referendum (for displaying results)
-const { data: allVotes, loading: loadingAllVotes, refetch: refetchAllVotes } = useCachedSupabaseQuery<Tables<'referendum_votes'>[]>(
+const { data: allVotes, loading: loadingAllVotes, refetch: refetchAllVotes } = useCacheQuery<Tables<'referendum_votes'>[]>(
   {
     table: 'referendum_votes',
     select: '*',

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex } from '@dolanske/vui'
+import { computed } from 'vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useCacheAnnouncementBackground, useCacheAnnouncementBanner } from '@/composables/useCacheAnnouncementAssets'
+import { getAnnouncementPlaceholderBanner } from '@/lib/announcementPlaceholderBanner'
 
 interface Props {
   announcement: Tables<'announcements'>
@@ -20,6 +23,29 @@ const props = withDefaults(defineProps<Props>(), {
 function handleClick() {
   navigateTo(`/announcements/${props.announcement.id}`)
 }
+
+const announcementId = computed(() => props.announcement.id)
+
+const { assetUrl: bannerUrl } = useCacheAnnouncementBanner(announcementId)
+const { assetUrl: backgroundUrl } = useCacheAnnouncementBackground(announcementId)
+
+const placeholderBanner = computed(() => getAnnouncementPlaceholderBanner(props.announcement.id))
+
+const showBanner = computed(() => !props.ultraCompact && props.announcement.pinned)
+const showBackground = computed(
+  () => !props.ultraCompact && !props.announcement.pinned && !!backgroundUrl.value,
+)
+
+const bannerSurfaceStyle = computed(() => {
+  const source = bannerUrl.value ?? placeholderBanner.value
+  return { backgroundImage: `url(${source})` }
+})
+
+const backgroundSurfaceStyle = computed(() => {
+  if (!showBackground.value || !backgroundUrl.value)
+    return undefined
+  return { backgroundImage: `url(${backgroundUrl.value})` }
+})
 </script>
 
 <template>
@@ -30,9 +56,23 @@ function handleClick() {
       'announcement-card--pinned': announcement.pinned,
       'announcement-card--compact': compact,
       'announcement-card--ultra-compact': ultraCompact,
+      'announcement-card--with-banner': showBanner,
+      'announcement-card--with-background': showBackground,
     }"
     @click="handleClick"
   >
+    <div
+      v-if="showBackground"
+      class="announcement-card__background"
+      :style="backgroundSurfaceStyle"
+      aria-hidden="true"
+    />
+
+    <div v-if="showBanner" class="announcement-card__banner" aria-hidden="true">
+      <div class="announcement-card__banner-surface" :style="bannerSurfaceStyle" />
+      <div class="announcement-card__banner-overlay" />
+    </div>
+
     <!-- Ultra compact layout (single line) -->
     <template v-if="ultraCompact">
       <Flex gap="xs" y-center x-between class="announcement-card__ultra-compact-content">
@@ -75,7 +115,9 @@ function handleClick() {
             <Icon name="ph:link" />
           </span>
         </Flex>
-      </div>      <!-- Announcement description -->
+      </div>
+
+      <!-- Announcement description -->
       <p v-if="announcement.description && !compact" class="announcement-card__description">
         {{ announcement.description }}
       </p>
@@ -100,6 +142,7 @@ function handleClick() {
   height: 100%; // Ensure the card fills the available height
   display: flex;
   flex-direction: column;
+  background: var(--color-bg);
 
   &::before {
     content: '';
@@ -162,6 +205,10 @@ function handleClick() {
   }
 }
 
+.announcement-card--with-background {
+  color: var(--color-text);
+}
+
 .announcement-card__content {
   position: relative;
   width: 100%;
@@ -172,6 +219,72 @@ function handleClick() {
   .announcement-card--ultra-compact & {
     flex: none;
     display: block;
+  }
+}
+
+.announcement-card__background {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.25;
+  filter: saturate(0.6);
+  transform: scale(1.05);
+  transition:
+    opacity 0.3s ease,
+    transform 0.4s ease;
+  z-index: 0;
+  pointer-events: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.1));
+  }
+}
+
+.announcement-card--with-background .announcement-card__content {
+  position: relative;
+  z-index: 1;
+}
+
+.announcement-card__banner {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  border-radius: var(--border-radius-l);
+  overflow: hidden;
+  margin-bottom: var(--space-m);
+}
+
+.announcement-card__banner-surface {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1);
+  transition: transform 0.4s ease;
+}
+
+.announcement-card--pinned:hover .announcement-card__banner-surface {
+  transform: scale(1.05);
+}
+
+.announcement-card__banner-overlay {
+  position: absolute;
+  inset: var(--space-m);
+  display: flex;
+  align-items: flex-start;
+}
+
+.announcement-card__banner-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+
+  svg {
+    font-size: var(--font-size-xs);
   }
 }
 
@@ -199,6 +312,7 @@ function handleClick() {
   background: rgba(var(--color-accent-rgb), 0.1);
   color: var(--color-text-light);
   transition: all 0.3s ease;
+  z-index: 2;
 
   svg {
     font-size: 16px;

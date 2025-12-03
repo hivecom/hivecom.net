@@ -3,7 +3,7 @@ import { Avatar, Button, Card, Divider, Flex, Spinner } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
-import { useUserData } from '@/composables/useUserData'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 import { getCountryInfo } from '@/lib/utils/country'
 
 interface Props {
@@ -25,7 +25,7 @@ const {
   error,
   userInitials,
   refetch,
-} = useUserData(userIdRef, {
+} = useCacheUserData(userIdRef, {
   includeRole: true,
   includeAvatar: true,
   userTtl: 10 * 60 * 1000,
@@ -43,7 +43,7 @@ const profileLink = computed(() => {
 const introductionText = computed(() => {
   const intro = user.value?.introduction?.trim()
   if (!intro)
-    return 'This member has not written an introduction yet.'
+    return
   if (intro.length > 160)
     return `${intro.slice(0, 157)}…`
   return intro
@@ -154,14 +154,15 @@ function handleRetry() {
         </Flex>
       </div>
 
-      <Divider />
+      <div v-if="hasCustomIntroduction">
+        <Divider />
 
-      <p
-        class="user-preview-card__intro text-s"
-        :class="{ 'user-preview-card__intro--muted': !hasCustomIntroduction }"
-      >
-        {{ introductionText }}
-      </p>
+        <p
+          class="user-preview-card__intro text-s"
+        >
+          {{ introductionText }}
+        </p>
+      </div>
     </div>
   </Card>
 </template>
@@ -238,10 +239,6 @@ function handleRetry() {
 .user-preview-card__intro {
   margin: 0;
   color: var(--color-text);
-}
-
-.user-preview-card__intro--muted {
-  color: var(--color-text-light);
 }
 
 .user-preview-card__badges {

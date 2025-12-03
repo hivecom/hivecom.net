@@ -10,8 +10,8 @@ import ProfileFriends from '@/components/Profile/ProfileFriends.vue'
 import ProfileHeader from '@/components/Profile/ProfileHeader.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
-import { useCachedSupabaseQuery } from '@/composables/useSupabaseCache'
-import { useUserData } from '@/composables/useUserData'
+import { useCacheQuery } from '@/composables/useCache'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 
 interface Props {
   userId?: string
@@ -60,7 +60,7 @@ const isOwnProfile = computed(() => {
 // Get current user's data with caching
 const {
   user: currentUserData,
-} = useUserData(
+} = useCacheUserData(
   userId, // Use the computed user ID
   {
     includeRole: true,
@@ -74,7 +74,7 @@ const profileUserId = computed(() => profile.value?.id || null)
 const {
   user: profileUserData,
   refetch: refetchProfileUserData,
-} = useUserData(
+} = useCacheUserData(
   profileUserId,
   {
     includeRole: true,
@@ -93,7 +93,7 @@ const currentUserRole = computed(() => currentUserData.value?.role || null)
 const {
   data: _friendshipsData,
   refetch: _refetchFriendships,
-} = useCachedSupabaseQuery<Array<{ id: number, friender: string, friend: string }>>({
+} = useCacheQuery<Array<{ id: number, friender: string, friend: string }>>({
   table: 'friends',
   select: 'id, friender, friend',
   filters: {
@@ -213,7 +213,7 @@ const {
   loading: profileLoading,
   error: profileError,
   refetch: _refetchProfile,
-} = useCachedSupabaseQuery<Tables<'profiles'>>(
+} = useCacheQuery<Tables<'profiles'>>(
   profileQuery.value || { table: 'profiles', select: '*', filters: {} },
   {
     enabled: computed(() => !!(props.userId || props.username || user.value?.id)),

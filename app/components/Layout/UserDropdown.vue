@@ -2,7 +2,7 @@
 import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle, Spinner } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
-import { useUserData } from '@/composables/useUserData'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -11,7 +11,7 @@ const userId = useUserId()
 const {
   user: userData,
   userInitials,
-} = useUserData(
+} = useCacheUserData(
   userId,
   {
     includeRole: true,

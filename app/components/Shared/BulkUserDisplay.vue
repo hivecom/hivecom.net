@@ -2,7 +2,7 @@
 import { Card, Grid, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
-import { useBulkUserData } from '@/composables/useUserData'
+import { useBulkUserData } from '@/composables/useCacheUserData'
 import UserDisplay from './UserDisplay.vue'
 
 interface Props {

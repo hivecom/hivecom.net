@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { UserDisplayData } from '@/composables/useUserData'
+import type { UserDisplayData } from '@/composables/useCacheUserData'
 import { Avatar, Flex, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
-import { useBulkUserData } from '@/composables/useUserData'
+import { useBulkUserData } from '@/composables/useCacheUserData'
 
 interface Props {
   userIds: string[]

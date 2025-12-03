@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { useGameAssets } from '@/composables/useGameAssets'
+import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
 
 interface Props {
   game: Tables<'games'>
@@ -13,7 +13,7 @@ const props = withDefaults(defineProps<Props>(), {
   showFallback: true,
 })
 
-const { getGameIconUrl } = useGameAssets()
+const { getGameIconUrl } = useCacheGameAssets()
 
 const iconUrl = ref<string>('/icon.svg')
 const isLoading = ref(true)

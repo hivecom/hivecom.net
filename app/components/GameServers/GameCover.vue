@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { useGameAssets } from '@/composables/useGameAssets'
+import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
 
 interface Props {
   game: Tables<'games'>
@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<Props>(), {
   aspectRatio: 'card',
 })
 
-const { getGameCoverUrl } = useGameAssets()
+const { getGameCoverUrl } = useCacheGameAssets()
 
 const coverUrl = ref<string | null>(null)
 const isLoading = ref(true)

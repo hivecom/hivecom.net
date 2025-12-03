@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import type { UserDisplayData } from '@/composables/useUserData'
+import type { UserDisplayData } from '@/composables/useCacheUserData'
 import type { Enums } from '@/types/database.types'
 import { Flex } from '@dolanske/vui'
 import { computed } from 'vue'
@@ -12,7 +12,7 @@ import ProfileBadgeRSVPs from '@/components/Profile/Badges/ProfileBadgeRSVPs.vue
 import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
 import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
 import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
-import { usePartyAnimalCount } from '@/composables/useBadgePartyAnimalCount'
+import { useCacheBadgePartyAnimalCount } from '@/composables/useCacheBadgePartyAnimalCount'
 import { getPartyAnimalVariant, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/partyAnimalBadge'
 
 const props = defineProps<{
@@ -57,7 +57,7 @@ const badgeDefinitionsByVariant: BadgeDefinitionsByVariant = {
 }
 
 const previewedUserId = computed(() => props.user?.id ?? null)
-const { count: PartyAnimalCount } = usePartyAnimalCount(previewedUserId)
+const { count: PartyAnimalCount } = useCacheBadgePartyAnimalCount(previewedUserId)
 const partyAnimalVariant = computed<BadgeVariant | null>(() => {
   const variant = getPartyAnimalVariant(PartyAnimalCount.value)
   return variant ?? null

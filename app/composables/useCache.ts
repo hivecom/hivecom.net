@@ -148,7 +148,7 @@ function initializeCleanup(interval: number) {
 /**
  * Main cache composable
  */
-export function useSupabaseCache(config: CacheConfig = {}) {
+export function useCache(config: CacheConfig = {}) {
   const {
     ttl = 5 * 60 * 1000, // 5 minutes default
     maxSize = 1000,
@@ -361,7 +361,7 @@ export function useSupabaseCache(config: CacheConfig = {}) {
  * Cached Supabase query composable
  * Automatically handles caching for Supabase queries
  */
-export function useCachedSupabaseQuery<T = unknown>(
+export function useCacheQuery<T = unknown>(
   query: QueryCacheKey,
   config: CacheConfig & {
     enabled?: Ref<boolean> | boolean
@@ -374,7 +374,7 @@ export function useCachedSupabaseQuery<T = unknown>(
     ...cacheConfig
   } = config
 
-  const cache = useSupabaseCache(cacheConfig)
+  const cache = useCache(cacheConfig)
   const supabase = useSupabaseClient<Database>()
 
   const data = ref<T | null>(null) as Ref<T | null>

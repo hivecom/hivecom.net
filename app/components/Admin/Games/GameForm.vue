@@ -18,7 +18,7 @@ const emit = defineEmits(['save', 'delete'])
 const isOpen = defineModel<boolean>('isOpen')
 
 // Game assets composable
-const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl, clearGameAssets } = useGameAssets()
+const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl, clearGameAssets } = useCacheGameAssets()
 
 // Form state
 const gameForm = ref({
@@ -372,7 +372,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
 }
 
 .asset-label {
-  font-size: var(--font-size-s);
+  font-size: var(--font-size-m);
   font-weight: var(--font-weight-medium);
   color: var(--color-text);
   margin-bottom: var(--space-xs);

@@ -5,11 +5,11 @@
 
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
-import type { CacheConfig } from './useSupabaseCache'
+import type { CacheConfig } from './useCache'
 import type { Database } from '@/types/database.types'
 import { computed, onScopeDispose, readonly, ref, unref, watch } from 'vue'
 import { getUserAvatarUrl } from '@/lib/storage'
-import { useSupabaseCache } from './useSupabaseCache'
+import { useCache } from './useCache'
 
 type ProfileBadgeSlug = Database['public']['Enums']['profile_badge']
 
@@ -45,7 +45,7 @@ function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is Pr
   )
 }
 
-export interface UseUserDataOptions extends CacheConfig {
+export interface useCacheUserDataOptions extends CacheConfig {
   includeRole?: boolean
   includeAvatar?: boolean
   userTtl?: number // TTL specifically for user data (default: 10 minutes)
@@ -55,7 +55,7 @@ export interface UseUserDataOptions extends CacheConfig {
 /**
  * Cached user data composable optimized for UserDisplay components
  */
-export function useUserData(userId: string | Ref<string | null | undefined>, options: UseUserDataOptions = {}) {
+export function useCacheUserData(userId: string | Ref<string | null | undefined>, options: useCacheUserDataOptions = {}) {
   const {
     includeRole = false,
     includeAvatar = true,
@@ -64,7 +64,7 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
     ...cacheConfig
   } = options
 
-  const cache = useSupabaseCache(cacheConfig)
+  const cache = useCache(cacheConfig)
   const supabase = useSupabaseClient<Database>()
   const currentUser = useSupabaseUser()
   const isClient = typeof window !== 'undefined'
@@ -377,7 +377,7 @@ export function useUserData(userId: string | Ref<string | null | undefined>, opt
 /**
  * Bulk user data loader for efficiency when loading multiple users
  */
-export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOptions = {}) {
+export function useBulkUserData(userIds: Ref<string[]>, options: useCacheUserDataOptions = {}) {
   const {
     includeRole = false,
     includeAvatar = true,
@@ -386,7 +386,7 @@ export function useBulkUserData(userIds: Ref<string[]>, options: UseUserDataOpti
     ...cacheConfig
   } = options
 
-  const cache = useSupabaseCache(cacheConfig)
+  const cache = useCache(cacheConfig)
   const supabase = useSupabaseClient<Database>()
   const currentUser = useSupabaseUser()
 

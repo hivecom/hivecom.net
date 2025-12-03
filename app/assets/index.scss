@@ -30,6 +30,15 @@
   --breakpoint-xl: 1440px;
 
   --shiny-gradient: linear-gradient(100deg, #59d7f7, #3afea2, #a7fc2f);
+  --banner-filter: none;
+}
+
+:root.dark {
+  --banner-filter: none;
+}
+
+:root:not(.dark) {
+  --banner-filter: invert(1);
 }
 
 html,

@@ -132,7 +132,7 @@ async function fetchGameserver() {
 
 // Get game background image using the cached composable
 async function getGameBackground(game: Tables<'games'>) {
-  const { getGameBackgroundUrl } = useGameAssets()
+  const { getGameBackgroundUrl } = useCacheGameAssets()
   return await getGameBackgroundUrl(game)
 }
 

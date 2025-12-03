@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Avatar, Card, Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
-import { useUserData } from '@/composables/useUserData'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 
 interface Props {
   profile: Tables<'profiles'> | null
@@ -21,7 +21,7 @@ const {
   user: userData,
   loading: userDataLoading,
   userInitials,
-} = useUserData(userIdRef, {
+} = useCacheUserData(userIdRef, {
   includeRole: true,
   includeAvatar: true,
 })

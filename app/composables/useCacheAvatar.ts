@@ -12,7 +12,7 @@ import { getUserAvatarUrl } from '@/lib/storage'
  * @param userId - The user ID to fetch the avatar for
  * @returns Object with avatarUrl ref and fetch function
  */
-export function useAvatarUrl(userId: string | Ref<string | null | undefined>) {
+export function useCacheAvatar(userId: string | Ref<string | null | undefined>) {
   const avatarUrl = ref<string | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)

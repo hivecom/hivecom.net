@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { CopyClipboard, Flex, Skeleton } from '@dolanske/vui'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
-import { useUserData } from '@/composables/useUserData'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 
 const props = defineProps<{
   userId: string | null
@@ -12,7 +12,7 @@ const props = defineProps<{
 const {
   user,
   loading,
-} = useUserData(
+} = useCacheUserData(
   toRef(props, 'userId'),
   {
     includeRole: false, // We only need username for this component

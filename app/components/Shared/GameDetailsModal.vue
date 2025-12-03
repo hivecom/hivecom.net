@@ -3,7 +3,7 @@ import type { Database, Tables } from '@/types/database.types'
 import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
-import { useGameAssets } from '@/composables/useGameAssets'
+import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
 
 interface Props {
   gameId?: number | null
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 const isOpen = defineModel<boolean>('open', { default: false })
 
 const supabase = useSupabaseClient<Database>()
-const { getGameCoverUrl, getGameBackgroundUrl } = useGameAssets()
+const { getGameCoverUrl, getGameBackgroundUrl } = useCacheGameAssets()
 
 interface GameDetailsEntry {
   game: Tables<'games'>

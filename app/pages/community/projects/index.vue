@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Alert, Button, Divider, Flex, Grid, Input, Select, Skeleton } from '@dolanske/vui'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 // Interface for Select options
 interface SelectOption {
@@ -16,6 +17,7 @@ const supabase = useSupabaseClient()
 const projects = ref<Tables<'projects'>[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+const isBelowMd = useBreakpoint('<md')
 
 // Filters
 const search = ref('')
@@ -171,14 +173,14 @@ useHead({
         <!-- Content -->
         <template v-if="filteredProjects.length > 0">
           <!-- All projects at full width -->
-          <Flex column gap="m" class="projects__section" expand>
+          <Grid :columns="isBelowMd ? 1 : 2" column gap="m" class="projects__section" expand>
             <ProjectCard
-              v-for="project in filteredProjects"
+              v-for="(project, index) in filteredProjects"
               :key="project.id"
               :project="project"
-              :is-latest="true"
+              :is-latest="index === 0"
             />
-          </Flex>
+          </Grid>
         </template>
 
         <!-- No content -->

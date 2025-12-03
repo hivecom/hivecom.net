@@ -5,6 +5,8 @@ import DetailStates from '@/components/Shared/DetailStates.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
+import { getProjectPlaceholderBanner } from '@/lib/projectPlaceholderBanner'
 
 // Get route parameter
 const route = useRoute()
@@ -17,6 +19,17 @@ const supabase = useSupabaseClient()
 const project = ref<Tables<'projects'> | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(
+  computed(() => project.value?.id ?? null),
+)
+
+const placeholderBanner = computed(() => getProjectPlaceholderBanner(project.value?.id ?? null))
+
+const heroBannerStyle = computed(() => {
+  const source = projectBannerUrl.value ?? placeholderBanner.value
+  return { backgroundImage: `url(${source})` }
+})
 
 // Fetch project data
 async function fetchProject() {
@@ -101,60 +114,72 @@ useHead({
       </Flex>
       <!-- Header -->
       <Card class="project-header" expand>
-        <Flex column gap="m" expand>
-          <!-- Title and created date -->
-          <Flex gap="m" y-center x-between expand>
-            <div class="project-header__title-group">
-              <h1 class="project-header__title">
-                {{ project.title }}
-              </h1>
-            </div>
-          </Flex>
+        <div class="project-header__banner">
+          <div
+            class="project-header__banner-surface"
+            :class="{
+              'project-header__banner-surface--image': !!projectBannerUrl,
+            }"
+            :style="heroBannerStyle"
+          />
+        </div>
 
-          <!-- Description -->
-          <p v-if="project.description" class="project-header__description">
-            {{ project.description }}
-          </p>
+        <div class="project-header__body">
+          <Flex column gap="m" expand>
+            <!-- Title and created date -->
+            <Flex gap="m" y-center x-between expand>
+              <div class="project-header__title-group">
+                <h1 class="project-header__title">
+                  {{ project.title }}
+                </h1>
+              </div>
+            </Flex>
 
-          <!-- Meta information -->
-          <Flex gap="l" x-between y-center class="project-header__meta" expand>
-            <div v-if="project.owner" class="project-header__owner">
-              <UserDisplay :user-id="project.owner" show-role />
-            </div>
-            <Flex gap="s" y-center>
-              <NuxtLink
-                v-if="project.link"
-                :href="project.link"
-                external
-                target="_blank"
-              >
-                <Button
-                  size="s"
+            <!-- Description -->
+            <p v-if="project.description" class="project-header__description">
+              {{ project.description }}
+            </p>
+
+            <!-- Meta information -->
+            <Flex gap="l" x-between y-center class="project-header__meta" expand>
+              <div v-if="project.owner" class="project-header__owner">
+                <UserDisplay :user-id="project.owner" show-role />
+              </div>
+              <Flex gap="s" y-center>
+                <NuxtLink
+                  v-if="project.link"
+                  :href="project.link"
+                  external
+                  target="_blank"
                 >
-                  <template #start>
-                    <Icon name="ph:arrow-square-out" />
-                  </template>
-                  Open Link
-                </Button>
-              </NuxtLink>
-              <NuxtLink
-                v-if="project.github"
-                :href="`https://github.com/${project.github}`"
-                external
-                target="_blank"
-              >
-                <Button
-                  size="s"
+                  <Button
+                    size="s"
+                  >
+                    <template #start>
+                      <Icon name="ph:arrow-square-out" />
+                    </template>
+                    Open Link
+                  </Button>
+                </NuxtLink>
+                <NuxtLink
+                  v-if="project.github"
+                  :href="`https://github.com/${project.github}`"
+                  external
+                  target="_blank"
                 >
-                  <template #start>
-                    <Icon name="ph:github-logo" />
-                  </template>
-                  View on GitHub
-                </Button>
-              </NuxtLink>
+                  <Button
+                    size="s"
+                  >
+                    <template #start>
+                      <Icon name="ph:github-logo" />
+                    </template>
+                    View on GitHub
+                  </Button>
+                </NuxtLink>
+              </Flex>
             </Flex>
           </Flex>
-        </Flex>
+        </div>
       </Card>
 
       <!-- Project Content (Markdown) -->
@@ -183,6 +208,38 @@ useHead({
 
 .project-header {
   position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.project-header__banner {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+  background: transparent;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--border-radius-s) var(--border-radius-s) 0 0;
+}
+
+.project-header__banner-surface {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1);
+  transition: transform 0.4s ease;
+}
+
+.project-header:hover .project-header__banner-surface--image {
+  transform: scale(1.05);
+}
+
+.project-header__body {
+  padding: var(--space-l);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-l);
 }
 
 .project-header__title-group {
@@ -240,6 +297,12 @@ useHead({
   }
 
   .project-header {
+    padding: 0;
+
+    .project-header__banner {
+      height: 180px;
+    }
+
     .project-header__title-group {
       width: 100%;
     }
@@ -249,6 +312,10 @@ useHead({
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-m);
+  }
+
+  .project-header__body {
+    padding: var(--space-m);
   }
 }
 </style>

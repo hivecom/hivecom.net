@@ -52,7 +52,7 @@ function getServerCountForGame(gameId: number) {
 
 // Get game cover image using the cached composable
 async function getGameCover(game: Tables<'games'>) {
-  const { getGameCoverUrl } = useGameAssets()
+  const { getGameCoverUrl } = useCacheGameAssets()
   const coverUrl = await getGameCoverUrl(game)
   // Return empty string if no cover to show only the small logo
   return coverUrl || ''

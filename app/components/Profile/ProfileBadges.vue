@@ -10,7 +10,7 @@ import ProfileBadgeRSVPs from '@/components/Profile/Badges/ProfileBadgeRSVPs.vue
 import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
 import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
 import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
-import { usePartyAnimalCount } from '@/composables/useBadgePartyAnimalCount'
+import { useCacheBadgePartyAnimalCount } from '@/composables/useCacheBadgePartyAnimalCount'
 import { getPartyAnimalVariant, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/partyAnimalBadge'
 import ProfileBadgeHost from './Badges/ProfileBadgeHost.vue'
 
@@ -94,7 +94,7 @@ const yearsBadgeVariant = computed<BadgeVariant | null>(() => {
 })
 
 const profileIdRef = computed(() => props.profile?.id ?? null)
-const { count: PartyAnimalCount } = usePartyAnimalCount(profileIdRef)
+const { count: PartyAnimalCount } = useCacheBadgePartyAnimalCount(profileIdRef)
 const partyAnimalVariant = computed<BadgeVariant | null>(() => {
   const variant = getPartyAnimalVariant(PartyAnimalCount.value)
   return variant ?? null

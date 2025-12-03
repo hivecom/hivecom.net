@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Badge, Button, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import FileUpload from '@/components/Shared/FileUpload.vue'
+import { deleteProjectBanner, getProjectBannerUrl, uploadProjectBanner } from '@/lib/storage'
 
 // Interface for project query result
 interface QueryProject {
@@ -37,15 +39,13 @@ const props = defineProps<{
   isEditMode: boolean
 }>()
 
-// Define emits
-const emit = defineEmits(['save', 'delete'])
+const emit = defineEmits<{
+  (e: 'save', project: TablesInsert<'projects'> | TablesUpdate<'projects'>): void
+  (e: 'delete', projectId: number): void
+}>()
 
-// Define model for sheet visibility
-const isOpen = defineModel<boolean>('isOpen')
-
-// Setup Supabase client
+const isOpen = defineModel<boolean>('open', { default: false })
 const supabase = useSupabaseClient()
-
 // Form state
 const projectForm = ref({
   title: '',
@@ -56,6 +56,12 @@ const projectForm = ref({
   tags: [] as string[],
   github: '',
 })
+
+const bannerUrl = ref<string | null>(null)
+const bannerUploading = ref(false)
+const bannerDeleting = ref(false)
+const bannerError = ref<string | null>(null)
+const canManageBanner = computed(() => !!props.project)
 
 // New tag input for adding individual tags
 const newTagInput = ref('')
@@ -135,6 +141,7 @@ watch(
         tags: newProject.tags || [],
         github: newProject.github || '',
       }
+      void refreshBannerPreview(newProject.id)
     }
     else {
       projectForm.value = {
@@ -146,10 +153,72 @@ watch(
         tags: [],
         github: '',
       }
+      bannerUrl.value = null
+      bannerError.value = null
     }
   },
   { immediate: true },
 )
+
+async function refreshBannerPreview(projectId: number | null | undefined) {
+  if (!projectId) {
+    bannerUrl.value = null
+    return
+  }
+
+  try {
+    bannerError.value = null
+    bannerUrl.value = await getProjectBannerUrl(supabase, projectId)
+  }
+  catch (error) {
+    console.error('Error loading project banner:', error)
+    bannerUrl.value = null
+  }
+}
+
+async function handleBannerUpload(file: File) {
+  if (!props.project) {
+    bannerError.value = 'Save the project before uploading a banner.'
+    return
+  }
+
+  try {
+    bannerUploading.value = true
+    bannerError.value = null
+    await uploadProjectBanner(supabase, props.project.id, file)
+    await refreshBannerPreview(props.project.id)
+  }
+  catch (error) {
+    console.error('Error uploading project banner:', error)
+    bannerError.value = 'Failed to upload banner. Please try again.'
+  }
+  finally {
+    bannerUploading.value = false
+  }
+}
+
+async function handleBannerDelete() {
+  if (!props.project)
+    return
+
+  try {
+    bannerDeleting.value = true
+    bannerError.value = null
+    await deleteProjectBanner(supabase, props.project.id)
+    bannerUrl.value = null
+  }
+  catch (error) {
+    console.error('Error deleting project banner:', error)
+    bannerError.value = 'Failed to delete banner. Please try again.'
+  }
+  finally {
+    bannerDeleting.value = false
+  }
+}
+
+function handleBannerInvalid(message: string) {
+  bannerError.value = message
+}
 
 // Handle closing the sheet
 function handleClose() {
@@ -258,6 +327,26 @@ function handleTagInputEnter() {
           placeholder="Enter project description (optional)"
           :rows="3"
         />
+
+        <Flex expand column gap="s">
+          <label class="input-label">Banner Image</label>
+          <FileUpload
+            label="Upload banner"
+            :preview-url="bannerUrl"
+            :loading="bannerUploading"
+            :deleting="bannerDeleting"
+            :error="bannerError"
+            :disabled="!canManageBanner"
+            :show-delete="!!bannerUrl && canManageBanner"
+            :aspect-ratio="16 / 9"
+            @upload="handleBannerUpload"
+            @delete="handleBannerDelete"
+            @invalid="handleBannerInvalid"
+          />
+          <p v-if="!canManageBanner" class="banner-upload__notice">
+            Save the project before uploading a banner.
+          </p>
+        </Flex>
 
         <Input
           v-model="projectForm.link"
@@ -417,17 +506,29 @@ function handleTagInputEnter() {
   color: var(--color-danger);
 }
 
+.input-label {
+  font-size: var(--font-size-m);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-xs);
+}
+
+.banner-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.banner-upload__notice {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+  margin-top: var(--space-xs);
+}
+
 .tags-section {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-
-  .input-label {
-    font-size: var(--font-size-s);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text);
-    margin-bottom: var(--space-xs);
-  }
 
   .tags-display {
     display: flex;

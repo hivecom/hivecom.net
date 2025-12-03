@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex } from '@dolanske/vui'
+import { computed } from 'vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
+import { getProjectPlaceholderBanner } from '@/lib/projectPlaceholderBanner'
 
 interface Props {
   project: Tables<'projects'>
@@ -21,6 +24,15 @@ const props = withDefaults(defineProps<Props>(), {
 function handleClick() {
   navigateTo(`/community/projects/${props.project.id}`)
 }
+
+const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(computed(() => props.project.id))
+
+const placeholderBanner = computed(() => getProjectPlaceholderBanner(props.project.id))
+
+const bannerSurfaceStyle = computed(() => {
+  const source = projectBannerUrl.value ?? placeholderBanner.value
+  return { backgroundImage: `url(${source})` }
+})
 </script>
 
 <template>
@@ -52,44 +64,59 @@ function handleClick() {
 
     <!-- Regular layout -->
     <div v-else class="project-card__content">
-      <!-- Project icon -->
-      <div class="project-card__icon">
-        <Icon name="ph:folder-fill" />
-      </div>
-
-      <!-- Project header -->
-      <div class="project-card__header">
-        <h3 v-if="compact" class="project-card__title project-card__title--compact">
-          {{ project.title }}
-        </h3>
-        <h1 v-else class="project-card__title">
-          {{ project.title }}
-        </h1>
-      </div>
-
-      <!-- Project description -->
-      <p v-if="project.description" class="project-card__description">
-        {{ project.description }}
-      </p>
-
-      <!-- Project tags and metadata row -->
-      <Flex v-if="((project.tags && project.tags.length > 0) || project.github) && !compact" gap="s" x-between y-center class="project-card__tags-row">
-        <Flex gap="s" y-center class="project-card__tags-left">
-          <span v-if="project.github" class="project-card__github-indicator">
-            <GitHubLink :github="project.github" :show-icon="true" :hide-repo="true" small />
-          </span>
-          <div v-if="project.tags && project.tags.length > 0" class="project-card__tags">
-            <Badge v-for="tag in project.tags" :key="tag" size="xs" variant="accent">
-              {{ tag }}
-            </Badge>
-          </div>
-        </Flex>
-        <TimestampDate
-          :date="project.created_at"
-          format="MMM D, YYYY"
-          class="project-card__date"
+      <!-- Banner -->
+      <div class="project-card__banner">
+        <div
+          class="project-card__banner-surface"
+          :class="{
+            'project-card__banner-surface--image': !!projectBannerUrl,
+          }"
+          :style="bannerSurfaceStyle"
         />
-      </Flex>
+        <span v-if="isLatest" class="project-card__banner-badge">Latest</span>
+      </div>
+
+      <div class="project-card__body">
+        <!-- Project header -->
+        <Flex expand x-between y-center>
+          <div class="project-card__header">
+            <h3 v-if="compact" class="project-card__title project-card__title--compact">
+              {{ project.title }}
+            </h3>
+            <h1 v-else class="project-card__title">
+              {{ project.title }}
+            </h1>
+          </div>
+
+          <Flex x-end>
+            <TimestampDate
+              :date="project.created_at"
+              format="MMM D, YYYY"
+              class="project-card__date"
+            />
+            <Icon name="ph:folder-fill" />
+          </Flex>
+        </Flex>
+
+        <!-- Project description -->
+        <p v-if="project.description" class="project-card__description">
+          {{ project.description }}
+        </p>
+
+        <!-- Project tags and metadata row -->
+        <Flex v-if="((project.tags && project.tags.length > 0) || project.github) && !compact" gap="s" x-between y-center class="project-card__tags-row">
+          <Flex gap="s" y-center class="project-card__tags-left">
+            <span v-if="project.github" class="project-card__github-indicator">
+              <GitHubLink :github="project.github" :show-icon="true" :hide-repo="true" small />
+            </span>
+            <div v-if="project.tags && project.tags.length > 0" class="project-card__tags">
+              <Badge v-for="tag in project.tags" :key="tag" size="xs" variant="accent">
+                {{ tag }}
+              </Badge>
+            </div>
+          </Flex>
+        </Flex>
+      </div>
     </div>
   </Card>
 </template>
@@ -188,11 +215,20 @@ function handleClick() {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: var(--space-m);
 
   .project-card--ultra-compact & {
     flex: none;
     display: block;
   }
+}
+
+.project-card__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-m);
+  flex: 1;
 }
 
 .project-card__icon {
@@ -212,6 +248,46 @@ function handleClick() {
   svg {
     font-size: 16px;
   }
+}
+
+.project-card__banner {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  border-radius: var(--border-radius-m);
+  overflow: hidden;
+  background: transparent;
+}
+
+.project-card--compact .project-card__banner {
+  height: 120px;
+}
+
+.project-card__banner-surface {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1);
+  transition: transform 0.4s ease;
+}
+
+.project-card:hover .project-card__banner-surface--image {
+  transform: scale(1.05);
+}
+
+.project-card__banner-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  padding: 2px 8px;
+  border-radius: var(--border-radius-s);
+  font-size: var(--font-size-xxs);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
 .project-card__title {
@@ -252,15 +328,6 @@ function handleClick() {
   svg {
     font-size: var(--font-size-s);
   }
-}
-
-.project-card__github-indicator {
-  display: flex;
-  align-items: center;
-}
-
-.project-card__tags-row {
-  margin-top: var(--space-s);
 }
 
 .project-card__tags-left {
