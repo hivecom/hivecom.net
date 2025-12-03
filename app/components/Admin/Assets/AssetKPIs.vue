@@ -4,7 +4,7 @@ import { onBeforeMount, ref, watch } from 'vue'
 
 import KPICard from '@/components/Admin/KPICard.vue'
 import KPIContainer from '@/components/Admin/KPIContainer.vue'
-import { formatBytes, isImageAsset, listCmsFilesRecursive, normalizePrefix } from '@/lib/utils/cmsAssets'
+import { formatBytes, isImageAsset, listCmsFilesRecursive, normalizePrefix } from '@/lib/cmsAssets'
 
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 const supabase = useSupabaseClient()

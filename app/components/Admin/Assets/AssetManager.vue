@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CmsAsset } from '@/lib/utils/cmsAssets'
+import type { CmsAsset } from '@/lib/cmsAssets'
 import { Alert, Badge, Button, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Toasts } from '@dolanske/vui'
 
 import { computed, onBeforeMount, ref, watch } from 'vue'
@@ -9,7 +9,7 @@ import AssetUpload from '@/components/Admin/Assets/AssetUpload.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
-import { CMS_BUCKET_ID, formatBytes, isImageAsset, listCmsDirectory, listCmsFilesRecursive, normalizePrefix } from '@/lib/utils/cmsAssets'
+import { CMS_BUCKET_ID, formatBytes, isImageAsset, listCmsDirectory, listCmsFilesRecursive, normalizePrefix } from '@/lib/cmsAssets'
 
 interface Props {
   canUpload?: boolean

@@ -245,9 +245,7 @@ function handleRetry() {
 }
 
 .user-preview-card__badges {
-  flex-shrink: 0;
-  max-width: 140px;
-  margin-left: auto;
+  padding-top: 12px;
 }
 
 .user-preview-card__actions {

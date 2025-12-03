@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 
 import constants from '~~/constants.json'
-import { getContainerStatus } from '@/lib/utils/containerStatus'
+import { getContainerStatus } from '@/lib/containerStatus'
 
 import KPICard from '../KPICard.vue'
 import KPIContainer from '../KPIContainer.vue'

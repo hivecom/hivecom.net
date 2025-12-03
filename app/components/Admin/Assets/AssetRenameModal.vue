@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { CmsAsset } from '@/lib/utils/cmsAssets'
+import type { CmsAsset } from '@/lib/cmsAssets'
 import { Button, Flex, Input, Modal } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
-import { normalizePrefix } from '@/lib/utils/cmsAssets'
+import { normalizePrefix } from '@/lib/cmsAssets'
 
 const props = defineProps<{
   asset: CmsAsset | null

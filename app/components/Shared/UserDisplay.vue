@@ -51,7 +51,7 @@ async function fetchAvatar() {
 
   avatarLoading.value = true
   try {
-    const { getUserAvatarUrl } = await import('@/lib/utils/storage')
+    const { getUserAvatarUrl } = await import('@/lib/storage')
     const supabase = useSupabaseClient()
     avatarUrl.value = await getUserAvatarUrl(supabase, props.userId!)
   }

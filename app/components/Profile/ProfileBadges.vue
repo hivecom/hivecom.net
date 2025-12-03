@@ -2,8 +2,7 @@
 import type { Component } from 'vue'
 import type { Enums, Tables } from '@/types/database.types'
 import { Button, Card, Flex } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
-import { getLifeOfThePartyVariant, LIFE_OF_PARTY_MIN_RSVPS } from '@/components/Profile/Badges/partyAnimalBadge'
+import { computed } from 'vue'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
 import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
 import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
@@ -11,6 +10,8 @@ import ProfileBadgeRSVPs from '@/components/Profile/Badges/ProfileBadgeRSVPs.vue
 import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
 import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
 import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
+import { usePartyAnimalCount } from '@/composables/useBadgePartyAnimalCount'
+import { getPartyAnimalVariant, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/partyAnimalBadge'
 import ProfileBadgeHost from './Badges/ProfileBadgeHost.vue'
 
 interface Props {
@@ -37,8 +38,6 @@ interface RenderableBadgeEntry {
 const props = withDefaults(defineProps<Props>(), {
   isOwnProfile: false,
 })
-
-const supabase = useSupabaseClient()
 
 const badgeVariantOrder: BadgeVariant[] = ['shiny', 'gold', 'silver', 'bronze']
 
@@ -94,44 +93,19 @@ const yearsBadgeVariant = computed<BadgeVariant | null>(() => {
   return 'bronze'
 })
 
-const lifeOfPartyYesCount = ref(0)
-const lifeOfPartyVariant = computed<BadgeVariant | null>(() => {
-  const variant = getLifeOfThePartyVariant(lifeOfPartyYesCount.value)
+const profileIdRef = computed(() => props.profile?.id ?? null)
+const { count: PartyAnimalCount } = usePartyAnimalCount(profileIdRef)
+const partyAnimalVariant = computed<BadgeVariant | null>(() => {
+  const variant = getPartyAnimalVariant(PartyAnimalCount.value)
   return variant ?? null
 })
-const hasLifeOfPartyBadge = computed(() => (lifeOfPartyVariant.value !== null) && lifeOfPartyYesCount.value >= LIFE_OF_PARTY_MIN_RSVPS)
-
-async function fetchLifeOfPartyYesCount(profileId: string) {
-  try {
-    const { count, error } = await supabase
-      .from('events_rsvps')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', profileId)
-      .eq('rsvp', 'yes')
-
-    if (error)
-      throw error
-
-    lifeOfPartyYesCount.value = count ?? 0
-  }
-  catch (error) {
-    console.error('Failed to fetch RSVP count for Party Animal badge', error)
-    lifeOfPartyYesCount.value = 0
-  }
-}
-
-watch(() => props.profile.id, (profileId) => {
-  if (!profileId)
-    return
-
-  void fetchLifeOfPartyYesCount(profileId)
-}, { immediate: true })
+const hasPartyAnimalBadge = computed(() => (partyAnimalVariant.value !== null) && PartyAnimalCount.value >= PARTY_ANIMAL_MIN_RSVPS)
 
 const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
   const memberBadges = new Set(uniqueProfileBadges.value)
   const entries: RenderableBadgeEntry[] = []
   const currentYearsVariant = yearsBadgeVariant.value
-  const currentLifeOfPartyVariant = lifeOfPartyVariant.value
+  const currentPartyAnimalVariant = partyAnimalVariant.value
 
   badgeVariantOrder.forEach((variant) => {
     badgeDefinitionsByVariant[variant].forEach((definition) => {
@@ -157,12 +131,12 @@ const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
       })
     }
 
-    if (hasLifeOfPartyBadge.value && currentLifeOfPartyVariant === variant) {
+    if (hasPartyAnimalBadge.value && currentPartyAnimalVariant === variant) {
       entries.push({
         id: 'life_of_the_party',
         component: ProfileBadgeRSVPs,
         componentProps: {
-          rsvps: lifeOfPartyYesCount.value,
+          rsvps: PartyAnimalCount.value,
         },
       })
     }

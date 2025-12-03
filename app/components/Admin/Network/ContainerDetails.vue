@@ -8,7 +8,7 @@ import constants from '~~/constants.json'
 
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
-import { getContainerStatus } from '@/lib/utils/containerStatus'
+import { getContainerStatus } from '@/lib/containerStatus'
 import ContainerActions from './ContainerActions.vue'
 import ContainerStatusIndicator from './ContainerStatusIndicator.vue'
 

@@ -4,9 +4,9 @@ import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea } from '
 import { computed, ref, watch } from 'vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { deleteUserAvatar, getUserAvatarUrl } from '@/lib/storage'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
-import { deleteUserAvatar, getUserAvatarUrl } from '@/lib/utils/storage'
 
 // Interface for Select options
 interface SelectOption {

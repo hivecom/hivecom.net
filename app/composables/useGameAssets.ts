@@ -4,7 +4,7 @@
  */
 
 import type { Database, Tables } from '@/types/database.types'
-import { getGameAssetUrl } from '@/lib/utils/storage'
+import { getGameAssetUrl } from '@/lib/storage'
 
 export interface GameAssetOptions {
   /**

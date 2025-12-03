@@ -1,7 +1,7 @@
 <script setup>
 import { Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
-import { processMentions } from '@/lib/utils/mentions'
+import { processMentions } from '@/lib/mentions'
 import MDRendererSlot from './MDRendererSlot.vue'
 
 const props = defineProps({

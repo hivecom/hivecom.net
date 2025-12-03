@@ -5,7 +5,7 @@ import Alerts from '@/components/Admin/Alerts.vue'
 import IncomeChart from '@/components/Admin/Funding/IncomeChart.vue'
 import UserChart from '@/components/Admin/Funding/UserChart.vue'
 import KPIOverview from '@/components/Admin/KPIOverview.vue'
-import { useBreakpoint } from '@/lib/utils/mediaQuery'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 // State for refresh coordination between components
 const refreshSignal = ref(0)

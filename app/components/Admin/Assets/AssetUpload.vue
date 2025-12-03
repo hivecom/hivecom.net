@@ -3,7 +3,7 @@ import { Alert, Button, Card, Flex, Input, Progress, Sheet, Switch } from '@dola
 import { computed, ref, watch } from 'vue'
 
 import FileUpload from '@/components/Shared/FileUpload.vue'
-import { CMS_BUCKET_ID, formatBytes, joinAssetPath, normalizePrefix } from '@/lib/utils/cmsAssets'
+import { CMS_BUCKET_ID, formatBytes, joinAssetPath, normalizePrefix } from '@/lib/cmsAssets'
 
 interface Props {
   canUpload?: boolean

@@ -3,8 +3,8 @@ import type { Tables } from '@/types/database.types'
 import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
-import { getUserActivityStatus } from '@/lib/utils/lastSeen'
 
 interface Props {
   profile: Tables<'profiles'>

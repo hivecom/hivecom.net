@@ -4,9 +4,9 @@ import { Button, Calendar, Flex, Input, Select, Sheet, Textarea } from '@dolansk
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
+import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
-import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/utils/storage'
 
 const props = defineProps<{
   profile: Tables<'profiles'> | null

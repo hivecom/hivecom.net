@@ -5,7 +5,7 @@ import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
-import { isBanActive } from '@/lib/utils/banStatus'
+import { isBanActive } from '@/lib/banStatus'
 
 // Get current user for authentication checks
 const user = useSupabaseUser()

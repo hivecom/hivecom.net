@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useLastSeenTracking } from '@/lib/utils/lastSeen'
+import { useLastSeenTracking } from '@/lib/lastSeen'
 
 const route = useRoute()
 

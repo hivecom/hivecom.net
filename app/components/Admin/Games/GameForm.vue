@@ -4,7 +4,7 @@ import { Button, Flex, Input, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
-import { deleteGameAsset, uploadGameAsset } from '@/lib/utils/storage'
+import { deleteGameAsset, uploadGameAsset } from '@/lib/storage'
 
 const props = defineProps<{
   game: Tables<'games'> | null

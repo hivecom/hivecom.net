@@ -8,7 +8,7 @@ import ConnectionsCard from '@/components/Settings/ConnectionsCard.vue'
 import DeleteAccountCard from '@/components/Settings/DeleteAccountCard.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
 // import ProfileSummaryCard from '@/components/Settings/ProfileSummaryCard.vue'
-import { useBreakpoint } from '@/lib/utils/mediaQuery'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { CmsAsset } from '@/lib/utils/cmsAssets'
+import type { CmsAsset } from '@/lib/cmsAssets'
 import { Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 
 import { computed } from 'vue'
-import { formatBytes, isImageAsset } from '@/lib/utils/cmsAssets'
+import { formatBytes, isImageAsset } from '@/lib/cmsAssets'
 
 const props = withDefaults(defineProps<{
   asset: CmsAsset | null

@@ -8,7 +8,7 @@ import type { Ref } from 'vue'
 import type { CacheConfig } from './useSupabaseCache'
 import type { Database } from '@/types/database.types'
 import { computed, onScopeDispose, readonly, ref, unref, watch } from 'vue'
-import { getUserAvatarUrl } from '@/lib/utils/storage'
+import { getUserAvatarUrl } from '@/lib/storage'
 import { useSupabaseCache } from './useSupabaseCache'
 
 type ProfileBadgeSlug = Database['public']['Enums']['profile_badge']

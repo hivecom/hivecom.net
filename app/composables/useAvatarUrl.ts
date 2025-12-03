@@ -5,7 +5,7 @@
 import type { Ref } from 'vue'
 import type { Database } from '@/types/database.types'
 import { readonly, ref, unref, watchEffect } from 'vue'
-import { getUserAvatarUrl } from '@/lib/utils/storage'
+import { getUserAvatarUrl } from '@/lib/storage'
 
 /**
  * Reactive composable for fetching user avatar URLs
