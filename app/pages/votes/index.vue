@@ -156,7 +156,7 @@ function getReferendumStatus(referendum: { date_start: string, date_end: string 
 <template>
   <div class="page">
     <!-- Hero section -->
-    <section>
+    <section class="page-title">
       <Flex :gap="0" expand column>
         <Flex y-center x-between expand>
           <h1>

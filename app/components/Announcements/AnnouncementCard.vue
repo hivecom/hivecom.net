@@ -31,6 +31,8 @@ const { assetUrl: backgroundUrl } = useCacheAnnouncementBackground(announcementI
 
 const placeholderBanner = computed(() => getAnnouncementPlaceholderBanner(props.announcement.id))
 
+const hasBannerImage = computed(() => !!(bannerUrl.value ?? placeholderBanner.value))
+
 const showBanner = computed(() => !props.ultraCompact && props.announcement.pinned)
 const showBackground = computed(
   () => !props.ultraCompact && !props.announcement.pinned && !!backgroundUrl.value,
@@ -69,7 +71,13 @@ const backgroundSurfaceStyle = computed(() => {
     />
 
     <div v-if="showBanner" class="announcement-card__banner" aria-hidden="true">
-      <div class="announcement-card__banner-surface" :style="bannerSurfaceStyle" />
+      <div
+        class="announcement-card__banner-surface"
+        :class="{
+          'announcement-card__banner-surface--image': hasBannerImage,
+        }"
+        :style="bannerSurfaceStyle"
+      />
       <div class="announcement-card__banner-overlay" />
     </div>
 
@@ -267,7 +275,7 @@ const backgroundSurfaceStyle = computed(() => {
   transition: transform 0.4s ease;
 }
 
-.announcement-card--pinned:hover .announcement-card__banner-surface {
+.announcement-card--pinned:hover .announcement-card__banner-surface--image {
   transform: scale(1.05);
 }
 

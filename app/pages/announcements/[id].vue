@@ -27,6 +27,8 @@ const { assetUrl: announcementBannerUrl } = useCacheAnnouncementBanner(
 
 const placeholderBanner = computed(() => getAnnouncementPlaceholderBanner(announcement.value?.id ?? null))
 
+const hasAnnouncementBannerImage = computed(() => !!(announcementBannerUrl.value ?? placeholderBanner.value))
+
 const heroBannerStyle = computed(() => {
   const source = announcementBannerUrl.value ?? placeholderBanner.value
   return { backgroundImage: `url(${source})` }
@@ -117,7 +119,13 @@ useHead({
       <!-- Header -->
       <Card class="announcement-header" expand>
         <div class="announcement-header__banner" aria-hidden="true">
-          <div class="announcement-header__banner-surface" :style="heroBannerStyle" />
+          <div
+            class="announcement-header__banner-surface"
+            :class="{
+              'announcement-header__banner-surface--image': hasAnnouncementBannerImage,
+            }"
+            :style="heroBannerStyle"
+          />
         </div>
 
         <div class="announcement-header__body">
@@ -205,6 +213,8 @@ useHead({
   width: 100%;
   height: 260px;
   border-bottom: 1px solid var(--color-border);
+  border-radius: var(--border-radius-s) var(--border-radius-s) 0 0;
+  overflow: hidden;
 }
 
 .announcement-header__banner-surface {
@@ -216,7 +226,7 @@ useHead({
   transition: transform 0.4s ease;
 }
 
-.announcement-header:hover .announcement-header__banner-surface {
+.announcement-header:hover .announcement-header__banner-surface--image {
   transform: scale(1.05);
 }
 

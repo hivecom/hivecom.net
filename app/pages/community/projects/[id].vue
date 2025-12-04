@@ -26,6 +26,8 @@ const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(
 
 const placeholderBanner = computed(() => getProjectPlaceholderBanner(project.value?.id ?? null))
 
+const hasProjectBannerImage = computed(() => !!(projectBannerUrl.value ?? placeholderBanner.value))
+
 const heroBannerStyle = computed(() => {
   const source = projectBannerUrl.value ?? placeholderBanner.value
   return { backgroundImage: `url(${source})` }
@@ -118,7 +120,7 @@ useHead({
           <div
             class="project-header__banner-surface"
             :class="{
-              'project-header__banner-surface--image': !!projectBannerUrl,
+              'project-header__banner-surface--image': hasProjectBannerImage,
             }"
             :style="heroBannerStyle"
           />

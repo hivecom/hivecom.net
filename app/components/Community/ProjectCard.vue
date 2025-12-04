@@ -29,6 +29,8 @@ const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(computed(() => pro
 
 const placeholderBanner = computed(() => getProjectPlaceholderBanner(props.project.id))
 
+const hasBannerImage = computed(() => !!(projectBannerUrl.value ?? placeholderBanner.value))
+
 const bannerSurfaceStyle = computed(() => {
   const source = projectBannerUrl.value ?? placeholderBanner.value
   return { backgroundImage: `url(${source})` }
@@ -69,7 +71,7 @@ const bannerSurfaceStyle = computed(() => {
         <div
           class="project-card__banner-surface"
           :class="{
-            'project-card__banner-surface--image': !!projectBannerUrl,
+            'project-card__banner-surface--image': hasBannerImage,
           }"
           :style="bannerSurfaceStyle"
         />
