@@ -20,3 +20,12 @@ SELECT
           WHERE
             name = 'system_cron_secret')), body := CONCAT('{"time": "', NOW(), '"}')::jsonb) AS request_id;
 $$);
+
+DROP POLICY IF EXISTS "Allow public SELECT metric data in storage" ON storage.objects;
+
+CREATE POLICY "Allow public SELECT metric data in storage" ON storage.objects
+	FOR SELECT TO authenticated, anon
+		USING (
+			bucket_id = 'hivecom-content-static'
+			AND name LIKE 'metrics/%'
+		);
