@@ -3,7 +3,10 @@
   "imports": {
     "app-constants": "../../constants.json",
     "database-types": "../../types/database.types.ts",
-    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.45.2"
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.45.2",
+    "node-ts": "npm:node-ts@8.0.9",
+    "googleapis": "npm:googleapis@144.0.0",
+    "google-auth-library": "npm:google-auth-library@9.15.0"
   },
   "workspace": [
     "./_shared",
@@ -20,6 +23,7 @@
     "./oauth-patreon",
     "./ping",
     "./trigger-google-calendar-sync",
+    "./teamspeak-verify-request",
     "./trigger-discord-event-sync",
     "./user-delete-account",
     "./user-info",
