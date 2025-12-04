@@ -15,6 +15,7 @@
     "./admin-user-ban",
     "./admin-user-delete",
     "./cron-docker-control-container-fetch",
+    "./cron-metrics-fetch",
     "./cron-patreon-fetch",
     "./oauth-patreon",
     "./ping",
