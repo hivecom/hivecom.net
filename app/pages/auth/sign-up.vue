@@ -76,7 +76,7 @@ async function signUpWithDiscord() {
 </script>
 
 <template>
-  <Flex y-center x-center class="flex-1 w-100" column>
+  <Flex y-center x-center class="sign-in-page" column expand>
     <Card class="login-card" separators>
       <template #header>
         <h4>Sign up</h4>
@@ -126,6 +126,9 @@ async function signUpWithDiscord() {
         </NuxtLink>
       </template>
     </Card>
+
+    <div class="animated-blob first" />
+    <div class="animated-blob second" />
   </Flex>
 </template>
 
