@@ -4,7 +4,7 @@ import { Badge, Card, Flex } from '@dolanske/vui'
 import { computed } from 'vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useCacheAnnouncementBackground, useCacheAnnouncementBanner } from '@/composables/useCacheAnnouncementAssets'
-import { getAnnouncementPlaceholderBanner } from '@/lib/announcementPlaceholderBanner'
+import { getPlaceholderBannerAnnouncement } from '@/lib/placeholderBannerAnnouncements'
 
 interface Props {
   announcement: Tables<'announcements'>
@@ -29,9 +29,9 @@ const announcementId = computed(() => props.announcement.id)
 const { assetUrl: bannerUrl } = useCacheAnnouncementBanner(announcementId)
 const { assetUrl: backgroundUrl } = useCacheAnnouncementBackground(announcementId)
 
-const placeholderBanner = computed(() => getAnnouncementPlaceholderBanner(props.announcement.id))
+const placeholderBanner = computed(() => getPlaceholderBannerAnnouncement(props.announcement.id))
 
-const hasBannerImage = computed(() => !!(bannerUrl.value ?? placeholderBanner.value))
+const hasBannerImage = computed(() => !!(bannerUrl.value ?? placeholderBanner.value.url))
 
 const showBanner = computed(() => !props.ultraCompact && props.announcement.pinned)
 const showBackground = computed(
@@ -39,8 +39,16 @@ const showBackground = computed(
 )
 
 const bannerSurfaceStyle = computed(() => {
-  const source = bannerUrl.value ?? placeholderBanner.value
-  return { backgroundImage: `url(${source})` }
+  const placeholder = placeholderBanner.value
+  const usingPlaceholder = !bannerUrl.value
+  const style: Record<string, string> = {
+    backgroundImage: `url(${bannerUrl.value ?? placeholder.url})`,
+  }
+
+  if (usingPlaceholder && placeholder.transform)
+    style['--banner-placeholder-transform'] = placeholder.transform
+
+  return style
 })
 
 const backgroundSurfaceStyle = computed(() => {
@@ -271,7 +279,7 @@ const backgroundSurfaceStyle = computed(() => {
   inset: 0;
   background-size: cover;
   background-position: center;
-  transform: scale(1);
+  transform: var(--banner-placeholder-transform, scale(1));
   transition: transform 0.4s ease;
 }
 

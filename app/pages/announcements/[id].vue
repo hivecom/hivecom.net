@@ -7,7 +7,7 @@ import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCacheAnnouncementBanner } from '@/composables/useCacheAnnouncementAssets'
-import { getAnnouncementPlaceholderBanner } from '@/lib/announcementPlaceholderBanner'
+import { getPlaceholderBannerAnnouncement } from '@/lib/placeholderBannerAnnouncements'
 
 // Get route parameter
 const route = useRoute()
@@ -25,13 +25,21 @@ const { assetUrl: announcementBannerUrl } = useCacheAnnouncementBanner(
   computed(() => announcement.value?.id ?? null),
 )
 
-const placeholderBanner = computed(() => getAnnouncementPlaceholderBanner(announcement.value?.id ?? null))
+const placeholderBanner = computed(() => getPlaceholderBannerAnnouncement(announcement.value?.id ?? null))
 
-const hasAnnouncementBannerImage = computed(() => !!(announcementBannerUrl.value ?? placeholderBanner.value))
+const hasAnnouncementBannerImage = computed(() => !!(announcementBannerUrl.value ?? placeholderBanner.value.url))
 
 const heroBannerStyle = computed(() => {
-  const source = announcementBannerUrl.value ?? placeholderBanner.value
-  return { backgroundImage: `url(${source})` }
+  const placeholder = placeholderBanner.value
+  const usingPlaceholder = !announcementBannerUrl.value
+  const style: Record<string, string> = {
+    backgroundImage: `url(${announcementBannerUrl.value ?? placeholder.url})`,
+  }
+
+  if (usingPlaceholder && placeholder.transform)
+    style['--banner-placeholder-transform'] = placeholder.transform
+
+  return style
 })
 
 // Fetch announcement data

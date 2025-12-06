@@ -5,7 +5,7 @@ import { computed } from 'vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
-import { getProjectPlaceholderBanner } from '@/lib/projectPlaceholderBanner'
+import { getPlaceholderBannerProject } from '@/lib/placeholderBannerProjects'
 
 interface Props {
   project: Tables<'projects'>
@@ -27,13 +27,21 @@ function handleClick() {
 
 const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(computed(() => props.project.id))
 
-const placeholderBanner = computed(() => getProjectPlaceholderBanner(props.project.id))
+const placeholderBanner = computed(() => getPlaceholderBannerProject(props.project.id))
 
-const hasBannerImage = computed(() => !!(projectBannerUrl.value ?? placeholderBanner.value))
+const hasBannerImage = computed(() => !!(projectBannerUrl.value ?? placeholderBanner.value.url))
 
 const bannerSurfaceStyle = computed(() => {
-  const source = projectBannerUrl.value ?? placeholderBanner.value
-  return { backgroundImage: `url(${source})` }
+  const placeholder = placeholderBanner.value
+  const usingPlaceholder = !projectBannerUrl.value
+  const style: Record<string, string> = {
+    backgroundImage: `url(${projectBannerUrl.value ?? placeholder.url})`,
+  }
+
+  if (usingPlaceholder && placeholder.transform)
+    style['--banner-placeholder-transform'] = placeholder.transform
+
+  return style
 })
 </script>
 
