@@ -61,3 +61,10 @@ export function validateMarkdownNoHtml(markdown: string): { valid: boolean, erro
 
   return { valid: true, error: null }
 }
+
+export function replaceMarkdownH1(markdown: string): string {
+  if (!markdown)
+    return ''
+
+  return markdown.replace(/^# (.*)$/gm, '## $1')
+}

@@ -2,7 +2,6 @@
 import type { Tables } from '@/types/database.types'
 import { Card, Flex, Skeleton } from '@dolanske/vui'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
-import ProfileAbout from '@/components/Profile/ProfileAbout.vue'
 import ProfileBadges from '@/components/Profile/ProfileBadges.vue'
 import ProfileBanStatus from '@/components/Profile/ProfileBanStatus.vue'
 import ProfileForm from '@/components/Profile/ProfileForm.vue'
@@ -678,6 +677,7 @@ async function ignoreFriendRequest() {
 
 <template>
   <div class="profile-view">
+    <!-- TODO: update loading state after profile about changes -->
     <!-- Loading State -->
     <template v-if="loading">
       <!-- Profile Header Skeleton -->
@@ -800,31 +800,31 @@ async function ignoreFriendRequest() {
       <!-- Ban Status Callout -->
       <ProfileBanStatus v-if="profile.banned" :profile="profile" />
 
-      <!-- Profile Header -->
-      <ProfileHeader
-        :profile="profile"
-        :avatar-url="avatarUrl"
-        :user-role="userRole"
-        :current-user-role="currentUserRole"
-        :is-own-profile="isOwnProfile"
-        :friendship-status="friendshipStatus"
-        :is-current-user-admin="isCurrentUserAdmin"
-        @open-edit-sheet="openEditSheet"
-        @send-friend-request="sendFriendRequest"
-        @accept-friend-request="acceptFriendRequest"
-        @revoke-friend-request="revokeFriendRequest"
-        @remove-friend="removeFriend"
-        @ignore-friend-request="ignoreFriendRequest"
-        @open-complaint-modal="openComplaintModal"
-      />
-
       <!-- Profile Sections -->
       <div class="profile-sections">
         <!-- About Section (Left) -->
-        <ProfileAbout :profile="profile" :is-own-profile="isOwnProfile" @open-edit-sheet="openEditSheet" />
+        <Flex column gap="m">
+          <!-- Profile Header -->
+          <ProfileHeader
+            :profile="profile"
+            :avatar-url="avatarUrl"
+            :user-role="userRole"
+            :current-user-role="currentUserRole"
+            :is-own-profile="isOwnProfile"
+            :friendship-status="friendshipStatus"
+            :is-current-user-admin="isCurrentUserAdmin"
+            @open-edit-sheet="openEditSheet"
+            @send-friend-request="sendFriendRequest"
+            @accept-friend-request="acceptFriendRequest"
+            @revoke-friend-request="revokeFriendRequest"
+            @remove-friend="removeFriend"
+            @ignore-friend-request="ignoreFriendRequest"
+            @open-complaint-modal="openComplaintModal"
+          />
+        </Flex>
 
         <!-- (Right) -->
-        <Flex column>
+        <Flex column gap="m">
           <!-- Friends Section -->
           <ProfileFriends
             :profile="profile"
@@ -884,8 +884,8 @@ async function ignoreFriendRequest() {
 
 .profile-sections {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--space-l);
+  grid-template-columns: 1fr 356px;
+  gap: var(--space-m);
 
   .about-section,
   .badges-section,

@@ -6,7 +6,7 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
-import { stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
+import { replaceMarkdownH1, stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
 
 const props = defineProps<{
   profile: Tables<'profiles'> | null
@@ -299,11 +299,14 @@ function handleSubmit() {
   if (!isValid.value)
     return
 
+  // Pre-process markdown
   // Prepare the data to save with HTML sanitization
   const profileData = {
     username: profileForm.value.username.trim(),
     introduction: profileForm.value.introduction.trim() || null,
-    markdown: profileForm.value.markdown.trim() ? stripHtmlTags(profileForm.value.markdown.trim()) : null,
+    markdown: profileForm.value.markdown.trim()
+      ? replaceMarkdownH1(stripHtmlTags(profileForm.value.markdown.trim()))
+      : null,
     website: profileForm.value.website.trim() ? normalizeWebsiteUrl(profileForm.value.website.trim()) : null,
     country: profileForm.value.country.trim() ? profileForm.value.country.trim().toUpperCase() : null,
     birthday: profileForm.value.birthday.trim() ? profileForm.value.birthday.trim() : null,
@@ -592,6 +595,10 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
           <li>
             <Icon name="ph:warning-circle" />
             HTML tags are not allowed and will be removed for security
+          </li>
+          <li>
+            <Icon name="ph:warning-circle" />
+            H1 tags will be converted to H2
           </li>
         </ul>
       </Flex>

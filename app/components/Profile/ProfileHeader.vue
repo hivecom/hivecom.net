@@ -5,6 +5,7 @@ import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
+import MDRenderer from '../Shared/MDRenderer.vue'
 
 interface Props {
   profile: Tables<'profiles'>
@@ -204,13 +205,13 @@ function handleRemoveFriend() {
 </script>
 
 <template>
-  <Card class="profile-header">
+  <Card class="profile-header card-bg" footer-separator>
     <Flex column expand y-center x-center>
       <Flex gap="l" y-start expand x-center>
         <!-- Avatar -->
         <div class="profile-avatar">
           <div class="avatar-container">
-            <Avatar :size="80" :url="avatarUrl || undefined">
+            <Avatar :size="160" :url="avatarUrl || undefined">
               <template v-if="!avatarUrl" #default>
                 {{ getUserInitials(profile.username) }}
               </template>
@@ -267,29 +268,20 @@ function handleRemoveFriend() {
                 <Icon name="ph:bell" />
                 Friend Request
               </Badge>
-              <!-- Supporter Badges -->
-              <Flex gap="xs" y-center>
-                <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
-                  <Icon name="ph:heart" class="gold" />
-                  Supporter
-                </Badge>
-              </Flex>
+              <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
+                <Icon name="ph:heart" class="gold" />
+                Supporter
+              </Badge>
             </Flex>
 
             <!-- Action Buttons -->
-            <Flex v-if="isOwnProfile" gap="s">
-              <Button variant="accent" @click="emit('openEditSheet')">
-                <template #start>
-                  <Icon name="ph:pencil" />
-                </template>
-                Edit Profile
+            <Flex v-if="isOwnProfile" gap="xs">
+              <Button variant="accent" square data-title-top="Edit profile" @click="emit('openEditSheet')">
+                <Icon name="ph:pencil" />
               </Button>
               <CopyClipboard :text="profileUrl" variant="gray" confirm>
-                <Button variant="gray">
-                  <template #start>
-                    <Icon name="ph:link" />
-                  </template>
-                  Copy Link
+                <Button variant="gray" square data-title-top="Copy link to profile">
+                  <Icon name="ph:link" />
                 </Button>
               </CopyClipboard>
             </Flex>
@@ -365,20 +357,18 @@ function handleRemoveFriend() {
                 :loading="true"
               />
 
-              <CopyClipboard :text="profileUrl" variant="gray" confirm>
-                <Button variant="gray">
-                  <template #start>
-                    <Icon name="ph:link" />
-                  </template>
-                  Copy Link
-                </Button>
-              </CopyClipboard>
               <Button variant="gray" @click="emit('openComplaintModal')">
                 <template #start>
                   <Icon name="ph:chat-circle-text" />
                 </template>
                 Complaint
               </Button>
+
+              <CopyClipboard :text="profileUrl" variant="gray" confirm>
+                <Button variant="gray" square data-title-top="Copy link to profile">
+                  <Icon name="ph:link" />
+                </Button>
+              </CopyClipboard>
             </Flex>
           </Flex>
 
@@ -389,7 +379,7 @@ function handleRemoveFriend() {
 
           <!-- Account Info (Full Width) -->
           <Flex x-between y-center class="profile-meta" expand>
-            <Flex gap="m" y-center wrap>
+            <Flex gap="m" y-center wrap column>
               <Flex v-if="countryInfo" gap="xs" y-center class="profile-country">
                 <span
                   class="country-emoji"
@@ -460,6 +450,20 @@ function handleRemoveFriend() {
         </Flex>
       </Flex>
     </Flex>
+
+    <template v-if="profile.markdown || isOwnProfile" #footer>
+      <div v-if="profile.markdown" class="profile-markdown">
+        <MDRenderer
+          skeleton-height="504px"
+          :md="profile.markdown"
+        />
+      </div>
+      <div v-else-if="isOwnProfile" class="empty-state">
+        <p class="text-color-lighter text-s">
+          Add content to your profile to tell others about yourself!
+        </p>
+      </div>
+    </template>
   </Card>
 
   <!-- Remove Friend Confirmation Modal -->
@@ -475,7 +479,25 @@ function handleRemoveFriend() {
 </template>
 
 <style lang="scss" scoped>
+.profile-markdown {
+  line-height: 1.6;
+  min-height: 512px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--space-l);
+
+  p {
+    margin-bottom: var(--space-m);
+  }
+}
+
 .profile-header {
+  :is(.vui-card) .vui-card-content {
+    padding: var(--space-l);
+  }
+
   .profile-avatar {
     flex-shrink: 0;
 
@@ -485,12 +507,12 @@ function handleRemoveFriend() {
 
       .online-indicator {
         position: absolute;
-        bottom: 4px;
-        right: 4px;
+        bottom: 15px;
+        right: 15px;
         width: 16px;
         height: 16px;
         background-color: var(--color-text-lighter);
-        border: 3px solid var(--color-bg);
+        border: 2px solid var(--color-bg);
         border-radius: 50%;
         box-shadow: 0 0 0 1px var(--color-border);
         transition: background-color 0.2s ease;
@@ -504,8 +526,8 @@ function handleRemoveFriend() {
 
   .profile-title {
     margin: 0;
-    font-size: var(--font-size-xxl);
-    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-xxxl);
+    // font-weight: var(--font-weight-bold);
     color: var(--color-text);
   }
 
@@ -513,6 +535,7 @@ function handleRemoveFriend() {
     margin: 0;
     color: var(--color-text-light);
     line-height: 1.5;
+    font-size: var(--font-size-l);
   }
 
   .profile-meta {

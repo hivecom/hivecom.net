@@ -157,10 +157,14 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
 </script>
 
 <template>
-  <Card separators class="badges-card">
+  <Card separators class="badges-card card-bg">
     <template #header>
       <Flex x-between y-center>
-        <h3>Badges</h3>
+        <Flex y-center gap="xs">
+          <h4>Badges</h4>
+          <!-- TODO: count how many badges -->
+          <span class="counter">{{ profileBadgesToRender.length }}</span>
+        </Flex>
 
         <Button size="s" variant="gray" aria-label="See all community badges" @click="goToBadgeDirectory">
           <template #start>
@@ -193,7 +197,8 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
     Filter adapted from Temani Afif's StackOverflow answer (CC BY-SA 4.0).
     Source: https://stackoverflow.com/a/76118647
   -->
-  <svg
+  <!-- NOTE: Jan, seemingly this does not do anything and is causing a space in the flex layout. Btw the stack overflow souce leads to some azure fix, not svg -->
+  <!-- <svg
     class="profile-badges-filter-defs"
     aria-hidden="true"
     focusable="false"
@@ -212,12 +217,13 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
         <feComposite in="SourceGraphic" in2="goo" operator="atop" />
       </filter>
     </defs>
-  </svg>
+  </svg> -->
 </template>
 
 <style lang="scss" scoped>
 .badges-card {
   min-height: 360px;
+  overflow: hidden;
 }
 
 .badges-stack {

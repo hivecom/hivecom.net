@@ -23,16 +23,16 @@ const emit = defineEmits<{
 <template>
   <Card
     separators
-    class="friends-section"
+    class="friends-section card-bg"
     :class="{ 'friends-section--loading': loading }"
   >
     <template #header>
       <Flex x-between y-center>
         <Flex gap="xs" y-center>
-          <h3>Friends</h3>
-          <Badge v-if="friends.length > 0" variant="info" size="s">
+          <h4>Friends</h4>
+          <span class="counter">
             {{ friends.length }}
-          </Badge>
+          </span>
         </Flex>
         <Button variant="gray" size="s" @click="emit('openFriendsModal')">
           <template #start>
@@ -114,6 +114,8 @@ const emit = defineEmits<{
         </div>
       </Flex>
     </div>
+
+    <template #footer />
   </Card>
 </template>
 

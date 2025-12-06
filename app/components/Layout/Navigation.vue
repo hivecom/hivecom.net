@@ -182,19 +182,6 @@ onMounted(async () => {
     img {
       width: 100%;
     }
-
-    &:before {
-      content: '';
-      position: absolute;
-      left: -300px;
-      top: -180px;
-      width: 769px;
-      height: 621px;
-      background-image: url(/leak.png);
-      background-repeat: no-repeat;
-      background-size: contain;
-      pointer-events: none;
-    }
   }
 
   &__links {
