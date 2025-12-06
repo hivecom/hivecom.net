@@ -258,7 +258,7 @@ onMounted(async () => {
   &__user {
     display: flex;
     align-items: center;
-    gap: var(--space-s);
+    gap: var(--space-xs);
   }
 
   &__dropdown {

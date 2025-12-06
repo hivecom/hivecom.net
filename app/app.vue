@@ -20,12 +20,12 @@ useLastSeenTracking()
 <style>
 /* Custom page transitions that work better with data fetching */
 .page-enter-active {
-  transition: all 0.2s ease-out;
-  transition-delay: 0.2s; /* Delay entry to ensure old page has unmounted */
+  transition: all 0.1s linear;
+  transition-delay: 0.1s; /* Delay entry to ensure old page has unmounted */
 }
 
 .page-leave-active {
-  transition: all 0.15s ease-in;
+  transition: all 0.1s linear;
 }
 
 .page-enter-from {
