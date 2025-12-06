@@ -72,6 +72,10 @@
           "queryHost": "eu.ts.hivecom.net",
           "queryPort": 10011,
           "voicePort": 9987,
+          "roleAdminGroupId": 6,
+          "roleModeratorGroupId": 7,
+          "roleSupporterGroupId": 8,
+          "roleRegisteredGroupId": 9,
           "virtualServerId": 1,
           "botNickname": "Hivecom"
         }

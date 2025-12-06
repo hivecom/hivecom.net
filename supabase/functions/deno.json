@@ -24,6 +24,7 @@
     "./ping",
     "./trigger-google-calendar-sync",
     "./teamspeak-verify-request",
+    "./teamspeak-verify-confirm",
     "./trigger-discord-event-sync",
     "./user-delete-account",
     "./user-info",

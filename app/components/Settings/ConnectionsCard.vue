@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Badge, Button, Card, Flex, pushToast } from '@dolanske/vui'
+import { computed, reactive, ref } from 'vue'
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 
 const props = defineProps<{ profile: Tables<'profiles'> | null }>()
@@ -13,9 +14,14 @@ const disconnectLoading = reactive({
   discord: false,
 })
 
+const showTeamSpeakModal = ref(false)
+const teamSpeakIdentities = computed(() => props.profile?.teamspeak_identities ?? [])
+const teamSpeakPreview = computed(() => teamSpeakIdentities.value.slice(0, 2))
+
 const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Profile/ConnectPatreon.vue'))
 const ConnectDiscord = defineAsyncComponent(() => import('@/components/Profile/ConnectDiscord.vue'))
 const ConnectSteam = defineAsyncComponent(() => import('@/components/Profile/ConnectSteam.vue'))
+const TeamSpeakLinkModal = defineAsyncComponent(() => import('@/components/Settings/TeamSpeakLinkModal.vue'))
 
 function showErrorToast(message: string) {
   pushToast('', {
@@ -207,8 +213,59 @@ async function disconnectDiscord() {
           </div>
         </Flex>
       </Flex>
+
+      <!-- TeamSpeak -->
+      <Flex expand class="account-connection-row">
+        <Flex x-between y-center expand>
+          <Flex gap="m" y-center class="teamspeak-copy">
+            <div class="account-icon teamspeak">
+              <Icon name="mdi:account-voice" size="20" />
+            </div>
+            <div>
+              <strong>TeamSpeak</strong>
+              <p class="text-xs text-color-lighter">
+                Link your TeamSpeak unique IDs to unlock the right server groups.
+              </p>
+
+              <div class="teamspeak-identities" aria-live="polite">
+                <template v-if="teamSpeakIdentities.length">
+                  <ul>
+                    <li v-for="identity in teamSpeakPreview" :key="`${identity.serverId}-${identity.uniqueId}`">
+                      <Badge variant="info" size="s">
+                        {{ identity.serverId.toUpperCase() }}
+                      </Badge>
+                      <code>{{ identity.uniqueId }}</code>
+                    </li>
+                  </ul>
+                  <p v-if="teamSpeakIdentities.length > teamSpeakPreview.length" class="text-xxs text-color-lighter">
+                    + {{ teamSpeakIdentities.length - teamSpeakPreview.length }} more linked
+                  </p>
+                </template>
+                <p v-else class="text-xxs text-color-lighter">
+                  No identities linked yet.
+                </p>
+              </div>
+            </div>
+          </Flex>
+
+          <div class="account-status teamspeak-actions">
+            <Badge :variant="teamSpeakIdentities.length ? 'success' : 'warning'" size="s">
+              <Icon :name="teamSpeakIdentities.length ? 'ph:check' : 'ph:warning'" />
+              {{ teamSpeakIdentities.length ? 'Linked' : 'Not linked' }}
+            </Badge>
+            <Button variant="accent" size="s" class="teamspeak-manage" @click="showTeamSpeakModal = true">
+              Manage Identities
+            </Button>
+          </div>
+        </Flex>
+      </Flex>
     </Flex>
   </Card>
+  <TeamSpeakLinkModal
+    v-model:open="showTeamSpeakModal"
+    :profile="props.profile"
+    @linked="emit('updated')"
+  />
 </template>
 
 <style scoped>
@@ -242,7 +299,39 @@ async function disconnectDiscord() {
   background: linear-gradient(135deg, #5865f2 0%, #7289da 100%);
 }
 
+.account-icon.teamspeak {
+  background: linear-gradient(135deg, #1f8feb 0%, #00b3ff 100%);
+}
+
 .account-status {
   flex-shrink: 0;
+}
+
+.teamspeak-identities ul {
+  list-style: none;
+  margin: var(--space-xs) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.teamspeak-identities code {
+  font-size: 0.7rem;
+  background: var(--color-bg-raised);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--border-radius-s);
+  word-break: break-all;
+}
+
+.teamspeak-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-xs);
+}
+
+.teamspeak-manage {
+  width: max-content;
 }
 </style>

@@ -6,6 +6,12 @@ export type Json
     | { [key: string]: Json | undefined }
     | Json[]
 
+export interface TeamSpeakIdentityRecord {
+  serverId: string
+  uniqueId: string
+  linkedAt: string
+}
+
 export interface Database {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -462,6 +468,7 @@ export interface Database {
           modified_by: string | null
           patreon_id: string | null
           steam_id: string | null
+          teamspeak_identities: TeamSpeakIdentityRecord[]
           supporter_lifetime: boolean
           supporter_patreon: boolean
           username: string
@@ -486,6 +493,7 @@ export interface Database {
           modified_by?: string | null
           patreon_id?: string | null
           steam_id?: string | null
+          teamspeak_identities?: TeamSpeakIdentityRecord[]
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
           username: string
@@ -510,6 +518,7 @@ export interface Database {
           modified_by?: string | null
           patreon_id?: string | null
           steam_id?: string | null
+          teamspeak_identities?: TeamSpeakIdentityRecord[]
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
           username?: string
@@ -838,6 +847,52 @@ export interface Database {
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       profile_badge: 'founder' | 'earlybird' | 'builder' | 'host'
       region: 'eu' | 'na' | 'all'
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  private: {
+    Tables: {
+      teamspeak_tokens: {
+        Row: {
+          attempts: number
+          created_at: string
+          expires_at: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id?: string
+          token_hash?: string
+          unique_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never

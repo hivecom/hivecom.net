@@ -1,14 +1,21 @@
 import * as constants from "app-constants" with { type: "json" };
 import { createClient, type User } from "@supabase/supabase-js";
+import type { Tables } from "database-types";
 import {
   TeamSpeakClient,
   TextMessageTargetMode,
 } from "node-ts/lib/node-ts.js";
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  createPrivateServiceRoleClient,
+  createPublicServiceRoleClient,
+  type PrivateServiceClient,
+  type PublicServiceClient,
+} from "../_shared/serviceRoleClients.ts";
+import { parseEnvMap } from "../_shared/env.ts";
 
 interface RequestPayload {
   uniqueId?: string;
-  message?: string;
   serverId?: string;
 }
 
@@ -20,6 +27,11 @@ interface TeamSpeakServerDefinition {
   voicePort?: number;
   virtualServerId?: number;
   botNickname?: string;
+  roleAdminGroupId?: number;
+  roleModeratorGroupId?: number;
+  roleSupporterGroupId?: number;
+  roleRegisteredGroupId?: number;
+  roleLifetimeSupporterGroupId?: number;
 }
 
 interface CredentialsMap {
@@ -29,6 +41,9 @@ interface CredentialsMap {
 
 const MESSAGE_MAX_LENGTH = 512;
 const TEAMSPEAK_TIMEOUT_MS = 15_000;
+const TOKEN_LENGTH = 8;
+const TOKEN_EXPIRATION_MINUTES = 15;
+const TOKEN_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 const appConstants = constants.default;
 
@@ -46,6 +61,8 @@ const credentials: CredentialsMap = {
   usernames: parseEnvMap(Deno.env.get("TEAMSPEAK_QUERY_USERNAMES")),
   passwords: parseEnvMap(Deno.env.get("TEAMSPEAK_QUERY_PASSWORDS")),
 };
+
+type ProfileRecord = Pick<Tables<"profiles">, "id" | "username" | "banned">;
 
 class HttpError extends Error {
   constructor(
@@ -78,14 +95,43 @@ Deno.serve(async (req) => {
   try {
     const user = await requireAuthenticatedUser(req);
     const uniqueId = sanitizeUniqueId(payload.uniqueId);
-    const message = sanitizeMessage(payload.message);
     const server = resolveServer(payload.serverId);
+    const supabaseAdmin = createPublicServiceRoleClient();
+    const supabasePrivate = createPrivateServiceRoleClient();
+    const profile = await fetchProfile(supabaseAdmin, user.id);
+
+    if (!profile) {
+      throw new HttpError(404, "Profile not found for the authenticated user");
+    }
+
+    if (profile.banned) {
+      throw new HttpError(403, "Banned accounts cannot link TeamSpeak identities");
+    }
+
+    const token = generateVerificationToken();
+    const tokenHash = await hashToken(token);
+    const tokenExpiresAt = new Date(Date.now() + TOKEN_EXPIRATION_MINUTES * 60_000).toISOString();
     const username = credentials.usernames.get(server.id);
     const password = credentials.passwords.get(server.id);
 
     if (!username || !password) {
       throw new HttpError(500, `Missing TeamSpeak credentials for server "${server.id}"`);
     }
+
+    await persistVerificationToken({
+      client: supabasePrivate,
+      tokenHash,
+      userId: user.id,
+      serverId: server.id,
+      uniqueId,
+      expiresAt: tokenExpiresAt,
+    });
+
+    const message = buildVerificationMessage({
+      username: profile.username,
+      email: user.email,
+      token,
+    });
 
     const delivery = await sendTeamSpeakMessage({
       credentials: { username, password },
@@ -100,6 +146,7 @@ Deno.serve(async (req) => {
       clientId: delivery.clientId,
       uniqueId,
       requestedBy: user.id,
+      tokenExpiresAt,
     });
   } catch (error) {
     if (error instanceof HttpError) {
@@ -154,16 +201,104 @@ async function requireAuthenticatedUser(req: Request): Promise<User> {
   return data.user;
 }
 
-function sanitizeMessage(value?: string): string {
-  if (typeof value !== "string" || !value.trim()) {
-    throw new HttpError(400, "message is required");
+async function fetchProfile(client: PublicServiceClient, userId: string): Promise<ProfileRecord | null> {
+  const { data, error } = await client
+    .from("profiles")
+    .select("id, username, banned")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to fetch profile", error);
+    throw new HttpError(500, "Unable to load profile for verification");
   }
 
-  const normalized = value.trim();
-  if (normalized.length > MESSAGE_MAX_LENGTH) {
-    return normalized.slice(0, MESSAGE_MAX_LENGTH);
+  return data ?? null;
+}
+
+async function persistVerificationToken(args: {
+  client: PrivateServiceClient;
+  tokenHash: string;
+  userId: string;
+  uniqueId: string;
+  serverId: string;
+  expiresAt: string;
+}): Promise<void> {
+  const nowIso = new Date().toISOString();
+
+  const { error: expiredCleanupError } = await args.client
+    .from("teamspeak_tokens")
+    .delete()
+    .lt("expires_at", nowIso);
+
+  if (expiredCleanupError) {
+    console.warn("Failed to clean up expired TeamSpeak tokens", expiredCleanupError);
   }
-  return normalized;
+
+  const { error: duplicateCleanupError } = await args.client
+    .from("teamspeak_tokens")
+    .delete()
+    .eq("user_id", args.userId)
+    .eq("server_id", args.serverId)
+    .eq("unique_id", args.uniqueId);
+
+  if (duplicateCleanupError) {
+    console.warn("Failed to clean up previous TeamSpeak tokens", duplicateCleanupError);
+  }
+
+  const { error } = await args.client.from("teamspeak_tokens").insert({
+    token_hash: args.tokenHash,
+    user_id: args.userId,
+    unique_id: args.uniqueId,
+    server_id: args.serverId,
+    expires_at: args.expiresAt,
+  });
+
+  if (error) {
+    console.error("Failed to persist TeamSpeak verification token", error);
+    throw new HttpError(500, "Unable to store verification token");
+  }
+}
+
+function generateVerificationToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(TOKEN_LENGTH));
+  let token = "";
+  for (const byte of bytes) {
+    token += TOKEN_ALPHABET.charAt(byte % TOKEN_ALPHABET.length);
+  }
+  return token;
+}
+
+async function hashToken(token: string): Promise<string> {
+  const payload = new TextEncoder().encode(token);
+  const digest = await crypto.subtle.digest("SHA-256", payload);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function buildVerificationMessage(args: {
+  username: string;
+  email?: string | null;
+  token: string;
+}): string {
+  const lines = [
+    "[Hivecom] TeamSpeak verification requested",
+    `User: ${args.username}`,
+  ];
+
+  if (args.email) {
+    lines.push(`Email: ${args.email}`);
+  }
+
+  lines.push(
+    `Token: ${args.token}`,
+    `Enter this token on hivecom.net within ${TOKEN_EXPIRATION_MINUTES} minutes to finish linking.`,
+    "If you did not request this, you can ignore this message.",
+  );
+
+  const message = lines.join("\n");
+  return message.length > MESSAGE_MAX_LENGTH ? message.slice(0, MESSAGE_MAX_LENGTH) : message;
 }
 
 function resolveServer(preferredId?: string): TeamSpeakServerDefinition {
@@ -267,21 +402,6 @@ function sendRawCommand(
   };
 
   return untypedClient.send(cmd, params);
-}
-
-function parseEnvMap(input?: string): Map<string, string> {
-  const map = new Map<string, string>();
-  if (!input) return map;
-
-  for (const entry of input.split(",")) {
-    const [rawKey, rawValue] = entry.split(":");
-    const key = rawKey?.trim();
-    const value = rawValue?.trim();
-    if (!key || !value) continue;
-    map.set(key, value);
-  }
-
-  return map;
 }
 
 function buildUniqueNickname(base: string): string {

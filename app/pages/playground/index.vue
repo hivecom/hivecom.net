@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Alert, Badge, Button, Card, Flex, Input, pushToast, Select, Textarea } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Input, pushToast, Select } from '@dolanske/vui'
 import { computed, reactive, ref, watch } from 'vue'
 
 import constants from '~~/constants.json'
@@ -28,7 +28,6 @@ interface InvokeResult {
   requestedBy?: string
 }
 
-const MESSAGE_LIMIT = 512
 const MIN_UNIQUE_ID = 5
 
 const supabase = useSupabaseClient()
@@ -38,7 +37,6 @@ const teamspeakServers = computed<TeamSpeakServerConfig[]>(() => constants.PLATF
 
 const form = reactive({
   uniqueId: '',
-  message: '',
   serverId: teamspeakServers.value[0]?.id ?? '',
 })
 
@@ -56,7 +54,6 @@ watch(
 
 const fieldErrors = reactive({
   uniqueId: '',
-  message: '',
 })
 
 const isAuthenticated = computed(() => Boolean(user.value))
@@ -83,13 +80,11 @@ const serverSelectModel = computed<SelectOption[] | undefined>({
 })
 
 const selectedServer = computed(() => teamspeakServers.value.find(server => server.id === form.serverId) ?? null)
-const messageCharCount = computed(() => form.message.length)
 
-const canSubmit = computed(() => hasServers.value && isAuthenticated.value && Boolean(form.uniqueId.trim()) && Boolean(form.message.trim()) && Boolean(form.serverId))
+const canSubmit = computed(() => hasServers.value && isAuthenticated.value && Boolean(form.uniqueId.trim()) && Boolean(form.serverId))
 
 function resetErrors() {
   fieldErrors.uniqueId = ''
-  fieldErrors.message = ''
   formError.value = ''
 }
 
@@ -103,11 +98,6 @@ function validateForm() {
   }
   else if (form.uniqueId.trim().length < MIN_UNIQUE_ID) {
     fieldErrors.uniqueId = `Unique IDs must be at least ${MIN_UNIQUE_ID} characters.`
-    isValid = false
-  }
-
-  if (!form.message.trim()) {
-    fieldErrors.message = 'Message content is required.'
     isValid = false
   }
 
@@ -139,7 +129,6 @@ async function handleSend() {
     const { data, error } = await supabase.functions.invoke<InvokeResult>('teamspeak-verify-request', {
       body: {
         uniqueId: form.uniqueId.trim(),
-        message: form.message.trim(),
         serverId: form.serverId,
       },
     })
@@ -151,7 +140,7 @@ async function handleSend() {
       throw new Error('No response from edge function.')
 
     result.value = data
-    pushToast('Message handed off to TeamSpeak.')
+    pushToast('Verification token sent to TeamSpeak.')
   }
   catch (error) {
     console.error('Failed to send TeamSpeak message', error)
@@ -164,7 +153,6 @@ async function handleSend() {
 
 function resetForm() {
   form.uniqueId = ''
-  form.message = ''
   result.value = null
   resetErrors()
 }
@@ -186,7 +174,7 @@ function resetForm() {
             <div>
               <h3>TeamSpeak Verification Tester</h3>
               <p class="text-xs text-color-lighter">
-                Send a targeted text message through the edge function to confirm connectivity.
+                Send a verification token through the edge function to confirm connectivity.
               </p>
             </div>
             <Badge :variant="result ? 'success' : 'warning'" size="s">
@@ -215,23 +203,9 @@ function resetForm() {
               required
             />
 
-            <Textarea
-              v-model="form.message"
-              expand
-              label="Message"
-              placeholder="Enter the verification text you want to deliver"
-              :rows="5"
-              :maxlength="MESSAGE_LIMIT"
-              :error="fieldErrors.message || undefined"
-              :disabled="!isAuthenticated"
-              required
-            >
-              <template #after>
-                <div class="text-xs text-color-lighter">
-                  {{ messageCharCount }}/{{ MESSAGE_LIMIT }} characters
-                </div>
-              </template>
-            </Textarea>
+            <Alert variant="info" filled>
+              A verification message containing your username, email, and a short-lived token will be generated automatically.
+            </Alert>
 
             <Select
               v-model="serverSelectModel"
@@ -271,7 +245,7 @@ function resetForm() {
               <template #start>
                 <Icon name="ph:paper-plane-tilt" />
               </template>
-              Send Test Message
+              Send Verification
             </Button>
 
             <Button variant="link" :disabled="loading" @click="resetForm">
