@@ -17,7 +17,7 @@ const disconnectLoading = reactive({
 const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Settings/ConnectPatreon.vue'))
 const ConnectDiscord = defineAsyncComponent(() => import('@/components/Settings/ConnectDiscord.vue'))
 const ConnectSteam = defineAsyncComponent(() => import('@/components/Settings/ConnectSteam.vue'))
-const ConnectTeamspeak = defineAsyncComponent(() => import('@/components/Settings/ConnectTeamspeak.vue'))
+const ConnectTeamspeak = defineAsyncComponent(() => import('@/components/Settings/ConnectTeamSpeak.vue'))
 
 const richPresenceEnabled = ref(!(props.profile?.rich_presence_disabled ?? false))
 const richPresenceLoading = ref(false)
