@@ -1,4 +1,4 @@
-import * as constants from "app-constants" with { type: "json" };
+import * as constants from "constants" with { type: "json" };
 import { createClient, type User } from "@supabase/supabase-js";
 import type { Tables } from "database-types";
 import {
@@ -373,12 +373,6 @@ async function sendTeamSpeakMessage(args: {
       throw new HttpError(500, `Server "${args.server.id}" is missing routing information`);
     }
 
-    if (args.server.botNickname) {
-      await sendRawCommand(client, "clientupdate", {
-        client_nickname: buildUniqueNickname(args.server.botNickname),
-      });
-    }
-
     let lookup;
     try {
       lookup = await sendRawCommand(client, "clientgetids", { cluid: args.uniqueId }) as {
@@ -428,15 +422,9 @@ async function sendTeamSpeakMessage(args: {
 
 async function shutdownClient(client: TeamSpeakClient) {
   try {
-    await client.send("logout");
-  } catch (error) {
-    console.warn("Failed to logout from TeamSpeak", error);
-  }
-
-  try {
     await sendRawCommand(client, "quit");
-  } catch (_) {
-    // The server closes the socket immediately after quit; ignore errors here.
+  } catch (error) {
+    console.warn("Failed to quit TeamSpeak session", error);
   }
 }
 
@@ -450,12 +438,6 @@ function sendRawCommand(
   };
 
   return untypedClient.send(cmd, params);
-}
-
-function buildUniqueNickname(base: string): string {
-  const trimmed = base.trim();
-  const suffix = Math.floor(Math.random() * 9000 + 1000).toString();
-  return `${trimmed} #${suffix}`;
 }
 
 function jsonResponse(status: number, payload: Record<string, unknown>) {

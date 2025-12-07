@@ -1,4 +1,4 @@
-import * as constants from "app-constants" with { type: "json" };
+import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { TeamSpeakClient } from "node-ts/lib/node-ts.js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
@@ -41,19 +41,70 @@ interface TeamSpeakClientEntry {
   client_idle_time?: string;
 }
 
+type QueryResponse<T> = {
+  cmd?: string;
+  options?: unknown;
+  text?: string;
+  parameters?: unknown;
+  error?: { id?: number; msg?: string } | null;
+  response?: T[];
+  rawResponse?: string;
+};
+
+type ChannelRecord = {
+  cid?: number | string;
+  pid?: number | string;
+  channel_order?: number | string;
+  channel_name?: string;
+  total_clients?: number | string;
+  channel_needed_subscribe_power?: number | string;
+};
+
+type NormalizedChannel = {
+  id: string;
+  parentId: string | null;
+  order: number;
+  name: string;
+  totalClients: number;
+  subscribePower?: number;
+  depth: number;
+  path: string[];
+  children: NormalizedChannel[];
+};
+
+type NormalizedClient = {
+  uniqueId: string;
+  nickname: string;
+  channelId: string | null;
+  channelName: string | null;
+  channelPath: string[] | null;
+  serverGroups: number[];
+  away: boolean;
+  muted: boolean;
+  inputMuted: boolean;
+  outputMuted: boolean;
+};
+
+type ServerInfo = {
+  name?: string;
+  platform?: string;
+  version?: string;
+  uptimeSeconds?: number;
+  maxClients?: number;
+  totalClients?: number;
+  totalChannels?: number;
+};
+
 interface ServerSnapshot {
   id: string;
   title?: string;
   collectedAt: string;
-  channels: unknown[];
-  clients: Array<{
-    uniqueId: string;
-    nickname: string;
-    channelId: string | null;
-    serverGroups: number[];
-    away: boolean;
-    muted: boolean;
-  }>;
+  serverInfo?: ServerInfo;
+  channels: QueryResponse<ChannelRecord>;
+  channelsFlat: NormalizedChannel[];
+  channelsTree: NormalizedChannel[];
+  clients: NormalizedClient[];
+  clientsRaw: QueryResponse<TeamSpeakClientEntry>;
 }
 
 const appConstants = constants.default;
@@ -165,18 +216,16 @@ async function processServer(args: {
       throw new Error(`Server "${server.id}" is missing routing information`);
     }
 
-    if (server.botNickname) {
-      await sendRawCommand(client, "clientupdate", {
-        client_nickname: buildUniqueNickname(server.botNickname),
-      });
-    }
+    const serverInfoQuery = await sendRawCommand(client, "serverinfo") as QueryResponse<Record<string, unknown>>;
+    const serverInfo = normalizeServerInfo(serverInfoQuery.response?.[0] ?? null);
 
-    const channels = await sendRawCommand(client, "channellist") as unknown[];
-    const clientList = await sendRawCommand(client, "clientlist", {}, ["-uid", "-voice", "-away", "-groups"]) as {
-      response?: TeamSpeakClientEntry[];
-    };
+    const channelsQuery = await sendRawCommand(client, "channellist") as QueryResponse<ChannelRecord>;
+    const channelResponse = channelsQuery.response ?? [];
+    const channelsNormalized = normalizeChannels(channelResponse);
 
-    const onlineClients = (clientList.response ?? []).filter((c) =>
+    const clientListQuery = await sendRawCommand(client, "clientlist", {}, ["-uid", "-voice", "-away", "-groups"]) as QueryResponse<TeamSpeakClientEntry>;
+
+    const onlineClients = (clientListQuery.response ?? []).filter((c) =>
       String(c.client_type ?? "0") === "0" && c.client_unique_identifier
     );
 
@@ -186,20 +235,27 @@ async function processServer(args: {
       const uniqueId = entry.client_unique_identifier as string;
       const nickname = entry.client_nickname ?? "Unknown";
       const channelId = entry.cid ? String(entry.cid) : null;
+      const channelMeta = channelId ? channelsNormalized.map.get(channelId) : undefined;
       const serverGroups = (entry.client_servergroups ?? "")
         .split(",")
         .map((g) => Number(g))
         .filter((n) => Number.isFinite(n));
       const away = entry.client_away === "1";
-      const muted = entry.client_input_muted === "1" || entry.client_output_muted === "1";
+      const inputMuted = entry.client_input_muted === "1";
+      const outputMuted = entry.client_output_muted === "1";
+      const muted = inputMuted || outputMuted;
 
       normalizedClients.push({
         uniqueId,
         nickname,
         channelId,
+        channelName: channelMeta?.name ?? null,
+        channelPath: channelMeta?.path ?? null,
         serverGroups,
         away,
         muted,
+        inputMuted,
+        outputMuted,
       });
 
       const profile = profileMap.get(`${server.id}:${uniqueId}`);
@@ -211,8 +267,8 @@ async function processServer(args: {
             profileId: profile.id,
             serverId: server.id,
             channelId,
-            channelName: channelsFindName(channels, channelId),
-            channelPath: channelsFindPath(channels, channelId),
+            channelName: channelMeta?.name ?? null,
+            channelPath: channelMeta?.path ?? null,
           });
         }
 
@@ -230,8 +286,12 @@ async function processServer(args: {
       id: server.id,
       title: server.title,
       collectedAt,
-      channels,
+      serverInfo,
+      channels: channelsQuery,
+      channelsFlat: channelsNormalized.flat,
+      channelsTree: channelsNormalized.tree,
       clients: normalizedClients,
+      clientsRaw: clientListQuery,
     };
   } finally {
     await shutdownClient(client);
@@ -321,18 +381,6 @@ function computeTargetGroupIds(
   return Array.from(groups);
 }
 
-function channelsFindName(channels: unknown[], channelId: string | null): string | null {
-  if (!channelId) return null;
-  const match = (channels as Array<{ cid?: number | string; channel_name?: string }>).find((c) => String(c.cid) === channelId);
-  return match?.channel_name ?? null;
-}
-
-function channelsFindPath(_channels: unknown[], channelId: string | null): string[] | null {
-  if (!channelId) return null;
-  // channel_path not available from channellist; placeholder for future hierarchical resolution.
-  return null;
-}
-
 async function loadProfileMap(): Promise<Map<string, Tables<"profiles">>> {
   const { data, error } = await supabase
     .from("profiles")
@@ -366,15 +414,9 @@ async function loadRoleMap(): Promise<Map<string, Tables<"user_roles">["role"]>>
 
 async function shutdownClient(client: TeamSpeakClient) {
   try {
-    await client.send("logout");
-  } catch (error) {
-    console.warn("Failed to logout from TeamSpeak", error);
-  }
-
-  try {
     await sendRawCommand(client, "quit");
-  } catch (_) {
-    // ignore
+  } catch (error) {
+    console.warn("Failed to quit TeamSpeak session", error);
   }
 }
 
@@ -389,12 +431,6 @@ function sendRawCommand(
   };
 
   return untypedClient.send(cmd, params, options);
-}
-
-function buildUniqueNickname(base: string): string {
-  const trimmed = base.trim();
-  const suffix = Math.floor(Math.random() * 9000 + 1000).toString();
-  return `${trimmed} #${suffix}`;
 }
 
 function isAlreadyAssignedError(error: unknown): boolean {
@@ -424,4 +460,86 @@ function jsonResponse(status: number, payload: Record<string, unknown>) {
       "Content-Type": "application/json",
     },
   });
+}
+
+function normalizeChannels(records: ChannelRecord[]): { flat: NormalizedChannel[]; tree: NormalizedChannel[]; map: Map<string, NormalizedChannel> } {
+  const map = new Map<string, NormalizedChannel>();
+
+  for (const record of records) {
+    const id = String(record.cid ?? "");
+    if (!id) continue;
+
+    const parentId = record.pid !== undefined && record.pid !== null ? String(record.pid) : null;
+    const order = Number(record.channel_order ?? 0);
+    const channel: NormalizedChannel = {
+      id,
+      parentId,
+      order: Number.isFinite(order) ? order : 0,
+      name: record.channel_name ?? "Unnamed Channel",
+      totalClients: safeNumber(record.total_clients) ?? 0,
+      subscribePower: safeNumber(record.channel_needed_subscribe_power) ?? undefined,
+      depth: 0,
+      path: [],
+      children: [],
+    };
+
+    map.set(id, channel);
+  }
+
+  // Attach children
+  for (const channel of map.values()) {
+    if (channel.parentId && map.has(channel.parentId)) {
+      map.get(channel.parentId)!.children.push(channel);
+    }
+  }
+
+  // Sort children by order
+  const sortChildren = (node: NormalizedChannel) => {
+    node.children.sort((a, b) => a.order - b.order);
+    for (const child of node.children) sortChildren(child);
+  };
+
+  const roots: NormalizedChannel[] = [];
+  for (const channel of map.values()) {
+    if (!channel.parentId || !map.has(channel.parentId)) {
+      roots.push(channel);
+    }
+  }
+
+  for (const root of roots) {
+    sortChildren(root);
+  }
+
+  // Build depth and path
+  const buildPaths = (node: NormalizedChannel, path: string[], depth: number) => {
+    node.depth = depth;
+    node.path = [...path, node.name];
+    for (const child of node.children) buildPaths(child, node.path, depth + 1);
+  };
+
+  for (const root of roots) {
+    buildPaths(root, [], 0);
+  }
+
+  const flat = Array.from(map.values());
+  return { flat, tree: roots, map };
+}
+
+function normalizeServerInfo(raw: Record<string, unknown> | null): ServerInfo | undefined {
+  if (!raw) return undefined;
+
+  return {
+    name: typeof raw.virtualserver_name === "string" ? raw.virtualserver_name : undefined,
+    platform: typeof raw.virtualserver_platform === "string" ? raw.virtualserver_platform : undefined,
+    version: typeof raw.virtualserver_version === "string" ? raw.virtualserver_version : undefined,
+    uptimeSeconds: safeNumber(raw.virtualserver_uptime),
+    maxClients: safeNumber(raw.virtualserver_maxclients),
+    totalClients: safeNumber(raw.virtualserver_clientsonline),
+    totalChannels: safeNumber(raw.virtualserver_channelsonline),
+  };
+}
+
+function safeNumber(value: unknown): number | undefined {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : undefined;
 }

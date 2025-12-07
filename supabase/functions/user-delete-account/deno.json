@@ -1,7 +1,9 @@
 {
+  "name": "user-delete-account",
   "imports": {
     "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
-    "app-constants": "../../../constants.json",
+    "constants": "../../../constants.json",
     "database-types": "../../../types/database.types.ts"
-  }
+  },
+  "exports": {}
 }

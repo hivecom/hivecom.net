@@ -1,3 +1,5 @@
 {
-  "imports": {}
+  "name": "ping",
+  "imports": {},
+  "exports": {}
 }

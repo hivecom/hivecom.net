@@ -1,10 +1,10 @@
 {
   "version": "2.1.4",
   "imports": {
-    "app-constants": "../../constants.json",
+    "constants": "../../constants.json",
     "database-types": "../../types/database.types.ts",
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2.45.2",
-    "node-ts": "npm:node-ts@8.0.9",
+    "node-ts": "npm:node-ts@8",
     "googleapis": "npm:googleapis@144.0.0",
     "google-auth-library": "npm:google-auth-library@9.15.0"
   },

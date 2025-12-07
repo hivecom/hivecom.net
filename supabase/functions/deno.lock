@@ -8,9 +8,11 @@
     "npm:@supabase/realtime-js@2.86.0": "2.86.0",
     "npm:@supabase/storage-js@2.86.0": "2.86.0",
     "npm:@supabase/supabase-js@2.45.2": "2.45.2",
+    "npm:google-auth-library@9": "9.15.0",
     "npm:google-auth-library@9.15.0": "9.15.0",
+    "npm:googleapis@144": "144.0.0",
     "npm:googleapis@144.0.0": "144.0.0",
-    "npm:node-ts@8.0.9": "8.0.9"
+    "npm:node-ts@8": "8.0.9"
   },
   "jsr": {
     "@supabase/functions-js@0.0.0-jsr-test.1": {
@@ -408,7 +410,8 @@
       "integrity": "sha512-XdVKMF4SJ0nP/O7XIPB0JwAEuT9lDIYnNsK8yGVe43y0AWoKeJNdv3ZNWh7ksJ6KqQFjOO6ox/VEitLnaVNufw=="
     },
     "uuid@9.0.1": {
-      "integrity": "sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA=="
+      "integrity": "sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==",
+      "bin": true
     },
     "webidl-conversions@3.0.1": {
       "integrity": "sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ=="
@@ -429,7 +432,7 @@
       "npm:@supabase/supabase-js@2.45.2",
       "npm:google-auth-library@9.15.0",
       "npm:googleapis@144.0.0",
-      "npm:node-ts@8.0.9"
+      "npm:node-ts@8"
     ],
     "members": {
       "_shared": {
@@ -500,19 +503,19 @@
       "teamspeak-unlink": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2",
-          "npm:node-ts@8.0.9"
+          "npm:node-ts@8"
         ]
       },
       "teamspeak-verify-confirm": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2",
-          "npm:node-ts@8.0.9"
+          "npm:node-ts@8"
         ]
       },
       "teamspeak-verify-request": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2",
-          "npm:node-ts@8.0.9"
+          "npm:node-ts@8"
         ]
       },
       "trigger-discord-event-sync": {
@@ -523,8 +526,8 @@
       "trigger-google-calendar-sync": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2",
-          "npm:google-auth-library@9.15.0",
-          "npm:googleapis@144.0.0"
+          "npm:google-auth-library@9",
+          "npm:googleapis@144"
         ]
       },
       "user-delete-account": {
