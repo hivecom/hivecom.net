@@ -433,7 +433,7 @@ function safeParseJson(input: string): unknown {
       <Flex column gap="l">
         <section v-if="step === 'manage'" class="link-step">
           <h4>Manage linked identities</h4>
-          <p class="text-sm text-color-lighter mb-s">
+          <p class="text-s text-color-lighter mb-s">
             View or remove your linked TeamSpeak identities. Add another to link more clients.
           </p>
 
@@ -477,7 +477,7 @@ function safeParseJson(input: string): unknown {
 
         <section v-else-if="step === 'request'" class="link-step">
           <h4>Step 1 - Send Verification Message</h4>
-          <p class="text-sm text-color-lighter mb-s">
+          <p class="text-s text-color-lighter mb-s">
             Enter the TeamSpeak unique ID you want to link. We will send a secure token to your client on the selected server.
           </p>
 
@@ -519,7 +519,7 @@ function safeParseJson(input: string): unknown {
 
         <section v-else-if="step === 'confirm'" class="link-step">
           <h4>Step 2 — Confirm Token</h4>
-          <p class="text-sm text-color-lighter mb-m">
+          <p class="text-s text-color-lighter mb-m">
             Enter the token you just received in TeamSpeak. Tokens expire quickly, so complete this step soon.
           </p>
 

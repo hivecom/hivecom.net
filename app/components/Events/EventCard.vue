@@ -276,7 +276,7 @@ function handleClick() {
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
-    border-radius: var(--vui-radius-lg);
+    border-radius: var(--vui-radius-l);
     background: rgb(var(--vui-color-success-50));
     border: 1px solid rgb(var(--vui-color-success-200));
   }
