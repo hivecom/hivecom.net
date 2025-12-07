@@ -311,7 +311,7 @@ function computeTargetGroupIds(
 ): number[] {
   const groups = new Set<number>();
 
-  if (server.roleRegisteredGroupId) {
+  if (server.roleRegisteredGroupId && role !== "admin" && role !== "moderator") {
     groups.add(server.roleRegisteredGroupId);
   }
 
@@ -334,12 +334,22 @@ function computeTargetGroupIds(
 
 function isAlreadyAssignedError(error: unknown): boolean {
   if (!error) return false;
+
+  if (typeof error === "object" && error !== null) {
+    const typed = error as { error?: { id?: number; msg?: string }; message?: string };
+    if (typed.error?.id === 2561) return true; // duplicate entry
+    if (typed.error?.id === 2568) return true; // already in server group
+    if (typeof typed.message === "string" && /already\s+in\s+servergroup/i.test(typed.message)) {
+      return true;
+    }
+  }
+
   const message = typeof error === "string"
     ? error
     : error instanceof Error
       ? error.message
       : undefined;
-  return Boolean(message && /already\s+in\s+servergroup|error\s+id=2568/i.test(message));
+  return Boolean(message && /already\s+in\s+servergroup|error\s+id=(2561|2568)/i.test(message));
 }
 
 async function hashToken(token: string): Promise<string> {

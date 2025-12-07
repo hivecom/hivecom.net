@@ -467,6 +467,7 @@ export interface Database {
           modified_at: string | null
           modified_by: string | null
           patreon_id: string | null
+          rich_presence_disabled: boolean
           steam_id: string | null
           teamspeak_identities: TeamSpeakIdentityRecord[]
           supporter_lifetime: boolean
@@ -492,6 +493,7 @@ export interface Database {
           modified_at?: string | null
           modified_by?: string | null
           patreon_id?: string | null
+          rich_presence_disabled?: boolean
           steam_id?: string | null
           teamspeak_identities?: TeamSpeakIdentityRecord[]
           supporter_lifetime?: boolean
@@ -517,6 +519,7 @@ export interface Database {
           modified_at?: string | null
           modified_by?: string | null
           patreon_id?: string | null
+          rich_presence_disabled?: boolean
           steam_id?: string | null
           teamspeak_identities?: TeamSpeakIdentityRecord[]
           supporter_lifetime?: boolean
@@ -526,6 +529,147 @@ export interface Database {
           website?: string | null
         }
         Relationships: []
+      }
+      presences_teamspeak: {
+        Row: {
+          channel_id: string | null
+          channel_name: string | null
+          channel_path: string[] | null
+          details: Json | null
+          id: string
+          last_seen_at: string | null
+          profile_id: string
+          server_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel_id?: string | null
+          channel_name?: string | null
+          channel_path?: string[] | null
+          details?: Json | null
+          id?: string
+          last_seen_at?: string | null
+          profile_id: string
+          server_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string | null
+          channel_name?: string | null
+          channel_path?: string[] | null
+          details?: Json | null
+          id?: string
+          last_seen_at?: string | null
+          profile_id?: string
+          server_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'presences_teamspeak_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      presences_discord: {
+        Row: {
+          activity_details: string | null
+          activity_ended_at: string | null
+          activity_name: string | null
+          activity_started_at: string | null
+          activity_state: string | null
+          activity_type: string | null
+          details: Json | null
+          id: string
+          last_online_at: string | null
+          profile_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          activity_details?: string | null
+          activity_ended_at?: string | null
+          activity_name?: string | null
+          activity_started_at?: string | null
+          activity_state?: string | null
+          activity_type?: string | null
+          details?: Json | null
+          id?: string
+          last_online_at?: string | null
+          profile_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activity_details?: string | null
+          activity_ended_at?: string | null
+          activity_name?: string | null
+          activity_started_at?: string | null
+          activity_state?: string | null
+          activity_type?: string | null
+          details?: Json | null
+          id?: string
+          last_online_at?: string | null
+          profile_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'presences_discord_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      presences_steam: {
+        Row: {
+          details: Json | null
+          id: string
+          last_app_id: number | null
+          last_app_name: string | null
+          last_online_at: string | null
+          profile_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          details?: Json | null
+          id?: string
+          last_app_id?: number | null
+          last_app_name?: string | null
+          last_online_at?: string | null
+          profile_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          details?: Json | null
+          id?: string
+          last_app_id?: number | null
+          last_app_name?: string | null
+          last_online_at?: string | null
+          profile_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'presences_steam_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
       projects: {
         Row: {

@@ -53,7 +53,10 @@
     "eslint-plugin-format": "^1.0.2",
     "eslint-plugin-vue": "^10.6.0",
     "nuxi": "^3.30.0",
-    "supabase": "^2.65.5",
-    "vue-tsc": "^3.1.5"
+    "supabase": "^2.65.5"
+  },
+  "overrides": {
+    "vue-tsc": "3.1.4",
+    "@vue/language-core": "3.1.4"
   }
 }
