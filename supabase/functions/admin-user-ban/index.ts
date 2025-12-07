@@ -10,23 +10,14 @@ interface BanUserRequest {
   banReason?: string; // Optional reason for the ban
 }
 
-type AuthSchema = {
-  auth: {
-    Tables: {
-      sessions: {
-        Row: {
-          id: string;
-          user_id: string;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
+type DatabaseWithSessionRpc = Database & {
+  public: Database["public"] & {
+    Functions: Database["public"]["Functions"] & {
+      admin_delete_user_sessions: {
+        Args: { target_user: string };
+        Returns: void;
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
   };
 };
 
@@ -150,7 +141,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Create a Supabase client with service role key for admin operations
-    const supabaseClient = createClient<Database>(
+    const supabaseClient = createClient<DatabaseWithSessionRpc>(
       supabaseUrl,
       supabaseServiceRoleKey,
     );
@@ -259,28 +250,22 @@ Deno.serve(async (req: Request) => {
     }
 
     if (banDuration !== 'none') {
-      const authSchemaClient = createClient<AuthSchema>(
-        supabaseUrl,
-        supabaseServiceRoleKey,
-        { db: { schema: "auth" } },
+      // Call security-definer RPC to purge sessions/refresh tokens and force immediate sign-out
+      const { error: sessionPurgeError } = await supabaseClient.rpc(
+        "admin_delete_user_sessions",
+        { target_user: userId },
       );
 
-      // Removing auth.sessions rows forces refresh tokens to become invalid immediately.
-      const { error: sessionDeleteError } = await authSchemaClient
-        .from("sessions")
-        .delete()
-        .eq("user_id", userId);
-
-      if (sessionDeleteError) {
+      if (sessionPurgeError) {
         console.error(
           "Error destroying active sessions for banned user:",
-          sessionDeleteError,
+          sessionPurgeError,
         );
         return new Response(
           JSON.stringify({
             success: false,
             error: "Failed to destroy active sessions for banned user",
-            details: sessionDeleteError.message,
+            details: sessionPurgeError.message,
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
