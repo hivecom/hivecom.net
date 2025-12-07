@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import IconLogo from '@/components/Shared/IconLogo.vue'
 </script>
 
 <template>
