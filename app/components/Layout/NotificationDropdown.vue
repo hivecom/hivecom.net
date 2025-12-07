@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Dropdown, DropdownTitle } from '@dolanske/vui'
+import { Button, Dropdown, DropdownTitle } from '@dolanske/vui'
 import NotificationCardBirthday from '@/components/Notifications/NotificationCardBirthday.vue'
 import NotificationCardEmpty from '@/components/Notifications/NotificationCardEmpty.vue'
 import NotificationCardError from '@/components/Notifications/NotificationCardError.vue'
@@ -217,62 +217,61 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
 
 <template>
   <div class="notification-menu" aria-live="polite">
-    <Dropdown min-width="360px" placement="bottom-end">
+    <Dropdown min-width="336px" placement="bottom-end">
       <template #trigger="{ toggle }">
-        <button class="notification-menu__trigger" aria-label="Open notifications" @click="toggle">
+        <Button square plain aria-label="Open notifications" @click="toggle">
           <Icon name="ph:bell" />
           <span v-if="badgeText" class="notification-menu__badge">{{ badgeText }}</span>
-        </button>
+        </Button>
       </template>
 
-      <div class="notification-menu__panel">
-        <DropdownTitle>
-          <div class="notification-menu__title-row">
-            <p class="notification-menu__title">
-              Notifications
-            </p>
-            <button
-              class="notification-menu__refresh"
-              type="button"
-              aria-label="Refresh notifications"
-              :disabled="loading"
-              @click="fetchNotifications"
-            >
-              <Icon name="ph:arrows-clockwise" />
-            </button>
-          </div>
-        </DropdownTitle>
+      <DropdownTitle>
+        <p class="notification-menu__title">
+          Notifications
+        </p>
+        <template #end>
+          <Button
+            square
+            size="s"
+            plain
+            aria-label="Refresh notifications"
+            :disabled="loading"
+            @click="fetchNotifications"
+          >
+            <Icon name="ph:arrows-clockwise" />
+          </Button>
+        </template>
+      </DropdownTitle>
 
-        <div class="notification-menu__body">
-          <template v-if="loading">
-            <NotificationCardLoading
-              v-for="index in loadingCardCount"
-              :key="`loading-${index}`"
-            />
-          </template>
+      <div class="notification-menu__body">
+        <template v-if="loading">
+          <NotificationCardLoading
+            v-for="index in loadingCardCount"
+            :key="`loading-${index}`"
+          />
+        </template>
 
-          <template v-else>
-            <NotificationCardError v-if="error" @retry="fetchNotifications" />
+        <template v-else>
+          <NotificationCardError v-if="error" @retry="fetchNotifications" />
 
-            <NotificationCardInvite
-              v-for="requestId in pendingRequestIds"
-              :key="`invite-${requestId}`"
-              :request-id="requestId"
-              :loading="isInviteLoading(requestId)"
-              @accept="handleInviteAction(requestId, 'accept')"
-              @ignore="handleInviteAction(requestId, 'ignore')"
-            />
+          <NotificationCardInvite
+            v-for="requestId in pendingRequestIds"
+            :key="`invite-${requestId}`"
+            :request-id="requestId"
+            :loading="isInviteLoading(requestId)"
+            @accept="handleInviteAction(requestId, 'accept')"
+            @ignore="handleInviteAction(requestId, 'ignore')"
+          />
 
-            <NotificationCardBirthday
-              v-if="birthdayWidget"
-              :title="birthdayWidget.title"
-              :description="birthdayWidget.description"
-              to="/profile"
-            />
+          <NotificationCardBirthday
+            v-if="birthdayWidget"
+            :title="birthdayWidget.title"
+            :description="birthdayWidget.description"
+            to="/profile"
+          />
 
-            <NotificationCardEmpty v-if="showEmptyCard" />
-          </template>
-        </div>
+          <NotificationCardEmpty v-if="showEmptyCard" />
+        </template>
       </div>
     </Dropdown>
   </div>
@@ -284,25 +283,6 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
 
   :deep(.vui-dropdown-title) {
     text-transform: none;
-  }
-
-  &__trigger {
-    position: relative;
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    border: none;
-    background: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
-    color: var(--color-text);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease;
-
-    &:hover {
-      background: color-mix(in srgb, var(--color-bg-lowered) 80%, transparent);
-    }
   }
 
   &__badge {
@@ -319,10 +299,6 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  &__panel {
-    min-width: 300px;
   }
 
   &__title-row {
@@ -345,31 +321,7 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
-  }
-
-  &__refresh {
-    background: none;
-    border: none;
-    padding: 4px;
-    border-radius: var(--border-radius-s);
-    color: var(--color-text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition:
-      color 0.15s ease,
-      background-color 0.15s ease;
-
-    &:hover:not(:disabled) {
-      color: var(--color-text);
-      background: color-mix(in srgb, var(--color-bg-lowered) 70%, transparent);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
+    padding: var(--space-xxs);
   }
 }
 </style>

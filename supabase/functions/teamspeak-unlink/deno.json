@@ -3,7 +3,6 @@
     "app-constants": "../../../constants.json",
     "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
     "database-types": "../../../types/database.types.ts",
-    "googleapis": "npm:googleapis@144.0.0",
-    "google-auth-library": "npm:google-auth-library@9.15.0"
+    "node-ts": "npm:node-ts@8.0.9"
   }
 }

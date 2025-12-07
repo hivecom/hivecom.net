@@ -159,8 +159,10 @@ function handleCardClick() {
 
   &__icon-container {
     background-color: var(--color-bg-raised);
-    border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+    border-right: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
     border-radius: var(--border-radius-s);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;

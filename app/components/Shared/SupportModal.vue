@@ -108,7 +108,10 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="isOpen" centered @close="handleClose">
+  <Modal
+    :open="isOpen" centered :card="{ headerSeparator: true,
+                                     footerSeparator: true }" @close="handleClose"
+  >
     <template #header>
       <h3>{{ props.title }}</h3>
     </template>

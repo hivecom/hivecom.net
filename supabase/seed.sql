@@ -103,8 +103,9 @@ ON CONFLICT (role, permission)
 -- Create the storage buckets
 INSERT INTO "storage"."buckets"("id", "name", "owner", "created_at", "updated_at", "public", "avif_autodetection", "file_size_limit", "allowed_mime_types", "owner_id")
 VALUES
-  ('hivecom-content-static', 'hivecom-content-static', NULL, '2025-04-13 21:02:43.930594+00', '2025-04-13 21:02:43.930594+00', 'true', 'false', '1048576', '{"image/*"}', NULL),
+  ('hivecom-content-static', 'hivecom-content-static', NULL, '2025-04-13 21:02:43.930594+00', '2025-04-13 21:02:43.930594+00', 'true', 'false', '5242880', '{"application/json","image/*","video/*"}', NULL),
 ('hivecom-content-users', 'hivecom-content-users', NULL, '2025-04-13 21:02:26.456458+00', '2025-04-13 21:02:26.456458+00', 'true', 'false', '1048576', '{"image/*"}', NULL),
+('hivecom-content-forums', 'hivecom-content-forums', NULL, NOW(), NOW(), 'true', 'false', '1048576', '{"application/json","image/*","video/*"}', NULL),
 ('hivecom-cms', 'hivecom-cms', NULL, NOW(), NOW(), 'true', 'false', '5242880', '{"image/*"}', NULL)
 ON CONFLICT (id)
   DO NOTHING;

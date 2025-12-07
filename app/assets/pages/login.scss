@@ -1,0 +1,72 @@
+.sign-in-page {
+  display: block;
+  height: 100vh;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+
+  .animated-blob {
+    position: absolute;
+    width: 1024px;
+    height: 1024px;
+    z-index: -1;
+    filter: blur(100px) opacity(0.2);
+    pointer-events: none;
+
+    &.first {
+      top: -64px;
+      left: -64px;
+      background-image: url(/animated-blob1.svg);
+      animation: blob-one 60s infinite;
+    }
+
+    &.second {
+      right: -64px;
+      bottom: -64px;
+      background-image: url(/animated-blob2.svg);
+      animation: blob-two 60s infinite;
+    }
+  }
+}
+
+@keyframes blob-one {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(150px, -150px);
+  }
+  50% {
+    transform: translate(110px, 0) scale(1.2);
+  }
+  75% {
+    transform: translate(150px, 150px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes blob-two {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-150px, 150px);
+  }
+  50% {
+    transform: translate(-110px, 0) scale(0.8);
+  }
+  75% {
+    transform: translate(-150px, -150px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+:root.dark {
+  .sign-in-page .animated-blob {
+    filter: blur(40px) opacity(0.025);
+  }
+}

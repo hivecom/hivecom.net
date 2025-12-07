@@ -24,7 +24,11 @@ const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId() // Use helper to get ID from JWT claims
 type ProfileRecord = Tables<'profiles'>
-type ProfileRecordWithReadonlyBadges = Omit<ProfileRecord, 'badges'> & { badges: ReadonlyArray<ProfileRecord['badges'][number]> }
+type TeamSpeakIdentityRecord = NonNullable<ProfileRecord['teamspeak_identities']>[number]
+type ProfileRecordWithReadonlyCollections = Omit<ProfileRecord, 'badges' | 'teamspeak_identities'> & {
+  badges: ReadonlyArray<ProfileRecord['badges'][number]>
+  teamspeak_identities: ReadonlyArray<TeamSpeakIdentityRecord> | null
+}
 
 const profile = ref<ProfileRecord>()
 const loading = ref(true)
@@ -42,10 +46,11 @@ const receivedFriendshipId = ref<number | null>(null)
 // Add refresh functionality for avatar updates
 const refreshTrigger = ref(0)
 
-function cloneProfileRecord(record: ProfileRecord | ProfileRecordWithReadonlyBadges): ProfileRecord {
+function cloneProfileRecord(record: ProfileRecord | ProfileRecordWithReadonlyCollections): ProfileRecord {
   return {
     ...record,
     badges: [...record.badges],
+    teamspeak_identities: record.teamspeak_identities ? [...record.teamspeak_identities] : [],
   }
 }
 

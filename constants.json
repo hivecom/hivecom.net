@@ -65,6 +65,21 @@
       "urls": [
         { "id": "eu", "title": "Europe", "url": "ts3server://eu.ts.hivecom.net" }
       ],
+      "servers": [
+        {
+          "id": "eu",
+          "title": "Europe",
+          "queryHost": "eu.ts.hivecom.net",
+          "queryPort": 10011,
+          "voicePort": 9987,
+          "roleAdminGroupId": 6,
+          "roleModeratorGroupId": 14,
+          "roleSupporterGroupId": 41,
+          "roleRegisteredGroupId": 7,
+          "virtualServerId": 1,
+          "botNickname": "Hivecom"
+        }
+      ],
       "icon": "mdi:teamspeak",
       "note": "Or connect directly to ts.hivecom.net",
       "action": "Connect"

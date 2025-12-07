@@ -7,6 +7,8 @@ import { useCacheUserData } from '@/composables/useCacheUserData'
 const user = useSupabaseUser()
 const userId = useUserId()
 
+const dropdown = useTemplateRef('dropdown')
+
 // Use cached user data for the current user
 const {
   user: userData,
@@ -20,6 +22,12 @@ const {
     avatarTtl: 60 * 60 * 1000, // 1 hour for avatar
   },
 )
+
+// Wrapper around navigateTo for dropdown usage
+function navigateToWrap(path: string) {
+  dropdown.value?.close()
+  navigateTo(path)
+}
 
 // Complaint modal state
 const showComplaintModal = ref(false)
@@ -36,9 +44,11 @@ function handleComplaintSubmit(_complaintData: { message: string }) {
 }
 
 function openComplaintModal() {
+  dropdown.value?.close()
+
   // Defensive check - UserDropdown should only be rendered for authenticated users
   if (!user.value) {
-    navigateTo('/auth/sign-in')
+    navigateToWrap('/auth/sign-in')
     return
   }
 
@@ -46,20 +56,21 @@ function openComplaintModal() {
 }
 
 async function signOut() {
+  dropdown.value?.close()
+
   const supabase = useSupabaseClient()
   await supabase.auth.signOut()
-  navigateTo('/auth/sign-in')
+  navigateToWrap('/auth/sign-in')
 }
 </script>
 
 <template>
   <div class="user-dropdown">
-    <Dropdown min-width="268px" placement="bottom-end">
+    <Dropdown ref="dropdown" min-width="268px" placement="bottom-end">
       <template #trigger="{ toggle }">
-        <button class="user-dropdown__trigger" @click="toggle">
+        <Button square plain @click="toggle">
           <Avatar
-            width="32"
-            height="32"
+            :size="30"
             :alt="userData?.username || 'User profile'"
             :url="userData?.avatarUrl || undefined"
           >
@@ -72,7 +83,7 @@ async function signOut() {
               </template>
             </template>
           </Avatar>
-        </button>
+        </Button>
       </template>
       <DropdownTitle>
         <div class="user-dropdown__info">
@@ -86,13 +97,13 @@ async function signOut() {
           <RoleIndicator v-if="isAdminOrMod && userData?.role" :role="userData.role" size="s" />
         </div>
       </DropdownTitle>
-      <DropdownItem @click="navigateTo('/profile')">
+      <DropdownItem @click="navigateToWrap('/profile')">
         <template #icon>
           <Icon name="ph:user" />
         </template>
         Profile
       </DropdownItem>
-      <DropdownItem @click="navigateTo('/profile/settings')">
+      <DropdownItem @click="navigateToWrap('/profile/settings')">
         <template #icon>
           <Icon name="ph:gear-six" />
         </template>
@@ -106,7 +117,7 @@ async function signOut() {
       </DropdownItem>
       <template v-if="isAdminOrMod">
         <Divider size="4" style="margin-bottom: 4px;" />
-        <DropdownItem @click="navigateTo('/admin')">
+        <DropdownItem @click="navigateToWrap('/admin')">
           <template #icon>
             <Icon name="ph:faders" />
           </template>
@@ -136,13 +147,6 @@ async function signOut() {
 
   img {
     border-radius: 999px;
-  }
-
-  &__trigger {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
   }
 
   &__info {

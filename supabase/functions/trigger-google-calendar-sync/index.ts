@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database, Tables } from "database-types";
-import { google, calendar_v3 } from 'npm:googleapis@144.0.0';
-import { JWT } from 'npm:google-auth-library@9.15.0';
+import { google, calendar_v3 } from "googleapis";
+import { JWT } from "google-auth-library";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeSystemTrigger } from "../_shared/auth.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";

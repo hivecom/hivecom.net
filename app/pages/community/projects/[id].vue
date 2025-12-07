@@ -6,7 +6,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
-import { getProjectPlaceholderBanner } from '@/lib/projectPlaceholderBanner'
+import { getPlaceholderBannerProject } from '@/lib/placeholderBannerProjects'
 
 // Get route parameter
 const route = useRoute()
@@ -24,13 +24,21 @@ const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(
   computed(() => project.value?.id ?? null),
 )
 
-const placeholderBanner = computed(() => getProjectPlaceholderBanner(project.value?.id ?? null))
+const placeholderBanner = computed(() => getPlaceholderBannerProject(project.value?.id ?? null))
 
-const hasProjectBannerImage = computed(() => !!(projectBannerUrl.value ?? placeholderBanner.value))
+const hasProjectBannerImage = computed(() => !!(projectBannerUrl.value ?? placeholderBanner.value.url))
 
 const heroBannerStyle = computed(() => {
-  const source = projectBannerUrl.value ?? placeholderBanner.value
-  return { backgroundImage: `url(${source})` }
+  const placeholder = placeholderBanner.value
+  const usingPlaceholder = !projectBannerUrl.value
+  const style: Record<string, string> = {
+    backgroundImage: `url(${projectBannerUrl.value ?? placeholder.url})`,
+  }
+
+  if (usingPlaceholder && placeholder.transform)
+    style['--banner-placeholder-transform'] = placeholder.transform
+
+  return style
 })
 
 // Fetch project data

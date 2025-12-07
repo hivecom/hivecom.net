@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Card, Flex, pushToast } from '@dolanske/vui'
+import { Badge, Button, Card, Checkbox, Flex, pushToast } from '@dolanske/vui'
+import { reactive, ref, watch } from 'vue'
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 
 const props = defineProps<{ profile: Tables<'profiles'> | null }>()
@@ -13,9 +14,20 @@ const disconnectLoading = reactive({
   discord: false,
 })
 
-const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Profile/ConnectPatreon.vue'))
-const ConnectDiscord = defineAsyncComponent(() => import('@/components/Profile/ConnectDiscord.vue'))
-const ConnectSteam = defineAsyncComponent(() => import('@/components/Profile/ConnectSteam.vue'))
+const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Settings/ConnectPatreon.vue'))
+const ConnectDiscord = defineAsyncComponent(() => import('@/components/Settings/ConnectDiscord.vue'))
+const ConnectSteam = defineAsyncComponent(() => import('@/components/Settings/ConnectSteam.vue'))
+const ConnectTeamspeak = defineAsyncComponent(() => import('@/components/Settings/ConnectTeamSpeak.vue'))
+
+const richPresenceEnabled = ref(!(props.profile?.rich_presence_disabled ?? false))
+const richPresenceLoading = ref(false)
+
+watch(
+  () => props.profile?.rich_presence_disabled,
+  (disabled) => {
+    richPresenceEnabled.value = !(disabled ?? false)
+  },
+)
 
 function showErrorToast(message: string) {
   pushToast('', {
@@ -103,6 +115,41 @@ async function disconnectDiscord() {
   }
   finally {
     disconnectLoading.discord = false
+  }
+}
+
+async function updateRichPresence(enabled: boolean) {
+  if (richPresenceLoading.value)
+    return
+
+  const previousValue = richPresenceEnabled.value
+  richPresenceEnabled.value = enabled
+  richPresenceLoading.value = true
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error)
+      throw error
+    if (!user)
+      throw new Error('You must be signed in to update rich presence.')
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ rich_presence_disabled: !enabled })
+      .eq('id', user.id)
+
+    if (updateError)
+      throw updateError
+
+    emit('updated')
+  }
+  catch (error) {
+    richPresenceEnabled.value = previousValue
+    const message = error instanceof Error ? error.message : 'Unable to update rich presence preference.'
+    showErrorToast(message)
+  }
+  finally {
+    richPresenceLoading.value = false
   }
 }
 </script>
@@ -207,6 +254,54 @@ async function disconnectDiscord() {
           </div>
         </Flex>
       </Flex>
+
+      <!-- TeamSpeak -->
+      <Flex expand class="account-connection-row">
+        <Flex x-between y-center expand>
+          <Flex gap="m" y-center class="teamspeak-copy">
+            <div class="account-icon teamspeak">
+              <Icon name="mdi:teamspeak" size="20" />
+            </div>
+            <div>
+              <strong>TeamSpeak</strong>
+              <p class="text-xs text-color-lighter">
+                Link your TeamSpeak identities to receive server access and roles
+              </p>
+            </div>
+          </Flex>
+
+          <div class="account-status teamspeak-actions">
+            <ClientOnly>
+              <ConnectTeamspeak :profile="props.profile" @linked="emit('updated')" />
+            </ClientOnly>
+          </div>
+        </Flex>
+      </Flex>
+
+      <!-- Rich presence toggle -->
+      <Flex expand class="account-connection-row">
+        <Flex x-between y-center expand>
+          <Flex gap="m" y-center>
+            <div class="account-icon presence">
+              <Icon name="ph:activity" size="20" />
+            </div>
+            <div>
+              <strong>Rich presence</strong>
+              <p class="text-xs text-color-lighter">
+                Allow fetching and displaying information from any connected services
+              </p>
+            </div>
+          </Flex>
+
+          <div class="account-status presence-toggle">
+            <Checkbox
+              :model-value="richPresenceEnabled"
+              :disabled="richPresenceLoading"
+              @update:model-value="updateRichPresence"
+            />
+          </div>
+        </Flex>
+      </Flex>
     </Flex>
   </Card>
 </template>
@@ -227,7 +322,10 @@ async function disconnectDiscord() {
   height: 40px;
   border-radius: var(--border-radius-m);
   flex-shrink: 0;
-  color: white;
+
+  .iconify {
+    color: white;
+  }
 }
 
 .account-icon.patreon {
@@ -242,7 +340,53 @@ async function disconnectDiscord() {
   background: linear-gradient(135deg, #5865f2 0%, #7289da 100%);
 }
 
+.account-icon.teamspeak {
+  background: linear-gradient(135deg, #13202b 0%, #2a475e 100%);
+}
+
+.account-icon.presence {
+  .iconify {
+    color: var(--color-text-invert);
+  }
+  background: var(--color-accent);
+}
+
 .account-status {
   flex-shrink: 0;
+}
+
+.teamspeak-identities ul {
+  list-style: none;
+  margin: var(--space-xs) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.teamspeak-identities code {
+  font-size: 0.7rem;
+  background: var(--color-bg-raised);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--border-radius-s);
+  word-break: break-all;
+}
+
+.teamspeak-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-xs);
+}
+
+.teamspeak-manage {
+  width: max-content;
+}
+
+.presence-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
 }
 </style>

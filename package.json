@@ -15,7 +15,7 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@dolanske/vui": "^1.5.5",
+    "@dolanske/vui": "^1.5.7",
     "@iconify-json/mdi": "^1.2.3",
     "@iconify-json/ph": "^1.2.2",
     "@iconify-json/simple-icons": "^1.2.61",
@@ -53,7 +53,10 @@
     "eslint-plugin-format": "^1.0.2",
     "eslint-plugin-vue": "^10.6.0",
     "nuxi": "^3.30.0",
-    "supabase": "^2.65.2",
-    "vue-tsc": "^3.1.5"
+    "supabase": "^2.65.5"
+  },
+  "overrides": {
+    "vue-tsc": "3.1.4",
+    "@vue/language-core": "3.1.4"
   }
 }
