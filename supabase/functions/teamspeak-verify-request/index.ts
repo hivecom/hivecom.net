@@ -283,19 +283,10 @@ function buildVerificationMessage(args: {
   token: string;
 }): string {
   const lines = [
-    "[Hivecom] TeamSpeak verification requested",
-    `User: ${args.username}`,
-  ];
-
-  if (args.email) {
-    lines.push(`Email: ${args.email}`);
-  }
-
-  lines.push(
+    `TeamSpeak verification for this identity was requested by ${args.username}${args.email ? ` (${args.email})` : '' }. Enter the following token in the next step of the linking process:`,
     `Token: ${args.token}`,
-    `Enter this token on hivecom.net within ${TOKEN_EXPIRATION_MINUTES} minutes to finish linking.`,
-    "If you did not request this, you can ignore this message.",
-  );
+    `Enter this token on within ${TOKEN_EXPIRATION_MINUTES} minutes to finish linking. If you did not request this, contact an administrator.`,
+  ];
 
   const message = lines.join("\n");
   return message.length > MESSAGE_MAX_LENGTH ? message.slice(0, MESSAGE_MAX_LENGTH) : message;

@@ -13,6 +13,16 @@ CREATE TABLE IF NOT EXISTS private.teamspeak_tokens(
 
 CREATE INDEX IF NOT EXISTS teamspeak_tokens_expires_at_idx ON private.teamspeak_tokens(expires_at);
 
+-- Allow only the service role to access the private schema objects
+GRANT USAGE ON SCHEMA private TO service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA private TO service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA private TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA private TO service_role;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA private GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA private GRANT ALL ON ROUTINES TO service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA private GRANT ALL ON SEQUENCES TO service_role;
+
 ALTER TABLE private.teamspeak_tokens ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "teamspeak_tokens service role only" ON private.teamspeak_tokens

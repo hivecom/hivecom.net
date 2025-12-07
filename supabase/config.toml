@@ -10,7 +10,8 @@ port = 54321
 # endpoints. `public` is always included.
 schemas = [
   "public",
-  "graphql_public"
+  "graphql_public",
+  "private"
 ]
 # Extra schemas to add to the search_path of every request. `public` is always included.
 extra_search_path = [
