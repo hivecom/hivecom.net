@@ -195,10 +195,8 @@ Deno.serve(async (req: Request) => {
     // Determine ban start and end times
     let banStart: string | null = null;
     let banEnd: string | null = null;
-    let banned = false;
 
     if (banDuration !== 'none') {
-      banned = true;
       banStart = new Date().toISOString();
 
       if (banDuration !== 'permanent') {
@@ -230,36 +228,19 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Update the profiles table with ban information
-    const { error: profileUpdateError } = await supabaseClient
-      .from('profiles')
-      .update({
-        banned,
-        ban_reason: banDuration === 'none' ? null : (banReason || null),
-        ban_start: banStart,
-        ban_end: banEnd,
-      })
-      .eq('id', userId);
-
-    if (profileUpdateError) {
-      console.error("Error updating profile ban status:", profileUpdateError);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Failed to update profile ban status",
-          details: profileUpdateError.message,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        },
-      );
-    }
+    const banMetadata = {
+      ban_reason: banDuration === 'none' ? null : (banReason || null),
+      ban_start: banDuration === 'none' ? null : banStart,
+      ban_end: banDuration === 'none' ? null : banEnd,
+    };
 
     // Ban the user using Supabase Auth Admin API
     const { error: banError } = await supabaseClient.auth.admin.updateUserById(
       userId,
-      { ban_duration: normalizedBanDuration }
+      {
+        ban_duration: normalizedBanDuration,
+        user_metadata: banMetadata,
+      },
     );
 
     if (banError) {
