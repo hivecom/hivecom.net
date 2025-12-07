@@ -487,9 +487,20 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
+      "cron-teamspeak-sync": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
       "oauth-patreon": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "teamspeak-unlink": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2",
+          "npm:node-ts@8.0.9"
         ]
       },
       "teamspeak-verify-confirm": {
