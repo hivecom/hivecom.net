@@ -830,6 +830,7 @@ async function ignoreFriendRequest() {
           <ProfileFriends
             :profile="profile"
             :friends="friends"
+            :friendship-status="friendshipStatus"
             :pending-requests="pendingRequests"
             :is-own-profile="isOwnProfile"
             :loading="friendsLoading"

@@ -14,7 +14,7 @@ const confirm = defineModel<() => void>('confirm', { default: () => {} })
 </script>
 
 <template>
-  <Modal :open="open" centered :card="{ separators: true }" :can-dismiss="false" @close="open = false">
+  <Modal :open="open" centered :card="{ separators: true }" :can-dismiss="false" size="s" @close="open = false">
     <template #header>
       <h4>{{ props.title }}</h4>
     </template>

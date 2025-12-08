@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Tooltip } from '@dolanske/vui'
-import { computed, ref } from 'vue'
-import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import type { ProfileFriendshipStatus } from '@/types/profile.ts'
+import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Tooltip } from '@dolanske/vui'
+import { computed } from 'vue'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
 import MDRenderer from '../Shared/MDRenderer.vue'
@@ -13,21 +13,15 @@ interface Props {
   userRole: string | null
   currentUserRole: string | null
   isOwnProfile: boolean
-  friendshipStatus: 'none' | 'mutual' | 'sent_request' | 'received_request' | 'loading'
+  friendshipStatus: ProfileFriendshipStatus
   isCurrentUserAdmin: boolean
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
-  (event: 'openEditSheet'): void
-  (event: 'sendFriendRequest'): void
-  (event: 'acceptFriendRequest'): void
-  (event: 'ignoreFriendRequest'): void
-  (event: 'revokeFriendRequest'): void
-  (event: 'removeFriend'): void
-  (event: 'openComplaintModal'): void
+  openEditSheet: []
+  openComplaintModal: []
 }>()
-const showRemoveFriendConfirm = ref(false)
 
 const activityStatus = computed(() => {
   if (!props.profile?.last_seen)
@@ -120,23 +114,6 @@ const joinedTooltip = computed(() => {
   })
 })
 
-// Computed properties for friendship status
-const canSendFriendRequest = computed(() => {
-  return !props.isOwnProfile && props.friendshipStatus === 'none'
-})
-
-const areMutualFriends = computed(() => {
-  return props.friendshipStatus === 'mutual'
-})
-
-const hasSentRequest = computed(() => {
-  return props.friendshipStatus === 'sent_request'
-})
-
-const hasReceivedRequest = computed(() => {
-  return props.friendshipStatus === 'received_request'
-})
-
 // Generate profile URL for copying
 const profileUrl = computed(() => {
   if (typeof window === 'undefined')
@@ -196,18 +173,12 @@ function getRoleInfo(role: string | null) {
 
   return { display: roleDisplay, variant }
 }
-
-// Handle remove friend confirmation
-function handleRemoveFriend() {
-  emit('removeFriend')
-  showRemoveFriendConfirm.value = false
-}
 </script>
 
 <template>
   <Card class="profile-header card-bg" footer-separator>
     <Flex column expand y-center x-center>
-      <Flex gap="l" y-start expand x-center>
+      <Grid gap="l" expand columns="160px 1fr">
         <!-- Avatar -->
         <div class="profile-avatar">
           <div class="avatar-container">
@@ -229,147 +200,67 @@ function handleRemoveFriend() {
           </div>
         </div>
 
-        <Flex column :gap="4" expand>
+        <Flex column :gap="4" expand x-end class="h-100">
           <!-- Username, Role, Badges and Action Buttons Row -->
-          <Flex gap="m" y-center x-between expand>
-            <Flex gap="m" y-center wrap>
-              <h1 class="profile-title">
-                {{ profile.username }}
-              </h1>
-              <Badge
-                v-if="userRole && getRoleInfo(userRole)"
-                :variant="getRoleInfo(userRole)?.variant"
-                size="s"
-              >
-                {{ getRoleInfo(userRole)?.display }}
-              </Badge>
-              <!-- Friend status badge -->
-              <Badge
-                v-if="!isOwnProfile && friendshipStatus === 'mutual'"
-                variant="success"
-                size="s"
-              >
-                <Icon name="ph:user-check" />
-                Friends
-              </Badge>
-              <Badge
-                v-else-if="!isOwnProfile && friendshipStatus === 'sent_request'"
-                variant="info"
-                size="s"
-              >
-                <Icon name="ph:clock" />
-                Request Sent
-              </Badge>
-              <Badge
-                v-else-if="!isOwnProfile && friendshipStatus === 'received_request'"
-                variant="accent"
-                size="s"
-              >
-                <Icon name="ph:bell" />
-                Friend Request
-              </Badge>
-              <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
-                <Icon name="ph:heart" class="gold" />
-                Supporter
-              </Badge>
-            </Flex>
+          <Flex gap="xs" y-center wrap>
+            <Badge
+              v-if="userRole && getRoleInfo(userRole)"
+              :variant="getRoleInfo(userRole)?.variant"
+              size="s"
+            >
+              {{ getRoleInfo(userRole)?.display }}
+            </Badge>
+            <!-- Friend status badge -->
+            <Badge
+              v-if="!isOwnProfile && friendshipStatus === 'mutual'"
+              variant="success"
+              size="s"
+            >
+              <Icon name="ph:user-check" />
+              Friends
+            </Badge>
+            <Badge
+              v-else-if="!isOwnProfile && friendshipStatus === 'sent_request'"
+              variant="info"
+              size="s"
+            >
+              <Icon name="ph:clock" />
+              Request Sent
+            </Badge>
+            <Badge
+              v-else-if="!isOwnProfile && friendshipStatus === 'received_request'"
+              variant="accent"
+              size="s"
+            >
+              <Icon name="ph:bell" />
+              Friend Request
+            </Badge>
+            <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
+              <Icon name="ph:heart" class="gold" />
+              Supporter
+            </Badge>
+          </Flex>
 
-            <!-- Action Buttons -->
-            <Flex v-if="isOwnProfile" gap="xs">
-              <Button variant="accent" square data-title-top="Edit profile" @click="emit('openEditSheet')">
-                <Icon name="ph:pencil" />
+          <h1 class="profile-title">
+            {{ profile.username }}
+          </h1>
+
+          <!-- Action Buttons -->
+          <Flex gap="xs" class="profile-action-buttons">
+            <Button v-if="isOwnProfile" variant="accent" square data-title-top="Edit profile" @click="emit('openEditSheet')">
+              <Icon name="ph:pencil" />
+            </Button>
+            <Button v-else variant="gray" @click="emit('openComplaintModal')">
+              <template #start>
+                <Icon name="ph:chat-circle-text" />
+              </template>
+              Complaint
+            </Button>
+            <CopyClipboard :text="profileUrl" variant="gray" confirm>
+              <Button variant="gray" square data-title-top="Copy link to profile">
+                <Icon name="ph:link" />
               </Button>
-              <CopyClipboard :text="profileUrl" variant="gray" confirm>
-                <Button variant="gray" square data-title-top="Copy link to profile">
-                  <Icon name="ph:link" />
-                </Button>
-              </CopyClipboard>
-            </Flex>
-
-            <!-- Action Buttons (for other profiles) -->
-            <Flex v-else gap="s">
-              <!-- Friend action button -->
-              <Button
-                v-if="canSendFriendRequest"
-                variant="accent"
-                :disabled="friendshipStatus === 'loading'"
-                @click="emit('sendFriendRequest')"
-              >
-                <template #start>
-                  <Icon name="ph:user-plus" />
-                </template>
-                Send Friend Request
-              </Button>
-
-              <Button
-                v-else-if="hasReceivedRequest"
-                variant="accent"
-                :disabled="friendshipStatus === 'loading'"
-                @click="emit('acceptFriendRequest')"
-              >
-                <template #start>
-                  <Icon name="ph:user-check" />
-                </template>
-                Accept Request
-              </Button>
-
-              <Button
-                v-if="hasReceivedRequest"
-                variant="gray"
-                :disabled="friendshipStatus === 'loading'"
-                @click="emit('ignoreFriendRequest')"
-              >
-                <template #start>
-                  <Icon name="ph:x" />
-                </template>
-                Ignore Request
-              </Button>
-
-              <Button
-                v-else-if="hasSentRequest"
-                variant="danger"
-                :disabled="friendshipStatus === 'loading'"
-                @click="emit('revokeFriendRequest')"
-              >
-                <template #start>
-                  <Icon name="ph:user-minus" />
-                </template>
-                Revoke Request
-              </Button>
-
-              <Button
-                v-else-if="areMutualFriends"
-                variant="danger"
-                :disabled="friendshipStatus === 'loading'"
-                @click="showRemoveFriendConfirm = true"
-              >
-                <template #start>
-                  <Icon name="ph:user-minus" />
-                </template>
-                Remove Friend
-              </Button>
-
-              <!-- Show loading button while checking friendship status -->
-              <Button
-                v-else-if="friendshipStatus === 'loading'"
-                :disabled="true"
-                variant="gray"
-                :loading="true"
-              />
-
-              <Button variant="gray" @click="emit('openComplaintModal')">
-                <template #start>
-                  <Icon name="ph:chat-circle-text" />
-                </template>
-                Complaint
-              </Button>
-
-              <CopyClipboard :text="profileUrl" variant="gray" confirm>
-                <Button variant="gray" square data-title-top="Copy link to profile">
-                  <Icon name="ph:link" />
-                </Button>
-              </CopyClipboard>
-            </Flex>
+            </CopyClipboard>
           </Flex>
 
           <!-- Introduction (Full Width) -->
@@ -379,7 +270,7 @@ function handleRemoveFriend() {
 
           <!-- Account Info (Full Width) -->
           <Flex x-between y-center class="profile-meta" expand>
-            <Flex gap="m" y-center wrap column>
+            <Flex gap="m" y-center wrap>
               <Flex v-if="countryInfo" gap="xs" y-center class="profile-country">
                 <span
                   class="country-emoji"
@@ -437,18 +328,9 @@ function handleRemoveFriend() {
                 </Flex>
               </Tooltip>
             </Flex>
-
-            <!-- Admin-only UUID display -->
-            <Flex v-if="isCurrentUserAdmin" gap="xs" y-center>
-              <Icon class="text-color-lighter" name="ph:hash" size="16" />
-              <span class="text-xs text-color-lighter font-mono">{{ profile.id }}</span>
-              <CopyClipboard :text="profile.id" size="s" confirm>
-                <Icon class="text-color-lighter" name="ph:copy" size="12" />
-              </CopyClipboard>
-            </Flex>
           </Flex>
         </Flex>
-      </Flex>
+      </Grid>
     </Flex>
 
     <template v-if="profile.markdown || isOwnProfile" #footer>
@@ -466,19 +348,24 @@ function handleRemoveFriend() {
     </template>
   </Card>
 
-  <!-- Remove Friend Confirmation Modal -->
-  <ConfirmModal
-    v-model:open="showRemoveFriendConfirm"
-    v-model:confirm="handleRemoveFriend"
-    title="Remove Friend"
-    :description="`Are you sure you want to remove ${profile.username} from your friends list? This action cannot be undone.`"
-    confirm-text="Remove Friend"
-    cancel-text="Cancel"
-    :destructive="true"
-  />
+  <!-- Admin-only UUID display -->
+  <CopyClipboard :text="profile.id" size="s" confirm>
+    <Button v-if="isCurrentUserAdmin" size="s" plain data-title-top="Copy user id">
+      <template #start>
+        <Icon class="text-color-lighter" name="ph:hash" size="16" />
+      </template>
+      <span class="text-s text-color-lighter font-mono">{{ profile.id }}</span>
+    </Button>
+  </CopyClipboard>
 </template>
 
 <style lang="scss" scoped>
+.profile-action-buttons {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
 .profile-markdown {
   line-height: 1.6;
   min-height: 512px;
@@ -494,8 +381,16 @@ function handleRemoveFriend() {
 }
 
 .profile-header {
-  :is(.vui-card) .vui-card-content {
-    padding: var(--space-l);
+  .vui-badge {
+    padding-inline: 8px;
+    padding-block: 4px;
+  }
+
+  &:is(&.vui-card) {
+    :deep(.vui-card-content),
+    :deep(.vui-card-footer) {
+      padding: var(--space-l);
+    }
   }
 
   .profile-avatar {
@@ -526,9 +421,9 @@ function handleRemoveFriend() {
 
   .profile-title {
     margin: 0;
-    font-size: var(--font-size-xxxl);
-    // font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-xxxxl);
     color: var(--color-text);
+    // margin-top: var(--space-s);
   }
 
   .profile-description {
@@ -541,6 +436,7 @@ function handleRemoveFriend() {
   .profile-meta {
     color: var(--color-text-light);
     font-size: var(--font-size-s);
+    margin-top: var(--space-m);
 
     .website-link {
       color: var(--color-text-accent);

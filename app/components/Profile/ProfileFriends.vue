@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
+import type { ProfileFriendshipStatus } from '@/types/profile'
 import { Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 interface Props {
   profile: Tables<'profiles'>
@@ -9,15 +11,46 @@ interface Props {
   pendingRequests: string[]
   isOwnProfile: boolean
   loading?: boolean
+  friendshipStatus: ProfileFriendshipStatus
 }
 
-const _props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   loading: false,
 })
 
 const emit = defineEmits<{
   openFriendsModal: []
+  sendFriendRequest: []
+  acceptFriendRequest: []
+  ignoreFriendRequest: []
+  revokeFriendRequest: []
+  removeFriend: []
 }>()
+
+const showRemoveFriendConfirm = ref(false)
+
+// Computed properties for friendship status
+const canSendFriendRequest = computed(() => {
+  return !props.isOwnProfile && props.friendshipStatus === 'none'
+})
+
+const areMutualFriends = computed(() => {
+  return props.friendshipStatus === 'mutual'
+})
+
+const hasSentRequest = computed(() => {
+  return props.friendshipStatus === 'sent_request'
+})
+
+const hasReceivedRequest = computed(() => {
+  return props.friendshipStatus === 'received_request'
+})
+
+// Handle remove friend confirmation
+function handleRemoveFriend() {
+  emit('removeFriend')
+  showRemoveFriendConfirm.value = false
+}
 </script>
 
 <template>
@@ -34,7 +67,7 @@ const emit = defineEmits<{
             {{ friends.length }}
           </span>
         </Flex>
-        <Button variant="gray" size="s" @click="emit('openFriendsModal')">
+        <Button variant="gray" size="s" plain @click="emit('openFriendsModal')">
           <template #start>
             <Icon name="ph:users" />
           </template>
@@ -115,8 +148,89 @@ const emit = defineEmits<{
       </Flex>
     </div>
 
-    <template #footer />
+    <!-- Action Buttons for friend-ship management -->
+
+    <template #footer>
+      <Button
+        v-if="canSendFriendRequest"
+        variant="accent"
+        :disabled="friendshipStatus === 'loading'"
+        @click="emit('sendFriendRequest')"
+      >
+        <template #start>
+          <Icon name="ph:user-plus" />
+        </template>
+        Send Friend Request
+      </Button>
+
+      <Button
+        v-else-if="hasReceivedRequest"
+        variant="accent"
+        :disabled="friendshipStatus === 'loading'"
+        @click="emit('acceptFriendRequest')"
+      >
+        <template #start>
+          <Icon name="ph:user-check" />
+        </template>
+        Accept Request
+      </Button>
+
+      <Button
+        v-if="hasReceivedRequest"
+        variant="gray"
+        :disabled="friendshipStatus === 'loading'"
+        @click="emit('ignoreFriendRequest')"
+      >
+        <template #start>
+          <Icon name="ph:x" />
+        </template>
+        Ignore Request
+      </Button>
+
+      <Button
+        v-else-if="hasSentRequest"
+        variant="danger"
+        :disabled="friendshipStatus === 'loading'"
+        @click="emit('revokeFriendRequest')"
+      >
+        <template #start>
+          <Icon name="ph:user-minus" />
+        </template>
+        Revoke Request
+      </Button>
+
+      <Button
+        v-else-if="areMutualFriends"
+        variant="danger"
+        :disabled="friendshipStatus === 'loading'"
+        @click="showRemoveFriendConfirm = true"
+      >
+        <template #start>
+          <Icon name="ph:user-minus" />
+        </template>
+        Remove Friend
+      </Button>
+
+      <!-- Show loading button while checking friendship status -->
+      <Button
+        v-else-if="friendshipStatus === 'loading'"
+        :disabled="true"
+        variant="gray"
+        :loading="true"
+      />
+    </template>
   </Card>
+
+  <!-- Remove Friend Confirmation Modal -->
+  <ConfirmModal
+    v-model:open="showRemoveFriendConfirm"
+    v-model:confirm="handleRemoveFriend"
+    title="Remove Friend"
+    :description="`Are you sure you want to remove ${profile.username} from your friends list? This action cannot be undone.`"
+    confirm-text="Remove Friend"
+    cancel-text="Cancel"
+    :destructive="true"
+  />
 </template>
 
 <style lang="scss" scoped>

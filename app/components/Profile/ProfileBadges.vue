@@ -166,7 +166,7 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
           <span class="counter">{{ profileBadgesToRender.length }}</span>
         </Flex>
 
-        <Button size="s" variant="gray" aria-label="See all community badges" @click="goToBadgeDirectory">
+        <Button size="s" variant="gray" aria-label="See all community badges" plain @click="goToBadgeDirectory">
           <template #start>
             <Icon name="ph:hexagon" />
           </template>
