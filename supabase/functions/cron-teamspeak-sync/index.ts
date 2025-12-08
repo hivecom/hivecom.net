@@ -16,7 +16,6 @@ interface TeamSpeakServerDefinition {
   roleAdminGroupId?: number;
   roleModeratorGroupId?: number;
   roleSupporterGroupId?: number;
-  roleLifetimeSupporterGroupId?: number;
   roleRegisteredGroupId?: number;
 }
 
@@ -70,6 +69,7 @@ type NormalizedChannel = {
   depth: number;
   path: string[];
   children: NormalizedChannel[];
+  clients: NormalizedClient[];
 };
 
 type NormalizedClient = {
@@ -100,11 +100,8 @@ interface ServerSnapshot {
   title?: string;
   collectedAt: string;
   serverInfo?: ServerInfo;
-  channels: QueryResponse<ChannelRecord>;
-  channelsFlat: NormalizedChannel[];
-  channelsTree: NormalizedChannel[];
+  channels: NormalizedChannel[];
   clients: NormalizedClient[];
-  clientsRaw: QueryResponse<TeamSpeakClientEntry>;
 }
 
 const appConstants = constants.default;
@@ -225,27 +222,34 @@ async function processServer(args: {
 
     const clientListQuery = await sendRawCommand(client, "clientlist", {}, ["-uid", "-voice", "-away", "-groups"]) as QueryResponse<TeamSpeakClientEntry>;
 
+    const clientInfoCache = new Map<string, TeamSpeakClientEntry>();
+    const groupIdentityMap = await buildGroupIdentityMap(client, server);
+
     const onlineClients = (clientListQuery.response ?? []).filter((c) =>
-      String(c.client_type ?? "0") === "0" && c.client_unique_identifier
+      String(c.client_type ?? "0") === "0" && (c.client_unique_identifier || c.client_database_id || c.clid)
     );
 
     const normalizedClients: ServerSnapshot["clients"] = [];
 
     for (const entry of onlineClients) {
-      const uniqueId = entry.client_unique_identifier as string;
-      const nickname = entry.client_nickname ?? "Unknown";
-      const channelId = entry.cid ? String(entry.cid) : null;
+      const hydratedEntry = await hydrateClientInfo(client, entry, clientInfoCache, groupIdentityMap);
+      const normalizedUniqueId = hydratedEntry.client_unique_identifier ?? hydratedEntry.client_database_id ?? hydratedEntry.clid;
+      if (!normalizedUniqueId) continue;
+
+      const uniqueId = String(normalizedUniqueId);
+      const nickname = hydratedEntry.client_nickname ?? "Unknown";
+      const channelId = hydratedEntry.cid ? String(hydratedEntry.cid) : null;
       const channelMeta = channelId ? channelsNormalized.map.get(channelId) : undefined;
-      const serverGroups = (entry.client_servergroups ?? "")
+      const serverGroups = (hydratedEntry.client_servergroups ?? "")
         .split(",")
-        .map((g) => Number(g))
-        .filter((n) => Number.isFinite(n));
-      const away = entry.client_away === "1";
-      const inputMuted = entry.client_input_muted === "1";
-      const outputMuted = entry.client_output_muted === "1";
+        .map((g: string) => Number(g))
+        .filter((n: number) => Number.isFinite(n));
+      const away = hydratedEntry.client_away === "1";
+      const inputMuted = hydratedEntry.client_input_muted === "1";
+      const outputMuted = hydratedEntry.client_output_muted === "1";
       const muted = inputMuted || outputMuted;
 
-      normalizedClients.push({
+      const normalizedClient: NormalizedClient = {
         uniqueId,
         nickname,
         channelId,
@@ -256,7 +260,16 @@ async function processServer(args: {
         muted,
         inputMuted,
         outputMuted,
-      });
+      };
+
+      normalizedClients.push(normalizedClient);
+
+      if (channelId) {
+        const channel = channelsNormalized.map.get(channelId);
+        if (channel) {
+          channel.clients.push(normalizedClient);
+        }
+      }
 
       const profile = profileMap.get(`${server.id}:${uniqueId}`);
       if (profile && !profile.banned) {
@@ -287,15 +300,84 @@ async function processServer(args: {
       title: server.title,
       collectedAt,
       serverInfo,
-      channels: channelsQuery,
-      channelsFlat: channelsNormalized.flat,
-      channelsTree: channelsNormalized.tree,
+      channels: channelsNormalized.tree,
       clients: normalizedClients,
-      clientsRaw: clientListQuery,
     };
   } finally {
     await shutdownClient(client);
   }
+}
+
+async function buildGroupIdentityMap(client: TeamSpeakClient, server: TeamSpeakServerDefinition): Promise<Map<string, TeamSpeakClientEntry>> {
+  const map = new Map<string, TeamSpeakClientEntry>();
+  const groupIds = new Set<number>();
+
+  if (server.roleRegisteredGroupId) groupIds.add(server.roleRegisteredGroupId);
+  if (server.roleModeratorGroupId) groupIds.add(server.roleModeratorGroupId);
+  if (server.roleAdminGroupId) groupIds.add(server.roleAdminGroupId);
+  if (server.roleSupporterGroupId) groupIds.add(server.roleSupporterGroupId);
+
+  for (const sgid of groupIds) {
+    const groupQuery = await sendRawCommand(client, "servergroupclientlist", { sgid }, ["-names"]) as QueryResponse<TeamSpeakClientEntry>;
+    for (const entry of groupQuery.response ?? []) {
+      const databaseId = (entry as { cldbid?: number | string }).cldbid ?? entry.client_database_id;
+      if (databaseId === undefined || databaseId === null) continue;
+      const key = String(databaseId);
+      if (!key) continue;
+      map.set(key, entry);
+    }
+  }
+
+  return map;
+}
+
+async function hydrateClientInfo(
+  client: TeamSpeakClient,
+  entry: TeamSpeakClientEntry,
+  cache: Map<string, TeamSpeakClientEntry>,
+  groupIdentityMap: Map<string, TeamSpeakClientEntry>,
+): Promise<TeamSpeakClientEntry> {
+  if (entry.client_unique_identifier) return entry;
+
+  const databaseId = entry.client_database_id ?? entry.clid;
+  if (databaseId !== undefined && databaseId !== null) {
+    const groupEntry = groupIdentityMap.get(String(databaseId));
+    if (groupEntry?.client_unique_identifier) {
+      return {
+        ...entry,
+        client_unique_identifier: groupEntry.client_unique_identifier,
+        client_nickname: entry.client_nickname ?? groupEntry.client_nickname,
+      };
+    }
+  }
+
+  const clid = entry.clid;
+  if (clid === undefined || clid === null) return entry;
+
+  const cacheKey = String(clid);
+  const cached = cache.get(cacheKey);
+  if (cached?.client_unique_identifier) {
+    return {
+      ...entry,
+      client_unique_identifier: cached.client_unique_identifier,
+      client_nickname: entry.client_nickname ?? cached.client_nickname,
+    };
+  }
+
+  const infoQuery = await sendRawCommand(client, "clientinfo", { clid }) as QueryResponse<TeamSpeakClientEntry>;
+  const info = infoQuery.response?.[0];
+
+  if (info?.client_unique_identifier) {
+    cache.set(cacheKey, info);
+    return {
+      ...entry,
+      client_unique_identifier: info.client_unique_identifier,
+      client_nickname: entry.client_nickname ?? info.client_nickname,
+    };
+  }
+
+  if (info) cache.set(cacheKey, info);
+  return entry;
 }
 
 async function upsertPresenceRow(args: {
@@ -374,9 +456,7 @@ function computeTargetGroupIds(
     groups.add(server.roleSupporterGroupId);
   }
 
-  if (profile.supporter_lifetime && server.roleLifetimeSupporterGroupId) {
-    groups.add(server.roleLifetimeSupporterGroupId);
-  }
+  // Lifetime supporters use the regular supporter group when defined.
 
   return Array.from(groups);
 }
@@ -462,7 +542,7 @@ function jsonResponse(status: number, payload: Record<string, unknown>) {
   });
 }
 
-function normalizeChannels(records: ChannelRecord[]): { flat: NormalizedChannel[]; tree: NormalizedChannel[]; map: Map<string, NormalizedChannel> } {
+function normalizeChannels(records: ChannelRecord[]): { tree: NormalizedChannel[]; map: Map<string, NormalizedChannel> } {
   const map = new Map<string, NormalizedChannel>();
 
   for (const record of records) {
@@ -481,6 +561,7 @@ function normalizeChannels(records: ChannelRecord[]): { flat: NormalizedChannel[
       depth: 0,
       path: [],
       children: [],
+      clients: [],
     };
 
     map.set(id, channel);
@@ -521,8 +602,7 @@ function normalizeChannels(records: ChannelRecord[]): { flat: NormalizedChannel[
     buildPaths(root, [], 0);
   }
 
-  const flat = Array.from(map.values());
-  return { flat, tree: roots, map };
+  return { tree: roots, map };
 }
 
 function normalizeServerInfo(raw: Record<string, unknown> | null): ServerInfo | undefined {
