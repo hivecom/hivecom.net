@@ -533,10 +533,7 @@ onMounted(() => {
               {{ usernameError }}
             </Alert>
             <Button expand variant="accent" :loading="usernameLoading" :disabled="!username" @click="submitUsername">
-              <Flex y-center gap="xs">
-                Continue
-                <Icon name="ph:arrow-right" />
-              </Flex>
+              Continue
             </Button>
           </Flex>
         </div>

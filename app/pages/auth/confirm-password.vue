@@ -180,10 +180,7 @@ onBeforeUnmount(() => {
               {{ passwordResetError }}
             </Alert>
             <Button expand variant="accent" :loading="passwordLoading" @click="submitPasswordReset">
-              <Flex y-center gap="xs">
-                Set Password
-                <Icon name="ph:arrow-right" />
-              </Flex>
+              Set Password
             </Button>
           </Flex>
         </div>

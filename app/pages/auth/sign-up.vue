@@ -101,9 +101,6 @@ async function signUpWithDiscord() {
             <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
             <Button expand variant="fill" :loading="loading" :disabled="!email" @click="signInWithOtp">
               Sign up
-              <template #end>
-                <Icon name="ph:sign-in" color="white" />
-              </template>
             </Button>
             <p class="text-xxs text-color-lighter text-center">
               By signing up you agree to our <NuxtLink to="/legal/terms">

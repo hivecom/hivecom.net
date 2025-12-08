@@ -409,9 +409,6 @@ onMounted(() => {
               @click="signIn"
             >
               Sign in
-              <template #end>
-                <Icon name="ph:sign-in" class="color-text-black" />
-              </template>
             </Button>
             <Alert v-if="showEmailNotice" filled variant="info">
               <p class="text-s">

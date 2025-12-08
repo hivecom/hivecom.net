@@ -116,7 +116,7 @@ const containerStyle = computed(() => ({
   top: 12%;
   background: radial-gradient(circle, rgba(144, 255, 39, 0.55), rgba(0, 0, 0, 0.04));
   opacity: 0.72;
-  animation: drift-a 18s ease-in-out infinite;
+  animation: drift-a 21.6s ease-in-out infinite;
 }
 
 .orb-b {
@@ -125,7 +125,7 @@ const containerStyle = computed(() => ({
   right: 6%;
   bottom: 8%;
   background: radial-gradient(circle, rgba(119, 255, 0, 0.58), rgba(0, 0, 0, 0.05));
-  animation: drift-b 22s ease-in-out infinite;
+  animation: drift-b 26.4s ease-in-out infinite;
   opacity: 0.92;
 }
 
@@ -135,7 +135,7 @@ const containerStyle = computed(() => ({
   left: 30%;
   bottom: 18%;
   background: radial-gradient(circle, rgba(105, 185, 117, 0.65), rgba(0, 0, 0, 0.08));
-  animation: drift-c 20s ease-in-out infinite;
+  animation: drift-c 24s ease-in-out infinite;
   opacity: 0.92;
 }
 
@@ -145,7 +145,7 @@ const containerStyle = computed(() => ({
   right: 18%;
   top: 18%;
   background: radial-gradient(circle, rgba(120, 252, 160, 0.7), rgba(255, 255, 255, 0.08));
-  animation: drift-d 24s ease-in-out infinite;
+  animation: drift-d 28.8s ease-in-out infinite;
   opacity: 0.96;
 }
 
@@ -155,7 +155,7 @@ const containerStyle = computed(() => ({
   left: 18%;
   bottom: 8%;
   background: radial-gradient(circle, rgba(0, 255, 185, 0.6), rgba(0, 0, 0, 0.06));
-  animation: drift-e 26s ease-in-out infinite;
+  animation: drift-e 31.2s ease-in-out infinite;
   opacity: 0.96;
 }
 
@@ -165,7 +165,7 @@ const containerStyle = computed(() => ({
   left: 44%;
   top: 8%;
   background: radial-gradient(circle, rgba(180, 255, 140, 0.68), rgba(0, 0, 0, 0.05));
-  animation: drift-f 24s ease-in-out infinite;
+  animation: drift-f 28.8s ease-in-out infinite;
   opacity: 0.94;
 }
 

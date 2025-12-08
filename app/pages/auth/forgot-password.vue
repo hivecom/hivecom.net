@@ -63,10 +63,7 @@ onMounted(() => {
           <Flex x-center y-center column gap="l" class="py-l">
             <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
             <Button expand variant="fill" :loading="loading" :disabled="!email" @click="resetPassword">
-              Reset Password
-              <template #end>
-                <Icon name="ph:envelope" color="white" />
-              </template>
+              Send password reset link
             </Button>
             <Alert v-if="showEmailNotice" filled variant="info">
               <p class="text-s">
