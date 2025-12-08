@@ -24,11 +24,10 @@ const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId() // Use helper to get ID from JWT claims
 type ProfileRecord = Tables<'profiles'>
-type TeamSpeakIdentityRecord = NonNullable<ProfileRecord['teamspeak_identities']>[number]
-type ProfileRecordWithReadonlyCollections = Omit<ProfileRecord, 'badges' | 'teamspeak_identities'> & {
+
+type ProfileRecordInput = ProfileRecord | (Omit<ProfileRecord, 'badges'> & {
   badges: ReadonlyArray<ProfileRecord['badges'][number]>
-  teamspeak_identities: ReadonlyArray<TeamSpeakIdentityRecord> | null
-}
+})
 
 const profile = ref<ProfileRecord>()
 const loading = ref(true)
@@ -46,11 +45,10 @@ const receivedFriendshipId = ref<number | null>(null)
 // Add refresh functionality for avatar updates
 const refreshTrigger = ref(0)
 
-function cloneProfileRecord(record: ProfileRecord | ProfileRecordWithReadonlyCollections): ProfileRecord {
+function cloneProfileRecord(record: ProfileRecordInput): ProfileRecord {
   return {
     ...record,
     badges: [...record.badges],
-    teamspeak_identities: record.teamspeak_identities ? [...record.teamspeak_identities] : [],
   }
 }
 
@@ -226,10 +224,13 @@ const {
   },
 )
 
+const hydratedProfileData = computed<ProfileRecord | null>(() => profileData.value as ProfileRecord | null)
+
 // Set profile from cached data
-watch(profileData, (newData) => {
+watch(hydratedProfileData, (newData) => {
   if (newData) {
-    profile.value = cloneProfileRecord(newData)
+    const hydratedProfile = cloneProfileRecord(newData as ProfileRecordInput)
+    profile.value = hydratedProfile
     // Check friendship status after profile is loaded
     checkFriendshipStatus()
   }

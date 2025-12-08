@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { Tables, TeamSpeakIdentityRecord } from '@/types/database.types'
+import type { Tables } from '@/types/database.types'
+import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 import { Alert, Badge, Button, Flex, Input, Modal, pushToast, Select } from '@dolanske/vui'
 import { computed, reactive, ref, watch } from 'vue'
 import constants from '~~/constants.json'
+import { identityKey, normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
 
 interface SelectOption {
   label: string
@@ -67,7 +69,7 @@ const localIdentities = ref<TeamSpeakIdentityRecord[]>([])
 const unlinking = reactive<Record<string, boolean>>({})
 
 watch(() => props.profile?.teamspeak_identities, (identities) => {
-  localIdentities.value = identities ?? []
+  localIdentities.value = normalizeTeamSpeakIdentities(identities)
 }, { immediate: true })
 
 watch(teamspeakServers, (servers) => {
@@ -253,7 +255,7 @@ async function handleConfirm() {
       groupsAssigned: data.groupsAssigned ?? [],
       assignmentSkippedReason: data.assignmentSkippedReason,
     }
-    localIdentities.value = data.identities ?? localIdentities.value
+    localIdentities.value = normalizeTeamSpeakIdentities(data.identities ?? localIdentities.value)
     step.value = 'success'
     pushToast('TeamSpeak identity linked successfully.')
     emit('linked')
@@ -264,10 +266,6 @@ async function handleConfirm() {
   finally {
     confirmLoading.value = false
   }
-}
-
-function identityKey(identity: TeamSpeakIdentityRecord) {
-  return `${identity.serverId}:${identity.uniqueId}`
 }
 
 async function handleUnlink(identity: TeamSpeakIdentityRecord) {
@@ -291,7 +289,7 @@ async function handleUnlink(identity: TeamSpeakIdentityRecord) {
     if (!data)
       throw new Error('No response from unlink function.')
 
-    localIdentities.value = data.identities ?? []
+    localIdentities.value = normalizeTeamSpeakIdentities(data.identities ?? [])
     pushToast('TeamSpeak identity unlinked.')
     emit('linked')
     if (localIdentities.value.length === 0)
@@ -325,7 +323,7 @@ async function handleUnlinkAll() {
     if (!data)
       throw new Error('No response from unlink function.')
 
-    localIdentities.value = data.identities ?? []
+    localIdentities.value = normalizeTeamSpeakIdentities(data.identities ?? [])
     pushToast('All TeamSpeak identities unlinked.')
     emit('linked')
     resetFlow('request')
@@ -467,7 +465,7 @@ function safeParseJson(input: string): unknown {
                     </Button>
                   </Flex>
                   <span class="text-xs text-color-lighter">
-                    Linked {{ new Date(identity.linkedAt).toLocaleString() }}
+                    Linked {{ identity.linkedAt ? new Date(identity.linkedAt).toLocaleString() : 'time unknown' }}
                   </span>
                 </Flex>
               </li>

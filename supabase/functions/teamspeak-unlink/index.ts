@@ -1,7 +1,9 @@
 import { createClient, type User } from "@supabase/supabase-js";
 import type { Tables } from "database-types";
+import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createPublicServiceRoleClient, type PublicServiceClient } from "../_shared/serviceRoleClients.ts";
+import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
 
 interface RequestPayload {
   uniqueId?: string;
@@ -9,7 +11,7 @@ interface RequestPayload {
 }
 
 type ProfileRecord = Pick<Tables<"profiles">, "id" | "teamspeak_identities">;
-type IdentityRecord = ProfileRecord["teamspeak_identities"][number];
+type IdentityRecord = TeamSpeakIdentityRecord;
 
 class HttpError extends Error {
   constructor(
@@ -87,7 +89,7 @@ function sanitizeUniqueId(value?: string): string {
 async function updateProfileIdentities(client: PublicServiceClient, userId: string, identities: IdentityRecord[]) {
   const { error } = await client
     .from("profiles")
-    .update({ teamspeak_identities: identities })
+    .update({ teamspeak_identities: identities as unknown as Tables<"profiles">["teamspeak_identities"] })
     .eq("id", userId);
 
   if (error) {
@@ -135,7 +137,7 @@ Deno.serve(async (req) => {
       throw new HttpError(404, "Profile not found for the authenticated user");
     }
 
-    const existing: IdentityRecord[] = profile.teamspeak_identities ?? [];
+    const existing: IdentityRecord[] = normalizeTeamSpeakIdentities(profile.teamspeak_identities);
     let removed: IdentityRecord[] = [];
     let updated: IdentityRecord[] = existing;
 

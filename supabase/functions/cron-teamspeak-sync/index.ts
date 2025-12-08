@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { TeamSpeakClient } from "node-ts/lib/node-ts.js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
 import { parseEnvMap } from "../_shared/env.ts";
+import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
 import type { Database, Tables } from "database-types";
 
 interface TeamSpeakServerDefinition {
@@ -470,7 +471,7 @@ async function loadProfileMap(): Promise<Map<string, Tables<"profiles">>> {
 
   const map = new Map<string, Tables<"profiles">>();
   for (const row of data ?? []) {
-    const identities = (row as Tables<"profiles">).teamspeak_identities ?? [];
+    const identities = normalizeTeamSpeakIdentities((row as Tables<"profiles">).teamspeak_identities);
     for (const identity of identities) {
       map.set(`${identity.serverId}:${identity.uniqueId}`, row as Tables<"profiles">);
     }

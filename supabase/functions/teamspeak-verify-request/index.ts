@@ -1,6 +1,7 @@
 import * as constants from "constants" with { type: "json" };
 import { createClient, type User } from "@supabase/supabase-js";
 import type { Tables } from "database-types";
+import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
 import {
   TeamSpeakClient,
   TextMessageTargetMode,
@@ -13,6 +14,7 @@ import {
   type PublicServiceClient,
 } from "../_shared/serviceRoleClients.ts";
 import { parseEnvMap } from "../_shared/env.ts";
+import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
 
 interface RequestPayload {
   uniqueId?: string;
@@ -62,8 +64,8 @@ const credentials: CredentialsMap = {
   passwords: parseEnvMap(Deno.env.get("TEAMSPEAK_QUERY_PASSWORDS")),
 };
 
-type ProfileRecord = Pick<Tables<"profiles">, "id" | "username" | "banned">;
-type IdentityRecord = Tables<"profiles">["teamspeak_identities"][number];
+type IdentityRecord = TeamSpeakIdentityRecord;
+type ProfileRecord = Pick<Tables<"profiles">, "id" | "username" | "banned" | "teamspeak_identities">;
 
 class HttpError extends Error {
   constructor(
@@ -109,7 +111,7 @@ Deno.serve(async (req) => {
       throw new HttpError(403, "Banned accounts cannot link TeamSpeak identities");
     }
 
-    const existingIdentities = profile.teamspeak_identities ?? [];
+    const existingIdentities = normalizeTeamSpeakIdentities(profile.teamspeak_identities);
     const isAlreadyLinked = existingIdentities.some((identity: IdentityRecord) =>
       identity.serverId === server.id && identity.uniqueId === uniqueId
     );
@@ -217,7 +219,7 @@ async function requireAuthenticatedUser(req: Request): Promise<User> {
   return data.user;
 }
 
-async function fetchProfile(client: PublicServiceClient, userId: string): Promise<(ProfileRecord & { teamspeak_identities: IdentityRecord[] | null }) | null> {
+async function fetchProfile(client: PublicServiceClient, userId: string): Promise<ProfileRecord | null> {
   const { data, error } = await client
     .from("profiles")
     .select("id, username, banned, teamspeak_identities")
@@ -229,7 +231,7 @@ async function fetchProfile(client: PublicServiceClient, userId: string): Promis
     throw new HttpError(500, "Unable to load profile for verification");
   }
 
-  return data as (ProfileRecord & { teamspeak_identities: IdentityRecord[] | null }) | null;
+  return data ?? null;
 }
 
 async function ensureUniqueIdentity(client: PublicServiceClient, args: { uniqueId: string; serverId: string; userId: string }) {
@@ -245,8 +247,8 @@ async function ensureUniqueIdentity(client: PublicServiceClient, args: { uniqueI
 
   const records = (data ?? []) as Array<Pick<Tables<"profiles">, "id" | "teamspeak_identities">>;
   const conflict = records.find((record) => {
-    const identities = record.teamspeak_identities ?? [];
-    return identities.some((identity) => identity.serverId === args.serverId && identity.uniqueId === args.uniqueId);
+    const identities = normalizeTeamSpeakIdentities(record.teamspeak_identities);
+    return identities.some((identity: IdentityRecord) => identity.serverId === args.serverId && identity.uniqueId === args.uniqueId);
   });
 
   if (conflict && conflict.id !== args.userId) {

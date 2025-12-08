@@ -1,6 +1,7 @@
 import * as constants from "constants" with { type: "json" };
 import { createClient, type User } from "@supabase/supabase-js";
 import type { Database, Tables } from "database-types";
+import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
 import { TeamSpeakClient } from "node-ts/lib/node-ts.js";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
@@ -10,6 +11,7 @@ import {
   type PublicServiceClient,
 } from "../_shared/serviceRoleClients.ts";
 import { parseEnvMap } from "../_shared/env.ts";
+import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
 
 interface RequestPayload {
   uniqueId?: string;
@@ -62,7 +64,7 @@ type ProfileRecord = Pick<
   Tables<"profiles">,
   "id" | "username" | "banned" | "supporter_patreon" | "supporter_lifetime" | "teamspeak_identities"
 >;
-type IdentityRecord = ProfileRecord["teamspeak_identities"][number];
+type IdentityRecord = TeamSpeakIdentityRecord;
 type TokenRecord = Database["private"]["Tables"]["teamspeak_tokens"]["Row"];
 type RoleRecord = Tables<"user_roles">;
 
@@ -219,7 +221,7 @@ function upsertIdentity(existing: IdentityRecord[], next: IdentityRecord): Ident
 async function updateProfileIdentities(client: PublicServiceClient, userId: string, identities: IdentityRecord[]) {
   const { error } = await client
     .from("profiles")
-    .update({ teamspeak_identities: identities })
+    .update({ teamspeak_identities: identities as unknown as Tables<"profiles">["teamspeak_identities"] })
     .eq("id", userId);
 
   if (error) {
@@ -457,7 +459,8 @@ Deno.serve(async (req) => {
       linkedAt: new Date().toISOString(),
     };
 
-    const updatedIdentities = upsertIdentity(profile.teamspeak_identities ?? [], identityEntry);
+    const existingIdentities = normalizeTeamSpeakIdentities(profile.teamspeak_identities);
+    const updatedIdentities = upsertIdentity(existingIdentities, identityEntry);
 
     await updateProfileIdentities(supabaseAdmin, user.id, updatedIdentities);
 
