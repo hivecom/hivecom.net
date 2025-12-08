@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Alert, Button, Card, Flex, Input } from '@dolanske/vui'
+import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import '@/assets/elements/auth.scss'
 
 const supabase = useSupabaseClient()
@@ -8,6 +10,9 @@ const err = ref('')
 const loading = ref(false)
 const discordLoading = ref(false)
 const showEmailNotice = ref(false)
+const isBelowSm = useBreakpoint('<sm')
+const metaballHeight = computed(() => (isBelowSm.value ? '100vh' : 'min(720px, 96vh)'))
+const metaballWidth = computed(() => (isBelowSm.value ? '100vw' : 'min(520px, 96vw)'))
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -76,56 +81,58 @@ async function signUpWithDiscord() {
 </script>
 
 <template>
-  <Flex y-center x-center class="flex-1 w-100" column>
-    <Card class="login-card" separators>
-      <template #header>
-        <h4>Sign up</h4>
-      </template>
-      <div class="container container-xs">
-        <Flex x-center y-center column :style="{ paddingBlock: '64px' }" gap="l">
-          <Flex column gap="s" class="w-100">
-            <Button variant="gray" :loading="discordLoading" class="w-100" @click="signUpWithDiscord">
-              <Flex y-center gap="s">
-                <Icon name="ph:discord-logo" />
-                Sign-up through Discord
-              </Flex>
+  <Flex y-center x-center class="sign-in-page" column expand>
+    <MetaballContainer :width="metaballWidth" :height="metaballHeight" min-height="520px">
+      <Card class="login-card" separators>
+        <template #header>
+          <h4>Sign up</h4>
+        </template>
+        <div class="container container-xs">
+          <Flex x-center y-center column :style="{ paddingBlock: '64px' }" gap="l">
+            <Flex column gap="s" class="w-100">
+              <Button variant="gray" :loading="discordLoading" class="w-100" @click="signUpWithDiscord">
+                <Flex y-center gap="s">
+                  <Icon name="ph:discord-logo" />
+                  Sign-up through Discord
+                </Flex>
+              </Button>
+            </Flex>
+            <Separator>or</Separator>
+            <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
+            <Button expand variant="fill" :loading="loading" :disabled="!email" @click="signInWithOtp">
+              Sign up
+            </Button>
+            <p class="text-xxs text-color-lighter text-center">
+              By signing up you agree to our <NuxtLink to="/legal/terms">
+                Terms of Service
+              </NuxtLink> &amp; <NuxtLink to="/legal/privacy">
+                Privacy Policy
+              </NuxtLink>.
+            </p>
+            <Alert v-if="showEmailNotice" filled variant="info">
+              An email with a sign-up link has been sent to your inbox! (check spam just in case)
+            </Alert>
+            <Alert v-if="err" variant="danger" filled>
+              {{ err }}
+            </Alert>
+            <Button v-if="isDev" variant="link" @click="skipToConfirm">
+              Skip to Confirm
+              <template #end>
+                <Icon name="ph:arrow-right" />
+              </template>
             </Button>
           </Flex>
-          <Separator>or</Separator>
-          <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
-          <Button expand variant="fill" :loading="loading" :disabled="!email" @click="signInWithOtp">
-            Sign up
-            <template #end>
-              <Icon name="ph:sign-in" color="white" />
-            </template>
-          </Button>
-          <p class="text-xxs text-color-lighter text-center">
-            By signing up you agree to our <NuxtLink to="/legal/terms">
-              Terms of Service
-            </NuxtLink> &amp; <NuxtLink to="/legal/privacy">
-              Privacy Policy
-            </NuxtLink>.
-          </p>
-          <Alert v-if="showEmailNotice" filled variant="info">
-            An email with a sign-up link has been sent to your inbox! (check spam just in case)
-          </Alert>
-          <Alert v-if="err" variant="danger" filled>
-            {{ err }}
-          </Alert>
-          <Button v-if="isDev" variant="link" @click="skipToConfirm">
-            Skip to Confirm
-            <template #end>
-              <Icon name="ph:arrow-right" />
-            </template>
-          </Button>
-        </Flex>
-      </div>
-      <template #footer>
-        <NuxtLink to="/auth/sign-in" class="auth-link text-color-accent" aria-label="Sign in to existing account">
-          Already have an account? Click to sign in!
-        </NuxtLink>
-      </template>
-    </Card>
+        </div>
+        <template #footer>
+          <NuxtLink to="/auth/sign-in" class="auth-link text-color-accent" aria-label="Sign in to existing account">
+            Already have an account? Click to sign in!
+          </NuxtLink>
+        </template>
+      </Card>
+    </MetaballContainer>
+
+    <div class="animated-blob first" />
+    <div class="animated-blob second" />
   </Flex>
 </template>
 

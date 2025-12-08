@@ -45,6 +45,7 @@ html,
 body {
   font-size: 63.5%;
   font-size: var(--font-size-l);
+  background: none;
 }
 
 a {
@@ -116,6 +117,7 @@ table td {
 }
 
 @include meta.load-css('./utilities.scss');
+@include meta.load-css('./pages/login.scss');
 @include meta.load-css('./elements/auth.scss');
 @include meta.load-css('./elements/main.scss');
 @include meta.load-css('./elements/page.scss');

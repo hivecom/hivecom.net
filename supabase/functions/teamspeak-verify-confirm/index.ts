@@ -1,6 +1,7 @@
-import * as constants from "app-constants" with { type: "json" };
+import * as constants from "constants" with { type: "json" };
 import { createClient, type User } from "@supabase/supabase-js";
 import type { Database, Tables } from "database-types";
+import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
 import { TeamSpeakClient } from "node-ts/lib/node-ts.js";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
@@ -10,6 +11,7 @@ import {
   type PublicServiceClient,
 } from "../_shared/serviceRoleClients.ts";
 import { parseEnvMap } from "../_shared/env.ts";
+import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
 
 interface RequestPayload {
   uniqueId?: string;
@@ -62,7 +64,7 @@ type ProfileRecord = Pick<
   Tables<"profiles">,
   "id" | "username" | "banned" | "supporter_patreon" | "supporter_lifetime" | "teamspeak_identities"
 >;
-type IdentityRecord = ProfileRecord["teamspeak_identities"][number];
+type IdentityRecord = TeamSpeakIdentityRecord;
 type TokenRecord = Database["private"]["Tables"]["teamspeak_tokens"]["Row"];
 type RoleRecord = Tables<"user_roles">;
 
@@ -219,7 +221,7 @@ function upsertIdentity(existing: IdentityRecord[], next: IdentityRecord): Ident
 async function updateProfileIdentities(client: PublicServiceClient, userId: string, identities: IdentityRecord[]) {
   const { error } = await client
     .from("profiles")
-    .update({ teamspeak_identities: identities })
+    .update({ teamspeak_identities: identities as unknown as Tables<"profiles">["teamspeak_identities"] })
     .eq("id", userId);
 
   if (error) {
@@ -265,12 +267,6 @@ async function assignServerGroups(args: {
       throw new HttpError(500, `Server "${args.server.id}" is missing routing information`);
     }
 
-    if (args.server.botNickname) {
-      await sendRawCommand(client, "clientupdate", {
-        client_nickname: buildUniqueNickname(args.server.botNickname),
-      });
-    }
-
     const dbLookup = await sendRawCommand(client, "clientgetdbidfromuid", { cluid: args.uniqueId }) as {
       response?: Array<{ cldbid?: number | string }>;
     };
@@ -311,7 +307,7 @@ function computeTargetGroupIds(
 ): number[] {
   const groups = new Set<number>();
 
-  if (server.roleRegisteredGroupId) {
+  if (server.roleRegisteredGroupId && role !== "admin" && role !== "moderator") {
     groups.add(server.roleRegisteredGroupId);
   }
 
@@ -334,12 +330,22 @@ function computeTargetGroupIds(
 
 function isAlreadyAssignedError(error: unknown): boolean {
   if (!error) return false;
+
+  if (typeof error === "object" && error !== null) {
+    const typed = error as { error?: { id?: number; msg?: string }; message?: string };
+    if (typed.error?.id === 2561) return true; // duplicate entry
+    if (typed.error?.id === 2568) return true; // already in server group
+    if (typeof typed.message === "string" && /already\s+in\s+servergroup/i.test(typed.message)) {
+      return true;
+    }
+  }
+
   const message = typeof error === "string"
     ? error
     : error instanceof Error
       ? error.message
       : undefined;
-  return Boolean(message && /already\s+in\s+servergroup|error\s+id=2568/i.test(message));
+  return Boolean(message && /already\s+in\s+servergroup|error\s+id=(2561|2568)/i.test(message));
 }
 
 async function hashToken(token: string): Promise<string> {
@@ -369,15 +375,9 @@ function resolveServer(preferredId?: string): TeamSpeakServerDefinition {
 
 async function shutdownClient(client: TeamSpeakClient) {
   try {
-    await client.send("logout");
-  } catch (error) {
-    console.warn("Failed to logout from TeamSpeak", error);
-  }
-
-  try {
     await sendRawCommand(client, "quit");
-  } catch (_) {
-    // The server closes the socket immediately after quit; ignore errors here.
+  } catch (error) {
+    console.warn("Failed to quit TeamSpeak session", error);
   }
 }
 
@@ -391,12 +391,6 @@ function sendRawCommand(
   };
 
   return untypedClient.send(cmd, params);
-}
-
-function buildUniqueNickname(base: string): string {
-  const trimmed = base.trim();
-  const suffix = Math.floor(Math.random() * 9000 + 1000).toString();
-  return `${trimmed} #${suffix}`;
 }
 
 function jsonResponse(status: number, payload: Record<string, unknown>) {
@@ -465,7 +459,8 @@ Deno.serve(async (req) => {
       linkedAt: new Date().toISOString(),
     };
 
-    const updatedIdentities = upsertIdentity(profile.teamspeak_identities ?? [], identityEntry);
+    const existingIdentities = normalizeTeamSpeakIdentities(profile.teamspeak_identities);
+    const updatedIdentities = upsertIdentity(existingIdentities, identityEntry);
 
     await updateProfileIdentities(supabaseAdmin, user.id, updatedIdentities);
 

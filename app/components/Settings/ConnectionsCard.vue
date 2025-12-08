@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Card, Flex, pushToast } from '@dolanske/vui'
-import { computed, reactive, ref } from 'vue'
+import { Badge, Button, Card, Checkbox, Flex, pushToast } from '@dolanske/vui'
+import { reactive, ref, watch } from 'vue'
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 
 const props = defineProps<{ profile: Tables<'profiles'> | null }>()
@@ -14,14 +14,20 @@ const disconnectLoading = reactive({
   discord: false,
 })
 
-const showTeamSpeakModal = ref(false)
-const teamSpeakIdentities = computed(() => props.profile?.teamspeak_identities ?? [])
-const teamSpeakPreview = computed(() => teamSpeakIdentities.value.slice(0, 2))
+const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Settings/ConnectPatreon.vue'))
+const ConnectDiscord = defineAsyncComponent(() => import('@/components/Settings/ConnectDiscord.vue'))
+const ConnectSteam = defineAsyncComponent(() => import('@/components/Settings/ConnectSteam.vue'))
+const ConnectTeamspeak = defineAsyncComponent(() => import('@/components/Settings/ConnectTeamSpeak.vue'))
 
-const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Profile/ConnectPatreon.vue'))
-const ConnectDiscord = defineAsyncComponent(() => import('@/components/Profile/ConnectDiscord.vue'))
-const ConnectSteam = defineAsyncComponent(() => import('@/components/Profile/ConnectSteam.vue'))
-const TeamSpeakLinkModal = defineAsyncComponent(() => import('@/components/Settings/TeamSpeakLinkModal.vue'))
+const richPresenceEnabled = ref(!(props.profile?.rich_presence_disabled ?? false))
+const richPresenceLoading = ref(false)
+
+watch(
+  () => props.profile?.rich_presence_disabled,
+  (disabled) => {
+    richPresenceEnabled.value = !(disabled ?? false)
+  },
+)
 
 function showErrorToast(message: string) {
   pushToast('', {
@@ -109,6 +115,41 @@ async function disconnectDiscord() {
   }
   finally {
     disconnectLoading.discord = false
+  }
+}
+
+async function updateRichPresence(enabled: boolean) {
+  if (richPresenceLoading.value)
+    return
+
+  const previousValue = richPresenceEnabled.value
+  richPresenceEnabled.value = enabled
+  richPresenceLoading.value = true
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error)
+      throw error
+    if (!user)
+      throw new Error('You must be signed in to update rich presence.')
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ rich_presence_disabled: !enabled })
+      .eq('id', user.id)
+
+    if (updateError)
+      throw updateError
+
+    emit('updated')
+  }
+  catch (error) {
+    richPresenceEnabled.value = previousValue
+    const message = error instanceof Error ? error.message : 'Unable to update rich presence preference.'
+    showErrorToast(message)
+  }
+  finally {
+    richPresenceLoading.value = false
   }
 }
 </script>
@@ -219,53 +260,50 @@ async function disconnectDiscord() {
         <Flex x-between y-center expand>
           <Flex gap="m" y-center class="teamspeak-copy">
             <div class="account-icon teamspeak">
-              <Icon name="mdi:account-voice" size="20" />
+              <Icon name="mdi:teamspeak" size="20" />
             </div>
             <div>
               <strong>TeamSpeak</strong>
               <p class="text-xs text-color-lighter">
-                Link your TeamSpeak unique IDs to unlock the right server groups.
+                Link your TeamSpeak identities to receive server access and roles
               </p>
-
-              <div class="teamspeak-identities" aria-live="polite">
-                <template v-if="teamSpeakIdentities.length">
-                  <ul>
-                    <li v-for="identity in teamSpeakPreview" :key="`${identity.serverId}-${identity.uniqueId}`">
-                      <Badge variant="info" size="s">
-                        {{ identity.serverId.toUpperCase() }}
-                      </Badge>
-                      <code>{{ identity.uniqueId }}</code>
-                    </li>
-                  </ul>
-                  <p v-if="teamSpeakIdentities.length > teamSpeakPreview.length" class="text-xxs text-color-lighter">
-                    + {{ teamSpeakIdentities.length - teamSpeakPreview.length }} more linked
-                  </p>
-                </template>
-                <p v-else class="text-xxs text-color-lighter">
-                  No identities linked yet.
-                </p>
-              </div>
             </div>
           </Flex>
 
           <div class="account-status teamspeak-actions">
-            <Badge :variant="teamSpeakIdentities.length ? 'success' : 'warning'" size="s">
-              <Icon :name="teamSpeakIdentities.length ? 'ph:check' : 'ph:warning'" />
-              {{ teamSpeakIdentities.length ? 'Linked' : 'Not linked' }}
-            </Badge>
-            <Button variant="accent" size="s" class="teamspeak-manage" @click="showTeamSpeakModal = true">
-              Manage Identities
-            </Button>
+            <ClientOnly>
+              <ConnectTeamspeak :profile="props.profile" @linked="emit('updated')" />
+            </ClientOnly>
+          </div>
+        </Flex>
+      </Flex>
+
+      <!-- Rich presence toggle -->
+      <Flex expand class="account-connection-row">
+        <Flex x-between y-center expand>
+          <Flex gap="m" y-center>
+            <div class="account-icon presence">
+              <Icon name="ph:activity" size="20" />
+            </div>
+            <div>
+              <strong>Rich presence</strong>
+              <p class="text-xs text-color-lighter">
+                Allow fetching and displaying information from any connected services
+              </p>
+            </div>
+          </Flex>
+
+          <div class="account-status presence-toggle">
+            <Checkbox
+              :model-value="richPresenceEnabled"
+              :disabled="richPresenceLoading"
+              @update:model-value="updateRichPresence"
+            />
           </div>
         </Flex>
       </Flex>
     </Flex>
   </Card>
-  <TeamSpeakLinkModal
-    v-model:open="showTeamSpeakModal"
-    :profile="props.profile"
-    @linked="emit('updated')"
-  />
 </template>
 
 <style scoped>
@@ -284,7 +322,10 @@ async function disconnectDiscord() {
   height: 40px;
   border-radius: var(--border-radius-m);
   flex-shrink: 0;
-  color: white;
+
+  .iconify {
+    color: white;
+  }
 }
 
 .account-icon.patreon {
@@ -300,7 +341,14 @@ async function disconnectDiscord() {
 }
 
 .account-icon.teamspeak {
-  background: linear-gradient(135deg, #1f8feb 0%, #00b3ff 100%);
+  background: linear-gradient(135deg, #13202b 0%, #2a475e 100%);
+}
+
+.account-icon.presence {
+  .iconify {
+    color: var(--color-text-invert);
+  }
+  background: var(--color-accent);
 }
 
 .account-status {
@@ -333,5 +381,12 @@ async function disconnectDiscord() {
 
 .teamspeak-manage {
   width: max-content;
+}
+
+.presence-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
 }
 </style>

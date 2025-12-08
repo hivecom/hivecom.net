@@ -1,4 +1,4 @@
-import * as constants from "app-constants" with { type: "json" };
+import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
 import { Database, Tables } from "database-types";

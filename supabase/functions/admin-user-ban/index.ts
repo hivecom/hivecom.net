@@ -10,23 +10,14 @@ interface BanUserRequest {
   banReason?: string; // Optional reason for the ban
 }
 
-type AuthSchema = {
-  auth: {
-    Tables: {
-      sessions: {
-        Row: {
-          id: string;
-          user_id: string;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
+type DatabaseWithSessionRpc = Database & {
+  public: Database["public"] & {
+    Functions: Database["public"]["Functions"] & {
+      admin_delete_user_sessions: {
+        Args: { target_user: string };
+        Returns: void;
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
   };
 };
 
@@ -150,7 +141,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Create a Supabase client with service role key for admin operations
-    const supabaseClient = createClient<Database>(
+    const supabaseClient = createClient<DatabaseWithSessionRpc>(
       supabaseUrl,
       supabaseServiceRoleKey,
     );
@@ -195,10 +186,8 @@ Deno.serve(async (req: Request) => {
     // Determine ban start and end times
     let banStart: string | null = null;
     let banEnd: string | null = null;
-    let banned = false;
 
     if (banDuration !== 'none') {
-      banned = true;
       banStart = new Date().toISOString();
 
       if (banDuration !== 'permanent') {
@@ -230,36 +219,19 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Update the profiles table with ban information
-    const { error: profileUpdateError } = await supabaseClient
-      .from('profiles')
-      .update({
-        banned,
-        ban_reason: banDuration === 'none' ? null : (banReason || null),
-        ban_start: banStart,
-        ban_end: banEnd,
-      })
-      .eq('id', userId);
-
-    if (profileUpdateError) {
-      console.error("Error updating profile ban status:", profileUpdateError);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Failed to update profile ban status",
-          details: profileUpdateError.message,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        },
-      );
-    }
+    const banMetadata = {
+      ban_reason: banDuration === 'none' ? null : (banReason || null),
+      ban_start: banDuration === 'none' ? null : banStart,
+      ban_end: banDuration === 'none' ? null : banEnd,
+    };
 
     // Ban the user using Supabase Auth Admin API
     const { error: banError } = await supabaseClient.auth.admin.updateUserById(
       userId,
-      { ban_duration: normalizedBanDuration }
+      {
+        ban_duration: normalizedBanDuration,
+        user_metadata: banMetadata,
+      },
     );
 
     if (banError) {
@@ -278,28 +250,22 @@ Deno.serve(async (req: Request) => {
     }
 
     if (banDuration !== 'none') {
-      const authSchemaClient = createClient<AuthSchema>(
-        supabaseUrl,
-        supabaseServiceRoleKey,
-        { db: { schema: "auth" } },
+      // Call security-definer RPC to purge sessions/refresh tokens and force immediate sign-out
+      const { error: sessionPurgeError } = await supabaseClient.rpc(
+        "admin_delete_user_sessions",
+        { target_user: userId },
       );
 
-      // Removing auth.sessions rows forces refresh tokens to become invalid immediately.
-      const { error: sessionDeleteError } = await authSchemaClient
-        .from("sessions")
-        .delete()
-        .eq("user_id", userId);
-
-      if (sessionDeleteError) {
+      if (sessionPurgeError) {
         console.error(
           "Error destroying active sessions for banned user:",
-          sessionDeleteError,
+          sessionPurgeError,
         );
         return new Response(
           JSON.stringify({
             success: false,
             error: "Failed to destroy active sessions for banned user",
-            details: sessionDeleteError.message,
+            details: sessionPurgeError.message,
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1,6 +1,7 @@
-import * as constants from "app-constants" with { type: "json" };
+import * as constants from "constants" with { type: "json" };
 import { createClient, type User } from "@supabase/supabase-js";
 import type { Tables } from "database-types";
+import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
 import {
   TeamSpeakClient,
   TextMessageTargetMode,
@@ -13,6 +14,7 @@ import {
   type PublicServiceClient,
 } from "../_shared/serviceRoleClients.ts";
 import { parseEnvMap } from "../_shared/env.ts";
+import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
 
 interface RequestPayload {
   uniqueId?: string;
@@ -62,7 +64,8 @@ const credentials: CredentialsMap = {
   passwords: parseEnvMap(Deno.env.get("TEAMSPEAK_QUERY_PASSWORDS")),
 };
 
-type ProfileRecord = Pick<Tables<"profiles">, "id" | "username" | "banned">;
+type IdentityRecord = TeamSpeakIdentityRecord;
+type ProfileRecord = Pick<Tables<"profiles">, "id" | "username" | "banned" | "teamspeak_identities">;
 
 class HttpError extends Error {
   constructor(
@@ -107,6 +110,21 @@ Deno.serve(async (req) => {
     if (profile.banned) {
       throw new HttpError(403, "Banned accounts cannot link TeamSpeak identities");
     }
+
+    const existingIdentities = normalizeTeamSpeakIdentities(profile.teamspeak_identities);
+    const isAlreadyLinked = existingIdentities.some((identity: IdentityRecord) =>
+      identity.serverId === server.id && identity.uniqueId === uniqueId
+    );
+
+    if (isAlreadyLinked) {
+      throw new HttpError(400, "This TeamSpeak identity is already linked to your account");
+    }
+
+    await ensureUniqueIdentity(supabaseAdmin, {
+      uniqueId,
+      serverId: server.id,
+      userId: user.id,
+    });
 
     const token = generateVerificationToken();
     const tokenHash = await hashToken(token);
@@ -204,7 +222,7 @@ async function requireAuthenticatedUser(req: Request): Promise<User> {
 async function fetchProfile(client: PublicServiceClient, userId: string): Promise<ProfileRecord | null> {
   const { data, error } = await client
     .from("profiles")
-    .select("id, username, banned")
+    .select("id, username, banned, teamspeak_identities")
     .eq("id", userId)
     .maybeSingle();
 
@@ -214,6 +232,28 @@ async function fetchProfile(client: PublicServiceClient, userId: string): Promis
   }
 
   return data ?? null;
+}
+
+async function ensureUniqueIdentity(client: PublicServiceClient, args: { uniqueId: string; serverId: string; userId: string }) {
+  const { data, error } = await client
+    .from("profiles")
+    .select("id, teamspeak_identities")
+    .not("teamspeak_identities", "is", null);
+
+  if (error) {
+    console.error("Failed to check existing TeamSpeak identities", error);
+    throw new HttpError(500, "Unable to validate TeamSpeak identity availability");
+  }
+
+  const records = (data ?? []) as Array<Pick<Tables<"profiles">, "id" | "teamspeak_identities">>;
+  const conflict = records.find((record) => {
+    const identities = normalizeTeamSpeakIdentities(record.teamspeak_identities);
+    return identities.some((identity: IdentityRecord) => identity.serverId === args.serverId && identity.uniqueId === args.uniqueId);
+  });
+
+  if (conflict && conflict.id !== args.userId) {
+    throw new HttpError(400, "This TeamSpeak identity is already linked to another account");
+  }
 }
 
 async function persistVerificationToken(args: {
@@ -283,19 +323,10 @@ function buildVerificationMessage(args: {
   token: string;
 }): string {
   const lines = [
-    "[Hivecom] TeamSpeak verification requested",
-    `User: ${args.username}`,
-  ];
-
-  if (args.email) {
-    lines.push(`Email: ${args.email}`);
-  }
-
-  lines.push(
+    `TeamSpeak verification for this identity was requested by ${args.username}${args.email ? ` (${args.email})` : '' }. Enter the following token in the next step of the linking process:`,
     `Token: ${args.token}`,
-    `Enter this token on hivecom.net within ${TOKEN_EXPIRATION_MINUTES} minutes to finish linking.`,
-    "If you did not request this, you can ignore this message.",
-  );
+    `Enter this token on within ${TOKEN_EXPIRATION_MINUTES} minutes to finish linking. If you did not request this, contact an administrator.`,
+  ];
 
   const message = lines.join("\n");
   return message.length > MESSAGE_MAX_LENGTH ? message.slice(0, MESSAGE_MAX_LENGTH) : message;
@@ -344,15 +375,28 @@ async function sendTeamSpeakMessage(args: {
       throw new HttpError(500, `Server "${args.server.id}" is missing routing information`);
     }
 
-    if (args.server.botNickname) {
-      await sendRawCommand(client, "clientupdate", {
-        client_nickname: buildUniqueNickname(args.server.botNickname),
+    let lookup;
+    try {
+      lookup = await sendRawCommand(client, "clientgetids", { cluid: args.uniqueId }) as {
+        response?: Array<{ clid?: number | string }>;
+        error?: { id?: number; msg?: string };
+      };
+    } catch (error) {
+      const tsErrorId = (error as { error?: { id?: number } })?.error?.id ?? (error as { id?: number })?.id;
+      if (tsErrorId === 1281) {
+        throw new HttpError(404, "No TeamSpeak client found for that unique ID on this server", {
+          uniqueId: args.uniqueId,
+        });
+      }
+      throw error;
+    }
+
+    if (lookup?.error?.id === 1281) {
+      throw new HttpError(404, "No TeamSpeak client found for that unique ID on this server", {
+        uniqueId: args.uniqueId,
       });
     }
 
-    const lookup = await sendRawCommand(client, "clientgetids", { cluid: args.uniqueId }) as {
-      response?: Array<{ clid?: number | string }>;
-    };
     const target = lookup.response?.[0];
 
     if (!target?.clid) {
@@ -380,15 +424,9 @@ async function sendTeamSpeakMessage(args: {
 
 async function shutdownClient(client: TeamSpeakClient) {
   try {
-    await client.send("logout");
-  } catch (error) {
-    console.warn("Failed to logout from TeamSpeak", error);
-  }
-
-  try {
     await sendRawCommand(client, "quit");
-  } catch (_) {
-    // The server closes the socket immediately after quit; ignore errors here.
+  } catch (error) {
+    console.warn("Failed to quit TeamSpeak session", error);
   }
 }
 
@@ -402,12 +440,6 @@ function sendRawCommand(
   };
 
   return untypedClient.send(cmd, params);
-}
-
-function buildUniqueNickname(base: string): string {
-  const trimmed = base.trim();
-  const suffix = Math.floor(Math.random() * 9000 + 1000).toString();
-  return `${trimmed} #${suffix}`;
 }
 
 function jsonResponse(status: number, payload: Record<string, unknown>) {

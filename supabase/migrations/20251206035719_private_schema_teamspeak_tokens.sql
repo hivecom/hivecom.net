@@ -13,6 +13,21 @@ CREATE TABLE IF NOT EXISTS private.teamspeak_tokens(
 
 CREATE INDEX IF NOT EXISTS teamspeak_tokens_expires_at_idx ON private.teamspeak_tokens(expires_at);
 
+-- Allow only the service role to access the private schema objects
+GRANT USAGE ON SCHEMA private TO service_role;
+
+GRANT ALL ON ALL TABLES IN SCHEMA private TO service_role;
+
+GRANT ALL ON ALL ROUTINES IN SCHEMA private TO service_role;
+
+GRANT ALL ON ALL SEQUENCES IN SCHEMA private TO service_role;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA private GRANT ALL ON TABLES TO service_role;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA private GRANT ALL ON ROUTINES TO service_role;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA private GRANT ALL ON SEQUENCES TO service_role;
+
 ALTER TABLE private.teamspeak_tokens ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "teamspeak_tokens service role only" ON private.teamspeak_tokens
@@ -23,25 +38,19 @@ CREATE POLICY "teamspeak_tokens service role only" ON private.teamspeak_tokens
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS teamspeak_identities jsonb NOT NULL DEFAULT '[]'::jsonb;
 
-CREATE OR REPLACE FUNCTION public.block_user_teamspeak_identity_update()
-  RETURNS TRIGGER
-  LANGUAGE plpgsql
-  SECURITY DEFINER
-  SET search_path = public
-  AS $$
-BEGIN
-  IF auth.role() IN('anon', 'authenticated') THEN
-    RAISE EXCEPTION 'Only privileged services can change TeamSpeak identities.';
-  END IF;
-  RETURN new;
-END;
-$$;
+-- Preserve the self-update policy name and extend it to forbid changing teamspeak_identities for authenticated users
+DROP POLICY IF EXISTS "Users can UPDATE their information on their profiles" ON public.profiles;
 
-DROP TRIGGER IF EXISTS protect_teamspeak_identities ON public.profiles;
-
-CREATE TRIGGER protect_teamspeak_identities
-  BEFORE UPDATE ON public.profiles
-  FOR EACH ROW
-  WHEN(new.teamspeak_identities IS DISTINCT FROM old.teamspeak_identities)
-  EXECUTE FUNCTION public.block_user_teamspeak_identity_update();
+CREATE POLICY "Users can UPDATE their information on their profiles" ON public.profiles AS permissive
+  FOR UPDATE TO authenticated
+    USING ((auth.uid() = id))
+    WITH CHECK ((auth.uid() = id)
+      AND (NOT (created_at IS DISTINCT FROM created_at))
+      AND (NOT (discord_id IS DISTINCT FROM discord_id))
+      AND (NOT (patreon_id IS DISTINCT FROM patreon_id))
+      AND (NOT (supporter_patreon IS DISTINCT FROM supporter_patreon))
+      AND (NOT (supporter_lifetime IS DISTINCT FROM supporter_lifetime))
+      AND (NOT (steam_id IS DISTINCT FROM steam_id))
+      AND (NOT (badges IS DISTINCT FROM badges))
+      AND (NOT (teamspeak_identities IS DISTINCT FROM teamspeak_identities)));
 

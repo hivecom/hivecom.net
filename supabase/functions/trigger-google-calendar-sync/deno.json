@@ -1,9 +1,11 @@
 {
+  "name": "trigger-google-calendar-sync",
   "imports": {
-    "app-constants": "../../../constants.json",
+    "constants": "../../../constants.json",
     "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
     "database-types": "../../../types/database.types.ts",
-    "googleapis": "npm:googleapis@144.0.0",
-    "google-auth-library": "npm:google-auth-library@9.15.0"
-  }
+    "googleapis": "npm:googleapis@144",
+    "google-auth-library": "npm:google-auth-library@9"
+  },
+  "exports": {}
 }
