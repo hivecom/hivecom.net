@@ -376,9 +376,7 @@ function sendRawCommand(
 
   const hasParams = params && Object.keys(params).length > 0;
   const hasOptions = Array.isArray(options) && options.length > 0;
-
-  if (hasParams && hasOptions) return untypedClient.send(cmd, params, options);
-  if (hasOptions) return untypedClient.send(cmd, options);
+  if (hasOptions) return untypedClient.send(cmd, hasParams ? params : {}, options);
   if (hasParams) return untypedClient.send(cmd, params);
   return untypedClient.send(cmd);
 }
