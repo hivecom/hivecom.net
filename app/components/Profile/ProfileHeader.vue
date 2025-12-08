@@ -178,7 +178,7 @@ function getRoleInfo(role: string | null) {
 <template>
   <Card class="profile-header card-bg" footer-separator>
     <Flex column expand y-center x-center>
-      <Grid gap="l" expand columns="160px 1fr">
+      <Grid gap="xl" expand columns="160px 1fr">
         <!-- Avatar -->
         <div class="profile-avatar">
           <div class="avatar-container">

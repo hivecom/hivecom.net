@@ -150,7 +150,7 @@ function handleRemoveFriend() {
 
     <!-- Action Buttons for friend-ship management -->
 
-    <template #footer>
+    <template v-if="!props.isOwnProfile" #footer>
       <Button
         v-if="canSendFriendRequest"
         variant="accent"
