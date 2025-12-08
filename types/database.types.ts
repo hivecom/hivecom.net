@@ -6,17 +6,57 @@ export type Json
     | { [key: string]: Json | undefined }
     | Json[]
 
-export interface TeamSpeakIdentityRecord {
-  serverId: string
-  uniqueId: string
-  linkedAt: string
-}
-
 export interface Database {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: '13.0.5'
+  }
+  private: {
+    Tables: {
+      teamspeak_tokens: {
+        Row: {
+          attempts: number
+          created_at: string
+          expires_at: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id?: string
+          token_hash?: string
+          unique_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -449,86 +489,99 @@ export interface Database {
         }
         Relationships: []
       }
-      profiles: {
+      presences_discord: {
         Row: {
-          badges: Database['public']['Enums']['profile_badge'][]
-          ban_end: string | null
-          ban_reason: string | null
-          ban_start: string | null
-          banned: boolean
-          birthday: string | null
-          country: string | null
-          created_at: string
-          discord_id: string | null
+          activity_details: string | null
+          activity_ended_at: string | null
+          activity_name: string | null
+          activity_started_at: string | null
+          activity_state: string | null
+          activity_type: string | null
+          details: Json | null
           id: string
-          introduction: string | null
-          last_seen: string
-          markdown: string | null
-          modified_at: string | null
-          modified_by: string | null
-          patreon_id: string | null
-          rich_presence_disabled: boolean
-          steam_id: string | null
-          teamspeak_identities: TeamSpeakIdentityRecord[]
-          supporter_lifetime: boolean
-          supporter_patreon: boolean
-          username: string
-          username_set: boolean
-          website: string | null
+          last_online_at: string | null
+          profile_id: string
+          status: string | null
+          updated_at: string
         }
         Insert: {
-          badges?: Database['public']['Enums']['profile_badge'][]
-          ban_end?: string | null
-          ban_reason?: string | null
-          ban_start?: string | null
-          banned?: boolean
-          birthday?: string | null
-          country?: string | null
-          created_at?: string
-          discord_id?: string | null
-          id: string
-          introduction?: string | null
-          last_seen?: string
-          markdown?: string | null
-          modified_at?: string | null
-          modified_by?: string | null
-          patreon_id?: string | null
-          rich_presence_disabled?: boolean
-          steam_id?: string | null
-          teamspeak_identities?: TeamSpeakIdentityRecord[]
-          supporter_lifetime?: boolean
-          supporter_patreon?: boolean
-          username: string
-          username_set?: boolean
-          website?: string | null
+          activity_details?: string | null
+          activity_ended_at?: string | null
+          activity_name?: string | null
+          activity_started_at?: string | null
+          activity_state?: string | null
+          activity_type?: string | null
+          details?: Json | null
+          id?: string
+          last_online_at?: string | null
+          profile_id: string
+          status?: string | null
+          updated_at?: string
         }
         Update: {
-          badges?: Database['public']['Enums']['profile_badge'][]
-          ban_end?: string | null
-          ban_reason?: string | null
-          ban_start?: string | null
-          banned?: boolean
-          birthday?: string | null
-          country?: string | null
-          created_at?: string
-          discord_id?: string | null
+          activity_details?: string | null
+          activity_ended_at?: string | null
+          activity_name?: string | null
+          activity_started_at?: string | null
+          activity_state?: string | null
+          activity_type?: string | null
+          details?: Json | null
           id?: string
-          introduction?: string | null
-          last_seen?: string
-          markdown?: string | null
-          modified_at?: string | null
-          modified_by?: string | null
-          patreon_id?: string | null
-          rich_presence_disabled?: boolean
-          steam_id?: string | null
-          teamspeak_identities?: TeamSpeakIdentityRecord[]
-          supporter_lifetime?: boolean
-          supporter_patreon?: boolean
-          username?: string
-          username_set?: boolean
-          website?: string | null
+          last_online_at?: string | null
+          profile_id?: string
+          status?: string | null
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'presences_discord_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: true
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      presences_steam: {
+        Row: {
+          details: Json | null
+          id: string
+          last_app_id: number | null
+          last_app_name: string | null
+          last_online_at: string | null
+          profile_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          details?: Json | null
+          id?: string
+          last_app_id?: number | null
+          last_app_name?: string | null
+          last_online_at?: string | null
+          profile_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          details?: Json | null
+          id?: string
+          last_app_id?: number | null
+          last_app_name?: string | null
+          last_online_at?: string | null
+          profile_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'presences_steam_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: true
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
       presences_teamspeak: {
         Row: {
@@ -577,99 +630,86 @@ export interface Database {
           },
         ]
       }
-      presences_discord: {
+      profiles: {
         Row: {
-          activity_details: string | null
-          activity_ended_at: string | null
-          activity_name: string | null
-          activity_started_at: string | null
-          activity_state: string | null
-          activity_type: string | null
-          details: Json | null
+          badges: Database['public']['Enums']['profile_badge'][]
+          ban_end: string | null
+          ban_reason: string | null
+          ban_start: string | null
+          banned: boolean
+          birthday: string | null
+          country: string | null
+          created_at: string
+          discord_id: string | null
           id: string
-          last_online_at: string | null
-          profile_id: string
-          status: string | null
-          updated_at: string
+          introduction: string | null
+          last_seen: string
+          markdown: string | null
+          modified_at: string | null
+          modified_by: string | null
+          patreon_id: string | null
+          rich_presence_disabled: boolean
+          steam_id: string | null
+          supporter_lifetime: boolean
+          supporter_patreon: boolean
+          teamspeak_identities: Json
+          username: string
+          username_set: boolean
+          website: string | null
         }
         Insert: {
-          activity_details?: string | null
-          activity_ended_at?: string | null
-          activity_name?: string | null
-          activity_started_at?: string | null
-          activity_state?: string | null
-          activity_type?: string | null
-          details?: Json | null
-          id?: string
-          last_online_at?: string | null
-          profile_id: string
-          status?: string | null
-          updated_at?: string
-        }
-        Update: {
-          activity_details?: string | null
-          activity_ended_at?: string | null
-          activity_name?: string | null
-          activity_started_at?: string | null
-          activity_state?: string | null
-          activity_type?: string | null
-          details?: Json | null
-          id?: string
-          last_online_at?: string | null
-          profile_id?: string
-          status?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'presences_discord_profile_id_fkey'
-            columns: ['profile_id']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      presences_steam: {
-        Row: {
-          details: Json | null
+          badges?: Database['public']['Enums']['profile_badge'][]
+          ban_end?: string | null
+          ban_reason?: string | null
+          ban_start?: string | null
+          banned?: boolean
+          birthday?: string | null
+          country?: string | null
+          created_at?: string
+          discord_id?: string | null
           id: string
-          last_app_id: number | null
-          last_app_name: string | null
-          last_online_at: string | null
-          profile_id: string
-          status: string | null
-          updated_at: string
-        }
-        Insert: {
-          details?: Json | null
-          id?: string
-          last_app_id?: number | null
-          last_app_name?: string | null
-          last_online_at?: string | null
-          profile_id: string
-          status?: string | null
-          updated_at?: string
+          introduction?: string | null
+          last_seen?: string
+          markdown?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          patreon_id?: string | null
+          rich_presence_disabled?: boolean
+          steam_id?: string | null
+          supporter_lifetime?: boolean
+          supporter_patreon?: boolean
+          teamspeak_identities?: Json
+          username: string
+          username_set?: boolean
+          website?: string | null
         }
         Update: {
-          details?: Json | null
+          badges?: Database['public']['Enums']['profile_badge'][]
+          ban_end?: string | null
+          ban_reason?: string | null
+          ban_start?: string | null
+          banned?: boolean
+          birthday?: string | null
+          country?: string | null
+          created_at?: string
+          discord_id?: string | null
           id?: string
-          last_app_id?: number | null
-          last_app_name?: string | null
-          last_online_at?: string | null
-          profile_id?: string
-          status?: string | null
-          updated_at?: string
+          introduction?: string | null
+          last_seen?: string
+          markdown?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          patreon_id?: string | null
+          rich_presence_disabled?: boolean
+          steam_id?: string | null
+          supporter_lifetime?: boolean
+          supporter_patreon?: boolean
+          teamspeak_identities?: Json
+          username?: string
+          username_set?: boolean
+          website?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: 'presences_steam_profile_id_fkey'
-            columns: ['profile_id']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-        ]
+        Relationships: []
       }
       projects: {
         Row: {
@@ -887,6 +927,10 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user_sessions: {
+        Args: { target_user: string }
+        Returns: undefined
+      }
       audit_fields_unchanged: {
         Args: { created_at: string, created_by: string }
         Returns: boolean
@@ -991,52 +1035,6 @@ export interface Database {
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       profile_badge: 'founder' | 'earlybird' | 'builder' | 'host'
       region: 'eu' | 'na' | 'all'
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-  private: {
-    Tables: {
-      teamspeak_tokens: {
-        Row: {
-          attempts: number
-          created_at: string
-          expires_at: string
-          server_id: string
-          token_hash: string
-          unique_id: string
-          user_id: string
-        }
-        Insert: {
-          attempts?: number
-          created_at?: string
-          expires_at?: string
-          server_id: string
-          token_hash: string
-          unique_id: string
-          user_id: string
-        }
-        Update: {
-          attempts?: number
-          created_at?: string
-          expires_at?: string
-          server_id?: string
-          token_hash?: string
-          unique_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1162,6 +1160,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  private: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_permission: [
