@@ -213,10 +213,9 @@ async function processServer(args: {
     );
 
     const normalizedClients: TeamSpeakServerSnapshot["clients"] = [];
-    const identityCache = new Map<string, string>();
 
     for (const entry of onlineClients) {
-      const uniqueId = await resolveUniqueId(client, entry, identityCache);
+        const uniqueId = await resolveUniqueId(entry);
       if (!uniqueId) {
         console.warn("TS client missing identifier after resolution", entry);
         continue;
@@ -360,43 +359,9 @@ async function shutdownClient(client: TeamSpeakClient) {
   }
 }
 
-async function resolveUniqueId(
-  client: TeamSpeakClient,
-  entry: TeamSpeakClientEntry,
-  cache: Map<string, string>,
-): Promise<string | null> {
+function resolveUniqueId(entry: TeamSpeakClientEntry): string | null {
   const direct = entry.client_unique_identifier ?? null;
-  if (direct) return String(direct);
-
-  const clid = entry.clid;
-  if (clid !== undefined && clid !== null) {
-    const cacheKey = `clid:${clid}`;
-    const cached = cache.get(cacheKey);
-    if (cached) return cached;
-
-    const uidLookup = await sendRawCommand(client, "clientgetuidfromclid", { clid }) as QueryResponse<{ cluid?: string }>;
-    const cluid = uidLookup.response?.[0]?.cluid;
-    if (cluid) {
-      cache.set(cacheKey, String(cluid));
-      return String(cluid);
-    }
-  }
-
-  const cldbid = entry.client_database_id;
-  if (cldbid !== undefined && cldbid !== null) {
-    const cacheKey = `cldbid:${cldbid}`;
-    const cached = cache.get(cacheKey);
-    if (cached) return cached;
-
-    const nameFromDb = await sendRawCommand(client, "clientgetnamefromdbid", { cldbid }) as QueryResponse<{ cluid?: string }>;
-    const cluid = nameFromDb.response?.[0]?.cluid;
-    if (cluid) {
-      cache.set(cacheKey, String(cluid));
-      return String(cluid);
-    }
-  }
-
-  return null;
+  return direct ? String(direct) : null;
 }
 
 function sendRawCommand(
