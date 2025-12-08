@@ -57,6 +57,13 @@ type QueryResponse<T> = {
   rawResponse?: string;
 };
 
+type RawSnapshots = {
+  serverId: string;
+  clientlistRaw?: string;
+  serverinfoRaw?: string;
+  channellistRaw?: string;
+};
+
 type ChannelRecord = {
   cid?: number | string;
   pid?: number | string;
@@ -116,15 +123,23 @@ Deno.serve(async (req) => {
     const roleMap = await loadRoleMap();
 
     const snapshots: TeamSpeakServerSnapshot[] = [];
+    const raw: RawSnapshots[] = [];
 
     for (const server of availableServers) {
-      const snapshot = await processServer({ server, profileMap, roleMap });
-      snapshots.push(snapshot);
+      const snapshotResult = await processServer({ server, profileMap, roleMap });
+      snapshots.push(snapshotResult.snapshot);
+      raw.push({
+        serverId: server.id,
+        clientlistRaw: snapshotResult.raw.clientlistRaw,
+        serverinfoRaw: snapshotResult.raw.serverinfoRaw,
+        channellistRaw: snapshotResult.raw.channellistRaw,
+      });
     }
 
     const payload = {
       collectedAt: new Date().toISOString(),
       servers: snapshots,
+      raw,
     };
 
     const { error: uploadError } = await supabase.storage
@@ -150,7 +165,7 @@ async function processServer(args: {
   server: TeamSpeakServerDefinition;
   profileMap: Map<string, Tables<"profiles">>;
   roleMap: Map<string, Tables<"user_roles">["role"]>;
-}): Promise<TeamSpeakServerSnapshot> {
+}): Promise<{ snapshot: TeamSpeakServerSnapshot; raw: RawSnapshots }> {
   const { server, profileMap, roleMap } = args;
   const username = credentials.usernames.get(server.id);
   const password = credentials.passwords.get(server.id);
@@ -198,23 +213,24 @@ async function processServer(args: {
     );
 
     const normalizedClients: TeamSpeakServerSnapshot["clients"] = [];
+    const identityCache = new Map<string, string>();
 
     for (const entry of onlineClients) {
-      const normalizedUniqueId = entry.client_unique_identifier ?? entry.client_database_id ?? entry.clid;
-      if (!normalizedUniqueId) {
-        console.warn("TS client missing identifier", entry);
+      const uniqueId = await resolveUniqueId(client, entry, identityCache);
+      if (!uniqueId) {
+        console.warn("TS client missing identifier after resolution", entry);
         continue;
       }
-
-      const uniqueId = String(normalizedUniqueId);
       const nickname = entry.client_nickname ?? "Unknown";
       const channelId = entry.cid ? String(entry.cid) : null;
       const channelMeta = channelId ? channelsNormalized.map.get(channelId) : undefined;
       const serverGroupsToken = String(entry.client_servergroups ?? "").trim().split(/\s+/)[0] ?? "";
       const serverGroups = serverGroupsToken
         .split(",")
-        .map((g: string) => Number(g))
-        .filter((n: number) => Number.isFinite(n));
+        .map((g: string) => g.trim())
+        .filter((g) => g.length > 0)
+        .map((g) => Number(g))
+        .filter((n) => Number.isFinite(n));
       const away = entry.client_away === "1";
       const inputMuted = entry.client_input_muted === "1";
       const outputMuted = entry.client_output_muted === "1";
@@ -267,12 +283,20 @@ async function processServer(args: {
     }
 
     return {
-      id: server.id,
-      title: server.title,
-      collectedAt,
-      serverInfo,
-      channels: channelsNormalized.tree,
-      clients: normalizedClients,
+      snapshot: {
+        id: server.id,
+        title: server.title,
+        collectedAt,
+        serverInfo,
+        channels: channelsNormalized.tree,
+        clients: normalizedClients,
+      },
+      raw: {
+        serverId: server.id,
+        clientlistRaw: clientListQuery.rawResponse,
+        serverinfoRaw: serverInfoQuery.rawResponse,
+        channellistRaw: channelsQuery.rawResponse,
+      },
     };
   } finally {
     await shutdownClient(client);
@@ -397,6 +421,45 @@ async function shutdownClient(client: TeamSpeakClient) {
   } catch (error) {
     console.warn("Failed to quit TeamSpeak session", error);
   }
+}
+
+async function resolveUniqueId(
+  client: TeamSpeakClient,
+  entry: TeamSpeakClientEntry,
+  cache: Map<string, string>,
+): Promise<string | null> {
+  const direct = entry.client_unique_identifier ?? null;
+  if (direct) return String(direct);
+
+  const clid = entry.clid;
+  if (clid !== undefined && clid !== null) {
+    const cacheKey = `clid:${clid}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
+    const uidLookup = await sendRawCommand(client, "clientgetuidfromclid", { clid }) as QueryResponse<{ cluid?: string }>;
+    const cluid = uidLookup.response?.[0]?.cluid;
+    if (cluid) {
+      cache.set(cacheKey, String(cluid));
+      return String(cluid);
+    }
+  }
+
+  const cldbid = entry.client_database_id;
+  if (cldbid !== undefined && cldbid !== null) {
+    const cacheKey = `cldbid:${cldbid}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
+    const nameFromDb = await sendRawCommand(client, "clientgetnamefromdbid", { cldbid }) as QueryResponse<{ cluid?: string }>;
+    const cluid = nameFromDb.response?.[0]?.cluid;
+    if (cluid) {
+      cache.set(cacheKey, String(cluid));
+      return String(cluid);
+    }
+  }
+
+  return null;
 }
 
 function sendRawCommand(

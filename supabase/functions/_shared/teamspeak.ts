@@ -11,11 +11,16 @@ export function normalizeTeamSpeakIdentities(
   value.forEach((entry) => {
     if (entry === null || entry === undefined || typeof entry !== "object") return;
 
-    const serverId = (entry as { serverId?: unknown }).serverId;
-    const uniqueId = (entry as { uniqueId?: unknown }).uniqueId;
+    const rawServerId = (entry as { serverId?: unknown }).serverId;
+    const rawUniqueId = (entry as { uniqueId?: unknown }).uniqueId;
     const linkedAt = (entry as { linkedAt?: unknown }).linkedAt;
 
-    if (typeof serverId !== "string" || typeof uniqueId !== "string") return;
+    if (typeof rawServerId !== "string" || typeof rawUniqueId !== "string") return;
+
+    const serverId = rawServerId.trim();
+    const uniqueId = rawUniqueId.trim();
+
+    if (!serverId || !uniqueId) return;
 
     normalized.push({
       serverId,
