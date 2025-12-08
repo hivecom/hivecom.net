@@ -70,6 +70,7 @@ type NormalizedChannel = {
   depth: number;
   path: string[];
   children: NormalizedChannel[];
+  clients: NormalizedClient[];
 };
 
 type NormalizedClient = {
@@ -100,11 +101,8 @@ interface ServerSnapshot {
   title?: string;
   collectedAt: string;
   serverInfo?: ServerInfo;
-  channels: QueryResponse<ChannelRecord>;
-  channelsFlat: NormalizedChannel[];
-  channelsTree: NormalizedChannel[];
+  channels: NormalizedChannel[];
   clients: NormalizedClient[];
-  clientsRaw: QueryResponse<TeamSpeakClientEntry>;
 }
 
 const appConstants = constants.default;
@@ -245,7 +243,7 @@ async function processServer(args: {
       const outputMuted = entry.client_output_muted === "1";
       const muted = inputMuted || outputMuted;
 
-      normalizedClients.push({
+      const normalizedClient: NormalizedClient = {
         uniqueId,
         nickname,
         channelId,
@@ -256,7 +254,16 @@ async function processServer(args: {
         muted,
         inputMuted,
         outputMuted,
-      });
+      };
+
+      normalizedClients.push(normalizedClient);
+
+      if (channelId) {
+        const channel = channelsNormalized.map.get(channelId);
+        if (channel) {
+          channel.clients.push(normalizedClient);
+        }
+      }
 
       const profile = profileMap.get(`${server.id}:${uniqueId}`);
       if (profile && !profile.banned) {
@@ -287,11 +294,8 @@ async function processServer(args: {
       title: server.title,
       collectedAt,
       serverInfo,
-      channels: channelsQuery,
-      channelsFlat: channelsNormalized.flat,
-      channelsTree: channelsNormalized.tree,
+      channels: channelsNormalized.tree,
       clients: normalizedClients,
-      clientsRaw: clientListQuery,
     };
   } finally {
     await shutdownClient(client);
@@ -462,7 +466,7 @@ function jsonResponse(status: number, payload: Record<string, unknown>) {
   });
 }
 
-function normalizeChannels(records: ChannelRecord[]): { flat: NormalizedChannel[]; tree: NormalizedChannel[]; map: Map<string, NormalizedChannel> } {
+function normalizeChannels(records: ChannelRecord[]): { tree: NormalizedChannel[]; map: Map<string, NormalizedChannel> } {
   const map = new Map<string, NormalizedChannel>();
 
   for (const record of records) {
@@ -481,6 +485,7 @@ function normalizeChannels(records: ChannelRecord[]): { flat: NormalizedChannel[
       depth: 0,
       path: [],
       children: [],
+      clients: [],
     };
 
     map.set(id, channel);
@@ -521,8 +526,7 @@ function normalizeChannels(records: ChannelRecord[]): { flat: NormalizedChannel[
     buildPaths(root, [], 0);
   }
 
-  const flat = Array.from(map.values());
-  return { flat, tree: roots, map };
+  return { tree: roots, map };
 }
 
 function normalizeServerInfo(raw: Record<string, unknown> | null): ServerInfo | undefined {
