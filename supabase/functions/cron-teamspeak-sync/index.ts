@@ -260,7 +260,7 @@ async function processServer(args: {
 
       const profile = profileMap.get(`${server.id}:${uniqueId}`);
       if (profile && !profile.banned) {
-        const role = roleMap.get(profile.id) ?? null;
+        const _role = roleMap.get(profile.id) ?? null;
 
         if (!profile.rich_presence_disabled) {
           await upsertPresenceRow({
@@ -271,14 +271,6 @@ async function processServer(args: {
             channelPath: channelMeta?.path ?? null,
           });
         }
-
-        await ensureServerGroups({
-          client,
-          server,
-          uniqueId,
-          profile,
-          role,
-        });
       }
     }
 
@@ -327,61 +319,6 @@ async function upsertPresenceRow(args: {
   if (error) {
     console.error("Failed to upsert TeamSpeak presence", error);
   }
-}
-
-async function ensureServerGroups(args: {
-  client: TeamSpeakClient;
-  server: TeamSpeakServerDefinition;
-  uniqueId: string;
-  profile: Tables<"profiles">;
-  role: Tables<"user_roles">["role"] | null;
-}): Promise<void> {
-  const targetGroups = computeTargetGroupIds(args.server, args.profile, args.role);
-  if (!targetGroups.length) return;
-
-  const dbLookup = await sendRawCommand(args.client, "clientgetdbidfromuid", { cluid: args.uniqueId }) as {
-    response?: Array<{ cldbid?: number | string }>;
-  };
-  const record = dbLookup.response?.[0];
-  if (!record?.cldbid) return;
-
-  const clientDbId = Number(record.cldbid);
-  if (!Number.isFinite(clientDbId)) return;
-
-  for (const groupId of targetGroups) {
-    try {
-      await sendRawCommand(args.client, "servergroupaddclient", { sgid: groupId, cldbid: clientDbId });
-    } catch (error) {
-      if (isAlreadyAssignedError(error)) continue;
-      console.warn("Failed to assign TS group", { groupId, uniqueId: args.uniqueId, error });
-    }
-  }
-}
-
-function computeTargetGroupIds(
-  server: TeamSpeakServerDefinition,
-  profile: Tables<"profiles">,
-  role: Tables<"user_roles">["role"] | null,
-): number[] {
-  const groups = new Set<number>();
-
-  if (server.roleRegisteredGroupId && role !== "admin" && role !== "moderator") {
-    groups.add(server.roleRegisteredGroupId);
-  }
-
-  if (role === "admin" && server.roleAdminGroupId) {
-    groups.add(server.roleAdminGroupId);
-  } else if (role === "moderator" && server.roleModeratorGroupId) {
-    groups.add(server.roleModeratorGroupId);
-  }
-
-  if ((profile.supporter_patreon || profile.supporter_lifetime) && server.roleSupporterGroupId) {
-    groups.add(server.roleSupporterGroupId);
-  }
-
-  // Lifetime supporters use the regular supporter group when defined.
-
-  return Array.from(groups);
 }
 
 async function loadProfileMap(): Promise<Map<string, Tables<"profiles">>> {
@@ -479,26 +416,6 @@ function sendRawCommand(
   if (hasOptions) return untypedClient.send(cmd, options);
   if (hasParams) return untypedClient.send(cmd, params);
   return untypedClient.send(cmd);
-}
-
-function isAlreadyAssignedError(error: unknown): boolean {
-  if (!error) return false;
-
-  if (typeof error === "object" && error !== null) {
-    const typed = error as { error?: { id?: number; msg?: string }; message?: string };
-    if (typed.error?.id === 2561) return true;
-    if (typed.error?.id === 2568) return true;
-    if (typeof typed.message === "string" && /already\s+in\s+servergroup/i.test(typed.message)) {
-      return true;
-    }
-  }
-
-  const message = typeof error === "string"
-    ? error
-    : error instanceof Error
-      ? error.message
-      : undefined;
-  return Boolean(message && /already\s+in\s+servergroup|error\s+id=(2561|2568)/i.test(message));
 }
 
 function jsonResponse(status: number, payload: Record<string, unknown>) {
