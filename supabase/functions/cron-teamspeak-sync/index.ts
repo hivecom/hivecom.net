@@ -5,6 +5,12 @@ import { authorizeSystemCron } from "../_shared/auth.ts";
 import { parseEnvMap } from "../_shared/env.ts";
 import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
 import type { Database, Tables } from "database-types";
+import type {
+  TeamSpeakNormalizedChannel,
+  TeamSpeakNormalizedClient,
+  TeamSpeakServerInfo,
+  TeamSpeakServerSnapshot,
+} from "teamspeak-types";
 
 interface TeamSpeakServerDefinition {
   id: string;
@@ -60,51 +66,6 @@ type ChannelRecord = {
   channel_needed_subscribe_power?: number | string;
 };
 
-type NormalizedChannel = {
-  id: string;
-  parentId: string | null;
-  order: number;
-  name: string;
-  totalClients: number;
-  subscribePower?: number;
-  depth: number;
-  path: string[];
-  children: NormalizedChannel[];
-  clients: NormalizedClient[];
-};
-
-type NormalizedClient = {
-  uniqueId: string;
-  nickname: string;
-  channelId: string | null;
-  channelName: string | null;
-  channelPath: string[] | null;
-  serverGroups: number[];
-  away: boolean;
-  muted: boolean;
-  inputMuted: boolean;
-  outputMuted: boolean;
-};
-
-type ServerInfo = {
-  name?: string;
-  platform?: string;
-  version?: string;
-  uptimeSeconds?: number;
-  maxClients?: number;
-  totalClients?: number;
-  totalChannels?: number;
-};
-
-interface ServerSnapshot {
-  id: string;
-  title?: string;
-  collectedAt: string;
-  serverInfo?: ServerInfo;
-  channels: NormalizedChannel[];
-  clients: NormalizedClient[];
-}
-
 interface AppConstants {
   PLATFORMS?: { TEAMSPEAK?: { servers?: TeamSpeakServerDefinition[] } };
 }
@@ -154,7 +115,7 @@ Deno.serve(async (req) => {
     const profileMap = await loadProfileMap();
     const roleMap = await loadRoleMap();
 
-    const snapshots: ServerSnapshot[] = [];
+    const snapshots: TeamSpeakServerSnapshot[] = [];
 
     for (const server of availableServers) {
       const snapshot = await processServer({ server, profileMap, roleMap });
@@ -189,7 +150,7 @@ async function processServer(args: {
   server: TeamSpeakServerDefinition;
   profileMap: Map<string, Tables<"profiles">>;
   roleMap: Map<string, Tables<"user_roles">["role"]>;
-}): Promise<ServerSnapshot> {
+}): Promise<TeamSpeakServerSnapshot> {
   const { server, profileMap, roleMap } = args;
   const username = credentials.usernames.get(server.id);
   const password = credentials.passwords.get(server.id);
@@ -236,7 +197,7 @@ async function processServer(args: {
       String(c.client_type ?? "0") === "0" && (c.client_unique_identifier || c.client_database_id || c.clid)
     );
 
-    const normalizedClients: ServerSnapshot["clients"] = [];
+    const normalizedClients: TeamSpeakServerSnapshot["clients"] = [];
 
     for (const entry of onlineClients) {
       const normalizedUniqueId = entry.client_unique_identifier ?? entry.client_database_id ?? entry.clid;
@@ -249,7 +210,8 @@ async function processServer(args: {
       const nickname = entry.client_nickname ?? "Unknown";
       const channelId = entry.cid ? String(entry.cid) : null;
       const channelMeta = channelId ? channelsNormalized.map.get(channelId) : undefined;
-      const serverGroups = (entry.client_servergroups ?? "")
+      const serverGroupsToken = String(entry.client_servergroups ?? "").trim().split(/\s+/)[0] ?? "";
+      const serverGroups = serverGroupsToken
         .split(",")
         .map((g: string) => Number(g))
         .filter((n: number) => Number.isFinite(n));
@@ -258,7 +220,7 @@ async function processServer(args: {
       const outputMuted = entry.client_output_muted === "1";
       const muted = inputMuted || outputMuted;
 
-      const normalizedClient: NormalizedClient = {
+      const normalizedClient: TeamSpeakNormalizedClient = {
         uniqueId,
         nickname,
         channelId,
@@ -485,8 +447,8 @@ function jsonResponse(status: number, payload: Record<string, unknown>) {
   });
 }
 
-function normalizeChannels(records: ChannelRecord[]): { tree: NormalizedChannel[]; map: Map<string, NormalizedChannel> } {
-  const map = new Map<string, NormalizedChannel>();
+function normalizeChannels(records: ChannelRecord[]): { tree: TeamSpeakNormalizedChannel[]; map: Map<string, TeamSpeakNormalizedChannel> } {
+  const map = new Map<string, TeamSpeakNormalizedChannel>();
 
   for (const record of records) {
     const id = String(record.cid ?? "");
@@ -494,7 +456,7 @@ function normalizeChannels(records: ChannelRecord[]): { tree: NormalizedChannel[
 
     const parentId = record.pid !== undefined && record.pid !== null ? String(record.pid) : null;
     const order = Number(record.channel_order ?? 0);
-    const channel: NormalizedChannel = {
+    const channel: TeamSpeakNormalizedChannel = {
       id,
       parentId,
       order: Number.isFinite(order) ? order : 0,
@@ -518,12 +480,12 @@ function normalizeChannels(records: ChannelRecord[]): { tree: NormalizedChannel[
   }
 
   // Sort children by order
-  const sortChildren = (node: NormalizedChannel) => {
+  const sortChildren = (node: TeamSpeakNormalizedChannel) => {
     node.children.sort((a, b) => a.order - b.order);
     for (const child of node.children) sortChildren(child);
   };
 
-  const roots: NormalizedChannel[] = [];
+  const roots: TeamSpeakNormalizedChannel[] = [];
   for (const channel of map.values()) {
     if (!channel.parentId || !map.has(channel.parentId)) {
       roots.push(channel);
@@ -535,7 +497,7 @@ function normalizeChannels(records: ChannelRecord[]): { tree: NormalizedChannel[
   }
 
   // Build depth and path
-  const buildPaths = (node: NormalizedChannel, path: string[], depth: number) => {
+  const buildPaths = (node: TeamSpeakNormalizedChannel, path: string[], depth: number) => {
     node.depth = depth;
     node.path = [...path, node.name];
     for (const child of node.children) buildPaths(child, node.path, depth + 1);
@@ -548,7 +510,7 @@ function normalizeChannels(records: ChannelRecord[]): { tree: NormalizedChannel[
   return { tree: roots, map };
 }
 
-function normalizeServerInfo(raw: Record<string, unknown> | null): ServerInfo | undefined {
+function normalizeServerInfo(raw: Record<string, unknown> | null): TeamSpeakServerInfo | undefined {
   if (!raw) return undefined;
 
   return {

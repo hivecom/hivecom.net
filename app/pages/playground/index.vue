@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
+import TeamSpeakViewer from '@/components/Shared/TeamSpeakViewer.vue'
 </script>
 
 <template>
   <div class="page">
-    <MetaballContainer>
-      <div class="logo-wrap">
-        <h1 class="logo">
-          HIVECOM
-        </h1>
-      </div>
-    </MetaballContainer>
+    <TeamSpeakViewer />
   </div>
 </template>
 
