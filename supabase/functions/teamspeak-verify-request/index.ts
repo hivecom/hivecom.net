@@ -51,7 +51,7 @@ interface AppConstants {
   PLATFORMS?: { TEAMSPEAK?: TeamSpeakPlatformConfig };
 }
 
-const appConstants = constants as unknown as AppConstants;
+const appConstants = (constants as unknown as { default: AppConstants }).default;
 
 interface TeamSpeakPlatformConfig {
   servers?: TeamSpeakServerDefinition[];

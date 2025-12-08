@@ -109,7 +109,7 @@ interface AppConstants {
   PLATFORMS?: { TEAMSPEAK?: { servers?: TeamSpeakServerDefinition[] } };
 }
 
-const appConstants = constants as unknown as AppConstants;
+const appConstants = (constants as unknown as { default: AppConstants }).default;
 const teamSpeakPlatform = appConstants?.PLATFORMS?.TEAMSPEAK ?? {} as { servers?: TeamSpeakServerDefinition[] };
 const availableServers = Array.isArray(teamSpeakPlatform.servers)
   ? teamSpeakPlatform.servers as TeamSpeakServerDefinition[]
