@@ -444,10 +444,16 @@ function sendRawCommand(
   options: string[] = [],
 ): Promise<unknown> {
   const untypedClient = client as unknown as {
-    send: (command: string, commandParams?: Record<string, unknown>, opts?: string[]) => Promise<unknown>;
+    send: (command: string, arg1?: unknown, arg2?: unknown) => Promise<unknown>;
   };
 
-  return untypedClient.send(cmd, params, options);
+  const hasParams = params && Object.keys(params).length > 0;
+  const hasOptions = Array.isArray(options) && options.length > 0;
+
+  if (hasParams && hasOptions) return untypedClient.send(cmd, params, options);
+  if (hasOptions) return untypedClient.send(cmd, options);
+  if (hasParams) return untypedClient.send(cmd, params);
+  return untypedClient.send(cmd);
 }
 
 function isAlreadyAssignedError(error: unknown): boolean {
