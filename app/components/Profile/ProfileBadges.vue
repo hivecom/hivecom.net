@@ -191,6 +191,27 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
         {{ emptyStateText }}
       </p>
     </Flex>
+
+    <svg
+      class="profile-badges-filter-defs"
+      aria-hidden="true"
+      focusable="false"
+      width="0"
+      height="0"
+    >
+      <defs>
+        <filter id="profile-badge-goo">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+          <feColorMatrix
+            in="blur"
+            mode="matrix"
+            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
+            result="goo"
+          />
+          <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+        </filter>
+      </defs>
+    </svg>
   </Card>
 
   <!--
@@ -198,29 +219,13 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
     Source: https://stackoverflow.com/a/76118647
   -->
   <!-- NOTE: Jan, seemingly this does not do anything and is causing a space in the flex layout. Btw the stack overflow souce leads to some azure fix, not svg -->
-  <!-- <svg
-    class="profile-badges-filter-defs"
-    aria-hidden="true"
-    focusable="false"
-    width="0"
-    height="0"
-  >
-    <defs>
-      <filter id="profile-badge-goo">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
-        <feColorMatrix
-          in="blur"
-          mode="matrix"
-          values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
-          result="goo"
-        />
-        <feComposite in="SourceGraphic" in2="goo" operator="atop" />
-      </filter>
-    </defs>
-  </svg> -->
 </template>
 
 <style lang="scss" scoped>
+.profile-badges-filter-defs {
+  position: absolute;
+}
+
 .badges-card {
   min-height: 360px;
   overflow: hidden;
