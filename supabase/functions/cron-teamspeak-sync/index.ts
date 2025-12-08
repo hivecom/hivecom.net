@@ -205,7 +205,7 @@ async function processServer(args: {
       client,
       "clientlist",
       {},
-      ["-uid", "-voice", "-away", "-groups", "-times", "-ip", "-country", "-badges"],
+      ["uid", "voice", "away", "groups", "times", "ip", "country", "badges"],
     ) as QueryResponse<TeamSpeakClientEntry>;
 
     const onlineClients = (clientListQuery.response ?? []).filter((c) =>
@@ -367,7 +367,7 @@ function resolveUniqueId(entry: TeamSpeakClientEntry): string | null {
 function sendRawCommand(
   client: TeamSpeakClient,
   cmd: string,
-  params: Record<string, unknown> = {},
+  params: Record<string, unknown> | undefined = undefined,
   options: string[] = [],
 ): Promise<unknown> {
   const untypedClient = client as unknown as {
@@ -376,7 +376,8 @@ function sendRawCommand(
 
   const hasParams = params && Object.keys(params).length > 0;
   const hasOptions = Array.isArray(options) && options.length > 0;
-  if (hasOptions) return untypedClient.send(cmd, hasParams ? params : {}, options);
+  if (hasParams && hasOptions) return untypedClient.send(cmd, params, options);
+  if (hasOptions) return untypedClient.send(cmd, options);
   if (hasParams) return untypedClient.send(cmd, params);
   return untypedClient.send(cmd);
 }
