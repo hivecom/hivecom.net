@@ -370,16 +370,9 @@ function sendRawCommand(
   params: Record<string, unknown> | undefined = undefined,
   options: string[] = [],
 ): Promise<unknown> {
-  const untypedClient = client as unknown as {
-    send: (command: string, arg1?: unknown, arg2?: unknown) => Promise<unknown>;
-  };
-
-  const hasParams = params && Object.keys(params).length > 0;
-  const hasOptions = Array.isArray(options) && options.length > 0;
-  if (hasParams && hasOptions) return untypedClient.send(cmd, params, options);
-  if (hasOptions) return untypedClient.send(cmd, options);
-  if (hasParams) return untypedClient.send(cmd, params);
-  return untypedClient.send(cmd);
+  const safeParams = params && Object.keys(params).length > 0 ? params : {};
+  const safeOptions = Array.isArray(options) ? options : [];
+  return client.send(cmd, safeParams, safeOptions);
 }
 
 function jsonResponse(status: number, payload: Record<string, unknown>) {
