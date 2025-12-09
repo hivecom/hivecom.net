@@ -45,6 +45,9 @@ interface TeamSpeakClientEntry {
   client_talk_power?: string;
   client_talk_request?: string;
   client_idle_time?: string;
+  client_country?: string;
+  client_created?: number | string;
+  client_lastconnected?: number | string;
 }
 
 type QueryResponse<T> = {
@@ -55,13 +58,6 @@ type QueryResponse<T> = {
   error?: { id?: number; msg?: string } | null;
   response?: T[];
   rawResponse?: string;
-};
-
-type RawSnapshots = {
-  serverId: string;
-  clientlistRaw?: string;
-  serverinfoRaw?: string;
-  channellistRaw?: string;
 };
 
 type ChannelRecord = {
@@ -123,23 +119,15 @@ Deno.serve(async (req) => {
     const roleMap = await loadRoleMap();
 
     const snapshots: TeamSpeakServerSnapshot[] = [];
-    const raw: RawSnapshots[] = [];
 
     for (const server of availableServers) {
-      const snapshotResult = await processServer({ server, profileMap, roleMap });
-      snapshots.push(snapshotResult.snapshot);
-      raw.push({
-        serverId: server.id,
-        clientlistRaw: snapshotResult.raw.clientlistRaw,
-        serverinfoRaw: snapshotResult.raw.serverinfoRaw,
-        channellistRaw: snapshotResult.raw.channellistRaw,
-      });
+      const snapshot = await processServer({ server, profileMap, roleMap });
+      snapshots.push(snapshot);
     }
 
     const payload = {
       collectedAt: new Date().toISOString(),
       servers: snapshots,
-      raw,
     };
 
     const { error: uploadError } = await supabase.storage
@@ -165,7 +153,7 @@ async function processServer(args: {
   server: TeamSpeakServerDefinition;
   profileMap: Map<string, Tables<"profiles">>;
   roleMap: Map<string, Tables<"user_roles">["role"]>;
-}): Promise<{ snapshot: TeamSpeakServerSnapshot; raw: RawSnapshots }> {
+}): Promise<TeamSpeakServerSnapshot> {
   const { server, profileMap, roleMap } = args;
   const username = credentials.usernames.get(server.id);
   const password = credentials.passwords.get(server.id);
@@ -205,7 +193,7 @@ async function processServer(args: {
       client,
       "clientlist",
       {},
-      ["uid", "voice", "away", "groups", "times", "ip", "country", "badges"],
+      ["uid", "voice", "away", "groups", "times", "country"],
     ) as QueryResponse<TeamSpeakClientEntry>;
 
     const onlineClients = (clientListQuery.response ?? []).filter((c) =>
@@ -220,6 +208,7 @@ async function processServer(args: {
         console.warn("TS client missing identifier after resolution", entry);
         continue;
       }
+      if (uniqueId === "serveradmin") continue;
       const nickname = entry.client_nickname ?? "Unknown";
       const channelId = entry.cid ? String(entry.cid) : null;
       const channelMeta = channelId ? channelsNormalized.map.get(channelId) : undefined;
@@ -234,6 +223,9 @@ async function processServer(args: {
       const inputMuted = entry.client_input_muted === "1";
       const outputMuted = entry.client_output_muted === "1";
       const muted = inputMuted || outputMuted;
+      const country = typeof entry.client_country === "string" ? entry.client_country : null;
+      const createdAt = safeNumber(entry.client_created) ?? null;
+      const lastConnectedAt = safeNumber(entry.client_lastconnected) ?? null;
 
       const normalizedClient: TeamSpeakNormalizedClient = {
         uniqueId,
@@ -246,6 +238,9 @@ async function processServer(args: {
         muted,
         inputMuted,
         outputMuted,
+        country,
+        createdAt,
+        lastConnectedAt,
       };
 
       normalizedClients.push(normalizedClient);
@@ -274,20 +269,12 @@ async function processServer(args: {
     }
 
     return {
-      snapshot: {
-        id: server.id,
-        title: server.title,
-        collectedAt,
-        serverInfo,
-        channels: channelsNormalized.tree,
-        clients: normalizedClients,
-      },
-      raw: {
-        serverId: server.id,
-        clientlistRaw: clientListQuery.rawResponse,
-        serverinfoRaw: serverInfoQuery.rawResponse,
-        channellistRaw: channelsQuery.rawResponse,
-      },
+      id: server.id,
+      title: server.title,
+      collectedAt,
+      serverInfo,
+      channels: channelsNormalized.tree,
+      clients: normalizedClients,
     };
   } finally {
     await shutdownClient(client);

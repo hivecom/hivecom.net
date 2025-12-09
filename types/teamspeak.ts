@@ -15,6 +15,9 @@ export interface TeamSpeakNormalizedClient {
   muted: boolean
   inputMuted: boolean
   outputMuted: boolean
+  country?: string | null
+  createdAt?: number | null
+  lastConnectedAt?: number | null
 }
 
 export interface TeamSpeakNormalizedChannel {

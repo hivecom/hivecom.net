@@ -1,11 +1,21 @@
 <script setup lang="ts">
-import type { TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
-import { Alert, Badge, Button, Card, Divider, Flex, Skeleton } from '@dolanske/vui'
-import { computed } from 'vue'
+import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
+import { Alert, Badge, Button, Card, Flex, Select, Skeleton, Tooltip } from '@dolanske/vui'
+import { computed, ref } from 'vue'
 import constants from '~~/constants.json'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import UserLink from '@/components/Shared/UserLink.vue'
 import { useTeamSpeakSnapshot } from '@/composables/useTeamSpeakSnapshot'
+import { getCountryEmoji } from '@/lib/utils/country'
+
+type ClientRole = 'admin' | 'moderator' | 'supporter' | 'registered'
+
+interface SelectOption {
+  label: string
+  value: string
+}
 
 interface Props {
   refreshInterval?: number
@@ -56,6 +66,7 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
               muted: false,
               inputMuted: false,
               outputMuted: false,
+              country: 'DE',
             },
           ],
         },
@@ -89,6 +100,7 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
                   muted: false,
                   inputMuted: true,
                   outputMuted: false,
+                  country: 'US',
                 },
               ],
             },
@@ -101,9 +113,61 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
   ],
 }
 
-const { data, pending, error, refresh, lastUpdated } = useTeamSpeakSnapshot({
+const { data, pending, error, refresh } = useTeamSpeakSnapshot({
   refreshInterval: props.refreshInterval,
 })
+
+const selectedServerId = ref<string | null>(null)
+
+// Fetch users with TeamSpeak identities to enable UserLink
+const supabase = useSupabaseClient()
+const { data: teamspeakUsers } = await useAsyncData(
+  'teamspeak-users',
+  async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, teamspeak_identities')
+      .not('teamspeak_identities', 'is', null)
+
+    if (error) {
+      console.error('Failed to fetch TeamSpeak users:', error)
+      return []
+    }
+
+    return data ?? []
+  },
+  {
+    default: () => [],
+  },
+)
+
+// Create a map of TeamSpeak uniqueId -> user ID for quick lookups
+const teamspeakToUserId = computed<Map<string, string>>(() => {
+  const map = new Map<string, string>()
+
+  teamspeakUsers.value?.forEach((profile) => {
+    if (!profile.teamspeak_identities || !Array.isArray(profile.teamspeak_identities))
+      return
+
+    profile.teamspeak_identities.forEach((identity: unknown) => {
+      if (!identity || typeof identity !== 'object')
+        return
+
+      const record = identity as TeamSpeakIdentityRecord
+      if (record.uniqueId && record.serverId) {
+        // Use a composite key: serverId:uniqueId
+        map.set(`${record.serverId}:${record.uniqueId}`, profile.id)
+      }
+    })
+  })
+
+  return map
+})
+
+// Helper to get user ID for a TeamSpeak client
+function getUserIdForClient(serverId: string, uniqueId: string): string | null {
+  return teamspeakToUserId.value.get(`${serverId}:${uniqueId}`) ?? null
+}
 
 const platformTitle = computed(() => constants.PLATFORMS?.TEAMSPEAK?.title ?? 'TeamSpeak')
 const snapshotServers = computed(() => (data.value as TeamSpeakSnapshot | null)?.servers ?? [])
@@ -114,7 +178,7 @@ const servers = computed<TeamSpeakServerSnapshot[]>(() => {
   if (snapshotServers.value.length)
     return snapshotServers.value
 
-  if (import.meta.dev)
+  if (process.env.NODE_ENV === 'development')
     return MOCK_SNAPSHOT.servers
 
   return []
@@ -128,6 +192,50 @@ const serversSorted = computed(() =>
   }),
 )
 
+const serverOptions = computed(() =>
+  serversSorted.value.map(server => ({
+    label: formatServerLabel(server),
+    value: server.id,
+  })),
+)
+
+const selectedServer = computed(() => {
+  if (serversSorted.value.length === 0)
+    return null
+  if (serversSorted.value.length === 1)
+    return serversSorted.value[0]
+  if (!selectedServerId.value)
+    return serversSorted.value[0]
+  return serversSorted.value.find(s => s.id === selectedServerId.value) ?? serversSorted.value[0]
+})
+
+const serverSelectModel = computed<SelectOption[] | undefined>({
+  get() {
+    if (!selectedServerId.value)
+      return undefined
+    const selection = serverOptions.value.find(option => option.value === selectedServerId.value)
+    return selection ? [selection] : undefined
+  },
+  set(value) {
+    const next = value?.[0]?.value ?? serversSorted.value[0]?.id ?? null
+    selectedServerId.value = next
+  },
+})
+
+const serverRoleMap = computed<Record<string, { admin?: number, moderator?: number, supporter?: number, registered?: number }>>(() => {
+  const map: Record<string, { admin?: number, moderator?: number, supporter?: number, registered?: number }> = {}
+  const serversCfg = constants.PLATFORMS?.TEAMSPEAK?.servers ?? []
+  serversCfg.forEach((srv) => {
+    map[srv.id] = {
+      admin: srv.roleAdminGroupId,
+      moderator: srv.roleModeratorGroupId,
+      supporter: srv.roleSupporterGroupId,
+      registered: srv.roleRegisteredGroupId,
+    }
+  })
+  return map
+})
+
 const channelRowsByServer = computed<Record<string, TeamSpeakNormalizedChannel[]>>(() => {
   const map: Record<string, TeamSpeakNormalizedChannel[]> = {}
   servers.value.forEach((server: TeamSpeakServerSnapshot) => {
@@ -136,14 +244,25 @@ const channelRowsByServer = computed<Record<string, TeamSpeakNormalizedChannel[]
   return map
 })
 
-const resolvedLastUpdated = computed(() => {
-  if (props.servers && props.servers.length)
-    return props.servers[0]?.collectedAt ?? null
+const clientsByServerChannel = computed<Record<string, Map<string, TeamSpeakServerSnapshot['clients']>>>(() => {
+  const map: Record<string, Map<string, TeamSpeakServerSnapshot['clients']>> = {}
 
-  if (!snapshotServers.value.length && import.meta.dev)
-    return MOCK_SNAPSHOT.collectedAt
+  servers.value.forEach((server: TeamSpeakServerSnapshot) => {
+    const channelMap = new Map<string, TeamSpeakServerSnapshot['clients']>()
 
-  return lastUpdated.value
+    ;(server.clients ?? []).forEach((client) => {
+      if (client.uniqueId === 'serveradmin')
+        return
+      const channelKey = client.channelId ?? '__unassigned__'
+      const existing = channelMap.get(channelKey) ?? []
+      existing.push(client)
+      channelMap.set(channelKey, existing)
+    })
+
+    map[server.id] = channelMap
+  })
+
+  return map
 })
 
 const errorMessage = computed(() => {
@@ -205,46 +324,117 @@ function displayChannelName(channel: TeamSpeakNormalizedChannel): { label: strin
   return { label, isSpacer }
 }
 
-function clientMicStatus(client: TeamSpeakServerSnapshot['clients'][number]): string {
-  if (client.muted || client.inputMuted || client.outputMuted)
-    return 'Muted'
-  if (client.away)
-    return 'Away'
-  return 'Active'
+function clientRole(serverId: string, client: TeamSpeakServerSnapshot['clients'][number]): ClientRole | null {
+  const roles = serverRoleMap.value[serverId]
+  if (!roles)
+    return null
+
+  const groups = client.serverGroups ?? []
+  if (roles.admin && groups.includes(roles.admin))
+    return 'admin'
+  if (roles.moderator && groups.includes(roles.moderator))
+    return 'moderator'
+  if (roles.supporter && groups.includes(roles.supporter))
+    return 'supporter'
+  if (roles.registered && groups.includes(roles.registered))
+    return 'registered'
+  return null
 }
 
-function clientCount(channel: TeamSpeakNormalizedChannel): number {
-  if (channel.clients.length > 0)
-    return channel.clients.length
-  return Number.isFinite(channel.totalClients) ? channel.totalClients : 0
+function isPokeChannel(channel: TeamSpeakNormalizedChannel): boolean {
+  return channel.name?.toLowerCase().includes('poke') ?? false
 }
+
+function visibleChannelClients(
+  server: TeamSpeakServerSnapshot,
+  channel: TeamSpeakNormalizedChannel,
+): TeamSpeakNormalizedChannel['clients'] {
+  const channelMap = clientsByServerChannel.value[server.id]
+  if (!channelMap)
+    return []
+
+  const direct = (channel.clients ?? []).filter(client => client.uniqueId !== 'serveradmin')
+  if (direct.length)
+    return direct
+
+  return channelMap.get(channel.id) ?? []
+}
+
+function serverClientCount(server: TeamSpeakServerSnapshot): number {
+  const channelMap = clientsByServerChannel.value[server.id]
+  if (!channelMap)
+    return 0
+  let total = 0
+  channelMap.forEach((list) => {
+    total += list.length
+  })
+  return total
+}
+
+function regionForServer(serverId: string): 'eu' | 'na' | 'all' | null {
+  const id = serverId.toLowerCase()
+  if (id.startsWith('eu'))
+    return 'eu'
+  if (id.startsWith('na'))
+    return 'na'
+  return null
+}
+
+const renderRowsByServer = computed(() => {
+  const map: Record<string, Array<{
+    channel: TeamSpeakNormalizedChannel
+    display: { label: string, isSpacer: boolean }
+    visibleClients: TeamSpeakServerSnapshot['clients']
+    clientCount: number
+    isActive: boolean
+  }>> = {}
+
+  servers.value.forEach((server) => {
+    map[server.id] = (channelRowsByServer.value[server.id] ?? []).map((channel) => {
+      const display = displayChannelName(channel)
+      const visibleClients = visibleChannelClients(server, channel)
+      const rowClientCount = visibleClients.length
+
+      return {
+        channel,
+        display,
+        visibleClients,
+        clientCount: rowClientCount,
+        isActive: rowClientCount > 0 && !isPokeChannel(channel),
+      }
+    })
+  })
+
+  return map
+})
 </script>
 
 <template>
-  <Flex column gap="m" class="ts-viewer">
-    <Flex x-between y-center gap="s">
-      <Flex y-center gap="s">
+  <Flex expand column gap="m" class="ts-viewer">
+    <Flex expand x-between y-center gap="s">
+      <Flex expand y-center gap="s">
         <Icon name="mdi:teamspeak" size="24" />
-        <div>
+        <div v-if="serversSorted.length <= 1">
           <div class="text-l">
-            {{ platformTitle }}
-          </div>
-          <div class="text-xs text-dimmed">
-            <template v-if="resolvedLastUpdated">
-              Updated <TimestampDate :date="resolvedLastUpdated" size="xs" />
-            </template>
-            <template v-else>
-              Waiting for first snapshot…
-            </template>
+            {{ selectedServer ? formatServerLabel(selectedServer) : platformTitle }}
+            <span v-if="selectedServer && regionForServer(selectedServer.id) === 'eu'">🇪🇺</span>
+            <span v-else-if="selectedServer && regionForServer(selectedServer.id) === 'na'">🇺🇸</span>
           </div>
         </div>
+        <Select
+          v-else
+          v-model="serverSelectModel"
+          :options="serverOptions"
+          placeholder="Select server"
+          size="s"
+        />
       </Flex>
-      <Button size="s" plain :loading="pending" @click="refresh">
+      <Button size="s" :loading="pending" @click="refresh">
         Refresh
       </Button>
     </Flex>
 
-    <Flex v-if="pending && !data" column gap="s">
+    <Flex v-if="pending && !data" expand column gap="s">
       <Skeleton :height="64" :radius="12" />
       <Skeleton :height="240" :radius="12" />
     </Flex>
@@ -259,105 +449,112 @@ function clientCount(channel: TeamSpeakNormalizedChannel): number {
       No TeamSpeak servers are configured.
     </Alert>
 
-    <Flex v-else column gap="m">
-      <Card v-for="server in serversSorted" :key="server.id" class="ts-viewer__server-card">
-        <Flex x-between y-center gap="s" class="ts-viewer__server-header">
-          <Flex y-center gap="s">
-            <Badge variant="accent" size="s">
-              {{ server.title ?? server.id.toUpperCase() }}
-            </Badge>
-            <div>
-              <div class="text-m">
-                {{ formatServerLabel(server) }}
-              </div>
-              <div class="text-xs text-dimmed">
-                Snapshot <TimestampDate :date="server.collectedAt" size="xs" />
-              </div>
+    <Flex v-else expand column gap="l">
+      <Card
+        v-if="selectedServer"
+        class="ts-viewer__server-card"
+        separators
+      >
+        <Flex x-between y-center gap="m" wrap class="ts-viewer__server-header">
+          <Flex gap="s" y-center>
+            <div class="text-xs text-light">
+              <TimestampDate :date="selectedServer.collectedAt" size="xs" class="text-color-lighter" />
             </div>
           </Flex>
-          <Flex gap="xs" wrap y-center>
+
+          <Flex gap="xs" wrap y-center class="ts-viewer__server-meta">
             <Badge variant="success" size="s">
-              {{ server.serverInfo?.totalClients ?? server.clients.length }} online
+              {{ serverClientCount(selectedServer) }} online
             </Badge>
-            <Badge variant="neutral" size="s">
-              {{ channelRowsByServer[server.id]?.length ?? server.channels.length }} channels
-            </Badge>
-            <Badge v-if="server.serverInfo?.maxClients" variant="neutral" size="s">
-              Max {{ server.serverInfo?.maxClients }}
-            </Badge>
-            <Badge v-if="server.serverInfo?.uptimeSeconds" variant="neutral" size="s">
-              Uptime {{ formatDuration(server.serverInfo?.uptimeSeconds) }}
-            </Badge>
+            <Tooltip v-if="selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds" placement="left">
+              <template #trigger>
+                <Icon name="ph:info" size="16" class="ts-viewer__info-icon" />
+              </template>
+              <template #content>
+                <div class="text-xs">
+                  <div v-if="selectedServer.serverInfo?.platform">
+                    Platform: {{ selectedServer.serverInfo.platform }}
+                  </div>
+                  <div v-if="selectedServer.serverInfo?.version">
+                    Version: {{ selectedServer.serverInfo.version }}
+                  </div>
+                  <div v-if="selectedServer.serverInfo?.uptimeSeconds">
+                    Uptime: {{ formatDuration(selectedServer.serverInfo.uptimeSeconds) }}
+                  </div>
+                </div>
+              </template>
+            </Tooltip>
           </Flex>
         </Flex>
 
-        <Flex gap="s" wrap class="ts-viewer__meta">
-          <Badge v-if="server.serverInfo?.platform" variant="neutral" size="xs">
-            Platform: {{ server.serverInfo?.platform }}
-          </Badge>
-          <Badge v-if="server.serverInfo?.version" variant="neutral" size="xs">
-            Version: {{ server.serverInfo?.version }}
-          </Badge>
-          <Badge v-if="server.serverInfo?.totalChannels !== undefined" variant="neutral" size="xs">
-            {{ server.serverInfo?.totalChannels }} total channels
-          </Badge>
-        </Flex>
-
-        <div class="ts-viewer__channels">
-          <div class="ts-viewer__channel-row ts-viewer__channel-row--head">
-            <span>Channel</span>
-            <span>Clients</span>
-          </div>
-          <template v-for="channel in channelRowsByServer[server.id] ?? []" :key="channel.id">
-            <template v-if="displayChannelName(channel).isSpacer">
-              <Divider class="ts-viewer__spacer" size="s">
-                {{ displayChannelName(channel).label }}
-              </Divider>
+        <Flex column expand gap="xs" class="ts-viewer__channels">
+          <template v-for="row in renderRowsByServer[selectedServer.id] ?? []" :key="row.channel.id">
+            <template v-if="row.display.isSpacer">
+              <div class="ts-viewer__spacer">
+                {{ row.display.label }}
+              </div>
             </template>
-            <div
+            <Flex
               v-else
-              class="ts-viewer__channel-row"
-              :class="{ 'ts-viewer__channel-row--active': channel.clients.length > 0 }"
+              column
+              expand
+              gap="xs"
+              class="ts-viewer__channel-wrapper"
+              :style="{ paddingLeft: `${row.channel.depth * 16}px` }"
             >
-              <Flex x-between y-center gap="s">
+              <Flex
+                expand
+                class="ts-viewer__channel-row"
+                :class="{ 'ts-viewer__channel-row--active': row.isActive }"
+              >
                 <Flex
+                  expand
+                  x-between
                   y-center
                   gap="s"
                   class="ts-viewer__channel-name"
-                  :style="{ paddingLeft: `${channel.depth * 12}px` }"
                 >
-                  <span class="ts-viewer__channel-bullet" />
-                  <span class="ts-viewer__channel-title">
-                    {{ displayChannelName(channel).label }}
-                  </span>
+                  <Flex gap="s" y-center>
+                    <span class="ts-viewer__channel-bullet" />
+                    <span class="ts-viewer__channel-title">
+                      {{ row.display.label }}
+                    </span>
+                  </Flex>
+                  <Badge v-if="row.clientCount > 0" variant="neutral" size="s">
+                    {{ row.clientCount }}
+                  </Badge>
                 </Flex>
-                <Badge variant="neutral" size="s">
-                  {{ clientCount(channel) }}
-                </Badge>
               </Flex>
-              <div v-if="channel.clients.length" class="ts-viewer__client-list">
-                <div
-                  v-for="client in channel.clients"
-                  :key="`${channel.id}-${client.uniqueId}`"
+
+              <Flex
+                v-if="row.visibleClients.length"
+                expand
+                wrap
+                gap="xs"
+                class="ts-viewer__client-list"
+                :style="{ paddingLeft: '16px' }"
+              >
+                <Flex
+                  v-for="client in row.visibleClients"
+                  :key="`${row.channel.id}-${client.uniqueId}`"
+                  gap="xs"
+                  y-center
                   class="ts-viewer__client-row"
                 >
-                  <Flex gap="xs" y-center>
-                    <Icon v-if="client.away" name="ph:clock-duotone" />
-                    <Icon v-else-if="client.muted || client.inputMuted || client.outputMuted" name="ph:microphone-slash-duotone" />
-                    <Icon v-else name="ph:user-circle-duotone" />
-                    <span class="ts-viewer__client-name">{{ client.nickname }}</span>
-                    <Badge size="xxs" variant="neutral">
-                      {{ clientMicStatus(client) }}
-                    </Badge>
-                    <Badge v-if="client.serverGroups.length" size="xxs" variant="neutral">
-                      Groups: {{ client.serverGroups.join(', ') }}
-                    </Badge>
-                  </Flex>
-                </div>
-              </div>
-            </div>
+                  <Icon v-if="client.muted || client.inputMuted || client.outputMuted" name="ph:microphone-slash-duotone" size="14" />
+                  <span v-if="getCountryEmoji(client.country)" class="ts-viewer__client-flag">{{ getCountryEmoji(client.country) }}</span>
+                  <UserLink
+                    v-if="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                    :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                    class="ts-viewer__client-name"
+                  />
+                  <span v-else class="ts-viewer__client-name">{{ client.nickname }}</span>
+                  <RoleIndicator v-if="clientRole(selectedServer.id, client)" :role="clientRole(selectedServer.id, client)!" size="xs" />
+                </Flex>
+              </Flex>
+            </Flex>
           </template>
-        </div>
+        </Flex>
       </Card>
     </Flex>
   </Flex>
@@ -365,30 +562,26 @@ function clientCount(channel: TeamSpeakNormalizedChannel): number {
 
 <style scoped>
 .ts-viewer__server-card {
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-weak);
 }
 
 .ts-viewer__server-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom: 8px;
+  padding-bottom: 4px;
 }
 
-.ts-viewer__meta {
-  margin: 8px 0 4px;
+.ts-viewer__server-meta {
+  text-align: right;
 }
 
 .ts-viewer__channels {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .ts-viewer__channel-row {
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-border-weak);
   border-radius: 10px;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-bg-raised);
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease;
@@ -399,11 +592,6 @@ function clientCount(channel: TeamSpeakNormalizedChannel): number {
   background: transparent;
   padding: 0 2px;
   font-weight: 600;
-}
-
-.ts-viewer__channel-row--active {
-  border-color: rgba(94, 234, 212, 0.65);
-  background: rgba(94, 234, 212, 0.08);
 }
 
 .ts-viewer__channel-name {
@@ -417,33 +605,45 @@ function clientCount(channel: TeamSpeakNormalizedChannel): number {
 }
 
 .ts-viewer__channel-bullet {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
+  background: var(--color-text-light);
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .ts-viewer__spacer {
-  margin: 4px 0;
-  color: var(--color-text-dimmed, rgba(255, 255, 255, 0.6));
-}
-
-.ts-viewer__client-list {
-  margin-top: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  margin: 6px 0;
+  color: var(--color-text-lighter);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
 }
 
 .ts-viewer__client-row {
-  padding-left: 20px;
-  color: var(--color-text-dimmed, rgba(255, 255, 255, 0.8));
+  border: 1px solid var(--color-border-weak);
+  border-radius: 32px;
+  padding: 8px 16px 8px 8px;
+  background: var(--color-bg-base);
+  color: var(--color-text-light);
+  font-size: 13px;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .ts-viewer__client-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ts-viewer__client-flag {
+  font-size: 14px;
+}
+
+.ts-viewer__info-icon {
+  cursor: pointer;
 }
 </style>
