@@ -43,7 +43,11 @@ const TEAMSPEAK_TIMEOUT_MS = 15_000;
 const TOKEN_LENGTH = 8;
 const TOKEN_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
-const appConstants = constants.default;
+interface AppConstants {
+  PLATFORMS?: { TEAMSPEAK?: TeamSpeakPlatformConfig };
+}
+
+const appConstants = (constants as unknown as { default: AppConstants }).default;
 
 interface TeamSpeakPlatformConfig {
   servers?: TeamSpeakServerDefinition[];
