@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { CopyClipboard, Flex, Skeleton } from '@dolanske/vui'
+import { Flex, Skeleton } from '@dolanske/vui'
+import { computed } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 
@@ -22,6 +23,12 @@ const {
 )
 
 const currentUser = useSupabaseUser()
+
+const profileLink = computed(() => {
+  if (user.value?.username)
+    return `/profile/${user.value.username}`
+  return `/profile/${props.userId}`
+})
 </script>
 
 <template>
@@ -41,9 +48,6 @@ const currentUser = useSupabaseUser()
   <div v-else-if="!user" class="user-display">
     <Flex gap="xs" x-center>
       <span class="text-xs color-error">Failed to load user</span>
-      <CopyClipboard :text="props.userId" confirm>
-        <Icon name="ph:copy" size="14" />
-      </CopyClipboard>
     </Flex>
   </div>
 
@@ -51,15 +55,12 @@ const currentUser = useSupabaseUser()
     <UserPreviewHover :user-id="props.userId" class="user-link__hover">
       <Flex gap="xs" y-center>
         <NuxtLink
-          :to="`/profile/${props.userId}`"
+          :to="profileLink"
           class="username-link text-s"
           :aria-label="`View profile of ${user.username || 'user'}`"
         >
           {{ user.username || props.userId }}
         </NuxtLink>
-        <CopyClipboard :text="props.userId" confirm>
-          <Icon name="ph:copy" size="14" />
-        </CopyClipboard>
       </Flex>
     </UserPreviewHover>
   </div>

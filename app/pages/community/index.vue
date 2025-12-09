@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Button, Card, Flex, Grid } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Tab, Tabs } from '@dolanske/vui'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
+import TeamSpeakViewer from '@/components/Shared/TeamSpeakViewer.vue'
 import { isBanActive } from '@/lib/banStatus'
 
 // Get current user for authentication checks
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
+const activeTab = ref<'about' | 'voice'>('about')
 
 // State for community members
 const randomUsers = ref<string[]>([])
@@ -178,260 +180,292 @@ watch(user, () => {
       <p>Friends building things together</p>
     </section>
 
-    <!-- Community Members -->
-    <Card v-if="user && randomUsers.length > 0" class="pb-l">
-      <Flex column gap="m" x-center y-center>
-        <Flex y-center gap="m" x-center expand>
-          <Flex column :gap="0" x-center class="text-center" y-center>
-            <h2 class="text-bold text-xxl">
-              Community Members
-            </h2>
-            <p class="text-color-light">
-              Meet some of our amazing community members from around the world
-            </p>
+    <section class="mt-l">
+      <Tabs v-model="activeTab" variant="filled" size="m">
+        <Tab value="about">
+          <Flex y-center gap="xs">
+            <Icon name="ph:info" />
+            About
           </Flex>
-        </Flex>
-        <BulkAvatarDisplayCluster
-          :user-ids="randomUsers"
-          :max-users="32"
-          :avatar-size="64"
-          :gap="12"
-          :supporter-highlight="true"
-        />
-      </Flex>
-    </Card>
+        </Tab>
+        <Tab value="voice">
+          <Flex y-center gap="xs">
+            <Icon name="ph:microphone" />
+            Voice Servers
+          </Flex>
+        </Tab>
+      </Tabs>
+    </section>
 
-    <!-- Sign-in prompt for community features -->
-    <section v-if="!user" class="mt-m">
-      <Card class="signin-prompt">
-        <Flex column gap="m" y-center class="signin-prompt__content">
-          <div class="signin-prompt__icon">
-            <Icon name="ph:users-three" size="2.5rem" />
-          </div>
-          <h3 class="text-bold text-xl">
-            Discover Our Community
-          </h3>
-          <p class="text-color-light text-center">
-            Sign in to see our supporters and meet community members from around the world
-          </p>
-          <NuxtLink to="/auth/sign-in">
-            <Button variant="accent">
-              <template #start>
-                <Icon name="ph:sign-in" />
-              </template>
-              Sign In
-            </Button>
-          </NuxtLink>
+    <template v-if="activeTab === 'about'">
+      <!-- Community Members -->
+      <Card v-if="user && randomUsers.length > 0" class="pb-l">
+        <Flex column gap="m" x-center y-center>
+          <Flex y-center gap="m" x-center expand>
+            <Flex column :gap="0" x-center class="text-center" y-center>
+              <h2 class="text-bold text-xxl">
+                Community Members
+              </h2>
+              <p class="text-color-light">
+                Meet some of our amazing community members from around the world
+              </p>
+            </Flex>
+          </Flex>
+          <BulkAvatarDisplayCluster
+            :user-ids="randomUsers"
+            :max-users="48"
+            :avatar-size="64"
+            :gap="12"
+            :supporter-highlight="true"
+          />
         </Flex>
       </Card>
-    </section>
 
-    <!-- Community Overview -->
-    <section class="mt-xl">
-      <Grid :columns="2" gap="l" class="community-grid">
-        <!-- About Our Community -->
-        <Card class="about-card">
-          <div class="about-card__content">
-            <Flex column gap="m" expand>
-              <Flex y-center gap="m" class="about-header">
-                <div class="about-icon">
-                  <Icon name="ph:users-three" size="2rem" />
-                </div>
-                <h3 class="text-bold text-xl">
-                  About Our Community
-                </h3>
-              </Flex>
-
-              <p class="about-description">
-                Hivecom is a passionate community of developers, gamers, and friends who love building and sharing projects together. We host game servers, develop open-source tools, and create a welcoming space for collaboration.
-              </p>
-
-              <Flex expand column gap="xxs">
-                <Flex y-center gap="s" class="mb-s">
-                  <Icon name="ph:rocket-launch" size="1.2rem" class="color-accent" />
-                  <h4 class="text-bold">
-                    What We Do
-                  </h4>
-                </Flex>
-                <Grid columns="2" class="activities-grid" expand>
-                  <div class="activity-item">
-                    <Icon name="ph:game-controller" size="1rem" class="activity-icon" />
-                    <span>Host dedicated game servers</span>
-                  </div>
-                  <div class="activity-item">
-                    <Icon name="ph:code" size="1rem" class="activity-icon" />
-                    <span>Develop open-source projects</span>
-                  </div>
-                  <div class="activity-item">
-                    <Icon name="ph:chat-circle" size="1rem" class="activity-icon" />
-                    <span>Provide community platforms</span>
-                  </div>
-                  <div class="activity-item">
-                    <Icon name="ph:share-network" size="1rem" class="activity-icon" />
-                    <span>Share knowledge & resources</span>
-                  </div>
-                </Grid>
-              </Flex>
-            </Flex>
-          </div>
-          <div class="about-card__decoration" />
-        </Card>
-
-        <!-- Community Links -->
-        <Card class="links-card">
-          <div class="links-card__content">
-            <Flex column gap="m" expand>
-              <Flex y-center gap="m" class="links-header">
-                <div class="links-icon">
-                  <Icon name="ph:compass" size="2rem" />
-                </div>
-                <h3 class="text-bold text-xl">
-                  Explore More
-                </h3>
-              </Flex>
-
-              <Flex column gap="s" expand>
-                <NuxtLink
-                  to="/events"
-                  class="community-link community-link--events"
-                  aria-label="View upcoming community events and activities"
-                >
-                  <div class="community-link__content">
-                    <div class="community-link__icon">
-                      <Icon name="ph:calendar" size="1.4rem" />
-                    </div>
-                    <div class="community-link__text">
-                      <div class="community-link__title">
-                        Community Events
-                      </div>
-                      <div class="community-link__subtitle">
-                        Join our community events and online gatherings
-                      </div>
-                    </div>
-                    <div class="community-link__arrow">
-                      <Icon name="ph:arrow-right" size="1.2rem" />
-                    </div>
-                  </div>
-                </NuxtLink>
-
-                <NuxtLink
-                  to="/community/projects"
-                  class="community-link community-link--projects"
-                  aria-label="Explore community projects and initiatives"
-                >
-                  <div class="community-link__content">
-                    <div class="community-link__icon">
-                      <Icon name="ph:folder" size="1.4rem" />
-                    </div>
-                    <div class="community-link__text">
-                      <div class="community-link__title">
-                        Community Projects
-                      </div>
-                      <div class="community-link__subtitle">
-                        Explore projects and initiatives from our community
-                      </div>
-                    </div>
-                    <div class="community-link__arrow">
-                      <Icon name="ph:arrow-right" size="1.2rem" />
-                    </div>
-                  </div>
-                </NuxtLink>
-
-                <NuxtLink
-                  to="/community/funding"
-                  class="community-link community-link--funding"
-                  aria-label="View our funding transparency and financial information"
-                >
-                  <div class="community-link__content">
-                    <div class="community-link__icon">
-                      <Icon name="ph:chart-bar" size="1.4rem" />
-                    </div>
-                    <div class="community-link__text">
-                      <div class="community-link__title">
-                        Funding & Transparency
-                      </div>
-                      <div class="community-link__subtitle">
-                        See how we're funded and where contributions go
-                      </div>
-                    </div>
-                    <div class="community-link__arrow">
-                      <Icon name="ph:arrow-right" size="1.2rem" />
-                    </div>
-                  </div>
-                </NuxtLink>
-
-                <NuxtLink
-                  to="/gameservers"
-                  class="community-link community-link--gameservers"
-                  aria-label="Explore our game servers and gaming community"
-                >
-                  <div class="community-link__content">
-                    <div class="community-link__icon">
-                      <Icon name="ph:game-controller" size="1.4rem" />
-                    </div>
-                    <div class="community-link__text">
-                      <div class="community-link__title">
-                        Game Servers
-                      </div>
-                      <div class="community-link__subtitle">
-                        Connect to our hosted game servers
-                      </div>
-                    </div>
-                    <div class="community-link__arrow">
-                      <Icon name="ph:arrow-right" size="1.2rem" />
-                    </div>
-                  </div>
-                </NuxtLink>
-              </Flex>
-            </Flex>
-          </div>
-          <div class="links-card__decoration" />
-        </Card>
-      </Grid>
-    </section>
-
-    <!-- Recent Projects -->
-    <section v-if="recentProjects.length > 0" class="mt-xl">
-      <Flex column gap="l">
-        <Flex y-center x-between expand>
-          <div>
-            <h2 class="text-bold text-xxl">
-              Featured Projects
-            </h2>
-            <p class="text-color-light">
-              Discover what our community has been building
+      <!-- Sign-in prompt for community features -->
+      <section v-if="!user" class="mt-m">
+        <Card class="signin-prompt">
+          <Flex column gap="m" y-center class="signin-prompt__content">
+            <div class="signin-prompt__icon">
+              <Icon name="ph:users-three" size="2.5rem" />
+            </div>
+            <h3 class="text-bold text-xl">
+              Discover Our Community
+            </h3>
+            <p class="text-color-light text-center">
+              Sign in to see our supporters and meet community members from around the world
             </p>
-          </div>
-          <NuxtLink to="/community/projects">
-            <Button>
-              <template #end>
-                <Icon name="ph:arrow-right" />
-              </template>
-              View All Projects
-            </Button>
-          </NuxtLink>
-        </Flex>
+            <NuxtLink to="/auth/sign-in">
+              <Button variant="accent">
+                <template #start>
+                  <Icon name="ph:sign-in" />
+                </template>
+                Sign In
+              </Button>
+            </NuxtLink>
+          </Flex>
+        </Card>
+      </section>
 
-        <Grid :columns="3" gap="l" class="projects-grid" expand>
-          <ProjectCard
-            v-for="project in recentProjects"
-            :key="project.id"
-            :project="project"
-            compact
-          />
+      <!-- Community Overview -->
+      <section class="mt-xl">
+        <Grid :columns="2" gap="l" class="community-grid">
+          <!-- About Our Community -->
+          <Card class="about-card">
+            <div class="about-card__content">
+              <Flex column gap="m" expand>
+                <Flex y-center gap="m" class="about-header">
+                  <div class="about-icon">
+                    <Icon name="ph:users-three" size="2rem" />
+                  </div>
+                  <h3 class="text-bold text-xl">
+                    About Our Community
+                  </h3>
+                </Flex>
+
+                <p class="about-description">
+                  Hivecom is a passionate community of developers, gamers, and friends who love building and sharing projects together. We host game servers, develop open-source tools, and create a welcoming space for collaboration.
+                </p>
+
+                <Flex expand column gap="xxs">
+                  <Flex y-center gap="s" class="mb-s">
+                    <Icon name="ph:rocket-launch" size="1.2rem" class="color-accent" />
+                    <h4 class="text-bold">
+                      What We Do
+                    </h4>
+                  </Flex>
+                  <Grid columns="2" class="activities-grid" expand>
+                    <div class="activity-item">
+                      <Icon name="ph:game-controller" size="1rem" class="activity-icon" />
+                      <span>Host dedicated game servers</span>
+                    </div>
+                    <div class="activity-item">
+                      <Icon name="ph:code" size="1rem" class="activity-icon" />
+                      <span>Develop open-source projects</span>
+                    </div>
+                    <div class="activity-item">
+                      <Icon name="ph:chat-circle" size="1rem" class="activity-icon" />
+                      <span>Provide community platforms</span>
+                    </div>
+                    <div class="activity-item">
+                      <Icon name="ph:share-network" size="1rem" class="activity-icon" />
+                      <span>Share knowledge & resources</span>
+                    </div>
+                  </Grid>
+                </Flex>
+              </Flex>
+            </div>
+            <div class="about-card__decoration" />
+          </Card>
+
+          <!-- Community Links -->
+          <Card class="links-card">
+            <div class="links-card__content">
+              <Flex column gap="m" expand>
+                <Flex y-center gap="m" class="links-header">
+                  <div class="links-icon">
+                    <Icon name="ph:compass" size="2rem" />
+                  </div>
+                  <h3 class="text-bold text-xl">
+                    Explore More
+                  </h3>
+                </Flex>
+
+                <Flex column gap="s" expand>
+                  <NuxtLink
+                    to="/events"
+                    class="community-link community-link--events"
+                    aria-label="View upcoming community events and activities"
+                  >
+                    <div class="community-link__content">
+                      <div class="community-link__icon">
+                        <Icon name="ph:calendar" size="1.4rem" />
+                      </div>
+                      <div class="community-link__text">
+                        <div class="community-link__title">
+                          Community Events
+                        </div>
+                        <div class="community-link__subtitle">
+                          Join our community events and online gatherings
+                        </div>
+                      </div>
+                      <div class="community-link__arrow">
+                        <Icon name="ph:arrow-right" size="1.2rem" />
+                      </div>
+                    </div>
+                  </NuxtLink>
+
+                  <NuxtLink
+                    to="/community/projects"
+                    class="community-link community-link--projects"
+                    aria-label="Explore community projects and initiatives"
+                  >
+                    <div class="community-link__content">
+                      <div class="community-link__icon">
+                        <Icon name="ph:folder" size="1.4rem" />
+                      </div>
+                      <div class="community-link__text">
+                        <div class="community-link__title">
+                          Community Projects
+                        </div>
+                        <div class="community-link__subtitle">
+                          Explore projects and initiatives from our community
+                        </div>
+                      </div>
+                      <div class="community-link__arrow">
+                        <Icon name="ph:arrow-right" size="1.2rem" />
+                      </div>
+                    </div>
+                  </NuxtLink>
+
+                  <NuxtLink
+                    to="/community/funding"
+                    class="community-link community-link--funding"
+                    aria-label="View our funding transparency and financial information"
+                  >
+                    <div class="community-link__content">
+                      <div class="community-link__icon">
+                        <Icon name="ph:chart-bar" size="1.4rem" />
+                      </div>
+                      <div class="community-link__text">
+                        <div class="community-link__title">
+                          Funding & Transparency
+                        </div>
+                        <div class="community-link__subtitle">
+                          See how we're funded and where contributions go
+                        </div>
+                      </div>
+                      <div class="community-link__arrow">
+                        <Icon name="ph:arrow-right" size="1.2rem" />
+                      </div>
+                    </div>
+                  </NuxtLink>
+
+                  <NuxtLink
+                    to="/gameservers"
+                    class="community-link community-link--gameservers"
+                    aria-label="Explore our game servers and gaming community"
+                  >
+                    <div class="community-link__content">
+                      <div class="community-link__icon">
+                        <Icon name="ph:game-controller" size="1.4rem" />
+                      </div>
+                      <div class="community-link__text">
+                        <div class="community-link__title">
+                          Game Servers
+                        </div>
+                        <div class="community-link__subtitle">
+                          Connect to our hosted game servers
+                        </div>
+                      </div>
+                      <div class="community-link__arrow">
+                        <Icon name="ph:arrow-right" size="1.2rem" />
+                      </div>
+                    </div>
+                  </NuxtLink>
+                </Flex>
+              </Flex>
+            </div>
+            <div class="links-card__decoration" />
+          </Card>
         </Grid>
-      </Flex>
-    </section>
+      </section>
 
-    <!-- Monthly Funding Progress -->
-    <section class="mt-xl">
-      <FundingProgress />
-    </section>
+      <!-- Recent Projects -->
+      <section v-if="recentProjects.length > 0" class="mt-xl">
+        <Flex column gap="l">
+          <Flex y-center x-between expand>
+            <div>
+              <h2 class="text-bold text-xxl">
+                Featured Projects
+              </h2>
+              <p class="text-color-light">
+                Discover what our community has been building
+              </p>
+            </div>
+            <NuxtLink to="/community/projects">
+              <Button>
+                <template #end>
+                  <Icon name="ph:arrow-right" />
+                </template>
+                View All Projects
+              </Button>
+            </NuxtLink>
+          </Flex>
 
-    <!-- Support Section with Community Supporters -->
-    <section class="mt-l">
-      <SupportCTA :supporter-ids="supporters" />
-    </section>
+          <Grid :columns="3" gap="l" class="projects-grid" expand>
+            <ProjectCard
+              v-for="project in recentProjects"
+              :key="project.id"
+              :project="project"
+              compact
+            />
+          </Grid>
+        </Flex>
+      </section>
+
+      <!-- Monthly Funding Progress -->
+      <section class="mt-xl">
+        <FundingProgress />
+      </section>
+
+      <!-- Support Section with Community Supporters -->
+      <section class="mt-l">
+        <SupportCTA :supporter-ids="supporters" />
+      </section>
+    </template>
+
+    <template v-else>
+      <section>
+        <Card>
+          <Flex column gap="m" expand>
+            <p class="text-color-light">
+              View live channels and connect with the community on TeamSpeak.
+            </p>
+            <TeamSpeakViewer />
+          </Flex>
+        </Card>
+      </section>
+    </template>
   </div>
 </template>
 

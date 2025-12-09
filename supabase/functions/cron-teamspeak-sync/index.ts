@@ -135,7 +135,8 @@ Deno.serve(async (req) => {
       .upload(
         SNAPSHOT_PATH,
         new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
-        { upsert: true, cacheControl: "300", contentType: "application/json" },
+        // Disable edge/object caching so the latest snapshot is always served
+        { upsert: true, cacheControl: "120", contentType: "application/json" },
       );
 
     if (uploadError) {

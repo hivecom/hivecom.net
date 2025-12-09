@@ -16,6 +16,10 @@ export function useTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) 
   const supabase = useSupabaseClient<Database>()
   const key = options.key ?? 'teamspeak-snapshot'
 
+  const shouldAutoRefresh = typeof options.refreshInterval === 'number'
+    && Number.isFinite(options.refreshInterval)
+    && options.refreshInterval > 0
+
   const asyncResult = useAsyncData<TeamSpeakSnapshot | null, Error | null>(
     key,
     async () => {
@@ -27,8 +31,15 @@ export function useTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) 
       if (!publicUrl)
         throw new Error('TeamSpeak snapshot URL is not available.')
 
-      const snapshot = await $fetch<TeamSpeakSnapshot>(publicUrl, {
-        cache: 'no-cache',
+      // Add a cache-buster so CDN edges don't serve stale snapshots
+      const cacheToken = shouldAutoRefresh
+        ? Math.floor(Date.now() / (options.refreshInterval as number))
+        : Date.now()
+      const url = new URL(publicUrl)
+      url.searchParams.set('t', String(cacheToken))
+
+      const snapshot = await $fetch<TeamSpeakSnapshot>(url.toString(), {
+        cache: 'no-store',
       })
 
       return snapshot ?? null
@@ -41,10 +52,6 @@ export function useTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) 
   )
 
   const { data, pending, error, refresh, status, execute, clear } = asyncResult
-
-  const shouldAutoRefresh = typeof options.refreshInterval === 'number'
-    && Number.isFinite(options.refreshInterval)
-    && options.refreshInterval > 0
 
   if (shouldAutoRefresh && process.client) {
     const timer = window.setInterval(() => {

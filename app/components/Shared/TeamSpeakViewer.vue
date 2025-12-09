@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
-import { Alert, Badge, Button, Card, Flex, Select, Skeleton, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Select, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import constants from '~~/constants.json'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
@@ -10,7 +10,12 @@ import UserLink from '@/components/Shared/UserLink.vue'
 import { useTeamSpeakSnapshot } from '@/composables/useTeamSpeakSnapshot'
 import { getCountryEmoji } from '@/lib/utils/country'
 
-type ClientRole = 'admin' | 'moderator' | 'supporter' | 'registered'
+const props = withDefaults(defineProps<Props>(), {
+  refreshInterval: 15 * 60 * 1000,
+  servers: null,
+})
+
+type ClientRole = 'admin' | 'moderator' | 'supporter' | 'registered' | 'music-bot'
 
 interface SelectOption {
   label: string
@@ -21,18 +26,18 @@ interface Props {
   refreshInterval?: number
   /** Optional explicit server data for embedding/testing. */
   servers?: TeamSpeakServerSnapshot[] | null
+  /** Optional specific server id to force selection and hide the server picker. */
+  serverId?: string | null
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  refreshInterval: 30 * 60 * 1000,
-  servers: null,
-})
+const SNAPSHOT_BUCKET = 'hivecom-content-static'
+const SNAPSHOT_PATH = 'teamspeak/state.json'
 
 const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
   collectedAt: new Date().toISOString(),
   servers: [
     {
-      id: 'mock',
+      id: 'eu',
       title: 'Mock Server',
       collectedAt: new Date().toISOString(),
       serverInfo: {
@@ -110,6 +115,98 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
       ],
       clients: [],
     },
+    {
+      id: 'na',
+      title: 'Mock Server NA',
+      collectedAt: new Date().toISOString(),
+      serverInfo: {
+        name: 'Mock Instance NA',
+        platform: 'Linux',
+        version: '3.13.7',
+        uptimeSeconds: 98_765,
+        maxClients: 64,
+        totalClients: 3,
+        totalChannels: 3,
+      },
+      channels: [
+        {
+          id: '10',
+          parentId: '0',
+          order: 0,
+          name: 'Lobby',
+          totalClients: 1,
+          depth: 0,
+          path: ['Lobby'],
+          children: [],
+          clients: [
+            {
+              uniqueId: 'gamma',
+              nickname: 'NinjaCat',
+              channelId: '10',
+              channelName: 'Lobby',
+              channelPath: ['Lobby'],
+              serverGroups: [12],
+              away: false,
+              muted: false,
+              inputMuted: false,
+              outputMuted: false,
+              country: 'CA',
+            },
+          ],
+        },
+        {
+          id: '11',
+          parentId: '0',
+          order: 1,
+          name: '[spacer0]Rooms',
+          totalClients: 0,
+          depth: 0,
+          path: ['[spacer0]Rooms'],
+          children: [
+            {
+              id: '12',
+              parentId: '11',
+              order: 0,
+              name: 'Strategy',
+              totalClients: 2,
+              depth: 1,
+              path: ['[spacer0]Rooms', 'Strategy'],
+              children: [],
+              clients: [
+                {
+                  uniqueId: 'delta',
+                  nickname: 'Planner',
+                  channelId: '12',
+                  channelName: 'Strategy',
+                  channelPath: ['[spacer0]Rooms', 'Strategy'],
+                  serverGroups: [13],
+                  away: false,
+                  muted: true,
+                  inputMuted: true,
+                  outputMuted: false,
+                  country: 'GB',
+                },
+                {
+                  uniqueId: 'epsilon',
+                  nickname: 'Scout',
+                  channelId: '12',
+                  channelName: 'Strategy',
+                  channelPath: ['[spacer0]Rooms', 'Strategy'],
+                  serverGroups: [14],
+                  away: true,
+                  muted: false,
+                  inputMuted: false,
+                  outputMuted: false,
+                  country: 'US',
+                },
+              ],
+            },
+          ],
+          clients: [],
+        },
+      ],
+      clients: [],
+    },
   ],
 }
 
@@ -117,10 +214,28 @@ const { data, pending, error, refresh } = useTeamSpeakSnapshot({
   refreshInterval: props.refreshInterval,
 })
 
-const selectedServerId = ref<string | null>(null)
+const selectedServerId = ref<string | null>(props.serverId ?? null)
+const showMusicBots = ref(false)
 
 // Fetch users with TeamSpeak identities to enable UserLink
 const supabase = useSupabaseClient()
+const rawSnapshotUrl = computed<string | null>(() => {
+  const { data: publicUrlData } = supabase.storage
+    .from(SNAPSHOT_BUCKET)
+    .getPublicUrl(SNAPSHOT_PATH)
+
+  const publicUrl = publicUrlData?.publicUrl
+  if (!publicUrl)
+    return null
+
+  const token = props.refreshInterval && Number.isFinite(props.refreshInterval)
+    ? Math.floor(Date.now() / props.refreshInterval)
+    : Date.now()
+  const url = new URL(publicUrl)
+  url.searchParams.set('t', String(token))
+  return url.toString()
+})
+
 const { data: teamspeakUsers } = await useAsyncData(
   'teamspeak-users',
   async () => {
@@ -204,26 +319,52 @@ const selectedServer = computed(() => {
     return null
   if (serversSorted.value.length === 1)
     return serversSorted.value[0]
+  if (props.serverId)
+    return serversSorted.value.find(s => s.id === props.serverId) ?? serversSorted.value[0]
   if (!selectedServerId.value)
     return serversSorted.value[0]
   return serversSorted.value.find(s => s.id === selectedServerId.value) ?? serversSorted.value[0]
 })
 
+const teamspeakConnectUrl = computed<string | null>(() => {
+  const targetServer = selectedServer.value
+  if (!targetServer)
+    return null
+
+  // Prefer configured URL for matching server id
+  const serversCfg = constants.PLATFORMS?.TEAMSPEAK?.servers ?? []
+  const matched = serversCfg.find(srv => srv.id === targetServer.id)
+  if (matched?.voicePort && matched.queryHost) {
+    const host = matched.queryHost
+    const port = matched.voicePort
+    return `ts3server://${host}:${port}`
+  }
+
+  // Fallback to first configured URL
+  const urls = constants.PLATFORMS?.TEAMSPEAK?.urls ?? []
+  const firstUrl = urls[0]?.url
+  return firstUrl ?? null
+})
+
 const serverSelectModel = computed<SelectOption[] | undefined>({
   get() {
+    if (props.serverId)
+      return serverOptions.value.filter(option => option.value === props.serverId)
     if (!selectedServerId.value)
       return undefined
     const selection = serverOptions.value.find(option => option.value === selectedServerId.value)
     return selection ? [selection] : undefined
   },
   set(value) {
+    if (props.serverId)
+      return
     const next = value?.[0]?.value ?? serversSorted.value[0]?.id ?? null
     selectedServerId.value = next
   },
 })
 
-const serverRoleMap = computed<Record<string, { admin?: number, moderator?: number, supporter?: number, registered?: number }>>(() => {
-  const map: Record<string, { admin?: number, moderator?: number, supporter?: number, registered?: number }> = {}
+const serverRoleMap = computed<Record<string, { admin?: number, moderator?: number, supporter?: number, registered?: number, musicBot?: number }>>(() => {
+  const map: Record<string, { admin?: number, moderator?: number, supporter?: number, registered?: number, musicBot?: number }> = {}
   const serversCfg = constants.PLATFORMS?.TEAMSPEAK?.servers ?? []
   serversCfg.forEach((srv) => {
     map[srv.id] = {
@@ -231,7 +372,18 @@ const serverRoleMap = computed<Record<string, { admin?: number, moderator?: numb
       moderator: srv.roleModeratorGroupId,
       supporter: srv.roleSupporterGroupId,
       registered: srv.roleRegisteredGroupId,
+      musicBot: srv.roleMusicBotGroupId,
     }
+  })
+  return map
+})
+
+const serverMutedChannelIds = computed<Record<string, Set<string>>>(() => {
+  const map: Record<string, Set<string>> = {}
+  const serversCfg = constants.PLATFORMS?.TEAMSPEAK?.servers ?? []
+  serversCfg.forEach((srv) => {
+    const muted = Array.isArray(srv.mutedChannels) ? srv.mutedChannels : []
+    map[srv.id] = new Set(muted.map(id => String(id)))
   })
   return map
 })
@@ -330,6 +482,8 @@ function clientRole(serverId: string, client: TeamSpeakServerSnapshot['clients']
     return null
 
   const groups = client.serverGroups ?? []
+  if (roles.musicBot && groups.includes(roles.musicBot))
+    return 'music-bot'
   if (roles.admin && groups.includes(roles.admin))
     return 'admin'
   if (roles.moderator && groups.includes(roles.moderator))
@@ -341,8 +495,44 @@ function clientRole(serverId: string, client: TeamSpeakServerSnapshot['clients']
   return null
 }
 
+function isMusicBot(serverId: string, client: TeamSpeakServerSnapshot['clients'][number]): boolean {
+  const roles = serverRoleMap.value[serverId]
+  if (!roles?.musicBot)
+    return false
+  return (client.serverGroups ?? []).includes(roles.musicBot)
+}
+
 function isPokeChannel(channel: TeamSpeakNormalizedChannel): boolean {
   return channel.name?.toLowerCase().includes('poke') ?? false
+}
+
+function sortClients(serverId: string, clients: TeamSpeakServerSnapshot['clients']): TeamSpeakServerSnapshot['clients'] {
+  const priority = (client: TeamSpeakServerSnapshot['clients'][number]): number => {
+    const role = clientRole(serverId, client)
+    switch (role) {
+      case 'admin':
+        return 0
+      case 'moderator':
+        return 1
+      case 'registered':
+      case 'supporter':
+        return 2
+      case 'music-bot':
+        return 3
+      default:
+        return 4
+    }
+  }
+
+  return [...clients].sort((a, b) => {
+    const roleDiff = priority(a) - priority(b)
+    if (roleDiff !== 0)
+      return roleDiff
+
+    const nameA = a.nickname?.toLowerCase() ?? ''
+    const nameB = b.nickname?.toLowerCase() ?? ''
+    return nameA.localeCompare(nameB)
+  })
 }
 
 function visibleChannelClients(
@@ -355,9 +545,10 @@ function visibleChannelClients(
 
   const direct = (channel.clients ?? []).filter(client => client.uniqueId !== 'serveradmin')
   if (direct.length)
-    return direct
+    return sortClients(server.id, direct)
 
-  return channelMap.get(channel.id) ?? []
+  const fallback = channelMap.get(channel.id) ?? []
+  return sortClients(server.id, fallback)
 }
 
 function serverClientCount(server: TeamSpeakServerSnapshot): number {
@@ -366,7 +557,7 @@ function serverClientCount(server: TeamSpeakServerSnapshot): number {
     return 0
   let total = 0
   channelMap.forEach((list) => {
-    total += list.length
+    total += list.filter(client => !isMusicBot(server.id, client)).length
   })
   return total
 }
@@ -380,6 +571,13 @@ function regionForServer(serverId: string): 'eu' | 'na' | 'all' | null {
   return null
 }
 
+function isMutedChannel(serverId: string, channelId: string | null | undefined): boolean {
+  if (!channelId)
+    return false
+  const muted = serverMutedChannelIds.value[serverId]
+  return muted ? muted.has(String(channelId)) : false
+}
+
 const renderRowsByServer = computed(() => {
   const map: Record<string, Array<{
     channel: TeamSpeakNormalizedChannel
@@ -387,26 +585,43 @@ const renderRowsByServer = computed(() => {
     visibleClients: TeamSpeakServerSnapshot['clients']
     clientCount: number
     isActive: boolean
+    bulletActive: boolean
+    bulletMuted: boolean
   }>> = {}
 
   servers.value.forEach((server) => {
     map[server.id] = (channelRowsByServer.value[server.id] ?? []).map((channel) => {
       const display = displayChannelName(channel)
       const visibleClients = visibleChannelClients(server, channel)
-      const rowClientCount = visibleClients.length
+      const muted = isMutedChannel(server.id, channel.id)
+
+      const nonBotVisibleClients = visibleClients.filter(client => !isMusicBot(server.id, client))
+      const displayClients = showMusicBots.value ? visibleClients : nonBotVisibleClients
+      const rowClientCount = nonBotVisibleClients.length
 
       return {
         channel,
         display,
-        visibleClients,
+        visibleClients: displayClients,
         clientCount: rowClientCount,
         isActive: rowClientCount > 0 && !isPokeChannel(channel),
+        bulletActive: rowClientCount > 0 && !isPokeChannel(channel) && !muted,
+        bulletMuted: muted,
       }
     })
   })
 
   return map
 })
+
+function openRawSnapshot() {
+  if (!process.client)
+    return
+  if (!rawSnapshotUrl.value)
+    return
+
+  window.open(rawSnapshotUrl.value, '_blank', 'noopener')
+}
 </script>
 
 <template>
@@ -414,7 +629,7 @@ const renderRowsByServer = computed(() => {
     <Flex expand x-between y-center gap="s">
       <Flex expand y-center gap="s">
         <Icon name="mdi:teamspeak" size="24" />
-        <div v-if="serversSorted.length <= 1">
+        <div v-if="serversSorted.length <= 1 || props.serverId">
           <div class="text-l">
             {{ selectedServer ? formatServerLabel(selectedServer) : platformTitle }}
             <span v-if="selectedServer && regionForServer(selectedServer.id) === 'eu'">🇪🇺</span>
@@ -429,9 +644,53 @@ const renderRowsByServer = computed(() => {
           size="s"
         />
       </Flex>
-      <Button size="s" :loading="pending" @click="refresh">
-        Refresh
-      </Button>
+      <Flex gap="xs" y-center>
+        <Tooltip placement="bottom">
+          <Icon name="ph:music-notes" size="16" />
+          <Switch
+            v-model="showMusicBots"
+            size="xs"
+          />
+          <template #tooltip>
+            <div class="text-xs">
+              Toggle visibility of music bot clients in the channel lists.
+            </div>
+          </template>
+        </Tooltip>
+
+        <Button
+          size="s"
+          square
+          :loading="pending"
+          data-title-top="Refresh"
+          aria-label="Refresh TeamSpeak snapshot"
+          @click="refresh"
+        >
+          <Icon name="ph:arrow-clockwise" size="16" />
+        </Button>
+        <Button
+          size="s"
+          square
+          :disabled="!rawSnapshotUrl"
+          data-title-top="Open raw snapshot"
+          aria-label="Open raw TeamSpeak snapshot"
+          @click="openRawSnapshot"
+        >
+          <Icon name="ph:code" size="16" />
+        </Button>
+        <Button
+          v-if="teamspeakConnectUrl"
+          size="s"
+          variant="accent"
+          :href="teamspeakConnectUrl"
+          aria-label="Connect to TeamSpeak"
+        >
+          <template #start>
+            <Icon name="mdi:phone-outgoing" size="16" />
+          </template>
+          Connect
+        </Button>
+      </Flex>
     </Flex>
 
     <Flex v-if="pending && !data" expand column gap="s">
@@ -515,7 +774,24 @@ const renderRowsByServer = computed(() => {
                   class="ts-viewer__channel-name"
                 >
                   <Flex gap="s" y-center>
-                    <span class="ts-viewer__channel-bullet" />
+                    <Tooltip v-if="row.bulletActive || row.bulletMuted" placement="bottom">
+                      <span
+                        class="ts-viewer__channel-bullet"
+                        :class="{
+                          'ts-viewer__channel-bullet--active': row.bulletActive,
+                          'ts-viewer__channel-bullet--muted': row.bulletMuted,
+                        }"
+                      />
+                      <template #tooltip>
+                        <span class="text-xs">
+                          {{ row.bulletMuted ? 'Muted' : 'Active' }}
+                        </span>
+                      </template>
+                    </Tooltip>
+                    <span
+                      v-else
+                      class="ts-viewer__channel-bullet"
+                    />
                     <span class="ts-viewer__channel-title">
                       {{ row.display.label }}
                     </span>
@@ -539,7 +815,7 @@ const renderRowsByServer = computed(() => {
                   :key="`${row.channel.id}-${client.uniqueId}`"
                   gap="xs"
                   y-center
-                  class="ts-viewer__client-row"
+                  class="ts-viewer__client-bubble"
                 >
                   <Icon v-if="client.muted || client.inputMuted || client.outputMuted" name="ph:microphone-slash-duotone" size="14" />
                   <span v-if="getCountryEmoji(client.country)" class="ts-viewer__client-flag">{{ getCountryEmoji(client.country) }}</span>
@@ -613,6 +889,14 @@ const renderRowsByServer = computed(() => {
   flex-shrink: 0;
 }
 
+.ts-viewer__channel-bullet--active {
+  background: var(--color-accent);
+}
+
+.ts-viewer__channel-bullet--muted {
+  background: var(--color-text-invert);
+}
+
 .ts-viewer__spacer {
   margin: 6px 0;
   color: var(--color-text-lighter);
@@ -621,7 +905,7 @@ const renderRowsByServer = computed(() => {
   font-size: 11px;
 }
 
-.ts-viewer__client-row {
+.ts-viewer__client-bubble {
   border: 1px solid var(--color-border-weak);
   border-radius: 32px;
   padding: 8px 16px 8px 8px;
@@ -634,6 +918,7 @@ const renderRowsByServer = computed(() => {
 }
 
 .ts-viewer__client-name {
+  font-size: var(--font-size-s);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
