@@ -1,6 +1,6 @@
 import type { Database } from '@/types/database.types'
 import type { TeamSpeakSnapshot } from '@/types/teamspeak'
-import { computed, onScopeDispose, ref, watch } from 'vue'
+import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
 
 const SNAPSHOT_BUCKET = 'hivecom-content-static'
 const SNAPSHOT_PATH = 'teamspeak/state.json'
@@ -99,8 +99,8 @@ export function useTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) 
       return refreshed
     },
     {
-      server: true,
-      lazy: true,
+      server: false,
+      lazy: false,
       default: () => null,
     },
   )
@@ -131,6 +131,11 @@ export function useTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) 
   }
 
   if (process.client) {
+    onMounted(() => {
+      if (status.value === 'idle')
+        void execute()
+    })
+
     const maybeRefreshIfStale = async () => {
       const snapshot = data.value
       const hasSnapshot = snapshot !== null

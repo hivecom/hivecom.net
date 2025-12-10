@@ -214,6 +214,8 @@ const { data, pending, error, refresh, lastUpdated } = useTeamSpeakSnapshot({
   refreshInterval: props.refreshInterval,
 })
 
+const manualRefreshPending = ref(false)
+
 const canRefresh = computed(() => {
   const raw = lastUpdated.value
   if (!raw)
@@ -225,6 +227,19 @@ const canRefresh = computed(() => {
 
   return Date.now() - parsed >= 60_000
 })
+
+async function handleRefresh() {
+  if (manualRefreshPending.value)
+    return
+
+  manualRefreshPending.value = true
+  try {
+    await refresh()
+  }
+  finally {
+    manualRefreshPending.value = false
+  }
+}
 
 const selectedServerId = ref<string | null>(props.serverId ?? null)
 const showMusicBots = ref(false)
@@ -673,11 +688,11 @@ function openRawSnapshot() {
         <Button
           size="s"
           square
-          :loading="pending"
-          :disabled="pending || !canRefresh"
+          :loading="pending || manualRefreshPending"
+          :disabled="pending || manualRefreshPending || !canRefresh"
           data-title-top="Refresh"
           aria-label="Refresh TeamSpeak snapshot"
-          @click="refresh"
+          @click="handleRefresh"
         >
           <Icon name="ph:arrow-clockwise" size="16" />
         </Button>
