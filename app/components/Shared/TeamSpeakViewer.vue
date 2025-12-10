@@ -799,72 +799,76 @@ function openRawSnapshot() {
                 expand
                 class="ts-viewer__channel-row"
                 :class="{ 'ts-viewer__channel-row--active': row.isActive }"
+                column
+                gap="xxs"
               >
-                <Flex
-                  expand
-                  x-between
-                  y-center
-                  gap="s"
-                  class="ts-viewer__channel-name"
-                >
-                  <Flex gap="s" y-center>
-                    <Tooltip v-if="row.bulletActive || row.bulletMuted" placement="bottom">
+                <div class="w-100">
+                  <Flex
+                    expand
+                    x-between
+                    y-center
+                    gap="s"
+                    class="ts-viewer__channel-name"
+                  >
+                    <Flex gap="s" y-center>
+                      <Tooltip v-if="row.bulletActive || row.bulletMuted" placement="bottom">
+                        <span
+                          class="ts-viewer__channel-bullet"
+                          :class="{
+                            'ts-viewer__channel-bullet--active': row.bulletActive,
+                            'ts-viewer__channel-bullet--muted': row.bulletMuted,
+                          }"
+                        />
+                        <template #tooltip>
+                          <span class="text-xs">
+                            {{ row.bulletMuted ? 'Muted' : 'Active' }}
+                          </span>
+                        </template>
+                      </Tooltip>
                       <span
+                        v-else
                         class="ts-viewer__channel-bullet"
-                        :class="{
-                          'ts-viewer__channel-bullet--active': row.bulletActive,
-                          'ts-viewer__channel-bullet--muted': row.bulletMuted,
-                        }"
                       />
-                      <template #tooltip>
-                        <span class="text-xs">
-                          {{ row.bulletMuted ? 'Muted' : 'Active' }}
-                        </span>
-                      </template>
-                    </Tooltip>
-                    <span
-                      v-else
-                      class="ts-viewer__channel-bullet"
-                    />
-                    <span class="ts-viewer__channel-title">
-                      {{ row.display.label }}
-                    </span>
+                      <span class="ts-viewer__channel-title">
+                        {{ row.display.label }}
+                      </span>
+                    </Flex>
+                    <Badge v-if="row.clientCount > 0" variant="neutral" size="s">
+                      {{ row.clientCount }}
+                    </Badge>
                   </Flex>
-                  <Badge v-if="row.clientCount > 0" variant="neutral" size="s">
-                    {{ row.clientCount }}
-                  </Badge>
-                </Flex>
-              </Flex>
+                </div>
 
-              <Flex
-                v-if="row.visibleClients.length"
-                expand
-                wrap
-                gap="xs"
-                class="ts-viewer__client-list"
-                :style="{ paddingLeft: '16px' }"
-              >
                 <Flex
-                  v-for="client in row.visibleClients"
-                  :key="`${row.channel.id}-${client.uniqueId}`"
+                  v-if="row.visibleClients.length"
+                  expand
+                  wrap
                   gap="xs"
-                  y-center
-                  class="ts-viewer__client-bubble"
+                  class="ts-viewer__client-list"
+                  :style="{ paddingLeft: '16px' }"
                 >
-                  <Icon v-if="client.muted || client.inputMuted || client.outputMuted" name="ph:microphone-slash-duotone" size="14" />
-                  <span v-if="getCountryEmoji(client.country)" class="ts-viewer__client-flag">{{ getCountryEmoji(client.country) }}</span>
-                  <UserLink
-                    v-if="getUserIdForClient(selectedServer.id, client.uniqueId)"
-                    :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
-                    class="ts-viewer__client-name"
-                  />
-                  <span v-else class="ts-viewer__client-name">{{ client.nickname }}</span>
-                  <RoleIndicator
-                    v-if="clientRole(selectedServer.id, client)"
-                    :role="clientRole(selectedServer.id, client)!"
-                    size="xs"
-                    shorten
-                  />
+                  <Flex
+                    v-for="client in row.visibleClients"
+                    :key="`${row.channel.id}-${client.uniqueId}`"
+                    gap="xs"
+                    y-center
+                    class="ts-viewer__client-bubble"
+                  >
+                    <Icon v-if="client.muted || client.inputMuted || client.outputMuted" name="ph:microphone-slash-duotone" size="14" />
+                    <span v-if="getCountryEmoji(client.country)" class="ts-viewer__client-flag">{{ getCountryEmoji(client.country) }}</span>
+                    <UserLink
+                      v-if="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                      :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                      class="ts-viewer__client-name"
+                    />
+                    <span v-else class="ts-viewer__client-name">{{ client.nickname }}</span>
+                    <RoleIndicator
+                      v-if="clientRole(selectedServer.id, client)"
+                      :role="clientRole(selectedServer.id, client)!"
+                      size="xs"
+                      shorten
+                    />
+                  </Flex>
                 </Flex>
               </Flex>
             </Flex>
@@ -948,7 +952,7 @@ function openRawSnapshot() {
   border: 1px solid var(--color-border-weak);
   border-radius: 32px;
   padding: 8px 8px 8px 16px;
-  background: var(--color-bg-base);
+  background: var(--color-bg);
   color: var(--color-text-light);
   font-size: 13px;
   transition:
