@@ -7,6 +7,32 @@ import EventsListing from '@/components/Events/EventsListing.vue'
 
 // Tab management
 const activeTab = ref('listing')
+const route = useRoute()
+const router = useRouter()
+
+const queryTab = computed(() => {
+  const tab = route.query.tab ?? (route.query.calendar ? 'calendar' : undefined)
+  return Array.isArray(tab) ? tab[0] : tab
+})
+
+watch(queryTab, (tab) => {
+  if (tab === 'listing' || tab === 'calendar')
+    activeTab.value = tab
+}, { immediate: true })
+
+watch(activeTab, (tab) => {
+  if (tab !== 'listing' && tab !== 'calendar')
+    return
+
+  const currentQueryTab = queryTab.value ?? 'listing'
+  if (currentQueryTab === tab)
+    return
+
+  const { tab: _ignoredTab, calendar: _ignoredCalendar, ...restQuery } = route.query
+  const nextQuery = tab === 'listing' ? restQuery : { ...restQuery, tab }
+
+  router.replace({ query: nextQuery })
+})
 
 // Fetch data
 const supabase = useSupabaseClient()

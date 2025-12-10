@@ -12,6 +12,32 @@ import { isBanActive } from '@/lib/banStatus'
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const activeTab = ref<'about' | 'voice'>('about')
+const route = useRoute()
+const router = useRouter()
+
+const queryTab = computed(() => {
+  const tab = route.query.tab ?? (route.query.voice ? 'voice' : undefined)
+  return Array.isArray(tab) ? tab[0] : tab
+})
+
+watch(queryTab, (tab) => {
+  if (tab === 'voice' || tab === 'about')
+    activeTab.value = tab
+}, { immediate: true })
+
+watch(activeTab, (tab) => {
+  if (tab !== 'voice' && tab !== 'about')
+    return
+
+  const currentQueryTab = queryTab.value ?? 'about'
+  if (currentQueryTab === tab)
+    return
+
+  const { tab: _ignoredTab, voice: _ignoredVoice, ...restQuery } = route.query
+  const nextQuery = tab === 'about' ? restQuery : { ...restQuery, tab }
+
+  router.replace({ query: nextQuery })
+})
 
 // State for community members
 const randomUsers = ref<string[]>([])
