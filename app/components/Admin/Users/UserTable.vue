@@ -104,7 +104,7 @@ interface TransformedUser {
   'Username': string
   'UUID': string
   'Email': string | null
-  'Role': string | null
+  'Role': number
   'Status': 'active' | 'banned'
   'Last Seen': string
   'Platforms': {
@@ -226,6 +226,17 @@ function getUserStatus(user: QueryUserProfile, _role: string | null): 'active' |
   return activeBan ? 'banned' : 'active'
 }
 
+function getRoleSortValue(role: string | null | undefined): number {
+  switch (role) {
+    case 'admin':
+      return 2
+    case 'moderator':
+      return 1
+    default:
+      return 0
+  }
+}
+
 // Filter based on search and filters
 const filteredData = computed<TransformedUser[]>(() => {
   let filtered = users.value
@@ -262,6 +273,7 @@ const filteredData = computed<TransformedUser[]>(() => {
   // Transform the data into explicit key-value pairs
   return filtered.map((user: QueryUserProfile) => {
     const role = userRoles.value[user.id] || null
+    const roleSort = getRoleSortValue(role)
     const status = getUserStatus(user, role)
     const isSupporter = !!(user.supporter_lifetime || user.supporter_patreon)
     const activityStatus = user.last_seen ? getUserActivityStatus(user.last_seen) : null
@@ -271,7 +283,7 @@ const filteredData = computed<TransformedUser[]>(() => {
       'Username': user.username || 'Unknown',
       'Email': email,
       'UUID': user.id,
-      'Role': role,
+      'Role': roleSort,
       'Status': status,
       'Last Seen': activityStatus?.lastSeenText || 'Never',
       'Platforms': {
@@ -479,7 +491,7 @@ defineExpose({
 
             <Table.Cell class="role-cell">
               <RoleIndicator
-                :role="user.Role"
+                :role="user._original.role"
                 size="s"
               />
             </Table.Cell>

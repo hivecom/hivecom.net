@@ -2,6 +2,7 @@
 import type { QueryData } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Button, Card, Flex, Input, Select, Skeleton } from '@dolanske/vui'
+import { computed } from 'vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
@@ -44,9 +45,20 @@ interface Emits {
   (e: 'clearFilters'): void
 }
 
-function getServersByGameId(gameId: number) {
-  return props.filteredGameservers?.filter((gameserver: GameserversType[0]) => gameserver.game === gameId) ?? []
+function compareGameServerName(a: GameserversType[0], b: GameserversType[0]) {
+  const nameA = a.name ?? ''
+  const nameB = b.name ?? ''
+
+  const byName = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' })
+  return byName !== 0 ? byName : (a.id ?? '').localeCompare(b.id ?? '')
 }
+
+function getServersByGameId(gameId: number) {
+  const servers = props.filteredGameservers?.filter((gameserver: GameserversType[0]) => gameserver.game === gameId) ?? []
+  return [...servers].sort(compareGameServerName)
+}
+
+const sortedGameserversWithoutGame = computed(() => [...(props.gameserversWithoutGame ?? [])].sort(compareGameServerName))
 
 function clearFilters() {
   emit('clearFilters')
@@ -150,18 +162,18 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
           </template>
 
           <!-- Gameservers without a game -->
-          <Card v-if="gameserversWithoutGame.length > 0">
+          <Card v-if="sortedGameserversWithoutGame.length > 0">
             <h3 class="mb-s">
               <Flex gap="m" y-center>
                 Unassigned Servers
                 <Badge>
-                  {{ gameserversWithoutGame.length }}
+                  {{ sortedGameserversWithoutGame.length }}
                 </Badge>
               </Flex>
             </h3>
             <Flex column class="w-100">
               <GameServerRow
-                v-for="gameserver in gameserversWithoutGame" :key="gameserver.id"
+                v-for="gameserver in sortedGameserversWithoutGame" :key="gameserver.id"
                 :gameserver="(gameserver as any)"
                 :container="(gameserver.container as any)"
                 :game="undefined"

@@ -426,7 +426,12 @@ async function processServer(args: {
     const serverInfoQuery = (await sendRawCommand(client, "serverinfo")) as QueryResponse<Record<string, unknown>>;
     const serverInfo = normalizeServerInfo(serverInfoQuery.response?.[0] ?? null);
 
-    const channelsQuery = (await sendRawCommand(client, "channellist")) as QueryResponse<ChannelRecord>;
+    const channelsQuery = (await sendRawCommand(
+      client,
+      "channellist",
+      {},
+      ["topic", "flags", "voice", "limits"],
+    )) as QueryResponse<ChannelRecord>;
     const channelResponse = channelsQuery.response ?? [];
     const channelsNormalized = normalizeChannels(channelResponse);
 
@@ -461,9 +466,9 @@ async function processServer(args: {
         .filter((g) => g.length > 0)
         .map((g) => Number(g))
         .filter((n) => Number.isFinite(n));
-      const away = entry.client_away === "1";
-      const inputMuted = entry.client_input_muted === "1";
-      const outputMuted = entry.client_output_muted === "1";
+      const away = flagTrue(entry.client_away);
+      const inputMuted = flagTrue(entry.client_input_muted);
+      const outputMuted = flagTrue(entry.client_output_muted);
       const muted = inputMuted || outputMuted;
       const talkPower = safeNumber(entry.client_talk_power) ?? null;
       const channelRequiredTalkPower = channelMeta?.requiredTalkPower ?? null;
@@ -651,6 +656,10 @@ function normalizeServerInfo(raw: Record<string, unknown> | null): TeamSpeakServ
 function safeNumber(value: unknown): number | undefined {
   const num = Number(value);
   return Number.isFinite(num) ? num : undefined;
+}
+
+function flagTrue(value: unknown): boolean {
+  return String(value) === "1";
 }
 
 type TeamSpeakClientEntry = {

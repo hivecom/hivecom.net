@@ -43,12 +43,7 @@ export function useTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) 
     if (publicUrl === null || publicUrl === undefined || publicUrl === '')
       throw new Error('TeamSpeak snapshot URL is not available.')
 
-    const cacheToken = shouldAutoRefresh
-      ? Math.floor(Date.now() / (options.refreshInterval as number))
-      : Date.now()
-
     const url = new URL(publicUrl)
-    url.searchParams.set('t', String(cacheToken))
 
     try {
       const snapshot = await $fetch<TeamSpeakSnapshot>(url.toString(), {
