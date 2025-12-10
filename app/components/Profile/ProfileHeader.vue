@@ -439,7 +439,7 @@ function getRoleInfo(role: string | null) {
     margin-top: var(--space-m);
 
     .website-link {
-      color: var(--color-text-accent);
+      color: var(--color-text-lighter);
       text-decoration: none;
       max-width: 200px;
       overflow: hidden;
@@ -449,6 +449,7 @@ function getRoleInfo(role: string | null) {
 
       &:hover {
         text-decoration: underline;
+        color: var(--color-accent);
       }
     }
 

@@ -506,10 +506,6 @@ onMounted(() => {
 <template>
   <Flex y-center x-center class="flex-1 w-100" column>
     <Card class="auth-confirm-card text-center" separators>
-      <template #header>
-        <h3>Authentication</h3>
-      </template>
-
       <div class="auth-confirm-content">
         <div v-if="loading" class="auth-confirm-state">
           <Spinner size="l" />
@@ -561,9 +557,9 @@ onMounted(() => {
         </div>
       </div>
 
-      <template #footer>
+      <template v-if="processComplete && !error" #footer>
         <Flex x-center>
-          <p v-if="processComplete && !error" class="text-s text-color-light">
+          <p class="text-s text-color-light">
             {{ isDev && debugOptions.skipRedirect ? 'Redirect disabled in debug mode' : 'You will momentarily be redirected to your profile' }}
           </p>
         </Flex>
