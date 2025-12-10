@@ -9,6 +9,7 @@ import {
   isSnapshotFresh,
   storeSnapshot,
 } from "../_shared/teamspeak.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
 const availableServers = getTeamSpeakServers();
 const credentials = buildTeamSpeakCredentials(
@@ -35,7 +36,10 @@ if (!supabaseKey) {
 const supabase = createClient<Database>(supabaseUrl, supabaseKey);
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok");
+    // This is needed if you're planning to invoke your function from a browser. Which we are.
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
   const authResponse = await authorizeAuthenticated(req);
   if (authResponse) return authResponse;
