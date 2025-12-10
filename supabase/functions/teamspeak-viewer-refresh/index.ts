@@ -77,6 +77,7 @@ function jsonResponse(status: number, payload: Record<string, unknown>) {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
+      ...corsHeaders,
       "Content-Type": "application/json",
     },
   });
