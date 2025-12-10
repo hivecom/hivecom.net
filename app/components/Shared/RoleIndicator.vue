@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Badge, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
+import BadgeCircle from './BadgeCircle.vue'
 
 interface Props {
   role: string | null | undefined
@@ -62,12 +63,12 @@ const variant = computed(() => {
 
 <template>
   <Tooltip v-if="props.shorten" placement="top">
-    <Badge
+    <BadgeCircle
       :variant="variant"
       :size="props.size"
     >
       {{ shortDisplay }}
-    </Badge>
+    </BadgeCircle>
     <template #tooltip>
       <span class="text-xs">{{ roleDisplay }}</span>
     </template>
