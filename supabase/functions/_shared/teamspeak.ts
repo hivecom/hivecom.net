@@ -155,7 +155,7 @@ export async function storeSnapshot(
     .upload(
       SNAPSHOT_PATH,
       new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
-      { upsert: true, cacheControl: "120", contentType: "application/json" },
+      { upsert: true, cacheControl: "60", contentType: "application/json" },
     );
 
   if (uploadError) {

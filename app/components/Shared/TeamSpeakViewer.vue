@@ -210,8 +210,20 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
   ],
 }
 
-const { data, pending, error, refresh } = useTeamSpeakSnapshot({
+const { data, pending, error, refresh, lastUpdated } = useTeamSpeakSnapshot({
   refreshInterval: props.refreshInterval,
+})
+
+const canRefresh = computed(() => {
+  const raw = lastUpdated.value
+  if (!raw)
+    return true
+
+  const parsed = Date.parse(raw)
+  if (Number.isNaN(parsed))
+    return true
+
+  return Date.now() - parsed >= 60_000
 })
 
 const selectedServerId = ref<string | null>(props.serverId ?? null)
@@ -662,6 +674,7 @@ function openRawSnapshot() {
           size="s"
           square
           :loading="pending"
+          :disabled="pending || !canRefresh"
           data-title-top="Refresh"
           aria-label="Refresh TeamSpeak snapshot"
           @click="refresh"

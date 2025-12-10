@@ -1,10 +1,10 @@
 import type { Database } from '@/types/database.types'
 import type { TeamSpeakSnapshot } from '@/types/teamspeak'
-import { computed, onScopeDispose, ref } from 'vue'
+import { computed, onScopeDispose, ref, watch } from 'vue'
 
 const SNAPSHOT_BUCKET = 'hivecom-content-static'
 const SNAPSHOT_PATH = 'teamspeak/state.json'
-const CACHE_MAX_AGE_MS = 60_000
+const STALE_AUTO_REFRESH_MS = 300_000
 
 export interface UseTeamSpeakSnapshotOptions {
   /** Optional key override for useAsyncData */
@@ -28,7 +28,7 @@ function isSnapshotFresh(snapshot: TeamSpeakSnapshot | null, maxAgeMs: number): 
 export function useTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) {
   const supabase = useSupabaseClient<Database>()
   const key = options.key ?? 'teamspeak-snapshot'
-  const forceEndpointRefresh = ref(false)
+  const refreshingEndpoint = ref(false)
 
   const shouldAutoRefresh = typeof options.refreshInterval === 'number'
     && Number.isFinite(options.refreshInterval)
@@ -78,42 +78,25 @@ export function useTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) 
   const asyncResult = useAsyncData<TeamSpeakSnapshot | null, Error | null>(
     key,
     async () => {
-      const skipStorage = forceEndpointRefresh.value
       let cachedSnapshot: TeamSpeakSnapshot | null = null
 
       try {
-        cachedSnapshot = skipStorage ? null : await fetchSnapshotFromStorage()
+        cachedSnapshot = await fetchSnapshotFromStorage()
       }
       catch (storageError) {
-        // Propagate storage failures on initial load; manual refresh falls back to endpoint
-        if (!skipStorage)
+        if (!process.client)
           throw (storageError instanceof Error ? storageError : new Error(String(storageError)))
       }
 
-      const hasFreshCache = isSnapshotFresh(cachedSnapshot, CACHE_MAX_AGE_MS)
-      if (hasFreshCache && !skipStorage)
+      if (cachedSnapshot !== null)
         return cachedSnapshot
 
-      // Only attempt the endpoint on the client since it requires user auth
-      if (!process.client) {
-        forceEndpointRefresh.value = false
-        return cachedSnapshot
-      }
+      // Storage is unavailable; fall back to endpoint on client only
+      if (!process.client)
+        return null
 
-      try {
-        const refreshed = await fetchSnapshotFromEndpoint()
-        if (refreshed)
-          return refreshed
-      }
-      catch (endpointError) {
-        if (skipStorage)
-          throw (endpointError instanceof Error ? endpointError : new Error(String(endpointError)))
-      }
-      finally {
-        forceEndpointRefresh.value = false
-      }
-
-      return cachedSnapshot
+      const refreshed = await fetchSnapshotFromEndpoint()
+      return refreshed
     },
     {
       server: true,
@@ -124,16 +107,51 @@ export function useTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) 
 
   const { data, pending, error, refresh: nuxtRefresh, status, execute, clear } = asyncResult
 
-  const refresh = async () => {
-    forceEndpointRefresh.value = true
-    return nuxtRefresh()
+  const fetchFromEndpointAndSet = async () => {
+    if (refreshingEndpoint.value)
+      return data.value
+
+    refreshingEndpoint.value = true
+    try {
+      const refreshed = await fetchSnapshotFromEndpoint()
+      if (refreshed !== null)
+        data.value = refreshed
+      return refreshed
+    }
+    finally {
+      refreshingEndpoint.value = false
+    }
   }
 
-  if (shouldAutoRefresh && process.client) {
-    const timer = window.setInterval(() => {
-      void nuxtRefresh()
-    }, options.refreshInterval)
-    onScopeDispose(() => window.clearInterval(timer))
+  const refresh = async () => {
+    const fromEndpoint = await fetchFromEndpointAndSet()
+    if (fromEndpoint === null)
+      await nuxtRefresh()
+    return fromEndpoint
+  }
+
+  if (process.client) {
+    const maybeRefreshIfStale = async () => {
+      const snapshot = data.value
+      const hasSnapshot = snapshot !== null
+      const isStaleBeyondThreshold = hasSnapshot
+        ? !isSnapshotFresh(snapshot, STALE_AUTO_REFRESH_MS)
+        : false
+
+      if (isStaleBeyondThreshold)
+        await fetchFromEndpointAndSet()
+    }
+
+    watch(data, () => {
+      void maybeRefreshIfStale()
+    }, { immediate: true })
+
+    if (shouldAutoRefresh) {
+      const timer = window.setInterval(() => {
+        void maybeRefreshIfStale()
+      }, options.refreshInterval)
+      onScopeDispose(() => window.clearInterval(timer))
+    }
   }
 
   const lastUpdated = computed(() => (data.value)?.collectedAt ?? null)
