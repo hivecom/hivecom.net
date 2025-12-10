@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
-import { Alert, Badge, Button, Card, Flex, Select, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Grid, Select, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import constants from '~~/constants.json'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
@@ -9,6 +9,8 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useTeamSpeakSnapshot } from '@/composables/useTeamSpeakSnapshot'
 import { getCountryEmoji } from '@/lib/utils/country'
+import { formatDate } from '@/lib/utils/date'
+import BadgeCircle from './BadgeCircle.vue'
 
 const props = withDefaults(defineProps<Props>(), {
   refreshInterval: 5 * 60 * 1000,
@@ -692,74 +694,111 @@ function openRawSnapshot() {
 </script>
 
 <template>
-  <Flex expand column gap="m" class="ts-viewer">
-    <Flex expand x-between y-center gap="s">
-      <Flex expand y-center gap="s">
-        <Icon name="mdi:teamspeak" size="24" />
-        <div v-if="serversSorted.length <= 1 || props.serverId">
-          <div class="text-l">
-            {{ selectedServer ? formatServerLabel(selectedServer) : platformTitle }}
-            <span v-if="selectedServer && regionForServer(selectedServer.id) === 'eu'">🇪🇺</span>
-            <span v-else-if="selectedServer && regionForServer(selectedServer.id) === 'na'">🇺🇸</span>
+  <Card class="ts-viewer" separators>
+    <template #header>
+      <Flex expand x-between y-center gap="s" class="mb-m">
+        <Flex expand y-center gap="s">
+          <Icon name="mdi:teamspeak" size="24" />
+          <div v-if="serversSorted.length <= 1 || props.serverId">
+            <strong class="text-xl">
+              {{ selectedServer ? formatServerLabel(selectedServer) : platformTitle }}
+              <span v-if="selectedServer && regionForServer(selectedServer.id) === 'eu'" class="text-xl">🇪🇺</span>
+              <span v-else-if="selectedServer && regionForServer(selectedServer.id) === 'na'" class="text-xl">🇺🇸</span>
+            </strong>
           </div>
-        </div>
-        <Select
-          v-else
-          v-model="serverSelectModel"
-          :options="serverOptions"
-          placeholder="Select server"
-          size="s"
-        />
-      </Flex>
-      <Flex gap="xs" y-center>
-        <Tooltip placement="bottom">
-          <Icon name="ph:music-notes" size="16" />
-          <Switch
-            v-model="showMusicBots"
-            size="xs"
+          <Select
+            v-else
+            v-model="serverSelectModel"
+            :options="serverOptions"
+            placeholder="Select server"
+            size="s"
           />
-          <template #tooltip>
-            <div class="text-xs">
-              Toggle visibility of music bot clients in the channel lists.
-            </div>
-          </template>
-        </Tooltip>
+        </Flex>
+        <Flex gap="xs" y-center>
+          <Tooltip placement="bottom">
+            <Icon name="ph:music-notes" size="16" />
+            <Switch
+              v-model="showMusicBots"
+              size="xs"
+            />
+            <template #tooltip>
+              <div class="text-xs">
+                Toggle visibility of music bot clients in the channel lists.
+              </div>
+            </template>
+          </Tooltip>
 
-        <Button
-          size="s"
-          square
-          :loading="pending || manualRefreshPending"
-          :disabled="pending || manualRefreshPending || !canRefresh"
-          data-title-top="Refresh"
-          aria-label="Refresh TeamSpeak snapshot"
-          @click="handleRefresh"
-        >
-          <Icon name="ph:arrow-clockwise" size="16" />
-        </Button>
-        <Button
-          size="s"
-          square
-          :disabled="!rawSnapshotUrl"
-          data-title-top="Open raw snapshot"
-          aria-label="Open raw TeamSpeak snapshot"
-          @click="openRawSnapshot"
-        >
-          <Icon name="ph:code" size="16" />
-        </Button>
-        <Button
-          v-if="teamspeakConnectUrl"
-          size="s"
-          variant="accent"
-          :href="teamspeakConnectUrl"
-          aria-label="Connect to TeamSpeak"
-        >
-          <template #start>
-            <Icon name="mdi:phone-outgoing" size="16" />
-          </template>
-          Connect
-        </Button>
+          <Button
+            size="s"
+            square
+            :loading="pending || manualRefreshPending"
+            :disabled="pending || manualRefreshPending || !canRefresh"
+            data-title-top="Refresh"
+            aria-label="Refresh TeamSpeak snapshot"
+            @click="handleRefresh"
+          >
+            <Icon name="ph:arrow-clockwise" size="16" />
+          </Button>
+          <Button
+            size="s"
+            square
+            :disabled="!rawSnapshotUrl"
+            data-title-top="Open raw snapshot"
+            aria-label="Open raw TeamSpeak snapshot"
+            @click="openRawSnapshot"
+          >
+            <Icon name="ph:code" size="16" />
+          </Button>
+          <Button
+            v-if="teamspeakConnectUrl"
+            size="s"
+            variant="accent"
+            :href="teamspeakConnectUrl"
+            aria-label="Connect to TeamSpeak"
+          >
+            <template #start>
+              <Icon name="mdi:phone-outgoing" size="16" />
+            </template>
+            Connect
+          </Button>
+        </Flex>
       </Flex>
-    </Flex>
+      <Flex v-if="selectedServer" x-start y-center gap="m" wrap class="ts-viewer__server-header">
+        <Flex gap="xs" y-center>
+          <Badge v-if="selectedServer.serverInfo?.uptimeSeconds" variant="success">
+            Uptime: {{ formatDuration(selectedServer.serverInfo.uptimeSeconds) }}
+          </Badge>
+          <Badge variant="success">
+            {{ serverClientCount(selectedServer) }} online
+          </Badge>
+          <Tooltip v-if="selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds || selectedServer.collectedAt">
+            <BadgeCircle variant="neutral">
+              <Icon name="ph:info" size="16" class="ts-viewer__info-icon" />
+            </BadgeCircle>
+            <template #tooltip>
+              <Grid gap="s" columns="96px 1fr" class="ts-viewer__info-tooltip">
+                <template v-if="selectedServer.serverInfo?.platform">
+                  <strong>Platform</strong>
+                  <span>{{ selectedServer.serverInfo?.platform }}</span>
+                </template>
+                <template v-if="selectedServer.serverInfo?.version">
+                  <strong>Version</strong>
+                  <span>{{ selectedServer.serverInfo?.version }}</span>
+                </template>
+                <template v-if="selectedServer.serverInfo?.uptimeSeconds">
+                  <strong>Uptime</strong>
+                  <span>{{ formatDuration(selectedServer.serverInfo?.uptimeSeconds) }}</span>
+                </template>
+                <template v-if="selectedServer.collectedAt">
+                  <strong>Collected at</strong>
+                  <span>{{ formatDate(selectedServer.collectedAt) }}</span>
+                </template>
+              </Grid>
+            </template>
+          </Tooltip>
+        </Flex>
+      </Flex>
+    </template>
 
     <Flex v-if="pending && !data" expand column gap="s">
       <Skeleton :height="64" :radius="12" />
@@ -776,160 +815,113 @@ function openRawSnapshot() {
       No TeamSpeak servers are configured.
     </Alert>
 
-    <Flex v-else expand column gap="l">
-      <Card
-        v-if="selectedServer"
-        class="ts-viewer__server-card"
-        separators
-      >
-        <Flex x-between y-center gap="m" wrap class="ts-viewer__server-header">
-          <Flex gap="s" y-center>
-            <div class="text-xs text-color-lighter">
-              <TimestampDate :date="selectedServer.collectedAt" size="xs" class="text-color-lighter" />
+    <Flex v-else-if="selectedServer" expand column gap="l">
+      <Flex column expand gap="xs" class="ts-viewer__channels">
+        <template v-for="row in renderRowsByServer[selectedServer.id] ?? []" :key="row.channel.id">
+          <template v-if="row.display.isSpacer">
+            <div class="ts-viewer__spacer">
+              {{ row.display.label }}
             </div>
-            <p
-              v-if="selectedServer.serverInfo?.uptimeSeconds"
-              class="text-xs text-color-lighter"
-            >
-              Uptime: {{ formatDuration(selectedServer.serverInfo.uptimeSeconds) }}
-            </p>
-          </Flex>
-
-          <Flex gap="xs" wrap y-center class="ts-viewer__server-meta">
-            <Badge variant="success" size="s">
-              {{ serverClientCount(selectedServer) }} online
-            </Badge>
-            <Tooltip v-if="selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds" placement="left">
-              <template #trigger>
-                <Icon name="ph:info" size="16" class="ts-viewer__info-icon" />
-              </template>
-              <template #content>
-                <div class="text-xs">
-                  <div v-if="selectedServer.serverInfo?.platform">
-                    Platform: {{ selectedServer.serverInfo.platform }}
-                  </div>
-                  <div v-if="selectedServer.serverInfo?.version">
-                    Version: {{ selectedServer.serverInfo.version }}
-                  </div>
-                  <div v-if="selectedServer.serverInfo?.uptimeSeconds">
-                    Uptime: {{ formatDuration(selectedServer.serverInfo.uptimeSeconds) }}
-                  </div>
-                </div>
-              </template>
-            </Tooltip>
-          </Flex>
-        </Flex>
-
-        <Flex column expand gap="xs" class="ts-viewer__channels">
-          <template v-for="row in renderRowsByServer[selectedServer.id] ?? []" :key="row.channel.id">
-            <template v-if="row.display.isSpacer">
-              <div class="ts-viewer__spacer">
-                {{ row.display.label }}
-              </div>
-            </template>
+          </template>
+          <Flex
+            v-else
+            column
+            expand
+            gap="xs"
+            class="ts-viewer__channel-wrapper"
+            :style="{ paddingLeft: `${row.channel.depth * 16}px` }"
+          >
             <Flex
-              v-else
-              column
               expand
-              gap="xs"
-              class="ts-viewer__channel-wrapper"
-              :style="{ paddingLeft: `${row.channel.depth * 16}px` }"
+              class="ts-viewer__channel-row"
+              :class="{ 'ts-viewer__channel-row--active': row.isActive }"
+              column
+              gap="xxs"
             >
-              <Flex
-                expand
-                class="ts-viewer__channel-row"
-                :class="{ 'ts-viewer__channel-row--active': row.isActive }"
-                column
-                gap="xxs"
-              >
-                <div class="w-100">
-                  <Flex
-                    expand
-                    x-between
-                    y-center
-                    gap="s"
-                    class="ts-viewer__channel-name"
-                  >
-                    <Flex gap="s" y-center>
-                      <Tooltip v-if="row.bulletActive || row.bulletMuted" placement="bottom">
-                        <span
-                          class="ts-viewer__channel-bullet"
-                          :class="{
-                            'ts-viewer__channel-bullet--active': row.bulletActive,
-                            'ts-viewer__channel-bullet--muted': row.bulletMuted,
-                          }"
-                        />
-                        <template #tooltip>
-                          <span class="text-xs">
-                            {{ row.bulletLabel }}
-                          </span>
-                        </template>
-                      </Tooltip>
-                      <span
-                        v-else
-                        class="ts-viewer__channel-bullet"
-                      />
-                      <span class="ts-viewer__channel-title">
-                        {{ row.display.label }}
-                      </span>
-                    </Flex>
-                    <Badge v-if="row.clientCount > 0" variant="neutral" size="s">
-                      {{ row.clientCount }}
-                    </Badge>
-                  </Flex>
-                </div>
-
+              <div class="w-100">
                 <Flex
-                  v-if="row.visibleClients.length"
                   expand
-                  wrap
-                  gap="xs"
-                  class="ts-viewer__client-list"
-                  :style="{ paddingLeft: '16px' }"
+                  x-between
+                  y-center
+                  gap="s"
+                  class="ts-viewer__channel-name"
                 >
-                  <Flex
-                    v-for="client in row.visibleClients"
-                    :key="`${row.channel.id}-${client.uniqueId}`"
-                    gap="xs"
-                    y-center
-                    class="ts-viewer__client-bubble"
-                  >
-                    <Icon v-if="client.muted || client.inputMuted || client.outputMuted || client.channelMuted" name="ph:microphone-slash-duotone" size="14" />
-                    <span v-if="getCountryEmoji(client.country)" class="ts-viewer__client-flag">{{ getCountryEmoji(client.country) }}</span>
-                    <UserLink
-                      v-if="getUserIdForClient(selectedServer.id, client.uniqueId)"
-                      :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
-                      class="ts-viewer__client-name"
+                  <Flex gap="s" y-center>
+                    <Tooltip v-if="row.bulletActive || row.bulletMuted" placement="bottom">
+                      <span
+                        class="ts-viewer__channel-bullet"
+                        :class="{
+                          'ts-viewer__channel-bullet--active': row.bulletActive,
+                          'ts-viewer__channel-bullet--muted': row.bulletMuted,
+                        }"
+                      />
+                      <template #tooltip>
+                        <span class="text-xs">
+                          {{ row.bulletLabel }}
+                        </span>
+                      </template>
+                    </Tooltip>
+                    <span
+                      v-else
+                      class="ts-viewer__channel-bullet"
                     />
-                    <span v-else class="ts-viewer__client-name">{{ client.nickname }}</span>
-                    <RoleIndicator
-                      v-if="clientRole(selectedServer.id, client)"
-                      :role="clientRole(selectedServer.id, client)!"
-                      size="xs"
-                      shorten
-                    />
+                    <span class="ts-viewer__channel-title">
+                      {{ row.display.label }}
+                    </span>
                   </Flex>
+                  <Badge v-if="row.clientCount > 0" variant="neutral" size="s">
+                    {{ row.clientCount }}
+                  </Badge>
+                </Flex>
+              </div>
+
+              <Flex
+                v-if="row.visibleClients.length"
+                expand
+                wrap
+                gap="xs"
+                class="ts-viewer__client-list"
+                :style="{ paddingLeft: '16px' }"
+              >
+                <Flex
+                  v-for="client in row.visibleClients"
+                  :key="`${row.channel.id}-${client.uniqueId}`"
+                  gap="xs"
+                  y-center
+                  class="ts-viewer__client-bubble"
+                  :class="{ 'full-mute': client.inputMuted && client.outputMuted }"
+                >
+                  <Icon
+                    v-if="client.muted || client.inputMuted || client.outputMuted || client.channelMuted"
+                    name="ph:microphone-slash-duotone"
+                    size="14"
+                  />
+                  <span v-if="getCountryEmoji(client.country)" class="ts-viewer__client-flag">{{ getCountryEmoji(client.country) }}</span>
+                  <UserLink
+                    v-if="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                    :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                    class="ts-viewer__client-name"
+                  />
+                  <span v-else class="ts-viewer__client-name"> {{ client.nickname }}</span>
+                  <RoleIndicator
+                    v-if="clientRole(selectedServer.id, client)"
+                    :role="clientRole(selectedServer.id, client)!"
+                    size="xs"
+                    shorten
+                  />
                 </Flex>
               </Flex>
             </Flex>
-          </template>
-        </Flex>
-      </Card>
+          </Flex>
+        </template>
+      </Flex>
     </Flex>
-  </Flex>
+  </Card>
 </template>
 
 <style scoped>
-.ts-viewer__server-card {
-  border: 1px solid var(--color-border-weak);
-}
-
 .ts-viewer__server-header {
   padding-bottom: 4px;
-}
-
-.ts-viewer__server-meta {
-  text-align: right;
 }
 
 .ts-viewer__channels {
@@ -939,7 +931,7 @@ function openRawSnapshot() {
 .ts-viewer__channel-row {
   border: 1px solid var(--color-border-weak);
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 8px 14px;
   background: var(--color-bg-raised);
   transition:
     border-color 0.15s ease,
@@ -991,7 +983,7 @@ function openRawSnapshot() {
 .ts-viewer__client-bubble {
   border: 1px solid var(--color-border-weak);
   border-radius: 32px;
-  padding: 8px 8px 8px 16px;
+  padding: 6px 8px 6px 16px;
   background: var(--color-bg);
   color: var(--color-text-light);
   font-size: 13px;
@@ -1011,7 +1003,16 @@ function openRawSnapshot() {
   font-size: 14px;
 }
 
-.ts-viewer__info-icon {
-  cursor: pointer;
+.ts-viewer__info-tooltip {
+  max-width: 292px;
+
+  span,
+  strong {
+    font-size: var(--n-font-size-s);
+  }
+
+  strong {
+    color: var(--color-text-lighter);
+  }
 }
 </style>

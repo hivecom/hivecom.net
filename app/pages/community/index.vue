@@ -480,18 +480,16 @@ watch(user, () => {
       </section>
     </template>
 
-    <template v-else>
-      <section>
-        <Card>
-          <Flex column gap="m" expand>
-            <p class="text-color-light">
+    <section v-else>
+      <!-- <Card> -->
+      <!-- <Flex column gap="m" expand> -->
+      <!-- <p class="text-color-light">
               View live channels and connect with the community on TeamSpeak.
-            </p>
-            <TeamSpeakViewer />
-          </Flex>
-        </Card>
-      </section>
-    </template>
+            </p> -->
+      <TeamSpeakViewer />
+      <!-- </Flex> -->
+      <!-- </Card> -->
+    </section>
   </div>
 </template>
 

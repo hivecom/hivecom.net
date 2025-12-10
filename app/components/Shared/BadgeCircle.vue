@@ -1,11 +1,22 @@
 <script setup lang="ts">
 import { Badge } from '@dolanske/vui'
 
-// No need to define any props or attrs as they will be automatically inherited
+// Copied over from
+// https://github.com/dolanske/vui/blob/main/src/components/Badge/Badge.vue
+// because there doesn't seem to be any type helper which extracts
+// props from imported components. Any solution I find just throws errors
+
+interface Props {
+  variant?: 'neutral' | 'danger' | 'warning' | 'success' | 'info' | 'accent'
+  outline?: boolean
+  filled?: boolean
+}
+
+const props = defineProps<Props>()
 </script>
 
 <template>
-  <Badge>
+  <Badge v-bind="props">
     <slot />
   </Badge>
 </template>
