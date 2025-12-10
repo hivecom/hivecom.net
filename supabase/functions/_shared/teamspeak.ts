@@ -1,6 +1,7 @@
 import * as constants from "constants" with { type: "json" };
 import { TeamSpeakClient } from "node-ts/lib/node-ts.js";
 import { parseEnvMap } from "./env.ts";
+import { sleep } from "./utils.ts";
 import type { Tables } from "database-types";
 import type {
   TeamSpeakNormalizedChannel,
@@ -337,6 +338,7 @@ export async function ensureTeamSpeakGroupAssignments(args: {
         }
 
         for (const sgid of toAdd) {
+          await sleep(100);
           try {
             await sendRawCommand(client, "servergroupaddclient", { sgid, cldbid: dbId });
           } catch (error) {
@@ -344,12 +346,11 @@ export async function ensureTeamSpeakGroupAssignments(args: {
               throw error;
             }
           }
-          await sleep(100);
         }
 
         for (const sgid of toRemove) {
-          await sendRawCommand(client, "servergroupdelclient", { sgid, cldbid: dbId });
           await sleep(100);
+          await sendRawCommand(client, "servergroupdelclient", { sgid, cldbid: dbId });
         }
       }
     } catch (error) {
@@ -388,10 +389,6 @@ function computeDesiredGroups(args: {
   }
 
   return desired;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function processServer(args: {

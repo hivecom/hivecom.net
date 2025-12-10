@@ -12,6 +12,7 @@ import {
 } from "../_shared/serviceRoleClients.ts";
 import { parseEnvMap } from "../_shared/env.ts";
 import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
+import { sleep } from "../_shared/utils.ts";
 
 interface RequestPayload {
   uniqueId?: string;
@@ -288,6 +289,7 @@ async function assignServerGroups(args: {
     }
 
     for (const groupId of targetGroups) {
+      await sleep(100);
       try {
         await sendRawCommand(client, "servergroupaddclient", { sgid: groupId, cldbid: clientDbId });
       } catch (error) {
@@ -331,6 +333,7 @@ function computeTargetGroupIds(
 
   return Array.from(groups);
 }
+
 
 function isAlreadyAssignedError(error: unknown): boolean {
   if (!error) return false;
