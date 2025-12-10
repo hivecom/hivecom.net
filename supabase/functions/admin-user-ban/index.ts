@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeAuthenticatedHasPermission } from "../_shared/auth.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
-import { Database } from "database-types";
+import type { Database } from "database-types";
 
 interface BanUserRequest {
   userId: string;

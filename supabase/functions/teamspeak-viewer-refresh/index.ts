@@ -1,23 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
-import { authorizeSystemCron } from "../_shared/auth.ts";
+import { authorizeAuthenticated } from "../_shared/auth.ts";
 import type { Database } from "database-types";
 import {
   buildTeamSpeakCredentials,
   collectSnapshots,
-  loadTeamSpeakProfileMap,
-  loadTeamSpeakRoleMap,
+  fetchSnapshotFromStorage,
   getTeamSpeakServers,
-  SNAPSHOT_PATH,
+  isSnapshotFresh,
   storeSnapshot,
-  updatePresenceFromSnapshots,
-  ensureTeamSpeakGroupAssignments,
 } from "../_shared/teamspeak.ts";
 
 const availableServers = getTeamSpeakServers();
 const credentials = buildTeamSpeakCredentials(
-  Deno.env.get("TEAMSPEAK_QUERY_USERNAMES"),
-  Deno.env.get("TEAMSPEAK_QUERY_PASSWORDS"),
+  Deno.env.get("TEAMSPEAK_QUERY_VIEWER_USERNAMES"),
+  Deno.env.get("TEAMSPEAK_QUERY_VIEWER_PASSWORDS"),
 );
+
+const CACHE_MAX_AGE_MS = 60_000;
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseKey =
@@ -38,26 +37,23 @@ const supabase = createClient<Database>(supabaseUrl, supabaseKey);
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok");
 
-  const authResponse = authorizeSystemCron(req);
+  const authResponse = await authorizeAuthenticated(req);
   if (authResponse) return authResponse;
 
   try {
+    const cached = await fetchSnapshotFromStorage(supabase);
+    if (isSnapshotFresh(cached, CACHE_MAX_AGE_MS)) {
+      if (cached === null) {
+        return jsonResponse(500, {});
+      } else {
+        return jsonResponse(200, cached );
+      }
+    }
+
     const snapshots = await collectSnapshots({
       servers: availableServers,
       credentials,
     });
-
-    const profileMap = await loadTeamSpeakProfileMap(supabase);
-    const roleMap = await loadTeamSpeakRoleMap(supabase);
-
-    await ensureTeamSpeakGroupAssignments({
-      snapshots,
-      servers: availableServers,
-      credentials,
-      profileMap,
-      roleMap,
-    });
-    await updatePresenceFromSnapshots({ supabase, snapshots, profileMap });
 
     const payload = {
       collectedAt: new Date().toISOString(),
@@ -66,10 +62,10 @@ Deno.serve(async (req) => {
 
     await storeSnapshot(supabase, payload);
 
-    return jsonResponse(200, { success: true, path: SNAPSHOT_PATH });
+    return jsonResponse(200, payload);
   } catch (error) {
-    console.error("Error in cron-teamspeak-fetch", error);
-    return jsonResponse(500, { success: false, error: "Failed to fetch TeamSpeak state" });
+    console.error("Error in teamspeak-viewer-refresh", error);
+    return jsonResponse(500, {});
   }
 });
 

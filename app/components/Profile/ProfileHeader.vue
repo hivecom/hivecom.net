@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
+import RichPresenceTeamSpeak from '@/components/Profile/RichPresenceTeamSpeak.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
@@ -235,6 +236,11 @@ function handleRemoveFriend() {
               <h1 class="profile-title">
                 {{ profile.username }}
               </h1>
+              <RichPresenceTeamSpeak
+                :profile-id="profile.id"
+                :teamspeak-identities="profile.teamspeak_identities"
+                :rich-presence-disabled="profile.rich_presence_disabled"
+              />
               <Badge
                 v-if="userRole && getRoleInfo(userRole)"
                 :variant="getRoleInfo(userRole)?.variant"
@@ -268,12 +274,10 @@ function handleRemoveFriend() {
                 Friend Request
               </Badge>
               <!-- Supporter Badges -->
-              <Flex gap="xs" y-center>
-                <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
-                  <Icon name="ph:heart" class="gold" />
-                  Supporter
-                </Badge>
-              </Flex>
+              <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
+                <Icon name="ph:heart" class="gold" />
+                Supporter
+              </Badge>
             </Flex>
 
             <!-- Action Buttons -->

@@ -11,7 +11,7 @@ import { useTeamSpeakSnapshot } from '@/composables/useTeamSpeakSnapshot'
 import { getCountryEmoji } from '@/lib/utils/country'
 
 const props = withDefaults(defineProps<Props>(), {
-  refreshInterval: 15 * 60 * 1000,
+  refreshInterval: 5 * 60 * 1000,
   servers: null,
 })
 
@@ -716,9 +716,15 @@ function openRawSnapshot() {
       >
         <Flex x-between y-center gap="m" wrap class="ts-viewer__server-header">
           <Flex gap="s" y-center>
-            <div class="text-xs text-light">
+            <div class="text-xs text-color-lighter">
               <TimestampDate :date="selectedServer.collectedAt" size="xs" class="text-color-lighter" />
             </div>
+            <p
+              v-if="selectedServer.serverInfo?.uptimeSeconds"
+              class="text-xs text-color-lighter"
+            >
+              Uptime: {{ formatDuration(selectedServer.serverInfo.uptimeSeconds) }}
+            </p>
           </Flex>
 
           <Flex gap="xs" wrap y-center class="ts-viewer__server-meta">
@@ -825,7 +831,12 @@ function openRawSnapshot() {
                     class="ts-viewer__client-name"
                   />
                   <span v-else class="ts-viewer__client-name">{{ client.nickname }}</span>
-                  <RoleIndicator v-if="clientRole(selectedServer.id, client)" :role="clientRole(selectedServer.id, client)!" size="xs" />
+                  <RoleIndicator
+                    v-if="clientRole(selectedServer.id, client)"
+                    :role="clientRole(selectedServer.id, client)!"
+                    size="xs"
+                    shorten
+                  />
                 </Flex>
               </Flex>
             </Flex>
@@ -908,7 +919,7 @@ function openRawSnapshot() {
 .ts-viewer__client-bubble {
   border: 1px solid var(--color-border-weak);
   border-radius: 32px;
-  padding: 8px 16px 8px 8px;
+  padding: 8px 8px 8px 16px;
   background: var(--color-bg-base);
   color: var(--color-text-light);
   font-size: 13px;

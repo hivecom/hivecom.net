@@ -8,7 +8,7 @@ import {
   getDockerControlToken,
 } from "../_shared/docker-control.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
-import { Database } from "database-types";
+import type { Database } from "database-types";
 
 Deno.serve(async (req: Request) => {
   // This is needed if you're planning to invoke your function from a browser.
