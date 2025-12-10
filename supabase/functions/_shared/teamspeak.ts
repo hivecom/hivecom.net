@@ -294,7 +294,6 @@ export async function ensureTeamSpeakGroupAssignments(args: {
 
     if (managedGroups.size === 0) continue;
 
-    const clientDbCache = new Map<string, string>();
     const client = new TeamSpeakClient(server.queryHost, server.queryPort ?? 10011);
 
     try {
@@ -328,8 +327,14 @@ export async function ensureTeamSpeakGroupAssignments(args: {
 
         if (toAdd.length === 0 && toRemove.length === 0) continue;
 
-        const dbId = await resolveClientDbId(client, clientSnapshot.uniqueId, clientDbCache);
-        if (!dbId) continue;
+        const dbId = clientSnapshot.databaseId;
+        if (!dbId) {
+          console.warn("Missing databaseId in snapshot; skipping group sync", {
+            serverId: server.id,
+            uniqueId: clientSnapshot.uniqueId,
+          });
+          continue;
+        }
 
         for (const sgid of toAdd) {
           try {
@@ -383,30 +388,6 @@ function computeDesiredGroups(args: {
   }
 
   return desired;
-}
-
-async function resolveClientDbId(
-  client: TeamSpeakClient,
-  uniqueId: string,
-  cache: Map<string, string>,
-): Promise<string | null> {
-  if (cache.has(uniqueId)) return cache.get(uniqueId) ?? null;
-
-  try {
-    const response = (await sendRawCommand(client, "clientgetdbidfromuid", { cluid: uniqueId })) as QueryResponse<
-      { cluid?: string; cldbid?: string }>
-    ;
-    const cldbid = response.response?.[0]?.cldbid;
-    if (cldbid) {
-      cache.set(uniqueId, String(cldbid));
-      return String(cldbid);
-    }
-  } catch (error) {
-    console.warn("Failed to resolve cldbid for uniqueId", uniqueId, error);
-  }
-
-  cache.set(uniqueId, null as unknown as string);
-  return null;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -491,8 +472,13 @@ async function processServer(args: {
       const createdAt = safeNumber(entry.client_created) ?? null;
       const lastConnectedAt = safeNumber(entry.client_lastconnected) ?? null;
 
+      const databaseId = entry.client_database_id !== undefined && entry.client_database_id !== null
+        ? String(entry.client_database_id)
+        : null;
+
       const normalizedClient: TeamSpeakNormalizedClient = {
         uniqueId,
+        databaseId,
         nickname,
         channelId,
         channelName: channelMeta?.name ?? null,
