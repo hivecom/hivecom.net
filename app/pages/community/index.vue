@@ -206,7 +206,7 @@ watch(user, () => {
       <p>Friends building things together</p>
     </section>
 
-    <section class="mt-l">
+    <section class="my-l">
       <Tabs v-model="activeTab" variant="filled" size="m">
         <Tab value="about">
           <Flex y-center gap="xs">
