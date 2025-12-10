@@ -7,6 +7,7 @@ import EventCard from '@/components/Events/EventCard.vue'
 
 // Fetch data from database
 const supabase = useSupabaseClient()
+const { fetchMetrics } = useMetrics()
 const loading = ref(true)
 const errorMessage = ref('')
 
@@ -117,33 +118,13 @@ onMounted(async () => {
 
     events.value = sortedEvents.slice(0, 6) // Show up to 6 events
 
-    // Fetch community member count
-    const { count: membersCount, error: membersError } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-
-    if (!membersError) {
-      communityStats.value.members = membersCount || 100
-      communityStats.value.membersAccurate = membersCount !== 0
-    }
-
-    // Fetch gameserver count
-    const { count: gameserversCount, error: gameserversError } = await supabase
-      .from('gameservers')
-      .select('*', { count: 'exact', head: true })
-
-    if (gameserversError)
-      throw gameserversError
-    communityStats.value.gameservers = gameserversCount || 0
-
-    // Fetch project count
-    const { count: projectsCount, error: projectsError } = await supabase
-      .from('projects')
-      .select('*', { count: 'exact', head: true })
-
-    if (!projectsError) {
-      communityStats.value.projects = projectsCount || 0
-    }
+    // Prefer metrics snapshots from storage with DB fallback
+    const metricsSnapshot = await fetchMetrics()
+    const users = metricsSnapshot.totals.users
+    communityStats.value.membersAccurate = users > 0
+    communityStats.value.members = users > 0 ? users : 100
+    communityStats.value.gameservers = metricsSnapshot.totals.gameservers
+    communityStats.value.projects = metricsSnapshot.totals.projects
   }
   catch (error: unknown) {
     console.error('Error fetching data:', error)

@@ -3,6 +3,7 @@
   "imports": {
     "constants": "../../constants.json",
     "database-types": "../../types/database.types.ts",
+    "metrics-types": "../../types/metrics.ts",
     "teamspeak-types": "../../types/teamspeak.ts",
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
     "node-ts": "npm:node-ts@8",
