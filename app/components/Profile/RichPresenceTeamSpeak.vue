@@ -20,6 +20,27 @@ const props = withDefaults(defineProps<Props>(), {
 const ONLINE_WINDOW_MS = 15 * 60 * 1000
 const ENTER_DELAY_MS = 120
 const LEAVE_DELAY_MS = 150
+const SPACER_PATTERN = /^\[spacer\d+\]/i
+
+function sanitizeChannelSegment(segment: string | null | undefined): string | null {
+  if (!segment)
+    return null
+
+  const cleaned = segment.replace(SPACER_PATTERN, '').trim()
+  return cleaned.length ? cleaned : null
+}
+
+function buildChannelPath(row: PresenceRow): string {
+  const cleanedPath = row.channel_path
+    ?.map(sanitizeChannelSegment)
+    .filter((segment): segment is string => Boolean(segment))
+
+  if (cleanedPath?.length)
+    return cleanedPath.join(' / ')
+
+  const cleanedName = sanitizeChannelSegment(row.channel_name)
+  return cleanedName || 'Unknown channel'
+}
 
 const normalizedIdentities = computed<TeamSpeakIdentityRecord[]>(() => normalizeTeamSpeakIdentities(props.teamspeakIdentities))
 const hasIdentities = computed(() => normalizedIdentities.value.length > 0)
@@ -57,7 +78,7 @@ const presenceEntries = computed(() => {
   return rows.map((row) => {
     const lastSeenMs = row.last_seen_at ? new Date(row.last_seen_at).getTime() : null
     const online = lastSeenMs ? now.value - lastSeenMs <= ONLINE_WINDOW_MS : false
-    const path = row.channel_path?.length ? row.channel_path.join(' / ') : row.channel_name || 'Unknown channel'
+    const path = buildChannelPath(row)
     const region = row.server_id?.toLowerCase() as 'eu' | 'na' | 'all' | undefined
     return {
       id: row.id,
