@@ -56,6 +56,9 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
           order: 0,
           name: 'Lobby',
           totalClients: 1,
+          requiredTalkPower: 0,
+          moderated: false,
+          muted: false,
           depth: 0,
           path: ['Lobby'],
           children: [],
@@ -72,6 +75,10 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
               muted: false,
               inputMuted: false,
               outputMuted: false,
+              talkPower: 0,
+              channelRequiredTalkPower: 0,
+              channelModerated: false,
+              channelMuted: false,
               country: 'DE',
             },
           ],
@@ -82,6 +89,9 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
           order: 1,
           name: '[spacer0]Games',
           totalClients: 0,
+          requiredTalkPower: 0,
+          moderated: false,
+          muted: false,
           depth: 0,
           path: ['[spacer0]Games'],
           children: [
@@ -91,6 +101,9 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
               order: 0,
               name: 'General',
               totalClients: 1,
+              requiredTalkPower: 50,
+              moderated: true,
+              muted: false,
               depth: 1,
               path: ['[spacer0]Games', 'General'],
               children: [],
@@ -107,6 +120,10 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
                   muted: false,
                   inputMuted: true,
                   outputMuted: false,
+                  talkPower: 10,
+                  channelRequiredTalkPower: 50,
+                  channelModerated: true,
+                  channelMuted: true,
                   country: 'US',
                 },
               ],
@@ -137,6 +154,9 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
           order: 0,
           name: 'Lobby',
           totalClients: 1,
+          requiredTalkPower: 0,
+          moderated: false,
+          muted: false,
           depth: 0,
           path: ['Lobby'],
           children: [],
@@ -153,6 +173,10 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
               muted: false,
               inputMuted: false,
               outputMuted: false,
+              talkPower: 0,
+              channelRequiredTalkPower: 0,
+              channelModerated: false,
+              channelMuted: false,
               country: 'CA',
             },
           ],
@@ -163,6 +187,9 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
           order: 1,
           name: '[spacer0]Rooms',
           totalClients: 0,
+          requiredTalkPower: 0,
+          moderated: false,
+          muted: false,
           depth: 0,
           path: ['[spacer0]Rooms'],
           children: [
@@ -172,6 +199,9 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
               order: 0,
               name: 'Strategy',
               totalClients: 2,
+              requiredTalkPower: 120,
+              moderated: true,
+              muted: true,
               depth: 1,
               path: ['[spacer0]Rooms', 'Strategy'],
               children: [],
@@ -188,6 +218,10 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
                   muted: true,
                   inputMuted: true,
                   outputMuted: false,
+                  talkPower: 10,
+                  channelRequiredTalkPower: 120,
+                  channelModerated: true,
+                  channelMuted: true,
                   country: 'GB',
                 },
                 {
@@ -202,6 +236,10 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
                   muted: false,
                   inputMuted: false,
                   outputMuted: false,
+                  talkPower: 200,
+                  channelRequiredTalkPower: 120,
+                  channelModerated: true,
+                  channelMuted: false,
                   country: 'US',
                 },
               ],
@@ -410,16 +448,6 @@ const serverRoleMap = computed<Record<string, { admin?: number, moderator?: numb
   return map
 })
 
-const serverMutedChannelIds = computed<Record<string, Set<string>>>(() => {
-  const map: Record<string, Set<string>> = {}
-  const serversCfg = constants.PLATFORMS?.TEAMSPEAK?.servers ?? []
-  serversCfg.forEach((srv) => {
-    const muted = Array.isArray(srv.mutedChannels) ? srv.mutedChannels : []
-    map[srv.id] = new Set(muted.map(id => String(id)))
-  })
-  return map
-})
-
 const channelRowsByServer = computed<Record<string, TeamSpeakNormalizedChannel[]>>(() => {
   const map: Record<string, TeamSpeakNormalizedChannel[]> = {}
   servers.value.forEach((server: TeamSpeakServerSnapshot) => {
@@ -603,11 +631,11 @@ function regionForServer(serverId: string): 'eu' | 'na' | 'all' | null {
   return null
 }
 
-function isMutedChannel(serverId: string, channelId: string | null | undefined): boolean {
-  if (!channelId)
-    return false
-  const muted = serverMutedChannelIds.value[serverId]
-  return muted ? muted.has(String(channelId)) : false
+function channelTalkState(channel: TeamSpeakNormalizedChannel): { required: number, moderated: boolean, muted: boolean } {
+  const required = channel.requiredTalkPower ?? 0
+  const moderated = channel.moderated ?? required > 0
+  const muted = channel.muted ?? required > 100
+  return { required, moderated, muted }
 }
 
 const renderRowsByServer = computed(() => {
@@ -619,17 +647,23 @@ const renderRowsByServer = computed(() => {
     isActive: boolean
     bulletActive: boolean
     bulletMuted: boolean
+    bulletLabel: string
   }>> = {}
 
   servers.value.forEach((server) => {
     map[server.id] = (channelRowsByServer.value[server.id] ?? []).map((channel) => {
       const display = displayChannelName(channel)
       const visibleClients = visibleChannelClients(server, channel)
-      const muted = isMutedChannel(server.id, channel.id)
+      const { required, moderated, muted } = channelTalkState(channel)
 
       const nonBotVisibleClients = visibleClients.filter(client => !isMusicBot(server.id, client))
       const displayClients = showMusicBots.value ? visibleClients : nonBotVisibleClients
       const rowClientCount = nonBotVisibleClients.length
+      const bulletLabel = muted
+        ? `Muted (talk power ≥ ${required})`
+        : moderated
+          ? `Moderated (talk power ≥ ${required})`
+          : 'Active'
 
       return {
         channel,
@@ -639,6 +673,7 @@ const renderRowsByServer = computed(() => {
         isActive: rowClientCount > 0 && !isPokeChannel(channel),
         bulletActive: rowClientCount > 0 && !isPokeChannel(channel) && !muted,
         bulletMuted: muted,
+        bulletLabel,
       }
     })
   })
@@ -826,7 +861,7 @@ function openRawSnapshot() {
                         />
                         <template #tooltip>
                           <span class="text-xs">
-                            {{ row.bulletMuted ? 'Muted' : 'Active' }}
+                            {{ row.bulletLabel }}
                           </span>
                         </template>
                       </Tooltip>
@@ -859,7 +894,7 @@ function openRawSnapshot() {
                     y-center
                     class="ts-viewer__client-bubble"
                   >
-                    <Icon v-if="client.muted || client.inputMuted || client.outputMuted" name="ph:microphone-slash-duotone" size="14" />
+                    <Icon v-if="client.muted || client.inputMuted || client.outputMuted || client.channelMuted" name="ph:microphone-slash-duotone" size="14" />
                     <span v-if="getCountryEmoji(client.country)" class="ts-viewer__client-flag">{{ getCountryEmoji(client.country) }}</span>
                     <UserLink
                       v-if="getUserIdForClient(selectedServer.id, client.uniqueId)"

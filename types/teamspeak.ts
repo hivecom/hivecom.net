@@ -16,6 +16,10 @@ export interface TeamSpeakNormalizedClient {
   muted: boolean
   inputMuted: boolean
   outputMuted: boolean
+  talkPower: number | null
+  channelRequiredTalkPower: number | null
+  channelModerated: boolean
+  channelMuted: boolean
   country?: string | null
   createdAt?: number | null
   lastConnectedAt?: number | null
@@ -27,6 +31,9 @@ export interface TeamSpeakNormalizedChannel {
   order: number
   name: string
   totalClients: number
+  requiredTalkPower?: number
+  moderated: boolean
+  muted: boolean
   subscribePower?: number
   depth: number
   path: string[]

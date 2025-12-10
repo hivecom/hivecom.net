@@ -53,7 +53,6 @@ export interface TeamSpeakServerDefinition {
   queryPort?: number;
   voicePort?: number;
   virtualServerId?: number;
-  botNickname?: string;
   roleAdminGroupId?: number;
   roleModeratorGroupId?: number;
   roleSupporterGroupId?: number;
@@ -86,6 +85,7 @@ type ChannelRecord = {
   channel_order?: number | string;
   channel_name?: string;
   total_clients?: number | string;
+  channel_needed_talk_power?: number | string;
   channel_needed_subscribe_power?: number | string;
 };
 
@@ -465,6 +465,13 @@ async function processServer(args: {
       const inputMuted = entry.client_input_muted === "1";
       const outputMuted = entry.client_output_muted === "1";
       const muted = inputMuted || outputMuted;
+      const talkPower = safeNumber(entry.client_talk_power) ?? null;
+      const channelRequiredTalkPower = channelMeta?.requiredTalkPower ?? null;
+      const channelModerated = channelMeta?.moderated ?? false;
+      const channelMuted = Boolean(
+        (channelRequiredTalkPower !== null && channelRequiredTalkPower > 100)
+          || (channelRequiredTalkPower !== null && (talkPower ?? 0) < channelRequiredTalkPower),
+      );
       const country = typeof entry.client_country === "string" ? entry.client_country : null;
       const createdAt = safeNumber(entry.client_created) ?? null;
       const lastConnectedAt = safeNumber(entry.client_lastconnected) ?? null;
@@ -485,6 +492,10 @@ async function processServer(args: {
         muted,
         inputMuted,
         outputMuted,
+        talkPower,
+        channelRequiredTalkPower,
+        channelModerated,
+        channelMuted,
         country,
         createdAt,
         lastConnectedAt,
@@ -566,12 +577,18 @@ function normalizeChannels(records: ChannelRecord[]): { tree: TeamSpeakNormalize
 
     const parentId = record.pid !== undefined && record.pid !== null ? String(record.pid) : null;
     const order = Number(record.channel_order ?? 0);
+    const requiredTalkPower = safeNumber(record.channel_needed_talk_power);
+    const moderated = (requiredTalkPower ?? 0) > 0;
+    const muted = (requiredTalkPower ?? 0) > 100;
     const channel: TeamSpeakNormalizedChannel = {
       id,
       parentId,
       order: Number.isFinite(order) ? order : 0,
       name: record.channel_name ?? "Unnamed Channel",
       totalClients: safeNumber(record.total_clients) ?? 0,
+      requiredTalkPower,
+      moderated,
+      muted,
       subscribePower: safeNumber(record.channel_needed_subscribe_power) ?? undefined,
       depth: 0,
       path: [],

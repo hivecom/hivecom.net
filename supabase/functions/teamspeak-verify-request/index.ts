@@ -28,7 +28,6 @@ interface TeamSpeakServerDefinition {
   queryPort?: number;
   voicePort?: number;
   virtualServerId?: number;
-  botNickname?: string;
   roleAdminGroupId?: number;
   roleModeratorGroupId?: number;
   roleSupporterGroupId?: number;
