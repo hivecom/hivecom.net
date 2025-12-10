@@ -13,30 +13,70 @@ const props = withDefaults(defineProps<Props>(), {
   supporterIds: () => [],
 })
 
-const actualSupporterCount = ref(props.supporterCount)
+const externalSupporterCount = ref(props.supporterCount)
+const lifetimeSupporterCount = ref(0)
+const actualSupporterCount = computed(() => externalSupporterCount.value + lifetimeSupporterCount.value)
+const fetchedSupporterIds = ref<string[]>([])
+const resolvedSupporterIds = computed(() => (props.supporterIds.length > 0 ? props.supporterIds : fetchedSupporterIds.value))
 const currentUser = useSupabaseUser()
 
 onMounted(async () => {
-  if (props.supporterCount === 0) {
-    try {
-      const supabase = useSupabaseClient()
-      const { data, error } = await supabase
-        .from('monthly_funding')
-        .select('patreon_count, donation_count')
-        .order('month', { ascending: false })
-        .limit(1)
-        .single()
+  const shouldFetchFunding = props.supporterCount === 0
+  const shouldFetchSupporterIds = props.supporterIds.length === 0
 
-      if (!error && data) {
-        actualSupporterCount.value = (data.patreon_count || 0) + (data.donation_count || 0)
-      }
+  try {
+    const supabase = useSupabaseClient()
+
+    const [fundingResult, lifetimeResult, supportersResult] = await Promise.all([
+      shouldFetchFunding
+        ? supabase
+            .from('monthly_funding')
+            .select('patreon_count, donation_count')
+            .order('month', { ascending: false })
+            .limit(1)
+            .single()
+        : Promise.resolve(null),
+
+      supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('supporter_lifetime', true)
+        .eq('banned', false),
+
+      shouldFetchSupporterIds
+        ? supabase
+            .from('profiles')
+            .select('id')
+            .or('supporter_lifetime.eq.true,supporter_patreon.eq.true')
+            .eq('banned', false)
+            .order('created_at', { ascending: true })
+        : Promise.resolve(null),
+    ])
+
+    if (shouldFetchFunding && fundingResult && !fundingResult.error && fundingResult.data) {
+      externalSupporterCount.value = (fundingResult.data.patreon_count ?? 0) + (fundingResult.data.donation_count ?? 0)
     }
-    catch (error) {
-      console.warn('Failed to fetch supporter count:', error)
+
+    if (!shouldFetchFunding) {
+      externalSupporterCount.value = props.supporterCount
+    }
+
+    if (lifetimeResult && !lifetimeResult.error) {
+      lifetimeSupporterCount.value = lifetimeResult.count ?? 0
+    }
+    else if (lifetimeResult?.error) {
+      console.warn('Failed to fetch lifetime supporter count:', lifetimeResult.error)
+    }
+
+    if (shouldFetchSupporterIds && supportersResult && !supportersResult.error && supportersResult.data) {
+      fetchedSupporterIds.value = supportersResult.data.map((profile: { id: string }) => profile.id)
+    }
+    else if (supportersResult?.error) {
+      console.warn('Failed to fetch supporter ids:', supportersResult.error)
     }
   }
-  else {
-    actualSupporterCount.value = props.supporterCount
+  catch (error) {
+    console.warn('Failed to fetch supporter count:', error)
   }
 })
 </script>
@@ -75,14 +115,17 @@ onMounted(async () => {
         </p>
         <BulkAvatarDisplay
           v-if="currentUser"
-          :user-ids="props.supporterIds"
-          :max-users="16"
+          :user-ids="resolvedSupporterIds"
+          :max-users="64"
           :avatar-size="48"
           :random="true"
           :gap="4"
           :supporter-highlight="true"
           class="pt-m"
         />
+        <p class="mt-s text-xxs text-color-lighter">
+          (These users have linked their accounts to Patreon or are lifetime supporters)
+        </p>
       </div>
 
       <Flex column y-center class="support-benefits" expand>

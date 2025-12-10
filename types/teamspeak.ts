@@ -6,6 +6,7 @@ export interface TeamSpeakIdentityRecord {
 
 export interface TeamSpeakNormalizedClient {
   uniqueId: string
+  databaseId: string | null
   nickname: string
   channelId: string | null
   channelName: string | null

@@ -61,7 +61,8 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
           children: [],
           clients: [
             {
-              uniqueId: 'alpha',
+              uniqueId: 'uniqueid1=',
+              databaseId: '1',
               nickname: 'MockUser',
               channelId: '1',
               channelName: 'Lobby',
@@ -95,8 +96,9 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
               children: [],
               clients: [
                 {
-                  uniqueId: 'beta',
-                  nickname: 'GamerOne',
+                  uniqueId: 'uniqueid2=',
+                  databaseId: '2',
+                  nickname: 'Gamer',
                   channelId: '3',
                   channelName: 'General',
                   channelPath: ['[spacer0]Games', 'General'],
@@ -140,8 +142,9 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
           children: [],
           clients: [
             {
-              uniqueId: 'gamma',
-              nickname: 'NinjaCat',
+              uniqueId: 'uniqueid3=',
+              databaseId: '3',
+              nickname: 'Andy',
               channelId: '10',
               channelName: 'Lobby',
               channelPath: ['Lobby'],
@@ -174,8 +177,9 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
               children: [],
               clients: [
                 {
-                  uniqueId: 'delta',
-                  nickname: 'Planner',
+                  uniqueId: 'uniqueid4=',
+                  databaseId: '4',
+                  nickname: 'EvilAndy',
                   channelId: '12',
                   channelName: 'Strategy',
                   channelPath: ['[spacer0]Rooms', 'Strategy'],
@@ -187,7 +191,8 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
                   country: 'GB',
                 },
                 {
-                  uniqueId: 'epsilon',
+                  uniqueId: 'uniqueid5=',
+                  databaseId: '5',
                   nickname: 'Scout',
                   channelId: '12',
                   channelName: 'Strategy',
