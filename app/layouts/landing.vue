@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-defineOgImageComponent('Default', {
+defineOgImageComponent('Landing', {
   title: 'Hivecom',
   description: 'A worldwide community of friends building projects together.',
 })
@@ -8,13 +8,9 @@ defineOgImageComponent('Default', {
 <template>
   <LayoutNavigation />
 
-  <slot name="hero" />
-
-  <div class="container container-l">
-    <main>
-      <slot />
-    </main>
-  </div>
+  <main>
+    <slot />
+  </main>
 
   <LayoutFooter />
 </template>

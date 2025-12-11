@@ -30,7 +30,7 @@ defineProps<{
             {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
           </template>
         </Flex>
-        <span class="text-xs text-color-lighter">Community Members</span>
+        <span class="text-xs text-color-light">Community Members</span>
       </NuxtLink>
 
       <NuxtLink to="/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
@@ -42,12 +42,12 @@ defineProps<{
             {{ communityStats.gameservers }}
           </template>
         </Flex>
-        <span class="text-xs text-color-lighter">Game Servers</span>
+        <span class="text-xs text-color-light">Game Servers</span>
       </NuxtLink>
 
       <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
         <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
-        <span class="text-xs text-color-lighter">Founded in 2013</span>
+        <span class="text-xs text-color-light">Founded in 2013</span>
       </NuxtLink>
 
       <NuxtLink to="/community/projects" class="hero-section__stats-card hero-section__stats-card--clickable">
@@ -59,7 +59,7 @@ defineProps<{
             {{ communityStats.projects }}
           </template>
         </Flex>
-        <span class="text-xs text-color-lighter">Community Projects</span>
+        <span class="text-xs text-color-light">Community Projects</span>
       </NuxtLink>
     </div>
   </div>

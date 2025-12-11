@@ -9,9 +9,15 @@ defineProps<{
 }>()
 
 function scrollToPlatforms() {
-  if (import.meta.client) {
-    document.getElementById('platforms')?.scrollIntoView({ behavior: 'smooth' })
-  }
+  if (!import.meta.client)
+    return
+  const target = document.getElementById('platforms')
+  if (!target)
+    return
+
+  const OFFSET = 240
+  const top = target.getBoundingClientRect().top + window.scrollY - OFFSET
+  window.scrollTo({ top, behavior: 'smooth' })
 }
 </script>
 

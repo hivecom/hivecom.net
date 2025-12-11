@@ -39,8 +39,9 @@ const ARC_COLOR_DARK = '#a7fc2f'
 const ARC_COLOR_LIGHT = '#225500'
 const HEX_HIGHLIGHT_COLOR_DARK = '#d9ff6b'
 const HEX_HIGHLIGHT_COLOR_LIGHT = '#225500'
-const ATMOSPHERE_COLOR = '#fff'
-const HEX_COLOR = '#555555'
+const ATMOSPHERE_COLOR = '#ddffcc'
+const HEX_COLOR_DARK = '#333333'
+const HEX_COLOR_LIGHT = '#DDDDDD'
 const RING_COLOR_RGB_DARK = '217,255,107'
 const RING_COLOR_RGB_LIGHT = '88,170,64'
 const FLIGHT_TIME = 3200
@@ -192,6 +193,10 @@ function getHighlightColor() {
   return isLightTheme() ? HEX_HIGHLIGHT_COLOR_LIGHT : HEX_HIGHLIGHT_COLOR_DARK
 }
 
+function getHexBaseColor() {
+  return isLightTheme() ? HEX_COLOR_LIGHT : HEX_COLOR_DARK
+}
+
 function getRingRgb() {
   return isLightTheme() ? RING_COLOR_RGB_LIGHT : RING_COLOR_RGB_DARK
 }
@@ -277,18 +282,19 @@ onMounted(async () => {
       .hexPolygonUseDots(true)
       .hexPolygonColor((d: unknown) => {
         const iso = countryCode(d as CountryFeature)
+        const baseHex = getHexBaseColor()
         if (!iso)
-          return HEX_COLOR
+          return baseHex
         const entry = highlighted.get(iso)
         if (!entry)
-          return HEX_COLOR
+          return baseHex
         const elapsed = performance.now() - entry.started
         if (elapsed >= entry.duration) {
           highlighted.delete(iso)
-          return HEX_COLOR
+          return baseHex
         }
         const progress = elapsed / entry.duration
-        return blendHex(getHighlightColor(), HEX_COLOR, progress)
+        return blendHex(getHighlightColor(), baseHex, progress)
       })
       .backgroundColor(BACKGROUND_COLOR)
       .atmosphereColor(ATMOSPHERE_COLOR)
@@ -317,9 +323,12 @@ onMounted(async () => {
     // Add auto-rotation
     globeInstance.controls().autoRotate = true
     globeInstance.controls().autoRotateSpeed = -0.4
+    globeInstance.controls().enableZoom = false
 
     // Nudge camera slightly closer (~10%)
-    globeInstance.pointOfView({ lat: 30, lng: -40, altitude: 1.9 }, 0)
+    const startLng = Math.random() * 360 - 180
+    const startLat = 10 + Math.random() * 50 // keep within a viewable band
+    globeInstance.pointOfView({ lat: startLat, lng: startLng, altitude: 1.9 }, 0)
 
     const arcs: ArcDatum[] = []
     const rings: RingDatum[] = []
@@ -433,8 +442,7 @@ onBeforeUnmount(() => {
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.25;
   pointer-events: auto;
-  z-index: 0;
+  z-index: 2;
 }
 </style>
