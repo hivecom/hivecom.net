@@ -1,31 +1,44 @@
 <script setup lang="ts">
-import TeamSpeakViewer from '@/components/Shared/TeamSpeakViewer.vue'
+
 </script>
 
 <template>
-  <div class="page">
-    <TeamSpeakViewer />
+  <div class="hero-stage">
+    <div class="hero-content">
+      <LandingHeroPrototype
+        :pinned-announcements="[]"
+        :community-stats="{
+          members: 0,
+          membersAccurate: false,
+          gameservers: 0,
+          age: 0,
+          projects: 0,
+        }"
+        :loading="true"
+      />
+    </div>
   </div>
 </template>
 
 <style scoped>
-.page {
+.hero-stage {
+  position: relative;
+  min-height: 100vh;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  justify-content: center;
+  overflow: hidden;
 }
 
-.logo-wrap {
-  display: grid;
-  place-items: center;
-  text-align: center;
-}
-
-.logo {
-  color: var(--color-text-invert);
-  letter-spacing: 0.2em;
-  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.45));
-  opacity: 0.92;
+.hero-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  pointer-events: auto;
 }
 </style>

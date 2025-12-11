@@ -37,6 +37,7 @@
     "better-sqlite3": "^12.4.1",
     "chart.js": "^4.5.1",
     "dayjs": "^1.11.18",
+    "globe.gl": "^2.45.0",
     "nuxt": "^4.2.1",
     "nuxt-og-image": "^5.1.11",
     "nuxt-toc": "^2.7.2",
@@ -49,14 +50,15 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
+    "@types/three": "^0.182.0",
     "eslint": "^9.36.0",
     "eslint-plugin-format": "^1.0.2",
     "eslint-plugin-vue": "^10.6.0",
     "nuxi": "^3.30.0",
-    "supabase": "^2.65.5"
+    "supabase": "^2.65.5",
+    "vue-tsc": "^3.1.8"
   },
   "overrides": {
-    "vue-tsc": "3.1.4",
     "@vue/language-core": "3.1.4"
   }
 }

@@ -2,8 +2,8 @@
 import type { Tables } from '@/types/database.types'
 import { Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
-import AnnouncementCard from '@/components/Announcements/AnnouncementCard.vue'
 import EventCard from '@/components/Events/EventCard.vue'
+import LandingHero from '@/components/Landing/LandingHero.vue'
 
 // Fetch data from database
 const supabase = useSupabaseClient()
@@ -24,13 +24,6 @@ const communityStats = ref({
 
 // Convert platforms object to array for easier v-for iteration
 const platforms = ref(Object.values(constants.PLATFORMS))
-
-// Function to scroll to platforms section
-function scrollToPlatforms() {
-  if (import.meta.client) {
-    document.getElementById('platforms')?.scrollIntoView({ behavior: 'smooth' })
-  }
-}
 
 // Fetch real data on component mount
 onMounted(async () => {
@@ -138,85 +131,11 @@ onMounted(async () => {
 
 <template>
   <div class="page-landing">
-    <!-- Hero section -->
-    <section class="hero-section">
-      <div class="hero-section__globe-container">
-        <img src="/landing/globe.svg" alt="Globe" class="hero-section__globe-image">
-      </div>
-      <h1 class="hero-section__title">
-        HIVECOM
-      </h1>
-      <p class="hero-section__tagline">
-        A community of friends from all around the world. Creating a space to grow and projects to thrive.
-      </p>
-      <div class="hero-section__actions">
-        <Button variant="fill" color="primary" @click="scrollToPlatforms">
-          Join Community
-        </Button>
-        <Button variant="accent" @click="navigateTo('/community')">
-          Learn More
-        </Button>
-
-        <!-- Ultra compact announcement -->
-        <div v-if="pinnedAnnouncements.length > 0 && !loading && pinnedAnnouncements[0]" class="hero-section__latest-announcement">
-          <AnnouncementCard
-            :announcement="pinnedAnnouncements[0]"
-            :is-latest="true"
-            ultra-compact
-          />
-        </div>
-      </div>
-
-      <!-- Community Stats -->
-      <div class="hero-section__stats">
-        <ClientOnly>
-          <Divider />
-        </ClientOnly>
-
-        <div class="hero-section__stats-grid">
-          <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
-            <Flex x-center class="hero-section__stats-value">
-              <template v-if="loading">
-                <Skeleton height="2.5rem" width="4rem" />
-              </template>
-              <template v-else>
-                {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
-              </template>
-            </Flex>
-            <span class="text-xs text-color-lighter">Community Members</span>
-          </NuxtLink>
-
-          <NuxtLink to="/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
-            <Flex x-center class="hero-section__stats-value">
-              <template v-if="loading">
-                <Skeleton height="2.5rem" width="2rem" />
-              </template>
-              <template v-else>
-                {{ communityStats.gameservers }}
-              </template>
-            </Flex>
-            <span class="text-xs text-color-lighter">Game Servers</span>
-          </NuxtLink>
-
-          <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
-            <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
-            <span class="text-xs text-color-lighter">Founded in 2013</span>
-          </NuxtLink>
-
-          <NuxtLink to="/community/projects" class="hero-section__stats-card hero-section__stats-card--clickable">
-            <Flex x-center class="hero-section__stats-value">
-              <template v-if="loading">
-                <Skeleton height="2.5rem" width="2rem" />
-              </template>
-              <template v-else>
-                {{ communityStats.projects }}
-              </template>
-            </Flex>
-            <span class="text-xs text-color-lighter">Community Projects</span>
-          </NuxtLink>
-        </div>
-      </div>
-    </section>
+    <LandingHero
+      :pinned-announcements="pinnedAnnouncements"
+      :community-stats="communityStats"
+      :loading="loading"
+    />
 
     <!-- About section -->
     <section class="about-section">
@@ -371,19 +290,9 @@ onMounted(async () => {
   .join-section__platform-item img {
     filter: invert(1);
   }
-
-  .hero-section {
-    &::before {
-      opacity: 0.01;
-    }
-
-    &__globe-image {
-      filter: invert(1) opacity(0.2);
-    }
-  }
 }
 
-.landing-page {
+.page-landing {
   padding-bottom: 3rem;
 }
 
@@ -405,149 +314,6 @@ h3 {
 h4 {
   font-size: var(--font-size-m);
   margin: 0;
-}
-
-.hero-section {
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100vh;
-    opacity: 0.25;
-    background-image: url(/landing/noise.gif);
-    background-repeat: repeat;
-    overflow: hidden;
-    border-bottom: 1px solid var(--color-border-strong);
-  }
-
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: left;
-  padding: 6.5rem 0;
-
-  &__globe-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  &__globe-image {
-    min-width: 1920px;
-    width: 100%;
-    height: 100vh;
-    opacity: 0.02;
-  }
-
-  &__title {
-    font-size: 12rem;
-    font-stretch: ultra-condensed;
-    font-weight: var(--font-weight-black);
-    letter-spacing: -0.05em;
-    transform: scaleY(0.8) translateX(-0.08em);
-    line-height: 10rem;
-    margin-bottom: 1rem;
-    z-index: 1;
-
-    @media screen and (max-width: $breakpoint-l) {
-      text-align: center;
-      font-size: 8rem;
-      line-height: 6rem;
-    }
-  }
-
-  &__tagline {
-    font-size: var(--font-size-l);
-    margin: 1rem 0 2rem;
-    opacity: 0.8;
-
-    @media screen and (max-width: $breakpoint-l) {
-      text-align: center;
-    }
-  }
-
-  &__actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: start;
-    align-items: center;
-    flex-wrap: wrap;
-
-    @media screen and (max-width: $breakpoint-l) {
-      justify-content: center;
-    }
-  }
-
-  &__latest-announcement {
-    .announcement-card {
-      max-width: 350px;
-
-      @media screen and (max-width: $breakpoint-s) {
-        max-width: 100%;
-        margin-top: var(--space-s);
-      }
-    }
-  }
-
-  &__stats {
-    margin-top: 4rem;
-    z-index: 1;
-  }
-
-  &__stats-grid {
-    display: flex;
-    justify-content: space-around;
-    flex-wrap: wrap;
-    margin-top: 2rem;
-    gap: 2rem;
-  }
-
-  &__stats-card {
-    width: 156px;
-    border-radius: var(--border-radius-m);
-    text-align: center;
-    padding: var(--space-m);
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.3s ease;
-
-    &--clickable {
-      cursor: pointer;
-      border: 1px solid transparent;
-
-      &:hover {
-        transform: translateY(-2px);
-        border-color: var(--color-accent-alpha);
-        background: var(--color-bg-subtle);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-
-        .hero-section__stats-value {
-          color: var(--color-accent);
-        }
-      }
-
-      &:active {
-        transform: translateY(0);
-      }
-    }
-  }
-
-  &__stats-value {
-    display: block;
-    font-size: 2.5rem;
-    font-weight: bold;
-    margin-bottom: var(--space-xs);
-  }
 }
 
 .about-section {

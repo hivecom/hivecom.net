@@ -1,5 +1,7 @@
 # Hivecom.net Development Instructions
 
+- ALWAYS CHECK FILES FOR PROBLEMS AFTER MAKING CHANGES.
+
 ## Environment & Tooling
 
 - Node/npm, Docker, Supabase CLI, and Deno required; run `npm install` then `npm run supabase link` when first setting up.
