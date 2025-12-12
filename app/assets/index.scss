@@ -97,6 +97,10 @@ button {
   }
 }
 
+:root:not(.dark) .card-bg {
+  background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
+}
+
 .vui-tooltip {
   z-index: 9999 !important;
 }

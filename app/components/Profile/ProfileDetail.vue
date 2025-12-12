@@ -678,61 +678,48 @@ async function ignoreFriendRequest() {
 
 <template>
   <div class="profile-view">
-    <!-- TODO: update loading state after profile about changes -->
     <!-- Loading State -->
     <template v-if="loading">
       <!-- Profile Header Skeleton -->
-      <Card>
-        <Flex column gap="l">
-          <Flex gap="l" y-start>
-            <!-- Avatar Skeleton -->
-            <div class="profile-avatar">
-              <Skeleton width="80px" height="80px" style="border-radius: 50%;" />
-            </div>
-
-            <Flex column gap="m" expand>
-              <Flex gap="l" y-start x-between expand>
-                <Flex column gap="s" expand>
-                  <!-- Username and badges -->
-                  <Flex gap="m" y-center wrap>
-                    <Skeleton height="2.5rem" width="12rem" />
-                    <Skeleton height="1.5rem" width="4rem" style="border-radius: 1rem;" />
-                    <Skeleton height="1.5rem" width="8rem" style="border-radius: 1rem;" />
-                  </Flex>
-
-                  <!-- Introduction -->
-                  <Skeleton height="1.2rem" width="80%" />
-
-                  <!-- Meta info -->
-                  <Flex gap="l" wrap>
-                    <Skeleton height="1rem" width="8rem" />
-                    <Skeleton height="1rem" width="10rem" />
-                  </Flex>
-                </Flex>
-
-                <!-- Action buttons -->
-                <Flex gap="s">
-                  <Skeleton height="2.5rem" width="7rem" style="border-radius: 0.5rem;" />
-                  <Skeleton height="2.5rem" width="7rem" style="border-radius: 0.5rem;" />
-                  <Skeleton height="2.5rem" width="6rem" style="border-radius: 0.5rem;" />
-                </Flex>
-              </Flex>
-            </Flex>
-          </Flex>
-        </Flex>
-      </Card>
-
-      <!-- Profile Sections Skeleton -->
       <div class="profile-sections">
         <!-- About Section Skeleton -->
-        <Card separators class="about-section">
+        <Card separators class="about-section card-bg">
           <template #header>
-            <Flex x-between y-center>
-              <Flex gap="m" y-center>
-                <Skeleton height="1.5rem" width="4rem" />
-                <Skeleton height="1.8rem" width="6rem" style="border-radius: 0.5rem;" />
+            <Flex column gap="l">
+              <Flex gap="l" y-start expand>
+                <!-- Avatar Skeleton -->
+                <div class="profile-avatar">
+                  <Skeleton width="160px" height="160px" style="border-radius: 50%;" />
+                </div>
+
+                <Flex column gap="m" expand>
+                  <Flex gap="l" y-start x-between expand>
+                    <Flex column gap="m" expand>
+                      <!-- Username and badges -->
+                      <Flex gap="m">
+                        <Skeleton height="1.5rem" width="4rem" style="border-radius: 1rem;" />
+                        <Skeleton height="1.5rem" width="8rem" style="border-radius: 1rem;" />
+                      </Flex>
+                      <Skeleton height="48px" width="20rem" />
+
+                      <!-- Introduction -->
+                      <Skeleton height="1.2rem" width="80%" />
+
+                      <!-- Meta info -->
+                      <Flex gap="l" wrap>
+                        <Skeleton height="1rem" width="8rem" />
+                        <Skeleton height="1rem" width="10rem" />
+                      </Flex>
+                    </Flex>
+
+                    <!-- Action buttons -->
+                    <Flex gap="s">
+                      <Skeleton height="3.5rem" width="7rem" style="border-radius: 0.5rem;" />
+                      <Skeleton height="3.5rem" width="6rem" style="border-radius: 0.5rem;" />
+                    </Flex>
+                  </Flex>
+                </Flex>
               </Flex>
-              <Skeleton width="1.5rem" height="1.5rem" />
             </Flex>
           </template>
 
@@ -745,44 +732,45 @@ async function ignoreFriendRequest() {
           </Flex>
         </Card>
 
-        <!-- Friends Section Skeleton -->
-        <Card separators class="friends-section-skeleton">
-          <template #header>
-            <Flex x-between y-center>
-              <Flex gap="xs" y-center>
-                <Skeleton height="1.5rem" width="6rem" />
-                <Skeleton height="1.5rem" width="3rem" style="border-radius: 1rem;" />
+        <Flex column gap="m">
+          <!-- Friends Section Skeleton -->
+          <Card separators class="friends-section-skeleton card-bg">
+            <template #header>
+              <Flex x-between y-center>
+                <Flex gap="xs" y-center>
+                  <Skeleton height="1.5rem" width="6rem" />
+                  <Skeleton height="1.5rem" width="3rem" style="border-radius: 1rem;" />
+                </Flex>
+                <Skeleton height="2rem" width="6rem" style="border-radius: 0.5rem;" />
               </Flex>
-              <Skeleton height="2rem" width="6rem" style="border-radius: 0.5rem;" />
+            </template>
+
+            <Flex gap="s" wrap y-center x-center class="friends-avatars-skeleton">
+              <div
+                v-for="index in 6"
+                :key="`friends-skeleton-avatar-${index}`"
+                class="friends-avatars-skeleton__avatar"
+              >
+                <Skeleton width="100%" height="100%" />
+              </div>
             </Flex>
-          </template>
+          </Card>
 
-          <Flex gap="s" wrap y-center x-center class="friends-avatars-skeleton">
-            <div
-              v-for="index in 6"
-              :key="`friends-skeleton-avatar-${index}`"
-              class="friends-avatars-skeleton__avatar"
-            >
-              <Skeleton width="100%" height="100%" />
-            </div>
-          </Flex>
-        </Card>
+          <!-- Badges Section Skeleton -->
+          <Card separators class="badges-section card-bg">
+            <template #header>
+              <Flex x-between y-center>
+                <Skeleton height="1.5rem" width="8rem" />
+                <Skeleton width="1.5rem" height="1.5rem" />
+              </Flex>
+            </template>
 
-        <!-- Badges Section Skeleton -->
-        <Card separators class="badges-section">
-          <template #header>
-            <Flex x-between y-center>
-              <Skeleton height="1.5rem" width="8rem" />
-              <Skeleton width="1.5rem" height="1.5rem" />
+            <Flex gap="s" wrap>
+              <Skeleton height="150px" width="150" style="border-radius: 1rem;" />
+              <Skeleton height="150px" width="150" style="border-radius: 1rem;" />
             </Flex>
-          </template>
-
-          <Flex gap="s" wrap>
-            <Skeleton height="2rem" width="10rem" style="border-radius: 1rem;" />
-            <Skeleton height="2rem" width="8rem" style="border-radius: 1rem;" />
-            <Skeleton height="2rem" width="12rem" style="border-radius: 1rem;" />
-          </Flex>
-        </Card>
+          </Card>
+        </Flex>
       </div>
     </template>
 
@@ -889,10 +877,13 @@ async function ignoreFriendRequest() {
   grid-template-columns: 1fr 356px;
   gap: var(--space-m);
 
-  .about-section,
+  .about-section {
+    min-height: 680px;
+  }
+
   .badges-section,
   .friends-section-skeleton {
-    min-height: 600px;
+    min-height: 256px;
   }
 
   .friends-avatars-skeleton {
