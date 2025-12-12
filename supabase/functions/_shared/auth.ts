@@ -1,6 +1,6 @@
 import { corsHeaders } from "./cors.ts";
 import { createClient } from "@supabase/supabase-js";
-import { Database } from "database-types";
+import type { Database } from "database-types";
 
 export function authorizeSystemCron(req: Request): Response | undefined {
   const systemCronSecret = Deno.env.get("SYSTEM_CRON_SECRET");

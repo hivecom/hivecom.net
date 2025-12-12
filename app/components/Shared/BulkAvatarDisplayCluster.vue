@@ -108,13 +108,6 @@ const usersList = computed<UserListEntry[]>(() => {
   return entries
 })
 
-const loadingPlaceholderCount = computed(() => {
-  if (userIdsRef.value.length === 0)
-    return 0
-
-  return Math.max(1, Math.min(userIdsRef.value.length, props.maxUsers))
-})
-
 const gapValue = computed(() => Math.max(0, props.gap ?? 0))
 
 const avatarStyleVars = computed(() => ({
@@ -151,7 +144,7 @@ defineExpose({
       :gap="gapValue"
     >
       <div
-        v-for="index in loadingPlaceholderCount"
+        v-for="index in maxUsers"
         :key="`skeleton-${index}`"
         class="bulk-avatar-display__avatar"
         :style="avatarStyleVars"

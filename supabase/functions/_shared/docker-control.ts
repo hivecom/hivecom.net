@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "./cors.ts";
-import { Database, Tables } from "database-types";
+import type { Database, Tables } from "database-types";
 
 // Interface for container with its server details
 export interface ContainerWithServer {

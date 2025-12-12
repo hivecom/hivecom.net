@@ -375,7 +375,7 @@ const tooltipBindings = computed(() => props.description ? { placement: 'bottom'
 }
 
 .profile-badge--compact .profile-badge__hex-wrapper {
-  width: clamp(90px, 26vw, 160px);
+  width: clamp(90px, 26vw, 100%);
 }
 
 @media (max-width: 640px) {

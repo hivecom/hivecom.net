@@ -76,8 +76,8 @@
           "roleModeratorGroupId": 14,
           "roleSupporterGroupId": 41,
           "roleRegisteredGroupId": 7,
-          "virtualServerId": 1,
-          "botNickname": "Hivecom"
+          "roleMusicBotGroupId": 26,
+          "virtualServerId": 1
         }
       ],
       "icon": "mdi:teamspeak",

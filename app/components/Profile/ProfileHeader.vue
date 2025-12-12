@@ -6,6 +6,7 @@ import { computed } from 'vue'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
 import MDRenderer from '../Shared/MDRenderer.vue'
+import RichPresenceTeamSpeak from './RichPresenceTeamSpeak.vue'
 
 interface Props {
   profile: Tables<'profiles'>
@@ -203,6 +204,11 @@ function getRoleInfo(role: string | null) {
         <Flex column :gap="4" expand x-end class="h-100">
           <!-- Username, Role, Badges and Action Buttons Row -->
           <Flex gap="xs" y-center wrap>
+            <RichPresenceTeamSpeak
+              :profile-id="profile.id"
+              :teamspeak-identities="profile.teamspeak_identities"
+              :rich-presence-disabled="profile.rich_presence_disabled"
+            />
             <Badge
               v-if="userRole && getRoleInfo(userRole)"
               :variant="getRoleInfo(userRole)?.variant"

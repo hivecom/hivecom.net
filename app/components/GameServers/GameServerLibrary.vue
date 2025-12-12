@@ -34,9 +34,19 @@ const selectedGameServers = ref<GameserversType>([])
 const gameCovers = ref<Map<number, string>>(new Map())
 const coverLoadingStates = ref<Set<number>>(new Set())
 
+function compareGameServerName(a: GameserversType[0], b: GameserversType[0]) {
+  const nameA = a.name ?? ''
+  const nameB = b.name ?? ''
+
+  const byName = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' })
+  return byName !== 0 ? byName : (a.id ?? '').localeCompare(b.id ?? '')
+}
+
 async function openGameModal(game: Tables<'games'>) {
   selectedGame.value = game
-  selectedGameServers.value = props.gameservers?.filter((gs: GameserversType[0]) => gs.game === game.id) || []
+  selectedGameServers.value = (props.gameservers?.filter((gs: GameserversType[0]) => gs.game === game.id) || [])
+    .slice()
+    .sort(compareGameServerName)
   showModal.value = true
 }
 

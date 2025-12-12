@@ -1,5 +1,7 @@
 # Hivecom.net Development Instructions
 
+- ALWAYS CHECK FILES FOR PROBLEMS AFTER MAKING CHANGES.
+
 ## Environment & Tooling
 
 - Node/npm, Docker, Supabase CLI, and Deno required; run `npm install` then `npm run supabase link` when first setting up.
@@ -12,6 +14,7 @@
 - Run `npm run lint` (eslint + typecheck) before pushing; `npm run lint:fix` for autofixes.
 - Respect ESLint rules: `ts/no-explicit-any` is an error; use nullish coalescing where appropriate; `no-console` is allowed only in `supabase/functions/**`.
 - TypeScript is strict; prefer typed refs/composables and avoid `any` casts.
+- Always check for problems after making changes.
 
 ## Frontend Guidelines (Nuxt 4 + VUI)
 
@@ -40,10 +43,13 @@
 - Required Vault secrets: `anon_key`, `project_url`, `system_cron_secret`, `system_trigger_secret`, `system_discord_notification_webhook_url`.
 - Edge functions that rely on cron/trigger flows must read these secrets; do not hardcode service-role keys.
 
-## PR Checklist
+## Nuances
 
-- [ ] Lint and typecheck pass locally.
-- [ ] VUI components used instead of custom CSS; duplicate styles removed where possible.
-- [ ] New UI split into reusable components; pages kept thin.
-- [ ] Supabase migrations/types updated when schema changes; triggers aligned with `TRIGGERS.md`.
-- [ ] Edge functions formatted with `deno fmt`; secrets documented/consumed correctly.
+(You can extend this section whenever you find something non-obvious that future you should know)
+
+- VUI token quick-reference (from `@dolanske/vui@1.5.7`):
+- Colors: `--color-bg`, `--color-bg-medium`, `--color-bg-raised`, `--color-bg-lowered`, `--color-text`, `--color-text-light`, `--color-text-lighter`, `--color-text-invert`, `--color-border`, `--color-border-strong`, `--color-border-weak`, `--color-accent`, `--color-text-red/green/yellow/blue`, button gray/fill variants, with light/dark palettes baked in.
+- Sizes: tokens are `xxs, xs, s, m, l, xl, xxl, xxxl` (not sm/md/lg); font sizes `--font-size-xxs..xxxxl` (1.1rem–4.8rem), spaces `--space-xxs..xxxl` (4px–64px), radii `--border-radius-xs/s/m/l` (3/5/8/12px), interactive height `--interactive-el-height` (36px).
+- Transitions: `--transition-fast` (.05s), `--transition` (.11s cubic-bezier(.65,0,.35,1)), `--transition-slow` (.25s).
+- Z-index scale: `--z-behind`, `--z-default`, `--z-active`, `--z-mask`, `--z-sticky`, `--z-nav`, `--z-overlay`, `--z-popout`, `--z-toast`, `--z-modal`.
+- Components: button variants (gray/fill/accent/success/warning/danger/link, `square|icon|outline|plain`), badge variants (neutral/info/success/warning/danger/accent, `filled|outline`), avatar sizes (s=28px, m=36px default, l=48px), modal sizes (s/m/l/screen), tabs underline styles, data-title tooltips for simple labels, `<Tooltip>` for rich content.

@@ -12,6 +12,7 @@ import {
 } from "../_shared/serviceRoleClients.ts";
 import { parseEnvMap } from "../_shared/env.ts";
 import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
+import { sleep } from "../_shared/utils.ts";
 
 interface RequestPayload {
   uniqueId?: string;
@@ -26,7 +27,6 @@ interface TeamSpeakServerDefinition {
   queryPort?: number;
   voicePort?: number;
   virtualServerId?: number;
-  botNickname?: string;
   roleAdminGroupId?: number;
   roleModeratorGroupId?: number;
   roleSupporterGroupId?: number;
@@ -43,7 +43,11 @@ const TEAMSPEAK_TIMEOUT_MS = 15_000;
 const TOKEN_LENGTH = 8;
 const TOKEN_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
-const appConstants = constants.default;
+interface AppConstants {
+  PLATFORMS?: { TEAMSPEAK?: TeamSpeakPlatformConfig };
+}
+
+const appConstants = (constants as unknown as { default: AppConstants }).default;
 
 interface TeamSpeakPlatformConfig {
   servers?: TeamSpeakServerDefinition[];
@@ -284,6 +288,7 @@ async function assignServerGroups(args: {
     }
 
     for (const groupId of targetGroups) {
+      await sleep(100);
       try {
         await sendRawCommand(client, "servergroupaddclient", { sgid: groupId, cldbid: clientDbId });
       } catch (error) {
@@ -327,6 +332,7 @@ function computeTargetGroupIds(
 
   return Array.from(groups);
 }
+
 
 function isAlreadyAssignedError(error: unknown): boolean {
   if (!error) return false;

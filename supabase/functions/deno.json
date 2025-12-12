@@ -3,10 +3,12 @@
   "imports": {
     "constants": "../../constants.json",
     "database-types": "../../types/database.types.ts",
-    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.45.2",
+    "metrics-types": "../../types/metrics.ts",
+    "teamspeak-types": "../../types/teamspeak.ts",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
     "node-ts": "npm:node-ts@8",
-    "googleapis": "npm:googleapis@144.0.0",
-    "google-auth-library": "npm:google-auth-library@9.15.0"
+    "googleapis": "npm:googleapis@144",
+    "google-auth-library": "npm:google-auth-library@9"
   },
   "workspace": [
     "./_shared",
@@ -27,6 +29,7 @@
     "./teamspeak-unlink",
     "./teamspeak-verify-request",
     "./teamspeak-verify-confirm",
+    "./teamspeak-viewer-refresh",
     "./trigger-discord-event-sync",
     "./user-delete-account",
     "./user-info",

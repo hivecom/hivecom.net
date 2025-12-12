@@ -1,23 +1,12 @@
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
-import { Database, Tables } from "database-types";
+import type { Database, Tables } from "database-types";
 import { COUNTRIES } from "../../../app/lib/utils/country.ts";
+import type { MetricsSnapshot } from "metrics-types";
 
 interface CountryRow {
   country: Tables<"profiles">["country"];
-}
-
-interface MetricsPayload {
-  collectedAt: string;
-  totals: {
-    users: number;
-    gameservers: number;
-    projects: number;
-  };
-  breakdowns: {
-    usersByCountry: Record<string, number>;
-  };
 }
 
 const VALID_COUNTRY_CODES = new Set(COUNTRIES.map((country) => country.code));
@@ -130,7 +119,7 @@ Deno.serve(async (req: Request) => {
       String(now.getDate()).padStart(2, "0")
     }.json`;
 
-    const payload: MetricsPayload = {
+    const payload: MetricsSnapshot = {
       collectedAt: now.toISOString(),
       totals: {
         users: totalUsers,

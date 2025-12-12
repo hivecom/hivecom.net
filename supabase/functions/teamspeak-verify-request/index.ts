@@ -28,7 +28,6 @@ interface TeamSpeakServerDefinition {
   queryPort?: number;
   voicePort?: number;
   virtualServerId?: number;
-  botNickname?: string;
   roleAdminGroupId?: number;
   roleModeratorGroupId?: number;
   roleSupporterGroupId?: number;
@@ -47,7 +46,11 @@ const TOKEN_LENGTH = 8;
 const TOKEN_EXPIRATION_MINUTES = 15;
 const TOKEN_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
-const appConstants = constants.default;
+interface AppConstants {
+  PLATFORMS?: { TEAMSPEAK?: TeamSpeakPlatformConfig };
+}
+
+const appConstants = (constants as unknown as { default: AppConstants }).default;
 
 interface TeamSpeakPlatformConfig {
   servers?: TeamSpeakServerDefinition[];
@@ -323,9 +326,11 @@ function buildVerificationMessage(args: {
   token: string;
 }): string {
   const lines = [
-    `TeamSpeak verification for this identity was requested by ${args.username}${args.email ? ` (${args.email})` : '' }. Enter the following token in the next step of the linking process:`,
-    `Token: ${args.token}`,
-    `Enter this token on within ${TOKEN_EXPIRATION_MINUTES} minutes to finish linking. If you did not request this, contact an administrator.`,
+    `TeamSpeak verification for this identity was requested by [i]${args.username}${args.email ? ` (${args.email})` : ''}[/i]. Enter the following token in the next step of the linking process:`,
+    ``,
+    `Token: [b]${args.token}[/b]`,
+    ``,
+    `[i]Enter this token on within [b]${TOKEN_EXPIRATION_MINUTES} minutes[/b] to finish linking. If you did not request this, contact an administrator.[/i]`,
   ];
 
   const message = lines.join("\n");

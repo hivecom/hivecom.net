@@ -412,7 +412,7 @@ onMounted(() => {
             </Button>
             <Alert v-if="showEmailNotice" filled variant="info">
               <p class="text-s">
-                An email with a sign-in link has been sent to your inbox! Please check your spam folder as well!
+                An email with a sign-in link has been sent to your inbox! Please check your spam folder as well! <a href="https://mail.google.com" rel="noopener noreferrer">Open Gmail</a>
               </p>
             </Alert>
             <Alert v-if="errorMessage" variant="danger" filled>

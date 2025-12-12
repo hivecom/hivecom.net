@@ -1,7 +1,17 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useLastSeenTracking } from '@/lib/lastSeen'
 
 const route = useRoute()
+const layoutName = computed(() => {
+  if (route.path.startsWith('/admin'))
+    return 'admin'
+
+  if (route.path === '/')
+    return 'landing'
+
+  return 'default'
+})
 
 // Initialize last seen tracking for authenticated users
 useLastSeenTracking()
@@ -10,7 +20,7 @@ useLastSeenTracking()
 <template>
   <NuxtLoadingIndicator color="#88ff22" />
 
-  <NuxtLayout :name="route.path.startsWith('/admin') ? 'admin' : 'default'">
+  <NuxtLayout :name="layoutName">
     <NuxtPage />
   </NuxtLayout>
 

@@ -21,12 +21,41 @@ type GameserversType = QueryData<typeof gameserversQuery>
 
 // Tab management
 const activeTab = ref('library')
+const route = useRoute()
+const router = useRouter()
+
+const queryTab = computed(() => {
+  const tab = route.query.tab ?? (route.query.list ? 'list' : undefined)
+  return Array.isArray(tab) ? tab[0] : tab
+})
+
+watch(queryTab, (tab) => {
+  if (tab === 'library' || tab === 'list')
+    activeTab.value = tab
+}, { immediate: true })
+
+watch(activeTab, (tab) => {
+  if (tab !== 'library' && tab !== 'list')
+    return
+
+  const currentQueryTab = queryTab.value ?? 'library'
+  if (currentQueryTab === tab)
+    return
+
+  const { tab: _ignoredTab, list: _ignoredList, ...restQuery } = route.query
+  const nextQuery = tab === 'library' ? restQuery : { ...restQuery, tab }
+
+  router.replace({ query: nextQuery })
+})
 
 onBeforeRouteLeave(() => {
   sessionStorage.setItem('gameservers_active_tab', activeTab.value)
 })
 
 onMounted(() => {
+  if (queryTab.value === 'library' || queryTab.value === 'list')
+    return
+
   activeTab.value = sessionStorage.getItem('gameservers_active_tab') ?? 'library'
 })
 
