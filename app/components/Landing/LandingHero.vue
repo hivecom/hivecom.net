@@ -140,16 +140,18 @@ defineProps<{
   font-size: clamp(17rem, 10vw, 10rem);
   font-stretch: ultra-condensed;
   font-weight: var(--font-weight-black);
-  letter-spacing: -0.1em;
+  letter-spacing: 0.5rem;
   transform: scaleY(0.6) translateX(-0.05em);
   line-height: clamp(4rem, 9vw, 8.5rem);
-  margin: 0;
+  margin-left: 30px;
 
-  @media screen and (max-width: $breakpoint-l) {
+  @media screen and (max-width: $breakpoint-m) {
     font-size: clamp(6rem, 16vw, 10rem);
     line-height: clamp(3.6rem, 13vw, 7.8rem);
     transform: scaleY(0.7) translateX(-0.04em);
-    letter-spacing: -0.08em;
+    letter-spacing: 0;
+    margin: 0;
+    margin-left: 12px;
   }
 }
 
