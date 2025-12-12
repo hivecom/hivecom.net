@@ -4,6 +4,7 @@ import type { ProfileFriendshipStatus } from '@/types/profile.ts'
 import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
 import { getUserActivityStatus } from '@/lib/lastSeen'
+import { BREAKPOINTS, useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import MDRenderer from '../Shared/MDRenderer.vue'
 
@@ -22,6 +23,8 @@ const emit = defineEmits<{
   openEditSheet: []
   openComplaintModal: []
 }>()
+
+const isMobile = useBreakpoint('<xs')
 
 const activityStatus = computed(() => {
   if (!props.profile?.last_seen)
@@ -178,11 +181,11 @@ function getRoleInfo(role: string | null) {
 <template>
   <Card class="profile-header card-bg" footer-separator>
     <Flex column expand y-center x-center>
-      <Grid gap="xl" expand columns="160px 1fr">
+      <Grid gap="xl" expand columns="160px 1fr" class="profile-header-grid">
         <!-- Avatar -->
         <div class="profile-avatar">
           <div class="avatar-container">
-            <Avatar :size="160" :url="avatarUrl || undefined">
+            <Avatar :size="isMobile ? 96 : 160" :url="avatarUrl || undefined">
               <template v-if="!avatarUrl" #default>
                 {{ getUserInitials(profile.username) }}
               </template>
@@ -360,6 +363,8 @@ function getRoleInfo(role: string | null) {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .profile-action-buttons {
   position: absolute;
   top: 16px;
@@ -459,6 +464,32 @@ function getRoleInfo(role: string | null) {
         line-height: 1;
       }
     }
+  }
+}
+
+@media screen and (max-width: $breakpoint-m) {
+  .profile-header-grid {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+
+    * {
+      text-align: center;
+    }
+
+    .vui-flex {
+      justify-content: center !important;
+      align-items: center !important;
+    }
+  }
+}
+
+@media screen and (max-width: $breakpoint-xs) {
+  .profile-header-grid {
+    padding-top: var(--space-xxl);
+  }
+
+  .profile-title {
+    font-size: var(--font-size-xxxl) !important;
   }
 }
 </style>
