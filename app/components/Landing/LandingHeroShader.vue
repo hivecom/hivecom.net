@@ -12,7 +12,7 @@ let resolutionUniform: WebGLUniformLocation | null = null
 let rafId: number | null = null
 let start = 0
 let startOffset = 0
-const RES_SCALE = 0.4
+const RES_SCALE = 0.2
 
 function createShader(context: WebGLRenderingContext, type: number, source: string) {
   const shader = context.createShader(type)

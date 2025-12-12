@@ -33,7 +33,7 @@ let themeObserver: MutationObserver | null = null
 let themeMedia: MediaQueryList | null = null
 let globeMaterial: import('three').MeshStandardMaterial | null = null
 const BACKGROUND_COLOR = 'rgba(0,0,0,0)'
-const GLOBE_COLOR_DARK = '#000'
+const GLOBE_COLOR_DARK = '#060606'
 const GLOBE_COLOR_LIGHT = '#fff'
 const ARC_COLOR_DARK = '#a7fc2f'
 const ARC_COLOR_LIGHT = '#225500'
@@ -444,5 +444,6 @@ onBeforeUnmount(() => {
   height: 100%;
   pointer-events: auto;
   z-index: 2;
+  opacity: 0.95;
 }
 </style>
