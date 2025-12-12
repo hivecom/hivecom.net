@@ -11,8 +11,8 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 const refreshSignal = ref(0)
 
 // Keep JS breakpoints aligned with app/assets/breakpoints.scss
-const isBelowSm = useBreakpoint('<md')
-const chartColumns = computed(() => (isBelowSm.value ? 1 : 2))
+const isBelowM = useBreakpoint('<m')
+const chartColumns = computed(() => (isBelowM.value ? 1 : 2))
 </script>
 
 <template>

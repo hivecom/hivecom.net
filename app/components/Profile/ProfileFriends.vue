@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import type { ProfileFriendshipStatus } from '@/types/profile'
-import { Badge, Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
@@ -78,15 +78,15 @@ function handleRemoveFriend() {
 
     <!-- Loading State -->
     <div v-if="loading" class="friends-loading">
-      <div class="friends-loading__avatars">
+      <Flex :gap="8" class="friends-loading__avatars">
         <div
-          v-for="index in 5"
+          v-for="index in 6"
           :key="`friends-loading-avatar-${index}`"
           class="friends-loading__avatar"
         >
           <Skeleton width="100%" height="100%" class="friends-loading__avatar-skeleton" />
         </div>
-      </div>
+      </Flex>
     </div>
 
     <!-- Friends Avatar Display -->

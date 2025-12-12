@@ -4,9 +4,9 @@ import { computed } from 'vue'
 // Keep these values in sync with app/assets/breakpoints.scss
 export const BREAKPOINTS = {
   xs: 480,
-  sm: 768,
-  md: 1024,
-  lg: 1280,
+  s: 768,
+  m: 1024,
+  l: 1280,
   xl: 1440,
 } as const
 

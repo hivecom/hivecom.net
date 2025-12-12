@@ -17,7 +17,7 @@ const supabase = useSupabaseClient()
 const projects = ref<Tables<'projects'>[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const isBelowMd = useBreakpoint('<md')
+const isBelowM = useBreakpoint('<m')
 
 // Filters
 const search = ref('')
@@ -173,7 +173,7 @@ useHead({
         <!-- Content -->
         <template v-if="filteredProjects.length > 0">
           <!-- All projects at full width -->
-          <Grid :columns="isBelowMd ? 1 : 2" column gap="m" class="projects__section" expand>
+          <Grid :columns="isBelowM ? 1 : 2" column gap="m" class="projects__section" expand>
             <ProjectCard
               v-for="(project, index) in filteredProjects"
               :key="project.id"

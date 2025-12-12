@@ -4,7 +4,7 @@ import type { ProfileFriendshipStatus } from '@/types/profile.ts'
 import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
 import { getUserActivityStatus } from '@/lib/lastSeen'
-import { BREAKPOINTS, useBreakpoint } from '@/lib/mediaQuery'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import MDRenderer from '../Shared/MDRenderer.vue'
 import RichPresenceTeamSpeak from './RichPresenceTeamSpeak.vue'
@@ -26,6 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const isMobile = useBreakpoint('<xs')
+const isTablet = useBreakpoint('<m')
 
 const activityStatus = computed(() => {
   if (!props.profile?.last_seen)
@@ -207,17 +208,16 @@ function getRoleInfo(role: string | null) {
         <Flex column gap="s" expand x-end class="h-100">
           <!-- Username, Role, Badges and Action Buttons Row -->
           <Flex gap="xs" y-center wrap>
-            <RichPresenceTeamSpeak
-              :profile-id="profile.id"
-              :teamspeak-identities="profile.teamspeak_identities"
-              :rich-presence-disabled="profile.rich_presence_disabled"
-            />
             <Badge
               v-if="userRole && getRoleInfo(userRole)"
               :variant="getRoleInfo(userRole)?.variant"
               size="s"
             >
               {{ getRoleInfo(userRole)?.display }}
+            </Badge>
+            <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
+              <Icon name="ph:heart" class="gold" />
+              Supporter
             </Badge>
             <!-- Friend status badge -->
             <Badge
@@ -244,15 +244,18 @@ function getRoleInfo(role: string | null) {
               <Icon name="ph:bell" />
               Friend Request
             </Badge>
-            <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
-              <Icon name="ph:heart" class="gold" />
-              Supporter
-            </Badge>
           </Flex>
 
-          <h1 class="profile-title">
-            {{ profile.username }}
-          </h1>
+          <Flex y-center :column="isTablet">
+            <h1 class="profile-title">
+              {{ profile.username }}
+            </h1>
+            <RichPresenceTeamSpeak
+              :profile-id="profile.id"
+              :teamspeak-identities="profile.teamspeak_identities"
+              :rich-presence-disabled="profile.rich_presence_disabled"
+            />
+          </Flex>
 
           <!-- Action Buttons -->
           <Flex gap="xs" class="profile-action-buttons">
@@ -440,7 +443,7 @@ function getRoleInfo(role: string | null) {
   .profile-description {
     margin: 0;
     color: var(--color-text-light);
-    line-height: 1.5;
+    line-height: 0;
     font-size: var(--font-size-l);
   }
 

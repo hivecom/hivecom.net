@@ -18,8 +18,8 @@ const profile = ref<Tables<'profiles'> | null>(null)
 const loading = ref(true)
 const profileError = ref('')
 const authReady = ref(false)
-const isBelowMd = useBreakpoint('<md')
-const sectionGridColumns = computed(() => (isBelowMd.value ? 1 : 2))
+const isBelowM = useBreakpoint('<m')
+const sectionGridColumns = computed(() => (isBelowM.value ? 1 : 2))
 
 async function fetchProfile() {
   if (!user.value) {

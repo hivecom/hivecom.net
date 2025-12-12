@@ -9,9 +9,9 @@ const loading = ref(false)
 const email = ref('')
 const errorMessage = ref('')
 const showEmailNotice = ref(false)
-const isBelowSm = useBreakpoint('<sm')
-const metaballHeight = computed(() => (isBelowSm.value ? '100vh' : 'min(320px, 96vh)'))
-const metaballWidth = computed(() => (isBelowSm.value ? '100vw' : 'min(520px, 96vw)'))
+const isBelowS = useBreakpoint('<s')
+const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(320px, 96vh)'))
+const metaballWidth = computed(() => (isBelowS.value ? '100vw' : 'min(520px, 96vw)'))
 
 async function resetPassword() {
   loading.value = true

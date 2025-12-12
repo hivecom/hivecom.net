@@ -32,9 +32,9 @@ const mfaCache = useCacheMfaStatus()
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
 const requiresMfaChallenge = computed(() => Boolean(pendingMfa.factorId))
 const mfaPromptCopy = 'Finish verification to sign-in.'
-const isBelowSm = useBreakpoint('<sm')
-const metaballHeight = computed(() => (isBelowSm.value ? '100vh' : 'min(720px, 96vh)'))
-const metaballWidth = computed(() => (isBelowSm.value ? '100vw' : 'min(520px, 96vw)'))
+const isBelowS = useBreakpoint('<s')
+const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(720px, 96vh)'))
+const metaballWidth = computed(() => (isBelowS.value ? '100vw' : 'min(520px, 96vw)'))
 
 watch(tab, (newTab: string) => {
   showEmailNotice.value = false
