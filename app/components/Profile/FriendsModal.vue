@@ -57,9 +57,9 @@ function handleClose() {
     <template #header>
       <Flex x-between y-center expand>
         <h3>{{ userName }}'s Friends</h3>
-        <Badge variant="neutral">
+        <!-- <Badge variant="neutral">
           {{ friendsCount }} {{ friendsCount === 1 ? 'friend' : 'friends' }}
-        </Badge>
+        </Badge> -->
       </Flex>
     </template>
 

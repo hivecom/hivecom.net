@@ -86,6 +86,21 @@ button {
   }
 }
 
+.card-bg {
+  // background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
+  background-color: color-mix(in srgb, var(--color-bg-medium) 75%, transparent);
+
+  .vui-card-header,
+  .vui-card-content,
+  .vui-card-footer {
+    background-color: transparent;
+  }
+}
+
+:root:not(.dark) .card-bg {
+  background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
+}
+
 .vui-tooltip {
   z-index: 9999 !important;
 }
@@ -106,9 +121,7 @@ table td {
 }
 
 @include meta.load-css('./utilities.scss');
-
 @include meta.load-css('./pages/login.scss');
-
 @include meta.load-css('./elements/auth.scss');
 @include meta.load-css('./elements/main.scss');
 @include meta.load-css('./elements/page.scss');

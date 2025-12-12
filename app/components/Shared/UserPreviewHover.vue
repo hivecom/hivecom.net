@@ -2,6 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 
+// TODO: Could Popout.vue be used instead of the custom popover logic here?
+
 const props = withDefaults(defineProps<{
   userId?: string | null
   maxBadges?: number

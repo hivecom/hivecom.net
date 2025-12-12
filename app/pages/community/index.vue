@@ -225,7 +225,7 @@ watch(user, () => {
 
     <template v-if="activeTab === 'about'">
       <!-- Community Members -->
-      <Card v-if="user && randomUsers.length > 0" class="pb-l">
+      <Card v-if="user && randomUsers.length > 0" class="pb-l community-card">
         <Flex column gap="m" x-center y-center>
           <Flex y-center gap="m" x-center expand>
             <Flex column :gap="0" x-center class="text-center" y-center>
@@ -495,6 +495,30 @@ watch(user, () => {
 
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
+
+.community-card {
+  position: relative;
+  overflow: hidden;
+
+  &:before {
+    content: '';
+    display: block;
+    width: 125%;
+    height: 100%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #a7fc2f;
+    background: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0) 25%,
+      rgba(167, 252, 47, 0.025) 65%,
+      rgba(167, 252, 47, 0.08) 100%
+    );
+  }
+}
 
 // Grid container for equal heights
 .community-grid {

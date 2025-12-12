@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
+import type { ProfileFriendshipStatus } from '@/types/profile'
+import { Badge, Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 interface Props {
   profile: Tables<'profiles'>
@@ -9,32 +11,63 @@ interface Props {
   pendingRequests: string[]
   isOwnProfile: boolean
   loading?: boolean
+  friendshipStatus: ProfileFriendshipStatus
 }
 
-const _props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   loading: false,
 })
 
 const emit = defineEmits<{
   openFriendsModal: []
+  sendFriendRequest: []
+  acceptFriendRequest: []
+  ignoreFriendRequest: []
+  revokeFriendRequest: []
+  removeFriend: []
 }>()
+
+const showRemoveFriendConfirm = ref(false)
+
+// Computed properties for friendship status
+const canSendFriendRequest = computed(() => {
+  return !props.isOwnProfile && props.friendshipStatus === 'none'
+})
+
+const areMutualFriends = computed(() => {
+  return props.friendshipStatus === 'mutual'
+})
+
+const hasSentRequest = computed(() => {
+  return props.friendshipStatus === 'sent_request'
+})
+
+const hasReceivedRequest = computed(() => {
+  return props.friendshipStatus === 'received_request'
+})
+
+// Handle remove friend confirmation
+function handleRemoveFriend() {
+  emit('removeFriend')
+  showRemoveFriendConfirm.value = false
+}
 </script>
 
 <template>
   <Card
     separators
-    class="friends-section"
+    class="friends-section card-bg"
     :class="{ 'friends-section--loading': loading }"
   >
     <template #header>
       <Flex x-between y-center>
         <Flex gap="xs" y-center>
-          <h3>Friends</h3>
-          <Badge v-if="friends.length > 0" variant="info" size="s">
+          <h4>Friends</h4>
+          <span class="counter">
             {{ friends.length }}
-          </Badge>
+          </span>
         </Flex>
-        <Button variant="gray" size="s" @click="emit('openFriendsModal')">
+        <Button variant="gray" size="s" plain @click="emit('openFriendsModal')">
           <template #start>
             <Icon name="ph:users" />
           </template>
@@ -60,9 +93,10 @@ const emit = defineEmits<{
     <div v-else-if="friends.length > 0" class="friends-content">
       <BulkAvatarDisplay
         :user-ids="friends"
-        :max-users="10"
+        :max-users="12"
         :avatar-size="40"
         :show-names="true"
+        :gap="8"
       />
 
       <!-- Pending Invites (only visible to own profile) -->
@@ -114,7 +148,97 @@ const emit = defineEmits<{
         </div>
       </Flex>
     </div>
+
+    <!-- Action Buttons for friend-ship management -->
+    <template v-if="!props.isOwnProfile" #footer>
+      <Flex x-center gap="m">
+        <Button
+          v-if="canSendFriendRequest"
+          size="s"
+          variant="accent"
+          :disabled="friendshipStatus === 'loading'"
+          @click="emit('sendFriendRequest')"
+        >
+          <template #start>
+            <Icon name="ph:user-plus" />
+          </template>
+          Send Friend Request
+        </Button>
+
+        <Button
+          v-else-if="hasReceivedRequest"
+          size="s"
+          variant="accent"
+          :disabled="friendshipStatus === 'loading'"
+          @click="emit('acceptFriendRequest')"
+        >
+          <template #start>
+            <Icon name="ph:user-check" />
+          </template>
+          Accept Request
+        </Button>
+
+        <Button
+          v-if="hasReceivedRequest"
+          size="s"
+          variant="gray"
+          :disabled="friendshipStatus === 'loading'"
+          @click="emit('ignoreFriendRequest')"
+        >
+          <template #start>
+            <Icon name="ph:x" />
+          </template>
+          Ignore Request
+        </Button>
+
+        <Button
+          v-else-if="hasSentRequest"
+          size="s"
+          variant="danger"
+          :disabled="friendshipStatus === 'loading'"
+          @click="emit('revokeFriendRequest')"
+        >
+          <template #start>
+            <Icon name="ph:user-minus" />
+          </template>
+          Revoke Request
+        </Button>
+
+        <Button
+          v-else-if="areMutualFriends"
+          size="s"
+          variant="danger"
+          :disabled="friendshipStatus === 'loading'"
+          @click="showRemoveFriendConfirm = true"
+        >
+          <template #start>
+            <Icon name="ph:user-minus" />
+          </template>
+          Remove Friend
+        </Button>
+
+        <!-- Show loading button while checking friendship status -->
+        <Button
+          v-else-if="friendshipStatus === 'loading'"
+          size="s"
+          :disabled="true"
+          variant="gray"
+          :loading="true"
+        />
+      </Flex>
+    </template>
   </Card>
+
+  <!-- Remove Friend Confirmation Modal -->
+  <ConfirmModal
+    v-model:open="showRemoveFriendConfirm"
+    v-model:confirm="handleRemoveFriend"
+    title="Remove Friend"
+    :description="`Are you sure you want to remove ${profile.username} from your friends list? This action cannot be undone.`"
+    confirm-text="Remove Friend"
+    cancel-text="Cancel"
+    :destructive="true"
+  />
 </template>
 
 <style lang="scss" scoped>

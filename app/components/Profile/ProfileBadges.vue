@@ -117,6 +117,7 @@ const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
       entries.push({
         id: definition.id,
         component: definition.component,
+        componentProps: { compact: true },
       })
     })
 
@@ -125,6 +126,7 @@ const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
         id: 'years',
         component: ProfileBadgeYears,
         componentProps: {
+          compact: true,
           years: memberYears.value,
           memberSince: props.profile.created_at,
         },
@@ -136,6 +138,7 @@ const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
         id: 'life_of_the_party',
         component: ProfileBadgeRSVPs,
         componentProps: {
+          compact: true,
           rsvps: PartyAnimalCount.value,
         },
       })
@@ -157,12 +160,16 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
 </script>
 
 <template>
-  <Card separators class="badges-card">
+  <Card separators class="badges-card card-bg">
     <template #header>
       <Flex x-between y-center>
-        <h3>Badges</h3>
+        <Flex y-center gap="xs">
+          <h4>Badges</h4>
+          <!-- TODO: count how many badges -->
+          <span class="counter">{{ profileBadgesToRender.length }}</span>
+        </Flex>
 
-        <Button size="s" variant="gray" aria-label="See all community badges" @click="goToBadgeDirectory">
+        <Button size="s" variant="gray" aria-label="See all community badges" plain @click="goToBadgeDirectory">
           <template #start>
             <Icon name="ph:hexagon" />
           </template>
@@ -187,45 +194,52 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
         {{ emptyStateText }}
       </p>
     </Flex>
+
+    <svg
+      class="profile-badges-filter-defs"
+      aria-hidden="true"
+      focusable="false"
+      width="0"
+      height="0"
+    >
+      <defs>
+        <filter id="profile-badge-goo">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+          <feColorMatrix
+            in="blur"
+            mode="matrix"
+            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
+            result="goo"
+          />
+          <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+        </filter>
+      </defs>
+    </svg>
   </Card>
 
   <!--
     Filter adapted from Temani Afif's StackOverflow answer (CC BY-SA 4.0).
     Source: https://stackoverflow.com/a/76118647
   -->
-  <svg
-    class="profile-badges-filter-defs"
-    aria-hidden="true"
-    focusable="false"
-    width="0"
-    height="0"
-  >
-    <defs>
-      <filter id="profile-badge-goo">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
-        <feColorMatrix
-          in="blur"
-          mode="matrix"
-          values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
-          result="goo"
-        />
-        <feComposite in="SourceGraphic" in2="goo" operator="atop" />
-      </filter>
-    </defs>
-  </svg>
+  <!-- NOTE: Jan, seemingly this does not do anything and is causing a space in the flex layout. Btw the stack overflow souce leads to some azure fix, not svg -->
 </template>
 
 <style lang="scss" scoped>
+.profile-badges-filter-defs {
+  position: absolute;
+}
+
 .badges-card {
-  min-height: 360px;
+  // min-height: 360px;
+  overflow: hidden;
 }
 
 .badges-stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xl);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-m);
   width: 100%;
-  padding: var(--space-l) 0;
+  // padding-block: var(--space-m) 0;
 }
 
 .badges-stack__item {

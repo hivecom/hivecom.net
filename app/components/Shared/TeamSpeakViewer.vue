@@ -8,8 +8,8 @@ import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useTeamSpeakSnapshot } from '@/composables/useTeamSpeakSnapshot'
 import { getCountryEmoji } from '@/lib/utils/country'
-import { formatDate } from '@/lib/utils/date'
 import BadgeCircle from './BadgeCircle.vue'
+import TimestampDate from './TimestampDate.vue'
 
 const props = withDefaults(defineProps<Props>(), {
   refreshInterval: 5 * 60 * 1000,
@@ -695,7 +695,7 @@ function openRawSnapshot() {
 <template>
   <Card class="ts-viewer" separators>
     <template #header>
-      <Flex expand x-between y-center gap="s" class="mb-m">
+      <Flex expand x-between y-center gap="s">
         <Flex expand y-center gap="s">
           <Icon name="mdi:teamspeak" size="24" />
           <div v-if="serversSorted.length <= 1 || props.serverId">
@@ -712,6 +712,39 @@ function openRawSnapshot() {
             placeholder="Select server"
             size="s"
           />
+          <Flex v-if="selectedServer" x-start y-center gap="xs" wrap>
+            <Badge variant="success">
+              {{ serverClientCount(selectedServer) }} online
+            </Badge>
+            <Tooltip v-if="selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds || selectedServer.collectedAt">
+              <BadgeCircle variant="neutral">
+                <Icon name="ph:info" size="16" class="ts-viewer__info-icon" />
+              </BadgeCircle>
+              <template #tooltip>
+                <Grid gap="s" columns="96px 1fr" class="ts-viewer__info-tooltip">
+                  <template v-if="selectedServer.serverInfo?.platform">
+                    <strong>Platform</strong>
+                    <span>{{ selectedServer.serverInfo?.platform }}</span>
+                  </template>
+                  <template v-if="selectedServer.serverInfo?.version">
+                    <strong>Version</strong>
+                    <span>{{ selectedServer.serverInfo?.version }}</span>
+                  </template>
+                  <template v-if="selectedServer.serverInfo?.uptimeSeconds">
+                    <strong>Uptime</strong>
+                    <span>{{ formatDuration(selectedServer.serverInfo?.uptimeSeconds) }}</span>
+                  </template>
+                </Grid>
+              </template>
+            </Tooltip>
+            <Flex class="text-color-lightest">
+              <TimestampDate
+                :date="lastUpdated"
+                size="xxs"
+                :tooltip="true"
+              />
+            </Flex>
+          </Flex>
         </Flex>
         <Flex gap="xs" y-center>
           <Tooltip placement="bottom">
@@ -760,41 +793,6 @@ function openRawSnapshot() {
             </template>
             Connect
           </Button>
-        </Flex>
-      </Flex>
-      <Flex v-if="selectedServer" x-start y-center gap="m" wrap class="ts-viewer__server-header">
-        <Flex gap="xs" y-center>
-          <Badge v-if="selectedServer.serverInfo?.uptimeSeconds" variant="success">
-            Uptime: {{ formatDuration(selectedServer.serverInfo.uptimeSeconds) }}
-          </Badge>
-          <Badge variant="success">
-            {{ serverClientCount(selectedServer) }} online
-          </Badge>
-          <Tooltip v-if="selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds || selectedServer.collectedAt">
-            <BadgeCircle variant="neutral">
-              <Icon name="ph:info" size="16" class="ts-viewer__info-icon" />
-            </BadgeCircle>
-            <template #tooltip>
-              <Grid gap="s" columns="96px 1fr" class="ts-viewer__info-tooltip">
-                <template v-if="selectedServer.serverInfo?.platform">
-                  <strong>Platform</strong>
-                  <span>{{ selectedServer.serverInfo?.platform }}</span>
-                </template>
-                <template v-if="selectedServer.serverInfo?.version">
-                  <strong>Version</strong>
-                  <span>{{ selectedServer.serverInfo?.version }}</span>
-                </template>
-                <template v-if="selectedServer.serverInfo?.uptimeSeconds">
-                  <strong>Uptime</strong>
-                  <span>{{ formatDuration(selectedServer.serverInfo?.uptimeSeconds) }}</span>
-                </template>
-                <template v-if="selectedServer.collectedAt">
-                  <strong>Collected at</strong>
-                  <span>{{ formatDate(selectedServer.collectedAt) }}</span>
-                </template>
-              </Grid>
-            </template>
-          </Tooltip>
         </Flex>
       </Flex>
     </template>
