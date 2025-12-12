@@ -26,8 +26,8 @@ onMounted(async () => {
   <nav class="navigation">
     <div class="container container-l">
       <div class="navigation__items">
-        <Button class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
-          <Icon name="ph:list" />
+        <Button square class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
+          <Icon name="ph:list" size="2rem" />
         </Button>
 
         <SharedLogo class="navigation__logo" />

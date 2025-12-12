@@ -200,7 +200,7 @@ function getRoleInfo(role: string | null) {
           </div>
         </div>
 
-        <Flex column :gap="4" expand x-end class="h-100">
+        <Flex column gap="s" expand x-end class="h-100">
           <!-- Username, Role, Badges and Action Buttons Row -->
           <Flex gap="xs" y-center wrap>
             <Badge

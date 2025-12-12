@@ -117,6 +117,7 @@ const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
       entries.push({
         id: definition.id,
         component: definition.component,
+        componentProps: { compact: true },
       })
     })
 
@@ -125,6 +126,7 @@ const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
         id: 'years',
         component: ProfileBadgeYears,
         componentProps: {
+          compact: true,
           years: memberYears.value,
           memberSince: props.profile.created_at,
         },
@@ -136,6 +138,7 @@ const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
         id: 'life_of_the_party',
         component: ProfileBadgeRSVPs,
         componentProps: {
+          compact: true,
           rsvps: PartyAnimalCount.value,
         },
       })
@@ -227,16 +230,16 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
 }
 
 .badges-card {
-  min-height: 360px;
+  // min-height: 360px;
   overflow: hidden;
 }
 
 .badges-stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xl);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-m);
   width: 100%;
-  padding: var(--space-l) 0;
+  // padding-block: var(--space-m) 0;
 }
 
 .badges-stack__item {

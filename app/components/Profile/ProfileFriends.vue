@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import type { ProfileFriendshipStatus } from '@/types/profile'
-import { Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
@@ -93,9 +93,10 @@ function handleRemoveFriend() {
     <div v-else-if="friends.length > 0" class="friends-content">
       <BulkAvatarDisplay
         :user-ids="friends"
-        :max-users="10"
+        :max-users="12"
         :avatar-size="40"
         :show-names="true"
+        :gap="8"
       />
 
       <!-- Pending Invites (only visible to own profile) -->
@@ -149,75 +150,82 @@ function handleRemoveFriend() {
     </div>
 
     <!-- Action Buttons for friend-ship management -->
-
     <template v-if="!props.isOwnProfile" #footer>
-      <Button
-        v-if="canSendFriendRequest"
-        variant="accent"
-        :disabled="friendshipStatus === 'loading'"
-        @click="emit('sendFriendRequest')"
-      >
-        <template #start>
-          <Icon name="ph:user-plus" />
-        </template>
-        Send Friend Request
-      </Button>
+      <Flex x-center gap="m">
+        <Button
+          v-if="canSendFriendRequest"
+          size="s"
+          variant="accent"
+          :disabled="friendshipStatus === 'loading'"
+          @click="emit('sendFriendRequest')"
+        >
+          <template #start>
+            <Icon name="ph:user-plus" />
+          </template>
+          Send Friend Request
+        </Button>
 
-      <Button
-        v-else-if="hasReceivedRequest"
-        variant="accent"
-        :disabled="friendshipStatus === 'loading'"
-        @click="emit('acceptFriendRequest')"
-      >
-        <template #start>
-          <Icon name="ph:user-check" />
-        </template>
-        Accept Request
-      </Button>
+        <Button
+          v-else-if="hasReceivedRequest"
+          size="s"
+          variant="accent"
+          :disabled="friendshipStatus === 'loading'"
+          @click="emit('acceptFriendRequest')"
+        >
+          <template #start>
+            <Icon name="ph:user-check" />
+          </template>
+          Accept Request
+        </Button>
 
-      <Button
-        v-if="hasReceivedRequest"
-        variant="gray"
-        :disabled="friendshipStatus === 'loading'"
-        @click="emit('ignoreFriendRequest')"
-      >
-        <template #start>
-          <Icon name="ph:x" />
-        </template>
-        Ignore Request
-      </Button>
+        <Button
+          v-if="hasReceivedRequest"
+          size="s"
+          variant="gray"
+          :disabled="friendshipStatus === 'loading'"
+          @click="emit('ignoreFriendRequest')"
+        >
+          <template #start>
+            <Icon name="ph:x" />
+          </template>
+          Ignore Request
+        </Button>
 
-      <Button
-        v-else-if="hasSentRequest"
-        variant="danger"
-        :disabled="friendshipStatus === 'loading'"
-        @click="emit('revokeFriendRequest')"
-      >
-        <template #start>
-          <Icon name="ph:user-minus" />
-        </template>
-        Revoke Request
-      </Button>
+        <Button
+          v-else-if="hasSentRequest"
+          size="s"
+          variant="danger"
+          :disabled="friendshipStatus === 'loading'"
+          @click="emit('revokeFriendRequest')"
+        >
+          <template #start>
+            <Icon name="ph:user-minus" />
+          </template>
+          Revoke Request
+        </Button>
 
-      <Button
-        v-else-if="areMutualFriends"
-        variant="danger"
-        :disabled="friendshipStatus === 'loading'"
-        @click="showRemoveFriendConfirm = true"
-      >
-        <template #start>
-          <Icon name="ph:user-minus" />
-        </template>
-        Remove Friend
-      </Button>
+        <Button
+          v-else-if="areMutualFriends"
+          size="s"
+          variant="danger"
+          :disabled="friendshipStatus === 'loading'"
+          @click="showRemoveFriendConfirm = true"
+        >
+          <template #start>
+            <Icon name="ph:user-minus" />
+          </template>
+          Remove Friend
+        </Button>
 
-      <!-- Show loading button while checking friendship status -->
-      <Button
-        v-else-if="friendshipStatus === 'loading'"
-        :disabled="true"
-        variant="gray"
-        :loading="true"
-      />
+        <!-- Show loading button while checking friendship status -->
+        <Button
+          v-else-if="friendshipStatus === 'loading'"
+          size="s"
+          :disabled="true"
+          variant="gray"
+          :loading="true"
+        />
+      </Flex>
     </template>
   </Card>
 
