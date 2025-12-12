@@ -107,11 +107,7 @@ interface TransformedUser {
   'Role': number
   'Status': 'active' | 'banned'
   'Last Seen': string
-  'Platforms': {
-    steam: string | null
-    discord: string | null
-    patreon: string | null
-  }
+  'Platforms': number
   'Supporter': boolean
   'Joined': string
   '_original': AdminUserProfile
@@ -278,6 +274,7 @@ const filteredData = computed<TransformedUser[]>(() => {
     const isSupporter = !!(user.supporter_lifetime || user.supporter_patreon)
     const activityStatus = user.last_seen ? getUserActivityStatus(user.last_seen) : null
     const email = getUserEmail(user.id)
+    const platformCount = [user.steam_id, user.discord_id, user.patreon_id].filter(Boolean).length
 
     return {
       'Username': user.username || 'Unknown',
@@ -286,11 +283,7 @@ const filteredData = computed<TransformedUser[]>(() => {
       'Role': roleSort,
       'Status': status,
       'Last Seen': activityStatus?.lastSeenText || 'Never',
-      'Platforms': {
-        steam: user.steam_id,
-        discord: user.discord_id,
-        patreon: user.patreon_id,
-      },
+      'Platforms': platformCount,
       'Supporter': isSupporter,
       'Joined': user.created_at,
       '_original': {
@@ -516,11 +509,11 @@ defineExpose({
             <Table.Cell class="platform-connections-cell" @click.stop>
               <Flex gap="xs" y-center>
                 <!-- Steam Connection -->
-                <Tooltip v-if="user.Platforms.steam" placement="top">
+                <Tooltip v-if="user._original.steam_id" placement="top">
                   <template #tooltip>
-                    <div>Steam ID: {{ user.Platforms.steam }}</div>
+                    <div>Steam ID: {{ user._original.steam_id }}</div>
                   </template>
-                  <CopyClipboard :text="user.Platforms.steam" confirm>
+                  <CopyClipboard :text="user._original.steam_id" confirm>
                     <Button variant="gray" size="s" square class="platform-button steam">
                       <Icon :name="getPlatformInfo('steam').icon" size="16" />
                     </Button>
@@ -528,11 +521,11 @@ defineExpose({
                 </Tooltip>
 
                 <!-- Discord Connection -->
-                <Tooltip v-if="user.Platforms.discord" placement="top">
+                <Tooltip v-if="user._original.discord_id" placement="top">
                   <template #tooltip>
-                    <div>Discord ID: {{ user.Platforms.discord }}</div>
+                    <div>Discord ID: {{ user._original.discord_id }}</div>
                   </template>
-                  <CopyClipboard :text="user.Platforms.discord" confirm>
+                  <CopyClipboard :text="user._original.discord_id" confirm>
                     <Button variant="gray" size="s" square class="platform-button discord">
                       <Icon :name="getPlatformInfo('discord').icon" size="16" />
                     </Button>
@@ -540,11 +533,11 @@ defineExpose({
                 </Tooltip>
 
                 <!-- Patreon Connection -->
-                <Tooltip v-if="user.Platforms.patreon" placement="top">
+                <Tooltip v-if="user._original.patreon_id" placement="top">
                   <template #tooltip>
-                    <div>Patreon ID: {{ user.Platforms.patreon }}</div>
+                    <div>Patreon ID: {{ user._original.patreon_id }}</div>
                   </template>
-                  <CopyClipboard :text="user.Platforms.patreon" confirm>
+                  <CopyClipboard :text="user._original.patreon_id" confirm>
                     <Button variant="gray" size="s" square class="platform-button patreon">
                       <Icon :name="getPlatformInfo('patreon').icon" size="16" />
                     </Button>
@@ -552,7 +545,7 @@ defineExpose({
                 </Tooltip>
 
                 <!-- No connections indicator -->
-                <span v-if="!user.Platforms.steam && !user.Platforms.discord && !user.Platforms.patreon" class="text-color-light text-s">
+                <span v-if="!user._original.steam_id && !user._original.discord_id && !user._original.patreon_id" class="text-color-light text-s">
                   No connections
                 </span>
               </Flex>
