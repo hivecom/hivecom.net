@@ -823,6 +823,11 @@ async function ignoreFriendRequest() {
             :is-own-profile="isOwnProfile"
             :loading="friendsLoading"
             @open-friends-modal="openFriendsModal"
+            @send-friend-request="sendFriendRequest"
+            @accept-friend-request="acceptFriendRequest"
+            @ignore-friend-request="ignoreFriendRequest"
+            @revoke-friend-request="revokeFriendRequest"
+            @remove-friend="removeFriend"
           />
 
           <!-- Badges -->
