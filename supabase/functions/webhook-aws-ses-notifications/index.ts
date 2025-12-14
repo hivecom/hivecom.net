@@ -233,7 +233,10 @@ async function verifySnsSignature(message: SnsMessage): Promise<boolean> {
   const host = certUrl.host.toLowerCase();
   if (!certUrl.protocol.startsWith("https")) return false;
   if (!host.endsWith("amazonaws.com")) return false;
-  if (!certUrl.pathname.includes("/sns.")) return false;
+  const path = certUrl.pathname.toLowerCase();
+  const isLegacy = path.includes("/sns.");
+  const isCurrent = path.includes("simplenotificationservice-");
+  if (!isLegacy && !isCurrent) return false;
 
   const certPem = await fetch(certUrl.toString()).then((res) => res.text());
   const certBytes = pemToArrayBuffer(certPem);
