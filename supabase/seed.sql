@@ -487,6 +487,20 @@ The server is configured for casual play with a friendly, welcoming environment.
 Come join us and let''s have some fun together!
   ', FALSE, ARRAY['cs2', 'gameserver', 'gaming', 'announcement']);
 
+-- Insert sample MOTDs
+INSERT INTO public.motds(message, created_at, created_by, modified_at, modified_by)
+VALUES
+  ('This is a message of the day.', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1'),
+('This is another message of the day.', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1'),
+('Jo moin Leude', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1'),
+('Message of the day', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1'),
+('You''re still here?', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1'),
+('Stay awhile and listen', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1'),
+('You''re among friends now', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1'),
+('Don''t forget to hydrate!', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1')
+ON CONFLICT
+  DO NOTHING;
+
 -- Insert test complaints
 INSERT INTO public.complaints(created_at, created_by, message, response, responded_by, responded_at, acknowledged, context_user, context_gameserver)
   VALUES

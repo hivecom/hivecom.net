@@ -4,6 +4,7 @@ import LandingHeroActions from '@/components/Landing/LandingHeroActions.vue'
 import LandingHeroGlobe from '@/components/Landing/LandingHeroGlobe.vue'
 import LandingHeroShader from '@/components/Landing/LandingHeroShader.vue'
 import LandingHeroStats from '@/components/Landing/LandingHeroStats.vue'
+import LandingMotd from '@/components/Landing/LandingMotd.vue'
 
 interface CommunityStats {
   members: number
@@ -32,9 +33,7 @@ defineProps<{
         <h1 class="hero-overlay__title">
           HIVECOM
         </h1>
-        <p class="hero-overlay__tagline">
-          A community of friends from all around the world
-        </p>
+        <LandingMotd fallback-text="A community of friends from all around the world" />
       </div>
 
       <LandingHeroStats class="hero-overlay__stats" :community-stats="communityStats" :loading="loading" />
@@ -153,12 +152,6 @@ defineProps<{
     margin: 0;
     margin-left: 12px;
   }
-}
-
-.hero-overlay__tagline {
-  font-size: var(--font-size-l);
-  margin: 0;
-  opacity: 0.82;
 }
 
 .hero-overlay__stats {
