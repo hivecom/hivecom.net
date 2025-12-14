@@ -80,6 +80,12 @@ Deno.serve(async (req) => {
   }
 
   if (sns.Type === "SubscriptionConfirmation" && sns.SubscribeURL) {
+    console.log("SNS subscription confirmation received", {
+      topic: sns.TopicArn,
+      subscribeURL: sns.SubscribeURL,
+      token: sns.Token,
+      messageId: sns.MessageId,
+    });
     const confirmed = await confirmSubscription(sns.SubscribeURL);
     return jsonResponse({ ok: confirmed ? true : false }, confirmed ? 200 : 500);
   }
