@@ -104,6 +104,12 @@ cd supabase/functions
 deno fmt
 ```
 
+If you want to push your edge functions to the Supabase project, you can do so with:
+
+```bash
+npm run supabase functions deploy <function_name>
+```
+
 ## Production
 
 To build the application for production:

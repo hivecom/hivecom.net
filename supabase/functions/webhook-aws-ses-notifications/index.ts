@@ -2,6 +2,8 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createPublicServiceRoleClient } from "../_shared/serviceRoleClients.ts";
 import type { Database } from "database-types";
 
+import { createVerify } from "node:crypto";
+
 type SnsMessage = {
   Type: "Notification" | "SubscriptionConfirmation" | "UnsubscribeConfirmation";
   MessageId: string;
@@ -238,21 +240,33 @@ async function verifySnsSignature(message: SnsMessage): Promise<boolean> {
   const isCurrent = path.includes("simplenotificationservice-");
   if (!isLegacy && !isCurrent) return false;
 
-  const certPem = await fetch(certUrl.toString()).then((res) => res.text());
-  const certBytes = pemToArrayBuffer(certPem);
-  const key = await crypto.subtle.importKey(
-    "spki",
-    certBytes,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-1" },
-    false,
-    ["verify"],
-  );
+  const certRes = await fetch(certUrl.toString());
+  if (!certRes.ok) {
+    console.warn("SNS cert fetch failed", {
+      status: certRes.status,
+      statusText: certRes.statusText,
+      url: certUrl.toString(),
+    });
+    return false;
+  }
+
+  const certPem = await certRes.text();
+  if (!certPem.includes("-----BEGIN CERTIFICATE-----")) {
+    console.warn("SNS cert response missing certificate boundary", { url: certUrl.toString() });
+    return false;
+  }
 
   const stringToSign = buildStringToSign(message);
-  const signature = base64ToArrayBuffer(message.Signature);
-  const data = new TextEncoder().encode(stringToSign);
-
-  return crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, signature, data);
+  try {
+    const verifier = createVerify("RSA-SHA1");
+    verifier.update(stringToSign, "utf8");
+    verifier.end();
+    const isValid = verifier.verify(certPem, message.Signature, "base64");
+    return isValid;
+  } catch (error) {
+    console.error("SNS signature verify threw", error);
+    return false;
+  }
 }
 
 function buildStringToSign(message: SnsMessage): string {
@@ -281,21 +295,4 @@ function buildStringToSign(message: SnsMessage): string {
   }
 
   return lines.join("");
-}
-
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const contents = pem.replace(/-----BEGIN CERTIFICATE-----/, "")
-    .replace(/-----END CERTIFICATE-----/, "")
-    .replace(/\s+/g, "");
-  return base64ToArrayBuffer(contents);
 }
