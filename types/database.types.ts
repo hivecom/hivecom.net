@@ -693,6 +693,8 @@ export interface Database {
           country: string | null
           created_at: string
           discord_id: string | null
+          email_notifications_bounced: boolean
+          email_notifications_disabled: boolean
           id: string
           introduction: string | null
           last_seen: string
@@ -719,6 +721,8 @@ export interface Database {
           country?: string | null
           created_at?: string
           discord_id?: string | null
+          email_notifications_bounced?: boolean
+          email_notifications_disabled?: boolean
           id: string
           introduction?: string | null
           last_seen?: string
@@ -745,6 +749,8 @@ export interface Database {
           country?: string | null
           created_at?: string
           discord_id?: string | null
+          email_notifications_bounced?: boolean
+          email_notifications_disabled?: boolean
           id?: string
           introduction?: string | null
           last_seen?: string

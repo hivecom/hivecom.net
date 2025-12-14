@@ -33,6 +33,7 @@
     "./trigger-discord-event-sync",
     "./user-delete-account",
     "./user-info",
-    "./user-link-discord"
+    "./user-link-discord",
+    "./webhook-aws-ses-notifications"
   ]
 }

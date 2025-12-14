@@ -513,6 +513,11 @@
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
         ]
+      },
+      "webhook-aws-ses-notifications": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
       }
     }
   }
