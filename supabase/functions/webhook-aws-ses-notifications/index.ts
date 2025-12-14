@@ -123,7 +123,13 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, message: "No recipients" }, 200);
   }
 
+  // Ignore successful deliveries; only flag problematic events
   const notificationKind = ses.notificationType ?? ses.eventType;
+  if (notificationKind === "Delivery") {
+    console.log("Email delivered successfully", emails);
+    return jsonResponse({ ok: true, message: "Delivery event ignored" }, 200);
+  }
+
   const results = await flagEmails(emails, notificationKind ?? "Bounce");
 
   return jsonResponse({ ok: true, results }, 200);
