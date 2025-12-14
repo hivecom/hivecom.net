@@ -53,6 +53,13 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  console.log("SNS webhook invoked", {
+    method: req.method,
+    contentLength: req.headers.get("content-length"),
+    snsType: req.headers.get("x-amz-sns-message-type"),
+    topic: req.headers.get("x-amz-sns-topic-arn"),
+  });
+
   const messageType = req.headers.get("x-amz-sns-message-type");
   if (!messageType) {
     return jsonResponse({ error: "Missing SNS message type" }, 400);
@@ -76,6 +83,7 @@ Deno.serve(async (req) => {
     return false;
   });
   if (!signatureValid) {
+    console.warn("SNS signature invalid", { topic: sns.TopicArn, messageId: sns.MessageId });
     return jsonResponse({ error: "Invalid SNS signature" }, 403);
   }
 
@@ -86,6 +94,7 @@ Deno.serve(async (req) => {
       token: sns.Token,
       messageId: sns.MessageId,
     });
+    
     const confirmed = await confirmSubscription(sns.SubscribeURL);
     return jsonResponse({ ok: confirmed ? true : false }, confirmed ? 200 : 500);
   }
@@ -103,6 +112,11 @@ Deno.serve(async (req) => {
   }
 
   const emails = extractEmails(ses);
+  console.log("SES notification parsed", {
+    type: ses.notificationType ?? ses.eventType,
+    messageId: ses.mail?.messageId,
+    recipients: emails,
+  });
   if (emails.length === 0) {
     return jsonResponse({ ok: true, message: "No recipients" }, 200);
   }
