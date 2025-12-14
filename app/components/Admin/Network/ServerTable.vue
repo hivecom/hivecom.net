@@ -95,6 +95,12 @@ const filteredData = computed<TransformedServer[]>(() => {
     '_original': server,
   }))
 })
+const totalCount = computed(() => servers.value.length)
+const filteredCount = computed(() => filteredData.value.length)
+const isFiltered = computed(() => Boolean(
+  search.value
+  || (statusFilter.value && statusFilter.value.length > 0),
+))
 
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
@@ -245,12 +251,15 @@ onBeforeMount(fetchServers)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Search and Filters -->
-      <ServerFilters
-        v-model:search="search"
-        v-model:status-filter="statusFilter"
-        :status-options="statusOptions"
-        @clear-filters="clearFilters"
-      />
+      <Flex x-between y-center expand>
+        <ServerFilters
+          v-model:search="search"
+          v-model:status-filter="statusFilter"
+          :status-options="statusOptions"
+          @clear-filters="clearFilters"
+        />
+        <span class="text-color-lighter text-s">Total —</span>
+      </Flex>
 
       <!-- Table skeleton -->
       <TableSkeleton
@@ -263,19 +272,24 @@ onBeforeMount(fetchServers)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between expand>
+    <Flex x-between y-center expand>
       <ServerFilters
         v-model:search="search"
         v-model:status-filter="statusFilter"
         :status-options="statusOptions"
         @clear-filters="clearFilters"
       />
-      <Button v-if="canCreate" variant="accent" @click="openAddServerForm">
-        <template #start>
-          <Icon name="ph:plus" />
-        </template>
-        Add Server
-      </Button>
+      <Flex gap="s" y-center>
+        <span class="text-color-lighter text-s">
+          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+        </span>
+        <Button v-if="canCreate" variant="accent" @click="openAddServerForm">
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Server
+        </Button>
+      </Flex>
     </Flex>
 
     <TableContainer>

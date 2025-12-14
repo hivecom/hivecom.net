@@ -125,6 +125,14 @@ const filteredData = computed<TransformedAnnouncement[]>(() => {
   }))
 })
 
+const totalCount = computed(() => announcements.value.length)
+const filteredCount = computed(() => filteredData.value.length)
+const isFiltered = computed(() => Boolean(
+  search.value
+  || (pinnedFilter.value && pinnedFilter.value.length > 0)
+  || (tagFilter.value && tagFilter.value.length > 0),
+))
+
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
   pagination: {
@@ -275,15 +283,18 @@ onBeforeMount(fetchAnnouncements)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between expand>
-        <AnnouncementFilters
-          v-model:search="search"
-          v-model:pinned-filter="pinnedFilter"
-          v-model:tag-filter="tagFilter"
-          :pinned-options="pinnedOptions"
-          :tag-options="tagOptions"
-          @clear-filters="clearFilters"
-        />
+      <Flex x-between y-center expand>
+        <Flex gap="s" y-center>
+          <AnnouncementFilters
+            v-model:search="search"
+            v-model:pinned-filter="pinnedFilter"
+            v-model:tag-filter="tagFilter"
+            :pinned-options="pinnedOptions"
+            :tag-options="tagOptions"
+            @clear-filters="clearFilters"
+          />
+          <span class="text-color-lighter text-s">Total —</span>
+        </Flex>
 
         <Button v-if="canCreate" variant="accent" loading>
           <template #start>
@@ -304,7 +315,7 @@ onBeforeMount(fetchAnnouncements)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between expand>
+    <Flex x-between y-center expand>
       <AnnouncementFilters
         v-model:search="search"
         v-model:pinned-filter="pinnedFilter"
@@ -314,12 +325,18 @@ onBeforeMount(fetchAnnouncements)
         @clear-filters="clearFilters"
       />
 
-      <Button v-if="canCreate" variant="accent" @click="openAddAnnouncementForm">
-        <template #start>
-          <Icon name="ph:plus" />
-        </template>
-        Add Announcement
-      </Button>
+      <Flex gap="s" y-center>
+        <span class="text-color-lighter text-s">
+          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+        </span>
+
+        <Button v-if="canCreate" variant="accent" @click="openAddAnnouncementForm">
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Announcement
+        </Button>
+      </Flex>
     </Flex>
 
     <TableContainer>

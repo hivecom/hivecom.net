@@ -7,11 +7,6 @@ export type Json
     | Json[]
 
 export interface Database {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: '13.0.5'
-  }
   private: {
     Tables: {
       teamspeak_tokens: {
@@ -459,6 +454,36 @@ export interface Database {
           },
         ]
       }
+      kvstore: {
+        Row: {
+          created_at: string
+          created_by: string
+          key: string
+          modified_at: string | null
+          modified_by: string | null
+          type: Database['public']['Enums']['kvstore_type']
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          key: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database['public']['Enums']['kvstore_type']
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          key?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database['public']['Enums']['kvstore_type']
+          value?: Json
+        }
+        Relationships: []
+      }
       monthly_funding: {
         Row: {
           donation_count: number
@@ -486,6 +511,33 @@ export interface Database {
           patreon_count?: number
           patreon_lifetime_amount_cents?: number
           patreon_month_amount_cents?: number
+        }
+        Relationships: []
+      }
+      motds: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: number
+          message: string
+          modified_at: string | null
+          modified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: number
+          message: string
+          modified_at?: string | null
+          modified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: number
+          message?: string
+          modified_at?: string | null
+          modified_by?: string | null
         }
         Relationships: []
       }
@@ -1007,6 +1059,10 @@ export interface Database {
         | 'profiles.delete'
         | 'profiles.read'
         | 'profiles.update'
+        | 'projects.create'
+        | 'projects.read'
+        | 'projects.update'
+        | 'projects.delete'
         | 'referendums.create'
         | 'referendums.delete'
         | 'referendums.read'
@@ -1023,16 +1079,21 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
-        | 'projects.read'
-        | 'projects.create'
-        | 'projects.update'
-        | 'projects.delete'
         | 'assets.create'
         | 'assets.delete'
         | 'assets.read'
         | 'assets.update'
+        | 'motds.create'
+        | 'motds.read'
+        | 'motds.update'
+        | 'motds.delete'
+        | 'kvstore.create'
+        | 'kvstore.read'
+        | 'kvstore.update'
+        | 'kvstore.delete'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
+      kvstore_type: 'NUMBER' | 'BOOLEAN' | 'STRING' | 'JSON'
       profile_badge: 'founder' | 'earlybird' | 'builder' | 'host'
       region: 'eu' | 'na' | 'all'
     }
@@ -1205,6 +1266,10 @@ export const Constants = {
         'profiles.delete',
         'profiles.read',
         'profiles.update',
+        'projects.create',
+        'projects.read',
+        'projects.update',
+        'projects.delete',
         'referendums.create',
         'referendums.delete',
         'referendums.read',
@@ -1221,17 +1286,22 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
-        'projects.read',
-        'projects.create',
-        'projects.update',
-        'projects.delete',
         'assets.create',
         'assets.delete',
         'assets.read',
         'assets.update',
+        'motds.create',
+        'motds.read',
+        'motds.update',
+        'motds.delete',
+        'kvstore.create',
+        'kvstore.read',
+        'kvstore.update',
+        'kvstore.delete',
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],
+      kvstore_type: ['NUMBER', 'BOOLEAN', 'STRING', 'JSON'],
       profile_badge: ['founder', 'earlybird', 'builder', 'host'],
       region: ['eu', 'na', 'all'],
     },

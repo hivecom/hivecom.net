@@ -159,7 +159,7 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `slack`, `spotify`, `workos`, `zoom`.
 [auth.external.discord]
-enabled = true
+# enabled = true
 client_id = "env(NUXT_PUBLIC_AUTH_EXTERNAL_DISCORD_CLIENT_ID)"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(AUTH_EXTERNAL_DISCORD_CLIENT_SECRET)"

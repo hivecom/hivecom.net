@@ -184,6 +184,10 @@ const filteredData = computed<TransformedContainer[]>(() => {
   }))
 })
 
+const totalCount = computed(() => containers.value.length)
+const filteredCount = computed(() => filteredData.value.length)
+const isFiltered = computed(() => filteredCount.value !== totalCount.value)
+
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
   pagination: {
@@ -457,14 +461,17 @@ onBeforeMount(fetchContainers)
     <template v-else-if="loading">
       <Flex gap="s" column expand>
         <!-- Search and Filters -->
-        <ContainerFilters
-          v-model:search="search"
-          v-model:server-filter="serverFilter"
-          v-model:status-filter="statusFilter"
-          :server-options="serverOptions"
-          :status-options="statusOptions"
-          @clear-filters="clearFilters"
-        />
+        <Flex x-between y-center expand>
+          <ContainerFilters
+            v-model:search="search"
+            v-model:server-filter="serverFilter"
+            v-model:status-filter="statusFilter"
+            :server-options="serverOptions"
+            :status-options="statusOptions"
+            @clear-filters="clearFilters"
+          />
+          <span class="text-color-lighter text-s">Total —</span>
+        </Flex>
 
         <!-- Table skeleton -->
         <TableSkeleton
@@ -477,14 +484,19 @@ onBeforeMount(fetchContainers)
 
     <Flex v-else gap="s" column expand>
       <!-- Search and Filters -->
-      <ContainerFilters
-        v-model:search="search"
-        v-model:server-filter="serverFilter"
-        v-model:status-filter="statusFilter"
-        :server-options="serverOptions"
-        :status-options="statusOptions"
-        @clear-filters="clearFilters"
-      />
+      <Flex x-between y-center expand>
+        <ContainerFilters
+          v-model:search="search"
+          v-model:server-filter="serverFilter"
+          v-model:status-filter="statusFilter"
+          :server-options="serverOptions"
+          :status-options="statusOptions"
+          @clear-filters="clearFilters"
+        />
+        <span class="text-color-lighter text-s">
+          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+        </span>
+      </Flex>
 
       <TableContainer>
         <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">

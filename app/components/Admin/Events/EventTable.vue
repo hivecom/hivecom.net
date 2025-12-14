@@ -81,6 +81,10 @@ const transformedEvents = computed(() => {
   }))
 })
 
+const totalCount = computed(() => events.value.length)
+const filteredCount = computed(() => transformedEvents.value.length)
+const isFiltered = computed(() => Boolean(search.value))
+
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(transformedEvents, {
   pagination: {
@@ -262,24 +266,28 @@ onBeforeMount(fetchEvents)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between expand>
+      <Flex x-between y-center expand>
         <EventFilters v-model:search="search" />
 
-        <Flex gap="xs">
-          <CalendarButtons />
+        <Flex gap="s" y-center>
+          <span class="text-color-lighter text-s">Total —</span>
 
-          <!-- Create event button -->
-          <Button
-            v-if="canCreate"
-            variant="accent"
-            loading
-            @click="openAddEventForm"
-          >
-            <template #start>
-              <Icon name="ph:plus" />
-            </template>
-            Add Event
-          </Button>
+          <Flex gap="xs">
+            <CalendarButtons />
+
+            <!-- Create event button -->
+            <Button
+              v-if="canCreate"
+              variant="accent"
+              loading
+              @click="openAddEventForm"
+            >
+              <template #start>
+                <Icon name="ph:plus" />
+              </template>
+              Add Event
+            </Button>
+          </Flex>
         </Flex>
       </Flex>
 
@@ -294,23 +302,29 @@ onBeforeMount(fetchEvents)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between expand>
+    <Flex x-between y-center expand>
       <EventFilters v-model:search="search" />
 
-      <Flex gap="xs">
-        <CalendarButtons />
+      <Flex gap="s" y-center>
+        <span class="text-color-lighter text-s">
+          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+        </span>
 
-        <!-- Create event button -->
-        <Button
-          v-if="canCreate"
-          variant="accent"
-          @click="openAddEventForm"
-        >
-          <template #start>
-            <Icon name="ph:plus" />
-          </template>
-          Add Event
-        </Button>
+        <Flex gap="xs">
+          <CalendarButtons />
+
+          <!-- Create event button -->
+          <Button
+            v-if="canCreate"
+            variant="accent"
+            @click="openAddEventForm"
+          >
+            <template #start>
+              <Icon name="ph:plus" />
+            </template>
+            Add Event
+          </Button>
+        </Flex>
       </Flex>
     </Flex>
 

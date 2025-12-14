@@ -122,6 +122,9 @@ const transformedExpenses = computed<TransformedExpense[]>(() => {
     _original: expense,
   }))
 })
+const totalCount = computed(() => expenses.value.length)
+const filteredCount = computed(() => transformedExpenses.value.length)
+const isFiltered = computed(() => Boolean(search.value))
 
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(transformedExpenses, {
@@ -268,15 +271,18 @@ onBeforeMount(fetchExpenses)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between expand>
+      <Flex x-between y-center expand>
         <ExpenseFilters v-model:search="search" />
+        <Flex gap="s" y-center>
+          <span class="text-color-lighter text-s">Total —</span>
 
-        <Button v-if="canCreate" variant="accent" loading>
-          <template #start>
-            <Icon name="ph:plus" />
-          </template>
-          Add Expense
-        </Button>
+          <Button v-if="canCreate" variant="accent" loading>
+            <template #start>
+              <Icon name="ph:plus" />
+            </template>
+            Add Expense
+          </Button>
+        </Flex>
       </Flex>
 
       <!-- Table skeleton -->
@@ -290,15 +296,21 @@ onBeforeMount(fetchExpenses)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between expand>
+    <Flex x-between y-center expand>
       <ExpenseFilters v-model:search="search" />
 
-      <Button v-if="canCreate" variant="accent" @click="openAddExpenseForm">
-        <template #start>
-          <Icon name="ph:plus" />
-        </template>
-        Add Expense
-      </Button>
+      <Flex gap="s" y-center>
+        <span class="text-color-lighter text-s">
+          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+        </span>
+
+        <Button v-if="canCreate" variant="accent" @click="openAddExpenseForm">
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Expense
+        </Button>
+      </Flex>
     </Flex>
 
     <!-- Table -->

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
-import { Alert, Badge, Button, Flex, Input, Modal, pushToast, Select } from '@dolanske/vui'
+import { Alert, Badge, Button, Flex, Input, Kbd, KbdGroup, Modal, pushToast, Select } from '@dolanske/vui'
 import { computed, reactive, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import { identityKey, normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
@@ -67,6 +67,8 @@ const requestResult = ref<{ serverId: string, uniqueId: string, tokenExpiresAt?:
 const confirmationResult = ref<{ groupsAssigned: number[], assignmentSkippedReason?: string } | null>(null)
 const localIdentities = ref<TeamSpeakIdentityRecord[]>([])
 const unlinking = reactive<Record<string, boolean>>({})
+const isMac = computed(() => import.meta.client && /Mac|iP(?:hone|od|ad)/i.test(navigator.userAgent))
+const identityShortcut = computed(() => isMac.value ? ['⌘', 'I'] : ['Ctrl', 'I'])
 
 watch(() => props.profile?.teamspeak_identities, (identities) => {
   localIdentities.value = normalizeTeamSpeakIdentities(identities)
@@ -481,8 +483,15 @@ function safeParseJson(input: string): unknown {
 
           <Alert variant="neutral" filled class="mb-m">
             <p class="text-xs">
-              In TeamSpeak: open <strong class="text-xs">Tools → Identities</strong> (⌘/Ctrl + I), enable <strong class="text-xs">Advanced Mode</strong>, pick your current identity, then copy the <strong class="text-xs">Unique ID</strong> value.
+              In TeamSpeak: open <strong class="text-xs">Tools → Identities</strong>, enable <strong class="text-xs">Advanced Mode</strong>, pick your current identity, then copy the <strong class="text-xs">Unique ID</strong> value.
             </p>
+            <Flex x-start y-center gap="xs" class="identity-shortcut">
+              <span class="text-xs text-color-lighter">Shortcut:</span>
+              <KbdGroup>
+                <Kbd v-for="key in identityShortcut" :key="key" :keys="key" highlight />
+              </KbdGroup>
+              <span class="text-xs text-color-lighter">opens Identities in TeamSpeak.</span>
+            </Flex>
           </Alert>
 
           <Flex column gap="m" expand>
@@ -647,5 +656,9 @@ function safeParseJson(input: string): unknown {
   padding: 0.15rem 0.5rem;
   border-radius: var(--border-radius-s);
   word-break: break-all;
+}
+
+.identity-shortcut {
+  margin-top: var(--space-xs);
 }
 </style>

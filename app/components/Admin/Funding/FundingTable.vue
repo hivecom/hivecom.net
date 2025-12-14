@@ -68,6 +68,10 @@ const transformedFundings = computed<TransformedFunding[]>(() => {
   }))
 })
 
+const totalCount = computed(() => monthlyFundings.value.length)
+const filteredCount = computed(() => transformedFundings.value.length)
+const isFiltered = computed(() => Boolean(search.value))
+
 // Table configuration
 const { headers, rows, pagination, setPage } = defineTable(transformedFundings, {
   pagination: {
@@ -125,8 +129,9 @@ onBeforeMount(fetchMonthlyFundings)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between expand>
+      <Flex x-between y-center expand>
         <FundingFilters v-model:search="search" />
+        <span class="text-color-lighter text-s">Total —</span>
       </Flex>
 
       <!-- Table skeleton -->
@@ -140,8 +145,11 @@ onBeforeMount(fetchMonthlyFundings)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between expand>
+    <Flex x-between y-center expand>
       <FundingFilters v-model:search="search" />
+      <span class="text-color-lighter text-s">
+        {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+      </span>
     </Flex>
 
     <!-- Table -->

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Session } from '@supabase/supabase-js'
-import { Alert, Button, Card, Flex, Input, Tab, Tabs } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Input, OTP, OTPItem, Tab, Tabs } from '@dolanske/vui'
 import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
@@ -326,6 +326,14 @@ watch([email, password], () => {
     void cancelMfaChallenge()
 })
 
+watch(mfaCode, (code) => {
+  if (!requiresMfaChallenge.value)
+    return
+  const normalized = code.trim()
+  if (normalized.length === 6 && !mfaVerifying.value)
+    void verifyMfaCode()
+})
+
 // Auto-focus email input on page load
 const emailInputRef = useTemplateRef('email-input')
 
@@ -347,23 +355,33 @@ onMounted(() => {
           <h4>Sign in</h4>
         </template>
         <div v-if="requiresMfaChallenge" class="container container-xs" style="min-height:356px">
-          <Flex column gap="l" class="py-l">
-            <Flex column gap="xs">
+          <Flex column gap="l" class="py-l" y-center expand>
+            <Flex column gap="xs" y-center expand>
               <span class="text-s text-color-muted">Step 2 of 2</span>
               <h5 class="mfa-heading">
                 Enter your authenticator code
               </h5>
             </Flex>
-            <Input
-              v-model="mfaCode"
-              label="One-time code"
-              placeholder="123456"
-              inputmode="numeric"
-              maxlength="8"
-              :disabled="mfaVerifying"
-              expand
-              @keyup.enter="verifyMfaCode"
-            />
+            <Flex column gap="xs" expand x-center>
+              <Flex y-center gap="s" column x-center expand>
+                <span class="text-xs text-color-lighter">One-time code</span>
+                <OTP
+                  v-model="mfaCode"
+                  mode="num"
+                  :disabled="mfaVerifying"
+                >
+                  <OTPItem :i="0" />
+                  <OTPItem :i="1" />
+                  <OTPItem :i="2" />
+                  <div class="otp-divider">
+                    -
+                  </div>
+                  <OTPItem :i="3" />
+                  <OTPItem :i="4" />
+                  <OTPItem :i="5" />
+                </OTP>
+              </Flex>
+            </Flex>
             <Flex column gap="s" expand>
               <Button expand variant="fill" :loading="mfaVerifying" @click="verifyMfaCode">
                 Verify code
@@ -464,5 +482,13 @@ onMounted(() => {
 .mfa-heading {
   font-size: var(--font-size-l);
   margin: 0;
+}
+
+.otp-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-m);
+  color: var(--color-text-light);
 }
 </style>

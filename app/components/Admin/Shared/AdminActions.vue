@@ -7,7 +7,7 @@ interface AdminActionsProps {
   /**
    * Type of resource (used for permission checking)
    */
-  resourceType: 'games' | 'events' | 'gameservers' | 'profiles' | 'expenses' | 'announcements' | 'referendums' | 'servers' | 'assets' | 'projects'
+  resourceType: 'games' | 'events' | 'gameservers' | 'profiles' | 'expenses' | 'announcements' | 'referendums' | 'servers' | 'assets' | 'projects' | 'kvstore' | 'motds'
 
   /**
    * The item being acted upon
@@ -140,6 +140,8 @@ function getResourceDisplayName(): string {
     referendums: 'Referendum',
     servers: 'Server',
     assets: 'Asset',
+    kvstore: 'Key/Value',
+    motds: 'MOTD',
   }
 
   return resourceMap[props.resourceType] || 'Item'

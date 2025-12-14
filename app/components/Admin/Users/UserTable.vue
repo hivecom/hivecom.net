@@ -315,6 +315,14 @@ const filteredData = computed<TransformedUser[]>(() => {
   })
 })
 
+const totalCount = computed(() => users.value.length)
+const filteredCount = computed(() => filteredData.value.length)
+const isFiltered = computed(() => Boolean(
+  search.value
+  || (roleFilter.value && roleFilter.value.length > 0)
+  || (statusFilter.value && statusFilter.value.length > 0),
+))
+
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
   pagination: {
@@ -412,16 +420,14 @@ defineExpose({
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between expand>
-        <UserFilters
-          v-model:search="search"
-          v-model:role-filter="roleFilter"
-          v-model:status-filter="statusFilter"
-          :role-options="roleOptions"
-          :status-options="statusOptions"
-          @clear-filters="clearFilters"
-        />
-      </Flex>
+      <UserFilters
+        v-model:search="search"
+        v-model:role-filter="roleFilter"
+        v-model:status-filter="statusFilter"
+        :role-options="roleOptions"
+        :status-options="statusOptions"
+        @clear-filters="clearFilters"
+      />
 
       <!-- Table skeleton -->
       <TableSkeleton
@@ -435,7 +441,7 @@ defineExpose({
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between expand>
+    <Flex y-center x-between expand>
       <UserFilters
         v-model:search="search"
         v-model:role-filter="roleFilter"
@@ -444,6 +450,10 @@ defineExpose({
         :status-options="statusOptions"
         @clear-filters="clearFilters"
       />
+
+      <span class="text-color-lighter text-s">
+        {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+      </span>
     </Flex>
 
     <TableContainer>

@@ -84,7 +84,7 @@ export default defineNuxtConfig({
     url: 'https://hivecom.net',
     name: 'Hivecom',
     title: 'Hivecom',
-    description: 'A community of friends from all around the world. Creating a space for everyone and projects to thrive.',
+    description: 'A community of friends from all around the world, creating a space for everyone and projects to thrive. We host game servers, provide communication platforms, and foster collaboration through open source projects. Join us!',
     tags: [
       'community',
       'gameservers',

@@ -13,18 +13,6 @@ import ReferendumDetails from './ReferendumDetails.vue'
 import ReferendumFilters from './ReferendumFilters.vue'
 import ReferendumForm from './ReferendumForm.vue'
 
-// Type from the query result
-type QueryReferendum = QueryData<typeof referendumsQuery>[0]
-
-// Define interface for transformed referendum data
-interface TransformedReferendum {
-  'Title': string
-  'Status': string
-  'Vote Count': number
-  'Date Start': string
-  '_original': QueryReferendum
-}
-
 // Interface for Select options
 interface SelectOption {
   label: string
@@ -44,6 +32,18 @@ const referendumsQuery = supabase.from('referendums').select(`
   *,
   vote_count:referendum_votes(count)
 `)
+
+// Type from the query result
+type QueryReferendum = QueryData<typeof referendumsQuery>[0]
+
+// Define interface for transformed referendum data
+interface TransformedReferendum {
+  'Title': string
+  'Status': string
+  'Vote Count': number
+  'Date Start': string
+  '_original': QueryReferendum
+}
 
 // Data states
 const loading = ref(true)
@@ -135,6 +135,10 @@ const filteredData = computed<TransformedReferendum[]>(() => {
     '_original': referendum,
   }))
 })
+
+const totalCount = computed(() => referendums.value.length)
+const filteredCount = computed(() => filteredData.value.length)
+const isFiltered = computed(() => filteredCount.value !== totalCount.value)
 
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
@@ -286,7 +290,7 @@ onBeforeMount(fetchReferendums)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between expand>
+      <Flex x-between y-center expand>
         <ReferendumFilters
           v-model:search="search"
           v-model:status-filter="statusFilter"
@@ -296,12 +300,16 @@ onBeforeMount(fetchReferendums)
           @clear-filters="clearFilters"
         />
 
-        <Button v-if="canCreate" variant="accent" loading>
-          <template #start>
-            <Icon name="ph:plus" />
-          </template>
-          Add Referendum
-        </Button>
+        <Flex gap="s" y-center>
+          <span class="text-color-lighter text-s">Total —</span>
+
+          <Button v-if="canCreate" variant="accent" loading>
+            <template #start>
+              <Icon name="ph:plus" />
+            </template>
+            Add Referendum
+          </Button>
+        </Flex>
       </Flex>
 
       <!-- Table skeleton -->
@@ -315,7 +323,7 @@ onBeforeMount(fetchReferendums)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between expand>
+    <Flex x-between y-center expand>
       <ReferendumFilters
         v-model:search="search"
         v-model:status-filter="statusFilter"
@@ -325,12 +333,18 @@ onBeforeMount(fetchReferendums)
         @clear-filters="clearFilters"
       />
 
-      <Button v-if="canCreate" variant="accent" @click="openAddReferendumForm">
-        <template #start>
-          <Icon name="ph:plus" />
-        </template>
-        Add Referendum
-      </Button>
+      <Flex gap="s" y-center>
+        <span class="text-color-lighter text-s">
+          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+        </span>
+
+        <Button v-if="canCreate" variant="accent" @click="openAddReferendumForm">
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Referendum
+        </Button>
+      </Flex>
     </Flex>
 
     <TableContainer>

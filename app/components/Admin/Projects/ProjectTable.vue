@@ -108,6 +108,13 @@ const filteredData = computed<TransformedProject[]>(() => {
   }))
 })
 
+const totalCount = computed(() => projects.value.length)
+const filteredCount = computed(() => filteredData.value.length)
+const isFiltered = computed(() => Boolean(
+  search.value
+  || (tagFilter.value && tagFilter.value.length > 0),
+))
+
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
   pagination: {
@@ -257,7 +264,7 @@ onBeforeMount(fetchProjects)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between expand>
+      <Flex x-between y-center expand>
         <ProjectFilters
           v-model:search="search"
           v-model:tag-filter="tagFilter"
@@ -265,12 +272,16 @@ onBeforeMount(fetchProjects)
           @clear-filters="clearFilters"
         />
 
-        <Button v-if="canCreate" variant="accent" loading>
-          <template #start>
-            <Icon name="ph:plus" />
-          </template>
-          Add Project
-        </Button>
+        <Flex gap="s" y-center>
+          <span class="text-color-lighter text-s">Total —</span>
+
+          <Button v-if="canCreate" variant="accent" loading>
+            <template #start>
+              <Icon name="ph:plus" />
+            </template>
+            Add Project
+          </Button>
+        </Flex>
       </Flex>
 
       <!-- Table skeleton -->
@@ -284,7 +295,7 @@ onBeforeMount(fetchProjects)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between expand>
+    <Flex x-between y-center expand>
       <ProjectFilters
         v-model:search="search"
         v-model:tag-filter="tagFilter"
@@ -292,12 +303,18 @@ onBeforeMount(fetchProjects)
         @clear-filters="clearFilters"
       />
 
-      <Button v-if="canCreate" variant="accent" @click="openAddProjectForm">
-        <template #start>
-          <Icon name="ph:plus" />
-        </template>
-        Add Project
-      </Button>
+      <Flex gap="s" y-center>
+        <span class="text-color-lighter text-s">
+          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+        </span>
+
+        <Button v-if="canCreate" variant="accent" @click="openAddProjectForm">
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Project
+        </Button>
+      </Flex>
     </Flex>
 
     <TableContainer>

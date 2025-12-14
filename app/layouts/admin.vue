@@ -170,6 +170,18 @@ const menuItems = [
     permissions: ['games.read', 'games.create', 'games.update', 'games.delete'],
   },
   {
+    name: 'KV Store',
+    path: '/admin/kvstore',
+    icon: 'ph:database',
+    permissions: ['kvstore.read', 'kvstore.create', 'kvstore.update', 'kvstore.delete'],
+  },
+  {
+    name: 'MOTDs',
+    path: '/admin/motds',
+    icon: 'ph:speaker-simple-high',
+    permissions: ['motds.read', 'motds.create', 'motds.update', 'motds.delete'],
+  },
+  {
     name: 'Network',
     path: '/admin/network',
     icon: 'ph:computer-tower',

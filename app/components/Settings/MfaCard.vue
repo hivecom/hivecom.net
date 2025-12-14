@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Session } from '@supabase/supabase-js'
-import { Alert, Badge, Button, Card, Flex, Input, pushToast, Skeleton } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
 import { useCacheUserData } from '@/composables/useCacheUserData'
@@ -113,6 +113,18 @@ async function loadMfaFactors() {
   }
 }
 
+async function cleanupPendingTotpFactor() {
+  const pendingFactor = mfaFactors.value.find(f => f.factor_type === 'totp' && f.status === 'unverified')
+  if (!pendingFactor)
+    return
+
+  const { error } = await supabase.auth.mfa.unenroll({ factorId: pendingFactor.id })
+  if (error)
+    throw error
+
+  mfaFactors.value = mfaFactors.value.filter(f => f.id !== pendingFactor.id)
+}
+
 async function startTotpEnrollment() {
   if (totpSetup.enrolling || !user.value)
     return
@@ -127,6 +139,9 @@ async function startTotpEnrollment() {
   totpSuccess.value = ''
 
   try {
+    await loadMfaFactors()
+    await cleanupPendingTotpFactor()
+
     const { data, error } = await supabase.auth.mfa.enroll({
       factorType: 'totp',
       issuer: 'Hivecom',
@@ -269,6 +284,15 @@ watch(user, (newUser) => {
     resetTotpSetup()
 })
 
+watch(
+  () => totpSetup.code,
+  (code) => {
+    const normalized = code.trim()
+    if (normalized.length === 6 && !totpSetup.verifying)
+      void verifyTotpEnrollment()
+  },
+)
+
 onMounted(() => {
   if (user.value)
     loadMfaFactors()
@@ -347,14 +371,24 @@ onMounted(() => {
                 <p class="text-xs text-color-lighter">
                   After adding the account, enter the 6-digit code below to confirm setup.
                 </p>
-                <Input
-                  v-model="totpSetup.code"
-                  label="One-time code"
-                  placeholder="123456"
-                  inputmode="numeric"
-                  maxlength="8"
-                  expand
-                />
+                <Flex column gap="xs">
+                  <span class="text-xs text-color-lighter">One-time code</span>
+                  <OTP
+                    v-model="totpSetup.code"
+                    mode="num"
+                    :disabled="totpSetup.verifying"
+                  >
+                    <OTPItem :i="0" />
+                    <OTPItem :i="1" />
+                    <OTPItem :i="2" />
+                    <div class="otp-divider">
+                      -
+                    </div>
+                    <OTPItem :i="3" />
+                    <OTPItem :i="4" />
+                    <OTPItem :i="5" />
+                  </OTP>
+                </Flex>
                 <Flex gap="s">
                   <Button variant="accent" :loading="totpSetup.verifying" @click="verifyTotpEnrollment">
                     Verify Code
@@ -473,5 +507,13 @@ onMounted(() => {
   font-family: var(--font-family-mono, 'Courier New', Courier, monospace);
   word-break: break-all;
   background: var(--color-bg, #0e1018);
+}
+
+.otp-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-m);
+  color: var(--color-text-light);
 }
 </style>
