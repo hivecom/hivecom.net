@@ -5,6 +5,7 @@ export const dateFormat = {
   displayTime: 'dddd YYYY-MM-DD, HH:mm',
   default: 'YYYY-MM-DD, HH:mm',
   calendarDefault: 'YYYY-MM-DD',
+  time: 'HH:mm',
 }
 
 // Format date for display
@@ -18,4 +19,12 @@ export function formatMonth(month: string): string {
     month: 'long',
     year: 'numeric',
   })
+}
+
+export function formatTime(dateStr: string) {
+  return dayjs(dateStr).format(dateFormat.time)
+}
+
+export function formatSimpleDate(dateStr: string) {
+  return dayjs(dateStr).format(dateFormat.display)
 }

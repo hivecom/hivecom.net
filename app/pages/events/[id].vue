@@ -19,6 +19,10 @@ const games = ref<Tables<'games'>[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
+defineOgImageComponent('Event', {
+  eventId,
+})
+
 // Countdown for upcoming events
 const countdown = ref<{
   days: number
