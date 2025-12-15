@@ -44,9 +44,13 @@ const displayRows = computed(() => filteredMotds.value.map(entry => ({
 const { headers, rows, pagination, setPage, setSort } = defineTable(displayRows, {
   pagination: {
     enabled: true,
-    perPage: 10,
   },
   select: false,
+})
+
+const shouldShowPagination = computed(() => {
+  const page = pagination.value
+  return page.totalItems > page.perPage
 })
 
 setSort('Created', 'desc')
@@ -226,7 +230,7 @@ onBeforeMount(fetchMotds)
             </tr>
           </template>
 
-          <template v-if="rows.length > 10" #pagination>
+          <template v-if="shouldShowPagination" #pagination>
             <Pagination :pagination="pagination" @change="setPage" />
           </template>
         </Table.Root>

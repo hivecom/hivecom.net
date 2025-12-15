@@ -50,9 +50,13 @@ const displayRows = computed(() => filteredEntries.value.map((entry: KvEntry) =>
 const { headers, rows, pagination, setPage, setSort } = defineTable(displayRows, {
   pagination: {
     enabled: true,
-    perPage: 10,
   },
   select: false,
+})
+
+const shouldShowPagination = computed(() => {
+  const page = pagination.value
+  return page.totalItems > page.perPage
 })
 
 setSort('Key', 'asc')
@@ -227,7 +231,7 @@ onBeforeMount(fetchEntries)
             </tr>
           </template>
 
-          <template v-if="rows.length > 10" #pagination>
+          <template v-if="shouldShowPagination" #pagination>
             <Pagination :pagination="pagination" @change="setPage" />
           </template>
         </Table.Root>
