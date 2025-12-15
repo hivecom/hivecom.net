@@ -275,6 +275,7 @@ onMounted(async () => {
     resizeObserver = new ResizeObserver(() => setSize())
     resizeObserver.observe(container)
     globeInstance
+      .enablePointerInteraction(false) // Temporarily disable as this causes performance issues when switching away and back to pages using the globe
       .globeMaterial(globeMaterial)
       .hexPolygonsData(countries.features)
       .hexPolygonResolution(3)
