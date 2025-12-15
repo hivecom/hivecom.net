@@ -231,26 +231,53 @@ Deno.serve(async (req: Request) => {
     }
 
     // Update supporter status for all profiles with patreon_id
-    // First, set all users with patreon_id to false initially
-    const { error: resetError } = await supabaseClient
+    // IMPORTANT:
+    // Don't blanket-reset supporter_patreon to false and then set it back to true.
+    // That causes a daily false→true flip for real supporters and triggers the
+    // `notify_discord_supporter_status_changed` Discord notification each run.
+
+    // Helper to build a PostgREST `in` list for `.not(..., 'in', ...)`.
+    // Format example: '("123","456")'
+    const toPostgrestInList = (values: string[]) => {
+      const escaped = values
+        .map((value) => value.replaceAll("\\", "\\\\").replaceAll('"', '\\"'))
+        .map((value) => `"${value}"`);
+      return `(${escaped.join(",")})`;
+    };
+
+    // 1) Remove supporter flag only from users who are currently marked as supporters
+    //    but are no longer entitled (and have a Patreon link).
+    //    This does NOT trigger the Discord notification (trigger only notifies on TRUE transitions).
+    const removeSupporterQuery = supabaseClient
       .from("profiles")
       .update({ supporter_patreon: false } as Tables<"profiles">)
+      .eq("supporter_patreon", true)
       .not("patreon_id", "is", null);
 
-    if (resetError) {
-      console.error("Error resetting supporter status:", resetError);
+    const { error: removeError } = supporterPatronIds.length > 0
+      ? await removeSupporterQuery.not(
+        "patreon_id",
+        "in",
+        toPostgrestInList(supporterPatronIds),
+      )
+      : await removeSupporterQuery;
+
+    if (removeError) {
+      console.error("Error clearing supporter status:", removeError);
       throw new Error(
-        `Failed to reset supporter status: ${resetError.message}`,
+        `Failed to clear supporter status: ${removeError.message}`,
       );
     }
 
-    // Then, set supporter_patreon to true for users with matching patreon_id in the supporter tier
+    // 2) Add supporter flag only to users who are entitled AND currently not marked.
+    //    This will fire Discord notifications only when a user truly becomes a supporter.
     let supporterUpdateResult = null;
     if (supporterPatronIds.length > 0) {
       const { data: updatedProfiles, error: supporterError } =
         await supabaseClient
           .from("profiles")
           .update({ supporter_patreon: true } as Tables<"profiles">)
+          .eq("supporter_patreon", false)
           .in("patreon_id", supporterPatronIds)
           .select("id, username, patreon_id");
 
