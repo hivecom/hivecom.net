@@ -11,19 +11,10 @@ interface Props {
   showLabel?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   size: 'small',
   maxVisible: 5,
   showLabel: true,
-})
-
-// Show only the first N games and indicate if there are more
-const visibleGames = computed(() => {
-  return props.games.slice(0, props.maxVisible)
-})
-
-const hiddenCount = computed(() => {
-  return Math.max(0, props.games.length - props.maxVisible)
 })
 </script>
 
@@ -33,9 +24,9 @@ const hiddenCount = computed(() => {
       Featured Games
     </div>
     <Flex gap="xs" wrap class="event-games__list">
-      <!-- Visible game icons -->
+      <!-- Game icons -->
       <GameDetailsModalTrigger
-        v-for="game in visibleGames"
+        v-for="game in games"
         :key="game.id"
         v-slot="{ open }"
         :game-id="game.id"
@@ -54,19 +45,6 @@ const hiddenCount = computed(() => {
           </button>
         </Tooltip>
       </GameDetailsModalTrigger>
-
-      <!-- "and X more" indicator -->
-      <Tooltip
-        v-if="hiddenCount > 0"
-        placement="top"
-      >
-        <template #tooltip>
-          {{ hiddenCount }} more game{{ hiddenCount === 1 ? '' : 's' }}
-        </template>
-        <div class="event-games__more" :class="`event-games__more--${size}`">
-          +{{ hiddenCount }}
-        </div>
-      </Tooltip>
     </Flex>
   </div>
 </template>
@@ -96,43 +74,6 @@ const hiddenCount = computed(() => {
 
     &:hover {
       transform: scale(1.1);
-    }
-  }
-
-  &__more {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--color-background-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-m);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover {
-      background: var(--color-background-tertiary);
-      transform: scale(1.05);
-    }
-
-    &--small {
-      width: 24px;
-      height: 24px;
-      font-size: 10px;
-    }
-
-    &--medium {
-      width: 32px;
-      height: 32px;
-      font-size: var(--font-size-xs);
-    }
-
-    &--large {
-      width: 48px;
-      height: 48px;
-      font-size: var(--font-size-s);
     }
   }
 }
