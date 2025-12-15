@@ -55,6 +55,7 @@ function handleSubmit() {
   <Modal
     :open="open"
     size="m"
+    @close="close"
     @update:open="emit('update:open', $event)"
   >
     <template #header>
