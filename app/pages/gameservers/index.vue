@@ -66,6 +66,13 @@ const games = ref<Tables<'games'>[]>()
 const gameservers = ref<GameserversType>()
 const supportModalOpen = ref(false)
 
+useSeoMeta({
+  title: 'Game Servers',
+  description: 'Browse the Hivecom game server library and live server listings.',
+  ogTitle: 'Game Servers',
+  ogDescription: 'Browse the Hivecom game server library and live server listings.',
+})
+
 onBeforeMount(async () => {
   // Make our requests at the same time.
   const requests = [

@@ -22,6 +22,13 @@ const supporters = ref<string[]>([])
 // UI state
 const showPastExpenses = ref(false)
 
+useSeoMeta({
+  title: 'Funding',
+  description: 'See Hivecom community funding, expenses, and how to support the project.',
+  ogTitle: 'Funding',
+  ogDescription: 'See Hivecom community funding, expenses, and how to support the project.',
+})
+
 // Fetch data on mount
 onMounted(async () => {
   loading.value = true

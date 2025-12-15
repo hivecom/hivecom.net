@@ -102,15 +102,10 @@ onMounted(() => {
 
 // SEO and page metadata
 useSeoMeta({
-  title: 'Community Projects | Hivecom',
-  description: 'Explore community projects and initiatives from the Hivecom community.',
-  ogTitle: 'Community Projects | Hivecom',
-  ogDescription: 'Explore community projects and initiatives from the Hivecom community.',
-})
-
-// Page title
-useHead({
   title: 'Community Projects',
+  description: 'Explore community projects and initiatives from the Hivecom community.',
+  ogTitle: 'Community Projects',
+  ogDescription: 'Explore community projects and initiatives from the Hivecom community.',
 })
 </script>
 

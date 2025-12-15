@@ -16,10 +16,18 @@ function formatDate(dateString) {
   })
 }
 
-// Set page title if content exists
-useHead(() => ({
-  title: content.value ? `${content.value.title || name} | Legal | Hivecom` : 'Document Not Found | Hivecom',
-}))
+useSeoMeta(() => {
+  const legalTitle = content.value
+    ? `${content.value.title || name} | Legal`
+    : 'Document Not Found'
+
+  return {
+    title: legalTitle,
+    description: content.value?.description || 'Hivecom legal documentation.',
+    ogTitle: legalTitle,
+    ogDescription: content.value?.description || 'Hivecom legal documentation.',
+  }
+})
 </script>
 
 <template>

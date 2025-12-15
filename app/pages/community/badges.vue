@@ -19,6 +19,13 @@ const membershipSnapshots = [1, 5, 10, 20].map(years => ({
   years,
   memberSince: memberSinceYearsAgo(years),
 }))
+
+useSeoMeta({
+  title: 'Badges',
+  description: 'Explore the badges available in the Hivecom community.',
+  ogTitle: 'Badges',
+  ogDescription: 'Explore the badges available in the Hivecom community.',
+})
 </script>
 
 <template>

@@ -64,11 +64,26 @@ export default defineNuxtConfig({
       supabaseProjectRef: process.env.NUXT_PUBLIC_SUPABASE_PROJECT_REF ?? '',
     },
   },
+  robots: {
+    sitemap: [
+      `${process.env.NUXT_PUBLIC_BASE_URL ?? 'https://hivecom.net'}/sitemap.xml`,
+    ],
+    groups: [
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: ['/admin', '/admin/', '/auth', '/auth/', '/playground', '/playground/', '/profile', '/profile/', '/votes', '/votes/'],
+      },
+    ],
+  },
+  sitemap: {
+    exclude: ['/admin/**', '/auth/**', '/playground/**', '/profile/**', '/votes/**'],
+  },
   nitro: {
     prerender: {
       failOnError: false,
       crawlLinks: true,
-      routes: ['/'],
+      routes: ['/', '/robots.txt', '/sitemap.xml', '/llms.txt'],
     },
   },
   supabase: {
@@ -81,7 +96,7 @@ export default defineNuxtConfig({
     },
   },
   site: {
-    url: 'https://hivecom.net',
+    url: process.env.NUXT_PUBLIC_BASE_URL ?? 'https://hivecom.net',
     name: 'Hivecom',
     title: 'Hivecom',
     description: 'A community of friends from all around the world, creating a space for everyone and projects to thrive. We host game servers, provide communication platforms, and foster collaboration through open source projects. Join us!',

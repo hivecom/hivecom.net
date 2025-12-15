@@ -15,6 +15,13 @@ const activeTab = ref<'about' | 'voice'>('about')
 const route = useRoute()
 const router = useRouter()
 
+useSeoMeta({
+  title: 'Community',
+  description: 'Learn about Hivecom, explore community projects, and connect with members.',
+  ogTitle: 'Community',
+  ogDescription: 'Learn about Hivecom, explore community projects, and connect with members.',
+})
+
 const queryTab = computed(() => {
   const tab = route.query.tab ?? (route.query.voice ? 'voice' : undefined)
   return Array.isArray(tab) ? tab[0] : tab

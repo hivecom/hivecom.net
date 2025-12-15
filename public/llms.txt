@@ -1,0 +1,30 @@
+# Hivecom
+
+> Hivecom is a worldwide community of friends hosting game servers, building projects, and running communication platforms (IRC/TeamSpeak/Discord bridge).
+
+It was created by zealsprince (formerly Catlinman), Jokler and Trif.
+
+This file is a curated map of the most useful pages for understanding the site.
+
+## Key Pages
+
+- [Home](https://hivecom.net/): Overview and entry point
+- [Announcements](https://hivecom.net/announcements): News and updates
+- [Events](https://hivecom.net/events): Community events listing and calendar
+- [Game Servers](https://hivecom.net/gameservers): Server library and live listings
+- [Community](https://hivecom.net/community): About the community and member-focused content
+
+## Projects
+
+- [Community Projects](https://hivecom.net/community/projects): Public projects and initiatives hosted by the Hivecom community
+- [Hivecom on GitHub](https://github.com/hivecom): Open source repositories and code
+- [hivecom.net repository](https://github.com/hivecom/hivecom.net): Source code for this website
+
+## Legal
+
+- [Privacy Policy](https://hivecom.net/legal/privacy): Privacy policy
+- [Terms](https://hivecom.net/legal/terms): Terms of service
+
+## Optional
+
+- [Funding](https://hivecom.net/community/funding): Funding and expenses overview

@@ -40,6 +40,13 @@ const loading = ref(true)
 const errorMessage = ref('')
 const events = ref<Tables<'events'>[]>()
 
+useSeoMeta({
+  title: 'Events',
+  description: 'Discover upcoming, ongoing, and past events in the Hivecom community.',
+  ogTitle: 'Events',
+  ogDescription: 'Discover upcoming, ongoing, and past events in the Hivecom community.',
+})
+
 onMounted(async () => {
   loading.value = true
 

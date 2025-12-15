@@ -115,15 +115,10 @@ function clearFilters() {
 
 // SEO and page metadata
 useSeoMeta({
-  title: 'Announcements | Hivecom',
-  description: 'Stay up to date with the latest announcements and news from Hivecom.',
-  ogTitle: 'Announcements | Hivecom',
-  ogDescription: 'Stay up to date with the latest announcements and news from Hivecom.',
-})
-
-// Page title
-useHead({
   title: 'Announcements',
+  description: 'Stay up to date with the latest announcements and news from Hivecom.',
+  ogTitle: 'Announcements',
+  ogDescription: 'Stay up to date with the latest announcements and news from Hivecom.',
 })
 </script>
 
