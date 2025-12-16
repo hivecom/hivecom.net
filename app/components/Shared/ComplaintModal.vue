@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Flex, Modal, Textarea } from '@dolanske/vui'
 import { ref } from 'vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   open: boolean
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 // Form state
 const complaintMessage = ref('')
 const isSubmitting = ref(false)
+const isBelowSmall = useBreakpoint('<xs')
 
 // Get current user
 const user = useSupabaseUser()
@@ -88,7 +90,7 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="props.open" @close="handleClose">
+  <Modal :open="props.open" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
     <template #header>
       <h3>Submit Complaint</h3>
     </template>
@@ -128,9 +130,10 @@ function handleClose() {
     </Flex>
 
     <template #footer>
-      <Flex gap="s" x-end>
+      <Flex gap="s" x-end expand>
         <Button
           variant="gray"
+          :expand="isBelowSmall"
           :disabled="isSubmitting"
           @click="handleClose"
         >
@@ -138,6 +141,7 @@ function handleClose() {
         </Button>
         <Button
           variant="accent"
+          :expand="isBelowSmall"
           :loading="isSubmitting"
           :disabled="!complaintMessage.trim() || isSubmitting"
           @click="handleSubmit"
@@ -151,7 +155,6 @@ function handleClose() {
 
 <style scoped lang="scss">
 .complaint-modal-content {
-  min-width: 500px;
   max-width: 600px;
 }
 

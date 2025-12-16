@@ -4,6 +4,7 @@ import { Alert, Badge, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
   referendum: Tables<'referendums'> | {
@@ -39,6 +40,7 @@ const emit = defineEmits<{
 
 // Modal state
 const isOpen = defineModel<boolean>('open', { default: false })
+const isBelowSmall = useBreakpoint('<xs')
 
 // Loading state (for consistency with RSVP modal pattern)
 const loading = ref(false)
@@ -91,7 +93,7 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="isOpen" centered @close="handleClose">
+  <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
     <template #header>
       <Flex x-between y-center expand>
         <h3>Referendum Voters</h3>
@@ -207,8 +209,8 @@ function handleClose() {
     </div>
 
     <template #footer>
-      <Flex gap="xs" x-end>
-        <Button variant="gray" @click="handleClose">
+      <Flex gap="xs" x-end expand>
+        <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
           Close
         </Button>
       </Flex>

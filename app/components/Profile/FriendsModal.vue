@@ -2,6 +2,7 @@
 import { Badge, Button, Flex, Modal, Tab, Tabs } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
   friends: string[]
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 
 // Modal state
 const isOpen = defineModel<boolean>('open', { default: false })
+const isBelowSmall = useBreakpoint('<xs')
 
 // Tab state
 const activeTab = ref<'friends' | 'sent' | 'pending'>('friends')
@@ -53,7 +55,7 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="isOpen" centered @close="handleClose">
+  <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
     <template #header>
       <Flex x-between y-center expand>
         <h3>{{ userName }}'s Friends</h3>
@@ -133,8 +135,8 @@ function handleClose() {
     </div>
 
     <template #footer>
-      <Flex gap="xs" x-end>
-        <Button variant="gray" @click="handleClose">
+      <Flex gap="xs" x-end expand>
+        <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
           Close
         </Button>
       </Flex>

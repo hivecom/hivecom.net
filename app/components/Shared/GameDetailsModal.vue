@@ -4,6 +4,7 @@ import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
   gameId?: number | null
@@ -43,6 +44,8 @@ const steamUrl = computed(() => {
   const steamId = currentDetails.value?.game.steam_id
   return steamId ? `https://store.steampowered.com/app/${steamId}` : null
 })
+
+const isBelowSmall = useBreakpoint('<xs')
 const websiteUrl = computed(() => {
   const raw = currentDetails.value?.game.website?.trim()
   return raw || null
@@ -134,7 +137,7 @@ watch(
 </script>
 
 <template>
-  <Modal :open="isModalVisible" centered @close="handleClose">
+  <Modal :open="isModalVisible" centered :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
     <template #header>
       <Flex gap="m" y-center>
         <GameIcon v-if="currentDetails?.game" :game="currentDetails.game" size="medium" />
@@ -182,14 +185,15 @@ watch(
     </div>
 
     <template #footer>
-      <Flex gap="s" x-end>
+      <Flex gap="s" x-end expand>
         <NuxtLink
           v-if="websiteUrl"
           :to="websiteUrl"
           target="_blank"
           rel="noopener noreferrer"
+          class="game-details-modal__link"
         >
-          <Button>
+          <Button :expand="isBelowSmall">
             <template #start>
               <Icon name="ph:globe" />
             </template>
@@ -201,15 +205,16 @@ watch(
           :to="steamUrl"
           target="_blank"
           rel="noopener noreferrer"
+          class="game-details-modal__link"
         >
-          <Button variant="accent">
+          <Button variant="accent" :expand="isBelowSmall">
             <template #start>
               <Icon name="ph:steam-logo" />
             </template>
             View on Steam
           </Button>
         </NuxtLink>
-        <Button variant="gray" @click="handleClose">
+        <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
           Close
         </Button>
       </Flex>
@@ -282,5 +287,9 @@ watch(
     text-align: center;
     color: var(--color-text-light);
   }
+}
+
+.game-details-modal__link {
+  display: contents;
 }
 </style>

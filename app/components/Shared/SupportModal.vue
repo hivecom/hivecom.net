@@ -4,6 +4,7 @@ import { Button, Flex, Modal } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
   message?: string
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 }>()
 
 const isOpen = defineModel<boolean>('open', { default: false })
+const isBelowSmall = useBreakpoint('<xs')
 
 const supportDetails = constants.SUPPORT ?? {}
 const supportEmail = supportDetails.EMAIL ?? 'contact@hivecom.net'
@@ -109,8 +111,14 @@ function handleClose() {
 
 <template>
   <Modal
-    :open="isOpen" centered :card="{ headerSeparator: true,
-                                     footerSeparator: true }" @close="handleClose"
+    :open="isOpen"
+    centered
+    :card="{
+      headerSeparator: true,
+      footerSeparator: true,
+    }"
+    :size="isBelowSmall ? 'screen' : undefined"
+    @close="handleClose"
   >
     <template #header>
       <h3>{{ props.title }}</h3>
@@ -156,17 +164,25 @@ function handleClose() {
     </div>
 
     <template #footer>
-      <Flex gap="s" wrap class="support-modal__actions" align="center">
-        <a :href="`mailto:${supportEmail}`">
-          <Button>
+      <Flex gap="s" wrap class="support-modal__actions" align="center" expand>
+        <a
+          :href="`mailto:${supportEmail}`"
+          class="support-modal__link"
+        >
+          <Button :expand="isBelowSmall">
             <template #start>
               <Icon name="ph:envelope" />
             </template>
             Email Support
           </Button>
         </a>
-        <a :href="ircUrl" target="_blank" rel="noopener noreferrer">
-          <Button>
+        <a
+          :href="ircUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="support-modal__link"
+        >
+          <Button :expand="isBelowSmall">
             <template #start>
               <Icon name="ph:chats-circle" />
             </template>
@@ -178,8 +194,9 @@ function handleClose() {
           :to="discordUrl"
           target="_blank"
           rel="noopener noreferrer"
+          class="support-modal__link"
         >
-          <Button>
+          <Button :expand="isBelowSmall">
             <template #start>
               <Icon name="ph:discord-logo" />
             </template>
@@ -191,8 +208,9 @@ function handleClose() {
           :to="teamspeakUrl"
           target="_blank"
           rel="noopener noreferrer"
+          class="support-modal__link"
         >
-          <Button>
+          <Button :expand="isBelowSmall">
             <template #start>
               <Icon name="mdi:teamspeak" />
             </template>
@@ -201,7 +219,7 @@ function handleClose() {
         </NuxtLink>
 
         <div class="flex-1" />
-        <Button variant="gray" @click="handleClose">
+        <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
           Close
         </Button>
       </Flex>
@@ -257,6 +275,10 @@ function handleClose() {
   &__admin-placeholder {
     font-size: var(--font-size-s);
     color: var(--color-text-light);
+  }
+
+  &__link {
+    display: contents;
   }
 }
 </style>

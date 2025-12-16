@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex, Input, Modal, Radio, RadioGroup, Select, Textarea } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   user: {
@@ -13,6 +14,7 @@ const emit = defineEmits<{
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
+const isBelowSmall = useBreakpoint('<xs')
 
 // Ban duration options
 const banDurationOptions = [
@@ -69,7 +71,7 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="open" @close="handleClose">
+  <Modal :open="open" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
     <template #header>
       <h3>Ban User: {{ props.user.username }}</h3>
     </template>
@@ -105,12 +107,13 @@ function handleClose() {
     </Flex>
 
     <template #footer>
-      <Flex gap="s" x-end>
-        <Button variant="gray" @click="handleClose">
+      <Flex gap="s" x-end expand>
+        <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
           Cancel
         </Button>
         <Button
           variant="danger"
+          :expand="isBelowSmall"
           :disabled="(useCustomDuration === 'preset' && selectedDuration.length === 0) || (useCustomDuration === 'custom' && !customDuration)"
           @click="handleBan"
         >

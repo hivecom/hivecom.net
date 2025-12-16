@@ -4,6 +4,7 @@ import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 import { Alert, Badge, Button, Flex, Input, Kbd, KbdGroup, Modal, pushToast, Select } from '@dolanske/vui'
 import { computed, reactive, ref, watch } from 'vue'
 import constants from '~~/constants.json'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { identityKey, normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
 
 interface SelectOption {
@@ -37,6 +38,7 @@ interface UnlinkResponse {
 const props = defineProps<{ profile: Tables<'profiles'> | null }>()
 const emit = defineEmits<{ (e: 'linked'): void }>()
 const isOpen = ref(false)
+const isBelowSmall = useBreakpoint('<xs')
 
 const supabase = useSupabaseClient()
 
@@ -415,7 +417,7 @@ function safeParseJson(input: string): unknown {
       {{ buttonLabel }}
     </Button>
 
-    <Modal :open="isOpen" centered :card="{ separators: true }" @close="handleClose">
+    <Modal :open="isOpen" centered :card="{ separators: true }" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
       <template #header>
         <Flex x-between y-center>
           <div>
@@ -558,8 +560,13 @@ function safeParseJson(input: string): unknown {
       </Flex>
 
       <template #footer>
-        <Flex gap="s" x-end wrap>
-          <Button variant="gray" :disabled="requestLoading || confirmLoading" @click="handleClose">
+        <Flex gap="s" x-end wrap expand>
+          <Button
+            variant="gray"
+            :expand="isBelowSmall"
+            :disabled="requestLoading || confirmLoading"
+            @click="handleClose"
+          >
             Close
           </Button>
 
@@ -567,13 +574,14 @@ function safeParseJson(input: string): unknown {
             <Button
               v-if="hasLinkedIdentities"
               variant="danger"
+              :expand="isBelowSmall"
               :loading="unlinking.__all__"
               :disabled="unlinking.__all__"
               @click="handleUnlinkAll"
             >
               Unlink All
             </Button>
-            <Button variant="accent" :disabled="!hasServers" @click="resetFlow('request')">
+            <Button variant="accent" :expand="isBelowSmall" :disabled="!hasServers" @click="resetFlow('request')">
               Add Identity
             </Button>
           </template>
@@ -581,6 +589,7 @@ function safeParseJson(input: string): unknown {
           <Button
             v-else-if="step === 'request'"
             variant="accent"
+            :expand="isBelowSmall"
             :loading="requestLoading"
             :disabled="!hasServers"
             @click="handleRequest"
@@ -589,10 +598,10 @@ function safeParseJson(input: string): unknown {
           </Button>
 
           <template v-else-if="step === 'confirm'">
-            <Button variant="gray" :disabled="confirmLoading" @click="resetFlow('request')">
+            <Button variant="gray" :expand="isBelowSmall" :disabled="confirmLoading" @click="resetFlow('request')">
               Start Over
             </Button>
-            <Button variant="accent" :loading="confirmLoading" @click="handleConfirm">
+            <Button variant="accent" :expand="isBelowSmall" :loading="confirmLoading" @click="handleConfirm">
               Confirm Token
             </Button>
           </template>
@@ -600,6 +609,7 @@ function safeParseJson(input: string): unknown {
           <template v-else>
             <Button
               variant="accent"
+              :expand="isBelowSmall"
               @click="hasLinkedIdentities ? resetFlow('manage') : resetFlow('request')"
             >
               {{ hasLinkedIdentities ? 'Back to Manage' : 'Link Another Identity' }}

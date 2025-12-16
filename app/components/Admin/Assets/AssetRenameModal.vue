@@ -3,6 +3,7 @@ import type { CmsAsset } from '@/lib/cmsAssets'
 import { Button, Flex, Input, Modal } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import { normalizePrefix } from '@/lib/cmsAssets'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   asset: CmsAsset | null
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const isOpen = defineModel<boolean>('open', { default: false })
+const isBelowSmall = useBreakpoint('<xs')
 
 const newPath = ref('')
 const errorMessage = ref('')
@@ -76,6 +78,7 @@ function sanitizePath(value: string): string {
     centered
     :can-dismiss="!(props.loading)"
     :card="{ separators: true }"
+    :size="isBelowSmall ? 'screen' : undefined"
     @close="isOpen = false"
   >
     <template #header>
@@ -101,12 +104,13 @@ function sanitizePath(value: string): string {
     </Flex>
 
     <template #footer="{ close }">
-      <Flex gap="xs" x-end>
-        <Button :disabled="props.loading" @click="close">
+      <Flex gap="xs" x-end expand>
+        <Button :expand="isBelowSmall" :disabled="props.loading" @click="close">
           Cancel
         </Button>
         <Button
           variant="accent"
+          :expand="isBelowSmall"
           :loading="props.loading"
           :disabled="isSubmitDisabled || props.loading"
           @click="handleSubmit"

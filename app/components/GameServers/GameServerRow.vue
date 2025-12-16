@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Button, CopyClipboard, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
 import { capitalize } from 'vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   game?: Tables<'games'> | null
@@ -32,29 +33,49 @@ const state = computed(() => {
     return 'offline'
   }
 })
+
+const isCompactLayout = useBreakpoint('<s')
 </script>
 
 <template>
   <button class="gameserver-row" @click="router.push(`/gameservers/${props.gameserver.id}`)">
-    <Flex y-center row x-between gap="s" class="gameserver-row-header gameserver-row-clickable">
-      <Flex y-center row gap="s">
+    <Flex
+      y-center
+      row
+      gap="s"
+      class="gameserver-row-header gameserver-row-clickable"
+    >
+      <Flex
+        y-center
+        row
+        x-start
+        gap="s"
+        expand
+        style="min-width: 0;"
+      >
         <Tooltip placement="top">
           <template #tooltip>
             <p>{{ capitalize(state) }}{{ state === 'offline' ? ' - Ask an administrator to start it' : '' }}</p>
           </template>
           <div :class="`gameserver-indicator ${state}`" />
         </Tooltip>
-        <span class="flex-1 text-m">{{ props.gameserver.name }}</span>
+        <Flex expand x-between>
+          <span
+            :class="isCompactLayout ? 'text-xxs' : 'text-m'"
+            style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;"
+          >
+            {{ props.gameserver.name }}
+          </span>
+        </Flex>
       </Flex>
-      <div class="flex-1" />
-      <Flex y-center row gap="s" x-end>
+      <Flex y-center row x-end gap="s">
         <!-- <div v-if="props.gameserver.description && !props.compact" class="gameserver-description-main">
           <span class="description-text">{{ props.gameserver.description }}</span>
         </div> -->
         <div class="region-badge">
-          <RegionIndicator :region="props.gameserver.region" show-label />
+          <RegionIndicator :region="props.gameserver.region" :show-label="!isCompactLayout" />
         </div>
-        <div v-if="props.gameserver.addresses" data-dropdown-ignore @click.stop="() => {}">
+        <div v-if="props.gameserver.addresses && !isCompactLayout" data-dropdown-ignore @click.stop="() => {}">
           <CopyClipboard v-if="props.gameserver.addresses.length === 1" :text="`${props.gameserver.addresses[0]}${props.gameserver.port ? `:${props.gameserver.port}` : ''}`" confirm>
             <Button size="s" variant="gray">
               Join
@@ -77,7 +98,6 @@ const state = computed(() => {
           </Dropdown>
         </div>
       </Flex>
-      <Icon name="ph:caret-right" class="gameserver-row-arrow" size="16" />
     </Flex>
   </button>
 </template>
@@ -87,6 +107,7 @@ const state = computed(() => {
 
 .gameserver-row {
   width: 100% !important;
+  display: block;
 }
 
 .gameserver-row-header {
@@ -95,6 +116,10 @@ const state = computed(() => {
   background-color: var(--color-bg-medium);
   transition: all 0.2s ease-in-out;
   cursor: pointer;
+  overflow: hidden;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 
   &.gameserver-row-clickable:hover {
     // transform: translateY(-1px);
@@ -136,6 +161,7 @@ const state = computed(() => {
   width: 10px;
   height: 10px;
   border-radius: 99px;
+  flex-shrink: 0;
 
   &.healthy,
   &.running {
@@ -157,11 +183,12 @@ const state = computed(() => {
 
 .region-badge {
   background-color: var(--color-bg);
-  padding: var(--space-xs) var(--space-s);
+  padding: var(--space-xxs) var(--space-xs);
   border-radius: var(--border-radius-s);
   border: 1px solid var(--color-border);
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .region-badge .region-indicator {

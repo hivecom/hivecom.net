@@ -2,6 +2,7 @@
 import type { Database } from '@/types/database.types'
 import { Badge, Button, Card, Flex, Modal, Spinner, Tooltip } from '@dolanske/vui'
 import { onMounted, ref, watch } from 'vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ConfirmModal from './ConfirmModal.vue'
 import GameServerLink from './GameServerLink.vue'
 import UserDisplay from './UserDisplay.vue'
@@ -26,6 +27,7 @@ const expandedComplaints = ref<Set<number>>(new Set())
 const deletingComplaints = ref<Set<number>>(new Set())
 const showDeleteConfirm = ref(false)
 const complaintToDelete = ref<number | null>(null)
+const isBelowSmall = useBreakpoint('<xs')
 
 // Get current user and supabase client
 const user = useSupabaseUser()
@@ -168,7 +170,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Modal :open="open" @close="handleClose">
+  <Modal :open="open" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
     <template #header>
       <h3>Your Complaints</h3>
     </template>
@@ -280,14 +282,15 @@ onMounted(() => {
     </div>
 
     <template #footer>
-      <Flex x-between y-center>
+      <Flex x-between y-center gap="s" expand>
         <Button
           variant="accent"
+          :expand="isBelowSmall"
           @click="handleNewComplaint"
         >
           New Complaint
         </Button>
-        <Button variant="gray" @click="handleClose">
+        <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
           Close
         </Button>
       </Flex>

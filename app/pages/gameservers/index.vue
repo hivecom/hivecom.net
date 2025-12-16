@@ -235,13 +235,11 @@ function clearFilters() {
 <template>
   <div class="page">
     <section class="page-title">
-      <div class="page-title__header">
-        <div>
-          <h1>Game Servers</h1>
-          <p>
-            Hop on. Get in.
-          </p>
-        </div>
+      <div>
+        <h1>Game Servers</h1>
+        <p>
+          Hop on. Get in.
+        </p>
       </div>
     </section>
 

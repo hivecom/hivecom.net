@@ -4,6 +4,7 @@ import { Alert, Badge, Button, Flex, Modal, Skeleton, Tab, Tabs } from '@dolansk
 import { useIntervalFn } from '@vueuse/core'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
   event: Tables<'events'>
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 
 // Modal state
 const isOpen = defineModel<boolean>('open', { default: false })
+const isBelowSmall = useBreakpoint('<xs')
 
 // Tab state
 const activeTab = ref<'yes' | 'tentative' | 'no'>('yes')
@@ -167,7 +169,7 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="isOpen" centered @close="handleClose">
+  <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
     <template #header>
       <Flex x-between y-center expand>
         <h3>Event RSVPs</h3>
@@ -273,8 +275,8 @@ function handleClose() {
     </div>
 
     <template #footer>
-      <Flex gap="xs" x-end>
-        <Button variant="gray" @click="handleClose">
+      <Flex gap="xs" x-end expand>
+        <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
           Close
         </Button>
       </Flex>

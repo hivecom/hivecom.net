@@ -1,6 +1,7 @@
 # Hivecom.net Development Instructions
 
 - ALWAYS CHECK FILES FOR PROBLEMS AFTER MAKING CHANGES.
+- THIS PROJECT DOES NOT USE TAILWIND. DO NOT ADD TAILWIND CLASSES.
 
 ## Environment & Tooling
 
@@ -11,7 +12,7 @@
 
 ## Quality Gates
 
-- Run `npm run lint` (eslint + typecheck) before pushing; `npm run lint:fix` for autofixes.
+- Check for problems first. Only run `npm run lint` (eslint + typecheck) before pushing; `npm run lint:fix` for autofixes.
 - Respect ESLint rules: `ts/no-explicit-any` is an error; use nullish coalescing where appropriate; `no-console` is allowed only in `supabase/functions/**`.
 - TypeScript is strict; prefer typed refs/composables and avoid `any` casts.
 - Always check for problems after making changes.

@@ -86,6 +86,10 @@ button {
   }
 }
 
+.vui-input-container.vui-select.expand {
+  width: 100%;
+}
+
 .card-bg {
   // background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
   background-color: color-mix(in srgb, var(--color-bg-medium) 75%, transparent);
@@ -103,6 +107,10 @@ button {
 
 .vui-tooltip {
   z-index: 9999 !important;
+}
+
+.vui-modal > .vui-card {
+  margin-bottom: 0;
 }
 
 table th,

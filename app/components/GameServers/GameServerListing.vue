@@ -7,6 +7,7 @@ import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
@@ -59,6 +60,7 @@ function getServersByGameId(gameId: number) {
 }
 
 const sortedGameserversWithoutGame = computed(() => [...(props.gameserversWithoutGame ?? [])].sort(compareGameServerName))
+const isCompactLayout = useBreakpoint('<s')
 
 function clearFilters() {
   emit('clearFilters')
@@ -99,10 +101,11 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
       <!-- Content -->
       <template v-if="games && gameservers && games.length !== 0 && gameservers.length !== 0">
         <!-- Inputs -->
-        <Flex gap="s" x-start class="mb-m">
+        <Flex gap="s" x-start class="mb-m" :column="isCompactLayout" expand>
           <Input
             :model-value="search"
             placeholder="Search servers"
+            :expand="isCompactLayout"
             @update:model-value="updateSearch"
           >
             <template #start>
@@ -113,15 +116,23 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
             :model-value="selectedGames"
             :options="gameOptions"
             placeholder="Select game"
+            :expand="isCompactLayout"
             @update:model-value="updateSelectedGames"
           />
           <Select
             :model-value="selectedRegions"
             :options="regionOptions"
             placeholder="Select region"
+            :expand="isCompactLayout"
             @update:model-value="updateSelectedRegions"
           />
-          <Button v-if="selectedGames || selectedRegions || search" plain outline @click="clearFilters">
+          <Button
+            v-if="selectedGames || selectedRegions || search"
+            plain
+            outline
+            :expand="isCompactLayout"
+            @click="clearFilters"
+          >
             Clear
           </Button>
         </Flex>

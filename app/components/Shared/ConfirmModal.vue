@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex, Modal } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   title: string | undefined
@@ -11,20 +12,29 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { default: false })
 const confirm = defineModel<() => void>('confirm', { default: () => {} })
+const isBelowSmall = useBreakpoint('<xs')
 </script>
 
 <template>
-  <Modal :open="open" centered :card="{ separators: true }" :can-dismiss="false" size="s" @close="open = false">
+  <Modal
+    :open="open"
+    centered
+    :card="{ separators: true }"
+    :can-dismiss="false"
+    :size="isBelowSmall ? 'screen' : 's'"
+    @close="open = false"
+  >
     <template #header>
       <h4>{{ props.title }}</h4>
     </template>
     <p>{{ props.description }}</p>
     <template #footer="{ close }">
-      <Flex gap="xs">
-        <Button @click="close">
+      <Flex gap="xs" expand>
+        <Button :expand="isBelowSmall" @click="close">
           {{ props.cancelText || 'Cancel' }}
         </Button>
         <Button
+          :expand="isBelowSmall"
           :variant="props.destructive ? 'danger' : 'fill'"
           @click="() => {
             confirm()

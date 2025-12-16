@@ -5,6 +5,7 @@ import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<Props>()
 // Define the type inline to match what the parent component provides
@@ -33,6 +34,7 @@ const selectedGame = ref<Tables<'games'> | null>(null)
 const selectedGameServers = ref<GameserversType>([])
 const gameCovers = ref<Map<number, string>>(new Map())
 const coverLoadingStates = ref<Set<number>>(new Set())
+const isBelowSmall = useBreakpoint('<xs')
 
 function compareGameServerName(a: GameserversType[0], b: GameserversType[0]) {
   const nameA = a.name ?? ''
@@ -202,6 +204,7 @@ function isCoverLoading(gameId: number): boolean {
     <Modal
       v-if="showModal"
       :open="showModal"
+      :size="isBelowSmall ? 'screen' : undefined"
       @close="closeModal"
     >
       <template v-if="selectedGame" #header>
@@ -230,9 +233,11 @@ function isCoverLoading(gameId: number): boolean {
       </div>
 
       <template #footer>
-        <Button @click="closeModal">
-          Close
-        </Button>
+        <Flex x-end gap="s" expand>
+          <Button :expand="isBelowSmall" @click="closeModal">
+            Close
+          </Button>
+        </Flex>
       </template>
     </Modal>
   </div>
@@ -341,7 +346,8 @@ function isCoverLoading(gameId: number): boolean {
 
 .game-cover {
   position: relative;
-  height: 324px;
+  aspect-ratio: 2 / 2.8;
+  height: auto;
   overflow: hidden;
   border-radius: var(--border-radius-m) var(--border-radius-m) 0 0;
 
@@ -380,7 +386,7 @@ function isCoverLoading(gameId: number): boolean {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    height: 100% !important;
     z-index: 2;
   }
 

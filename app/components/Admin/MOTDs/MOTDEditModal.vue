@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Alert, Button, Flex, Input, Modal } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   open: boolean
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 
 const message = ref('')
 const validationError = ref('')
+const isBelowSmall = useBreakpoint('<xs')
 
 watch(
   () => props.open,
@@ -54,7 +56,7 @@ function handleSubmit() {
 <template>
   <Modal
     :open="open"
-    size="m"
+    :size="isBelowSmall ? 'screen' : 'm'"
     @close="close"
     @update:open="emit('update:open', $event)"
   >
@@ -75,11 +77,11 @@ function handleSubmit() {
         {{ validationError }}
       </Alert>
 
-      <Flex x-end gap="s">
-        <Button variant="gray" @click="close">
+      <Flex x-end gap="s" expand>
+        <Button variant="gray" :expand="isBelowSmall" @click="close">
           Cancel
         </Button>
-        <Button variant="accent" @click="handleSubmit">
+        <Button variant="accent" :expand="isBelowSmall" @click="handleSubmit">
           {{ isEditMode ? 'Save Changes' : 'Add MOTD' }}
         </Button>
       </Flex>

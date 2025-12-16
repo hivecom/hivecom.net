@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Alert, Button, Counter, Flex, Input, Modal, Radio, RadioGroup, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 type KvType = 'NUMBER' | 'BOOLEAN' | 'STRING' | 'JSON'
 
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 }>()
 
 const isOpen = defineModel<boolean>('open', { default: false })
+const isBelowSmall = useBreakpoint('<xs')
 
 const form = ref<FormState>({
   key: '',
@@ -221,7 +223,7 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="isOpen" centered size="m" @close="handleClose">
+  <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : 'm'" @close="handleClose">
     <template #header>
       <Flex column :gap="0">
         <h3>{{ props.isEditMode ? 'Edit Entry' : 'Add Entry' }}</h3>
@@ -299,11 +301,11 @@ function handleClose() {
     </Flex>
 
     <template #footer>
-      <Flex gap="s" x-end>
-        <Button variant="gray" @click="handleClose">
+      <Flex gap="s" x-end expand>
+        <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
           Cancel
         </Button>
-        <Button variant="accent" :disabled="isSaveDisabled" @click="handleSave">
+        <Button variant="accent" :expand="isBelowSmall" :disabled="isSaveDisabled" @click="handleSave">
           Save
         </Button>
       </Flex>

@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Alert, Button, Flex, Grid, Input, Select, Skeleton, Switch } from '@dolanske/vui'
 import AnnouncementCard from '@/components/Announcements/AnnouncementCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 // Interface for Select options
 interface SelectOption {
@@ -21,6 +22,8 @@ const tagFilter = ref<SelectOption[]>([])
 const announcements = ref<Tables<'announcements'>[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+const isBelowExtraSmall = useBreakpoint('<xs')
+const isBelowMedium = useBreakpoint('<m')
 
 // Fetch announcements with proper error handling
 async function fetchAnnouncements() {
@@ -152,8 +155,8 @@ useSeoMeta({
 
       <template v-if="!loading && !error">
         <!-- Filters -->
-        <Flex gap="s" x-start class="announcements__filters" y-center wrap>
-          <Input v-model="search" placeholder="Search announcements">
+        <Flex gap="s" x-start class="announcements__filters" y-center wrap expand>
+          <Input v-model="search" placeholder="Search announcements" :expand="isBelowExtraSmall">
             <template #start>
               <Icon name="ph:magnifying-glass" />
             </template>
@@ -162,10 +165,10 @@ useSeoMeta({
             v-model="tagFilter"
             :options="tagOptions"
             placeholder="Filter by tags"
-            expand
             search
             show-clear
             :single="false"
+            :expand="isBelowExtraSmall"
           />
           <Flex gap="s" y-center>
             <Switch v-model="showPinnedOnly" />
@@ -175,6 +178,7 @@ useSeoMeta({
             v-if="search || showPinnedOnly || (tagFilter && tagFilter.length > 0)"
             plain
             outline
+            :expand="isBelowExtraSmall"
             @click="clearFilters"
           >
             Clear
@@ -195,7 +199,7 @@ useSeoMeta({
 
           <!-- Regular announcements -->
           <Flex v-if="regularAnnouncements.length > 0 && !showPinnedOnly" column gap="m" class="announcements__section" expand>
-            <Grid :columns="3" gap="m" class="announcements__grid--regular" expand>
+            <Grid :columns="isBelowMedium ? 1 : 3" gap="m" class="announcements__grid--regular" expand>
               <AnnouncementCard
                 v-for="(announcement, index) in regularAnnouncements"
                 :key="announcement.id"
