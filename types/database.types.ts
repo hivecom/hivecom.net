@@ -7,6 +7,11 @@ export type Json
     | Json[]
 
 export interface Database {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: '13.0.5'
+  }
   private: {
     Tables: {
       teamspeak_tokens: {
@@ -1013,6 +1018,12 @@ export interface Database {
           user_id: string
         }[]
       }
+      get_user_id_by_email: {
+        Args: { email: string }
+        Returns: {
+          id: string
+        }[]
+      }
       has_permission: {
         Args: { permission_name: Database['public']['Enums']['app_permission'] }
         Returns: boolean
@@ -1065,10 +1076,6 @@ export interface Database {
         | 'profiles.delete'
         | 'profiles.read'
         | 'profiles.update'
-        | 'projects.create'
-        | 'projects.read'
-        | 'projects.update'
-        | 'projects.delete'
         | 'referendums.create'
         | 'referendums.delete'
         | 'referendums.read'
@@ -1085,6 +1092,10 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
+        | 'projects.read'
+        | 'projects.create'
+        | 'projects.update'
+        | 'projects.delete'
         | 'assets.create'
         | 'assets.delete'
         | 'assets.read'
@@ -1272,10 +1283,6 @@ export const Constants = {
         'profiles.delete',
         'profiles.read',
         'profiles.update',
-        'projects.create',
-        'projects.read',
-        'projects.update',
-        'projects.delete',
         'referendums.create',
         'referendums.delete',
         'referendums.read',
@@ -1292,6 +1299,10 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
+        'projects.read',
+        'projects.create',
+        'projects.update',
+        'projects.delete',
         'assets.create',
         'assets.delete',
         'assets.read',
