@@ -20,6 +20,34 @@ onMounted(async () => {
   await supabase.auth.getSession().catch(() => null)
   authReady.value = true
 })
+
+// Track an animated background blob when user is hovering over the navbar links
+const navbarLinks = useTemplateRef('navbarLinksRef')
+const { elementX, isOutside, elementWidth } = useMouseInElement(navbarLinks)
+const { x: navbarLinksOffset } = useElementBounding(navbarLinks)
+
+const hoveredElement = ref<HTMLElement | null>(null)
+
+const { width, update, x: hoveredElementX } = useElementBounding(hoveredElement)
+
+function updateHoveredElement(event: MouseEvent) {
+  hoveredElement.value = event.target as HTMLElement | null
+  update()
+}
+
+// While hovering a link, we do not want the blob to actually move. We want it
+// to sort of snap to the hovered link, but not fully and with some correction
+// to make it look more natural.
+
+// When we are 10 ore more pixels within the element with our cursor, snap to it.
+const transformedElementX = computed(() => {
+  // const hoveredElementXOffset = hoveredElementX.value - navbarLinksOffset.value
+  // if (elementX.value > hoveredElementXOffset + 12 && elementX.value < hoveredElementXOffset + width.value - 12) {
+  //   return hoveredElementXOffset + width.value / 2
+  // }
+
+  return elementX.value
+})
 </script>
 
 <template>
@@ -32,41 +60,52 @@ onMounted(async () => {
 
         <SharedLogo class="navigation__logo" />
 
-        <ul class="navigation__links">
-          <li>
+        <ul ref="navbarLinksRef" class="navigation__links">
+          <li @mouseenter="updateHoveredElement">
             <NuxtLink to="/">
               Home
             </NuxtLink>
           </li>
-          <li>
+          <li @mouseenter="updateHoveredElement">
             <NuxtLink to="/announcements">
               Announcements
             </NuxtLink>
           </li>
-          <li>
+          <li @mouseenter="updateHoveredElement">
             <NuxtLink to="/community">
               Community
             </NuxtLink>
           </li>
-          <li>
+          <li @mouseenter="updateHoveredElement">
             <NuxtLink to="/events" :class="{ 'router-link-active': $route.path.includes('/events') }">
               Events
             </NuxtLink>
           </li>
-          <li>
+          <li @mouseenter="updateHoveredElement">
             <NuxtLink to="/gameservers">
               Game Servers
             </NuxtLink>
           </li>
           <template v-if="authReady && user">
-            <span class="navigation__links-separator" />
-            <li>
+            <!-- <span class="navigation__links-separator" /> -->
+            <li @mouseenter="updateHoveredElement">
               <NuxtLink to="/votes">
                 Votes
               </NuxtLink>
             </li>
           </template>
+
+          <ul
+            class="navigation__links-hover"
+            :class="{ active: !isOutside }"
+            :style="{
+              left: `${transformedElementX}px`,
+              width: `${width}px`,
+            }"
+          />
         </ul>
+
+        <div class="flex-1" />
 
         <!-- Mobile menu -->
         <Sheet
@@ -166,7 +205,7 @@ onMounted(async () => {
     display: flex;
     justify-content: flex-start;
     height: 64px;
-    gap: 90px;
+    gap: 32px;
     align-items: center;
     position: relative;
   }
@@ -187,20 +226,51 @@ onMounted(async () => {
   &__links {
     display: flex;
     align-items: center;
-    gap: var(--space-xs);
-    flex: 1;
+    gap: var(--space-xxs);
+    position: relative;
+    height: 100%;
+    padding-inline: 32px;
+    z-index: 1;
 
-    li a {
-      display: block;
-      padding: 0 12px;
-      font-size: var(--font-size-m);
-      color: var(--color-text);
-      text-decoration: none;
+    li {
+      height: 100%;
 
-      &:hover,
-      &.router-link-active {
-        color: var(--color-accent);
+      a {
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        height: 100%;
+        font-size: var(--font-size-m);
+        color: var(--color-text-light);
+        text-decoration: none;
+
+        &:hover,
+        &.router-link-active {
+          color: var(--color-accent);
+        }
       }
+    }
+  }
+
+  &__links-hover {
+    display: block;
+    border-radius: 990px;
+    position: absolute;
+    height: 32px;
+    top: 50%;
+    left: 0;
+    transform: translate3D(-50%, -50%, 0);
+    background-color: var(--color-bg-accent-lowered);
+    will-change: left, width;
+    z-index: -1;
+    opacity: 0;
+    transition:
+      0.2s opacity ease-in-out,
+      0.4s width cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+
+    &.active {
+      opacity: 0.5;
     }
   }
 
