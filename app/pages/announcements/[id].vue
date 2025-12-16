@@ -230,12 +230,12 @@ useHead({
   inset: 0;
   background-size: cover;
   background-position: center;
-  transform: scale(1);
+  transform: var(--banner-placeholder-transform, scale(1));
   transition: transform 0.4s ease;
 }
 
 .announcement-header:hover .announcement-header__banner-surface--image {
-  transform: scale(1.05);
+  transform: var(--banner-placeholder-transform, scale(1)) scale(1.05);
 }
 
 .announcement-header__body {

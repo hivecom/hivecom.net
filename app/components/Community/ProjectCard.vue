@@ -279,12 +279,12 @@ const bannerSurfaceStyle = computed(() => {
   border-radius: inherit;
   background-size: cover;
   background-position: center;
-  transform: scale(1);
+  transform: var(--banner-placeholder-transform, scale(1));
   transition: transform 0.4s ease;
 }
 
 .project-card:hover .project-card__banner-surface--image {
-  transform: scale(1.05);
+  transform: var(--banner-placeholder-transform, scale(1)) scale(1.05);
 }
 
 .project-card__banner-badge {

@@ -284,7 +284,7 @@ const backgroundSurfaceStyle = computed(() => {
 }
 
 .announcement-card--pinned:hover .announcement-card__banner-surface--image {
-  transform: scale(1.05);
+  transform: var(--banner-placeholder-transform, scale(1)) scale(1.05);
 }
 
 .announcement-card__banner-overlay {
