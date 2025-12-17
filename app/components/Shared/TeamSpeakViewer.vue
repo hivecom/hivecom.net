@@ -560,8 +560,6 @@ function clientRole(serverId: string, client: TeamSpeakServerSnapshot['clients']
     return 'admin'
   if (roles.moderator && groups.includes(roles.moderator))
     return 'moderator'
-  if (roles.supporter && groups.includes(roles.supporter))
-    return 'supporter'
   if (roles.registered && groups.includes(roles.registered))
     return 'registered'
   return null
@@ -706,8 +704,8 @@ function openRawSnapshot() {
 <template>
   <Card class="ts-viewer" separators>
     <template #header>
-      <Flex expand x-between y-center gap="s">
-        <Flex expand y-center gap="s">
+      <Flex expand x-between y-top gap="s">
+        <Flex expand y-center gap="s" wrap>
           <Icon name="mdi:teamspeak" size="24" />
           <div v-if="serversSorted.length <= 1 || props.serverId">
             <strong class="text-xl">
@@ -757,7 +755,7 @@ function openRawSnapshot() {
             </Flex>
           </Flex>
         </Flex>
-        <Flex gap="xs" y-center>
+        <Flex gap="xs" y-center wrap x-end expand>
           <Tooltip placement="bottom">
             <Icon name="ph:music-notes" size="16" />
             <Switch
