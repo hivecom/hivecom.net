@@ -5,6 +5,7 @@ import { computed, onBeforeMount, ref } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { renderKvValue } from '../../../lib/kvstore'
 
 import KVStoreEditModal from './KVStoreEditModal.vue'
@@ -18,6 +19,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const entries = ref<KvEntry[]>([])
 const search = ref('')
+const isBelowMedium = useBreakpoint('<m')
 
 const showModal = ref(false)
 const isEditMode = ref(false)
@@ -161,20 +163,32 @@ onBeforeMount(fetchEntries)
 
 <template>
   <Flex column gap="m" expand>
-    <Flex x-between y-center expand>
-      <Input
-        v-model="search"
-        size="s"
-        placeholder="Search key or value"
-        clearable
-        style="max-width: 320px"
-      />
-      <Flex gap="s" y-center>
-        <span class="text-color-lighter text-s">
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+      <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+        <Input
+          v-model="search"
+          size="s"
+          placeholder="Search key or value"
+          clearable
+          :expand="isBelowMedium"
+        />
+      </Flex>
+      <Flex
+        gap="s"
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :column-reverse="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
           {{ search.trim() ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>
 
-        <Button v-if="canCreate" variant="accent" @click="openCreateModal">
+        <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openCreateModal">
           <template #start>
             <Icon name="ph:plus" />
           </template>

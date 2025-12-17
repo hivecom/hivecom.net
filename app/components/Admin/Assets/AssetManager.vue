@@ -10,6 +10,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { CMS_BUCKET_ID, formatBytes, isImageAsset, listCmsDirectory, listCmsFilesRecursive, normalizePrefix } from '@/lib/cmsAssets'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
   canUpload?: boolean
@@ -48,6 +49,7 @@ const searchQuery = ref('')
 const typeFilter = ref<TypeFilterValue>('all')
 const sortOption = ref<SortOptionValue>('name-asc')
 const viewMode = ref<'table' | 'grid'>('table')
+const isBelowMedium = useBreakpoint('<m')
 type AssetActionKey = 'delete' | 'rename'
 
 const actionLoading = ref<Record<string, Partial<Record<AssetActionKey, boolean>>>>({})
@@ -159,6 +161,10 @@ const tableData = computed(() => filteredAssets.value.map(asset => ({
   'Last Modified': asset.updated_at ?? asset.created_at ?? '',
   '_original': asset,
 })))
+
+const totalCount = computed(() => assets.value.length)
+const filteredCount = computed(() => filteredAssets.value.length)
+const isFiltered = computed(() => filteredCount.value !== totalCount.value)
 
 const { headers, rows: tableRows, setSort } = defineTable(tableData, {
   pagination: {
@@ -453,246 +459,290 @@ onBeforeMount(fetchAssets)
         </template>
       </div>
 
-      <Flex gap="s" wrap expand>
-        <Input v-model="searchQuery" expand placeholder="Search by name or path" style="max-width: 260px;">
-          <template #start>
-            <Icon name="ph:magnifying-glass" />
-          </template>
-        </Input>
+      <Flex
+        :column="isBelowMedium"
+        gap="xs"
+        wrap
+        :x-between="!isBelowMedium"
+        :x-start="isBelowMedium"
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
+        expand
+      >
+        <Flex :gap="isBelowMedium ? 's' : 'xs'" wrap :expand="isBelowMedium">
+          <Input v-model="searchQuery" :expand="isBelowMedium" placeholder="Search by name or path">
+            <template #start>
+              <Icon name="ph:magnifying-glass" />
+            </template>
+          </Input>
 
-        <Select
-          v-model="typeFilterModel"
-          :options="typeFilterOptions"
-          placeholder="Filter by type"
-          single
-          show-clear
-          style="width: 160px;"
-        />
+          <Select
+            v-model="typeFilterModel"
+            :options="typeFilterOptions"
+            placeholder="Filter by type"
+            single
+            show-clear
+            :expand="isBelowMedium"
+          />
 
-        <Select
-          v-if="viewMode === 'grid'"
-          v-model="sortOptionModel"
-          :options="sortSelectOptions"
-          placeholder="Sort files"
-          single
-          style="width: 190px;"
-        />
-
-        <Flex gap="xs" class="asset-manager__view-toggle">
-          <Button
-            :variant="viewMode === 'table' ? 'accent' : 'gray'"
-            square
-            @click="viewMode = 'table'"
-          >
-            <Icon name="ph:list" />
-          </Button>
-          <Button
-            :variant="viewMode === 'grid' ? 'accent' : 'gray'"
-            square
-            @click="viewMode = 'grid'"
-          >
-            <Icon name="ph:squares-four" />
-          </Button>
+          <Select
+            v-if="viewMode === 'grid'"
+            v-model="sortOptionModel"
+            :options="sortSelectOptions"
+            placeholder="Sort files"
+            single
+            :expand="isBelowMedium"
+          />
         </Flex>
 
-        <Flex gap="xs" class="asset-manager__toolbar-actions">
-          <Button variant="gray" @click="fetchAssets">
-            <template #start>
-              <Icon name="ph:arrow-clockwise" />
-            </template>
-            Refresh
-          </Button>
-          <Button
-            v-if="storageConsoleUrl"
-            variant="gray"
-            :disabled="!storageConsoleUrl"
-            @click="openStorageConsole"
-          >
-            <template #start>
-              <Icon name="ph:folder-open" />
-            </template>
-            Supabase Files
-          </Button>
-          <Button
-            v-if="props.canUpload"
-            variant="accent"
-            @click="showUploadDrawer = true"
-          >
-            <template #start>
-              <Icon name="ph:upload" />
-            </template>
-            Upload
-          </Button>
+        <Flex
+          :gap="isBelowMedium ? 's' : 'xs'"
+          wrap
+          :y-center="!isBelowMedium"
+          :y-start="isBelowMedium"
+          :expand="isBelowMedium"
+          :x-end="!isBelowMedium"
+          :column-reverse="isBelowMedium"
+        >
+          <span class="text-s text-color-lighter">
+            {{ filteredCount }}{{ isFiltered ? ` of ${totalCount}` : '' }} items
+          </span>
+
+          <Flex :gap="isBelowMedium ? 's' : 'xs'" :expand="isBelowMedium" :column="isBelowMedium">
+            <Flex gap="xs" class="asset-manager__view-toggle" :x-center="isBelowMedium" :expand="isBelowMedium">
+              <Button
+                :variant="viewMode === 'table' ? 'accent' : 'gray'"
+                :square="!isBelowMedium"
+                expand
+                @click="viewMode = 'table'"
+              >
+                <Icon name="ph:list" />
+              </Button>
+              <Button
+                :variant="viewMode === 'grid' ? 'accent' : 'gray'"
+                :square="!isBelowMedium"
+                expand
+                @click="viewMode = 'grid'"
+              >
+                <Icon name="ph:squares-four" />
+              </Button>
+            </Flex>
+
+            <Flex
+              :gap="isBelowMedium ? 's' : 'xs'"
+              class="asset-manager__toolbar-actions"
+              wrap
+              :x-end="!isBelowMedium"
+              :x-center="isBelowMedium"
+              :expand="isBelowMedium"
+            >
+              <Flex :expand="isBelowMedium" :gap="isBelowMedium ? 's' : 'xs'">
+                <Button variant="gray" :expand="isBelowMedium" @click="fetchAssets">
+                  <template #start>
+                    <Icon name="ph:arrow-clockwise" />
+                  </template>
+                  Refresh
+                </Button>
+                <Button
+                  v-if="true"
+                  variant="gray"
+                  :disabled="!storageConsoleUrl"
+                  :expand="isBelowMedium"
+                  @click="openStorageConsole"
+                >
+                  <template #start>
+                    <Icon name="ph:folder-open" />
+                  </template>
+                  Supabase Files
+                </Button>
+              </Flex>
+              <Button
+                v-if="props.canUpload"
+                variant="accent"
+                :expand="isBelowMedium"
+                @click="showUploadDrawer = true"
+              >
+                <template #start>
+                  <Icon name="ph:upload" />
+                </template>
+                Upload
+              </Button>
+            </Flex>
+          </Flex>
         </Flex>
       </Flex>
-    </Flex>
 
-    <Alert v-if="errorMessage" variant="danger">
-      {{ errorMessage }}
-    </Alert>
+      <Alert v-if="errorMessage" variant="danger">
+        {{ errorMessage }}
+      </Alert>
 
-    <TableSkeleton v-if="loading" :columns="4" :rows="6" />
+      <TableSkeleton v-if="loading" :columns="4" :rows="6" />
 
-    <template v-else>
-      <TableContainer v-if="viewMode === 'table'">
-        <Table.Root v-if="tableRows.length" separate-cells>
-          <template #header>
-            <Table.Head
-              v-for="header in headers.filter(header => header.label !== '_original')"
-              :key="header.label"
-              sort
-              :header="header"
-            />
-            <Table.Head
-              key="actions"
-              :header="{ label: 'Actions',
-                         sortToggle: () => {} }"
-            />
-          </template>
+      <template v-else>
+        <TableContainer v-if="viewMode === 'table'">
+          <Table.Root v-if="tableRows.length" separate-cells>
+            <template #header>
+              <Table.Head
+                v-for="header in headers.filter(header => header.label !== '_original')"
+                :key="header.label"
+                sort
+                :header="header"
+              />
+              <Table.Head
+                key="actions"
+                :header="{ label: 'Actions',
+                           sortToggle: () => {} }"
+              />
+            </template>
 
-          <template #body>
-            <tr
-              v-for="row in tableRows"
-              :key="row._original.path || row._original.name"
-              class="asset-manager__row"
-              @click="handleRowClick(row._original)"
-            >
-              <Table.Cell>
-                <Flex gap="xs" y-center>
-                  <Icon :name="row._original.type === 'folder' ? 'ph:folder-simple' : 'ph:file'" />
-                  <span>{{ row._original.name }}</span>
-                </Flex>
-              </Table.Cell>
-              <Table.Cell>
-                <Badge :variant="getAssetBadgeVariant(row._original)">
-                  {{ getAssetTypeLabel(row._original) }}
-                </Badge>
-              </Table.Cell>
-              <Table.Cell>
-                {{ row._original.type === 'folder' ? '—' : formatBytes(row._original.size) }}
-              </Table.Cell>
-              <Table.Cell>{{ row._original.updated_at ? new Date(row._original.updated_at).toLocaleString() : '—' }}</Table.Cell>
-              <Table.Cell @click.stop>
-                <Flex gap="xs">
-                  <CopyClipboard
-                    v-if="row._original.type === 'file'"
-                    :text="row._original.publicUrl || ''"
-                    confirm
-                  >
+            <template #body>
+              <tr
+                v-for="row in tableRows"
+                :key="row._original.path || row._original.name"
+                class="asset-manager__row"
+                @click="handleRowClick(row._original)"
+              >
+                <Table.Cell>
+                  <Flex gap="xs" y-center>
+                    <Icon :name="row._original.type === 'folder' ? 'ph:folder-simple' : 'ph:file'" />
+                    <span>{{ row._original.name }}</span>
+                  </Flex>
+                </Table.Cell>
+                <Table.Cell>
+                  <Badge :variant="getAssetBadgeVariant(row._original)">
+                    {{ getAssetTypeLabel(row._original) }}
+                  </Badge>
+                </Table.Cell>
+                <Table.Cell>
+                  {{ row._original.type === 'folder' ? '—' : formatBytes(row._original.size) }}
+                </Table.Cell>
+                <Table.Cell>{{ row._original.updated_at ? new Date(row._original.updated_at).toLocaleString() : '—' }}</Table.Cell>
+                <Table.Cell @click.stop>
+                  <Flex gap="xs">
+                    <CopyClipboard
+                      v-if="row._original.type === 'file'"
+                      :text="row._original.publicUrl || ''"
+                      confirm
+                    >
+                      <Button
+                        size="s"
+                        variant="gray"
+                        square
+                        :disabled="!row._original.publicUrl"
+                        data-title-top="Copy URL"
+                      >
+                        <Icon name="ph:link-simple" />
+                      </Button>
+                    </CopyClipboard>
                     <Button
+                      v-if="canRenameAsset(row._original)"
                       size="s"
                       variant="gray"
                       square
-                      :disabled="!row._original.publicUrl"
-                      data-title-top="Copy URL"
+                      :loading="isActionLoading(row._original.path, 'rename')"
+                      data-title-top="Rename"
+                      @click="promptRenameAsset(row._original)"
                     >
-                      <Icon name="ph:link-simple" />
+                      <Icon name="ph:text-t" />
                     </Button>
-                  </CopyClipboard>
-                  <Button
-                    v-if="canRenameAsset(row._original)"
-                    size="s"
-                    variant="gray"
-                    square
-                    :loading="isActionLoading(row._original.path, 'rename')"
-                    data-title-top="Rename"
-                    @click="promptRenameAsset(row._original)"
-                  >
-                    <Icon name="ph:text-t" />
-                  </Button>
-                  <Button
-                    v-if="props.canDelete"
-                    size="s"
-                    variant="danger"
-                    square
-                    :loading="isActionLoading(row._original.path, 'delete')"
-                    data-title-top="Delete"
-                    @click="promptDeleteAsset(row._original)"
-                  >
-                    <Icon name="ph:trash" />
-                  </Button>
-                </Flex>
-              </Table.Cell>
-            </tr>
-          </template>
-        </Table.Root>
+                    <Button
+                      v-if="props.canDelete"
+                      size="s"
+                      variant="danger"
+                      square
+                      :loading="isActionLoading(row._original.path, 'delete')"
+                      data-title-top="Delete"
+                      @click="promptDeleteAsset(row._original)"
+                    >
+                      <Icon name="ph:trash" />
+                    </Button>
+                  </Flex>
+                </Table.Cell>
+              </tr>
+            </template>
+          </Table.Root>
 
-        <Alert v-else variant="info">
-          No assets found in this folder.
-        </Alert>
-      </TableContainer>
+          <Flex v-else expand>
+            <Alert variant="info">
+              No assets found in this folder.
+            </Alert>
+          </Flex>
+        </TableContainer>
 
-      <div v-else>
-        <Grid
-          v-if="filteredAssets.length"
-          class="asset-manager__grid"
-          expand
-          :columns="4"
-        >
-          <Card
-            v-for="asset in filteredAssets"
-            :key="asset.path"
-            class="asset-manager__grid-card"
-            @click="handleRowClick(asset)"
+        <div v-else>
+          <Grid
+            v-if="filteredAssets.length"
+            class="asset-manager__grid"
+            expand
+            :columns="4"
           >
-            <div class="asset-manager__grid-preview" :class="{ 'is-folder': asset.type === 'folder' }">
-              <template v-if="asset.type === 'folder'">
-                <Icon name="ph:folder-simple" size="32" />
-              </template>
-              <template v-else-if="isImageAsset(asset) && asset.publicUrl">
-                <img :src="asset.publicUrl" :alt="asset.name">
-              </template>
-              <template v-else>
-                <Icon name="ph:file" size="32" />
-              </template>
-            </div>
-            <Flex column gap="xxs">
-              <strong class="text-s">{{ asset.name }}</strong>
-              <span class="text-xxs text-color-light">{{ asset.type === 'folder' ? 'Folder' : formatBytes(asset.size) }}</span>
-            </Flex>
-          </Card>
-        </Grid>
-        <Alert v-else variant="info">
-          No assets found in this folder.
-        </Alert>
-      </div>
-    </template>
-  </Flex>
+            <Card
+              v-for="asset in filteredAssets"
+              :key="asset.path"
+              class="asset-manager__grid-card"
+              @click="handleRowClick(asset)"
+            >
+              <div class="asset-manager__grid-preview" :class="{ 'is-folder': asset.type === 'folder' }">
+                <template v-if="asset.type === 'folder'">
+                  <Icon name="ph:folder-simple" size="32" />
+                </template>
+                <template v-else-if="isImageAsset(asset) && asset.publicUrl">
+                  <img :src="asset.publicUrl" :alt="asset.name">
+                </template>
+                <template v-else>
+                  <Icon name="ph:file" size="32" />
+                </template>
+              </div>
+              <Flex column gap="xxs">
+                <strong class="text-s">{{ asset.name }}</strong>
+                <span class="text-xxs text-color-light">{{ asset.type === 'folder' ? 'Folder' : formatBytes(asset.size) }}</span>
+              </Flex>
+            </Card>
+          </Grid>
+          <Flex v-else expand>
+            <Alert variant="info">
+              No assets found in this folder.
+            </Alert>
+          </Flex>
+        </div>
+      </template>
+    </Flex>
 
-  <AssetUpload
-    v-model:is-open="showUploadDrawer"
-    :can-upload="props.canUpload"
-    :current-prefix="currentPrefix"
-    @uploaded="handleUploadSuccess"
-  />
+    <AssetUpload
+      v-model:is-open="showUploadDrawer"
+      :can-upload="props.canUpload"
+      :current-prefix="currentPrefix"
+      @uploaded="handleUploadSuccess"
+    />
 
-  <AssetDetails
-    v-model:is-open="showDetailsDrawer"
-    :asset="selectedAsset"
-    :can-delete="props.canDelete"
-    :can-rename="props.canDelete"
-    @delete="promptDeleteAsset"
-    @rename="promptRenameAsset"
-  />
+    <AssetDetails
+      v-model:is-open="showDetailsDrawer"
+      :asset="selectedAsset"
+      :can-delete="props.canDelete"
+      :can-rename="props.canDelete"
+      @delete="promptDeleteAsset"
+      @rename="promptRenameAsset"
+    />
 
-  <AssetRenameModal
-    v-model:open="showRenameModal"
-    :asset="assetPendingRename"
-    :loading="renameLoading"
-    @submit="handleRenameSubmit"
-  />
+    <AssetRenameModal
+      v-model:open="showRenameModal"
+      :asset="assetPendingRename"
+      :loading="renameLoading"
+      @submit="handleRenameSubmit"
+    />
 
-  <ConfirmModal
-    v-model:open="showDeleteConfirmModal"
-    v-model:confirm="confirmDeleteAsset"
-    :title="assetPendingDeletion?.type === 'folder' ? 'Delete Folder' : 'Delete File'"
-    :description="assetPendingDeletion ? `Are you sure you want to delete '${assetPendingDeletion.name}'? This action cannot be undone.` : ''"
-    confirm-text="Delete"
-    cancel-text="Cancel"
-    :destructive="true"
-  />
+    <ConfirmModal
+      v-model:open="showDeleteConfirmModal"
+      v-model:confirm="confirmDeleteAsset"
+      :title="assetPendingDeletion?.type === 'folder' ? 'Delete Folder' : 'Delete File'"
+      :description="assetPendingDeletion ? `Are you sure you want to delete '${assetPendingDeletion.name}'? This action cannot be undone.` : ''"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      :destructive="true"
+    />
 
-  <Toasts />
+    <Toasts />
+  </flex>
 </template>
 
 <style scoped lang="scss">
@@ -730,7 +780,7 @@ onBeforeMount(fetchAssets)
   }
 
   &__toolbar-actions {
-    margin-left: auto;
+    gap: var(--space-xxs);
   }
 
   &__row {

@@ -6,6 +6,7 @@ import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import MOTDEditModal from './MOTDEditModal.vue'
 
 const supabase = useSupabaseClient()
@@ -16,6 +17,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const motds = ref<Tables<'motds'>[]>([])
 const search = ref('')
+const isBelowMedium = useBreakpoint('<m')
 
 const showModal = ref(false)
 const isEditMode = ref(false)
@@ -163,20 +165,32 @@ onBeforeMount(fetchMotds)
 
 <template>
   <Flex column gap="m" expand>
-    <Flex x-between y-center expand>
-      <Input
-        v-model="search"
-        size="s"
-        placeholder="Search messages"
-        clearable
-        style="max-width: 320px"
-      />
-      <Flex gap="s" y-center>
-        <span class="text-color-lighter text-s">
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+      <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+        <Input
+          v-model="search"
+          size="s"
+          placeholder="Search messages"
+          clearable
+          :expand="isBelowMedium"
+        />
+      </Flex>
+      <Flex
+        gap="s"
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :column-reverse="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
           {{ search.trim() ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>
 
-        <Button v-if="canCreate" variant="accent" @click="openCreateModal">
+        <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openCreateModal">
           <template #start>
             <Icon name="ph:plus" />
           </template>

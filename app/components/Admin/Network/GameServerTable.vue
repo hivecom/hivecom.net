@@ -9,6 +9,7 @@ import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import GameserverDetails from './GameServerDetails.vue'
 import GameserverFilters from './GameServerFilters.vue'
 import GameserverForm from './GameServerForm.vue'
@@ -56,6 +57,7 @@ const gameservers = ref<QueryData<typeof gameserversQuery>>([])
 const search = ref('')
 const regionFilter = ref<SelectOption[]>()
 const gameFilter = ref<SelectOption[]>()
+const isBelowMedium = useBreakpoint('<m')
 
 // Gameserver detail state
 const selectedGameserver = ref<QueryGameserver | null>(null)
@@ -143,6 +145,10 @@ const filteredData = computed<TransformedGameserver[]>(() => {
     },
   }))
 })
+
+const totalCount = computed(() => gameservers.value.length)
+const filteredCount = computed(() => filteredData.value.length)
+const isFiltered = computed(() => filteredCount.value !== totalCount.value)
 
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
@@ -294,22 +300,37 @@ onBeforeMount(fetchGameservers)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between expand>
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <GameserverFilters
           v-model:search="search"
           v-model:region-filter="regionFilter"
           v-model:game-filter="gameFilter"
           :region-options="regionOptions"
           :game-options="gameOptions"
+          :expand="isBelowMedium"
           @clear-filters="clearFilters"
         />
 
-        <Button v-if="canCreate" variant="accent" @click="openAddGameserverForm">
-          <template #start>
-            <Icon name="ph:plus" />
-          </template>
-          Add Game Server
-        </Button>
+        <Flex
+          gap="s"
+          :y-center="!isBelowMedium"
+          :y-start="isBelowMedium"
+          :wrap="isBelowMedium"
+          :x-end="!isBelowMedium"
+          :x-center="isBelowMedium"
+          :x-start="isBelowMedium"
+          :expand="isBelowMedium"
+          :column-reverse="isBelowMedium"
+        >
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
+
+          <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddGameserverForm">
+            <template #start>
+              <Icon name="ph:plus" />
+            </template>
+            Add Game Server
+          </Button>
+        </Flex>
       </Flex>
 
       <!-- Table skeleton -->
@@ -323,22 +344,39 @@ onBeforeMount(fetchGameservers)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between expand>
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
       <GameserverFilters
         v-model:search="search"
         v-model:region-filter="regionFilter"
         v-model:game-filter="gameFilter"
         :region-options="regionOptions"
         :game-options="gameOptions"
+        :expand="isBelowMedium"
         @clear-filters="clearFilters"
       />
 
-      <Button v-if="canCreate" variant="accent" @click="openAddGameserverForm">
-        <template #start>
-          <Icon name="ph:plus" />
-        </template>
-        Add Game Server
-      </Button>
+      <Flex
+        gap="s"
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :column-reverse="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
+          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+        </span>
+
+        <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddGameserverForm">
+          <template #start>
+            <Icon name="ph:plus" />
+          </template>
+          Add Game Server
+        </Button>
+      </Flex>
     </Flex>
 
     <TableContainer>

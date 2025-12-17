@@ -137,7 +137,7 @@ onBeforeMount(fetchMonthlyFundings)
           <FundingFilters v-model:search="search" />
         </Flex>
 
-        <Flex :x-end="!isBelowMedium" :x-center="isBelowMedium" :x-start="isBelowMedium" :expand="isBelowMedium">
+        <Flex :x-end="!isBelowMedium" :x-center="isBelowMedium" :x-start="isBelowMedium" :expand="isBelowMedium" :y-center="!isBelowMedium" :y-start="isBelowMedium">
           <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
         </Flex>
       </Flex>
@@ -158,7 +158,7 @@ onBeforeMount(fetchMonthlyFundings)
         <FundingFilters v-model:search="search" />
       </Flex>
 
-      <Flex :x-end="!isBelowMedium" :x-center="isBelowMedium" :expand="isBelowMedium">
+      <Flex :x-end="!isBelowMedium" :x-center="isBelowMedium" :expand="isBelowMedium" :y-center="!isBelowMedium" :y-start="isBelowMedium">
         <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
           {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>

@@ -287,7 +287,7 @@ onBeforeMount(fetchAnnouncements)
     <Flex gap="s" column expand>
       <!-- Header and filters -->
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
-        <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+        <Flex gap="s" :y-center="!isBelowMedium" :y-start="isBelowMedium" wrap :expand="isBelowMedium" :x-center="isBelowMedium">
           <AnnouncementFilters
             v-model:search="search"
             v-model:pinned-filter="pinnedFilter"
@@ -334,7 +334,8 @@ onBeforeMount(fetchAnnouncements)
 
       <Flex
         gap="s"
-        y-center
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
         :wrap="isBelowMedium"
         :x-end="!isBelowMedium"
         :x-center="isBelowMedium"

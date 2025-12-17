@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { Alert, Badge, Card, Flex, Skeleton } from '@dolanske/vui'
+import { Alert, Badge, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 
 import RoleKPIs from '@/components/Admin/Roles/RoleKPIs.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
+const isBelowMedium = useBreakpoint('<m')
 
 // Permission checks
 const canViewRoles = computed(() => hasPermission('roles.read'))
@@ -225,7 +227,7 @@ onBeforeMount(fetchRolePermissions)
 
     <!-- Loading state -->
     <template v-if="loading">
-      <Flex gap="l" expand>
+      <Grid :columns="isBelowMedium ? 1 : 3" gap="l" expand>
         <!-- Create skeleton for all 3 roles: admin, moderator, user -->
         <template v-for="i in 3" :key="i">
           <Card expand class="role-card">
@@ -263,7 +265,7 @@ onBeforeMount(fetchRolePermissions)
             </Flex>
           </Card>
         </template>
-      </Flex>
+      </Grid>
     </template>
 
     <!-- Error state -->
@@ -274,7 +276,7 @@ onBeforeMount(fetchRolePermissions)
     <!-- Content -->
     <template v-else>
       <!-- Roles Overview -->
-      <Flex gap="l" expand>
+      <Grid :columns="isBelowMedium ? 1 : 3" gap="l" expand>
         <Card v-for="role in availableRoles" :key="role" expand class="role-card">
           <template #header>
             <!-- Role Header -->
@@ -320,7 +322,7 @@ onBeforeMount(fetchRolePermissions)
             <span class="text-color-light">No permissions assigned</span>
           </div>
         </Card>
-      </Flex>
+      </Grid>
     </template>
   </Flex>
 </template>

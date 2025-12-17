@@ -9,6 +9,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { getContainerStatus } from '@/lib/containerStatus'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ContainerActions from './ContainerActions.vue'
 import ContainerDetails from './ContainerDetails.vue'
 import ContainerFilters from './ContainerFilters.vue'
@@ -92,6 +93,7 @@ const containers = ref<QueryData<typeof containersQuery>>([])
 const search = ref('')
 const serverFilter = ref<SelectOption[]>()
 const statusFilter = ref<SelectOption[]>()
+const isBelowMedium = useBreakpoint('<m')
 
 // Container detail state
 const selectedContainer = ref<ContainerWithServer | null>(null)
@@ -461,16 +463,28 @@ onBeforeMount(fetchContainers)
     <template v-else-if="loading">
       <Flex gap="s" column expand>
         <!-- Search and Filters -->
-        <Flex x-between y-center expand>
+        <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
           <ContainerFilters
             v-model:search="search"
             v-model:server-filter="serverFilter"
             v-model:status-filter="statusFilter"
             :server-options="serverOptions"
             :status-options="statusOptions"
+            :expand="isBelowMedium"
             @clear-filters="clearFilters"
           />
-          <span class="text-color-lighter text-s">Total —</span>
+          <Flex
+            gap="s"
+            :y-center="!isBelowMedium"
+            :y-start="isBelowMedium"
+            :wrap="isBelowMedium"
+            :x-end="!isBelowMedium"
+            :x-center="isBelowMedium"
+            :x-start="isBelowMedium"
+            :expand="isBelowMedium"
+          >
+            <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
+          </Flex>
         </Flex>
 
         <!-- Table skeleton -->
@@ -484,18 +498,31 @@ onBeforeMount(fetchContainers)
 
     <Flex v-else gap="s" column expand>
       <!-- Search and Filters -->
-      <Flex x-between y-center expand>
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <ContainerFilters
           v-model:search="search"
           v-model:server-filter="serverFilter"
           v-model:status-filter="statusFilter"
           :server-options="serverOptions"
           :status-options="statusOptions"
+          :expand="isBelowMedium"
           @clear-filters="clearFilters"
         />
-        <span class="text-color-lighter text-s">
-          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
-        </span>
+        <Flex
+          gap="s"
+          :y-center="!isBelowMedium"
+          :y-start="isBelowMedium"
+          :wrap="isBelowMedium"
+          :x-end="!isBelowMedium"
+          :x-center="isBelowMedium"
+          :x-start="isBelowMedium"
+          :expand="isBelowMedium"
+          :column-reverse="isBelowMedium"
+        >
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
+            {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+          </span>
+        </Flex>
       </Flex>
 
       <TableContainer>

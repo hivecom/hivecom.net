@@ -276,7 +276,8 @@ onBeforeMount(fetchEvents)
 
         <Flex
           gap="s"
-          y-center
+          :y-center="!isBelowMedium"
+          :y-start="isBelowMedium"
           :wrap="isBelowMedium"
           :x-end="!isBelowMedium"
           :x-center="isBelowMedium"
@@ -324,7 +325,8 @@ onBeforeMount(fetchEvents)
 
       <Flex
         gap="s"
-        y-center
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
         :wrap="isBelowMedium"
         :x-end="!isBelowMedium"
         :x-center="isBelowMedium"

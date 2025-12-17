@@ -10,6 +10,7 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { isBanActive } from '@/lib/banStatus'
 import { getUserActivityStatus } from '@/lib/lastSeen'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import UserActions from './UserActions.vue'
 import UserFilters from './UserFilters.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
@@ -122,6 +123,7 @@ const userEmails = ref<Record<string, string | null>>({})
 const search = ref('')
 const roleFilter = ref<SelectOption[]>()
 const statusFilter = ref<SelectOption[]>()
+const isBelowMedium = useBreakpoint('<m')
 
 // User action state
 const userAction = ref<UserAction | null>(null)
@@ -426,6 +428,7 @@ defineExpose({
         v-model:status-filter="statusFilter"
         :role-options="roleOptions"
         :status-options="statusOptions"
+        :expand="isBelowMedium"
         @clear-filters="clearFilters"
       />
 
@@ -441,19 +444,31 @@ defineExpose({
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex y-center x-between expand>
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
       <UserFilters
         v-model:search="search"
         v-model:role-filter="roleFilter"
         v-model:status-filter="statusFilter"
         :role-options="roleOptions"
         :status-options="statusOptions"
+        :expand="isBelowMedium"
         @clear-filters="clearFilters"
       />
 
-      <span class="text-color-lighter text-s">
-        {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
-      </span>
+      <Flex
+        gap="s"
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
+          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+        </span>
+      </Flex>
     </Flex>
 
     <TableContainer>

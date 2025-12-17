@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Button, Divider, DropdownItem, Flex, Sidebar, Spinner } from '@dolanske/vui'
-import { useStorage as useLocalStorage } from '@vueuse/core'
+import { Button, Divider, DropdownItem, Flex, Sheet, Sidebar, Spinner } from '@dolanske/vui'
+import { useStorage as useLocalStorage, useMediaQuery } from '@vueuse/core'
 import IconLogo from '@/components/Shared/IconLogo.vue'
 
 const router = useRouter()
@@ -233,6 +233,23 @@ provide('hasAnyPermission', hasAnyPermission)
 
 const miniSidebar = useLocalStorage('admin-sidebar-open', false)
 const open = ref(true)
+const isMobile = useMediaQuery('(max-width: 1024px)')
+const mobileNavOpen = ref(false)
+
+function handleNavigation(path: string) {
+  mobileNavOpen.value = false
+  return navigateTo(path)
+}
+
+watch(isMobile, (nowMobile) => {
+  if (!nowMobile)
+    mobileNavOpen.value = false
+})
+
+watch(() => route.path, () => {
+  if (isMobile.value)
+    mobileNavOpen.value = false
+})
 </script>
 
 <template>
@@ -243,7 +260,66 @@ const open = ref(true)
 
   <!-- Show admin layout only if authorized -->
   <div v-else-if="isAuthorized" class="admin-layout vui-sidebar-layout">
-    <div class="admin-layout__sidebar-wrapper">
+    <div v-if="isMobile" class="admin-layout__mobile-bar">
+      <Flex x-between y-center expand>
+        <Button square plain aria-label="Open admin navigation" @click="mobileNavOpen = true">
+          <Icon name="ph:list" />
+        </Button>
+
+        <IconLogo style="margin-left: 2px" />
+        <Flex class="mr-m">
+          <SharedThemeToggle no-text small />
+        </Flex>
+      </Flex>
+
+      <Sheet
+        class="admin-layout__mobile-sheet"
+        :open="mobileNavOpen"
+        position="left"
+        separator
+        @close="mobileNavOpen = false"
+      >
+        <template #header>
+          <Flex y-center gap="xs">
+            <IconLogo style="margin-left: 2px" />
+            <h5 class="admin-layout__mobile-title">
+              Admin
+            </h5>
+          </Flex>
+        </template>
+        <template #header-end>
+          <Button square plain aria-label="Close navigation" @click="mobileNavOpen = false">
+            <Icon name="ph:x" />
+          </Button>
+        </template>
+
+        <DropdownItem
+          v-for="item in accessibleMenuItems"
+          :key="item.path"
+          :class="{ selected: route.path === item.path }"
+          @click="handleNavigation(item.path)"
+        >
+          <template v-if="item.icon" #icon>
+            <Icon :name="item.icon" />
+          </template>
+          {{ item.name }}
+        </DropdownItem>
+
+        <template #footer>
+          <Flex x-between y-center>
+            <Button size="s" outline @click="router.push('/')">
+              <template #start>
+                <Icon name="ph:caret-left" />
+              </template>
+              Close
+            </Button>
+            <SharedThemeToggle no-text small />
+          </Flex>
+        </template>
+      </Sheet>
+    </div>
+
+    <div v-else class="admin-layout__sidebar-wrapper">
       <ClientOnly>
         <Sidebar v-model="open" :mini="miniSidebar" class="admin-layout__sidebar">
           <template #header>
@@ -266,7 +342,7 @@ const open = ref(true)
             v-for="item in accessibleMenuItems"
             :key="item.path"
             :class="{ selected: route.path === item.path }"
-            @click="navigateTo(item.path)"
+            @click="handleNavigation(item.path)"
           >
             <template v-if="item.icon" #icon>
               <Icon :name="item.icon" />
@@ -320,9 +396,34 @@ const open = ref(true)
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .admin-layout {
   min-height: 100vh;
   display: flex;
+  position: relative;
+
+  &__mobile-bar {
+    display: none;
+    width: 100%;
+    padding: var(--space-m) var(--space-m) 0;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-nav);
+    background-color: color-mix(in srgb, var(--color-bg-lowered) 90%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  &__mobile-sheet {
+    :deep(.vui-card-header) {
+      padding-left: var(--space-m);
+      padding-right: var(--space-m);
+    }
+  }
+
+  &__mobile-title {
+    margin: 0;
+  }
 
   &__loading {
     display: flex;
@@ -350,6 +451,26 @@ const open = ref(true)
     flex: 1;
     height: 100vh;
     overflow-y: auto;
+  }
+}
+
+@media (max-width: $breakpoint-m) {
+  .admin-layout {
+    flex-direction: column;
+  }
+
+  .admin-layout__sidebar-wrapper {
+    display: none;
+  }
+
+  .admin-layout__content {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .admin-layout__mobile-bar {
+    display: block;
+    padding: var(--space-s);
   }
 }
 </style>

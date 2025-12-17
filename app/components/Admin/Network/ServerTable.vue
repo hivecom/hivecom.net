@@ -9,6 +9,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ServerDetails from './ServerDetails.vue'
 import ServerFilters from './ServerFilters.vue'
 import ServerForm from './ServerForm.vue'
@@ -46,6 +47,7 @@ const errorMessage = ref('')
 const servers = ref<QueryData<typeof serversQuery>>([])
 const search = ref('')
 const statusFilter = ref<SelectOption[]>()
+const isBelowMedium = useBreakpoint('<m')
 
 // Server detail state
 const selectedServer = ref<Tables<'servers'> | null>(null)
@@ -251,14 +253,26 @@ onBeforeMount(fetchServers)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Search and Filters -->
-      <Flex x-between y-center expand>
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <ServerFilters
           v-model:search="search"
           v-model:status-filter="statusFilter"
           :status-options="statusOptions"
+          :expand="isBelowMedium"
           @clear-filters="clearFilters"
         />
-        <span class="text-color-lighter text-s">Total —</span>
+        <Flex
+          gap="s"
+          :y-center="!isBelowMedium"
+          :y-start="isBelowMedium"
+          :wrap="isBelowMedium"
+          :x-end="!isBelowMedium"
+          :x-center="isBelowMedium"
+          :x-start="isBelowMedium"
+          :expand="isBelowMedium"
+        >
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
+        </Flex>
       </Flex>
 
       <!-- Table skeleton -->
@@ -272,18 +286,29 @@ onBeforeMount(fetchServers)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between y-center expand>
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
       <ServerFilters
         v-model:search="search"
         v-model:status-filter="statusFilter"
         :status-options="statusOptions"
+        :expand="isBelowMedium"
         @clear-filters="clearFilters"
       />
-      <Flex gap="s" y-center>
-        <span class="text-color-lighter text-s">
+      <Flex
+        gap="s"
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :column-reverse="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
           {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>
-        <Button v-if="canCreate" variant="accent" @click="openAddServerForm">
+        <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddServerForm">
           <template #start>
             <Icon name="ph:plus" />
           </template>

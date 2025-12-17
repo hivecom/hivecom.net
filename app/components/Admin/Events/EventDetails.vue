@@ -119,12 +119,6 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
           </span>
         </Flex>
         <Flex y-center gap="s">
-          <Badge
-            v-if="props.event"
-            :variant="getEventStatus(props.event).variant"
-          >
-            {{ getEventStatus(props.event).label }}
-          </Badge>
           <AdminActions
             v-if="props.event"
             resource-type="events"
@@ -154,7 +148,15 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 
             <Grid class="detail-item" expand :columns="2">
               <span class="text-color-light text-bold">Date:</span>
-              <TimestampDate size="m" :date="props.event.date" />
+              <Flex wrap y-center>
+                <TimestampDate size="m" :date="props.event.date" />
+                <Badge
+                  v-if="props.event"
+                  :variant="getEventStatus(props.event).variant"
+                >
+                  {{ getEventStatus(props.event).label }}
+                </Badge>
+              </Flex>
             </Grid>
 
             <Grid v-if="props.event.duration_minutes" class="detail-item" expand :columns="2">
@@ -182,7 +184,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 
             <Grid class="detail-item" expand :columns="2">
               <span class="text-color-light text-bold">RSVPs:</span>
-              <Flex gap="xs" y-center>
+              <Flex gap="xs" y-center wrap>
                 <EventRSVPCount
                   :event="props.event"
                   variant="info"
