@@ -7,6 +7,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import EventDetails from './EventDetails.vue'
 import EventFilters from './EventFilters.vue'
 import EventForm from './EventForm.vue'
@@ -84,6 +85,8 @@ const transformedEvents = computed(() => {
 const totalCount = computed(() => events.value.length)
 const filteredCount = computed(() => transformedEvents.value.length)
 const isFiltered = computed(() => Boolean(search.value))
+
+const isBelowMedium = useBreakpoint('<m')
 
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(transformedEvents, {
@@ -266,13 +269,24 @@ onBeforeMount(fetchEvents)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between y-center expand>
-        <EventFilters v-model:search="search" />
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+        <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+          <EventFilters v-model:search="search" />
+        </Flex>
 
-        <Flex gap="s" y-center>
-          <span class="text-color-lighter text-s">Total —</span>
+        <Flex
+          gap="s"
+          y-center
+          :wrap="isBelowMedium"
+          :x-end="!isBelowMedium"
+          :x-center="isBelowMedium"
+          :x-start="isBelowMedium"
+          :expand="isBelowMedium"
+          :column-reverse="isBelowMedium"
+        >
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
 
-          <Flex gap="xs">
+          <Flex gap="xs" :wrap="isBelowMedium" :x-center="isBelowMedium" expand>
             <CalendarButtons />
 
             <!-- Create event button -->
@@ -280,6 +294,7 @@ onBeforeMount(fetchEvents)
               v-if="canCreate"
               variant="accent"
               loading
+              :expand="isBelowMedium"
               @click="openAddEventForm"
             >
               <template #start>
@@ -302,21 +317,33 @@ onBeforeMount(fetchEvents)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between y-center expand>
-      <EventFilters v-model:search="search" />
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+      <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+        <EventFilters v-model:search="search" />
+      </Flex>
 
-      <Flex gap="s" y-center>
-        <span class="text-color-lighter text-s">
+      <Flex
+        gap="s"
+        y-center
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :column-reverse="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
           {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>
 
-        <Flex gap="xs">
+        <Flex :gap="isBelowMedium ? 's' : 'xs'" :wrap="isBelowMedium" :x-center="isBelowMedium" :expand="isBelowMedium">
           <CalendarButtons />
 
           <!-- Create event button -->
           <Button
             v-if="canCreate"
             variant="accent"
+            :expand="isBelowMedium"
             @click="openAddEventForm"
           >
             <template #start>

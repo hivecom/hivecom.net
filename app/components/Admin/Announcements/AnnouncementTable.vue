@@ -8,6 +8,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import AnnouncementDetails from './AnnouncementDetails.vue'
 import AnnouncementFilters from './AnnouncementFilters.vue'
 import AnnouncementForm from './AnnouncementForm.vue'
@@ -132,6 +133,8 @@ const isFiltered = computed(() => Boolean(
   || (pinnedFilter.value && pinnedFilter.value.length > 0)
   || (tagFilter.value && tagFilter.value.length > 0),
 ))
+
+const isBelowMedium = useBreakpoint('<m')
 
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
@@ -283,8 +286,8 @@ onBeforeMount(fetchAnnouncements)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between y-center expand>
-        <Flex gap="s" y-center>
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+        <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
           <AnnouncementFilters
             v-model:search="search"
             v-model:pinned-filter="pinnedFilter"
@@ -296,12 +299,14 @@ onBeforeMount(fetchAnnouncements)
           <span class="text-color-lighter text-s">Total —</span>
         </Flex>
 
-        <Button v-if="canCreate" variant="accent" loading>
-          <template #start>
-            <Icon name="ph:plus" />
-          </template>
-          Add Announcement
-        </Button>
+        <Flex :x-center="isBelowMedium" :expand="isBelowMedium">
+          <Button v-if="canCreate" variant="accent" loading :expand="isBelowMedium">
+            <template #start>
+              <Icon name="ph:plus" />
+            </template>
+            Add Announcement
+          </Button>
+        </Flex>
       </Flex>
 
       <!-- Table skeleton -->
@@ -315,22 +320,33 @@ onBeforeMount(fetchAnnouncements)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between y-center expand>
-      <AnnouncementFilters
-        v-model:search="search"
-        v-model:pinned-filter="pinnedFilter"
-        v-model:tag-filter="tagFilter"
-        :pinned-options="pinnedOptions"
-        :tag-options="tagOptions"
-        @clear-filters="clearFilters"
-      />
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+      <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+        <AnnouncementFilters
+          v-model:search="search"
+          v-model:pinned-filter="pinnedFilter"
+          v-model:tag-filter="tagFilter"
+          :pinned-options="pinnedOptions"
+          :tag-options="tagOptions"
+          @clear-filters="clearFilters"
+        />
+      </Flex>
 
-      <Flex gap="s" y-center>
-        <span class="text-color-lighter text-s">
+      <Flex
+        gap="s"
+        y-center
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :column-reverse="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
           {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>
 
-        <Button v-if="canCreate" variant="accent" @click="openAddAnnouncementForm">
+        <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddAnnouncementForm">
           <template #start>
             <Icon name="ph:plus" />
           </template>

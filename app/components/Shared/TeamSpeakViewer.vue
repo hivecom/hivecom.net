@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
 import { Alert, Badge, Button, Card, Flex, Grid, Select, Skeleton, Switch, Tooltip } from '@dolanske/vui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
@@ -378,6 +378,14 @@ const serversSorted = computed(() =>
   }),
 )
 
+watch(serversSorted, (next) => {
+  if (props.serverId)
+    return
+
+  if (!selectedServerId.value && (next?.length ?? 0) > 0)
+    selectedServerId.value = next[0]!.id
+}, { immediate: true })
+
 const serverOptions = computed(() =>
   serversSorted.value.map(server => ({
     label: formatServerLabel(server),
@@ -479,6 +487,9 @@ const clientsByServerChannel = computed<Record<string, Map<string, TeamSpeakServ
 })
 
 const errorMessage = computed(() => {
+  if (servers.value.length)
+    return ''
+
   if (!error.value)
     return ''
 

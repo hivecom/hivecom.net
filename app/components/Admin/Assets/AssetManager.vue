@@ -430,104 +430,102 @@ onBeforeMount(fetchAssets)
 
 <template>
   <Flex column gap="l" expand>
-    <Card class="asset-manager__toolbar">
-      <Flex column gap="s">
-        <div class="asset-manager__breadcrumbs" role="navigation" aria-label="Breadcrumb">
-          <template v-for="(crumb, index) in breadcrumbs" :key="crumb.path || `crumb-${index}`">
-            <button
-              v-if="crumb.path !== currentPrefix"
-              type="button"
-              class="asset-manager__breadcrumb"
-              @click="changePrefix(crumb.path)"
-            >
-              {{ crumb.label || 'Root' }}
-            </button>
-            <span v-else class="asset-manager__breadcrumb asset-manager__breadcrumb--current">
-              {{ crumb.label || 'Root' }}
-            </span>
-            <Icon
-              v-if="index < breadcrumbs.length - 1"
-              name="ph:caret-right"
-              size="12"
-              class="asset-manager__breadcrumb-separator"
-            />
+    <Flex column gap="s" expand>
+      <div class="asset-manager__breadcrumbs" role="navigation" aria-label="Breadcrumb">
+        <template v-for="(crumb, index) in breadcrumbs" :key="crumb.path || `crumb-${index}`">
+          <button
+            v-if="crumb.path !== currentPrefix"
+            type="button"
+            class="asset-manager__breadcrumb"
+            @click="changePrefix(crumb.path)"
+          >
+            {{ crumb.label || 'Root' }}
+          </button>
+          <span v-else class="asset-manager__breadcrumb asset-manager__breadcrumb--current">
+            {{ crumb.label || 'Root' }}
+          </span>
+          <Icon
+            v-if="index < breadcrumbs.length - 1"
+            name="ph:caret-right"
+            size="12"
+            class="asset-manager__breadcrumb-separator"
+          />
+        </template>
+      </div>
+
+      <Flex gap="s" wrap expand>
+        <Input v-model="searchQuery" expand placeholder="Search by name or path" style="max-width: 260px;">
+          <template #start>
+            <Icon name="ph:magnifying-glass" />
           </template>
-        </div>
+        </Input>
 
-        <Flex gap="s" wrap expand>
-          <Input v-model="searchQuery" expand placeholder="Search by name or path" style="max-width: 260px;">
+        <Select
+          v-model="typeFilterModel"
+          :options="typeFilterOptions"
+          placeholder="Filter by type"
+          single
+          show-clear
+          style="width: 160px;"
+        />
+
+        <Select
+          v-if="viewMode === 'grid'"
+          v-model="sortOptionModel"
+          :options="sortSelectOptions"
+          placeholder="Sort files"
+          single
+          style="width: 190px;"
+        />
+
+        <Flex gap="xs" class="asset-manager__view-toggle">
+          <Button
+            :variant="viewMode === 'table' ? 'accent' : 'gray'"
+            square
+            @click="viewMode = 'table'"
+          >
+            <Icon name="ph:list" />
+          </Button>
+          <Button
+            :variant="viewMode === 'grid' ? 'accent' : 'gray'"
+            square
+            @click="viewMode = 'grid'"
+          >
+            <Icon name="ph:squares-four" />
+          </Button>
+        </Flex>
+
+        <Flex gap="xs" class="asset-manager__toolbar-actions">
+          <Button variant="gray" @click="fetchAssets">
             <template #start>
-              <Icon name="ph:magnifying-glass" />
+              <Icon name="ph:arrow-clockwise" />
             </template>
-          </Input>
-
-          <Select
-            v-model="typeFilterModel"
-            :options="typeFilterOptions"
-            placeholder="Filter by type"
-            single
-            show-clear
-            style="width: 160px;"
-          />
-
-          <Select
-            v-if="viewMode === 'grid'"
-            v-model="sortOptionModel"
-            :options="sortSelectOptions"
-            placeholder="Sort files"
-            single
-            style="width: 190px;"
-          />
-
-          <Flex gap="xs" class="asset-manager__view-toggle">
-            <Button
-              :variant="viewMode === 'table' ? 'accent' : 'gray'"
-              square
-              @click="viewMode = 'table'"
-            >
-              <Icon name="ph:list" />
-            </Button>
-            <Button
-              :variant="viewMode === 'grid' ? 'accent' : 'gray'"
-              square
-              @click="viewMode = 'grid'"
-            >
-              <Icon name="ph:squares-four" />
-            </Button>
-          </Flex>
-
-          <Flex gap="xs" class="asset-manager__toolbar-actions">
-            <Button variant="gray" @click="fetchAssets">
-              <template #start>
-                <Icon name="ph:arrow-clockwise" />
-              </template>
-              Refresh
-            </Button>
-            <Button
-              v-if="storageConsoleUrl"
-              variant="gray"
-              :disabled="!storageConsoleUrl"
-              @click="openStorageConsole"
-            >
-              <template #start>
-                <Icon name="ph:folder-open" />
-              </template>
-              Supabase Files
-            </Button>
-            <Button
-              v-if="props.canUpload"
-              variant="accent"
-              @click="showUploadDrawer = true"
-            >
-              <template #start>
-                <Icon name="ph:upload" />
-              </template>
-              Upload
-            </Button>
-          </Flex>
+            Refresh
+          </Button>
+          <Button
+            v-if="storageConsoleUrl"
+            variant="gray"
+            :disabled="!storageConsoleUrl"
+            @click="openStorageConsole"
+          >
+            <template #start>
+              <Icon name="ph:folder-open" />
+            </template>
+            Supabase Files
+          </Button>
+          <Button
+            v-if="props.canUpload"
+            variant="accent"
+            @click="showUploadDrawer = true"
+          >
+            <template #start>
+              <Icon name="ph:upload" />
+            </template>
+            Upload
+          </Button>
         </Flex>
       </Flex>
-    </Card>
+    </Flex>
 
     <Alert v-if="errorMessage" variant="danger">
       {{ errorMessage }}

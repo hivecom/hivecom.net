@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { Flex, Input } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 // Define model for search
 const search = defineModel<string>('search', { default: '' })
+
+const isBelowMedium = useBreakpoint('<m')
 </script>
 
 <template>
-  <Flex gap="s" y-center>
+  <Flex gap="s" y-center wrap expand>
     <Input
       v-model="search"
       placeholder="Search events..."
-      style="min-width: 300px;"
+      :expand="isBelowMedium"
     >
       <template #start>
         <Icon name="ph:magnifying-glass" />

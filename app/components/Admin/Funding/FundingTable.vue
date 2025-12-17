@@ -6,6 +6,7 @@ import { computed, onBeforeMount, ref } from 'vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatMonth } from '@/lib/utils/date'
 import FundingDetails from './FundingDetails.vue'
@@ -72,6 +73,8 @@ const totalCount = computed(() => monthlyFundings.value.length)
 const filteredCount = computed(() => transformedFundings.value.length)
 const isFiltered = computed(() => Boolean(search.value))
 
+const isBelowMedium = useBreakpoint('<m')
+
 // Table configuration
 const { headers, rows, pagination, setPage } = defineTable(transformedFundings, {
   pagination: {
@@ -129,9 +132,14 @@ onBeforeMount(fetchMonthlyFundings)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between y-center expand>
-        <FundingFilters v-model:search="search" />
-        <span class="text-color-lighter text-s">Total —</span>
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+        <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+          <FundingFilters v-model:search="search" />
+        </Flex>
+
+        <Flex :x-end="!isBelowMedium" :x-center="isBelowMedium" :x-start="isBelowMedium" :expand="isBelowMedium">
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
+        </Flex>
       </Flex>
 
       <!-- Table skeleton -->
@@ -145,11 +153,16 @@ onBeforeMount(fetchMonthlyFundings)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between y-center expand>
-      <FundingFilters v-model:search="search" />
-      <span class="text-color-lighter text-s">
-        {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
-      </span>
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+      <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+        <FundingFilters v-model:search="search" />
+      </Flex>
+
+      <Flex :x-end="!isBelowMedium" :x-center="isBelowMedium" :expand="isBelowMedium">
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
+          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
+        </span>
+      </Flex>
     </Flex>
 
     <!-- Table -->

@@ -108,6 +108,11 @@ const isCompactLayout = useBreakpoint('<s')
 .gameserver-row {
   width: 100% !important;
   display: block;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--color-text);
+  text-align: left;
 }
 
 .gameserver-row-header {

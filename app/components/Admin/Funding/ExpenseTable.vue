@@ -6,6 +6,7 @@ import { computed, onBeforeMount, ref } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
 import ExpenseDetails from './ExpenseDetails.vue'
 import ExpenseFilters from './ExpenseFilters.vue'
@@ -125,6 +126,8 @@ const transformedExpenses = computed<TransformedExpense[]>(() => {
 const totalCount = computed(() => expenses.value.length)
 const filteredCount = computed(() => transformedExpenses.value.length)
 const isFiltered = computed(() => Boolean(search.value))
+
+const isBelowMedium = useBreakpoint('<m')
 
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(transformedExpenses, {
@@ -271,12 +274,24 @@ onBeforeMount(fetchExpenses)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between y-center expand>
-        <ExpenseFilters v-model:search="search" />
-        <Flex gap="s" y-center>
-          <span class="text-color-lighter text-s">Total —</span>
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+        <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+          <ExpenseFilters v-model:search="search" />
+        </Flex>
 
-          <Button v-if="canCreate" variant="accent" loading>
+        <Flex
+          gap="s"
+          y-center
+          :wrap="isBelowMedium"
+          :x-end="!isBelowMedium"
+          :x-center="isBelowMedium"
+          :x-start="isBelowMedium"
+          :expand="isBelowMedium"
+          :column-reverse="isBelowMedium"
+        >
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
+
+          <Button v-if="canCreate" variant="accent" loading :expand="isBelowMedium">
             <template #start>
               <Icon name="ph:plus" />
             </template>
@@ -296,15 +311,26 @@ onBeforeMount(fetchExpenses)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between y-center expand>
-      <ExpenseFilters v-model:search="search" />
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+      <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+        <ExpenseFilters v-model:search="search" />
+      </Flex>
 
-      <Flex gap="s" y-center>
-        <span class="text-color-lighter text-s">
+      <Flex
+        gap="s"
+        y-center
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :column-reverse="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
           {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>
 
-        <Button v-if="canCreate" variant="accent" @click="openAddExpenseForm">
+        <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddExpenseForm">
           <template #start>
             <Icon name="ph:plus" />
           </template>
