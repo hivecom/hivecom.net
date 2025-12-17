@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Flex } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import BanUserModal from './BanUserModal.vue'
 
 const props = defineProps<{
@@ -20,6 +21,11 @@ const props = defineProps<{
 
 // Get admin permissions
 const { canModifyUsers, canDeleteUsers } = useAdminPermissions()
+
+const isMobile = useBreakpoint('<xs')
+const showLabels = computed(() => !!props.showLabels && !isMobile.value)
+
+const buttonSize = computed(() => showLabels.value ? 'm' as const : 's' as const)
 
 // Define a model value for actions with proper type
 interface UserAction {
@@ -88,16 +94,12 @@ function isActionLoading(actionType: string): boolean {
   return !!loading[actionType]
 }
 
-// Computed properties for button styling based on variant
-const buttonSize = computed(() => props.showLabels ? 'm' as const : 's' as const)
-const showLabels = computed(() => !!props.showLabels)
-
 // Check if this is the current user to prevent self-ban/delete
 const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 </script>
 
 <template>
-  <Flex :gap="props.showLabels ? 's' : 'xs'">
+  <Flex :gap="showLabels ? 's' : 'xs'">
     <Button
       v-if="canModifyUsers"
       :size="buttonSize"
@@ -106,10 +108,10 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
       :data-title-top="!showLabels ? 'Edit User' : undefined"
       @click="openEditConfirm"
     >
-      <template v-if="props.showLabels" #start>
+      <template v-if="showLabels" #start>
         <Icon name="ph:pencil-simple" />
       </template>
-      <Icon v-if="!props.showLabels" name="ph:pencil-simple" />
+      <Icon v-if="!showLabels" name="ph:pencil-simple" />
       <template v-if="showLabels">
         Edit
       </template>
@@ -124,10 +126,10 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
       :data-title-top="!showLabels ? 'Ban User' : undefined"
       @click="openBanModal"
     >
-      <template v-if="props.showLabels" #start>
+      <template v-if="showLabels" #start>
         <Icon name="ph:prohibit" />
       </template>
-      <Icon v-if="!props.showLabels" name="ph:prohibit" />
+      <Icon v-if="!showLabels" name="ph:prohibit" />
       <template v-if="showLabels">
         Ban
       </template>
@@ -142,10 +144,10 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
       :data-title-top="!showLabels ? 'Unban User' : undefined"
       @click="openUnbanConfirm"
     >
-      <template v-if="props.showLabels" #start>
+      <template v-if="showLabels" #start>
         <Icon name="ph:check-circle" />
       </template>
-      <Icon v-if="!props.showLabels" name="ph:check-circle" />
+      <Icon v-if="!showLabels" name="ph:check-circle" />
       <template v-if="showLabels">
         Unban
       </template>
@@ -160,10 +162,10 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
       :data-title-top="!showLabels ? 'Delete User' : undefined"
       @click="openDeleteConfirm"
     >
-      <template v-if="props.showLabels" #start>
+      <template v-if="showLabels" #start>
         <Icon name="ph:trash" />
       </template>
-      <Icon v-if="!props.showLabels" name="ph:trash" />
+      <Icon v-if="!showLabels" name="ph:trash" />
       <template v-if="showLabels">
         Delete
       </template>

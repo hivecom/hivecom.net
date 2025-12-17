@@ -215,7 +215,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
                     v-for="game in eventGames"
                     :key="game.id"
                     :game="game"
-                    size="small"
+                    size="s"
                   />
                 </template>
               </Flex>

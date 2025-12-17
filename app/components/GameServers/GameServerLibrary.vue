@@ -209,7 +209,7 @@ function isCoverLoading(gameId: number): boolean {
     >
       <template v-if="selectedGame" #header>
         <Flex gap="s" y-center expand>
-          <GameIcon :game="selectedGame" size="medium" />
+          <GameIcon :game="selectedGame" size="m" />
           <Flex y-center gap="s" expand x-between>
             <h3>{{ selectedGame.name }}</h3>
           </Flex>

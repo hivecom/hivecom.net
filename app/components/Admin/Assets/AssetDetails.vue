@@ -4,6 +4,7 @@ import { Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 
 import { computed } from 'vue'
 import { formatBytes, isImageAsset } from '@/lib/cmsAssets'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = withDefaults(defineProps<{
   asset: CmsAsset | null
@@ -24,6 +25,10 @@ const isOpen = defineModel<boolean>('isOpen', { default: false })
 const hasPreview = computed(() => props.asset && props.asset.type === 'file' && isImageAsset(props.asset))
 const assetUrl = computed(() => props.asset?.publicUrl ?? '')
 const markdownSnippet = computed(() => assetUrl.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
+
+const isMobile = useBreakpoint('<xs')
+const showActionLabels = computed(() => !isMobile.value)
+const actionButtonSize = computed(() => showActionLabels.value ? 'm' as const : 's' as const)
 
 function closeDrawer() {
   isOpen.value = false
@@ -62,17 +67,35 @@ function requestRename() {
           <span class="text-xs text-color-light">{{ props.asset?.name }}</span>
         </Flex>
         <Flex gap="xs" y-center>
-          <Button v-if="props.canRename" variant="gray" @click="requestRename">
-            <template #start>
+          <Button
+            v-if="props.canRename"
+            :size="actionButtonSize"
+            variant="gray"
+            :square="!showActionLabels"
+            @click="requestRename"
+          >
+            <template v-if="showActionLabels" #start>
               <Icon name="ph:text-t" />
             </template>
-            Rename
+            <Icon v-if="!showActionLabels" name="ph:text-t" />
+            <template v-if="showActionLabels">
+              Rename
+            </template>
           </Button>
-          <Button v-if="props.canDelete" variant="danger" @click="requestDelete">
-            <template #start>
+          <Button
+            v-if="props.canDelete"
+            :size="actionButtonSize"
+            variant="danger"
+            :square="!showActionLabels"
+            @click="requestDelete"
+          >
+            <template v-if="showActionLabels" #start>
               <Icon name="ph:trash" />
             </template>
-            Delete
+            <Icon v-if="!showActionLabels" name="ph:trash" />
+            <template v-if="showActionLabels">
+              Delete
+            </template>
           </Button>
         </Flex>
       </Flex>

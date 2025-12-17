@@ -5,6 +5,7 @@ import { computed, onBeforeMount, ref } from 'vue'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import GameIcon from '@/components/GameServers/GameIcon.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -313,7 +314,12 @@ onBeforeMount(fetchGames)
 
         <template #body>
           <tr v-for="game in rows" :key="game._original.id" class="clickable-row" @click="viewGameDetails(game._original)">
-            <Table.Cell>{{ game.Name }}</Table.Cell>
+            <Table.Cell>
+              <Flex gap="xs" y-center>
+                <GameIcon :game="game._original" size="xs" />
+                <span>{{ game.Name }}</span>
+              </Flex>
+            </Table.Cell>
             <Table.Cell>
               <Badge v-if="game.Shorthand" variant="accent">
                 {{ game.Shorthand }}

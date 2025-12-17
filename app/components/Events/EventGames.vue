@@ -6,13 +6,13 @@ import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger
 
 interface Props {
   games: Tables<'games'>[]
-  size?: 'small' | 'medium' | 'large'
+  size?: 's' | 'm' | 'l'
   maxVisible?: number
   showLabel?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
-  size: 'small',
+  size: 's',
   maxVisible: 5,
   showLabel: true,
 })

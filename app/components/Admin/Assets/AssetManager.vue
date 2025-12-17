@@ -175,6 +175,28 @@ const { headers, rows: tableRows, setSort } = defineTable(tableData, {
 
 setSort('Name', 'asc')
 
+const nameSortDirection = computed(() => headers.value.find(header => header.label === 'Name')?.sortKey ?? null)
+
+function sortNameFolderFirst(a: (typeof tableRows.value)[number], b: (typeof tableRows.value)[number], direction: 'asc' | 'desc') {
+  const aFolder = a._original.type === 'folder'
+  const bFolder = b._original.type === 'folder'
+
+  if (aFolder && !bFolder)
+    return -1
+  if (!aFolder && bFolder)
+    return 1
+
+  const nameCompare = a._original.name.localeCompare(b._original.name)
+  return direction === 'desc' ? -nameCompare : nameCompare
+}
+
+const tableRowsFolderFirst = computed(() => {
+  if (!nameSortDirection.value)
+    return tableRows.value
+
+  return [...tableRows.value].sort((a, b) => sortNameFolderFirst(a, b, nameSortDirection.value as 'asc' | 'desc'))
+})
+
 function sortFiles(a: CmsAsset, b: CmsAsset) {
   switch (sortOption.value) {
     case 'name-desc':
@@ -583,7 +605,7 @@ onBeforeMount(fetchAssets)
           <Table.Root v-if="tableRows.length" separate-cells>
             <template #header>
               <Table.Head
-                v-for="header in headers.filter(header => header.label !== '_original')"
+                v-for="header in headers.filter((header: { label: string }) => header.label !== '_original')"
                 :key="header.label"
                 sort
                 :header="header"
@@ -597,7 +619,7 @@ onBeforeMount(fetchAssets)
 
             <template #body>
               <tr
-                v-for="row in tableRows"
+                v-for="row in tableRowsFolderFirst"
                 :key="row._original.path || row._original.name"
                 class="asset-manager__row"
                 @click="handleRowClick(row._original)"
@@ -674,7 +696,7 @@ onBeforeMount(fetchAssets)
             v-if="filteredAssets.length"
             class="asset-manager__grid"
             expand
-            :columns="4"
+            :columns="isBelowMedium ? 2 : 4"
           >
             <Card
               v-for="asset in filteredAssets"

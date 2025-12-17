@@ -11,6 +11,7 @@ import UserLink from '@/components/Shared/UserLink.vue'
 import { useCacheQuery } from '@/composables/useCache'
 import { isBanActive } from '@/lib/banStatus'
 import { getUserActivityStatus } from '@/lib/lastSeen'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { getUserAvatarUrl } from '@/lib/storage'
 import { getCountryInfo } from '@/lib/utils/country'
 import UserActions from './UserActions.vue'
@@ -47,6 +48,8 @@ const props = defineProps<{
 
 // Define emits
 const emit = defineEmits(['edit'])
+
+const isBelowSmall = useBreakpoint('<s')
 
 // Get current user
 const currentUser = useSupabaseUser()
@@ -327,9 +330,9 @@ function getUserInitials(username: string): string {
             </Grid>
 
             <!-- Friends Information -->
-            <Grid class="detail-item" :columns="2" expand>
+            <Grid class="detail-item" :columns="2" expand wrap>
               <span class="text-color-light text-bold">Friends:</span>
-              <Flex gap="xs" y-center>
+              <Flex gap="xs" y-center wrap>
                 <span class="text-s">
                   {{ friends.length }} {{ friends.length === 1 ? 'friend' : 'friends' }}
                 </span>
@@ -438,7 +441,7 @@ function getUserInitials(username: string): string {
           </Flex>
         </Card>
 
-        <Flex expand>
+        <Flex expand :wrap="isBelowSmall">
           <!-- User Introduction -->
           <Card separators expand class="introduction-card">
             <template #header>
@@ -507,6 +510,7 @@ function getUserInitials(username: string): string {
   background-color: var(--color-bg-light);
   padding: 2px 6px;
   border-radius: var(--border-radius-xs);
+  word-break: break-all;
 }
 
 .ban-duration {

@@ -2,6 +2,7 @@
 import { Button, Flex } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface AdminActionsProps {
   /**
@@ -60,6 +61,11 @@ const showDeleteConfirm = ref(false)
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
 
+const isMobile = useBreakpoint('<xs')
+const showLabels = computed(() => !!props.showLabels && !isMobile.value)
+
+const buttonSize = computed(() => showLabels.value ? 'm' as const : 's' as const)
+
 // Helper function to check if user has permission for specific action
 function hasActionPermission(action: string): boolean {
   const permission = `${props.resourceType}.${action}`
@@ -76,10 +82,6 @@ function isActionLoading(actionType: string): boolean {
   }
   return !!loading[actionType]
 }
-
-// Computed properties for button styling
-const buttonSize = computed(() => props.showLabels ? 'm' as const : 's' as const)
-const showLabels = computed(() => !!props.showLabels)
 
 // Check if any actions should be shown
 const showEditAction = computed(() =>
@@ -165,7 +167,7 @@ function getItemDisplayName(): string {
 </script>
 
 <template>
-  <Flex v-if="hasVisibleActions" :gap="props.showLabels ? 's' : 'xs'">
+  <Flex v-if="hasVisibleActions" :gap="showLabels ? 's' : 'xs'">
     <!-- Edit Action -->
     <Button
       v-if="showEditAction"
@@ -176,10 +178,10 @@ function getItemDisplayName(): string {
       :loading="isActionLoading('edit')"
       @click="handleEdit"
     >
-      <template v-if="props.showLabels" #start>
+      <template v-if="showLabels" #start>
         <Icon name="ph:pencil-simple" />
       </template>
-      <Icon v-if="!props.showLabels" name="ph:pencil-simple" />
+      <Icon v-if="!showLabels" name="ph:pencil-simple" />
       <template v-if="showLabels">
         Edit
       </template>
@@ -196,10 +198,10 @@ function getItemDisplayName(): string {
       :loading="action.loading"
       @click="action.handler"
     >
-      <template v-if="props.showLabels" #start>
+      <template v-if="showLabels" #start>
         <Icon :name="action.icon" />
       </template>
-      <Icon v-if="!props.showLabels" :name="action.icon" />
+      <Icon v-if="!showLabels" :name="action.icon" />
       <template v-if="showLabels">
         {{ action.label }}
       </template>
@@ -215,10 +217,10 @@ function getItemDisplayName(): string {
       :loading="isActionLoading('delete')"
       @click="handleDelete"
     >
-      <template v-if="props.showLabels" #start>
+      <template v-if="showLabels" #start>
         <Icon name="ph:trash" />
       </template>
-      <Icon v-if="!props.showLabels" name="ph:trash" />
+      <Icon v-if="!showLabels" name="ph:trash" />
       <template v-if="showLabels">
         Delete
       </template>
