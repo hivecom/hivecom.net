@@ -106,7 +106,6 @@ watch(() => props.game, () => {
   border-radius: var(--border-radius-m);
   background: var(--color-background-secondary);
   object-fit: cover;
-  border: 1px solid var(--color-border);
   transition: opacity 0.2s ease;
 
   &.fallback-icon {

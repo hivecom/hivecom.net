@@ -13,7 +13,6 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'l',
-  variant: 'accent',
   showIcon: true,
   showWhenZero: false,
 })
@@ -136,7 +135,8 @@ watch(() => props.event?.id, () => {
       :variant="badgeVariant"
       :size="size"
     >
-      <Icon v-if="showIcon" name="ph:users" />
+      <Icon v-if="showIcon" :class="{ ended: hasEventEnded }" name="ph:users" />
+
       {{ displayText }}
     </Badge>
   </div>
@@ -145,5 +145,13 @@ watch(() => props.event?.id, () => {
 <style lang="scss" scoped>
 .event-rsvp-count {
   display: inline-block;
+}
+
+.iconify {
+  color: var(--color-accent);
+}
+
+.ended {
+  color: var(--color-neutral);
 }
 </style>

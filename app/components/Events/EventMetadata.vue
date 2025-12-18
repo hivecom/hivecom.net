@@ -7,7 +7,7 @@ interface Props {
   event: Tables<'events'>
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 </script>
 
 <template>
@@ -18,10 +18,10 @@ defineProps<Props>()
         Metadata
       </h3>
       <Metadata
-        :created-at="event.created_at"
-        :created-by="event.created_by"
-        :modified-at="event.modified_at"
-        :modified-by="event.modified_by"
+        :created-at="props.event.created_at"
+        :created-by="props.event.created_by"
+        :modified-at="props.event.modified_at"
+        :modified-by="props.event.modified_by"
       />
     </Flex>
   </Card>

@@ -262,14 +262,12 @@ watch(() => route.path, () => {
   <div v-else-if="isAuthorized" class="admin-layout vui-sidebar-layout">
     <div v-if="isMobile" class="admin-layout__mobile-bar">
       <Flex x-between y-center expand>
-        <Button square plain aria-label="Open admin navigation" @click="mobileNavOpen = true">
+        <Button square aria-label="Open admin navigation" @click="mobileNavOpen = true">
           <Icon name="ph:list" />
         </Button>
 
         <IconLogo style="margin-left: 2px" />
-        <Flex class="mr-m">
-          <SharedThemeToggle no-text small />
-        </Flex>
+        <Flex class="mr-m" />
       </Flex>
 
       <Sheet
@@ -307,13 +305,13 @@ watch(() => route.path, () => {
 
         <template #footer>
           <Flex x-between y-center>
-            <Button size="s" outline @click="router.push('/')">
+            <Button expand outline @click="router.push('/')">
               <template #start>
                 <Icon name="ph:caret-left" />
               </template>
-              Close
+              Return to home
             </Button>
-            <SharedThemeToggle no-text small />
+            <SharedThemeToggle no-text small button />
           </Flex>
         </template>
       </Sheet>
@@ -361,21 +359,21 @@ watch(() => route.path, () => {
 
           <template #footer>
             <Flex v-if="miniSidebar" column x-center y-center gap="m">
-              <SharedThemeToggle no-text small />
-              <DropdownItem square data-title-right="Close admin console" aria-label="Close admin console" @click="router.push('/')">
+              <SharedThemeToggle no-text small button />
+              <DropdownItem square aria-label="Close admin console" @click="router.push('/')">
                 <template #icon>
                   <Icon name="ph:caret-left" />
                 </template>
               </DropdownItem>
             </Flex>
-            <Flex v-else x-between y-center>
-              <Button size="s" outline @click="router.push('/')">
+            <Flex v-else x-between y-center gap="xs">
+              <Button expand size="m" outline @click="router.push('/')">
                 <template #start>
                   <Icon name="ph:caret-left" />
                 </template>
-                Close
+                Return to home
               </Button>
-              <SharedThemeToggle no-text small />
+              <SharedThemeToggle no-text small button />
             </Flex>
           </template>
         </Sidebar>
