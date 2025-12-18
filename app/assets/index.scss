@@ -13,13 +13,15 @@
   --dark-color-bg: #111;
   --dark-color-fg: #0a0a0a;
   --dark-color-accent: #a7fc2f;
-  --dark-text-color: #fff;
+  --dark-color-text: #fff;
+  --dark-color-text-lighter: rgb(110, 110, 110);
+  --dark-color-border-weak: rgb(24, 24, 24);
 
   // Light theme colors
   --light-color-bg: #eee;
   --light-color-fg: #ddd;
   --light-color-accent: #69883e;
-  --light-text-color: #000;
+  --light-color-text: #000;
 
   --navbar-offset: 64px;
 

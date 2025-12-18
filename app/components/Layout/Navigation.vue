@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Sheet, Skeleton } from '@dolanske/vui'
+import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
 
 import NotificationDropdown from './NotificationDropdown.vue'
 import UserDropdown from './UserDropdown.vue'
@@ -22,13 +22,13 @@ onMounted(async () => {
 })
 
 // Track an animated background blob when user is hovering over the navbar links
-const navbarLinks = useTemplateRef('navbarLinksRef')
-const { elementX, isOutside, elementWidth } = useMouseInElement(navbarLinks)
-const { x: navbarLinksOffset } = useElementBounding(navbarLinks)
+const navbarLinksRef = useTemplateRef('navbarLinksRef')
+const { elementX, isOutside /* elementWidth */ } = useMouseInElement(navbarLinksRef)
+// const { x: navbarLinksOffset } = useElementBounding(navbarLinksRef)
 
 const hoveredElement = ref<HTMLElement | null>(null)
 
-const { width, update, x: hoveredElementX } = useElementBounding(hoveredElement)
+const { width, update /* x: hoveredElementX */ } = useElementBounding(hoveredElement)
 
 function updateHoveredElement(event: MouseEvent) {
   hoveredElement.value = event.target as HTMLElement | null
@@ -48,6 +48,44 @@ const transformedElementX = computed(() => {
 
   return elementX.value
 })
+
+const navbarLinks = [
+  {
+    path: '/',
+    label: 'Home',
+  },
+  {
+    path: '/announcements',
+    label: 'Announcements',
+  },
+  {
+    path: '/community',
+    label: 'Community',
+    children: [
+      {
+        path: '/community',
+        label: 'About',
+      },
+      {
+        path: '/community?tab=voice',
+        label: 'Voice channels',
+      },
+    ],
+  },
+  {
+    path: '/events',
+    label: 'Events',
+  },
+  {
+    path: '/gameservers',
+    label: 'Servers',
+  },
+  {
+    path: '/votes',
+    label: 'Votes',
+    requiresAuth: true,
+  },
+]
 </script>
 
 <template>
@@ -60,38 +98,23 @@ const transformedElementX = computed(() => {
 
         <SharedLogo class="navigation__logo" />
 
-        <ul ref="navbarLinksRef" class="navigation__links">
-          <li @mouseenter="updateHoveredElement">
-            <NuxtLink to="/">
-              Home
-            </NuxtLink>
-          </li>
-          <li @mouseenter="updateHoveredElement">
-            <NuxtLink to="/announcements">
-              Announcements
-            </NuxtLink>
-          </li>
-          <li @mouseenter="updateHoveredElement">
-            <NuxtLink to="/community">
-              Community
-            </NuxtLink>
-          </li>
-          <li @mouseenter="updateHoveredElement">
-            <NuxtLink to="/events" :class="{ 'router-link-active': $route.path.includes('/events') }">
-              Events
-            </NuxtLink>
-          </li>
-          <li @mouseenter="updateHoveredElement">
-            <NuxtLink to="/gameservers">
-              Game Servers
-            </NuxtLink>
-          </li>
-          <template v-if="authReady && user">
-            <!-- <span class="navigation__links-separator" /> -->
-            <li @mouseenter="updateHoveredElement">
-              <NuxtLink to="/votes">
-                Votes
+        <ul ref="navbarLinksRef" class="navigation__links" @mouseleave="hoveredElement = null">
+          <template v-for="link in navbarLinks" :key="link.path">
+            <li
+              v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)"
+              :class="{ 'router-link-focused': !!hoveredElement?.firstElementChild?.textContent.includes(link.label) }"
+              @mouseenter="updateHoveredElement"
+            >
+              <NuxtLink :to="link.path" :class="{ 'router-link-active': $route.path.includes(link.path) && link.path !== '/' }">
+                {{ link.label }}
+                <Icon v-if="link.children" name="ph:caret-down-fill" size="12px" />
               </NuxtLink>
+
+              <Popout v-if="link.children" class="navigation__links-popout" :anchor="hoveredElement" :visible="!!hoveredElement?.firstElementChild?.textContent.includes(link.label)">
+                <DropdownItem v-for="sublink in link.children" :key="sublink.path">
+                  {{ sublink.label }}
+                </DropdownItem>
+              </Popout>
             </li>
           </template>
 
@@ -197,15 +220,17 @@ const transformedElementX = computed(() => {
 .navigation {
   width: 100%;
   position: fixed;
-  background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
-  backdrop-filter: blur(16px);
+  background-color: var(--dark-color-fg);
+  // background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
+  // backdrop-filter: blur(16px);
   z-index: var(--z-nav); // Make sure the nav is main content
+  border-bottom: 1px solid var(--color-border-weak);
 
   &__items {
     display: flex;
     justify-content: flex-start;
     height: 64px;
-    gap: 32px;
+    gap: 16px;
     align-items: center;
     position: relative;
   }
@@ -223,10 +248,55 @@ const transformedElementX = computed(() => {
     }
   }
 
+  &__links-popout {
+    width: 192px;
+    padding: var(--space-xs);
+    border-color: var(--color-border-weak);
+    border-top: none;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    box-shadow: none;
+    transform: translate3D(0, -8px, 0);
+    background-color: var(--dark-color-fg);
+
+    &:before,
+    &:after {
+      --size: 16px;
+
+      content: '';
+      display: block;
+      width: var(--size);
+      height: var(--size);
+      position: absolute;
+      top: 0;
+      left: calc(var(--size) * -1);
+
+      aspect-ratio: 1;
+
+      // This is how to make inverted borders
+      // background-image: radial-gradient(circle at 100% 100%, transparent var(--size), var(--dark-color-fg) var(--size));
+      background-image: radial-gradient(
+        circle at 100% 100%,
+        transparent calc(var(--size) - 1px),
+        var(--color-border-weak) calc(var(--size) - 1px),
+        var(--color-border-weak) var(--size),
+        var(--dark-color-fg) var(--size)
+      );
+    }
+
+    &:before {
+      transform: scaleX(-1);
+    }
+
+    &:after {
+      left: unset;
+      right: calc(var(--size) * -1);
+    }
+  }
+
   &__links {
     display: flex;
     align-items: center;
-    gap: var(--space-xxs);
     position: relative;
     height: 100%;
     padding-inline: 32px;
@@ -239,14 +309,37 @@ const transformedElementX = computed(() => {
         display: flex;
         align-items: center;
         padding: 0 12px;
+        gap: 4px;
         height: 100%;
-        font-size: var(--font-size-m);
-        color: var(--color-text-light);
+        font-size: 1.4rem;
+        color: var(--color-text-lighter);
         text-decoration: none;
+        transition: var(--transition);
 
-        &:hover,
+        .iconify {
+          color: var(--color-text-lighter);
+          transition: var(--transition);
+          transition-property: color;
+        }
+
         &.router-link-active {
           color: var(--color-accent);
+
+          .iconify {
+            color: var(--color-accent);
+          }
+        }
+
+        &:not(&.router-link-active) {
+          &.router-link-focused,
+          &:hover {
+            color: var(--color-text);
+
+            .iconify {
+              color: var(--color-text);
+              transform: rotate(180deg);
+            }
+          }
         }
       }
     }
@@ -266,11 +359,11 @@ const transformedElementX = computed(() => {
     opacity: 0;
     transition:
       0.2s opacity ease-in-out,
-      0.4s width cubic-bezier(0.16, 1, 0.3, 1);
+      0.6s width cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
 
     &.active {
-      opacity: 0.5;
+      opacity: 0.4;
     }
   }
 
@@ -315,7 +408,7 @@ const transformedElementX = computed(() => {
   &__user {
     display: flex;
     align-items: center;
-    gap: var(--space-xs);
+    gap: var(--space-s);
   }
 
   &__dropdown {

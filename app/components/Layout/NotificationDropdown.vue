@@ -220,8 +220,8 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
     <Dropdown min-width="336px" placement="bottom-end">
       <template #trigger="{ toggle }">
         <Button square plain aria-label="Open notifications" @click="toggle">
-          <Icon name="ph:bell" />
-          <span v-if="badgeText" class="notification-menu__badge">{{ badgeText }}</span>
+          <Icon name="ph:bell" :size="20" />
+          <span v-if="badgeText" class="notification-menu__badge" />
         </Button>
       </template>
 
@@ -287,12 +287,10 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
 
   &__badge {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 5px;
+    right: 5px;
     background: var(--color-accent);
     color: var(--color-text-on-accent);
-    font-size: 4px;
-    line-height: 1;
     min-width: 10px;
     height: 10px;
     border-radius: 999px;
