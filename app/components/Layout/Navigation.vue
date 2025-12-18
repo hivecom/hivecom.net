@@ -39,7 +39,7 @@ function updateHoveredElement(event: MouseEvent) {
 // to sort of snap to the hovered link, but not fully and with some correction
 // to make it look more natural.
 
-// When we are 10 ore more pixels within the element with our cursor, snap to it.
+// When we are 12 or more pixels within the element with our cursor, snap to it.
 const transformedElementX = computed(() => {
   // const hoveredElementXOffset = hoveredElementX.value - navbarLinksOffset.value
   // if (elementX.value > hoveredElementXOffset + 12 && elementX.value < hoveredElementXOffset + width.value - 12) {
