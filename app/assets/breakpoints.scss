@@ -4,3 +4,6 @@ $breakpoint-s: 768px;
 $breakpoint-m: 1024px;
 $breakpoint-l: 1280px;
 $breakpoint-xl: 1440px;
+
+// Special breakpoint to catch VUI-related breakpoint changes
+$breakpoint-vui-mobile: 572px;

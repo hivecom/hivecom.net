@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
-
 import NotificationDropdown from './NotificationDropdown.vue'
 import UserDropdown from './UserDropdown.vue'
 
@@ -8,6 +7,8 @@ import UserDropdown from './UserDropdown.vue'
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const authReady = ref(false)
+
+const router = useRouter()
 
 // Mobile menu state
 const mobileMenuOpen = ref(false)
@@ -23,12 +24,11 @@ onMounted(async () => {
 
 // Track an animated background blob when user is hovering over the navbar links
 const navbarLinksRef = useTemplateRef('navbarLinksRef')
-const { elementX, isOutside /* elementWidth */ } = useMouseInElement(navbarLinksRef)
-// const { x: navbarLinksOffset } = useElementBounding(navbarLinksRef)
+const { elementX, isOutside } = useMouseInElement(navbarLinksRef)
 
 const hoveredElement = ref<HTMLElement | null>(null)
 
-const { width, update /* x: hoveredElementX */ } = useElementBounding(hoveredElement)
+const { width, update } = useElementBounding(hoveredElement)
 
 function updateHoveredElement(event: MouseEvent) {
   hoveredElement.value = event.target as HTMLElement | null
@@ -39,28 +39,21 @@ function updateHoveredElement(event: MouseEvent) {
 // to sort of snap to the hovered link, but not fully and with some correction
 // to make it look more natural.
 
-// When we are 12 or more pixels within the element with our cursor, snap to it.
-const transformedElementX = computed(() => {
-  // const hoveredElementXOffset = hoveredElementX.value - navbarLinksOffset.value
-  // if (elementX.value > hoveredElementXOffset + 12 && elementX.value < hoveredElementXOffset + width.value - 12) {
-  //   return hoveredElementXOffset + width.value / 2
-  // }
-
-  return elementX.value
-})
-
 const navbarLinks = [
   {
     path: '/',
     label: 'Home',
+    icon: 'ph:house',
   },
   {
     path: '/announcements',
     label: 'Announcements',
+    icon: 'ph:megaphone',
   },
   {
     path: '/community',
     label: 'Community',
+    icon: 'ph:users',
     children: [
       {
         path: '/community',
@@ -75,14 +68,37 @@ const navbarLinks = [
   {
     path: '/events',
     label: 'Events',
+    icon: 'ph:calendar',
+    children: [
+      {
+        path: '/events',
+        label: 'List',
+      },
+      {
+        path: '/events?tab=calendar',
+        label: 'Calendar',
+      },
+    ],
   },
   {
     path: '/gameservers',
     label: 'Servers',
+    icon: 'ph:game-controller',
+    children: [
+      {
+        path: '/gameservers',
+        label: 'Library',
+      },
+      {
+        path: '/gameservers?tab=list',
+        label: 'List',
+      },
+    ],
   },
   {
     path: '/votes',
     label: 'Votes',
+    icon: 'ph:check-square',
     requiresAuth: true,
   },
 ]
@@ -111,7 +127,7 @@ const navbarLinks = [
               </NuxtLink>
 
               <Popout v-if="link.children" class="navigation__links-popout" :anchor="hoveredElement" :visible="!!hoveredElement?.firstElementChild?.textContent.includes(link.label)">
-                <DropdownItem v-for="sublink in link.children" :key="sublink.path">
+                <DropdownItem v-for="sublink in link.children" :key="sublink.path" @click="router.push(sublink.path)">
                   {{ sublink.label }}
                 </DropdownItem>
               </Popout>
@@ -122,7 +138,7 @@ const navbarLinks = [
             class="navigation__links-hover"
             :class="{ active: !isOutside }"
             :style="{
-              left: `${transformedElementX}px`,
+              left: `${elementX}px`,
               width: `${width}px`,
             }"
           />
@@ -145,32 +161,17 @@ const navbarLinks = [
           </template>
           <template #header-end />
           <div class="navigation__mobile-menu">
-            <NuxtLink to="/" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:house" />
-              <span>Home</span>
-            </NuxtLink>
-            <NuxtLink to="/announcements" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:megaphone" />
-              <span>Announcements</span>
-            </NuxtLink>
-            <NuxtLink to="/community" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:users" />
-              <span>Community</span>
-            </NuxtLink>
-            <NuxtLink to="/events" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:calendar" />
-              <span>Events</span>
-            </NuxtLink>
-            <NuxtLink to="/gameservers" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:game-controller" />
-              <span>Game Servers</span>
-            </NuxtLink>
-            <template v-if="authReady && user">
-              <span class="navigation__mobile-menu-separator" />
-              <NuxtLink to="/votes" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-                <Icon name="ph:check-square" />
-                <span>Votes</span>
+            <template v-for="link in navbarLinks" :key="link.path">
+              <NuxtLink v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)" :to="link.path" class="navigation__mobile-menu-item" :class="{ 'router-link-active': $route.path.includes(link.path) && link.path !== '/' }">
+                <Icon :name="link.icon" />
+                {{ link.label }}
               </NuxtLink>
+
+              <div class="navigation__mobile-submenu">
+                <NuxtLink v-for="sublink in link.children" :key="sublink.path" :to="sublink.path" class="navigation__mobile-menu-item">
+                  {{ sublink.label }}
+                </NuxtLink>
+              </div>
             </template>
           </div>
         </Sheet>
@@ -454,7 +455,41 @@ const navbarLinks = [
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs);
+    gap: var(--space-xxs);
+    padding-top: var(--space-l);
+  }
+
+  &__mobile-submenu {
+    padding-left: 46px;
+
+    .navigation__mobile-menu-item {
+      position: relative;
+
+      &:not(:first-child):after {
+        height: 40px;
+      }
+
+      &:before {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        left: -20px;
+        top: 0px;
+        border: 2px solid var(--color-border);
+        clip-path: inset(8px 8px 0 0);
+        border-radius: 999px;
+      }
+
+      &:after {
+        content: '';
+        position: absolute;
+        border-left: 2px solid var(--color-border);
+        left: -20px;
+        bottom: 30px;
+        height: 18px;
+      }
+    }
   }
 
   &__mobile-menu-item {
@@ -469,6 +504,7 @@ const navbarLinks = [
     border: none;
     cursor: pointer;
     text-align: left;
+    font-size: var(--font-size-m);
 
     &:hover,
     &.router-link-active {
@@ -477,7 +513,7 @@ const navbarLinks = [
     }
 
     .iconify {
-      font-size: 20px;
+      font-size: 18px;
     }
 
     &--accent {
@@ -489,20 +525,16 @@ const navbarLinks = [
       }
     }
   }
-
-  &__mobile-menu-separator {
-    display: block;
-    height: 1px;
-    width: 100%;
-    background-color: color-mix(in srgb, var(--color-text) 20%, transparent);
-    margin: var(--space-m) 0;
-  }
 }
 
 @media (max-width: $breakpoint-l) {
   .navigation {
     &__items {
       justify-content: space-between;
+
+      .flex-1 {
+        display: none;
+      }
     }
 
     &__hamburger {
@@ -536,6 +568,33 @@ const navbarLinks = [
       &-mobile-button {
         display: flex;
       }
+    }
+  }
+}
+
+@media screen and (max-width: $breakpoint-vui-mobile) {
+  .navigation {
+    &__mobile-menu {
+      gap: var(--space-xs);
+    }
+  }
+
+  .navigation__mobile-submenu .navigation__mobile-menu-item {
+    &:before,
+    &:after {
+      left: -26px;
+    }
+
+    &:before {
+      top: -8px;
+    }
+
+    &:not(:first-child):after {
+      height: 40px;
+    }
+
+    &:after {
+      height: 10px;
     }
   }
 }

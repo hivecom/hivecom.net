@@ -171,7 +171,7 @@ onBeforeMount(fetchMotds)
         clearable
         style="max-width: 320px"
       />
-      <Flex gap="s" y-center>
+      <Flex gap="m" y-center>
         <span class="text-color-lighter text-s">
           {{ search.trim() ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>

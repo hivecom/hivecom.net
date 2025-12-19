@@ -139,7 +139,7 @@ defineProps<{
   font-size: clamp(17rem, 10vw, 10rem);
   font-stretch: ultra-condensed;
   font-weight: var(--font-weight-extrabold);
-  letter-spacing: 0.5rem;
+  letter-spacing: -1rem;
   transform: scaleY(0.6) translateX(-0.05em);
   line-height: clamp(4rem, 9vw, 8.5rem);
   margin-left: 30px;
