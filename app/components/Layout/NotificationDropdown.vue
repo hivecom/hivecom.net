@@ -219,7 +219,7 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
   <div class="notification-menu" aria-live="polite">
     <Dropdown min-width="336px" placement="bottom-end">
       <template #trigger="{ toggle }">
-        <Button square plain aria-label="Open notifications" @click="toggle">
+        <Button square plain aria-label="Open notifications" class="vui-button-accent-weak" @click="toggle">
           <Icon name="ph:bell" :size="20" />
           <span v-if="badgeText" class="notification-menu__badge" />
         </Button>

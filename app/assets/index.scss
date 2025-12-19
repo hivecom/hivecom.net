@@ -124,6 +124,12 @@ table td {
   pointer-events: none;
 }
 
+.vui-button-accent-weak {
+  &:hover {
+    background-color: color-mix(in srgb, var(--color-accent) 15%, transparent) !important;
+  }
+}
+
 @media (max-width: $breakpoint-s) {
   .vui-table-container {
     width: auto !important;
