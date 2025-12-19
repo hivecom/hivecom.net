@@ -190,15 +190,6 @@ useHead({
 
     <!-- Gameserver Content -->
     <div v-if="gameserver && !loading && !error" class="page-content">
-      <!-- Header -->
-      <GameServerHeader
-        :gameserver="gameserver"
-        :game="game"
-        :container="container"
-        :state="state"
-        :state-config="stateConfig"
-      />
-
       <!-- Background Image -->
       <div
         v-if="gameBackground"
@@ -207,6 +198,15 @@ useHead({
       >
         <div class="background-overlay" />
       </div>
+
+      <!-- Header -->
+      <GameServerHeader
+        :gameserver="gameserver"
+        :game="game"
+        :container="container"
+        :state="state"
+        :state-config="stateConfig"
+      />
 
       <!-- Server Details (Markdown) -->
       <GameServerMarkdown :gameserver="gameserver" />
@@ -232,7 +232,7 @@ useHead({
 .game-background-section {
   position: relative;
   width: 100%;
-  height: 480px;
+  height: 440px;
   border-radius: var(--border-radius-m);
   overflow: hidden;
   background-size: cover;

@@ -44,15 +44,13 @@ function openComplaintModal() {
 </script>
 
 <template>
-  <!-- Navigation -->
-  <Flex x-between>
+  <Flex x-start>
     <Button
       variant="gray"
       plain
       size="s"
       aria-label="Go back to Game Servers"
-      class="gameserver-header__back-link"
-      @click="$router.push('/gameservers')"
+      href="/gameservers"
     >
       <template #start>
         <Icon name="ph:arrow-left" />
@@ -92,12 +90,6 @@ function openComplaintModal() {
       </div>
 
       <Flex gap="m" class="gameserver-header__aside" y-start>
-        <!-- Administrator -->
-        <div v-if="gameserver.administrator" class="gameserver-header__administrator-info">
-          <span class="gameserver-header__administrator-label">Administrator</span>
-          <UserLink :user-id="gameserver.administrator" size="s" />
-        </div>
-
         <!-- Connect Button -->
         <div
           v-if="gameserver.addresses && gameserver.addresses.length"
@@ -192,6 +184,14 @@ function openComplaintModal() {
                 <span class="gameserver-header__status-label">Last Reported</span>
                 <Badge v-if="container.reported_at">
                   <TimestampDate size="xs" :date="container.reported_at" />
+                </Badge>
+              </div>
+
+              <!-- Administrator -->
+              <div v-if="gameserver.administrator" class="gameserver-header__status-item">
+                <span class="gameserver-header__status-label">Admin</span>
+                <Badge>
+                  <UserLink :user-id="gameserver.administrator" size="s" />
                 </Badge>
               </div>
 
@@ -333,10 +333,6 @@ function openComplaintModal() {
     font-size: var(--font-size-s);
     color: var(--color-text);
     font-weight: var(--font-weight-medium);
-  }
-
-  &__back-link {
-    text-decoration: none;
   }
 
   &__actions {
