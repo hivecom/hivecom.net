@@ -3,8 +3,8 @@ import type { Tables } from '@/types/database.types'
 import { Button, Card, Flex } from '@dolanske/vui'
 import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
-import EventMetadata from '@/components/Events/EventMetadata.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
+import MetadataCard from '@/components/Shared/MetadataCard.vue'
 
 // Get route parameter
 const route = useRoute()
@@ -247,7 +247,12 @@ useHead({
       <EventMarkdown :event="event" />
 
       <!-- Metadata -->
-      <EventMetadata :event="event" />
+      <MetadataCard
+        :created-at="event.created_at"
+        :created-by="event.created_by"
+        :modified-at="event.modified_at"
+        :modified-by="event.modified_by"
+      />
     </div>
   </div>
 </template>
