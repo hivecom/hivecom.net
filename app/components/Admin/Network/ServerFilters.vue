@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex, Input, Select } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption {
   label: string
@@ -15,6 +16,8 @@ const emit = defineEmits<{
   (e: 'clearFilters'): void
 }>()
 
+const isBelowMedium = useBreakpoint('<m')
+
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
 const statusFilter = defineModel<SelectOption[]>('statusFilter')
@@ -26,11 +29,12 @@ function clearFilters() {
 </script>
 
 <template>
-  <Flex gap="s" x-start wrap>
+  <Flex gap="s" x-start wrap expand>
     <!-- Search input -->
     <Input
       v-model="search"
       placeholder="Search servers..."
+      :expand="isBelowMedium"
     >
       <template #start>
         <Icon name="ph:magnifying-glass" />
@@ -42,7 +46,7 @@ function clearFilters() {
       v-model="statusFilter"
       :options="props.statusOptions"
       placeholder="Filter by status"
-      expand
+      :expand="isBelowMedium"
       search
       show-clear
     />
@@ -52,6 +56,7 @@ function clearFilters() {
       v-if="search || statusFilter"
       plain
       outline
+      :expand="isBelowMedium"
       :disabled="!search && !statusFilter"
       @click="clearFilters"
     >

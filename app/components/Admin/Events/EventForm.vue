@@ -4,6 +4,7 @@ import { Button, Calendar, Flex, Grid, Input, Select, Sheet, Textarea } from '@d
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   event: Tables<'events'> | null
@@ -65,6 +66,8 @@ const gameOptions = computed(() =>
 
 // Selected games for VUI Select component (matches VUI example pattern)
 const selectedGames = ref<SelectOption[]>([])
+
+const isBelowMedium = useBreakpoint('<m')
 
 // Watch for changes in selectedGames and update form
 watch(selectedGames, (newSelectedGames) => {
@@ -339,7 +342,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
           <div class="event-form__duration-label">
             Duration
           </div>
-          <Grid :columns="3" gap="xs" expand>
+          <Grid :columns="isBelowMedium ? 1 : 3" gap="xs" expand>
             <Input
               style="width: auto"
               name="duration_days"
@@ -350,6 +353,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
               @update:model-value="eventForm.duration_days = $event ? Number($event) : null"
             />
             <Input
+              expand
               name="duration_hours"
               type="number"
               placeholder="Hours"
@@ -359,6 +363,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
               @update:model-value="eventForm.duration_hours = $event ? Number($event) : null"
             />
             <Input
+              expand
               name="duration_minutes"
               type="number"
               placeholder="Minutes"

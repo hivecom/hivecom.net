@@ -283,7 +283,7 @@ function updateFileName(id: string, value: string) {
                 :model-value="item.targetName"
                 :disabled="uploading"
                 expand
-                @update:model-value="value => updateFileName(item.id, typeof value === 'string' ? value : String(value ?? ''))"
+                @update:model-value="(value: string | number | null | undefined) => updateFileName(item.id, typeof value === 'string' ? value : String(value ?? ''))"
               >
                 <template #start>
                   <Icon name="ph:pencil-simple" />

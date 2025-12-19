@@ -9,6 +9,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ProjectDetails from './ProjectDetails.vue'
 import ProjectFilters from './ProjectFilters.vue'
 import ProjectForm from './ProjectForm.vue'
@@ -49,6 +50,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const projects = ref<QueryData<typeof projectsQuery>>([])
 const search = ref('')
+const isBelowMedium = useBreakpoint('<m')
 
 // Filter states
 const tagFilter = ref<SelectOption[]>([])
@@ -264,18 +266,29 @@ onBeforeMount(fetchProjects)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between y-center expand>
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <ProjectFilters
           v-model:search="search"
           v-model:tag-filter="tagFilter"
           :tag-options="tagOptions"
+          :expand="isBelowMedium"
           @clear-filters="clearFilters"
         />
 
-        <Flex gap="s" y-center>
-          <span class="text-color-lighter text-s">Total —</span>
+        <Flex
+          gap="s"
+          :y-center="!isBelowMedium"
+          :y-start="isBelowMedium"
+          :wrap="isBelowMedium"
+          :x-end="!isBelowMedium"
+          :x-center="isBelowMedium"
+          :x-start="isBelowMedium"
+          :expand="isBelowMedium"
+          :column-reverse="isBelowMedium"
+        >
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
 
-          <Button v-if="canCreate" variant="accent" loading>
+          <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" loading>
             <template #start>
               <Icon name="ph:plus" />
             </template>
@@ -295,20 +308,31 @@ onBeforeMount(fetchProjects)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between y-center expand>
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
       <ProjectFilters
         v-model:search="search"
         v-model:tag-filter="tagFilter"
         :tag-options="tagOptions"
+        :expand="isBelowMedium"
         @clear-filters="clearFilters"
       />
 
-      <Flex gap="s" y-center>
-        <span class="text-color-lighter text-s">
+      <Flex
+        gap="s"
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :column-reverse="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
           {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>
 
-        <Button v-if="canCreate" variant="accent" @click="openAddProjectForm">
+        <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddProjectForm">
           <template #start>
             <Icon name="ph:plus" />
           </template>

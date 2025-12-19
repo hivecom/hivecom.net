@@ -124,10 +124,15 @@ const timeProgressPercentage = computed(() => {
 .countdown-timer {
   position: relative;
   padding: var(--space-s);
+  padding-right: 1px;
+  padding-top: 1px;
   background: linear-gradient(135deg, var(--color-bg-subtle), var(--color-bg));
-  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
   overflow: hidden;
+
+  @media (max-width: $breakpoint-xs) {
+    padding: 1px;
+  }
 
   &__border {
     position: absolute;
@@ -194,13 +199,12 @@ const timeProgressPercentage = computed(() => {
     min-width: 80px;
 
     &:hover {
-      transform: translateY(-2px) scale(1.05);
+      transform: translateY(-2px) scale(0.9);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     }
 
     @media (max-width: $breakpoint-s) {
       min-width: auto;
-      padding: var(--space-xs);
     }
 
     @media (max-width: $breakpoint-xs) {
@@ -214,21 +218,14 @@ const timeProgressPercentage = computed(() => {
   }
 
   &__number {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-xxl);
     font-weight: 800;
     color: var(--color-accent);
+    margin-bottom: var(--space-s);
     line-height: 1;
     display: inline-block;
     transition: all 0.3s ease;
     animation: whiteFlash 0.6s ease-out;
-
-    @media (max-width: $breakpoint-s) {
-      font-size: var(--font-size-l);
-    }
-
-    @media (max-width: $breakpoint-xs) {
-      font-size: var(--font-size-m);
-    }
   }
 
   &__label {

@@ -106,7 +106,7 @@ function handleClick() {
       <!-- Event header -->
       <div class="event-card__header">
         <h3 class="event-card__title">
-          {{ event.title }}
+          {{ props.event.title }}
           <Icon v-if="event.link" name="ph:arrow-square-out" class="event-card__external-icon" />
         </h3>
         <!-- Removed status badge for past events since it's now at the top -->
@@ -117,15 +117,15 @@ function handleClick() {
         <Flex gap="xs" y-center class="event-card__date">
           <Icon name="ph:calendar" size="16" />
           <TimestampDate
-            :date="event.date"
+            :date="props.event.date"
             :format="compact ? 'MMM D, YYYY' : 'dddd, MMM D, YYYY [at] HH:mm'"
           />
         </Flex>
 
         <!-- Duration -->
-        <div v-if="event.duration_minutes" class="event-card__duration">
+        <div v-if="props.event.duration_minutes" class="event-card__duration">
           <Icon name="ph:clock" size="16" />
-          <span>{{ formatDurationFromMinutes(event.duration_minutes) }}</span>
+          <span>{{ formatDurationFromMinutes(props.event.duration_minutes) }}</span>
         </div>
       </div>
 
@@ -151,24 +151,25 @@ function handleClick() {
       </div>
 
       <!-- Event description -->
-      <p v-if="event.description" class="event-card__description">
-        {{ event.description }}
+      <p v-if="props.event.description" class="event-card__description">
+        {{ props.event.description }}
       </p>
 
       <!-- Event metadata -->
-      <div v-if="event.location || event.note || !compact" class="event-card__meta">
-        <Badge v-if="event.location" variant="neutral" size="s">
+      <div class="event-card__meta">
+        <Badge v-if="props.event.location" variant="neutral" size="s">
           <Icon name="ph:map-pin" />
-          {{ event.location }}
+          {{ props.event.location }}
         </Badge>
-        <Badge v-if="event.note" variant="neutral" size="s">
+
+        <Badge v-if="props.event.note" variant="neutral" size="s">
           <Icon name="ph:note" />
           Note
         </Badge>
 
         <!-- RSVP Count for non-compact view -->
         <EventRSVPCount
-          :event="event"
+          :event="props.event"
           size="s"
           :show-when-zero="false"
         />

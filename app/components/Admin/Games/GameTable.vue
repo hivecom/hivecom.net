@@ -5,8 +5,10 @@ import { computed, onBeforeMount, ref } from 'vue'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import GameIcon from '@/components/GameServers/GameIcon.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import GameDetails from './GameDetails.vue'
 import GameFilters from './GameFilters.vue'
 import GameForm from './GameForm.vue'
@@ -69,6 +71,8 @@ const transformedGames = computed<TransformedGame[]>(() => {
 const totalCount = computed(() => games.value.length)
 const filteredCount = computed(() => transformedGames.value.length)
 const isFiltered = computed(() => Boolean(search.value))
+
+const isBelowMedium = useBreakpoint('<m')
 
 // Table configuration
 const { headers, rows, pagination, setPage, setSort } = defineTable(transformedGames, {
@@ -229,13 +233,25 @@ onBeforeMount(fetchGames)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between y-center expand>
-        <GameFilters v-model:search="search" />
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+        <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+          <GameFilters v-model:search="search" />
+        </Flex>
 
-        <Flex gap="s" y-center>
-          <span class="text-color-lighter text-s">Total —</span>
+        <Flex
+          gap="s"
+          :y-center="!isBelowMedium"
+          :y-start="isBelowMedium"
+          :wrap="isBelowMedium"
+          :x-end="!isBelowMedium"
+          :x-center="isBelowMedium"
+          :x-start="isBelowMedium"
+          :expand="isBelowMedium"
+          :column-reverse="isBelowMedium"
+        >
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
 
-          <Button v-if="canCreate" variant="accent" @click="openAddGameForm">
+          <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddGameForm">
             <template #start>
               <Icon name="ph:plus" />
             </template>
@@ -255,15 +271,27 @@ onBeforeMount(fetchGames)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between y-center expand>
-      <GameFilters v-model:search="search" />
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+      <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
+        <GameFilters v-model:search="search" />
+      </Flex>
 
-      <Flex gap="s" y-center>
-        <span class="text-color-lighter text-s">
+      <Flex
+        gap="s"
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :column-reverse="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
           {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>
 
-        <Button v-if="canCreate" variant="accent" @click="openAddGameForm">
+        <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddGameForm">
           <template #start>
             <Icon name="ph:plus" />
           </template>
@@ -286,7 +314,12 @@ onBeforeMount(fetchGames)
 
         <template #body>
           <tr v-for="game in rows" :key="game._original.id" class="clickable-row" @click="viewGameDetails(game._original)">
-            <Table.Cell>{{ game.Name }}</Table.Cell>
+            <Table.Cell>
+              <Flex gap="xs" y-center>
+                <GameIcon :game="game._original" size="xs" />
+                <span>{{ game.Name }}</span>
+              </Flex>
+            </Table.Cell>
             <Table.Cell>
               <Badge v-if="game.Shorthand" variant="accent">
                 {{ game.Shorthand }}

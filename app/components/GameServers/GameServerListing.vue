@@ -150,7 +150,7 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
                         :aria-label="`Open details for ${game.name ?? 'game'}`"
                         @click.stop="open"
                       >
-                        <GameIcon :game="game" size="medium" />
+                        <GameIcon :game="game" size="m" />
                       </button>
                     </GameDetailsModalTrigger>
                     {{ game.name }}

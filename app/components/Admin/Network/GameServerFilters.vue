@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex, Input, Select } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption {
   label: string
@@ -16,6 +17,8 @@ const emit = defineEmits<{
   (e: 'clearFilters'): void
 }>()
 
+const isBelowMedium = useBreakpoint('<m')
+
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
 const regionFilter = defineModel<SelectOption[]>('regionFilter')
@@ -28,11 +31,12 @@ function clearFilters() {
 </script>
 
 <template>
-  <Flex gap="s" x-start wrap>
+  <Flex gap="s" x-start wrap expand>
     <!-- Search input -->
     <Input
       v-model="search"
       placeholder="Search game servers..."
+      :expand="isBelowMedium"
     >
       <template #start>
         <Icon name="ph:magnifying-glass" />
@@ -44,7 +48,7 @@ function clearFilters() {
       v-model="gameFilter"
       :options="props.gameOptions"
       placeholder="Filter by game"
-      expand
+      :expand="isBelowMedium"
       search
       show-clear
     />
@@ -54,7 +58,7 @@ function clearFilters() {
       v-model="regionFilter"
       :options="props.regionOptions"
       placeholder="Filter by region"
-      expand
+      :expand="isBelowMedium"
       search
       show-clear
     />
@@ -64,6 +68,7 @@ function clearFilters() {
       v-if="search || regionFilter || gameFilter"
       plain
       outline
+      :expand="isBelowMedium"
       :disabled="!search && !regionFilter && !gameFilter"
       @click="clearFilters"
     >

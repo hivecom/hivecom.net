@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ReferendumResults from '@/components/Shared/ReferendumResults.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCacheQuery } from '@/composables/useCache'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDuration } from '@/lib/utils/duration'
 
 const route = useRoute()
@@ -15,6 +16,8 @@ const router = useRouter()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
+
+const isBelowSmall = useBreakpoint('<s')
 
 // Redirect to login if user is not authenticated
 watch(user, (newUser) => {
@@ -373,7 +376,7 @@ useHead({
     <!-- Referendum content -->
     <template v-else>
       <!-- Back Button -->
-      <Flex class="mb-m">
+      <Flex class="mb-m" x-between wrap>
         <Button
           variant="gray"
           size="s"
@@ -385,6 +388,7 @@ useHead({
           </template>
           Back to Votes
         </Button>
+        <UserDisplay :user-id="referendum.created_by" show-role />
       </Flex>
 
       <!-- Header -->
@@ -394,7 +398,6 @@ useHead({
             <h1>
               {{ referendum.title }}
             </h1>
-            <UserDisplay :user-id="referendum.created_by" show-role />
           </Flex>
 
           <p v-if="referendum.description" class="text-xl text-color-light">
@@ -402,7 +405,7 @@ useHead({
           </p>
 
           <Flex x-between y-center expand class="mt-m">
-            <Flex gap="xs">
+            <Flex gap="xs" wrap>
               <Badge :variant="statusVariant">
                 {{ statusLabel }}
               </Badge>
@@ -471,12 +474,13 @@ useHead({
             class="mb-l"
           />
 
-          <Flex y-center x-between expand>
-            <Flex gap="s" y-center wrap>
+          <Flex y-center x-between expand :column="isBelowSmall" gap="xl">
+            <Flex gap="s" y-center wrap :expand="isBelowSmall" :column="isBelowSmall">
               <Button
                 variant="accent"
                 :disabled="selectedChoices.length === 0 || isSubmitting"
                 :loading="isSubmitting"
+                :expand="isBelowSmall"
                 @click="submitVote"
               >
                 <template #start>
@@ -490,6 +494,7 @@ useHead({
                 variant="danger"
                 :disabled="isSubmitting || isRemovingVote"
                 :loading="isRemovingVote"
+                :expand="isBelowSmall"
                 @click="requestRemoveVote"
               >
                 <template #start>

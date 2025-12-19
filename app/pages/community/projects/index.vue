@@ -17,6 +17,7 @@ const supabase = useSupabaseClient()
 const projects = ref<Tables<'projects'>[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+const isBelowExtraSmall = useBreakpoint('<xs')
 const isBelowM = useBreakpoint('<m')
 
 // Filters
@@ -140,8 +141,8 @@ useSeoMeta({
 
       <template v-if="!loading && !error">
         <!-- Filters -->
-        <Flex gap="s" x-start class="projects__filters" y-center wrap>
-          <Input v-model="search" placeholder="Search projects">
+        <Flex gap="s" x-start class="projects__filters" y-center wrap expand>
+          <Input v-model="search" placeholder="Search projects" :expand="isBelowExtraSmall">
             <template #start>
               <Icon name="ph:magnifying-glass" />
             </template>
@@ -150,15 +151,16 @@ useSeoMeta({
             v-model="tagFilter"
             :options="tagOptions"
             placeholder="Filter by tags"
-            expand
             search
             show-clear
             :single="false"
+            :expand="isBelowExtraSmall"
           />
           <Button
             v-if="search || (tagFilter && tagFilter.length > 0)"
             plain
             outline
+            :expand="isBelowExtraSmall"
             @click="clearFilters"
           >
             Clear

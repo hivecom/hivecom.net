@@ -4,12 +4,12 @@ import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
 
 interface Props {
   game: Tables<'games'>
-  size?: 'small' | 'medium' | 'large' | 'xl'
+  size?: 'xs' | 's' | 'm' | 'l' | 'xl'
   showFallback?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  size: 'medium',
+  size: 'm',
   showFallback: true,
 })
 
@@ -22,9 +22,10 @@ const hasError = ref(false)
 // Size configurations
 const sizeClasses = computed(() => {
   const sizes = {
-    small: 'w-6 h-6', // 24px
-    medium: 'w-8 h-8', // 32px
-    large: 'w-12 h-12', // 48px
+    xs: 'w-4 h-4', // 16px
+    s: 'w-6 h-6', // 24px
+    m: 'w-8 h-8', // 32px
+    l: 'w-12 h-12', // 48px
     xl: 'w-18 h-18', // 72px
   }
   return sizes[props.size]
@@ -105,7 +106,6 @@ watch(() => props.game, () => {
   border-radius: var(--border-radius-m);
   background: var(--color-background-secondary);
   object-fit: cover;
-  border: 1px solid var(--color-border);
   transition: opacity 0.2s ease;
 
   &.fallback-icon {
@@ -130,6 +130,12 @@ watch(() => props.game, () => {
 }
 .h-6 {
   height: 24px;
+}
+.w-4 {
+  width: 16px;
+}
+.h-4 {
+  height: 16px;
 }
 .w-8 {
   width: 32px;

@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
 import EventGames from '@/components/Events/EventGames.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
 import CountdownTimer from './CountdownTimer.vue'
 import EventRSVPCount from './EventRSVPCount.vue'
@@ -23,7 +24,9 @@ interface Props {
   timeAgo?: string
 }
 
-const _props = defineProps<Props>()
+const props = defineProps<Props>()
+
+const isBelowSmall = useBreakpoint('<s')
 
 // Get current user for authentication checks
 const user = useSupabaseUser()
@@ -42,26 +45,26 @@ const rsvpCounts = ref({
 
 // Fetch RSVP counts
 async function fetchRSVPCounts() {
-  if (!_props.event?.id)
+  if (!props.event?.id)
     return
 
   try {
     const { count: yesCount } = await supabase
       .from('events_rsvps')
       .select('*', { count: 'exact', head: true })
-      .eq('event_id', _props.event.id)
+      .eq('event_id', props.event.id)
       .eq('rsvp', 'yes')
 
     const { count: tentativeCount } = await supabase
       .from('events_rsvps')
       .select('*', { count: 'exact', head: true })
-      .eq('event_id', _props.event.id)
+      .eq('event_id', props.event.id)
       .eq('rsvp', 'tentative')
 
     const { count: noCount } = await supabase
       .from('events_rsvps')
       .select('*', { count: 'exact', head: true })
-      .eq('event_id', _props.event.id)
+      .eq('event_id', props.event.id)
       .eq('rsvp', 'no')
 
     rsvpCounts.value = {
@@ -79,7 +82,7 @@ async function fetchRSVPCounts() {
 // Listen for RSVP updates
 function handleRsvpUpdate(event: Event) {
   const customEvent = event as CustomEvent
-  if (customEvent.detail?.eventId === _props.event.id) {
+  if (customEvent.detail?.eventId === props.event.id) {
     fetchRSVPCounts()
   }
 }
@@ -97,13 +100,29 @@ onUnmounted(() => {
 <template>
   <div class="event-header">
     <!-- Title and actions row -->
-    <Flex x-between align="start" gap="l" class="event-header__title-row">
-      <Flex column class="event-header__title-section">
-        <h1 class="event-header__title">
-          {{ event.title }}
+    <Flex
+      :x-between="!isBelowSmall"
+      :x-center="isBelowSmall"
+      :row="!isBelowSmall"
+      :column-reverse="isBelowSmall"
+      :y-start="!isBelowSmall"
+      :y-center="isBelowSmall"
+      gap="l"
+      class="event-header__title-row"
+    >
+      <Flex
+        column
+        :y-center="isBelowSmall"
+        :y-start="!isBelowSmall"
+        class="event-header__title-section"
+        :style="{ textAlign: isBelowSmall ? 'center' : 'left',
+                  width: isBelowSmall ? '100%' : undefined }"
+      >
+        <h1 class="text-xxxl event-header__title">
+          {{ props.event.title }}
         </h1>
         <p v-if="event.description" class="event-header__description">
-          {{ event.description }}
+          {{ props.event.description }}
         </p>
         <!-- Games Section -->
         <template v-if="games && games.length > 0">
@@ -112,7 +131,14 @@ onUnmounted(() => {
       </Flex>
 
       <!-- Timing/Countdown Section -->
-      <div class="event-header__timing-section">
+      <Flex
+        column
+        :y-center="isBelowSmall"
+        :y-end="!isBelowSmall"
+        gap="s"
+        class="event-header__timing-section"
+        :style="{ width: isBelowSmall ? '100%' : undefined }"
+      >
         <!-- Enhanced Countdown for upcoming events or NOW for ongoing -->
         <CountdownTimer
           v-if="isUpcoming || isOngoing"
@@ -126,30 +152,35 @@ onUnmounted(() => {
         </div>
 
         <!-- Event date display -->
-        <Flex y-center class="event-header__date-display">
-          <TimestampDate size="xs" :date="event.date" class="event-header__date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
+        <Flex
+          y-center
+          :x-center="isBelowSmall"
+          :x-end="!isBelowSmall"
+          class="event-header__date-display text-color-lighter"
+        >
+          <TimestampDate size="xxs" :date="props.event.date" class="event-header__date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
           <!-- Duration display -->
-          <div v-if="event.duration_minutes" class="event-header__duration">
-            for {{ formatDurationFromMinutes(event.duration_minutes) }}
+          <div v-if="props.event.duration_minutes" class="text-xxs event-header__duration">
+            for {{ formatDurationFromMinutes(props.event.duration_minutes) }}
           </div>
         </Flex>
-      </div>
+      </Flex>
     </Flex>
 
     <Divider :margin="0" size="xxs" />
 
     <!-- Event meta information -->
-    <Flex gap="m" x-between expand>
-      <Flex gap="m" wrap class="event-header__badges-section">
-        <Badge v-if="event.location" variant="neutral" size="l">
+    <Flex gap="m" x-between expand :column="isBelowSmall">
+      <Flex :gap="isBelowSmall ? 'xxs' : 's'" wrap class="event-header__badges-section" :x-center="isBelowSmall" :expand="isBelowSmall">
+        <Badge v-if="props.event.location" variant="neutral" size="l">
           <Icon name="ph:map-pin-fill" />
-          {{ event.location }}
+          {{ props.event.location }}
         </Badge>
 
-        <Tooltip v-if="event.note" placement="bottom">
+        <Tooltip v-if="props.event.note" placement="bottom">
           <template #tooltip>
             <div class="event-header__tooltip-content">
-              {{ event.note }}
+              {{ props.event.note }}
             </div>
           </template>
           <Badge variant="neutral" size="l" class="event-header__note-badge">
@@ -169,18 +200,17 @@ onUnmounted(() => {
         </template>
 
         <!-- RSVP Count Badge -->
-        <EventRSVPCount :event="event" variant="accent" size="l" :show-when-zero="false" />
+        <EventRSVPCount :event="props.event" variant="accent" size="l" :show-when-zero="false" />
       </Flex>
 
-      <Flex gap="xs" class="event-header__actions">
+      <Flex gap="xs" class="event-header__actions" :x-center="isBelowSmall" :expand="isBelowSmall">
         <!-- RSVP button -->
-        <RSVPButton :event="event" size="s" />
+        <RSVPButton :event="props.event" :size="isBelowSmall ? 'm' : 's'" />
 
         <!-- View RSVPs button -->
         <Button
           v-if="user"
-          variant="accent"
-          size="s"
+          :size="isBelowSmall ? 'm' : 's'"
           @click="showRSVPModal = true"
         >
           <template #start>
@@ -229,12 +259,6 @@ onUnmounted(() => {
 
   &__title-row {
     align-items: flex-start;
-
-    @media (max-width: $breakpoint-s) {
-      align-items: center;
-      flex-direction: column-reverse !important;
-      gap: var(--space-m);
-    }
   }
 
   &__title-section {
@@ -242,18 +266,9 @@ onUnmounted(() => {
   }
 
   &__title {
-    font-size: var(--font-size-xxxl);
     font-weight: var(--font-weight-bold);
     margin: 0;
     line-height: 1.2;
-
-    @media (max-width: $breakpoint-s) {
-      font-size: var(--font-size-xxl);
-    }
-
-    @media (max-width: $breakpoint-xs) {
-      font-size: var(--font-size-xl);
-    }
   }
 
   &__description {
@@ -263,29 +278,16 @@ onUnmounted(() => {
 
     @media (max-width: $breakpoint-s) {
       font-size: var(--font-size-m);
+      text-align: center;
     }
   }
 
   &__timing-section {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: var(--space-s);
     min-width: fit-content;
-
-    @media (max-width: $breakpoint-s) {
-      align-items: flex-start;
-      width: 100%;
-    }
   }
 
   &__date-display {
-    text-align: right;
     gap: 0.5rem !important;
-
-    @media (max-width: $breakpoint-s) {
-      text-align: left;
-    }
   }
 
   &__date-time {
@@ -295,11 +297,8 @@ onUnmounted(() => {
   }
 
   &__duration {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
-
     @media (max-width: $breakpoint-s) {
-      font-size: var(--font-size-s);
+      font-size: var(--font-size-xxs);
     }
   }
 

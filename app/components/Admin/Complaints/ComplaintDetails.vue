@@ -7,6 +7,7 @@ import GameServerLink from '@/components/Shared/GameServerLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   complaint: Tables<'complaints'> | null
@@ -23,6 +24,10 @@ const emit = defineEmits<{
 
 // Get admin permissions
 const { canDeleteComplaints } = useAdminPermissions()
+
+const isMobile = useBreakpoint('<xs')
+const showActionLabels = computed(() => !isMobile.value)
+const actionButtonSize = computed(() => showActionLabels.value ? 'm' as const : 's' as const)
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -200,20 +205,23 @@ function confirmDeleteComplaint() {
         <h4>Complaint #{{ complaint?.id }}</h4>
         <Button
           v-if="canDeleteComplaints"
+          :size="actionButtonSize"
           variant="danger"
+          :square="!showActionLabels"
           @click="handleDeleteComplaint"
         >
-          <template #start>
+          <template v-if="showActionLabels" #start>
             <Icon name="ph:trash" />
           </template>
-          Delete
+          <template v-if="showActionLabels">
+            Delete
+          </template>
+          <Icon v-if="!showActionLabels" name="ph:trash" />
         </Button>
       </Flex>
     </template>
 
     <div v-if="complaint" class="complaint-details">
-      <!-- Complaint -->
-      <h5>Complaint</h5>
       <Card separators>
         <template #header>
           <Flex column gap="m">
@@ -288,17 +296,33 @@ function confirmDeleteComplaint() {
               />
               <div class="flex-1" />
               <Flex gap="xs">
-                <Button variant="gray" size="s" @click="handleEditResponse">
-                  <template #start>
+                <Button
+                  variant="gray"
+                  :size="actionButtonSize"
+                  :square="!showActionLabels"
+                  @click="handleEditResponse"
+                >
+                  <template v-if="showActionLabels" #start>
                     <Icon name="ph:pencil" />
                   </template>
-                  Edit
+                  <Icon v-if="!showActionLabels" name="ph:pencil" />
+                  <template v-if="showActionLabels">
+                    Edit
+                  </template>
                 </Button>
-                <Button variant="danger" size="s" @click="handleRemoveResponse">
-                  <template #start>
+                <Button
+                  variant="danger"
+                  :size="actionButtonSize"
+                  :square="!showActionLabels"
+                  @click="handleRemoveResponse"
+                >
+                  <template v-if="showActionLabels" #start>
                     <Icon name="ph:trash" />
                   </template>
-                  Remove
+                  <Icon v-if="!showActionLabels" name="ph:trash" />
+                  <template v-if="showActionLabels">
+                    Remove
+                  </template>
                 </Button>
               </Flex>
             </Flex>
@@ -344,26 +368,36 @@ function confirmDeleteComplaint() {
         <!-- Acknowledge button -->
         <Button
           v-if="status === 'pending'"
+          :size="actionButtonSize"
           variant="accent"
+          :square="!showActionLabels"
           @click="handleAcknowledge"
         >
-          <template #start>
+          <template v-if="showActionLabels" #start>
             <Icon name="ph:check" />
           </template>
-          Acknowledge
+          <Icon v-if="!showActionLabels" name="ph:check" />
+          <template v-if="showActionLabels">
+            Acknowledge
+          </template>
         </Button>
 
         <!-- Respond/Update button -->
         <Button
           v-if="complaint && ((canRespond && responseText.trim() && !complaint.response) || isEditingResponse)"
+          :size="actionButtonSize"
           variant="success"
           :loading="isSubmitting"
+          :square="!showActionLabels"
           @click="handleSubmitResponse"
         >
-          <template #start>
+          <template v-if="showActionLabels" #start>
             <Icon name="ph:paper-plane-tilt" />
           </template>
-          {{ isEditingResponse ? 'Update Response' : 'Send Response' }}
+          <Icon v-if="!showActionLabels" name="ph:paper-plane-tilt" />
+          <template v-if="showActionLabels">
+            {{ isEditingResponse ? 'Update Response' : 'Send Response' }}
+          </template>
         </Button>
 
         <div class="flex-1" />

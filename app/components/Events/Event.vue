@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Badge, Divider, Flex, Grid, Tooltip } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
 import EventRSVPCount from './EventRSVPCount.vue'
 
@@ -85,6 +86,8 @@ const timeAgo = computed(() => {
     return 'Just now'
   }
 })
+
+const isBelowSmall = useBreakpoint('<s')
 
 useIntervalFn(updateTime, 1000, { immediate: true })
 updateTime()
@@ -208,7 +211,7 @@ updateTime()
     </Flex>
 
     <!-- Details indicator -->
-    <Flex class="event-item__details-indicator">
+    <Flex :class="`event-item__details-indicator ${isBelowSmall ? '' : 'mr-l'}`">
       <Tooltip v-if="props.data.note" :content="props.data.note" position="left">
         <Icon name="ph:caret-right" class="event-item__arrow" />
       </Tooltip>

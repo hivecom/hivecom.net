@@ -3,6 +3,7 @@ import type { QueryData } from '@supabase/supabase-js'
 import type { Tables, TablesUpdate } from '@/types/database.types'
 import { Alert, Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ComplaintCard from './ComplaintCard.vue'
 import ComplaintDetails from './ComplaintDetails.vue'
 import ComplaintFilters from './ComplaintFilters.vue'
@@ -53,6 +54,8 @@ const showComplaintDetails = ref(false)
 
 // Action loading states
 const actionLoading = ref<Record<number, boolean>>({})
+
+const isBelowMedium = useBreakpoint('<m')
 
 // Pagination
 const itemsPerPage = 12
@@ -403,7 +406,7 @@ onMounted(fetchComplaints)
     />
 
     <!-- Loading skeleton -->
-    <Grid v-if="loading" :columns="2" gap="m" expand>
+    <Grid v-if="loading" :columns="isBelowMedium ? 1 : 2" gap="m" expand>
       <Card v-for="i in 6" :key="i" separators>
         <template #header>
           <Flex x-between y-center expand>
@@ -435,7 +438,7 @@ onMounted(fetchComplaints)
 
     <!-- Complaints grid -->
     <Flex v-else column gap="l" expand>
-      <Grid :columns="2" gap="m" class="complaints-grid" expand>
+      <Grid :columns="isBelowMedium ? 1 : 2" gap="m" class="complaints-grid" expand>
         <ComplaintCard
           v-for="complaint in paginatedComplaints"
           :key="complaint.id"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { setColorTheme, Switch, theme } from '@dolanske/vui'
+import { Button, setColorTheme, Switch, theme } from '@dolanske/vui'
 
 const props = defineProps({
   noText: {
@@ -10,28 +10,53 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  button: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const isLight = computed({
   get: () => theme.value === 'light',
   set: value => setColorTheme(value ? 'light' : 'dark'),
 })
+
+function toggleTheme() {
+  isLight.value = !isLight.value
+}
 </script>
 
 <template>
-  <div class="theme-toggle" :class="{ 'theme-toggle--small': props.small }">
+  <div
+    class="theme-toggle" :class="{ 'theme-toggle--small': props.small,
+                                   'theme-toggle--button': props.button }"
+  >
     <ClientOnly>
-      <div class="theme-toggle__label">
-        <Icon size="1.6rem" :name="isLight ? 'ph:sun' : 'ph:moon'" />
+      <div v-if="!props.button || !props.noText" class="theme-toggle__label">
+        <Icon v-if="!props.button" size="1.6rem" :name="isLight ? 'ph:sun' : 'ph:moon'" />
         <template v-if="!props.noText">
           Theme
         </template>
       </div>
+
+      <template v-if="props.button">
+        <Button
+          square
+          outline
+          class="theme-toggle__button"
+          :aria-label="`Switch to ${isLight ? 'dark' : 'light'} theme`"
+          @click="toggleTheme"
+        >
+          <Icon :name="isLight ? 'ph:sun' : 'ph:moon'" />
+        </Button>
+      </template>
+
       <!-- Only render the actual Switch component on client-side -->
-      <Switch v-model="isLight" class="theme-toggle__switch" />
+      <Switch v-else v-model="isLight" class="theme-toggle__switch" />
       <template #fallback>
         <!-- Static fallback for server-side rendering -->
-        <div class="theme-toggle__switch vui-switch" />
+        <div v-if="!props.button" class="theme-toggle__switch vui-switch" />
+        <div v-else class="theme-toggle__button icon-placeholder" />
       </template>
     </ClientOnly>
   </div>
@@ -79,7 +104,7 @@ const isLight = computed({
       margin-right: -8px;
     }
 
-    .theme-toggle__switch {
+    &:not(.theme-toggle--button) .theme-toggle__switch {
       transform: scale(0.5);
     }
   }

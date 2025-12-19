@@ -9,6 +9,7 @@ import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ReferendumDetails from './ReferendumDetails.vue'
 import ReferendumFilters from './ReferendumFilters.vue'
 import ReferendumForm from './ReferendumForm.vue'
@@ -50,6 +51,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const referendums = ref<QueryData<typeof referendumsQuery>>([])
 const search = ref('')
+const isBelowMedium = useBreakpoint('<m')
 
 // Filter states
 const statusFilter = ref<SelectOption[]>([])
@@ -290,20 +292,31 @@ onBeforeMount(fetchReferendums)
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <!-- Header and filters -->
-      <Flex x-between y-center expand>
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <ReferendumFilters
           v-model:search="search"
           v-model:status-filter="statusFilter"
           v-model:type-filter="typeFilter"
           :status-options="statusOptions"
           :type-options="typeOptions"
+          :expand="isBelowMedium"
           @clear-filters="clearFilters"
         />
 
-        <Flex gap="s" y-center>
-          <span class="text-color-lighter text-s">Total —</span>
+        <Flex
+          gap="s"
+          :y-center="!isBelowMedium"
+          :y-start="isBelowMedium"
+          :wrap="isBelowMedium"
+          :x-end="!isBelowMedium"
+          :x-center="isBelowMedium"
+          :x-start="isBelowMedium"
+          :expand="isBelowMedium"
+          :column-reverse="isBelowMedium"
+        >
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
 
-          <Button v-if="canCreate" variant="accent" loading>
+          <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" loading>
             <template #start>
               <Icon name="ph:plus" />
             </template>
@@ -323,22 +336,33 @@ onBeforeMount(fetchReferendums)
 
   <Flex v-else gap="s" column expand>
     <!-- Header and filters -->
-    <Flex x-between y-center expand>
+    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
       <ReferendumFilters
         v-model:search="search"
         v-model:status-filter="statusFilter"
         v-model:type-filter="typeFilter"
         :status-options="statusOptions"
         :type-options="typeOptions"
+        :expand="isBelowMedium"
         @clear-filters="clearFilters"
       />
 
-      <Flex gap="s" y-center>
-        <span class="text-color-lighter text-s">
+      <Flex
+        gap="s"
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
+        :wrap="isBelowMedium"
+        :x-end="!isBelowMedium"
+        :x-center="isBelowMedium"
+        :x-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :column-reverse="isBelowMedium"
+      >
+        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
           {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
         </span>
 
-        <Button v-if="canCreate" variant="accent" @click="openAddReferendumForm">
+        <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddReferendumForm">
           <template #start>
             <Icon name="ph:plus" />
           </template>

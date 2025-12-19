@@ -242,7 +242,7 @@ onUnmounted(() => {
     >
       <img :src="currentPreviewUrl!" :alt="label" class="file-upload__image">
       <div class="file-upload__overlay">
-        <Flex gap="xs" class="file-upload__actions">
+        <Flex gap="xs" class="file-upload__actions" wrap x-center>
           <Button
             size="s"
             variant="accent"

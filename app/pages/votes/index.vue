@@ -5,6 +5,7 @@ import { Flex, Grid, Input, Skeleton, Tab, Tabs } from '@dolanske/vui'
 
 import ReferendumCard from '@/components/Shared/ReferendumCard.vue'
 import { useCacheQuery } from '@/composables/useCache'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 // Redirect to login if user is not authenticated
 const user = useSupabaseUser()
@@ -23,6 +24,7 @@ useHead({
 
 const tab = ref<'Active' | 'Concluded'>('Active')
 const search = ref('')
+const isBelowSmall = useBreakpoint('<s')
 
 type ReferendumStatus = 'active' | 'upcoming' | 'concluded'
 
@@ -157,16 +159,12 @@ function getReferendumStatus(referendum: { date_start: string, date_end: string 
   <div class="page">
     <!-- Hero section -->
     <section class="page-title">
-      <Flex :gap="0" expand column>
-        <Flex y-center x-between expand>
-          <h1>
-            Votes
-          </h1>
-        </Flex>
-        <p>
-          Planning a movie night? Need to decide dates for an event? Let others cast their vote and figure it out!
-        </p>
-      </Flex>
+      <h1>
+        Votes
+      </h1>
+      <p>
+        Planning a movie night? Need to decide dates for an event? Let others cast their vote and figure it out!
+      </p>
     </section>
 
     <Tabs v-model="tab" class="my-m">
@@ -186,7 +184,7 @@ function getReferendumStatus(referendum: { date_start: string, date_end: string 
 
     <template v-if="tab === 'Active'">
       <!-- Loading state -->
-      <Grid v-if="loadingActive" gap="m" :columns="2" class="referendum-cards-grid">
+      <Grid v-if="loadingActive" gap="m" :columns="isBelowSmall ? 1 : 2" class="referendum-cards-grid">
         <div v-for="n in 4" :key="`skeleton-${n}`" class="skeleton-card">
           <Skeleton :height="200" :radius="12" />
         </div>
@@ -202,7 +200,7 @@ function getReferendumStatus(referendum: { date_start: string, date_end: string 
       </div>
 
       <!-- Actual content -->
-      <Grid v-else gap="m" :columns="2" class="referendum-cards-grid">
+      <Grid v-else gap="m" :columns="isBelowSmall ? 1 : 2" class="referendum-cards-grid">
         <ReferendumCard
           v-for="referendum in currentReferendums"
           :key="referendum.id"
@@ -216,7 +214,7 @@ function getReferendumStatus(referendum: { date_start: string, date_end: string 
 
     <template v-else>
       <!-- Loading state -->
-      <Grid v-if="loadingConcluded" gap="m" :columns="2" class="referendum-cards-grid">
+      <Grid v-if="loadingConcluded" gap="m" :columns="isBelowSmall ? 1 : 2" class="referendum-cards-grid">
         <div v-for="n in 4" :key="`skeleton-${n}`" class="skeleton-card">
           <Skeleton :height="200" :radius="12" />
         </div>
@@ -232,7 +230,7 @@ function getReferendumStatus(referendum: { date_start: string, date_end: string 
       </div>
 
       <!-- Actual content -->
-      <Grid v-else gap="m" :columns="2" class="referendum-cards-grid">
+      <Grid v-else gap="m" :columns="isBelowSmall ? 1 : 2" class="referendum-cards-grid">
         <ReferendumCard
           v-for="referendum in currentReferendums"
           :key="referendum.id"

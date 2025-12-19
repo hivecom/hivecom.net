@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Flex, Input, Sheet } from '@dolanske/vui'
+import { Alert, Button, Dropdown, DropdownItem, DropdownTitle, Flex, Input, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
@@ -54,6 +54,45 @@ const validation = computed(() => ({
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
+
+function openExternalLink(url: string | null | undefined) {
+  if (!url)
+    return
+
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+const steamId = computed(() => {
+  const raw = gameForm.value.steam_id ?? ''
+  return String(raw).trim()
+})
+
+const steamGridUrl = computed(() => {
+  const nameTerm = gameForm.value.name?.trim()
+  const shorthandTerm = gameForm.value.shorthand?.trim()
+  const term = nameTerm || shorthandTerm || steamId.value
+
+  if (!term)
+    return 'https://www.steamgriddb.com/search/grids'
+
+  return `https://www.steamgriddb.com/search/grids?term=${encodeURIComponent(term)}`
+})
+
+const steamAssetLinks = computed(() => {
+  if (!steamId.value)
+    return null
+
+  const id = steamId.value
+  const baseStore = `https://shared.steamstatic.com/store_item_assets/steam/apps/${id}`
+  return {
+    steamGridDb: `https://www.steamgriddb.com/game/${id}`,
+    steamStore: `https://store.steampowered.com/app/${id}`,
+    logo: `${baseStore}/logo_2x.png`,
+    capsule: `${baseStore}/library_600x900_2x.jpg`,
+    hero: `${baseStore}/library_hero.jpg`,
+    header: `${baseStore}/header.jpg`,
+  }
+})
 
 // Update form data when game prop changes
 watch(
@@ -249,71 +288,117 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
       </Flex>
 
       <!-- Asset Upload Section -->
-      <Flex v-if="gameForm.shorthand" column gap="m" expand>
-        <h4>Game Assets</h4>
+      <Flex column gap="m" expand>
+        <Flex x-between y-center expand>
+          <h4>Game Assets</h4>
+          <Flex gap="xs" y-center>
+            <Button
+              square
+              data-title-bottom="Open on SteamGridDB"
+              @click="openExternalLink(steamGridUrl)"
+            >
+              <Icon name="ph:squares-four" />
+            </Button>
+
+            <Dropdown v-if="steamAssetLinks" placement="bottom-end">
+              <template #trigger="{ toggle }">
+                <Button
+                  square
+                  @click="toggle()"
+                >
+                  <Icon name="ph:steam-logo" />
+                  <Icon name="ph:caret-down" size="12" />
+                </Button>
+              </template>
+
+              <DropdownTitle>
+                Steam Assets
+              </DropdownTitle>
+              <DropdownItem icon="ph:storefront" @click="openExternalLink(steamAssetLinks.steamStore)">
+                Store page
+              </DropdownItem>
+              <DropdownItem icon="ph:image-square" @click="openExternalLink(steamAssetLinks.logo)">
+                Logo (2x)
+              </DropdownItem>
+              <DropdownItem icon="ph:portrait" @click="openExternalLink(steamAssetLinks.capsule)">
+                Capsule (library 600x900)
+              </DropdownItem>
+              <DropdownItem icon="ph:panorama" @click="openExternalLink(steamAssetLinks.hero)">
+                Hero (library hero)
+              </DropdownItem>
+              <DropdownItem icon="ph:image" @click="openExternalLink(steamAssetLinks.header)">
+                Header (store)
+              </DropdownItem>
+            </Dropdown>
+          </Flex>
+        </Flex>
         <p class="text-s text-color-light">
           Upload visual assets for the game. These will be displayed throughout the platform.
         </p>
-        <p class="text-xs text-color-light">
-          Note: Uploading assets will immediately apply them, even if this dialog is cancelled or closed.
-        </p>
+        <Alert variant="warning" filled class="mb-m text-s">
+          <p class="text-xs">
+            Uploading assets will immediately apply them, even if this dialog is cancelled or closed.
+          </p>
+        </Alert>
 
-        <Flex column gap="m" expand>
-          <Flex expand>
-            <!-- Icon Upload -->
-            <Flex column gap="xs" expand>
-              <label class="asset-label">Game Icon</label>
-              <FileUpload
-                :preview-url="assetsUrl.icon"
-                label="Upload Icon"
-                :loading="assetsUploading.icon"
-                :error="assetsError.icon"
-                :aspect-ratio="1"
-                :max-height="300"
-                @upload="(file) => handleAssetUpload('icon', file)"
-                @remove="() => handleAssetRemove('icon')"
-              />
-              <span class="text-xs text-color-light">Recommended: 512x512px square image</span>
+        <template v-if="gameForm.shorthand">
+          <Flex column gap="m" expand>
+            <Flex expand>
+              <!-- Icon Upload -->
+              <Flex column gap="xs" expand>
+                <label class="asset-label">Game Icon</label>
+                <FileUpload
+                  :preview-url="assetsUrl.icon"
+                  label="Upload Icon"
+                  :loading="assetsUploading.icon"
+                  :error="assetsError.icon"
+                  :aspect-ratio="1"
+                  :max-height="300"
+                  @upload="(file) => handleAssetUpload('icon', file)"
+                  @remove="() => handleAssetRemove('icon')"
+                />
+                <span class="text-xs text-color-light">Recommended: 512x512px square image</span>
+              </Flex>
+
+              <!-- Cover Upload -->
+              <Flex column gap="xs" expand>
+                <label class="asset-label">Game Cover</label>
+                <FileUpload
+                  :preview-url="assetsUrl.cover"
+                  label="Upload Cover"
+                  :loading="assetsUploading.cover"
+                  :error="assetsError.cover"
+                  :aspect-ratio="600 / 900"
+                  @upload="(file) => handleAssetUpload('cover', file)"
+                  @remove="() => handleAssetRemove('cover')"
+                />
+                <span class="text-xs text-color-light">Recommended: 600x900px portrait image</span>
+              </Flex>
             </Flex>
 
-            <!-- Cover Upload -->
+            <!-- Background Upload -->
             <Flex column gap="xs" expand>
-              <label class="asset-label">Game Cover</label>
+              <label class="asset-label">Game Background</label>
               <FileUpload
-                :preview-url="assetsUrl.cover"
-                label="Upload Cover"
-                :loading="assetsUploading.cover"
-                :error="assetsError.cover"
-                :aspect-ratio="600 / 900"
-                @upload="(file) => handleAssetUpload('cover', file)"
-                @remove="() => handleAssetRemove('cover')"
+                :preview-url="assetsUrl.background"
+                label="Upload Background"
+                :loading="assetsUploading.background"
+                :error="assetsError.background"
+                :aspect-ratio="1920 / 1080"
+                :min-height="120"
+                @upload="(file) => handleAssetUpload('background', file)"
+                @remove="() => handleAssetRemove('background')"
               />
-              <span class="text-xs text-color-light">Recommended: 600x900px portrait image</span>
+              <span class="text-xs text-color-light">Recommended: 1920x1080px wide image</span>
             </Flex>
           </Flex>
+        </template>
 
-          <!-- Background Upload -->
-          <Flex column gap="xs" expand>
-            <label class="asset-label">Game Background</label>
-            <FileUpload
-              :preview-url="assetsUrl.background"
-              label="Upload Background"
-              :loading="assetsUploading.background"
-              :error="assetsError.background"
-              :aspect-ratio="1920 / 1080"
-              :min-height="120"
-              @upload="(file) => handleAssetUpload('background', file)"
-              @remove="() => handleAssetRemove('background')"
-            />
-            <span class="text-xs text-color-light">Recommended: 1920x1080px wide image</span>
-          </Flex>
-        </Flex>
+        <div v-else-if="props.isEditMode" class="asset-notice">
+          <Icon name="ph:info" />
+          <span>Add a shorthand to enable asset uploads</span>
+        </div>
       </Flex>
-
-      <div v-else-if="props.isEditMode" class="asset-notice">
-        <Icon name="ph:info" />
-        <span>Add a shorthand to enable asset uploads</span>
-      </div>
     </Flex>
 
     <!-- Form Actions -->

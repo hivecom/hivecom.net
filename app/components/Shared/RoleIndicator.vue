@@ -35,8 +35,6 @@ const shortDisplay = computed(() => {
       return 'A'
     case 'moderator':
       return 'M'
-    case 'supporter':
-      return 'S'
     case 'registered':
       return 'R'
     case 'music-bot':

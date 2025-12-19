@@ -140,7 +140,7 @@ watch(
   <Modal :open="isModalVisible" centered :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
     <template #header>
       <Flex gap="m" y-center>
-        <GameIcon v-if="currentDetails?.game" :game="currentDetails.game" size="medium" />
+        <GameIcon v-if="currentDetails?.game" :game="currentDetails.game" size="m" />
         <h3 class="game-details-modal__title">
           {{ gameName }}
         </h3>
