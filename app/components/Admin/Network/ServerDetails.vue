@@ -30,7 +30,7 @@ function handleEdit() {
   <Sheet
     :open="!!props.server && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >

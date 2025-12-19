@@ -41,7 +41,7 @@ function handleEdit() {
   <Sheet
     :open="!!props.gameserver && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >

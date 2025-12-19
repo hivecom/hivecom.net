@@ -38,7 +38,7 @@ function handleDelete(announcement: Tables<'announcements'>) {
   <Sheet
     :open="!!props.announcement && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >

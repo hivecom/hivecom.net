@@ -28,7 +28,7 @@ function formatMonth(month: string): string {
   <Sheet
     :open="!!props.funding && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >

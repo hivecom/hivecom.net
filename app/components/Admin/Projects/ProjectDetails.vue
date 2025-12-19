@@ -46,7 +46,7 @@ function handleDelete(project: Tables<'projects'>) {
   <Sheet
     :open="!!props.project && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >

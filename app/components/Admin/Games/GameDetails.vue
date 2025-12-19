@@ -147,7 +147,7 @@ watchEffect(async () => {
   <Sheet
     :open="!!props.game && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >

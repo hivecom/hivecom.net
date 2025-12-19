@@ -191,7 +191,7 @@ function confirmDeleteComplaint() {
   <Sheet
     :open="!!complaint && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="700"
     @close="handleClose"
   >

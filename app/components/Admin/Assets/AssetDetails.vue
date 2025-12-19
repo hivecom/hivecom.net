@@ -51,7 +51,7 @@ function requestRename() {
   <Sheet
     :open="!!props.asset && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="560"
     @close="closeDrawer"
   >

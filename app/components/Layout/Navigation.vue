@@ -9,6 +9,7 @@ const supabase = useSupabaseClient()
 const authReady = ref(false)
 
 const router = useRouter()
+const route = useRoute()
 
 // Mobile menu state
 const mobileMenuOpen = ref(false)
@@ -105,7 +106,7 @@ const navbarLinks = [
 </script>
 
 <template>
-  <nav class="navigation">
+  <nav class="navigation" :class="{ landing: route.path === '/' }">
     <div class="container container-l">
       <div class="navigation__items">
         <Button square class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
@@ -151,7 +152,7 @@ const navbarLinks = [
           class="navigation__mobile-sheet"
           :open="mobileMenuOpen"
           position="left"
-          separator
+          :card="{ separators: true }"
           @close="mobileMenuOpen = false"
         >
           <template #header>
@@ -222,8 +223,6 @@ const navbarLinks = [
   width: 100%;
   position: fixed;
   background-color: var(--dark-color-fg);
-  // background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
-  // backdrop-filter: blur(16px);
   z-index: var(--z-nav); // Make sure the nav is main content
   border-bottom: 1px solid var(--color-border-weak);
 
@@ -274,8 +273,7 @@ const navbarLinks = [
 
       aspect-ratio: 1;
 
-      // This is how to make inverted borders
-      // background-image: radial-gradient(circle at 100% 100%, transparent var(--size), var(--dark-color-fg) var(--size));
+      // This is how to make inverted border radius shape with an outline
       background-image: radial-gradient(
         circle at 100% 100%,
         transparent calc(var(--size) - 1px),
@@ -456,7 +454,6 @@ const navbarLinks = [
     display: flex;
     flex-direction: column;
     gap: var(--space-xxs);
-    padding-top: var(--space-l);
   }
 
   &__mobile-submenu {

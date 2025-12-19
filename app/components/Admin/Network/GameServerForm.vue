@@ -300,7 +300,7 @@ onMounted(fetchDropdownData)
   <Sheet
     :open="isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="700"
     @close="handleClose"
   >

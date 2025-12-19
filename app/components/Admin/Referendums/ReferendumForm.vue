@@ -199,7 +199,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
   <Sheet
     :open="isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="700"
     @close="handleClose"
   >

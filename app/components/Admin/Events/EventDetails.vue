@@ -106,7 +106,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
   <Sheet
     :open="!!props.event && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >
