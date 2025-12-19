@@ -396,7 +396,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
   <Sheet
     :open="isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="700"
     @close="handleClose"
   >

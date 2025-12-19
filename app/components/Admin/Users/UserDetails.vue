@@ -239,7 +239,7 @@ function getUserInitials(username: string): string {
   <Sheet
     :open="!!user && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >

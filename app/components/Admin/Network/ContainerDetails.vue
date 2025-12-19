@@ -226,7 +226,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
   <Sheet
     :open="!!container && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >

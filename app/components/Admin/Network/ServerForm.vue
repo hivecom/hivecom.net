@@ -111,7 +111,7 @@ function handleDelete() {
   <Sheet
     :open="isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="isOpen = false"
   >

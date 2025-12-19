@@ -83,7 +83,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
   <Sheet
     :open="!!props.referendum && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >

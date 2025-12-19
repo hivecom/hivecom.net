@@ -57,6 +57,7 @@ function handleSubmit() {
   <Modal
     :open="open"
     :size="isBelowSmall ? 'screen' : 'm'"
+    :card="{ footerSeparator: true }"
     @close="close"
     @update:open="emit('update:open', $event)"
   >
@@ -67,16 +68,19 @@ function handleSubmit() {
     <Flex column gap="m">
       <Input
         v-model="message"
+        autofocus
         expand
         label="Message"
         placeholder="Enter the message of the day"
         :maxlength="128"
+        focus
       />
 
       <Alert v-if="validationError" variant="danger">
         {{ validationError }}
       </Alert>
-
+    </Flex>
+    <template #footer>
       <Flex x-end gap="s" expand>
         <Button variant="gray" :expand="isBelowSmall" @click="close">
           Cancel
@@ -85,6 +89,6 @@ function handleSubmit() {
           {{ isEditMode ? 'Save Changes' : 'Add MOTD' }}
         </Button>
       </Flex>
-    </Flex>
+    </template>
   </Modal>
 </template>

@@ -231,7 +231,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
   <Sheet
     :open="isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >

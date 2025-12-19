@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Sheet, Skeleton } from '@dolanske/vui'
-
+import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
 import NotificationDropdown from './NotificationDropdown.vue'
 import UserDropdown from './UserDropdown.vue'
 
@@ -8,6 +7,9 @@ import UserDropdown from './UserDropdown.vue'
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const authReady = ref(false)
+
+const router = useRouter()
+const route = useRoute()
 
 // Mobile menu state
 const mobileMenuOpen = ref(false)
@@ -20,10 +22,91 @@ onMounted(async () => {
   await supabase.auth.getSession().catch(() => null)
   authReady.value = true
 })
+
+// Track an animated background blob when user is hovering over the navbar links
+const navbarLinksRef = useTemplateRef('navbarLinksRef')
+const { elementX, isOutside } = useMouseInElement(navbarLinksRef)
+
+const hoveredElement = ref<HTMLElement | null>(null)
+
+const { width, update } = useElementBounding(hoveredElement)
+
+function updateHoveredElement(event: MouseEvent) {
+  hoveredElement.value = event.target as HTMLElement | null
+  update()
+}
+
+// While hovering a link, we do not want the blob to actually move. We want it
+// to sort of snap to the hovered link, but not fully and with some correction
+// to make it look more natural.
+
+const navbarLinks = [
+  {
+    path: '/',
+    label: 'Home',
+    icon: 'ph:house',
+  },
+  {
+    path: '/announcements',
+    label: 'Announcements',
+    icon: 'ph:megaphone',
+  },
+  {
+    path: '/community',
+    label: 'Community',
+    icon: 'ph:users',
+    children: [
+      {
+        path: '/community',
+        label: 'About',
+      },
+      {
+        path: '/community?tab=voice',
+        label: 'Voice channels',
+      },
+    ],
+  },
+  {
+    path: '/events',
+    label: 'Events',
+    icon: 'ph:calendar',
+    children: [
+      {
+        path: '/events',
+        label: 'List',
+      },
+      {
+        path: '/events?tab=calendar',
+        label: 'Calendar',
+      },
+    ],
+  },
+  {
+    path: '/gameservers',
+    label: 'Servers',
+    icon: 'ph:game-controller',
+    children: [
+      {
+        path: '/gameservers',
+        label: 'Library',
+      },
+      {
+        path: '/gameservers?tab=list',
+        label: 'List',
+      },
+    ],
+  },
+  {
+    path: '/votes',
+    label: 'Votes',
+    icon: 'ph:check-square',
+    requiresAuth: true,
+  },
+]
 </script>
 
 <template>
-  <nav class="navigation">
+  <nav class="navigation" :class="{ landing: route.path === '/' }">
     <div class="container container-l">
       <div class="navigation__items">
         <Button square class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
@@ -32,48 +115,48 @@ onMounted(async () => {
 
         <SharedLogo class="navigation__logo" />
 
-        <ul class="navigation__links">
-          <li>
-            <NuxtLink to="/">
-              Home
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/announcements">
-              Announcements
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/community">
-              Community
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/events" :class="{ 'router-link-active': $route.path.includes('/events') }">
-              Events
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/gameservers">
-              Game Servers
-            </NuxtLink>
-          </li>
-          <template v-if="authReady && user">
-            <span class="navigation__links-separator" />
-            <li>
-              <NuxtLink to="/votes">
-                Votes
+        <ul ref="navbarLinksRef" class="navigation__links" @mouseleave="hoveredElement = null">
+          <template v-for="link in navbarLinks" :key="link.path">
+            <li
+              v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)"
+              @mouseenter="updateHoveredElement"
+            >
+              <NuxtLink
+                :to="link.path" :class="{
+                  'router-link-active': $route.path.includes(link.path) && link.path !== '/',
+                  'router-link-focused': !!hoveredElement?.firstElementChild?.textContent.includes(link.label),
+                }"
+              >
+                {{ link.label }}
+                <Icon v-if="link.children" name="ph:caret-down-fill" size="12px" />
               </NuxtLink>
+
+              <Popout v-if="link.children" class="navigation__links-popout" :anchor="hoveredElement" :visible="!!hoveredElement?.firstElementChild?.textContent.includes(link.label)">
+                <DropdownItem v-for="sublink in link.children" :key="sublink.path" @click="router.push(sublink.path)">
+                  {{ sublink.label }}
+                </DropdownItem>
+              </Popout>
             </li>
           </template>
+
+          <ul
+            class="navigation__links-hover"
+            :class="{ active: !isOutside }"
+            :style="{
+              left: `${elementX}px`,
+              width: `${width}px`,
+            }"
+          />
         </ul>
+
+        <div class="flex-1" />
 
         <!-- Mobile menu -->
         <Sheet
           class="navigation__mobile-sheet"
           :open="mobileMenuOpen"
           position="left"
-          separator
+          :card="{ separators: true }"
           @close="mobileMenuOpen = false"
         >
           <template #header>
@@ -83,32 +166,17 @@ onMounted(async () => {
           </template>
           <template #header-end />
           <div class="navigation__mobile-menu">
-            <NuxtLink to="/" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:house" />
-              <span>Home</span>
-            </NuxtLink>
-            <NuxtLink to="/announcements" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:megaphone" />
-              <span>Announcements</span>
-            </NuxtLink>
-            <NuxtLink to="/community" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:users" />
-              <span>Community</span>
-            </NuxtLink>
-            <NuxtLink to="/events" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:calendar" />
-              <span>Events</span>
-            </NuxtLink>
-            <NuxtLink to="/gameservers" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-              <Icon name="ph:game-controller" />
-              <span>Game Servers</span>
-            </NuxtLink>
-            <template v-if="authReady && user">
-              <span class="navigation__mobile-menu-separator" />
-              <NuxtLink to="/votes" class="navigation__mobile-menu-item" @click="mobileMenuOpen = false">
-                <Icon name="ph:check-square" />
-                <span>Votes</span>
+            <template v-for="link in navbarLinks" :key="link.path">
+              <NuxtLink v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)" :to="link.path" class="navigation__mobile-menu-item" :class="{ 'router-link-active': $route.path.includes(link.path) && link.path !== '/' }">
+                <Icon :name="link.icon" />
+                {{ link.label }}
               </NuxtLink>
+
+              <div class="navigation__mobile-submenu">
+                <NuxtLink v-for="sublink in link.children" :key="sublink.path" :to="sublink.path" class="navigation__mobile-menu-item">
+                  {{ sublink.label }}
+                </NuxtLink>
+              </div>
             </template>
           </div>
         </Sheet>
@@ -158,15 +226,15 @@ onMounted(async () => {
 .navigation {
   width: 100%;
   position: fixed;
-  background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
-  backdrop-filter: blur(16px);
+  background-color: var(--dark-color-fg);
   z-index: var(--z-nav); // Make sure the nav is main content
+  border-bottom: 1px solid var(--color-border-weak);
 
   &__items {
     display: flex;
     justify-content: flex-start;
     height: 64px;
-    gap: 90px;
+    gap: 16px;
     align-items: center;
     position: relative;
   }
@@ -184,23 +252,121 @@ onMounted(async () => {
     }
   }
 
+  &__links-popout {
+    width: 192px;
+    padding: var(--space-xs);
+    border-color: var(--color-border-weak);
+    border-top: none;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    box-shadow: none;
+    transform: translate3D(0, -8px, 0);
+    background-color: var(--dark-color-fg);
+
+    &:before,
+    &:after {
+      --size: 16px;
+
+      content: '';
+      display: block;
+      width: var(--size);
+      height: var(--size);
+      position: absolute;
+      top: 0;
+      left: calc(var(--size) * -1);
+
+      aspect-ratio: 1;
+
+      // This is how to make inverted border radius shape with an outline
+      background-image: radial-gradient(
+        circle at 100% 100%,
+        transparent calc(var(--size) - 1px),
+        var(--color-border-weak) calc(var(--size) - 1px),
+        var(--color-border-weak) var(--size),
+        var(--dark-color-fg) var(--size)
+      );
+    }
+
+    &:before {
+      transform: scaleX(-1);
+    }
+
+    &:after {
+      left: unset;
+      right: calc(var(--size) * -1);
+    }
+  }
+
   &__links {
     display: flex;
     align-items: center;
-    gap: var(--space-xs);
-    flex: 1;
+    position: relative;
+    height: 100%;
+    padding-inline: 32px;
+    z-index: 1;
 
-    li a {
-      display: block;
-      padding: 0 12px;
-      font-size: var(--font-size-m);
-      color: var(--color-text);
-      text-decoration: none;
+    li {
+      height: 100%;
 
-      &:hover,
-      &.router-link-active {
-        color: var(--color-accent);
+      a {
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        gap: 4px;
+        height: 100%;
+        font-size: 1.4rem;
+        color: var(--color-text-lighter);
+        text-decoration: none;
+        transition: var(--transition);
+
+        .iconify {
+          color: var(--color-text-lighter);
+          transition: var(--transition);
+          transition-property: color;
+        }
+
+        &.router-link-active {
+          color: var(--color-accent);
+
+          .iconify {
+            color: var(--color-accent);
+          }
+        }
+
+        &:not(&.router-link-active) {
+          &.router-link-focused,
+          &:hover {
+            color: var(--color-text);
+
+            .iconify {
+              color: var(--color-text);
+              transform: rotate(180deg);
+            }
+          }
+        }
       }
+    }
+  }
+
+  &__links-hover {
+    display: block;
+    border-radius: 990px;
+    position: absolute;
+    height: 32px;
+    top: 50%;
+    left: 0;
+    transform: translate3D(-50%, -50%, 0);
+    background-color: var(--color-bg-accent-lowered);
+    will-change: left, width;
+    z-index: -1;
+    opacity: 0;
+    transition:
+      0.2s opacity ease-in-out,
+      0.6s width cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+
+    &.active {
+      opacity: 0.4;
     }
   }
 
@@ -245,7 +411,7 @@ onMounted(async () => {
   &__user {
     display: flex;
     align-items: center;
-    gap: var(--space-xs);
+    gap: var(--space-s);
   }
 
   &__dropdown {
@@ -291,7 +457,40 @@ onMounted(async () => {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs);
+    gap: var(--space-xxs);
+  }
+
+  &__mobile-submenu {
+    padding-left: 46px;
+
+    .navigation__mobile-menu-item {
+      position: relative;
+
+      &:not(:first-child):after {
+        height: 40px;
+      }
+
+      &:before {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        left: -20px;
+        top: 0px;
+        border: 2px solid var(--color-border);
+        clip-path: inset(8px 8px 0 0);
+        border-radius: 999px;
+      }
+
+      &:after {
+        content: '';
+        position: absolute;
+        border-left: 2px solid var(--color-border);
+        left: -20px;
+        bottom: 30px;
+        height: 18px;
+      }
+    }
   }
 
   &__mobile-menu-item {
@@ -306,6 +505,7 @@ onMounted(async () => {
     border: none;
     cursor: pointer;
     text-align: left;
+    font-size: var(--font-size-m);
 
     &:hover,
     &.router-link-active {
@@ -314,7 +514,7 @@ onMounted(async () => {
     }
 
     .iconify {
-      font-size: 20px;
+      font-size: 18px;
     }
 
     &--accent {
@@ -326,20 +526,16 @@ onMounted(async () => {
       }
     }
   }
-
-  &__mobile-menu-separator {
-    display: block;
-    height: 1px;
-    width: 100%;
-    background-color: color-mix(in srgb, var(--color-text) 20%, transparent);
-    margin: var(--space-m) 0;
-  }
 }
 
 @media (max-width: $breakpoint-l) {
   .navigation {
     &__items {
       justify-content: space-between;
+
+      .flex-1 {
+        display: none;
+      }
     }
 
     &__hamburger {
@@ -373,6 +569,33 @@ onMounted(async () => {
       &-mobile-button {
         display: flex;
       }
+    }
+  }
+}
+
+@media screen and (max-width: $breakpoint-vui-mobile) {
+  .navigation {
+    &__mobile-menu {
+      gap: var(--space-xs);
+    }
+  }
+
+  .navigation__mobile-submenu .navigation__mobile-menu-item {
+    &:before,
+    &:after {
+      left: -26px;
+    }
+
+    &:before {
+      top: -8px;
+    }
+
+    &:not(:first-child):after {
+      height: 40px;
+    }
+
+    &:after {
+      height: 10px;
     }
   }
 }

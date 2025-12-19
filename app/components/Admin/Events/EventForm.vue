@@ -268,7 +268,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
   <Sheet
     :open="isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="700"
     @close="handleClose"
   >

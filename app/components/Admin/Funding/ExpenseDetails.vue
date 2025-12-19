@@ -75,7 +75,7 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
   <Sheet
     :open="!!props.expense && isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="600"
     @close="handleClose"
   >
