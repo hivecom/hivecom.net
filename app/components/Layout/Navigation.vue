@@ -119,10 +119,14 @@ const navbarLinks = [
           <template v-for="link in navbarLinks" :key="link.path">
             <li
               v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)"
-              :class="{ 'router-link-focused': !!hoveredElement?.firstElementChild?.textContent.includes(link.label) }"
               @mouseenter="updateHoveredElement"
             >
-              <NuxtLink :to="link.path" :class="{ 'router-link-active': $route.path.includes(link.path) && link.path !== '/' }">
+              <NuxtLink
+                :to="link.path" :class="{
+                  'router-link-active': $route.path.includes(link.path) && link.path !== '/',
+                  'router-link-focused': !!hoveredElement?.firstElementChild?.textContent.includes(link.label),
+                }"
+              >
                 {{ link.label }}
                 <Icon v-if="link.children" name="ph:caret-down-fill" size="12px" />
               </NuxtLink>
