@@ -1,3 +1,5 @@
+@use '../breakpoints.scss' as *;
+
 .page-landing {
   width: 100%;
   height: 100%;
@@ -26,5 +28,11 @@
   p {
     font-size: var(--font-size-m);
     // color: var(--text-color-light);
+  }
+}
+
+@media screen and (max-width: $breakpoint-m) {
+  .page {
+    padding-block: calc(var(--navbar-offset) + 2rem);
   }
 }

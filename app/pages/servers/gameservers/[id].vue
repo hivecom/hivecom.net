@@ -198,7 +198,7 @@ useHead({
           plain
           size="s"
           aria-label="Go back to Game Servers"
-          href="/gameservers"
+          href="/servers/gameservers"
         >
           <template #start>
             <Icon name="ph:arrow-left" />
@@ -240,6 +240,8 @@ useHead({
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .page-content {
   display: flex;
   flex-direction: column;
@@ -265,7 +267,10 @@ useHead({
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.1) 100%);
   }
 
-  @media (max-width: 768px) {
+  @media screen and (max-width: $breakpoint-m) {
+    height: 256px;
+  }
+  @media screen and (max-width: $breakpoint-s) {
     height: 150px;
   }
 }

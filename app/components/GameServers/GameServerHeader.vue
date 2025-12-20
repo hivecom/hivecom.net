@@ -6,6 +6,7 @@ import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import UserLink from '../Shared/UserLink.vue'
 
 interface Props {
@@ -41,6 +42,8 @@ function openComplaintModal() {
 
   showComplaintModal.value = true
 }
+
+const isMobile = useBreakpoint('<s')
 </script>
 
 <template>
@@ -48,7 +51,7 @@ function openComplaintModal() {
     <!-- Title and actions row -->
     <Flex x-between align="start" gap="l" class="gameserver-header__title-row">
       <div class="gameserver-header__title-section">
-        <Flex gap="l" y-start class="gameserver-header__title-container">
+        <Flex :gap="isMobile ? 'm' : 'l'" y-start class="gameserver-header__title-container">
           <GameDetailsModalTrigger
             v-if="game"
             v-slot="{ open }"
@@ -60,7 +63,7 @@ function openComplaintModal() {
               :aria-label="`Open details for ${game.name ?? 'game'}`"
               @click.stop="open"
             >
-              <GameIcon :game="game" size="xl" />
+              <GameIcon :game="game" :size="isMobile ? 'l' : 'xl'" />
             </button>
           </GameDetailsModalTrigger>
           <div>
@@ -76,6 +79,14 @@ function openComplaintModal() {
       </div>
 
       <Flex gap="m" class="gameserver-header__aside" y-start>
+        <!-- Mobile report issue button -->
+        <Button v-if="isMobile" variant="danger" size="s" @click="openComplaintModal">
+          <template #start>
+            <Icon name="ph:chat-circle-text" />
+          </template>
+          Report Issue
+        </Button>
+
         <!-- Connect Button -->
         <div
           v-if="gameserver.addresses && gameserver.addresses.length"
@@ -86,7 +97,7 @@ function openComplaintModal() {
             :text="`${gameserver.addresses[0]}${gameserver.port ? `:${gameserver.port}` : ''}`"
             confirm
           >
-            <Button variant="accent" size="m">
+            <Button variant="accent" :size="isMobile ? 's' : 'm'">
               <template #start>
                 <Icon name="ph:play" />
               </template>
@@ -96,7 +107,7 @@ function openComplaintModal() {
 
           <Dropdown v-else>
             <template #trigger="{ toggle }">
-              <Button variant="accent" size="m" @click="toggle">
+              <Button variant="accent" :size="isMobile ? 's' : 'm'" @click="toggle">
                 <Flex y-center gap="xs">
                   Connect
                   <Icon name="ph:caret-down" size="s" />
@@ -181,13 +192,15 @@ function openComplaintModal() {
                 </Badge>
               </div>
 
-              <div class="flex-1" />
-              <Button variant="danger" size="s" @click="openComplaintModal">
-                <template #start>
-                  <Icon name="ph:chat-circle-text" />
-                </template>
-                Report Issue
-              </Button>
+              <template v-if="!isMobile">
+                <div class="flex-1" />
+                <Button variant="danger" size="s" @click="openComplaintModal">
+                  <template #start>
+                    <Icon name="ph:chat-circle-text" />
+                  </template>
+                  Report Issue
+                </Button>
+              </template>
             </Flex>
           </div>
         </div>
@@ -206,6 +219,8 @@ function openComplaintModal() {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .gameserver-header {
   &__title-container {
     margin-bottom: var(--space-l);
@@ -249,6 +264,9 @@ function openComplaintModal() {
 
   &__title-row {
     margin-bottom: var(--space-s);
+
+    @media screen and (max-width: $breakpoint-xs) {
+    }
   }
 
   &__title-section {
@@ -336,6 +354,15 @@ function openComplaintModal() {
   }
 
   @media (max-width: 768px) {
+    &__game-icon-button {
+      .game-icon-container,
+      .game-icon,
+      .game-icon-skeleton {
+        width: 48px;
+        height: 48px;
+      }
+    }
+
     &__title {
       font-size: var(--font-size-xxl);
     }
@@ -345,10 +372,19 @@ function openComplaintModal() {
     }
 
     &__title-row {
-      flex-direction: column;
-      align-items: stretch;
-      gap: var(--space-m);
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: var(--space-m) !important;
     }
+
+    &__title-container {
+      margin-bottom: 0;
+    }
+
+    // &__title-section {
+    //   width: 100%;
+    //   flex: 1;
+    // }
 
     &__actions {
       align-self: stretch;
@@ -365,11 +401,23 @@ function openComplaintModal() {
     &__status-label {
       font-size: var(--font-size-xs);
     }
+
+    &__aside {
+      padding-left: 60px;
+    }
   }
 
   @media (max-width: 480px) {
     &__title {
       font-size: var(--font-size-xl);
+    }
+
+    &__status-info {
+      // Dw about it
+      .vui-flex {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
   }
 }
