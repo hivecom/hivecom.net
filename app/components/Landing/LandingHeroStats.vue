@@ -33,7 +33,7 @@ defineProps<{
         <span class="text-xs text-color-light">Community Members</span>
       </NuxtLink>
 
-      <NuxtLink to="/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
+      <NuxtLink to="/servers/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
         <Flex x-center class="hero-section__stats-value">
           <template v-if="loading">
             <Skeleton height="2.5rem" width="2rem" />

@@ -16,20 +16,20 @@ const queryTab = computed(() => {
 })
 
 watch(queryTab, (tab) => {
-  if (tab === 'listing' || tab === 'calendar')
+  if (tab === 'list' || tab === 'calendar')
     activeTab.value = tab
 }, { immediate: true })
 
 watch(activeTab, (tab) => {
-  if (tab !== 'listing' && tab !== 'calendar')
+  if (tab !== 'list' && tab !== 'calendar')
     return
 
-  const currentQueryTab = queryTab.value ?? 'listing'
+  const currentQueryTab = queryTab.value ?? 'list'
   if (currentQueryTab === tab)
     return
 
   const { tab: _ignoredTab, calendar: _ignoredCalendar, ...restQuery } = route.query
-  const nextQuery = tab === 'listing' ? restQuery : { ...restQuery, tab }
+  const nextQuery = tab === 'list' ? restQuery : { ...restQuery, tab }
 
   router.replace({ query: nextQuery })
 })
@@ -75,7 +75,7 @@ onMounted(async () => {
 
     <!-- Tabs Navigation -->
     <Tabs v-model="activeTab" class="my-m">
-      <Tab value="listing">
+      <Tab value="list">
         List
       </Tab>
       <Tab value="calendar">
@@ -90,7 +90,7 @@ onMounted(async () => {
     <section class="mt-xl">
       <!-- Listing View -->
       <EventsListing
-        v-if="activeTab === 'listing'"
+        v-if="activeTab === 'list'"
         :events="events"
         :loading="loading"
         :error-message="errorMessage"

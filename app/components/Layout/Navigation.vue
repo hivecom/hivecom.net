@@ -61,18 +61,22 @@ const navbarLinks = [
         label: 'About',
       },
       {
-        path: '/community?tab=voice',
-        label: 'Voice channels',
+        path: '/community/funding',
+        label: 'Funding',
+      },
+      {
+        path: '/community/projects',
+        label: 'Projects',
       },
     ],
   },
   {
-    path: '/events',
+    path: '/events?tab=list',
     label: 'Events',
     icon: 'ph:calendar',
     children: [
       {
-        path: '/events',
+        path: '/events?tab=list',
         label: 'List',
       },
       {
@@ -82,17 +86,17 @@ const navbarLinks = [
     ],
   },
   {
-    path: '/gameservers',
+    path: '/servers/gameservers?tab=library',
     label: 'Servers',
     icon: 'ph:game-controller',
     children: [
       {
-        path: '/gameservers',
-        label: 'Library',
+        path: '/servers/gameservers?tab=list',
+        label: 'Game Servers',
       },
       {
-        path: '/gameservers?tab=list',
-        label: 'List',
+        path: '/servers/voiceservers',
+        label: 'Voice Servers',
       },
     ],
   },
