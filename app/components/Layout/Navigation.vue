@@ -255,7 +255,7 @@ const navbarLinks = [
 .navigation {
   width: 100%;
   position: fixed;
-  background-color: var(--dark-color-fg);
+  background-color: var(--color-bg);
   z-index: var(--z-nav); // Make sure the nav is main content
   border-bottom: 1px solid var(--color-border-weak);
 
@@ -288,9 +288,9 @@ const navbarLinks = [
     border-top: none;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
-    box-shadow: none;
+    box-shadow: none !important;
     transform: translate3D(0, -8px, 0);
-    background-color: var(--dark-color-fg);
+    background-color: var(--color-bg);
 
     &:before,
     &:after {
@@ -312,7 +312,7 @@ const navbarLinks = [
         transparent calc(var(--size) - 1px),
         var(--color-border-weak) calc(var(--size) - 1px),
         var(--color-border-weak) var(--size),
-        var(--dark-color-fg) var(--size)
+        var(--color-bg) var(--size)
       );
     }
 

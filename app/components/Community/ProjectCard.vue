@@ -251,7 +251,6 @@ const bannerSurfaceStyle = computed(() => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(var(--color-accent-rgb), 0.1);
   color: var(--color-text-light);
   transition: all 0.3s ease;
 

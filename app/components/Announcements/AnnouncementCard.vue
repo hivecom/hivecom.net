@@ -189,7 +189,6 @@ const backgroundSurfaceStyle = computed(() => {
 
   &--pinned {
     border-color: var(--color-accent);
-    background: linear-gradient(135deg, rgba(var(--color-accent-rgb), 0.03) 0%, transparent 100%);
 
     &::before {
       opacity: 1;
@@ -325,7 +324,6 @@ const backgroundSurfaceStyle = computed(() => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(var(--color-accent-rgb), 0.1);
   color: var(--color-text-light);
   transition: all 0.3s ease;
   z-index: 2;

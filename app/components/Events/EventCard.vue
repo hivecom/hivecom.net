@@ -207,12 +207,6 @@ function handleClick() {
 
   &--ongoing {
     border-color: var(--color-accent);
-    background: linear-gradient(
-      135deg,
-      rgba(var(--color-accent-rgb), 0.05) 0%,
-      rgba(var(--color-accent-rgb), 0.02) 50%,
-      transparent 100%
-    );
 
     &::before {
       content: '';
