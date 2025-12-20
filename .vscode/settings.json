@@ -7,7 +7,6 @@
   "eslint.format.enable": true,
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "dbaeumer.vscode-eslint",
-  "editor.formatOnType": true,
   // Make sure to use the same formatter for all languages
   "[javascript]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"

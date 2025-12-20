@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
 import LandingHeroActions from '@/components/Landing/LandingHeroActions.vue'
 import LandingHeroGlobe from '@/components/Landing/LandingHeroGlobe.vue'
 import LandingHeroShader from '@/components/Landing/LandingHeroShader.vue'
@@ -15,7 +14,6 @@ interface CommunityStats {
 }
 
 defineProps<{
-  pinnedAnnouncements: Tables<'announcements'>[]
   communityStats: CommunityStats
   loading: boolean
 }>()
@@ -30,26 +28,21 @@ defineProps<{
       </ClientOnly>
 
       <div class="hero-overlay__text">
-        <h1 class="hero-overlay__title">
-          HIVECOM
+        <h1 class="visually-hidden">
+          Hivecom
         </h1>
+        <img src="/logotype-white.svg" class="hero-overlay__logo">
         <LandingMotd fallback-text="A community of friends from all around the world" />
       </div>
 
       <LandingHeroStats class="hero-overlay__stats" :community-stats="communityStats" :loading="loading" />
-      <LandingHeroActions :pinned-announcements="pinnedAnnouncements" :loading="loading" />
+      <LandingHeroActions />
     </div>
   </section>
 </template>
 
 <style scoped lang="scss">
 @use '@/assets/breakpoints.scss' as *;
-
-:root.dark {
-  .hero-overlay::before {
-    opacity: 0.01;
-  }
-}
 
 :root.light {
   .hero-overlay::after {
@@ -66,6 +59,14 @@ defineProps<{
   .hero-overlay::before {
     border-bottom-color: rgba(0, 0, 0, 0.08);
   }
+
+  .hero-overlay__body:before {
+    background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.8) 75%);
+  }
+
+  .hero-overlay__logo {
+    filter: invert(1);
+  }
 }
 
 .hero-overlay {
@@ -81,14 +82,6 @@ defineProps<{
     position: absolute;
     inset: 0;
     z-index: 0;
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    opacity: 0.25;
-    border-bottom: 1px solid var(--color-border-strong);
   }
 
   &::after {
@@ -118,20 +111,42 @@ defineProps<{
   align-items: center;
   gap: 2rem;
   width: 100%;
+
+  &:before {
+    content: '';
+    display: block;
+    position: absolute;
+    inset: 0;
+    top: 65%;
+    background: linear-gradient(rgba(17, 17, 17, 0), rgba(17, 17, 17, 0.8) 75%);
+    z-index: 2;
+  }
 }
 
 .hero-overlay__text {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-xl);
   align-items: center;
   text-align: center;
   position: relative;
   z-index: 4;
+  max-width: 720px;
+  width: 100%;
 
   @media screen and (max-width: $breakpoint-l) {
     align-items: center;
     text-align: center;
+  }
+}
+
+.hero-overlay__logo {
+  width: 100%;
+  pointer-events: none;
+  user-select: none;
+
+  @media screen and (max-width: $breakpoint-m) {
+    padding-inline: 32px;
   }
 }
 

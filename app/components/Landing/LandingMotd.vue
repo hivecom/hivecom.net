@@ -156,7 +156,7 @@ onBeforeUnmount(() => {
     @keydown.enter.prevent="handleClick"
     @keydown.space.prevent="handleClick"
   >
-    <span class="hero-motd__sr">{{ displayText }}</span>
+    <span class="visually-hidden">{{ displayText }}</span>
 
     <span
       :key="`${renderKey}-${displayText}`"
@@ -197,18 +197,6 @@ onBeforeUnmount(() => {
   min-height: 1.4em;
 }
 
-.hero-motd__sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 .hero-motd__letter {
   display: inline-block;
   will-change: opacity, transform;
@@ -228,6 +216,7 @@ onBeforeUnmount(() => {
   animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
   animation-fill-mode: both;
   animation-delay: calc(var(--i) * var(--stagger));
+  text-shadow: 2px 0 0 var(--color-bg) 3px;
 }
 
 .hero-motd--loading {

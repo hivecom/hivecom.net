@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
+import dayjs from 'dayjs'
 import NotificationDropdown from './NotificationDropdown.vue'
 import UserDropdown from './UserDropdown.vue'
 
@@ -31,9 +32,30 @@ watch(
   },
 )
 
-onMounted(async () => {
+// Whether to show status badges in navbar or not
+const isNewAnnouncement = ref(false)
+const isEventSoon = ref(false)
+
+onBeforeMount(async () => {
   await supabase.auth.getSession().catch(() => null)
   authReady.value = true
+
+  supabase
+    .from('announcements')
+    .select('*', { count: 'exact', head: true })
+    .eq('pinned', true)
+    .then(({ count }) => {
+      isNewAnnouncement.value = !!(count && count > 0)
+    })
+
+  supabase
+    .from('events')
+    .select('*', { count: 'exact', head: true })
+    .gte('date', dayjs().startOf('day').toISOString())
+    .lt('date', dayjs().add(5, 'day').endOf('day').toISOString())
+    .then(({ count }) => {
+      isEventSoon.value = !!(count && count > 0)
+    })
 })
 
 // Track an animated background blob when user is hovering over the navbar links
@@ -53,7 +75,7 @@ function updateHoveredElement(event: MouseEvent) {
 // to sort of snap to the hovered link, but not fully and with some correction
 // to make it look more natural.
 
-const navbarLinks = [
+const navbarLinks = computed(() => [
   {
     path: '/',
     label: 'Home',
@@ -63,6 +85,7 @@ const navbarLinks = [
     path: '/announcements',
     label: 'Announcements',
     icon: 'ph:megaphone',
+    badge: isNewAnnouncement.value ? 'New' : null,
   },
   {
     path: '/community',
@@ -87,6 +110,7 @@ const navbarLinks = [
     path: '/events?tab=list',
     label: 'Events',
     icon: 'ph:calendar',
+    badge: isEventSoon.value ? 'Soon' : null,
     children: [
       {
         path: '/events?tab=list',
@@ -119,7 +143,7 @@ const navbarLinks = [
     icon: 'ph:check-square',
     requiresAuth: true,
   },
-]
+])
 </script>
 
 <template>
@@ -145,10 +169,13 @@ const navbarLinks = [
                 }"
               >
                 {{ link.label }}
+                <span v-if="link.badge" class="counter">
+                  {{ link.badge }}
+                </span>
                 <Icon v-if="link.children" name="ph:caret-down-fill" size="12px" />
               </NuxtLink>
 
-              <Popout v-if="link.children" class="navigation__links-popout" :anchor="hoveredElement" :visible="!!hoveredElement?.firstElementChild?.textContent.includes(link.label)">
+              <Popout v-if="link.children" placement="bottom-start" class="navigation__links-popout" :anchor="hoveredElement" :visible="!!hoveredElement?.firstElementChild?.textContent.includes(link.label)">
                 <DropdownItem v-for="sublink in link.children" :key="sublink.path" @click="router.push(sublink.path)">
                   {{ sublink.label }}
                 </DropdownItem>
@@ -193,6 +220,9 @@ const navbarLinks = [
               >
                 <Icon :name="link.icon" />
                 {{ link.label }}
+                <span v-if="link.badge" class="counter">
+                  {{ link.badge }}
+                </span>
               </NuxtLink>
 
               <div class="navigation__mobile-submenu">
@@ -252,12 +282,17 @@ const navbarLinks = [
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
 
+:deep(.counter) {
+  color: var(--color-text-light);
+  font-size: var(--font-size-xxs);
+}
+
 .navigation {
   width: 100%;
   position: fixed;
   background-color: var(--color-bg);
   z-index: var(--z-nav); // Make sure the nav is main content
-  border-bottom: 1px solid var(--color-border-weak);
+  border-bottom: 1px solid var(--color-border);
 
   &__items {
     display: flex;
@@ -284,12 +319,12 @@ const navbarLinks = [
   &__links-popout {
     width: 192px;
     padding: var(--space-xs);
-    border-color: var(--color-border-weak);
+    border-color: var(--color-border);
     border-top: none;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
     box-shadow: none !important;
-    transform: translate3D(0, -8px, 0);
+    transform: translate3D(-8px, -8px, 0);
     background-color: var(--color-bg);
 
     &:before,
@@ -310,8 +345,8 @@ const navbarLinks = [
       background-image: radial-gradient(
         circle at 100% 100%,
         transparent calc(var(--size) - 1px),
-        var(--color-border-weak) calc(var(--size) - 1px),
-        var(--color-border-weak) var(--size),
+        var(--color-border) calc(var(--size) - 1px),
+        var(--color-border) var(--size),
         var(--color-bg) var(--size)
       );
     }
@@ -528,7 +563,7 @@ const navbarLinks = [
     align-items: center;
     justify-content: start;
     width: 100%;
-    gap: var(--space-m);
+    gap: var(--space-xs);
     border-radius: var(--border-radius-s);
     background: none;
     border: none;
@@ -544,6 +579,7 @@ const navbarLinks = [
 
     .iconify {
       font-size: 18px;
+      margin-right: var(--space-xs);
     }
 
     &--accent {

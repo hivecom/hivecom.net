@@ -12,7 +12,7 @@ const errorMessage = ref('')
 
 // Real data from database
 const events = ref<Tables<'events'>[]>([])
-const pinnedAnnouncements = ref<Tables<'announcements'>[]>([])
+// const pinnedAnnouncements = ref<Tables<'announcements'>[]>([])
 const communityStats = ref({
   members: 100,
   membersAccurate: false,
@@ -29,19 +29,6 @@ onMounted(async () => {
   loading.value = true
 
   try {
-    // Fetch pinned announcements
-    const { data: announcementsData, error: announcementsError } = await supabase
-      .from('announcements')
-      .select('*')
-      .eq('pinned', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-
-    if (announcementsError)
-      throw announcementsError
-
-    pinnedAnnouncements.value = announcementsData || []
-
     // Fetch all events and sort by status (ongoing first, then upcoming, then past)
     const { data: eventsData, error: eventsError } = await supabase
       .from('events')
@@ -129,11 +116,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <LandingHero
-    :pinned-announcements="pinnedAnnouncements"
-    :community-stats="communityStats"
-    :loading="loading"
-  />
+  <LandingHero :community-stats="communityStats" :loading="loading" />
 
   <div class="container container-l">
     <div class="page-landing">
@@ -168,66 +151,74 @@ onMounted(async () => {
 
       <!-- Join us section -->
       <section class="join-section">
-        <!-- <Card> -->
-        <h2 class="heading">
-          Join us
-        </h2>
-        <ClientOnly>
-          <Divider />
-        </ClientOnly>
         <div class="join-section__container">
-          <p class="join-section__text">
-            We mainly talk on IRC and TeamSpeak. If Discord is your thing, we have a bot connecting both services so you won't be excluded.
-          </p>
+          <div class="join-section__copy">
+            <h2 class="heading">
+              Join us
+            </h2>
+            <p class="join-section__text">
+              We mainly talk on IRC and TeamSpeak. If Discord is your thing, we have a bot connecting both services so you won't be excluded.
+            </p>
 
-          <div id="platforms" class="join-section__platforms">
-            <Card v-for="platform in platforms" :key="platform.title">
-              <div class="join-section__platform-item">
-                <div class="join-section__platform-content">
-                  <Icon :name="platform.icon" size="32" class="platform-icon" />
-                  <h3 class="join-section__platform-title">
-                    {{ platform.title }}
-                  </h3>
-                  <Tooltip v-if="platform.note !== ''" placement="top">
-                    <Icon name="ph:info" class="join-section__platform-info" />
-                    <template #tooltip>
-                      <p>{{ platform.note }}</p>
-                    </template>
-                  </Tooltip>
-                </div>
-                <!-- Single URL: Direct link button -->
-                <Button
-                  v-if="platform.urls.length === 1 && platform.urls[0]" @click="navigateTo(platform.urls[0].url, { external: true,
-                                                                                                                   open: { target: '_blank' } })"
-                >
-                  {{ platform.action }}
-                </Button>
-                <!-- Multiple URLs: Dropdown menu -->
-                <Dropdown v-else>
-                  <template #trigger="{ toggle }">
-                    <Button @click="toggle">
-                      <Flex row y-center gap="xs">
-                        {{ platform.action }}
-                        <Icon name="ph:caret-down" />
-                      </Flex>
-                    </Button>
-                  </template>
-                  <DropdownItem v-for="url in platform.urls" :key="url.title">
-                    <NuxtLink
-                      external
-                      no-prefetch
-                      :href="url.url"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      :aria-label="`Connect to ${platform.title} on ${url.title}`"
-                    >
-                      {{ url.title }}
-                    </NuxtLink>
-                  </DropdownItem>
-                </Dropdown>
-              </div>
-            </Card>
+            <p class="join-section__text">
+              If you're interested in the latest news, want to support the community, create your own events or RSVP to the latest ones, feel free to sign up.
+            </p>
+
+            <Button variant="accent">
+              <template #start>
+                <Icon name="ph:user-plus" />
+              </template>
+              Sign up
+            </Button>
           </div>
+
+          <Card class="join-section__platforms">
+            <div v-for="platform in platforms" :key="platform.title" class="join-section__platform-item">
+              <div class="join-section__platform-content">
+                <Icon :name="platform.icon" size="32" class="platform-icon" />
+                <h3 class="join-section__platform-title">
+                  {{ platform.title }}
+                </h3>
+                <Tooltip v-if="platform.note !== ''" placement="top">
+                  <Icon name="ph:info" class="join-section__platform-info" />
+                  <template #tooltip>
+                    <p>{{ platform.note }}</p>
+                  </template>
+                </Tooltip>
+              </div>
+              <!-- Single URL: Direct link button -->
+              <Button
+                v-if="platform.urls.length === 1 && platform.urls[0]"
+                @click="navigateTo(platform.urls[0].url, { external: true,
+                                                           open: { target: '_blank' } })"
+              >
+                {{ platform.action }}
+              </Button>
+              <!-- Multiple URLs: Dropdown menu -->
+              <Dropdown v-else>
+                <template #trigger="{ toggle }">
+                  <Button @click="toggle">
+                    <Flex row y-center gap="xs">
+                      {{ platform.action }}
+                      <Icon name="ph:caret-down" />
+                    </Flex>
+                  </Button>
+                </template>
+                <DropdownItem v-for="url in platform.urls" :key="url.title">
+                  <NuxtLink
+                    external
+                    no-prefetch
+                    :href="url.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    :aria-label="`Connect to ${platform.title} on ${url.title}`"
+                  >
+                    {{ url.title }}
+                  </NuxtLink>
+                </DropdownItem>
+              </Dropdown>
+            </div>
+          </Card>
         </div>
       </section>
 
@@ -304,7 +295,7 @@ section {
 
 .heading {
   text-align: center;
-  font-size: var(--font-size-xxl);
+  font-size: var(--font-size-xxxl);
   margin-bottom: 0.5rem;
 }
 
@@ -319,6 +310,7 @@ h4 {
 
 .about-section {
   padding-top: 4rem;
+
   &__content {
     max-width: 900px;
     margin: 2rem auto 0;
@@ -338,29 +330,62 @@ h4 {
 }
 
 .join-section {
+  display: block;
+  margin-block: 96px;
+
+  .heading {
+    display: block;
+    text-align: left;
+    margin-bottom: var(--space-xl);
+  }
+
   &__text {
-    text-align: center;
-    margin-bottom: 2rem;
+    text-align: left;
+    margin-bottom: var(--space-l);
   }
 
   &__container {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    align-items: center;
+    gap: 64px;
     max-width: 900px;
     margin: 2rem auto 0;
-  }
 
-  &__platforms {
-    display: grid;
-    gap: var(--space-m);
-    grid-template-columns: 2fr 2fr;
+    @media screen and (max-width: $breakpoint-m) {
+      grid-template-columns: 1fr 1fr;
+    }
 
     @media screen and (max-width: $breakpoint-s) {
-      grid-template-columns: 1fr; /* Stack on smaller screens */
+      display: flex;
+      gap: var(--space-xl);
+      flex-direction: column;
+
+      .join-section__text,
+      .heading {
+        text-align: center;
+      }
+
+      .join-section__copy {
+        .vui-button {
+          margin: auto;
+        }
+      }
     }
   }
 
   &__platform-item {
     display: flex;
     justify-content: space-between;
+    padding-bottom: var(--space-m);
+    margin-bottom: var(--space-m);
+    border-bottom: 1px solid var(--color-border);
+
+    &:last-of-type {
+      padding-bottom: 0;
+      margin-bottom: 0;
+      border-bottom: none;
+    }
   }
 
   &__platform-content {
@@ -370,7 +395,9 @@ h4 {
   }
 
   &__platform-title {
-    font-size: 2rem;
+    font-size: var(--font-size-l);
+    text-align: left;
+    font-weight: var(--font-weight-medium);
   }
 
   &__platform-info.icon {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Divider, Flex, Skeleton } from '@dolanske/vui'
+import { Flex, Skeleton } from '@dolanske/vui'
 
 interface CommunityStats {
   members: number
@@ -17,9 +17,7 @@ defineProps<{
 
 <template>
   <div class="hero-section__stats">
-    <ClientOnly>
-      <Divider />
-    </ClientOnly>
+    <div class="hero-section__divider" />
     <div class="hero-section__stats-grid">
       <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
         <Flex x-center class="hero-section__stats-value">
@@ -30,7 +28,7 @@ defineProps<{
             {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
           </template>
         </Flex>
-        <span class="text-xs text-color-light">Community Members</span>
+        <span class="text-xs">Community Members</span>
       </NuxtLink>
 
       <NuxtLink to="/servers/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
@@ -42,12 +40,12 @@ defineProps<{
             {{ communityStats.gameservers }}
           </template>
         </Flex>
-        <span class="text-xs text-color-light">Game Servers</span>
+        <span class="text-xs">Game Servers</span>
       </NuxtLink>
 
       <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
         <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
-        <span class="text-xs text-color-light">Founded in 2013</span>
+        <span class="text-xs">Founded in 2013</span>
       </NuxtLink>
 
       <NuxtLink to="/community/projects" class="hero-section__stats-card hero-section__stats-card--clickable">
@@ -59,18 +57,46 @@ defineProps<{
             {{ communityStats.projects }}
           </template>
         </Flex>
-        <span class="text-xs text-color-light">Community Projects</span>
+        <span class="text-xs">Community Projects</span>
       </NuxtLink>
     </div>
   </div>
-  <ClientOnly>
-    <Divider />
-  </ClientOnly>
 </template>
 
 <style scoped lang="scss">
 .hero-section__stats {
   z-index: 1;
+  margin-bottom: 32px;
+}
+
+:root.light {
+  .hero-section__divider {
+    border-image: linear-gradient(
+        to right,
+        transparent 0%,
+        var(--color-border-strong) 10%,
+        var(--color-border-strong) 90%,
+        transparent 100%
+      )
+      1;
+  }
+}
+
+.hero-section__divider {
+  max-width: 612px;
+  width: 100%;
+  margin-top: 8px;
+  display: block;
+  margin-inline: auto;
+  border-bottom: 1px solid;
+  border-image: linear-gradient(
+      to right,
+      transparent 0%,
+      var(--color-text-lighter) 10%,
+      var(--color-text-lighter) 90%,
+      transparent 100%
+    )
+    1;
 }
 
 .hero-section__stats-grid {
@@ -89,6 +115,10 @@ defineProps<{
   text-decoration: none;
   color: inherit;
   transition: all 0.3s ease;
+
+  span {
+    text-shadow: 2px 0 0 var(--color-bg) 3px;
+  }
 
   &--clickable {
     cursor: pointer;
