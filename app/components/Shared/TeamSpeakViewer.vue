@@ -7,6 +7,7 @@ import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useTeamSpeakSnapshot } from '@/composables/useTeamSpeakSnapshot'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryEmoji } from '@/lib/utils/country'
 import BadgeCircle from './BadgeCircle.vue'
 import TimestampDate from './TimestampDate.vue'
@@ -15,6 +16,8 @@ const props = withDefaults(defineProps<Props>(), {
   refreshInterval: 5 * 60 * 1000,
   servers: null,
 })
+
+const isBelowLarge = useBreakpoint('<l')
 
 type ClientRole = 'admin' | 'moderator' | 'supporter' | 'registered' | 'music-bot'
 
@@ -774,7 +777,7 @@ function openRawSnapshot() {
             square
             :loading="pending || manualRefreshPending"
             :disabled="pending || manualRefreshPending || !canRefresh"
-            data-title-top="Refresh"
+            :data-title-top="!isBelowLarge ? 'Refresh' : null"
             aria-label="Refresh TeamSpeak snapshot"
             @click="handleRefresh"
           >
@@ -784,7 +787,8 @@ function openRawSnapshot() {
             size="s"
             square
             :disabled="!rawSnapshotUrl"
-            data-title-top="Open raw snapshot"
+
+            :data-title-top="!isBelowLarge ? 'Open raw snapshot' : null"
             aria-label="Open raw TeamSpeak snapshot"
             @click="openRawSnapshot"
           >

@@ -96,7 +96,7 @@ function handleClose() {
   <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
     <template #header>
       <Flex x-between y-center expand>
-        <h3>Referendum Voters</h3>
+        <h3>Voters</h3>
         <Flex gap="s" y-center>
           <!-- Toggle details button -->
           <Button
