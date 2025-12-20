@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { Tables } from '@/types/database.types'
 import { Alert, Badge, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, onBeforeMount, ref } from 'vue'
+import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
@@ -40,6 +41,8 @@ const search = ref('')
 const showFundingDetails = ref(false)
 const selectedFunding = ref<MonthlyFunding | null>(null)
 
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
+
 // Filtered and transformed funding data
 const transformedFundings = computed<TransformedFunding[]>(() => {
   let filteredData = monthlyFundings.value
@@ -76,12 +79,17 @@ const isFiltered = computed(() => Boolean(search.value))
 const isBelowMedium = useBreakpoint('<m')
 
 // Table configuration
-const { headers, rows, pagination, setPage } = defineTable(transformedFundings, {
+const { headers, rows, pagination, setPage, options } = defineTable(transformedFundings, {
   pagination: {
     enabled: true,
-    perPage: 10,
+    perPage: adminTablePerPage.value,
   },
   select: false,
+})
+
+watch(adminTablePerPage, (perPage) => {
+  options.value.pagination.perPage = perPage
+  setPage(1)
 })
 
 // Note: We pre-sort data by date in transformedFundings computed property
@@ -197,7 +205,7 @@ onBeforeMount(fetchMonthlyFundings)
           </tr>
         </template>
 
-        <template v-if="transformedFundings.length > 10" #pagination>
+        <template v-if="transformedFundings.length > adminTablePerPage" #pagination>
           <Pagination :pagination="pagination" @change="setPage" />
         </template>
       </Table.Root>

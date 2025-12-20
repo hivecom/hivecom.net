@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, onBeforeMount, ref } from 'vue'
+import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
@@ -38,6 +39,8 @@ const search = ref('')
 const showEventDetails = ref(false)
 const showEventForm = ref(false)
 const selectedEvent = ref<Event | null>(null)
+
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 const isEditMode = ref(false)
 
 // Loading states for individual events
@@ -89,12 +92,17 @@ const isFiltered = computed(() => Boolean(search.value))
 const isBelowMedium = useBreakpoint('<m')
 
 // Table configuration
-const { headers, rows, pagination, setPage, setSort } = defineTable(transformedEvents, {
+const { headers, rows, pagination, setPage, setSort, options } = defineTable(transformedEvents, {
   pagination: {
     enabled: true,
-    perPage: 10,
+    perPage: adminTablePerPage.value,
   },
   select: false,
+})
+
+watch(adminTablePerPage, (perPage) => {
+  options.value.pagination.perPage = perPage
+  setPage(1)
 })
 
 // Set default sorting by date (newest first)
@@ -402,7 +410,7 @@ onBeforeMount(fetchEvents)
           </tr>
         </template>
 
-        <template v-if="transformedEvents.length > 10" #pagination>
+        <template v-if="transformedEvents.length > adminTablePerPage" #pagination>
           <Pagination :pagination="pagination" @change="setPage" />
         </template>
       </Table.Root>

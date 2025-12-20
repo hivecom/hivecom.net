@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
+
 import type { CmsAsset } from '@/lib/cmsAssets'
 import { Alert, Badge, Button, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Toasts } from '@dolanske/vui'
 
-import { computed, onBeforeMount, ref, watch } from 'vue'
+import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
 import AssetRenameModal from '@/components/Admin/Assets/AssetRenameModal.vue'
 import AssetUpload from '@/components/Admin/Assets/AssetUpload.vue'
@@ -51,6 +53,15 @@ const sortOption = ref<SortOptionValue>('name-asc')
 const viewMode = ref<'table' | 'grid'>('table')
 const isBelowMedium = useBreakpoint('<m')
 type AssetActionKey = 'delete' | 'rename'
+
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
+
+const assetGridColumns = computed(() => {
+  if (isBelowMedium.value)
+    return 2
+
+  return adminTablePerPage.value > 10 ? 8 : 4
+})
 
 const actionLoading = ref<Record<string, Partial<Record<AssetActionKey, boolean>>>>({})
 
@@ -691,12 +702,12 @@ onBeforeMount(fetchAssets)
           </Flex>
         </TableContainer>
 
-        <div v-else>
+        <Flex v-else expand>
           <Grid
             v-if="filteredAssets.length"
             class="asset-manager__grid"
             expand
-            :columns="isBelowMedium ? 2 : 4"
+            :columns="assetGridColumns"
           >
             <Card
               v-for="asset in filteredAssets"
@@ -726,7 +737,7 @@ onBeforeMount(fetchAssets)
               No assets found in this folder.
             </Alert>
           </Flex>
-        </div>
+        </Flex>
       </template>
     </Flex>
 

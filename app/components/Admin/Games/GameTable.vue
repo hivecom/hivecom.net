@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, onBeforeMount, ref } from 'vue'
+import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
@@ -44,6 +45,8 @@ const showGameForm = ref(false)
 const selectedGame = ref<Game | null>(null)
 const isEditMode = ref(false)
 
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
+
 // Filtered and transformed games
 const transformedGames = computed<TransformedGame[]>(() => {
   if (!search.value) {
@@ -75,12 +78,17 @@ const isFiltered = computed(() => Boolean(search.value))
 const isBelowMedium = useBreakpoint('<m')
 
 // Table configuration
-const { headers, rows, pagination, setPage, setSort } = defineTable(transformedGames, {
+const { headers, rows, pagination, setPage, setSort, options } = defineTable(transformedGames, {
   pagination: {
     enabled: true,
-    perPage: 10,
+    perPage: adminTablePerPage.value,
   },
   select: false,
+})
+
+watch(adminTablePerPage, (perPage) => {
+  options.value.pagination.perPage = perPage
+  setPage(1)
 })
 
 // Set default sorting
@@ -340,7 +348,7 @@ onBeforeMount(fetchGames)
           </tr>
         </template>
 
-        <template v-if="transformedGames.length > 10" #pagination>
+        <template v-if="transformedGames.length > adminTablePerPage" #pagination>
           <Pagination :pagination="pagination" @change="setPage" />
         </template>
       </Table.Root>

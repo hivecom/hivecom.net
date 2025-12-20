@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, onBeforeMount, ref } from 'vue'
+import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
@@ -44,6 +45,8 @@ const showExpenseDetails = ref(false)
 const showExpenseForm = ref(false)
 const selectedExpense = ref<Expense | null>(null)
 const isEditMode = ref(false)
+
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
 // Format date helper
 function formatDate(dateString: string): string {
@@ -130,12 +133,17 @@ const isFiltered = computed(() => Boolean(search.value))
 const isBelowMedium = useBreakpoint('<m')
 
 // Table configuration
-const { headers, rows, pagination, setPage, setSort } = defineTable(transformedExpenses, {
+const { headers, rows, pagination, setPage, setSort, options } = defineTable(transformedExpenses, {
   pagination: {
     enabled: true,
-    perPage: 10,
+    perPage: adminTablePerPage.value,
   },
   select: false,
+})
+
+watch(adminTablePerPage, (perPage) => {
+  options.value.pagination.perPage = perPage
+  setPage(1)
 })
 
 // Set default sorting
@@ -377,7 +385,7 @@ onBeforeMount(fetchExpenses)
           </tr>
         </template>
 
-        <template v-if="transformedExpenses.length > 10" #pagination>
+        <template v-if="transformedExpenses.length > adminTablePerPage" #pagination>
           <Pagination :pagination="pagination" @change="setPage" />
         </template>
       </Table.Root>

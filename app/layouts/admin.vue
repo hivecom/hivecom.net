@@ -237,6 +237,12 @@ provide('hasAnyPermission', hasAnyPermission)
 const miniSidebar = useLocalStorage('admin-sidebar-open', false)
 const expandedLayout = useLocalStorage('admin-layout-expanded', false)
 
+const adminTablePerPage = computed(() => {
+  return expandedLayout.value ? 20 : 10
+})
+
+provide('adminTablePerPage', adminTablePerPage)
+
 const expandedContentStyle = {
   width: '100%',
   paddingLeft: 'var(--space-m)',

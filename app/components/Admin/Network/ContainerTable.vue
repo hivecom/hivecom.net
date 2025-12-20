@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 
-import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import type { Ref } from 'vue'
 
-import { computed, ref, watch } from 'vue'
+import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { computed, inject, ref, watch } from 'vue'
 
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
@@ -190,13 +191,20 @@ const totalCount = computed(() => containers.value.length)
 const filteredCount = computed(() => filteredData.value.length)
 const isFiltered = computed(() => filteredCount.value !== totalCount.value)
 
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
+
 // Table configuration
-const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
+const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredData, {
   pagination: {
     enabled: true,
-    perPage: 10,
+    perPage: adminTablePerPage.value,
   },
   select: false,
+})
+
+watch(adminTablePerPage, (perPage) => {
+  options.value.pagination.perPage = perPage
+  setPage(1)
 })
 
 // Set default sorting.
@@ -561,7 +569,7 @@ onBeforeMount(fetchContainers)
             </tr>
           </template>
 
-          <template v-if="filteredData.length > 10" #pagination>
+          <template v-if="filteredData.length > adminTablePerPage" #pagination>
             <Pagination :pagination="pagination" @change="setPage" />
           </template>
         </Table.Root>

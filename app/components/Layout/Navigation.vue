@@ -14,9 +14,22 @@ const route = useRoute()
 // Mobile menu state
 const mobileMenuOpen = ref(false)
 
+function closeMobileMenu() {
+  mobileMenuOpen.value = false
+}
+
 function toggleMobileMenu() {
   mobileMenuOpen.value = !mobileMenuOpen.value
 }
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (mobileMenuOpen.value) {
+      closeMobileMenu()
+    }
+  },
+)
 
 onMounted(async () => {
   await supabase.auth.getSession().catch(() => null)
@@ -161,7 +174,7 @@ const navbarLinks = [
           :open="mobileMenuOpen"
           position="left"
           :card="{ separators: true }"
-          @close="mobileMenuOpen = false"
+          @close="closeMobileMenu"
         >
           <template #header>
             <Flex x-between style="padding-top:3px">
@@ -171,13 +184,25 @@ const navbarLinks = [
           <template #header-end />
           <div class="navigation__mobile-menu">
             <template v-for="link in navbarLinks" :key="link.path">
-              <NuxtLink v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)" :to="link.path" class="navigation__mobile-menu-item" :class="{ 'router-link-active': $route.path.includes(link.path) && link.path !== '/' }">
+              <NuxtLink
+                v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)"
+                :to="link.path"
+                class="navigation__mobile-menu-item"
+                :class="{ 'router-link-active': $route.path.includes(link.path) && link.path !== '/' }"
+                @click="closeMobileMenu"
+              >
                 <Icon :name="link.icon" />
                 {{ link.label }}
               </NuxtLink>
 
               <div class="navigation__mobile-submenu">
-                <NuxtLink v-for="sublink in link.children" :key="sublink.path" :to="sublink.path" class="navigation__mobile-menu-item">
+                <NuxtLink
+                  v-for="sublink in link.children"
+                  :key="sublink.path"
+                  :to="sublink.path"
+                  class="navigation__mobile-menu-item"
+                  @click="closeMobileMenu"
+                >
                   {{ sublink.label }}
                 </NuxtLink>
               </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
+import type { Ref } from 'vue'
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
@@ -117,13 +118,20 @@ const isFiltered = computed(() => Boolean(
   || (tagFilter.value && tagFilter.value.length > 0),
 ))
 
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
+
 // Table configuration
-const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
+const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredData, {
   pagination: {
     enabled: true,
-    perPage: 10,
+    perPage: adminTablePerPage.value,
   },
   select: false,
+})
+
+watch(adminTablePerPage, (perPage) => {
+  options.value.pagination.perPage = perPage
+  setPage(1)
 })
 
 // Set default sorting.
@@ -396,7 +404,7 @@ onBeforeMount(fetchProjects)
           </tr>
         </template>
 
-        <template v-if="filteredData.length > 10" #pagination>
+        <template v-if="filteredData.length > adminTablePerPage" #pagination>
           <Pagination :pagination="pagination" @change="setPage" />
         </template>
       </Table.Root>

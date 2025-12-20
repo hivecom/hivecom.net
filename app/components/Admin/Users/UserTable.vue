@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { Tables } from '@/types/database.types'
 import { Alert, Button, CopyClipboard, defineTable, Flex, Pagination, Table, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
@@ -121,6 +122,8 @@ const users = ref<QueryUserProfile[]>([])
 const userRoles = ref<Record<string, string | null>>({})
 const userEmails = ref<Record<string, string | null>>({})
 const search = ref('')
+
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 const roleFilter = ref<SelectOption[]>()
 const statusFilter = ref<SelectOption[]>()
 const isBelowMedium = useBreakpoint('<m')
@@ -326,12 +329,17 @@ const isFiltered = computed(() => Boolean(
 ))
 
 // Table configuration
-const { headers, rows, pagination, setPage, setSort } = defineTable(filteredData, {
+const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredData, {
   pagination: {
     enabled: true,
-    perPage: 10,
+    perPage: adminTablePerPage.value,
   },
   select: false,
+})
+
+watch(adminTablePerPage, (perPage) => {
+  options.value.pagination.perPage = perPage
+  setPage(1)
 })
 
 // Set default sorting to newest join date
@@ -602,7 +610,7 @@ defineExpose({
           </tr>
         </template>
 
-        <template v-if="filteredData.length > 10" #pagination>
+        <template v-if="filteredData.length > adminTablePerPage" #pagination>
           <Pagination :pagination="pagination" @change="setPage" />
         </template>
       </Table.Root>
