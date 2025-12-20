@@ -158,7 +158,7 @@ const filteredExpenses = computed(() => {
 
       <!-- Expenses Breakdown -->
       <section class="mt-xl">
-        <Flex x-between y-center class="mb-l">
+        <Flex x-between y-center class="mb-l" wrap>
           <h2>
             Monthly Expenses
           </h2>

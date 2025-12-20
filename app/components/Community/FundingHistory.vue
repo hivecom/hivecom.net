@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Card, defineTable, Flex, Grid, Table } from '@dolanske/vui'
 import TableContainer from '@/components/Shared/TableContainer.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
   monthlyFunding: Tables<'monthly_funding'>[]
@@ -9,6 +10,8 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+const isBelowExtraSmall = useBreakpoint('<xs')
 
 // Define transformed funding data interface for table
 interface TransformedFunding {
@@ -149,7 +152,7 @@ function getGrowthIndicator(growth: number | null) {
             <h3 class="text-bold text-xxxl">
               {{ historicalData[0].monthName }}
             </h3>
-            <Badge variant="accent">
+            <Badge v-if="!isBelowExtraSmall" variant="accent">
               Latest
             </Badge>
           </Flex>

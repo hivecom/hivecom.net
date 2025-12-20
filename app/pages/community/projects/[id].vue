@@ -4,7 +4,7 @@ import { Button, Card, Flex } from '@dolanske/vui'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import UserLink from '@/components/Shared/UserLink.vue'
 import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
 import { getPlaceholderBannerProject } from '@/lib/placeholderBannerProjects'
 
@@ -152,8 +152,8 @@ useHead({
 
             <!-- Meta information -->
             <Flex gap="l" x-between y-center class="project-header__meta" expand>
-              <div v-if="project.owner" class="project-header__owner">
-                <UserDisplay :user-id="project.owner" show-role />
+              <div v-if="project.owner" class="text-s">
+                Project by <UserLink :user-id="project.owner" show-role />
               </div>
               <Flex gap="s" y-center>
                 <NuxtLink

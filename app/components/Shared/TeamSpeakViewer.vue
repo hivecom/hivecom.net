@@ -257,9 +257,12 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
   ],
 }
 
-const { data, pending, error, refresh, lastUpdated } = useTeamSpeakSnapshot({
+const { data, pending, error, refresh, lastUpdated, status } = useTeamSpeakSnapshot({
   refreshInterval: props.refreshInterval,
 })
+
+const snapshotLoading = computed(() => pending.value || status.value === 'idle')
+const isDev = process.env.NODE_ENV === 'development'
 
 const manualRefreshPending = ref(false)
 
@@ -367,7 +370,11 @@ const servers = computed<TeamSpeakServerSnapshot[]>(() => {
   if (snapshotServers.value.length)
     return snapshotServers.value
 
-  if (process.env.NODE_ENV === 'development')
+  // Avoid flashing mock data before the first snapshot load attempt begins.
+  if (snapshotLoading.value)
+    return []
+
+  if (isDev)
     return MOCK_SNAPSHOT.servers
 
   return []
@@ -775,8 +782,8 @@ function openRawSnapshot() {
           <Button
             size="s"
             square
-            :loading="pending || manualRefreshPending"
-            :disabled="pending || manualRefreshPending || !canRefresh"
+            :loading="snapshotLoading || manualRefreshPending"
+            :disabled="snapshotLoading || manualRefreshPending || !canRefresh"
             :data-title-top="!isBelowLarge ? 'Refresh' : null"
             aria-label="Refresh TeamSpeak snapshot"
             @click="handleRefresh"
@@ -810,7 +817,7 @@ function openRawSnapshot() {
       </Flex>
     </template>
 
-    <Flex v-if="pending && !data" expand column gap="s">
+    <Flex v-if="snapshotLoading && !data" expand column gap="s">
       <Skeleton :height="64" :radius="12" />
       <Skeleton :height="240" :radius="12" />
     </Flex>

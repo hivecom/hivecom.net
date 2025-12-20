@@ -99,12 +99,12 @@ const navbarLinks = [
     ],
   },
   {
-    path: '/servers/gameservers?tab=library',
+    path: '/servers/gameservers?tab=list',
     label: 'Servers',
     icon: 'ph:game-controller',
     children: [
       {
-        path: '/servers/gameservers?tab=list',
+        path: '/servers/gameservers?tab=library',
         label: 'Game Servers',
       },
       {

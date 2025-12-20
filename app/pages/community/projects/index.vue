@@ -113,7 +113,7 @@ useSeoMeta({
 <template>
   <div class="page">
     <section>
-      <h1>Community Projects</h1>
+      <h1>Projects</h1>
       <p>
         Explore projects and initiatives from our community
       </p>
@@ -129,12 +129,15 @@ useSeoMeta({
 
       <!-- Loading skeletons -->
       <Flex v-if="loading" column gap="l" class="projects__loading" expand>
-        <Flex class="projects__filters" gap="s" x-start y-center expand>
-          <Skeleton :width="240" :height="32" :radius="8" />
+        <Flex gap="s" x-start class="projects__filters" y-center wrap expand>
+          <Skeleton width="100%" :height="36" :radius="8" />
+          <Skeleton width="100%" :height="36" :radius="8" />
         </Flex>
-        <Grid :columns="3" gap="m" class="projects__grid--loading" expand>
+        <Grid :columns="isBelowM ? 1 : 2" column gap="m" class="projects__grid--loading" expand>
           <template v-for="i in 6" :key="i">
-            <Skeleton :height="180" :radius="8" />
+            <Flex column gap="s" class="project-card-skeleton" expand>
+              <Skeleton :height="260" :radius="8" />
+            </Flex>
           </template>
         </Grid>
       </Flex>
@@ -212,6 +215,10 @@ useSeoMeta({
   .vui-grid__item {
     display: flex;
     align-items: stretch;
+  }
+
+  .project-card-skeleton {
+    width: 100%;
   }
 
   .project-card {

@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
 import constants from '~~/constants.json'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
 
 // Data setup
@@ -12,6 +13,8 @@ const errorMessage = ref('')
 // Check if we're on the funding page
 const route = useRoute()
 const isOnFundingPage = computed(() => route.path === '/community/funding')
+
+const isBelowSmall = useBreakpoint('<s')
 
 // Funding data
 const currentFunding = ref<Tables<'monthly_funding'> | null>(null)
@@ -125,11 +128,11 @@ const statusMessage = computed(() => {
         <!-- Main content -->
         <template v-else>
           <Flex y-center x-between class="mb-s funding-header">
-            <Flex y-center gap="s">
+            <Flex y-center gap="s" wrap>
               <h3 class="text-bold text-xxxl">
                 Monthly Funding
               </h3>
-              <Badge v-if="supporterCount > 0" variant="accent">
+              <Badge v-if="supporterCount > 0 && !isBelowSmall" variant="accent">
                 {{ supporterCount }} supporters
               </Badge>
             </Flex>
@@ -201,7 +204,7 @@ const statusMessage = computed(() => {
               <h3 class="text-bold text-xxxl">
                 Monthly Funding
               </h3>
-              <Badge v-if="supporterCount > 0" variant="accent">
+              <Badge v-if="supporterCount > 0 && !isBelowSmall" variant="accent">
                 {{ supporterCount }} supporters
               </Badge>
             </Flex>
@@ -233,7 +236,7 @@ const statusMessage = computed(() => {
             </div>
 
             <div class="funding-cta">
-              <Badge variant="accent">
+              <Badge v-if="!isBelowSmall" variant="accent">
                 <Icon name="ph:heart" size="1.4rem" />
                 Support Us
               </Badge>
