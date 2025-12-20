@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
+import { Button, Flex } from '@dolanske/vui'
 import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
@@ -190,6 +191,22 @@ useHead({
 
     <!-- Gameserver Content -->
     <div v-if="gameserver && !loading && !error" class="page-content">
+      <!-- Back button -->
+      <Flex x-start>
+        <Button
+          variant="gray"
+          plain
+          size="s"
+          aria-label="Go back to Game Servers"
+          href="/gameservers"
+        >
+          <template #start>
+            <Icon name="ph:arrow-left" />
+          </template>
+          Game Servers
+        </Button>
+      </Flex>
+
       <!-- Background Image -->
       <div
         v-if="gameBackground"

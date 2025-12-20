@@ -380,6 +380,7 @@ useHead({
         <Button
           variant="gray"
           size="s"
+          plain
           aria-label="Go back to Votes page"
           @click="router.push('/votes')"
         >

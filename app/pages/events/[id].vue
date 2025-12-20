@@ -219,6 +219,7 @@ useHead({
       <Flex x-between>
         <Button
           variant="gray"
+          plain
           size="s"
           aria-label="Go back to Events page"
           class="event-detail__back-link"

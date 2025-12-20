@@ -112,6 +112,7 @@ useHead({
         <Button
           variant="gray"
           size="s"
+          plain
           aria-label="Go back to Projects page"
           class="event-detail__back-link"
           @click="$router.push('/community/projects')"

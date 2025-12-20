@@ -44,20 +44,6 @@ function openComplaintModal() {
 </script>
 
 <template>
-  <Flex x-start>
-    <Button
-      variant="gray"
-      plain
-      size="s"
-      aria-label="Go back to Game Servers"
-      href="/gameservers"
-    >
-      <template #start>
-        <Icon name="ph:arrow-left" />
-      </template>
-      Game Servers
-    </Button>
-  </Flex>
   <div class="gameserver-header">
     <!-- Title and actions row -->
     <Flex x-between align="start" gap="l" class="gameserver-header__title-row">
