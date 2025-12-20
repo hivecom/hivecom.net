@@ -84,7 +84,7 @@ watch(currentUser, () => {
   <div v-else class="gameserver-display">
     <Flex gap="xs" y-center>
       <NuxtLink
-        :to="`/gameservers/${props.gameserverId}`"
+        :to="`/servers/gameservers/${props.gameserverId}`"
         class="gameserver-link text-s"
         :aria-label="`View gameserver ${gameserverName || 'details'}`"
       >

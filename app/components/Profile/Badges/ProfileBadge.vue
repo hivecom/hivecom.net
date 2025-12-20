@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Tooltip } from '@dolanske/vui'
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 
 type BadgeVariant = 'shiny' | 'gold' | 'silver' | 'bronze'
 
@@ -64,6 +64,166 @@ const badgeTextureConfig: Record<BadgeVariant, { base: string, reflection: strin
 const baseTextureSrc = computed(() => badgeTextureConfig[props.variant].base)
 const reflectionTextureSrc = computed(() => badgeTextureConfig[props.variant].reflection)
 const tooltipBindings = computed(() => props.description ? { placement: 'bottom' as const } : undefined)
+
+const badgeEl = ref<HTMLElement | null>(null)
+const isTiltActive = ref(false)
+
+let rafId: number | null = null
+let lastFrameTs = 0
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+const tilt = {
+  targetX: 0,
+  targetY: 0,
+  currentX: 0,
+  currentY: 0,
+  targetScale: 1,
+  currentScale: 1,
+  targetZ: 0,
+  currentZ: 0,
+}
+
+function prefersReducedMotion() {
+  if (typeof window === 'undefined')
+    return false
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+}
+
+function damp(current: number, target: number, lambda: number, dtSeconds: number) {
+  const t = 1 - Math.exp(-lambda * dtSeconds)
+  return current + (target - current) * t
+}
+
+function renderTransform() {
+  const el = badgeEl.value
+  if (!el)
+    return
+
+  const maxRotate = 10
+  const maxTranslate = 7
+
+  const rx = -tilt.currentY * maxRotate
+  const ry = tilt.currentX * maxRotate
+  const tx = tilt.currentX * maxTranslate
+  const ty = tilt.currentY * maxTranslate
+  const z = tilt.currentZ
+
+  el.style.transform = `perspective(900px) translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, ${z.toFixed(2)}px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) scale(${tilt.currentScale.toFixed(4)})`
+}
+
+function tick(ts: number) {
+  const el = badgeEl.value
+  if (!el) {
+    rafId = null
+    return
+  }
+
+  if (!lastFrameTs)
+    lastFrameTs = ts
+  const dtSeconds = Math.min(0.05, (ts - lastFrameTs) / 1000)
+  lastFrameTs = ts
+
+  tilt.currentX = damp(tilt.currentX, tilt.targetX, 16, dtSeconds)
+  tilt.currentY = damp(tilt.currentY, tilt.targetY, 16, dtSeconds)
+  tilt.currentScale = damp(tilt.currentScale, tilt.targetScale, 14, dtSeconds)
+  tilt.currentZ = damp(tilt.currentZ, tilt.targetZ, 14, dtSeconds)
+
+  renderTransform()
+
+  const closeEnough = (
+    Math.abs(tilt.currentX - tilt.targetX) < 0.001
+    && Math.abs(tilt.currentY - tilt.targetY) < 0.001
+    && Math.abs(tilt.currentScale - tilt.targetScale) < 0.001
+    && Math.abs(tilt.currentZ - tilt.targetZ) < 0.05
+  )
+
+  if (!isTiltActive.value && closeEnough) {
+    el.style.transform = ''
+    rafId = null
+    lastFrameTs = 0
+    return
+  }
+
+  rafId = window.requestAnimationFrame(tick)
+}
+
+function ensureTicking() {
+  if (rafId != null)
+    return
+  lastFrameTs = 0
+  rafId = window.requestAnimationFrame(tick)
+}
+
+function setTargetsFromPointer(event: PointerEvent) {
+  const el = badgeEl.value
+  if (!el)
+    return
+
+  const rect = el.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0)
+    return
+
+  const x = (event.clientX - rect.left) / rect.width
+  const y = (event.clientY - rect.top) / rect.height
+
+  tilt.targetX = clamp((x - 0.5) * 2, -1, 1)
+  tilt.targetY = clamp((y - 0.5) * 2, -1, 1)
+
+  const dx = x - 0.5
+  const dy = y - 0.5
+  const dist = Math.min(1, Math.sqrt(dx * dx + dy * dy) / 0.7071)
+
+  el.style.setProperty('--pointer-x', `${(x * 100).toFixed(2)}%`)
+  el.style.setProperty('--pointer-y', `${(y * 100).toFixed(2)}%`)
+  el.style.setProperty('--pointer-from-center', dist.toFixed(4))
+  el.style.setProperty('--background-x', `${(tilt.targetX * 18).toFixed(2)}%`)
+  el.style.setProperty('--background-y', `${(tilt.targetY * 18).toFixed(2)}%`)
+}
+
+function onPointerEnter(event: PointerEvent) {
+  if (event.pointerType !== 'mouse')
+    return
+  if (prefersReducedMotion())
+    return
+
+  isTiltActive.value = true
+  setTargetsFromPointer(event)
+  tilt.targetScale = 1.1
+  tilt.targetZ = 18
+  ensureTicking()
+}
+
+function onPointerMove(event: PointerEvent) {
+  if (!isTiltActive.value)
+    return
+  if (event.pointerType !== 'mouse')
+    return
+  if (prefersReducedMotion())
+    return
+
+  setTargetsFromPointer(event)
+  ensureTicking()
+}
+
+function onPointerLeave(event: PointerEvent) {
+  if (event.pointerType !== 'mouse')
+    return
+  if (prefersReducedMotion())
+    return
+
+  isTiltActive.value = false
+  tilt.targetX = 0
+  tilt.targetY = 0
+  tilt.targetScale = 1
+  tilt.targetZ = 0
+  ensureTicking()
+}
+
+onBeforeUnmount(() => {
+  if (rafId != null)
+    window.cancelAnimationFrame(rafId)
+})
 </script>
 
 <template>
@@ -79,9 +239,14 @@ const tooltipBindings = computed(() => props.description ? { placement: 'bottom'
     </template>
 
     <article
+      ref="badgeEl"
       :class="badgeClasses"
       :aria-label="ariaLabel"
       role="figure"
+      :data-tilt-active="isTiltActive ? 'true' : 'false'"
+      @pointerenter="onPointerEnter"
+      @pointermove="onPointerMove"
+      @pointerleave="onPointerLeave"
     >
       <div class="profile-badge__hex-wrapper" aria-hidden="true">
         <div class="profile-badge__hex-stack">
@@ -150,6 +315,11 @@ const tooltipBindings = computed(() => props.description ? { placement: 'bottom'
   --badge-border: rgba(255, 255, 255, 0.08);
   --badge-glow: rgba(255, 255, 255, 0.08);
   --badge-icon-color: #fef6dd;
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --pointer-from-center: 0;
+  --background-x: 0%;
+  --background-y: 0%;
 
   position: relative;
   display: flex;
@@ -164,12 +334,95 @@ const tooltipBindings = computed(() => props.description ? { placement: 'bottom'
   box-shadow:
     0 15px 35px rgba(6, 6, 12, 0.65),
     0 0 45px var(--badge-glow);
+
+  overflow: hidden;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition:
+    box-shadow var(--transition),
+    border-color var(--transition),
+    background-color var(--transition),
+    background var(--transition);
+}
+
+.profile-badge::before,
+.profile-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.profile-badge::before {
+  z-index: 0;
+  background-image:
+    radial-gradient(
+      circle at var(--pointer-x) var(--pointer-y),
+      rgba(255, 255, 255, 0.34) 0%,
+      rgba(255, 255, 255, 0.14) 18%,
+      rgba(0, 0, 0, 0) 46%
+    ),
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 75, 190, 0.22) 0%,
+      rgba(90, 210, 255, 0.22) 9%,
+      rgba(255, 220, 120, 0.22) 18%,
+      rgba(255, 75, 190, 0.22) 27%
+    ),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
+  background-size:
+    140% 140%,
+    240% 240%,
+    cover;
+  background-position:
+    center,
+    calc(50% + var(--background-x)) calc(50% + var(--background-y)),
+    center;
+  background-blend-mode: screen, hue, normal;
+  filter: brightness(calc((1 - var(--pointer-from-center)) * 0.4 + 0.6)) contrast(1.25) saturate(1.35);
+  mix-blend-mode: soft-light;
+}
+
+.profile-badge::after {
+  z-index: 0;
+  background-image: radial-gradient(
+    farthest-corner circle at var(--pointer-x) var(--pointer-y),
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(240, 248, 255, 0.16) 20%,
+    rgba(0, 0, 0, 0) 62%
+  );
+  mix-blend-mode: overlay;
+  filter: contrast(1.1) saturate(1.1);
+}
+
+.profile-badge[data-tilt-active='true'] {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 22px 55px rgba(6, 6, 12, 0.72),
+    0 0 70px rgba(255, 255, 255, 0.12);
+}
+
+.profile-badge[data-tilt-active='true']::before {
+  opacity: calc((1 - var(--pointer-from-center)) * 0.95);
+}
+
+.profile-badge[data-tilt-active='true']::after {
+  opacity: calc((1 - var(--pointer-from-center)) * 0.7);
+}
+
+.profile-badge__hex-wrapper,
+.profile-badge__body {
+  position: relative;
+  z-index: 1;
 }
 
 .profile-badge__hex-wrapper {
   width: clamp(150px, 40vw, 260px);
   max-width: 100%;
-  filter: drop-shadow(0 25px 35px rgba(0, 0, 0, 0.55));
 }
 
 .profile-badge__hex-stack {
@@ -368,6 +621,25 @@ const tooltipBindings = computed(() => props.description ? { placement: 'bottom'
   background-image: none;
   box-shadow: none;
   gap: var(--space-xs);
+}
+
+.profile-badge.profile-badge--compact[data-tilt-active='true'] {
+  background: var(--badge-surface);
+  border: 1px solid var(--badge-border);
+  box-shadow:
+    0 18px 40px rgba(6, 6, 12, 0.65),
+    0 0 45px var(--badge-glow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-badge {
+    transition: none;
+  }
+
+  .profile-badge::before,
+  .profile-badge::after {
+    transition: none;
+  }
 }
 
 .profile-badge--compact .profile-badge__body {

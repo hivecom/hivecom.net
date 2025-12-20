@@ -38,7 +38,7 @@ const isCompactLayout = useBreakpoint('<s')
 </script>
 
 <template>
-  <button class="gameserver-row" @click="router.push(`/gameservers/${props.gameserver.id}`)">
+  <button class="gameserver-row" @click="router.push(`/servers/gameservers/${props.gameserver.id}`)">
     <Flex
       y-center
       row
