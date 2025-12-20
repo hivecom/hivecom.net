@@ -2,6 +2,7 @@
 import { Button, Divider, DropdownItem, Flex, Sheet, Sidebar, Spinner } from '@dolanske/vui'
 import { useStorage as useLocalStorage, useMediaQuery } from '@vueuse/core'
 import IconLogo from '@/components/Shared/IconLogo.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const router = useRouter()
 const route = useRoute()
@@ -21,6 +22,8 @@ defineOgImageComponent('Default', {
   title: 'Hivecom',
   description: 'A worldwide community of friends building projects together.',
 })
+
+const isBelowExtraLarge = useBreakpoint('<xl')
 
 async function getAuthenticatedUserId(): Promise<string | null> {
   if (resolvedUserId.value)
@@ -232,6 +235,22 @@ provide('hasPermission', hasPermission)
 provide('hasAnyPermission', hasAnyPermission)
 
 const miniSidebar = useLocalStorage('admin-sidebar-open', false)
+const expandedLayout = useLocalStorage('admin-layout-expanded', false)
+
+const expandedContentStyle = {
+  width: '100%',
+  paddingLeft: 'var(--space-m)',
+  paddingRight: 'var(--space-m)',
+} as const
+
+const expandToggleLabel = computed(() => {
+  return expandedLayout.value ? 'Constrain admin content width' : 'Expand admin content width'
+})
+
+const expandToggleIcon = computed(() => {
+  return expandedLayout.value ? 'ph:arrows-in' : 'ph:arrows-out'
+})
+
 const open = ref(true)
 const isMobile = useMediaQuery('(max-width: 1024px)')
 const mobileNavOpen = ref(false)
@@ -267,7 +286,8 @@ watch(() => route.path, () => {
         </Button>
 
         <IconLogo style="margin-left: 2px" />
-        <Flex class="mr-m" />
+
+        <span />
       </Flex>
 
       <Sheet
@@ -328,9 +348,14 @@ watch(() => route.path, () => {
                   Admin
                 </h5>
               </Flex>
-              <Button v-if="!miniSidebar" square plain @click="miniSidebar = !miniSidebar">
-                <Icon name="tabler:layout-sidebar-left-collapse" />
-              </Button>
+              <Flex gap="xxs">
+                <Button v-if="!isBelowExtraLarge" square plain :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
+                  <Icon :name="expandToggleIcon" />
+                </Button>
+                <Button v-if="!miniSidebar" square plain @click="miniSidebar = !miniSidebar">
+                  <Icon name="tabler:layout-sidebar-left-collapse" />
+                </Button>
+              </Flex>
             </Flex>
             <Divider :size="0" />
           </template>
@@ -353,6 +378,11 @@ watch(() => route.path, () => {
             <DropdownItem square @click="miniSidebar = !miniSidebar">
               <template #icon>
                 <Icon name="tabler:layout-sidebar-left-expand" />
+              </template>
+            </DropdownItem>
+            <DropdownItem v-if="!isBelowExtraLarge" square :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
+              <template #icon>
+                <Icon :name="expandToggleIcon" />
               </template>
             </DropdownItem>
           </template>
@@ -380,7 +410,11 @@ watch(() => route.path, () => {
       </ClientOnly>
     </div>
     <main class="admin-layout__content">
-      <div class="container container-l pt-xl pb-l">
+      <div
+        class="pt-xl pb-l"
+        :class="!expandedLayout ? 'container container-l' : null"
+        :style="expandedLayout ? expandedContentStyle : undefined"
+      >
         <ClientOnly>
           <slot />
 
