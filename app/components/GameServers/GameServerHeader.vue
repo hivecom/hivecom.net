@@ -381,11 +381,6 @@ const isMobile = useBreakpoint('<s')
       margin-bottom: 0;
     }
 
-    // &__title-section {
-    //   width: 100%;
-    //   flex: 1;
-    // }
-
     &__actions {
       align-self: stretch;
 

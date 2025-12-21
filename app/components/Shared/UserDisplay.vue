@@ -99,10 +99,10 @@ const currentUser = useSupabaseUser()
 <template>
   <div class="user-display">
     <!-- Unauthenticated user state -->
-    <Flex v-if="!currentUser" gap="m" y-center class="user-display__header" />
+    <Flex v-if="!currentUser" gap="xs" y-center class="user-display__header" />
 
     <!-- Loading state -->
-    <Flex v-else-if="loading" gap="m" y-center class="user-display__header">
+    <Flex v-else-if="loading" gap="xs" y-center class="user-display__header">
       <Skeleton
         :width="size === 's' ? '32px' : size === 'm' ? '40px' : '48px'"
         :height="size === 's' ? '32px' : size === 'm' ? '40px' : '48px'"
@@ -114,7 +114,7 @@ const currentUser = useSupabaseUser()
     </Flex>
 
     <!-- No user state -->
-    <Flex v-else-if="!userId" gap="m" y-center class="user-display__header">
+    <Flex v-else-if="!userId" gap="xs" y-center class="user-display__header">
       <Avatar :size="size">
         SY
       </Avatar>
@@ -124,7 +124,7 @@ const currentUser = useSupabaseUser()
     </Flex>
 
     <!-- User data -->
-    <Flex v-else-if="user" gap="m" y-center class="user-display__header">
+    <Flex v-else-if="user" gap="xs" y-center class="user-display__header">
       <UserPreviewHover
         v-if="showProfilePreview"
         :user-id="user.id"

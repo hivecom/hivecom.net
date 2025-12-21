@@ -28,7 +28,7 @@ function handleIgnore() {
 
 <template>
   <NotificationCard icon="ph:user-plus">
-    <Flex class="w-full ml-s" x-end>
+    <Flex class="w-full ml-xxs" x-end>
       <UserDisplay :user-id="requestId" size="s" />
     </Flex>
     <template #actions>

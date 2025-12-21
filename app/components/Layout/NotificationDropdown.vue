@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Button, Dropdown, DropdownTitle } from '@dolanske/vui'
+import { Button, Flex, Popout } from '@dolanske/vui'
+import { onClickOutside } from '@vueuse/core'
 import NotificationCardBirthday from '@/components/Notifications/NotificationCardBirthday.vue'
 import NotificationCardEmpty from '@/components/Notifications/NotificationCardEmpty.vue'
 import NotificationCardError from '@/components/Notifications/NotificationCardError.vue'
@@ -18,6 +19,12 @@ const profileMeta = ref<{ birthday: string | null, username: string } | null>(nu
 const inviteActionLoading = ref<Record<string, boolean>>({})
 
 const hasUser = computed(() => Boolean(user.value && userId.value))
+
+const anchorRef = useTemplateRef('anchor')
+const popoutRef = useTemplateRef('popout')
+const open = ref(false)
+
+onClickOutside(popoutRef, () => open.value = false)
 
 async function fetchNotifications() {
   if (!hasUser.value) {
@@ -217,31 +224,28 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
 
 <template>
   <div class="notification-menu" aria-live="polite">
-    <Dropdown min-width="336px" placement="bottom-end">
-      <template #trigger="{ toggle }">
-        <Button square plain aria-label="Open notifications" class="vui-button-accent-weak" @click="toggle">
-          <Icon name="ph:bell" :size="20" />
-          <span v-if="badgeText" class="notification-menu__badge" />
-        </Button>
-      </template>
+    <Button ref="anchor" square plain aria-label="Open notifications" class="vui-button-accent-weak" @click="open = !open">
+      <Icon name="ph:bell" :size="20" />
+      <span v-if="badgeText" class="notification-menu__badge" />
+    </Button>
 
-      <DropdownTitle>
+    <Popout ref="popout" :visible="open" placement="bottom-end" :anchor="anchorRef">
+      <Flex y-center x-between class="notification-menu__title-row">
         <p class="notification-menu__title">
           Notifications
         </p>
-        <template #end>
-          <Button
-            square
-            size="s"
-            plain
-            aria-label="Refresh notifications"
-            :disabled="loading"
-            @click="fetchNotifications"
-          >
-            <Icon name="ph:arrows-clockwise" />
-          </Button>
-        </template>
-      </DropdownTitle>
+
+        <Button
+          square
+          size="s"
+          plain
+          aria-label="Refresh notifications"
+          :disabled="loading"
+          @click="fetchNotifications"
+        >
+          <Icon name="ph:arrows-clockwise" />
+        </Button>
+      </Flex>
 
       <div class="notification-menu__body">
         <template v-if="loading">
@@ -273,16 +277,23 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
           <NotificationCardEmpty v-if="showEmptyCard" />
         </template>
       </div>
-    </Dropdown>
+    </Popout>
   </div>
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .notification-menu {
   position: relative;
 
   :deep(.vui-dropdown-title) {
     text-transform: none;
+  }
+
+  &__title-row {
+    // border-bottom: 1px solid var(--color-border);
+    padding: var(--space-xs);
   }
 
   &__badge {
@@ -315,11 +326,18 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
   }
 
   &__body {
-    margin-top: var(--space-xs);
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
-    padding: var(--space-xxs);
+    padding: var(--space-xs);
+    padding-top: 0;
+    width: 328px;
+  }
+
+  @media screen and (max-width: $breakpoint-xs) {
+    &__body {
+      width: 292px;
+    }
   }
 }
 </style>
