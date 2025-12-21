@@ -24,6 +24,7 @@ const anchorRef = useTemplateRef('anchor')
 const popoutRef = useTemplateRef('popout')
 const open = ref(false)
 
+// @ts-expect-error No why TS is complaining but this is literally how the docs tell you to use this
 onClickOutside(popoutRef, () => open.value = false)
 
 async function fetchNotifications() {
