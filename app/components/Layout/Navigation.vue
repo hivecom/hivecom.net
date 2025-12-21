@@ -33,8 +33,8 @@ watch(
 )
 
 // Whether to show status badges in navbar or not
-const isNewAnnouncement = ref(false)
-const isEventSoon = ref(false)
+const isNewAnnouncement = useState<boolean>('layout:nav:isNewAnnouncement', () => false)
+const isEventSoon = useState<boolean>('layout:nav:isEventSoon', () => false)
 
 onBeforeMount(async () => {
   await supabase.auth.getSession().catch(() => null)

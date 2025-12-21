@@ -96,6 +96,19 @@ const ansiConverter = new Convert({
 // Reference to the logs container element
 const logsContainerRef = ref<HTMLElement | null>(null)
 
+const autoScrollEnabled = ref(true)
+
+function handleLogsScroll() {
+  const el = logsContainerRef.value
+  if (!el)
+    return
+
+  // Consider us "at bottom" if we're within a small threshold.
+  const bottomThresholdPx = 24
+  const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+  autoScrollEnabled.value = distanceFromBottom <= bottomThresholdPx
+}
+
 // Format logs with ANSI color codes to HTML
 const formattedLogs = computed(() => {
   if (!props.logs)
@@ -105,24 +118,67 @@ const formattedLogs = computed(() => {
 
 // Function to scroll logs container to the bottom
 async function scrollLogsToBottom() {
+  if (!autoScrollEnabled.value)
+    return
+
   await nextTick()
-  if (logsContainerRef.value) {
-    logsContainerRef.value.scrollTop = logsContainerRef.value.scrollHeight
-  }
+  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+  const el = logsContainerRef.value
+  if (!el)
+    return
+
+  // Double-set across frames to be resilient to async layout.
+  el.scrollTop = el.scrollHeight
+  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  el.scrollTop = el.scrollHeight
 }
 
 // Watch for changes in logs or container visibility to scroll to bottom
-watch(() => props.logs, () => {
-  if (props.logs && !props.logsLoading) {
-    scrollLogsToBottom()
-  }
-}, { immediate: true })
+watch(
+  () => props.logs,
+  () => {
+    if (props.logs && !props.logsLoading)
+      scrollLogsToBottom()
+  },
+  { immediate: true, flush: 'post' },
+)
 
-watch(() => props.container, () => {
-  if (props.container) {
+watch(
+  () => props.container,
+  () => {
+    if (props.container)
+      scrollLogsToBottom()
+  },
+  { immediate: true, flush: 'post' },
+)
+
+// When the logs container first appears (v-if), scroll after it's mounted.
+watch(
+  () => logsContainerRef.value,
+  (el) => {
+    if (el)
+      scrollLogsToBottom()
+  },
+  { flush: 'post' },
+)
+
+// When the sheet opens or logs finish loading, ensure we land at bottom.
+watch(
+  [() => isOpen.value, () => props.logsLoading, () => props.logsError, () => props.container?.running, () => props.logs],
+  () => {
+    if (!isOpen.value)
+      return
+    if (props.logsLoading || props.logsError)
+      return
+    if (!props.container?.running)
+      return
+    if (!props.logs)
+      return
     scrollLogsToBottom()
-  }
-}, { immediate: true })
+  },
+  { immediate: true, flush: 'post' },
+)
 
 // Watch for changes in logTimePeriod to refresh logs automatically
 watch(() => logTimePeriod.value, (newValue) => {
@@ -376,6 +432,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
             v-if="!logsLoading && !logsError && container?.running"
             ref="logsContainerRef"
             class="container-logs"
+            @scroll="handleLogsScroll"
             v-html="formattedLogs"
           />
         </Flex>
@@ -406,7 +463,7 @@ watch(() => useCustomDateRange.value, (newValue) => {
   font-family: monospace;
   font-size: var(--font-size-xl);
   line-height: 1.4;
-  max-height: 50vh;
+  max-height: 64vh;
   overflow-y: auto;
   overflow-x: scroll;
   background-color: black;

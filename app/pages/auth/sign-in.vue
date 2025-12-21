@@ -36,6 +36,46 @@ const isBelowS = useBreakpoint('<s')
 const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(720px, 96vh)'))
 const metaballWidth = computed(() => (isBelowS.value ? '100vw' : 'min(520px, 96vw)'))
 
+function normalizeOtpFromText(text: string) {
+  const match = text.match(/\b(\d{6})\b/)
+  if (match)
+    return match[1]
+
+  const digitsOnly = text.replace(/\D/g, '')
+  if (digitsOnly.length === 6)
+    return digitsOnly
+
+  return null
+}
+
+function handleOtpPaste(event: ClipboardEvent) {
+  if (!requiresMfaChallenge.value || mfaVerifying.value)
+    return
+
+  const clipboardText = event.clipboardData?.getData('text') ?? ''
+  const code = normalizeOtpFromText(clipboardText)
+  if (!code)
+    return
+
+  event.preventDefault()
+  mfaCode.value = code
+}
+
+const otpWrapperRef = useTemplateRef('otp-wrapper')
+
+function handleGlobalOtpPaste(event: ClipboardEvent) {
+  if (!requiresMfaChallenge.value || mfaVerifying.value)
+    return
+
+  const wrapper = otpWrapperRef.value
+  const target = event.target
+
+  if (wrapper && target instanceof Node && !wrapper.contains(target))
+    return
+
+  handleOtpPaste(event)
+}
+
 watch(tab, (newTab: string) => {
   showEmailNotice.value = false
   if (newTab !== 'Password' && requiresMfaChallenge.value)
@@ -344,6 +384,14 @@ onMounted(() => {
       emailInputRef.value.focus()
     }
   })
+
+  if (typeof window !== 'undefined')
+    window.addEventListener('paste', handleGlobalOtpPaste)
+})
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined')
+    window.removeEventListener('paste', handleGlobalOtpPaste)
 })
 </script>
 
@@ -365,21 +413,23 @@ onMounted(() => {
             <Flex column gap="xs" expand x-center>
               <Flex y-center gap="s" column x-center expand>
                 <span class="text-xs text-color-lighter">One-time code</span>
-                <OTP
-                  v-model="mfaCode"
-                  mode="num"
-                  :disabled="mfaVerifying"
-                >
-                  <OTPItem :i="0" />
-                  <OTPItem :i="1" />
-                  <OTPItem :i="2" />
-                  <div class="otp-divider">
-                    -
-                  </div>
-                  <OTPItem :i="3" />
-                  <OTPItem :i="4" />
-                  <OTPItem :i="5" />
-                </OTP>
+                <div ref="otp-wrapper">
+                  <OTP
+                    v-model="mfaCode"
+                    mode="num"
+                    :disabled="mfaVerifying"
+                  >
+                    <OTPItem :i="0" />
+                    <OTPItem :i="1" />
+                    <OTPItem :i="2" />
+                    <div class="otp-divider">
+                      -
+                    </div>
+                    <OTPItem :i="3" />
+                    <OTPItem :i="4" />
+                    <OTPItem :i="5" />
+                  </OTP>
+                </div>
               </Flex>
             </Flex>
             <Flex column gap="s" expand>

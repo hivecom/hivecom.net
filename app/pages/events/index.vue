@@ -6,12 +6,14 @@ import EventsCalendar from '@/components/Events/EventsCalendar.vue'
 import EventsListing from '@/components/Events/EventsListing.vue'
 
 // Tab management
-const activeTab = ref('listing')
+const activeTab = ref('list')
 const route = useRoute()
 const router = useRouter()
 
 const queryTab = computed(() => {
-  const tab = route.query.tab ?? (route.query.calendar ? 'calendar' : undefined)
+  const tab = route.query.tab
+    ?? (route.query.calendar ? 'calendar' : undefined)
+    ?? (route.query.list ? 'list' : undefined)
   return Array.isArray(tab) ? tab[0] : tab
 })
 
@@ -28,10 +30,21 @@ watch(activeTab, (tab) => {
   if (currentQueryTab === tab)
     return
 
-  const { tab: _ignoredTab, calendar: _ignoredCalendar, ...restQuery } = route.query
+  const { tab: _ignoredTab, calendar: _ignoredCalendar, list: _ignoredList, ...restQuery } = route.query
   const nextQuery = tab === 'list' ? restQuery : { ...restQuery, tab }
 
   router.replace({ query: nextQuery })
+})
+
+onBeforeRouteLeave(() => {
+  sessionStorage.setItem('events_active_tab', activeTab.value)
+})
+
+onMounted(() => {
+  if (queryTab.value === 'list' || queryTab.value === 'calendar')
+    return
+
+  activeTab.value = sessionStorage.getItem('events_active_tab') ?? 'list'
 })
 
 // Fetch data
@@ -50,14 +63,18 @@ useSeoMeta({
 onMounted(async () => {
   loading.value = true
 
-  const responseEvents = await supabase.from('events').select('*').order('date', { ascending: true })
-  if (responseEvents.error) {
-    errorMessage.value = responseEvents.error.message
-    return
-  }
+  try {
+    const responseEvents = await supabase.from('events').select('*').order('date', { ascending: true })
+    if (responseEvents.error) {
+      errorMessage.value = responseEvents.error.message
+      return
+    }
 
-  loading.value = false
-  events.value = responseEvents.data
+    events.value = responseEvents.data
+  }
+  finally {
+    loading.value = false
+  }
 })
 </script>
 

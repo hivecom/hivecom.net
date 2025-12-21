@@ -305,7 +305,7 @@ function viewContainer(container: ContainerWithServer) {
   if (container.running)
     fetchContainerLogs()
   else
-    containerLogs.value = 'Container is not running. Logs are unavailable.'
+    containerLogs.value = ''
 }
 
 // Handle container control actions with loading state
@@ -321,6 +321,22 @@ async function handleControl(container: ContainerWithServer, action: 'start' | '
 
     // Refresh container data after action
     await fetchContainers()
+
+    // If the details sheet is open for this container, rebind it to fresh data.
+    if (showContainerDetails.value && selectedContainer.value?.name === container.name) {
+      const refreshedContainer = containers.value.find((c: ContainerWithServer) => c.name === container.name)
+      if (refreshedContainer) {
+        selectedContainer.value = refreshedContainer
+
+        if (refreshedContainer.running) {
+          await fetchContainerLogs()
+        }
+        else {
+          containerLogs.value = ''
+          logsError.value = ''
+        }
+      }
+    }
   }
   catch (error) {
     console.error(`Error with action ${action} for container ${container.name}:`, error)
