@@ -95,7 +95,7 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
 
     <!-- Friends Avatar Display -->
     <div v-else-if="friends.length > 0" class="friends-content">
-      <Alert>
+      <Alert v-if="pendingUsers.size > 0">
         <p>
           You have {{ pendingUsers.size }} pending friend request{{ pendingUsers.size > 1 ? 's' : '' }} from
           <NuxtLink v-for="(request, index) in pendingUsers.values()" :key="request.id" :to="`/profile/${request.id}`">
@@ -127,7 +127,7 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
         </p>
 
         <!-- Show pending requests even if no friends (only for own profile) -->
-        <Alert v-if="isOwnProfile && pendingRequests.length > 0">
+        <Alert v-if="isOwnProfile && pendingUsers.size > 0">
           <p>
             You have {{ pendingUsers.size }} pending friend request{{ pendingUsers.size > 1 ? 's' : '' }} from
             <NuxtLink v-for="(request, index) in pendingUsers.values()" :key="request.id" :to="`/profile/${request.id}`">

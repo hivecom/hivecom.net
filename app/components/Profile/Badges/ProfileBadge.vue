@@ -233,7 +233,7 @@ onBeforeUnmount(() => {
     v-bind="tooltipBindings"
   >
     <template v-if="props.description" #tooltip>
-      <p :class="descriptionClasses">
+      <p :class="descriptionClasses" class="text-m">
         {{ props.description }}
       </p>
     </template>
@@ -562,9 +562,10 @@ onBeforeUnmount(() => {
 .profile-badge__description {
   margin: 0;
   color: rgba(255, 255, 255, 0.92);
-  font-size: 0.95rem;
+  font-size: var(--font-size-s);
   line-height: 1.5;
   max-width: 260px;
+  text-align: center;
 }
 
 .profile-badge__label.shiny-text,

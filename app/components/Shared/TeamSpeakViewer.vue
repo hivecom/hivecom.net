@@ -261,6 +261,8 @@ const { data, pending, error, refresh, lastUpdated, status } = useTeamSpeakSnaps
   refreshInterval: props.refreshInterval,
 })
 
+const route = useRoute()
+
 const snapshotLoading = computed(() => pending.value || status.value === 'idle')
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -851,7 +853,10 @@ function openRawSnapshot() {
             <Flex
               expand
               class="ts-viewer__channel-row"
-              :class="{ 'ts-viewer__channel-row--active': row.isActive }"
+              :class="{
+                'ts-viewer__channel-row--active': row.isActive,
+                'ts-viewer__channel-row--focused': route.hash.replace('#', '') === row.channel.id,
+              }"
               column
               gap="xxs"
             >
@@ -953,6 +958,12 @@ function openRawSnapshot() {
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease;
+}
+
+.ts-viewer__channel-row--focused {
+  border-color: var(--color-bg-yellow-raised);
+  background-color: color-mix(in srgb, var(--color-bg-yellow-lowered) 25%, transparent);
+  border-width: 2px;
 }
 
 .ts-viewer__channel-row--head {

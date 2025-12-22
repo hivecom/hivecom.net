@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
-import { Badge, Divider, Flex } from '@dolanske/vui'
+import { Badge, Button, Divider, Flex } from '@dolanske/vui'
 import { Icon } from '@iconify/vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
@@ -82,6 +82,7 @@ const presenceEntries = computed(() => {
     const region = row.server_id?.toLowerCase() as 'eu' | 'na' | 'all' | undefined
     return {
       id: row.id,
+      channelId: row.channel_id,
       serverId: row.server_id,
       serverLabel: row.server_id?.toUpperCase() ?? 'UNKNOWN',
       region,
@@ -271,9 +272,9 @@ function formatLastSeen(lastSeenAt: string | null): string {
           @focusout="handleLeave"
         >
           <div class="ts-presence__tooltip">
-            <div class="text-l text-bold mb-s">
+            <strong class="text-l text-bold mb-s">
               TeamSpeak
-            </div>
+            </strong>
             <div class="ts-presence__section">
               <div v-if="hasIdentities" class="ts-presence__list">
                 <div v-for="identity in normalizedIdentities" :key="identity.uniqueId" class="ts-presence__row">
@@ -303,6 +304,12 @@ function formatLastSeen(lastSeenAt: string | null): string {
                     <span v-if="entry.online" class="ts-presence__channel">{{ entry.channelPath }}</span>
                   </Flex>
                   <span class="ts-presence__meta">Last seen {{ formatLastSeen(entry.lastSeenAt) }}</span>
+
+                  <Flex x-start class="mt-xs">
+                    <Button size="s" :href="`/servers/voiceservers#${entry.channelId}`">
+                      Show TS viewer
+                    </Button>
+                  </Flex>
                 </div>
               </div>
             </div>
