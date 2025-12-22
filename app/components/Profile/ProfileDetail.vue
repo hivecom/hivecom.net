@@ -803,11 +803,6 @@ async function ignoreFriendRequest() {
             :friendship-status="friendshipStatus"
             :is-current-user-admin="isCurrentUserAdmin"
             @open-edit-sheet="openEditSheet"
-            @send-friend-request="sendFriendRequest"
-            @accept-friend-request="acceptFriendRequest"
-            @revoke-friend-request="revokeFriendRequest"
-            @remove-friend="removeFriend"
-            @ignore-friend-request="ignoreFriendRequest"
             @open-complaint-modal="openComplaintModal"
           />
         </Flex>

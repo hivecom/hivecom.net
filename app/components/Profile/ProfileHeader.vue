@@ -268,7 +268,7 @@ function getRoleInfo(role: string | null) {
               </template>
               Complaint
             </Button>
-            <CopyClipboard :text="profileUrl" variant="gray" confirm>
+            <CopyClipboard :text="profileUrl" confirm>
               <Button variant="gray" square data-title-top="Copy link to profile">
                 <Icon name="ph:link" />
               </Button>
@@ -361,7 +361,7 @@ function getRoleInfo(role: string | null) {
   </Card>
 
   <!-- Admin-only UUID display -->
-  <CopyClipboard :text="profile.id" size="s" confirm>
+  <CopyClipboard :text="profile.id" confirm>
     <Button v-if="isCurrentUserAdmin" size="s" plain data-title-top="Copy user id">
       <template #start>
         <Icon class="text-color-lighter" name="ph:hash" size="16" />

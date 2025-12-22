@@ -270,7 +270,7 @@ function getUserInitials(username: string): string {
           <Flex column gap="l" expand>
             <Grid class="detail-item" :columns="2" expand>
               <span class="text-color-light text-bold">UUID:</span>
-              <CopyClipboard :text="user.id" variant="outline" size="xs">
+              <CopyClipboard :text="user.id">
                 <span class="user-id">{{ user.id }}</span>
               </CopyClipboard>
             </Grid>
@@ -283,7 +283,7 @@ function getUserInitials(username: string): string {
             <Grid class="detail-item" expand :columns="2">
               <span class="text-color-light text-bold">Email:</span>
               <template v-if="user.email">
-                <CopyClipboard :text="user.email" variant="outline" size="xs" confirm>
+                <CopyClipboard :text="user.email" confirm>
                   <span class="user-email">{{ user.email }}</span>
                 </CopyClipboard>
               </template>
@@ -420,21 +420,21 @@ function getUserInitials(username: string): string {
           <Flex column gap="l" expand>
             <Grid v-if="user.patreon_id" class="detail-item" :columns="2" expand>
               <span class="text-color-light text-bold">Patreon ID:</span>
-              <CopyClipboard :text="user.patreon_id" variant="outline" size="xs" confirm>
+              <CopyClipboard :text="user.patreon_id" confirm>
                 <span class="platform-id">{{ user.patreon_id }}</span>
               </CopyClipboard>
             </Grid>
 
             <Grid v-if="user.discord_id" class="detail-item" :columns="2" expand>
               <span class="text-color-light text-bold">Discord ID:</span>
-              <CopyClipboard :text="user.discord_id" variant="outline" size="xs" confirm>
+              <CopyClipboard :text="user.discord_id" confirm>
                 <span class="platform-id">{{ user.discord_id }}</span>
               </CopyClipboard>
             </Grid>
 
             <Grid v-if="user.steam_id" class="detail-item" :columns="2" expand>
               <span class="text-color-light text-bold">Steam ID:</span>
-              <CopyClipboard :text="user.steam_id" variant="outline" size="xs" confirm>
+              <CopyClipboard :text="user.steam_id" confirm>
                 <span class="platform-id">{{ user.steam_id }}</span>
               </CopyClipboard>
             </Grid>
