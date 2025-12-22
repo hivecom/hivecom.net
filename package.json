@@ -46,7 +46,7 @@
     "unstorage": "^1.17.1",
     "vue": "^3.5.25",
     "vue-chartjs": "^5.3.2",
-    "vue-router": "^4.6.3"
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.5.1",
