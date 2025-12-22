@@ -116,161 +116,163 @@ onMounted(async () => {
 </script>
 
 <template>
-  <LandingHero :community-stats="communityStats" :loading="loading" />
+  <div style="display:contents;">
+    <LandingHero :community-stats="communityStats" :loading="loading" />
 
-  <div class="container container-l">
-    <div class="page-landing">
-      <!-- About section -->
-      <section class="about-section">
-        <h2 class="heading">
-          About Us
-        </h2>
-        <ClientOnly>
-          <Divider />
-        </ClientOnly>
+    <div class="container container-l">
+      <div class="page-landing">
+        <!-- About section -->
+        <section class="about-section">
+          <h2 class="heading">
+            About Us
+          </h2>
+          <ClientOnly>
+            <Divider />
+          </ClientOnly>
 
-        <div class="about-section__content">
-          <p>
-            The community was originally created by <b>Catlinman (now zealsprince), Jokler and Trif.</b>
-          </p>
-          <p>
-            We started hosting a server back in 2013 on an in-home Raspberry Pi but the growing demand for a better connection
-            and 24/7 uptime made us reconsider this small hosting plan. We later that year went over to actually acquiring
-            a dedicated TeamSpeak server from Fragnet but later on switched to what is now a server entirely run and managed by
-            Hivecom itself.
-          </p>
-          <p>
-            Hivecom has come a long way since then and wouldn't be anything without those that make up its community. We're incredibly thankful
-            for what we have now considering this all started with three friends getting together to chat and hang out.
-          </p>
-          <p>
-            <b>We are always happy to welcome anyone willing to join us for this journey.</b>
-          </p>
-        </div>
-      </section>
-
-      <!-- Join us section -->
-      <section class="join-section">
-        <div class="join-section__container">
-          <div class="join-section__copy">
-            <h2 class="heading">
-              Join us
-            </h2>
-            <p class="join-section__text">
-              We mainly talk on IRC and TeamSpeak. If Discord is your thing, we have a bot connecting both services so you won't be excluded.
+          <div class="about-section__content">
+            <p>
+              The community was originally created by <b>Catlinman (now zealsprince), Jokler and Trif.</b>
             </p>
-
-            <p class="join-section__text">
-              If you're interested in the latest news, want to support the community, create your own events or RSVP to the latest ones, feel free to sign up.
+            <p>
+              We started hosting a server back in 2013 on an in-home Raspberry Pi but the growing demand for a better connection
+              and 24/7 uptime made us reconsider this small hosting plan. We later that year went over to actually acquiring
+              a dedicated TeamSpeak server from Fragnet but later on switched to what is now a server entirely run and managed by
+              Hivecom itself.
             </p>
+            <p>
+              Hivecom has come a long way since then and wouldn't be anything without those that make up its community. We're incredibly thankful
+              for what we have now considering this all started with three friends getting together to chat and hang out.
+            </p>
+            <p>
+              <b>We are always happy to welcome anyone willing to join us for this journey.</b>
+            </p>
+          </div>
+        </section>
 
-            <Button variant="accent">
-              <template #start>
-                <Icon name="ph:user-plus" />
-              </template>
-              Sign up
-            </Button>
+        <!-- Join us section -->
+        <section class="join-section">
+          <div class="join-section__container">
+            <div class="join-section__copy">
+              <h2 class="heading">
+                Join us
+              </h2>
+              <p class="join-section__text">
+                We mainly talk on IRC and TeamSpeak. If Discord is your thing, we have a bot connecting both services so you won't be excluded.
+              </p>
+
+              <p class="join-section__text">
+                If you're interested in the latest news, want to support the community, create your own events or RSVP to the latest ones, feel free to sign up.
+              </p>
+
+              <Button variant="accent">
+                <template #start>
+                  <Icon name="ph:user-plus" />
+                </template>
+                Sign up
+              </Button>
+            </div>
+
+            <Card class="join-section__platforms">
+              <div v-for="platform in platforms" :key="platform.title" class="join-section__platform-item">
+                <div class="join-section__platform-content">
+                  <Icon :name="platform.icon" size="32" class="platform-icon" />
+                  <h3 class="join-section__platform-title">
+                    {{ platform.title }}
+                  </h3>
+                  <Tooltip v-if="platform.note !== ''" placement="top">
+                    <Icon name="ph:info" class="join-section__platform-info" />
+                    <template #tooltip>
+                      <p>{{ platform.note }}</p>
+                    </template>
+                  </Tooltip>
+                </div>
+                <!-- Single URL: Direct link button -->
+                <Button
+                  v-if="platform.urls.length === 1 && platform.urls[0]"
+                  @click="navigateTo(platform.urls[0].url, { external: true,
+                                                             open: { target: '_blank' } })"
+                >
+                  {{ platform.action }}
+                </Button>
+                <!-- Multiple URLs: Dropdown menu -->
+                <Dropdown v-else>
+                  <template #trigger="{ toggle }">
+                    <Button @click="toggle">
+                      <Flex row y-center gap="xs">
+                        {{ platform.action }}
+                        <Icon name="ph:caret-down" />
+                      </Flex>
+                    </Button>
+                  </template>
+                  <DropdownItem v-for="url in platform.urls" :key="url.title">
+                    <NuxtLink
+                      external
+                      no-prefetch
+                      :href="url.url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :aria-label="`Connect to ${platform.title} on ${url.title}`"
+                    >
+                      {{ url.title }}
+                    </NuxtLink>
+                  </DropdownItem>
+                </Dropdown>
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        <!-- Events -->
+        <section class="events-section">
+          <h2 class="heading">
+            Events
+          </h2>
+          <ClientOnly>
+            <Divider />
+          </ClientOnly>
+
+          <Grid v-if="loading" class="events-section__list" :columns="3" gap="m">
+            <!-- Loading state -->
+            <Card v-for="i in 3" :key="i">
+              <Skeleton height="1.5rem" width="80%" class="mb-s" />
+              <Skeleton height="1rem" width="60%" />
+            </Card>
+          </Grid>
+
+          <div v-else-if="errorMessage" class="events-section__error">
+            <Card>
+              <p class="events-section__error-text">
+                Failed to load events: {{ errorMessage }}
+              </p>
+            </Card>
           </div>
 
-          <Card class="join-section__platforms">
-            <div v-for="platform in platforms" :key="platform.title" class="join-section__platform-item">
-              <div class="join-section__platform-content">
-                <Icon :name="platform.icon" size="32" class="platform-icon" />
-                <h3 class="join-section__platform-title">
-                  {{ platform.title }}
-                </h3>
-                <Tooltip v-if="platform.note !== ''" placement="top">
-                  <Icon name="ph:info" class="join-section__platform-info" />
-                  <template #tooltip>
-                    <p>{{ platform.note }}</p>
-                  </template>
-                </Tooltip>
-              </div>
-              <!-- Single URL: Direct link button -->
-              <Button
-                v-if="platform.urls.length === 1 && platform.urls[0]"
-                @click="navigateTo(platform.urls[0].url, { external: true,
-                                                           open: { target: '_blank' } })"
-              >
-                {{ platform.action }}
-              </Button>
-              <!-- Multiple URLs: Dropdown menu -->
-              <Dropdown v-else>
-                <template #trigger="{ toggle }">
-                  <Button @click="toggle">
-                    <Flex row y-center gap="xs">
-                      {{ platform.action }}
-                      <Icon name="ph:caret-down" />
-                    </Flex>
-                  </Button>
-                </template>
-                <DropdownItem v-for="url in platform.urls" :key="url.title">
-                  <NuxtLink
-                    external
-                    no-prefetch
-                    :href="url.url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    :aria-label="`Connect to ${platform.title} on ${url.title}`"
-                  >
-                    {{ url.title }}
-                  </NuxtLink>
-                </DropdownItem>
-              </Dropdown>
-            </div>
-          </Card>
-        </div>
-      </section>
+          <div v-else-if="events.length === 0" class="events-section__empty">
+            <Card>
+              <p>No events scheduled.</p>
+            </Card>
+          </div>
 
-      <!-- Events -->
-      <section class="events-section">
-        <h2 class="heading">
-          Events
-        </h2>
-        <ClientOnly>
-          <Divider />
-        </ClientOnly>
+          <Grid v-else class="events-section__list" :columns="3" gap="m" expand>
+            <EventCard
+              v-for="event in events"
+              :key="event.id"
+              :event="event"
+              compact
+            />
+          </Grid>
 
-        <Grid v-if="loading" class="events-section__list" :columns="3" gap="m">
-          <!-- Loading state -->
-          <Card v-for="i in 3" :key="i">
-            <Skeleton height="1.5rem" width="80%" class="mb-s" />
-            <Skeleton height="1rem" width="60%" />
-          </Card>
-        </Grid>
-
-        <div v-else-if="errorMessage" class="events-section__error">
-          <Card>
-            <p class="events-section__error-text">
-              Failed to load events: {{ errorMessage }}
-            </p>
-          </Card>
-        </div>
-
-        <div v-else-if="events.length === 0" class="events-section__empty">
-          <Card>
-            <p>No events scheduled.</p>
-          </Card>
-        </div>
-
-        <Grid v-else class="events-section__list" :columns="3" gap="m" expand>
-          <EventCard
-            v-for="event in events"
-            :key="event.id"
-            :event="event"
-            compact
-          />
-        </Grid>
-
-        <div class="events-section__view-all mb-m">
-          <Button @click="navigateTo('/events')">
-            View All Events
-            <template #end>
-              <Icon name="ph:arrow-right" />
-            </template>
-          </Button>
-        </div>
-      </section>
+          <div class="events-section__view-all mb-m">
+            <Button @click="navigateTo('/events')">
+              View All Events
+              <template #end>
+                <Icon name="ph:arrow-right" />
+              </template>
+            </Button>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 </template>
