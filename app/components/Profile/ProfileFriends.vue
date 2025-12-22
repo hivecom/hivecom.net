@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import type { ProfileFriendshipStatus } from '@/types/profile'
-import { Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
@@ -51,6 +51,10 @@ function handleRemoveFriend() {
   emit('removeFriend')
   showRemoveFriendConfirm.value = false
 }
+
+const pendingRequests = computed(() => props.pendingRequests)
+
+const { users: pendingUsers } = useBulkUserData(pendingRequests)
 </script>
 
 <template>
@@ -91,6 +95,15 @@ function handleRemoveFriend() {
 
     <!-- Friends Avatar Display -->
     <div v-else-if="friends.length > 0" class="friends-content">
+      <Alert>
+        <p>
+          You have {{ pendingUsers.size }} pending friend request{{ pendingUsers.size > 1 ? 's' : '' }} from
+          <NuxtLink v-for="(request, index) in pendingUsers.values()" :key="request.id" :to="`/profile/${request.id}`">
+            {{ request.username }}{{ index < pendingUsers.size - 1 ? ', ' : '' }}.
+          </NuxtLink>
+        </p>
+      </Alert>
+
       <BulkAvatarDisplay
         :user-ids="friends"
         :max-users="12"
@@ -98,23 +111,6 @@ function handleRemoveFriend() {
         :show-names="true"
         :gap="8"
       />
-
-      <!-- Pending Invites (only visible to own profile) -->
-      <div v-if="isOwnProfile && pendingRequests.length > 0" class="friends-requests">
-        <Flex gap="xs" y-center class="friends-requests__header">
-          <Icon name="ph:bell" size="16" class="text-color-orange" />
-          <span class="text-s text-color-light">Pending friend requests:</span>
-          <Badge variant="warning" size="s">
-            {{ pendingRequests.length }}
-          </Badge>
-        </Flex>
-        <BulkAvatarDisplay
-          :user-ids="pendingRequests"
-          :max-users="5"
-          :avatar-size="32"
-          :show-names="true"
-        />
-      </div>
     </div>
 
     <!-- Empty State -->
@@ -131,21 +127,14 @@ function handleRemoveFriend() {
         </p>
 
         <!-- Show pending requests even if no friends (only for own profile) -->
-        <div v-if="isOwnProfile && pendingRequests.length > 0" class="friends-requests friends-requests--empty-state">
-          <Flex gap="xs" y-center class="friends-requests__header">
-            <Icon name="ph:bell" size="16" class="text-color-orange" />
-            <span class="text-s text-color-light">Pending friend requests:</span>
-            <Badge variant="warning" size="s">
-              {{ pendingRequests.length }}
-            </Badge>
-          </Flex>
-          <BulkAvatarDisplay
-            :user-ids="pendingRequests"
-            :max-users="5"
-            :avatar-size="32"
-            :show-names="true"
-          />
-        </div>
+        <Alert v-if="isOwnProfile && pendingRequests.length > 0">
+          <p>
+            You have {{ pendingUsers.size }} pending friend request{{ pendingUsers.size > 1 ? 's' : '' }} from
+            <NuxtLink v-for="(request, index) in pendingUsers.values()" :key="request.id" :to="`/profile/${request.id}`">
+              {{ request.username }}{{ index < pendingUsers.size - 1 ? ', ' : '' }}
+            </NuxtLink>.
+          </p>
+        </Alert>
       </Flex>
     </div>
 
