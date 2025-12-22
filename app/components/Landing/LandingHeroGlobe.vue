@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useMetrics } from '@/composables/useMetrics'
+import scanPassFragSrc from './LandingHeroGlobeScanPass.frag.glsl?raw'
+import scanPassVertSrc from './LandingHeroGlobeScanPass.vert.glsl?raw'
 
 type PolygonCoords = number[][][]
 type MultiPolygonCoords = number[][][][]
@@ -32,6 +34,10 @@ let resizeObserver: ResizeObserver | null = null
 let themeObserver: MutationObserver | null = null
 let themeMedia: MediaQueryList | null = null
 let globeMaterial: import('three').MeshStandardMaterial | null = null
+let scanlinePass: import('three/examples/jsm/postprocessing/ShaderPass.js').ShaderPass | null = null
+let bloomPass: import('three/examples/jsm/postprocessing/UnrealBloomPass.js').UnrealBloomPass | null = null
+let afterimagePass: import('three/examples/jsm/postprocessing/AfterimagePass.js').AfterimagePass | null = null
+let scanlineStart = 0
 const BACKGROUND_COLOR = 'rgba(0,0,0,0)'
 const GLOBE_COLOR_DARK = '#060606'
 const GLOBE_COLOR_LIGHT = '#fff'
@@ -94,6 +100,134 @@ function clearTimers() {
   themeMedia?.removeEventListener('change', applyGlobeColor)
   themeMedia = null
   globeMaterial = null
+  scanlinePass = null
+  bloomPass = null
+  afterimagePass = null
+  scanlineStart = 0
+}
+
+function updateScanlinePassResolution(width: number, height: number) {
+  const w = Math.max(1, width)
+  const h = Math.max(1, height)
+
+  if (scanlinePass) {
+    const uniforms = scanlinePass.material.uniforms as Record<string, { value: unknown }>
+    const res = uniforms.u_resolution?.value as { set?: (x: number, y: number) => void } | undefined
+    res?.set?.(w, h)
+  }
+
+  const maybeBloom = bloomPass as unknown as { setSize?: (w: number, h: number) => void } | null
+  maybeBloom?.setSize?.(w, h)
+
+  const maybeAfterimage = afterimagePass as unknown as { setSize?: (w: number, h: number) => void } | null
+  maybeAfterimage?.setSize?.(w, h)
+}
+
+async function setupScanlinePass() {
+  if (!import.meta.client || !globeInstance)
+    return
+
+  try {
+    const composer = globeInstance.postProcessingComposer?.()
+    if (!composer)
+      return
+
+    const { ShaderPass } = await import('three/examples/jsm/postprocessing/ShaderPass.js')
+    const { Vector2 } = await import('three')
+
+    // If the composer already has an OutputPass, we want it to remain last.
+    // We'll temporarily remove it and re-add it at the end after adding our passes.
+    const composerAny = composer as unknown as { passes?: unknown[], removePass?: (p: unknown) => void, addPass?: (p: unknown) => void }
+    const passesBefore = composerAny.passes ?? []
+    const existingOutputPass = passesBefore.find((pass) => {
+      if (!pass || typeof pass !== 'object')
+        return false
+      return Boolean((pass as { isOutputPass?: boolean }).isOutputPass)
+    })
+    if (existingOutputPass && typeof composerAny.removePass === 'function') {
+      try {
+        composerAny.removePass(existingOutputPass)
+      }
+      catch {
+        // ignore
+      }
+    }
+
+    scanlinePass = new ShaderPass({
+      uniforms: {
+        tDiffuse: { value: null },
+        u_time: { value: 0 },
+        u_resolution: { value: new Vector2(1, 1) },
+        // Moving scan band(s) with a different distortion style
+        u_strength: { value: 0.008 },
+        u_speed: { value: 0.05 },
+        u_band_width: { value: 0.055 },
+        u_double_band: { value: 1.0 },
+        u_ripple_speed: { value: 1.6 },
+        u_ripple_y_freq: { value: 300.0 },
+        u_ripple_x_freq: { value: 7.0 },
+        u_chroma: { value: 18.0 },
+      },
+      vertexShader: scanPassVertSrc,
+      fragmentShader: scanPassFragSrc,
+    })
+
+    composer.addPass(scanlinePass)
+
+    // Optional bloom (kept subtle by default)
+    try {
+      const { UnrealBloomPass } = await import('three/examples/jsm/postprocessing/UnrealBloomPass.js')
+      bloomPass = new UnrealBloomPass(new Vector2(1, 1), 0.22, 0.05, 0.5)
+      ;(bloomPass as unknown as { enabled?: boolean }).enabled = !isLightTheme()
+      composer.addPass(bloomPass)
+    }
+    catch {
+      bloomPass = null
+    }
+
+    // Phosphor-like persistence / trails. Subtle by default.
+    try {
+      const { AfterimagePass } = await import('three/examples/jsm/postprocessing/AfterimagePass.js')
+      afterimagePass = new AfterimagePass(0.92)
+      ;(afterimagePass as unknown as { enabled?: boolean }).enabled = !isLightTheme()
+      composer.addPass(afterimagePass)
+    }
+    catch {
+      afterimagePass = null
+    }
+
+    // Ensure OutputPass is last for correct color management.
+    if (existingOutputPass && typeof composerAny.addPass === 'function') {
+      composerAny.addPass(existingOutputPass)
+    }
+    else {
+      const passesAfter = (composer as unknown as { passes?: unknown[] }).passes
+      const hasOutputPass = passesAfter?.some((pass) => {
+        if (!pass || typeof pass !== 'object')
+          return false
+        const ctor = (pass as { constructor?: { name?: string } }).constructor
+        return ctor?.name === 'OutputPass' || Boolean((pass as { isOutputPass?: boolean }).isOutputPass)
+      }) ?? false
+
+      if (!hasOutputPass) {
+        try {
+          const { OutputPass } = await import('three/examples/jsm/postprocessing/OutputPass.js')
+          composer.addPass(new OutputPass())
+        }
+        catch {
+          // If OutputPass isn't available, keep going. The scan band still works,
+          // but colors may look darker depending on Three.js color management.
+        }
+      }
+    }
+  }
+  catch {
+    // If the postprocessing pass can't be created (module resolution, etc.),
+    // fail silently rather than breaking the landing hero.
+    scanlinePass = null
+    bloomPass = null
+    afterimagePass = null
+  }
 }
 
 function polygonCentroid(coords: PolygonCoords | MultiPolygonCoords | undefined): { lat: number, lng: number } | null {
@@ -183,6 +317,16 @@ function applyGlobeColor() {
     return
   const color = isLightTheme() ? GLOBE_COLOR_LIGHT : GLOBE_COLOR_DARK
   globeMaterial.color.set(color)
+
+  // Bloom / phosphor trails are intended only for dark theme.
+  const enabled = !isLightTheme()
+  const maybeEnabled = bloomPass as unknown as { enabled?: boolean } | null
+  if (maybeEnabled)
+    maybeEnabled.enabled = enabled
+
+  const maybeAfterimageEnabled = afterimagePass as unknown as { enabled?: boolean } | null
+  if (maybeAfterimageEnabled)
+    maybeAfterimageEnabled.enabled = enabled
 }
 
 function getArcColor() {
@@ -269,6 +413,7 @@ onMounted(async () => {
     const setSize = () => {
       const { width, height } = container.getBoundingClientRect()
       globeInstance?.width(width).height(height)
+      updateScanlinePassResolution(width, height)
     }
     setSize()
 
@@ -298,6 +443,7 @@ onMounted(async () => {
         return blendHex(getHighlightColor(), baseHex, progress)
       })
       .backgroundColor(BACKGROUND_COLOR)
+      .showAtmosphere(false)
       .atmosphereColor(ATMOSPHERE_COLOR)
       .arcsData([])
       .arcColor(() => getArcColor())
@@ -314,6 +460,9 @@ onMounted(async () => {
       .ringMaxRadius(RING_MAX_R)
       .ringPropagationSpeed(RING_PROPAGATION_SPEED)
       .ringRepeatPeriod(RING_REPEAT_PERIOD)
+
+    await setupScanlinePass()
+    setSize()
 
     themeMedia = window.matchMedia?.('(prefers-color-scheme: light)') ?? null
     themeMedia?.addEventListener('change', applyGlobeColor)
@@ -408,6 +557,16 @@ onMounted(async () => {
 
     const tick = () => {
       refreshHexes()
+
+      if (scanlinePass) {
+        const now = performance.now()
+        if (!scanlineStart)
+          scanlineStart = now
+        const uniforms = scanlinePass.material.uniforms as Record<string, { value: unknown }>
+        if (uniforms.u_time)
+          uniforms.u_time.value = (now - scanlineStart) / 1000
+      }
+
       animationFrame = requestAnimationFrame(tick)
     }
     tick()

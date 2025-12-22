@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import fragSrc from './LandingHeroShader.frag.glsl?raw'
-import vertSrc from './LandingHeroShader.vert.glsl?raw'
+import fragSrc from './LandingHeroBackgroundShader.frag.glsl?raw'
+import vertSrc from './LandingHeroBackgroundShader.vert.glsl?raw'
 
 const canvasEl = ref<HTMLCanvasElement | null>(null)
 let gl: WebGLRenderingContext | null = null

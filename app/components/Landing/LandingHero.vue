@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import LandingHeroActions from '@/components/Landing/LandingHeroActions.vue'
+import LandingHeroShader from '@/components/Landing/LandingHeroBackground.vue'
 import LandingHeroGlobe from '@/components/Landing/LandingHeroGlobe.vue'
-import LandingHeroShader from '@/components/Landing/LandingHeroShader.vue'
 import LandingHeroStats from '@/components/Landing/LandingHeroStats.vue'
 import LandingMotd from '@/components/Landing/LandingMotd.vue'
 
@@ -61,7 +61,7 @@ defineProps<{
   }
 
   .hero-overlay__body:before {
-    background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.8) 75%);
+    background: linear-gradient(rgba(255, 255, 255, 0), #eeeeee 100%);
   }
 
   .hero-overlay__logo {
@@ -118,7 +118,7 @@ defineProps<{
     position: absolute;
     inset: 0;
     top: 65%;
-    background: linear-gradient(rgba(17, 17, 17, 0), rgba(17, 17, 17, 0.8) 75%);
+    background: linear-gradient(rgba(17, 17, 17, 0), rgba(17, 17, 17, 1) 100%);
     z-index: 2;
   }
 }
