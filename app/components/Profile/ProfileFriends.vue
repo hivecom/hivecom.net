@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import type { ProfileFriendshipStatus } from '@/types/profile'
-import { Alert, Badge, Button, Card, Flex, Skeleton } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
