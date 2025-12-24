@@ -25,7 +25,7 @@ const count = computed(() => countEl.value?.count ?? 0)
           {{ props.data.title }}
         </strong>
         <p class="event-past__description">
-          {{ truncate(props.data.description, 100) }}
+          {{ truncate(props.data.description, 108) }}
         </p>
 
         <Flex gap="l" y-center>
@@ -52,7 +52,7 @@ const count = computed(() => countEl.value?.count ?? 0)
   />
 </template>
 
-<style scoped lang="scss">
+<style lang="scss">
 .event-past {
   width: 324px;
   min-width: 324px;
@@ -68,6 +68,9 @@ const count = computed(() => countEl.value?.count ?? 0)
   &__title {
     display: block;
     font-size: var(--font-size-l);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   &__description {

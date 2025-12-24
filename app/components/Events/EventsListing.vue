@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Flex, Grid, Skeleton } from '@dolanske/vui'
+import { Button, Flex, Grid, Skeleton } from '@dolanske/vui'
 import Event from '@/components/Events/Event.vue'
 import EventPast from './EventPast.vue'
 
@@ -11,6 +11,8 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+const expandPastList = ref(false)
 
 // Split events into upcoming, ongoing, and past
 const upcomingEvents = computed(() => {
@@ -127,13 +129,22 @@ const pastEvents = computed(() => {
         Past Events
       </h2>
 
-      <div class="events-section__past-list">
+      <div class="events-section__past-list" :class="{ 'events-section__past-list--expanded': !!expandPastList }">
         <EventPast
           v-for="event in pastEvents"
           :key="event.id"
           :data="event"
         />
       </div>
+
+      <Flex x-end :class="{ 'mt-l': !!expandPastList }">
+        <Button size="s" @click="expandPastList = !expandPastList">
+          {{ expandPastList ? 'Collapse' : 'Unroll' }}
+          <template #end>
+            <Icon name="bx:expand-vertical" />
+          </template>
+        </Button>
+      </Flex>
     </div>
 
     <!-- No Events Message -->
@@ -174,6 +185,20 @@ const pastEvents = computed(() => {
     overflow-x: auto;
     max-width: 100%;
     gap: var(--space-m);
+
+    // Scrollbar gutter padding
+    padding-bottom: 16px;
+
+    &--expanded {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      overflow-x: unset;
+
+      .event-past {
+        width: auto !important;
+        min-width: auto !important;
+      }
+    }
   }
 
   &__countdown-header {
@@ -214,7 +239,7 @@ const pastEvents = computed(() => {
   // Past events styling - grayed out with hover effect
   &--past {
     .events-section__title {
-      color: var(--color-text-lighter);
+      color: var(--color-text-light);
     }
 
     .events-section__list {
