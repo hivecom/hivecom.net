@@ -10,7 +10,6 @@ const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const authReady = ref(false)
 
-const router = useRouter()
 const route = useRoute()
 
 // Mobile menu state
