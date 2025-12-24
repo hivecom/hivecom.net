@@ -47,3 +47,29 @@ export function formatDurationFromMinutes(minutes: number | null): string {
   // Convert minutes to milliseconds and use the main formatter
   return formatDuration(minutes * 60 * 1000)
 }
+
+/**
+ * Formats a duration in milliseconds to a compact string suitable for small UI badges.
+ * Examples: "23h", "3d"
+ */
+export function formatDurationCompact(milliseconds: number | null): string {
+  if (milliseconds === null || milliseconds === undefined || milliseconds <= 0)
+    return ''
+
+  const totalSeconds = Math.floor(milliseconds / 1000)
+  const totalMinutes = Math.floor(totalSeconds / 60)
+  const totalHours = Math.floor(totalMinutes / 60)
+  const totalDays = Math.floor(totalHours / 24)
+
+  if (totalDays >= 1)
+    return `${totalDays}d`
+
+  if (totalHours >= 1)
+    return `${totalHours}h`
+
+  if (totalMinutes >= 1)
+    return `${totalMinutes}m`
+
+  const seconds = Math.max(1, totalSeconds)
+  return `${seconds}s`
+}

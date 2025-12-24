@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
-import dayjs from 'dayjs'
+import NavAnnouncementBadge from './NavAnnouncementBadge.vue'
+import NavEventBadge from './NavEventBadge.vue'
 import NotificationDropdown from './NotificationDropdown.vue'
 import UserDropdown from './UserDropdown.vue'
 
@@ -33,29 +34,9 @@ watch(
 )
 
 // Whether to show status badges in navbar or not
-const isNewAnnouncement = useState<boolean>('layout:nav:isNewAnnouncement', () => false)
-const isEventSoon = useState<boolean>('layout:nav:isEventSoon', () => false)
-
 onBeforeMount(async () => {
   await supabase.auth.getSession().catch(() => null)
   authReady.value = true
-
-  supabase
-    .from('announcements')
-    .select('*', { count: 'exact', head: true })
-    .eq('pinned', true)
-    .then(({ count }) => {
-      isNewAnnouncement.value = !!(count && count > 0)
-    })
-
-  supabase
-    .from('events')
-    .select('*', { count: 'exact', head: true })
-    .gte('date', dayjs().startOf('day').toISOString())
-    .lt('date', dayjs().add(5, 'day').endOf('day').toISOString())
-    .then(({ count }) => {
-      isEventSoon.value = !!(count && count > 0)
-    })
 })
 
 // Track an animated background blob when user is hovering over the navbar links
@@ -85,7 +66,6 @@ const navbarLinks = computed(() => [
     path: '/announcements',
     label: 'Announcements',
     icon: 'ph:megaphone',
-    badge: isNewAnnouncement.value ? 'New' : null,
   },
   {
     path: '/community',
@@ -110,7 +90,6 @@ const navbarLinks = computed(() => [
     path: '/events?tab=list',
     label: 'Events',
     icon: 'ph:calendar',
-    badge: isEventSoon.value ? 'Soon' : null,
     children: [
       {
         path: '/events?tab=list',
@@ -169,9 +148,8 @@ const navbarLinks = computed(() => [
                 }"
               >
                 {{ link.label }}
-                <span v-if="link.badge" class="counter">
-                  {{ link.badge }}
-                </span>
+                <NavAnnouncementBadge v-if="link.label === 'Announcements'" />
+                <NavEventBadge v-if="link.label === 'Events'" />
                 <Icon v-if="link.children" name="ph:caret-down-fill" size="12px" />
               </NuxtLink>
 
@@ -220,9 +198,8 @@ const navbarLinks = computed(() => [
               >
                 <Icon :name="link.icon" />
                 {{ link.label }}
-                <span v-if="link.badge" class="counter">
-                  {{ link.badge }}
-                </span>
+                <NavAnnouncementBadge v-if="link.label === 'Announcements'" />
+                <NavEventBadge v-if="link.label === 'Events'" />
               </NuxtLink>
 
               <div class="navigation__mobile-submenu">

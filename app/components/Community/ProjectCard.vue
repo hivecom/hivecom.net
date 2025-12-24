@@ -29,7 +29,7 @@ const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(computed(() => pro
 
 const placeholderBanner = computed(() => getPlaceholderBannerProject(props.project.id))
 
-const hasBannerImage = computed(() => !!(projectBannerUrl.value ?? placeholderBanner.value.url))
+const hasBannerImage = computed(() => !!projectBannerUrl.value)
 
 const bannerSurfaceStyle = computed(() => {
   const placeholder = placeholderBanner.value
@@ -279,10 +279,11 @@ const bannerSurfaceStyle = computed(() => {
   background-size: cover;
   background-position: center;
   transform: var(--banner-placeholder-transform, scale(1));
-  transition: transform 0.4s ease;
+  transition: none;
 }
 
 .project-card:hover .project-card__banner-surface--image {
+  transition: transform 0.2s ease;
   transform: var(--banner-placeholder-transform, scale(1)) scale(1.05);
 }
 

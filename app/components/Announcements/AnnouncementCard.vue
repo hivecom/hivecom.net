@@ -31,7 +31,7 @@ const { assetUrl: backgroundUrl } = useCacheAnnouncementBackground(announcementI
 
 const placeholderBanner = computed(() => getPlaceholderBannerAnnouncement(props.announcement.id))
 
-const hasBannerImage = computed(() => !!(bannerUrl.value ?? placeholderBanner.value.url))
+const hasBannerImage = computed(() => !!bannerUrl.value)
 
 const showBanner = computed(() => !props.ultraCompact && props.announcement.pinned)
 const showBackground = computed(
@@ -279,10 +279,11 @@ const backgroundSurfaceStyle = computed(() => {
   background-size: cover;
   background-position: center;
   transform: var(--banner-placeholder-transform, scale(1));
-  transition: transform 0.4s ease;
+  transition: none;
 }
 
 .announcement-card--pinned:hover .announcement-card__banner-surface--image {
+  transition: transform 0.2s ease;
   transform: var(--banner-placeholder-transform, scale(1)) scale(1.05);
 }
 

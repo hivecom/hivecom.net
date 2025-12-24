@@ -53,22 +53,22 @@ const timeProgressPercentage = computed(() => {
     <Flex gap="s" class="countdown-timer__grid" expand>
       <Flex column y-center x-center class="countdown-timer__item" expand>
         <div class="countdown-timer__number-wrapper">
-          <Skeleton height="3rem" width="3.5rem" />
+          <Skeleton height="4.9rem" width="5rem" />
         </div>
       </Flex>
       <Flex column y-center x-center class="countdown-timer__item" expand>
         <div class="countdown-timer__number-wrapper">
-          <Skeleton height="3rem" width="3.5rem" />
+          <Skeleton height="4.9rem" width="5rem" />
         </div>
       </Flex>
       <Flex column y-center x-center class="countdown-timer__item" expand>
         <div class="countdown-timer__number-wrapper">
-          <Skeleton height="3rem" width="3.5rem" />
+          <Skeleton height="4.9rem" width="5rem" />
         </div>
       </Flex>
       <Flex column y-center x-center class="countdown-timer__item" expand>
         <div class="countdown-timer__number-wrapper">
-          <Skeleton height="3rem" width="3.5rem" />
+          <Skeleton height="4.9rem" width="5rem" />
         </div>
       </Flex>
     </Flex>
@@ -123,9 +123,8 @@ const timeProgressPercentage = computed(() => {
 
 .countdown-timer {
   position: relative;
-  padding: var(--space-s);
-  padding-right: 1px;
-  padding-top: 1px;
+  padding: 1px;
+  min-height: 76px;
   background: linear-gradient(135deg, var(--color-bg-subtle), var(--color-bg));
   border-radius: var(--border-radius-m);
   overflow: hidden;
@@ -161,6 +160,7 @@ const timeProgressPercentage = computed(() => {
 
   &__now {
     min-width: 356px;
+    min-height: 76px;
 
     @media (max-width: $breakpoint-s) {
       min-width: auto;

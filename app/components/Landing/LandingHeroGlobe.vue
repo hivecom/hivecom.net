@@ -29,6 +29,7 @@ type GlobeConstructor = typeof import('globe.gl')['default']
 type GlobeInstance = import('globe.gl').GlobeInstance
 
 const globeEl = ref<HTMLDivElement | null>(null)
+const isGlobeVisible = ref(false)
 let globeInstance: GlobeInstance | null = null
 let resizeObserver: ResizeObserver | null = null
 let themeObserver: MutationObserver | null = null
@@ -352,6 +353,8 @@ onMounted(async () => {
   if (!container)
     return
 
+  isGlobeVisible.value = false
+
   try {
     const Globe = (await import('globe.gl')).default as GlobeConstructor
     const { MeshStandardMaterial } = await import('three')
@@ -463,6 +466,12 @@ onMounted(async () => {
 
     await setupScanlinePass()
     setSize()
+
+    // Fade the canvas in after the first paint. This avoids a brief black flash
+    // that can occur while postprocessing is initializing.
+    requestAnimationFrame(() => {
+      isGlobeVisible.value = true
+    })
 
     themeMedia = window.matchMedia?.('(prefers-color-scheme: light)') ?? null
     themeMedia?.addEventListener('change', applyGlobeColor)
@@ -593,7 +602,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="globeEl" class="hero-globe" aria-hidden="true" />
+  <div ref="globeEl" class="hero-globe" :class="{ 'is-visible': isGlobeVisible }" aria-hidden="true" />
 </template>
 
 <style scoped lang="scss">
@@ -604,6 +613,11 @@ onBeforeUnmount(() => {
   height: 100%;
   pointer-events: auto;
   z-index: 2;
+  opacity: 0;
+  transition: opacity var(--transition-slow);
+}
+
+.hero-globe.is-visible {
   opacity: 0.95;
 }
 </style>
