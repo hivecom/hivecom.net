@@ -154,9 +154,11 @@ const navbarLinks = computed(() => [
               </NuxtLink>
 
               <Popout v-if="link.children" placement="bottom-start" class="navigation__links-popout" :anchor="hoveredElement" :visible="!!hoveredElement?.firstElementChild?.textContent.includes(link.label)">
-                <DropdownItem v-for="sublink in link.children" :key="sublink.path" @click="router.push(sublink.path)">
-                  {{ sublink.label }}
-                </DropdownItem>
+                <NuxtLink v-for="sublink in link.children" :key="sublink.path" :to="sublink.path">
+                  <DropdownItem>
+                    {{ sublink.label }}
+                  </DropdownItem>
+                </NuxtLink>
               </Popout>
             </li>
           </template>
@@ -303,6 +305,10 @@ const navbarLinks = computed(() => [
     box-shadow: none !important;
     transform: translate3D(-8px, -8px, 0);
     background-color: var(--color-bg);
+
+    a {
+      padding-inline: 0 !important;
+    }
 
     &:before,
     &:after {
