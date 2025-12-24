@@ -144,6 +144,7 @@ onUnmounted(() => {
           v-if="isUpcoming || isOngoing"
           :countdown="countdown"
           :is-ongoing="isOngoing"
+          :created-at="props.event.created_at"
         />
 
         <!-- Time ago for past events -->
@@ -156,7 +157,7 @@ onUnmounted(() => {
           y-center
           :x-center="isBelowSmall"
           :x-end="!isBelowSmall"
-          class="event-header__date-display text-color-lighter"
+          class="event-header__date-display text-color-light"
         >
           <TimestampDate size="xxs" :date="props.event.date" class="event-header__date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
           <!-- Duration display -->
@@ -167,7 +168,7 @@ onUnmounted(() => {
       </Flex>
     </Flex>
 
-    <Divider :margin="0" size="xxs" />
+    <Divider size="1" />
 
     <!-- Event meta information -->
     <Flex gap="m" x-between expand :column="isBelowSmall">

@@ -233,7 +233,7 @@ useHead({
       </Flex>
 
       <!-- Header -->
-      <Card :class="{ 'event-ongoing': isOngoing }">
+      <div :class="{ 'event-ongoing': isOngoing }">
         <EventHeader
           :event="event"
           :games="games"
@@ -242,7 +242,7 @@ useHead({
           :countdown="countdown"
           :time-ago="timeAgo"
         />
-      </Card>
+      </div>
 
       <!-- Markdown -->
       <EventMarkdown :event="event" />

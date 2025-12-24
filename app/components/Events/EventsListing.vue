@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Flex, Grid, Skeleton } from '@dolanske/vui'
 import Event from '@/components/Events/Event.vue'
+import EventPast from './EventPast.vue'
 
 interface Props {
   events: Tables<'events'>[] | undefined
@@ -125,22 +126,12 @@ const pastEvents = computed(() => {
       <h2 class="events-section__title">
         Past Events
       </h2>
-      <!-- <Flex gap="xxl">
-        <Flex x-center class="events-section__time-header time-ago-header">
-          <span>Time Ago</span>
-        </Flex>
-        <Flex expand class="events-section__event-header">
-          <span>Event</span>
-        </Flex>
-      </Flex> -->
 
-      <div class="events-section__list">
-        <Event
-          v-for="(event, index) in pastEvents"
+      <div class="events-section__past-list">
+        <EventPast
+          v-for="event in pastEvents"
           :key="event.id"
           :data="event"
-          :index="index"
-          :is-past="true"
         />
       </div>
     </div>
@@ -175,6 +166,14 @@ const pastEvents = computed(() => {
     .vui-divider:last-of-type {
       display: none;
     }
+  }
+
+  &__past-list {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    gap: var(--space-m);
   }
 
   &__countdown-header {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Flex, Progress, Skeleton, Tooltip } from '@dolanske/vui'
+import { Divider, Flex, Progress, Skeleton, Tooltip } from '@dolanske/vui'
+import dayjs from 'dayjs'
 import { computed } from 'vue'
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
     seconds: number
   } | null
   isOngoing?: boolean
+  createdAt: string
+  // endingAt: string
 }
 
 const props = defineProps<Props>()
@@ -34,79 +37,91 @@ const remainingSeconds = computed(() => {
 const isCountdownComplete = computed(() => (remainingSeconds.value ?? 1) <= 0)
 const shouldShowNow = computed(() => props.isOngoing || isCountdownComplete.value)
 
-// Calculate total remaining time as percentage for border animation (reversed)
+// Calculate percentage of time elapsed between createdAt and endingAt (or derive ending time)
+// 0 = createdAt, 100 = endingAt / countdown finished
 const timeProgressPercentage = computed(() => {
   if (remainingSeconds.value === null)
-    return 100
+    return 0
 
-  const totalSeconds = Math.max(remainingSeconds.value, 0)
-  // Assume max deadline is 30 days for visual purposes
-  const maxSeconds = 30 * 24 * 60 * 60
-  // Reverse the percentage so it fills up as time decreases
-  return 100 - Math.max(0, Math.min(100, 100 - (totalSeconds / maxSeconds) * 100)) / 100
+  const remaining = Math.max(remainingSeconds.value, 0)
+
+  // No endingAt provided: derive total duration as elapsed since creation + remaining
+  const elapsed = Math.max(dayjs().diff(dayjs(props.createdAt), 'seconds'), 0)
+  const totalDuration = elapsed + remaining
+
+  if (totalDuration === 0)
+    return remaining <= 0 ? 100 : 0
+
+  const progress = (elapsed / totalDuration) * 100
+  return Math.max(0, Math.min(100, progress))
 })
 </script>
 
 <template>
-  <!-- Loading state with skeletons TODO: update -->
-  <Flex v-if="!countdown" expand class="countdown-timer countdown-timer--loading">
-    <Flex gap="s" expand>
-      <Flex column y-center x-center class="countdown-timer__item" expand>
-        <div class="countdown-timer__number-wrapper">
-          <Skeleton height="3rem" width="3.5rem" />
-        </div>
+  <!-- Loading state with skeletons -->
+  <div v-if="!countdown" class="countdown-timer">
+    <Flex gap="s">
+      <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
+        <Skeleton height="30px" width="29px" />
+        <Skeleton height="11px" width="27px" />
       </Flex>
-      <Flex column y-center x-center class="countdown-timer__item" expand>
-        <div class="countdown-timer__number-wrapper">
-          <Skeleton height="3rem" width="3.5rem" />
-        </div>
+      <Divider vertical :size="64" />
+      <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
+        <Skeleton height="30px" width="29px" />
+        <Skeleton height="11px" width="27px" />
       </Flex>
-      <Flex column y-center x-center class="countdown-timer__item" expand>
-        <div class="countdown-timer__number-wrapper">
-          <Skeleton height="3rem" width="3.5rem" />
-        </div>
+      <Divider vertical :size="64" />
+      <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
+        <Skeleton height="30px" width="29px" />
+        <Skeleton height="11px" width="27px" />
       </Flex>
-      <Flex column y-center x-center class="countdown-timer__item" expand>
-        <div class="countdown-timer__number-wrapper">
-          <Skeleton height="3rem" width="3.5rem" />
-        </div>
+      <Divider vertical :size="64" />
+      <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
+        <Skeleton height="30px" width="29px" />
+        <Skeleton height="11px" width="27px" />
       </Flex>
     </Flex>
-  </Flex>  <!-- Actual countdown when data is available -->
+    <div class="countdown-timer__progress-wrapper">
+      <Skeleton width="100%" height="4px" />
+    </div>
+  </div>
+  <!-- Actual countdown when data is available -->
   <div
     v-else
-    expand
     class="countdown-timer"
     :class="{ 'countdown-timer--ongoing': shouldShowNow }"
     :style="{ '--time-progress': `${timeProgressPercentage}%` }"
   >
     <!-- Show "NOW" when event is ongoing or countdown finishes -->
-    <Flex v-if="shouldShowNow" y-center x-center class="countdown-timer__now" expand>
-      <span class="countdown-timer__now-text">NOW</span>
-    </Flex>
+    <span v-if="shouldShowNow" class="countdown-timer__now-text">Ongoing</span>
 
     <!-- Regular countdown grid -->
     <template v-else>
-      <Flex gap="s" expand>
-        <Flex column y-center x-center class="countdown-timer__item" data-unit="days" expand>
+      <Flex gap="s">
+        <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="days">
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.days" class="countdown-timer__number">{{ countdown.days.toString().padStart(2, '0') }}</span>
           </div>
           <span class="countdown-timer__label">days</span>
         </Flex>
-        <Flex column y-center x-center class="countdown-timer__item" data-unit="hours" expand>
+        <Divider vertical :size="64" />
+        <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="hours">
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.hours" class="countdown-timer__number">{{ countdown.hours.toString().padStart(2, '0') }}</span>
           </div>
           <span class="countdown-timer__label">hours</span>
         </Flex>
-        <Flex column y-center x-center class="countdown-timer__item" data-unit="minutes" expand>
+        <Divider vertical :size="64" />
+
+        <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="minutes">
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.minutes" class="countdown-timer__number">{{ countdown.minutes.toString().padStart(2, '0') }}</span>
           </div>
           <span class="countdown-timer__label">minutes</span>
         </Flex>
-        <Flex column y-center x-center class="countdown-timer__item" data-unit="seconds" expand>
+        <Divider vertical :size="64" />
+
+        <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="seconds">
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.seconds" class="countdown-timer__number">{{ countdown.seconds.toString().padStart(2, '0') }}</span>
           </div>
@@ -119,7 +134,7 @@ const timeProgressPercentage = computed(() => {
           <Progress v-model="timeProgressPercentage" />
         </div>
         <template #tooltip>
-          <p>{{ timeProgressPercentage.toFixed(2) }}% </p>
+          <p>We are {{ timeProgressPercentage.toFixed(2) }}% there</p>
         </template>
       </Tooltip>
     </template>
@@ -136,41 +151,22 @@ const timeProgressPercentage = computed(() => {
   border-radius: var(--border-radius-m);
   overflow: hidden;
 
-  @media (max-width: $breakpoint-xs) {
-    padding: 1px;
-  }
-
-  // TODO: difference from now?
   &--ongoing {
-    background: linear-gradient(135deg, var(--color-accent-muted), var(--color-bg));
-  }
-
-  &--loading {
-    .countdown-timer__item:hover {
-      transform: none;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-  }
-
-  // TODO:
-  &__now {
-    min-width: 356px;
-
-    @media (max-width: $breakpoint-s) {
-      min-width: auto;
-    }
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 356px;
+    width: 100%;
+    height: 80px;
   }
 
   &__now-text {
-    width: 156px;
-    text-align: center;
     font-size: 3rem;
-    line-height: 5.5rem;
     font-weight: var(--font-weight-black);
     color: var(--color-accent);
     text-transform: uppercase;
-    letter-spacing: 0.2em;
-    text-shadow: 0 0 20px var(--color-accent);
+    text-shadow: 0 0 20px var(--color-bg-accent-raised);
+    margin-bottom: -6px;
 
     @media (max-width: $breakpoint-s) {
       font-size: 2rem;
@@ -182,10 +178,9 @@ const timeProgressPercentage = computed(() => {
   }
 
   &__item {
-    gap: 0 !important;
     position: relative;
     padding: var(--space-s);
-    border-right: 1px solid var(--color-border-strong);
+    // border-right: 1px solid var(--color-border-strong);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     min-width: 80px;
 

@@ -60,33 +60,6 @@ function updateTime() {
   }
 }
 
-// Calculate "time ago" for past events
-const timeAgo = computed(() => {
-  if (!props.isPast)
-    return ''
-
-  const now = new Date()
-  const eventDate = new Date(props.data.date)
-  const diff = now.getTime() - eventDate.getTime()
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-
-  if (days > 0) {
-    return days === 1 ? '1 day ago' : `${days} days ago`
-  }
-  else if (hours > 0) {
-    return hours === 1 ? '1 hour ago' : `${hours} hours ago`
-  }
-  else if (minutes > 0) {
-    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
-  }
-  else {
-    return 'Just now'
-  }
-})
-
 const isBelowSmall = useBreakpoint('<s')
 
 useIntervalFn(updateTime, 1000, { immediate: true })
@@ -155,7 +128,7 @@ updateTime()
     </Flex>
 
     <!-- Time ago for past events -->
-    <Flex v-else column gap="xs" class="event-item__time-ago">
+    <!-- <Flex v-else column gap="xs" class="event-item__time-ago">
       <Flex x-center class="event-item__time-ago-text" expand>
         <span class="text-bold text-xxxl text-color-lighter">{{ timeAgo }}</span>
       </Flex>
@@ -165,7 +138,7 @@ updateTime()
       <Flex v-if="props.data.duration_minutes" x-center expand class="event-item__event-duration">
         <span class="text-xs text-color-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
       </Flex>
-    </Flex>
+    </Flex> -->
 
     <Flex column gap="xs" expand class="event-item__details">
       <h5>

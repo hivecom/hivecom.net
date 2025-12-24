@@ -7,18 +7,18 @@ interface Props {
   event: Tables<'events'>
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 </script>
 
 <template>
   <!-- Event Details -->
-  <Card v-if="event.markdown" class="event-markdown">
-    <Flex column gap="l">
-      <h3 class="event-markdown__title">
+  <Card v-if="props.event.markdown" class="event-markdown">
+    <Flex column gap="l" class="event-markdown__content">
+      <!-- <h3 class="event-markdown__title">
         <Icon name="ph:article" />
         Event Details
-      </h3>
-      <MDRenderer :md="event.markdown" class="event-markdown__content" />
+      </h3> -->
+      <MDRenderer :md="props.event.markdown" />
     </Flex>
   </Card>
 </template>
@@ -29,9 +29,9 @@ defineProps<Props>()
     display: flex;
     align-items: center;
     gap: var(--space-s);
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-l);
     font-weight: var(--font-weight-semibold);
-    margin: 0;
+    // margin: 0;
     color: var(--color-text);
 
     svg {
@@ -40,7 +40,14 @@ defineProps<Props>()
   }
 
   &__content {
-    line-height: 1.6;
+    max-width: 680px;
+    // line-height: 1.6;
+    margin: auto;
+    padding: var(--space-l);
+
+    :deep(.typeset > :first-child) {
+      margin-top: 0 !important;
+    }
   }
 }
 </style>

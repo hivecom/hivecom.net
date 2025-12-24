@@ -117,6 +117,10 @@ onUnmounted(() => {
 watch(() => props.event?.id, () => {
   fetchRsvpCount()
 })
+
+defineExpose({
+  count: goingCount,
+})
 </script>
 
 <template>
