@@ -4,10 +4,12 @@ import type { UserIdentity } from '@supabase/supabase-js'
 import { Alert, Button, Card, Flex, Input, Spinner, Switch } from '@dolanske/vui'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useCache } from '@/composables/useCache'
+import { normalizeInternalRedirect } from '@/lib/utils/common'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
+const route = useRoute()
 const router = useRouter()
 
 const loading = ref(true)
@@ -37,6 +39,7 @@ const USERNAME_LIMIT = 32
 const cache = useCache()
 let discordUsernameAttempted = false
 let discordIdSyncInFlight = false
+const postConfirmRedirect = computed(() => normalizeInternalRedirect(route.query.redirect))
 
 function invalidateUserProfileCache() {
   const normalizedId = userId.value?.trim()
@@ -52,8 +55,10 @@ function scheduleProfileRedirect() {
   if (debugOptions.skipRedirect)
     return
 
+  const target = postConfirmRedirect.value ?? '/profile'
+
   setTimeout(() => {
-    navigateTo('/profile')
+    navigateTo(target)
   }, 1500)
 }
 

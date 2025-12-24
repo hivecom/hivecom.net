@@ -5,6 +5,7 @@ import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { normalizeInternalRedirect } from '@/lib/utils/common'
 
 import '@/assets/elements/auth.scss'
 
@@ -35,6 +36,7 @@ const mfaPromptCopy = 'Finish verification to sign-in.'
 const isBelowS = useBreakpoint('<s')
 const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(720px, 96vh)'))
 const metaballWidth = computed(() => (isBelowS.value ? '100vw' : 'min(520px, 96vw)'))
+const postSignInRedirect = computed(() => normalizeInternalRedirect(route.query.redirect))
 
 function normalizeOtpFromText(text: string) {
   const match = text.match(/\b(\d{6})\b/)
@@ -130,13 +132,15 @@ async function signIn() {
 }
 
 function getAuthRedirectUrl() {
+  const redirect = postSignInRedirect.value
+
   if (process.env.NODE_ENV === 'development')
-    return 'http://localhost:3000/auth/confirm'
+    return redirect ? `http://localhost:3000/auth/confirm?redirect=${encodeURIComponent(redirect)}` : 'http://localhost:3000/auth/confirm'
 
   if (typeof window !== 'undefined')
-    return `${window.location.origin}/auth/confirm`
+    return redirect ? `${window.location.origin}/auth/confirm?redirect=${encodeURIComponent(redirect)}` : `${window.location.origin}/auth/confirm`
 
-  return '/auth/confirm'
+  return redirect ? `/auth/confirm?redirect=${encodeURIComponent(redirect)}` : '/auth/confirm'
 }
 
 async function signInWithOtp() {
@@ -200,7 +204,7 @@ async function signInWithPassword() {
   else {
     const needsMfa = await prepareMfaRequirement()
     if (!needsMfa)
-      navigateTo('/')
+      navigateTo(postSignInRedirect.value ?? '/')
   }
 }
 
@@ -314,7 +318,7 @@ async function verifyMfaCode() {
 
     await persistVerifiedMfaSession(sessionResult?.session ?? null)
     resetMfaState()
-    navigateTo('/')
+    navigateTo(postSignInRedirect.value ?? '/')
   }
   catch (error) {
     mfaError.value = error instanceof Error ? error.message : 'The provided code was invalid or expired.'
