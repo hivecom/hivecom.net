@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { Button, Tooltip } from '@dolanske/vui'
+
+const props = withDefaults(defineProps<{ expand?: boolean }>(), {
+  expand: false,
+})
 </script>
 
 <template>
@@ -12,6 +16,7 @@ import { Button, Tooltip } from '@dolanske/vui'
       </template>
       <Button
         variant="fill"
+        :expand="props.expand"
         disabled
         aria-disabled="true"
         aria-label="Steam integration coming soon"

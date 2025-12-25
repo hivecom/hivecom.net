@@ -18,10 +18,15 @@ withDefaults(defineProps<Props>(), {
   </Badge>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss">
 .tiny-badge {
   font-size: calc(var(--font-size-xxs) * 0.8);
   padding: 0 6px;
   line-height: 0;
+
+  span,
+  .iconify {
+    font-size: calc(var(--font-size-xxs) * 1) !important;
+  }
 }
 </style>

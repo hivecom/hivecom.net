@@ -124,7 +124,7 @@ function handleMouseLeave() {
   <!-- Delete Confirmation Modal -->
   <ConfirmModal
     v-model:open="showDeleteConfirm"
-    v-model:confirm="handleDeleteConfirm"
+    :confirm="handleDeleteConfirm"
     title="Delete User Avatar"
     :description="`Are you sure you want to delete ${username}'s avatar? This action cannot be undone.`"
     confirm-text="Delete Avatar"

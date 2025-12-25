@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Alert, Button, Card, Flex } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -7,6 +8,8 @@ const user = useSupabaseUser()
 const passwordResetLoading = ref(false)
 const passwordResetSent = ref(false)
 const passwordResetError = ref('')
+
+const isBelowSmall = useBreakpoint('<s')
 
 const passwordResetHint = computed(() => (user.value?.email
   ? `We'll email ${user.value.email}`
@@ -66,8 +69,16 @@ async function sendPasswordReset() {
             </p>
           </Flex>
         </Flex>
-        <Flex gap="s" class="settings-callout__actions" y-center>
-          <Button :loading="passwordResetLoading" variant="accent" @click="sendPasswordReset">
+        <Flex
+          gap="s"
+          class="settings-callout__actions"
+          :column="isBelowSmall"
+          :row="!isBelowSmall"
+          :y-center="!isBelowSmall"
+          :expand="isBelowSmall"
+          :style="{ minWidth: isBelowSmall ? '0' : undefined }"
+        >
+          <Button :expand="isBelowSmall" :loading="passwordResetLoading" variant="accent" @click="sendPasswordReset">
             Send Password Reset Email
           </Button>
           <span class="text-xs text-color-lighter">

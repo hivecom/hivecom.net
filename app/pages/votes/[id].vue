@@ -595,7 +595,7 @@ useHead({
       <!-- Reveal Results Confirmation Modal -->
       <ConfirmModal
         v-model:open="showConfirmModal"
-        v-model:confirm="confirmRevealResults"
+        :confirm="confirmRevealResults"
         title="Reveal Results Early?"
         description="You haven't voted yet. Are you sure you want to see the current results? This action cannot be undone."
         confirm-text="Yes, Reveal Results"
@@ -606,7 +606,7 @@ useHead({
       <!-- Remove Vote Confirmation Modal -->
       <ConfirmModal
         v-model:open="showRemoveVoteModal"
-        v-model:confirm="confirmRemoveVote"
+        :confirm="confirmRemoveVote"
         title="Remove Your Vote?"
         description="Are you sure you want to remove your vote? You can always vote again later while the referendum is active."
         confirm-text="Yes, Remove Vote"

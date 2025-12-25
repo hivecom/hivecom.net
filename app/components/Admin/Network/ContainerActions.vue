@@ -133,7 +133,7 @@ function isActionLoading(actionType: string): boolean {
     <!-- Confirmation Modal for Prune Action -->
     <ConfirmModal
       v-model:open="showPruneConfirm"
-      v-model:confirm="handlePrune"
+      :confirm="handlePrune"
       title="Confirm Prune Action"
       description="Are you sure you want to prune this container? This action cannot be undone."
       confirm-text="Prune"

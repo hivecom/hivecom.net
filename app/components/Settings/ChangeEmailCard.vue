@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Alert, Button, Card, Flex, Input } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -9,6 +10,8 @@ const confirmNewEmail = ref('')
 const emailChangeLoading = ref(false)
 const emailChangeSent = ref(false)
 const emailChangeError = ref('')
+
+const isBelowSmall = useBreakpoint('<s')
 
 function isValidEmail(value: string): boolean {
   const [local, domain, ...rest] = value.split('@')
@@ -113,7 +116,7 @@ async function requestEmailChange() {
         type="email"
         expand
       />
-      <Button :loading="emailChangeLoading" variant="accent" @click="requestEmailChange">
+      <Button :expand="isBelowSmall" :loading="emailChangeLoading" variant="accent" @click="requestEmailChange">
         Send Email Change Links
       </Button>
       <Alert v-if="emailChangeSent" filled variant="info">

@@ -3,8 +3,9 @@ import { Button, pushToast, Toasts } from '@dolanske/vui'
 
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 
-const props = withDefaults(defineProps<{ redirectTo?: string }>(), {
+const props = withDefaults(defineProps<{ redirectTo?: string, expand?: boolean }>(), {
   redirectTo: '/profile/settings',
+  expand: false,
 })
 
 const emit = defineEmits<{
@@ -113,6 +114,7 @@ async function connectDiscord() {
   <div>
     <Button
       variant="fill"
+      :expand="props.expand"
       :loading="isLinking"
       :disabled="isLinking"
       @click="connectDiscord"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Alert, Button, Card, Flex, Input, pushToast } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -9,6 +10,8 @@ const deleteAccountConfirm = ref('')
 const deleteAccountLoading = ref(false)
 const deleteAccountError = ref('')
 const deleteAccountModalOpen = ref(false)
+
+const isBelowSmall = useBreakpoint('<s')
 
 function validateDeleteAccountInput(): boolean {
   deleteAccountError.value = ''
@@ -95,6 +98,7 @@ async function deleteAccount() {
       />
       <Button
         variant="danger"
+        :expand="isBelowSmall"
         :loading="deleteAccountLoading"
         :disabled="!deleteAccountConfirm || deleteAccountConfirm.toLowerCase() !== (user?.email || '').toLowerCase()"
         @click="promptDeleteAccount"
@@ -109,7 +113,7 @@ async function deleteAccount() {
 
   <ConfirmModal
     v-model:open="deleteAccountModalOpen"
-    v-model:confirm="deleteAccount"
+    :confirm="deleteAccount"
     title="Delete Account"
     description="This will permanently remove your Hivecom account, connected identities, and any associated data. This action cannot be undone."
     confirm-text="Delete Account"

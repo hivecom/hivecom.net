@@ -300,7 +300,7 @@ onMounted(() => {
   <!-- Delete Confirmation Modal -->
   <ConfirmModal
     v-model:open="showDeleteConfirm"
-    v-model:confirm="deleteComplaint"
+    :confirm="deleteComplaint"
     title="Delete Complaint"
     description="Are you sure you want to delete this complaint? This action cannot be undone."
     confirm-text="Delete"

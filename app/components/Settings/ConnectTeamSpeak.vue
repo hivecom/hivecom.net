@@ -39,6 +39,7 @@ const props = defineProps<{ profile: Tables<'profiles'> | null }>()
 const emit = defineEmits<{ (e: 'linked'): void }>()
 const isOpen = ref(false)
 const isBelowSmall = useBreakpoint('<xs')
+const isBelowMedium = useBreakpoint('<m')
 
 const supabase = useSupabaseClient()
 
@@ -408,6 +409,7 @@ function safeParseJson(input: string): unknown {
     <Button
       variant="fill"
       class="teamspeak-manage"
+      :expand="isBelowMedium"
       :disabled="!hasServers"
       @click="openModal"
     >
@@ -426,13 +428,13 @@ function safeParseJson(input: string): unknown {
               Securely connect your TeamSpeak identity to manage access.
             </p>
           </div>
-          <Badge variant="neutral">
+          <Badge v-if="!isBelowSmall" variant="neutral">
             {{ stepBadge }}
           </Badge>
         </Flex>
       </template>
 
-      <Flex column gap="l">
+      <Flex column gap="l" expand>
         <section v-if="step === 'manage'" class="link-step">
           <h4>Manage linked identities</h4>
           <p class="text-s text-color-lighter mb-s">
@@ -450,14 +452,14 @@ function safeParseJson(input: string): unknown {
             <Flex v-if="identities.length === 0" expand class="identity-list__empty">
               <p>You have not linked any TeamSpeak identities yet.</p>
             </Flex>
-            <ul v-else>
-              <li v-for="identity in identities" :key="`${identity.serverId}-${identity.uniqueId}`">
+            <ul v-else class="w-100">
+              <li v-for="identity in identities" :key="`${identity.serverId}-${identity.uniqueId}`" class="w-100">
                 <Flex column gap="xs" expand>
                   <Flex gap="s" y-center expand>
                     <Badge variant="info">
                       {{ identity.serverId.toUpperCase() }}
                     </Badge>
-                    <code class="identity-code">{{ identity.uniqueId }}</code>
+                    <code class="identity-code w-100">{{ identity.uniqueId }}</code>
                     <Button
                       size="s"
                       variant="danger"
@@ -626,12 +628,14 @@ function safeParseJson(input: string): unknown {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  width: 100%;
 }
 
 .link-step {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .identity-list {
@@ -661,11 +665,9 @@ function safeParseJson(input: string): unknown {
 }
 
 .identity-code {
-  font-size: 0.85rem;
-  background: var(--color-bg-subtle);
-  padding: 0.15rem 0.5rem;
-  border-radius: var(--border-radius-s);
+  font-size: 1.75rem;
   word-break: break-all;
+  width: 100%;
 }
 
 .identity-shortcut {
