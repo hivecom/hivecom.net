@@ -57,8 +57,5 @@
     "nuxi": "^3.31.3",
     "supabase": "^2.70.5",
     "vue-tsc": "^3.2.1"
-  },
-  "overrides": {
-    "@vue/language-core": "3.1.4"
   }
 }
