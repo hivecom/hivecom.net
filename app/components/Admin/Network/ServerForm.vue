@@ -197,7 +197,7 @@ function handleDelete() {
 
     <ConfirmModal
       v-model:open="showDeleteConfirm"
-      v-model:confirm="handleDelete"
+      :confirm="handleDelete"
       title="Delete Server"
       :description="`Are you sure you want to delete the server '${props.server?.address}'? This action cannot be undone.`"
       confirm-text="Delete"
@@ -207,7 +207,7 @@ function handleDelete() {
     />
     <ConfirmModal
       v-model:open="showEditConfirm"
-      v-model:confirm="handleEditConfirm"
+      :confirm="handleEditConfirm"
       title="Modify Server?"
       description="Modifying an existing server can impact container statuses if the server address is invalid or the server is configured incorrectly. Are you sure you want to continue?"
       confirm-text="Continue"

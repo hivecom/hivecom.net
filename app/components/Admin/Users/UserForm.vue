@@ -1095,7 +1095,7 @@ function clearBirthday() {
   <!-- Delete Confirmation Modal -->
   <ConfirmModal
     v-model:open="showDeleteConfirm"
-    v-model:confirm="confirmDelete"
+    :confirm="confirmDelete"
     title="Delete User"
     :description="`Are you sure you want to delete the user '${props.user?.username}'? This action cannot be undone.`"
     confirm-text="Delete"

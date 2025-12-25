@@ -230,7 +230,7 @@ function getItemDisplayName(): string {
   <!-- Delete Confirmation Modal -->
   <ConfirmModal
     v-model:open="showDeleteConfirm"
-    v-model:confirm="confirmDelete"
+    :confirm="confirmDelete"
     :title="`Confirm Delete ${getResourceDisplayName()}`"
     :description="`Are you sure you want to delete '${getItemDisplayName()}'? This action cannot be undone.`"
     confirm-text="Delete"

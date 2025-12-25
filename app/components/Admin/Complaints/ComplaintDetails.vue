@@ -412,7 +412,7 @@ function confirmDeleteComplaint() {
   <!-- Remove Response Confirmation Modal -->
   <ConfirmModal
     v-model:open="showRemoveConfirm"
-    v-model:confirm="confirmRemoveResponse"
+    :confirm="confirmRemoveResponse"
     title="Remove Response"
     description="Are you sure you want to remove this response? This action cannot be undone and will revert the complaint back to acknowledged status."
     confirm-text="Remove Response"
@@ -423,7 +423,7 @@ function confirmDeleteComplaint() {
   <!-- Delete Complaint Confirmation Modal -->
   <ConfirmModal
     v-model:open="showDeleteConfirm"
-    v-model:confirm="confirmDeleteComplaint"
+    :confirm="confirmDeleteComplaint"
     title="Delete Complaint"
     description="Are you sure you want to permanently delete this complaint? This action cannot be undone and will remove the complaint and all associated data."
     confirm-text="Delete Complaint"

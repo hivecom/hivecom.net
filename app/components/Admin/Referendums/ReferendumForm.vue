@@ -434,7 +434,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
     <ConfirmModal
       v-if="props.referendum"
       v-model:open="showDeleteConfirm"
-      v-model:confirm="confirmDelete"
+      :confirm="confirmDelete"
       title="Delete Referendum"
       :description="`Are you sure you want to delete '${props.referendum.title}'? This action cannot be undone and will also delete all votes.`"
       confirm-text="Delete"
