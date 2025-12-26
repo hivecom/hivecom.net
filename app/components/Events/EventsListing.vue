@@ -250,6 +250,16 @@ const pastEvents = computed(() => {
   }
 }
 
+:root:not(.dark) {
+  .events-section--past .events-section__past-list {
+    opacity: 0.5;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
 // Mobile responsiveness
 @media (max-width: $breakpoint-s) {
   .events-section {
