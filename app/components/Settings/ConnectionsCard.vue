@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Card, Checkbox, Flex, pushToast } from '@dolanske/vui'
+import { Button, Card, Checkbox, Flex, pushToast } from '@dolanske/vui'
 import { reactive, ref, watch } from 'vue'
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
+import TinyBadge from '@/components/Shared/TinyBadge.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{ profile: Tables<'profiles'> | null }>()
 const emit = defineEmits<{ (e: 'updated'): void }>()
 
 const supabase = useSupabaseClient()
+
+const isBelowSmall = useBreakpoint('<s')
 
 const disconnectLoading = reactive({
   patreon: false,
@@ -152,6 +156,10 @@ async function updateRichPresence(enabled: boolean) {
     richPresenceLoading.value = false
   }
 }
+
+function toggleRichPresence() {
+  void updateRichPresence(!richPresenceEnabled.value)
+}
 </script>
 
 <template>
@@ -166,31 +174,44 @@ async function updateRichPresence(enabled: boolean) {
     <Flex column gap="m">
       <!-- Patreon -->
       <Flex expand class="account-connection-row">
-        <Flex x-between y-center expand>
-          <Flex gap="m" y-center>
+        <Flex
+          :row="!isBelowSmall"
+          :column="isBelowSmall"
+          :x-between="!isBelowSmall"
+          :y-center="!isBelowSmall"
+          gap="m"
+          expand
+        >
+          <Flex expand gap="m" y-center>
             <div class="account-icon patreon">
               <Icon name="ph:patreon-logo" size="20" />
             </div>
-            <div>
-              <strong>Patreon</strong>
+            <Flex column expand class="account-row">
+              <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
+                <strong>Patreon</strong>
+                <TinyBadge v-if="props.profile?.patreon_id" variant="success">
+                  <Icon class="text-color-accent" name="ph:check" />
+                  Connected
+                </TinyBadge>
+              </Flex>
               <p class="text-xs text-color-lighter">
                 Connect to get your supporter benefits
               </p>
-            </div>
+            </Flex>
           </Flex>
 
-          <div class="account-status">
-            <Flex v-if="props.profile?.patreon_id" gap="s" y-center>
-              <Badge variant="success" size="s">
-                <Icon name="ph:check" />
-                Connected
-              </Badge>
-              <Button variant="danger" :loading="disconnectLoading.patreon" @click="disconnectPatreon">
-                Disconnect
-              </Button>
-            </Flex>
+          <div class="account-status" :style="{ width: isBelowSmall ? '100%' : undefined }">
+            <Button
+              v-if="props.profile?.patreon_id"
+              :expand="isBelowSmall"
+              variant="danger"
+              :loading="disconnectLoading.patreon"
+              @click="disconnectPatreon"
+            >
+              Disconnect
+            </Button>
             <ClientOnly v-else>
-              <ConnectPatreonButton @linked="emit('updated')" />
+              <ConnectPatreonButton :expand="isBelowSmall" @linked="emit('updated')" />
             </ClientOnly>
           </div>
         </Flex>
@@ -198,26 +219,35 @@ async function updateRichPresence(enabled: boolean) {
 
       <!-- Steam -->
       <Flex expand class="account-connection-row">
-        <Flex x-between y-center expand>
-          <Flex gap="m" y-center>
+        <Flex
+          :row="!isBelowSmall"
+          :column="isBelowSmall"
+          :x-between="!isBelowSmall"
+          :y-center="!isBelowSmall"
+          gap="m"
+          expand
+        >
+          <Flex expand gap="m" y-center>
             <div class="account-icon steam">
               <Icon name="ph:game-controller" size="20" />
             </div>
-            <div>
-              <strong>Steam</strong>
+            <Flex column expand class="account-row">
+              <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
+                <strong>Steam</strong>
+                <TinyBadge v-if="props.profile?.steam_id" variant="success">
+                  <Icon class="text-color-accent" name="ph:check" />
+                  Connected
+                </TinyBadge>
+              </Flex>
               <p class="text-xs text-color-lighter">
                 Connect your gaming profile
               </p>
-            </div>
+            </Flex>
           </Flex>
 
-          <div class="account-status">
-            <Badge v-if="props.profile?.steam_id" variant="success" size="s">
-              <Icon name="ph:check" />
-              Connected
-            </Badge>
-            <ClientOnly v-else>
-              <ConnectSteam @linked="emit('updated')" />
+          <div class="account-status" :style="{ width: isBelowSmall ? '100%' : undefined }">
+            <ClientOnly v-if="!props.profile?.steam_id">
+              <ConnectSteam :expand="isBelowSmall" @linked="emit('updated')" />
             </ClientOnly>
           </div>
         </Flex>
@@ -225,31 +255,44 @@ async function updateRichPresence(enabled: boolean) {
 
       <!-- Discord -->
       <Flex expand class="account-connection-row">
-        <Flex x-between y-center expand>
-          <Flex gap="m" y-center>
+        <Flex
+          :row="!isBelowSmall"
+          :column="isBelowSmall"
+          :x-between="!isBelowSmall"
+          :y-center="!isBelowSmall"
+          gap="m"
+          expand
+        >
+          <Flex expand gap="m" y-center>
             <div class="account-icon discord">
               <Icon name="ph:discord-logo" size="20" />
             </div>
-            <div>
-              <strong>Discord</strong>
+            <Flex column expand class="account-row">
+              <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
+                <strong>Discord</strong>
+                <TinyBadge v-if="props.profile?.discord_id" variant="success">
+                  <Icon class="text-color-accent" name="ph:check" />
+                  Connected
+                </TinyBadge>
+              </Flex>
               <p class="text-xs text-color-lighter">
                 Sign-in through Discord
               </p>
-            </div>
+            </Flex>
           </Flex>
 
-          <div class="account-status">
-            <Flex v-if="props.profile?.discord_id" gap="s" y-center>
-              <Badge variant="success" size="s">
-                <Icon name="ph:check" />
-                Connected
-              </Badge>
-              <Button variant="danger" :loading="disconnectLoading.discord" @click="disconnectDiscord">
-                Disconnect
-              </Button>
-            </Flex>
+          <div class="account-status" :style="{ width: isBelowSmall ? '100%' : undefined }">
+            <Button
+              v-if="props.profile?.discord_id"
+              :expand="isBelowSmall"
+              variant="danger"
+              :loading="disconnectLoading.discord"
+              @click="disconnectDiscord"
+            >
+              Disconnect
+            </Button>
             <ClientOnly v-else>
-              <ConnectDiscord @linked="emit('updated')" />
+              <ConnectDiscord :expand="isBelowSmall" @linked="emit('updated')" />
             </ClientOnly>
           </div>
         </Flex>
@@ -257,20 +300,27 @@ async function updateRichPresence(enabled: boolean) {
 
       <!-- TeamSpeak -->
       <Flex expand class="account-connection-row">
-        <Flex x-between y-center expand>
-          <Flex gap="m" y-center class="teamspeak-copy">
+        <Flex
+          :row="!isBelowSmall"
+          :column="isBelowSmall"
+          :x-between="!isBelowSmall"
+          :y-center="!isBelowSmall"
+          gap="m"
+          expand
+        >
+          <Flex expand gap="m" y-center class="teamspeak-copy">
             <div class="account-icon teamspeak">
               <Icon name="mdi:teamspeak" size="20" />
             </div>
-            <div>
+            <Flex column expand class="account-row">
               <strong>TeamSpeak</strong>
               <p class="text-xs text-color-lighter">
                 Link your TeamSpeak identities to receive server access and roles
               </p>
-            </div>
+            </Flex>
           </Flex>
 
-          <div class="account-status teamspeak-actions">
+          <div class="account-status teamspeak-actions" :style="{ width: isBelowSmall ? '100%' : undefined }">
             <ClientOnly>
               <ConnectTeamspeak :profile="props.profile" @linked="emit('updated')" />
             </ClientOnly>
@@ -280,21 +330,43 @@ async function updateRichPresence(enabled: boolean) {
 
       <!-- Rich presence toggle -->
       <Flex expand class="account-connection-row">
-        <Flex x-between y-center expand>
-          <Flex gap="m" y-center>
+        <Flex
+          :row="!isBelowSmall"
+          :column="isBelowSmall"
+          :x-between="!isBelowSmall"
+          :y-center="!isBelowSmall"
+          gap="m"
+          expand
+        >
+          <Flex expand gap="m" y-center>
             <div class="account-icon presence">
               <Icon name="ph:activity" size="20" />
             </div>
-            <div>
+            <Flex column expand class="account-row">
               <strong>Rich presence</strong>
               <p class="text-xs text-color-lighter">
                 Allow fetching and displaying information from any connected services
               </p>
-            </div>
+            </Flex>
           </Flex>
 
-          <div class="account-status presence-toggle">
+          <div class="account-status presence-toggle" :style="{ width: isBelowSmall ? '100%' : undefined }">
+            <Button
+              v-if="isBelowSmall"
+              :expand="true"
+              :loading="richPresenceLoading"
+              :disabled="richPresenceLoading"
+              :variant="richPresenceEnabled ? 'success' : 'gray'"
+              @click="toggleRichPresence"
+            >
+              <template #start>
+                <Icon :name="richPresenceEnabled ? 'ph:check' : 'ph:x'" />
+              </template>
+              {{ richPresenceEnabled ? 'Enabled' : 'Disabled' }}
+            </Button>
+
             <Checkbox
+              v-else
               :model-value="richPresenceEnabled"
               :disabled="richPresenceLoading"
               @update:model-value="updateRichPresence"
@@ -318,8 +390,8 @@ async function updateRichPresence(enabled: boolean) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--border-radius-m);
   flex-shrink: 0;
 

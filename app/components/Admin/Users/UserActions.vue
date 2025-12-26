@@ -181,7 +181,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
     <!-- Confirmation Modal for Edit Action -->
     <ConfirmModal
       v-model:open="showEditConfirm"
-      v-model:confirm="handleEdit"
+      :confirm="handleEdit"
       title="Confirm Edit User"
       description="User information should only be modified for content moderation purposes."
       confirm-text="Proceed with Edit"
@@ -192,7 +192,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
     <!-- Confirmation Modal for Unban Action -->
     <ConfirmModal
       v-model:open="showUnbanConfirm"
-      v-model:confirm="handleUnban"
+      :confirm="handleUnban"
       title="Confirm Unban User"
       description="Are you sure you want to unban this user? They will regain access to the platform."
       confirm-text="Unban"
@@ -203,7 +203,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
     <!-- Confirmation Modal for Delete Action -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
-      v-model:confirm="handleDelete"
+      :confirm="handleDelete"
       title="Confirm Delete User"
       description="Are you sure you want to delete this user? This action cannot be undone and will permanently remove their account and data."
       confirm-text="Delete"

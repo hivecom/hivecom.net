@@ -477,7 +477,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
   <ConfirmModal
     v-if="props.event"
     v-model:open="showDeleteConfirm"
-    v-model:confirm="confirmDelete"
+    :confirm="confirmDelete"
     title="Delete Event"
     :description="`Are you sure you want to delete '${props.event.title}'? This action cannot be undone.`"
     confirm-text="Delete"

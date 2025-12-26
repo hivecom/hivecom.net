@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import EventCard from '@/components/Events/EventCard.vue'
 
 // Fetch data from database
 const supabase = useSupabaseClient()
+const user = useSupabaseUser()
 const { fetchMetrics } = useMetrics()
 const loading = ref(true)
 const errorMessage = ref('')
@@ -165,7 +166,11 @@ onMounted(async () => {
                 If you're interested in the latest news, want to support the community, create your own events or RSVP to the latest ones, feel free to sign up.
               </p>
 
-              <Button variant="accent">
+              <Alert v-if="user" variant="success" filled>
+                Thanks for being a part of the community!
+              </Alert>
+
+              <Button v-else variant="accent" @click="navigateTo('/auth/sign-up')">
                 <template #start>
                   <Icon name="ph:user-plus" />
                 </template>

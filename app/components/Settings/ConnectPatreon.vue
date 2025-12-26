@@ -3,6 +3,10 @@ import { Button, pushToast, Toasts } from '@dolanske/vui'
 
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 
+const props = withDefaults(defineProps<{ expand?: boolean }>(), {
+  expand: false,
+})
+
 const runtimeConfig = useRuntimeConfig()
 
 const isConnecting = ref(false)
@@ -69,6 +73,7 @@ async function connectPatreon() {
   <div>
     <Button
       variant="fill"
+      :expand="props.expand"
       :loading="isConnecting"
       :disabled="isConnecting"
       @click="connectPatreon"

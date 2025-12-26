@@ -766,7 +766,7 @@ onBeforeMount(fetchAssets)
 
     <ConfirmModal
       v-model:open="showDeleteConfirmModal"
-      v-model:confirm="confirmDeleteAsset"
+      :confirm="confirmDeleteAsset"
       :title="assetPendingDeletion?.type === 'folder' ? 'Delete Folder' : 'Delete File'"
       :description="assetPendingDeletion ? `Are you sure you want to delete '${assetPendingDeletion.name}'? This action cannot be undone.` : ''"
       confirm-text="Delete"

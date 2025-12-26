@@ -547,7 +547,7 @@ function handleTagInputEnter() {
     <!-- Confirmation Modal for Delete Action -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
-      v-model:confirm="confirmDelete"
+      :confirm="confirmDelete"
       title="Confirm Delete Announcement"
       :description="`Are you sure you want to delete the announcement '${props.announcement?.title}'? This action cannot be undone.`"
       confirm-text="Delete"

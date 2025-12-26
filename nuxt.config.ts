@@ -9,6 +9,15 @@ export default defineNuxtConfig({
     '~~': fileURLToPath(new URL('.', import.meta.url)),
   },
   app: {
+    head: {
+      link: [
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' },
+        { rel: 'manifest', href: '/manifest.json' },
+      ],
+      meta: [
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      ],
+    },
     pageTransition: {
       name: 'page',
     },

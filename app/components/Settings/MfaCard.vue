@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { Session } from '@supabase/supabase-js'
-import { Alert, Badge, Button, Card, Flex, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 import { useUserId } from '@/composables/useUserId'
+import { useBreakpoint } from '@/lib/mediaQuery'
+import TinyBadge from '../Shared/TinyBadge.vue'
 
 interface MfaFactor {
   id: string
@@ -17,6 +19,8 @@ const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const isClient = import.meta.client
 const userId = useUserId()
+
+const isBelowSmall = useBreakpoint('<s')
 
 const { user: currentUserData } = useCacheUserData(userId, {
   includeRole: true,
@@ -324,9 +328,10 @@ onMounted(() => {
               <Flex column gap="xs">
                 <Flex gap="s" y-center wrap>
                   <strong>{{ hasVerifiedTotp ? 'Enabled' : 'Not Enabled' }}</strong>
-                  <Badge :variant="mfaStatusBadge.variant">
+                  <TinyBadge :variant="mfaStatusBadge.variant">
+                    <Icon :class="`text-color-${mfaStatusBadge.variant === 'success' ? 'accent' : 'red'}`" :name="mfaStatusIcon" />
                     {{ mfaStatusBadge.label }}
-                  </Badge>
+                  </TinyBadge>
                 </Flex>
                 <p class="text-s text-color-lighter">
                   {{ mfaStatusCopy }}
@@ -337,6 +342,7 @@ onMounted(() => {
               <Button
                 v-if="hasVerifiedTotp"
                 variant="danger"
+                :expand="isBelowSmall"
                 :loading="disableTotpLoading"
                 @click="disableTotpModalOpen = true"
               >
@@ -345,6 +351,7 @@ onMounted(() => {
               <Button
                 v-else
                 variant="accent"
+                :expand="isBelowSmall"
                 :loading="totpSetup.enrolling"
                 :disabled="isTotpSetupActive"
                 @click="startTotpEnrollment"
@@ -389,11 +396,11 @@ onMounted(() => {
                     <OTPItem :i="5" />
                   </OTP>
                 </Flex>
-                <Flex gap="s">
-                  <Button variant="accent" :loading="totpSetup.verifying" @click="verifyTotpEnrollment">
+                <Flex gap="s" :column="isBelowSmall" :row="!isBelowSmall" :expand="isBelowSmall">
+                  <Button :expand="isBelowSmall" variant="accent" :loading="totpSetup.verifying" @click="verifyTotpEnrollment">
                     Verify Code
                   </Button>
-                  <Button :disabled="totpSetup.verifying" @click="cancelTotpEnrollment">
+                  <Button :expand="isBelowSmall" :disabled="totpSetup.verifying" @click="cancelTotpEnrollment">
                     Cancel
                   </Button>
                 </Flex>
@@ -419,7 +426,7 @@ onMounted(() => {
 
   <ConfirmModal
     v-model:open="disableTotpModalOpen"
-    v-model:confirm="disableTotp"
+    :confirm="disableTotp"
     title="Disable Authenticator"
     description="You will no longer be prompted for a one-time code when signing in. Are you sure you want to disable MFA?"
     confirm-text="Disable MFA"

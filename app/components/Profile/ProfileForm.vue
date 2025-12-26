@@ -626,7 +626,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
     <!-- Delete Avatar Confirmation Modal -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
-      v-model:confirm="confirmAvatarDelete"
+      :confirm="confirmAvatarDelete"
       title="Delete Avatar"
       description="Are you sure you want to delete your avatar? This action cannot be undone."
       confirm-text="Delete"

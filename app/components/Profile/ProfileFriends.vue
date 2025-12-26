@@ -221,7 +221,7 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
   <!-- Remove Friend Confirmation Modal -->
   <ConfirmModal
     v-model:open="showRemoveFriendConfirm"
-    v-model:confirm="handleRemoveFriend"
+    :confirm="handleRemoveFriend"
     title="Remove Friend"
     :description="`Are you sure you want to remove ${profile.username} from your friends list? This action cannot be undone.`"
     confirm-text="Remove Friend"

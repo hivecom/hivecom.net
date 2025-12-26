@@ -320,7 +320,7 @@ function confirmDelete() {
     <!-- Confirmation Modal for Delete Action -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
-      v-model:confirm="confirmDelete"
+      :confirm="confirmDelete"
       title="Confirm Delete Expense"
       :description="`Are you sure you want to delete the expense '${props.expense?.name}'? This action cannot be undone.`"
       confirm-text="Delete"

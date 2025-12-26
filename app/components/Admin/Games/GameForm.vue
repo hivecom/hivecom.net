@@ -437,7 +437,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     <!-- Confirmation Modal for Delete Action -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
-      v-model:confirm="confirmDelete"
+      :confirm="confirmDelete"
       title="Confirm Delete Game"
       :description="`Are you sure you want to delete the game '${props.game?.name}'? This action cannot be undone.`"
       confirm-text="Delete"
