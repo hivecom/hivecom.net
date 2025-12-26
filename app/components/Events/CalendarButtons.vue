@@ -18,15 +18,20 @@ interface CalendarButtonsProps {
    * Show labels on buttons
    */
   showLabels?: boolean
+  /**
+   * Whether this UI is shown in the admin dashboard
+   */
+  isAdmin?: boolean
 }
 
-withDefaults(defineProps<CalendarButtonsProps>(), {
+const props = withDefaults(defineProps<CalendarButtonsProps>(), {
   size: 'm',
   variant: 'gray',
   showLabels: false,
 })
 
-const isBelowMedium = useBreakpoint('<m')
+const isBelowMediumBreakpoint = useBreakpoint('<m')
+const isBelowMedium = computed(() => isBelowMediumBreakpoint.value && !!props.isAdmin)
 </script>
 
 <template>
@@ -39,7 +44,7 @@ const isBelowMedium = useBreakpoint('<m')
       :size="size"
       :href="constants.EVENT_CALENDAR.GOOGLE"
       target="_blank"
-      :square="!showLabels"
+      :square="!showLabels && !isBelowMedium"
       rel="noreferrer"
       data-title-bottom="Add to your Google Calendar"
     >
@@ -56,7 +61,7 @@ const isBelowMedium = useBreakpoint('<m')
       :expand="isBelowMedium"
       :variant="variant"
       :size="size"
-      :square="!showLabels"
+      :square="!showLabels && !isBelowMedium"
       :href="constants.EVENT_CALENDAR.ICAL"
       rel="noreferrer"
       data-title-bottom="Export ICAL"

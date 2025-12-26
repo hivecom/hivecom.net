@@ -33,7 +33,7 @@ export function useBreakpoint(query: BreakpointQuery) {
   return mq
 }
 
-export function useBreakpoints() {
+export function useActiveBreakpoints() {
   const queries = Object.keys(BREAKPOINTS).map(key => [key, BREAKPOINTS[key as BreakpointKey]] as const)
 
   const entries = queries.map(([key, value]) => {

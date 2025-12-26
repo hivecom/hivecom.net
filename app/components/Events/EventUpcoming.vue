@@ -62,7 +62,7 @@ updateTime()
 <template>
   <NuxtLink :to="`/events/${data.id}`">
     <Card class="event-item" :class="{ 'event-item--first': props.isHighlight }">
-      <Flex wrap x-between y-center>
+      <Flex wrap x-between y-center gap="m">
         <div>
           <Flex class="mb-xs" y-center>
             <h3>{{ props.data.title }}</h3>
@@ -237,7 +237,7 @@ updateTime()
   }
 }
 
-@media (max-width: $breakpoint-s) {
+@media (max-width: $breakpoint-m) {
   .event-item {
     flex-direction: column !important;
     gap: var(--space-m) !important;
@@ -248,7 +248,7 @@ updateTime()
     .flex-1 {
       text-align: center !important;
 
-      h5 {
+      h3 {
         text-align: center !important;
       }
 
@@ -309,7 +309,7 @@ updateTime()
       text-align: center !important;
     }
 
-    h5 {
+    h3 {
       margin-bottom: var(--space-xs) !important;
       text-align: center !important;
     }
@@ -333,7 +333,7 @@ updateTime()
 
     // Override VUI Flex component gap for badges and center them
     .vui-flex {
-      gap: var(--space-xxs) !important;
+      // gap: var(--space-xxs) !important;
       justify-content: center !important;
     }
   }

@@ -264,10 +264,20 @@ const pastEvents = computed(() => {
   }
 }
 
+@media (max-width: $breakpoint-m) {
+  .events-section__past-list--expanded {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 // Mobile responsiveness
 @media (max-width: $breakpoint-s) {
   .events-section {
     text-align: center !important;
+  }
+
+  .events-section__past-list--expanded {
+    grid-template-columns: 1fr;
   }
 
   .events-section__title {

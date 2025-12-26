@@ -2,6 +2,8 @@
 import type { Tables } from '@/types/database.types'
 import { Button, Flex, theme } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import { useBreakpoint } from '@/lib/mediaQuery'
+import { createArray } from '@/lib/utils/common'
 import { dateFormat } from '@/lib/utils/date'
 import EventCalendarColumnList from './EventCalendarColumnList.vue'
 
@@ -159,13 +161,27 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
   return dayDate.format(dateFormat.calendarDefault) === eventStart.format(dateFormat.calendarDefault)
 }
 
-type EventTuple = [Tables<'events'>[], Tables<'events'>[], Tables<'events'>[]]
-
 // Format events so that we get a list of events for the next 3 months
 // Uses the `date` ref (start of current month) as the reference point
 
 // Hold the starting date of the first month displayed
 const startMonth = ref(date.value)
+
+// Breakpoints
+const isTablet = useBreakpoint('<l')
+const isMobile = useBreakpoint('<s')
+
+// Store how many columns the calendar renders
+const calendarColumns = computed(() => {
+  if (isMobile.value) {
+    return 1
+  }
+  else if (isTablet.value) {
+    return 2
+  }
+
+  return 3
+})
 
 // Update startMonth whenever users navigate between months
 function updatePaggeIndex(data: { id: string }[]) {
@@ -178,27 +194,35 @@ function updatePaggeIndex(data: { id: string }[]) {
 
 const upcomingEvents = computed(() => {
   if (!props.events)
-    return [[], [], []] as EventTuple
+    return createArray(calendarColumns.value, () => [])
 
-  return props.events.reduce((acc: EventTuple, event) => {
+  // eslint-disable-next-line ts/no-explicit-any
+  return props.events.reduce((acc: any, event) => {
     const eventMonth = dayjs(event.date).startOf('month')
     const monthDiff = eventMonth.diff(startMonth.value, 'month')
 
     // TODO: it would be nice to put an event into multiple months if it spans across them
 
-    if (monthDiff >= 0 && monthDiff < 3) {
-      // @ts-expect-error -- Tuple indexing with 0..2 is ensured by the condition
+    if (monthDiff >= 0 && monthDiff < calendarColumns.value) {
       acc[monthDiff].push(event)
     }
 
     return acc
-  }, [[], [], []] as EventTuple)
+  }, createArray(calendarColumns.value, () => []))
+})
+
+const pageTitle = computed(() => {
+  if (isMobile.value) {
+    return 'This month'
+  }
+
+  return `Next ${calendarColumns.value} months`
 })
 </script>
 
 <template>
   <h2 class="events-section__title">
-    Next 3 months
+    {{ pageTitle }}
   </h2>
 
   <div class="events-calendar">
@@ -223,17 +247,11 @@ const upcomingEvents = computed(() => {
     <ClientOnly v-else>
       <div class="events-calendar__layout">
         <!-- There are no slots to put content to the footer of a VC calendar column. So we teleport them there instead -->
-        <Teleport v-if="upcomingEvents[0].length > 0" to=".vc-pane.column-1" defer>
-          <EventCalendarColumnList :data="upcomingEvents[0]" />
-        </Teleport>
-
-        <Teleport v-if="upcomingEvents[1].length > 0" to=".vc-pane.column-2" defer>
-          <EventCalendarColumnList :data="upcomingEvents[1]" />
-        </Teleport>
-
-        <Teleport v-if="upcomingEvents[2].length > 0" to=".vc-pane.column-3" defer>
-          <EventCalendarColumnList :data="upcomingEvents[2]" />
-        </Teleport>
+        <template v-for="(upcoming, index) in upcomingEvents" :key="upcoming">
+          <Teleport v-if="upcoming.length > 0" :to="`.vc-pane.column-${index as number + 1}`" defer>
+            <EventCalendarColumnList :data="upcoming" />
+          </Teleport>
+        </template>
 
         <VCalendar
           v-model="date"
@@ -242,7 +260,7 @@ const upcomingEvents = computed(() => {
           :is-dark="isDark"
           transparent
           borderless
-          :columns="3"
+          :columns="calendarColumns"
           :first-day-of-week="2"
           :initial-page="{ month: date.month() + 1,
                            year: date.year() }"
@@ -335,6 +353,14 @@ const upcomingEvents = computed(() => {
 
       .vc-pane:not(:last-child) {
         border-right: 1px solid var(--color-border);
+      }
+    }
+
+    @media (max-width: $breakpoint-m) {
+      .vc-pane-layout {
+        .vc-pane {
+          padding: var(--space-m);
+        }
       }
     }
   }

@@ -118,7 +118,7 @@ onUnmounted(() => {
         :style="{ textAlign: isBelowSmall ? 'center' : 'left',
                   width: isBelowSmall ? '100%' : undefined }"
       >
-        <h1 class="text-xxxl event-header__title">
+        <h1 class="event-header__title" :class=" isBelowSmall ? 'text-xxl' : 'text-xxxl' ">
           {{ props.event.title }}
         </h1>
         <p v-if="event.description" class="event-header__description">
@@ -204,7 +204,7 @@ onUnmounted(() => {
         <EventRSVPCount :event="props.event" variant="accent" size="l" :show-when-zero="false" />
       </Flex>
 
-      <Flex gap="xs" class="event-header__actions" :x-center="isBelowSmall" :expand="isBelowSmall">
+      <Flex gap="xs" class="event-header__actions" :x-center="isBelowSmall" :expand="isBelowSmall" wrap>
         <!-- RSVP button -->
         <RSVPButton :event="props.event" :size="isBelowSmall ? 'm' : 's'" />
 
@@ -227,7 +227,7 @@ onUnmounted(() => {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Button size="s">
+          <Button :size="isBelowSmall ? 'm' : 's'">
             <template #start>
               <Icon name="ph:link" />
             </template>

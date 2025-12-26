@@ -54,7 +54,7 @@ const sortedData = computed<FormattedEvents>(() => {
         }"
       >
         <div class="item-indicator" />
-        <strong> {{ truncate(event.title, 28) }}</strong>
+        <strong>{{ event.title }}</strong>
         <span>{{ formatDate(event.date) }}</span>
       </NuxtLink>
     </li>
@@ -69,13 +69,15 @@ const sortedData = computed<FormattedEvents>(() => {
 
   &__list-item {
     display: flex;
-    height: 24px;
+    flex-wrap: nowrap;
+    gap: var(--space-xs);
     align-items: center;
     text-decoration: none;
     background-color: var(--color-bg-medium);
     border-radius: var(--border-radius-s);
     font-size: var(--font-size-s);
     padding-inline: var(--space-xs);
+    padding-block: 6px;
     color: var(--color-text-lighter);
     transition: var(--transition-fast);
 
@@ -83,6 +85,7 @@ const sortedData = computed<FormattedEvents>(() => {
     span {
       font-size: inherit;
       color: inherit;
+      line-height: 1.2em;
     }
 
     strong {
@@ -95,7 +98,6 @@ const sortedData = computed<FormattedEvents>(() => {
       height: 8px;
       border-radius: 50%;
       background-color: var(--color-border-strong);
-      margin-right: var(--space-xs);
     }
 
     &:hover {
