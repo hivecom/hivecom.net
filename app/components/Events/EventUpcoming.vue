@@ -24,13 +24,6 @@ const countdown = ref({
   seconds: 0,
 })
 
-// const isCountdownComplete = computed(() =>
-//   countdown.value.days === 0
-//   && countdown.value.hours === 0
-//   && countdown.value.minutes === 0
-//   && countdown.value.seconds === 0,
-// )
-
 function updateTime() {
   const now = new Date()
   const eventDate = new Date(props.data.date)

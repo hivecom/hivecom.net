@@ -65,37 +65,39 @@ const pastEvents = computed(() => {
       <Skeleton :width="200" :height="36" :radius="8" />
 
       <!-- Event list skeletons -->
-      <template v-for="i in 4" :key="i">
-        <Skeleton :height="80" :radius="8" />
-      </template>
+      <Skeleton :height="162" :radius="8" />
 
       <!-- Another section skeleton -->
       <Skeleton :width="150" :height="36" :radius="8" class="mt-xl" />
 
-      <!-- More event skeletons -->
-      <template v-for="i in 3" :key="`past-${i}`">
-        <Skeleton :height="80" :radius="8" />
-      </template>
+      <!-- Upcoming events skeleton -->
+      <Skeleton v-for="i in 2" :key="`past-${i}`" :height="108" :radius="8" />
+
+      <Skeleton :width="150" :height="36" :radius="8" class="mt-xl" />
+
+      <!-- Past events skeletons -->
+      <div class="events-section__past-list">
+        <Skeleton v-for="i in 4" :key="`past-${i}`" :width="322" :height="164" style="min-width: 322px;" />
+      </div>
     </Flex>
   </div>
   <template v-else>
     <!-- Ongoing Events Section -->
-    <!-- TODO: re-add -->
-    <!-- <div v-if="ongoingEvents.length > 0" class="events-section events-section--ongoing">
+    <div v-if="ongoingEvents.length > 0" class="events-section events-section--ongoing">
       <h2 class="events-section__title">
         Happening Now
       </h2>
 
       <div class="events-section__list">
-        <Event
-          v-for="(event, index) in ongoingEvents"
+        <EventUpcoming
+          v-for="event in ongoingEvents"
           :key="event.id"
           :data="event"
-          :index="index"
           :is-ongoing="true"
+          :is-highlight="true"
         />
       </div>
-    </div> -->
+    </div>
 
     <!-- Upcoming Events Section -->
     <div v-if="upcomingEvents.length > 0" class="events-section">
@@ -105,10 +107,10 @@ const pastEvents = computed(() => {
 
       <div class="events-section__list">
         <EventUpcoming
-          v-for="(event, index) in [...upcomingEvents, ...upcomingEvents]"
+          v-for="(event, index) in upcomingEvents"
           :key="event.id"
           :data="event"
-          :is-highlight="index === 0"
+          :is-highlight="index === 0 && ongoingEvents.length === 0"
         />
       </div>
     </div>
@@ -191,36 +193,6 @@ const pastEvents = computed(() => {
     }
   }
 
-  // &__countdown-header {
-  //   span {
-  //     text-align: center;
-  //     display: block;
-  //     width: 56px;
-  //     color: var(--color-text-lighter) !important;
-
-  //     @media (max-width: $breakpoint-s) {
-  //       min-width: 80px;
-  //     }
-
-  //     @media (max-width: $breakpoint-xs) {
-  //       min-width: 60px;
-  //     }
-  //   }
-  // }
-
-  // &__event-header {
-  //   flex: 1;
-  //   color: var(--color-text-lighter);
-  //   text-align: left;
-  // }
-
-  // &__time-header {
-  //   text-align: center;
-  //   color: var(--color-text-lighter);
-
-  //   min-width: 294px;
-  // }
-
   &__no-events {
     text-align: center;
     padding: 3rem 0;
@@ -247,27 +219,32 @@ const pastEvents = computed(() => {
   // Ongoing events styling - highlighted with accent color
   &--ongoing {
     .events-section__title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       color: var(--color-accent);
       position: relative;
+      font-size: var(--font-size-xxl);
 
       &::before {
         content: '';
-        display: inline-block;
-        position: relative;
-        width: 8px;
-        height: 8px;
+        display: block;
+        width: 10px;
+        height: 10px;
         background: var(--color-text-red);
-        border-radius: 50%;
-        animation: pulse 2s infinite;
+        border-radius: 10px;
+        animation: pulse 1.5s infinite;
       }
     }
 
     .events-section__list {
       .event-item {
         border: 1px solid var(--color-accent);
-        padding-left: var(--space-m);
-        background: linear-gradient(to right, var(--color-accent-muted) 0%, transparent 100%);
-        border-radius: var(--border-radius-m);
+        background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 5%, transparent);
+
+        &:hover {
+          background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 25%, transparent);
+        }
       }
     }
   }
