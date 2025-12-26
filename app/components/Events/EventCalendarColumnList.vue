@@ -2,7 +2,6 @@
 import type { Tables } from '@/types/database.types'
 import dayjs from 'dayjs'
 import { formatDate } from '@/lib/utils/date'
-import { truncate } from '@/lib/utils/formatting'
 
 const props = defineProps<{
   data: Tables<'events'>[]
