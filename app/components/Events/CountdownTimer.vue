@@ -12,17 +12,10 @@ interface Props {
   } | null
   isOngoing?: boolean
   createdAt: string
-  // endingAt: string
+  simple?: boolean
 }
 
 const props = defineProps<Props>()
-
-// Check if countdown is imminent (less than 24 hours)
-// const isImminent = computed(() => {
-//   if (!props.countdown)
-//     return false
-//   return props.countdown.days === 0 && props.countdown.hours < 24
-// })
 
 const remainingSeconds = computed(() => {
   if (!props.countdown)
@@ -59,29 +52,31 @@ const timeProgressPercentage = computed(() => {
 
 <template>
   <!-- Loading state with skeletons -->
-  <div v-if="!countdown" class="countdown-timer">
-    <Flex gap="s">
+  <div v-if="!countdown" class="countdown-timer" :class="{ 'countdown-timer--simple': props.simple }">
+    <Flex gap="s" y-center>
       <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
         <Skeleton height="30px" width="29px" />
         <Skeleton height="11px" width="27px" />
       </Flex>
-      <Divider vertical :size="64" />
+      <Divider vertical :size="props.simple ? 40 : 64" />
       <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
         <Skeleton height="30px" width="29px" />
         <Skeleton height="11px" width="27px" />
       </Flex>
-      <Divider vertical :size="64" />
+      <Divider vertical :size="props.simple ? 40 : 64" />
       <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
         <Skeleton height="30px" width="29px" />
         <Skeleton height="11px" width="27px" />
       </Flex>
-      <Divider vertical :size="64" />
-      <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
-        <Skeleton height="30px" width="29px" />
-        <Skeleton height="11px" width="27px" />
-      </Flex>
+      <template v-if="!props.simple">
+        <Divider vertical :size="props.simple ? 40 : 64" />
+        <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
+          <Skeleton height="30px" width="29px" />
+          <Skeleton height="11px" width="27px" />
+        </Flex>
+      </template>
     </Flex>
-    <div class="countdown-timer__progress-wrapper">
+    <div v-if="!props.simple" class="countdown-timer__progress-wrapper">
       <Skeleton width="100%" height="4px" />
     </div>
   </div>
@@ -89,7 +84,11 @@ const timeProgressPercentage = computed(() => {
   <div
     v-else
     class="countdown-timer"
-    :class="{ 'countdown-timer--ongoing': shouldShowNow }"
+    :class="{
+      'countdown-timer--ongoing': shouldShowNow,
+      'countdown-timer--simple': props.simple,
+    }"
+
     :style="{ '--time-progress': `${timeProgressPercentage}%` }"
   >
     <!-- Show "NOW" when event is ongoing or countdown finishes -->
@@ -97,21 +96,21 @@ const timeProgressPercentage = computed(() => {
 
     <!-- Regular countdown grid -->
     <template v-else>
-      <Flex gap="s">
+      <Flex gap="s" y-center>
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="days">
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.days" class="countdown-timer__number">{{ countdown.days.toString().padStart(2, '0') }}</span>
           </div>
           <span class="countdown-timer__label">days</span>
         </Flex>
-        <Divider vertical :size="64" />
+        <Divider vertical :size="props.simple ? 40 : 64" />
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="hours">
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.hours" class="countdown-timer__number">{{ countdown.hours.toString().padStart(2, '0') }}</span>
           </div>
           <span class="countdown-timer__label">hours</span>
         </Flex>
-        <Divider vertical :size="64" />
+        <Divider vertical :size="props.simple ? 40 : 64" />
 
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="minutes">
           <div class="countdown-timer__number-wrapper">
@@ -119,7 +118,7 @@ const timeProgressPercentage = computed(() => {
           </div>
           <span class="countdown-timer__label">minutes</span>
         </Flex>
-        <Divider vertical :size="64" />
+        <Divider vertical :size="props.simple ? 40 : 64" />
 
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="seconds">
           <div class="countdown-timer__number-wrapper">
@@ -129,7 +128,7 @@ const timeProgressPercentage = computed(() => {
         </Flex>
       </Flex>
 
-      <Tooltip>
+      <Tooltip v-if="!props.simple">
         <div class="countdown-timer__progress-wrapper">
           <Progress v-model="timeProgressPercentage" />
         </div>
@@ -150,6 +149,20 @@ const timeProgressPercentage = computed(() => {
   background-color: var(--color-bg-raised);
   border-radius: var(--border-radius-m);
   overflow: hidden;
+
+  &--simple {
+    .countdown-timer {
+      &__item {
+        padding: var(--space-xs);
+      }
+
+      &__number {
+        color: var(--color-text-light) !important;
+        font-weight: var(--font-weight);
+        font-size: var(--font-size-l);
+      }
+    }
+  }
 
   &--ongoing {
     display: flex;

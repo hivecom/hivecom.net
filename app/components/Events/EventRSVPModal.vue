@@ -5,6 +5,7 @@ import { useIntervalFn } from '@vueuse/core'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import BadgeCircle from '../Shared/BadgeCircle.vue'
 
 interface Props {
   event: Tables<'events'>
@@ -169,9 +170,9 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
+  <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : undefined" :card="{ footerSeparator: true }" @close="handleClose">
     <template #header>
-      <Flex x-between y-center expand>
+      <Flex x-start y-center expand gap="m">
         <h3>Event RSVPs</h3>
         <Badge v-if="!loading && totalCount > 0" variant="neutral">
           {{ totalCount }} {{ totalCount === 1 ? 'response' : 'responses' }}
@@ -214,29 +215,29 @@ function handleClose() {
           <Tabs v-model="activeTab" class="rsvp-modal__tabs" expand variant="filled">
             <Tab value="yes">
               <Flex y-center gap="xs">
-                <Icon name="ph:check-circle" />
-                {{ yesTabLabel }}
-                <Badge v-if="yesCount > 0" variant="success" size="s">
+                <Icon name="ph:check-circle" class="rsvp-modal__icon" />
+                <span>{{ yesTabLabel }}</span>
+                <BadgeCircle v-if="yesCount > 0" variant="success" size="s">
                   {{ yesCount }}
-                </Badge>
+                </BadgeCircle>
               </Flex>
             </Tab>
             <Tab value="tentative">
               <Flex y-center gap="xs">
-                <Icon name="ph:question" />
-                Maybe
-                <Badge v-if="tentativeCount > 0" variant="warning" size="s">
+                <Icon name="ph:question" sizeclass="rsvp-modal__icon" />
+                <span>Maybe</span>
+                <BadgeCircle v-if="tentativeCount > 0" variant="warning" size="s">
                   {{ tentativeCount }}
-                </Badge>
+                </BadgeCircle>
               </Flex>
             </Tab>
             <Tab value="no">
               <Flex y-center gap="xs">
-                <Icon name="ph:x-circle" />
-                Not Going
-                <Badge v-if="noCount > 0" variant="neutral" size="s">
+                <Icon name="ph:x-circle" class="rsvp-modal__icon" />
+                <span>Not Going</span>
+                <BadgeCircle v-if="noCount > 0" variant="neutral" size="s">
                   {{ noCount }}
-                </Badge>
+                </BadgeCircle>
               </Flex>
             </Tab>
           </Tabs>
@@ -315,6 +316,10 @@ function handleClose() {
 
 .rsvp-modal__tabs {
   margin-bottom: var(--space-m);
+}
+
+.rsvp-modal__icon {
+  font-size: 1.6rem;
 }
 
 .rsvp-modal__tab-content {

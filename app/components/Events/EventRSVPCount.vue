@@ -56,12 +56,12 @@ const displayText = computed(() => {
     return hasEventEnded.value ? 'No one joined' : 'No one going yet'
   }
   else if (goingCount.value === 1) {
-    return hasEventEnded.value ? '1 person joined' : '1 person going'
+    return hasEventEnded.value ? '1 Attended' : '1 Going'
   }
   else {
     return hasEventEnded.value
-      ? `${goingCount.value} people joined`
-      : `${goingCount.value} people going`
+      ? `${goingCount.value} Attended`
+      : `${goingCount.value} Going`
   }
 })
 
