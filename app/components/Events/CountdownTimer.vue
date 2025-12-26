@@ -30,15 +30,14 @@ const remainingSeconds = computed(() => {
 const isCountdownComplete = computed(() => (remainingSeconds.value ?? 1) <= 0)
 const shouldShowNow = computed(() => props.isOngoing || isCountdownComplete.value)
 
-// Calculate percentage of time elapsed between createdAt and endingAt (or derive ending time)
-// 0 = createdAt, 100 = endingAt / countdown finished
+// Calculate percentage of time elapsed between createdAt and the derived ending time
+// 0 = createdAt, 100 = countdown finished
 const timeProgressPercentage = computed(() => {
   if (remainingSeconds.value === null)
     return 0
 
   const remaining = Math.max(remainingSeconds.value, 0)
 
-  // No endingAt provided: derive total duration as elapsed since creation + remaining
   const elapsed = Math.max(dayjs().diff(dayjs(props.createdAt), 'seconds'), 0)
   const totalDuration = elapsed + remaining
 

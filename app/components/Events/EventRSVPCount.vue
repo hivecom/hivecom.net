@@ -118,6 +118,9 @@ watch(() => props.event?.id, () => {
   fetchRsvpCount()
 })
 
+// NOTE (dolanske): Exposing the count is easier than extracting functionality
+// out. Not the best practise, but given this is for a single use-cases, I think
+// we can let it slide this time.
 defineExpose({
   count: goingCount,
 })
