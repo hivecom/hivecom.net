@@ -33,6 +33,10 @@ export function useBreakpoint(query: BreakpointQuery) {
   return mq
 }
 
+// REVIEW (@dolanske) Renamed because it clashes with vueuse export (at least what
+// I think, becasue VSCOde refused to hint me an import to this). Not sure I was
+// using it wrong, but it always returned true for everything. Maybe we could
+// add tests for util functions?
 export function useActiveBreakpoints() {
   const queries = Object.keys(BREAKPOINTS).map(key => [key, BREAKPOINTS[key as BreakpointKey]] as const)
 
