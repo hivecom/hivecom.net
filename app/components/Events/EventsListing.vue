@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Button, Flex, Skeleton } from '@dolanske/vui'
+import Event from './Event.vue'
 import EventPast from './EventPast.vue'
-import EventUpcoming from './EventUpcoming.vue'
 
 interface Props {
   events: Tables<'events'>[] | undefined
@@ -89,7 +89,7 @@ const pastEvents = computed(() => {
       </h2>
 
       <div class="events-section__list">
-        <EventUpcoming
+        <Event
           v-for="event in ongoingEvents"
           :key="event.id"
           :data="event"
@@ -106,7 +106,7 @@ const pastEvents = computed(() => {
       </h2>
 
       <div class="events-section__list">
-        <EventUpcoming
+        <Event
           v-for="(event, index) in upcomingEvents"
           :key="event.id"
           :data="event"
