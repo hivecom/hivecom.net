@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Flex, Skeleton } from '@dolanske/vui'
+import { Divider, Flex, Progress, Skeleton, Tooltip } from '@dolanske/vui'
+import dayjs from 'dayjs'
 import { computed } from 'vue'
 
 interface Props {
@@ -10,16 +11,11 @@ interface Props {
     seconds: number
   } | null
   isOngoing?: boolean
+  createdAt: string
+  simple?: boolean
 }
 
 const props = defineProps<Props>()
-
-// Check if countdown is imminent (less than 24 hours)
-const isImminent = computed(() => {
-  if (!props.countdown)
-    return false
-  return props.countdown.days === 0 && props.countdown.hours < 24
-})
 
 const remainingSeconds = computed(() => {
   if (!props.countdown)
@@ -34,88 +30,113 @@ const remainingSeconds = computed(() => {
 const isCountdownComplete = computed(() => (remainingSeconds.value ?? 1) <= 0)
 const shouldShowNow = computed(() => props.isOngoing || isCountdownComplete.value)
 
-// Calculate total remaining time as percentage for border animation (reversed)
+// Calculate percentage of time elapsed between createdAt and the derived ending time
+// 0 = createdAt, 100 = countdown finished
 const timeProgressPercentage = computed(() => {
   if (remainingSeconds.value === null)
-    return 100
+    return 0
 
-  const totalSeconds = Math.max(remainingSeconds.value, 0)
-  // Assume max deadline is 30 days for visual purposes
-  const maxSeconds = 30 * 24 * 60 * 60
-  // Reverse the percentage so it fills up as time decreases
-  return Math.max(0, Math.min(100, 100 - (totalSeconds / maxSeconds) * 100))
+  const remaining = Math.max(remainingSeconds.value, 0)
+
+  const elapsed = Math.max(dayjs().diff(dayjs(props.createdAt), 'seconds'), 0)
+  const totalDuration = elapsed + remaining
+
+  if (totalDuration === 0)
+    return remaining <= 0 ? 100 : 0
+
+  const progress = (elapsed / totalDuration) * 100
+  return Math.max(0, Math.min(100, progress))
 })
 </script>
 
 <template>
   <!-- Loading state with skeletons -->
-  <Flex v-if="!countdown" expand class="countdown-timer countdown-timer--loading">
-    <Flex gap="s" class="countdown-timer__grid" expand>
-      <Flex column y-center x-center class="countdown-timer__item" expand>
-        <div class="countdown-timer__number-wrapper">
-          <Skeleton height="4.9rem" width="5rem" />
-        </div>
+  <div v-if="!countdown" class="countdown-timer" :class="{ 'countdown-timer--simple': props.simple }">
+    <Flex gap="s" y-center>
+      <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
+        <Skeleton height="30px" width="29px" />
+        <Skeleton height="11px" width="27px" />
       </Flex>
-      <Flex column y-center x-center class="countdown-timer__item" expand>
-        <div class="countdown-timer__number-wrapper">
-          <Skeleton height="4.9rem" width="5rem" />
-        </div>
+      <Divider vertical :size="props.simple ? 40 : 64" />
+      <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
+        <Skeleton height="30px" width="29px" />
+        <Skeleton height="11px" width="27px" />
       </Flex>
-      <Flex column y-center x-center class="countdown-timer__item" expand>
-        <div class="countdown-timer__number-wrapper">
-          <Skeleton height="4.9rem" width="5rem" />
-        </div>
+      <Divider vertical :size="props.simple ? 40 : 64" />
+      <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
+        <Skeleton height="30px" width="29px" />
+        <Skeleton height="11px" width="27px" />
       </Flex>
-      <Flex column y-center x-center class="countdown-timer__item" expand>
-        <div class="countdown-timer__number-wrapper">
-          <Skeleton height="4.9rem" width="5rem" />
-        </div>
-      </Flex>
+      <template v-if="!props.simple">
+        <Divider vertical :size="props.simple ? 40 : 64" />
+        <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
+          <Skeleton height="30px" width="29px" />
+          <Skeleton height="11px" width="27px" />
+        </Flex>
+      </template>
     </Flex>
-  </Flex>  <!-- Actual countdown when data is available -->
-  <Flex
+    <div v-if="!props.simple" class="countdown-timer__progress-wrapper">
+      <Skeleton width="100%" height="4px" />
+    </div>
+  </div>
+  <!-- Actual countdown when data is available -->
+  <div
     v-else
-    expand
     class="countdown-timer"
-    :class="{ 'countdown-timer--ongoing': shouldShowNow }"
+    :class="{
+      'countdown-timer--ongoing': shouldShowNow,
+      'countdown-timer--simple': props.simple,
+    }"
+
     :style="{ '--time-progress': `${timeProgressPercentage}%` }"
   >
-    <!-- Border animation - only show when imminent -->
-    <div v-if="isImminent" class="countdown-timer__border" />
-
     <!-- Show "NOW" when event is ongoing or countdown finishes -->
-    <Flex v-if="shouldShowNow" y-center x-center class="countdown-timer__now" expand>
-      <span class="countdown-timer__now-text">NOW</span>
-    </Flex>
+    <span v-if="shouldShowNow" class="countdown-timer__now-text">Ongoing</span>
 
     <!-- Regular countdown grid -->
-    <Flex v-else gap="s" class="countdown-timer__grid" expand>
-      <Flex column y-center x-center class="countdown-timer__item" data-unit="days" expand>
-        <div class="countdown-timer__number-wrapper">
-          <span :key="countdown.days" class="countdown-timer__number">{{ countdown.days.toString().padStart(2, '0') }}</span>
-        </div>
-        <span class="countdown-timer__label">days</span>
+    <template v-else>
+      <Flex gap="s" y-center>
+        <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="days">
+          <div class="countdown-timer__number-wrapper">
+            <span :key="countdown.days" class="countdown-timer__number">{{ countdown.days.toString().padStart(2, '0') }}</span>
+          </div>
+          <span class="countdown-timer__label">days</span>
+        </Flex>
+        <Divider vertical :size="props.simple ? 40 : 64" />
+        <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="hours">
+          <div class="countdown-timer__number-wrapper">
+            <span :key="countdown.hours" class="countdown-timer__number">{{ countdown.hours.toString().padStart(2, '0') }}</span>
+          </div>
+          <span class="countdown-timer__label">hours</span>
+        </Flex>
+        <Divider vertical :size="props.simple ? 40 : 64" />
+
+        <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="minutes">
+          <div class="countdown-timer__number-wrapper">
+            <span :key="countdown.minutes" class="countdown-timer__number">{{ countdown.minutes.toString().padStart(2, '0') }}</span>
+          </div>
+          <span class="countdown-timer__label">minutes</span>
+        </Flex>
+        <Divider vertical :size="props.simple ? 40 : 64" />
+
+        <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="seconds">
+          <div class="countdown-timer__number-wrapper">
+            <span :key="countdown.seconds" class="countdown-timer__number">{{ countdown.seconds.toString().padStart(2, '0') }}</span>
+          </div>
+          <span class="countdown-timer__label">seconds</span>
+        </Flex>
       </Flex>
-      <Flex column y-center x-center class="countdown-timer__item" data-unit="hours" expand>
-        <div class="countdown-timer__number-wrapper">
-          <span :key="countdown.hours" class="countdown-timer__number">{{ countdown.hours.toString().padStart(2, '0') }}</span>
+
+      <Tooltip v-if="!props.simple">
+        <div class="countdown-timer__progress-wrapper">
+          <Progress v-model="timeProgressPercentage" />
         </div>
-        <span class="countdown-timer__label">hours</span>
-      </Flex>
-      <Flex column y-center x-center class="countdown-timer__item" data-unit="minutes" expand>
-        <div class="countdown-timer__number-wrapper">
-          <span :key="countdown.minutes" class="countdown-timer__number">{{ countdown.minutes.toString().padStart(2, '0') }}</span>
-        </div>
-        <span class="countdown-timer__label">minutes</span>
-      </Flex>
-      <Flex column y-center x-center class="countdown-timer__item" data-unit="seconds" expand>
-        <div class="countdown-timer__number-wrapper">
-          <span :key="countdown.seconds" class="countdown-timer__number">{{ countdown.seconds.toString().padStart(2, '0') }}</span>
-        </div>
-        <span class="countdown-timer__label">seconds</span>
-      </Flex>
-    </Flex>
-  </Flex>
+        <template #tooltip>
+          <p>We are {{ timeProgressPercentage.toFixed(2) }}% there</p>
+        </template>
+      </Tooltip>
+    </template>
+  </div>
 </template>
 
 <style lang="scss" scoped>
@@ -123,60 +144,41 @@ const timeProgressPercentage = computed(() => {
 
 .countdown-timer {
   position: relative;
-  padding: 1px;
-  min-height: 76px;
-  background: linear-gradient(135deg, var(--color-bg-subtle), var(--color-bg));
+  padding: var(--space-s);
+  background-color: var(--color-bg-raised);
   border-radius: var(--border-radius-m);
   overflow: hidden;
 
-  @media (max-width: $breakpoint-xs) {
-    padding: 1px;
-  }
+  &--simple {
+    .countdown-timer {
+      &__item {
+        padding: var(--space-xs);
+      }
 
-  &__border {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border: 1px solid var(--color-accent);
-    border-radius: var(--border-radius-m);
-    clip-path: polygon(0 0, var(--time-progress) 0, var(--time-progress) 100%, 0 100%);
-    transition: clip-path 1s ease;
-    z-index: 1;
-    pointer-events: none;
+      &__number {
+        color: var(--color-text-light) !important;
+        font-weight: var(--font-weight);
+        font-size: var(--font-size-l);
+      }
+    }
   }
 
   &--ongoing {
-    background: linear-gradient(135deg, var(--color-accent-muted), var(--color-bg));
-  }
-
-  &--loading {
-    .countdown-timer__item:hover {
-      transform: none;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-  }
-
-  &__now {
-    min-width: 356px;
-    min-height: 76px;
-
-    @media (max-width: $breakpoint-s) {
-      min-width: auto;
-    }
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 356px;
+    width: 100%;
+    height: 80px;
   }
 
   &__now-text {
-    width: 156px;
-    text-align: center;
     font-size: 3rem;
-    line-height: 5.5rem;
     font-weight: var(--font-weight-black);
     color: var(--color-accent);
     text-transform: uppercase;
-    letter-spacing: 0.2em;
-    text-shadow: 0 0 20px var(--color-accent);
+    text-shadow: 0 0 20px var(--color-bg-accent-raised);
+    margin-bottom: -6px;
 
     @media (max-width: $breakpoint-s) {
       font-size: 2rem;
@@ -188,19 +190,18 @@ const timeProgressPercentage = computed(() => {
   }
 
   &__item {
-    gap: 0 !important;
     position: relative;
     padding: var(--space-s);
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-s);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    // border-right: 1px solid var(--color-border-strong);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     min-width: 80px;
 
     &:hover {
-      transform: translateY(-2px) scale(0.9);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    &:last-of-type {
+      border-right: none;
     }
 
     @media (max-width: $breakpoint-s) {
@@ -221,7 +222,7 @@ const timeProgressPercentage = computed(() => {
     font-size: var(--font-size-xxl);
     font-weight: 800;
     color: var(--color-accent);
-    margin-bottom: var(--space-s);
+    margin-bottom: var(--space-xxs);
     line-height: 1;
     display: inline-block;
     transition: all 0.3s ease;
@@ -230,8 +231,8 @@ const timeProgressPercentage = computed(() => {
 
   &__label {
     font-size: var(--font-size-xxs);
-    color: var(--color-text-lightest) !important;
-    text-transform: uppercase;
+    color: var(--color-text-light) !important;
+    text-transform: capitalize;
     letter-spacing: 0.5px;
 
     @media (max-width: $breakpoint-s) {
@@ -240,6 +241,17 @@ const timeProgressPercentage = computed(() => {
 
     @media (max-width: $breakpoint-xs) {
       font-size: 9px;
+    }
+  }
+
+  &__progress-wrapper {
+    height: 8px;
+    display: flex;
+    align-items: center;
+    margin-top: var(--space-xs);
+
+    .vui-progress {
+      background-color: var(--color-text-lightest);
     }
   }
 }

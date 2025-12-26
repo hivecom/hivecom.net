@@ -56,12 +56,12 @@ const displayText = computed(() => {
     return hasEventEnded.value ? 'No one joined' : 'No one going yet'
   }
   else if (goingCount.value === 1) {
-    return hasEventEnded.value ? '1 person joined' : '1 person going'
+    return hasEventEnded.value ? '1 Attended' : '1 Going'
   }
   else {
     return hasEventEnded.value
-      ? `${goingCount.value} people joined`
-      : `${goingCount.value} people going`
+      ? `${goingCount.value} Attended`
+      : `${goingCount.value} Going`
   }
 })
 
@@ -116,6 +116,13 @@ onUnmounted(() => {
 // Watch for event changes
 watch(() => props.event?.id, () => {
   fetchRsvpCount()
+})
+
+// NOTE (@dolanske): Exposing the count is easier than extracting functionality
+// out. Not the best practise, but given this is for a single use-cases, I think
+// we can let it slide this time.
+defineExpose({
+  count: goingCount,
 })
 </script>
 

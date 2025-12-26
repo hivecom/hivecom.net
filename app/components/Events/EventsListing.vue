@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Flex, Grid, Skeleton } from '@dolanske/vui'
-import Event from '@/components/Events/Event.vue'
+import { Button, Flex, Skeleton } from '@dolanske/vui'
+import Event from './Event.vue'
+import EventPast from './EventPast.vue'
 
 interface Props {
   events: Tables<'events'>[] | undefined
@@ -10,6 +11,8 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+const expandPastList = ref(false)
 
 // Split events into upcoming, ongoing, and past
 const upcomingEvents = computed(() => {
@@ -62,17 +65,20 @@ const pastEvents = computed(() => {
       <Skeleton :width="200" :height="36" :radius="8" />
 
       <!-- Event list skeletons -->
-      <template v-for="i in 4" :key="i">
-        <Skeleton :height="80" :radius="8" />
-      </template>
+      <Skeleton :height="162" :radius="8" />
 
       <!-- Another section skeleton -->
       <Skeleton :width="150" :height="36" :radius="8" class="mt-xl" />
 
-      <!-- More event skeletons -->
-      <template v-for="i in 3" :key="`past-${i}`">
-        <Skeleton :height="80" :radius="8" />
-      </template>
+      <!-- Upcoming events skeleton -->
+      <Skeleton v-for="i in 2" :key="`past-${i}`" :height="108" :radius="8" />
+
+      <Skeleton :width="150" :height="36" :radius="8" class="mt-xl" />
+
+      <!-- Past events skeletons -->
+      <div class="events-section__past-list">
+        <Skeleton v-for="i in 4" :key="`past-${i}`" :width="322" :height="164" style="min-width: 322px;" />
+      </div>
     </Flex>
   </div>
   <template v-else>
@@ -84,11 +90,11 @@ const pastEvents = computed(() => {
 
       <div class="events-section__list">
         <Event
-          v-for="(event, index) in ongoingEvents"
+          v-for="event in ongoingEvents"
           :key="event.id"
           :data="event"
-          :index="index"
           :is-ongoing="true"
+          :is-highlight="true"
         />
       </div>
     </div>
@@ -98,24 +104,13 @@ const pastEvents = computed(() => {
       <h2 class="events-section__title">
         Upcoming Events
       </h2>
-      <Flex gap="xxl">
-        <Grid :columns="4" gap="l" class="events-section__countdown-header">
-          <span>Days</span>
-          <span>Hours</span>
-          <span>Minutes</span>
-          <span>Seconds</span>
-        </Grid>
-        <Flex expand class="events-section__event-header">
-          <span>Event</span>
-        </Flex>
-      </Flex>
 
       <div class="events-section__list">
         <Event
           v-for="(event, index) in upcomingEvents"
           :key="event.id"
           :data="event"
-          :index="index"
+          :is-highlight="index === 0 && ongoingEvents.length === 0"
         />
       </div>
     </div>
@@ -125,24 +120,23 @@ const pastEvents = computed(() => {
       <h2 class="events-section__title">
         Past Events
       </h2>
-      <!-- <Flex gap="xxl">
-        <Flex x-center class="events-section__time-header time-ago-header">
-          <span>Time Ago</span>
-        </Flex>
-        <Flex expand class="events-section__event-header">
-          <span>Event</span>
-        </Flex>
-      </Flex> -->
 
-      <div class="events-section__list">
-        <Event
-          v-for="(event, index) in pastEvents"
+      <div class="events-section__past-list" :class="{ 'events-section__past-list--expanded': !!expandPastList }">
+        <EventPast
+          v-for="event in pastEvents"
           :key="event.id"
           :data="event"
-          :index="index"
-          :is-past="true"
         />
       </div>
+
+      <Flex x-end :class="{ 'mt-l': !!expandPastList }">
+        <Button size="s" @click="expandPastList = !expandPastList">
+          {{ expandPastList ? 'Collapse' : 'Unroll' }}
+          <template #end>
+            <Icon name="bx:expand-vertical" />
+          </template>
+        </Button>
+      </Flex>
     </div>
 
     <!-- No Events Message -->
@@ -158,7 +152,7 @@ const pastEvents = computed(() => {
 @use '@/assets/breakpoints.scss' as *;
 
 .events-section {
-  margin-bottom: 4rem;
+  margin-bottom: var(--space-xxxl);
 
   &:last-child {
     margin-bottom: 0;
@@ -172,39 +166,35 @@ const pastEvents = computed(() => {
   }
 
   &__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-m);
+
     .vui-divider:last-of-type {
       display: none;
     }
   }
 
-  &__countdown-header {
-    span {
-      text-align: center;
-      display: block;
-      width: 56px;
-      color: var(--color-text-lighter) !important;
+  &__past-list {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    gap: var(--space-m);
 
-      @media (max-width: $breakpoint-s) {
-        min-width: 80px;
-      }
+    // Scrollbar gutter padding
+    padding-bottom: 16px;
 
-      @media (max-width: $breakpoint-xs) {
-        min-width: 60px;
+    &--expanded {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      overflow-x: unset;
+
+      .event-past {
+        width: auto !important;
+        min-width: auto !important;
       }
     }
-  }
-
-  &__event-header {
-    flex: 1;
-    color: var(--color-text-lighter);
-    text-align: left;
-  }
-
-  &__time-header {
-    text-align: center;
-    color: var(--color-text-lighter);
-
-    min-width: 294px;
   }
 
   &__no-events {
@@ -215,54 +205,68 @@ const pastEvents = computed(() => {
   // Past events styling - grayed out with hover effect
   &--past {
     .events-section__title {
-      color: var(--color-text-lighter);
+      color: var(--color-text-light);
     }
 
-    .events-section__list {
-      opacity: 0.5;
-      transition: opacity 0.2s ease;
-
-      &:hover {
-        opacity: 0.8;
+    &:hover {
+      .events-section__past-list {
+        opacity: 1;
       }
+    }
 
-      // Individual event hover effect
-      .event-item {
-        transition: opacity 0.2s ease;
-
-        &:hover {
-          opacity: 1 !important;
-        }
-      }
+    .events-section__past-list {
+      opacity: 0.7;
+      transition: var(--transition-slow);
     }
   }
 
   // Ongoing events styling - highlighted with accent color
   &--ongoing {
     .events-section__title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       color: var(--color-accent);
       position: relative;
+      font-size: var(--font-size-xxl);
 
       &::before {
         content: '';
-        display: inline-block;
-        position: relative;
-        width: 8px;
-        height: 8px;
+        display: block;
+        width: 10px;
+        height: 10px;
         background: var(--color-text-red);
-        border-radius: 50%;
-        animation: pulse 2s infinite;
+        border-radius: 10px;
+        animation: pulse 1.5s infinite;
       }
     }
 
     .events-section__list {
       .event-item {
         border: 1px solid var(--color-accent);
-        padding-left: var(--space-m);
-        background: linear-gradient(to right, var(--color-accent-muted) 0%, transparent 100%);
-        border-radius: var(--border-radius-m);
+        background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 5%, transparent);
+
+        &:hover {
+          background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 25%, transparent);
+        }
       }
     }
+  }
+}
+
+:root.light {
+  .events-section--past .events-section__past-list {
+    opacity: 0.5;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+@media (max-width: $breakpoint-m) {
+  .events-section__past-list--expanded {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -270,6 +274,10 @@ const pastEvents = computed(() => {
 @media (max-width: $breakpoint-s) {
   .events-section {
     text-align: center !important;
+  }
+
+  .events-section__past-list--expanded {
+    grid-template-columns: 1fr;
   }
 
   .events-section__title {

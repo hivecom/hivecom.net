@@ -304,7 +304,9 @@ watch(() => props.event?.id, () => {
               <Icon :name="rsvpButtonIcon" />
             </template>
             {{ rsvpButtonText }}
-            <Icon name="ph:caret-down" size="12" />
+            <template #end>
+              <Icon name="ph:caret-down" size="12" />
+            </template>
           </Button>
         </template>
 

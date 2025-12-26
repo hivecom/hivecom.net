@@ -296,7 +296,7 @@ onBeforeMount(fetchEvents)
           <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
 
           <Flex gap="xs" :wrap="isBelowMedium" :x-center="isBelowMedium" expand>
-            <CalendarButtons />
+            <CalendarButtons is-admin />
 
             <!-- Create event button -->
             <Button
@@ -347,7 +347,7 @@ onBeforeMount(fetchEvents)
         </span>
 
         <Flex :gap="isBelowMedium ? 's' : 'xs'" :wrap="isBelowMedium" :x-center="isBelowMedium" :expand="isBelowMedium">
-          <CalendarButtons />
+          <CalendarButtons is-admin />
 
           <!-- Create event button -->
           <Button

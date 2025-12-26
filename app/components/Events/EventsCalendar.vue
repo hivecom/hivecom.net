@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Flex, theme } from '@dolanske/vui'
+import { Button, Flex, theme } from '@dolanske/vui'
+import dayjs from 'dayjs'
+import { useBreakpoint } from '@/lib/mediaQuery'
+import { createArray } from '@/lib/utils/common'
+import { dateFormat } from '@/lib/utils/date'
+import EventCalendarColumnList from './EventCalendarColumnList.vue'
 
 interface Props {
   events: Tables<'events'>[] | undefined
@@ -16,16 +21,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 // Initialize with current date and ensure it updates properly
-const date = ref(new Date())
-
-// Ensure calendar starts on today's date and handle timezone properly
-onMounted(() => {
-  // Create a fresh date object to avoid any stale date issues
-  const today = new Date()
-  // Reset time to start of day to avoid timezone confusion
-  today.setHours(0, 0, 0, 0)
-  date.value = today
-})
+const date = ref(dayjs().startOf('day'))
 
 // Theme detection
 const isDark = computed(() => theme.value === 'dark')
@@ -35,21 +31,21 @@ const calendarAttributes = computed(() => {
   if (!props.events)
     return []
 
-  const now = new Date()
+  const now = dayjs()
 
   return props.events.map((event) => {
-    const eventStart = new Date(event.date)
+    const eventStart = dayjs(event.date)
     const eventEnd = event.duration_minutes
-      ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
+      ? eventStart.add(event.duration_minutes, 'minute')
       : null
 
-    const isUpcoming = eventStart > now
+    const isUpcoming = eventStart.isAfter(now)
     const isOngoing = (() => {
       if (!eventEnd)
         return false
-      return eventStart <= now && now <= eventEnd
+      return eventStart.valueOf() <= now.valueOf() && now.valueOf() <= eventEnd.valueOf()
     })()
-    const isPast = eventEnd ? eventEnd < now : eventStart < now
+    const isPast = eventEnd ? eventEnd.isBefore(now) : eventStart.isBefore(now)
 
     // Determine color based on event status
     let color = 'green'
@@ -66,8 +62,8 @@ const calendarAttributes = computed(() => {
 
     // Create dates object - use range if event has duration, single date otherwise
     const dates = eventEnd
-      ? { start: eventStart, end: eventEnd }
-      : eventStart
+      ? { start: eventStart.toDate(), end: eventEnd.toDate() }
+      : eventStart.toDate()
 
     return {
       key: event.id,
@@ -97,12 +93,12 @@ function formatEventDuration(event: Tables<'events'>) {
   if (!event.duration_minutes)
     return ''
 
-  const eventStart = new Date(event.date)
-  const eventEnd = new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
+  const eventStart = dayjs(event.date)
+  const eventEnd = eventStart.add(event.duration_minutes, 'minute')
 
   // If it spans multiple days, show the date range
-  if (eventEnd.toDateString() !== eventStart.toDateString()) {
-    const daysDiff = Math.ceil((eventEnd.getTime() - eventStart.getTime()) / (1000 * 60 * 60 * 24))
+  if (eventEnd.format(dateFormat.calendarDefault) !== eventStart.format(dateFormat.calendarDefault)) {
+    const daysDiff = Math.ceil(eventEnd.diff(eventStart, 'day', true))
     return `${daysDiff} day${daysDiff > 1 ? 's' : ''}`
   }
 
@@ -143,34 +139,92 @@ function navigateToEvent(event: Tables<'events'>) {
 
 // Format event time for display
 function formatEventTime(event: Tables<'events'>) {
-  const eventDate = new Date(event.date)
-  return eventDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
+  const eventDate = dayjs(event.date)
+  return eventDate.format('h:mm A')
 }
 
 // Check if we should show time for this event on this day
 function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
-  const eventStart = new Date(event.date)
+  const eventStart = dayjs(event.date)
   const eventEnd = event.duration_minutes
-    ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
+    ? eventStart.add(event.duration_minutes, 'minute')
     : null
 
   // If it's not a multi-day event, always show time
-  if (!eventEnd || eventEnd.toDateString() === eventStart.toDateString()) {
+  if (!eventEnd || eventEnd.toString() === eventStart.toString()) {
     return true
   }
 
   // For multi-day events, only show time on the start day
   // Parse the dayTitle to get the date (format is like "Monday, Jun 16, 2025")
-  const dayDate = new Date(dayTitle)
-  return dayDate.toDateString() === eventStart.toDateString()
+  const dayDate = dayjs(dayTitle)
+  return dayDate.format(dateFormat.calendarDefault) === eventStart.format(dateFormat.calendarDefault)
 }
+
+// Format events so that we get a list of events for the next 3 months
+// Uses the `date` ref (start of current month) as the reference point
+
+// Hold the starting date of the first month displayed
+const startMonth = ref(date.value)
+
+// Breakpoints
+const isTablet = useBreakpoint('<l')
+const isMobile = useBreakpoint('<s')
+
+// Store how many columns the calendar renders
+const calendarColumns = computed(() => {
+  if (isMobile.value) {
+    return 1
+  }
+  else if (isTablet.value) {
+    return 2
+  }
+
+  return 3
+})
+
+// Update startMonth whenever users navigate between months
+function updatePaggeIndex(data: { id: string }[]) {
+  if (!data[0])
+    return
+
+  const date = dayjs(data[0].id, 'YYYY-MM')
+  startMonth.value = date.startOf('month')
+}
+
+const upcomingEvents = computed(() => {
+  if (!props.events)
+    return createArray(calendarColumns.value, () => [])
+
+  // eslint-disable-next-line ts/no-explicit-any
+  return props.events.reduce((acc: any, event) => {
+    const eventMonth = dayjs(event.date).startOf('month')
+    const monthDiff = eventMonth.diff(startMonth.value, 'month')
+
+    // TODO: it would be nice to put an event into multiple months if it spans across them
+
+    if (monthDiff >= 0 && monthDiff < calendarColumns.value) {
+      acc[monthDiff].push(event)
+    }
+
+    return acc
+  }, createArray(calendarColumns.value, () => []))
+})
+
+const pageTitle = computed(() => {
+  if (isMobile.value) {
+    return 'This month'
+  }
+
+  return `Next ${calendarColumns.value} months`
+})
 </script>
 
 <template>
+  <h2 class="events-section__title">
+    {{ pageTitle }}
+  </h2>
+
   <div class="events-calendar">
     <div v-if="loading" class="calendar-loading">
       <Flex column gap="l" y-center>
@@ -191,67 +245,85 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
     </div>
 
     <ClientOnly v-else>
-      <VCalendar
-        v-model="date"
-        :attributes="calendarAttributes as any"
-        expanded
-        :is-dark="isDark"
-        transparent
-        borderless
-        :rows="3"
-        :first-day-of-week="2"
-        :initial-page="{ month: date.getMonth() + 1,
-                         year: date.getFullYear() }"
-        @dayclick="onDayClick"
-      >
-        <template #day-popover="{ dayTitle, attributes }">
-          <div class="event-popover">
-            <div class="event-popover__header">
-              <Icon name="ph:calendar-check" size="16" class="event-popover__icon" />
-              {{ dayTitle }}
-            </div>
-            <div v-if="attributes.length === 0" class="event-popover__empty">
-              No events scheduled
-            </div>
-            <div v-else class="event-popover__content">
-              <div class="event-popover__count">
-                {{ attributes.length }} event{{ attributes.length > 1 ? 's' : '' }}
-              </div>
-              <ul class="event-popover__list">
-                <li
-                  v-for="{ key, customData } in attributes"
-                  :key="key"
-                  class="event-popover__item"
-                  @click="navigateToEvent(customData)"
-                >
-                  <div class="event-popover__item-header">
-                    <div class="event-popover__title">
-                      {{ customData.title }}
-                    </div>
-                    <div v-if="shouldShowTime(customData, dayTitle)" class="event-popover__time">
-                      {{ formatEventTime(customData) }}
-                    </div>
-                  </div>
-                  <Flex y-center>
-                    <div v-if="customData.location" class="event-popover__location">
-                      <Icon name="ph:map-pin" size="12" />
-                      {{ customData.location }}
-                    </div>                  <div v-if="customData.duration_minutes" class="event-popover__duration">
-                      <Icon name="ph:clock" size="12" />
-                      {{ formatEventDuration(customData) }}
-                    </div>
-                  </Flex>
-
-                  <div class="event-popover__action">
-                    <Icon name="ph:arrow-right" size="12" />
-                    View details
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </div>
+      <div class="events-calendar__layout">
+        <!-- There are no slots to put content to the footer of a VC calendar column. So we teleport them there instead -->
+        <template v-for="(upcoming, index) in upcomingEvents" :key="upcoming">
+          <Teleport v-if="upcoming.length > 0" :to="`.vc-pane.column-${index as number + 1}`" defer>
+            <EventCalendarColumnList :data="upcoming" />
+          </Teleport>
         </template>
-      </VCalendar>
+
+        <VCalendar
+          v-model="date"
+          :attributes="calendarAttributes as any"
+          expanded
+          :is-dark="isDark"
+          transparent
+          borderless
+          :columns="calendarColumns"
+          :first-day-of-week="2"
+          :initial-page="{ month: date.month() + 1,
+                           year: date.year() }"
+          @dayclick="onDayClick"
+          @did-move="updatePaggeIndex"
+        >
+          <template #header-prev-button="{ move }">
+            <Button square outline size="s" @click="move">
+              <Icon name="ph:arrow-left" />
+            </Button>
+          </template>
+          <template #header-next-button="{ move }">
+            <Button square outline size="s" @click="move">
+              <Icon name="ph:arrow-right" />
+            </Button>
+          </template>
+
+          <template #day-popover="{ dayTitle, attributes }">
+            <div class="event-popover">
+              <div v-if="attributes.length === 0" class="event-popover__empty">
+                No events scheduled
+              </div>
+              <div v-else class="event-popover__content">
+                <div class="event-popover__count">
+                  <Icon name="ph:calendar-check" size="16" class="event-popover__icon" />
+                  {{ attributes.length }} event{{ attributes.length > 1 ? 's' : '' }}
+                </div>
+                <ul class="event-popover__list">
+                  <li
+                    v-for="{ key, customData } in attributes"
+                    :key="key"
+                    class="event-popover__item"
+                    @click="navigateToEvent(customData)"
+                  >
+                    <div class="event-popover__item-header">
+                      <div class="event-popover__title">
+                        {{ customData.title }}
+                      </div>
+                      <div v-if="shouldShowTime(customData, dayTitle)" class="event-popover__time">
+                        {{ formatEventTime(customData) }}
+                      </div>
+                    </div>
+                    <Flex y-center>
+                      <div v-if="customData.location" class="event-popover__location">
+                        <Icon name="ph:map-pin" size="12" />
+                        {{ customData.location }}
+                      </div>                  <div v-if="customData.duration_minutes" class="event-popover__duration">
+                        <Icon name="ph:clock" size="12" />
+                        {{ formatEventDuration(customData) }}
+                      </div>
+                    </Flex>
+
+                    <div class="event-popover__action">
+                      <Icon name="ph:arrow-right" size="12" />
+                      View details
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </template>
+        </VCalendar>
+      </div>
     </ClientOnly>
   </div>
 </template>
@@ -260,13 +332,37 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 @use '@/assets/breakpoints.scss' as *;
 
 .events-calendar {
-  min-height: 400px;
   display: flex;
   align-items: center;
   justify-content: center;
 
   .vc-container {
     width: 100%;
+  }
+
+  &__layout {
+    width: 100%;
+
+    .vc-pane-layout {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+
+      .vc-pane {
+        padding: var(--space-l);
+      }
+
+      .vc-pane:not(:last-child) {
+        border-right: 1px solid var(--color-border);
+      }
+    }
+
+    @media (max-width: $breakpoint-m) {
+      .vc-pane-layout {
+        .vc-pane {
+          padding: var(--space-m);
+        }
+      }
+    }
   }
 }
 
@@ -283,21 +379,14 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 
 .event-popover {
   padding: 0;
-  min-width: 300px;
+  min-width: 288px;
   max-width: 340px;
-  border-radius: var(--border-radius-m);
   overflow: hidden;
-  background: var(--color-bg-medium);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
 
   &__header {
     font-weight: var(--font-weight-semibold);
     color: var(--color-text);
     font-size: var(--font-size-s);
-    padding: var(--space-m) var(--space-m) var(--space-s);
-    background: var(--color-bg-medium);
-    border-bottom: 1px solid var(--color-border);
     display: flex;
     align-items: center;
     gap: var(--space-xs);
@@ -306,15 +395,17 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 
   &__icon {
     color: var(--color-accent);
-    flex-shrink: 0;
   }
 
   &__content {
-    padding: var(--space-s) var(--space-m) var(--space-m);
+    padding: var(--space-s);
     background: var(--color-bg);
   }
 
   &__count {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
     margin-bottom: var(--space-s);
@@ -343,13 +434,11 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
     cursor: pointer;
     border-radius: var(--border-radius-s);
     transition: all 0.15s ease;
-    background: var(--color-bg-raised);
+    background: var(--color-bg-medium);
     border: 1px solid var(--color-border);
 
     &:hover {
-      background-color: var(--color-surface-lighter);
-      border-color: var(--color-accent);
-      transform: translateY(-1px);
+      background-color: var(--color-bg-raised);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
@@ -450,6 +539,8 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 
 .vc-header {
   padding: var(--space-m);
+  margin-top: 0;
+  margin-bottom: var(--space-m);
 
   @media (max-width: $breakpoint-s) {
     padding: var(--space-s);
@@ -485,7 +576,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 }
 
 .vc-weekday {
-  color: var(--color-text-lighter);
+  color: var(--color-text-lightest);
   font-weight: var(--font-weight-medium);
   font-size: var(--font-size-xs);
   padding: var(--space-xs);
@@ -582,12 +673,25 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 // Ongoing events
 .vc-ongoing {
   .vc-highlight {
-    background-color: var(--color-accent) !important;
+    background-color: var(--color-bg-accent-lowered) !important;
   }
 
   &.vc-day-content {
-    background-color: var(--color-accent) !important;
-    color: var(--color-bg) !important;
+    background-color: var(--color-bg-accent-lowered) !important;
+    color: var(--color-text) !important;
+  }
+}
+
+:root.dark {
+  .vc-ongoing {
+    .vc-highlight {
+      background-color: var(--color-bg-accent-lowered) !important;
+    }
+
+    &.vc-day-content {
+      background-color: var(--color-bg-accent-lowered) !important;
+      color: var(--dark-color-text) !important;
+    }
   }
 }
 
@@ -599,10 +703,11 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 .vc-future {
   .vc-highlight {
     background-color: var(--color-bg-raised) !important;
+    z-index: 2;
   }
 
   &.vc-day-content {
-    background-color: var(--color-bg-raised) !important;
+    border: none !important;
     color: var(--color-text) !important;
   }
 }

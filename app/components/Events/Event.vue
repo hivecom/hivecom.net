@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Divider, Flex, Grid, Tooltip } from '@dolanske/vui'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatDurationFromMinutes } from '@/lib/utils/duration'
+import { Badge, Button, Card, Flex, Tooltip } from '@dolanske/vui'
+// import { useBreakpoint } from '@/lib/mediaQuery'
+import CountdownTimer from './CountdownTimer.vue'
 import EventRSVPCount from './EventRSVPCount.vue'
 
 const props = defineProps<{
   data: Tables<'events'>
-  index: number
-  isPast?: boolean
   isOngoing?: boolean
+  isHighlight: boolean
 }>()
+
+// TODO: mobile layout
 
 const _emit = defineEmits<{
   open: []
@@ -23,13 +23,6 @@ const countdown = ref({
   minutes: 0,
   seconds: 0,
 })
-
-const isCountdownComplete = computed(() =>
-  countdown.value.days === 0
-  && countdown.value.hours === 0
-  && countdown.value.minutes === 0
-  && countdown.value.seconds === 0,
-)
 
 function updateTime() {
   const now = new Date()
@@ -60,166 +53,73 @@ function updateTime() {
   }
 }
 
-// Calculate "time ago" for past events
-const timeAgo = computed(() => {
-  if (!props.isPast)
-    return ''
-
-  const now = new Date()
-  const eventDate = new Date(props.data.date)
-  const diff = now.getTime() - eventDate.getTime()
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-
-  if (days > 0) {
-    return days === 1 ? '1 day ago' : `${days} days ago`
-  }
-  else if (hours > 0) {
-    return hours === 1 ? '1 hour ago' : `${hours} hours ago`
-  }
-  else if (minutes > 0) {
-    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
-  }
-  else {
-    return 'Just now'
-  }
-})
-
-const isBelowSmall = useBreakpoint('<s')
+// const isBelowSmall = useBreakpoint('<s')
 
 useIntervalFn(updateTime, 1000, { immediate: true })
 updateTime()
 </script>
 
 <template>
-  <Flex
-    gap="xxl"
-    class="event-item event-item--clickable"
-    :class="{
-      'event-item--first': index === 0 && !isPast,
-    }"
-    y-center
-    @click="navigateTo(`/events/${data.id}`)"
-  >
-    <!-- Countdown for upcoming events -->
-    <Flex
-      v-if="!isPast && !isOngoing && !isCountdownComplete"
-      column
-      gap="xs"
-      class="event-item__countdown-container"
-    >
-      <Grid :columns="4" gap="l" class="event-item__countdown" expand>
-        <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
-          <span class="event-item__countdown-label text-xs text-color-lighter">Days</span>
-          <span class="text-bold text-xxxl">{{ countdown.days }}</span>
-        </Flex>
-        <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
-          <span class="event-item__countdown-label text-xs text-color-lighter">Hours</span>
-          <span class="text-bold text-xxxl">{{ countdown.hours }}</span>
-        </Flex>
-        <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
-          <span class="event-item__countdown-label text-xs text-color-lighter">Minutes</span>
-          <span class="text-bold text-xxxl">{{ countdown.minutes }}</span>
-        </Flex>
-        <Flex column gap="xxs" y-center x-center class="event-item__countdown-item">
-          <span class="event-item__countdown-label text-xs text-color-lighter">Seconds</span>
-          <span class="text-bold text-xxxl">{{ countdown.seconds }}</span>
-        </Flex>
-      </Grid>
-      <Flex x-center expand class="event-item__event-date">
-        <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY [at] HH:mm" />
+  <NuxtLink :to="`/events/${data.id}`">
+    <Card class="event-item" :class="{ 'event-item--first': props.isHighlight }">
+      <Flex wrap x-between y-center gap="m">
+        <div>
+          <Flex class="mb-xs" y-center>
+            <h3>{{ props.data.title }}</h3>
+            <Button
+              v-if="props.data.link"
+              square
+              outline
+              plain
+              :size="props.isHighlight ? 'm' : 's'"
+              target="_blank"
+              rel="noopener noreferrer"
+              :href="props.data.link"
+              data-title-top="Visit website"
+            >
+              <span class="visually-hidden">
+                Visit Event Link
+              </span>
+              <Icon name="ph:arrow-square-out" size="14" />
+            </Button>
+          </Flex>
+          <p class="mb-m text-color-light">
+            {{ props.data.description }}
+          </p>
+          <Flex>
+            <Badge v-if="props.data.location" variant="neutral">
+              <Icon name="ph:map-pin-fill" />
+              {{ props.data.location }}
+            </Badge>
+            <Tooltip v-if="props.data.note" placement="right">
+              <template #tooltip>
+                <div class="event-item__tooltip-content">
+                  {{ props.data.note }}
+                </div>
+              </template>
+              <Badge variant="neutral" class="event-item__note-badge">
+                <Icon name="ph:note" />
+                Note
+              </Badge>
+            </Tooltip>
+            <EventRSVPCount
+              :event="props.data"
+              size="s"
+              :show-when-zero="false"
+            />
+          </Flex>
+        </div>
+        <div class="event-item__countdown-wrap">
+          <CountdownTimer
+            :countdown
+            :is-ongoing="props.isOngoing ?? false"
+            :created-at="props.data.created_at"
+            :simple="!props.isHighlight"
+          />
+        </div>
       </Flex>
-      <Flex v-if="props.data.duration_minutes" x-center expand class="event-item__event-duration">
-        <span class="text-xs text-color-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
-      </Flex>
-    </Flex>
-
-    <!-- Ongoing event status -->
-    <Flex
-      v-else-if="isOngoing || (!isPast && isCountdownComplete)"
-      column
-      gap="xs"
-      class="event-item__ongoing-container"
-    >
-      <Flex x-center class="event-item__ongoing-text" expand>
-        <span class="text-bold text-xxxl color-accent">NOW</span>
-      </Flex>
-      <Flex x-center expand class="event-item__event-date">
-        <TimestampDate :date="props.data.date" format="dddd, MMM D, YYYY [at] HH:mm" />
-      </Flex>
-      <Flex v-if="props.data.duration_minutes" x-center expand class="event-item__event-duration">
-        <span class="text-xs text-color-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
-      </Flex>
-    </Flex>
-
-    <!-- Time ago for past events -->
-    <Flex v-else column gap="xs" class="event-item__time-ago">
-      <Flex x-center class="event-item__time-ago-text" expand>
-        <span class="text-bold text-xxxl text-color-lighter">{{ timeAgo }}</span>
-      </Flex>
-      <Flex x-center expand class="event-item__event-date">
-        <TimestampDate :date="props.data.date" format="MMM D, YYYY" />
-      </Flex>
-      <Flex v-if="props.data.duration_minutes" x-center expand class="event-item__event-duration">
-        <span class="text-xs text-color-lighter">Duration: {{ formatDurationFromMinutes(props.data.duration_minutes) }}</span>
-      </Flex>
-    </Flex>
-
-    <Flex column gap="xs" expand class="event-item__details">
-      <h5>
-        <a
-          v-if="props.data.link"
-          :href="props.data.link"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="event-item__title-link"
-          @click.stop
-        >
-          {{ props.data.title }}
-          <Icon name="ph:arrow-square-out" class="ml-xs" size="14" />
-        </a>
-        <span v-else>{{ props.data.title }}</span>
-      </h5>
-      <p>
-        {{ props.data.description }}
-      </p>      <Flex gap="xs">
-        <Badge v-if="props.data.location" variant="neutral">
-          <Icon name="ph:map-pin-fill" />
-          {{ props.data.location }}
-        </Badge>
-        <Tooltip v-if="props.data.note" placement="right">
-          <template #tooltip>
-            <div class="event-item__tooltip-content">
-              {{ props.data.note }}
-            </div>
-          </template>
-          <Badge variant="neutral" class="event-item__note-badge">
-            <Icon name="ph:note" />
-            Note
-          </Badge>
-        </Tooltip>
-
-        <!-- RSVP Count Badge -->
-        <EventRSVPCount
-          :event="props.data"
-          size="s"
-          :show-when-zero="false"
-        />
-      </Flex>
-    </Flex>
-
-    <!-- Details indicator -->
-    <Flex :class="`event-item__details-indicator ${isBelowSmall ? '' : 'mr-l'}`">
-      <Tooltip v-if="props.data.note" :content="props.data.note" position="left">
-        <Icon name="ph:caret-right" class="event-item__arrow" />
-      </Tooltip>
-      <Icon v-else name="ph:caret-right" class="event-item__arrow" />
-    </Flex>
-  </Flex>
-
-  <Divider />
+    </Card>
+  </NuxtLink>
 </template>
 
 <style lang="scss">
@@ -236,87 +136,47 @@ updateTime()
 }
 
 .event-item {
-  margin-block: var(--space-l);
-  padding-block: var(--space-l);
+  // margin-block: var(--space-m);
   border-radius: var(--border-radius-m);
+
   transition:
     background-color 0.2s ease,
     transform 0.2s ease;
 
+  .vui-card-content {
+    padding: var(--space-l);
+  }
+
+  &:hover {
+    background-color: var(--color-bg-raised);
+  }
+
+  h3 {
+    font-size: var(--font-size-xl);
+  }
+
   &--first {
+    background-color: var(--color-bg-raised);
+
+    h3 {
+      font-size: var(--font-size-xxxl);
+    }
+
     span {
       color: var(--color-accent);
     }
-  }
-
-  &--clickable {
-    cursor: pointer;
 
     &:hover {
-      background-color: var(--color-bg-raised);
-
-      .event-item__arrow {
-        color: var(--color-accent);
-
-        @media screen and (max-width: $breakpoint-s) {
-          transform: rotate(90deg);
-        }
-      }
-    }
-
-    // Mobile touch states
-    @media (max-width: $breakpoint-s) {
-      &:active {
-        background-color: var(--color-bg-raised) !important;
-        transform: scale(0.98) !important;
-      }
-
-      &:hover {
-        transform: none !important;
-
-        .event-item__arrow {
-          transform: rotate(90deg) !important;
-        }
-      }
+      background-color: var(--color-border);
     }
   }
 
-  &__countdown-container {
-    min-width: 296px;
-  }
+  &__countdown-wrap {
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--border-radius-m);
 
-  &__ongoing-container {
-    min-width: 272px;
-  }
-
-  &__countdown {
-    span {
-      font-variant-numeric: tabular-nums;
-    }
-  }
-
-  &__countdown-item {
-    .event-item__countdown-label {
-      display: none; // Hide labels on desktop
-    }
-  }
-
-  &__time-ago {
-    min-width: 296px;
-    text-align: center;
-  }
-
-  &__ongoing-text {
-    text-align: center;
-    animation: pulse 2s infinite;
-  }
-
-  &__event-duration {
-    margin-top: var(--space-xs);
-
-    span {
-      font-size: var(--font-size-xs);
-      color: var(--color-text-lighter);
+    .countdown-timer {
+      background-color: var(--color-border-weak);
     }
   }
 
@@ -335,11 +195,6 @@ updateTime()
     transition:
       transform 0.2s ease,
       color 0.2s ease;
-  }
-
-  &__event-date span {
-    font-size: var(--font-size-xs) !important;
-    color: var(--color-text-lighter) !important;
   }
 
   &__note-badge {
@@ -382,7 +237,7 @@ updateTime()
   }
 }
 
-@media (max-width: $breakpoint-s) {
+@media (max-width: $breakpoint-m) {
   .event-item {
     flex-direction: column !important;
     gap: var(--space-m) !important;
@@ -390,49 +245,10 @@ updateTime()
     padding: var(--space-m) !important;
     text-align: center !important;
 
-    &__countdown-container,
-    &__ongoing-container,
-    &__time-ago {
-      min-width: 100% !important;
-      width: 100% !important;
-      align-items: center !important;
-    }
-
-    &__countdown {
-      width: 100%;
-      justify-content: center !important;
-      gap: var(--space-m) !important;
-
-      span {
-        text-align: center !important;
-      }
-
-      .event-item__countdown-item {
-        .event-item__countdown-label {
-          display: block !important; // Show labels on mobile
-        }
-      }
-    }
-
-    &__time-ago-text,
-    &__ongoing-text {
-      justify-content: center !important;
-
-      span {
-        text-align: center !important;
-      }
-    }
-
-    &__event-date {
-      justify-content: center !important;
-      margin-top: var(--space-xs) !important;
-      text-align: center !important;
-    }
-
     .flex-1 {
       text-align: center !important;
 
-      h5 {
+      h3 {
         text-align: center !important;
       }
 
@@ -471,29 +287,6 @@ updateTime()
     gap: var(--space-s) !important;
     text-align: center !important;
 
-    &__countdown-container,
-    &__ongoing-container,
-    &__time-ago {
-      min-width: 100% !important;
-    }
-
-    &__countdown {
-      gap: var(--space-s) !important;
-      justify-content: center !important;
-
-      span {
-        font-size: var(--font-size-xxl) !important;
-        text-align: center !important;
-      }
-
-      .event-item__countdown-item {
-        .event-item__countdown-label {
-          display: block !important; // Show labels on mobile
-          font-size: var(--font-size-xxs) !important;
-        }
-      }
-    }
-
     &__time-ago-text,
     &__ongoing-text {
       justify-content: center !important;
@@ -516,7 +309,7 @@ updateTime()
       text-align: center !important;
     }
 
-    h5 {
+    h3 {
       margin-bottom: var(--space-xs) !important;
       text-align: center !important;
     }
@@ -540,7 +333,7 @@ updateTime()
 
     // Override VUI Flex component gap for badges and center them
     .vui-flex {
-      gap: var(--space-xxs) !important;
+      // gap: var(--space-xxs) !important;
       justify-content: center !important;
     }
   }

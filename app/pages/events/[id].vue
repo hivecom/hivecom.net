@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, Flex } from '@dolanske/vui'
+import { Button, Flex } from '@dolanske/vui'
 import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
@@ -233,7 +233,7 @@ useHead({
       </Flex>
 
       <!-- Header -->
-      <Card :class="{ 'event-ongoing': isOngoing }">
+      <div :class="{ 'event-ongoing': isOngoing }">
         <EventHeader
           :event="event"
           :games="games"
@@ -242,7 +242,7 @@ useHead({
           :countdown="countdown"
           :time-ago="timeAgo"
         />
-      </Card>
+      </div>
 
       <!-- Markdown -->
       <EventMarkdown :event="event" />
