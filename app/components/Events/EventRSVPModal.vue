@@ -216,28 +216,19 @@ function handleClose() {
             <Tab value="yes">
               <Flex y-center gap="xs">
                 <Icon name="ph:check-circle" class="rsvp-modal__icon" />
-                <span>{{ yesTabLabel }}</span>
-                <BadgeCircle v-if="yesCount > 0" variant="success" size="s">
-                  {{ yesCount }}
-                </BadgeCircle>
+                <span>{{ yesTabLabel }} {{ yesCount > 0 ? `(${yesCount})` : '' }}</span>
               </Flex>
             </Tab>
             <Tab value="tentative">
               <Flex y-center gap="xs">
                 <Icon name="ph:question" sizeclass="rsvp-modal__icon" />
-                <span>Maybe</span>
-                <BadgeCircle v-if="tentativeCount > 0" variant="warning" size="s">
-                  {{ tentativeCount }}
-                </BadgeCircle>
+                <span>Maybe {{ tentativeCount > 0 ? `(${tentativeCount})` : '' }}</span>
               </Flex>
             </Tab>
             <Tab value="no">
               <Flex y-center gap="xs">
                 <Icon name="ph:x-circle" class="rsvp-modal__icon" />
-                <span>Not Going</span>
-                <BadgeCircle v-if="noCount > 0" variant="neutral" size="s">
-                  {{ noCount }}
-                </BadgeCircle>
+                <span>Not Going {{ noCount > 0 ? `(${noCount})` : '' }}</span>
               </Flex>
             </Tab>
           </Tabs>
@@ -286,6 +277,10 @@ function handleClose() {
 </template>
 
 <style lang="scss" scoped>
+:root.light .vui-tabs.vui-tabs-variant-filled {
+  background-color: var(--color-bg-raised);
+}
+
 .rsvp-modal-content {
   min-height: 300px;
   max-height: 500px;
@@ -319,7 +314,8 @@ function handleClose() {
 }
 
 .rsvp-modal__icon {
-  font-size: 1.6rem;
+  font-size: 16px;
+  transform: translateY(-1px);
 }
 
 .rsvp-modal__tab-content {

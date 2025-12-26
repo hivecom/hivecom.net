@@ -250,7 +250,7 @@ const pastEvents = computed(() => {
   }
 }
 
-:root:not(.dark) {
+:root.light {
   .events-section--past .events-section__past-list {
     opacity: 0.5;
 
