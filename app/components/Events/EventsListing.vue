@@ -166,6 +166,10 @@ const pastEvents = computed(() => {
   }
 
   &__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-m);
+
     .vui-divider:last-of-type {
       display: none;
     }

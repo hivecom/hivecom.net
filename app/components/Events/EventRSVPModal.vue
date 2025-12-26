@@ -5,7 +5,6 @@ import { useIntervalFn } from '@vueuse/core'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import BadgeCircle from '../Shared/BadgeCircle.vue'
 
 interface Props {
   event: Tables<'events'>

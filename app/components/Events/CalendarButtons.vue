@@ -39,6 +39,7 @@ const isBelowMedium = useBreakpoint('<m')
       :size="size"
       :href="constants.EVENT_CALENDAR.GOOGLE"
       target="_blank"
+      :square="!showLabels"
       rel="noreferrer"
       data-title-bottom="Add to your Google Calendar"
     >
@@ -55,6 +56,7 @@ const isBelowMedium = useBreakpoint('<m')
       :expand="isBelowMedium"
       :variant="variant"
       :size="size"
+      :square="!showLabels"
       :href="constants.EVENT_CALENDAR.ICAL"
       rel="noreferrer"
       data-title-bottom="Export ICAL"

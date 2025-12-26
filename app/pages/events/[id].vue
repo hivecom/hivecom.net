@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, Flex } from '@dolanske/vui'
+import { Button, Flex } from '@dolanske/vui'
 import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'

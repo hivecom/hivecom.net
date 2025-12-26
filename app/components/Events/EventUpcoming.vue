@@ -136,7 +136,7 @@ updateTime()
 }
 
 .event-item {
-  margin-block: var(--space-m);
+  // margin-block: var(--space-m);
   border-radius: var(--border-radius-m);
 
   transition:
