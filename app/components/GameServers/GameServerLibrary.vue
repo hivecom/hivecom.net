@@ -205,6 +205,7 @@ function isCoverLoading(gameId: number): boolean {
       v-if="showModal"
       :open="showModal"
       :size="isBelowSmall ? 'screen' : undefined"
+      :card="{ separators: true }"
       @close="closeModal"
     >
       <template v-if="selectedGame" #header>

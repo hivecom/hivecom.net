@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
+import { navigationLinks } from '@/lib/navigation'
 import NavAnnouncementBadge from './NavAnnouncementBadge.vue'
 import NavEventBadge from './NavEventBadge.vue'
 import NotificationDropdown from './NotificationDropdown.vue'
@@ -50,78 +51,6 @@ function updateHoveredElement(event: MouseEvent) {
   hoveredElement.value = event.target as HTMLElement | null
   update()
 }
-
-// While hovering a link, we do not want the blob to actually move. We want it
-// to sort of snap to the hovered link, but not fully and with some correction
-// to make it look more natural.
-
-const navbarLinks = computed(() => [
-  {
-    path: '/',
-    label: 'Home',
-    icon: 'ph:house',
-  },
-  {
-    path: '/announcements',
-    label: 'Announcements',
-    icon: 'ph:megaphone',
-  },
-  {
-    path: '/community',
-    label: 'Community',
-    icon: 'ph:users',
-    children: [
-      {
-        path: '/community',
-        label: 'About',
-      },
-      {
-        path: '/community/funding',
-        label: 'Funding',
-      },
-      {
-        path: '/community/projects',
-        label: 'Projects',
-      },
-    ],
-  },
-  {
-    path: '/events?tab=list',
-    label: 'Events',
-    icon: 'ph:calendar',
-    children: [
-      {
-        path: '/events?tab=list',
-        label: 'List',
-      },
-      {
-        path: '/events?tab=calendar',
-        label: 'Calendar',
-      },
-    ],
-  },
-  {
-    path: '/servers/gameservers?tab=list',
-    label: 'Servers',
-    icon: 'ph:game-controller',
-    children: [
-      {
-        path: '/servers/gameservers?tab=library',
-        label: 'Game Servers',
-      },
-      {
-        path: '/servers/voiceservers',
-        label: 'Voice Servers',
-      },
-    ],
-  },
-  {
-    path: '/votes',
-    label: 'Votes',
-    icon: 'ph:check-square',
-    requiresAuth: true,
-  },
-])
 </script>
 
 <template>
@@ -135,7 +64,7 @@ const navbarLinks = computed(() => [
         <SharedLogo class="navigation__logo" />
 
         <ul ref="navbarLinksRef" class="navigation__links" @mouseleave="hoveredElement = null">
-          <template v-for="link in navbarLinks" :key="link.path">
+          <template v-for="link in navigationLinks" :key="link.path">
             <li
               v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)"
               @mouseenter="updateHoveredElement"
@@ -189,7 +118,7 @@ const navbarLinks = computed(() => [
           </template>
           <template #header-end />
           <div class="navigation__mobile-menu">
-            <template v-for="link in navbarLinks" :key="link.path">
+            <template v-for="link in navigationLinks" :key="link.path">
               <NuxtLink
                 v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)"
                 :to="link.path"
