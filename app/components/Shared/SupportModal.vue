@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, CopyClipboard, Flex, Modal } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Divider, Flex, Modal } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -111,14 +111,10 @@ function handleClose() {
 
 <template>
   <Modal
-    :open="isOpen"
-    centered
-    :card="{
+    :open="isOpen" centered :card="{
       headerSeparator: true,
       footerSeparator: true,
-    }"
-    :size="isBelowSmall ? 'screen' : undefined"
-    @close="handleClose"
+    }" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose"
   >
     <template #header>
       <h3>{{ props.title }}</h3>
@@ -133,9 +129,10 @@ function handleClose() {
         <h4 class="mb-xs">
           Admins
         </h4>
-        <p class="mb-m">
+        <p class="text-color-light">
           Reach out to any of the admins below on Discord or TeamSpeak if that works better for you.
         </p>
+        <Divider />
         <div v-if="!canViewAdmins" class="support-modal__admin-placeholder">
           Sign in to view the current admin roster.
         </div>
@@ -166,12 +163,7 @@ function handleClose() {
             Email
           </Button>
         </CopyClipboard>
-        <a
-          :href="ircUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="support-modal__link"
-        >
+        <a :href="ircUrl" target="_blank" rel="noopener noreferrer" class="support-modal__link">
           <Button :expand="isBelowSmall" :data-title-top="`Join the ${ircChannel} channel`">
             <template #start>
               <Icon name="ph:chats-circle" />
@@ -180,10 +172,7 @@ function handleClose() {
           </Button>
         </a>
         <NuxtLink
-          v-if="discordUrl"
-          :to="discordUrl"
-          target="_blank"
-          rel="noopener noreferrer"
+          v-if="discordUrl" :to="discordUrl" target="_blank" rel="noopener noreferrer"
           class="support-modal__link"
         >
           <Button :expand="isBelowSmall">
@@ -194,10 +183,7 @@ function handleClose() {
           </Button>
         </NuxtLink>
         <NuxtLink
-          v-if="teamspeakUrl"
-          :to="teamspeakUrl"
-          target="_blank"
-          rel="noopener noreferrer"
+          v-if="teamspeakUrl" :to="teamspeakUrl" target="_blank" rel="noopener noreferrer"
           class="support-modal__link"
         >
           <Button :expand="isBelowSmall">
@@ -265,6 +251,8 @@ function handleClose() {
     font-size: var(--font-size-s);
     color: var(--color-text-light);
     font-style: italic;
+    height: 28px;
+    line-height: 28px;
   }
 
   &__admin-error {

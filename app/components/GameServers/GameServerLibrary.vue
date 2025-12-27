@@ -134,48 +134,26 @@ function isCoverLoading(gameId: number): boolean {
       <!-- Content -->
       <template v-if="games && gameservers && filteredGames.length > 0">
         <div class="game-grid">
-          <TransitionGroup
-            name="card-fade"
-            tag="div"
-            class="game-grid-container"
-            appear
-          >
+          <TransitionGroup name="card-fade" tag="div" class="game-grid-container" appear>
             <button
-              v-for="(game, index) in filteredGames"
-              :key="game.id"
-              class="game-card"
-              :class="{
+              v-for="(game, index) in filteredGames" :key="game.id" class="game-card" :class="{
                 'content-loaded': !isCoverLoading(game.id),
-              }"
-              :style="{ '--delay': `${index * 50}ms` }"
-              @click="openGameModal(game)"
+              }" :style="{ '--delay': `${index * 50}ms` }" @click="openGameModal(game)"
             >
               <div class="game-cover">
                 <div class="cover-image-container">
                   <!-- Base fallback: Hivecom logo -->
                   <div class="cover-fallback">
-                    <img
-                      src="/icon.svg"
-                      alt="Hivecom logo"
-                      class="fallback-logo"
-                    >
+                    <img src="/icon.svg" alt="Hivecom logo" class="fallback-logo">
                   </div>
 
                   <!-- Loading skeleton -->
-                  <Skeleton
-                    v-if="isCoverLoading(game.id)"
-                    :height="280"
-                    :radius="0"
-                    class="cover-skeleton"
-                  />
+                  <Skeleton v-if="isCoverLoading(game.id)" :height="280" :radius="0" class="cover-skeleton" />
 
                   <!-- Actual cover image (custom or Steam) -->
                   <img
-                    v-else-if="getCachedGameCover(game.id)"
-                    :src="getCachedGameCover(game.id)"
-                    :alt="game.name || 'Game cover'"
-                    class="cover-image"
-                    @load="handleCoverLoad"
+                    v-else-if="getCachedGameCover(game.id)" :src="getCachedGameCover(game.id)"
+                    :alt="game.name || 'Game cover'" class="cover-image" @load="handleCoverLoad"
                   >
                 </div>
               </div>
@@ -202,10 +180,7 @@ function isCoverLoading(gameId: number): boolean {
 
     <!-- Game Servers Modal -->
     <Modal
-      v-if="showModal"
-      :open="showModal"
-      :size="isBelowSmall ? 'screen' : undefined"
-      :card="{ separators: true }"
+      v-if="showModal" :open="showModal" :size="isBelowSmall ? 'screen' : undefined" :card="{ separators: true }"
       @close="closeModal"
     >
       <template v-if="selectedGame" #header>
@@ -219,11 +194,9 @@ function isCoverLoading(gameId: number): boolean {
       <div class="modal-content">
         <div v-if="selectedGameServers.length > 0" class="servers-list">
           <GameServerRow
-            v-for="gameserver in selectedGameServers"
-            :key="gameserver.id"
+            v-for="gameserver in selectedGameServers" :key="gameserver.id"
             :gameserver="(gameserver as Tables<'gameservers'>)"
-            :container="(gameserver.container as Tables<'containers'> | null)"
-            :game="(selectedGame as Tables<'games'>)"
+            :container="(gameserver.container as Tables<'containers'> | null)" :game="(selectedGame as Tables<'games'>)"
             compact
           />
         </div>
@@ -257,7 +230,8 @@ function isCoverLoading(gameId: number): boolean {
 }
 
 .game-grid-container {
-  display: contents; /* Make the transition group container not affect grid layout */
+  display: contents;
+  /* Make the transition group container not affect grid layout */
 }
 
 /* Card fade-in animations */
@@ -314,7 +288,7 @@ function isCoverLoading(gameId: number): boolean {
   padding: 0;
   display: flex;
   flex-direction: column;
-  background: var(--color-background);
+  background: var(--color-bg-medium);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
   overflow: hidden;
@@ -424,7 +398,8 @@ function isCoverLoading(gameId: number): boolean {
   line-height: 1.2;
   color: var(--color-text);
   flex: 1;
-  min-width: 0; /* Allow text truncation */
+  min-width: 0;
+  /* Allow text truncation */
 }
 
 .game-meta {
