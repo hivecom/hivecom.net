@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Flex, Modal } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Grid, Modal } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import UserDisplay from './UserDisplay.vue'
 
 interface Props {
   message?: string
@@ -129,19 +130,11 @@ function handleClose() {
         {{ props.message }}
       </p>
 
-      <div class="support-modal__section">
-        <h4>Contact</h4>
-        <p>
-          You can email us at
-          <a :href="`mailto:${supportEmail}`">{{ supportEmail }}</a>
-          or hop into IRC at
-          <a :href="ircUrl" target="_blank" rel="noopener noreferrer">{{ ircChannel }}</a>.
-        </p>
-      </div>
-
-      <div class="support-modal__section">
-        <h4>Admins</h4>
-        <p>
+      <Card class="support-modal__section card-bg mb-m">
+        <h4 class="mb-xs">
+          Admins
+        </h4>
+        <p class="mb-m">
           Reach out to any of the admins below on Discord or TeamSpeak if that works better for you.
         </p>
         <div v-if="!canViewAdmins" class="support-modal__admin-placeholder">
@@ -154,35 +147,33 @@ function handleClose() {
           <div v-else-if="adminsError" class="support-modal__admin-error">
             {{ adminsError }}
           </div>
-          <ul v-else class="support-modal__admin-list">
-            <li v-for="admin in admins" :key="admin.id">
-              <UserLink :user-id="admin.id" size="s" />
-            </li>
-          </ul>
+          <div v-else class="support-modal__admin-list">
+            <UserDisplay v-for="admin in admins" :key="admin.id" :user-id="admin.id" size="s" />
+          </div>
         </template>
-      </div>
+      </Card>
     </div>
 
-    <template #footer>
-      <Flex gap="s" wrap class="support-modal__actions" align="center" expand>
-        <a
-          :href="`mailto:${supportEmail}`"
-          class="support-modal__link"
-        >
-          <Button :expand="isBelowSmall">
+    <Card class="card-bg">
+      <h4 class="mb-xs">
+        Contact us
+      </h4>
+      <div class="support-modal__button-list">
+        <CopyClipboard :text="supportEmail" confirm class="w-100">
+          <Button expand>
             <template #start>
               <Icon name="ph:envelope" />
             </template>
-            Email Support
+            Email
           </Button>
-        </a>
+        </CopyClipboard>
         <a
           :href="ircUrl"
           target="_blank"
           rel="noopener noreferrer"
           class="support-modal__link"
         >
-          <Button :expand="isBelowSmall">
+          <Button :expand="isBelowSmall" :data-title-top="`Join the ${ircChannel} channel`">
             <template #start>
               <Icon name="ph:chats-circle" />
             </template>
@@ -217,7 +208,11 @@ function handleClose() {
             TeamSpeak
           </Button>
         </NuxtLink>
+      </div>
+    </Card>
 
+    <template #footer>
+      <Flex gap="s" wrap class="support-modal__actions" align="center" expand>
         <div class="flex-1" />
         <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
           Close
@@ -228,6 +223,8 @@ function handleClose() {
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 .support-modal {
   display: flex;
   flex-direction: column;
@@ -245,19 +242,22 @@ function handleClose() {
     gap: var(--space-xs);
   }
 
-  &__actions {
-    margin-top: var(--space-s);
-  }
-
   &__admin-list {
     margin: 0;
-    padding-left: var(--space-m);
     display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-l);
+  }
 
-    li {
-      list-style: disc;
+  &__button-list {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-m);
+
+    @media (max-width: $breakpoint-s) {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-s);
     }
   }
 
