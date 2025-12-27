@@ -90,7 +90,7 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="props.open" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
+  <Modal :open="props.open" :size="isBelowSmall ? 'screen' : undefined" :card="{ footerSeparator: true }" @close="handleClose">
     <template #header>
       <h3>Submit Complaint</h3>
     </template>

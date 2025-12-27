@@ -95,7 +95,7 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
 
     <!-- Friends Avatar Display -->
     <div v-else-if="friends.length > 0" class="friends-content">
-      <Alert v-if="pendingUsers.size > 0">
+      <Alert v-if="pendingUsers.size > 0" icon-align="start">
         <p>
           You have {{ pendingUsers.size }} pending friend request{{ pendingUsers.size > 1 ? 's' : '' }} from
           <NuxtLink v-for="(request, index) in pendingUsers.values()" :key="request.id" :to="`/profile/${request.id}`">

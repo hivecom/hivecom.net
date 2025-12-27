@@ -170,33 +170,39 @@ onMounted(() => {
 </script>
 
 <template>
-  <Modal :open="open" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
+  <Modal :open="open" :size="isBelowSmall ? 'screen' : undefined" :card="{ footerSeparator: true }" @close="handleClose">
     <template #header>
       <h3>Your Complaints</h3>
     </template>
 
     <div class="complaints-viewer">
-      <div v-if="isLoading" class="loading-state">
-        <Spinner size="m" />
-      </div>
+      <Card v-if="isLoading" class="card-bg">
+        <Flex column gap="s" x-center y-center class="information-card">
+          <Spinner size="m" />
+        </Flex>
+      </Card>
 
-      <div v-else-if="error" class="error-state">
-        <p class="text-color-error">
-          {{ error }}
-        </p>
-        <Button variant="gray" size="s" @click="fetchComplaints">
-          Try Again
-        </Button>
-      </div>
+      <Card v-else-if="error" class="card-bg">
+        <Flex column gap="s" x-center y-center class="information-card">
+          <p class="text-color-error">
+            {{ error }}
+          </p>
+          <Button variant="gray" @click="fetchComplaints">
+            Try Again
+          </Button>
+        </Flex>
+      </Card>
 
-      <div v-else-if="complaints.length === 0" class="empty-state">
-        <p class="text-color-light">
-          You haven't submitted any complaints yet.
-        </p>
-        <Button variant="accent" @click="handleNewComplaint">
-          Submit a Complaint
-        </Button>
-      </div>
+      <Card v-else-if="complaints.length === 0" class="card-bg">
+        <Flex column gap="s" x-center y-center class="information-card">
+          <p class="text-color-light">
+            You haven't submitted any complaints yet.
+          </p>
+          <Button variant="accent" @click="handleNewComplaint">
+            Submit a Complaint
+          </Button>
+        </Flex>
+      </Card>
 
       <div v-else class="complaints-list">
         <Card
@@ -282,8 +288,9 @@ onMounted(() => {
     </div>
 
     <template #footer>
-      <Flex x-between y-center gap="s" expand>
+      <Flex x-end y-center gap="s" expand>
         <Button
+          v-if="complaints.length !== 0"
           variant="accent"
           :expand="isBelowSmall"
           @click="handleNewComplaint"
@@ -313,6 +320,10 @@ onMounted(() => {
 .complaints-viewer {
   max-height: 70vh;
   overflow-y: auto;
+}
+
+.information-card {
+  min-height: 108px;
 }
 
 .loading-state,

@@ -119,7 +119,7 @@ const isCompactLayout = useBreakpoint('<s')
   padding: var(--space-xs) var(--space-m);
   border-radius: var(--border-radius-m);
   background-color: var(--color-bg-medium);
-  transition: all 0.2s ease-in-out;
+  transition: var(--transition-fast);
   cursor: pointer;
   overflow: hidden;
   min-width: 0;
@@ -127,7 +127,6 @@ const isCompactLayout = useBreakpoint('<s')
   box-sizing: border-box;
 
   &.gameserver-row-clickable:hover {
-    // transform: translateY(-1px);
     background-color: var(--color-bg-raised);
 
     .gameserver-row-arrow {
@@ -139,7 +138,7 @@ const isCompactLayout = useBreakpoint('<s')
 
 .gameserver-row-arrow {
   color: var(--color-text-lighter);
-  transition: all 0.2s ease-in-out;
+  transition: var(--transition-fast);
 }
 
 .gameserver-description-main {
