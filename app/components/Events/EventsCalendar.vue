@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Dropdown, DropdownItem, Flex, theme } from '@dolanske/vui'
+import { Button, Flex, theme } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { createArray } from '@/lib/utils/common'

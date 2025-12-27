@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, CopyClipboard, Flex, Grid, Modal } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Modal } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import constants from '~~/constants.json'
-import UserLink from '@/components/Shared/UserLink.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import UserDisplay from './UserDisplay.vue'
 

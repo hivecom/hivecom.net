@@ -2,10 +2,9 @@
 import { Button, Card, Flex, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import { navigationLinks } from '@/lib/navigation'
-import { useBreakpoint } from '@/lib/mediaQuery';
 
 function scrollUp() {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 </script>
 
@@ -21,27 +20,28 @@ function scrollUp() {
         </div>
         <div class="footer__social-links">
           <Tooltip>
-          <SharedThemeToggle button no-text />
+            <SharedThemeToggle button no-text />
             <template #tooltip>
-            <p>
-              Toggle theme
-            </p>
+              <p>
+                Toggle theme
+              </p>
             </template>
           </Tooltip>
           <Tooltip v-for="(link, key) in constants.LINKS" :key="key">
-            <NuxtLink  external :to="link.url" target="_blank"
-            rel="noopener noreferrer">
-            <Button square outline>
-              <Icon :name="link.icon" />
-            </Button>
-          </NuxtLink>
-          <template #tooltip>
-            <p>
-              Visit our {{ link.name }}
-            </p>
-          </template>
+            <NuxtLink
+              external :to="link.url" target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button square outline>
+                <Icon :name="link.icon" />
+              </Button>
+            </NuxtLink>
+            <template #tooltip>
+              <p>
+                Visit our {{ link.name }}
+              </p>
+            </template>
           </Tooltip>
-
         </div>
       </Flex>
 
@@ -69,10 +69,8 @@ function scrollUp() {
               </Button>
             </NuxtLink>
           </Flex>
-
         </template>
       </Card>
-
     </div>
   </footer>
 </template>
@@ -119,7 +117,6 @@ function scrollUp() {
     .footer__navigation {
       opacity: 1;
     }
-
   }
 
   a:hover {
