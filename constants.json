@@ -6,26 +6,21 @@
     "IRC_CHANNEL": "#staff",
     "IRC_URL": "irc://irc.hivecom.net:6697/#staff"
   },
-
   "EVENT_CALENDAR": {
     "GOOGLE": "https://calendar.google.com/calendar?cid=Y181Zjk0NjNjNTQzMTBhNWNiNzYxNjhkM2QxZTU1ZjQzMzI0MjliZDZmNjk0NTRlOTM1MDUwZDY5YTRjZThkZGJiQGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20",
     "ICAL": "https://calendar.google.com/calendar/ical/c_5f9463c54310a5cb76168d3d1e55f4332429bd6f69454e935050d69a4ce8ddbb%40group.calendar.google.com/public/basic.ics"
   },
-
   "CURRENCY": {
     "SYMBOL": "€",
     "NAME": "Euro",
     "CODE": "EUR"
   },
-
   "CONTAINERS": {
     "STALE_HOURS": 2
   },
-
   "PATREON": {
     "URL": "https://www.patreon.com/hivecom"
   },
-
   "LINKS": {
     "DISCORD": {
       "name": "Discord",
@@ -36,6 +31,11 @@
       "name": "GitHub",
       "url": "https://github.com/hivecom",
       "icon": "mdi:github"
+    },
+    "SOURCE": {
+      "name": "website's source code",
+      "url": "https://github.com/hivecom/hivecom.net",
+      "icon": "mdi:code"
     },
     "STEAM": {
       "name": "Steam",
@@ -48,13 +48,20 @@
       "icon": "mdi:twitch"
     }
   },
-
   "PLATFORMS": {
     "IRC": {
       "title": "IRC",
       "urls": [
-        { "id": "web", "title": "Web Client", "url": "https://irc.hivecom.net/" },
-        { "id": "irc", "title": "IRC Client", "url": "irc://irc.hivecom.net:6697" }
+        {
+          "id": "web",
+          "title": "Web Client",
+          "url": "https://irc.hivecom.net/"
+        },
+        {
+          "id": "irc",
+          "title": "IRC Client",
+          "url": "irc://irc.hivecom.net:6697"
+        }
       ],
       "icon": "ph:chats-circle-bold",
       "note": "Or connect directly via SSL to irc.hivecom.net:6697",
@@ -63,7 +70,11 @@
     "TEAMSPEAK": {
       "title": "TeamSpeak",
       "urls": [
-        { "id": "eu", "title": "Europe", "url": "ts3server://eu.ts.hivecom.net" }
+        {
+          "id": "eu",
+          "title": "Europe",
+          "url": "ts3server://eu.ts.hivecom.net"
+        }
       ],
       "servers": [
         {
@@ -87,7 +98,11 @@
     "DISCORD": {
       "title": "Discord",
       "urls": [
-        { "id": "default", "title": "Default", "url": "https://discord.gg/2xsJcSuUhW" }
+        {
+          "id": "default",
+          "title": "Default",
+          "url": "https://discord.gg/2xsJcSuUhW"
+        }
       ],
       "icon": "mdi:discord",
       "note": "",
@@ -96,7 +111,11 @@
     "STEAM": {
       "title": "Steam",
       "urls": [
-        { "id": "default", "title": "Default", "url": "https://www.steamcommunity.com/groups/hivecomnetwork" }
+        {
+          "id": "default",
+          "title": "Default",
+          "url": "https://www.steamcommunity.com/groups/hivecomnetwork"
+        }
       ],
       "icon": "mdi:steam",
       "note": "",
@@ -105,7 +124,11 @@
     "SYNCPLAY": {
       "title": "Syncplay",
       "urls": [
-        { "id": "default", "title": "Default", "url": "syncplay://syncplay.hivecom.net:8999" }
+        {
+          "id": "default",
+          "title": "Default",
+          "url": "syncplay://syncplay.hivecom.net:8999"
+        }
       ],
       "icon": "ph:play-circle-bold",
       "note": "Or connect directly to syncplay.hivecom.net:8999",
