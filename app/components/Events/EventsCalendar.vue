@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Flex, theme } from '@dolanske/vui'
+import { Button, Dropdown, DropdownItem, Flex, theme } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { createArray } from '@/lib/utils/common'
@@ -19,6 +19,8 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+const calendarRef = useTemplateRef('calendar')
 
 // Initialize with current date and ensure it updates properly
 const date = ref(dayjs().startOf('day'))
@@ -161,11 +163,37 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
   return dayDate.format(dateFormat.calendarDefault) === eventStart.format(dateFormat.calendarDefault)
 }
 
+// Dropdown to select how many months to display in calendar. This option is
+// overriden by responsive layout options though.
+const calendarRowCount = ref(1)
+
+// NOTE (@dolanske): Adding more rows to the calendar would require changing the
+// column logic some more and it's a little too complicated. We can implement it
+// as a nice-to-have at some point later
+
+// const calendarRowOptions = [{
+//   label: '3 months',
+//   value: 1,
+// }, {
+//   label: '6 months',
+//   value: 2,
+// }, {
+//   label: '12 months',
+//   value: 4,
+// }]
+
+// const dropdown = useTemplateRef('dropdownRef')
+
+// function setCalendarRowCount(count: number) {
+//   calendarRowCount.value = count
+//   dropdown.value?.close()
+// }
+
 // Format events so that we get a list of events for the next 3 months
 // Uses the `date` ref (start of current month) as the reference point
 
 // Hold the starting date of the first month displayed
-const startMonth = ref(date.value)
+const startMonth = ref(date.value.startOf('month'))
 
 // Breakpoints
 const isTablet = useBreakpoint('<l')
@@ -192,6 +220,13 @@ function updatePaggeIndex(data: { id: string }[]) {
   startMonth.value = date.startOf('month')
 }
 
+function moveToToday() {
+  calendarRef.value?.move({
+    year: date.value.get('year'),
+    month: date.value.get('month') + 1,
+  })
+}
+
 const upcomingEvents = computed(() => {
   if (!props.events)
     return createArray(calendarColumns.value, () => [])
@@ -211,19 +246,45 @@ const upcomingEvents = computed(() => {
   }, createArray(calendarColumns.value, () => []))
 })
 
+// Page title depending on amount of months
 const pageTitle = computed(() => {
-  if (isMobile.value) {
+  if (isMobile.value && calendarRowCount.value === 1) {
     return 'This month'
   }
 
-  return `Next ${calendarColumns.value} months`
+  return `Next ${calendarColumns.value * calendarRowCount.value} months`
 })
 </script>
 
 <template>
-  <h2 class="events-section__title">
-    {{ pageTitle }}
-  </h2>
+  <Flex gap="m" class="events-calendar__title" y-center>
+    <h2>
+      {{ pageTitle }}
+    </h2>
+
+    <Button size="s" plain outline @click="moveToToday">
+      Today
+    </Button>
+
+    <!-- <Dropdown ref="dropdownRef">
+      <template #trigger="{ toggle }">
+        <Button size="s" plain outline @click="toggle">
+          {{ calendarRowOptions.find(({ value }) => value === calendarRowCount)?.label }}
+          <template #end>
+            <Icon name="ph:caret-down" />
+          </template>
+        </Button>
+      </template>
+      <DropdownItem
+        v-for="option in calendarRowOptions"
+        :key="option.value"
+        :class="{ 'event-calendar__active-option': option.value === calendarRowCount }"
+        @click="setCalendarRowCount(option.value)"
+      >
+        {{ option.label }}
+      </DropdownItem>
+    </Dropdown> -->
+  </Flex>
 
   <div class="events-calendar">
     <div v-if="loading" class="calendar-loading">
@@ -254,6 +315,7 @@ const pageTitle = computed(() => {
         </template>
 
         <VCalendar
+          ref="calendar"
           v-model="date"
           :attributes="calendarAttributes as any"
           expanded
@@ -261,6 +323,7 @@ const pageTitle = computed(() => {
           transparent
           borderless
           :columns="calendarColumns"
+          :rows="calendarRowCount"
           :first-day-of-week="2"
           :initial-page="{ month: date.month() + 1,
                            year: date.year() }"
@@ -268,12 +331,12 @@ const pageTitle = computed(() => {
           @did-move="updatePaggeIndex"
         >
           <template #header-prev-button="{ move }">
-            <Button square outline size="s" @click="move">
+            <Button square outline @click="move">
               <Icon name="ph:arrow-left" />
             </Button>
           </template>
           <template #header-next-button="{ move }">
-            <Button square outline size="s" @click="move">
+            <Button square outline @click="move">
               <Icon name="ph:arrow-right" />
             </Button>
           </template>
@@ -335,6 +398,20 @@ const pageTitle = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+
+  &__active-option {
+    background-color: var(--color-bg-raised) !important;
+  }
+
+  &__title {
+    margin-bottom: 1.5rem;
+
+    h2 {
+      color: var(--color-text);
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-semibold);
+    }
+  }
 
   .vc-container {
     width: 100%;
@@ -559,8 +636,11 @@ const pageTitle = computed(() => {
 }
 
 .vc-title {
-  color: var(--color-text);
-  font-weight: var(--font-weight-semibold);
+  span {
+    color: var(--color-text);
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-l);
+  }
 
   @media (max-width: $breakpoint-s) {
     font-size: var(--font-size-m);
@@ -579,7 +659,7 @@ const pageTitle = computed(() => {
   color: var(--color-text-lightest);
   font-weight: var(--font-weight-medium);
   font-size: var(--font-size-xs);
-  padding: var(--space-xs);
+  padding: var(--space-s) var(--space-xs);
 
   @media (max-width: $breakpoint-s) {
     font-size: var(--font-size-xxs);
@@ -588,6 +668,8 @@ const pageTitle = computed(() => {
 }
 
 .vc-day {
+  min-height: 36px;
+
   &:hover .vc-day-content {
     background-color: var(--color-surface-lighter);
   }

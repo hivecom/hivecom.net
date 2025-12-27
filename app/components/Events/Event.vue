@@ -157,9 +157,14 @@ updateTime()
 
   &--first {
     background-color: var(--color-bg-raised);
+    padding: var(--space-l);
 
     h3 {
       font-size: var(--font-size-xxxl);
+    }
+
+    p {
+      font-size: var(--font-size-l);
     }
 
     span {

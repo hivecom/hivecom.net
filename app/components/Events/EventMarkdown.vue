@@ -40,10 +40,8 @@ const props = defineProps<Props>()
   }
 
   &__content {
-    max-width: 680px;
-    // line-height: 1.6;
-    margin: auto;
-    padding: var(--space-l);
+    padding: var(--space-m);
+    max-width: 728px;
 
     :deep(.typeset > :first-child) {
       margin-top: 0 !important;

@@ -244,16 +244,18 @@ useHead({
         />
       </div>
 
-      <!-- Markdown -->
-      <EventMarkdown :event="event" />
+      <div class="event-detail__content">
+        <!-- Markdown -->
+        <EventMarkdown :event="event" />
 
-      <!-- Metadata -->
-      <MetadataCard
-        :created-at="event.created_at"
-        :created-by="event.created_by"
-        :modified-at="event.modified_at"
-        :modified-by="event.modified_by"
-      />
+        <!-- Metadata -->
+        <MetadataCard
+          :created-at="event.created_at"
+          :created-by="event.created_by"
+          :modified-at="event.modified_at"
+          :modified-by="event.modified_by"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -266,6 +268,12 @@ useHead({
 
   &__back-link {
     text-decoration: none;
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-l);
   }
 }
 </style>

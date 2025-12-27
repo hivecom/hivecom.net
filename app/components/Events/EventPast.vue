@@ -54,15 +54,15 @@ const count = computed(() => countEl.value?.count ?? 0)
 
 <style lang="scss">
 .event-past {
-  width: 324px;
-  min-width: 324px;
+  width: 328px;
+  min-width: 328px;
 
   &:hover {
     background-color: var(--color-bg-raised);
   }
 
   &__wrapper {
-    height: 128px;
+    height: 144px;
   }
 
   &__title {

@@ -70,13 +70,13 @@ const sortedData = computed<FormattedEvents>(() => {
     display: flex;
     flex-wrap: nowrap;
     gap: var(--space-xs);
-    align-items: center;
+    align-items: baseline;
     text-decoration: none;
     background-color: var(--color-bg-medium);
     border-radius: var(--border-radius-s);
     font-size: var(--font-size-s);
     padding-inline: var(--space-xs);
-    padding-block: 6px;
+    padding-block: 8px;
     color: var(--color-text-lighter);
     transition: var(--transition-fast);
 
@@ -89,6 +89,7 @@ const sortedData = computed<FormattedEvents>(() => {
 
     strong {
       flex: 1;
+      font-size: var(--font-size-s);
       font-weight: var(--font-weight-medium);
     }
 
