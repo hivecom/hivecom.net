@@ -81,7 +81,11 @@ function updateHoveredElement(event: MouseEvent) {
                 <Icon v-if="link.children" name="ph:caret-down-fill" size="12px" />
               </NuxtLink>
 
-              <Popout v-if="link.children" placement="bottom-start" class="navigation__links-popout" :anchor="hoveredElement" :visible="!!hoveredElement?.firstElementChild?.textContent.includes(link.label)">
+              <Popout
+                v-if="link.children" placement="bottom-start" class="navigation__links-popout"
+                :anchor="hoveredElement"
+                :visible="!!hoveredElement?.firstElementChild?.textContent.includes(link.label)"
+              >
                 <NuxtLink v-for="sublink in link.children" :key="sublink.path" :to="sublink.path">
                   <DropdownItem>
                     {{ sublink.label }}
@@ -92,9 +96,7 @@ function updateHoveredElement(event: MouseEvent) {
           </template>
 
           <ul
-            class="navigation__links-hover"
-            :class="{ active: !isOutside }"
-            :style="{
+            class="navigation__links-hover" :class="{ active: !isOutside }" :style="{
               left: `${elementX}px`,
               width: `${width}px`,
             }"
@@ -105,10 +107,7 @@ function updateHoveredElement(event: MouseEvent) {
 
         <!-- Mobile menu -->
         <Sheet
-          class="navigation__mobile-sheet"
-          :open="mobileMenuOpen"
-          position="left"
-          :card="{ separators: true }"
+          class="navigation__mobile-sheet" :open="mobileMenuOpen" position="left" :card="{ separators: true }"
           @close="closeMobileMenu"
         >
           <template #header>
@@ -120,8 +119,7 @@ function updateHoveredElement(event: MouseEvent) {
           <div class="navigation__mobile-menu">
             <template v-for="link in navigationLinks" :key="link.path">
               <NuxtLink
-                v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)"
-                :to="link.path"
+                v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)" :to="link.path"
                 class="navigation__mobile-menu-item"
                 :class="{ 'router-link-active': $route.path.includes(link.path) && link.path !== '/' }"
                 @click="closeMobileMenu"
@@ -134,11 +132,8 @@ function updateHoveredElement(event: MouseEvent) {
 
               <div class="navigation__mobile-submenu">
                 <NuxtLink
-                  v-for="sublink in link.children"
-                  :key="sublink.path"
-                  :to="sublink.path"
-                  class="navigation__mobile-menu-item"
-                  @click="closeMobileMenu"
+                  v-for="sublink in link.children" :key="sublink.path" :to="sublink.path"
+                  class="navigation__mobile-menu-item" @click="closeMobileMenu"
                 >
                   {{ sublink.label }}
                 </NuxtLink>
@@ -315,8 +310,14 @@ function updateHoveredElement(event: MouseEvent) {
 
             .iconify {
               color: var(--color-text);
-              transform: rotate(180deg);
             }
+          }
+        }
+
+        &.router-link-focused,
+        &:hover {
+          .iconify {
+            transform: rotate(180deg);
           }
         }
       }
