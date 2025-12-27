@@ -89,6 +89,10 @@ function scrollUp() {
   filter: invert(1);
 }
 
+:root.dark .card-bg {
+  background-color: var(--color-bg-raised);
+}
+
 .container-footer {
   max-width: 932px;
 }
@@ -96,7 +100,7 @@ function scrollUp() {
 .footer {
   width: 100%;
   padding-block: 80px;
-  background-color: var(--color-bg);
+  background-color: var(--color-bg-medium);
   border-top: 1px solid var(--color-border);
 
   @media (max-width: $breakpoint-s) {
@@ -146,7 +150,7 @@ function scrollUp() {
   }
 
   &__navigation {
-    opacity: 0.5;
+    opacity: 0.65;
     transition: var(--transition-slow);
   }
 
