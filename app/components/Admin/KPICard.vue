@@ -14,7 +14,7 @@ defineProps<{
 </script>
 
 <template>
-  <Card class="kpi-card" :padding="false">
+  <Card class="kpi-card card-bg" :padding="false">
     <Flex column gap="m" expand>
       <Flex gap="m" y-center expand>
         <div v-if="icon" class="kpi-card__icon-container" :class="`kpi-card__icon-container--${variant || 'primary'}`">
@@ -50,7 +50,7 @@ defineProps<{
 
 <style lang="scss" scoped>
 .kpi-card {
-  padding: var(--space-l);
+  padding: var(--space-m);
   height: 100%;
   width: 100%;
   display: flex;
@@ -59,9 +59,9 @@ defineProps<{
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
     border-radius: var(--border-radius-m);
 
     .iconify {
@@ -100,6 +100,7 @@ defineProps<{
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
     color: var(--color-text-light);
+    line-height: 1.5em
   }
 
   &__value-container {

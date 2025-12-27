@@ -2,7 +2,7 @@
 import type { Ref } from 'vue'
 
 import type { CmsAsset } from '@/lib/cmsAssets'
-import { Alert, Badge, Button, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Toasts } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Toasts, Breadcrumbs, BreadcrumbItem, ButtonGroup } from '@dolanske/vui'
 
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
@@ -470,27 +470,16 @@ onBeforeMount(fetchAssets)
 <template>
   <Flex column gap="l" expand>
     <Flex column gap="s" expand>
-      <div class="asset-manager__breadcrumbs" role="navigation" aria-label="Breadcrumb">
-        <template v-for="(crumb, index) in breadcrumbs" :key="crumb.path || `crumb-${index}`">
-          <button
-            v-if="crumb.path !== currentPrefix"
-            type="button"
-            class="asset-manager__breadcrumb"
-            @click="changePrefix(crumb.path)"
-          >
-            {{ crumb.label || 'Root' }}
-          </button>
-          <span v-else class="asset-manager__breadcrumb asset-manager__breadcrumb--current">
-            {{ crumb.label || 'Root' }}
-          </span>
-          <Icon
-            v-if="index < breadcrumbs.length - 1"
-            name="ph:caret-right"
-            size="12"
-            class="asset-manager__breadcrumb-separator"
-          />
-        </template>
-      </div>
+      <Breadcrumbs>
+        <BreadcrumbItem
+          v-for="(crumb, index) in breadcrumbs"
+          :key="crumb.path || `crumb-${index}`"
+          @click="changePrefix(crumb.path), $event.preventDefault()"
+          :href="crumb.path !== currentPrefix ? '#' : undefined"
+        >
+          {{ crumb.label || 'Root' }}
+        </BreadcrumbItem>
+      </Breadcrumbs>
 
       <Flex
         :column="isBelowMedium"
@@ -542,14 +531,14 @@ onBeforeMount(fetchAssets)
           </span>
 
           <Flex :gap="isBelowMedium ? 's' : 'xs'" :expand="isBelowMedium" :column="isBelowMedium">
-            <Flex gap="xs" class="asset-manager__view-toggle" :x-center="isBelowMedium" :expand="isBelowMedium">
-              <Button
+            <!-- <Flex gap="xs" class="asset-manager__view-toggle" :x-center="isBelowMedium" :expand="isBelowMedium"> -->
+            <ButtonGroup>              <Button
                 :variant="viewMode === 'table' ? 'accent' : 'gray'"
                 :square="!isBelowMedium"
                 expand
                 @click="viewMode = 'table'"
               >
-                <Icon name="ph:list" />
+                <Icon name="ph:list" size="18" />
               </Button>
               <Button
                 :variant="viewMode === 'grid' ? 'accent' : 'gray'"
@@ -557,9 +546,11 @@ onBeforeMount(fetchAssets)
                 expand
                 @click="viewMode = 'grid'"
               >
-                <Icon name="ph:squares-four" />
+                <Icon name="ph:squares-four" size="18" />
               </Button>
-            </Flex>
+            </ButtonGroup>
+
+            <!-- </Flex> -->
 
             <Flex
               :gap="isBelowMedium ? 's' : 'xs'"
@@ -780,38 +771,6 @@ onBeforeMount(fetchAssets)
 
 <style scoped lang="scss">
 .asset-manager {
-  &__breadcrumbs {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-xxs);
-    font-size: 0.95rem;
-  }
-
-  &__breadcrumb {
-    background: transparent;
-    border: none;
-    padding: 0;
-    color: var(--color-text);
-    font-weight: 600;
-    cursor: pointer;
-    transition: color 0.15s ease;
-
-    &:hover {
-      color: var(--color-accent);
-    }
-
-    &--current {
-      color: var(--color-text-light);
-      cursor: default;
-      pointer-events: none;
-    }
-  }
-
-  &__breadcrumb-separator {
-    color: var(--color-text-light);
-  }
-
   &__toolbar-actions {
     gap: var(--space-xxs);
   }

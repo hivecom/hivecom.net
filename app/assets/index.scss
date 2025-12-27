@@ -140,6 +140,15 @@ table td {
   }
 }
 
+.vui-breadcrumbs li {
+  color: var(--color-text-light);
+
+  &:only-child {
+    color: var(--color-text);
+
+  }
+}
+
 @media (max-width: $breakpoint-s) {
   .vui-table-container {
     width: auto !important;

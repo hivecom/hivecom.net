@@ -113,7 +113,6 @@ function handleClose() {
   <Modal
     :open="isOpen" centered :card="{
       headerSeparator: true,
-      footerSeparator: true,
     }" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose"
   >
     <template #header>
