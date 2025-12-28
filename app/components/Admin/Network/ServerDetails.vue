@@ -35,16 +35,17 @@ function handleEdit() {
     @close="handleClose"
   >
     <template #header>
-      <Flex x-between y-center>
-        <Flex column :gap="0">
+      <Flex x-between y-center class="pr-s">
+        <Flex column gap="xxs">
           <h4>Server Details</h4>
-          <span v-if="props.server" class="text-color-light text-xxs">
+          <p v-if="props.server" class="text-color-light text-m">
             {{ props.server.address }}
-          </span>
+          </p>
         </Flex>
         <Flex y-center gap="s">
           <Button
             v-if="props.server"
+            size="s"
             @click="handleEdit"
           >
             <template #start>
@@ -59,7 +60,7 @@ function handleEdit() {
     <Flex v-if="props.server" column gap="m" class="server-detail">
       <Flex column gap="m" expand>
         <!-- Basic info -->
-        <Card>
+        <Card class="card-bg">
           <Flex column gap="l" expand>
             <Grid class="detail-item" expand :columns="2">
               <span class="text-color-light text-bold">ID:</span>
@@ -84,7 +85,7 @@ function handleEdit() {
         </Card>
 
         <!-- Docker Control Info -->
-        <Card separators>
+        <Card separators class="card-bg">
           <template #header>
             <h6>Docker Control</h6>
           </template>

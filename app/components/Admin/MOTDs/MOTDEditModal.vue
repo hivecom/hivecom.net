@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Button, Flex, Input, Modal } from '@dolanske/vui'
+import { Alert, Button, Flex, Modal, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -57,22 +57,29 @@ function handleSubmit() {
   <Modal
     :open="open"
     :size="isBelowSmall ? 'screen' : 'm'"
-    :card="{ footerSeparator: true }"
+    :card="{ separators: true }"
     @close="close"
     @update:open="emit('update:open', $event)"
   >
     <template #header>
-      <h4>{{ title }}</h4>
+      <Flex column gap="xxs">
+        <h3>{{ title }}</h3>
+        <p class="text-color-light text-m">
+          Avoid writing offensive things.
+        </p>
+      </Flex>
     </template>
 
     <Flex column gap="m">
-      <Input
+      <Textarea
         v-model="message"
         autofocus
         expand
         label="Message"
         placeholder="Enter the message of the day"
-        :maxlength="128"
+        :limit="128"
+        :rows="2"
+        :resize="false"
         focus
       />
 

@@ -43,12 +43,12 @@ function handleDelete(announcement: Tables<'announcements'>) {
     @close="handleClose"
   >
     <template #header>
-      <Flex x-between y-center>
-        <Flex column :gap="0">
+      <Flex x-between y-center class="pr-s">
+        <Flex column gap="xxs">
           <h4>Announcement Details</h4>
-          <span v-if="props.announcement" class="text-color-light text-xxs">
+          <p v-if="props.announcement" class="text-color-light text-m">
             {{ props.announcement.title }}
-          </span>
+          </p>
         </Flex>
         <Flex y-center gap="s">
           <AdminActions
@@ -66,25 +66,25 @@ function handleDelete(announcement: Tables<'announcements'>) {
     <Flex v-if="props.announcement" column gap="m" class="announcement-details">
       <Flex column gap="m" expand>
         <!-- Basic info -->
-        <Card>
+        <Card class="card-bg">
           <Flex column gap="l" expand>
-            <Grid class="announcement-details__item" expand :columns="2">
+            <Grid class="announcement-details__item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.announcement.id }}</span>
             </Grid>
 
-            <Grid class="announcement-details__item" expand :columns="2">
+            <Grid class="announcement-details__item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Title:</span>
               <span>{{ props.announcement.title }}</span>
             </Grid>
 
-            <Grid class="announcement-details__item" expand :columns="2">
+            <Grid class="announcement-details__item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Pinned:</span>
               <Icon v-if="props.announcement.pinned" name="ph:push-pin-fill" class="color-accent" />
               <span v-else class="text-color-light">No</span>
             </Grid>
 
-            <Grid class="announcement-details__item" expand :columns="2">
+            <Grid class="announcement-details__item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Published:</span>
               <TimestampDate
                 :date="props.announcement.published_at"
@@ -93,14 +93,14 @@ function handleDelete(announcement: Tables<'announcements'>) {
               />
             </Grid>
 
-            <Grid v-if="props.announcement.link" class="announcement-details__item" expand :columns="2">
+            <Grid v-if="props.announcement.link" class="announcement-details__item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Link:</span>
               <NuxtLink external :href="props.announcement.link" target="_blank" class="color-accent text-m">
                 {{ props.announcement.link }}
               </NuxtLink>
             </Grid>
 
-            <Grid v-if="props.announcement.tags && props.announcement.tags.length > 0" class="announcement-details__item" expand :columns="2">
+            <Grid v-if="props.announcement.tags && props.announcement.tags.length > 0" class="announcement-details__item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Tags:</span>
               <div class="tags-display">
                 <Badge
@@ -117,7 +117,7 @@ function handleDelete(announcement: Tables<'announcements'>) {
         </Card>
 
         <!-- Description -->
-        <Card v-if="props.announcement.description" separators>
+        <Card v-if="props.announcement.description" separators class="card-bg">
           <template #header>
             <h6>Description</h6>
           </template>
@@ -126,7 +126,7 @@ function handleDelete(announcement: Tables<'announcements'>) {
         </Card>
 
         <!-- Markdown Content -->
-        <Card v-if="props.announcement.markdown" separators>
+        <Card v-if="props.announcement.markdown" separators class="card-bg">
           <template #header>
             <h6>Content</h6>
           </template>

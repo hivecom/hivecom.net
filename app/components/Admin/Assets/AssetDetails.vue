@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CmsAsset } from '@/lib/cmsAssets'
-import { Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Grid, Input, Sheet } from '@dolanske/vui'
 
 import { computed } from 'vue'
 import { formatBytes, isImageAsset } from '@/lib/cmsAssets'
@@ -28,7 +28,7 @@ const markdownSnippet = computed(() => assetUrl.value ? `![${props.asset?.name ?
 
 const isMobile = useBreakpoint('<xs')
 const showActionLabels = computed(() => !isMobile.value)
-const actionButtonSize = computed(() => showActionLabels.value ? 'm' as const : 's' as const)
+// const actionButtonSize = computed(() => showActionLabels.value ? 'm' as const : 's' as const)
 
 function closeDrawer() {
   isOpen.value = false
@@ -61,15 +61,17 @@ function requestRename() {
     @close="closeDrawer"
   >
     <template #header>
-      <Flex x-between y-center>
+      <Flex x-between y-center class="pr-s">
         <Flex column gap="xxs">
           <h4>Asset Details</h4>
-          <span class="text-xs text-color-light">{{ props.asset?.name }}</span>
+          <p class="text-m text-color-light">
+            {{ props.asset?.name }}
+          </p>
         </Flex>
         <Flex gap="xs" y-center>
           <Button
             v-if="props.canRename"
-            :size="actionButtonSize"
+            size="s"
             variant="gray"
             :square="!showActionLabels"
             @click="requestRename"
@@ -84,7 +86,7 @@ function requestRename() {
           </Button>
           <Button
             v-if="props.canDelete"
-            :size="actionButtonSize"
+            size="s"
             variant="danger"
             :square="!showActionLabels"
             @click="requestDelete"
@@ -106,31 +108,31 @@ function requestRename() {
         <img :src="assetUrl" :alt="props.asset?.name ?? 'Preview'">
       </div>
 
-      <Card>
+      <Card class="card-bg">
         <Flex column gap="l" expand>
-          <Grid class="asset-details__item" expand :columns="2">
+          <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Path:</span>
             <span>{{ props.asset?.path }}</span>
           </Grid>
 
-          <Grid class="asset-details__item" expand :columns="2">
+          <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Size:</span>
             <span>{{ formatBytes(props.asset.size) }}</span>
           </Grid>
 
-          <Grid class="asset-details__item" expand :columns="2">
+          <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Content Type:</span>
             <span>{{ props.asset.mimeType ?? 'Unknown' }}</span>
           </Grid>
 
-          <Grid class="asset-details__item" expand :columns="2">
+          <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Created:</span>
             <span>
               {{ props.asset.created_at ? new Date(props.asset.created_at).toLocaleString() : '—' }}
             </span>
           </Grid>
 
-          <Grid class="asset-details__item" expand :columns="2">
+          <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Updated:</span>
             <span>
               {{ props.asset.updated_at ? new Date(props.asset.updated_at).toLocaleString() : '—' }}
@@ -139,38 +141,44 @@ function requestRename() {
         </Flex>
       </Card>
 
-      <Card v-if="assetUrl" class="asset-details__clipboard">
-        <Flex column gap="s" expand>
-          <div>
-            <span class="text-xs text-color-light">Public URL</span>
-            <Flex gap="s" class="mt-xxs">
-              <CopyClipboard :text="assetUrl" confirm>
-                <Button variant="gray">
-                  Copy URL
-                </Button>
-              </CopyClipboard>
-              <Button variant="gray" @click="openInNewTab">
-                Open
+      <Card v-if="assetUrl" class="asset-details__clipboard card-bg">
+        <Flex column gap="l" expand>
+          <Flex y-end expand gap="xs">
+            <Input
+              class="flex-1"
+              expand
+              readonly
+              :model-value="assetUrl"
+              label="Public URL"
+            />
+            <CopyClipboard :text="assetUrl" confirm>
+              <Button square variant="gray">
+                <Icon name="ph:copy" size="18" />
               </Button>
-            </Flex>
-            <div class="asset-details__code mt-xs">
-              {{ assetUrl }}
-            </div>
-          </div>
+            </CopyClipboard>
+            <Button square variant="gray" @click="openInNewTab">
+              <!-- Open -->
+              <Icon name="ph:arrow-square-out" size="18" />
+            </Button>
+          </Flex>
 
-          <div v-if="markdownSnippet">
-            <span class="text-xs text-color-light">Markdown Snippet</span>
-            <Flex gap="s" class="mt-xxs">
-              <CopyClipboard :text="markdownSnippet" confirm>
-                <Button variant="gray">
-                  Copy Markdown
-                </Button>
-              </CopyClipboard>
-            </Flex>
-            <div class="asset-details__code mt-xs">
-              {{ markdownSnippet }}
-            </div>
-          </div>
+          <Flex v-if="markdownSnippet" y-end expand gap="xs">
+            <Input
+              class="flex-1"
+              expand
+              readonly
+              :model-value="markdownSnippet"
+              label="Markdown snippet"
+            />
+            <CopyClipboard :text="markdownSnippet" confirm>
+              <Button square variant="gray">
+                <Icon name="ph:copy" size="18" />
+              </Button>
+            </CopyClipboard>
+            <Button square variant="gray" @click="openInNewTab">
+              <Icon name="ph:arrow-square-out" size="18" />
+            </Button>
+          </Flex>
         </Flex>
       </Card>
     </Flex>

@@ -711,11 +711,11 @@ function clearBirthday() {
     @close="handleClose"
   >
     <template #header>
-      <Flex column :gap="0">
+      <Flex column gap="xxs">
         <h4>{{ props.isEditMode ? 'Edit User' : 'Add User' }}</h4>
-        <span v-if="props.isEditMode && props.user" class="text-color-light text-xxs">
+        <p v-if="props.isEditMode && props.user" class="text-color-light text-m">
           {{ props.user.username }}
-        </span>
+        </p>
       </Flex>
     </template>
 

@@ -41,7 +41,7 @@ function formatMonth(month: string): string {
     <Flex v-if="props.funding" column gap="m" class="funding-details">
       <Flex column gap="l" expand>
         <!-- Basic info -->
-        <Card>
+        <Card class="card-bg">
           <Flex column gap="l" expand>
             <Grid class="funding-details__item" expand :columns="2">
               <span class="funding-details__label">Month:</span>
@@ -61,7 +61,7 @@ function formatMonth(month: string): string {
         </Card>
 
         <!-- Patreon Funding -->
-        <Card separators>
+        <Card separators class="card-bg">
           <template #header>
             <Flex y-center gap="s">
               <Icon name="ph:patreon-logo" size="1.6rem" class="color-accent" />
@@ -90,7 +90,7 @@ function formatMonth(month: string): string {
         </Card>
 
         <!-- Single Donations -->
-        <Card separators>
+        <Card separators class="card-bg">
           <template #header>
             <Flex y-center gap="s">
               <Icon name="ph:coin-fill" size="1.6rem" class="color-accent" />

@@ -204,11 +204,11 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
     @close="handleClose"
   >
     <template #header>
-      <Flex column :gap="0">
+      <Flex column gap="xxs">
         <h4>{{ formTitle }}</h4>
-        <span v-if="props.isEditMode && props.referendum" class="text-color-light text-xxs">
+        <p v-if="props.isEditMode && props.referendum" class="text-color-light text-m">
           {{ props.referendum.title }}
-        </span>
+        </p>
       </Flex>
     </template>
 

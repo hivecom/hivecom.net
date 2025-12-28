@@ -64,8 +64,6 @@ const { hasPermission } = useAdminPermissions()
 const isMobile = useBreakpoint('<xs')
 const showLabels = computed(() => !!props.showLabels && !isMobile.value)
 
-const buttonSize = computed(() => showLabels.value ? 'm' as const : 's' as const)
-
 // Helper function to check if user has permission for specific action
 function hasActionPermission(action: string): boolean {
   const permission = `${props.resourceType}.${action}`
@@ -167,11 +165,11 @@ function getItemDisplayName(): string {
 </script>
 
 <template>
-  <Flex v-if="hasVisibleActions" :gap="showLabels ? 's' : 'xs'">
+  <Flex v-if="hasVisibleActions" gap="xs">
     <!-- Edit Action -->
     <Button
       v-if="showEditAction"
-      :size="buttonSize"
+      size="s"
       variant="gray"
       :square="!showLabels"
       :data-title-top="!showLabels ? `Edit ${resourceType.slice(0, -1)}` : undefined"
@@ -191,7 +189,7 @@ function getItemDisplayName(): string {
     <Button
       v-for="(action, index) in visibleCustomActions"
       :key="index"
-      :size="buttonSize"
+      size="s"
       :variant="action.variant || 'gray'"
       :square="!showLabels"
       :data-title-top-right="!showLabels ? action.label : undefined"
@@ -210,7 +208,7 @@ function getItemDisplayName(): string {
     <!-- Delete Action -->
     <Button
       v-if="showDeleteAction"
-      :size="buttonSize"
+      size="s"
       variant="danger"
       :square="!showLabels"
       :data-title-top-right="!showLabels ? `Delete ${resourceType.slice(0, -1)}` : undefined"

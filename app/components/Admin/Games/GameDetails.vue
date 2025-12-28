@@ -152,12 +152,12 @@ watchEffect(async () => {
     @close="handleClose"
   >
     <template #header>
-      <Flex x-between y-center>
-        <Flex column :gap="0">
+      <Flex x-between y-center class="pr-s">
+        <Flex column gap="xxs">
           <h4>Game Details</h4>
-          <span v-if="props.game" class="text-color-light text-xxs">
+          <p v-if="props.game" class="text-color-light text-m">
             {{ props.game.name }}
-          </span>
+          </p>
         </Flex>
         <Flex y-center gap="s">
           <AdminActions
@@ -175,7 +175,7 @@ watchEffect(async () => {
     <Flex v-if="props.game" column gap="m" expand class="game-details">
       <Flex column gap="l" expand>
         <!-- Basic info -->
-        <Card>
+        <Card class="card-bg">
           <Flex column gap="l" expand>
             <Grid class="game-details__item" expand :columns="2">
               <span class="game-details__label">ID:</span>
@@ -212,7 +212,7 @@ watchEffect(async () => {
         </Card>
 
         <!-- Related Game Servers -->
-        <Card separators>
+        <Card separators class="card-bg">
           <template #header>
             <h6>Related Game Servers</h6>
           </template>
@@ -258,7 +258,7 @@ watchEffect(async () => {
         </Card>
 
         <!-- Game Assets -->
-        <Card v-if="props.game.shorthand" separators>
+        <Card v-if="props.game.shorthand" separators class="card-bg">
           <template #header>
             <h6>Game Assets</h6>
           </template>
@@ -328,7 +328,7 @@ watchEffect(async () => {
         </Card>
 
         <!-- No shorthand notice -->
-        <Card v-else-if="props.game">
+        <Card v-else-if="props.game" class="card-bg">
           <Flex y-center gap="s" class="game-details__placeholder-text">
             <Icon name="ph:info" />
             <span>Game assets are not available because this game has no shorthand assigned.</span>

@@ -244,21 +244,22 @@ function getUserInitials(username: string): string {
     @close="handleClose"
   >
     <template #header>
-      <Flex x-between y-center>
-        <Flex column :gap="0">
+      <Flex x-between y-center class="pr-s">
+        <Flex column gap="xxs">
           <h4>User Details</h4>
-          <span v-if="user" class="text-color-light text-xxs">
+          <p v-if="user" class="text-color-light text-m">
             <UserLink :user-id="user.id" />
-          </span>
+          </p>
         </Flex>
+
         <UserActions
           v-if="user"
           v-model="userAction"
           :user="user"
           :status="userStatus"
-          :show-labels="true"
           :current-user-id="currentUser?.id"
           :is-loading="isDetailActionLoading"
+          show-labels
         />
       </Flex>
     </template>
@@ -266,21 +267,21 @@ function getUserInitials(username: string): string {
     <Flex v-if="user" column gap="m" class="user-detail">
       <Flex column gap="m" expand>
         <!-- Basic Info -->
-        <Card>
+        <Card class="card-bg">
           <Flex column gap="l" expand>
-            <Grid class="detail-item" :columns="2" expand>
+            <Grid class="detail-item" columns="1fr 2fr" expand>
               <span class="text-color-light text-bold">UUID:</span>
               <CopyClipboard :text="user.id">
-                <span class="user-id">{{ user.id }}</span>
+                <code class="user-id">{{ user.id }}</code>
               </CopyClipboard>
             </Grid>
 
-            <Grid class="detail-item" expand :columns="2">
+            <Grid class="detail-item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Username:</span>
               <UserLink :user-id="user.id" />
             </Grid>
 
-            <Grid class="detail-item" expand :columns="2">
+            <Grid class="detail-item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Email:</span>
               <template v-if="user.email">
                 <CopyClipboard :text="user.email" confirm>
@@ -290,19 +291,19 @@ function getUserInitials(username: string): string {
               <span v-else class="text-color-light text-s">No email on file</span>
             </Grid>
 
-            <Grid class="detail-item" expand :columns="2">
+            <Grid class="detail-item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Status:</span>
               <UserStatusIndicator :status="userStatus" :show-label="true" />
             </Grid>
 
-            <Grid class="detail-item" :columns="2" expand>
+            <Grid class="detail-item" columns="1fr 2fr" expand>
               <span class="text-color-light text-bold">Role:</span>
               <span>
                 <RoleIndicator :role="user.role" />
               </span>
             </Grid>
 
-            <Grid class="detail-item" :columns="2" expand>
+            <Grid class="detail-item" columns="1fr 2fr" expand>
               <span class="text-color-light text-bold">Last Seen:</span>
               <span
                 class="text-s"
@@ -317,7 +318,7 @@ function getUserInitials(username: string): string {
             </Grid>
 
             <!-- Website Information -->
-            <Grid v-if="(user as any).website" class="detail-item" :columns="2" expand>
+            <Grid v-if="(user as any).website" class="detail-item" columns="1fr 2fr" expand>
               <span class="text-color-light text-bold">Website:</span>
               <a
                 :href="(user as any).website"
@@ -330,7 +331,7 @@ function getUserInitials(username: string): string {
             </Grid>
 
             <!-- Friends Information -->
-            <Grid class="detail-item" :columns="2" expand wrap>
+            <Grid class="detail-item" columns="1fr 2fr" expand wrap>
               <span class="text-color-light text-bold">Friends:</span>
               <Flex gap="xs" y-center wrap>
                 <span class="text-s">
@@ -353,12 +354,12 @@ function getUserInitials(username: string): string {
               </Flex>
             </Grid>
 
-            <Grid v-if="hasActiveBan && user.ban_duration" class="detail-item" :columns="2" expand>
+            <Grid v-if="hasActiveBan && user.ban_duration" class="detail-item" columns="1fr 2fr" expand>
               <span class="text-color-light text-bold">Ban Duration:</span>
               <span class="ban-duration">{{ user.ban_duration }}</span>
             </Grid>
 
-            <Grid v-if="countryInfo" class="detail-item" :columns="2" expand>
+            <Grid v-if="countryInfo" class="detail-item" columns="1fr 2fr" expand>
               <span class="text-color-light text-bold">Country:</span>
               <Flex gap="xs" y-center class="country-display">
                 <span class="country-emoji" role="img" :aria-label="countryInfo.name">
@@ -373,7 +374,7 @@ function getUserInitials(username: string): string {
         </Card>
 
         <!-- Ban Information -->
-        <Card v-if="user.banned" separators class="ban-info-card">
+        <Card v-if="user.banned" separators class="ban-info-card card-bg">
           <template #header>
             <h6 class="ban-header">
               Ban Information
@@ -411,6 +412,7 @@ function getUserInitials(username: string): string {
         <!-- Platform Connections -->
         <Card
           v-if="user.patreon_id || user.discord_id || user.steam_id"
+          class="card-bg"
           separators
         >
           <template #header>
@@ -443,7 +445,7 @@ function getUserInitials(username: string): string {
 
         <Flex expand :wrap="isBelowSmall">
           <!-- User Introduction -->
-          <Card separators expand class="introduction-card">
+          <Card separators expand class="introduction-card card-bg">
             <template #header>
               <h6>Introduction</h6>
             </template>
@@ -452,7 +454,7 @@ function getUserInitials(username: string): string {
             </div>
           </Card>
           <!-- User Avatar -->
-          <Card separators class="avatar-card">
+          <Card separators class="avatar-card card-bg">
             <template #header>
               <h6>Avatar</h6>
             </template>
@@ -465,7 +467,7 @@ function getUserInitials(username: string): string {
         </Flex>
 
         <!-- User Profile Markdown -->
-        <Card v-if="user.markdown" separators>
+        <Card v-if="user.markdown" separators class="card-bg">
           <template #header>
             <h6>Profile Content</h6>
           </template>
@@ -546,10 +548,6 @@ function getUserInitials(username: string): string {
 .profile-markdown {
   max-height: 400px;
   overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-s);
-  padding: var(--space-m);
-  background-color: var(--color-bg-lowered);
 }
 
 .avatar-section {

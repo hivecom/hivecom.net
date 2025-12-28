@@ -27,7 +27,6 @@ const { canDeleteComplaints } = useAdminPermissions()
 
 const isMobile = useBreakpoint('<xs')
 const showActionLabels = computed(() => !isMobile.value)
-const actionButtonSize = computed(() => showActionLabels.value ? 'm' as const : 's' as const)
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -201,11 +200,11 @@ function confirmDeleteComplaint() {
     @close="handleClose"
   >
     <template #header>
-      <Flex x-between y-center gap="l">
+      <Flex x-between y-center gap="l" class="pr-s">
         <h4>Complaint #{{ complaint?.id }}</h4>
         <Button
           v-if="canDeleteComplaints"
-          :size="actionButtonSize"
+          size="s"
           variant="danger"
           :square="!showActionLabels"
           @click="handleDeleteComplaint"
@@ -222,7 +221,7 @@ function confirmDeleteComplaint() {
     </template>
 
     <div v-if="complaint" class="complaint-details">
-      <Card separators>
+      <Card separators class="card-bg">
         <template #header>
           <Flex column gap="m">
             <!-- Header row with title and badge -->
@@ -246,7 +245,7 @@ function confirmDeleteComplaint() {
 
         <template #footer>
           <!-- Metadata row -->
-          <Flex column gap="s" class="complaint-header-meta" expand>
+          <Flex column gap="s" expand>
             <!-- Context and date info -->
             <Flex gap="l" wrap expand>
               <Flex gap="xs" y-center expand x-between>
@@ -284,7 +283,7 @@ function confirmDeleteComplaint() {
 
       <h5>Response</h5>
       <!-- Response section -->
-      <Card v-if="complaint.response && !isEditingResponse" separators>
+      <Card v-if="complaint.response && !isEditingResponse" separators class="card-bg">
         <template #header>
           <div v-if="complaint.response">
             <Flex gap="m" y-center>
@@ -298,7 +297,7 @@ function confirmDeleteComplaint() {
               <Flex gap="xs">
                 <Button
                   variant="gray"
-                  :size="actionButtonSize"
+                  size="s"
                   :square="!showActionLabels"
                   @click="handleEditResponse"
                 >
@@ -312,7 +311,7 @@ function confirmDeleteComplaint() {
                 </Button>
                 <Button
                   variant="danger"
-                  :size="actionButtonSize"
+                  size="s"
                   :square="!showActionLabels"
                   @click="handleRemoveResponse"
                 >
@@ -368,7 +367,7 @@ function confirmDeleteComplaint() {
         <!-- Acknowledge button -->
         <Button
           v-if="status === 'pending'"
-          :size="actionButtonSize"
+          size="s"
           variant="accent"
           :square="!showActionLabels"
           @click="handleAcknowledge"
@@ -385,7 +384,7 @@ function confirmDeleteComplaint() {
         <!-- Respond/Update button -->
         <Button
           v-if="complaint && ((canRespond && responseText.trim() && !complaint.response) || isEditingResponse)"
-          :size="actionButtonSize"
+          size="s"
           variant="success"
           :loading="isSubmitting"
           :square="!showActionLabels"

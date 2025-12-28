@@ -197,25 +197,26 @@ function updateFileName(id: string, value: string) {
   <Sheet
     :open="isOpen"
     position="right"
-    separator
+    :card="{ separators: true }"
     :size="520"
     @close="closeDrawer"
   >
     <template #header>
-      <Flex column gap="xs">
+      <Flex column gap="xxs">
         <h4>Upload Assets</h4>
-        <p class="text-color-light text-s">
+        <p class="text-color-light text-m">
           Upload images into the hivecom-cms bucket for use inside markdown content.
         </p>
       </Flex>
     </template>
 
     <Flex column gap="m" class="upload-drawer">
-      <Card class="upload-drawer__destination">
+      <Card class="upload-drawer__destination card-bg">
         <Flex column gap="xs">
-          <span class="text-xs text-color-light">Destination Folder</span>
+          <!-- <span class="text-xs text-color-light">Destination Folder</span> -->
           <Input
             v-model="targetFolder"
+            label="Destination folder"
             placeholder="Optional subfolder (e.g. banners/motd)"
             :disabled="uploading"
             expand

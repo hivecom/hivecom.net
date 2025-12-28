@@ -85,7 +85,7 @@ function handleRevealResults() {
 </script>
 
 <template>
-  <Card class="p-l">
+  <Card class="p-l card-bg">
     <Flex x-between y-center class="mb-m">
       <h3>
         Results

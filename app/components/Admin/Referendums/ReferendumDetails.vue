@@ -88,12 +88,12 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
     @close="handleClose"
   >
     <template #header>
-      <Flex x-between y-center>
-        <Flex column :gap="0">
+      <Flex x-between y-center class="pr-s">
+        <Flex column gap="xxs">
           <h4>Referendum Details</h4>
-          <span v-if="props.referendum" class="text-color-light text-xxs">
+          <p v-if="props.referendum" class="text-color-light text-m">
             {{ props.referendum.title }}
-          </span>
+          </p>
         </Flex>
         <Flex y-center gap="s">
           <AdminActions
@@ -111,7 +111,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
     <Flex v-if="props.referendum" column gap="m" class="referendum-details">
       <Flex column gap="m" expand>
         <!-- Basic info -->
-        <Card>
+        <Card class="card-bg">
           <Flex column gap="l" expand>
             <Grid class="referendum-details__item" expand :columns="2">
               <span class="text-color-light text-bold">ID:</span>
@@ -172,7 +172,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
             </Grid>
           </Flex>
         </Card>        <!-- Description -->
-        <Card v-if="props.referendum.description" separators>
+        <Card v-if="props.referendum.description" separators class="card-bg">
           <template #header>
             <h6>Description</h6>
           </template>
@@ -187,7 +187,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
             :votes="referendumVotes"
           />
         </Flex>
-        <Card v-else class="p-l">
+        <Card v-else class="p-l card-bg">
           <Flex x-between y-center class="mb-m">
             <h3>Results</h3>
           </Flex>
