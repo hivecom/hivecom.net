@@ -100,7 +100,7 @@ defineProps<{
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
     color: var(--color-text-light);
-    line-height: 1.5em
+    line-height: 1.5em;
   }
 
   &__value-container {

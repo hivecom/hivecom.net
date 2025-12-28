@@ -2,7 +2,7 @@
 import type { Ref } from 'vue'
 
 import type { CmsAsset } from '@/lib/cmsAssets'
-import { Alert, Badge, Button, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Toasts, Breadcrumbs, BreadcrumbItem, ButtonGroup } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Toasts } from '@dolanske/vui'
 
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
@@ -474,8 +474,8 @@ onBeforeMount(fetchAssets)
         <BreadcrumbItem
           v-for="(crumb, index) in breadcrumbs"
           :key="crumb.path || `crumb-${index}`"
-          @click="changePrefix(crumb.path), $event.preventDefault()"
           :href="crumb.path !== currentPrefix ? '#' : undefined"
+          @click="changePrefix(crumb.path), $event.preventDefault()"
         >
           {{ crumb.label || 'Root' }}
         </BreadcrumbItem>
@@ -532,7 +532,8 @@ onBeforeMount(fetchAssets)
 
           <Flex :gap="isBelowMedium ? 's' : 'xs'" :expand="isBelowMedium" :column="isBelowMedium">
             <!-- <Flex gap="xs" class="asset-manager__view-toggle" :x-center="isBelowMedium" :expand="isBelowMedium"> -->
-            <ButtonGroup>              <Button
+            <ButtonGroup>
+              <Button
                 :variant="viewMode === 'table' ? 'accent' : 'gray'"
                 :square="!isBelowMedium"
                 expand
