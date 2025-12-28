@@ -18,7 +18,7 @@ import dayjs from 'dayjs'
 import { computed, onBeforeMount, ref, watch, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
 import { lineChartDefaultOptions } from '@/lib/charts'
-import { deepMergePlainObjects, getCSSVariable } from '@/lib/utils/common'
+import { deepMergePlainObjects } from '@/lib/utils/common'
 
 const props = defineProps<Props>()
 
