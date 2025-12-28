@@ -18,6 +18,8 @@ import {
 import dayjs from 'dayjs'
 import { computed, onBeforeMount, ref, watch, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
+import { lineChartDefaultOptions } from '@/lib/charts'
+import { deepMergePlainObjects } from '@/lib/utils/common'
 
 const props = defineProps<Props>()
 
@@ -88,8 +90,7 @@ const chartData = computed(() => {
         label: 'Monthly Income (€)',
         data: monthlyIncomeData,
         borderColor: '#22C55E',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-        tension: 0.4,
+        backgroundColor: '#22C55E',
         yAxisID: 'y',
         fill: false,
       },
@@ -97,8 +98,7 @@ const chartData = computed(() => {
         label: 'Lifetime Earnings (€)',
         data: lifetimeEarningsData,
         borderColor: '#8B5CF6',
-        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-        tension: 0.4,
+        backgroundColor: '#8B5CF6',
         yAxisID: 'y1',
         fill: false,
       },
@@ -107,21 +107,10 @@ const chartData = computed(() => {
 })
 
 // Chart options
-const chartOptions: ChartOptions<'line'> = {
-  responsive: true,
-  maintainAspectRatio: false,
+const localChartOptions: ChartOptions<'line'> = {
   plugins: {
     title: {
-      display: true,
       text: 'Monthly Income vs Lifetime Earnings',
-      font: {
-        size: 16,
-        weight: 'bold',
-      },
-    },
-    legend: {
-      display: true,
-      position: 'top',
     },
     tooltip: {
       mode: 'index',
@@ -142,21 +131,16 @@ const chartOptions: ChartOptions<'line'> = {
   },
   scales: {
     x: {
-      display: true,
       title: {
         display: true,
         text: 'Month',
       },
     },
     y: {
-      type: 'linear',
-      display: true,
-      position: 'left',
       title: {
         display: true,
         text: 'Monthly Income (€)',
       },
-      beginAtZero: true,
     },
     y1: {
       type: 'linear',
@@ -171,11 +155,6 @@ const chartOptions: ChartOptions<'line'> = {
         drawOnChartArea: false,
       },
     },
-  },
-  interaction: {
-    mode: 'nearest',
-    axis: 'x',
-    intersect: false,
   },
 }
 
@@ -275,7 +254,7 @@ onBeforeMount(fetchMonthlyFundings)
       <Line
         ref="chartRef"
         :data="chartData"
-        :options="chartOptions"
+        :options="deepMergePlainObjects(lineChartDefaultOptions, localChartOptions)"
       />
     </div>
   </div>
@@ -285,7 +264,7 @@ onBeforeMount(fetchMonthlyFundings)
 .chart-container {
   width: 100%;
   min-height: 320px;
-  background: var(--color-bg);
+  background-color: var(--color-bg);
   border-radius: var(--border-radius-m);
   padding: var(--space-m);
   border: 1px solid var(--color-border);

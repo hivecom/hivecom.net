@@ -71,7 +71,7 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="open" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
+  <Modal :open="open" :size="isBelowSmall ? 'screen' : undefined" :card="{ separators: true }" @close="handleClose">
     <template #header>
       <h3>Ban User: {{ props.user.username }}</h3>
     </template>
