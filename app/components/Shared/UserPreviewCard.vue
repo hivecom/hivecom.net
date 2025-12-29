@@ -76,16 +76,9 @@ function handleRetry() {
 </script>
 
 <template>
-  <Card class="user-preview-card" :aria-busy="loading">
+  <Card v-if="!loading" class="user-preview-card">
     <div v-if="!props.userId" class="user-preview-card__state user-preview-card__state--empty">
       <p>Select a user to preview.</p>
-    </div>
-
-    <div v-else-if="loading" class="user-preview-card__state">
-      <Flex gap="s" y-center>
-        <Spinner size="s" />
-        <p>Loading profile…</p>
-      </Flex>
     </div>
 
     <div v-else-if="error || !user" class="user-preview-card__state user-preview-card__state--error">
