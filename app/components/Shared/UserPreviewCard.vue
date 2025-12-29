@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Avatar, Button, Card, Divider, Flex, Spinner } from '@dolanske/vui'
+import { Avatar, Button, Divider, Flex } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
@@ -76,7 +76,7 @@ function handleRetry() {
 </script>
 
 <template>
-  <Card v-if="!loading" class="user-preview-card">
+  <div v-if="!loading" class="user-preview-card">
     <div v-if="!props.userId" class="user-preview-card__state user-preview-card__state--empty">
       <p>Select a user to preview.</p>
     </div>
@@ -157,7 +157,7 @@ function handleRetry() {
         </p>
       </div>
     </div>
-  </Card>
+  </div>
 </template>
 
 <style scoped lang="scss">
@@ -167,6 +167,7 @@ function handleRetry() {
   gap: var(--space-m);
   width: 320px;
   max-width: 100%;
+  padding: var(--space-m);
 }
 
 .user-preview-card__avatar {

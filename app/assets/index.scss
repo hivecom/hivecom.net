@@ -108,7 +108,6 @@ button {
 }
 
 .card-bg {
-  // background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
   background-color: var(--color-bg-card);
 
   .vui-card-header,
@@ -117,10 +116,6 @@ button {
     background-color: transparent;
   }
 }
-
-// :root:not(.dark) .card-bg {
-//   background-color: var(--light-color-bg-card);
-// }
 
 .vui-tooltip {
   z-index: 9999 !important;
@@ -150,6 +145,16 @@ table td {
 
   &:only-child {
     color: var(--color-text);
+  }
+}
+
+.vui-popout {
+  box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.5);
+}
+
+:root.light {
+  .vui-popout {
+    box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.125);
   }
 }
 
