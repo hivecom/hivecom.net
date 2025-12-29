@@ -31,12 +31,12 @@ const canReadContainers = computed(() => hasPermission('containers.read'))
 // Tab management - compute available tabs and set default
 const availableTabs = computed(() => {
   const tabs = []
-  if (canReadServers.value)
-    tabs.push({ label: 'Servers', value: 'Servers' })
-  if (canReadGameservers.value)
-    tabs.push({ label: 'Gameservers', value: 'Gameservers' })
   if (canReadContainers.value)
     tabs.push({ label: 'Containers', value: 'Containers' })
+  if (canReadGameservers.value)
+    tabs.push({ label: 'Gameservers', value: 'Gameservers' })
+  if (canReadServers.value)
+    tabs.push({ label: 'Servers', value: 'Servers' })
   return tabs
 })
 

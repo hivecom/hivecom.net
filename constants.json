@@ -1,4 +1,12 @@
 {
+  "SPLASH_MESSAGE": "A community of friends from all around the world",
+  "SPLASH_ALTERNATIVES": [
+    "Internet like it's 20XX",
+    "Your gateway to touching grass, with friends",
+    "Building a better internet, together",
+    "Crossing the generational divide"
+  ],
+  "SPLASH_ALTERNATIVES_CHANCE": 0.5,
   "API_ERROR": "Internal server error - please email contact@hivecom.net or visit #staff on irc.hivecom.net for support",
   "UI_ERROR": "Email contact@hivecom.net or visit #staff on irc.hivecom.net for support",
   "SUPPORT": {

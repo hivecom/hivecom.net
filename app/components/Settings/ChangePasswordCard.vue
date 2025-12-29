@@ -28,8 +28,8 @@ async function sendPasswordReset() {
 
     const redirectUrl = import.meta.client
       ? (process.env.NODE_ENV === 'development'
-          ? 'http://localhost:3000/auth/confirm'
-          : `${window.location.origin}/auth/confirm`)
+          ? 'http://localhost:3000/auth/confirm-password'
+          : `${window.location.origin}/auth/confirm-password`)
       : undefined
 
     const { error } = await supabase.auth.resetPasswordForEmail(user.value.email, redirectUrl ? { redirectTo: redirectUrl } : undefined)

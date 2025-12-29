@@ -5,6 +5,7 @@ import { reactive, ref, watch } from 'vue'
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
 
 const props = defineProps<{ profile: Tables<'profiles'> | null }>()
 const emit = defineEmits<{ (e: 'updated'): void }>()
@@ -16,6 +17,7 @@ const isBelowSmall = useBreakpoint('<s')
 const disconnectLoading = reactive({
   patreon: false,
   discord: false,
+  steam: false,
 })
 
 const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Settings/ConnectPatreon.vue'))
@@ -25,6 +27,9 @@ const ConnectTeamspeak = defineAsyncComponent(() => import('@/components/Setting
 
 const richPresenceEnabled = ref(!(props.profile?.rich_presence_disabled ?? false))
 const richPresenceLoading = ref(false)
+
+const hasTeamSpeakConnected = computed(() => normalizeTeamSpeakIdentities(props.profile?.teamspeak_identities).length > 0)
+const isProfileLoading = computed(() => props.profile === null)
 
 watch(
   () => props.profile?.rich_presence_disabled,
@@ -122,6 +127,38 @@ async function disconnectDiscord() {
   }
 }
 
+async function disconnectSteam() {
+  if (disconnectLoading.steam)
+    return
+
+  disconnectLoading.steam = true
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error)
+      throw error
+    if (!user)
+      throw new Error('You must be signed in to disconnect Steam.')
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ steam_id: null })
+      .eq('id', user.id)
+
+    if (updateError)
+      throw updateError
+
+    pushToast('Steam disconnected successfully.')
+    emit('updated')
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to disconnect Steam.'
+    showErrorToast(message)
+  }
+  finally {
+    disconnectLoading.steam = false
+  }
+}
+
 async function updateRichPresence(enabled: boolean) {
   if (richPresenceLoading.value)
     return
@@ -202,7 +239,17 @@ function toggleRichPresence() {
 
           <div class="account-status" :style="{ width: isBelowSmall ? '100%' : undefined }">
             <Button
-              v-if="props.profile?.patreon_id"
+              v-if="isProfileLoading"
+              :expand="isBelowSmall"
+              variant="fill"
+              :loading="true"
+              disabled
+              aria-disabled="true"
+            >
+              Loading
+            </Button>
+            <Button
+              v-else-if="props.profile?.patreon_id"
               :expand="isBelowSmall"
               variant="danger"
               :loading="disconnectLoading.patreon"
@@ -246,7 +293,26 @@ function toggleRichPresence() {
           </Flex>
 
           <div class="account-status" :style="{ width: isBelowSmall ? '100%' : undefined }">
-            <ClientOnly v-if="!props.profile?.steam_id">
+            <Button
+              v-if="isProfileLoading"
+              :expand="isBelowSmall"
+              variant="fill"
+              :loading="true"
+              disabled
+              aria-disabled="true"
+            >
+              Loading
+            </Button>
+            <Button
+              v-else-if="props.profile?.steam_id"
+              :expand="isBelowSmall"
+              variant="danger"
+              :loading="disconnectLoading.steam"
+              @click="disconnectSteam"
+            >
+              Disconnect
+            </Button>
+            <ClientOnly v-else>
               <ConnectSteam :expand="isBelowSmall" @linked="emit('updated')" />
             </ClientOnly>
           </div>
@@ -283,7 +349,17 @@ function toggleRichPresence() {
 
           <div class="account-status" :style="{ width: isBelowSmall ? '100%' : undefined }">
             <Button
-              v-if="props.profile?.discord_id"
+              v-if="isProfileLoading"
+              :expand="isBelowSmall"
+              variant="fill"
+              :loading="true"
+              disabled
+              aria-disabled="true"
+            >
+              Loading
+            </Button>
+            <Button
+              v-else-if="props.profile?.discord_id"
               :expand="isBelowSmall"
               variant="danger"
               :loading="disconnectLoading.discord"
@@ -313,7 +389,13 @@ function toggleRichPresence() {
               <Icon name="mdi:teamspeak" size="20" />
             </div>
             <Flex column expand class="account-row">
-              <strong>TeamSpeak</strong>
+              <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
+                <strong>TeamSpeak</strong>
+                <TinyBadge v-if="hasTeamSpeakConnected" variant="success">
+                  <Icon class="text-color-accent" name="ph:check" />
+                  Connected
+                </TinyBadge>
+              </Flex>
               <p class="text-xs text-color-lighter">
                 Link your TeamSpeak identities to receive server access and roles
               </p>
@@ -321,7 +403,17 @@ function toggleRichPresence() {
           </Flex>
 
           <div class="account-status teamspeak-actions" :style="{ width: isBelowSmall ? '100%' : undefined }">
-            <ClientOnly>
+            <Button
+              v-if="isProfileLoading"
+              :expand="isBelowSmall"
+              variant="fill"
+              :loading="true"
+              disabled
+              aria-disabled="true"
+            >
+              Loading
+            </Button>
+            <ClientOnly v-else>
               <ConnectTeamspeak :profile="props.profile" @linked="emit('updated')" />
             </ClientOnly>
           </div>

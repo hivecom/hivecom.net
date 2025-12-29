@@ -1011,6 +1011,17 @@ export interface Database {
         Returns: boolean
       }
       generate_username: { Args: never, Returns: string }
+      get_admin_user_overview: {
+        Args: never
+        Returns: {
+          auth_provider: string
+          auth_providers: string[]
+          discord_display_name: string
+          email: string
+          is_confirmed: boolean
+          user_id: string
+        }[]
+      }
       get_user_emails: {
         Args: never
         Returns: {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Flex } from '@dolanske/vui'
+import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
 
+import RolesTable from '@/components/Admin/Roles/RolesTable.vue'
 import UserDetails from '@/components/Admin/Users/UserDetails.vue'
 import UserForm from '@/components/Admin/Users/UserForm.vue'
 import UserKPIs from '@/components/Admin/Users/UserKPIs.vue'
@@ -51,20 +52,61 @@ interface UserFormData {
 // Get admin permissions and current user
 const {
   canViewUsers,
+  canViewRoles,
   canUpdateRoles,
 } = useAdminPermissions()
+
+const route = useRoute()
 
 const currentUser = useSupabaseUser()
 const currentUserId = useUserId()
 const supabase = useSupabaseClient()
 
-// Ensure user has at least read permission for users
-if (!canViewUsers.value) {
+// Ensure user has permission to view at least one tab
+if (!canViewUsers.value && !canViewRoles.value) {
   throw createError({
     statusCode: 403,
-    statusMessage: 'Insufficient permissions to view users',
+    statusMessage: 'Insufficient permissions to view users or roles',
   })
 }
+
+// Tab management (pattern aligned with admin/network)
+const availableTabs = computed(() => {
+  const tabs: { label: string, value: 'Users' | 'Roles' }[] = []
+  if (canViewUsers.value)
+    tabs.push({ label: 'Users', value: 'Users' })
+  if (canViewRoles.value)
+    tabs.push({ label: 'Roles', value: 'Roles' })
+  return tabs
+})
+
+const activeTab = ref<'Users' | 'Roles' | ''>('')
+
+watch(availableTabs, (newTabs) => {
+  if (newTabs.length === 0)
+    return
+
+  const queryTab = route.query.tab
+  if (typeof queryTab === 'string' && (queryTab === 'Users' || queryTab === 'Roles')) {
+    const isAllowed = newTabs.some(t => t.value === queryTab)
+    if (isAllowed) {
+      activeTab.value = queryTab
+      return
+    }
+  }
+
+  if (!activeTab.value && newTabs[0]) {
+    activeTab.value = newTabs[0].value
+  }
+}, { immediate: true })
+
+const pageTitle = 'Users & Roles'
+
+const pageSubtitle = computed(() => {
+  if (activeTab.value === 'Roles')
+    return 'View role-based permissions and access control matrix'
+  return 'Manage user accounts, permissions, and ban status'
+})
 
 // Reactive state
 const selectedUser = ref<AdminUserProfile | null>(null)
@@ -346,26 +388,43 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
     <Flex column gap="l" expand>
       <!-- Page Header -->
       <Flex column :gap="0">
-        <h1>Users</h1>
+        <h1>{{ pageTitle }}</h1>
         <p class="text-color-light">
-          Manage user accounts, permissions, and ban status
+          {{ pageSubtitle }}
         </p>
       </Flex>
 
-      <!-- KPIs Section -->
-      <UserKPIs v-model:refresh-signal="refreshSignal" />
+      <Tabs v-if="availableTabs.length > 1" v-model="activeTab">
+        <Tab v-for="tab in availableTabs" :key="tab.value" :value="tab.value">
+          {{ tab.label }}
+        </Tab>
+      </Tabs>
 
-      <!-- Users Table -->
-      <UserTable
-        v-model:refresh-signal="refreshSignal"
-        @user-selected="handleUserSelected"
-        @action="handleUserAction"
-        @update:refresh-signal="handleRefreshSignal"
-      />
+      <Alert v-if="availableTabs.length === 0" variant="info">
+        You don't have permission to view users or roles.
+      </Alert>
+
+      <!-- Users Tab -->
+      <Flex v-if="canViewUsers" v-show="activeTab === 'Users'" column gap="l" expand>
+        <UserKPIs v-model:refresh-signal="refreshSignal" />
+
+        <UserTable
+          v-model:refresh-signal="refreshSignal"
+          @user-selected="handleUserSelected"
+          @action="handleUserAction"
+          @update:refresh-signal="handleRefreshSignal"
+        />
+      </Flex>
+
+      <!-- Roles Tab -->
+      <Flex v-if="canViewRoles" v-show="activeTab === 'Roles'" column gap="l" expand>
+        <RolesTable />
+      </Flex>
     </Flex>
 
     <!-- User Details Side Panel -->
     <UserDetails
+      v-if="activeTab === 'Users'"
       v-model:is-open="showUserDetails"
       v-model:user-action="userAction"
       v-model:refresh-user="userRefreshTrigger"

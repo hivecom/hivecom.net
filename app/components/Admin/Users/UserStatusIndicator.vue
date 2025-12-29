@@ -21,12 +21,13 @@ const statusDescriptions = {
   <Tooltip placement="top">
     <template #tooltip>
       <div class="tooltip-content">
-        {{ statusDescriptions[status] }}
+        {{ statusDescriptions[$props.status] }}
       </div>
     </template>
     <Flex class="status-indicator-wrapper" y-center>
-      <span :class="`status-indicator ${status}`" />
-      <span v-if="showLabel" class="text-s">{{ statusLabels[status] }}</span>
+      <span v-if="showLabel" class="text-s status-text" :class="$props.status">
+        {{ statusLabels[$props.status] }}
+      </span>
     </Flex>
   </Tooltip>
 </template>
@@ -35,22 +36,14 @@ const statusDescriptions = {
 .status-indicator-wrapper {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
 }
 
-.status-indicator {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.status-text {
+  color: var(--color-text-lighter);
+}
 
-  &.active {
-    background-color: var(--color-text-green);
-  }
-
-  &.banned {
-    background-color: var(--color-text-red);
-  }
+.status-text.banned {
+  color: var(--color-text-red);
 }
 
 .tooltip-content {

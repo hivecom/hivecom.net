@@ -9,6 +9,7 @@ const email = ref('')
 const err = ref('')
 const loading = ref(false)
 const discordLoading = ref(false)
+const googleLoading = ref(false)
 const showEmailNotice = ref(false)
 const isBelowS = useBreakpoint('<s')
 const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(720px, 96vh)'))
@@ -78,6 +79,32 @@ async function signUpWithDiscord() {
     discordLoading.value = false
   }
 }
+
+async function signUpWithGoogle() {
+  err.value = ''
+  showEmailNotice.value = false
+  googleLoading.value = true
+
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: getAuthRedirectUrl(),
+        scopes: 'email profile',
+      },
+    })
+
+    if (error)
+      throw error
+  }
+  catch (error) {
+    console.error('Google sign-up error:', error)
+    err.value = error instanceof Error ? error.message : 'Unable to continue with Google.'
+  }
+  finally {
+    googleLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -94,6 +121,12 @@ async function signUpWithDiscord() {
                 <Flex y-center gap="s">
                   <Icon name="ph:discord-logo" />
                   Sign-up through Discord
+                </Flex>
+              </Button>
+              <Button variant="gray" :loading="googleLoading" class="w-100" @click="signUpWithGoogle">
+                <Flex y-center gap="s">
+                  <Icon name="ph:google-logo" />
+                  Sign-up through Google
                 </Flex>
               </Button>
             </Flex>

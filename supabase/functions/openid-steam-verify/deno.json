@@ -1,0 +1,8 @@
+{
+  "name": "openid-steam-verify",
+  "imports": {
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
+    "database-types": "../../../types/database.types.ts"
+  },
+  "exports": {}
+}
