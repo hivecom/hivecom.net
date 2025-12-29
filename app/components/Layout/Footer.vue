@@ -75,24 +75,15 @@ function scrollUp() {
   </footer>
 </template>
 
-<style lang="scss">
+<style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
-
-:deep(.vui-card .vui-card-content),
-:deep(.vui-card .vui-card-footer) {
-  padding: 4px;
-}
 
 :root.light .footer__logo {
   filter: invert(1);
 }
 
-:root.dark .card-bg {
+:root.dark .footer .card-bg {
   background-color: var(--color-bg-raised);
-}
-
-.container-footer {
-  max-width: 932px;
 }
 
 .footer {
@@ -100,6 +91,15 @@ function scrollUp() {
   padding-block: 64px;
   background-color: var(--color-bg-medium);
   border-top: 1px solid var(--color-border);
+
+  .container-footer {
+    max-width: 932px;
+  }
+
+  :deep(.vui-card .vui-card-content),
+  :deep(.vui-card .vui-card-footer) {
+    padding: 4px;
+  }
 
   @media (max-width: $breakpoint-s) {
     padding-block: var(--space-xl);

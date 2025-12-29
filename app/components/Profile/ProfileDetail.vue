@@ -810,6 +810,7 @@ async function ignoreFriendRequest() {
         <!-- (Right) -->
         <Flex column gap="m">
           <!-- Friends Section -->
+
           <ProfileFriends
             :profile="profile"
             :friends="friends"
