@@ -223,11 +223,11 @@ function handleClose() {
 </script>
 
 <template>
-  <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : 'm'" @close="handleClose">
+  <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : 'm'" :card="{ separators: true }" @close="handleClose">
     <template #header>
-      <Flex column :gap="0">
+      <Flex column gap="xxs">
         <h3>{{ props.isEditMode ? 'Edit Entry' : 'Add Entry' }}</h3>
-        <p class="text-color-light text-xs">
+        <p class="text-color-light text-m">
           {{ props.isEditMode ? form.key : 'Create a new key/value pair' }}
         </p>
       </Flex>

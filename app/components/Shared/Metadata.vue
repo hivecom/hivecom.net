@@ -31,7 +31,7 @@ const showModifiedUser = computed(() => {
           Created
         </span>
         <TimestampDate size="xs" :date="createdAt" format="MMM D, YYYY [at] HH:mm" />
-        <UserDisplay v-if="createdBy" :user-id="createdBy" show-role />
+        <UserDisplay v-if="createdBy" class="mt-xs" :user-id="createdBy" show-role size="s" />
       </Flex>
 
       <Flex v-if="modifiedAt" column gap="xs">
@@ -39,7 +39,7 @@ const showModifiedUser = computed(() => {
           Modified
         </span>
         <TimestampDate size="xs" :date="modifiedAt" format="MMM D, YYYY [at] HH:mm" />
-        <UserDisplay v-if="showModifiedUser" :user-id="modifiedBy" show-role />
+        <UserDisplay v-if="showModifiedUser" class="mt-xs" :user-id="modifiedBy" show-role size="s" />
       </Flex>
     </Flex>
   </Flex>

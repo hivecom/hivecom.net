@@ -305,11 +305,11 @@ onMounted(fetchDropdownData)
     @close="handleClose"
   >
     <template #header>
-      <Flex column :gap="0">
+      <Flex column gap="xxs">
         <h4>{{ props.isEditMode ? 'Edit Game Server' : 'Add Game Server' }}</h4>
-        <span v-if="props.isEditMode && props.gameserver" class="text-color-light text-xxs">
+        <p v-if="props.isEditMode && props.gameserver" class="text-color-light text-m">
           {{ props.gameserver.name }}
-        </span>
+        </p>
       </Flex>
     </template>
 

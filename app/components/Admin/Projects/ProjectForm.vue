@@ -294,11 +294,11 @@ function handleTagInputEnter() {
     @close="handleClose"
   >
     <template #header>
-      <Flex column :gap="0">
+      <Flex column gap="xxs">
         <h4>{{ props.isEditMode ? 'Edit Project' : 'Add Project' }}</h4>
-        <span v-if="props.isEditMode && props.project" class="text-color-light text-xxs">
+        <p v-if="props.isEditMode && props.project" class="text-color-light text-m">
           {{ props.project.title }}
-        </span>
+        </p>
       </Flex>
     </template>
 
@@ -338,7 +338,7 @@ function handleTagInputEnter() {
             :error="bannerError"
             :disabled="!canManageBanner"
             :show-delete="!!bannerUrl && canManageBanner"
-            :aspect-ratio="16 / 9"
+            :aspect-ratio="16 / 5"
             @upload="handleBannerUpload"
             @delete="handleBannerDelete"
             @invalid="handleBannerInvalid"

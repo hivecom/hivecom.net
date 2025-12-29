@@ -80,12 +80,12 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
     @close="handleClose"
   >
     <template #header>
-      <Flex x-between y-center>
-        <Flex column :gap="0">
+      <Flex x-between y-center class="pr-s">
+        <Flex column gap="xxs">
           <h4>Expense Details</h4>
-          <span v-if="props.expense" class="text-color-light text-xxs">
+          <p v-if="props.expense" class="text-color-light text-m">
             {{ props.expense.name }}
-          </span>
+          </p>
         </Flex>
         <Flex y-center gap="s">
           <AdminActions
@@ -103,7 +103,7 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
     <Flex v-if="props.expense" column gap="m" class="expense-details">
       <Flex column gap="l" expand>
         <!-- Basic info -->
-        <Card>
+        <Card class="card-bg">
           <Flex column gap="l" expand>
             <Grid class="expense-details__item" expand :columns="2">
               <span class="expense-details__label">ID:</span>
@@ -148,7 +148,7 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
         </Card>
 
         <!-- Date Information -->
-        <Card separators>
+        <Card separators class="card-bg">
           <template #header>
             <h6>Date Information</h6>
           </template>

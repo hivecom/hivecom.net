@@ -51,12 +51,12 @@ function handleDelete(project: Tables<'projects'>) {
     @close="handleClose"
   >
     <template #header>
-      <Flex x-between y-center>
-        <Flex column :gap="0">
+      <Flex x-between y-center class="pr-s">
+        <Flex column gap="xxs">
           <h4>Project Details</h4>
-          <span v-if="props.project" class="text-color-light text-xxs">
+          <p v-if="props.project" class="text-color-light text-m">
             {{ props.project.title }}
-          </span>
+          </p>
         </Flex>
         <Flex y-center gap="s">
           <AdminActions
@@ -74,7 +74,7 @@ function handleDelete(project: Tables<'projects'>) {
     <Flex v-if="props.project" column gap="m" class="project-details">
       <Flex column gap="m" expand>
         <!-- Basic info -->
-        <Card>
+        <Card class="card-bg">
           <Flex column gap="l" expand>
             <Grid class="project-details__item" expand :columns="2">
               <span class="text-color-light text-bold">ID:</span>
@@ -146,7 +146,7 @@ function handleDelete(project: Tables<'projects'>) {
         </Card>
 
         <!-- Description -->
-        <Card v-if="props.project.description" separators>
+        <Card v-if="props.project.description" separators class="card-bg">
           <template #header>
             <h6>Description</h6>
           </template>
@@ -155,7 +155,7 @@ function handleDelete(project: Tables<'projects'>) {
         </Card>
 
         <!-- Markdown Content -->
-        <Card v-if="props.project.markdown" separators>
+        <Card v-if="props.project.markdown" separators class="card-bg">
           <template #header>
             <h6>Content</h6>
           </template>

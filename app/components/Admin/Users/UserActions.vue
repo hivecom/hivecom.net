@@ -25,7 +25,7 @@ const { canModifyUsers, canDeleteUsers } = useAdminPermissions()
 const isMobile = useBreakpoint('<xs')
 const showLabels = computed(() => !!props.showLabels && !isMobile.value)
 
-const buttonSize = computed(() => showLabels.value ? 'm' as const : 's' as const)
+// const buttonSize = computed(() => showLabels.value ? 'm' as const : 's' as const)
 
 // Define a model value for actions with proper type
 interface UserAction {
@@ -99,10 +99,10 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 </script>
 
 <template>
-  <Flex :gap="showLabels ? 's' : 'xs'">
+  <Flex gap="xs">
     <Button
       v-if="canModifyUsers"
-      :size="buttonSize"
+      size="s"
       variant="gray"
       :square="!showLabels"
       :data-title-top="!showLabels ? 'Edit User' : undefined"
@@ -119,7 +119,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 
     <Button
       v-if="!isCurrentlyBanned && canModifyUsers && !isCurrentUser"
-      :size="buttonSize"
+      size="s"
       variant="danger"
       :loading="isActionLoading('ban')"
       :square="!showLabels"
@@ -137,7 +137,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 
     <Button
       v-if="isCurrentlyBanned && canModifyUsers && !isCurrentUser"
-      :size="buttonSize"
+      size="s"
       variant="success"
       :loading="isActionLoading('unban')"
       :square="!showLabels"
@@ -155,7 +155,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 
     <Button
       v-if="canDeleteUsers && !isCurrentUser"
-      :size="buttonSize"
+      size="s"
       variant="danger"
       :loading="isActionLoading('delete')"
       :square="!showLabels"

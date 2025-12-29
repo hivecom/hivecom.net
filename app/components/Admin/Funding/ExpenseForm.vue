@@ -144,12 +144,12 @@ function confirmDelete() {
     @close="handleClose"
   >
     <template #header>
-      <Flex align="center" gap="m">
-        <Flex column :gap="0">
+      <Flex y-center gap="m" class="pr-s">
+        <Flex column gap="xxs">
           <h4>{{ props.isEditMode ? 'Edit Expense' : 'Add Expense' }}</h4>
-          <span v-if="props.isEditMode && props.expense" class="text-color-light text-xxs">
+          <p v-if="props.isEditMode && props.expense" class="text-color-light text-m">
             {{ props.expense.description || props.expense.name }}
-          </span>
+          </p>
         </Flex>
         <span
           v-if="isPlannedExpense"

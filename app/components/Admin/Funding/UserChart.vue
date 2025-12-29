@@ -17,6 +17,8 @@ import {
 import dayjs from 'dayjs'
 import { computed, onBeforeMount, ref, watch, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
+import { lineChartDefaultOptions } from '@/lib/charts'
+import { deepMergePlainObjects } from '@/lib/utils/common'
 
 const props = defineProps<Props>()
 
@@ -191,24 +193,21 @@ const chartData = computed(() => {
         label: 'Total Users',
         data: totalUsersData,
         borderColor: '#3B82F6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        tension: 0.4,
+        backgroundColor: '#3B82F6',
         yAxisID: 'y',
       },
       {
         label: 'Patreon Supporters',
         data: patreonSupportersData,
         borderColor: '#FF424D',
-        backgroundColor: 'rgba(255, 66, 77, 0.1)',
-        tension: 0.4,
+        backgroundColor: '#FF424D',
         yAxisID: 'y',
       },
       {
         label: 'Supporters',
         data: totalSupportersData,
         borderColor: '#10B981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        tension: 0.4,
+        backgroundColor: '#10B981',
         yAxisID: 'y',
       },
     ],
@@ -216,21 +215,10 @@ const chartData = computed(() => {
 })
 
 // Chart options
-const chartOptions: ChartOptions<'line'> = {
-  responsive: true,
-  maintainAspectRatio: false,
+const localChartOptions: ChartOptions<'line'> = {
   plugins: {
     title: {
-      display: true,
       text: 'User Growth Over Time',
-      font: {
-        size: 16,
-        weight: 'bold',
-      },
-    },
-    legend: {
-      display: true,
-      position: 'top',
     },
     tooltip: {
       mode: 'index',
@@ -245,27 +233,17 @@ const chartOptions: ChartOptions<'line'> = {
   },
   scales: {
     x: {
-      display: true,
       title: {
         display: true,
         text: 'Month',
       },
     },
     y: {
-      type: 'linear',
-      display: true,
-      position: 'left',
       title: {
         display: true,
         text: 'Number of Users',
       },
-      beginAtZero: true,
     },
-  },
-  interaction: {
-    mode: 'nearest',
-    axis: 'x',
-    intersect: false,
   },
 }
 
@@ -337,7 +315,7 @@ onBeforeMount(fetchAllData)
       <Line
         ref="chartRef"
         :data="chartData"
-        :options="chartOptions"
+        :options="deepMergePlainObjects(lineChartDefaultOptions, localChartOptions)"
       />
     </div>
   </div>
@@ -347,7 +325,7 @@ onBeforeMount(fetchAllData)
 .chart-container {
   width: 100%;
   min-height: 320px;
-  background: var(--color-bg);
+  background-color: var(--color-bg);
   border-radius: var(--border-radius-m);
   padding: var(--space-m);
   border: 1px solid var(--color-border);
