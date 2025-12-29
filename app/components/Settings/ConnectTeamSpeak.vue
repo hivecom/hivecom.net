@@ -106,6 +106,7 @@ const serverSelectModel = computed<SelectOption[] | undefined>({
 const identities = computed(() => localIdentities.value)
 const hasLinkedIdentities = computed(() => identities.value.length > 0)
 const buttonLabel = computed(() => hasLinkedIdentities.value ? 'Manage TeamSpeak' : 'Connect TeamSpeak')
+const isProfileLoading = computed(() => props.profile === null)
 const stepBadge = computed(() => {
   switch (step.value) {
     case 'manage':
@@ -410,7 +411,8 @@ function safeParseJson(input: string): unknown {
       variant="fill"
       class="teamspeak-manage"
       :expand="isBelowMedium"
-      :disabled="!hasServers"
+      :loading="isProfileLoading"
+      :disabled="isProfileLoading || !hasServers"
       @click="openModal"
     >
       <template #start>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Session } from '@supabase/supabase-js'
-import { Alert, Button, Card, Flex, Input, OTP, OTPItem, Tab, Tabs } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Input, OTP, OTPItem, Select, Tab, Tabs } from '@dolanske/vui'
 import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
@@ -26,6 +26,23 @@ const mfaError = ref('')
 const mfaVerifying = ref(false)
 const restoringMfaChallenge = ref(false)
 const showMfaReminder = ref(false)
+
+interface MfaFactor {
+  id: string
+  factor_type: 'totp' | 'phone' | 'webauthn'
+  status: 'verified' | 'unverified'
+  created_at?: string
+  friendly_name?: string | null
+}
+
+interface SelectOption {
+  label: string
+  value: string
+}
+
+const mfaDeviceOptions = ref<SelectOption[]>([])
+const mfaDeviceSelection = ref<SelectOption[]>([])
+
 const pendingMfa = reactive({
   factorId: '',
   factorLabel: '',
@@ -263,6 +280,8 @@ function resetMfaState() {
   mfaCode.value = ''
   mfaError.value = ''
   showMfaReminder.value = false
+  mfaDeviceOptions.value = []
+  mfaDeviceSelection.value = []
 }
 
 interface PrepareMfaOptions {
@@ -286,14 +305,35 @@ async function prepareMfaRequirement(options: PrepareMfaOptions = {}) {
     if (factorsError)
       throw factorsError
 
-    const factors = Array.isArray(data?.totp) && data.totp.length ? data.totp : data?.all || []
-    const verifiedTotp = factors.find(factor => factor.factor_type === 'totp' && factor.status === 'verified')
+    const allFactors = (Array.isArray(data?.all) ? data.all : []) as MfaFactor[]
+    const verifiedTotpFactors = allFactors.filter(factor => factor.factor_type === 'totp' && factor.status === 'verified')
 
-    if (!verifiedTotp)
+    if (!verifiedTotpFactors.length)
       throw new Error('No verified authenticator is configured for this account.')
 
-    pendingMfa.factorId = verifiedTotp.id
-    pendingMfa.factorLabel = verifiedTotp.friendly_name || email.value
+    const optionsList = verifiedTotpFactors.map((factor, index) => {
+      const friendly = factor.friendly_name?.trim()
+      return {
+        label: friendly || `Authenticator app ${index + 1}`,
+        value: factor.id,
+      }
+    })
+
+    mfaDeviceOptions.value = optionsList
+
+    const existingSelection = mfaDeviceSelection.value[0]
+    const preferredOption = existingSelection
+      ? optionsList.find(option => option.value === existingSelection.value)
+      : undefined
+
+    const selectedOption = preferredOption ?? optionsList[0]
+    if (!selectedOption)
+      throw new Error('No verified authenticator is configured for this account.')
+
+    mfaDeviceSelection.value = [selectedOption]
+
+    pendingMfa.factorId = selectedOption.value
+    pendingMfa.factorLabel = selectedOption.label || email.value
     await ensureMfaQueryFlag()
 
     if (options.remindUser) {
@@ -316,6 +356,23 @@ async function prepareMfaRequirement(options: PrepareMfaOptions = {}) {
     return false
   }
 }
+
+watch(mfaDeviceSelection, (selection) => {
+  if (!requiresMfaChallenge.value)
+    return
+
+  const next = selection[0]
+  if (!next)
+    return
+
+  if (pendingMfa.factorId === next.value)
+    return
+
+  pendingMfa.factorId = next.value
+  pendingMfa.factorLabel = next.label
+  mfaCode.value = ''
+  mfaError.value = ''
+})
 
 async function verifyMfaCode() {
   if (!requiresMfaChallenge.value)
@@ -440,6 +497,18 @@ onBeforeUnmount(() => {
               <h5 class="mfa-heading">
                 Enter your authenticator code
               </h5>
+              <span v-if="pendingMfa.factorLabel" class="text-xs text-color-lighter">
+                Using: {{ pendingMfa.factorLabel }}
+              </span>
+            </Flex>
+            <Flex v-if="mfaDeviceOptions.length > 1" column gap="xs" expand>
+              <Select
+                v-model="mfaDeviceSelection"
+                :options="mfaDeviceOptions"
+                placeholder="Select MFA device"
+                :disabled="mfaVerifying"
+                expand
+              />
             </Flex>
             <Flex column gap="xs" expand x-center>
               <Flex y-center gap="s" column x-center expand>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Session } from '@supabase/supabase-js'
-import { Alert, Button, Card, Flex, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Input, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
 import { useCacheUserData } from '@/composables/useCacheUserData'
@@ -12,6 +12,7 @@ interface MfaFactor {
   id: string
   factor_type: 'totp' | 'phone' | 'webauthn'
   status: 'verified' | 'unverified'
+  created_at?: string
   friendly_name?: string | null
 }
 
@@ -28,27 +29,30 @@ const { user: currentUserData } = useCacheUserData(userId, {
 })
 
 const mfaLoading = ref(false)
+const mfaHasFetched = ref(false)
 const mfaError = ref('')
 const totpError = ref('')
 const totpSuccess = ref('')
-const disableTotpError = ref('')
 const mfaFactors = ref<MfaFactor[]>([])
-const disableTotpModalOpen = ref(false)
-const disableTotpLoading = ref(false)
+const removeFactorError = ref('')
+const removeFactorModalOpen = ref(false)
+const removeFactorLoading = ref(false)
+const removeFactorTarget = ref<MfaFactor | null>(null)
 const totpSetup = reactive({
   factorId: '',
   qrCode: '',
   secret: '',
   uri: '',
   code: '',
+  friendlyName: '',
   enrolling: false,
   verifying: false,
 })
 const mfaCache = useCacheMfaStatus()
 
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
-const verifiedTotpFactor = computed(() => mfaFactors.value.find(f => f.factor_type === 'totp' && f.status === 'verified') || null)
-const hasVerifiedTotp = computed(() => Boolean(verifiedTotpFactor.value))
+const showMfaSkeleton = computed(() => hasMfaSupport.value && Boolean(user.value) && (mfaLoading.value || !mfaHasFetched.value))
+const hasVerifiedTotp = computed(() => mfaFactors.value.some(f => f.factor_type === 'totp' && f.status === 'verified'))
 const isTotpSetupActive = computed(() => Boolean(totpSetup.qrCode && totpSetup.secret))
 const mfaStatusCopy = computed(() => (hasVerifiedTotp.value
   ? 'Authenticator codes are required the next time you sign in.'
@@ -72,12 +76,68 @@ function resolveErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
+function factorTypeLabel(factorType: MfaFactor['factor_type']) {
+  if (factorType === 'totp')
+    return 'Authenticator app'
+  if (factorType === 'phone')
+    return 'Phone'
+  return 'Security key'
+}
+
+function factorDisplayName(factor: MfaFactor, fallbackIndex: number) {
+  const friendly = factor.friendly_name?.trim()
+  if (friendly)
+    return friendly
+  return `${factorTypeLabel(factor.factor_type)} ${fallbackIndex + 1}`
+}
+
+function formatFactorDate(value?: string) {
+  if (!value)
+    return ''
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime()))
+    return ''
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  }).format(parsed)
+}
+
+function nextTotpFriendlyName() {
+  const takenNames = new Set(
+    mfaFactors.value
+      .map(factor => factor.friendly_name?.trim())
+      .filter((name): name is string => Boolean(name)),
+  )
+
+  const existingTotpCount = mfaFactors.value.filter(factor => factor.factor_type === 'totp').length
+  let index = Math.max(1, existingTotpCount + 1)
+
+  while (takenNames.has(`Authenticator app ${index}`))
+    index++
+
+  return `Authenticator app ${index}`
+}
+
+function isFriendlyNameTaken(name: string) {
+  const normalized = name.trim()
+  if (!normalized)
+    return false
+
+  const normalizedKey = normalized.toLocaleLowerCase()
+  return mfaFactors.value.some(factor => (factor.friendly_name?.trim() ?? '').toLocaleLowerCase() === normalizedKey)
+}
+
 function resetTotpSetup() {
   totpSetup.factorId = ''
   totpSetup.qrCode = ''
   totpSetup.secret = ''
   totpSetup.uri = ''
   totpSetup.code = ''
+  totpSetup.friendlyName = ''
   totpSetup.enrolling = false
   totpSetup.verifying = false
 }
@@ -114,6 +174,7 @@ async function loadMfaFactors() {
   }
   finally {
     mfaLoading.value = false
+    mfaHasFetched.value = true
   }
 }
 
@@ -146,9 +207,18 @@ async function startTotpEnrollment() {
     await loadMfaFactors()
     await cleanupPendingTotpFactor()
 
+    const requestedName = totpSetup.friendlyName.trim()
+    const friendlyName = requestedName || nextTotpFriendlyName()
+
+    if (isFriendlyNameTaken(friendlyName)) {
+      totpError.value = 'A device with this name already exists. Choose a different name.'
+      return
+    }
+
     const { data, error } = await supabase.auth.mfa.enroll({
       factorType: 'totp',
       issuer: 'Hivecom',
+      friendlyName,
     })
 
     if (error)
@@ -163,6 +233,7 @@ async function startTotpEnrollment() {
     totpSetup.secret = data.totp.secret ?? ''
     totpSetup.uri = data.totp.uri ?? ''
     totpSetup.code = ''
+    totpSetup.friendlyName = friendlyName
 
     await loadMfaFactors()
   }
@@ -235,28 +306,63 @@ async function verifyTotpEnrollment() {
   }
 }
 
-async function disableTotp() {
-  if (!verifiedTotpFactor.value)
+function requestRemoveFactor(factor: MfaFactor) {
+  removeFactorTarget.value = factor
+  removeFactorModalOpen.value = true
+  removeFactorError.value = ''
+  totpSuccess.value = ''
+}
+
+const removeFactorTitle = computed(() => {
+  const factor = removeFactorTarget.value
+  if (!factor)
+    return 'Remove MFA device'
+
+  if (factor.status === 'unverified')
+    return 'Remove pending setup'
+
+  return 'Remove MFA device'
+})
+
+const removeFactorDescription = computed(() => {
+  const factor = removeFactorTarget.value
+  if (!factor)
+    return 'Remove this multi-factor authentication device?'
+
+  if (factor.status === 'unverified')
+    return 'This authenticator setup has not been verified yet. Removing it will cancel the setup.'
+
+  return 'Removing this device will stop it from being usable for future sign-ins.'
+})
+
+async function removeSelectedFactor() {
+  const factor = removeFactorTarget.value
+  if (!factor)
     return
 
-  disableTotpError.value = ''
+  removeFactorError.value = ''
   totpSuccess.value = ''
-  disableTotpLoading.value = true
+  removeFactorLoading.value = true
 
   try {
-    const { error } = await supabase.auth.mfa.unenroll({ factorId: verifiedTotpFactor.value.id })
+    const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id })
     if (error)
       throw error
 
-    pushToast('Multi-factor authentication disabled.')
+    if (factor.id === totpSetup.factorId)
+      resetTotpSetup()
+
+    pushToast('MFA device removed.')
     await loadMfaFactors()
     mfaCache.value = { currentLevel: null, nextLevel: null, fetchedAt: 0 }
+    removeFactorModalOpen.value = false
+    removeFactorTarget.value = null
   }
   catch (error) {
-    disableTotpError.value = resolveErrorMessage(error, 'Unable to disable multi-factor authentication right now.')
+    removeFactorError.value = resolveErrorMessage(error, 'Unable to remove this MFA device right now.')
   }
   finally {
-    disableTotpLoading.value = false
+    removeFactorLoading.value = false
   }
 }
 
@@ -308,19 +414,63 @@ onMounted(() => {
     <template #header>
       <Flex x-between y-center>
         <h3>Multi-Factor Authentication</h3>
-        <Icon name="ph:shield-check" />
+        <Icon :name="mfaStatusIcon" />
       </Flex>
     </template>
 
     <Flex column gap="l">
       <template v-if="hasMfaSupport">
-        <Flex v-if="mfaLoading" column gap="s">
-          <Skeleton width="50%" height="1rem" />
-          <Skeleton width="100%" height="3.5rem" />
+        <Flex v-if="showMfaSkeleton" column gap="m" expand>
+          <Flex class="security-panel" gap="l" wrap expand>
+            <Flex gap="m" y-start class="security-panel__content">
+              <div class="security-panel__icon">
+                <Skeleton width="28px" height="28px" />
+              </div>
+              <Flex column gap="xs" expand>
+                <Skeleton width="32%" height="1rem" />
+                <Skeleton width="72%" height="0.95rem" />
+                <Skeleton width="56%" height="0.95rem" />
+              </Flex>
+            </Flex>
+            <Flex expand :column="isBelowSmall" gap="s" class="security-panel__actions">
+              <Skeleton :width="isBelowSmall ? '100%' : '50%'" height="2.25rem" />
+              <Skeleton :width="isBelowSmall ? '100%' : '50%'" height="2.25rem" />
+            </Flex>
+          </Flex>
+
+          <div class="w-100">
+            <Flex column gap="s" expand>
+              <Flex x-between y-center wrap expand>
+                <Skeleton width="120px" height="1rem" />
+                <Skeleton width="90px" height="0.9rem" />
+              </Flex>
+
+              <Flex column gap="xs" class="device-list" expand>
+                <Flex
+                  v-for="i in 2"
+                  :key="i"
+                  expand
+                  class="device-row"
+                  x-between
+                  y-center
+                  wrap
+                >
+                  <Flex column gap="xxs" class="device-meta">
+                    <Skeleton width="160px" height="0.95rem" />
+                    <Skeleton width="240px" height="0.85rem" />
+                  </Flex>
+                  <Flex gap="s" y-center :column="isBelowSmall" :row="!isBelowSmall" :expand="isBelowSmall">
+                    <Skeleton width="82px" height="1.6rem" />
+                    <Skeleton :width="isBelowSmall ? '100%' : '90px'" height="2.1rem" />
+                  </Flex>
+                </Flex>
+              </Flex>
+            </Flex>
+          </div>
         </Flex>
 
         <template v-else>
-          <Flex class="security-panel" gap="l" wrap>
+          <Flex class="security-panel" gap="l" wrap expand>
             <Flex gap="m" y-start class="security-panel__content">
               <div class="security-panel__icon" :class="{ 'is-active': hasVerifiedTotp }">
                 <Icon :name="mfaStatusIcon" size="28" />
@@ -338,28 +488,73 @@ onMounted(() => {
                 </p>
               </Flex>
             </Flex>
-            <Flex expand column gap="s" class="security-panel__actions">
+            <Flex expand :column="isBelowSmall" gap="s" class="security-panel__actions">
               <Button
-                v-if="hasVerifiedTotp"
-                variant="danger"
-                :expand="isBelowSmall"
-                :loading="disableTotpLoading"
-                @click="disableTotpModalOpen = true"
-              >
-                Disable Authenticator
-              </Button>
-              <Button
-                v-else
                 variant="accent"
-                :expand="isBelowSmall"
-                :loading="totpSetup.enrolling"
                 :disabled="isTotpSetupActive"
+                :class="isBelowSmall ? 'w-100' : 'w-50'"
                 @click="startTotpEnrollment"
               >
-                Set Up Authenticator App
+                {{ hasVerifiedTotp ? 'Add Another Device' : 'Set Up Authenticator App' }}
               </Button>
+              <Input
+                v-model="totpSetup.friendlyName"
+                expand
+                name="mfa-device-name"
+                :placeholder="nextTotpFriendlyName()"
+                :disabled="totpSetup.enrolling || isTotpSetupActive"
+                :class="isBelowSmall ? 'w-100' : 'w-50'"
+              />
             </Flex>
           </Flex>
+
+          <div v-if="mfaFactors.length" class="w-100">
+            <Flex column gap="s" expand>
+              <Flex x-between y-center wrap expand>
+                <strong>Your devices</strong>
+                <span class="text-xs text-color-lighter">{{ mfaFactors.length }} configured</span>
+              </Flex>
+
+              <Flex column gap="xs" class="device-list" expand>
+                <Flex
+                  v-for="(factor, index) in mfaFactors"
+                  :key="factor.id"
+                  expand
+                  class="device-row"
+                  x-between
+                  y-center
+                  wrap
+                >
+                  <Flex column gap="xxs" class="device-meta">
+                    <strong class="text-s">{{ factorDisplayName(factor, index) }}</strong>
+                    <span class="text-xs text-color-lighter">
+                      {{ factorTypeLabel(factor.factor_type) }}
+                      •
+                      {{ factor.status === 'verified' ? 'Verified' : 'Pending verification' }}
+                      <template v-if="factor.created_at">
+                        • Added {{ formatFactorDate(factor.created_at) }}
+                      </template>
+                    </span>
+                  </Flex>
+
+                  <Flex gap="s" y-center :column="isBelowSmall" :row="!isBelowSmall" :expand="isBelowSmall">
+                    <TinyBadge :variant="factor.status === 'verified' ? 'success' : 'warning'">
+                      {{ factor.status === 'verified' ? 'Verified' : 'Pending' }}
+                    </TinyBadge>
+                    <Button
+                      variant="danger"
+                      outline
+                      :expand="isBelowSmall"
+                      :disabled="removeFactorLoading || totpSetup.enrolling || totpSetup.verifying"
+                      @click="requestRemoveFactor(factor)"
+                    >
+                      Remove
+                    </Button>
+                  </Flex>
+                </Flex>
+              </Flex>
+            </Flex>
+          </div>
 
           <div v-if="isTotpSetupActive" class="mfa-setup">
             <Flex gap="m" wrap>
@@ -418,19 +613,19 @@ onMounted(() => {
       <Alert v-if="totpError" filled variant="danger">
         {{ totpError }}
       </Alert>
-      <Alert v-if="disableTotpError" filled variant="danger">
-        {{ disableTotpError }}
+      <Alert v-if="removeFactorError" filled variant="danger">
+        {{ removeFactorError }}
       </Alert>
     </Flex>
   </Card>
 
   <ConfirmModal
-    v-model:open="disableTotpModalOpen"
-    :confirm="disableTotp"
-    title="Disable Authenticator"
-    description="You will no longer be prompted for a one-time code when signing in. Are you sure you want to disable MFA?"
-    confirm-text="Disable MFA"
-    cancel-text="Keep Enabled"
+    v-model:open="removeFactorModalOpen"
+    :confirm="removeSelectedFactor"
+    :title="removeFactorTitle"
+    :description="removeFactorDescription"
+    confirm-text="Remove device"
+    cancel-text="Cancel"
     :destructive="true"
   />
 </template>
@@ -474,6 +669,22 @@ onMounted(() => {
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
   background: var(--color-bg-subtle);
+}
+
+.device-list {
+  width: 100%;
+}
+
+.device-row {
+  width: 100%;
+  padding: var(--space-s);
+  border-radius: var(--border-radius-m);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.device-meta {
+  min-width: 220px;
 }
 
 .mfa-benefits {
