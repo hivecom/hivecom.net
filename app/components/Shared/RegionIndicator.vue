@@ -14,6 +14,11 @@ const props = defineProps<{
    * Optional - Show text label alongside flag
    */
   showLabel?: boolean
+
+  /**
+   * Size of the icon
+   */
+  size?: 'm' | 'l' | 'xxl'
 }>()
 
 // Computed properties to determine emoji and label
@@ -38,7 +43,7 @@ const regionLabel = computed(() => {
 
 <template>
   <div class="region-indicator">
-    <span v-if="props.region !== null" class="region-indicator__emoji text-m" :title="regionLabel">{{ regionEmoji }}</span>
+    <span v-if="props.region !== null" :class="`region-indicator__emoji text-${props.size ?? 'm'}`" :title="regionLabel">{{ regionEmoji }}</span>
     <span v-if="showLabel" class="region-indicator__label text-s">{{ regionLabel }}</span>
   </div>
 </template>

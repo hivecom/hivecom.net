@@ -39,14 +39,19 @@
 
   --shiny-gradient: linear-gradient(100deg, #59d7f7, #3afea2, #a7fc2f);
   --banner-filter: none;
+
+  --dark-color-bg-card: color-mix(in srgb, var(--color-bg-medium) 75%, transparent);
+  --light-color-bg-card: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
 }
 
 :root.dark {
   --banner-filter: none;
+  --color-bg-card: var(--dark-color-bg-card);
 }
 
 :root:not(.dark) {
   --banner-filter: invert(1);
+  --color-bg-card: var(--light-color-bg-card);
 
   .vui-progress {
     background-color: var(--color-border) !important;
@@ -104,7 +109,7 @@ button {
 
 .card-bg {
   // background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
-  background-color: color-mix(in srgb, var(--color-bg-medium) 75%, transparent);
+  background-color: var(--color-bg-card);
 
   .vui-card-header,
   .vui-card-content,
@@ -113,9 +118,9 @@ button {
   }
 }
 
-:root:not(.dark) .card-bg {
-  background-color: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
-}
+// :root:not(.dark) .card-bg {
+//   background-color: var(--light-color-bg-card);
+// }
 
 .vui-tooltip {
   z-index: 9999 !important;

@@ -401,11 +401,11 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
     @close="handleClose"
   >
     <template #header>
-      <Flex column :gap="0">
+      <Flex column gap="xxs">
         <h4>Edit Profile</h4>
-        <span v-if="props.profile" class="text-color-light text-xxs">
+        <p v-if="props.profile" class="text-color-light text-m">
           {{ props.profile.username }}
-        </span>
+        </p>
       </Flex>
     </template>
 
@@ -478,7 +478,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
               :error="websiteValidation.error"
             />
           </Flex>
-          <Flex column gap="xs" expand class="profile-edit-form__birthday-container">
+          <Flex column gap="xxs" expand class="profile-edit-form__birthday-container">
             <label class="text-s text-color-lighter">Birthday</label>
             <Flex expand gap="xs" y-center>
               <Calendar
@@ -502,9 +502,9 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
               </Calendar>
               <Button
                 v-if="hasBirthday"
-                variant="link"
                 square
-                data-title-left="Clear birthday"
+                outline
+                data-title-top="Clear birthday"
                 @click="clearBirthday"
               >
                 <Icon name="ph:x" />

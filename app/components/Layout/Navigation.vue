@@ -85,6 +85,7 @@ function updateHoveredElement(event: MouseEvent) {
                 v-if="link.children" placement="bottom-start" class="navigation__links-popout"
                 :anchor="hoveredElement"
                 :visible="!!hoveredElement?.firstElementChild?.textContent.includes(link.label)"
+                :teleport="false"
               >
                 <NuxtLink v-for="sublink in link.children" :key="sublink.path" :to="sublink.path">
                   <DropdownItem>
