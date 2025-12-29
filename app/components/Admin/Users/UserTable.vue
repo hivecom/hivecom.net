@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
-import type { Tables } from '@/types/database.types'
+import type { Database, Tables } from '@/types/database.types'
 import { Alert, Button, CopyClipboard, defineTable, Flex, Pagination, Table, Tooltip } from '@dolanske/vui'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 
@@ -42,11 +42,16 @@ type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
 type AdminUserProfile = QueryUserProfile & {
   email: string | null
   role?: string | null
+  confirmed?: boolean
+  discord_display_name?: string | null
 }
 
-interface UserEmailRecord {
+interface AdminUserOverviewRecord {
   user_id: string
   email: string | null
+  is_confirmed: boolean
+  discord_display_name: string | null
+  auth_provider: string | null
 }
 
 // Type for user action
@@ -76,7 +81,7 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 const currentUser = useSupabaseUser()
 
 // Define query for profiles with user roles
-const supabase = useSupabaseClient()
+const supabase = useSupabaseClient<Database>()
 const _profilesQuery = supabase.from('profiles').select(`
   id,
   username,
@@ -103,6 +108,7 @@ const _profilesQuery = supabase.from('profiles').select(`
 
 // Define interface for transformed user data
 interface TransformedUser {
+  'Confirmed': boolean
   'Username': string
   'UUID': string
   'Email': string | null
@@ -121,6 +127,8 @@ const errorMessage = ref('')
 const users = ref<QueryUserProfile[]>([])
 const userRoles = ref<Record<string, string | null>>({})
 const userEmails = ref<Record<string, string | null>>({})
+const userConfirmed = ref<Record<string, boolean>>({})
+const userDiscordDisplayName = ref<Record<string, string | null>>({})
 const search = ref('')
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
@@ -200,17 +208,25 @@ async function fetchUsers() {
       userRoles.value = rolesMap
     }
 
-    const { data: emailsData, error: emailsError } = await supabase.rpc('get_user_emails')
+    const { data: overviewData, error: overviewError } = await supabase.rpc('get_admin_user_overview')
 
-    if (emailsError)
-      throw emailsError
+    if (overviewError)
+      throw overviewError
 
     const emailsMap: Record<string, string | null> = {}
-    const emailRows = (emailsData ?? []) as UserEmailRecord[]
-    emailRows.forEach(({ user_id, email }) => {
+    const confirmedMap: Record<string, boolean> = {}
+    const discordNameMap: Record<string, string | null> = {}
+
+    const rows = (overviewData ?? []) as AdminUserOverviewRecord[]
+    rows.forEach(({ user_id, email, is_confirmed, discord_display_name }) => {
       emailsMap[user_id] = email
+      confirmedMap[user_id] = Boolean(is_confirmed)
+      discordNameMap[user_id] = discord_display_name
     })
+
     userEmails.value = emailsMap
+    userConfirmed.value = confirmedMap
+    userDiscordDisplayName.value = discordNameMap
   }
   catch (error: unknown) {
     console.error('Error fetching users:', error)
@@ -279,9 +295,12 @@ const filteredData = computed<TransformedUser[]>(() => {
     const isSupporter = !!(user.supporter_lifetime || user.supporter_patreon)
     const activityStatus = user.last_seen ? getUserActivityStatus(user.last_seen) : null
     const email = getUserEmail(user.id)
+    const confirmed = getUserConfirmedState(user.id)
+    const discordDisplayName = getUserDiscordDisplayName(user.id)
     const platformCount = [user.steam_id, user.discord_id, user.patreon_id].filter(Boolean).length
 
     return {
+      'Confirmed': confirmed,
       'Username': user.username || 'Unknown',
       'Email': email,
       'UUID': user.id,
@@ -315,6 +334,8 @@ const filteredData = computed<TransformedUser[]>(() => {
         website: user.website || null,
         role,
         email,
+        confirmed,
+        discord_display_name: discordDisplayName,
       },
     }
   })
@@ -400,6 +421,14 @@ function getUserEmail(userId: string): string | null {
   return userEmails.value[userId] ?? null
 }
 
+function getUserConfirmedState(userId: string): boolean {
+  return userConfirmed.value[userId] ?? false
+}
+
+function getUserDiscordDisplayName(userId: string): string | null {
+  return userDiscordDisplayName.value[userId] ?? null
+}
+
 // Get platform icon name and display info
 function getPlatformInfo(platform: string) {
   const platformIcons: Record<string, { icon: string, label: string, color: string }> = {
@@ -442,7 +471,7 @@ defineExpose({
 
       <!-- Table skeleton -->
       <TableSkeleton
-        :columns="8"
+        :columns="10"
         :rows="10"
         :show-actions="true"
         compact
@@ -488,6 +517,20 @@ defineExpose({
 
         <template #body>
           <tr v-for="user in rows" :key="user._original.id" class="clickable-row" @click="handleUserClick(user)">
+            <Table.Cell class="confirmed-cell" @click.stop>
+              <Tooltip placement="top">
+                <template #tooltip>
+                  <div>{{ user.Confirmed ? 'User confirmed (via social auth or email)' : 'Not confirmed' }}</div>
+                </template>
+                <span v-if="user.Confirmed" class="confirmed-check">
+                  <Icon name="ph:check" size="16" />
+                </span>
+                <span v-else class="unconfirmed-x">
+                  <Icon name="ph:x" size="16" />
+                </span>
+              </Tooltip>
+            </Table.Cell>
+
             <Table.Cell class="username-cell">
               <div class="username-content">
                 <UserLink :user-id="user._original.id" />
@@ -556,7 +599,15 @@ defineExpose({
                 <!-- Discord Connection -->
                 <Tooltip v-if="user._original.discord_id" placement="top">
                   <template #tooltip>
-                    <div>Discord ID: {{ user._original.discord_id }}</div>
+                    <div>
+                      <div v-if="user._original.discord_display_name">
+                        Discord: {{ user._original.discord_display_name }}
+                      </div>
+                      <div v-else>
+                        Discord: Unknown
+                      </div>
+                      <div>Discord ID: {{ user._original.discord_id }}</div>
+                    </div>
                   </template>
                   <CopyClipboard :text="user._original.discord_id" confirm>
                     <Button variant="gray" size="s" square class="platform-button discord">
@@ -639,6 +690,28 @@ defineExpose({
 
 .username-cell {
   min-width: 200px;
+}
+
+.confirmed-cell {
+  width: 64px;
+}
+
+.confirmed-check {
+  .iconify {
+    color: var(--color-text-green) !important;
+  }
+
+  display: inline-flex;
+  align-items: center;
+}
+
+.unconfirmed-x {
+  .iconify {
+    color: var(--color-text-red) !important;
+  }
+
+  display: inline-flex;
+  align-items: center;
 }
 
 .uuid-cell {

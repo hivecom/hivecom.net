@@ -7,6 +7,7 @@ import NotificationCardEmpty from '@/components/Notifications/NotificationCardEm
 import NotificationCardError from '@/components/Notifications/NotificationCardError.vue'
 import NotificationCardInvite from '@/components/Notifications/NotificationCardInvite.vue'
 import NotificationCardLoading from '@/components/Notifications/NotificationCardLoading.vue'
+import NotificationCardPendingComplaints from '@/components/Notifications/NotificationCardPendingComplaints.vue'
 
 const supabase = useSupabaseClient<Database>()
 const user = useSupabaseUser()
@@ -17,6 +18,8 @@ const error = ref<string | null>(null)
 const friendships = ref<Array<{ id: number, friender: string, friend: string }>>([])
 const profileMeta = ref<{ birthday: string | null, username: string } | null>(null)
 const inviteActionLoading = ref<Record<string, boolean>>({})
+const userRole = ref<Database['public']['Enums']['app_role'] | null>(null)
+const pendingComplaintCount = ref(0)
 
 const hasUser = computed(() => Boolean(user.value && userId.value))
 
@@ -32,6 +35,8 @@ async function fetchNotifications() {
     friendships.value = []
     profileMeta.value = null
     inviteActionLoading.value = {}
+    userRole.value = null
+    pendingComplaintCount.value = 0
     loading.value = false
     error.value = null
     return
@@ -41,7 +46,7 @@ async function fetchNotifications() {
   error.value = null
 
   try {
-    const [friendsResponse, profileResponse] = await Promise.all([
+    const [friendsResponse, profileResponse, roleResponse] = await Promise.all([
       supabase
         .from('friends')
         .select('id, friender, friend')
@@ -51,21 +56,42 @@ async function fetchNotifications() {
         .select('id, username, birthday')
         .eq('id', userId.value as string)
         .single(),
+      supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId.value as string)
+        .maybeSingle(),
     ])
 
     if (friendsResponse.error)
       throw friendsResponse.error
     if (profileResponse.error)
       throw profileResponse.error
+    if (roleResponse.error)
+      userRole.value = null
 
     friendships.value = friendsResponse.data ?? []
     profileMeta.value = profileResponse.data
       ? { birthday: profileResponse.data.birthday, username: profileResponse.data.username }
       : null
+    if (!roleResponse.error)
+      userRole.value = roleResponse.data?.role ?? null
     inviteActionLoading.value = {}
+
+    pendingComplaintCount.value = 0
+
+    if (userRole.value === 'admin' || userRole.value === 'moderator') {
+      const complaintsResponse = await supabase
+        .from('complaints')
+        .select('id', { count: 'exact', head: true })
+        .eq('acknowledged', false)
+        .is('response', null)
+
+      if (!complaintsResponse.error)
+        pendingComplaintCount.value = complaintsResponse.count ?? 0
+    }
   }
   catch (err) {
-    console.error('Failed to load notification data', err)
     error.value = err instanceof Error ? err.message : 'Failed to load notifications'
   }
   finally {
@@ -81,6 +107,8 @@ watch(hasUser, (ready) => {
     friendships.value = []
     profileMeta.value = null
     inviteActionLoading.value = {}
+    userRole.value = null
+    pendingComplaintCount.value = 0
     error.value = null
   }
 }, { immediate: true })
@@ -150,7 +178,8 @@ const birthdayWidget = computed(() => {
 const notificationCount = computed(() => {
   const inviteCount = pendingRequestIds.value.length
   const birthdayCount = birthdayWidget.value ? 1 : 0
-  return inviteCount + birthdayCount
+  const complaintCount = pendingComplaintCount.value
+  return inviteCount + birthdayCount + complaintCount
 })
 
 const badgeText = computed(() => {
@@ -162,7 +191,11 @@ const badgeText = computed(() => {
 })
 
 const showEmptyCard = computed(() => {
-  return !loading.value && !error.value && pendingRequestIds.value.length === 0 && !birthdayWidget.value
+  return !loading.value
+    && !error.value
+    && pendingRequestIds.value.length === 0
+    && !birthdayWidget.value
+    && pendingComplaintCount.value === 0
 })
 
 const loadingCardCount = computed(() => {
@@ -171,7 +204,8 @@ const loadingCardCount = computed(() => {
 
   const inviteCount = pendingRequestIds.value.length
   const birthdayCount = birthdayWidget.value ? 1 : 0
-  const total = inviteCount + birthdayCount
+  const complaintCount = pendingComplaintCount.value
+  const total = inviteCount + birthdayCount + complaintCount
   return total > 0 ? total : 1
 })
 
@@ -273,6 +307,12 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
             :title="birthdayWidget.title"
             :description="birthdayWidget.description"
             to="/profile"
+          />
+
+          <NotificationCardPendingComplaints
+            v-if="pendingComplaintCount > 0"
+            :count="pendingComplaintCount"
+            to="/admin/complaints"
           />
 
           <NotificationCardEmpty v-if="showEmptyCard" />

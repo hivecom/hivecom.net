@@ -7,11 +7,6 @@ export type Json
     | Json[]
 
 export interface Database {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: '13.0.5'
-  }
   private: {
     Tables: {
       teamspeak_tokens: {
@@ -1011,6 +1006,16 @@ export interface Database {
         Returns: boolean
       }
       generate_username: { Args: never, Returns: string }
+      get_admin_user_overview: {
+        Args: never
+        Returns: {
+          auth_provider: string
+          discord_display_name: string
+          email: string
+          is_confirmed: boolean
+          user_id: string
+        }[]
+      }
       get_user_emails: {
         Args: never
         Returns: {
@@ -1076,6 +1081,10 @@ export interface Database {
         | 'profiles.delete'
         | 'profiles.read'
         | 'profiles.update'
+        | 'projects.create'
+        | 'projects.read'
+        | 'projects.update'
+        | 'projects.delete'
         | 'referendums.create'
         | 'referendums.delete'
         | 'referendums.read'
@@ -1092,10 +1101,6 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
-        | 'projects.read'
-        | 'projects.create'
-        | 'projects.update'
-        | 'projects.delete'
         | 'assets.create'
         | 'assets.delete'
         | 'assets.read'
@@ -1283,6 +1288,10 @@ export const Constants = {
         'profiles.delete',
         'profiles.read',
         'profiles.update',
+        'projects.create',
+        'projects.read',
+        'projects.update',
+        'projects.delete',
         'referendums.create',
         'referendums.delete',
         'referendums.read',
@@ -1299,10 +1308,6 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
-        'projects.read',
-        'projects.create',
-        'projects.update',
-        'projects.delete',
         'assets.create',
         'assets.delete',
         'assets.read',

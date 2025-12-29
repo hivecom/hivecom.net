@@ -4,6 +4,10 @@ import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skele
 import constants from '~~/constants.json'
 import EventCard from '@/components/Events/EventCard.vue'
 
+definePageMeta({
+  layout: 'landing',
+})
+
 // Fetch data from database
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()

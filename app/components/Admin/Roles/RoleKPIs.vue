@@ -9,10 +9,10 @@ const refreshSignal = defineModel<number>('refreshSignal')
 // Role metrics
 const metrics = ref({
   totalRoles: 0,
-  totalPermissions: 0,
-  totalCategories: 0,
-  adminPermissions: 0,
-  moderatorPermissions: 0,
+  permissionGroups: 0,
+  adminUsers: 0,
+  moderatorUsers: 0,
+  userUsers: 0,
 })
 
 // Data fetch state
@@ -28,36 +28,52 @@ async function fetchRoleMetrics() {
   errorMessage.value = ''
 
   try {
-    // Get all role permissions
-    const { data: rolePermissions, error: rolePermissionsError } = await supabase
-      .from('role_permissions')
-      .select('role, permission')
+    const [rolePermissionsResponse, totalUsersResponse, adminUsersResponse, moderatorUsersResponse] = await Promise.all([
+      supabase
+        .from('role_permissions')
+        .select('role, permission'),
+      supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true }),
+      supabase
+        .from('user_roles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'admin'),
+      supabase
+        .from('user_roles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'moderator'),
+    ])
 
-    if (rolePermissionsError) {
-      throw rolePermissionsError
-    }
+    if (rolePermissionsResponse.error)
+      throw rolePermissionsResponse.error
+    if (totalUsersResponse.error)
+      throw totalUsersResponse.error
+    if (adminUsersResponse.error)
+      throw adminUsersResponse.error
+    if (moderatorUsersResponse.error)
+      throw moderatorUsersResponse.error
 
-    // Count unique roles
-    const uniqueRoles = new Set(rolePermissions?.map(rp => rp.role) || [])
+    const rolePermissions = rolePermissionsResponse.data ?? []
+    const uniqueRoles = new Set(rolePermissions.map(rp => rp.role))
 
-    // Count unique permissions
-    const uniquePermissions = new Set(rolePermissions?.map(rp => rp.permission) || [])
-
-    // Count unique categories (part before the dot in permission)
-    const uniqueCategories = new Set(
-      rolePermissions?.map(rp => rp.permission.split('.')[0]) || [],
+    const permissionGroups = new Set(
+      rolePermissions
+        .map(rp => rp.permission?.split('.')[0])
+        .filter((group): group is string => Boolean(group)),
     )
 
-    // Count permissions by role
-    const adminPermissions = rolePermissions?.filter(rp => rp.role === 'admin').length || 0
-    const moderatorPermissions = rolePermissions?.filter(rp => rp.role === 'moderator').length || 0
+    const totalUsers = totalUsersResponse.count ?? 0
+    const adminUsers = adminUsersResponse.count ?? 0
+    const moderatorUsers = moderatorUsersResponse.count ?? 0
+    const userUsers = Math.max(0, totalUsers - adminUsers - moderatorUsers)
 
     metrics.value = {
       totalRoles: uniqueRoles.size,
-      totalPermissions: uniquePermissions.size,
-      totalCategories: uniqueCategories.size,
-      adminPermissions,
-      moderatorPermissions,
+      permissionGroups: permissionGroups.size,
+      adminUsers,
+      moderatorUsers,
+      userUsers,
     }
   }
   catch (error: unknown) {
@@ -89,17 +105,8 @@ onBeforeMount(fetchRoleMetrics)
     />
 
     <KPICard
-      label="Total Permissions"
-      :value="metrics.totalPermissions"
-      icon="ph:key"
-      variant="success"
-      :is-loading="loading"
-      description="Number of unique permissions available"
-    />
-
-    <KPICard
-      label="Permission Categories"
-      :value="metrics.totalCategories"
+      label="Permission Groups"
+      :value="metrics.permissionGroups"
       icon="ph:folders"
       variant="warning"
       :is-loading="loading"
@@ -107,21 +114,30 @@ onBeforeMount(fetchRoleMetrics)
     />
 
     <KPICard
-      label="Admin Permissions"
-      :value="metrics.adminPermissions"
+      label="Admins"
+      :value="metrics.adminUsers"
       icon="ph:crown"
       variant="danger"
       :is-loading="loading"
-      description="Number of permissions assigned to admin role"
+      description="Users assigned to the admin role"
     />
 
     <KPICard
-      label="Moderator Permissions"
-      :value="metrics.moderatorPermissions"
+      label="Moderators"
+      :value="metrics.moderatorUsers"
       icon="ph:gavel"
       variant="gray"
       :is-loading="loading"
-      description="Number of permissions assigned to moderator role"
+      description="Users assigned to the moderator role"
+    />
+
+    <KPICard
+      label="Users"
+      :value="metrics.userUsers"
+      icon="ph:user"
+      variant="success"
+      :is-loading="loading"
+      description="Users without an assigned admin/moderator role"
     />
   </KPIContainer>
 </template>
