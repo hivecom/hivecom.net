@@ -1,24 +1,32 @@
 <script setup lang="ts">
-import { Flex, Skeleton } from '@dolanske/vui'
+import { Avatar, Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 
-const props = defineProps<{
+interface Props {
   userId: string | null
   placeholder?: string
-}>()
+  showAvatar?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  placeholder: undefined,
+  showAvatar: false,
+})
 
 // Use the cached user data composable
 const {
   user,
   loading,
+  userInitials,
 } = useCacheUserData(
   toRef(props, 'userId'),
   {
     includeRole: false, // We only need username for this component
-    includeAvatar: false, // No avatar needed
+    includeAvatar: props.showAvatar,
     userTtl: 10 * 60 * 1000, // 10 minutes
+    avatarTtl: 30 * 60 * 1000, // 30 minutes
   },
 )
 
@@ -54,6 +62,16 @@ const profileLink = computed(() => {
   <div v-else class="user-display">
     <UserPreviewHover :user-id="props.userId" class="user-link__hover">
       <Flex gap="xs" y-center>
+        <Avatar
+          v-if="props.showAvatar"
+          :size="16"
+          :url="user.avatarUrl || undefined"
+          :alt="user.username ? `${user.username} avatar` : 'User avatar'"
+        >
+          <template v-if="!user.avatarUrl" #default>
+            {{ userInitials }}
+          </template>
+        </Avatar>
         <NuxtLink
           :to="profileLink"
           class="username-link text-s"

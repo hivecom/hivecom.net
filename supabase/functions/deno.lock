@@ -499,6 +499,11 @@
           "npm:googleapis@144"
         ]
       },
+      "trigger-user-avatar-sync": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
       "user-delete-account": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"

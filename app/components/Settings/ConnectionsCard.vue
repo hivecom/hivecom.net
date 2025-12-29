@@ -17,6 +17,7 @@ const isBelowSmall = useBreakpoint('<s')
 const disconnectLoading = reactive({
   patreon: false,
   discord: false,
+  steam: false,
 })
 
 const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Settings/ConnectPatreon.vue'))
@@ -123,6 +124,38 @@ async function disconnectDiscord() {
   }
   finally {
     disconnectLoading.discord = false
+  }
+}
+
+async function disconnectSteam() {
+  if (disconnectLoading.steam)
+    return
+
+  disconnectLoading.steam = true
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error)
+      throw error
+    if (!user)
+      throw new Error('You must be signed in to disconnect Steam.')
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ steam_id: null })
+      .eq('id', user.id)
+
+    if (updateError)
+      throw updateError
+
+    pushToast('Steam disconnected successfully.')
+    emit('updated')
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to disconnect Steam.'
+    showErrorToast(message)
+  }
+  finally {
+    disconnectLoading.steam = false
   }
 }
 
@@ -270,7 +303,16 @@ function toggleRichPresence() {
             >
               Loading
             </Button>
-            <ClientOnly v-else-if="!props.profile?.steam_id">
+            <Button
+              v-else-if="props.profile?.steam_id"
+              :expand="isBelowSmall"
+              variant="danger"
+              :loading="disconnectLoading.steam"
+              @click="disconnectSteam"
+            >
+              Disconnect
+            </Button>
+            <ClientOnly v-else>
               <ConnectSteam :expand="isBelowSmall" @linked="emit('updated')" />
             </ClientOnly>
           </div>
