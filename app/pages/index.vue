@@ -286,6 +286,12 @@ onMounted(async () => {
   </div>
 </template>
 
+<style lang="scss">
+.join-section__platform-info.icon {
+  font-size: 16px !important;
+}
+</style>
+
 <style scoped lang="scss">
 @use '@/assets/breakpoints.scss' as *;
 
@@ -409,10 +415,6 @@ h4 {
     font-size: var(--font-size-l);
     text-align: left;
     font-weight: var(--font-weight-medium);
-  }
-
-  &__platform-info.icon {
-    font-size: 16px !important;
   }
 
   &__platform-dropdown {
