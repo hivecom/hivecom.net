@@ -1,0 +1,77 @@
+.activity-item {
+  padding: var(--space-s) var(--space-m);
+
+  img {
+    border-radius: 4px;
+  }
+
+  &.clickable:hover {
+    cursor: pointer;
+    background-color: var(--color-bg-raised);
+  }
+
+  &__audio-bars {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 13px;
+    height: 10px;
+
+    &--bar {
+      width: 3px;
+      height: 100%;
+      background-color: var(--color-accent);
+      border-radius: 3px;
+      transform-origin: bottom;
+      animation: audio-bar-bounce 2.5s ease infinite alternate;
+
+      &:nth-of-type(2) {
+        animation-delay: -2.2s;
+      }
+
+      &:nth-of-type(3) {
+        animation-delay: -3.7s;
+      }
+    }
+  }
+
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--font-size-s);
+    color: var(--color-text-lightest);
+    margin-bottom: var(--space-xxs);
+  }
+
+  &__title {
+    font-size: var(--font-size-m);
+    padding-left: 21px;
+    color: var(--color-text-light);
+  }
+
+  &__icon {
+    color: var(--color-accent);
+  }
+}
+
+@keyframes audio-bar-bounce {
+  10% {
+    transform: scaleY(0.3);
+  }
+
+  30% {
+    transform: scaleY(1);
+  }
+
+  60% {
+    transform: scaleY(0.5);
+  }
+
+  80% {
+    transform: scaleY(0.75);
+  }
+
+  100% {
+    transform: scaleY(0.6);
+  }
+}
