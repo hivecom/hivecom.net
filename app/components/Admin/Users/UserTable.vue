@@ -641,7 +641,10 @@ defineExpose({
             <Table.Cell class="email-cell" @click.stop>
               <template v-if="user.Email">
                 <CopyClipboard :text="user.Email" confirm>
-                  <Button variant="gray" size="s" class="email-button">
+                  <Button variant="gray" plain size="s" class="email-button">
+                    <template #start>
+                      <Icon name="ph:copy" />
+                    </template>
                     <span class="text-xxs">{{ user.Email }}</span>
                   </Button>
                 </CopyClipboard>
@@ -653,7 +656,10 @@ defineExpose({
 
             <Table.Cell class="uuid-cell" @click.stop>
               <CopyClipboard :text="user.UUID" confirm>
-                <Button variant="gray" size="s" class="uuid-button">
+                <Button variant="gray" plain size="s" class="uuid-button">
+                  <template #start>
+                    <Icon name="ph:copy" />
+                  </template>
                   <span class="text-xxs">{{ user.UUID }}</span>
                 </Button>
               </CopyClipboard>
