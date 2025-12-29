@@ -114,10 +114,12 @@ interface TransformedUser {
   'Email': string | null
   'Role': number
   'Status': 'active' | 'banned'
-  'Last Seen': string
+  'Last Seen': number
   'Platforms': number
   'Supporter': boolean
   'Joined': string
+  '_lastSeenVariant': 'online' | 'fresh' | 'light' | 'lighter' | 'lightest'
+  '_lastSeenText': string
   '_original': AdminUserProfile
 }
 
@@ -254,6 +256,51 @@ function getRoleSortValue(role: string | null | undefined): number {
   }
 }
 
+function getLastSeenVariant(status: ReturnType<typeof getUserActivityStatus> | null): 'online' | 'fresh' | 'light' | 'lighter' | 'lightest' {
+  if (!status)
+    return 'lightest'
+
+  if (Number.isNaN(status.lastSeenTimestamp.getTime()))
+    return 'lightest'
+
+  if (status.isActive)
+    return 'online'
+
+  const diffMs = Date.now() - status.lastSeenTimestamp.getTime()
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  // Last 24 hours
+  if (diffHours < 24)
+    return 'fresh'
+
+  // Last 3 days
+  if (diffDays < 3)
+    return 'light'
+
+  // Last 14 days
+  if (diffDays < 14)
+    return 'lighter'
+
+  // > 14 days
+  return 'lightest'
+}
+
+function getLastSeenTextClass(variant: TransformedUser['_lastSeenVariant']): string {
+  switch (variant) {
+    case 'online':
+      return 'last-seen-online'
+    case 'fresh':
+      return 'text-color'
+    case 'light':
+      return 'text-color-light'
+    case 'lighter':
+      return 'text-color-lighter'
+    case 'lightest':
+      return 'text-color-lightest'
+  }
+}
+
 // Filter based on search and filters
 const filteredData = computed<TransformedUser[]>(() => {
   let filtered = users.value
@@ -298,6 +345,12 @@ const filteredData = computed<TransformedUser[]>(() => {
     const confirmed = getUserConfirmedState(user.id)
     const discordDisplayName = getUserDiscordDisplayName(user.id)
     const platformCount = [user.steam_id, user.discord_id, user.patreon_id].filter(Boolean).length
+    const lastSeenVariant = getLastSeenVariant(activityStatus)
+
+    const lastSeenMs = activityStatus && !Number.isNaN(activityStatus.lastSeenTimestamp.getTime())
+      ? activityStatus.lastSeenTimestamp.getTime()
+      : 0
+    const lastSeenText = lastSeenMs > 0 ? (activityStatus?.lastSeenText || 'Never') : 'Never'
 
     return {
       'Confirmed': confirmed,
@@ -306,10 +359,12 @@ const filteredData = computed<TransformedUser[]>(() => {
       'UUID': user.id,
       'Role': roleSort,
       'Status': status,
-      'Last Seen': activityStatus?.lastSeenText || 'Never',
+      'Last Seen': lastSeenMs,
       'Platforms': platformCount,
       'Supporter': isSupporter,
       'Joined': user.created_at,
+      '_lastSeenVariant': lastSeenVariant,
+      '_lastSeenText': lastSeenText,
       '_original': {
         id: user.id,
         username: user.username || 'Unknown',
@@ -511,7 +566,7 @@ defineExpose({
     <TableContainer>
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading">
         <template #header>
-          <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head v-for="header in headers.filter(header => !header.label.startsWith('_'))" :key="header.label" sort :header />
           <Table.Head>Actions</Table.Head>
         </template>
 
@@ -570,16 +625,15 @@ defineExpose({
             </Table.Cell>
 
             <Table.Cell class="last-seen-cell">
-              <span
-                class="text-s"
-                :class="{
-                  'color-accent': user['Last Seen'] && user['Last Seen'].includes('Online'),
-                  'text-color': user['Last Seen'] && !user['Last Seen'].includes('Online'),
-                  'text-color-light': !user['Last Seen'] || user['Last Seen'] === 'Never',
-                }"
-              >
-                {{ user['Last Seen'] }}
-              </span>
+              <Flex gap="xs" y-center>
+                <span v-if="user._lastSeenVariant === 'online'" class="online-dot" />
+                <span
+                  class="text-s"
+                  :class="getLastSeenTextClass(user._lastSeenVariant)"
+                >
+                  {{ user._lastSeenText }}
+                </span>
+              </Flex>
             </Table.Cell>
 
             <Table.Cell class="platform-connections-cell" @click.stop>
@@ -677,6 +731,18 @@ defineExpose({
 <style scoped lang="scss">
 .user-table-container {
   width: 100%;
+}
+
+.online-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--color-text-green) !important;
+  display: inline-block;
+}
+
+.last-seen-online {
+  color: var(--color-text-green) !important;
 }
 
 .user-row {

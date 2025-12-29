@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { UserActivityStatus } from '@/lib/lastSeen'
+
 import { Avatar, Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
@@ -31,6 +33,7 @@ const props = defineProps<{
     supporter_lifetime: boolean
     patreon_id: string | null
     discord_id: string | null
+    discord_display_name?: string | null
     steam_id: string | null
     introduction: string | null
     markdown: string | null
@@ -42,6 +45,7 @@ const props = defineProps<{
     ban_duration?: string
     role?: string | null
     country?: string | null
+    confirmed?: boolean
   } | null
   actionLoading?: Partial<Record<UserActionType, boolean>>
 }>()
@@ -213,6 +217,53 @@ const activityStatus = computed(() => {
   return getUserActivityStatus(props.user.last_seen)
 })
 
+type LastSeenVariant = 'online' | 'fresh' | 'light' | 'lighter' | 'lightest'
+
+function getLastSeenVariant(status: UserActivityStatus | null): LastSeenVariant {
+  if (!status)
+    return 'lightest'
+  if (Number.isNaN(status.lastSeenTimestamp.getTime()))
+    return 'lightest'
+  if (status.isActive)
+    return 'online'
+
+  const diffMs = Date.now() - status.lastSeenTimestamp.getTime()
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  // Last 24 hours
+  if (diffHours < 24)
+    return 'fresh'
+
+  // Last 3 days
+  if (diffDays < 3)
+    return 'light'
+
+  // Last 14 days
+  if (diffDays < 14)
+    return 'lighter'
+
+  // > 14 days
+  return 'lightest'
+}
+
+const lastSeenVariant = computed(() => getLastSeenVariant(activityStatus.value))
+
+function getLastSeenTextClass(variant: LastSeenVariant): string {
+  switch (variant) {
+    case 'online':
+      return 'last-seen-online'
+    case 'fresh':
+      return 'text-color'
+    case 'light':
+      return 'text-color-light'
+    case 'lighter':
+      return 'text-color-lighter'
+    case 'lightest':
+      return 'text-color-lightest'
+  }
+}
+
 const countryInfo = computed(() => (props.user ? getCountryInfo(props.user.country ?? null) : null))
 
 // Handle closing the sheet
@@ -285,7 +336,10 @@ function getUserInitials(username: string): string {
               <span class="text-color-light text-bold">Email:</span>
               <template v-if="user.email">
                 <CopyClipboard :text="user.email" confirm>
-                  <span class="user-email">{{ user.email }}</span>
+                  <Flex y-center>
+                    <Icon name="ph:copy" />
+                    <span class="user-email">{{ user.email }}</span>
+                  </Flex>
                 </CopyClipboard>
               </template>
               <span v-else class="text-color-light text-s">No email on file</span>
@@ -304,17 +358,16 @@ function getUserInitials(username: string): string {
             </Grid>
 
             <Grid class="detail-item" columns="1fr 2fr" expand>
-              <span class="text-color-light text-bold">Last Seen:</span>
-              <span
-                class="text-s"
-                :class="{
-                  'color-accent': activityStatus?.isActive,
-                  'text-color': activityStatus && !activityStatus.isActive,
-                  'text-color-light': !activityStatus,
-                }"
-              >
-                {{ activityStatus?.lastSeenText || 'Never' }}
-              </span>
+              <span class=" text-bold">Last Seen:</span>
+              <Flex gap="xs" y-center>
+                <span v-if="lastSeenVariant === 'online'" class="online-dot" />
+                <span
+                  class="text-s"
+                  :class="getLastSeenTextClass(lastSeenVariant)"
+                >
+                  {{ activityStatus?.lastSeenText || 'Never' }}
+                </span>
+              </Flex>
             </Grid>
 
             <!-- Website Information -->
@@ -410,38 +463,89 @@ function getUserInitials(username: string): string {
         </Card>
 
         <!-- Platform Connections -->
-        <Card
+        <Flex
           v-if="user.patreon_id || user.discord_id || user.steam_id"
-          class="card-bg"
-          separators
+          gap="s"
+          :column="isBelowSmall"
+          :wrap="!isBelowSmall"
+          expand
         >
-          <template #header>
-            <h6>Platform Connections</h6>
-          </template>
+          <Card v-if="user.discord_id" separators class="card-bg connection-card" expand>
+            <template #header>
+              <Flex x-between y-center>
+                <Flex gap="xs" y-center>
+                  <Icon name="ph:discord-logo" />
+                  <h6>Discord</h6>
+                </Flex>
+                <Icon class="text-color-light" name="ph:link" />
+              </Flex>
+            </template>
 
-          <Flex column gap="l" expand>
-            <Grid v-if="user.patreon_id" class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Patreon ID:</span>
-              <CopyClipboard :text="user.patreon_id" confirm>
-                <span class="platform-id">{{ user.patreon_id }}</span>
-              </CopyClipboard>
-            </Grid>
+            <Flex column gap="s" expand>
+              <Grid class="detail-item" :columns="2" expand>
+                <span class="text-color-light text-bold">Name:</span>
+                <span class="text-s">
+                  {{ user.discord_display_name || 'Unknown' }}
+                </span>
+              </Grid>
 
-            <Grid v-if="user.discord_id" class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Discord ID:</span>
-              <CopyClipboard :text="user.discord_id" confirm>
-                <span class="platform-id">{{ user.discord_id }}</span>
-              </CopyClipboard>
-            </Grid>
+              <Grid class="detail-item" :columns="2" expand>
+                <span class="text-color-light text-bold">Discord ID:</span>
+                <CopyClipboard :text="user.discord_id" confirm>
+                  <span class="platform-id">{{ user.discord_id }}</span>
+                </CopyClipboard>
+              </Grid>
+            </Flex>
+          </Card>
 
-            <Grid v-if="user.steam_id" class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Steam ID:</span>
-              <CopyClipboard :text="user.steam_id" confirm>
-                <span class="platform-id">{{ user.steam_id }}</span>
-              </CopyClipboard>
-            </Grid>
-          </Flex>
-        </Card>
+          <Card v-if="user.patreon_id" separators class="card-bg connection-card" expand>
+            <template #header>
+              <Flex x-between y-center>
+                <Flex gap="xs" y-center>
+                  <Icon name="ph:patreon-logo" />
+                  <h6>Patreon</h6>
+                </Flex>
+                <Icon class="text-color-light" name="ph:link" />
+              </Flex>
+            </template>
+
+            <Flex column gap="s" expand>
+              <Grid class="detail-item" :columns="2" expand>
+                <span class="text-color-light text-bold">Patreon ID:</span>
+                <CopyClipboard :text="user.patreon_id" confirm>
+                  <Flex y-center>
+                    <Icon name="ph:copy" />
+                    <span class="platform-id">{{ user.patreon_id }}</span>
+                  </Flex>
+                </CopyClipboard>
+              </Grid>
+            </Flex>
+          </Card>
+
+          <Card v-if="user.steam_id" separators class="card-bg connection-card" expand>
+            <template #header>
+              <Flex x-between y-center>
+                <Flex gap="xs" y-center>
+                  <Icon name="ph:steam-logo" />
+                  <h6>Steam</h6>
+                </Flex>
+                <Icon class="text-color-light" name="ph:link" />
+              </Flex>
+            </template>
+
+            <Flex column gap="s" expand>
+              <Grid class="detail-item" :columns="2" expand>
+                <span class="text-color-light text-bold">Steam ID:</span>
+                <CopyClipboard :text="user.steam_id" confirm>
+                  <Flex y-center>
+                    <Icon name="ph:copy" />
+                    <span class="platform-id">{{ user.steam_id }}</span>
+                  </Flex>
+                </CopyClipboard>
+              </Grid>
+            </Flex>
+          </Card>
+        </Flex>
 
         <Flex expand :wrap="isBelowSmall">
           <!-- User Introduction -->
@@ -513,6 +617,22 @@ function getUserInitials(username: string): string {
   padding: 2px 6px;
   border-radius: var(--border-radius-xs);
   word-break: break-all;
+}
+
+.connection-card {
+  min-width: 220px;
+}
+
+.online-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--color-text-green) !important;
+  display: inline-block;
+}
+
+.last-seen-online {
+  color: var(--color-text-green) !important;
 }
 
 .ban-duration {
