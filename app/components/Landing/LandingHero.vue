@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import constants from '~~/constants.json'
+
 import LandingHeroActions from '@/components/Landing/LandingHeroActions.vue'
 import LandingHeroShader from '@/components/Landing/LandingHeroBackground.vue'
 import LandingHeroGlobe from '@/components/Landing/LandingHeroGlobe.vue'
@@ -17,6 +19,37 @@ defineProps<{
   communityStats: CommunityStats
   loading: boolean
 }>()
+
+const defaultSplashMessage
+  = (typeof constants.SPLASH_MESSAGE === 'string' && constants.SPLASH_MESSAGE.trim())
+    ? constants.SPLASH_MESSAGE
+    : 'A community of friends from all around the world'
+
+const splashMessage = ref(defaultSplashMessage)
+
+onMounted(() => {
+  const alternatives = Array.isArray(constants.SPLASH_ALTERNATIVES)
+    ? constants.SPLASH_ALTERNATIVES.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+    : []
+
+  if (alternatives.length === 0) {
+    splashMessage.value = defaultSplashMessage
+    return
+  }
+
+  const rawChance = typeof constants.SPLASH_ALTERNATIVES_CHANCE === 'number'
+    ? constants.SPLASH_ALTERNATIVES_CHANCE
+    : 0
+  const chance = Math.min(1, Math.max(0, Number.isFinite(rawChance) ? rawChance : 0))
+
+  if (Math.random() >= chance) {
+    splashMessage.value = defaultSplashMessage
+    return
+  }
+
+  const idx = Math.floor(Math.random() * alternatives.length)
+  splashMessage.value = alternatives[idx] ?? defaultSplashMessage
+})
 </script>
 
 <template>
@@ -32,7 +65,7 @@ defineProps<{
           Hivecom
         </h1>
         <img src="/logotype-white.svg" class="hero-overlay__logo">
-        <LandingMotd fallback-text="A community of friends from all around the world" />
+        <LandingMotd :fallback-text="splashMessage" />
       </div>
 
       <LandingHeroStats class="hero-overlay__stats" :community-stats="communityStats" :loading="loading" />

@@ -44,6 +44,8 @@ type AdminUserProfile = QueryUserProfile & {
   role?: string | null
   confirmed?: boolean
   discord_display_name?: string | null
+  auth_provider?: string | null
+  auth_providers?: string[] | null
 }
 
 interface AdminUserOverviewRecord {
@@ -52,6 +54,7 @@ interface AdminUserOverviewRecord {
   is_confirmed: boolean
   discord_display_name: string | null
   auth_provider: string | null
+  auth_providers: string[] | null
 }
 
 // Type for user action
@@ -114,6 +117,7 @@ interface TransformedUser {
   'Email': string | null
   'Role': number
   'Status': 'active' | 'banned'
+  'Providers': string
   'Last Seen': number
   'Platforms': number
   'Supporter': boolean
@@ -131,6 +135,8 @@ const userRoles = ref<Record<string, string | null>>({})
 const userEmails = ref<Record<string, string | null>>({})
 const userConfirmed = ref<Record<string, boolean>>({})
 const userDiscordDisplayName = ref<Record<string, string | null>>({})
+const userAuthProvider = ref<Record<string, string | null>>({})
+const userAuthProviders = ref<Record<string, string[] | null>>({})
 const search = ref('')
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
@@ -218,17 +224,23 @@ async function fetchUsers() {
     const emailsMap: Record<string, string | null> = {}
     const confirmedMap: Record<string, boolean> = {}
     const discordNameMap: Record<string, string | null> = {}
+    const providerMap: Record<string, string | null> = {}
+    const providersMap: Record<string, string[] | null> = {}
 
     const rows = (overviewData ?? []) as AdminUserOverviewRecord[]
-    rows.forEach(({ user_id, email, is_confirmed, discord_display_name }) => {
+    rows.forEach(({ user_id, email, is_confirmed, discord_display_name, auth_provider, auth_providers }) => {
       emailsMap[user_id] = email
       confirmedMap[user_id] = Boolean(is_confirmed)
       discordNameMap[user_id] = discord_display_name
+      providerMap[user_id] = auth_provider
+      providersMap[user_id] = auth_providers
     })
 
     userEmails.value = emailsMap
     userConfirmed.value = confirmedMap
     userDiscordDisplayName.value = discordNameMap
+    userAuthProvider.value = providerMap
+    userAuthProviders.value = providersMap
   }
   catch (error: unknown) {
     console.error('Error fetching users:', error)
@@ -346,6 +358,9 @@ const filteredData = computed<TransformedUser[]>(() => {
     const discordDisplayName = getUserDiscordDisplayName(user.id)
     const platformCount = [user.steam_id, user.discord_id, user.patreon_id].filter(Boolean).length
     const lastSeenVariant = getLastSeenVariant(activityStatus)
+    const authProvider = getUserAuthProvider(user.id)
+    const authProviders = getUserAuthProviders(user.id)
+    const normalizedProviders = normalizeAuthProviders(authProviders, authProvider)
 
     const lastSeenMs = activityStatus && !Number.isNaN(activityStatus.lastSeenTimestamp.getTime())
       ? activityStatus.lastSeenTimestamp.getTime()
@@ -359,6 +374,7 @@ const filteredData = computed<TransformedUser[]>(() => {
       'UUID': user.id,
       'Role': roleSort,
       'Status': status,
+      'Providers': normalizedProviders.join(', '),
       'Last Seen': lastSeenMs,
       'Platforms': platformCount,
       'Supporter': isSupporter,
@@ -391,6 +407,8 @@ const filteredData = computed<TransformedUser[]>(() => {
         email,
         confirmed,
         discord_display_name: discordDisplayName,
+        auth_provider: authProvider,
+        auth_providers: authProviders,
       },
     }
   })
@@ -484,6 +502,34 @@ function getUserDiscordDisplayName(userId: string): string | null {
   return userDiscordDisplayName.value[userId] ?? null
 }
 
+function getUserAuthProvider(userId: string): string | null {
+  return userAuthProvider.value[userId] ?? null
+}
+
+function getUserAuthProviders(userId: string): string[] | null {
+  return userAuthProviders.value[userId] ?? null
+}
+
+function normalizeAuthProviders(providers: readonly string[] | null | undefined, provider: string | null | undefined): string[] {
+  const combined = new Set<string>()
+  ;(providers ?? []).forEach(p => combined.add(p))
+  if (provider)
+    combined.add(provider)
+  return Array.from(combined)
+}
+
+function getProviderInfo(provider: string) {
+  const normalized = provider.toLowerCase()
+
+  const providers: Record<string, { icon: string, label: string }> = {
+    google: { icon: 'ph:google-logo', label: 'Google' },
+    discord: { icon: 'ph:discord-logo', label: 'Discord' },
+    email: { icon: 'ph:envelope-simple', label: 'Email' },
+  }
+
+  return providers[normalized] || { icon: 'ph:identification-card', label: provider }
+}
+
 // Get platform icon name and display info
 function getPlatformInfo(platform: string) {
   const platformIcons: Record<string, { icon: string, label: string, color: string }> = {
@@ -526,7 +572,7 @@ defineExpose({
 
       <!-- Table skeleton -->
       <TableSkeleton
-        :columns="10"
+        :columns="11"
         :rows="10"
         :show-actions="true"
         compact
@@ -622,6 +668,31 @@ defineExpose({
 
             <Table.Cell class="status-cell">
               <UserStatusIndicator :status="user.Status" :show-label="true" />
+            </Table.Cell>
+
+            <Table.Cell class="providers-cell" @click.stop>
+              <Flex gap="xs" y-center :wrap="false">
+                <template
+                  v-for="provider in normalizeAuthProviders(user._original.auth_providers ?? null, user._original.auth_provider ?? null)"
+                  :key="provider"
+                >
+                  <Tooltip placement="top">
+                    <template #tooltip>
+                      <div>{{ getProviderInfo(provider).label }}</div>
+                    </template>
+                    <Button variant="gray" size="s" square class="provider-button">
+                      <Icon :name="getProviderInfo(provider).icon" size="16" />
+                    </Button>
+                  </Tooltip>
+                </template>
+
+                <span
+                  v-if="normalizeAuthProviders(user._original.auth_providers ?? null, user._original.auth_provider ?? null).length === 0"
+                  class="text-color-light text-s"
+                >
+                  None
+                </span>
+              </Flex>
             </Table.Cell>
 
             <Table.Cell class="last-seen-cell">
@@ -806,6 +877,14 @@ defineExpose({
 
 .status-cell {
   min-width: 120px;
+}
+
+.providers-cell {
+  min-width: 140px;
+}
+
+.provider-button {
+  transition: all 0.2s ease;
 }
 
 .email-cell {

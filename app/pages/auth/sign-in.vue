@@ -13,6 +13,7 @@ const route = useRoute()
 const supabase = useSupabaseClient()
 const loading = ref(false)
 const discordLoading = ref(false)
+const googleLoading = ref(false)
 const email = ref('')
 const password = ref('')
 const errorMessage = ref('')
@@ -189,6 +190,31 @@ async function signInWithDiscord() {
   }
   finally {
     discordLoading.value = false
+  }
+}
+
+async function signInWithGoogle() {
+  errorMessage.value = ''
+  googleLoading.value = true
+
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: getAuthRedirectUrl(),
+        scopes: 'email profile',
+      },
+    })
+
+    if (error)
+      throw error
+  }
+  catch (error) {
+    console.error('Google sign-in error:', error)
+    errorMessage.value = error instanceof Error ? error.message : 'Unable to sign in with Google.'
+  }
+  finally {
+    googleLoading.value = false
   }
 }
 
@@ -462,12 +488,20 @@ onBeforeUnmount(() => {
         </div>
         <div v-else class="container container-xs" style="min-height:356px">
           <Flex x-center y-center column gap="l" class="py-l">
-            <Button variant="gray" :loading="discordLoading" expand @click="signInWithDiscord">
-              <Flex y-center gap="s">
-                <Icon name="ph:discord-logo" />
-                Continue with Discord
-              </Flex>
-            </Button>
+            <Flex x-center y-center column gap="s" expand>
+              <Button variant="gray" :loading="discordLoading" expand @click="signInWithDiscord">
+                <Flex y-center gap="s">
+                  <Icon name="ph:discord-logo" />
+                  Continue with Discord
+                </Flex>
+              </Button>
+              <Button variant="gray" :loading="googleLoading" expand @click="signInWithGoogle">
+                <Flex y-center gap="s">
+                  <Icon name="ph:google-logo" />
+                  Continue with Google
+                </Flex>
+              </Button>
+            </Flex>
             <Tabs v-model="tab" variant="filled" expand>
               <Tab value="Password" />
               <Tab value="E-mail" />

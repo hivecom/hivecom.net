@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
   fallbackText: string
@@ -24,6 +24,14 @@ const LETTER_IN_MS = 240
 const AUTO_SWITCH_MS = 60_000
 
 let autoTimer: ReturnType<typeof setTimeout> | undefined
+
+watch(
+  () => props.fallbackText,
+  (next, prev) => {
+    if (displayText.value === prev)
+      displayText.value = next
+  },
+)
 
 function scheduleAutoSwitch() {
   if (autoTimer)

@@ -1015,6 +1015,7 @@ export interface Database {
         Args: never
         Returns: {
           auth_provider: string
+          auth_providers: string[]
           discord_display_name: string
           email: string
           is_confirmed: boolean
