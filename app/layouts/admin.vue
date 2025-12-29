@@ -349,12 +349,22 @@ watch(() => route.path, () => {
                 </h5>
               </Flex>
               <Flex gap="xxs">
-                <Button v-if="!isBelowExtraLarge" square plain :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
-                  <Icon :name="expandToggleIcon" />
-                </Button>
-                <Button v-if="!miniSidebar" square plain @click="miniSidebar = !miniSidebar">
-                  <Icon name="tabler:layout-sidebar-left-collapse" />
-                </Button>
+                <Tooltip placement="right">
+                  <Button v-if="!isBelowExtraLarge" square plain :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
+                    <Icon :name="expandToggleIcon" />
+                  </Button>
+                  <template #tooltip>
+                    <p>Expand admin container</p>
+                  </template>
+                </Tooltip>
+                <Tooltip v-if="!miniSidebar" placement="right">
+                  <Button square plain @click="miniSidebar = !miniSidebar">
+                    <Icon name="tabler:layout-sidebar-left-collapse" />
+                  </Button>
+                  <template #tooltip>
+                    <p>Collapse sidebar</p>
+                  </template>
+                </Tooltip>
               </Flex>
             </Flex>
             <Divider :size="0" />
@@ -505,6 +515,10 @@ watch(() => route.path, () => {
 
   &__sidebar {
     height: 100%;
+
+    :deep(.vui-sidebar) {
+      background-color: var(--color-bg-medium);
+    }
   }
 
   &__content {
