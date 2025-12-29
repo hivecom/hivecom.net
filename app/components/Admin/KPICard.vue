@@ -48,7 +48,7 @@ defineProps<{
   </Card>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 .kpi-card {
   padding: var(--space-m);
   height: 100%;

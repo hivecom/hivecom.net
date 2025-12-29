@@ -75,7 +75,7 @@ function scrollUp() {
   </footer>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 @use '@/assets/breakpoints.scss' as *;
 
 :deep(.vui-card .vui-card-content),
@@ -97,7 +97,7 @@ function scrollUp() {
 
 .footer {
   width: 100%;
-  padding-block: 80px;
+  padding-block: 64px;
   background-color: var(--color-bg-medium);
   border-top: 1px solid var(--color-border);
 

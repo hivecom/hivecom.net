@@ -198,7 +198,7 @@ function getRoleInfo(role: string | null) {
                 <p>{{ activityStatus.lastSeenText }}</p>
               </template>
               <div
-                class="online-indicator"
+                class="profile__online-indicator"
                 :class="{ active: activityStatus.isActive }"
               />
             </Tooltip>
@@ -371,6 +371,25 @@ function getRoleInfo(role: string | null) {
   </CopyClipboard>
 </template>
 
+<style>
+.profile__online-indicator {
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  width: 16px;
+  height: 16px;
+  background-color: var(--color-text-lighter);
+  border: 2px solid var(--color-bg);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--color-border);
+  transition: background-color 0.2s ease;
+
+  &.active {
+    background-color: var(--color-text-green);
+  }
+}
+</style>
+
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
 
@@ -413,23 +432,6 @@ function getRoleInfo(role: string | null) {
     .avatar-container {
       position: relative;
       display: inline-block;
-
-      .online-indicator {
-        position: absolute;
-        bottom: 15px;
-        right: 15px;
-        width: 16px;
-        height: 16px;
-        background-color: var(--color-text-lighter);
-        border: 2px solid var(--color-bg);
-        border-radius: 50%;
-        box-shadow: 0 0 0 1px var(--color-border);
-        transition: background-color 0.2s ease;
-
-        &.active {
-          background-color: var(--color-text-green);
-        }
-      }
     }
   }
 

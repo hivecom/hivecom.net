@@ -322,7 +322,7 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 @use '@/assets/breakpoints.scss' as *;
 
 .notification-menu {

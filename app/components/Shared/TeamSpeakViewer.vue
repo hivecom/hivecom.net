@@ -941,7 +941,7 @@ function openRawSnapshot() {
   </Card>
 </template>
 
-<style scoped>
+<style lang="scss">
 .ts-viewer__server-header {
   padding-bottom: 4px;
 }

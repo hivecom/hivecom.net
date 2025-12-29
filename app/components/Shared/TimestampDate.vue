@@ -66,7 +66,7 @@ const attrs = useAttrs()
   <span v-else class="timestamp-date" v-bind="attrs" :class="`text-${size}`">{{ formattedDate }}</span>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss">
 .timestamp-date {
   cursor: help;
 }

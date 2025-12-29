@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Divider, DropdownItem, Flex, Sheet, Sidebar, Spinner } from '@dolanske/vui'
+import { Button, Divider, DropdownItem, Flex, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
 import { useStorage as useLocalStorage, useMediaQuery } from '@vueuse/core'
 import IconLogo from '@/components/Shared/IconLogo.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -349,52 +349,90 @@ watch(() => route.path, () => {
                 </h5>
               </Flex>
               <Flex gap="xxs">
-                <Button v-if="!isBelowExtraLarge" square plain :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
-                  <Icon :name="expandToggleIcon" />
-                </Button>
-                <Button v-if="!miniSidebar" square plain @click="miniSidebar = !miniSidebar">
-                  <Icon name="tabler:layout-sidebar-left-collapse" />
-                </Button>
+                <Tooltip placement="right">
+                  <Button v-if="!isBelowExtraLarge" square plain :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
+                    <Icon :name="expandToggleIcon" />
+                  </Button>
+                  <template #tooltip>
+                    <p>Expand admin container</p>
+                  </template>
+                </Tooltip>
+                <Tooltip v-if="!miniSidebar" placement="right">
+                  <Button square plain @click="miniSidebar = !miniSidebar">
+                    <Icon name="tabler:layout-sidebar-left-collapse" />
+                  </Button>
+                  <template #tooltip>
+                    <p>Collapse sidebar</p>
+                  </template>
+                </Tooltip>
               </Flex>
             </Flex>
             <Divider :size="0" />
           </template>
 
           <!-- Only show menu items the user has permissions for -->
-          <DropdownItem
+          <Tooltip
             v-for="item in accessibleMenuItems"
             :key="item.path"
-            :class="{ selected: route.path === item.path }"
-            @click="handleNavigation(item.path)"
+            :disabled="!miniSidebar"
+            placement="right"
           >
-            <template v-if="item.icon" #icon>
-              <Icon :name="item.icon" />
+            <DropdownItem
+              :class="{ selected: route.path === item.path }"
+              @click="handleNavigation(item.path)"
+            >
+              <template v-if="item.icon" #icon>
+                <Icon :name="item.icon" />
+              </template>
+              {{ item.name }}
+            </DropdownItem>
+            <template #tooltip>
+              <p>{{ item.name }}</p>
             </template>
-            {{ item.name }}
-          </DropdownItem>
+          </Tooltip>
 
           <template v-if="miniSidebar">
             <Divider />
-            <DropdownItem square @click="miniSidebar = !miniSidebar">
-              <template #icon>
-                <Icon name="tabler:layout-sidebar-left-expand" />
+            <Tooltip placement="right">
+              <DropdownItem square @click="miniSidebar = !miniSidebar">
+                <template #icon>
+                  <Icon name="tabler:layout-sidebar-left-expand" />
+                </template>
+              </DropdownItem>
+              <template #tooltip>
+                <p>Expand sidebar</p>
               </template>
-            </DropdownItem>
-            <DropdownItem v-if="!isBelowExtraLarge" square :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
-              <template #icon>
-                <Icon :name="expandToggleIcon" />
+            </Tooltip>
+            <Tooltip v-if="!isBelowExtraLarge" placement="right">
+              <DropdownItem square :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
+                <template #icon>
+                  <Icon :name="expandToggleIcon" />
+                </template>
+              </DropdownItem>
+              <template #tooltip>
+                Expand admin container
               </template>
-            </DropdownItem>
+            </Tooltip>
           </template>
 
           <template #footer>
             <Flex v-if="miniSidebar" column x-center y-center gap="m">
-              <SharedThemeToggle no-text small button />
-              <DropdownItem square aria-label="Close admin console" @click="router.push('/')">
-                <template #icon>
-                  <Icon name="ph:caret-left" />
+              <Tooltip placement="right">
+                <SharedThemeToggle no-text small button />
+                <template #tooltip>
+                  <p>Toogle theme</p>
                 </template>
-              </DropdownItem>
+              </Tooltip>
+              <Tooltip placement="right">
+                <DropdownItem square aria-label="Close admin console" @click="router.push('/')">
+                  <template #icon>
+                    <Icon name="ph:caret-left" />
+                  </template>
+                </DropdownItem>
+                <template #tooltip>
+                  <p>Close admin console</p>
+                </template>
+              </Tooltip>
             </Flex>
             <Flex v-else x-between y-center gap="xs">
               <Button expand size="m" outline @click="router.push('/')">
@@ -477,6 +515,10 @@ watch(() => route.path, () => {
 
   &__sidebar {
     height: 100%;
+
+    :deep(.vui-sidebar) {
+      background-color: var(--color-bg-medium);
+    }
   }
 
   &__content {

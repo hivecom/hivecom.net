@@ -799,6 +799,55 @@ defineExpose({
   </Flex>
 </template>
 
+<style lang="scss">
+.confirmed-check {
+  .iconify {
+    color: var(--color-text-green) !important;
+  }
+
+  display: inline-flex;
+  align-items: center;
+}
+
+.unconfirmed-x {
+  .iconify {
+    color: var(--color-text-red) !important;
+  }
+
+  display: inline-flex;
+  align-items: center;
+}
+
+.provider-button {
+  transition: all 0.2s ease;
+}
+
+.platform-button {
+  transition: all 0.2s ease;
+
+  &.steam {
+    &:hover {
+      background-color: var(--color-bg-blue-lowered);
+      color: var(--color-text-blue);
+    }
+  }
+
+  &.discord {
+    &:hover {
+      background-color: var(--color-bg-purple-lowered);
+      color: var(--color-text-purple);
+    }
+  }
+
+  &.patreon {
+    &:hover {
+      background-color: var(--color-bg-accent-lowered);
+      color: var(--color-accent);
+    }
+  }
+}
+</style>
+
 <style scoped lang="scss">
 .user-table-container {
   width: 100%;
@@ -833,24 +882,6 @@ defineExpose({
   width: 64px;
 }
 
-.confirmed-check {
-  .iconify {
-    color: var(--color-text-green) !important;
-  }
-
-  display: inline-flex;
-  align-items: center;
-}
-
-.unconfirmed-x {
-  .iconify {
-    color: var(--color-text-red) !important;
-  }
-
-  display: inline-flex;
-  align-items: center;
-}
-
 .uuid-cell {
   min-width: 292px;
 }
@@ -883,10 +914,6 @@ defineExpose({
   min-width: 140px;
 }
 
-.provider-button {
-  transition: all 0.2s ease;
-}
-
 .email-cell {
   min-width: 220px;
 }
@@ -916,31 +943,6 @@ defineExpose({
 
 .platform-connections-cell {
   min-width: 120px;
-}
-
-.platform-button {
-  transition: all 0.2s ease;
-
-  &.steam {
-    &:hover {
-      background-color: var(--color-bg-blue-lowered);
-      color: var(--color-text-blue);
-    }
-  }
-
-  &.discord {
-    &:hover {
-      background-color: var(--color-bg-purple-lowered);
-      color: var(--color-text-purple);
-    }
-  }
-
-  &.patreon {
-    &:hover {
-      background-color: var(--color-bg-accent-lowered);
-      color: var(--color-accent);
-    }
-  }
 }
 
 .supporter-cell {

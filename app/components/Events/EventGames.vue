@@ -49,7 +49,7 @@ withDefaults(defineProps<Props>(), {
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 .event-games {
   &__label {
     font-size: var(--font-size-xs);

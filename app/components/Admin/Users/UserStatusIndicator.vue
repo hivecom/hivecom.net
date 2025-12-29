@@ -20,12 +20,12 @@ const statusDescriptions = {
 <template>
   <Tooltip placement="top">
     <template #tooltip>
-      <div class="tooltip-content">
+      <div class="user-status__tooltip-content">
         {{ statusDescriptions[$props.status] }}
       </div>
     </template>
-    <Flex class="status-indicator-wrapper" y-center>
-      <span v-if="showLabel" class="text-s status-text" :class="$props.status">
+    <Flex class="user-status__indicator-wrapper" y-center>
+      <span v-if="showLabel" class="text-s user-status__text" :class="$props.status">
         {{ statusLabels[$props.status] }}
       </span>
     </Flex>
@@ -33,20 +33,20 @@ const statusDescriptions = {
 </template>
 
 <style scoped lang="scss">
-.status-indicator-wrapper {
+.user-status__indicator-wrapper {
   display: inline-flex;
   align-items: center;
 }
 
-.status-text {
+.user-status__text {
   color: var(--color-text-lighter);
+
+  &.banned {
+    color: var(--color-text-red);
+  }
 }
 
-.status-text.banned {
-  color: var(--color-text-red);
-}
-
-.tooltip-content {
+.user-status__tooltip-content {
   color: var(--color-text-light);
   font-size: var(--font-size-xs);
   line-height: 1.4;

@@ -28,25 +28,25 @@ const statusDescriptions = {
 <template>
   <Tooltip placement="top">
     <template #tooltip>
-      <div class="tooltip-content">
+      <div class="containers__tooltip-content">
         {{ statusDescriptions[status] }}
       </div>
     </template>
-    <Flex class="status-indicator-wrapper" y-center>
-      <span :class="`status-indicator ${status}`" />
+    <Flex class="containers__status-indicator-wrapper" y-center>
+      <span :class="`containers__status-indicator ${status}`" />
       <span v-if="showLabel" class="text-s">{{ statusLabels[status] }}</span>
     </Flex>
   </Tooltip>
 </template>
 
-<style scoped lang="scss">
-.status-indicator-wrapper {
+<style lang="scss">
+.containers__status-indicator-wrapper {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
 }
 
-.status-indicator {
+.containers__status-indicator {
   display: inline-block;
   width: 10px;
   height: 10px;
@@ -74,7 +74,7 @@ const statusDescriptions = {
   }
 }
 
-.tooltip-content {
+.containers__tooltip-content {
   color: var(--color-text-light);
   font-size: var(--font-size-xs);
   line-height: 1.4;
