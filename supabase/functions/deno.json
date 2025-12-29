@@ -26,6 +26,7 @@
     "./oauth-patreon",
     "./ping",
     "./trigger-google-calendar-sync",
+    "./trigger-user-avatar-sync",
     "./teamspeak-unlink",
     "./teamspeak-verify-request",
     "./teamspeak-verify-confirm",
