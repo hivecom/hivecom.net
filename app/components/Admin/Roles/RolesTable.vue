@@ -282,7 +282,7 @@ onBeforeMount(fetchRolePermissions)
         <div v-else-if="search" class="no-permissions">
           <Icon name="ph:warning-circle" size="1.2rem" class="text-color-light" />
           <p class="text-color-light">
-            No permissions found for "{{ search }}"
+            No permissions found
           </p>
         </div>
 
