@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
-import GameIcon from '../GameServers/GameIcon.vue'
 import RegionIndicator from '../Shared/RegionIndicator.vue'
 
 // TODO: move teamspeak rich presence from next to the name (in profile) to this component

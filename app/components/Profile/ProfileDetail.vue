@@ -11,7 +11,6 @@ import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useCacheQuery } from '@/composables/useCache'
 import { useCacheUserData } from '@/composables/useCacheUserData'
-import ProfileActivity from './ProfileActivity.vue'
 
 interface Props {
   userId?: string
@@ -810,8 +809,8 @@ async function ignoreFriendRequest() {
 
         <!-- (Right) -->
         <Flex column gap="m">
-          <!-- Activity section -->
-          <ProfileActivity />
+          <!-- Activity section, TODO: reenable -->
+          <!-- <ProfileActivity /> -->
 
           <!-- Friends Section -->
           <ProfileFriends
