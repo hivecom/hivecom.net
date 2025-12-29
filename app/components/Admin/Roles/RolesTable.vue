@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Alert, Badge, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
-
+import { Alert, Card, Flex, Grid, Input, searchString, Skeleton } from '@dolanske/vui'
 import RoleKPIs from '@/components/Admin/Roles/RoleKPIs.vue'
+import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const isBelowMedium = useBreakpoint('<m')
@@ -12,6 +12,8 @@ const loading = ref(true)
 const errorMessage = ref('')
 const rolePermissions = ref<{ role: string, permission: string }[]>([])
 const refreshSignal = ref(0)
+
+const search = ref('')
 
 const defaultUserPermissions = [
   'announcements.read',
@@ -32,14 +34,17 @@ const defaultUserPermissions = [
 const permissionsByRole = computed(() => {
   const grouped: Record<string, string[]> = {}
 
-  rolePermissions.value.forEach(({ role, permission }) => {
-    if (!grouped[role]) {
-      grouped[role] = []
-    }
-    grouped[role].push(permission)
-  })
+  rolePermissions.value
+    .filter(({ role, permission }) => searchString([role, permission], search.value))
+    .forEach(({ role, permission }) => {
+      if (!grouped[role]) {
+        grouped[role] = []
+      }
+      grouped[role].push(permission)
+    })
 
   grouped.user = [...defaultUserPermissions]
+    .filter(permission => searchString([permission], search.value))
 
   Object.keys(grouped).forEach((role) => {
     if (grouped[role]) {
@@ -142,6 +147,19 @@ function getRoleColor(role: string): string {
   }
 }
 
+function getRoleVariant(role: string) {
+  switch (role) {
+    case 'admin':
+      return 'danger'
+    case 'moderator':
+      return 'info'
+    case 'user':
+      return 'success'
+    default:
+      return 'neutral'
+  }
+}
+
 function getCategoryIcon(category: string): string {
   const icons: Record<string, string> = {
     announcements: 'ph:megaphone',
@@ -217,29 +235,35 @@ onBeforeMount(fetchRolePermissions)
   </Alert>
 
   <template v-else>
+    <Input
+      v-model="search"
+      placeholder="Seach for a role"
+      :expand="isBelowMedium"
+    >
+      <template #start>
+        <Icon name="ph:magnifying-glass" />
+      </template>
+    </Input>
+
     <Grid :columns="isBelowMedium ? 1 : 3" gap="l" expand>
       <Card v-for="role in availableRoles" :key="role" expand class="role-card">
         <template #header>
-          <Flex x-between y-center>
+          <Flex x-start y-center>
             <Flex y-center gap="s">
-              <h3 class="role-title" :style="{ color: getRoleColor(role) }">
+              <h3 class="role-title flex-1" :style="{ color: getRoleColor(role) }">
                 {{ role.charAt(0).toUpperCase() + role.slice(1) }}
               </h3>
-              <Badge
-                :style="{ backgroundColor: getRoleColor(role),
-                          color: 'white' }"
-              >
-                {{ permissionsByRole[role]?.length || 0 }} permissions
-              </Badge>
             </Flex>
-            <Icon name="ph:shield-check" size="1.5rem" :style="{ color: getRoleColor(role) }" />
+            <BadgeCircle :variant="getRoleVariant(role)">
+              {{ permissionsByRole[role]?.length || 0 }}
+            </BadgeCircle>
           </Flex>
         </template>
 
-        <div v-if="groupedPermissions[role]" class="permissions-container">
+        <div v-if="Object.keys(groupedPermissions[role] ?? {}).length > 0" class="permissions-container">
           <div v-for="(permissions, category) in groupedPermissions[role]" :key="category" class="permission-category">
             <Flex y-center gap="xs" class="category-header">
-              <Icon :name="getCategoryIcon(category)" size="1rem" class="category-icon" />
+              <Icon :name="getCategoryIcon(category)" size="14" class="category-icon" />
               <h4 class="category-title">
                 {{ formatCategoryName(category) }}
               </h4>
@@ -248,16 +272,25 @@ onBeforeMount(fetchRolePermissions)
 
             <div class="permissions-list">
               <div v-for="permission in permissions" :key="permission" class="permission-item">
-                <Icon name="ph:check-circle" size="0.8rem" class="permission-check" />
+                <!-- <Icon name="ph:check-circle" class="permission-check" size="14" /> -->
                 <span class="permission-text">{{ formatPermissionName(permission) }}</span>
               </div>
             </div>
           </div>
         </div>
 
+        <div v-else-if="search" class="no-permissions">
+          <Icon name="ph:warning-circle" size="1.2rem" class="text-color-light" />
+          <p class="text-color-light">
+            No permissions found for "{{ search }}"
+          </p>
+        </div>
+
         <div v-else class="no-permissions">
           <Icon name="ph:warning-circle" size="1.2rem" class="text-color-light" />
-          <span class="text-color-light">No permissions assigned</span>
+          <p class="text-color-light">
+            No permissions assigned
+          </p>
         </div>
       </Card>
     </Grid>
@@ -267,19 +300,34 @@ onBeforeMount(fetchRolePermissions)
 <style scoped lang="scss">
 .role-card {
   position: relative;
-  overflow: hidden;
+  // overflow: hidden;
+
+  :deep(.vui-card-header) {
+    position: sticky;
+    background-color: var(--color-bg);
+    z-index: var(--z-sticky);
+    margin-bottom: var(--space-m);
+    border-bottom: 1px solid var(--color-border);
+    top: 0;
+  }
 }
 
 .role-title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-l);
+  // font-weight: var(--font-weight-semibold);
   margin: 0;
 }
 
 .permissions-container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-m);
+  gap: var(--space-l);
+
+  &:hover {
+    .permission-text {
+      color: var(--color-text);
+    }
+  }
 }
 
 .permission-category {
@@ -289,7 +337,7 @@ onBeforeMount(fetchRolePermissions)
 }
 
 .category-header {
-  margin-bottom: var(--space-xs);
+  margin-bottom: var(--space-xxs);
 }
 
 .category-icon {
@@ -306,7 +354,7 @@ onBeforeMount(fetchRolePermissions)
 .permissions-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-xxs);
   margin-left: var(--space-l);
 }
 
@@ -327,7 +375,8 @@ onBeforeMount(fetchRolePermissions)
 
 .permission-text {
   font-size: var(--font-size-s);
-  color: var(--color-text);
+  color: var(--color-text-light);
+  transition: var(--transition-fast);
 }
 
 .no-permissions {

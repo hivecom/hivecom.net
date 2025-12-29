@@ -26,9 +26,9 @@ defineProps<{
             <Tooltip placement="top">
               <Icon name="ph:info" size="18" class="kpi-card__info-icon" />
               <template #tooltip>
-                <div class="kpi-card__tooltip-content">
+                <p class="kpi-card__tooltip-content">
                   {{ description }}
-                </div>
+                </p>
               </template>
             </Tooltip>
           </div>
@@ -155,7 +155,7 @@ defineProps<{
 
   &__tooltip-content {
     max-width: 250px;
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-s);
     line-height: 1.4;
   }
 }
