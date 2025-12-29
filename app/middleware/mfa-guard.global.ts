@@ -44,7 +44,7 @@ export default defineNuxtRouteMiddleware(async (to: RouteLocationNormalizedLoade
   if (needsAal2 && !authRoutes.includes(to.path)) {
     return navigateTo({
       path: '/auth/sign-in',
-      query: { ...to.query, mfa: '1' },
+      query: { mfa: '1', redirect: to.fullPath },
       replace: true,
     })
   }

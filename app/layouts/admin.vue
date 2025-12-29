@@ -203,13 +203,7 @@ const menuItems = [
     permissions: ['referendums.read', 'referendums.create', 'referendums.update', 'referendums.delete'],
   },
   {
-    name: 'Roles',
-    path: '/admin/roles',
-    icon: 'ph:shield-check',
-    permissions: ['roles.read'],
-  },
-  {
-    name: 'Users',
+    name: 'Users & Roles',
     path: '/admin/users',
     icon: 'ph:user',
     permissions: ['users.read', 'users.create', 'users.update', 'users.delete', 'profiles.read', 'profiles.update', 'profiles.delete'],

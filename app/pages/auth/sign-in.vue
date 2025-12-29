@@ -37,6 +37,7 @@ const isBelowS = useBreakpoint('<s')
 const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(720px, 96vh)'))
 const metaballWidth = computed(() => (isBelowS.value ? '100vw' : 'min(520px, 96vw)'))
 const postSignInRedirect = computed(() => normalizeInternalRedirect(route.query.redirect))
+const resolvedPostSignInRedirect = computed(() => postSignInRedirect.value ?? '/profile')
 
 function normalizeOtpFromText(text: string) {
   const match = text.match(/\b(\d{6})\b/)
@@ -204,7 +205,7 @@ async function signInWithPassword() {
   else {
     const needsMfa = await prepareMfaRequirement()
     if (!needsMfa)
-      navigateTo(postSignInRedirect.value ?? '/')
+      navigateTo(resolvedPostSignInRedirect.value)
   }
 }
 
@@ -318,7 +319,7 @@ async function verifyMfaCode() {
 
     await persistVerifiedMfaSession(sessionResult?.session ?? null)
     resetMfaState()
-    navigateTo(postSignInRedirect.value ?? '/')
+    navigateTo(resolvedPostSignInRedirect.value)
   }
   catch (error) {
     mfaError.value = error instanceof Error ? error.message : 'The provided code was invalid or expired.'

@@ -116,10 +116,8 @@ async function submitPasswordReset() {
     passwordResetSuccess.value = true
     passwordResetReady.value = false
 
-    await supabase.auth.signOut()
-
     setTimeout(() => {
-      router.push('/auth/sign-in')
+      router.push('/profile/settings')
     }, 2000)
   }
   catch (err) {
