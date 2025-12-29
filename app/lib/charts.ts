@@ -1,49 +1,52 @@
 import type { ChartOptions } from 'chart.js'
+import { getCSSVariable } from './utils/common'
 
-export const lineChartDefaultOptions: ChartOptions<'line'> = {
-  responsive: true,
-  maintainAspectRatio: false,
-  animation: {
-    duration: 50,
-    delay: 0,
-  },
-  plugins: {
-    title: {
-      display: true,
-      font: {
-        size: 16,
-        weight: 'bold',
+export function getLineChartDefaults(theme: string): ChartOptions<'line'> {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: {
+      duration: 50,
+      delay: 0,
+    },
+    plugins: {
+      title: {
+        display: true,
+        font: {
+          size: 16,
+          weight: 'bold',
+        },
+      },
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          boxHeight: 10,
+          boxWidth: 10,
+        },
       },
     },
-    legend: {
-      display: true,
-      position: 'top',
-      labels: {
-        boxHeight: 10,
-        boxWidth: 10,
+    scales: {
+      x: {
+        display: true,
+        grid: {
+          color: getCSSVariable(`--${theme}-color-border-weak`),
+        },
+      },
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        beginAtZero: true,
+        grid: {
+          color: getCSSVariable(`--${theme}-color-border-weak`),
+        },
       },
     },
-  },
-  scales: {
-    x: {
-      display: true,
-      grid: {
-        color: '#181818',
-      },
+    interaction: {
+      mode: 'nearest',
+      axis: 'x',
+      intersect: false,
     },
-    y: {
-      type: 'linear',
-      display: true,
-      position: 'left',
-      beginAtZero: true,
-      grid: {
-        color: '#181818',
-      },
-    },
-  },
-  interaction: {
-    mode: 'nearest',
-    axis: 'x',
-    intersect: false,
-  },
+  }
 }

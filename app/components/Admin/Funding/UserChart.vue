@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
-import { Skeleton } from '@dolanske/vui'
+import { Skeleton, theme } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import {
   CategoryScale,
@@ -17,7 +17,7 @@ import {
 import dayjs from 'dayjs'
 import { computed, onBeforeMount, ref, watch, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
-import { lineChartDefaultOptions } from '@/lib/charts'
+import { getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
 const props = defineProps<Props>()
@@ -311,11 +311,12 @@ onBeforeMount(fetchAllData)
       <p>No user data available for chart</p>
     </div>
 
-    <div v-else ref="chartWrapperRef" class="chart-wrapper">
+    <div v-else ref="chartWrapperRef" :key="theme" class="chart-wrapper">
+      {{ theme }}
       <Line
         ref="chartRef"
         :data="chartData"
-        :options="deepMergePlainObjects(lineChartDefaultOptions, localChartOptions)"
+        :options="deepMergePlainObjects(getLineChartDefaults(theme), localChartOptions)"
       />
     </div>
   </div>
