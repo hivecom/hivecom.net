@@ -410,10 +410,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <Card separators>
+  <Card separators class="card-bg">
     <template #header>
       <Flex x-between y-center>
-        <h3>Multi-Factor Authentication</h3>
+        <h4>Multi-Factor Authentication</h4>
         <Icon :name="mfaStatusIcon" />
       </Flex>
     </template>

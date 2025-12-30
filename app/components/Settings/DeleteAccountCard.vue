@@ -74,10 +74,10 @@ async function deleteAccount() {
 </script>
 
 <template>
-  <Card separators class="danger-card">
+  <Card separators class="danger-card card-bg">
     <template #header>
       <Flex x-between y-center>
-        <h3>Delete Account</h3>
+        <h4>Delete Account</h4>
         <Icon name="ph:warning" />
       </Flex>
     </template>

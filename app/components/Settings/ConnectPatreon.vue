@@ -76,6 +76,7 @@ async function connectPatreon() {
       :expand="props.expand"
       :loading="isConnecting"
       :disabled="isConnecting"
+      size="s"
       @click="connectPatreon"
     >
       Connect

@@ -7,7 +7,8 @@
 :root {
   // Main container sizes
   --container-l: 1280px;
-  --container-m: 768px;
+  --container-m: 968px;
+  --container-s: 728px;
 
   // Dark (default) theme colors
   --dark-color-bg: #111;
@@ -155,6 +156,14 @@ table td {
 :root.light {
   .vui-popout {
     box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.125);
+  }
+}
+
+.vui-switch.checked .vui-switch-icon {
+  background-color: var(--color-border);
+
+  .vui-switch-indicator {
+    background-color: var(--color-accent);
   }
 }
 

@@ -413,6 +413,7 @@ function safeParseJson(input: string): unknown {
       :expand="isBelowMedium"
       :loading="isProfileLoading"
       :disabled="isProfileLoading || !hasServers"
+      size="s"
       @click="openModal"
     >
       {{ buttonLabel }}

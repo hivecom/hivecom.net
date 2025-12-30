@@ -125,7 +125,7 @@ onMounted(async () => {
     <LandingHero :community-stats="communityStats" :loading="loading" />
 
     <div class="container container-l">
-      <div class="page-landing">
+      <div class="page-landing container container-m">
         <!-- About section -->
         <section class="about-section">
           <h2 class="heading">
@@ -329,7 +329,6 @@ h4 {
   padding-top: 4rem;
 
   &__content {
-    max-width: 900px;
     margin: 2rem auto 0;
 
     p {
@@ -366,7 +365,6 @@ h4 {
     grid-template-columns: 1.5fr 1fr;
     align-items: center;
     gap: 64px;
-    max-width: 900px;
     margin: 2rem auto 0;
 
     @media screen and (max-width: $breakpoint-m) {
@@ -434,7 +432,6 @@ h4 {
 .events-section {
   &__list {
     margin: 2rem auto 0;
-    max-width: 900px;
     text-align: left;
 
     @media screen and (max-width: $breakpoint-s) {

@@ -84,10 +84,10 @@ async function requestEmailChange() {
 </script>
 
 <template>
-  <Card separators>
+  <Card separators class="card-bg">
     <template #header>
       <Flex x-between y-center>
-        <h3>Change Email</h3>
+        <h4>Change Email</h4>
         <Icon name="ph:envelope-simple" />
       </Flex>
     </template>

@@ -117,6 +117,7 @@ async function connectDiscord() {
       :expand="props.expand"
       :loading="isLinking"
       :disabled="isLinking"
+      size="s"
       @click="connectDiscord"
     >
       Connect

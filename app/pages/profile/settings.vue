@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Card, Divider, Flex, Grid, Skeleton, Toasts } from '@dolanske/vui'
+import { Alert, Button, Card, Divider, DropdownItem, Flex, Grid, Skeleton, Tab, Tabs, Toasts } from '@dolanske/vui'
 import { computed } from 'vue'
 import ChangeEmailCard from '@/components/Settings/ChangeEmailCard.vue'
 import ChangePasswordCard from '@/components/Settings/ChangePasswordCard.vue'
@@ -97,7 +97,7 @@ watch(user, (newUser) => {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page container container-m">
     <template v-if="loading && !authReady">
       <div class="loading-container">
         <Skeleton height="2.5rem" width="60%" style="margin-bottom: var(--space-l);" />
@@ -140,50 +140,32 @@ watch(user, (newUser) => {
         {{ profileError }}
       </Alert>
 
-      <Flex expand column gap="xl">
-        <Flex column gap="m" expand y-center>
-          <Flex expand gap="m">
-            <p class="section-eyebrow">
-              Profile
-            </p>
-            <Divider size="s" class="w-100" />
-          </Flex>
-          <Flex gap="l" expand y-stretch>
-            <!-- <ProfileSummaryCard
-              :profile="profile"
-              :user-id="userId"
-              :loading="loading"
-            /> -->
-            <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" />
-          </Flex>
-        </Flex>
-
-        <Flex column gap="m" expand>
-          <Flex expand gap="m">
-            <p class="section-eyebrow">
+      <div class="settings">
+        <div class="settings__nav">
+          <div class="settings__nav--inner">
+            <DropdownItem expand>
+              Connections
+            </DropdownItem>
+            <DropdownItem>
               Security
-            </p>
-            <Divider size="s" class="w-100" />
-          </Flex>
-          <Grid :columns="sectionGridColumns" gap="l" expand y-stretch>
+            </DropdownItem>
+            <DropdownItem>
+              Account
+            </DropdownItem>
+          </div>
+        </div>
+        <Flex expand column gap="xxxl" class="settings__container">
+          <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" />
+          <Flex column gap="m">
             <ChangePasswordCard />
             <MfaCard />
-          </Grid>
-        </Flex>
-
-        <Flex column gap="m" expand>
-          <Flex expand gap="m">
-            <p class="section-eyebrow">
-              Account
-            </p>
-            <Divider size="s" class="w-100" />
           </Flex>
-          <Grid :columns="sectionGridColumns" gap="l" expand y-stretch>
+          <Flex column gap="m">
             <ChangeEmailCard />
             <DeleteAccountCard />
-          </Grid>
+          </Flex>
         </Flex>
-      </Flex>
+      </div>
     </template>
   </div>
   <Toasts />
@@ -195,6 +177,11 @@ watch(user, (newUser) => {
   letter-spacing: 0.08em;
   color: var(--color-text-lightest);
   margin-top: var(--space-xxs);
+}
+
+:deep(h4) {
+  font-weight: var(--font-weight-bold);
+  padding-block: var(--space-xs);
 }
 
 .loading-container {
@@ -209,6 +196,22 @@ watch(user, (newUser) => {
 }
 .profile-error {
   margin-bottom: var(--space-m);
+}
+
+.settings {
+  display: grid;
+  grid-template-columns: 192px 1fr;
+  gap: var(--space-l);
+  max-width: 982px;
+
+  &__nav {
+    position: relative;
+
+    &--inner {
+      position: sticky;
+      top: calc(64px + var(--space-s));
+    }
+  }
 }
 
 @media (max-width: 768px) {

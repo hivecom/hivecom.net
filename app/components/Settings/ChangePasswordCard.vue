@@ -48,16 +48,16 @@ async function sendPasswordReset() {
 </script>
 
 <template>
-  <Card separators>
+  <Card separators class="card-bg">
     <template #header>
       <Flex x-between y-center>
-        <h3>Change Password</h3>
+        <h4>Change Password</h4>
         <Icon name="ph:key" />
       </Flex>
     </template>
 
     <Flex column gap="l">
-      <Flex column class="settings-callout" gap="l" wrap expand>
+      <Flex column gap="l" wrap expand>
         <Flex gap="m" y-start class="settings-callout__content" expand>
           <div class="settings-callout__icon">
             <Icon name="ph:lock-key" size="26" />
@@ -100,7 +100,7 @@ async function sendPasswordReset() {
 <style scoped>
 .settings-callout {
   width: 100%;
-  padding: var(--space-l);
+  /* padding: var(--space-l); */
   border-radius: var(--border-radius-l);
   border: 1px solid var(--color-border);
   background: var(--color-bg-subtle);

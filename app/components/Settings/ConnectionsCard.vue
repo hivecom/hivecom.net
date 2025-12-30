@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, Checkbox, Flex, pushToast } from '@dolanske/vui'
+import { Button, Card, Checkbox, Flex, pushToast, Switch } from '@dolanske/vui'
 import { reactive, ref, watch } from 'vue'
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
@@ -200,15 +200,15 @@ function toggleRichPresence() {
 </script>
 
 <template>
-  <Card separators class="connected-card w-100">
+  <Card separators class="connected-card w-100 card-bg">
     <template #header>
       <Flex x-between y-center>
-        <h3>Connections</h3>
+        <h4>Connections</h4>
         <Icon name="ph:link" />
       </Flex>
     </template>
 
-    <Flex column gap="m">
+    <div>
       <!-- Patreon -->
       <Flex expand class="account-connection-row">
         <Flex
@@ -221,9 +221,9 @@ function toggleRichPresence() {
         >
           <Flex expand gap="m" y-center>
             <div class="account-icon patreon">
-              <Icon name="ph:patreon-logo" size="20" />
+              <Icon name="ph:patreon-logo" size="22" />
             </div>
-            <Flex column expand class="account-row">
+            <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>Patreon</strong>
                 <TinyBadge v-if="props.profile?.patreon_id" variant="success">
@@ -231,7 +231,7 @@ function toggleRichPresence() {
                   Connected
                 </TinyBadge>
               </Flex>
-              <p class="text-xs text-color-lighter">
+              <p class="text-s text-color-lighter">
                 Connect to get your supporter benefits
               </p>
             </Flex>
@@ -245,6 +245,7 @@ function toggleRichPresence() {
               :loading="true"
               disabled
               aria-disabled="true"
+              size="s"
             >
               Loading
             </Button>
@@ -253,6 +254,7 @@ function toggleRichPresence() {
               :expand="isBelowSmall"
               variant="danger"
               :loading="disconnectLoading.patreon"
+              size="s"
               @click="disconnectPatreon"
             >
               Disconnect
@@ -276,9 +278,9 @@ function toggleRichPresence() {
         >
           <Flex expand gap="m" y-center>
             <div class="account-icon steam">
-              <Icon name="ph:steam-logo" size="20" />
+              <Icon name="ph:steam-logo" size="22" />
             </div>
-            <Flex column expand class="account-row">
+            <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>Steam</strong>
                 <TinyBadge v-if="props.profile?.steam_id" variant="success">
@@ -286,7 +288,7 @@ function toggleRichPresence() {
                   Connected
                 </TinyBadge>
               </Flex>
-              <p class="text-xs text-color-lighter">
+              <p class="text-s text-color-lighter">
                 Connect your gaming profile
               </p>
             </Flex>
@@ -300,6 +302,7 @@ function toggleRichPresence() {
               :loading="true"
               disabled
               aria-disabled="true"
+              size="s"
             >
               Loading
             </Button>
@@ -308,6 +311,7 @@ function toggleRichPresence() {
               :expand="isBelowSmall"
               variant="danger"
               :loading="disconnectLoading.steam"
+              size="s"
               @click="disconnectSteam"
             >
               Disconnect
@@ -331,9 +335,9 @@ function toggleRichPresence() {
         >
           <Flex expand gap="m" y-center>
             <div class="account-icon discord">
-              <Icon name="ph:discord-logo" size="20" />
+              <Icon name="ph:discord-logo" size="22" />
             </div>
-            <Flex column expand class="account-row">
+            <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>Discord</strong>
                 <TinyBadge v-if="props.profile?.discord_id" variant="success">
@@ -341,7 +345,7 @@ function toggleRichPresence() {
                   Connected
                 </TinyBadge>
               </Flex>
-              <p class="text-xs text-color-lighter">
+              <p class="text-s text-color-lighter">
                 Sign-in through Discord
               </p>
             </Flex>
@@ -355,6 +359,7 @@ function toggleRichPresence() {
               :loading="true"
               disabled
               aria-disabled="true"
+              size="s"
             >
               Loading
             </Button>
@@ -363,6 +368,7 @@ function toggleRichPresence() {
               :expand="isBelowSmall"
               variant="danger"
               :loading="disconnectLoading.discord"
+              size="s"
               @click="disconnectDiscord"
             >
               Disconnect
@@ -386,9 +392,9 @@ function toggleRichPresence() {
         >
           <Flex expand gap="m" y-center class="teamspeak-copy">
             <div class="account-icon teamspeak">
-              <Icon name="mdi:teamspeak" size="20" />
+              <Icon name="mdi:teamspeak" size="22" />
             </div>
-            <Flex column expand class="account-row">
+            <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>TeamSpeak</strong>
                 <TinyBadge v-if="hasTeamSpeakConnected" variant="success">
@@ -396,7 +402,7 @@ function toggleRichPresence() {
                   Connected
                 </TinyBadge>
               </Flex>
-              <p class="text-xs text-color-lighter">
+              <p class="text-s text-color-lighter">
                 Link your TeamSpeak identities to receive server access and roles
               </p>
             </Flex>
@@ -410,6 +416,7 @@ function toggleRichPresence() {
               :loading="true"
               disabled
               aria-disabled="true"
+              size="s"
             >
               Loading
             </Button>
@@ -432,11 +439,11 @@ function toggleRichPresence() {
         >
           <Flex expand gap="m" y-center>
             <div class="account-icon presence">
-              <Icon name="ph:activity" size="20" />
+              <Icon name="ph:activity" size="22" />
             </div>
-            <Flex column expand class="account-row">
+            <Flex column expand gap="xxs">
               <strong>Rich presence</strong>
-              <p class="text-xs text-color-lighter">
+              <p class="text-s text-color-lighter">
                 Allow fetching and displaying information from any connected services
               </p>
             </Flex>
@@ -457,7 +464,7 @@ function toggleRichPresence() {
               {{ richPresenceEnabled ? 'Enabled' : 'Disabled' }}
             </Button>
 
-            <Checkbox
+            <Switch
               v-else
               :model-value="richPresenceEnabled"
               :disabled="richPresenceLoading"
@@ -466,16 +473,21 @@ function toggleRichPresence() {
           </div>
         </Flex>
       </Flex>
-    </Flex>
+    </div>
   </Card>
 </template>
 
 <style scoped>
 .account-connection-row {
-  padding: var(--space-m);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-m);
-  background: var(--color-bg-subtle);
+  padding-bottom: var(--space-m);
+  margin-bottom: var(--space-m);
+  border-bottom: 1px solid var(--color-border);
+
+  &:last-of-type {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
 }
 
 .account-icon {
