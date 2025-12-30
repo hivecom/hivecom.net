@@ -15,12 +15,10 @@ DO $$
 DECLARE
   token_value text;
 BEGIN
-  -- Generate a secure random token
-  token_value := ENCODE(GEN_RANDOM_BYTES(32), 'hex');
   -- Store the token in the vault (this will fail if it already exists)
   BEGIN
     PERFORM
-      vault.create_secret(token_value, 'system_cron_secret');
+      vault.create_secret('REPLACE-ME', 'system_cron_secret');
   EXCEPTION
     WHEN OTHERS THEN
       -- Secret might already exist, we can ignore this

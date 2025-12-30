@@ -276,7 +276,7 @@ function toggleRichPresence() {
         >
           <Flex expand gap="m" y-center>
             <div class="account-icon steam">
-              <Icon name="ph:game-controller" size="20" />
+              <Icon name="ph:steam-logo" size="20" />
             </div>
             <Flex column expand class="account-row">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">

@@ -7,13 +7,38 @@ export type Json
     | Json[]
 
 export interface Database {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: '13.0.5'
-  }
   private: {
     Tables: {
+      kvstore: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          key: string
+          modified_at: string | null
+          modified_by: string | null
+          type: Database['public']['Enums']['kvstore_type']
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          key: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database['public']['Enums']['kvstore_type']
+          value: Json
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          key?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database['public']['Enums']['kvstore_type']
+          value?: Json
+        }
+        Relationships: []
+      }
       teamspeak_tokens: {
         Row: {
           attempts: number
@@ -49,7 +74,8 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      queue_dispatch_worker_sync_steam: { Args: never, Returns: undefined }
+      queue_enqueue_worker_sync_steam: { Args: never, Returns: undefined }
     }
     Enums: {
       [_ in never]: never
@@ -602,33 +628,42 @@ export interface Database {
       presences_steam: {
         Row: {
           details: Json | null
+          fetched_at: string | null
           id: string
           last_app_id: number | null
           last_app_name: string | null
           last_online_at: string | null
           profile_id: string
-          status: string | null
+          status: Database['public']['Enums']['presence_steam_status'] | null
+          steam_name: string | null
           updated_at: string
+          visibility: string | null
         }
         Insert: {
           details?: Json | null
+          fetched_at?: string | null
           id?: string
           last_app_id?: number | null
           last_app_name?: string | null
           last_online_at?: string | null
           profile_id: string
-          status?: string | null
+          status?: Database['public']['Enums']['presence_steam_status'] | null
+          steam_name?: string | null
           updated_at?: string
+          visibility?: string | null
         }
         Update: {
           details?: Json | null
+          fetched_at?: string | null
           id?: string
           last_app_id?: number | null
           last_app_name?: string | null
           last_online_at?: string | null
           profile_id?: string
-          status?: string | null
+          status?: Database['public']['Enums']['presence_steam_status'] | null
+          steam_name?: string | null
           updated_at?: string
+          visibility?: string | null
         }
         Relationships: [
           {
@@ -1022,6 +1057,7 @@ export interface Database {
           user_id: string
         }[]
       }
+      get_private_config: { Args: { config_key: string }, Returns: Json }
       get_user_emails: {
         Args: never
         Returns: {
@@ -1041,6 +1077,21 @@ export interface Database {
       }
       is_owner: { Args: { record_user_id: string }, Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }, Returns: boolean }
+      pgmq_delete: {
+        Args: { msg_id: number, queue_name: string }
+        Returns: boolean
+      }
+      pgmq_read: {
+        Args: { qty: number, queue_name: string, vt: number }
+        Returns: unknown[]
+        SetofOptions: {
+          from: '*'
+          to: 'message_record'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      pgmq_send: { Args: { msg: Json, queue_name: string }, Returns: number }
       update_user_last_seen: { Args: { user_id?: string }, Returns: undefined }
       validate_github_repo: { Args: { github_repo: string }, Returns: boolean }
       validate_tag_format: { Args: { tag: string }, Returns: boolean }
@@ -1087,6 +1138,10 @@ export interface Database {
         | 'profiles.delete'
         | 'profiles.read'
         | 'profiles.update'
+        | 'projects.create'
+        | 'projects.read'
+        | 'projects.update'
+        | 'projects.delete'
         | 'referendums.create'
         | 'referendums.delete'
         | 'referendums.read'
@@ -1103,10 +1158,6 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
-        | 'projects.read'
-        | 'projects.create'
-        | 'projects.update'
-        | 'projects.delete'
         | 'assets.create'
         | 'assets.delete'
         | 'assets.read'
@@ -1122,6 +1173,14 @@ export interface Database {
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       kvstore_type: 'NUMBER' | 'BOOLEAN' | 'STRING' | 'JSON'
+      presence_steam_status:
+        | 'offline'
+        | 'online'
+        | 'busy'
+        | 'away'
+        | 'snooze'
+        | 'looking_to_trade'
+        | 'looking_to_play'
       profile_badge: 'founder' | 'earlybird' | 'builder' | 'host'
       region: 'eu' | 'na' | 'all'
     }
@@ -1294,6 +1353,10 @@ export const Constants = {
         'profiles.delete',
         'profiles.read',
         'profiles.update',
+        'projects.create',
+        'projects.read',
+        'projects.update',
+        'projects.delete',
         'referendums.create',
         'referendums.delete',
         'referendums.read',
@@ -1310,10 +1373,6 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
-        'projects.read',
-        'projects.create',
-        'projects.update',
-        'projects.delete',
         'assets.create',
         'assets.delete',
         'assets.read',
@@ -1330,6 +1389,15 @@ export const Constants = {
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],
       kvstore_type: ['NUMBER', 'BOOLEAN', 'STRING', 'JSON'],
+      presence_steam_status: [
+        'offline',
+        'online',
+        'busy',
+        'away',
+        'snooze',
+        'looking_to_trade',
+        'looking_to_play',
+      ],
       profile_badge: ['founder', 'earlybird', 'builder', 'host'],
       region: ['eu', 'na', 'all'],
     },

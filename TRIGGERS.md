@@ -80,3 +80,67 @@ Community events are mirrored to external services via trigger-backed edge funct
 - `trigger_sync_discord_events_insert`, `trigger_sync_discord_events_update`, and `trigger_sync_discord_events_delete` call `/functions/v1/trigger-discord-event-sync` to create, update, or delete Discord scheduled events. Updates are column-scoped to avoid loops, and delete hooks only fire when a `discord_event_id` exists.
 
 Both trigger groups rely on the vault-stored `project_url`, `anon_key`, and `system_trigger_secret` values so the database never needs to store service role keys in plain text while still allowing asynchronous syncs through `net.http_post`.
+
+## Steam Identity Sync (Background Queue System)
+
+A scalable background job system syncs Steam identities using a queue-based architecture:
+
+**Architecture:** `pg_cron` (Scheduler) → `queue_sync_steam` (PGMQ Queue) → `worker-sync-steam` (Edge Function)
+
+### Producer Job: `queue_enqueue_sync_steam`
+
+Runs every 15 minutes to enqueue all profiles with `steam_id` into the queue:
+
+```sql
+SELECT cron.schedule(
+  'queue_enqueue_sync_steam',
+  '*/15 * * * *',
+  $$SELECT private.queue_enqueue_worker_sync_steam();$$
+);
+```
+
+### Dispatcher Job: `queue_dispatch_sync_steam`
+
+Runs every minute to check queue depth and fire worker Edge Functions:
+
+```sql
+SELECT cron.schedule(
+  'queue_dispatch_sync_steam',
+  '* * * * *',
+  $$SELECT private.queue_dispatch_worker_sync_steam();$$
+);
+```
+
+The dispatcher:
+
+1. Reads configuration from `private.kvstore` (key: `worker_sync_steam`)
+2. Checks queue depth via `pgmq.metrics('queue_sync_steam')`
+3. Calculates workers needed based on batch size and max concurrency
+4. Fires `worker-sync-steam` Edge Functions via `net.http_post`
+
+### Configuration (`private.kvstore`)
+
+The system is tunable at runtime via the `worker_sync_steam` key:
+
+```json
+{
+  "max_wall_clock_ms": 140000,
+  "batch_size": 50,
+  "visibility_timeout_sec": 60,
+  "max_concurrency": 20
+}
+```
+
+- `max_wall_clock_ms`: Maximum runtime per worker (140s buffer for 150s Free Plan limit)
+- `batch_size`: Messages to process per pop operation
+- `visibility_timeout_sec`: Time before unprocessed messages become visible again
+- `max_concurrency`: Maximum number of concurrent workers
+
+### Required Vault Secrets
+
+- `project_url`: Supabase project URL for Edge Function invocation
+- `system_cron_secret`: Authorization token for cron-triggered Edge Functions
+
+### Required Environment Variables
+
+- `STEAM_API_KEY`: Steam Web API key for fetching player data

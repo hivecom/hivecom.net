@@ -11,10 +11,16 @@ interface Props {
   profileId: string
   teamspeakIdentities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
   richPresenceDisabled?: boolean
+  hideOnlineIndicator?: boolean
+  iconSize?: number
+  useAccentColor?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   richPresenceDisabled: false,
+  hideOnlineIndicator: false,
+  iconSize: 18,
+  useAccentColor: false,
 })
 
 const ONLINE_WINDOW_MS = 15 * 60 * 1000
@@ -253,9 +259,9 @@ function formatLastSeen(lastSeenAt: string | null): string {
     @focusin="handleEnter"
     @focusout="handleLeave"
   >
-    <Flex class="ts-presence__trigger" y-center gap="xs">
-      <Icon icon="mdi:teamspeak" width="18" height="18" />
-      <span v-if="isOnline" class="ts-presence__badge" />
+    <Flex class="ts-presence__trigger" :class="{ 'ts-presence__trigger--accent': props.useAccentColor }" y-center gap="xs">
+      <Icon class="activity-item__icon" icon="mdi:teamspeak" :width="props.iconSize" :height="props.iconSize" />
+      <span v-if="isOnline && !props.hideOnlineIndicator" class="ts-presence__badge" />
     </Flex>
 
     <Teleport to="body">
@@ -329,6 +335,10 @@ function formatLastSeen(lastSeenAt: string | null): string {
   cursor: pointer;
   color: var(--color-text);
   position: relative;
+}
+
+.ts-presence__trigger--accent {
+  color: var(--color-accent);
 }
 
 .ts-presence__badge {

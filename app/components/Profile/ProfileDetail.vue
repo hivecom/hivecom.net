@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Card, Flex, Skeleton } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Skeleton } from '@dolanske/vui'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import ProfileBadges from '@/components/Profile/ProfileBadges.vue'
 import ProfileBanStatus from '@/components/Profile/ProfileBanStatus.vue'
@@ -809,8 +809,8 @@ async function ignoreFriendRequest() {
 
         <!-- (Right) -->
         <Flex column gap="m">
-          <!-- Activity section, TODO: reenable -->
-          <!-- <ProfileActivity /> -->
+          <!-- Activity section -->
+          <ProfileActivity v-if="!profile.rich_presence_disabled && (profile.steam_id !== null || /*profile.discord_id !== null || */ profile.teamspeak_identities?.toString() !== '')" :profile="profile" :is-own-profile="isOwnProfile" />
 
           <!-- Friends Section -->
           <ProfileFriends
@@ -830,6 +830,17 @@ async function ignoreFriendRequest() {
 
           <!-- Badges -->
           <ProfileBadges :profile="profile" :is-own-profile="isOwnProfile" />
+        </Flex>
+        <!-- Admin-only UUID display -->
+        <Flex x-center expand>
+          <CopyClipboard :text="profile.id" confirm>
+            <Button v-if="isCurrentUserAdmin" size="s" plain data-title-top="Copy user id">
+              <template #start>
+                <Icon class="text-color-lightest" name="ph:hash" size="12" />
+              </template>
+              <span class="text-xxs text-color-lightest font-mono">{{ profile.id }}</span>
+            </Button>
+          </CopyClipboard>
         </Flex>
       </div>
     </template>

@@ -12,11 +12,11 @@
   },
   "workspace": [
     "./_shared",
+    "./admin-docker-control-container-logs",
     "./admin-docker-control-container-restart",
     "./admin-docker-control-container-start",
-    "./admin-docker-control-container-stop",
     "./admin-docker-control-container-status",
-    "./admin-docker-control-container-logs",
+    "./admin-docker-control-container-stop",
     "./admin-user-ban",
     "./admin-user-delete",
     "./cron-docker-control-container-fetch",
@@ -27,16 +27,18 @@
     "./openid-steam-start",
     "./openid-steam-verify",
     "./ping",
-    "./trigger-google-calendar-sync",
-    "./trigger-user-avatar-sync",
+    "./presence-refresh-steam",
     "./teamspeak-unlink",
-    "./teamspeak-verify-request",
     "./teamspeak-verify-confirm",
+    "./teamspeak-verify-request",
     "./teamspeak-viewer-refresh",
     "./trigger-discord-event-sync",
+    "./trigger-google-calendar-sync",
+    "./trigger-user-avatar-sync",
     "./user-delete-account",
     "./user-info",
     "./user-link-discord",
-    "./webhook-aws-ses-notifications"
+    "./webhook-aws-ses-notifications",
+    "./worker-sync-steam"
   ]
 }

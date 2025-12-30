@@ -7,7 +7,6 @@ import { getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import MDRenderer from '../Shared/MDRenderer.vue'
-import RichPresenceTeamSpeak from './RichPresenceTeamSpeak.vue'
 
 interface Props {
   profile: Tables<'profiles'>
@@ -250,11 +249,6 @@ function getRoleInfo(role: string | null) {
             <h1 class="profile-title">
               {{ profile.username }}
             </h1>
-            <RichPresenceTeamSpeak
-              :profile-id="profile.id"
-              :teamspeak-identities="profile.teamspeak_identities"
-              :rich-presence-disabled="profile.rich_presence_disabled"
-            />
           </Flex>
 
           <!-- Action Buttons -->
@@ -359,16 +353,6 @@ function getRoleInfo(role: string | null) {
       </div>
     </template>
   </Card>
-
-  <!-- Admin-only UUID display -->
-  <CopyClipboard :text="profile.id" confirm>
-    <Button v-if="isCurrentUserAdmin" size="s" plain data-title-top="Copy user id">
-      <template #start>
-        <Icon class="text-color-lighter" name="ph:hash" size="16" />
-      </template>
-      <span class="text-s text-color-lighter font-mono">{{ profile.id }}</span>
-    </Button>
-  </CopyClipboard>
 </template>
 
 <style>
