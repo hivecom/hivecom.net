@@ -38,7 +38,7 @@ ON CONFLICT (key)
     modified_at = NOW();
 
 -- 2. PGMQ QUEUE SETUP
-CREATE EXTENSION pgmq;
+CREATE EXTENSION IF NOT EXISTS pgmq;
 
 -- Create the Steam sync queue
 SELECT
