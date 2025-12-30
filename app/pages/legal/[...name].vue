@@ -119,7 +119,7 @@ useSeoMeta(() => {
     }
 
     p {
-      color: var(--text-color-lightest);
+      color: var(--color-text-lightest);
     }
   }
 }

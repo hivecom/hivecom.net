@@ -174,7 +174,7 @@ async function signUpWithGoogle() {
   &__footer {
     padding: 1rem;
     text-align: center;
-    color: var(--text-color-light);
+    color: var(--color-text-light);
 
     p {
       font-size: 1rem;

@@ -291,9 +291,8 @@ watch(() => props.profileId, () => {
 <style lang="scss" scoped>
 .activity-item__status-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  margin-right: var(--space-xxs);
 }
 </style>

@@ -134,7 +134,7 @@ onMounted(async () => {
     strong {
       display: block;
       margin-bottom: var(--space-xs);
-      color: var(--text-color);
+      color: var(--color-text);
     }
 
     p {

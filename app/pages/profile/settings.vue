@@ -102,7 +102,7 @@ watch(user, (newUser) => {
       <div class="loading-container">
         <Skeleton height="2.5rem" width="60%" style="margin-bottom: var(--space-l);" />
 
-        <Card separators>
+        <Card separators class="card-bg">
           <template #header>
             <Flex x-between y-center>
               <Skeleton height="1.5rem" width="10rem" />
@@ -127,7 +127,7 @@ watch(user, (newUser) => {
     </template>
 
     <template v-else-if="!user">
-      <div>Please sign in to access profile settings.</div>
+      <p>Please sign in to access profile settings.</p>
     </template>
 
     <template v-else>
