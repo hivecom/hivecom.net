@@ -78,10 +78,7 @@ async function connectPatreon() {
       :disabled="isConnecting"
       @click="connectPatreon"
     >
-      <template #start>
-        <Icon name="simple-icons:patreon" />
-      </template>
-      Connect Patreon
+      Connect
     </Button>
     <Toasts />
   </div>

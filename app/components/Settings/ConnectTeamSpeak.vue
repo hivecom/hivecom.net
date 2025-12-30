@@ -105,7 +105,7 @@ const serverSelectModel = computed<SelectOption[] | undefined>({
 
 const identities = computed(() => localIdentities.value)
 const hasLinkedIdentities = computed(() => identities.value.length > 0)
-const buttonLabel = computed(() => hasLinkedIdentities.value ? 'Manage TeamSpeak' : 'Connect TeamSpeak')
+const buttonLabel = computed(() => hasLinkedIdentities.value ? 'Manage' : 'Connect')
 const isProfileLoading = computed(() => props.profile === null)
 const stepBadge = computed(() => {
   switch (step.value) {
@@ -415,21 +415,18 @@ function safeParseJson(input: string): unknown {
       :disabled="isProfileLoading || !hasServers"
       @click="openModal"
     >
-      <template #start>
-        <Icon name="mdi:teamspeak" />
-      </template>
       {{ buttonLabel }}
     </Button>
 
     <Modal :open="isOpen" centered :card="{ separators: true }" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
       <template #header>
         <Flex x-between y-center>
-          <div>
+          <Flex column gap="xxs">
             <h3>Link TeamSpeak Identity</h3>
-            <p class="text-xs text-color-lighter">
+            <p class="text-m text-color-lighter">
               Securely connect your TeamSpeak identity to manage access.
             </p>
-          </div>
+          </Flex>
           <Badge v-if="!isBelowSmall" variant="neutral">
             {{ stepBadge }}
           </Badge>
@@ -439,7 +436,7 @@ function safeParseJson(input: string): unknown {
       <Flex column gap="l" expand>
         <section v-if="step === 'manage'" class="link-step">
           <h4>Manage linked identities</h4>
-          <p class="text-s text-color-lighter mb-s">
+          <p class="text-m text-color-lighter mb-s">
             View or remove your linked TeamSpeak identities. Add another to link more clients.
           </p>
 
@@ -483,16 +480,16 @@ function safeParseJson(input: string): unknown {
 
         <section v-else-if="step === 'request'" class="link-step">
           <h4>Step 1 - Send Verification Message</h4>
-          <p class="text-s text-color-lighter mb-s">
+          <p class="text-m text-color-lighter mb-s">
             Enter the TeamSpeak unique ID you want to link. We will send a secure token to your client on the selected server.
           </p>
 
-          <Alert variant="neutral" filled class="mb-m">
-            <p class="text-xs">
+          <Alert variant="info" filled class="mb-m" icon-align="start">
+            <p class="text-m">
               In TeamSpeak: open <strong class="text-xs">Tools → Identities</strong>, enable <strong class="text-xs">Advanced Mode</strong>, pick your current identity, then copy the <strong class="text-xs">Unique ID</strong> value.
             </p>
             <Flex x-start y-center gap="xs" class="identity-shortcut">
-              <span class="text-xs text-color-lighter">Shortcut:</span>
+              <span class="text-m text-color-lighter">Shortcut:</span>
               <KbdGroup>
                 <Kbd v-for="key in identityShortcut" :key="key" :keys="key" highlight />
               </KbdGroup>

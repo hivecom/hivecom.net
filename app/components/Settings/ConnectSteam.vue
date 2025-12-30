@@ -68,10 +68,7 @@ async function startSteamLink() {
     aria-label="Connect Steam account"
     @click="startSteamLink"
   >
-    <template #start>
-      <Icon name="ph:steam-logo" />
-    </template>
-    Connect Steam
+    Connect
   </Button>
 </template>
 

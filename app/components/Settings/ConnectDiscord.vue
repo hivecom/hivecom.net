@@ -119,10 +119,7 @@ async function connectDiscord() {
       :disabled="isLinking"
       @click="connectDiscord"
     >
-      <template #start>
-        <Icon name="ph:discord-logo" />
-      </template>
-      Connect Discord
+      Connect
     </Button>
     <Toasts />
   </div>
