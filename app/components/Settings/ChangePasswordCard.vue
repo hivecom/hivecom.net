@@ -48,27 +48,23 @@ async function sendPasswordReset() {
 </script>
 
 <template>
-  <Card separators class="card-bg">
+  <Card class="card-bg">
     <template #header>
-      <Flex x-between y-center>
-        <h4>Change Password</h4>
-        <Icon name="ph:key" />
+      <Flex x-start gap="m" y-center>
+        <div class="settings-callout__icon">
+          <Icon name="ph:lock-key" size="26" />
+        </div>
+        <div>
+          <h4>Change Password</h4>
+          <p class="text-s text-color-lighter">
+            Setting a password also lets you sign in directly without email links.
+          </p>
+        </div>
       </Flex>
     </template>
 
     <Flex column gap="l">
       <Flex column gap="l" wrap expand>
-        <Flex gap="m" y-start class="settings-callout__content" expand>
-          <div class="settings-callout__icon">
-            <Icon name="ph:lock-key" size="26" />
-          </div>
-          <Flex column gap="xs">
-            <strong>Reset Password</strong>
-            <p class="text-s text-color-lighter">
-              Setting a password also lets you sign in directly without email links.
-            </p>
-          </Flex>
-        </Flex>
         <Flex
           gap="s"
           class="settings-callout__actions"
@@ -98,14 +94,6 @@ async function sendPasswordReset() {
 </template>
 
 <style scoped>
-.settings-callout {
-  width: 100%;
-  /* padding: var(--space-l); */
-  border-radius: var(--border-radius-l);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-subtle);
-}
-
 .settings-callout__content {
   flex: 1;
   min-width: 220px;

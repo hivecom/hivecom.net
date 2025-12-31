@@ -81,56 +81,54 @@ async function requestEmailChange() {
     emailChangeLoading.value = false
   }
 }
+
+// Reset error on next input
+watch([newEmail, confirmNewEmail], () => {
+  if (emailChangeError.value) {
+    emailChangeError.value = ''
+  }
+})
 </script>
 
 <template>
   <Card separators class="card-bg">
     <template #header>
-      <Flex x-between y-center>
+      <Flex gap="xxs" column>
         <h4>Change Email</h4>
-        <Icon name="ph:envelope-simple" />
+        <p class="text-s text-color-light">
+          Update your login email. We will send confirmation links to both your current and new addresses.
+        </p>
       </Flex>
     </template>
 
-    <Flex column gap="m">
-      <p class="text-s text-color-lighter">
-        Update your login email. We will send confirmation links to both your current and new addresses.
-      </p>
-      <div class="current-email-block">
-        <span class="text-xs text-color-lighter">Current Email</span>
-        <p class="text-s">
-          {{ user?.email || 'No email on file' }}
-        </p>
-      </div>
-      <Input
-        v-model="newEmail"
-        label="New Email"
-        placeholder="new.email@example.com"
-        type="email"
-        expand
-      />
-      <Input
-        v-model="confirmNewEmail"
-        label="Confirm New Email"
-        placeholder="Confirm new email"
-        type="email"
-        expand
-      />
-      <Button :expand="isBelowSmall" :loading="emailChangeLoading" variant="accent" @click="requestEmailChange">
-        Send Email Change Links
+    <strong class="block mb-xs">Current Email</strong>
+    <code class="p-xs w-100 mb-l color-text-light">{{ user?.email }}</code>
+
+    <Input
+      v-model="newEmail"
+      label="New Email"
+      placeholder="new.email@example.com"
+      type="email"
+      expand
+      class="mb-l"
+    />
+    <Input
+      v-model="confirmNewEmail"
+      label="Confirm New Email"
+      placeholder="Confirm new email"
+      type="email"
+      expand
+    />
+    <Alert v-if="emailChangeSent" filled variant="info" class="mt-m">
+      Check both your current and new inboxes to confirm the change.
+    </Alert>
+    <Alert v-if="emailChangeError" filled variant="danger" class="mt-m">
+      {{ emailChangeError }}
+    </Alert>
+    <template #footer>
+      <Button :expand="isBelowSmall" :loading="emailChangeLoading" @click="requestEmailChange">
+        Change Email
       </Button>
-      <Alert v-if="emailChangeSent" filled variant="info">
-        Check both your current and new inboxes to confirm the change.
-      </Alert>
-      <Alert v-if="emailChangeError" filled variant="danger">
-        {{ emailChangeError }}
-      </Alert>
-    </Flex>
+    </template>
   </Card>
 </template>
-
-<style scoped>
-.current-email-block {
-  line-height: 1.4;
-}
-</style>

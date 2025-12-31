@@ -89,6 +89,13 @@ watch(user, (newUser) => {
     fetchProfile()
   }
 })
+
+function scrollTo(id: string) {
+  const el = document.querySelector(id)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+}
 </script>
 
 <template>
@@ -136,34 +143,58 @@ watch(user, (newUser) => {
       </Alert>
 
       <div class="settings">
+        <Flex expand column gap="xxxl" class="settings__container">
+          <div id="connections" class="w-100">
+            <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" />
+          </div>
+          <div id="security" class="w-100">
+            <strong class="block mb-m text-color-light">
+              Security
+            </strong>
+            <Flex column gap="l">
+              <ChangePasswordCard />
+              <MfaCard />
+            </Flex>
+          </div>
+          <div id="account" class="w-100">
+            <strong class="block mb-m text-color-light">Account</strong>
+            <Flex column gap="l">
+              <ChangeEmailCard />
+              <DeleteAccountCard />
+            </Flex>
+          </div>
+        </Flex>
+
         <div class="settings__nav">
           <div class="settings__nav--inner">
-            <DropdownItem expand>
+            <DropdownItem expand @click="scrollTo('#connections')">
               Connections
             </DropdownItem>
-            <DropdownItem>
+            <DropdownItem expand @click="scrollTo('#security')">
               Security
             </DropdownItem>
-            <DropdownItem>
+            <DropdownItem expand @click="scrollTo('#account')">
               Account
             </DropdownItem>
           </div>
         </div>
-        <Flex expand column gap="xxxl" class="settings__container">
-          <ConnectionsCard id="section-connections" :profile="profile" @updated="handleProfileUpdated" />
-          <Flex id="section-security" column gap="m">
-            <ChangePasswordCard />
-            <MfaCard />
-          </Flex>
-          <Flex id="section-account" column gap="m">
-            <ChangeEmailCard />
-            <DeleteAccountCard />
-          </Flex>
-        </Flex>
       </div>
     </template>
   </div>
 </template>
+
+<style>
+.settings-callout__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--color-bg, #0e1018);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+}
+</style>
 
 <style lang="scss" scoped>
 .section-eyebrow {
@@ -175,7 +206,7 @@ watch(user, (newUser) => {
 
 :deep(h4) {
   font-weight: var(--font-weight-bold);
-  padding-block: var(--space-xs);
+  // padding-block: var(--space-xs);
 }
 
 .loading-container {
@@ -194,7 +225,7 @@ watch(user, (newUser) => {
 
 .settings {
   display: grid;
-  grid-template-columns: 192px 1fr;
+  grid-template-columns: 1fr 192px;
   gap: var(--space-l);
   max-width: 982px;
 
