@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Alert, Button, Card, Flex } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { scrollToId } from '@/lib/utils/common'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -11,9 +12,9 @@ const passwordResetError = ref('')
 
 const isBelowSmall = useBreakpoint('<s')
 
-const passwordResetHint = computed(() => (user.value?.email
-  ? `We'll email ${user.value.email}`
-  : 'Add an email to receive reset links.'))
+// const passwordResetHint = computed(() => (user.value?.email
+//   ? `We'll email ${user.value.email}`
+//   : 'Add an email to receive reset links.'))
 
 async function sendPasswordReset() {
   passwordResetLoading.value = true
@@ -48,48 +49,50 @@ async function sendPasswordReset() {
 </script>
 
 <template>
-  <Card class="card-bg">
+  <Card v-if="user?.email" class="card-bg" separators>
     <template #header>
-      <Flex x-start gap="m" y-center>
-        <div class="settings-callout__icon">
-          <Icon name="ph:lock-key" size="26" />
-        </div>
-        <div>
-          <h4>Change Password</h4>
-          <p class="text-s text-color-lighter">
-            Setting a password also lets you sign in directly without email links.
-          </p>
-        </div>
+      <Flex gap="xxs" column>
+        <h4>Change Password</h4>
+        <p class="text-m text-color-lighter">
+          Setting a password also lets you sign in directly without email links.
+        </p>
       </Flex>
     </template>
 
-    <Flex column gap="l">
-      <Flex column gap="l" wrap expand>
-        <Flex
-          gap="s"
-          class="settings-callout__actions"
-          :column="isBelowSmall"
-          :row="!isBelowSmall"
-          :y-center="!isBelowSmall"
-          :expand="isBelowSmall"
-          :style="{ minWidth: isBelowSmall ? '0' : undefined }"
-        >
-          <Button :expand="isBelowSmall" :loading="passwordResetLoading" variant="accent" @click="sendPasswordReset">
-            Send Password Reset Email
-          </Button>
-          <span class="text-xs text-color-lighter">
-            {{ passwordResetHint }}
-          </span>
-        </Flex>
-      </Flex>
-
+    <Flex column gap="s">
       <Alert v-if="passwordResetSent" filled variant="info">
         A password reset link has been sent to your email address.
       </Alert>
       <Alert v-if="passwordResetError" filled variant="danger">
         {{ passwordResetError }}
       </Alert>
+      <Flex
+        gap="s"
+        class="settings-callout__actions"
+        :column="isBelowSmall"
+        :row="!isBelowSmall"
+        :y-center="!isBelowSmall"
+        :expand="isBelowSmall"
+        :style="{ minWidth: isBelowSmall ? '0' : undefined }"
+      >
+        <Button :expand="isBelowSmall" :loading="passwordResetLoading" variant="gray" @click="sendPasswordReset">
+          Send Password Reset Email
+        </Button>
+      </Flex>
     </Flex>
+  </Card>
+  <Card v-else class="card-bg" separators>
+    <template #header>
+      <Flex gap="xxs" column>
+        <h4>Change Password</h4>
+        <p class="text-m text-color-lighter">
+          Add an email to receive reset links.
+        </p>
+      </Flex>
+    </template>
+    <Button @click="scrollToId('#account', 'start')">
+      Add Email
+    </Button>
   </Card>
 </template>
 

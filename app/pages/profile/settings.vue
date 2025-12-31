@@ -6,6 +6,7 @@ import ChangePasswordCard from '@/components/Settings/ChangePasswordCard.vue'
 import ConnectionsCard from '@/components/Settings/ConnectionsCard.vue'
 import DeleteAccountCard from '@/components/Settings/DeleteAccountCard.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
+import { scrollToId } from '@/lib/utils/common'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -89,13 +90,6 @@ watch(user, (newUser) => {
     fetchProfile()
   }
 })
-
-function scrollTo(id: string) {
-  const el = document.querySelector(id)
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-}
 </script>
 
 <template>
@@ -167,13 +161,13 @@ function scrollTo(id: string) {
 
         <div class="settings__nav">
           <div class="settings__nav--inner">
-            <DropdownItem expand @click="scrollTo('#connections')">
+            <DropdownItem expand @click="scrollToId('#connections')">
               Connections
             </DropdownItem>
-            <DropdownItem expand @click="scrollTo('#security')">
+            <DropdownItem expand @click="scrollToId('#security')">
               Security
             </DropdownItem>
-            <DropdownItem expand @click="scrollTo('#account')">
+            <DropdownItem expand @click="scrollToId('#account')">
               Account
             </DropdownItem>
           </div>
