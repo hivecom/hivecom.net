@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, Checkbox, Flex, pushToast, Switch } from '@dolanske/vui'
+import { Button, Card, Flex, pushToast, Switch } from '@dolanske/vui'
 import { reactive, ref, watch } from 'vue'
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'

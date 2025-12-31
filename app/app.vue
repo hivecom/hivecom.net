@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Toasts } from '@dolanske/vui'
 import { computed } from 'vue'
 import { useLastSeenTracking } from '@/lib/lastSeen'
 
@@ -71,6 +72,7 @@ useLastSeenTracking()
     <NuxtPage />
   </NuxtLayout>
 
+  <Toasts />
   <LayoutLoading />
 </template>
 

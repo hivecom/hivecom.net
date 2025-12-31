@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Button, Card, Divider, DropdownItem, Flex, Grid, Skeleton, Tab, Tabs, Toasts } from '@dolanske/vui'
-import { computed } from 'vue'
+import { Alert, Card, DropdownItem, Flex, Skeleton } from '@dolanske/vui'
 import ChangeEmailCard from '@/components/Settings/ChangeEmailCard.vue'
 import ChangePasswordCard from '@/components/Settings/ChangePasswordCard.vue'
 import ConnectionsCard from '@/components/Settings/ConnectionsCard.vue'
 import DeleteAccountCard from '@/components/Settings/DeleteAccountCard.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
-// import ProfileSummaryCard from '@/components/Settings/ProfileSummaryCard.vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -18,8 +15,6 @@ const profile = ref<Tables<'profiles'> | null>(null)
 const loading = ref(true)
 const profileError = ref('')
 const authReady = ref(false)
-const isBelowM = useBreakpoint('<m')
-const sectionGridColumns = computed(() => (isBelowM.value ? 1 : 2))
 
 async function fetchProfile() {
   if (!user.value) {
@@ -155,12 +150,12 @@ watch(user, (newUser) => {
           </div>
         </div>
         <Flex expand column gap="xxxl" class="settings__container">
-          <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" />
-          <Flex column gap="m">
+          <ConnectionsCard id="section-connections" :profile="profile" @updated="handleProfileUpdated" />
+          <Flex id="section-security" column gap="m">
             <ChangePasswordCard />
             <MfaCard />
           </Flex>
-          <Flex column gap="m">
+          <Flex id="section-account" column gap="m">
             <ChangeEmailCard />
             <DeleteAccountCard />
           </Flex>
@@ -168,7 +163,6 @@ watch(user, (newUser) => {
       </div>
     </template>
   </div>
-  <Toasts />
 </template>
 
 <style lang="scss" scoped>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { pushToast, Toasts } from '@dolanske/vui'
+import { pushToast } from '@dolanske/vui'
 import { ref, watch } from 'vue'
 import ComplaintModal from './ComplaintModal.vue'
 import ComplaintsViewer from './ComplaintsViewer.vue'
@@ -100,6 +100,4 @@ function handleClose() {
     @submit="handleComplaintSubmit"
     @close="handleCloseNewComplaint"
   />
-
-  <Toasts />
 </template>
