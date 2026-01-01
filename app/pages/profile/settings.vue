@@ -145,14 +145,14 @@ watch(user, (newUser) => {
             <strong class="block mb-m text-color-light">
               Security
             </strong>
-            <Flex column gap="l">
+            <Flex column gap="xl">
               <ChangePasswordCard />
               <MfaCard />
             </Flex>
           </div>
           <div id="account" class="w-100">
             <strong class="block mb-m text-color-light">Account</strong>
-            <Flex column gap="l">
+            <Flex column gap="xl">
               <ChangeEmailCard />
               <DeleteAccountCard />
             </Flex>
@@ -200,7 +200,6 @@ watch(user, (newUser) => {
 
 :deep(h4) {
   font-weight: var(--font-weight-bold);
-  // padding-block: var(--space-xs);
 }
 
 .loading-container {
@@ -234,6 +233,14 @@ watch(user, (newUser) => {
 }
 
 @media (max-width: 768px) {
+  .settings {
+    display: block;
+
+    &__nav {
+      display: none;
+    }
+  }
+
   .loading-container {
     padding: var(--space-l);
   }
