@@ -12,10 +12,6 @@ const passwordResetError = ref('')
 
 const isBelowSmall = useBreakpoint('<s')
 
-// const passwordResetHint = computed(() => (user.value?.email
-//   ? `We'll email ${user.value.email}`
-//   : 'Add an email to receive reset links.'))
-
 async function sendPasswordReset() {
   passwordResetLoading.value = true
   passwordResetError.value = ''
@@ -49,7 +45,7 @@ async function sendPasswordReset() {
 </script>
 
 <template>
-  <Card v-if="user?.email" class="card-bg" separators>
+  <Card v-if="false" class="card-bg" separators>
     <template #header>
       <Flex gap="xxs" column>
         <h4>Change Password</h4>
@@ -67,17 +63,19 @@ async function sendPasswordReset() {
         {{ passwordResetError }}
       </Alert>
       <Flex
-        gap="s"
+        gap="xs"
         class="settings-callout__actions"
-        :column="isBelowSmall"
-        :row="!isBelowSmall"
-        :y-center="!isBelowSmall"
+        column
+        x-start
         :expand="isBelowSmall"
         :style="{ minWidth: isBelowSmall ? '0' : undefined }"
       >
         <Button :expand="isBelowSmall" :loading="passwordResetLoading" variant="gray" @click="sendPasswordReset">
           Send Password Reset Email
         </Button>
+        <p v-if="user?.email" class="text-xs text-color-lightest">
+          {{ `We'll email ${user?.email}` }}
+        </p>
       </Flex>
     </Flex>
   </Card>
