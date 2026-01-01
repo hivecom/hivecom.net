@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
-import { Alert, Badge, Button, Flex, Input, Kbd, KbdGroup, Modal, pushToast, Select } from '@dolanske/vui'
+import { Alert, Button, Flex, Input, Modal, pushToast, Select } from '@dolanske/vui'
 import { computed, reactive, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -70,8 +70,6 @@ const requestResult = ref<{ serverId: string, uniqueId: string, tokenExpiresAt?:
 const confirmationResult = ref<{ groupsAssigned: number[], assignmentSkippedReason?: string } | null>(null)
 const localIdentities = ref<TeamSpeakIdentityRecord[]>([])
 const unlinking = reactive<Record<string, boolean>>({})
-const isMac = computed(() => import.meta.client && /Mac|iP(?:hone|od|ad)/i.test(navigator.userAgent))
-const identityShortcut = computed(() => isMac.value ? ['⌘', 'I'] : ['Ctrl', 'I'])
 
 watch(() => props.profile?.teamspeak_identities, (identities) => {
   localIdentities.value = normalizeTeamSpeakIdentities(identities)
@@ -107,18 +105,6 @@ const identities = computed(() => localIdentities.value)
 const hasLinkedIdentities = computed(() => identities.value.length > 0)
 const buttonLabel = computed(() => hasLinkedIdentities.value ? 'Manage' : 'Connect')
 const isProfileLoading = computed(() => props.profile === null)
-const stepBadge = computed(() => {
-  switch (step.value) {
-    case 'manage':
-      return 'Manage'
-    case 'request':
-      return 'Step 1 / 3'
-    case 'confirm':
-      return 'Step 2 / 3'
-    default:
-      return 'Step 3 / 3'
-  }
-})
 
 function openModal() {
   isOpen.value = true
@@ -403,6 +389,34 @@ function safeParseJson(input: string): unknown {
     return null
   }
 }
+
+const modalLabel = computed(() => {
+  if (step.value === 'request') {
+    return 'Enter the TeamSpeak unique ID you want to link. We will send a secure token to your client on the selected server.'
+  }
+  else if (step.value === 'confirm') {
+    return 'Enter the token you just received in TeamSpeak. Tokens expire quickly, so complete this step soon.'
+  }
+  else if (step.value === 'manage') {
+    return 'Manage your connected TeamSpeak identities.'
+  }
+
+  return ''
+})
+
+const modalTitle = computed(() => {
+  if (step.value === 'request') {
+    return 'Step 1 - Send Verification Message'
+  }
+  else if (step.value === 'confirm') {
+    return 'Step 2 — Confirm Token'
+  }
+  else if (step.value === 'manage') {
+    return 'TeamSpeak integration'
+  }
+
+  return 'Connection successul!'
+})
 </script>
 
 <template>
@@ -421,45 +435,31 @@ function safeParseJson(input: string): unknown {
 
     <Modal :open="isOpen" centered :card="{ separators: true }" :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
       <template #header>
-        <Flex x-between y-center>
-          <Flex column gap="xxs">
-            <h3>Link TeamSpeak Identity</h3>
-            <p class="text-m text-color-lighter">
-              Securely connect your TeamSpeak identity to manage access.
-            </p>
-          </Flex>
-          <Badge v-if="!isBelowSmall" variant="neutral">
-            {{ stepBadge }}
-          </Badge>
+        <Flex column gap="xxs">
+          <h4>{{ modalTitle }}</h4>
+          <p v-if="modalLabel" class="teamspeak-connect__subtitle">
+            {{ modalLabel }}
+          </p>
         </Flex>
       </template>
 
       <Flex column gap="l" expand>
         <section v-if="step === 'manage'" class="link-step">
-          <h4>Manage linked identities</h4>
-          <p class="text-m text-color-lighter mb-s">
-            View or remove your linked TeamSpeak identities. Add another to link more clients.
-          </p>
-
           <Flex expand column class="identity-list">
-            <Flex expand x-between y-center class="identity-list__header">
-              <h4>Linked Identities</h4>
-              <Badge variant="neutral">
-                {{ identities.length }}
-              </Badge>
-            </Flex>
+            <strong class="identity-list__header">
+              Linked Identities
+            </strong>
 
             <Flex v-if="identities.length === 0" expand class="identity-list__empty">
               <p>You have not linked any TeamSpeak identities yet.</p>
             </Flex>
             <ul v-else class="w-100">
-              <li v-for="identity in identities" :key="`${identity.serverId}-${identity.uniqueId}`" class="w-100">
-                <Flex column gap="xs" expand>
+              <li v-for="identity in identities" :key="`${identity.serverId}-${identity.uniqueId}`" class="identity-list__item">
+                <Flex column gap="xxs" expand>
                   <Flex gap="s" y-center expand>
-                    <Badge variant="info">
-                      {{ identity.serverId.toUpperCase() }}
-                    </Badge>
-                    <code class="identity-code w-100">{{ identity.uniqueId }}</code>
+                    <p class="w-100">
+                      {{ identity.uniqueId }}
+                    </p>
                     <Button
                       size="s"
                       variant="danger"
@@ -467,12 +467,17 @@ function safeParseJson(input: string): unknown {
                       :disabled="unlinking[identityKey(identity)]"
                       @click="handleUnlink(identity)"
                     >
+                      <template #start>
+                        <Icon name="ph:trash" />
+                      </template>
                       Unlink
                     </Button>
                   </Flex>
-                  <span class="text-xs text-color-lighter">
-                    Linked {{ identity.linkedAt ? new Date(identity.linkedAt).toLocaleString() : 'time unknown' }}
-                  </span>
+                  <Flex gap="xs" y-center>
+                    <span class="text-xs text-color-lighter">{{ identity.serverId.toUpperCase() }}</span>
+                    <span class="text-xs text-color-lighter">•</span>
+                    <span class="text-xs text-color-lighter">Linked {{ identity.linkedAt ? new Date(identity.linkedAt).toLocaleString() : 'time unknown' }}</span>
+                  </Flex>
                 </Flex>
               </li>
             </ul>
@@ -480,27 +485,10 @@ function safeParseJson(input: string): unknown {
         </section>
 
         <section v-else-if="step === 'request'" class="link-step">
-          <h4>Step 1 - Send Verification Message</h4>
-          <p class="text-m text-color-lighter mb-s">
-            Enter the TeamSpeak unique ID you want to link. We will send a secure token to your client on the selected server.
-          </p>
-
-          <Alert variant="info" filled class="mb-m" icon-align="start">
-            <p class="text-m">
-              In TeamSpeak: open <strong class="text-xs">Tools → Identities</strong>, enable <strong class="text-xs">Advanced Mode</strong>, pick your current identity, then copy the <strong class="text-xs">Unique ID</strong> value.
-            </p>
-            <Flex x-start y-center gap="xs" class="identity-shortcut">
-              <span class="text-m text-color-lighter">Shortcut:</span>
-              <KbdGroup>
-                <Kbd v-for="key in identityShortcut" :key="key" :keys="key" highlight />
-              </KbdGroup>
-              <span class="text-xs text-color-lighter">opens Identities in TeamSpeak.</span>
-            </Flex>
-          </Alert>
-
-          <Flex column gap="m" expand>
+          <Flex column gap="l" expand>
             <Input
               v-model="form.uniqueId"
+              hint="Open Tools > Identities > Go Advanced. Pick your current identity and copy the Unique ID value. "
               expand
               label="TeamSpeak Unique ID"
               placeholder="e.g. Nc4M5c9yWlWdrtG19Kk7H7y0X0w="
@@ -519,21 +507,15 @@ function safeParseJson(input: string): unknown {
               search
               expand
             />
-
-            <p v-if="selectedServer" class="text-xs text-color-lighter">
-              Connecting via {{ selectedServer.queryHost ?? 'n/a' }} on port
-              {{ selectedServer.queryPort ?? 10011 }} targeting voice port
-              {{ selectedServer.voicePort ?? 'default' }}.
-            </p>
           </Flex>
+          <p v-if="selectedServer" class="text-s text-color-lightest mt-xxs">
+            Connecting via {{ selectedServer.queryHost ?? 'n/a' }} on port
+            {{ selectedServer.queryPort ?? 10011 }} targeting voice port
+            {{ selectedServer.voicePort ?? 'default' }}.
+          </p>
         </section>
 
         <section v-else-if="step === 'confirm'" class="link-step">
-          <h4>Step 2 — Confirm Token</h4>
-          <p class="text-s text-color-lighter mb-m">
-            Enter the token you just received in TeamSpeak. Tokens expire quickly, so complete this step soon.
-          </p>
-
           <Input
             v-model="tokenForm.token"
             expand
@@ -546,7 +528,6 @@ function safeParseJson(input: string): unknown {
         </section>
 
         <Flex v-else expand column class="link-step">
-          <h4>All set!</h4>
           <Alert variant="success" filled>
             {{ successMessage }}
           </Alert>
@@ -563,15 +544,6 @@ function safeParseJson(input: string): unknown {
 
       <template #footer>
         <Flex gap="s" x-end wrap expand>
-          <Button
-            variant="gray"
-            :expand="isBelowSmall"
-            :disabled="requestLoading || confirmLoading"
-            @click="handleClose"
-          >
-            Close
-          </Button>
-
           <template v-if="step === 'manage'">
             <Button
               v-if="hasLinkedIdentities"
@@ -588,20 +560,24 @@ function safeParseJson(input: string): unknown {
             </Button>
           </template>
 
-          <Button
-            v-else-if="step === 'request'"
-            variant="accent"
-            :expand="isBelowSmall"
-            :loading="requestLoading"
-            :disabled="!hasServers"
-            @click="handleRequest"
-          >
-            Send Verification
-          </Button>
+          <template v-else-if="step === 'request'">
+            <Button variant="gray" :expand="isBelowSmall" :disabled="confirmLoading" @click="resetFlow('manage')">
+              Back
+            </Button>
+            <Button
+              variant="accent"
+              :expand="isBelowSmall"
+              :loading="requestLoading"
+              :disabled="!hasServers"
+              @click="handleRequest"
+            >
+              Send Verification
+            </Button>
+          </template>
 
           <template v-else-if="step === 'confirm'">
-            <Button variant="gray" :expand="isBelowSmall" :disabled="confirmLoading" @click="resetFlow('request')">
-              Start Over
+            <Button variant="gray" plain :expand="isBelowSmall" :disabled="confirmLoading" @click="resetFlow('request')">
+              Back
             </Button>
             <Button variant="accent" :expand="isBelowSmall" :loading="confirmLoading" @click="handleConfirm">
               Confirm Token
@@ -612,9 +588,9 @@ function safeParseJson(input: string): unknown {
             <Button
               variant="accent"
               :expand="isBelowSmall"
-              @click="hasLinkedIdentities ? resetFlow('manage') : resetFlow('request')"
+              @click="handleClose"
             >
-              {{ hasLinkedIdentities ? 'Back to Manage' : 'Link Another Identity' }}
+              Finish
             </Button>
           </template>
         </Flex>
@@ -623,12 +599,20 @@ function safeParseJson(input: string): unknown {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 .teamspeak-connect {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   width: 100%;
+
+  &__subtitle {
+    font-size: var(--font-size-m);
+    color: var(--color-text-light);
+    padding-right: var(--space-xl);
+  }
 }
 
 .link-step {
@@ -639,38 +623,36 @@ function safeParseJson(input: string): unknown {
 }
 
 .identity-list {
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-m);
+  &__header {
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-m);
+    color: var(--color-text-light);
+  }
+
+  &__empty {
+    padding: var(--space-m);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--border-radius-m);
+    text-align: center;
+    color: var(--color-text-muted, #a0a0a0);
+  }
+
+  &__item {
+    padding: var(--space-xs) var(--space-s);
+    background-color: var(--color-bg-lowered);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-s);
+
+    p {
+      white-space: wrap;
+      word-break: break-all;
+    }
+  }
 }
 
-.identity-list__header {
-  margin-bottom: var(--space-s);
-}
-
-.identity-list__empty {
-  padding: var(--space-m);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--border-radius-m);
-  text-align: center;
-  color: var(--color-text-muted, #a0a0a0);
-}
-
-.identity-list ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-s);
-}
-
-.identity-code {
-  font-size: 1.75rem;
-  word-break: break-all;
-  width: 100%;
-}
-
-.identity-shortcut {
-  margin-top: var(--space-xs);
+@media (max-width: $breakpoint-s) {
+  .teamspeak-connect__subtitle {
+    padding-right: var(--space-m);
+  }
 }
 </style>
