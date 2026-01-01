@@ -80,7 +80,7 @@ useSeoMeta(() => {
 
 <style lang="scss" scoped>
 .legal-page {
-  max-width: var(--container-m);
+  max-width: var(--container-s);
 
   &__content {
     padding-top: var(--space-l);

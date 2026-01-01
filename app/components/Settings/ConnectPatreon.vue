@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, pushToast, Toasts } from '@dolanske/vui'
+import { Button, pushToast } from '@dolanske/vui'
 
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 
@@ -76,11 +76,11 @@ async function connectPatreon() {
       :expand="props.expand"
       :loading="isConnecting"
       :disabled="isConnecting"
+      size="s"
       @click="connectPatreon"
     >
       Connect
     </Button>
-    <Toasts />
   </div>
 </template>
 

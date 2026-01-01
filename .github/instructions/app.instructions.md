@@ -5,4 +5,5 @@
 - Keep SCSS minimal and co-located. Reach for theme tokens/variants before adding ad-hoc classes; avoid new global styles unless absolutely necessary.
 - Follow Nuxt conventions: `<script setup>`, `defineProps/defineEmits`, composables from `app/composables/**`, and alias imports (`@/components/...`, `@/lib/...`).
 - TypeScript is strict: no `any` (ESLint enforces), prefer typed refs/composables, and use nullish coalescing where relevant.
+- CSS classes used within `Tooltip`, `Popout`, `Dropdown` and `Select` components cannot be scoped and must be availably globally. Either via global `.scss` file or a `<style>` tag within SFC without the `scoped` attribute.
 - Avoid console usage in the app; favor toasts/alerts or error boundaries. Keep accessibility in mind (labels, aria where needed) and ensure SSR-safe code (guard on `process.client`).

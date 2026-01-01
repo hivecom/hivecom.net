@@ -74,28 +74,34 @@ async function deleteAccount() {
 </script>
 
 <template>
-  <Card separators class="danger-card">
+  <Card separators class="danger-card card-bg">
     <template #header>
-      <Flex x-between y-center>
-        <h3>Delete Account</h3>
-        <Icon name="ph:warning" />
+      <Flex column gap="xxs">
+        <h4 class="danger-text">
+          Delete Account
+        </h4>
+        <p class="text-m danger-text">
+          Your profile, connected accounts, and access to Hivecom services will be removed. This action cannot be undone.
+        </p>
       </Flex>
     </template>
 
-    <Flex column gap="m">
-      <p class="text-s danger-text">
-        Deleting your account removes your profile, connected accounts, and access to Hivecom services. This action cannot be undone.
-      </p>
-      <p class="text-xs text-color-lighter">
-        Type your current email to confirm you understand the consequences.
-      </p>
+    <Flex column gap="l">
       <Input
         v-model="deleteAccountConfirm"
+        hint="Type your current email to confirm you understand the consequences."
         label="Confirm Email"
         placeholder="your.email@example.com"
         type="email"
         expand
       />
+
+      <Alert v-if="deleteAccountError" filled variant="danger">
+        {{ deleteAccountError }}
+      </Alert>
+    </Flex>
+
+    <template #footer>
       <Button
         variant="danger"
         :expand="isBelowSmall"
@@ -105,10 +111,7 @@ async function deleteAccount() {
       >
         Permanently Delete Account
       </Button>
-      <Alert v-if="deleteAccountError" filled variant="danger">
-        {{ deleteAccountError }}
-      </Alert>
-    </Flex>
+    </template>
   </Card>
 
   <ConfirmModal

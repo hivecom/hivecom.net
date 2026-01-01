@@ -20,8 +20,8 @@ withDefaults(defineProps<Props>(), {
 
 <style lang="scss">
 .tiny-badge {
-  font-size: calc(var(--font-size-xxs) * 0.8);
-  padding: 0 6px;
+  font-size: var(--font-size-xxs);
+  padding: 0 var(--space-xs);
   line-height: 0;
 
   span,

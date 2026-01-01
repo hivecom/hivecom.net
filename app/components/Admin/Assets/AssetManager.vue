@@ -2,7 +2,7 @@
 import type { Ref } from 'vue'
 
 import type { CmsAsset } from '@/lib/cmsAssets'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Toasts } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table } from '@dolanske/vui'
 
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
@@ -765,8 +765,6 @@ onBeforeMount(fetchAssets)
       cancel-text="Cancel"
       :destructive="true"
     />
-
-    <Toasts />
   </flex>
 </template>
 

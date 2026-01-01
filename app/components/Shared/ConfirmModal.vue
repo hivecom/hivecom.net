@@ -19,17 +19,22 @@ const isBelowSmall = useBreakpoint('<xs')
   <Modal
     :open="open"
     centered
-    :card="{ separators: true }"
+    :card="{ footerSeparator: true }"
     :can-dismiss="false"
     :size="isBelowSmall ? 'screen' : 's'"
     @close="open = false"
   >
     <template #header>
-      <h4>{{ props.title }}</h4>
+      <Flex column gap="s">
+        <h4>{{ props.title }}</h4>
+        <p>{{ props.description }}</p>
+      </Flex>
     </template>
-    <p>{{ props.description }}</p>
+
+    <slot />
+
     <template #footer="{ close }">
-      <Flex gap="xs" expand>
+      <Flex gap="xs" expand x-end>
         <Button :expand="isBelowSmall" @click="close">
           {{ props.cancelText || 'Cancel' }}
         </Button>

@@ -66,6 +66,7 @@ async function startSteamLink() {
     :expand="props.expand"
     :loading="isLinking"
     aria-label="Connect Steam account"
+    size="s"
     @click="startSteamLink"
   >
     Connect
