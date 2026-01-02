@@ -331,9 +331,9 @@ defineExpose({
     width: var(--avatar-size, 40px);
     height: var(--avatar-size, 40px);
     border-radius: 50%;
-    background: var(--color-bg-subtle);
-    border: 2px solid var(--color-bg);
-    font-size: calc(var(--avatar-size, 40px) * 0.3);
+    background: var(--color-bg-medium);
+    border: 1px solid var(--color-border-weak);
+    font-size: calc(var(--avatar-size, 40px) * 0.5);
     font-weight: var(--font-weight-medium);
     color: var(--color-text-light);
     transition: background-color 0.2s ease;

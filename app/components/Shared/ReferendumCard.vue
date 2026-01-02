@@ -84,7 +84,7 @@ function goToReferendum() {
         {{ referendum.description }}
       </p>
 
-      <Flex x-between y-center expand>
+      <Flex x-start y-center expand>
         <Flex column gap="xs">
           <Flex gap="xs">
             <Badge :variant="statusVariant">
@@ -100,15 +100,16 @@ function goToReferendum() {
         </Flex>
 
         <Flex gap="xs" y-center x-center>
-          <span v-if="status !== 'upcoming'" class="text-xs text-color-light">
+          <!-- <span v-if="status !== 'upcoming'" class="text-xs text-color-light">
             {{ voteCount }} vote{{ voteCount !== 1 ? 's' : '' }}
-          </span>
+          </span> -->
           <BulkAvatarDisplay
             v-if="voterIds && voterIds.length > 0"
             :user-ids="voterIds"
             :max-users="3"
             :avatar-size="24"
             :random="true"
+            :gap="4"
           />
         </Flex>
       </Flex>
@@ -123,7 +124,6 @@ function goToReferendum() {
 
   &:hover {
     background-color: var(--color-bg-lowered);
-    transform: translateY(-2px);
     box-shadow: var(--shadow-m);
   }
 

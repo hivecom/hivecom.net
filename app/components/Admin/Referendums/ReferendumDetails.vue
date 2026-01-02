@@ -187,7 +187,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
             :votes="referendumVotes"
           />
         </Flex>
-        <Card v-else class="p-l card-bg">
+        <Card v-else class="card-bg">
           <Flex x-between y-center class="mb-m">
             <h3>Results</h3>
           </Flex>

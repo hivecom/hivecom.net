@@ -72,6 +72,11 @@
   }
 }
 
+.vui-badge {
+  --vui-badge-padding-inline: 10px;
+  --vui-badge-padding-block: 6px;
+}
+
 html,
 body {
   font-size: 63.5%;
