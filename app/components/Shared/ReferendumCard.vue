@@ -8,6 +8,7 @@ import { computed } from 'vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDuration } from '@/lib/utils/duration'
 
 type ReferendumStatus = 'active' | 'upcoming' | 'concluded'
@@ -73,7 +74,7 @@ function goToReferendum() {
     @click="goToReferendum"
   >
     <Flex column gap="m" expand>
-      <Flex x-between y-center expand gap="l" wrap>
+      <Flex x-between y-center expand gap="l" class="referendum-card__title">
         <h2 class="text-xxl">
           {{ referendum.title }}
         </h2>
@@ -119,6 +120,10 @@ function goToReferendum() {
   transition: all 0.2s ease;
   cursor: pointer;
 
+  // Container setup
+  container-type: inline-size; // We monitor the inline size (horizontal)
+  container-name: card; // We name the container to specifically select it
+
   &:hover {
     background-color: var(--color-bg-lowered);
     box-shadow: var(--shadow-m);
@@ -135,6 +140,13 @@ function goToReferendum() {
   // Ensure UserDisplay component displays inline properly
   .user-display {
     display: inline-flex;
+  }
+}
+
+// When card itself is less than 456px, apply these styles
+@container card (max-width: 456px) {
+  .referendum-card__title {
+    flex-wrap: wrap !important;
   }
 }
 </style>
