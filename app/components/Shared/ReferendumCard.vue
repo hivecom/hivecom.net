@@ -73,8 +73,8 @@ function goToReferendum() {
     @click="goToReferendum"
   >
     <Flex column gap="m" expand>
-      <Flex x-between y-center expand>
-        <h2 class="text-xl">
+      <Flex x-between y-center expand gap="l" wrap>
+        <h2 class="text-xxl">
           {{ referendum.title }}
         </h2>
         <UserDisplay :user-id="referendum.created_by" size="s" />
