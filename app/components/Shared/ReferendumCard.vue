@@ -8,7 +8,6 @@ import { computed } from 'vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDuration } from '@/lib/utils/duration'
 
 type ReferendumStatus = 'active' | 'upcoming' | 'concluded'

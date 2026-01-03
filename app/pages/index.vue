@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
-import EventCard from '@/components/Events/EventCard.vue'
+import EventCardLanding from '@/components/Events/EventCardLanding.vue'
 
 definePageMeta({
   layout: 'landing',
@@ -100,7 +100,7 @@ onMounted(async () => {
       }
     })
 
-    events.value = sortedEvents.slice(0, 6) // Show up to 6 events
+    events.value = sortedEvents.slice(0, 3) // Show up to 6 events
 
     // Prefer metrics snapshots from storage with DB fallback
     const metricsSnapshot = await fetchMetrics()
@@ -237,9 +237,6 @@ onMounted(async () => {
           <h2 class="heading">
             Events
           </h2>
-          <ClientOnly>
-            <Divider />
-          </ClientOnly>
 
           <Grid v-if="loading" class="events-section__list" :columns="3" gap="m">
             <!-- Loading state -->
@@ -264,7 +261,7 @@ onMounted(async () => {
           </div>
 
           <Grid v-else class="events-section__list" :columns="3" gap="m" expand>
-            <EventCard
+            <EventCardLanding
               v-for="event in events"
               :key="event.id"
               :event="event"
@@ -433,6 +430,8 @@ h4 {
   &__list {
     margin: 2rem auto 0;
     text-align: left;
+    // grid-auto-rows: 1fr;
+    align-items: stretch !important;
 
     @media screen and (max-width: $breakpoint-s) {
       grid-template-columns: 1fr !important;
