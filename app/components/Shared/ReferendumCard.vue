@@ -68,7 +68,7 @@ function goToReferendum() {
 
 <template>
   <Card
-    class="referendum-card"
+    class="referendum-card card-bg"
     role="button"
     @click="goToReferendum"
   >
@@ -100,9 +100,6 @@ function goToReferendum() {
         </Flex>
 
         <Flex gap="xs" y-center x-center>
-          <!-- <span v-if="status !== 'upcoming'" class="text-xs text-color-light">
-            {{ voteCount }} vote{{ voteCount !== 1 ? 's' : '' }}
-          </span> -->
           <BulkAvatarDisplay
             v-if="voterIds && voterIds.length > 0"
             :user-ids="voterIds"

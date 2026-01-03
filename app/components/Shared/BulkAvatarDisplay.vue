@@ -14,6 +14,7 @@ interface Props {
   gap?: number
   hideGenericUsers?: boolean
   supporterHighlight?: boolean
+  noEmptyState?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -169,7 +170,7 @@ defineExpose({
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="userIds.length === 0" class="bulk-avatar-display__empty">
+    <div v-else-if="userIds.length === 0 && !props.noEmptyState" class="bulk-avatar-display__empty">
       <slot name="empty">
         <p class="text-color-light text-s">
           No users to display

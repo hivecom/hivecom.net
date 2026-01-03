@@ -350,7 +350,7 @@ function handleChoiceClick(index: number) {
 
         <!-- Voting section skeleton -->
         <section class="mb-xl">
-          <Card class="p-l">
+          <Card :class="{ 'p-l': !isBelowSmall }">
             <Skeleton :width="140" :height="24" :radius="4" class="mb-m" />
 
             <!-- Choices skeleton -->
@@ -373,7 +373,7 @@ function handleChoiceClick(index: number) {
 
         <!-- Results section skeleton -->
         <section>
-          <Card class="p-l">
+          <Card :class="{ 'p-l': !isBelowSmall }">
             <Skeleton :width="80" :height="24" :radius="4" class="mb-m" />
             <Skeleton :height="120" :radius="8" />
           </Card>
@@ -426,7 +426,7 @@ function handleChoiceClick(index: number) {
             {{ referendum.description }}
           </p>
 
-          <Flex x-between y-center expand class="mt-m">
+          <Flex x-between y-center expand class="mt-m" wrap>
             <Flex gap="xs" wrap>
               <Badge :variant="statusVariant">
                 {{ statusLabel }}
@@ -466,7 +466,7 @@ function handleChoiceClick(index: number) {
 
         <!-- Voting Section -->
         <section v-if="isActive && user" class="mb-xl">
-          <Card class="p-l card-bg">
+          <Card class="card-bg" :class="{ 'p-l': !isBelowSmall }">
             <template #header>
               <h3>
                 Cast your vote
@@ -552,7 +552,7 @@ function handleChoiceClick(index: number) {
 
         <!-- Login prompt -->
         <section v-else-if="isActive && !user" class="mb-xl">
-          <Card class="p-l text-center">
+          <Card class="text-center" :class="{ 'p-l': !isBelowSmall }">
             <Icon name="ph:sign-in" size="2rem" class="text-color-light mb-m" />
             <h3 class="mb-s">
               Sign in to vote
@@ -569,7 +569,10 @@ function handleChoiceClick(index: number) {
         <!-- Results Section -->
         <section>
           <!-- Hidden results message -->
-          <Card v-if="!shouldShowResults" class="p-l" :class="{ 'card-bg': showResults }">
+          <Card
+            v-if="!shouldShowResults" :class="{ 'card-bg': showResults,
+                                                'p-l': !isBelowSmall }"
+          >
             <Flex x-between y-center>
               <h3>
                 Results
@@ -594,7 +597,7 @@ function handleChoiceClick(index: number) {
           </Card>
 
           <!-- Loading results -->
-          <Card v-else-if="isLoadingResults" class="p-l">
+          <Card v-else-if="isLoadingResults" :class="{ 'p-l': !isBelowSmall }">
             <Flex x-between y-center class="mb-m">
               <Skeleton :width="80" :height="24" :radius="4" />
             </Flex>
@@ -645,6 +648,8 @@ function handleChoiceClick(index: number) {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .loading-skeleton {
   .choice-skeleton {
     margin-bottom: var(--space-s);
@@ -688,6 +693,14 @@ function handleChoiceClick(index: number) {
   &.selected {
     background-color: var(--color-accent-bg);
     border-color: var(--color-accent);
+  }
+}
+
+@media (max-width: $breakpoint-s) {
+  :deep(.vui-card .vui-card-header) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-s);
   }
 }
 </style>

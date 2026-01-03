@@ -171,7 +171,8 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
               <span>{{ voteCount }} vote{{ voteCount !== 1 ? 's' : '' }}</span>
             </Grid>
           </Flex>
-        </Card>        <!-- Description -->
+        </Card>
+        <!-- Description -->
         <Card v-if="props.referendum.description" separators class="card-bg">
           <template #header>
             <h6>Description</h6>

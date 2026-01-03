@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-
-import { Button, Card, Flex } from '@dolanske/vui'
-import { computed, ref } from 'vue'
-import ReferendumVotersModal from '@/components/Shared/ReferendumVotersModal.vue'
+import { Accordion, Button, Card, Flex } from '@dolanske/vui'
+import { computed } from 'vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
+import BulkAvatarDisplay from './BulkAvatarDisplay.vue'
+import MDRenderer from './MDRenderer.vue'
+import UserDisplay from './UserDisplay.vue'
 
 interface VoteResult {
   choice: string
   index: number
   count: number
   percentage: number
+  users: string[]
+  comments: Array<{
+    user: string
+    comment: string
+  }>
 }
 
 const props = defineProps<{
@@ -54,6 +61,8 @@ const voteResults = computed<VoteResult[]>(() => {
     index,
     count: 0,
     percentage: 0,
+    users: [] as VoteResult['users'],
+    comments: [] as VoteResult['comments'],
   }))
 
   // Count votes for each choice
@@ -61,6 +70,14 @@ const voteResults = computed<VoteResult[]>(() => {
     vote.choices.forEach((choiceIndex) => {
       if (results[choiceIndex]) {
         results[choiceIndex].count++
+        results[choiceIndex].users.push(vote.user_id)
+
+        if (vote.comment) {
+          results[choiceIndex].comments.push({
+            user: vote.user_id,
+            comment: vote.comment,
+          })
+        }
       }
     })
   })
@@ -76,34 +93,20 @@ const voteResults = computed<VoteResult[]>(() => {
 
 const totalVoters = computed(() => props.votes?.length || 0)
 
-// Voters modal state
-const showVotersModal = ref(false)
-
 function handleRevealResults() {
   emit('revealResults')
 }
+
+const isBelowSmall = useBreakpoint('<s')
 </script>
 
 <template>
-  <Card class="p-l card-bg">
-    <Flex x-between y-center class="mb-m">
+  <Card class="card-bg" :class="{ 'p-l': !isBelowSmall }">
+    <Flex x-between y-center class="mb-l">
       <h3>
         Results
       </h3>
       <Flex gap="s">
-        <!-- View voters button -->
-        <Button
-          v-if="totalVoters > 0"
-          variant="gray"
-          size="s"
-          @click="showVotersModal = true"
-        >
-          <template #start>
-            <Icon name="ph:users" />
-          </template>
-          {{ totalVoters }} {{ totalVoters === 1 ? 'Voter' : 'Voters' }}
-        </Button>
-
         <!-- Show reveal button if conditions are met -->
         <Button
           v-if="showRevealButton && canRevealResults"
@@ -129,72 +132,165 @@ function handleRevealResults() {
 
     <!-- Results list -->
     <div v-else class="results-list">
-      <div
-        v-for="result in voteResults"
-        :key="result.index"
-        class="result-item"
+      <Accordion
+        v-for="result in voteResults" :key="result.index"
+        unstyled
       >
-        <Flex x-between y-center class="mb-xs">
-          <span class="choice-text">{{ result.choice }}</span>
-          <span class="vote-count">{{ result.count }} vote{{ result.count !== 1 ? 's' : '' }}</span>
-        </Flex>
-
-        <div class="progress-bar">
+        <template #trigger="{ toggle, isOpen }">
           <div
-            class="progress-fill"
-            :style="{ width: `${result.percentage}%` }"
-          />
-        </div>
+            class="result-item"
+            :role="result.comments.length > 0 ? 'button' : undefined"
+            :class="{
+              'result-item--comments': result.comments.length > 0,
+              'result-item--votes': result.percentage > 0,
+            }"
+            @click="result.comments.length > 0 && toggle()"
+          >
+            <Flex x-between y-center>
+              <span class="result-item__choice">{{ result.choice }} <span class="result-item__percentage">{{ `(${result.percentage.toFixed()}%)` }}</span></span>
+              <BulkAvatarDisplay
+                v-if="result.users.length > 0"
+                :user-ids="result.users"
+                :max-users="3"
+                :avatar-size="24"
+                :random="true"
+                :gap="4"
 
-        <span class="percentage">{{ result.percentage.toFixed(1) }}%</span>
-      </div>
+                no-empty-state
+              />
+              <span v-if="result.count === 0" class="result-item__count">{{ result.count }} votes</span>
+              <Icon v-if="result.comments.length > 0" :name="`ph:caret-${isOpen ? 'up' : 'down'}`" />
+            </Flex>
+
+            <div
+              class="result-item__indicator"
+              :style="{
+                width: `${result.percentage}%`,
+                opacity: Math.min(Math.max(0.1, result.percentage / 200), 0.8),
+              }"
+            />
+          </div>
+        </template>
+
+        <ul class="result-comments">
+          <li v-for="item in result.comments" :key="item.user" class="result-comments__item">
+            <UserDisplay size="s" :user-id="item.user" />
+            <MDRenderer :md="item.comment" />
+          </li>
+        </ul>
+      </Accordion>
     </div>
   </Card>
-
-  <!-- Voters Modal -->
-  <ReferendumVotersModal
-    v-model:open="showVotersModal"
-    :referendum="referendum"
-    :votes="votes"
-    @close="showVotersModal = false"
-  />
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .results-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-l);
+  gap: var(--space-xs);
+}
+
+:root.light {
+  .result-item--comments:hover {
+    background-color: var(--color-bg);
+  }
+
+  .result-item__count,
+  .result-item__choice {
+    opacity: 0.75;
+  }
+
+  .result-comments {
+    background-color: var(--color-bg-medium);
+  }
 }
 
 .result-item {
-  .choice-text {
-    font-weight: 500;
-  }
+  padding: var(--space-s) var(--space-m);
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  transition: var(--transition-fast);
+  border-radius: var(--border-radius-m);
+  cursor: default;
 
-  .vote-count {
-    color: var(--color-text-light);
-    font-size: var(--font-size-s);
-  }
+  &--comments {
+    cursor: pointer;
 
-  .progress-bar {
-    height: 8px;
-    background-color: var(--color-bg-lowered);
-    border-radius: var(--border-radius-s);
-    overflow: hidden;
-    margin: var(--space-xs) 0;
-
-    .progress-fill {
-      height: 100%;
-      background-color: var(--color-accent);
-      transition: width 0.3s ease;
+    &:hover {
+      background-color: var(--color-button-gray-hover);
     }
   }
 
-  .percentage {
-    color: var(--color-text-light);
+  &--votes {
+    .result-item__choice {
+      color: var(--color-text);
+    }
+  }
+
+  &__choice {
+    font-weight: var(--font-weight-medium);
+    line-height: 1.3em;
+    padding-right: 128px;
+    text-align: left;
+    flex: 1;
+    color: var(--color-text-lighter);
+
+    @media (max-width: $breakpoint-s) {
+      padding-right: 16px;
+    }
+  }
+
+  &__count {
+    color: var(--color-text-lighter);
     font-size: var(--font-size-s);
-    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  &__indicator {
+    position: absolute;
+    display: block;
+    inset: 0;
+    right: unset;
+    background-color: var(--color-bg-accent-lowered);
+    z-index: -1;
+    border-radius: var(--border-radius-m);
+  }
+
+  &__percentage {
+    font-size: var(--font-size-s);
+    display: inline;
+    opacity: 0.65;
+    padding-left: 4px;
+    vertical-align: middle;
+  }
+}
+
+:deep(.vui-accordion-content) {
+  margin-top: 4px;
+
+  &[aria-hidden='false'] {
+    margin-bottom: var(--space-m);
+  }
+}
+
+.result-comments {
+  padding: var(--space-s);
+  background-color: var(--color-bg-raised);
+  border-radius: var(--border-radius-m);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-m);
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+
+    :deep(.typeset) {
+      padding-left: 36px;
+    }
   }
 }
 </style>

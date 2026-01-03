@@ -200,6 +200,12 @@ code {
   background-color: var(--color-bg);
 }
 
+.typeset {
+  & > :first-child {
+    margin-top: 0 !important;
+  }
+}
+
 @media (max-width: $breakpoint-s) {
   .vui-table-container {
     width: auto !important;
