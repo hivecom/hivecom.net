@@ -80,7 +80,7 @@ function goToReferendum() {
         <UserDisplay :user-id="referendum.created_by" size="s" />
       </Flex>
 
-      <p v-if="referendum.description" class="text-color-light text-s line-clamp-2">
+      <p v-if="referendum.description" class="text-color-light text-m mb-l line-clamp-3">
         {{ referendum.description }}
       </p>
 
