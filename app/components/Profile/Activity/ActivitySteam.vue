@@ -6,7 +6,6 @@ type SteamPresence = Tables<'presences_steam'>
 
 interface Props {
   profileId: string
-  hasSteam: boolean
   steamId?: string | null
   isOwnProfile?: boolean
 }
@@ -32,11 +31,6 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 // Fetch presence data
 async function fetchPresence() {
-  if (!props.hasSteam) {
-    loading.value = false
-    return
-  }
-
   try {
     const { data, error } = await supabase
       .from('presences_steam')
@@ -159,12 +153,6 @@ const lastOnlineFormatted = computed(() => {
   return date.toLocaleDateString()
 })
 
-// Should we show the activity card?
-const shouldShow = computed(() => {
-  // Show whenever user has Steam linked
-  return props.hasSteam
-})
-
 // Start auto-refresh timer
 function startAutoRefresh() {
   stopAutoRefresh()
@@ -214,7 +202,7 @@ watch(() => props.profileId, () => {
 </script>
 
 <template>
-  <div v-if="shouldShow" class="activity-item">
+  <div class="activity-item">
     <Flex y-center x-between gap="s">
       <!-- Loading state -->
       <template v-if="loading">

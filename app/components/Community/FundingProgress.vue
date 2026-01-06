@@ -117,9 +117,6 @@ const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
             <h3 class="text-bold text-xl">
               Monthly Funding
             </h3>
-            <!-- <Badge v-if="supporterCount > 0 && !isBelowSmall" variant="accent">
-              {{ supporterCount }} supporters
-            </Badge> -->
           </Flex>
           <Flex y-center gap="s" class="funding-amounts">
             <strong class="text-bold text-xxxl">{{ formatCurrency(fundingProgress.current) }}</strong>
