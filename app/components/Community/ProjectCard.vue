@@ -92,9 +92,9 @@ const bannerSurfaceStyle = computed(() => {
           <h3 v-if="compact" class="project-card__title project-card__title--compact">
             {{ project.title }}
           </h3>
-          <h1 v-else class="project-card__title">
+          <h3 v-else class="project-card__title">
             {{ project.title }}
-          </h1>
+          </h3>
 
           <Flex v-if="!compact" x-end>
             <TimestampDate
