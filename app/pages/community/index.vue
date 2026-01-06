@@ -196,7 +196,7 @@ watch(user, () => {
     </section>
 
     <!-- Community Members -->
-    <Card v-if="user && randomUsers.length > 0" class="pb-l community-card">
+    <Card v-if="user && randomUsers.length > 0" class="pb-l mt-l community-card">
       <Flex column gap="m" x-center y-center>
         <Flex y-center gap="m" x-center expand>
           <Flex column :gap="0" x-center class="text-center" y-center>
@@ -410,15 +410,15 @@ watch(user, () => {
     <!-- Recent Projects -->
     <section v-if="recentProjects.length > 0" class="mt-xl">
       <Flex column gap="l">
-        <Flex y-center x-between expand>
-          <div>
+        <Flex y-end x-between expand>
+          <Flex gap="xxs" column>
             <h2 class="text-bold text-xxl">
               Featured Projects
             </h2>
             <p class="text-color-light">
               Discover what our community has been building
             </p>
-          </div>
+          </Flex>
           <NuxtLink to="/community/projects">
             <Button>
               <template #end>
@@ -429,7 +429,7 @@ watch(user, () => {
           </NuxtLink>
         </Flex>
 
-        <Grid :columns="3" gap="l" class="projects-grid" expand>
+        <Grid :columns="3" gap="m" class="projects-grid" expand>
           <ProjectCard
             v-for="project in recentProjects"
             :key="project.id"
@@ -760,23 +760,6 @@ watch(user, () => {
 
   @media screen and (max-width: $breakpoint-s) {
     grid-template-columns: 1fr !important;
-  }
-}
-
-.project-card {
-  position: relative;
-  overflow: hidden;
-  background: var(--color-bg-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-m);
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px -8px var(--color-shadow);
-    border-color: var(--color-border-strong);
   }
 }
 
