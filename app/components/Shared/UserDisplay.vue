@@ -15,12 +15,17 @@ interface Props {
   showRole?: boolean
   size?: 's' | 'm' | 'l'
   showProfilePreview?: boolean
+  /**
+   * Hide avatar, but this option is only respected if
+   */
+  hideAvatar?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showRole: false,
   size: 'm',
   showProfilePreview: true,
+  hideAvatar: false,
 })
 
 // Determine what data we need to fetch
@@ -99,10 +104,10 @@ const currentUser = useSupabaseUser()
 <template>
   <div class="user-display">
     <!-- Unauthenticated user state -->
-    <Flex v-if="!currentUser" gap="xs" y-center class="user-display__header" />
+    <Flex v-if="!currentUser" gap="s" y-center class="user-display__header" />
 
     <!-- Loading state -->
-    <Flex v-else-if="loading" gap="xs" y-center class="user-display__header">
+    <Flex v-else-if="loading" gap="s" y-center class="user-display__header">
       <Skeleton
         :width="size === 's' ? '32px' : size === 'm' ? '40px' : '48px'"
         :height="size === 's' ? '32px' : size === 'm' ? '40px' : '48px'"
@@ -114,7 +119,7 @@ const currentUser = useSupabaseUser()
     </Flex>
 
     <!-- No user state -->
-    <Flex v-else-if="!userId" gap="xs" y-center class="user-display__header">
+    <Flex v-else-if="!userId" gap="s" y-center class="user-display__header">
       <Avatar :size="size">
         SY
       </Avatar>
@@ -124,37 +129,39 @@ const currentUser = useSupabaseUser()
     </Flex>
 
     <!-- User data -->
-    <Flex v-else-if="user" gap="xs" y-center class="user-display__header">
-      <UserPreviewHover
-        v-if="showProfilePreview"
-        :user-id="user.id"
-        class="user-display__avatar-wrapper"
-      >
-        <NuxtLink
-          :to="`/profile/${user.id}`"
-          class="user-display__link"
-          :aria-label="`View profile of ${user.username}`"
+    <Flex v-else-if="user" gap="s" y-center class="user-display__header">
+      <template v-if="!props.hideAvatar">
+        <UserPreviewHover
+          v-if="showProfilePreview"
+          :user-id="user.id"
+          class="user-display__avatar-wrapper"
         >
-          <Avatar :size="size" :url="user.avatarUrl || undefined">
-            <template v-if="!user.avatarUrl" #default>
-              {{ userInitials }}
-            </template>
-          </Avatar>
-        </NuxtLink>
-      </UserPreviewHover>
-      <div v-else class="user-display__avatar-wrapper">
-        <NuxtLink
-          :to="`/profile/${user.id}`"
-          class="user-display__link"
-          :aria-label="`View profile of ${user.username}`"
-        >
-          <Avatar :size="size" :url="user.avatarUrl || undefined">
-            <template v-if="!user.avatarUrl" #default>
-              {{ userInitials }}
-            </template>
-          </Avatar>
-        </NuxtLink>
-      </div>
+          <NuxtLink
+            :to="`/profile/${user.id}`"
+            class="user-display__link"
+            :aria-label="`View profile of ${user.username}`"
+          >
+            <Avatar :size="size" :url="user.avatarUrl || undefined">
+              <template v-if="!user.avatarUrl" #default>
+                {{ userInitials }}
+              </template>
+            </Avatar>
+          </NuxtLink>
+        </UserPreviewHover>
+        <div v-else class="user-display__avatar-wrapper">
+          <NuxtLink
+            :to="`/profile/${user.id}`"
+            class="user-display__link"
+            :aria-label="`View profile of ${user.username}`"
+          >
+            <Avatar :size="size" :url="user.avatarUrl || undefined">
+              <template v-if="!user.avatarUrl" #default>
+                {{ userInitials }}
+              </template>
+            </Avatar>
+          </NuxtLink>
+        </div>
+      </template>
       <div class="user-display__info">
         <Flex gap="xs" x-start y-center wrap>
           <NuxtLink
