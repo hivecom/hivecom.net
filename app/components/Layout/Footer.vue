@@ -93,7 +93,7 @@ function scrollUp() {
   border-top: 1px solid var(--color-border);
 
   .container-footer {
-    max-width: 932px;
+    max-width: var(--container-m);
   }
 
   :deep(.vui-card .vui-card-content),

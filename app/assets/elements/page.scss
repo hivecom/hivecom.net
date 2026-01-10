@@ -13,10 +13,6 @@
   flex: 1;
 }
 
-.page-small {
-  max-width: 640px;
-}
-
 .page-title {
   padding: var(--space-l) 0;
 
@@ -27,7 +23,7 @@
 
   p {
     font-size: var(--font-size-m);
-    // color: var(--text-color-light);
+    color: var(--color-text-light);
   }
 }
 

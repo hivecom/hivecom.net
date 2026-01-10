@@ -810,7 +810,11 @@ async function ignoreFriendRequest() {
         <!-- (Right) -->
         <Flex column gap="m">
           <!-- Activity section -->
-          <ProfileActivity v-if="!profile.rich_presence_disabled && (profile.steam_id !== null || /*profile.discord_id !== null || */ profile.teamspeak_identities?.toString() !== '')" :profile="profile" :is-own-profile="isOwnProfile" />
+          <ProfileActivity
+            v-if="!profile.rich_presence_disabled && (profile.steam_id !== null || /*profile.discord_id !== null || */ profile.teamspeak_identities?.toString() !== '')"
+            :profile="profile"
+            :is-own-profile="isOwnProfile"
+          />
 
           <!-- Friends Section -->
           <ProfileFriends

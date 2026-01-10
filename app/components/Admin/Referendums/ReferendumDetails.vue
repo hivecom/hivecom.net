@@ -171,7 +171,8 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
               <span>{{ voteCount }} vote{{ voteCount !== 1 ? 's' : '' }}</span>
             </Grid>
           </Flex>
-        </Card>        <!-- Description -->
+        </Card>
+        <!-- Description -->
         <Card v-if="props.referendum.description" separators class="card-bg">
           <template #header>
             <h6>Description</h6>
@@ -187,7 +188,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
             :votes="referendumVotes"
           />
         </Flex>
-        <Card v-else class="p-l card-bg">
+        <Card v-else class="card-bg">
           <Flex x-between y-center class="mb-m">
             <h3>Results</h3>
           </Flex>

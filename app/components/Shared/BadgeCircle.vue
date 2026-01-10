@@ -23,8 +23,8 @@ const props = defineProps<Props>()
 
 <style scoped>
 .vui-badge {
-  padding-inline: 3px;
-  min-width: 24px;
+  padding-inline: 6px;
+  min-width: 27.2px;
   justify-content: center;
 }
 </style>

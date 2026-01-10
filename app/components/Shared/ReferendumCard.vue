@@ -68,23 +68,23 @@ function goToReferendum() {
 
 <template>
   <Card
-    class="referendum-card"
+    class="referendum-card card-bg"
     role="button"
     @click="goToReferendum"
   >
     <Flex column gap="m" expand>
-      <Flex x-between y-center expand>
-        <h2 class="text-xl">
+      <Flex x-between y-center expand gap="l" class="referendum-card__title">
+        <h2 class="text-xxl">
           {{ referendum.title }}
         </h2>
         <UserDisplay :user-id="referendum.created_by" size="s" />
       </Flex>
 
-      <p v-if="referendum.description" class="text-color-light text-s line-clamp-2">
+      <p v-if="referendum.description" class="text-color-light text-m mb-l line-clamp-3">
         {{ referendum.description }}
       </p>
 
-      <Flex x-between y-center expand>
+      <Flex x-start y-center expand>
         <Flex column gap="xs">
           <Flex gap="xs">
             <Badge :variant="statusVariant">
@@ -100,15 +100,13 @@ function goToReferendum() {
         </Flex>
 
         <Flex gap="xs" y-center x-center>
-          <span v-if="status !== 'upcoming'" class="text-xs text-color-light">
-            {{ voteCount }} vote{{ voteCount !== 1 ? 's' : '' }}
-          </span>
           <BulkAvatarDisplay
             v-if="voterIds && voterIds.length > 0"
             :user-ids="voterIds"
             :max-users="3"
             :avatar-size="24"
             :random="true"
+            :gap="4"
           />
         </Flex>
       </Flex>
@@ -121,9 +119,12 @@ function goToReferendum() {
   transition: all 0.2s ease;
   cursor: pointer;
 
+  // Container setup
+  container-type: inline-size; // We monitor the inline size (horizontal)
+  container-name: card; // We name the container to specifically select it
+
   &:hover {
     background-color: var(--color-bg-lowered);
-    transform: translateY(-2px);
     box-shadow: var(--shadow-m);
   }
 
@@ -138,6 +139,13 @@ function goToReferendum() {
   // Ensure UserDisplay component displays inline properly
   .user-display {
     display: inline-flex;
+  }
+}
+
+// When card itself is less than 456px, apply these styles
+@container card (max-width: 456px) {
+  .referendum-card__title {
+    flex-wrap: wrap !important;
   }
 }
 </style>

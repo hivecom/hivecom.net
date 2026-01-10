@@ -24,3 +24,6 @@ logs
 !.env.template
 
 *.tsbuildinfo
+
+# Nix direnv
+.direnv

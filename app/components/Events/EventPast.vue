@@ -13,7 +13,6 @@ const props = defineProps<{
 dayjs.extend(relativeTime)
 
 const countEl = useTemplateRef('countRef')
-
 const count = computed(() => countEl.value?.count ?? 0)
 </script>
 

@@ -66,12 +66,10 @@ async function startSteamLink() {
     :expand="props.expand"
     :loading="isLinking"
     aria-label="Connect Steam account"
+    size="s"
     @click="startSteamLink"
   >
-    <template #start>
-      <Icon name="ph:steam-logo" />
-    </template>
-    Connect Steam
+    Connect
   </Button>
 </template>
 

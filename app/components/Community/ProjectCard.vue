@@ -89,16 +89,14 @@ const bannerSurfaceStyle = computed(() => {
       <div class="project-card__body">
         <!-- Project header -->
         <Flex expand x-between y-center>
-          <div class="project-card__header">
-            <h3 v-if="compact" class="project-card__title project-card__title--compact">
-              {{ project.title }}
-            </h3>
-            <h1 v-else class="project-card__title">
-              {{ project.title }}
-            </h1>
-          </div>
+          <h3 v-if="compact" class="project-card__title project-card__title--compact">
+            {{ project.title }}
+          </h3>
+          <h3 v-else class="project-card__title">
+            {{ project.title }}
+          </h3>
 
-          <Flex x-end>
+          <Flex v-if="!compact" x-end>
             <TimestampDate
               :date="project.created_at"
               format="MMM D, YYYY"
@@ -142,6 +140,7 @@ const bannerSurfaceStyle = computed(() => {
   height: 100%; // Ensure the card fills the available height
   display: flex;
   flex-direction: column;
+  background-color: var(--color-bg-card);
 
   &::before {
     content: '';
@@ -156,9 +155,7 @@ const bannerSurfaceStyle = computed(() => {
   }
 
   &:hover {
-    border-color: var(--color-accent-light);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    background-color: var(--color-bg-raised);
 
     &::before {
       opacity: 1;
@@ -237,7 +234,7 @@ const bannerSurfaceStyle = computed(() => {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-m);
+  gap: var(--space-xxs);
   flex: 1;
 }
 
@@ -303,17 +300,14 @@ const bannerSurfaceStyle = computed(() => {
 .project-card__title {
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
-  margin: 0;
-  line-height: 1.3;
-  transition: color 0.2s ease;
+  transition: var(--transition-fast);
 
   .project-card:hover & {
     color: var(--color-accent);
   }
 
   &--compact {
-    font-size: var(--font-size-xxl);
-    margin-bottom: var(--space-s);
+    font-size: var(--font-size-xl);
   }
 }
 

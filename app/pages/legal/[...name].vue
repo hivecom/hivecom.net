@@ -31,63 +31,81 @@ useSeoMeta(() => {
 </script>
 
 <template>
-  <div class="page legal-page typeset">
-    <div v-if="content">
-      <h1>{{ content.title || name }}</h1>
+  <div class="container container-m">
+    <div class="page legal-page typeset">
+      <div v-if="content">
+        <h1>{{ content.title || name }}</h1>
 
-      <p class="legal-page__last-updated">
-        Last updated on {{ formatDate(content.date) }}
-        <a
-          v-if="content.revisions && content.revisions.length"
-          href="#revisions"
-          aria-label="Jump to previous revisions section"
-        >
-          (See previous revisions below)
-        </a>
-      </p>
+        <p class="legal-page__last-updated">
+          Last updated on {{ formatDate(content.date) }}
+          <a
+            v-if="content.revisions && content.revisions.length"
+            href="#revisions"
+            aria-label="Jump to previous revisions section"
+          >
+            (See previous revisions below)
+          </a>
+        </p>
 
-      <Divider />
+        <Divider />
 
-      <!-- Render the content as Prose & Vue components -->
-      <ContentRenderer class="legal-page__content" :value="content" />
+        <!-- Render the content as Prose & Vue components -->
+        <ContentRenderer class="legal-page__content" :value="content" />
 
-      <!-- Seems to not be working right now -->
-      <!-- <TableOfContents :toc="content.body.toc" /> -->
+        <!-- Seems to not be working right now -->
+        <!-- <TableOfContents :toc="content.body.toc" /> -->
 
-      <div v-if="content.revisions && content.revisions.length" class="legal-page__revisions">
-        <h5 id="revisions">
-          Previous Versions
-        </h5>
-        <ul>
-          <li v-for="revision in content.revisions" :key="revision">
-            <NuxtLink
-              :to="`/legal/${name}/${revision}`"
-              :aria-label="`View revision from ${formatDate(revision)}`"
-            >
-              {{ formatDate(revision) }}
-            </NuxtLink>
-          </li>
-        </ul>
+        <div v-if="content.revisions && content.revisions.length" class="legal-page__revisions">
+          <h5 id="revisions">
+            Previous Versions
+          </h5>
+          <ul>
+            <li v-for="revision in content.revisions" :key="revision">
+              <NuxtLink
+                :to="`/legal/${name}/${revision}`"
+                :aria-label="`View revision from ${formatDate(revision)}`"
+              >
+                {{ formatDate(revision) }}
+              </NuxtLink>
+            </li>
+          </ul>
+        </div>
       </div>
-    </div>
 
-    <div v-else class="legal-page__not-found">
-      <h1>Document Not Found</h1>
-      <p>The requested legal document "{{ name }}" could not be found.</p>
+      <div v-else class="legal-page__not-found">
+        <h1>Document Not Found</h1>
+        <p>The requested legal document "{{ name }}" could not be found.</p>
+      </div>
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
 .legal-page {
-  max-width: var(--container-m);
-
   &__content {
     padding-top: var(--space-l);
+    max-width: var(--container-s);
+
+    :deep(p) {
+      color: var(--color-text-light) !important;
+    }
+
+    :deep(li),
+    :deep(p) {
+      a {
+        color: var(--color-accent);
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
   }
 
   &__last-updated {
     font-size: var(--font-size-s);
+    color: var(--color-text-lighter);
   }
 
   &__revisions {
@@ -99,7 +117,7 @@ useSeoMeta(() => {
     ul,
     ol {
       a {
-        color: var(--color-primary);
+        color: var(--color-accent);
         text-decoration: none;
         font-size: var(--font-size-s);
 
@@ -119,7 +137,7 @@ useSeoMeta(() => {
     }
 
     p {
-      color: var(--text-color-lightest);
+      color: var(--color-text-lightest);
     }
   }
 }

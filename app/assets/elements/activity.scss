@@ -44,6 +44,9 @@
   }
 
   &__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
     font-size: var(--font-size-m);
     padding-left: 21px;
     color: var(--color-text-light);

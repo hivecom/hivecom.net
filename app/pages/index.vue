@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
-import EventCard from '@/components/Events/EventCard.vue'
+import EventCardLanding from '@/components/Events/EventCardLanding.vue'
 
 definePageMeta({
   layout: 'landing',
@@ -100,7 +100,7 @@ onMounted(async () => {
       }
     })
 
-    events.value = sortedEvents.slice(0, 6) // Show up to 6 events
+    events.value = sortedEvents.slice(0, 3) // Show up to 6 events
 
     // Prefer metrics snapshots from storage with DB fallback
     const metricsSnapshot = await fetchMetrics()
@@ -125,7 +125,7 @@ onMounted(async () => {
     <LandingHero :community-stats="communityStats" :loading="loading" />
 
     <div class="container container-l">
-      <div class="page-landing">
+      <div class="page-landing container container-m">
         <!-- About section -->
         <section class="about-section">
           <h2 class="heading">
@@ -237,9 +237,6 @@ onMounted(async () => {
           <h2 class="heading">
             Events
           </h2>
-          <ClientOnly>
-            <Divider />
-          </ClientOnly>
 
           <Grid v-if="loading" class="events-section__list" :columns="3" gap="m">
             <!-- Loading state -->
@@ -264,7 +261,7 @@ onMounted(async () => {
           </div>
 
           <Grid v-else class="events-section__list" :columns="3" gap="m" expand>
-            <EventCard
+            <EventCardLanding
               v-for="event in events"
               :key="event.id"
               :event="event"
@@ -329,7 +326,6 @@ h4 {
   padding-top: 4rem;
 
   &__content {
-    max-width: 900px;
     margin: 2rem auto 0;
 
     p {
@@ -366,7 +362,6 @@ h4 {
     grid-template-columns: 1.5fr 1fr;
     align-items: center;
     gap: 64px;
-    max-width: 900px;
     margin: 2rem auto 0;
 
     @media screen and (max-width: $breakpoint-m) {
@@ -434,8 +429,9 @@ h4 {
 .events-section {
   &__list {
     margin: 2rem auto 0;
-    max-width: 900px;
     text-align: left;
+    // grid-auto-rows: 1fr;
+    align-items: stretch !important;
 
     @media screen and (max-width: $breakpoint-s) {
       grid-template-columns: 1fr !important;

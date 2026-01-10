@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Session } from '@supabase/supabase-js'
-import { Alert, Button, Card, Flex, Input, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
+import { Alert, Button, Card, CopyClipboard, Flex, Input, Modal, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
 import { useCacheUserData } from '@/composables/useCacheUserData'
@@ -45,6 +45,7 @@ const totpSetup = reactive({
   uri: '',
   code: '',
   friendlyName: '',
+  naming: false,
   enrolling: false,
   verifying: false,
 })
@@ -53,7 +54,7 @@ const mfaCache = useCacheMfaStatus()
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
 const showMfaSkeleton = computed(() => hasMfaSupport.value && Boolean(user.value) && (mfaLoading.value || !mfaHasFetched.value))
 const hasVerifiedTotp = computed(() => mfaFactors.value.some(f => f.factor_type === 'totp' && f.status === 'verified'))
-const isTotpSetupActive = computed(() => Boolean(totpSetup.qrCode && totpSetup.secret))
+const isTotpSetupActive = computed(() => Boolean(totpSetup.qrCode && totpSetup.secret) || totpSetup.naming)
 const mfaStatusCopy = computed(() => (hasVerifiedTotp.value
   ? 'Authenticator codes are required the next time you sign in.'
   : 'Set up an authenticator app to add two-factor authentication.'))
@@ -138,6 +139,7 @@ function resetTotpSetup() {
   totpSetup.uri = ''
   totpSetup.code = ''
   totpSetup.friendlyName = ''
+  totpSetup.naming = false
   totpSetup.enrolling = false
   totpSetup.verifying = false
 }
@@ -242,6 +244,7 @@ async function startTotpEnrollment() {
   }
   finally {
     totpSetup.enrolling = false
+    totpSetup.naming = false
   }
 }
 
@@ -265,13 +268,18 @@ async function cancelTotpEnrollment() {
 }
 
 async function verifyTotpEnrollment() {
+  // Ignore if verification is in progress
+  if (totpSetup.verifying) {
+    return
+  }
+
   if (!totpSetup.factorId) {
     totpError.value = 'Start the authenticator setup before verifying.'
     return
   }
 
   const code = totpSetup.code.trim()
-  if (!code) {
+  if (!code || code.length !== 6) {
     totpError.value = 'Enter the 6-digit code from your authenticator app.'
     return
   }
@@ -394,28 +402,16 @@ watch(user, (newUser) => {
     resetTotpSetup()
 })
 
-watch(
-  () => totpSetup.code,
-  (code) => {
-    const normalized = code.trim()
-    if (normalized.length === 6 && !totpSetup.verifying)
-      void verifyTotpEnrollment()
-  },
-)
-
-onMounted(() => {
+onBeforeMount(() => {
   if (user.value)
     loadMfaFactors()
 })
 </script>
 
 <template>
-  <Card separators>
+  <Card separators class="card-bg">
     <template #header>
-      <Flex x-between y-center>
-        <h3>Multi-Factor Authentication</h3>
-        <Icon :name="mfaStatusIcon" />
-      </Flex>
+      <h4>Multi-Factor Authentication</h4>
     </template>
 
     <Flex column gap="l">
@@ -471,11 +467,11 @@ onMounted(() => {
 
         <template v-else>
           <Flex class="security-panel" gap="l" wrap expand>
-            <Flex gap="m" y-start class="security-panel__content">
+            <Flex gap="m" y-center class="security-panel__content">
               <div class="security-panel__icon" :class="{ 'is-active': hasVerifiedTotp }">
                 <Icon :name="mfaStatusIcon" size="28" />
               </div>
-              <Flex column gap="xs">
+              <Flex column gap="xxs" class="flex-1">
                 <Flex gap="s" y-center wrap>
                   <strong>{{ hasVerifiedTotp ? 'Enabled' : 'Not Enabled' }}</strong>
                   <TinyBadge :variant="mfaStatusBadge.variant">
@@ -483,28 +479,16 @@ onMounted(() => {
                     {{ mfaStatusBadge.label }}
                   </TinyBadge>
                 </Flex>
-                <p class="text-s text-color-lighter">
+                <p class="text-m text-color-lighter">
                   {{ mfaStatusCopy }}
                 </p>
               </Flex>
-            </Flex>
-            <Flex expand :column="isBelowSmall" gap="s" class="security-panel__actions">
               <Button
                 variant="accent"
-                :disabled="isTotpSetupActive"
-                :class="isBelowSmall ? 'w-100' : 'w-50'"
-                @click="startTotpEnrollment"
+                @click="totpSetup.naming = true"
               >
-                {{ hasVerifiedTotp ? 'Add Another Device' : 'Set Up Authenticator App' }}
+                Add device
               </Button>
-              <Input
-                v-model="totpSetup.friendlyName"
-                expand
-                name="mfa-device-name"
-                :placeholder="nextTotpFriendlyName()"
-                :disabled="totpSetup.enrolling || isTotpSetupActive"
-                :class="isBelowSmall ? 'w-100' : 'w-50'"
-              />
             </Flex>
           </Flex>
 
@@ -525,16 +509,17 @@ onMounted(() => {
                   y-center
                   wrap
                 >
-                  <Flex column gap="xxs" class="device-meta">
+                  <Flex column gap="xs" class="device-meta">
                     <strong class="text-s">{{ factorDisplayName(factor, index) }}</strong>
-                    <span class="text-xs text-color-lighter">
-                      {{ factorTypeLabel(factor.factor_type) }}
-                      •
-                      {{ factor.status === 'verified' ? 'Verified' : 'Pending verification' }}
+                    <Flex gap="xs" y-center>
+                      <span class="text-xs text-color-lighter">{{ factorTypeLabel(factor.factor_type) }}</span>
+                      <span class="text-xs text-color-lighter">•</span>
+                      <span class="text-xs text-color-lighter">{{ factor.status === 'verified' ? 'Verified' : 'Pending verification' }}</span>
                       <template v-if="factor.created_at">
-                        • Added {{ formatFactorDate(factor.created_at) }}
+                        <span class="text-xs text-color-lighter">•</span>
+                        <span class="text-xs text-color-lighter">Added {{ formatFactorDate(factor.created_at) }}</span>
                       </template>
-                    </span>
+                    </Flex>
                   </Flex>
 
                   <Flex gap="s" y-center :column="isBelowSmall" :row="!isBelowSmall" :expand="isBelowSmall">
@@ -543,61 +528,16 @@ onMounted(() => {
                     </TinyBadge>
                     <Button
                       variant="danger"
-                      outline
+                      plain
+                      size="s"
+                      square
                       :expand="isBelowSmall"
                       :disabled="removeFactorLoading || totpSetup.enrolling || totpSetup.verifying"
                       @click="requestRemoveFactor(factor)"
                     >
-                      Remove
+                      <Icon name="ph:trash" class="text-color-red" />
                     </Button>
                   </Flex>
-                </Flex>
-              </Flex>
-            </Flex>
-          </div>
-
-          <div v-if="isTotpSetupActive" class="mfa-setup">
-            <Flex gap="m" wrap>
-              <div class="qr-wrapper">
-                <img :src="totpSetup.qrCode" alt="Authenticator QR code">
-              </div>
-              <Flex column class="setup-instructions" gap="s">
-                <div>
-                  <p class="text-s">
-                    Scan the QR code or enter this key manually in your authenticator app.
-                  </p>
-                  <div class="secret-block">
-                    {{ totpSetup.secret || 'No secret available' }}
-                  </div>
-                </div>
-                <p class="text-xs text-color-lighter">
-                  After adding the account, enter the 6-digit code below to confirm setup.
-                </p>
-                <Flex column gap="xs">
-                  <span class="text-xs text-color-lighter">One-time code</span>
-                  <OTP
-                    v-model="totpSetup.code"
-                    mode="num"
-                    :disabled="totpSetup.verifying"
-                  >
-                    <OTPItem :i="0" />
-                    <OTPItem :i="1" />
-                    <OTPItem :i="2" />
-                    <div class="otp-divider">
-                      -
-                    </div>
-                    <OTPItem :i="3" />
-                    <OTPItem :i="4" />
-                    <OTPItem :i="5" />
-                  </OTP>
-                </Flex>
-                <Flex gap="s" :column="isBelowSmall" :row="!isBelowSmall" :expand="isBelowSmall">
-                  <Button :expand="isBelowSmall" variant="accent" :loading="totpSetup.verifying" @click="verifyTotpEnrollment">
-                    Verify Code
-                  </Button>
-                  <Button :expand="isBelowSmall" :disabled="totpSetup.verifying" @click="cancelTotpEnrollment">
-                    Cancel
-                  </Button>
                 </Flex>
               </Flex>
             </Flex>
@@ -610,30 +550,135 @@ onMounted(() => {
       <Alert v-if="mfaError" filled variant="danger">
         {{ mfaError }}
       </Alert>
-      <Alert v-if="totpError" filled variant="danger">
-        {{ totpError }}
-      </Alert>
       <Alert v-if="removeFactorError" filled variant="danger">
         {{ removeFactorError }}
       </Alert>
     </Flex>
   </Card>
 
+  <!-- Add MFA device setup -->
+  <Modal
+    :open="isTotpSetupActive"
+    :card="{ separators: true }"
+    :can-dismiss="totpSetup.naming"
+    @close="resetTotpSetup"
+  >
+    <template #header>
+      <Flex column gap="xxs">
+        <h4>
+          {{ totpSetup.naming
+            ? 'New MFA device'
+            : 'Setup authenticator app'
+          }}
+        </h4>
+        <p v-if="totpSetup.naming" class="text-m text-color-light">
+          Enter the name for this MFA device or leave it empty for a default name
+        </p>
+      </Flex>
+    </template>
+
+    <Alert v-if="totpError" filled variant="danger" class="mb-m">
+      {{ totpError }}
+    </Alert>
+
+    <template v-if="totpSetup.naming">
+      <Flex y-end gap="m">
+        <Input
+          v-model="totpSetup.friendlyName"
+          exand
+          class="flex-1"
+          name="mfa-device-name"
+          label="Device name"
+          :placeholder="nextTotpFriendlyName()"
+        />
+        <Button variant="fill" :loading="totpSetup.enrolling" @click="startTotpEnrollment">
+          Next
+          <template #end>
+            <Icon name="ph:caret-right" class="text-color-invert" />
+          </template>
+        </Button>
+      </Flex>
+    </template>
+
+    <Flex v-else gap="xl" column y-start>
+      <!-- QR code & secret  -->
+      <Flex column gap="s" expand>
+        <p class="text-m">
+          1. Scan the QR code or enter this key manually in your authenticator app.
+        </p>
+        <Card class="card-bg">
+          <Flex x-center y-center gap="m" column>
+            <div class="qr-wrapper">
+              <img :src="totpSetup.qrCode" alt="Authenticator QR code">
+            </div>
+            <div class="secret-block w-100">
+              <template v-if="totpSetup.secret">
+                <template
+                  v-for="(letter, index) of totpSetup.secret.split('')"
+                  :key="letter + index"
+                >
+                  <span :class="{ 'text-color-blue': !Number.isNaN(Number(letter)) }">
+                    {{ letter }}
+                  </span>
+                  <span v-if="(index + 1) % 6 === 0">&nbsp;</span>
+                </template>
+
+                <CopyClipboard :text="totpSetup.secret" confirm>
+                  <Button square plain size="s">
+                    <Icon name="ph:copy" />
+                  </Button>
+                </CopyClipboard>
+              </template>
+              <span v-else>Not available</span>
+            </div>
+          </Flex>
+        </Card>
+      </Flex>
+
+      <!-- Verification -->
+      <Flex column gap="s" expand>
+        <p class="text-m">
+          2. Enter the 6-digit code below to confirm and finish the setup.
+        </p>
+        <OTP
+          v-model="totpSetup.code"
+          mode="num"
+          :disabled="totpSetup.verifying"
+          @complete="verifyTotpEnrollment"
+        >
+          <!-- Number iteration starts at 1 -->
+          <OTPItem v-for="item in 6" :key="item" :i="item - 1" />
+        </OTP>
+      </Flex>
+    </Flex>
+    <template v-if="!totpSetup.naming" #footer>
+      <Flex gap="s" :column="isBelowSmall" :row="!isBelowSmall" :expand="isBelowSmall">
+        <Button :expand="isBelowSmall" variant="accent" :loading="totpSetup.verifying" @click="verifyTotpEnrollment">
+          Verify Code
+        </Button>
+        <Button :expand="isBelowSmall" :disabled="totpSetup.verifying" @click="cancelTotpEnrollment">
+          Cancel
+        </Button>
+      </Flex>
+    </template>
+  </Modal>
+
+  <!-- Remove MFA device confirmation -->
   <ConfirmModal
     v-model:open="removeFactorModalOpen"
     :confirm="removeSelectedFactor"
     :title="removeFactorTitle"
     :description="removeFactorDescription"
-    confirm-text="Remove device"
+    confirm-text="Remove"
     cancel-text="Cancel"
     :destructive="true"
   />
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .security-panel {
   width: 100%;
-  padding: var(--space-l);
+  padding: var(--space-m);
   border-radius: var(--border-radius-l);
   border: 1px solid var(--color-border);
   background: var(--color-bg-subtle);
@@ -652,16 +697,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--color-border);
 }
 
 .security-panel__icon.is-active {
   border-color: var(--color-accent);
-}
 
-.security-panel__actions {
-  min-width: 220px;
-  flex-shrink: 0;
+  .iconify {
+    color: var(--color-accent);
+  }
 }
 
 .mfa-setup {
@@ -695,8 +739,7 @@ onMounted(() => {
 }
 
 .qr-wrapper {
-  width: 160px;
-  min-width: 160px;
+  width: 192px;
   aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
@@ -704,34 +747,45 @@ onMounted(() => {
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
   background: white;
-  padding: var(--space-xs);
-}
+  padding: 0;
 
-.qr-wrapper img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.setup-instructions {
-  flex: 1;
-  min-width: 220px;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
 }
 
 .secret-block {
-  padding: var(--space-xs) var(--space-s);
+  padding: var(--space-s) var(--space-m);
+  background-color: var(--color-bg);
   border: 1px dashed var(--color-border);
   border-radius: var(--border-radius-s);
-  font-family: var(--font-family-mono, 'Courier New', Courier, monospace);
   word-break: break-all;
-  background: var(--color-bg, #0e1018);
-}
+  display: block;
+  width: 100%;
+  position: relative;
 
+  :deep(.vui-clipboard-copy-wrap) {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 8px;
+  }
+
+  span {
+    display: inline;
+    font-size: var(--font-size-m);
+    letter-spacing: 0.05em;
+    font-family: var(--font-family-mono, 'Courier New', Courier, monospace);
+  }
+}
+/*
 .otp-divider {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 var(--space-m);
   color: var(--color-text-light);
-}
+} */
 </style>

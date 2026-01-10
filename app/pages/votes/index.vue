@@ -9,11 +9,6 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 // Redirect to login if user is not authenticated
 const user = useSupabaseUser()
-watch(user, (newUser) => {
-  if (newUser === null) {
-    navigateTo('/auth/sign-in')
-  }
-}, { immediate: true })
 
 useHead({
   title: 'Vote',

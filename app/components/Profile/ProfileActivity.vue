@@ -26,8 +26,8 @@ const hasTeamspeak = computed(() => {
   <div class="activity">
     <!-- <ActivitySpotify /> -->
     <ActivitySteam
+      v-if="hasSteam"
       :profile-id="props.profile.id"
-      :has-steam="hasSteam"
       :steam-id="props.profile.steam_id"
       :is-own-profile="props.isOwnProfile"
     />

@@ -7,7 +7,8 @@
 :root {
   // Main container sizes
   --container-l: 1280px;
-  --container-m: 768px;
+  --container-m: 968px;
+  --container-s: 728px;
 
   // Dark (default) theme colors
   --dark-color-bg: #111;
@@ -44,9 +45,18 @@
   --light-color-bg-card: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
 }
 
+.vui-backdrop:after {
+  opacity: 1;
+  backdrop-filter: blur(2px);
+}
+
 :root.dark {
   --banner-filter: none;
   --color-bg-card: var(--dark-color-bg-card);
+
+  .vui-backdrop:after {
+    background-color: color-mix(in srgb, var(--color-bg-lowered) 90%, transparent);
+  }
 }
 
 :root:not(.dark) {
@@ -56,6 +66,15 @@
   .vui-progress {
     background-color: var(--color-border) !important;
   }
+
+  .vui-backdrop:after {
+    background-color: color-mix(in srgb, var(--color-bg-lowered) 65%, transparent);
+  }
+}
+
+.vui-badge {
+  --vui-badge-padding-inline: 10px;
+  --vui-badge-padding-block: 6px;
 }
 
 html,
@@ -155,6 +174,35 @@ table td {
 :root.light {
   .vui-popout {
     box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.125);
+  }
+}
+
+.vui-switch.checked .vui-switch-icon {
+  background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 25%, transparent) !important;
+
+  .vui-switch-indicator {
+    background-color: var(--color-accent);
+  }
+}
+
+.vui-otp {
+  .vui-otp-items {
+    gap: var(--space-xs);
+
+    .vui-otp-item {
+      background-color: var(--color-bg-medium);
+      border-radius: var(--border-radius-s) !important;
+    }
+  }
+}
+
+code {
+  background-color: var(--color-bg);
+}
+
+.typeset {
+  & > :first-child {
+    margin-top: 0 !important;
   }
 }
 

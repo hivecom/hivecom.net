@@ -2,7 +2,6 @@
 import type { Tables } from '@/types/database.types'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 import { Badge, Button, Divider, Flex } from '@dolanske/vui'
-import { Icon } from '@iconify/vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
@@ -260,7 +259,7 @@ function formatLastSeen(lastSeenAt: string | null): string {
     @focusout="handleLeave"
   >
     <Flex class="ts-presence__trigger" :class="{ 'ts-presence__trigger--accent': props.useAccentColor }" y-center gap="xs">
-      <Icon class="activity-item__icon" icon="mdi:teamspeak" :width="props.iconSize" :height="props.iconSize" />
+      <Icon class="activity-item__icon" name="mdi:teamspeak" :width="props.iconSize" :height="props.iconSize" />
       <span v-if="isOnline && !props.hideOnlineIndicator" class="ts-presence__badge" />
     </Flex>
 

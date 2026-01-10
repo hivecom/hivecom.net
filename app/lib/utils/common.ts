@@ -88,3 +88,10 @@ export function deepMergePlainObjects<
 
   return deepMergePlainObjects(target, ...sources)
 }
+
+export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = 'center') {
+  const el = document.querySelector(id)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block })
+  }
+}

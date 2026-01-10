@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, pushToast, Toasts } from '@dolanske/vui'
+import { Button, pushToast } from '@dolanske/vui'
 
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
 
@@ -117,14 +117,11 @@ async function connectDiscord() {
       :expand="props.expand"
       :loading="isLinking"
       :disabled="isLinking"
+      size="s"
       @click="connectDiscord"
     >
-      <template #start>
-        <Icon name="ph:discord-logo" />
-      </template>
-      Connect Discord
+      Connect
     </Button>
-    <Toasts />
   </div>
 </template>
 

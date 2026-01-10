@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Card, Divider, Flex, Grid, Skeleton, Toasts } from '@dolanske/vui'
-import { computed } from 'vue'
+import { Alert, Card, DropdownItem, Flex, Skeleton } from '@dolanske/vui'
 import ChangeEmailCard from '@/components/Settings/ChangeEmailCard.vue'
 import ChangePasswordCard from '@/components/Settings/ChangePasswordCard.vue'
 import ConnectionsCard from '@/components/Settings/ConnectionsCard.vue'
 import DeleteAccountCard from '@/components/Settings/DeleteAccountCard.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
-// import ProfileSummaryCard from '@/components/Settings/ProfileSummaryCard.vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
+import { scrollToId } from '@/lib/utils/common'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -18,8 +16,6 @@ const profile = ref<Tables<'profiles'> | null>(null)
 const loading = ref(true)
 const profileError = ref('')
 const authReady = ref(false)
-const isBelowM = useBreakpoint('<m')
-const sectionGridColumns = computed(() => (isBelowM.value ? 1 : 2))
 
 async function fetchProfile() {
   if (!user.value) {
@@ -86,23 +82,19 @@ onUnmounted(() => {
 })
 
 watch(user, (newUser) => {
-  if (!newUser && authReady.value) {
-    profile.value = null
-    navigateTo('/auth/sign-in')
-  }
-  else if (newUser) {
+  if (newUser) {
     fetchProfile()
   }
 })
 </script>
 
 <template>
-  <div class="page">
+  <div class="page container container-m">
     <template v-if="loading && !authReady">
       <div class="loading-container">
         <Skeleton height="2.5rem" width="60%" style="margin-bottom: var(--space-l);" />
 
-        <Card separators>
+        <Card separators class="card-bg">
           <template #header>
             <Flex x-between y-center>
               <Skeleton height="1.5rem" width="10rem" />
@@ -127,7 +119,7 @@ watch(user, (newUser) => {
     </template>
 
     <template v-else-if="!user">
-      <div>Please sign in to access profile settings.</div>
+      <p>Please sign in to access profile settings.</p>
     </template>
 
     <template v-else>
@@ -140,54 +132,59 @@ watch(user, (newUser) => {
         {{ profileError }}
       </Alert>
 
-      <Flex expand column gap="xl">
-        <Flex column gap="m" expand y-center>
-          <Flex expand gap="m">
-            <p class="section-eyebrow">
-              Profile
-            </p>
-            <Divider size="s" class="w-100" />
-          </Flex>
-          <Flex gap="l" expand y-stretch>
-            <!-- <ProfileSummaryCard
-              :profile="profile"
-              :user-id="userId"
-              :loading="loading"
-            /> -->
+      <div class="settings">
+        <Flex expand column gap="xxxl" class="settings__container">
+          <div id="connections" class="w-100">
             <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" />
-          </Flex>
-        </Flex>
-
-        <Flex column gap="m" expand>
-          <Flex expand gap="m">
-            <p class="section-eyebrow">
+          </div>
+          <div id="security" class="w-100">
+            <strong class="block mb-m text-color-light">
               Security
-            </p>
-            <Divider size="s" class="w-100" />
-          </Flex>
-          <Grid :columns="sectionGridColumns" gap="l" expand y-stretch>
-            <ChangePasswordCard />
-            <MfaCard />
-          </Grid>
+            </strong>
+            <Flex column gap="xl">
+              <ChangePasswordCard />
+              <MfaCard />
+            </Flex>
+          </div>
+          <div id="account" class="w-100">
+            <strong class="block mb-m text-color-light">Account</strong>
+            <Flex column gap="xl">
+              <ChangeEmailCard />
+              <DeleteAccountCard />
+            </Flex>
+          </div>
         </Flex>
 
-        <Flex column gap="m" expand>
-          <Flex expand gap="m">
-            <p class="section-eyebrow">
+        <div class="settings__nav">
+          <div class="settings__nav--inner">
+            <DropdownItem expand @click="scrollToId('#connections')">
+              Connections
+            </DropdownItem>
+            <DropdownItem expand @click="scrollToId('#security')">
+              Security
+            </DropdownItem>
+            <DropdownItem expand @click="scrollToId('#account')">
               Account
-            </p>
-            <Divider size="s" class="w-100" />
-          </Flex>
-          <Grid :columns="sectionGridColumns" gap="l" expand y-stretch>
-            <ChangeEmailCard />
-            <DeleteAccountCard />
-          </Grid>
-        </Flex>
-      </Flex>
+            </DropdownItem>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
-  <Toasts />
 </template>
+
+<style>
+.settings-callout__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--color-bg, #0e1018);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+}
+</style>
 
 <style lang="scss" scoped>
 .section-eyebrow {
@@ -195,6 +192,10 @@ watch(user, (newUser) => {
   letter-spacing: 0.08em;
   color: var(--color-text-lightest);
   margin-top: var(--space-xxs);
+}
+
+:deep(h4) {
+  font-weight: var(--font-weight-bold);
 }
 
 .loading-container {
@@ -211,7 +212,31 @@ watch(user, (newUser) => {
   margin-bottom: var(--space-m);
 }
 
+.settings {
+  display: grid;
+  grid-template-columns: 1fr 192px;
+  gap: var(--space-l);
+  max-width: 982px;
+
+  &__nav {
+    position: relative;
+
+    &--inner {
+      position: sticky;
+      top: calc(64px + var(--space-s));
+    }
+  }
+}
+
 @media (max-width: 768px) {
+  .settings {
+    display: block;
+
+    &__nav {
+      display: none;
+    }
+  }
+
   .loading-container {
     padding: var(--space-l);
   }

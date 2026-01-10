@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
+import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 import { Avatar, Button, Divider, Flex } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 import { getCountryInfo } from '@/lib/utils/country'
+import ActivitySteam from '../Profile/Activity/ActivitySteam.vue'
+import ActivityTeamspeak from '../Profile/Activity/ActivityTeamspeak.vue'
 
 interface Props {
   userId: string | null | undefined
@@ -73,6 +77,24 @@ const countryInfo = computed(() => {
 function handleRetry() {
   void refetch()
 }
+
+// Activity data
+const {
+  data: activity,
+  refetch: refetchActivity,
+} = useCacheQuery<{
+  steam_id: string | null
+  teamspeak_identities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
+}>({
+  table: 'profiles',
+  select: 'steam_id,teamspeak_identities',
+  filters: { id: props.userId },
+  single: true,
+}, {
+  enabled: computed(() => !!props.userId),
+})
+
+watch(() => props.userId, refetchActivity, { immediate: true })
 </script>
 
 <template>
@@ -156,6 +178,22 @@ function handleRetry() {
           {{ introductionText }}
         </p>
       </div>
+
+      <Flex v-if="activity" column gap="xxs" expand class="user-preview-card__activity">
+        <ActivitySteam
+          v-if="activity.steam_id"
+          :profile-id="user.id"
+          :steam-id="activity.steam_id"
+          :is-own-profile="false"
+        />
+
+        <ActivityTeamspeak
+          v-if="activity.teamspeak_identities && activity.teamspeak_identities.length > 0"
+          :profile-id="user.id"
+          :teamspeak-identities="activity.teamspeak_identities"
+          :is-own-profile="false"
+        />
+      </Flex>
     </div>
   </div>
 </template>
@@ -168,6 +206,17 @@ function handleRetry() {
   width: 320px;
   max-width: 100%;
   padding: var(--space-m);
+
+  &__activity {
+    margin-top: var(--space-s);
+
+    :deep(.activity-item) {
+      width: 100%;
+      border-radius: var(--border-radius-m);
+      background-color: var(--color-bg-raised);
+      box-shadow: var(--box-shadow);
+    }
+  }
 }
 
 .user-preview-card__avatar {
