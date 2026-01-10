@@ -32,13 +32,6 @@ onMounted(async () => {
 
   loading.value = false
 })
-
-// Watch for user changes and redirect if signed out
-watch(user, (newUser) => {
-  if (!newUser && !loading.value) {
-    navigateTo('/auth/sign-in')
-  }
-}, { immediate: true })
 </script>
 
 <template>

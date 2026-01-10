@@ -82,11 +82,7 @@ onUnmounted(() => {
 })
 
 watch(user, (newUser) => {
-  if (!newUser && authReady.value) {
-    profile.value = null
-    navigateTo('/auth/sign-in')
-  }
-  else if (newUser) {
+  if (newUser) {
     fetchProfile()
   }
 })

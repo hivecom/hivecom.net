@@ -19,13 +19,6 @@ const userId = useUserId()
 
 const isBelowSmall = useBreakpoint('<s')
 
-// Redirect to login if user is not authenticated
-watch(user, (newUser) => {
-  if (newUser === null) {
-    navigateTo('/auth/login')
-  }
-}, { immediate: true })
-
 const referendumId = computed(() => Number(route.params.id))
 
 // Fetch referendum details
