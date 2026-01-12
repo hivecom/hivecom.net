@@ -52,7 +52,7 @@
     "@antfu/eslint-config": "^6.7.3",
     "@types/three": "^0.182.0",
     "eslint": "^9.39.2",
-    "eslint-plugin-format": "^1.1.0",
+    "eslint-plugin-format": "^1.2.0",
     "eslint-plugin-vue": "^10.6.2",
     "nuxi": "^3.31.3",
     "supabase": "^2.70.5",
