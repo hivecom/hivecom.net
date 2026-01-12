@@ -34,8 +34,8 @@ const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
         <p v-else class="discussion-comment__reply-user">
           You:
         </p>
-        <p>
-          {{ truncate(data.reply.text, COMMENT_TRUNCATE) }}
+        <p class="text-overflow-1">
+          {{ data.reply.text }}
         </p>
       </div>
       <template #tooltip>
@@ -91,6 +91,11 @@ const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
     cursor: pointer;
     transition: var(--transition-fast);
 
+    .iconify {
+      min-width: 14px;
+      min-height: 14px;
+    }
+
     :deep(.user-display__link .user-display__username),
     p,
     .iconify {
@@ -118,6 +123,7 @@ const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
 
   &__reply-user {
     font-weight: var(--font-weight-bold) !important;
+    white-space: nowrap;
 
     :deep(.user-display__username) {
       font-weight: var(--font-weight-bold) !important;

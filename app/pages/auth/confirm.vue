@@ -561,14 +561,6 @@ onMounted(() => {
           </Alert>
         </div>
       </div>
-
-      <template v-if="processComplete && !error" #footer>
-        <Flex x-center>
-          <p class="text-s text-color-light">
-            {{ isDev && debugOptions.skipRedirect ? 'Redirect disabled in debug mode' : 'You will momentarily be redirected to your profile' }}
-          </p>
-        </Flex>
-      </template>
     </Card>
 
     <Card v-if="isDev && showDebugPanel" class="debug-panel">
