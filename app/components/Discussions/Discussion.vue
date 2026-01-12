@@ -3,7 +3,7 @@ import { Alert, Button, Flex, Skeleton, Textarea, Tooltip } from '@dolanske/vui'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionComment from './DiscussionComment.vue'
 
-// Base discussion reply model. For UI example open votes comments
+// TODO: add auto-scrolling to a comment with a hash (unless browsers will do that automatically)
 
 const props = withDefaults(defineProps<{
   type: 'a' | 'b'

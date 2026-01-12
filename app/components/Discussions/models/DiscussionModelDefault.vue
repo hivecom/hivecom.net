@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Comment } from '../Discussion.vue'
-import { Button, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, CopyClipboard, pushToast, Tooltip } from '@dolanske/vui'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { scrollToId } from '@/lib/utils/common'
@@ -22,21 +22,31 @@ const COMMENT_TRUNCATE = 80
 
 const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
 
-// TODO: this just doesnt work
-function scrollToComment(id: number) {
-  const idString = `#comment-${id}`
-  router.replace({ hash: idString })
-  setTimeout(() => {
-    scrollToId(idString, 'nearest')
-  }, 100)
+function scrollToreply() {
+  const commentId = `#comment-${data.id}`
+  router.replace({ hash: commentId })
+
+  // TODO: this just doesnt work, it doesnt wanna scroll!!
+  scrollToId(commentId, 'nearest')
+}
+
+const { copy } = useClipboard()
+
+function copyCommentLink() {
+  const url = new URL(window.location.href)
+  url.hash = `#comment-${data.id}`
+  copy(url.toString())
+  pushToast('Link copied to clipboard', {
+    timeout: 1500,
+  })
 }
 </script>
 
 <template>
   <div class="discussion-comment" :class="{ 'discussion-comment--highlight': `#comment-${data.id}` === route.hash }">
     <UserDisplay size="s" :user-id="data.userId" />
-    <Tooltip v-if="data.reply">
-      <button varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.userId === userId }" @click="scrollToComment(data.reply.id)">
+    <Tooltip v-if="data.reply" :delay="750">
+      <button varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.userId === userId }" @click="scrollToreply">
         <Icon name="ph:arrow-elbow-up-right" />
         <p v-if="data.reply.userId !== userId" class="discussion-comment__reply-user">
           <UserDisplay class="inline-block" size="s" :user-id="data.reply.userId" hide-avatar />:
@@ -58,14 +68,26 @@ function scrollToComment(id: number) {
       </template>
     </Tooltip>
     <MDRenderer :md="data.text" />
-    <Button class="discussion-comment__reply-button" outline square size="s" @click="setReplyToComment(data)">
-      <Tooltip>
-        <Icon name="ph:arrow-elbow-up-left" class="text-color-accent" />
-        <template #tooltip>
-          <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.userId" hide-avatar /></p>
-        </template>
-      </Tooltip>
-    </Button>
+    <div class="discussion-comment__actions">
+      <ButtonGroup>
+        <Button square size="s" @click="setReplyToComment(data)">
+          <Tooltip>
+            <Icon name="ph:arrow-elbow-up-left" />
+            <template #tooltip>
+              <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.userId" hide-avatar /></p>
+            </template>
+          </Tooltip>
+        </Button>
+        <Button size="s" square @click="copyCommentLink">
+          <Tooltip>
+            <Icon name="ph:link" />
+            <template #tooltip>
+              <p>Copy link to comment</p>
+            </template>
+          </Tooltip>
+        </Button>
+      </ButtonGroup>
+    </div>
   </div>
 </template>
 
@@ -98,7 +120,7 @@ function scrollToComment(id: number) {
   }
 
   &:hover {
-    .discussion-comment__reply-button {
+    .discussion-comment__actions {
       display: block;
     }
   }
@@ -162,16 +184,11 @@ function scrollToComment(id: number) {
     }
   }
 
-  &__reply-button {
+  &__actions {
     display: none;
     position: absolute;
-    right: 0;
+    right: -4px;
     top: var(--space-s);
-    color: var(--color-accent);
-    font-size: var(--font-size-xs);
-    text-align: left;
-    width: fit-content;
-    margin-left: 40px;
   }
 }
 </style>
