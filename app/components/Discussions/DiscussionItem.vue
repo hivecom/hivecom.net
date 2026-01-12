@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import type { Comment } from './Discussion.vue'
-import DiscussionModelDefault from './models/DiscussionModelDefault.vue'
+import DiscussionModelComment from './models/DiscussionModelComment.vue'
 import DiscussionModelForum from './models/DiscussionModelForum.vue'
 
 interface Props {
   data: Comment
-  model?: 'default' | 'forum'
+  model?: 'comment' | 'forum'
 }
-
-// TODO
-// 1. Show if user is replying to somebode
-// 2. Show when someone is replying to YOU
 
 const {
   data,
@@ -20,7 +16,7 @@ const {
 
 <template>
   <div :id="`comment-${data.id}`" class="discussion-comment-wrapper">
-    <DiscussionModelDefault v-if="model === 'default'" :data />
+    <DiscussionModelComment v-if="model === 'comment'" :data />
     <DiscussionModelForum v-else :data />
   </div>
 </template>

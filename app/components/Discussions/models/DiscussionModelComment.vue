@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Comment } from '../Discussion.vue'
-import { Button, ButtonGroup, CopyClipboard, pushToast, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, pushToast, Tooltip } from '@dolanske/vui'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { scrollToId } from '@/lib/utils/common'

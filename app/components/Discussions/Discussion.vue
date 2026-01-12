@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { Alert, Button, Flex, Skeleton, Textarea, Tooltip } from '@dolanske/vui'
 import UserDisplay from '../Shared/UserDisplay.vue'
-import DiscussionComment from './DiscussionComment.vue'
+import DiscussionItem from './DiscussionItem.vue'
 
 // TODO: add auto-scrolling to a comment with a hash (unless browsers will do that automatically)
 
 const props = withDefaults(defineProps<{
+  // TODO: type is basically the location / context the discussion is used in
   type: 'a' | 'b'
-  model?: 'default' | 'forum'
+  model?: 'comment' | 'forum'
   id: string
 }>(), {
-  model: 'default',
+  model: 'comment',
 })
 
 // Holds reference to the comment we're replying to
@@ -89,7 +90,7 @@ const modelled = computed(() => {
 
 <template>
   <ClientOnly>
-    <div class="discussion">
+    <div class="discussion" :class="[`discussion--${props.model}`]">
       <!-- TODO Loading state -->
       <template v-if="false">
         <Skeleton :height="49" width="100%" style="margin:12px" />
@@ -97,7 +98,7 @@ const modelled = computed(() => {
 
       <!-- Listing view -->
       <template v-else>
-        <DiscussionComment
+        <DiscussionItem
           v-for="comment in modelled"
           :key="comment.id"
           :data="comment"
@@ -140,9 +141,17 @@ const modelled = computed(() => {
 <style scoped lang="scss">
 .discussion {
   display: flex;
+  width: 100%;
   flex-direction: column;
-  // In order to increase hover range for each comment, the gaps are 0 and instead items use padding
+  // In order to increase hover range for each comment,
+  // the gaps are 0 and instead items use padding
   gap: 0;
+
+  &--forum {
+    .discussion__add {
+      padding-left: 0;
+    }
+  }
 
   &__add {
     margin-top: var(--space-m);
