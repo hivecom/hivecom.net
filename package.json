@@ -56,6 +56,6 @@
     "eslint-plugin-vue": "^10.6.2",
     "nuxi": "^3.31.3",
     "supabase": "^2.70.5",
-    "vue-tsc": "^3.2.1"
+    "vue-tsc": "^3.2.2"
   }
 }
