@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Comment } from '../Discussion.vue'
 import { Card } from '@dolanske/vui'
-import UserDetails from '@/components/Admin/Users/UserDetails.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
