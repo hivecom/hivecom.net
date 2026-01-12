@@ -19,6 +19,14 @@ const {
 </script>
 
 <template>
-  <DiscussionModelDefault v-if="model === 'default'" :data />
-  <DiscussionModelForum v-else :data />
+  <div :id="`comment-${data.id}`" class="discussion-comment-wrapper">
+    <DiscussionModelDefault v-if="model === 'default'" :data />
+    <DiscussionModelForum v-else :data />
+  </div>
 </template>
+
+<style scoped lang="scss">
+.discussion-comment-wrapper {
+  display: contents;
+}
+</style>

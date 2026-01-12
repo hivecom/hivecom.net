@@ -88,51 +88,53 @@ const modelled = computed(() => {
 </script>
 
 <template>
-  <div class="discussion">
-    <!-- TODO Loading state -->
-    <template v-if="false">
-      <Skeleton :height="49" width="100%" style="margin:12px" />
-    </template>
+  <ClientOnly>
+    <div class="discussion">
+      <!-- TODO Loading state -->
+      <template v-if="false">
+        <Skeleton :height="49" width="100%" style="margin:12px" />
+      </template>
 
-    <!-- Listing view -->
-    <template v-else>
-      <DiscussionComment
-        v-for="comment in modelled"
-        :key="comment.id"
-        :data="comment"
-        :model="props.model"
-      />
-      <div class="discussion__add">
-        <Alert v-if="replyingTo">
-          <Flex y-start gap="xl" x-between>
-            <div>
-              <span class="discussion__add--replying-label">Replying to
-                <UserDisplay class="inline-block" size="s" :user-id="replyingTo.userId" hide-avatar />:
-              </span>
-              <p class="ws-wrap">
-                {{ replyingTo.text }}
-              </p>
-            </div>
-            <Tooltip>
-              <Button square size="s" plain @click="replyingTo = undefined">
-                <Icon name="ph:x" />
-              </Button>
-              <template #tooltip>
-                <p>Remove attached reply</p>
-              </template>
-            </Tooltip>
-          </Flex>
-        </Alert>
-        <Textarea ref="textarea" v-model="message" placeholder="Write your comment..." :rows="4" expand auto-resize />
-        <Button size="s" class="discussion__add--send-button">
-          Send
-          <template #end>
-            <Icon name="ph:paper-plane-tilt" />
-          </template>
-        </Button>
-      </div>
-    </template>
-  </div>
+      <!-- Listing view -->
+      <template v-else>
+        <DiscussionComment
+          v-for="comment in modelled"
+          :key="comment.id"
+          :data="comment"
+          :model="props.model"
+        />
+        <div class="discussion__add">
+          <Alert v-if="replyingTo">
+            <Flex y-start gap="xl" x-between>
+              <div>
+                <span class="discussion__add--replying-label">Replying to
+                  <UserDisplay class="inline-block" size="s" :user-id="replyingTo.userId" hide-avatar />:
+                </span>
+                <p class="ws-wrap">
+                  {{ replyingTo.text }}
+                </p>
+              </div>
+              <Tooltip>
+                <Button square size="s" plain @click="replyingTo = undefined">
+                  <Icon name="ph:x" />
+                </Button>
+                <template #tooltip>
+                  <p>Remove attached reply</p>
+                </template>
+              </Tooltip>
+            </Flex>
+          </Alert>
+          <Textarea ref="textarea" v-model="message" :placeholder="`Write your ${!!replyingTo ? 'reply' : 'comment'}...`" :rows="4" expand auto-resize />
+          <Button size="s" class="discussion__add--send-button">
+            Send
+            <template #end>
+              <Icon name="ph:paper-plane-tilt" />
+            </template>
+          </Button>
+        </div>
+      </template>
+    </div>
+  </ClientOnly>
 </template>
 
 <style scoped lang="scss">

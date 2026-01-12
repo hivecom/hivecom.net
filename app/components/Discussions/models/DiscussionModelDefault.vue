@@ -3,7 +3,7 @@ import type { Comment } from '../Discussion.vue'
 import { Button, Tooltip } from '@dolanske/vui'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
-import { truncate } from '@/lib/utils/formatting'
+import { scrollToId } from '@/lib/utils/common'
 
 interface Props {
   data: Comment
@@ -12,21 +12,31 @@ interface Props {
 const {
   data,
 } = defineProps<Props>()
+
 const userId = useUserId()
+const router = useRouter()
+const route = useRoute()
 
 // Generic wrapper around a discussion reply which assigns a reply model depending on the discussion type
 const COMMENT_TRUNCATE = 80
 
-// TODO: clicking a reply should temporarily highlight the comment we are replyin to
-
 const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
+
+// TODO: this just doesnt work
+function scrollToComment(id: number) {
+  const idString = `#comment-${id}`
+  router.replace({ hash: idString })
+  setTimeout(() => {
+    scrollToId(idString, 'nearest')
+  }, 100)
+}
 </script>
 
 <template>
-  <div class="discussion-comment">
+  <div class="discussion-comment" :class="{ 'discussion-comment--highlight': `#comment-${data.id}` === route.hash }">
     <UserDisplay size="s" :user-id="data.userId" />
     <Tooltip v-if="data.reply">
-      <div varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.userId === userId }">
+      <button varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.userId === userId }" @click="scrollToComment(data.reply.id)">
         <Icon name="ph:arrow-elbow-up-right" />
         <p v-if="data.reply.userId !== userId" class="discussion-comment__reply-user">
           <UserDisplay class="inline-block" size="s" :user-id="data.reply.userId" hide-avatar />:
@@ -37,7 +47,7 @@ const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
         <p class="text-overflow-1">
           {{ data.reply.text }}
         </p>
-      </div>
+      </button>
       <template #tooltip>
         <p>
           <UserDisplay class="inline-block" size="s" :user-id="data.reply.userId" />
@@ -65,9 +75,26 @@ const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
   flex-direction: column;
   padding-block: 14px;
   position: relative;
+  z-index: 1;
 
   :deep(.typeset) {
     padding-left: 40px;
+  }
+
+  &:before {
+    content: '';
+    display: block;
+    position: absolute;
+    inset: 4px -12px;
+    z-index: -1;
+    border-radius: var(--border-radius-m);
+    background-color: var(--color-bg-raised);
+    transition: var(--transition-slow);
+    opacity: 0;
+  }
+
+  &--highlight:before {
+    opacity: 1;
   }
 
   &:hover {
@@ -79,6 +106,7 @@ const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
   &__reply {
     display: flex;
     align-items: center;
+    text-align: left;
     border-radius: 99px;
     background-color: var(--color-bg-raised);
     position: relative;
@@ -104,6 +132,10 @@ const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
       transition: var(--transition-fast);
       color: var(--color-text-light);
     }
+
+    &:hover {
+      background-color: var(--color-button-gray-hover) !important;
+    }
   }
 
   &__reply--me {
@@ -117,7 +149,7 @@ const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
     }
 
     &:hover {
-      background-color: var(--color-bg-yellow-lowered);
+      background-color: var(--color-bg-yellow-lowered) !important;
     }
   }
 
