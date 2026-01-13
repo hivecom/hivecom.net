@@ -5,13 +5,19 @@ import DiscussionItem from './DiscussionItem.vue'
 
 // TODO: add auto-scrolling to a comment with a hash (unless browsers will do that automatically)
 
+export interface DiscussionSettings {
+  timestamps: boolean
+}
+
 const props = withDefaults(defineProps<{
   // TODO: type is basically the location / context the discussion is used in
   type: 'a' | 'b'
   model?: 'comment' | 'forum'
   id: string
+  timestamps?: boolean
 }>(), {
   model: 'comment',
+  timestamps: false,
 })
 
 // Holds reference to the comment we're replying to
@@ -20,6 +26,10 @@ const message = ref('')
 
 // To avoid prop drilling, expose this to all child components
 provide('setReplyToComment', (comment: Comment) => replyingTo.value = comment)
+
+provide<DiscussionSettings>('discussion-settings', {
+  timestamps: props.timestamps,
+})
 
 const textareaRef = useTemplateRef('textarea')
 
@@ -147,6 +157,8 @@ const modelled = computed(() => {
   // the gaps are 0 and instead items use padding
   gap: 0;
 
+  --left-offset: 40px;
+
   &--forum {
     .discussion__add {
       padding-left: 0;
@@ -155,7 +167,7 @@ const modelled = computed(() => {
 
   &__add {
     margin-top: var(--space-m);
-    padding-left: 40px;
+    padding-left: var(--left-offset);
     position: relative;
 
     &:deep(.vui-input-container .vui-input textarea) {

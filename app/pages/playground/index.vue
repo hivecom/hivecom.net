@@ -4,7 +4,7 @@ import Discussion from '@/components/Discussions/Discussion.vue'
 
 <template>
   <div style="padding-block: 128px;width:100%">
-    <div class="container container-s">
+    <div class="container container-m">
       <Discussion id="0" type="a" model="forum" />
     </div>
   </div>

@@ -13,11 +13,13 @@ import ActivityTeamspeak from '../Profile/Activity/ActivityTeamspeak.vue'
 interface Props {
   userId: string | null | undefined
   showBadges?: boolean
+  showActivity?: boolean
   maxBadges?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showBadges: true,
+  showActivity: true,
   maxBadges: 4,
 })
 
@@ -172,14 +174,12 @@ watch(() => props.userId, refetchActivity, { immediate: true })
       <div v-if="hasCustomIntroduction">
         <Divider />
 
-        <p
-          class="user-preview-card__intro text-s"
-        >
+        <p class="user-preview-card__intro text-s">
           {{ introductionText }}
         </p>
       </div>
 
-      <Flex v-if="activity" column gap="xxs" expand class="user-preview-card__activity">
+      <Flex v-if="activity && props.showActivity" column gap="xxs" expand class="user-preview-card__activity">
         <ActivitySteam
           v-if="activity.steam_id"
           :profile-id="user.id"

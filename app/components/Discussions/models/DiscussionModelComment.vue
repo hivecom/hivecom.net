@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Comment } from '../Discussion.vue'
+import type { Comment, DiscussionSettings } from '../Discussion.vue'
 import { Button, ButtonGroup, pushToast, Tooltip } from '@dolanske/vui'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
@@ -12,6 +12,8 @@ interface Props {
 const {
   data,
 } = defineProps<Props>()
+
+const { timestamps } = inject('discussion-settings') as DiscussionSettings
 
 const userId = useUserId()
 const router = useRouter()
@@ -68,6 +70,10 @@ function copyCommentLink() {
       </template>
     </Tooltip>
     <MDRenderer :md="data.text" />
+    <!-- TODO -->
+    <p v-if="timestamps" class="discussion-comment__timestamp">
+      TODO 35 seconds ago
+    </p>
     <div class="discussion-comment__actions">
       <ButtonGroup>
         <Button square size="s" @click="setReplyToComment(data)">
@@ -121,8 +127,17 @@ function copyCommentLink() {
 
   &:hover {
     .discussion-comment__actions {
-      display: block;
+      opacity: 1;
+      z-index: 10;
+      visibility: visible;
     }
+  }
+
+  &__timestamp {
+    margin-top: var(--space-xxs);
+    padding-left: var(--left-offset);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
   }
 
   &__reply {
@@ -134,7 +149,7 @@ function copyCommentLink() {
     position: relative;
     width: fit-content;
     padding: 2px var(--space-s);
-    margin-left: 40px;
+    margin-left: var(--left-offset);
     gap: 4px;
     margin-top: 4px;
     margin-bottom: 2px;
@@ -185,10 +200,15 @@ function copyCommentLink() {
   }
 
   &__actions {
-    display: none;
+    display: block;
     position: absolute;
     right: -4px;
     top: var(--space-s);
+
+    opacity: 0;
+    z-index: -1;
+    visibility: hidden;
+    transition: var(--transition-fast);
   }
 }
 </style>
