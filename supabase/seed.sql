@@ -14,6 +14,11 @@ VALUES
 ('admin', 'containers.delete'),
 ('admin', 'containers.read'),
 ('admin', 'containers.update'),
+('admin', 'discussions.create'),
+('admin', 'discussions.delete'),
+('admin', 'discussions.read'),
+('admin', 'discussions.update'),
+('admin', 'discussions.manage'),
 ('admin', 'events.create'),
 ('admin', 'events.delete'),
 ('admin', 'events.read'),
@@ -68,6 +73,10 @@ VALUES
 ('moderator', 'complaints.create'),
 ('moderator', 'complaints.read'),
 ('moderator', 'complaints.update'),
+('moderator', 'discussions.create'),
+('moderator', 'discussions.delete'),
+('moderator', 'discussions.read'),
+('moderator', 'discussions.update'),
 ('moderator', 'events.create'),
 ('moderator', 'events.delete'),
 ('moderator', 'events.read'),
@@ -531,4 +540,3 @@ The library''s consistent design language helps create a cohesive user experienc
 
 Give @dolanske a shout since we couldn''t have built this project without his hard work and dedication!
   ', 'https://dolanske.github.io/vui/', '018d224c-0e49-4b6d-b57a-87299605c2b1', ARRAY['vue', 'typescript', 'ui-library', 'components', 'frontend', 'open-source'], 'dolanske/vui');
-
