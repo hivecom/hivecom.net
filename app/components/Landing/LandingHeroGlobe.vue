@@ -10,14 +10,22 @@ type MultiPolygonCoords = number[][][][]
 interface CountryFeature {
   type: 'Feature'
   id?: string
-  properties: { ADMIN?: string, ISO_A2?: string, ISO_A3?: string, POP_EST?: number, name?: string }
-  geometry?: {
-    type: 'Polygon'
-    coordinates: PolygonCoords
-  } | {
-    type: 'MultiPolygon'
-    coordinates: MultiPolygonCoords
+  properties: {
+    ADMIN?: string
+    ISO_A2?: string
+    ISO_A3?: string
+    POP_EST?: number
+    name?: string
   }
+  geometry?:
+    | {
+      type: 'Polygon'
+      coordinates: PolygonCoords
+    }
+    | {
+      type: 'MultiPolygon'
+      coordinates: MultiPolygonCoords
+    }
 }
 
 interface FeatureCollection {
@@ -25,7 +33,7 @@ interface FeatureCollection {
   features: CountryFeature[]
 }
 
-type GlobeConstructor = typeof import('globe.gl')['default']
+type GlobeConstructor = (typeof import('globe.gl'))['default']
 type GlobeInstance = import('globe.gl').GlobeInstance
 
 const globeEl = ref<HTMLDivElement | null>(null)
@@ -35,9 +43,15 @@ let resizeObserver: ResizeObserver | null = null
 let themeObserver: MutationObserver | null = null
 let themeMedia: MediaQueryList | null = null
 let globeMaterial: import('three').MeshStandardMaterial | null = null
-let scanlinePass: import('three/examples/jsm/postprocessing/ShaderPass.js').ShaderPass | null = null
-let bloomPass: import('three/examples/jsm/postprocessing/UnrealBloomPass.js').UnrealBloomPass | null = null
-let afterimagePass: import('three/examples/jsm/postprocessing/AfterimagePass.js').AfterimagePass | null = null
+let scanlinePass:
+  | import('three/examples/jsm/postprocessing/ShaderPass.js').ShaderPass
+  | null = null
+let bloomPass:
+  | import('three/examples/jsm/postprocessing/UnrealBloomPass.js').UnrealBloomPass
+  | null = null
+let afterimagePass:
+  | import('three/examples/jsm/postprocessing/AfterimagePass.js').AfterimagePass
+  | null = null
 let scanlineStart = 0
 const BACKGROUND_COLOR = 'rgba(0,0,0,0)'
 const GLOBE_COLOR_DARK = '#060606'
@@ -112,15 +126,24 @@ function updateScanlinePassResolution(width: number, height: number) {
   const h = Math.max(1, height)
 
   if (scanlinePass) {
-    const uniforms = scanlinePass.material.uniforms as Record<string, { value: unknown }>
-    const res = uniforms.u_resolution?.value as { set?: (x: number, y: number) => void } | undefined
+    const uniforms = scanlinePass.material.uniforms as Record<
+      string,
+      { value: unknown }
+    >
+    const res = uniforms.u_resolution?.value as
+      | { set?: (x: number, y: number) => void }
+      | undefined
     res?.set?.(w, h)
   }
 
-  const maybeBloom = bloomPass as unknown as { setSize?: (w: number, h: number) => void } | null
+  const maybeBloom = bloomPass as unknown as {
+    setSize?: (w: number, h: number) => void
+  } | null
   maybeBloom?.setSize?.(w, h)
 
-  const maybeAfterimage = afterimagePass as unknown as { setSize?: (w: number, h: number) => void } | null
+  const maybeAfterimage = afterimagePass as unknown as {
+    setSize?: (w: number, h: number) => void
+  } | null
   maybeAfterimage?.setSize?.(w, h)
 }
 
@@ -133,12 +156,17 @@ async function setupScanlinePass() {
     if (!composer)
       return
 
-    const { ShaderPass } = await import('three/examples/jsm/postprocessing/ShaderPass.js')
+    const { ShaderPass }
+      = await import('three/examples/jsm/postprocessing/ShaderPass.js')
     const { Vector2 } = await import('three')
 
     // If the composer already has an OutputPass, we want it to remain last.
     // We'll temporarily remove it and re-add it at the end after adding our passes.
-    const composerAny = composer as unknown as { passes?: unknown[], removePass?: (p: unknown) => void, addPass?: (p: unknown) => void }
+    const composerAny = composer as unknown as {
+      passes?: unknown[]
+      removePass?: (p: unknown) => void
+      addPass?: (p: unknown) => void
+    }
     const passesBefore = composerAny.passes ?? []
     const existingOutputPass = passesBefore.find((pass) => {
       if (!pass || typeof pass !== 'object')
@@ -177,9 +205,10 @@ async function setupScanlinePass() {
 
     // Optional bloom (kept subtle by default)
     try {
-      const { UnrealBloomPass } = await import('three/examples/jsm/postprocessing/UnrealBloomPass.js')
-      bloomPass = new UnrealBloomPass(new Vector2(1, 1), 0.22, 0.05, 0.5)
-      ;(bloomPass as unknown as { enabled?: boolean }).enabled = !isLightTheme()
+      const { UnrealBloomPass }
+        = await import('three/examples/jsm/postprocessing/UnrealBloomPass.js')
+      bloomPass = new UnrealBloomPass(new Vector2(1, 1), 0.22, 0.05, 0.5);
+      (bloomPass as unknown as { enabled?: boolean }).enabled = !isLightTheme()
       composer.addPass(bloomPass)
     }
     catch {
@@ -188,9 +217,11 @@ async function setupScanlinePass() {
 
     // Phosphor-like persistence / trails. Subtle by default.
     try {
-      const { AfterimagePass } = await import('three/examples/jsm/postprocessing/AfterimagePass.js')
-      afterimagePass = new AfterimagePass(0.92)
-      ;(afterimagePass as unknown as { enabled?: boolean }).enabled = !isLightTheme()
+      const { AfterimagePass }
+        = await import('three/examples/jsm/postprocessing/AfterimagePass.js')
+      afterimagePass = new AfterimagePass(0.92);
+      (afterimagePass as unknown as { enabled?: boolean }).enabled
+        = !isLightTheme()
       composer.addPass(afterimagePass)
     }
     catch {
@@ -202,17 +233,24 @@ async function setupScanlinePass() {
       composerAny.addPass(existingOutputPass)
     }
     else {
-      const passesAfter = (composer as unknown as { passes?: unknown[] }).passes
-      const hasOutputPass = passesAfter?.some((pass) => {
-        if (!pass || typeof pass !== 'object')
-          return false
-        const ctor = (pass as { constructor?: { name?: string } }).constructor
-        return ctor?.name === 'OutputPass' || Boolean((pass as { isOutputPass?: boolean }).isOutputPass)
-      }) ?? false
+      const passesAfter = (composer as unknown as { passes?: unknown[] })
+        .passes
+      const hasOutputPass
+        = passesAfter?.some((pass) => {
+          if (!pass || typeof pass !== 'object')
+            return false
+          const ctor = (pass as { constructor?: { name?: string } })
+            .constructor
+          return (
+            ctor?.name === 'OutputPass'
+            || Boolean((pass as { isOutputPass?: boolean }).isOutputPass)
+          )
+        }) ?? false
 
       if (!hasOutputPass) {
         try {
-          const { OutputPass } = await import('three/examples/jsm/postprocessing/OutputPass.js')
+          const { OutputPass }
+            = await import('three/examples/jsm/postprocessing/OutputPass.js')
           composer.addPass(new OutputPass())
         }
         catch {
@@ -231,17 +269,24 @@ async function setupScanlinePass() {
   }
 }
 
-function polygonCentroid(coords: PolygonCoords | MultiPolygonCoords | undefined): { lat: number, lng: number } | null {
+function polygonCentroid(
+  coords: PolygonCoords | MultiPolygonCoords | undefined,
+): { lat: number, lng: number } | null {
   if (!coords || !Array.isArray(coords) || coords.length === 0)
     return null
   const first = coords[0]
   if (!first || !Array.isArray(first))
     return null
-  const isMulti = Array.isArray((first as unknown[])[0]) && Array.isArray(((first as unknown[])[0] as unknown[])[0])
-  const ring = isMulti ? (coords as MultiPolygonCoords)[0]?.[0] : (coords as PolygonCoords)[0]
+  const isMulti
+    = Array.isArray((first as unknown[])[0])
+      && Array.isArray(((first as unknown[])[0] as unknown[])[0])
+  const ring = isMulti
+    ? (coords as MultiPolygonCoords)[0]?.[0]
+    : (coords as PolygonCoords)[0]
   if (!ring || !Array.isArray(ring))
     return null
-  const normalizeLng = (lng: number) => ((lng + 180) % 360 + 360) % 360 - 180
+  const normalizeLng = (lng: number) =>
+    ((((lng + 180) % 360) + 360) % 360) - 180
   let sumLat = 0
   let sumLng = 0
   let count = 0
@@ -261,13 +306,18 @@ function polygonCentroid(coords: PolygonCoords | MultiPolygonCoords | undefined)
 }
 
 function countryCode(feat: CountryFeature): string | undefined {
-  return feat.properties.ISO_A2
+  return (
+    feat.properties.ISO_A2
     ?? feat.id
     ?? feat.properties.ADMIN
     ?? feat.properties.name
+  )
 }
 
-function normalizeMetricCountryCode(code: string | null | undefined, iso3Map: Map<string, string>): string | null {
+function normalizeMetricCountryCode(
+  code: string | null | undefined,
+  iso3Map: Map<string, string>,
+): string | null {
   if (!code)
     return null
 
@@ -286,13 +336,23 @@ function blendHex(from: string, to: string, t: number): string {
   const parse = (hex: string): [number, number, number] => {
     const parts = hex.replace('#', '').match(/.{1,2}/g) ?? ['00', '00', '00']
     const [r = '00', g = '00', b = '00'] = parts
-    return [Number.parseInt(r, 16), Number.parseInt(g, 16), Number.parseInt(b, 16)]
+    return [
+      Number.parseInt(r, 16),
+      Number.parseInt(g, 16),
+      Number.parseInt(b, 16),
+    ]
   }
   const [r1, g1, b1] = parse(from)
   const [r2, g2, b2] = parse(to)
-  const r = Math.round(r1 + (r2 - r1) * clamp).toString(16).padStart(2, '0')
-  const g = Math.round(g1 + (g2 - g1) * clamp).toString(16).padStart(2, '0')
-  const b = Math.round(b1 + (b2 - b1) * clamp).toString(16).padStart(2, '0')
+  const r = Math.round(r1 + (r2 - r1) * clamp)
+    .toString(16)
+    .padStart(2, '0')
+  const g = Math.round(g1 + (g2 - g1) * clamp)
+    .toString(16)
+    .padStart(2, '0')
+  const b = Math.round(b1 + (b2 - b1) * clamp)
+    .toString(16)
+    .padStart(2, '0')
   return `#${r}${g}${b}`
 }
 
@@ -325,7 +385,9 @@ function applyGlobeColor() {
   if (maybeEnabled)
     maybeEnabled.enabled = enabled
 
-  const maybeAfterimageEnabled = afterimagePass as unknown as { enabled?: boolean } | null
+  const maybeAfterimageEnabled = afterimagePass as unknown as {
+    enabled?: boolean
+  } | null
   if (maybeAfterimageEnabled)
     maybeAfterimageEnabled.enabled = enabled
 }
@@ -356,6 +418,11 @@ onMounted(async () => {
   isGlobeVisible.value = false
 
   try {
+    // Polyfill for Linux/Firefox where GPUShaderStage might be missing
+    if (typeof window !== 'undefined' && !window.GPUShaderStage) {
+      window.GPUShaderStage = { VERTEX: 1, FRAGMENT: 2, COMPUTE: 4 }
+    }
+
     const Globe = (await import('globe.gl')).default as GlobeConstructor
     const { MeshStandardMaterial } = await import('three')
     const res = await fetch('/geojson/countries.geojson')
@@ -392,7 +459,9 @@ onMounted(async () => {
           allowedIso.add(normalized)
       }
 
-      const filtered = centroids.filter(point => point.iso && allowedIso.has(point.iso))
+      const filtered = centroids.filter(
+        point => point.iso && allowedIso.has(point.iso),
+      )
       if (filtered.length >= MIN_METRIC_COUNTRIES) {
         sourceCentroids = filtered
         usingGlobalFallback = false
@@ -407,12 +476,18 @@ onMounted(async () => {
     }
     else {
       const count = sourceCentroids.length
-      const scaled = Math.round((count / MIN_METRIC_COUNTRIES) * MAX_CONCURRENT_ARCS)
+      const scaled = Math.round(
+        (count / MIN_METRIC_COUNTRIES) * MAX_CONCURRENT_ARCS,
+      )
       maxConcurrentArcs = Math.max(1, Math.min(MAX_CONCURRENT_ARCS, scaled))
     }
 
     globeInstance = new Globe(container)
-    globeMaterial = new MeshStandardMaterial({ color: isLightTheme() ? GLOBE_COLOR_LIGHT : GLOBE_COLOR_DARK, roughness: 1, metalness: 0 })
+    globeMaterial = new MeshStandardMaterial({
+      color: isLightTheme() ? GLOBE_COLOR_LIGHT : GLOBE_COLOR_DARK,
+      roughness: 1,
+      metalness: 0,
+    })
     const setSize = () => {
       const { width, height } = container.getBoundingClientRect()
       globeInstance?.width(width).height(height)
@@ -476,7 +551,10 @@ onMounted(async () => {
     themeMedia = window.matchMedia?.('(prefers-color-scheme: light)') ?? null
     themeMedia?.addEventListener('change', applyGlobeColor)
     themeObserver = new MutationObserver(applyGlobeColor)
-    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme'],
+    })
     applyGlobeColor()
 
     // Add auto-rotation
@@ -487,7 +565,10 @@ onMounted(async () => {
     // Nudge camera slightly closer (~10%)
     const startLng = Math.random() * 360 - 180
     const startLat = 10 + Math.random() * 50 // keep within a viewable band
-    globeInstance.pointOfView({ lat: startLat, lng: startLng, altitude: 1.9 }, 0)
+    globeInstance.pointOfView(
+      { lat: startLat, lng: startLng, altitude: 1.9 },
+      0,
+    )
 
     const arcs: ArcDatum[] = []
     const rings: RingDatum[] = []
@@ -516,7 +597,11 @@ onMounted(async () => {
       const src = srcPool[Math.floor(Math.random() * srcPool.length)]!
       let dst = centroids[Math.floor(Math.random() * centroids.length)]!
       let guard = 0
-      while ((dst === src || (Math.abs(dst.lat - src.lat) + Math.abs(dst.lng - src.lng)) < 10) && guard < 5) {
+      while (
+        (dst === src
+          || Math.abs(dst.lat - src.lat) + Math.abs(dst.lng - src.lng) < 10)
+        && guard < 5
+      ) {
         dst = centroids[Math.floor(Math.random() * centroids.length)]!
         guard++
       }
@@ -524,39 +609,59 @@ onMounted(async () => {
       if (!src || !dst)
         return
 
-      const arc: ArcDatum = { startLat: src.lat, startLng: src.lng, endLat: dst.lat, endLng: dst.lng }
+      const arc: ArcDatum = {
+        startLat: src.lat,
+        startLng: src.lng,
+        endLat: dst.lat,
+        endLng: dst.lng,
+      }
       const srcRing: RingDatum = { lat: src.lat, lng: src.lng }
       const dstRing: RingDatum = { lat: dst.lat, lng: dst.lng }
 
       arcs.push(arc)
       rings.push(srcRing)
       if (src.iso) {
-        highlighted.set(src.iso, { started: performance.now(), duration: HIGHLIGHT_START_MS })
+        highlighted.set(src.iso, {
+          started: performance.now(),
+          duration: HIGHLIGHT_START_MS,
+        })
         refreshHexes()
       }
       pushData()
 
-      timeouts.push(setTimeout(() => {
-        rings.push(dstRing)
-        pushData()
-        if (dst.iso) {
-          highlighted.set(dst.iso, { started: performance.now(), duration: HIGHLIGHT_FADE_MS })
-          refreshHexes()
-        }
-      }, FLIGHT_TIME))
+      timeouts.push(
+        setTimeout(() => {
+          rings.push(dstRing)
+          pushData()
+          if (dst.iso) {
+            highlighted.set(dst.iso, {
+              started: performance.now(),
+              duration: HIGHLIGHT_FADE_MS,
+            })
+            refreshHexes()
+          }
+        }, FLIGHT_TIME),
+      )
 
-      timeouts.push(setTimeout(() => {
-        const arcIdx = arcs.indexOf(arc)
-        if (arcIdx >= 0)
-          arcs.splice(arcIdx, 1)
-        pushData()
-      }, FLIGHT_TIME * 2))
+      timeouts.push(
+        setTimeout(() => {
+          const arcIdx = arcs.indexOf(arc)
+          if (arcIdx >= 0)
+            arcs.splice(arcIdx, 1)
+          pushData()
+        }, FLIGHT_TIME * 2),
+      )
 
-      timeouts.push(setTimeout(() => {
-        removeRing(srcRing)
-        removeRing(dstRing)
-        pushData()
-      }, FLIGHT_TIME + (FLIGHT_TIME * ARC_REL_LEN)))
+      timeouts.push(
+        setTimeout(
+          () => {
+            removeRing(srcRing)
+            removeRing(dstRing)
+            pushData()
+          },
+          FLIGHT_TIME + FLIGHT_TIME * ARC_REL_LEN,
+        ),
+      )
     }
 
     arcInterval = setInterval(() => {
@@ -571,7 +676,10 @@ onMounted(async () => {
         const now = performance.now()
         if (!scanlineStart)
           scanlineStart = now
-        const uniforms = scanlinePass.material.uniforms as Record<string, { value: unknown }>
+        const uniforms = scanlinePass.material.uniforms as Record<
+          string,
+          { value: unknown }
+        >
         if (uniforms.u_time)
           uniforms.u_time.value = (now - scanlineStart) / 1000
       }
@@ -580,7 +688,10 @@ onMounted(async () => {
     }
     tick()
 
-    const initial = Math.min(maxConcurrentArcs, Math.max(sourceCentroids.length, centroids.length))
+    const initial = Math.min(
+      maxConcurrentArcs,
+      Math.max(sourceCentroids.length, centroids.length),
+    )
     for (let i = 0; i < initial; i++) {
       setTimeout(spawnArc, i * (ARC_INTERVAL / 2))
     }
@@ -602,7 +713,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="globeEl" class="hero-globe" :class="{ 'is-visible': isGlobeVisible }" aria-hidden="true" />
+  <div
+    ref="globeEl"
+    class="hero-globe"
+    :class="{ 'is-visible': isGlobeVisible }"
+    aria-hidden="true"
+  />
 </template>
 
 <style scoped lang="scss">

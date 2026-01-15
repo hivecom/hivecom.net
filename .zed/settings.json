@@ -1,0 +1,113 @@
+{
+  "tab_size": 2,
+  "format_on_save": "on",
+  "languages": {
+    "JavaScript": {
+      "formatter": {
+        "language_server": {
+          "name": "eslint"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    "TypeScript": {
+      "formatter": {
+        "language_server": {
+          "name": "eslint"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    "TSX": {
+      "formatter": {
+        "language_server": {
+          "name": "eslint"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    "Vue.js": {
+      "formatter": {
+        "language_server": {
+          "name": "eslint"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    }
+  },
+  "lsp": {
+    "eslint": {
+      "settings": {
+        "rulesCustomizations": [
+          {
+            "rule": "style/*",
+            "severity": "off"
+          },
+          {
+            "rule": "format/*",
+            "severity": "off"
+          },
+          {
+            "rule": "*-indent",
+            "severity": "off"
+          },
+          {
+            "rule": "*-spacing",
+            "severity": "off"
+          },
+          {
+            "rule": "*-spaces",
+            "severity": "off"
+          },
+          {
+            "rule": "*-order",
+            "severity": "off"
+          },
+          {
+            "rule": "*-dangle",
+            "severity": "off"
+          },
+          {
+            "rule": "*-newline",
+            "severity": "off"
+          },
+          {
+            "rule": "*quotes",
+            "severity": "off"
+          },
+          {
+            "rule": "*semi",
+            "severity": "off"
+          }
+        ],
+        "validate": [
+          "javascript",
+          "javascriptreact",
+          "typescript",
+          "typescriptreact",
+          "vue",
+          "html",
+          "markdown",
+          "json",
+          "jsonc",
+          "yaml",
+          "toml",
+          "xml",
+          "gql",
+          "graphql",
+          "astro",
+          "css",
+          "scss"
+        ]
+      }
+    }
+  }
+}

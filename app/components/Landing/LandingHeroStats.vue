@@ -108,7 +108,7 @@ defineProps<{
 }
 
 .hero-section__stats-card {
-  width: 156px;
+  width: 160px;
   border-radius: var(--border-radius-m);
   text-align: center;
   padding: var(--space-m);
