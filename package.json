@@ -34,7 +34,7 @@
     "@vueuse/nuxt": "^14.1.0",
     "@yuta-inoue-ph/nuxt-vcalendar": "^1.1.4",
     "ansi-to-html": "^0.7.2",
-    "better-sqlite3": "^12.5.0",
+    "better-sqlite3": "^12.6.0",
     "chart.js": "^4.5.1",
     "dayjs": "^1.11.19",
     "globe.gl": "^2.45.0",
