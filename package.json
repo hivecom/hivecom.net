@@ -42,7 +42,7 @@
     "nuxt-og-image": "^5.1.13",
     "nuxt-toc": "^2.7.2",
     "pinia": "^3.0.4",
-    "sass": "^1.97.1",
+    "sass": "^1.97.2",
     "unstorage": "^1.17.3",
     "vue": "^3.5.26",
     "vue-chartjs": "^5.3.3",
