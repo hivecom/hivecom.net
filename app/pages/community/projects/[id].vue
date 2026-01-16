@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Button, Card, Flex } from '@dolanske/vui'
+import Discussion from '@/components/Discussions/Discussion.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
@@ -124,7 +125,7 @@ useHead({
         </Button>
       </Flex>
       <!-- Header -->
-      <Card class="project-header" expand>
+      <Card class="project-header card-bg" expand>
         <div class="project-header__banner">
           <div
             class="project-header__banner-surface"
@@ -194,17 +195,26 @@ useHead({
       </Card>
 
       <!-- Project Content (Markdown) -->
-      <Card class="project-content">
-        <MDRenderer :md="project.markdown" />
+      <Card class="project-content card-bg">
+        <div class="project-content__markdown">
+          <MDRenderer :md="project.markdown" />
+        </div>
+
+        <!-- Project Metadata -->
+        <MetadataCard
+          :tags="project.tags"
+          :created-at="project.created_at"
+          :created-by="project.created_by"
+          :modified-at="project.modified_at"
+          :modified-by="project.modified_by"
+        />
       </Card>
 
-      <!-- Project Metadata -->
-      <MetadataCard
-        :tags="project.tags"
-        :created-at="project.created_at"
-        :created-by="project.created_by"
-        :modified-at="project.modified_at"
-        :modified-by="project.modified_by"
+      <!-- Related discussion -->
+      <Discussion
+        :id="String(project.id)"
+        class="project-discussion"
+        type="project"
       />
     </div>
   </div>
@@ -294,7 +304,15 @@ useHead({
 }
 
 .project-content {
-  line-height: 1.6;
+  &__markdown {
+    padding: var(--space-m);
+    max-width: 728px;
+    margin-bottom: var(--space-xl);
+  }
+}
+
+.project-discussion {
+  max-width: 728px;
 }
 
 @media (max-width: 768px) {

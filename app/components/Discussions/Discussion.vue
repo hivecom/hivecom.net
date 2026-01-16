@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { $withLabel, defineRules, maxLength, minLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, Button, Flex, Skeleton, Textarea, Tooltip } from '@dolanske/vui'
+import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
+import { Alert, Button, Card, Flex, Skeleton, Textarea, Tooltip } from '@dolanske/vui'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
 
@@ -232,14 +232,14 @@ provide('delete-comment', deleteComment)
           :model="props.model"
         />
       </template>
-      <template v-else>
+      <Card v-else class="card-bg">
         <Flex column y-center x-center>
           <Icon name="ph:chats-teardrop" class="text-color-lighter" :size="32" />
           <p class="text-color-lighter">
             Nobody has said anything yet...
           </p>
         </Flex>
-      </template>
+      </Card>
       <div class="discussion__add">
         <Alert v-if="replyingTo">
           <Flex y-start gap="xl" x-between>
