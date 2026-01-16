@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { BreadcrumbItem, Breadcrumbs, Card } from '@dolanske/vui'
+import { BreadcrumbItem, Breadcrumbs, Button, Card, Flex } from '@dolanske/vui'
+import dayjs from 'dayjs'
+import ForumListItem from '@/components/Forum/ForumListItem.vue'
+import TinyBadge from '@/components/Shared/TinyBadge.vue'
 
 // TODO: forum frontpage
 </script>
@@ -11,118 +14,85 @@ import { BreadcrumbItem, Breadcrumbs, Card } from '@dolanske/vui'
         Forum
       </h1>
       <p>
-        We discuss that shit up
+        Bringing back the old school internet experience
       </p>
     </section>
 
-    <Breadcrumbs class="mb-m">
-      <BreadcrumbItem href="#">
-        Frontpage
-      </BreadcrumbItem>
-      <BreadcrumbItem href="#">
-        Sub category
-      </BreadcrumbItem>
-      <BreadcrumbItem>Post title</BreadcrumbItem>
-    </Breadcrumbs>
+    <Flex x-between class="mb-m">
+      <Breadcrumbs>
+        <BreadcrumbItem href="#">
+          Frontpage
+        </BreadcrumbItem>
+        <BreadcrumbItem href="#">
+          Sub category
+        </BreadcrumbItem>
+        <BreadcrumbItem>Some example post title</BreadcrumbItem>
+      </Breadcrumbs>
+
+      <Flex gap="s">
+        <NuxtLink to="/forum/create">
+          <Button size="s" variant="accent">
+            Create
+          </Button>
+        </NuxtLink>
+        <!-- TODO: I want search to be 1-level deep list of all categories & posts with a title, path (location) of the post -->
+        <Button size="s">
+          <template #start>
+            <Icon name="ph:magnifying-glass" :size="16" />
+          </template>
+          Search
+        </Button>
+      </Flex>
+    </Flex>
 
     <Card class="forum__category" separators>
       <div class="forum__category-title">
         <h3>About forums</h3>
-        <span>Categories</span>
+
+        <!-- TODO: make sure only the first category should render these labels -->
         <span>Posts</span>
+        <span>Replies</span>
+        <span>Users</span>
         <span>Last update</span>
       </div>
       <ul>
-        <li class="forum__category-post">
-          <!-- TODO: replace with nuxt link -->
-          <a href="#">
-            <div class="forum__category-post--icon">
-              <Icon name="ph:scroll" :size="20" />
-            </div>
-            <div class="forum__category-post--name">
-              <strong>Welcome to our forum bro</strong>
-              <p>Read about our community, what're making and how you can help...</p>
-            </div>
+        <ForumListItem
+          pinned
+          :data="{
+            icon: 'ph:scroll',
+            title: 'Welcome to our forum bro',
+            description: 'Read about our community, what\'re making and how you can help...',
+            countPosts: 12,
+            countReplies: 71,
+            countUsers: 24,
+            lastUpdate: dayjs('2025-12-05').toString(),
+          }"
+        />
 
-            <div class="forum__category-post--meta">
-              <span>6</span>
-            </div>
-            <div class="forum__category-post--meta">
-              <span>2</span>
-            </div>
-            <div class="forum__category-post--meta">
-              <span>2 minutes ago</span>
-            </div>
-
-          </a>
-        </li>
-        <li class="forum__category-post">
-          <!-- TODO: replace with nuxt link -->
-          <a href="#">
-            <div class="forum__category-post--icon">
-              <Icon name="ph:scroll" :size="20" />
-            </div>
-            <div class="forum__category-post--name">
-              <strong>Introductions</strong>
-              <p>First time joining? Tell us about yourself!</p>
-            </div>
-
-            <div class="forum__category-post--meta">
-              <span>6</span>
-            </div>
-            <div class="forum__category-post--meta">
-              <span>2</span>
-            </div>
-            <div class="forum__category-post--meta">
-              <span>2 minutes ago</span>
-            </div>
-
-          </a>
-        </li>
-      </ul>
-    </Card>
-
-    <Card class="forum__category" separators>
-      <div class="forum__category-title">
-        <h3>About forums</h3>
-      </div>
-      <ul>
-        <li class="forum__category-post">
-          <!-- TODO: replace with nuxt link -->
-          <a href="#">
-            <div class="forum__category-post--icon">
-              <Icon name="ph:scroll" :size="20" />
-            </div>
-            <div class="forum__category-post--name">
-              <strong>Welcome to our forum bro</strong>
-              <p>Read about our community, what're making and how you can help...</p>
-            </div>
-
-            <div class="forum__category-post--meta">
-              <span>6</span>
-            </div>
-            <div class="forum__category-post--meta">
-              <span>2</span>
-            </div>
-            <div class="forum__category-post--meta">
-              <span>2 minutes ago</span>
-            </div>
-
-          </a>
-        </li>
+        <ForumListItem
+          :data="{
+            icon: 'ph:basket',
+            title: 'Chips thread',
+            description: 'Heated opinions about all the best chip flavors',
+            countPosts: 2,
+            countReplies: 44,
+            countUsers: 12,
+            lastUpdate: dayjs('2026-01-03').toString(),
+          }"
+        />
       </ul>
     </Card>
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 .forum {
   &__category {
     &:not(:last-of-type) {
       margin-bottom: var(--space-xl);
     }
 
-    :deep(.vui-card-content) {
+    .vui-card-content {
       padding: 0 !important;
     }
   }
@@ -130,7 +100,7 @@ import { BreadcrumbItem, Breadcrumbs, Card } from '@dolanske/vui'
   &__category-title,
   &__category-post a {
     display: grid;
-    grid-template-columns: 40px 5fr 1fr 1fr 1fr;
+    grid-template-columns: 40px 6fr repeat(4, 1fr);
     align-items: center;
     gap: var(--space-s);
     padding: var(--space-s) var(--space-m);
@@ -153,6 +123,17 @@ import { BreadcrumbItem, Breadcrumbs, Card } from '@dolanske/vui'
   }
 
   &__category-post {
+    &.pinned {
+      .forum__category-post--icon {
+        background-color: var(--color-accent);
+        border-color: var(--color-accent);
+
+        .iconify {
+          color: var(--color-text-invert);
+        }
+      }
+    }
+
     &:not(:last-child) {
       border-bottom: 1px solid var(--color-border);
     }
@@ -182,6 +163,12 @@ import { BreadcrumbItem, Breadcrumbs, Card } from '@dolanske/vui'
   }
 
   &__category-post--name {
+    strong {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     p {
       color: var(--color-text-lighter);
       font-size: var(--font-size-s);
