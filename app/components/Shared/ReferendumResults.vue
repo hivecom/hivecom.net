@@ -131,6 +131,7 @@ const isBelowSmall = useBreakpoint('<s')
           >
             <Flex x-between y-center>
               <span class="result-item__choice">{{ result.choice }} <span class="result-item__percentage">{{ `(${result.percentage.toFixed()}%)` }}</span></span>
+              <Icon name="ph:chat-circle-dots" class="result-item__comments-count" :size="18" />
               <BulkAvatarDisplay
                 v-if="result.users.length > 0"
                 :user-ids="result.users"
@@ -163,13 +164,6 @@ const isBelowSmall = useBreakpoint('<s')
             :empty-message="false"
           />
         </div>
-
-        <!-- <ul class="result-comments">
-          <li v-for="item in result.comments" :key="item.user" class="result-comments__item">
-            <UserDisplay size="s" :user-id="item.user" />
-            <MDRenderer :md="item.comment" />
-          </li>
-        </ul> -->
       </Accordion>
     </div>
   </Card>
@@ -196,6 +190,12 @@ const isBelowSmall = useBreakpoint('<s')
 
   .result-comments {
     background-color: var(--color-bg-medium);
+  }
+}
+
+:deep(.vui-accordion):has(.discussion-comment) {
+  .result-item__comments-count {
+    display: block;
   }
 }
 
@@ -240,6 +240,10 @@ const isBelowSmall = useBreakpoint('<s')
     color: var(--color-text-lighter);
     font-size: var(--font-size-s);
     white-space: nowrap;
+  }
+
+  &__comments-count {
+    display: none;
   }
 
   &__indicator {

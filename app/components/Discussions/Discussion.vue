@@ -14,15 +14,12 @@ import DiscussionItem from './DiscussionItem.vue'
  * if a comment is replying to another one, it is saved to it as a 'reply'
  */
 
+// Settings which will be provided to all components within a Discusson
 export interface DiscussionSettings {
   /**
    * If set to true, comments will display a timestamp
    */
   timestamps: boolean
-  /**
-   * Specify how many rows should the input textarea render
-   */
-  inputRows: number
 }
 
 interface Props extends Partial<DiscussionSettings> {
@@ -39,10 +36,6 @@ interface Props extends Partial<DiscussionSettings> {
    */
   model?: 'comment' | 'forum'
   /**
-   * Sets the message displayed when discussion is empty
-   */
-  emptyMessage?: string | false
-  /**
    * ## For votes only
    *
    * Hashed vote text. A single referendum can only have 1 unique discussion.
@@ -50,6 +43,18 @@ interface Props extends Partial<DiscussionSettings> {
    * comments for a specific answer.
    */
   hash?: string
+  /**
+   * Specify how many rows should the input textarea render
+   */
+  inputRows?: number
+  /**
+   * Hides the discussion input
+   */
+  hideInput?: boolean
+  /**
+   * Sets the message displayed when discussion is empty
+   */
+  emptyMessage?: string | false
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -61,7 +66,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 provide<DiscussionSettings>('discussion-settings', {
   timestamps: props.timestamps,
-  inputRows: props.inputRows,
 })
 
 export type RawComment = Omit<Tables<'discussion_replies'>, 'meta'> & { meta: never }
@@ -279,7 +283,7 @@ provide('delete-comment', deleteComment)
           </p>
         </Flex>
       </Card>
-      <div class="discussion__add">
+      <div v-if="props.hideInput !== true" class="discussion__add">
         <Alert v-if="replyingTo">
           <Flex y-start gap="xl" x-between>
             <div>

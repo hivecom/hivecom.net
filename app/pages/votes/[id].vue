@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Button, Card, Checkbox, Flex, Radio, Skeleton, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 
+import Discussion from '@/components/Discussions/Discussion.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ReferendumResults from '@/components/Shared/ReferendumResults.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
@@ -595,6 +596,17 @@ function handleChoiceClick(index: number) {
             :referendum="referendum"
             :votes="allVotes"
           />
+
+          <Card class="card-bg mt-l p-l">
+            <h3 class="mb-m">
+              Comments
+            </h3>
+            <Discussion
+              :id="String(referendum.id)"
+              type="event"
+              hash="general-chat"
+            />
+          </Card>
         </section>
 
         <!-- Reveal Results Confirmation Modal -->
