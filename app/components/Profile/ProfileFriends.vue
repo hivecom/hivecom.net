@@ -272,11 +272,9 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
 }
 
 .friends-empty {
-  padding: var(--space-l);
-  text-align: center;
-
   p {
     margin: 0;
+    margin-bottom: var(--space-s);
   }
 }
 </style>

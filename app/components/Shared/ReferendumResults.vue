@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Accordion, Button, Card, Flex } from '@dolanske/vui'
+import { Button, Card, Flex } from '@dolanske/vui'
 import { computed } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import BulkAvatarDisplay from './BulkAvatarDisplay.vue'
-import MDRenderer from './MDRenderer.vue'
-import UserDisplay from './UserDisplay.vue'
+// import MDRenderer from './MDRenderer.vue'
+// import UserDisplay from './UserDisplay.vue'
+
+// TODO: Implement discussions under each comment
 
 interface VoteResult {
   choice: string
@@ -13,10 +15,6 @@ interface VoteResult {
   count: number
   percentage: number
   users: string[]
-  comments: Array<{
-    user: string
-    comment: string
-  }>
 }
 
 const props = defineProps<{
@@ -35,7 +33,6 @@ const props = defineProps<{
   }
   votes: Tables<'referendum_votes'>[] | readonly Tables<'referendum_votes'>[] | readonly {
     readonly choices: readonly number[]
-    readonly comment: string | null
     readonly created_at: string
     readonly id: number
     readonly modified_at: string | null
@@ -62,7 +59,6 @@ const voteResults = computed<VoteResult[]>(() => {
     count: 0,
     percentage: 0,
     users: [] as VoteResult['users'],
-    comments: [] as VoteResult['comments'],
   }))
 
   // Count votes for each choice
@@ -71,13 +67,6 @@ const voteResults = computed<VoteResult[]>(() => {
       if (results[choiceIndex]) {
         results[choiceIndex].count++
         results[choiceIndex].users.push(vote.user_id)
-
-        if (vote.comment) {
-          results[choiceIndex].comments.push({
-            user: vote.user_id,
-            comment: vote.comment,
-          })
-        }
       }
     })
   })
@@ -132,7 +121,7 @@ const isBelowSmall = useBreakpoint('<s')
 
     <!-- Results list -->
     <div v-else class="results-list">
-      <Accordion
+      <!-- <Accordion
         v-for="result in voteResults" :key="result.index"
         unstyled
       >
@@ -178,7 +167,38 @@ const isBelowSmall = useBreakpoint('<s')
             <MDRenderer :md="item.comment" />
           </li>
         </ul>
-      </Accordion>
+      </Accordion> -->
+
+      <div
+        v-for="result in voteResults" :key="result.index"
+        class="result-item"
+        :class="{
+          'result-item--votes': result.percentage > 0,
+        }"
+      >
+        <Flex x-between y-center>
+          <span class="result-item__choice">{{ result.choice }} <span class="result-item__percentage">{{ `(${result.percentage.toFixed()}%)` }}</span></span>
+          <BulkAvatarDisplay
+            v-if="result.users.length > 0"
+            :user-ids="result.users"
+            :max-users="3"
+            :avatar-size="24"
+            :random="true"
+            :gap="4"
+
+            no-empty-state
+          />
+          <span v-if="result.count === 0" class="result-item__count">{{ result.count }} votes</span>
+        </Flex>
+
+        <div
+          class="result-item__indicator"
+          :style="{
+            width: `${result.percentage}%`,
+            opacity: Math.min(Math.max(0.1, result.percentage / 200), 0.8),
+          }"
+        />
+      </div>
     </div>
   </Card>
 </template>

@@ -1,7 +1,6 @@
 <script setup lang='ts'>
 import type { Tables } from '@/types/database.types'
-
-import { Badge, Button, Card, Checkbox, Flex, Radio, Skeleton, Textarea, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, Checkbox, Flex, Radio, Skeleton, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -71,7 +70,6 @@ const { data: allVotes, loading: loadingAllVotes, refetch: refetchAllVotes } = u
 
 // Voting state
 const selectedChoices = ref<number[]>([])
-const comment = ref('')
 const isSubmitting = ref(false)
 
 // Results visibility state
@@ -86,7 +84,6 @@ const isRemovingVote = ref(false)
 watch([userVote], ([vote]) => {
   if (vote) {
     selectedChoices.value = [...vote.choices]
-    comment.value = vote.comment || ''
   }
 }, { immediate: true })
 
@@ -199,7 +196,6 @@ async function submitVote() {
       referendum_id: referendum.value.id,
       user_id: userId.value,
       choices: selectedChoices.value,
-      comment: comment.value.trim() || null,
     }
 
     if (userVote.value) {
@@ -268,7 +264,6 @@ async function confirmRemoveVote() {
 
     // Reset voting state
     selectedChoices.value = []
-    comment.value = ''
 
     // Refetch data
     await Promise.all([
@@ -352,9 +347,6 @@ function handleChoiceClick(index: number) {
                 <Skeleton :height="56" :radius="8" />
               </div>
             </div>
-
-            <!-- Comment input skeleton -->
-            <Skeleton :height="40" :radius="8" class="mb-l" />
 
             <!-- Buttons skeleton -->
             <Flex gap="s" y-center>
@@ -499,15 +491,6 @@ function handleChoiceClick(index: number) {
                 />
               </button>
             </div>
-
-            <Textarea
-              v-model="comment"
-              :rows="2"
-              expand
-              label="Add a comment (optional)"
-              placeholder="What do you think?"
-              class="mb-l"
-            />
 
             <Flex y-center x-between expand :column="isBelowSmall" gap="xl">
               <Flex gap="s" y-center wrap :expand="isBelowSmall" :column="isBelowSmall">
@@ -670,7 +653,7 @@ function handleChoiceClick(index: number) {
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-fast);
 
   :deep(.vui-radio input + label),
   :deep(.vui-checkbox input + label) {
