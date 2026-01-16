@@ -94,7 +94,7 @@ function beginCommentDeletion() {
       <ButtonGroup>
         <Button square size="s" @click="setReplyToComment(data)">
           <Tooltip>
-            <Icon name="ph:arrow-elbow-up-left" />
+            <Icon name="ph:arrow-elbow-up-left-bold" />
             <template #tooltip>
               <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
             </template>
@@ -102,22 +102,22 @@ function beginCommentDeletion() {
         </Button>
         <Button size="s" square @click="copyCommentLink">
           <Tooltip>
-            <Icon name="ph:link" />
+            <Icon name="ph:link-bold" />
             <template #tooltip>
               <p>Copy link to comment</p>
             </template>
           </Tooltip>
         </Button>
-        <!-- Delete comment option if the comment belongs to me -->
-        <Button v-if="data.created_by === userId && userId" size="s" square @click="beginCommentDeletion">
-          <Tooltip>
-            <Icon name="ph:x" />
-            <template #tooltip>
-              <p>Delete comment</p>
-            </template>
-          </Tooltip>
-        </Button>
       </ButtonGroup>
+      <!-- Delete comment option if the comment belongs to me -->
+      <Button v-if="data.created_by === userId && userId" size="s" square @click="beginCommentDeletion">
+        <Tooltip>
+          <Icon name="ph:x-bold" />
+          <template #tooltip>
+            <p>Delete comment</p>
+          </template>
+        </Tooltip>
+      </Button>
     </div>
   </div>
 </template>
@@ -225,7 +225,8 @@ function beginCommentDeletion() {
   }
 
   &__actions {
-    display: block;
+    display: flex;
+    gap: 3px;
     position: absolute;
     right: -4px;
     top: var(--space-s);
