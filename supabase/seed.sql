@@ -459,8 +459,8 @@ INSERT INTO public.referendums(created_at, created_by, title, description, choic
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Next Community Game Server', 'Which game should we host as our next community server? This will help us decide where to invest our resources for the best community experience.', ARRAY['Minecraft', 'Valheim', 'Rust', 'Team Fortress 2'], NOW(), NOW() + INTERVAL '14 days', FALSE);
 
 -- Insert a test vote for the referendum
-INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices, comment)
-  VALUES (NOW() + INTERVAL '1 hour', '018d224c-0e49-4b6d-b57a-87299605c2b1', 1, ARRAY[1], 'Minecraft would be fun!');
+INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices)
+  VALUES (NOW() + INTERVAL '1 hour', '018d224c-0e49-4b6d-b57a-87299605c2b1', 1, ARRAY[1]);
 
 -- Insert test announcements
 INSERT INTO public.announcements(created_at, created_by, title, description, markdown, pinned, tags)
