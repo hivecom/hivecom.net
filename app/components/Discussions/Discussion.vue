@@ -1,35 +1,120 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
+import { defineRules, maxLength, minLength, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, Flex, Skeleton, Textarea, Tooltip } from '@dolanske/vui'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
+
+/**
+ * Important note (dolan)
+ *
+ * For clarity during implementation, this component calls reply a 'comment' and
+ * if a comment is replying to another one, it is saved to it as a 'reply'
+ */
 
 // TODO: add auto-scrolling to a comment with a hash (unless browsers will do that automatically)
 
 export interface DiscussionSettings {
   timestamps: boolean
+  inputRows: number
 }
 
-const props = withDefaults(defineProps<{
-  // TODO: type is basically the location / context the discussion is used in
-  type: 'a' | 'b'
-  model?: 'comment' | 'forum'
+interface Props extends Partial<DiscussionSettings> {
+  type: Tables<'discussions'>['type']
   id: string
-  timestamps?: boolean
-}>(), {
+  model?: 'comment' | 'forum'
+}
+
+const props = withDefaults(defineProps<Props>(), {
   model: 'comment',
   timestamps: false,
+  inputRows: 3,
+})
+
+provide<DiscussionSettings>('discussion-settings', {
+  timestamps: props.timestamps,
+  inputRows: props.inputRows,
+})
+
+export type RawComment = Omit<Tables<'discussion_replies'>, 'meta'> & { meta: never }
+export interface Comment extends RawComment {
+  reply: RawComment | null
+}
+
+// Fetch data & state
+const supabase = useSupabaseClient()
+
+const loading = ref(false)
+const error = ref<string>()
+
+const discussion = ref<Tables<'discussions'>>()
+const comments = ref<RawComment[]>([])
+
+watch(() => props.id, async () => {
+  loading.value = true
+
+  const discussionResponse = await supabase
+    .from('discussions')
+    .select('*')
+    .eq(`${props.type}_id`, props.id)
+    .eq('type', props.type)
+    .single()
+
+  if (discussionResponse.error) {
+    return error.value = discussionResponse.error.message
+  }
+  else {
+    discussion.value = discussionResponse.data
+  }
+
+  const commentsResponse = await supabase
+    .from('discussion_replies')
+    .select('*')
+    .eq('discussion_id', discussionResponse.data.id)
+    .order('created_at')
+
+  if (commentsResponse.error) {
+    return error.value = commentsResponse.error?.message
+  }
+  else {
+    comments.value = commentsResponse.data
+  }
+
+  loading.value = false
+}, { immediate: true })
+
+// Add replies to the message object so the UI can display it
+const modelledComments = computed((): Comment[] => {
+  const data = comments.value ?? []
+
+  const lookup = new Map<string | number, RawComment>(
+    data.map(item => [item.id, item]),
+  )
+
+  return data.map((item): Comment => {
+    const foundReply = item.reply_to_id
+      ? lookup.get(item.reply_to_id)
+      : null
+
+    return {
+      ...item,
+      reply: foundReply || null,
+    }
+  })
+})
+
+// Comment writing & validation
+const formLoading = ref(false)
+
+const form = reactive({
+  message: '',
 })
 
 // Holds reference to the comment we're replying to
 const replyingTo = ref<Comment>()
-const message = ref('')
 
 // To avoid prop drilling, expose this to all child components
 provide('setReplyToComment', (comment: Comment) => replyingTo.value = comment)
-
-provide<DiscussionSettings>('discussion-settings', {
-  timestamps: props.timestamps,
-})
 
 const textareaRef = useTemplateRef('textarea')
 
@@ -39,113 +124,154 @@ watch(replyingTo, () => {
     textareaRef.value.focus()
 })
 
-export interface Comment {
-  id: number
-  userId: string
-  text: string
-  replyTo?: number
-  reply?: Comment
+const MAX_COMMENT_CHARS = 8192
+
+// Define form rules
+const rules = defineRules<typeof form>({
+  message: [required, minLength(1), maxLength(MAX_COMMENT_CHARS)],
+})
+
+// Use validation composable
+const { validate, errors, addError, reset } = useValidation(form, rules, {
+  // Clear errors
+  autoclear: true,
+})
+
+async function submitReply() {
+  if (formLoading.value)
+    return
+
+  formLoading.value = true
+
+  validate()
+    .then(async () => {
+      const commentData = {
+        content: form.message,
+        discussion_id: discussion.value?.id,
+        ...(!!replyingTo.value && { reply_to_id: replyingTo.value.id }),
+      }
+
+      // Form validation passed
+      const res = await supabase
+        .from('discussion_replies')
+        .insert(commentData)
+        .select()
+        .single()
+
+      if (res.error) {
+        addError('message', {
+          key: 'required',
+          message: res.error.message,
+        })
+      }
+      else {
+        // Successful comment submission
+        reset()
+        replyingTo.value = undefined
+        form.message = ''
+        comments.value.push(res.data as RawComment)
+      }
+
+      formLoading.value = false
+    })
+    .catch(() => {
+      formLoading.value = false
+    })
 }
 
-const rawCommentData = ref<Comment[]>([
-  {
-    id: 1,
-    userId: '0197ce39-5653-4b43-9ae5-794e924a5201',
-    text: 'Does anyone know if there is a specific dress code for tonight? I was thinking business casual.',
-  },
-  {
-    id: 2,
-    userId: '14bd8571-e589-40b6-a060-1aa3c33f24c2',
-    text: 'I just checked the event description, and it says \'smart casual.\' Business casual should be perfectly fine!',
-  },
-  {
-    id: 5,
-    userId: '04a69784-d407-4393-877e-6b7591b6f89e',
-    text: 'Just arrived! The venue looks incredible. There\'s coffee and snacks available in the lobby for early birds.',
-    replyTo: 1,
-  },
-  {
-    id: 3,
-    userId: '0197ce39-5653-4b43-9ae5-794e924a5201',
-    text: 'So hyped for the keynote speaker! I\'ve been following her work for years.',
-  },
-  {
-    id: 4,
-    userId: '04a69784-d407-4393-877e-6b7591b6f89e',
-    text: 'Is anyone else traveling from the north side? Thinking about carpooling to save on parking fees.',
-    replyTo: 2,
-  },
-  {
-    id: 6,
-    userId: '0197ce39-5653-4b43-9ae5-794e924a5201',
-    text: 'Will the sessions be recorded? I have a conflict during the 2 PM workshop and don\'t want to miss out.',
-  },
-  {
-    id: 7,
-    userId: '14bd8571-e589-40b6-a060-1aa3c33f24c2',
-    text: 'I believe they said recordings will be emailed to all ticket holders by Friday! See you all soon.',
-  },
-])
+function deleteComment(id: string) {
+  return new Promise((resolve, reject) => {
+    supabase
+      .from('discussion_replies')
+      .delete()
+      .eq('id', id)
+      .then((res) => {
+        if (res.error) {
+          reject(res.error.message)
+        }
+        else {
+          // Remove from loaded comments
+          comments.value = comments.value.filter(comment => comment.id !== id)
 
-const modelled = computed(() => {
-  return rawCommentData.value.map((item) => {
-    if (item.replyTo) {
-      item.reply = rawCommentData.value.find(reply => reply.id === item.replyTo)
-    }
+          // If the comment that was removed was also being replied to, remove it
+          if (replyingTo.value && replyingTo.value.id === id) {
+            replyingTo.value = undefined
+          }
 
-    return item
+          // Resolve to end loading in comment model
+          resolve(null)
+        }
+      })
   })
-})
+}
+
+provide('delete-comment', deleteComment)
 </script>
 
 <template>
-  <ClientOnly>
-    <div class="discussion" :class="[`discussion--${props.model}`]">
-      <!-- TODO Loading state -->
-      <template v-if="false">
-        <Skeleton :height="49" width="100%" style="margin:12px" />
-      </template>
+  <!-- <ClientOnly> -->
+  <div class="discussion" :class="[`discussion--${props.model}`]">
+    <template v-if="loading">
+      <Skeleton height="49px" width="100%" style="margin:12px" />
+    </template>
 
-      <!-- Listing view -->
-      <template v-else>
+    <!-- Listing view -->
+    <template v-else>
+      <template v-if="modelledComments.length > 0">
         <DiscussionItem
-          v-for="comment in modelled"
+          v-for="comment in modelledComments"
           :key="comment.id"
           :data="comment"
           :model="props.model"
         />
-        <div class="discussion__add">
-          <Alert v-if="replyingTo">
-            <Flex y-start gap="xl" x-between>
-              <div>
-                <span class="discussion__add--replying-label">Replying to
-                  <UserDisplay class="inline-block" size="s" :user-id="replyingTo.userId" hide-avatar />:
-                </span>
-                <p class="ws-wrap">
-                  {{ replyingTo.text }}
-                </p>
-              </div>
-              <Tooltip>
-                <Button square size="s" plain @click="replyingTo = undefined">
-                  <Icon name="ph:x" />
-                </Button>
-                <template #tooltip>
-                  <p>Remove attached reply</p>
-                </template>
-              </Tooltip>
-            </Flex>
-          </Alert>
-          <Textarea ref="textarea" v-model="message" :placeholder="`Write your ${!!replyingTo ? 'reply' : 'comment'}...`" :rows="4" expand auto-resize />
-          <Button size="s" class="discussion__add--send-button">
+      </template>
+      <template v-else>
+        <p class="text-color-light">
+          Be the first to comment something
+        </p>
+      </template>
+      <div class="discussion__add">
+        <Alert v-if="replyingTo">
+          <Flex y-start gap="xl" x-between>
+            <div>
+              <span class="discussion__add--replying-label">Replying to
+                <UserDisplay class="inline-block" size="s" :user-id="replyingTo!.created_by" hide-avatar />:
+              </span>
+              <p class="ws-wrap">
+                {{ replyingTo!.content }}
+              </p>
+            </div>
+            <Tooltip>
+              <Button square size="s" plain @click="replyingTo = undefined">
+                <Icon name="ph:x" />
+              </Button>
+              <template #tooltip>
+                <p>Remove attached reply</p>
+              </template>
+            </Tooltip>
+          </Flex>
+        </Alert>
+        <form @submit.prevent="submitReply">
+          <Textarea
+            ref="textarea"
+            v-model="form.message"
+            :errors="Object.values(errors.message.errors)"
+            :placeholder="`Write your ${!!replyingTo ? 'reply' : 'comment'}...`"
+            :rows="props.inputRows"
+            expand
+            auto-resize
+          />
+          <Button size="s" class="discussion__add--send-button" type="submit" :loading="formLoading">
             Send
             <template #end>
               <Icon name="ph:paper-plane-tilt" />
             </template>
           </Button>
-        </div>
-      </template>
-    </div>
-  </ClientOnly>
+        </form>
+      </div>
+    </template>
+  </div>
+  <!-- </ClientOnly> -->
 </template>
 
 <style scoped lang="scss">

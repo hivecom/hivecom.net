@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { Comment, DiscussionSettings } from '../Discussion.vue'
 import { Button, ButtonGroup, pushToast, Tooltip } from '@dolanske/vui'
+import dayjs from 'dayjs'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { stripMarkdown } from '@/lib/markdown-processors'
 import { scrollToId } from '@/lib/utils/common'
 
 interface Props {
@@ -20,7 +22,7 @@ const router = useRouter()
 const route = useRoute()
 
 // Generic wrapper around a discussion reply which assigns a reply model depending on the discussion type
-const COMMENT_TRUNCATE = 80
+const COMMENT_TRUNCATE = 96
 
 const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
 
@@ -42,37 +44,51 @@ function copyCommentLink() {
     timeout: 1500,
   })
 }
+
+// Comment deletion
+const deleteComment = inject('delete-comment') as (id: string) => Promise<void>
+const loadingDeletion = ref(false)
+
+function beginCommentDeletion() {
+  loadingDeletion.value = true
+  deleteComment(data.id)
+    .finally(() => {
+      loadingDeletion.value = false
+    })
+}
 </script>
 
 <template>
   <div class="discussion-comment" :class="{ 'discussion-comment--highlight': `#comment-${data.id}` === route.hash }">
-    <UserDisplay size="s" :user-id="data.userId" />
+    <UserDisplay size="s" :user-id="data.created_by" />
     <Tooltip v-if="data.reply" :delay="750">
-      <button varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.userId === userId }" @click="scrollToreply">
+      <button varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === userId }" @click="scrollToreply">
         <Icon name="ph:arrow-elbow-up-right" />
-        <p v-if="data.reply.userId !== userId" class="discussion-comment__reply-user">
-          <UserDisplay class="inline-block" size="s" :user-id="data.reply.userId" hide-avatar />:
+        <p v-if="data.reply.created_by !== userId" class="discussion-comment__reply-user">
+          <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" hide-avatar />:
         </p>
         <p v-else class="discussion-comment__reply-user">
           You:
         </p>
         <p class="text-overflow-1">
-          {{ data.reply.text }}
+          {{ stripMarkdown(data.reply.content, 512) }}
         </p>
       </button>
       <template #tooltip>
         <p>
-          <UserDisplay class="inline-block" size="s" :user-id="data.reply.userId" />
+          <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" />
         </p>
-        <p v-if="data.reply.text.length > COMMENT_TRUNCATE" class="text-size-m" style="max-width: 256px">
-          {{ data.reply.text }}
-        </p>
+        <MDRenderer
+          v-if="data.reply.content.length > COMMENT_TRUNCATE"
+          style="max-width: 256px"
+          :md="data.content"
+          skeleton-height="0px"
+        />
       </template>
     </Tooltip>
-    <MDRenderer :md="data.text" />
-    <!-- TODO -->
+    <MDRenderer :md="data.content" skeleton-height="0px" />
     <p v-if="timestamps" class="discussion-comment__timestamp">
-      TODO 35 seconds ago
+      {{ dayjs(data.created_at).fromNow() }}
     </p>
     <div class="discussion-comment__actions">
       <ButtonGroup>
@@ -80,7 +96,7 @@ function copyCommentLink() {
           <Tooltip>
             <Icon name="ph:arrow-elbow-up-left" />
             <template #tooltip>
-              <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.userId" hide-avatar /></p>
+              <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
             </template>
           </Tooltip>
         </Button>
@@ -89,6 +105,15 @@ function copyCommentLink() {
             <Icon name="ph:link" />
             <template #tooltip>
               <p>Copy link to comment</p>
+            </template>
+          </Tooltip>
+        </Button>
+        <!-- Delete comment option if the comment belongs to me -->
+        <Button v-if="data.created_by === userId && userId" size="s" square @click="beginCommentDeletion">
+          <Tooltip>
+            <Icon name="ph:x" />
+            <template #tooltip>
+              <p>Delete comment</p>
             </template>
           </Tooltip>
         </Button>

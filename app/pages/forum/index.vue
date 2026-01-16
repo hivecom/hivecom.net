@@ -2,7 +2,6 @@
 import { BreadcrumbItem, Breadcrumbs, Button, Card, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import ForumListItem from '@/components/Forum/ForumListItem.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 
 // TODO: forum frontpage
 </script>
