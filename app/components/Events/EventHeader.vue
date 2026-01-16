@@ -24,6 +24,9 @@ interface Props {
   timeAgo?: string
 }
 
+// TODO: would be nice to show how many comments there are and add a badge that
+// when clicked scrolls down to the comments
+
 const props = defineProps<Props>()
 
 const isBelowSmall = useBreakpoint('<s')
@@ -77,6 +80,8 @@ async function fetchRSVPCounts() {
   catch (error) {
     console.error('Error fetching RSVP counts:', error)
   }
+
+  // Fetch cmment counts
 }
 
 // Listen for RSVP updates

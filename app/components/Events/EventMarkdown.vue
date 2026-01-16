@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Card, Flex } from '@dolanske/vui'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MetadataCard from '../Shared/MetadataCard.vue'
 
 interface Props {
   event: Tables<'events'>
@@ -12,14 +13,16 @@ const props = defineProps<Props>()
 
 <template>
   <!-- Event Details -->
-  <Card v-if="props.event.markdown" class="event-markdown">
+  <Card v-if="props.event.markdown" class="event-markdown card-bg">
     <Flex column gap="l" class="event-markdown__content">
-      <!-- <h3 class="event-markdown__title">
-        <Icon name="ph:article" />
-        Event Details
-      </h3> -->
       <MDRenderer :md="props.event.markdown" />
     </Flex>
+    <MetadataCard
+      :created-at="event.created_at"
+      :created-by="event.created_by"
+      :modified-at="event.modified_at"
+      :modified-by="event.modified_by"
+    />
   </Card>
 </template>
 
@@ -42,6 +45,7 @@ const props = defineProps<Props>()
   &__content {
     padding: var(--space-m);
     max-width: 728px;
+    margin-bottom: var(--space-xl);
   }
 }
 </style>

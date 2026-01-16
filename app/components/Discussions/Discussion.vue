@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { defineRules, maxLength, minLength, required, useValidation } from '@dolanske/v-valid'
+import { $withLabel, defineRules, maxLength, minLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, Flex, Skeleton, Textarea, Tooltip } from '@dolanske/vui'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
@@ -128,7 +128,11 @@ const MAX_COMMENT_CHARS = 8192
 
 // Define form rules
 const rules = defineRules<typeof form>({
-  message: [required, minLength(1), maxLength(MAX_COMMENT_CHARS)],
+  message: [
+    $withLabel('You cannot send an empty string', required),
+    $withLabel('You cannot send an empty string', minLenNoSpace(1)),
+    $withLabel(`Your comment cannot exceed ${MAX_COMMENT_CHARS} characters`, maxLength(MAX_COMMENT_CHARS)),
+  ],
 })
 
 // Use validation composable
@@ -159,13 +163,16 @@ async function submitReply() {
         .single()
 
       if (res.error) {
+        // If supabase errors out, add the error message to the first validation
+        // key. It doesn't really matter under which key we show it as we
+        // just render the error strings
         addError('message', {
           key: 'required',
           message: res.error.message,
         })
       }
       else {
-        // Successful comment submission
+        // Successfully submitted a comment
         reset()
         replyingTo.value = undefined
         form.message = ''
@@ -226,9 +233,12 @@ provide('delete-comment', deleteComment)
         />
       </template>
       <template v-else>
-        <p class="text-color-light">
-          Be the first to comment something
-        </p>
+        <Flex column y-center x-center>
+          <Icon name="ph:chats-teardrop" class="text-color-lighter" :size="32" />
+          <p class="text-color-lighter">
+            Nobody has said anything yet...
+          </p>
+        </Flex>
       </template>
       <div class="discussion__add">
         <Alert v-if="replyingTo">
@@ -293,7 +303,7 @@ provide('delete-comment', deleteComment)
 
   &__add {
     margin-top: var(--space-m);
-    padding-left: var(--left-offset);
+    // padding-left: var(--left-offset);
     position: relative;
 
     &:deep(.vui-input-container .vui-input textarea) {

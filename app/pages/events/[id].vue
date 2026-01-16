@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Flex } from '@dolanske/vui'
+import { Button, Card, Flex } from '@dolanske/vui'
+import Discussion from '@/components/Discussions/Discussion.vue'
 import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
@@ -248,12 +249,11 @@ useHead({
         <!-- Markdown -->
         <EventMarkdown :event="event" />
 
-        <!-- Metadata -->
-        <MetadataCard
-          :created-at="event.created_at"
-          :created-by="event.created_by"
-          :modified-at="event.modified_at"
-          :modified-by="event.modified_by"
+        <!-- Related discussion -->
+        <Discussion
+          :id="String(event.id)"
+          class="event-discussion"
+          type="event"
         />
       </div>
     </div>
@@ -275,5 +275,9 @@ useHead({
     flex-direction: column;
     gap: var(--space-l);
   }
+}
+
+.event-discussion {
+  max-width: 728px;
 }
 </style>
