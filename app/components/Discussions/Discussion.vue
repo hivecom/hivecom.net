@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { $withLabel, defineRules, maxLength, minLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
+import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, Flex, Skeleton, Textarea, Tooltip } from '@dolanske/vui'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'

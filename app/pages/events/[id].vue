@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, Flex } from '@dolanske/vui'
+import { Button, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
-import MetadataCard from '@/components/Shared/MetadataCard.vue'
 
 // Get route parameter
 const route = useRoute()
