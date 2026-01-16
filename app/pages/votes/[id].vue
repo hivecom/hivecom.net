@@ -597,7 +597,7 @@ function handleChoiceClick(index: number) {
             :votes="allVotes"
           />
 
-          <Card class="card-bg mt-l p-l">
+          <Card class="card-bg mt-xl p-l">
             <h3 class="mb-m">
               Comments
             </h3>
