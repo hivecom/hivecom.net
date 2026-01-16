@@ -1120,7 +1120,6 @@ export interface Database {
       referendum_votes: {
         Row: {
           choices: number[]
-          comment: string | null
           created_at: string
           id: number
           modified_at: string | null
@@ -1129,7 +1128,6 @@ export interface Database {
         }
         Insert: {
           choices?: number[]
-          comment?: string | null
           created_at?: string
           id?: number
           modified_at?: string | null
@@ -1138,7 +1136,6 @@ export interface Database {
         }
         Update: {
           choices?: number[]
-          comment?: string | null
           created_at?: string
           id?: number
           modified_at?: string | null
