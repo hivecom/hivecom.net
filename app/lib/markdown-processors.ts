@@ -38,7 +38,7 @@ export function isValidMentionUsername(username: string): boolean {
  * Strips markdown from a content leaving only the strings.
  *
  * @param content Content to strip markdown out of
- * @param length (optional) Optionally truncate the string to make the operation less expensive
+ * @param truncateAmount (optional) Optionally truncate the string to make the operation less expensive
  */
 export function stripMarkdown(content: string, truncateAmount = 0) {
   if (truncateAmount) {

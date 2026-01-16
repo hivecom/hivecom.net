@@ -20,6 +20,7 @@ export default antfu({
     'package.json',
     'package-lock.json',
     '**/supabase/functions/**/*.ts',
+    '**/hash.js',
   ],
   // Add additional configurations for specific file patterns
   formatters: {

@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, Flex } from '@dolanske/vui'
+import { Accordion, Button, Card, Flex } from '@dolanske/vui'
 import { computed } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { md5 } from '@/lib/utils/hash'
+import Discussion from '../Discussions/Discussion.vue'
 import BulkAvatarDisplay from './BulkAvatarDisplay.vue'
-// import MDRenderer from './MDRenderer.vue'
-// import UserDisplay from './UserDisplay.vue'
-
-// TODO: Implement discussions under each comment
 
 interface VoteResult {
   choice: string
@@ -121,19 +119,15 @@ const isBelowSmall = useBreakpoint('<s')
 
     <!-- Results list -->
     <div v-else class="results-list">
-      <!-- <Accordion
+      <Accordion
         v-for="result in voteResults" :key="result.index"
         unstyled
       >
         <template #trigger="{ toggle, isOpen }">
-          <div
-            class="result-item"
-            :role="result.comments.length > 0 ? 'button' : undefined"
-            :class="{
-              'result-item--comments': result.comments.length > 0,
-              'result-item--votes': result.percentage > 0,
-            }"
-            @click="result.comments.length > 0 && toggle()"
+          <button
+            class="result-item result-item--comments"
+            :class="{ 'result-item--votes': result.percentage > 0 }"
+            @click="toggle()"
           >
             <Flex x-between y-center>
               <span class="result-item__choice">{{ result.choice }} <span class="result-item__percentage">{{ `(${result.percentage.toFixed()}%)` }}</span></span>
@@ -144,11 +138,10 @@ const isBelowSmall = useBreakpoint('<s')
                 :avatar-size="24"
                 :random="true"
                 :gap="4"
-
                 no-empty-state
               />
               <span v-if="result.count === 0" class="result-item__count">{{ result.count }} votes</span>
-              <Icon v-if="result.comments.length > 0" :name="`ph:caret-${isOpen ? 'up' : 'down'}`" />
+              <Icon :name="`ph:caret-${isOpen ? 'up' : 'down'}`" />
             </Flex>
 
             <div
@@ -158,47 +151,26 @@ const isBelowSmall = useBreakpoint('<s')
                 opacity: Math.min(Math.max(0.1, result.percentage / 200), 0.8),
               }"
             />
-          </div>
+          </button>
         </template>
 
-        <ul class="result-comments">
+        <div class="result-comments">
+          <Discussion
+            :id="String(props.referendum.id)"
+            type="event"
+            :hash="md5(result.choice)"
+            :input-rows="2"
+            :empty-message="false"
+          />
+        </div>
+
+        <!-- <ul class="result-comments">
           <li v-for="item in result.comments" :key="item.user" class="result-comments__item">
             <UserDisplay size="s" :user-id="item.user" />
             <MDRenderer :md="item.comment" />
           </li>
-        </ul>
-      </Accordion> -->
-
-      <div
-        v-for="result in voteResults" :key="result.index"
-        class="result-item"
-        :class="{
-          'result-item--votes': result.percentage > 0,
-        }"
-      >
-        <Flex x-between y-center>
-          <span class="result-item__choice">{{ result.choice }} <span class="result-item__percentage">{{ `(${result.percentage.toFixed()}%)` }}</span></span>
-          <BulkAvatarDisplay
-            v-if="result.users.length > 0"
-            :user-ids="result.users"
-            :max-users="3"
-            :avatar-size="24"
-            :random="true"
-            :gap="4"
-
-            no-empty-state
-          />
-          <span v-if="result.count === 0" class="result-item__count">{{ result.count }} votes</span>
-        </Flex>
-
-        <div
-          class="result-item__indicator"
-          :style="{
-            width: `${result.percentage}%`,
-            opacity: Math.min(Math.max(0.1, result.percentage / 200), 0.8),
-          }"
-        />
-      </div>
+        </ul> -->
+      </Accordion>
     </div>
   </Card>
 </template>
@@ -228,8 +200,9 @@ const isBelowSmall = useBreakpoint('<s')
 }
 
 .result-item {
-  padding: var(--space-s) var(--space-m);
+  padding: 0 var(--space-m);
   position: relative;
+  height: 56px;
   z-index: 1;
   width: 100%;
   transition: var(--transition-fast);
@@ -304,13 +277,16 @@ const isBelowSmall = useBreakpoint('<s')
   flex-direction: column;
   gap: var(--space-m);
 
-  &__item {
-    display: flex;
-    flex-direction: column;
+  :deep(.vui-avatar) {
+    background-color: var(--color-bg) !important;
+  }
 
-    :deep(.typeset) {
-      padding-left: 36px;
-    }
+  :deep(textarea) {
+    background-color: var(--color-bg-medium) !important;
+  }
+
+  :deep(.discussion-comment) {
+    margin-top: -16px;
   }
 }
 </style>

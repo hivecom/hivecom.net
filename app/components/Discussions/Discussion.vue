@@ -5,6 +5,8 @@ import { Alert, Button, Card, Flex, Skeleton, Textarea, Tooltip } from '@dolansk
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
 
+// TODO: add auto-scrolling to a comment with a hash (unless browsers will do that automatically)
+
 /**
  * Important note (dolan)
  *
@@ -12,18 +14,42 @@ import DiscussionItem from './DiscussionItem.vue'
  * if a comment is replying to another one, it is saved to it as a 'reply'
  */
 
-// TODO: add auto-scrolling to a comment with a hash (unless browsers will do that automatically)
-
 export interface DiscussionSettings {
+  /**
+   * If set to true, comments will display a timestamp
+   */
   timestamps: boolean
+  /**
+   * Specify how many rows should the input textarea render
+   */
   inputRows: number
 }
 
 interface Props extends Partial<DiscussionSettings> {
+  /**
+   * Discussion type
+   */
   type: Tables<'discussions'>['type']
+  /**
+   * Discussion id
+   */
   id: string
+  /**
+   * Set the model for how comments look
+   */
   model?: 'comment' | 'forum'
-  emptyMessage?: string
+  /**
+   * Sets the message displayed when discussion is empty
+   */
+  emptyMessage?: string | false
+  /**
+   * ## For votes only
+   *
+   * Hashed vote text. A single referendum can only have 1 unique discussion.
+   * However to group comments by answers, we provide a hash that only queries
+   * comments for a specific answer.
+   */
+  hash?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -55,6 +81,7 @@ const comments = ref<RawComment[]>([])
 watch(() => props.id, async () => {
   loading.value = true
 
+  // Query discussion metadata
   const discussionResponse = await supabase
     .from('discussions')
     .select('*')
@@ -69,11 +96,18 @@ watch(() => props.id, async () => {
     discussion.value = discussionResponse.data
   }
 
-  const commentsResponse = await supabase
+  // Query comments under a discussion
+  const commentQuery = supabase
     .from('discussion_replies')
     .select('*')
     .eq('discussion_id', discussionResponse.data.id)
-    .order('created_at')
+
+  // Optionally return answer under a specific hash
+  if (props.hash) {
+    commentQuery.eq('meta->>hash', props.hash)
+  }
+
+  const commentsResponse = await commentQuery.order('created_at')
 
   if (commentsResponse.error) {
     return error.value = commentsResponse.error?.message
@@ -155,6 +189,9 @@ async function submitReply() {
         content: form.message,
         discussion_id: discussion.value?.id,
         ...(!!replyingTo.value && { reply_to_id: replyingTo.value.id }),
+        ...(props.hash && {
+          meta: { hash: props.hash },
+        }),
       }
 
       // Form validation passed
@@ -221,7 +258,7 @@ provide('delete-comment', deleteComment)
   <!-- <ClientOnly> -->
   <div class="discussion" :class="[`discussion--${props.model}`]">
     <template v-if="loading">
-      <Skeleton height="49px" width="100%" style="margin:12px" />
+      <Skeleton height="49px" width="auto" style="margin:12px" />
     </template>
 
     <!-- Listing view -->
@@ -234,7 +271,7 @@ provide('delete-comment', deleteComment)
           :model="props.model"
         />
       </template>
-      <Card v-else class="card-bg">
+      <Card v-else-if="props.emptyMessage !== false" class="card-bg mb-m">
         <Flex column y-center x-center>
           <Icon name="ph:chats-teardrop" class="text-color-lighter" :size="32" />
           <p class="text-color-lighter">
@@ -273,7 +310,7 @@ provide('delete-comment', deleteComment)
             expand
             auto-resize
           />
-          <Button size="s" class="discussion__add--send-button" type="submit" :loading="formLoading">
+          <Button size="s" class="discussion__add--send-button" type="submit" :loading="formLoading" :disabled="form.message.length === 0">
             Send
             <template #end>
               <Icon name="ph:paper-plane-tilt" />
@@ -304,12 +341,11 @@ provide('delete-comment', deleteComment)
   }
 
   &__add {
-    margin-top: var(--space-m);
-    // padding-left: var(--left-offset);
     position: relative;
 
     &:deep(.vui-input-container .vui-input textarea) {
       border-radius: var(--border-radius-m);
+      padding-right: 88px;
     }
 
     &:deep(.vui-alert) {
