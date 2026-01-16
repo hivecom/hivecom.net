@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Badge, Button, Card, Flex } from '@dolanske/vui'
+import Discussion from '@/components/Discussions/Discussion.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
@@ -126,7 +127,7 @@ useHead({
       </Flex>
 
       <!-- Header -->
-      <Card class="announcement-header" expand>
+      <Card class="announcement-header card-bg" expand>
         <div class="announcement-header__banner" aria-hidden="true">
           <div
             class="announcement-header__banner-surface"
@@ -188,17 +189,26 @@ useHead({
       </Card>
 
       <!-- Announcement Content (Markdown) -->
-      <Card class="announcement-content">
-        <MDRenderer :md="announcement.markdown" />
+      <Card class="announcement-content card-bg">
+        <div class="announcement-content__markdown">
+          <MDRenderer :md="announcement.markdown" />
+        </div>
+
+        <!-- Announcement Metadata -->
+        <MetadataCard
+          :tags="announcement.tags"
+          :created-at="announcement.created_at"
+          :created-by="announcement.created_by"
+          :modified-at="announcement.modified_at"
+          :modified-by="announcement.modified_by"
+        />
       </Card>
 
-      <!-- Announcement Metadata -->
-      <MetadataCard
-        :tags="announcement.tags"
-        :created-at="announcement.created_at"
-        :created-by="announcement.created_by"
-        :modified-at="announcement.modified_at"
-        :modified-by="announcement.modified_by"
+      <!-- Related discussion -->
+      <Discussion
+        :id="String(announcement.id)"
+        class="announcement-discussion"
+        type="announcement"
       />
     </div>
   </div>
@@ -296,7 +306,15 @@ useHead({
 }
 
 .announcement-content {
-  line-height: 1.6;
+  &__markdown {
+    padding: var(--space-m);
+    max-width: 728px;
+    margin-bottom: var(--space-xl);
+  }
+}
+
+.announcement-discussion {
+  max-width: 728px;
 }
 
 @media (max-width: 768px) {
