@@ -41,73 +41,77 @@
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
+    },
+    "JSONC": {
+      "language_servers": ["eslint", "json-language-server"],
+      "formatter": {
+        "language_server": {
+          "name": "eslint"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    "JSON": {
+      "language_servers": ["eslint", "json-language-server"],
+      "formatter": {
+        "language_server": {
+          "name": "eslint"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    "Markdown": {
+      "language_servers": ["eslint", "marksman"],
+      "formatter": {
+        "language_server": {
+          "name": "eslint"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    "HTML": {
+      "language_servers": ["eslint", "vscode-html-language-server"],
+      "formatter": {
+        "language_server": {
+          "name": "eslint"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    "CSS": {
+      "language_servers": ["eslint", "vscode-css-language-server"],
+      "formatter": {
+        "language_server": {
+          "name": "eslint"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    "SCSS": {
+      "language_servers": ["eslint", "vscode-css-language-server"],
+      "formatter": {
+        "language_server": {
+          "name": "eslint"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
     }
   },
   "lsp": {
     "eslint": {
-      "settings": {
-        "rulesCustomizations": [
-          {
-            "rule": "style/*",
-            "severity": "off"
-          },
-          {
-            "rule": "format/*",
-            "severity": "off"
-          },
-          {
-            "rule": "*-indent",
-            "severity": "off"
-          },
-          {
-            "rule": "*-spacing",
-            "severity": "off"
-          },
-          {
-            "rule": "*-spaces",
-            "severity": "off"
-          },
-          {
-            "rule": "*-order",
-            "severity": "off"
-          },
-          {
-            "rule": "*-dangle",
-            "severity": "off"
-          },
-          {
-            "rule": "*-newline",
-            "severity": "off"
-          },
-          {
-            "rule": "*quotes",
-            "severity": "off"
-          },
-          {
-            "rule": "*semi",
-            "severity": "off"
-          }
-        ],
-        "validate": [
-          "javascript",
-          "javascriptreact",
-          "typescript",
-          "typescriptreact",
-          "vue",
-          "html",
-          "markdown",
-          "json",
-          "jsonc",
-          "yaml",
-          "toml",
-          "xml",
-          "gql",
-          "graphql",
-          "astro",
-          "css",
-          "scss"
-        ]
-      }
+      "settings": {}
     }
   }
 }
