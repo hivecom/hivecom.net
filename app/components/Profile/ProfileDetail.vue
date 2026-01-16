@@ -11,6 +11,7 @@ import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useCacheQuery } from '@/composables/useCache'
 import { useCacheUserData } from '@/composables/useCacheUserData'
+import Discussion from '../Discussions/Discussion.vue'
 
 interface Props {
   userId?: string
@@ -792,7 +793,7 @@ async function ignoreFriendRequest() {
       <!-- Profile Sections -->
       <div class="profile-sections">
         <!-- About Section (Left) -->
-        <Flex column gap="m">
+        <Flex column gap="l">
           <!-- Profile Header -->
           <ProfileHeader
             :profile="profile"
@@ -804,6 +805,14 @@ async function ignoreFriendRequest() {
             :is-current-user-admin="isCurrentUserAdmin"
             @open-edit-sheet="openEditSheet"
             @open-complaint-modal="openComplaintModal"
+          />
+
+          <!-- PRofile comments -->
+          <Discussion
+            v-if="props.userId"
+            :id="props.userId"
+            type="profile"
+            :empty-message="`Leave a shout for ${profile.username} here! Or not...`"
           />
         </Flex>
 

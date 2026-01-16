@@ -23,12 +23,14 @@ interface Props extends Partial<DiscussionSettings> {
   type: Tables<'discussions'>['type']
   id: string
   model?: 'comment' | 'forum'
+  emptyMessage?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   model: 'comment',
   timestamps: false,
   inputRows: 3,
+  emptyMessage: 'Nobody has said anything yet...',
 })
 
 provide<DiscussionSettings>('discussion-settings', {
@@ -236,7 +238,7 @@ provide('delete-comment', deleteComment)
         <Flex column y-center x-center>
           <Icon name="ph:chats-teardrop" class="text-color-lighter" :size="32" />
           <p class="text-color-lighter">
-            Nobody has said anything yet...
+            {{ props.emptyMessage }}
           </p>
         </Flex>
       </Card>
