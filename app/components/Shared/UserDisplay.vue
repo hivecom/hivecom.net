@@ -3,6 +3,7 @@ import { Avatar, Flex, Skeleton } from '@dolanske/vui'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
+import { seedRndMinMax } from '@/lib/utils/random'
 
 interface Props {
   userId?: string | null
@@ -104,7 +105,18 @@ const currentUser = useSupabaseUser()
 <template>
   <div class="user-display">
     <!-- Unauthenticated user state -->
-    <Flex v-if="!currentUser" gap="s" y-center class="user-display__header" />
+    <Flex v-if="!currentUser" gap="s" y-center class="user-display__header">
+      <div v-if="!props.hideAvatar" class="user-display__avatar-wrapper">
+        <Avatar :size="size" />
+      </div>
+      <div class="user-display__info">
+        <Flex gap="xs" x-start y-center wrap>
+          <div class="user-display__link">
+            <span v-if="props.userId" class="user-display__username">{{ `User ${seedRndMinMax(0, 100000, props.userId)}` }}</span>
+          </div>
+        </Flex>
+      </div>
+    </Flex>
 
     <!-- Loading state -->
     <Flex v-else-if="loading" gap="s" y-center class="user-display__header">
