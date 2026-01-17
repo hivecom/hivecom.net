@@ -90,31 +90,42 @@ function beginCommentDeletion() {
     <p v-if="timestamps" class="discussion-comment__timestamp">
       {{ dayjs(data.created_at).fromNow() }}
     </p>
-    <div v-if="userId" class="discussion-comment__actions">
-      <ButtonGroup>
-        <Button square size="s" @click="setReplyToComment(data)">
+    <div class="discussion-comment__actions">
+      <template v-if="userId">
+        <ButtonGroup>
+          <Button square size="s" @click="setReplyToComment(data)">
+            <Tooltip>
+              <Icon name="ph:arrow-elbow-up-left-bold" />
+              <template #tooltip>
+                <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
+              </template>
+            </Tooltip>
+          </Button>
+          <Button size="s" square @click="copyCommentLink">
+            <Tooltip>
+              <Icon name="ph:link-bold" />
+              <template #tooltip>
+                <p>Copy link to comment</p>
+              </template>
+            </Tooltip>
+          </Button>
+        </ButtonGroup>
+        <!-- Delete comment option if the comment belongs to me -->
+        <Button v-if="data.created_by === userId" size="s" square @click="beginCommentDeletion">
           <Tooltip>
-            <Icon name="ph:arrow-elbow-up-left-bold" />
+            <Icon name="ph:x-bold" />
             <template #tooltip>
-              <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
+              <p>Delete comment</p>
             </template>
           </Tooltip>
         </Button>
-        <Button size="s" square @click="copyCommentLink">
-          <Tooltip>
-            <Icon name="ph:link-bold" />
-            <template #tooltip>
-              <p>Copy link to comment</p>
-            </template>
-          </Tooltip>
-        </Button>
-      </ButtonGroup>
-      <!-- Delete comment option if the comment belongs to me -->
-      <Button v-if="data.created_by === userId && userId" size="s" square @click="beginCommentDeletion">
+      </template>
+      <!-- Copy of the component above but outside of ButtonGroup -->
+      <Button v-else size="s" square @click="copyCommentLink">
         <Tooltip>
-          <Icon name="ph:x-bold" />
+          <Icon name="ph:link-bold" />
           <template #tooltip>
-            <p>Delete comment</p>
+            <p>Copy link to comment</p>
           </template>
         </Tooltip>
       </Button>
