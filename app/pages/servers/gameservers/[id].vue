@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Button, Flex } from '@dolanske/vui'
+import Discussion from '@/components/Discussions/Discussion.vue'
 import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
@@ -228,19 +229,21 @@ useHead({
       <!-- Server Details (Markdown) -->
       <GameServerMarkdown :gameserver="gameserver" />
 
-      <!-- Server Metadata -->
-      <MetadataCard
-        :created-at="gameserver.created_at"
-        :created-by="gameserver.created_by"
-        :modified-at="gameserver.modified_at"
-        :modified-by="gameserver.modified_by"
-      />
+      <!-- <Discussion
+        :id="String(gameserver.id)"
+        type="gameserver"
+        class="gameserver-discussion"
+      /> -->
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
+
+.gameserver-discussion {
+  max-width: 728px;
+}
 
 .page-content {
   display: flex;
