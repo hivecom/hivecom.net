@@ -276,8 +276,8 @@ provide('delete-comment', deleteComment)
         />
       </template>
       <Card v-else-if="props.emptyMessage !== false" class="card-bg mb-m">
-        <Flex column y-center x-center>
-          <Icon name="ph:chats-teardrop" class="text-color-lighter" :size="32" />
+        <Flex column y-center x-center gap="s">
+          <Icon name="ph:chats-teardrop" class="text-color-lighter" :size="24" />
           <p class="text-color-lighter">
             {{ props.emptyMessage }}
           </p>
@@ -365,7 +365,7 @@ provide('delete-comment', deleteComment)
   &__add--send-button {
     position: absolute;
     right: 12px;
-    bottom: 12px;
+    top: 12px;
   }
 
   &__add--replying-label {

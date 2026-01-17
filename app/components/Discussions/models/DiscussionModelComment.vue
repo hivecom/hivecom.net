@@ -234,7 +234,6 @@ function beginCommentDeletion() {
     opacity: 0;
     z-index: -1;
     visibility: hidden;
-    transition: var(--transition-fast);
   }
 }
 </style>
