@@ -3,7 +3,9 @@ import { BreadcrumbItem, Breadcrumbs, Button, Card, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import ForumListItem from '@/components/Forum/ForumListItem.vue'
 
-// TODO: forum frontpage
+// TODO: hook up to db
+
+// TODO: for search, use the experimental vui Commands component (not done yet)
 </script>
 
 <template>
