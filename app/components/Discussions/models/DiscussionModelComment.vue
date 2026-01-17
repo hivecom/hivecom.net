@@ -90,7 +90,7 @@ function beginCommentDeletion() {
     <p v-if="timestamps" class="discussion-comment__timestamp">
       {{ dayjs(data.created_at).fromNow() }}
     </p>
-    <div class="discussion-comment__actions">
+    <div v-if="userId" class="discussion-comment__actions">
       <ButtonGroup>
         <Button square size="s" @click="setReplyToComment(data)">
           <Tooltip>

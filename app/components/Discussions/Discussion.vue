@@ -7,6 +7,10 @@ import DiscussionItem from './DiscussionItem.vue'
 
 // TODO: add auto-scrolling to a comment with a hash (unless browsers will do that automatically)
 
+// TODO: add support for redacting users but showing avatar & name as "user" OR
+// randomize the user name. Point is, right now it shows nothing if you are not
+// signed in
+
 /**
  * Important note (dolan)
  *
@@ -63,6 +67,9 @@ const props = withDefaults(defineProps<Props>(), {
   inputRows: 3,
   emptyMessage: 'Nobody has said anything yet...',
 })
+
+// If user isn't signed it, do not allow commenting
+const userId = useUserId()
 
 provide<DiscussionSettings>('discussion-settings', {
   timestamps: props.timestamps,
@@ -283,7 +290,7 @@ provide('delete-comment', deleteComment)
           </p>
         </Flex>
       </Card>
-      <div v-if="props.hideInput !== true" class="discussion__add">
+      <div v-if="props.hideInput !== true && userId" class="discussion__add">
         <Alert v-if="replyingTo">
           <Flex y-start gap="xl" x-between>
             <div>
