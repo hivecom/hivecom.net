@@ -7,6 +7,11 @@ export type Json
     | Json[]
 
 export interface Database {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: '13.0.5'
+  }
   private: {
     Tables: {
       kvstore: {
@@ -216,217 +221,6 @@ export interface Database {
           },
         ]
       }
-      discussion_replies: {
-        Row: {
-          content: string
-          created_at: string
-          created_by: string | null
-          discussion_id: string
-          id: string
-          is_deleted: boolean
-          meta: Json | null
-          modified_at: string
-          modified_by: string | null
-          reply_to_id: string | null
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          created_by?: string | null
-          discussion_id: string
-          id?: string
-          is_deleted?: boolean
-          meta?: Json | null
-          modified_at?: string
-          modified_by?: string | null
-          reply_to_id?: string | null
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          created_by?: string | null
-          discussion_id?: string
-          id?: string
-          is_deleted?: boolean
-          meta?: Json | null
-          modified_at?: string
-          modified_by?: string | null
-          reply_to_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'discussion_replies_created_by_fkey'
-            columns: ['created_by']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussion_replies_discussion_id_fkey'
-            columns: ['discussion_id']
-            isOneToOne: false
-            referencedRelation: 'discussions'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussion_replies_modified_by_fkey'
-            columns: ['modified_by']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussion_replies_reply_to_id_fkey'
-            columns: ['reply_to_id']
-            isOneToOne: false
-            referencedRelation: 'discussion_replies'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      discussions: {
-        Row: {
-          accepted_reply_id: string | null
-          announcement_id: number | null
-          created_at: string
-          created_by: string | null
-          description: string | null
-          event_id: number | null
-          forum_category_id: string | null
-          gameserver_id: number | null
-          id: string
-          is_locked: boolean
-          is_sticky: boolean
-          modified_at: string
-          modified_by: string | null
-          profile_id: string | null
-          project_id: number | null
-          referendum_id: number | null
-          reply_count: number
-          slug: string | null
-          title: string | null
-          type: Database['public']['Enums']['discussion_type']
-          view_count: number
-        }
-        Insert: {
-          accepted_reply_id?: string | null
-          announcement_id?: number | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          event_id?: number | null
-          forum_category_id?: string | null
-          gameserver_id?: number | null
-          id?: string
-          is_locked?: boolean
-          is_sticky?: boolean
-          modified_at?: string
-          modified_by?: string | null
-          profile_id?: string | null
-          project_id?: number | null
-          referendum_id?: number | null
-          reply_count?: number
-          slug?: string | null
-          title?: string | null
-          type: Database['public']['Enums']['discussion_type']
-          view_count?: number
-        }
-        Update: {
-          accepted_reply_id?: string | null
-          announcement_id?: number | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          event_id?: number | null
-          forum_category_id?: string | null
-          gameserver_id?: number | null
-          id?: string
-          is_locked?: boolean
-          is_sticky?: boolean
-          modified_at?: string
-          modified_by?: string | null
-          profile_id?: string | null
-          project_id?: number | null
-          referendum_id?: number | null
-          reply_count?: number
-          slug?: string | null
-          title?: string | null
-          type?: Database['public']['Enums']['discussion_type']
-          view_count?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'discussions_accepted_reply_id_fkey'
-            columns: ['accepted_reply_id']
-            isOneToOne: false
-            referencedRelation: 'discussion_replies'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_announcement_id_fkey'
-            columns: ['announcement_id']
-            isOneToOne: false
-            referencedRelation: 'announcements'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_created_by_fkey'
-            columns: ['created_by']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_event_id_fkey'
-            columns: ['event_id']
-            isOneToOne: false
-            referencedRelation: 'events'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_forum_category_id_fkey'
-            columns: ['forum_category_id']
-            isOneToOne: false
-            referencedRelation: 'forum_categories'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_gameserver_id_fkey'
-            columns: ['gameserver_id']
-            isOneToOne: false
-            referencedRelation: 'gameservers'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_modified_by_fkey'
-            columns: ['modified_by']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_profile_id_fkey'
-            columns: ['profile_id']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_project_id_fkey'
-            columns: ['project_id']
-            isOneToOne: false
-            referencedRelation: 'projects'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_referendum_id_fkey'
-            columns: ['referendum_id']
-            isOneToOne: false
-            referencedRelation: 'referendums'
-            referencedColumns: ['id']
-          },
-        ]
-      }
       events: {
         Row: {
           created_at: string
@@ -572,60 +366,6 @@ export interface Database {
           url?: string | null
         }
         Relationships: []
-      }
-      forum_categories: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          description: string | null
-          id: string
-          is_archived: boolean
-          modified_at: string
-          modified_by: string | null
-          name: string
-          slug: string
-          sort_order: number
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_archived?: boolean
-          modified_at?: string
-          modified_by?: string | null
-          name: string
-          slug: string
-          sort_order?: number
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_archived?: boolean
-          modified_at?: string
-          modified_by?: string | null
-          name?: string
-          slug?: string
-          sort_order?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'forum_categories_created_by_fkey'
-            columns: ['created_by']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'forum_categories_modified_by_fkey'
-            columns: ['modified_by']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-        ]
       }
       friends: {
         Row: {
@@ -1130,6 +870,7 @@ export interface Database {
       referendum_votes: {
         Row: {
           choices: number[]
+          comment: string | null
           created_at: string
           id: number
           modified_at: string | null
@@ -1138,6 +879,7 @@ export interface Database {
         }
         Insert: {
           choices?: number[]
+          comment?: string | null
           created_at?: string
           id?: number
           modified_at?: string | null
@@ -1146,6 +888,7 @@ export interface Database {
         }
         Update: {
           choices?: number[]
+          comment?: string | null
           created_at?: string
           id?: number
           modified_at?: string | null
@@ -1337,10 +1080,6 @@ export interface Database {
         Args: { permission_name: Database['public']['Enums']['app_permission'] }
         Returns: boolean
       }
-      increment_discussion_view_count: {
-        Args: { target_discussion_id: string }
-        Returns: undefined
-      }
       is_owner: { Args: { record_user_id: string }, Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }, Returns: boolean }
       pgmq_delete: {
@@ -1404,10 +1143,6 @@ export interface Database {
         | 'profiles.delete'
         | 'profiles.read'
         | 'profiles.update'
-        | 'projects.create'
-        | 'projects.read'
-        | 'projects.update'
-        | 'projects.delete'
         | 'referendums.create'
         | 'referendums.delete'
         | 'referendums.read'
@@ -1424,6 +1159,10 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
+        | 'projects.read'
+        | 'projects.create'
+        | 'projects.update'
+        | 'projects.delete'
         | 'assets.create'
         | 'assets.delete'
         | 'assets.read'
@@ -1436,20 +1175,7 @@ export interface Database {
         | 'kvstore.read'
         | 'kvstore.update'
         | 'kvstore.delete'
-        | 'discussions.create'
-        | 'discussions.read'
-        | 'discussions.update'
-        | 'discussions.delete'
-        | 'discussions.manage'
       app_role: 'admin' | 'moderator'
-      discussion_type:
-        | 'forum'
-        | 'announcement'
-        | 'event'
-        | 'referendum'
-        | 'profile'
-        | 'project'
-        | 'gameserver'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       kvstore_type: 'NUMBER' | 'BOOLEAN' | 'STRING' | 'JSON'
       presence_steam_status:
@@ -1632,10 +1358,6 @@ export const Constants = {
         'profiles.delete',
         'profiles.read',
         'profiles.update',
-        'projects.create',
-        'projects.read',
-        'projects.update',
-        'projects.delete',
         'referendums.create',
         'referendums.delete',
         'referendums.read',
@@ -1652,6 +1374,10 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
+        'projects.read',
+        'projects.create',
+        'projects.update',
+        'projects.delete',
         'assets.create',
         'assets.delete',
         'assets.read',
@@ -1664,22 +1390,8 @@ export const Constants = {
         'kvstore.read',
         'kvstore.update',
         'kvstore.delete',
-        'discussions.create',
-        'discussions.read',
-        'discussions.update',
-        'discussions.delete',
-        'discussions.manage',
       ],
       app_role: ['admin', 'moderator'],
-      discussion_type: [
-        'forum',
-        'announcement',
-        'event',
-        'referendum',
-        'profile',
-        'project',
-        'gameserver',
-      ],
       events_rsvp_status: ['yes', 'no', 'tentative'],
       kvstore_type: ['NUMBER', 'BOOLEAN', 'STRING', 'JSON'],
       presence_steam_status: [
