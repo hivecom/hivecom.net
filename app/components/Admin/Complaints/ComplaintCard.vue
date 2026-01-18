@@ -91,7 +91,7 @@ function handleAcknowledge(event: Event) {
     <template #header>
       <Flex y-center :gap="0" class="complaint-card__header" expand>
         <Flex gap="xs" x-between y-center expand>
-          <Flex gap="xs" column x-start y-center>
+          <Flex gap="xs" column x-start>
             <span class="complaint-card__id">Complaint #{{ complaint.id }}</span>
             <TimestampDate
               :date="complaint.created_at"
@@ -163,19 +163,34 @@ function handleAcknowledge(event: Event) {
 <style scoped lang="scss">
 .complaint-card {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-fast);
   position: relative;
   border-left: 4px solid var(--color-border);
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 280px;
+  overflow: hidden;
+
+  :deep(.vui-card-header),
+  :deep(.vui-card-footer) {
+    transition: var(--transition-fast);
+  }
+
+  :deep(.vui-card-content) {
+    padding-block: var(--space-l) !important;
+  }
 }
 
 .complaint-card:hover {
-  background-color: var(--color-bg-raised);
-  transform: translateY(-1px);
+  background-color: var(--color-bg-medium);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  :deep(.vui-card-header),
+  :deep(.vui-card-footer) {
+    transition: var(--transition-fast);
+    background-color: var(--color-bg-medium);
+  }
 }
 
 .complaint-card:hover .complaint-card__click-indicator {
@@ -194,14 +209,10 @@ function handleAcknowledge(event: Event) {
   border-left-color: var(--color-text-green);
 }
 
-.complaint-card__header {
-  margin-bottom: var(--space-s);
-}
-
 .complaint-card__id {
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
-  font-size: var(--font-size-s);
+  font-size: var(--font-size-m);
 }
 
 .complaint-card__user {
@@ -209,11 +220,9 @@ function handleAcknowledge(event: Event) {
 }
 
 .complaint-card__message {
-  margin-bottom: var(--space-m);
   flex: 1;
   display: flex;
   align-items: flex-start;
-  min-height: 80px; /* Ensure minimum space for message content */
 }
 
 .complaint-card__message p {
@@ -254,10 +263,10 @@ function handleAcknowledge(event: Event) {
 @keyframes pulse {
   0%,
   100% {
-    opacity: 0.1;
+    opacity: 0.05;
   }
   50% {
-    opacity: 0.2;
+    opacity: 0.1;
   }
 }
 

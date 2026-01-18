@@ -171,6 +171,9 @@ onMounted(async () => {
               </p>
 
               <Alert v-if="user" variant="success" filled>
+                <template #icon>
+                  <Icon name="ph:users-three" />
+                </template>
                 Thanks for being a part of the community!
               </Alert>
 

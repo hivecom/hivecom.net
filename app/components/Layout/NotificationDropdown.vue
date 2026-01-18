@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
 import { Button, Flex, Popout } from '@dolanske/vui'
-import { onClickOutside } from '@vueuse/core'
 import NotificationCardBirthday from '@/components/Notifications/NotificationCardBirthday.vue'
 import NotificationCardEmpty from '@/components/Notifications/NotificationCardEmpty.vue'
 import NotificationCardError from '@/components/Notifications/NotificationCardError.vue'
@@ -24,11 +23,7 @@ const pendingComplaintCount = ref(0)
 const hasUser = computed(() => Boolean(user.value && userId.value))
 
 const anchorRef = useTemplateRef('anchor')
-const popoutRef = useTemplateRef('popout')
 const open = ref(false)
-
-// @ts-expect-error No why TS is complaining but this is literally how the docs tell you to use this
-onClickOutside(popoutRef, () => open.value = false)
 
 async function fetchNotifications() {
   if (!hasUser.value) {
@@ -264,7 +259,7 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
       <span v-if="badgeText" class="notification-menu__badge" />
     </Button>
 
-    <Popout ref="popout" :visible="open" placement="bottom-end" :anchor="anchorRef">
+    <Popout :visible="open" placement="bottom-end" :anchor="anchorRef" @click-outside="open = false">
       <Flex y-center x-between class="notification-menu__title-row">
         <p class="notification-menu__title">
           Notifications
