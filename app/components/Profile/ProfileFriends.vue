@@ -117,7 +117,7 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
     <div v-else class="friends-empty">
       <Flex column y-center x-center gap="s">
         <Icon name="ph:users" size="32" class="text-color-light" />
-        <p class="text-color-light text-s text-center">
+        <p class="text-color-light text-s text-center mb-m">
           <template v-if="isOwnProfile">
             You haven't made any friends yet. Start connecting with other community members!
           </template>
@@ -271,10 +271,9 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
   margin: 0 auto;
 }
 
-.friends-empty {
-  p {
-    margin: 0;
-    margin-bottom: var(--space-s);
-  }
-}
+// .friends-empty {
+//   p {
+//     margin: 0;
+//   }
+// }
 </style>

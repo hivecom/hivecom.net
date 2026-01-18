@@ -47,6 +47,10 @@ defineProps<Props>()
 </template>
 
 <style lang="scss" scoped>
+.metadata-card :deep(.vui-accordion-header) {
+  padding-block: var(--space-s);
+}
+
 .metadata-card__header {
   width: 100%;
 }
