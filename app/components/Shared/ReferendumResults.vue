@@ -161,7 +161,6 @@ const isBelowSmall = useBreakpoint('<s')
             type="event"
             :hash="md5(result.choice)"
             :input-rows="2"
-            :empty-message="false"
           />
         </div>
       </Accordion>

@@ -56,16 +56,16 @@ interface Props extends Partial<DiscussionSettings> {
    */
   hideInput?: boolean
   /**
-   * Sets the message displayed when discussion is empty
+   * Sets the input placeholder
    */
-  emptyMessage?: string | false
+  placeholder?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   model: 'comment',
   timestamps: false,
   inputRows: 3,
-  emptyMessage: 'Nobody has said anything yet...',
+  placeholder: 'Leave your comment...',
 })
 
 // If user isn't signed it, do not allow commenting
@@ -293,14 +293,6 @@ provide('delete-comment', deleteComment)
           :model="props.model"
         />
       </template>
-      <Card v-else-if="props.emptyMessage !== false" class="card-bg mb-m">
-        <Flex column y-center x-center gap="s">
-          <Icon name="ph:chats-teardrop" class="text-color-lighter" :size="24" />
-          <p class="text-color-lighter">
-            {{ props.emptyMessage }}
-          </p>
-        </Flex>
-      </Card>
       <div v-if="props.hideInput !== true && userId" class="discussion__add">
         <Alert v-if="replyingTo">
           <Flex y-start gap="xl" x-between>
@@ -327,7 +319,7 @@ provide('delete-comment', deleteComment)
             ref="textarea"
             v-model="form.message"
             :errors="Object.values(errors.message.errors)"
-            :placeholder="`Write your ${!!replyingTo ? 'reply' : 'comment'}...`"
+            :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
             :rows="props.inputRows"
             expand
             auto-resize

@@ -812,7 +812,7 @@ async function ignoreFriendRequest() {
             v-if="props.userId"
             :id="props.userId"
             type="profile"
-            :empty-message="`Leave a shout for ${profile.username} here! Or not...`"
+            :placeholder="`Leave a shout for ${profile.username} here! Or not...`"
           />
         </Flex>
 
