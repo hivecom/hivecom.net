@@ -1,35 +1,33 @@
 <script setup lang="ts">
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, Card, Dropdown, Flex, Grid, Input, Modal, Switch } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Input, Modal, Select, Switch } from '@dolanske/vui'
 import { normalizeErrors } from '@/lib/utils/formatting'
 
 const props = defineProps<{
   open: boolean
-  // TODO: implemented editing. Its value will be a topic object
+  // TODO: implemented editing. Its value will be a discussion object
   edit?: never
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
-
 }>()
 
 const topicOptions = computed(() => {
   return [
-    { label: 'Top-level', parentId: null, path: '/' },
-    { label: 'Rules', parentId: 1, path: '/rules' },
-    { label: 'Announcements', parentId: 2, path: '/announcements' },
+    { label: 'Rules', value: 1 },
+    { label: 'Announcements', value: 2 },
   ]
 })
 
 const form = reactive({
   name: '',
   description: '',
-  // Null for top-level topics
-  parentId: null as number | null,
   locked: false,
   private: false,
 })
+
+const selectedId = ref()
 
 const rules = defineRules<typeof form>({
   name: [required, minLenNoSpace(1), maxLength(128)],
@@ -59,24 +57,36 @@ function submitForm() {
 <template>
   <Modal v-bind="props" size="s" :card="{ footerSeparator: true }" @close="emit('close')">
     <template #header>
-      <h3>New topic</h3>
+      <h3>New discussion</h3>
     </template>
     <p class="mb-l">
-      Topics are top level categories in which you can create discussions. You can also nest topics within topics.
+      Discussions can be created under a topic. Users will be able to post replies within discussions.
     </p>
 
     <Flex column gap="m">
-      <Input :errors="normalizeErrors(errors.name)" label="Name" expand placeholder="Topic title" required />
-      <Input :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Simply describe the topic" />
+      <Input :errors="normalizeErrors(errors.name)" label="Name" expand placeholder="What is this discussion about?" required />
+      <Input :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Add more context to the discussion" />
 
-      <div class="w-100">
-        <label class="vui-label">Location</label>
+      <Select
+        v-model="selectedId"
+        :options="topicOptions"
+        label="Topic"
+        hint="Choose which topic will this discussion be created under"
+        expand
+        required
+      />
+
+      <!-- <div class="w-100">
+        <label class="vui-label">Topic</label>
+        <p class="vui-hint">
+          Select under which topic will this discussion be created
+        </p>
         <Dropdown expand>
           <template #trigger="{ toggle, isOpen }">
             <Button expand class="w-100" :loading="loading" outline @click="toggle">
               <template #start>
                 <span class="text-size-m">
-                  {{ form.parentId === null ? 'Top-level' : topicOptions.find(o => o.parentId === form.parentId)?.label || 'Select parent topic' }}
+                  {{ topicOptions.find(o => o.parentId === form.parentId)?.label || 'Select parent topic' }}
                 </span>
               </template>
               <template #end>
@@ -86,16 +96,13 @@ function submitForm() {
           </template>
           <template #default="{ close }">
             <Flex column gap="xxs">
-              <button v-for="option in topicOptions" :key="option.path" :label="option.label" expand class="form-add-topic__button" @click="form.parentId = option.parentId, close()">
+              <button v-for="option in topicOptions" :key="option.path" :label="option.label" expand class="form-add-discussion__button" @click="form.parentId = option.parentId, close()">
                 <span>{{ option.label }}</span>
-                <p class="font-size-xs">
-                  {{ option.path }}
-                </p>
               </button>
             </Flex>
           </template>
         </Dropdown>
-      </div>
+      </div> -->
 
       <Card class="card-bg">
         <Grid :columns="2" gap="m">
@@ -119,7 +126,7 @@ function submitForm() {
 </template>
 
 <style scoped lang="scss">
-.form-add-topic__button {
+.form-add-discussion__button {
   display: flex;
   flex-direction: column;
   gap: 0;

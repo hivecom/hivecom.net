@@ -172,7 +172,16 @@ table td {
   text-align: left;
   margin-bottom: 8px;
   font-size: var(--font-size-m);
-  color: var(--input-color-text);
+  color: var(--color-text);
+}
+
+.vui-hint {
+  margin-bottom: 8px;
+  margin-top: -4px;
+  color: var(--color-text-lighter);
+  font-size: var(--font-size-s);
+  display: block;
+  text-align: left;
 }
 
 .vui-popout {

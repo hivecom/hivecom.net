@@ -2,7 +2,7 @@
 import { BreadcrumbItem, Breadcrumbs, Button, Card, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import ForumListItem from '@/components/Forum/ForumListItem.vue'
-import ForumModalAddPost from '@/components/Forum/ForumModalAddPost.vue'
+import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 
 // TODO: hook up to db
@@ -10,7 +10,7 @@ import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 // TODO: for search, use the experimental vui Commands component (not done yet)
 
 const addingTopic = ref(false)
-const addingPost = ref(false)
+const addingDiscussion = ref(false)
 
 const activeForumPath = computed(() => {
   return [
@@ -48,8 +48,8 @@ const activeForumPath = computed(() => {
               Create
             </Button>
           </template>
-          <DropdownItem size="s" @click="addingPost = true">
-            Post
+          <DropdownItem size="s" @click="addingDiscussion = true">
+            Discussion
           </DropdownItem>
           <DropdownItem size="s" @click="addingTopic = true">
             Topic
@@ -108,9 +108,9 @@ const activeForumPath = computed(() => {
       @close="addingTopic = false"
     />
 
-    <ForumModalAddPost
-      :open="addingPost"
-      @close="addingPost = false"
+    <ForumModalAddDiscussion
+      :open="addingDiscussion"
+      @close="addingDiscussion = false"
     />
   </div>
 </template>
