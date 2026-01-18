@@ -133,7 +133,7 @@ const bannerSurfaceStyle = computed(() => {
 .project-card {
   position: relative;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: var(--transition-fast);
   border: 1px solid var(--color-border);
   overflow: hidden;
   width: 100%; // Ensure the card is full width
@@ -151,7 +151,7 @@ const bannerSurfaceStyle = computed(() => {
     height: 3px;
     background: linear-gradient(90deg, var(--color-accent), var(--color-accent-light));
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: var(--transition-fast);
   }
 
   &:hover {
@@ -249,7 +249,7 @@ const bannerSurfaceStyle = computed(() => {
   justify-content: center;
   border-radius: 50%;
   color: var(--color-text-light);
-  transition: all 0.3s ease;
+  transition: var(--transition-fast);
 
   svg {
     font-size: 16px;
@@ -280,7 +280,7 @@ const bannerSurfaceStyle = computed(() => {
 }
 
 .project-card:hover .project-card__banner-surface--image {
-  transition: transform 0.2s ease;
+  transition: var(--transition-fast);
   transform: var(--banner-placeholder-transform, scale(1)) scale(1.05);
 }
 
@@ -288,13 +288,12 @@ const bannerSurfaceStyle = computed(() => {
   position: absolute;
   top: 12px;
   left: 12px;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.8);
   color: white;
-  padding: 2px 8px;
-  border-radius: var(--border-radius-s);
+  padding: 4px 8px;
+  border-radius: 999px;
   font-size: var(--font-size-xxs);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
 }
 
 .project-card__title {

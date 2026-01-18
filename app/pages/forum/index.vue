@@ -1,11 +1,23 @@
 <script setup lang="ts">
-import { BreadcrumbItem, Breadcrumbs, Button, Card, Flex } from '@dolanske/vui'
+import { BreadcrumbItem, Breadcrumbs, Button, Card, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import ForumListItem from '@/components/Forum/ForumListItem.vue'
+import ForumModalAddPost from '@/components/Forum/ForumModalAddPost.vue'
+import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 
 // TODO: hook up to db
 
 // TODO: for search, use the experimental vui Commands component (not done yet)
+
+const addingTopic = ref(false)
+const addingPost = ref(false)
+
+const activeForumPath = computed(() => {
+  return [
+    { id: 0, title: 'Frontpage' },
+    { id: 1, title: 'General' },
+  ]
+})
 </script>
 
 <template>
@@ -21,21 +33,28 @@ import ForumListItem from '@/components/Forum/ForumListItem.vue'
 
     <Flex x-between class="mb-m">
       <Breadcrumbs>
-        <BreadcrumbItem href="#">
-          Frontpage
+        <BreadcrumbItem v-for="item in activeForumPath" :key="item.id">
+          {{ item.title }}
         </BreadcrumbItem>
-        <BreadcrumbItem href="#">
-          Sub category
-        </BreadcrumbItem>
-        <BreadcrumbItem>Some example post title</BreadcrumbItem>
       </Breadcrumbs>
 
       <Flex gap="s">
-        <NuxtLink to="/forum/create">
-          <Button size="s" variant="accent">
-            Create
-          </Button>
-        </NuxtLink>
+        <Dropdown>
+          <template #trigger="{ toggle }">
+            <Button size="s" variant="accent" @click="toggle">
+              <template #start>
+                <Icon name="ph:plus" :size="16" />
+              </template>
+              Create
+            </Button>
+          </template>
+          <DropdownItem size="s" @click="addingPost = true">
+            Post
+          </DropdownItem>
+          <DropdownItem size="s" @click="addingTopic = true">
+            Topic
+          </DropdownItem>
+        </Dropdown>
         <!-- TODO: I want search to be 1-level deep list of all categories & posts with a title, path (location) of the post -->
         <Button size="s">
           <template #start>
@@ -83,6 +102,16 @@ import ForumListItem from '@/components/Forum/ForumListItem.vue'
         />
       </ul>
     </Card>
+
+    <ForumModalAddTopic
+      :open="addingTopic"
+      @close="addingTopic = false"
+    />
+
+    <ForumModalAddPost
+      :open="addingPost"
+      @close="addingPost = false"
+    />
   </div>
 </template>
 

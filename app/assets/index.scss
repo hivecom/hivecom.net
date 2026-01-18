@@ -167,6 +167,14 @@ table td {
   }
 }
 
+.vui-label {
+  display: block;
+  text-align: left;
+  margin-bottom: 8px;
+  font-size: var(--font-size-m);
+  color: var(--input-color-text);
+}
+
 .vui-popout {
   box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.5);
 }
