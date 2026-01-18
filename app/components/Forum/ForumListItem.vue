@@ -3,6 +3,8 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import TinyBadge from '../Shared/TinyBadge.vue'
 
+// TODO: display if discussion / topic is locked or private
+
 const {
   data,
   pinned = false,

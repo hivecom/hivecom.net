@@ -65,6 +65,8 @@ const activeForumPath = computed(() => {
       </Flex>
     </Flex>
 
+    <!-- TODO: display if category is locked / private -->
+
     <Card class="forum__category" separators>
       <div class="forum__category-title">
         <h3>About forums</h3>
