@@ -276,7 +276,7 @@ useHead({
   }
 }
 
-.event-discussion {
+/* .event-discussion {
   max-width: 728px;
-}
+} */
 </style>

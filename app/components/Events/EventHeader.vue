@@ -303,6 +303,10 @@ onUnmounted(() => {
   }
 
   &__duration {
+    font-size: var(--font-size-m);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-lighter);
+
     @media (max-width: $breakpoint-s) {
       font-size: var(--font-size-xxs);
     }

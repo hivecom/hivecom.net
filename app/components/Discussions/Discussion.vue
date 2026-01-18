@@ -101,6 +101,7 @@ watch(() => props.id, async () => {
     .single()
 
   if (discussionResponse.error) {
+    loading.value = false
     return error.value = discussionResponse.error.message
   }
   else {
@@ -121,6 +122,7 @@ watch(() => props.id, async () => {
   const commentsResponse = await commentQuery.order('created_at')
 
   if (commentsResponse.error) {
+    loading.value = false
     return error.value = commentsResponse.error?.message
   }
   else {
@@ -270,6 +272,15 @@ provide('delete-comment', deleteComment)
   <div class="discussion" :class="[`discussion--${props.model}`]">
     <template v-if="loading">
       <Skeleton height="49px" width="auto" style="margin:12px" />
+    </template>
+
+    <template v-else-if="error">
+      <Alert variant="danger">
+        <p>Failed to load discussion</p>
+        <p class="text-color-lighter text-size-s">
+          {{ error }}
+        </p>
+      </Alert>
     </template>
 
     <!-- Listing view -->

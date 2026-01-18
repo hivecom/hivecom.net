@@ -163,7 +163,7 @@ const isBelowSmall = useBreakpoint('<m')
         display: inline-block;
         width: 8px;
         height: 8px;
-        background-color: var(--color-accent);
+        background-color: var(--color-text-red);
         border-radius: 999px;
         animation: shimmer 2s linear infinite;
       }

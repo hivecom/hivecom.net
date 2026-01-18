@@ -306,14 +306,14 @@ useHead({
 .project-content {
   &__markdown {
     padding: var(--space-m);
-    max-width: 728px;
+    /* max-width: 728px; */
     margin-bottom: var(--space-xl);
   }
 }
 
-.project-discussion {
+/* .project-discussion {
   max-width: 728px;
-}
+} */
 
 @media (max-width: 768px) {
   .project-header__title {

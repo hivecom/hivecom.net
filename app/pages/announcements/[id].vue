@@ -308,14 +308,14 @@ useHead({
 .announcement-content {
   &__markdown {
     padding: var(--space-m);
-    max-width: 728px;
+    /* max-width: 728px; */
     margin-bottom: var(--space-xl);
   }
 }
 
-.announcement-discussion {
+/* .announcement-discussion {
   max-width: 728px;
-}
+} */
 
 @media (max-width: 768px) {
   .announcement-header__title {

@@ -5,7 +5,6 @@ import Discussion from '@/components/Discussions/Discussion.vue'
 import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
-import MetadataCard from '@/components/Shared/MetadataCard.vue'
 
 // Get route parameter
 const route = useRoute()
@@ -229,11 +228,11 @@ useHead({
       <!-- Server Details (Markdown) -->
       <GameServerMarkdown :gameserver="gameserver" />
 
-      <!-- <Discussion
+      <Discussion
         :id="String(gameserver.id)"
         type="gameserver"
         class="gameserver-discussion"
-      /> -->
+      />
     </div>
   </div>
 </template>
@@ -241,9 +240,9 @@ useHead({
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
 
-.gameserver-discussion {
+/* .gameserver-discussion {
   max-width: 728px;
-}
+} */
 
 .page-content {
   display: flex;

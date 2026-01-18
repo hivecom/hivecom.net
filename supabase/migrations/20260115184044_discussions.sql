@@ -1,5 +1,3 @@
-
-
 -- Create enum for discussion types to handle polymorphism
 CREATE TYPE public.discussion_type AS ENUM (
   'forum',
@@ -7,7 +5,8 @@ CREATE TYPE public.discussion_type AS ENUM (
   'event',
   'referendum',
   'profile',
-  'project'
+  'project',
+  'gameserver'
 );
 
 -- Create forum categories table to organize forum threads
@@ -45,6 +44,8 @@ CREATE TABLE public.discussions (
   event_id bigint REFERENCES public.events(id) ON DELETE CASCADE,
   referendum_id bigint REFERENCES public.referendums(id) ON DELETE CASCADE,
   profile_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  project_id bigint REFERENCES public.projects(id) ON DELETE CASCADE,
+  gameserver_id bigint REFERENCES public.gameservers(id) ON DELETE CASCADE,
 
   -- Metadata
   is_locked boolean NOT NULL DEFAULT false,
@@ -65,7 +66,9 @@ CREATE TABLE public.discussions (
     (type = 'announcement' AND announcement_id IS NOT NULL) OR
     (type = 'event' AND event_id IS NOT NULL) OR
     (type = 'referendum' AND referendum_id IS NOT NULL) OR
-    (type = 'profile' AND profile_id IS NOT NULL)
+    (type = 'profile' AND profile_id IS NOT NULL) OR
+    (type = 'project' AND project_id IS NOT NULL) OR
+    (type = 'gameserver' AND gameserver_id IS NOT NULL)
   ),
 
   -- Constraint to ensure forum topics have a title (body content lives in first reply)
@@ -84,6 +87,8 @@ CREATE UNIQUE INDEX discussions_announcement_unique_idx ON public.discussions(an
 CREATE UNIQUE INDEX discussions_event_unique_idx ON public.discussions(event_id) WHERE event_id IS NOT NULL;
 CREATE UNIQUE INDEX discussions_referendum_unique_idx ON public.discussions(referendum_id) WHERE referendum_id IS NOT NULL;
 CREATE UNIQUE INDEX discussions_profile_unique_idx ON public.discussions(profile_id) WHERE profile_id IS NOT NULL;
+CREATE UNIQUE INDEX discussions_project_unique_idx ON public.discussions(project_id) WHERE project_id IS NOT NULL;
+CREATE UNIQUE INDEX discussions_gameserver_unique_idx ON public.discussions(gameserver_id) WHERE gameserver_id IS NOT NULL;
 
 -- FK Indexes for performance
 CREATE INDEX discussions_forum_category_id_idx ON public.discussions(forum_category_id);
@@ -159,7 +164,7 @@ CREATE POLICY "Authenticated users can create discussions"
       type = 'forum' OR
       type = 'profile' OR
       -- Allow creation on other types if the parent exists (logic simplified here, typically handled by UI/App guards)
-      type IN ('event', 'announcement', 'referendum')
+      type IN ('event', 'announcement', 'referendum', 'project', 'gameserver')
     )
   );
 

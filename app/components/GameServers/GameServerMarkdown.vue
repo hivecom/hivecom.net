@@ -49,7 +49,7 @@ defineProps<Props>()
 
   &__content {
     padding: var(--space-m);
-    max-width: 728px;
+    /* max-width: 728px; */
     margin-bottom: var(--space-xl);
   }
 }
