@@ -5,15 +5,21 @@ CREATE OR REPLACE FUNCTION public.create_discussion_for_entity()
   SECURITY DEFINER
   AS $$
 DECLARE
-  target_type text := TG_ARGV[0];
-  target_col text := TG_ARGV[1];
+  target_col text := TG_ARGV[0];
+  target_topic_slug text := TG_ARGV[1]; -- Optional topic slug
+  found_topic_id uuid;
 BEGIN
+  -- If a topic slug is provided, try to find it
+  IF target_topic_slug IS NOT NULL THEN
+    SELECT id INTO found_topic_id FROM public.discussion_topics WHERE slug = target_topic_slug;
+  END IF;
+
   -- We use dynamic SQL because the target column name varies
   EXECUTE format(
-    'INSERT INTO public.discussions (type, %I) VALUES ($1, $2)',
+    'INSERT INTO public.discussions (%I, discussion_topic_id) VALUES ($1, $2)',
     target_col
   )
-  USING target_type::public.discussion_type, NEW.id;
+  USING NEW.id, found_topic_id;
 
   RETURN NEW;
 END;
@@ -26,72 +32,39 @@ DROP TRIGGER IF EXISTS create_discussion_on_announcement ON public.announcements
 CREATE TRIGGER create_discussion_on_announcement
   AFTER INSERT ON public.announcements
   FOR EACH ROW
-  EXECUTE FUNCTION public.create_discussion_for_entity('announcement', 'announcement_id');
+  EXECUTE FUNCTION public.create_discussion_for_entity('announcement_id', 'announcements');
 
 -- Events
 DROP TRIGGER IF EXISTS create_discussion_on_event ON public.events;
 CREATE TRIGGER create_discussion_on_event
   AFTER INSERT ON public.events
   FOR EACH ROW
-  EXECUTE FUNCTION public.create_discussion_for_entity('event', 'event_id');
+  EXECUTE FUNCTION public.create_discussion_for_entity('event_id', 'events');
 
 -- Referendums
 DROP TRIGGER IF EXISTS create_discussion_on_referendum ON public.referendums;
 CREATE TRIGGER create_discussion_on_referendum
   AFTER INSERT ON public.referendums
   FOR EACH ROW
-  EXECUTE FUNCTION public.create_discussion_for_entity('referendum', 'referendum_id');
+  EXECUTE FUNCTION public.create_discussion_for_entity('referendum_id', 'governance');
 
 -- Projects
 DROP TRIGGER IF EXISTS create_discussion_on_project ON public.projects;
 CREATE TRIGGER create_discussion_on_project
   AFTER INSERT ON public.projects
   FOR EACH ROW
-  EXECUTE FUNCTION public.create_discussion_for_entity('project', 'project_id');
+  EXECUTE FUNCTION public.create_discussion_for_entity('project_id', 'projects');
 
--- Gameservers
+-- Gameservers (No topic assigned automatically for now)
 DROP TRIGGER IF EXISTS create_discussion_on_gameserver ON public.gameservers;
 CREATE TRIGGER create_discussion_on_gameserver
   AFTER INSERT ON public.gameservers
   FOR EACH ROW
-  EXECUTE FUNCTION public.create_discussion_for_entity('gameserver', 'gameserver_id');
+  EXECUTE FUNCTION public.create_discussion_for_entity('gameserver_id', NULL);
 
--- Profiles
--- Note: Profiles usually auto-created via auth triggers, so this chains off that
+-- Profiles (No topic)
 DROP TRIGGER IF EXISTS create_discussion_on_profile ON public.profiles;
 CREATE TRIGGER create_discussion_on_profile
   AFTER INSERT ON public.profiles
   FOR EACH ROW
-  EXECUTE FUNCTION public.create_discussion_for_entity('profile', 'profile_id');
-
--- Backfill existing entities to ensure they have discussions
-
--- Announcements
-INSERT INTO public.discussions (type, announcement_id)
-SELECT 'announcement', id FROM public.announcements
-WHERE NOT EXISTS (SELECT 1 FROM public.discussions WHERE announcement_id = public.announcements.id);
-
--- Events
-INSERT INTO public.discussions (type, event_id)
-SELECT 'event', id FROM public.events
-WHERE NOT EXISTS (SELECT 1 FROM public.discussions WHERE event_id = public.events.id);
-
--- Referendums
-INSERT INTO public.discussions (type, referendum_id)
-SELECT 'referendum', id FROM public.referendums
-WHERE NOT EXISTS (SELECT 1 FROM public.discussions WHERE referendum_id = public.referendums.id);
-
--- Projects
-INSERT INTO public.discussions (type, project_id)
-SELECT 'project', id FROM public.projects
-WHERE NOT EXISTS (SELECT 1 FROM public.discussions WHERE project_id = public.projects.id);
-
--- Gameservers
-INSERT INTO public.discussions (type, gameserver_id)
-SELECT 'gameserver', id FROM public.gameservers
-WHERE NOT EXISTS (SELECT 1 FROM public.discussions WHERE gameserver_id = public.gameservers.id);
-
--- Profiles
-INSERT INTO public.discussions (type, profile_id)
-SELECT 'profile', id FROM public.profiles
-WHERE NOT EXISTS (SELECT 1 FROM public.discussions WHERE profile_id = public.profiles.id);
+  EXECUTE FUNCTION public.create_discussion_for_entity('profile_id', NULL);
