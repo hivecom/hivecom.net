@@ -1,22 +1,15 @@
--- Create enum for discussion types to handle polymorphism
-CREATE TYPE public.discussion_type AS ENUM (
-  'forum',
-  'announcement',
-  'event',
-  'referendum',
-  'profile',
-  'project',
-  'gameserver'
-);
-
--- Create forum categories table to organize forum threads
-CREATE TABLE public.forum_categories (
+-- Create discussion topics table
+CREATE TABLE public.discussion_topics (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   slug text NOT NULL,
   description text,
   sort_order integer NOT NULL DEFAULT 0,
   is_archived boolean NOT NULL DEFAULT false,
+  is_locked boolean NOT NULL DEFAULT false, -- Allows admin-only writes
+
+  -- Hierarchy
+  parent_id uuid REFERENCES public.discussion_topics(id) ON DELETE SET NULL,
 
   -- Audit
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -25,10 +18,11 @@ CREATE TABLE public.forum_categories (
   modified_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL DEFAULT auth.uid()
 );
 
-CREATE UNIQUE INDEX forum_categories_slug_idx ON public.forum_categories(slug);
-CREATE INDEX forum_categories_sort_order_idx ON public.forum_categories(sort_order);
+CREATE UNIQUE INDEX discussion_topics_slug_idx ON public.discussion_topics(slug);
+CREATE INDEX discussion_topics_sort_order_idx ON public.discussion_topics(sort_order);
+CREATE INDEX discussion_topics_parent_id_idx ON public.discussion_topics(parent_id);
 
-COMMENT ON TABLE public.forum_categories IS 'Categories for organizing general forum discussions.';
+COMMENT ON TABLE public.discussion_topics IS 'Topics/categories for organizing general forum discussions.';
 
 -- Create discussions table
 CREATE TABLE public.discussions (
@@ -36,10 +30,9 @@ CREATE TABLE public.discussions (
   title text, -- Nullable because some comments (e.g. on events) might not have a distinct title, just the context
   slug text, -- Mainly for forum threads
   description text, -- Optional short description or subtitle
-  type public.discussion_type NOT NULL,
 
   -- Foreign Keys for the specific contexts (Polymorphic-like association)
-  forum_category_id uuid REFERENCES public.forum_categories(id) ON DELETE SET NULL,
+  discussion_topic_id uuid REFERENCES public.discussion_topics(id) ON DELETE SET NULL,
   announcement_id bigint REFERENCES public.announcements(id) ON DELETE CASCADE,
   event_id bigint REFERENCES public.events(id) ON DELETE CASCADE,
   referendum_id bigint REFERENCES public.referendums(id) ON DELETE CASCADE,
@@ -60,26 +53,36 @@ CREATE TABLE public.discussions (
   modified_at timestamptz NOT NULL DEFAULT now(),
   modified_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL DEFAULT auth.uid(),
 
-  -- Constraint to ensure the FK matches the type
-  CONSTRAINT discussions_type_fk_check CHECK (
-    (type = 'forum' AND forum_category_id IS NOT NULL) OR
-    (type = 'announcement' AND announcement_id IS NOT NULL) OR
-    (type = 'event' AND event_id IS NOT NULL) OR
-    (type = 'referendum' AND referendum_id IS NOT NULL) OR
-    (type = 'profile' AND profile_id IS NOT NULL) OR
-    (type = 'project' AND project_id IS NOT NULL) OR
-    (type = 'gameserver' AND gameserver_id IS NOT NULL)
+  -- Constraint to ensure a discussion is attached to at most one specific entity
+  -- (It can be attached to a Topic AND an Entity, or just a Topic, or just an Entity)
+  CONSTRAINT discussions_entity_check CHECK (
+    num_nonnulls(
+      announcement_id,
+      event_id,
+      referendum_id,
+      profile_id,
+      project_id,
+      gameserver_id
+    ) <= 1
   ),
 
-  -- Constraint to ensure forum topics have a title (body content lives in first reply)
-  CONSTRAINT discussions_forum_title_check CHECK (
-    type != 'forum' OR title IS NOT NULL
+  -- Constraint to ensure "Pure Forum Threads" (no entity attached) have a title
+  CONSTRAINT discussions_title_check CHECK (
+    (
+      num_nonnulls(
+        announcement_id,
+        event_id,
+        referendum_id,
+        profile_id,
+        project_id,
+        gameserver_id
+      ) > 0
+    ) OR title IS NOT NULL
   )
 );
 
 -- Indexes
 CREATE UNIQUE INDEX discussions_slug_idx ON public.discussions(slug) WHERE slug IS NOT NULL;
-CREATE INDEX discussions_type_idx ON public.discussions(type);
 CREATE INDEX discussions_created_at_idx ON public.discussions(created_at DESC);
 
 -- Unique constraints to enforce one discussion per entity
@@ -91,9 +94,9 @@ CREATE UNIQUE INDEX discussions_project_unique_idx ON public.discussions(project
 CREATE UNIQUE INDEX discussions_gameserver_unique_idx ON public.discussions(gameserver_id) WHERE gameserver_id IS NOT NULL;
 
 -- FK Indexes for performance
-CREATE INDEX discussions_forum_category_id_idx ON public.discussions(forum_category_id);
+CREATE INDEX discussions_discussion_topic_id_idx ON public.discussions(discussion_topic_id);
 
-COMMENT ON TABLE public.discussions IS 'Generic container for discussions, forum topics, and context-aware comment threads.';
+COMMENT ON TABLE public.discussions IS 'Generic container for discussions, topics, and context-aware comment threads.';
 
 -- Create discussion replies table
 CREATE TABLE public.discussion_replies (
@@ -132,17 +135,17 @@ ALTER TABLE public.discussions
 CREATE INDEX discussions_accepted_reply_id_idx ON public.discussions(accepted_reply_id);
 
 -- Enable RLS
-ALTER TABLE public.forum_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.discussion_topics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.discussions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.discussion_replies ENABLE ROW LEVEL SECURITY;
 
--- Forum Categories Policies
-CREATE POLICY "Everyone can view forum categories"
-  ON public.forum_categories FOR SELECT
+-- Discussion Topics Policies
+CREATE POLICY "Everyone can view discussion topics"
+  ON public.discussion_topics FOR SELECT
   USING (true);
 
-CREATE POLICY "Admins can manage forum categories"
-  ON public.forum_categories FOR ALL
+CREATE POLICY "Admins can manage discussion topics"
+  ON public.discussion_topics FOR ALL
   TO authenticated
   USING (
     authorize('discussions.manage'::app_permission)
@@ -160,11 +163,27 @@ CREATE POLICY "Authenticated users can create discussions"
   WITH CHECK (
     auth.uid() = created_by AND
     (
-      -- Standard users can create forum topics, others might be system generated or specific logic
-      type = 'forum' OR
-      type = 'profile' OR
-      -- Allow creation on other types if the parent exists (logic simplified here, typically handled by UI/App guards)
-      type IN ('event', 'announcement', 'referendum', 'project', 'gameserver')
+      -- Case 1: Pure Forum Thread (Attached to Topic, No Entity)
+      (
+         discussion_topic_id IS NOT NULL AND
+         announcement_id IS NULL AND
+         event_id IS NULL AND
+         referendum_id IS NULL AND
+         project_id IS NULL AND
+         gameserver_id IS NULL AND
+         -- Check Topic Lock
+         EXISTS (
+            SELECT 1 FROM public.discussion_topics dt
+            WHERE dt.id = discussion_topic_id
+            AND (dt.is_locked = false OR authorize('discussions.manage'::app_permission))
+         )
+      )
+      OR
+      -- Case 2: Entity Attached Discussion (e.g. created by trigger when user makes an entity)
+      -- If the user had permission to create the entity, they can create the discussion.
+      (
+        num_nonnulls(announcement_id, event_id, referendum_id, profile_id, project_id, gameserver_id) > 0
+      )
     )
   );
 
@@ -246,8 +265,8 @@ CREATE TRIGGER update_discussion_replies_audit_fields
   FOR EACH ROW
   EXECUTE FUNCTION public.update_audit_fields();
 
-CREATE TRIGGER update_forum_categories_audit_fields
-  BEFORE UPDATE ON public.forum_categories
+CREATE TRIGGER update_discussion_topics_audit_fields
+  BEFORE UPDATE ON public.discussion_topics
   FOR EACH ROW
   EXECUTE FUNCTION public.update_audit_fields();
 
@@ -326,9 +345,9 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Grants
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.forum_categories TO authenticated;
-GRANT SELECT ON public.forum_categories TO anon;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.forum_categories TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.discussion_topics TO authenticated;
+GRANT SELECT ON public.discussion_topics TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.discussion_topics TO service_role;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.discussions TO authenticated;
 GRANT SELECT ON public.discussions TO anon;
