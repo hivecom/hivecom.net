@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import process from 'process'
+import fetchRoutes from './nitro/fetch-routes'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -87,6 +88,18 @@ export default defineNuxtConfig({
   },
   sitemap: {
     exclude: ['/admin/**', '/auth/**', '/playground/**', '/profile/**', '/votes/**'],
+  },
+  hooks: {
+    'nitro:config': async (nitroConfig) => {
+      if (process.env.NODE_ENV !== 'production') {
+        return
+      }
+
+      const routes = await fetchRoutes()
+      if (nitroConfig.prerender && nitroConfig.prerender.routes) {
+        nitroConfig.prerender.routes.push(...routes)
+      }
+    },
   },
   nitro: {
     prerender: {

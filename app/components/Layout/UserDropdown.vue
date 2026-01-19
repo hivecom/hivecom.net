@@ -155,6 +155,7 @@ async function signOut() {
     justify-content: space-between;
     align-items: center;
     gap: 8px;
+    text-transform: none;
   }
 
   &__username {

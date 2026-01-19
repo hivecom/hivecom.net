@@ -28,10 +28,6 @@ export interface DiscussionSettings {
 
 interface Props extends Partial<DiscussionSettings> {
   /**
-   * Discussion type
-   */
-  type: Tables<'discussions'>['type']
-  /**
    * Discussion id
    */
   id: string
@@ -39,6 +35,10 @@ interface Props extends Partial<DiscussionSettings> {
    * Set the model for how comments look
    */
   model?: 'comment' | 'forum'
+  /**
+   * The type of entity this discussion is attached to
+   */
+  type: string
   /**
    * ## For votes only
    *
@@ -97,7 +97,6 @@ watch(() => props.id, async () => {
     .from('discussions')
     .select('*')
     .eq(`${props.type}_id`, props.id)
-    .eq('type', props.type)
     .single()
 
   if (discussionResponse.error) {
@@ -271,7 +270,7 @@ provide('delete-comment', deleteComment)
   <!-- <ClientOnly> -->
   <div class="discussion" :class="[`discussion--${props.model}`]">
     <template v-if="loading">
-      <Skeleton height="49px" width="auto" style="margin:12px" />
+      <Skeleton height="128px" width="auto" />
     </template>
 
     <template v-else-if="error">
