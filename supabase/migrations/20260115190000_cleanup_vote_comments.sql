@@ -4,7 +4,6 @@ VALUES
   ('Announcements', 'announcements', 'Official news and updates from Hivecom.', 10, true),
   ('Events', 'events', 'Community events and gatherings.', 20, true),
   ('Projects', 'projects', 'Showcase and discussion of community projects.', 30, true),
-  ('Governance', 'governance', 'Referendums and community voting.', 40, true),
   ('General', 'general', 'General discussion about anything and everything.', 50, false)
 ON CONFLICT (slug) DO NOTHING;
 
@@ -28,12 +27,6 @@ INSERT INTO public.discussions (project_id, discussion_topic_id)
 SELECT id, (SELECT id FROM public.discussion_topics WHERE slug = 'projects')
 FROM public.projects p
 WHERE NOT EXISTS (SELECT 1 FROM public.discussions d WHERE d.project_id = p.id);
-
--- Referendums (linked to Governance topic)
-INSERT INTO public.discussions (referendum_id, discussion_topic_id)
-SELECT id, (SELECT id FROM public.discussion_topics WHERE slug = 'governance')
-FROM public.referendums r
-WHERE NOT EXISTS (SELECT 1 FROM public.discussions d WHERE d.referendum_id = r.id);
 
 -- Profiles (User Walls) - Not linked to a topic
 INSERT INTO public.discussions (profile_id)

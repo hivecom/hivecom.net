@@ -1,7 +1,9 @@
 # hivecom.net
 
 [![build](https://github.com/Mavulp/hivecom.net/actions/workflows/build.yml/badge.svg)](https://github.com/hivecom/hivecom.net/actions/workflows/build.yml)
-[![types](https://github.com/hivecom/hivecom.net/actions/workflows/types.yml/badge.svg)](https://github.com/hivecom/hivecom.net/actions/workflows/types.yml)
+
+<!--[![types](https://github.com/hivecom/hivecom.net/actions/workflows/types.yml/badge.svg)](https://github.com/hivecom/hivecom.net/actions/workflows/types.yml)-->
+
 [![deploy](https://github.com/Mavulp/hivecom.net/actions/workflows/deploy.yml/badge.svg)](https://github.com/hivecom/hivecom.net/actions/workflows/deploy.yml)
 
 Main website for the Hivecom community.
