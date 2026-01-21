@@ -76,34 +76,6 @@ function submitForm() {
         required
       />
 
-      <!-- <div class="w-100">
-        <label class="vui-label">Topic</label>
-        <p class="vui-hint">
-          Select under which topic will this discussion be created
-        </p>
-        <Dropdown expand>
-          <template #trigger="{ toggle, isOpen }">
-            <Button expand class="w-100" :loading="loading" outline @click="toggle">
-              <template #start>
-                <span class="text-size-m">
-                  {{ topicOptions.find(o => o.parentId === form.parentId)?.label || 'Select parent topic' }}
-                </span>
-              </template>
-              <template #end>
-                <Icon :name="isOpen ? 'ph:caret-up' : 'ph:caret-down'" :size="16" />
-              </template>
-            </Button>
-          </template>
-          <template #default="{ close }">
-            <Flex column gap="xxs">
-              <button v-for="option in topicOptions" :key="option.path" :label="option.label" expand class="form-add-discussion__button" @click="form.parentId = option.parentId, close()">
-                <span>{{ option.label }}</span>
-              </button>
-            </Flex>
-          </template>
-        </Dropdown>
-      </div> -->
-
       <Card class="card-bg">
         <Grid :columns="2" gap="m">
           <Switch v-model="form.locked" label="Locked" />

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { BreadcrumbItem, Breadcrumbs, Button, Card, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
+import type { Command } from '@dolanske/vui'
+import { BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import ForumListItem from '@/components/Forum/ForumListItem.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
@@ -18,102 +19,131 @@ const activeForumPath = computed(() => {
     { id: 1, title: 'General' },
   ]
 })
+
+const searchOpen = ref(false)
+const searchResults = computed<Command[]>(() => {
+  return [
+    {
+      title: 'Welcome to our forum bro',
+      description: 'Read about our community, what\'re making and how you can help...',
+      handler: () => {
+        searchOpen.value = false
+      },
+    },
+    {
+      title: 'Chips thread',
+      description: 'Heated opinions about all the best chip flavors',
+      handler: () => {
+        searchOpen.value = false
+      },
+    },
+  ]
+})
 </script>
 
 <template>
   <div class="page forum">
-    <section class="page-title mb-xl">
-      <h1>
-        Forum
-      </h1>
-      <p>
-        Bringing back the old school internet experience
-      </p>
-    </section>
+    <ClientOnly>
+      <section class="page-title mb-xl">
+        <h1>
+          Forum
+        </h1>
+        <p>
+          Bringing back the old school internet experience
+        </p>
+      </section>
 
-    <Flex x-between class="mb-m">
-      <Breadcrumbs>
-        <BreadcrumbItem v-for="item in activeForumPath" :key="item.id">
-          {{ item.title }}
-        </BreadcrumbItem>
-      </Breadcrumbs>
+      <Flex x-between class="mb-m">
+        <Breadcrumbs>
+          <BreadcrumbItem v-for="item in activeForumPath" :key="item.id">
+            {{ item.title }}
+          </BreadcrumbItem>
+        </Breadcrumbs>
 
-      <Flex gap="s">
-        <Dropdown>
-          <template #trigger="{ toggle }">
-            <Button size="s" variant="accent" @click="toggle">
-              <template #start>
-                <Icon name="ph:plus" :size="16" />
-              </template>
-              Create
-            </Button>
-          </template>
-          <DropdownItem size="s" @click="addingDiscussion = true">
-            Discussion
-          </DropdownItem>
-          <DropdownItem size="s" @click="addingTopic = true">
-            Topic
-          </DropdownItem>
-        </Dropdown>
-        <!-- TODO: I want search to be 1-level deep list of all categories & posts with a title, path (location) of the post -->
-        <Button size="s">
-          <template #start>
-            <Icon name="ph:magnifying-glass" :size="16" />
-          </template>
-          Search
-        </Button>
+        <Flex gap="s">
+          <Dropdown>
+            <template #trigger="{ toggle }">
+              <Button size="s" variant="accent" @click="toggle">
+                <template #start>
+                  <Icon name="ph:plus" :size="16" />
+                </template>
+                Create
+              </Button>
+            </template>
+            <DropdownItem size="s" @click="addingDiscussion = true">
+              Discussion
+            </DropdownItem>
+            <DropdownItem size="s" @click="addingTopic = true">
+              Topic
+            </DropdownItem>
+          </Dropdown>
+          <!-- TODO: I want search to be 1-level deep list of all categories & posts with a title, path (location) of the post -->
+          <Button size="s" @click="searchOpen = true">
+            <template #start>
+              <Icon name="ph:magnifying-glass" :size="16" />
+            </template>
+            Search
+          </Button>
+        </Flex>
       </Flex>
-    </Flex>
 
-    <!-- TODO: display if category is locked / private -->
+      <!-- TODO: display if category is locked / private -->
 
-    <Card class="forum__category" separators>
-      <div class="forum__category-title">
-        <h3>About forums</h3>
+      <Card class="forum__category" separators>
+        <div class="forum__category-title">
+          <h3>About forums</h3>
 
-        <!-- TODO: make sure only the first category should render these labels -->
-        <span>Posts</span>
-        <span>Replies</span>
-        <span>Users</span>
-        <span>Last update</span>
-      </div>
-      <ul>
-        <ForumListItem
-          pinned
-          :data="{
-            icon: 'ph:scroll',
-            title: 'Welcome to our forum bro',
-            description: 'Read about our community, what\'re making and how you can help...',
-            countPosts: 12,
-            countReplies: 71,
-            countUsers: 24,
-            lastUpdate: dayjs('2025-12-05').toString(),
-          }"
-        />
+          <!-- TODO: make sure only the first category should render these labels -->
+          <span>Posts</span>
+          <span>Replies</span>
+          <span>Users</span>
+          <span>Last update</span>
+        </div>
+        <ul>
+          <ForumListItem
+            pinned
+            :data="{
+              icon: 'ph:scroll',
+              title: 'Welcome to our forum bro',
+              description: 'Read about our community, what\'re making and how you can help...',
+              countPosts: 12,
+              countReplies: 71,
+              countUsers: 24,
+              lastUpdate: dayjs('2025-12-05').toString(),
+            }"
+          />
 
-        <ForumListItem
-          :data="{
-            icon: 'ph:basket',
-            title: 'Chips thread',
-            description: 'Heated opinions about all the best chip flavors',
-            countPosts: 2,
-            countReplies: 44,
-            countUsers: 12,
-            lastUpdate: dayjs('2026-01-03').toString(),
-          }"
-        />
-      </ul>
-    </Card>
+          <ForumListItem
+            :data="{
+              icon: 'ph:basket',
+              title: 'Chips thread',
+              description: 'Heated opinions about all the best chip flavors',
+              countPosts: 2,
+              countReplies: 44,
+              countUsers: 12,
+              lastUpdate: dayjs('2026-01-03').toString(),
+            }"
+          />
+        </ul>
+      </Card>
 
-    <ForumModalAddTopic
-      :open="addingTopic"
-      @close="addingTopic = false"
-    />
+      <ForumModalAddTopic
+        :open="addingTopic"
+        @close="addingTopic = false"
+      />
 
-    <ForumModalAddDiscussion
-      :open="addingDiscussion"
-      @close="addingDiscussion = false"
-    />
+      <ForumModalAddDiscussion
+        :open="addingDiscussion"
+        @close="addingDiscussion = false"
+      />
+
+      <Commands
+        :open="searchOpen"
+        :commands="searchResults"
+        placeholder="Find a forum post..."
+        @close="searchOpen = false"
+      />
+    </ClientOnly>
   </div>
 </template>
 
