@@ -1,42 +1,54 @@
 <script setup lang="ts">
-import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, Card, Dropdown, Flex, Grid, Input, Modal, Switch } from '@dolanske/vui'
-import { normalizeErrors } from '@/lib/utils/formatting'
+// List items for a discussion under a topic
 
-const props = defineProps<{
+import type { Tables } from '@/types/database.types'
+import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
+import { Button, Card, Dropdown, Flex, Input, Modal, pushToast, Switch } from '@dolanske/vui'
+import { composedPathToString, composePathToTopic } from '@/lib/topics'
+import { normalizeErrors, slugify } from '@/lib/utils/formatting'
+
+const props = withDefaults(defineProps<{
   open: boolean
-  // TODO: implemented editing. Its value will be a topic object
-  edit?: never
-}>()
+  topics?: Tables<'discussion_topics'>[]
+}>(), {
+  topics: () => [],
+})
 
 const emit = defineEmits<{
   (e: 'close'): void
-
+  (e: 'created', topic: Tables<'discussion_topics'>): void
 }>()
 
+const supabase = useSupabaseClient()
+
+// Options to optionally select a parent topic. A 1-level deep list which
+// contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
   return [
-    { label: 'Top-level', parentId: null, path: '/' },
-    { label: 'Rules', parentId: 1, path: '/rules' },
-    { label: 'Announcements', parentId: 2, path: '/announcements' },
+    { id: '-', label: 'Top-level', parent_id: null, path: '/' },
+    ...props.topics.map(topic => ({
+      id: topic.id,
+      label: topic.name,
+      parent_id: topic.id,
+      path: composedPathToString(composePathToTopic(topic.id, props.topics)),
+    })),
   ]
 })
 
+// Form validation
 const form = reactive({
   name: '',
   description: '',
-  // Null for top-level topics
-  parentId: null as number | null,
-  locked: false,
-  private: false,
+  parent_id: null as string | null,
+  is_locked: false,
 })
 
 const rules = defineRules<typeof form>({
   name: [required, minLenNoSpace(1), maxLength(128)],
-  description: [minLenNoSpace(1)],
 })
 
 const loading = ref(false)
+
 const { validate, errors } = useValidation(form, rules)
 
 function submitForm() {
@@ -47,8 +59,25 @@ function submitForm() {
 
   validate()
     .then(() => {
-      // TODO
-      // Passed validation
+      const payload = {
+        ...form,
+        slug: slugify(form.name),
+      }
+
+      supabase
+        .from('discussion_topics')
+        .insert(payload)
+        .single()
+        .then(({ error, data }) => {
+          loading.value = false
+
+          if (error) {
+            pushToast('Failed to create topic.')
+            return
+          }
+
+          emit('created', data[0])
+        })
     })
     .catch(() => {
       loading.value = false
@@ -66,8 +95,8 @@ function submitForm() {
     </p>
 
     <Flex column gap="m">
-      <Input :errors="normalizeErrors(errors.name)" label="Name" expand placeholder="Topic title" required />
-      <Input :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Simply describe the topic" />
+      <Input v-model="form.name" :errors="normalizeErrors(errors.name)" label="Name" expand placeholder="Topic title" required />
+      <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Simply describe the topic" />
 
       <div class="w-100">
         <label class="vui-label">Location</label>
@@ -76,7 +105,7 @@ function submitForm() {
             <Button expand class="w-100" :loading="loading" outline @click="toggle">
               <template #start>
                 <span class="text-size-m">
-                  {{ form.parentId === null ? 'Top-level' : topicOptions.find(o => o.parentId === form.parentId)?.label || 'Select parent topic' }}
+                  {{ form.parent_id === null ? 'Top-level' : topicOptions.find(o => o.parent_id === form.parent_id)?.label || 'Select parent topic' }}
                 </span>
               </template>
               <template #end>
@@ -86,9 +115,9 @@ function submitForm() {
           </template>
           <template #default="{ close }">
             <Flex column gap="xxs">
-              <button v-for="option in topicOptions" :key="option.path" :label="option.label" expand class="form-add-topic__button" @click="form.parentId = option.parentId, close()">
+              <button v-for="option in topicOptions" :key="option.id" :label="option.label" expand class="form-add-topic__button" @click="form.parent_id = option.parent_id, close()">
                 <span>{{ option.label }}</span>
-                <p class="font-size-xs">
+                <p v-if="option.path" class="font-size-xs">
                   {{ option.path }}
                 </p>
               </button>
@@ -98,10 +127,7 @@ function submitForm() {
       </div>
 
       <Card class="card-bg">
-        <Grid :columns="2" gap="m">
-          <Switch v-model="form.locked" label="Locked" />
-          <Switch v-model="form.private" label="Private" />
-        </Grid>
+        <Switch v-model="form.is_locked" label="Locked" />
       </Card>
     </Flex>
 

@@ -1,44 +1,113 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
+import type { Tables } from '@/types/database.types'
 import { BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
-import ForumListItem from '@/components/Forum/ForumListItem.vue'
+import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
-
-// TODO: hook up to db
+import { composePathToTopic } from '@/lib/topics'
 
 // TODO: for search, use the experimental vui Commands component (not done yet)
+
+export type TopicWithDiscussions = Tables<'discussion_topics'> & {
+  discussions: Tables<'discussions'>[]
+}
 
 const addingTopic = ref(false)
 const addingDiscussion = ref(false)
 
-const activeForumPath = computed(() => {
-  return [
-    { id: 0, title: 'Frontpage' },
-    { id: 1, title: 'General' },
-  ]
+const loading = ref(false)
+const supabase = useSupabaseClient()
+
+const topicsError = ref<string | null>(null)
+const topics = ref<TopicWithDiscussions[]>([])
+
+onBeforeMount(() => {
+  loading.value = true
+  supabase
+    .from('discussion_topics')
+    .select(`
+      *,
+      discussions (
+        *
+      )
+    `)
+    .then(({ data, error }) => {
+      if (error) {
+        topicsError.value = error.message
+      }
+      else {
+        topics.value = data
+      }
+
+      loading.value = false
+    })
 })
 
+// Pathing and topic nesting
+const activeTopicId = ref<string | null>(null)
+
+const activeTopicPath = computed(() => composePathToTopic(activeTopicId.value, topics.value))
+
+// Search implementation
 const searchOpen = ref(false)
+
+// Transform topics & discussions into a searchable list of commands. Grouped by topic & discussions
 const searchResults = computed<Command[]>(() => {
-  return [
-    {
-      title: 'Welcome to our forum bro',
-      description: 'Read about our community, what\'re making and how you can help...',
-      handler: () => {
-        searchOpen.value = false
-      },
-    },
-    {
-      title: 'Chips thread',
-      description: 'Heated opinions about all the best chip flavors',
-      handler: () => {
-        searchOpen.value = false
-      },
-    },
-  ]
+  return topics.value.flatMap((topic) => {
+    // const topicCommand: Command = {
+    //   title: topic.name,
+    //   description: composePathToTopic(topic.id, topics.value)
+    //     .map(item => item.title)
+    //     .join(' / '),
+    //   group: 'Topics',
+    //   handler: () => {
+    //     activeTopicId.value = topic.id
+    //     searchOpen.value = false
+    //   },
+    // }
+
+    const discussionCommands: Command[] = topic.discussions.map((discussion, index) => ({
+
+      title: discussion.title ?? `Discussion ${index + 1}`,
+      // group: 'Discussions',
+      description: `Discussion in ${topic.name}`,
+      handler: () => {},
+    }))
+
+    return discussionCommands
+
+    // return [topicCommand, ...discussionCommands]
+  })
 })
+
+// Sort results by most recently modified and by sticky (pinned)
+function sortDiscussions(discussions: Tables<'discussions'>[]) {
+  return discussions.sort((a, b) => {
+    if (a.is_sticky && !b.is_sticky)
+      return -1
+    if (!a.is_sticky && b.is_sticky)
+      return 1
+
+    return dayjs(b.modified_at).isAfter(dayjs(a.modified_at)) ? 1 : -1
+  })
+}
+
+// List topics based on the activeTopicId. If it's null, list all topics
+// without a parent_id, otherwise list all topics which match the activeTopicId
+const modelledTopics = computed(() => {
+  if (!activeTopicId.value) {
+    return topics.value.filter(topic => topic.parent_id === null)
+  }
+  else {
+    return topics.value.filter(topic => topic.parent_id === activeTopicId.value)
+  }
+})
+
+function getTopicsByParentId(parentId: string | null) {
+  return topics.value.filter(topic => topic.parent_id === parentId)
+}
 </script>
 
 <template>
@@ -53,9 +122,17 @@ const searchResults = computed<Command[]>(() => {
         </p>
       </section>
 
-      <Flex x-between class="mb-m">
+      <Flex x-between y-center class="mb-m">
         <Breadcrumbs>
-          <BreadcrumbItem v-for="item in activeForumPath" :key="item.id">
+          <BreadcrumbItem :href="activeTopicId ? undefined : '#'" @click="activeTopicId = null">
+            Frontpage
+          </BreadcrumbItem>
+          <BreadcrumbItem
+            v-for="(item, index) in activeTopicPath"
+            :key="item.parent_id"
+            :href="index === activeTopicPath.length - 1 ? undefined : '#'"
+            @click="activeTopicId = item.parent_id"
+          >
             {{ item.title }}
           </BreadcrumbItem>
         </Breadcrumbs>
@@ -70,7 +147,7 @@ const searchResults = computed<Command[]>(() => {
                 Create
               </Button>
             </template>
-            <DropdownItem size="s" @click="addingDiscussion = true">
+            <DropdownItem size="s" disabled @click="addingDiscussion = true">
               Discussion
             </DropdownItem>
             <DropdownItem size="s" @click="addingTopic = true">
@@ -87,48 +164,38 @@ const searchResults = computed<Command[]>(() => {
         </Flex>
       </Flex>
 
-      <!-- TODO: display if category is locked / private -->
-
-      <Card class="forum__category" separators>
+      <Card v-for="(topic, index) in modelledTopics" :key="topic.id" class="forum__category" separators>
         <div class="forum__category-title">
-          <h3>About forums</h3>
-
-          <!-- TODO: make sure only the first category should render these labels -->
-          <span>Posts</span>
-          <span>Replies</span>
-          <span>Users</span>
-          <span>Last update</span>
+          <h3>{{ topic.name }}</h3>
+          <template v-if="index === 0">
+            <span>Replies</span>
+            <span>Views</span>
+            <span>Last update</span>
+          </template>
         </div>
-        <ul>
-          <ForumListItem
-            pinned
-            :data="{
-              icon: 'ph:scroll',
-              title: 'Welcome to our forum bro',
-              description: 'Read about our community, what\'re making and how you can help...',
-              countPosts: 12,
-              countReplies: 71,
-              countUsers: 24,
-              lastUpdate: dayjs('2025-12-05').toString(),
-            }"
+
+        <ul v-if="topic.discussions.length > 0 || getTopicsByParentId(topic.id).length > 0">
+          <ForumTopicItem
+            v-for="subtopic of getTopicsByParentId(topic.id)"
+            :key="subtopic.id"
+            :data="subtopic"
+            @click="activeTopicId = topic.id"
           />
 
-          <ForumListItem
-            :data="{
-              icon: 'ph:basket',
-              title: 'Chips thread',
-              description: 'Heated opinions about all the best chip flavors',
-              countPosts: 2,
-              countReplies: 44,
-              countUsers: 12,
-              lastUpdate: dayjs('2026-01-03').toString(),
-            }"
+          <ForumDiscussionItem
+            v-for="discussion of sortDiscussions(topic.discussions)"
+            :key="discussion.id"
+            :data="discussion"
           />
         </ul>
+        <div v-else class="forum__category-empty">
+          <p>There are no discussions in this topic yet</p>
+        </div>
       </Card>
 
       <ForumModalAddTopic
         :open="addingTopic"
+        :topics="topics"
         @close="addingTopic = false"
       />
 
@@ -162,7 +229,7 @@ const searchResults = computed<Command[]>(() => {
   &__category-title,
   &__category-post a {
     display: grid;
-    grid-template-columns: 40px 6fr repeat(4, 1fr);
+    grid-template-columns: 40px 5fr repeat(3, 1fr);
     align-items: center;
     gap: var(--space-s);
     padding: var(--space-s) var(--space-m);
@@ -200,6 +267,11 @@ const searchResults = computed<Command[]>(() => {
       border-bottom: 1px solid var(--color-border);
     }
 
+    &:last-child a {
+      border-bottom-right-radius: var(--border-radius-m);
+      border-bottom-left-radius: var(--border-radius-m);
+    }
+
     a {
       background-color: var(--color-bg-card);
       text-decoration: none;
@@ -235,6 +307,12 @@ const searchResults = computed<Command[]>(() => {
       color: var(--color-text-lighter);
       font-size: var(--font-size-s);
     }
+  }
+
+  &__category-empty {
+    padding: var(--space-m);
+    font-size: var(--font-size-m);
+    color: var(--color-text-light);
   }
 }
 </style>
