@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import TinyBadge from '../Shared/TinyBadge.vue'
+import BadgeCircle from '../Shared/BadgeCircle.vue'
 
 // TODO: display if discussion / topic is locked or private
 
@@ -28,8 +28,15 @@ interface Props {
       </div>
       <div class="forum__category-post--name">
         <strong>
-          <TinyBadge v-if="data.is_sticky" variant="accent" class="tiny">Pinned</TinyBadge>
-          {{ data.title }}</strong>
+          {{ data.title }}
+          <BadgeCircle v-if="data.is_sticky" variant="accent">
+            <Icon name="ph:pin" class="text-color-accent" />
+          </BadgeCircle>
+
+          <BadgeCircle v-if="data.is_locked" data-title-top="Locked">
+            <Icon name="ph:lock" />
+          </BadgeCircle>
+        </strong>
         <p>{{ data.description }}</p>
       </div>
 
@@ -47,10 +54,20 @@ interface Props {
 </template>
 
 <style scoped lang="scss">
+// TODO: merge styles of this and topic list item as they are identical
+
 .forum__category-post {
   &--meta span {
     font-size: var(--font-size-m);
     color: var(--color-text-lighter);
+  }
+
+  &--name {
+    strong {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
   }
 }
 </style>

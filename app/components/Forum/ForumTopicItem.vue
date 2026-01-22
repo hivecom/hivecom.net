@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import TinyBadge from '../Shared/TinyBadge.vue'
+import BadgeCircle from '../Shared/BadgeCircle.vue'
 
 // TODO: display if discussion / topic is locked or private
 
@@ -19,20 +19,24 @@ interface Props {
 
 <template>
   <li class="forum__category-post">
-    <!-- TODO: the link should point correctly to the right page -->
     <a class="forum__category-post--item" href="#">
       <div class="forum__category-post--icon">
-        <!-- TODO: dynamic icon -->
+        <!-- TODO: dynamic icon or an image -->
         <Icon name="ph:folder-open" />
         <!-- <Icon :name="data.icon" :size="20" /> -->
       </div>
       <div class="forum__category-post--name">
         <strong>
-          <TinyBadge v-if="data.is_locked" variant="accent" class="tiny">
-            <Icon name="ph:lock" />
-            Locked
-          </TinyBadge>
-          {{ data.name }}</strong>
+          {{ data.name }}
+          <BadgeCircle v-if="data.is_locked" variant="accent" data-title-top="Locked">
+            <Icon name="ph:lock" class="text-color-accent" />
+          </BadgeCircle>
+
+          <BadgeCircle v-if="data.is_locked" data-title-top="Archived">
+            <Icon name="ph:archive" />
+          </BadgeCircle>
+
+        </strong>
         <p>{{ data.description }}</p>
       </div>
 
@@ -54,6 +58,14 @@ interface Props {
   &--meta span {
     font-size: var(--font-size-m);
     color: var(--color-text-lighter);
+  }
+
+  &--name {
+    strong {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
   }
 }
 </style>

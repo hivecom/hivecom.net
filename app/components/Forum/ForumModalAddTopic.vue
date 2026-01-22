@@ -67,7 +67,7 @@ function submitForm() {
       supabase
         .from('discussion_topics')
         .insert(payload)
-        .single()
+        .select()
         .then(({ error, data }) => {
           loading.value = false
 

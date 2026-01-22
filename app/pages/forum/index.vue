@@ -10,6 +10,8 @@ import { composePathToTopic } from '@/lib/topics'
 
 // TODO: for search, use the experimental vui Commands component (not done yet)
 
+// TODO: admins should be able to right click delete, lock, archive any topic or discussion
+
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
   discussions: Tables<'discussions'>[]
 }
@@ -56,6 +58,8 @@ const searchOpen = ref(false)
 // Transform topics & discussions into a searchable list of commands. Grouped by topic & discussions
 const searchResults = computed<Command[]>(() => {
   return topics.value.flatMap((topic) => {
+    // TODO: add option to search through topics
+
     // const topicCommand: Command = {
     //   title: topic.name,
     //   description: composePathToTopic(topic.id, topics.value)
@@ -138,6 +142,7 @@ function getTopicsByParentId(parentId: string | null) {
         </Breadcrumbs>
 
         <Flex gap="s">
+          <!-- TODO: non-admin & non-moderator users will only see a "Create Discussion" button without dropdown -->
           <Dropdown>
             <template #trigger="{ toggle }">
               <Button size="s" variant="accent" @click="toggle">
@@ -154,7 +159,6 @@ function getTopicsByParentId(parentId: string | null) {
               Topic
             </DropdownItem>
           </Dropdown>
-          <!-- TODO: I want search to be 1-level deep list of all categories & posts with a title, path (location) of the post -->
           <Button size="s" @click="searchOpen = true">
             <template #start>
               <Icon name="ph:magnifying-glass" :size="16" />
