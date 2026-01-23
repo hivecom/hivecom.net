@@ -12,9 +12,15 @@ import { composePathToTopic } from '@/lib/topics'
 
 // TODO: admins should be able to right click delete, lock, archive any topic or discussion
 
+// TODO: when creating a topic or discussion, allow search dropdown
+
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
   discussions: Tables<'discussions'>[]
 }
+
+const userId = useUserId()
+
+const { user } = useCacheUserData(userId, { includeRole: true })
 
 const addingTopic = ref(false)
 const addingDiscussion = ref(false)
@@ -109,8 +115,17 @@ const modelledTopics = computed(() => {
   }
 })
 
+// Return all topics which have the given parent id. Used to list nested topics
 function getTopicsByParentId(parentId: string | null) {
   return topics.value.filter(topic => topic.parent_id === parentId)
+}
+
+// When discussion is created, append it to the selected parent topic
+function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
+  const topic = topics.value.find(topic => topic.id === discussion.discussion_topic_id)
+  if (topic) {
+    topic.discussions.push(discussion)
+  }
 }
 </script>
 
@@ -141,9 +156,9 @@ function getTopicsByParentId(parentId: string | null) {
           </BreadcrumbItem>
         </Breadcrumbs>
 
-        <Flex gap="s">
-          <!-- TODO: non-admin & non-moderator users will only see a "Create Discussion" button without dropdown -->
-          <Dropdown>
+        <!-- Only allow creating things for signed in users -->
+        <Flex v-if="user" gap="s">
+          <Dropdown v-if="user.role === 'admin' || user.role === 'moderator'">
             <template #trigger="{ toggle }">
               <Button size="s" variant="accent" @click="toggle">
                 <template #start>
@@ -152,13 +167,19 @@ function getTopicsByParentId(parentId: string | null) {
                 Create
               </Button>
             </template>
-            <DropdownItem size="s" disabled @click="addingDiscussion = true">
+            <DropdownItem size="s" @click="addingDiscussion = true">
               Discussion
             </DropdownItem>
             <DropdownItem size="s" @click="addingTopic = true">
               Topic
             </DropdownItem>
           </Dropdown>
+
+          <!-- Non-admin or moderators can only create a discussion -->
+          <Button v-else variant="accent" size="s" @click="addingDiscussion = true">
+            Discussion
+          </Button>
+
           <Button size="s" @click="searchOpen = true">
             <template #start>
               <Icon name="ph:magnifying-glass" :size="16" />
@@ -201,11 +222,14 @@ function getTopicsByParentId(parentId: string | null) {
         :open="addingTopic"
         :topics="topics"
         @close="addingTopic = false"
+        @created="(topic) => topics.push(topic)"
       />
 
       <ForumModalAddDiscussion
         :open="addingDiscussion"
+        :topics="topics"
         @close="addingDiscussion = false"
+        @created="appendDiscussionToTopic"
       />
 
       <Commands

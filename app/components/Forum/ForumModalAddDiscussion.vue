@@ -1,40 +1,48 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, Card, Flex, Grid, Input, Modal, Select, Switch } from '@dolanske/vui'
-import { normalizeErrors } from '@/lib/utils/formatting'
+import { Button, Card, Dropdown, Flex, Grid, Input, Modal, pushToast, Switch } from '@dolanske/vui'
+import { composedPathToString, composePathToTopic } from '@/lib/topics'
+import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 
 const props = defineProps<{
   open: boolean
-  // TODO: implemented editing. Its value will be a discussion object
-  edit?: never
+  topics: Tables<'discussion_topics'>[]
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'created', discussion: Tables<'discussions'>): void
 }>()
 
+const supabase = useSupabaseClient()
+
+// Options to optionally select a parent topic. A 1-level deep list which
+// contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
-  return [
-    { label: 'Rules', value: 1 },
-    { label: 'Announcements', value: 2 },
-  ]
+  return props.topics.map(topic => ({
+    id: topic.id,
+    label: topic.name,
+    parent_id: topic.id,
+    path: composedPathToString(composePathToTopic(topic.id, props.topics)),
+  }))
 })
 
 const form = reactive({
-  name: '',
+  title: '',
   description: '',
-  locked: false,
-  private: false,
+  is_locked: false,
+  is_sticky: false,
+  discussion_topic_id: '',
 })
 
-const selectedId = ref()
-
 const rules = defineRules<typeof form>({
-  name: [required, minLenNoSpace(1), maxLength(128)],
-  description: [minLenNoSpace(1)],
+  title: [required, minLenNoSpace(1), maxLength(128)],
+  discussion_topic_id: [required],
 })
 
 const loading = ref(false)
+
 const { validate, errors } = useValidation(form, rules)
 
 function submitForm() {
@@ -45,8 +53,27 @@ function submitForm() {
 
   validate()
     .then(() => {
-      // TODO
-      // Passed validation
+      const payload = {
+        ...form,
+        slug: slugify(form.title),
+      }
+
+      supabase
+        .from('discussions')
+        .insert(payload)
+        .select()
+        .then(({ error, data }) => {
+          loading.value = false
+
+          if (error) {
+            pushToast('Failed to create a discussion.')
+            return
+          }
+
+          emit('created', data[0])
+          emit('close')
+          pushToast(`Created discussion ${payload.title}.`)
+        })
     })
     .catch(() => {
       loading.value = false
@@ -64,22 +91,41 @@ function submitForm() {
     </p>
 
     <Flex column gap="m">
-      <Input :errors="normalizeErrors(errors.name)" label="Name" expand placeholder="What is this discussion about?" required />
-      <Input :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Add more context to the discussion" />
+      <Input v-model="form.title" :errors="normalizeErrors(errors.title)" label="Name" expand placeholder="What is this discussion about?" required />
+      <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Add more context to the discussion" />
 
-      <Select
-        v-model="selectedId"
-        :options="topicOptions"
-        label="Topic"
-        hint="Choose which topic will this discussion be created under"
-        expand
-        required
-      />
+      <div class="w-100">
+        <label class="vui-label">Topic</label>
+        <Dropdown expand>
+          <template #trigger="{ toggle, isOpen }">
+            <Button expand class="w-100" :loading="loading" outline @click="toggle">
+              <template #start>
+                <span class="text-size-m">
+                  {{ form.discussion_topic_id === null ? 'Top-level' : topicOptions.find(o => o.id === form.discussion_topic_id)?.label || 'Select parent topic' }}
+                </span>
+              </template>
+              <template #end>
+                <Icon :name="isOpen ? 'ph:caret-up' : 'ph:caret-down'" :size="16" />
+              </template>
+            </Button>
+          </template>
+          <template #default="{ close }">
+            <Flex column gap="xxs">
+              <button v-for="option in topicOptions" :key="option.id" :label="option.label" expand class="form-add-discussion__button" @click="form.discussion_topic_id = option.id, close()">
+                <span>{{ option.label }}</span>
+                <p v-if="option.path" class="font-size-xs">
+                  {{ option.path }}
+                </p>
+              </button>
+            </Flex>
+          </template>
+        </Dropdown>
+      </div>
 
       <Card class="card-bg">
         <Grid :columns="2" gap="m">
-          <Switch v-model="form.locked" label="Locked" />
-          <Switch v-model="form.private" label="Private" />
+          <Switch v-model="form.is_locked" label="Locked" />
+          <Switch v-model="form.is_sticky" label="Sticky" />
         </Grid>
       </Card>
     </Flex>
@@ -89,7 +135,7 @@ function submitForm() {
         <Button plain @click="emit('close')">
           Cancel
         </Button>
-        <Button variant="accent" @click="submitForm">
+        <Button variant="accent" :loading="loading" @click="submitForm">
           Create
         </Button>
       </Flex>

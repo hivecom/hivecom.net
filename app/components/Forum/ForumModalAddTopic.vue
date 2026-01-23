@@ -1,22 +1,21 @@
 <script setup lang="ts">
 // List items for a discussion under a topic
 
+import type { TopicWithDiscussions } from '@/pages/forum/index.vue'
 import type { Tables } from '@/types/database.types'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, Card, Dropdown, Flex, Input, Modal, pushToast, Switch } from '@dolanske/vui'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   open: boolean
-  topics?: Tables<'discussion_topics'>[]
-}>(), {
-  topics: () => [],
-})
+  topics: Tables<'discussion_topics'>[]
+}>()
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'created', topic: Tables<'discussion_topics'>): void
+  (e: 'created', topic: TopicWithDiscussions): void
 }>()
 
 const supabase = useSupabaseClient()
@@ -76,7 +75,12 @@ function submitForm() {
             return
           }
 
-          emit('created', data[0])
+          emit('created', {
+            ...data[0],
+            discussions: [],
+          })
+          emit('close')
+          pushToast(`Created topic ${payload.name}.`)
         })
     })
     .catch(() => {
