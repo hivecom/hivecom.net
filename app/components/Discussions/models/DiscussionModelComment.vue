@@ -7,6 +7,10 @@ import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
 import { scrollToId } from '@/lib/utils/common'
 
+// TODO: add confirmation dialog when deleting
+
+// TODO: fix comments highlight being outside of the comment itself
+
 interface Props {
   data: Comment
 }
@@ -141,7 +145,7 @@ function beginCommentDeletion() {
     inset: 4px -12px;
     z-index: -1;
     border-radius: var(--border-radius-m);
-    background-color: var(--color-bg-raised);
+    background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
     transition: var(--transition-slow);
     opacity: 0;
   }

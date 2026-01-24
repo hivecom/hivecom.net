@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, Card, Dropdown, Flex, Grid, Input, Modal, pushToast, Switch } from '@dolanske/vui'
+import { Button, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Textarea } from '@dolanske/vui'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 
@@ -18,15 +18,19 @@ const emit = defineEmits<{
 
 const supabase = useSupabaseClient()
 
+const search = ref('')
+
 // Options to optionally select a parent topic. A 1-level deep list which
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
-  return props.topics.map(topic => ({
-    id: topic.id,
-    label: topic.name,
-    parent_id: topic.id,
-    path: composedPathToString(composePathToTopic(topic.id, props.topics)),
-  }))
+  return props.topics
+    .map(topic => ({
+      id: topic.id,
+      label: topic.name,
+      parent_id: topic.id,
+      path: composedPathToString(composePathToTopic(topic.id, props.topics)),
+    }))
+    .filter(topic => search.value ? searchString([topic.label, topic.path], search.value) : true)
 })
 
 const form = reactive({
@@ -100,7 +104,7 @@ function submitForm() {
 
     <Flex column gap="m">
       <Input v-model="form.title" :errors="normalizeErrors(errors.title)" label="Name" expand placeholder="What is this discussion about?" required />
-      <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Add more context to the discussion" />
+      <Textarea v-model="form.description" hint="You can use markdown" :errors="normalizeErrors(errors.description)" label="Content" expand placeholder="Add more context to the discussion" />
 
       <div class="w-100">
         <label class="vui-label">Topic</label>
@@ -118,6 +122,9 @@ function submitForm() {
             </Button>
           </template>
           <template #default="{ close }">
+            <DropdownTitle>
+              <Input v-model="search" placeholder="Search topics..." expand focus />
+            </DropdownTitle>
             <Flex column gap="xxs">
               <button v-for="option in topicOptions" :key="option.id" :label="option.label" expand class="form-add-discussion__button" @click="form.discussion_topic_id = option.id, close()">
                 <span>{{ option.label }}</span>
@@ -126,6 +133,11 @@ function submitForm() {
                 </p>
               </button>
             </Flex>
+            <template v-if="topicOptions.length === 0">
+              <p class="">
+                No options found.
+              </p>
+            </template>
           </template>
         </Dropdown>
       </div>

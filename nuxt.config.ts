@@ -116,6 +116,7 @@ export default defineNuxtConfig({
       login: '/auth/sign-in',
       callback: '/auth/confirm',
     },
+    types: './types/database.types.ts',
   },
   site: {
     url: process.env.NUXT_PUBLIC_BASE_URL ?? 'https://hivecom.net',

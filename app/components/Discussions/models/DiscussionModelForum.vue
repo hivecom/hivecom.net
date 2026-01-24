@@ -1,11 +1,23 @@
 <script setup lang="ts">
 import type { Comment } from '../Discussion.vue'
-import { Avatar, Button, ButtonGroup, Divider, Flex, pushToast, Tooltip } from '@dolanske/vui'
+import { Alert, Avatar, Button, ButtonGroup, Divider, Flex, pushToast, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { stripMarkdown } from '@/lib/markdown-processors'
+import { scrollToId } from '@/lib/utils/common'
 // import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { getCountryInfo } from '@/lib/utils/country'
+
+// TODO: implement reply-to design
+
+// TODO: implement reply quote
+
+// TODO: implement edit post
+
+// TODO: highlight comment when clicking what user is replying to
+
+// TODO: forum
 
 interface Props {
   data: Comment
@@ -14,6 +26,10 @@ interface Props {
 const {
   data,
 } = defineProps<Props>()
+
+const router = useRouter()
+const route = useRoute()
+const userId = useUserId()
 
 const { user } = useCacheUserData(data.created_by!, {
   includeRole: true,
@@ -25,8 +41,17 @@ const { user } = useCacheUserData(data.created_by!, {
 const country = computed(() => getCountryInfo(user.value?.country))
 
 const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
+const setQuoteOfComment = inject('setQuoteOfComment') as (data: Comment) => void
 
 const { copy } = useClipboard()
+
+function scrollToreply() {
+  const commentId = `#comment-${data.id}`
+  router.replace({ hash: commentId })
+
+  // TODO: this just doesnt work, it doesnt wanna scroll!!
+  scrollToId(commentId, 'nearest')
+}
 
 function copyCommentLink() {
   const url = new URL(window.location.href)
@@ -51,7 +76,7 @@ function beginCommentDeletion() {
 </script>
 
 <template>
-  <div class="discussion-forum">
+  <div class="discussion-forum" :class="{ 'discussion-forum--highlight': `#comment-${data.id}` === route.hash }">
     <div v-if="user" class="discussion-forum__author">
       <!-- <UserPreviewCard :user-id="data.created_by" :show-activity="false" hide /> -->
       <Avatar :url="user.avatarUrl || undefined" size="l" class="mb-xs" />
@@ -70,7 +95,23 @@ function beginCommentDeletion() {
       </p>
     </div>
     <div class="discussion-forum__content">
+      <Alert v-if="data.reply" icon-align="start" role="button" class="discussion-forum__reply" @click="scrollToreply">
+        <p v-if="data.reply.created_by !== userId" class="discussion-forum__reply-user">
+          <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" hide-avatar />:
+        </p>
+        <p v-else class="discussion-forum__reply-user">
+          You:
+        </p>
+        <p class="text-color-light">
+          {{ stripMarkdown(data.reply.content, 164) }}
+        </p>
+      </Alert>
+
       <MDRenderer :md="data.content" :skeleton-height="128" />
+
+      <p class="discussion-forum__timestamp">
+        {{ dayjs(data.created_at).fromNow() }}
+      </p>
 
       <div class="discussion-forum__actions">
         <ButtonGroup v-if="user">
@@ -82,7 +123,7 @@ function beginCommentDeletion() {
               </template>
             </Tooltip>
           </Button>
-          <Button v-if="user" square size="s">
+          <Button v-if="user" square size="s" @click="setQuoteOfComment(data)">
             <Tooltip>
               <Icon name="ph:quotes-bold" />
               <template #tooltip>
@@ -128,10 +169,12 @@ function beginCommentDeletion() {
 .discussion-forum {
   display: grid;
   grid-template-columns: 212px 1fr;
+  align-items: start;
   gap: 0;
   margin-bottom: var(--space-m);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
+  position: relative;
 
   &:hover {
     .discussion-forum__actions {
@@ -141,11 +184,41 @@ function beginCommentDeletion() {
     }
   }
 
+  &--highlight .discussion-forum__content {
+    background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  }
+
+  &__timestamp {
+    display: block;
+    margin-top: var(--space-m);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+  }
+
+  &__reply {
+    margin-bottom: var(--space-m);
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--color-bg-raised);
+    }
+  }
+
+  &__reply-user {
+    font-weight: var(--font-weight-bold) !important;
+    white-space: nowrap;
+
+    :deep(.user-display__username) {
+      font-weight: var(--font-weight-bold) !important;
+    }
+  }
+
   &__author {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     flex-direction: column;
     align-items: center;
+    height: 100%;
     border-right: 1px solid var(--color-border);
     padding: var(--space-m);
 
@@ -156,11 +229,15 @@ function beginCommentDeletion() {
   }
 
   &__content {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     padding: var(--space-m);
     background-color: var(--color-bg-medium);
     border-bottom-right-radius: var(--border-radius-m);
     border-top-right-radius: var(--border-radius-m);
     position: relative;
+    height: 100%;
   }
 
   &__badges {

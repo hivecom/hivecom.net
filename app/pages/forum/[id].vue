@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Button, Card, Divider, Flex } from '@dolanske/vui'
+import { Alert, Button, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
+import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { formatDate } from '@/lib/utils/date'
 
-// TODO: user preview card should have an option where avatar appears next to the name
+dayjs.extend(relativeTime)
+
+// TODO: path would be nice, but we'd have to fetch all the parent topics. Maybe a recursive query or some shit?
 
 const route = useRoute()
 
@@ -69,23 +74,41 @@ useSeoMeta({
         <h1>
           {{ post.title ?? 'Unnamed discussion' }}
         </h1>
-        <p v-if="post.description">
-          {{ post?.description }}
-        </p>
 
-        <Flex x-between y-center class="mt-l">
+        <MDRenderer v-if="post.description" class="forum-post__content" :md="post.description" :skeleton-height="64" />
+
+        <Flex x-between y-center class="mt-xl">
           <UserDisplay :user-id="post.created_by" show-role />
           <Flex gap="l" y-center>
-            <span>
-              <Icon :size="18" name="ph:eye" />
-              {{ post.view_count }}</span>
-            <span>
-              <Icon :size="18" name="ph:chat-dots" />
-              {{ post.reply_count }}
-            </span>
-            <!-- <Icon name="ph:dot-outline-fill" /> -->
-            <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
-            <span>Updated {{ dayjs(post.modified_at).fromNow() }}</span>
+            <Tooltip>
+              <span>
+                <Icon :size="18" name="ph:eye" />
+                {{ post.view_count }}</span>
+              <template #tooltip>
+                {{ post.view_count }} views
+              </template>
+            </Tooltip>
+            <Tooltip>
+              <span>
+                <Icon :size="18" name="ph:chat-dots" />
+                {{ post.reply_count }}
+              </span>
+              <template #tooltip>
+                {{ post.reply_count }} replies
+              </template>
+            </Tooltip>
+            <Tooltip>
+              <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
+              <template #tooltip>
+                Posted on {{ formatDate(post.created_at) }}
+              </template>
+            </Tooltip>
+            <Tooltip>
+              <span>Updated {{ dayjs(post.modified_at).fromNow() }}</span>
+              <template #tooltip>
+                Updated on {{ formatDate(post.modified_at) }}
+              </template>
+            </Tooltip>
           </Flex>
         </Flex>
       </section>
@@ -107,6 +130,12 @@ useSeoMeta({
 </template>
 
 <style scoped lang="scss">
+.forum-post__content {
+  p {
+    font-size: var(--font-size-xl);
+  }
+}
+
 .page-title {
   border-bottom: 1px solid var(--color-border);
 
@@ -119,7 +148,7 @@ useSeoMeta({
   }
 
   span {
-    color: var(--color-text-light);
+    color: var(--color-text-lighter);
     display: flex;
     align-items: center;
     gap: var(--space-xs);

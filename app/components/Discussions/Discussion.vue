@@ -2,14 +2,12 @@
 import type { Tables } from '@/types/database.types'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, Flex, Skeleton, Textarea, Tooltip } from '@dolanske/vui'
+import { wrapInBlockquote } from '@/lib/markdown-processors'
+import { truncate } from '@/lib/utils/formatting'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
 
 // TODO: add auto-scrolling to a comment with a hash (unless browsers will do that automatically)
-
-// TODO: add support for redacting users but showing avatar & name as "user" OR
-// randomize the user name. Point is, right now it shows nothing if you are not
-// signed in
 
 /**
  * Important note (dolan)
@@ -67,6 +65,8 @@ const props = withDefaults(defineProps<Props>(), {
   inputRows: 3,
   placeholder: 'Leave your comment...',
 })
+
+const MAX_COMMENT_CHARS = 8192
 
 // If user isn't signed it, do not allow commenting
 const userId = useUserId()
@@ -166,13 +166,28 @@ provide('setReplyToComment', (comment: Comment) => replyingTo.value = comment)
 
 const textareaRef = useTemplateRef('textarea')
 
-// Auto focus textarea whenever replying is active
-watch(replyingTo, () => {
+function focusTextarea() {
   if (textareaRef.value)
     textareaRef.value.focus()
-})
+}
 
-const MAX_COMMENT_CHARS = 8192
+// Auto focus textarea whenever replying is active
+watch(replyingTo, focusTextarea)
+
+// Quoting - if a quote is requested, the full original markdown as a quote at
+// the beginning. Users can then trim the quote or keep it as it is
+provide('setQuoteOfComment', async (comment: Comment) => {
+  // Query username from the comment
+  const { data } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', comment.created_by)
+    .single()
+
+  form.message = `${wrapInBlockquote(`${comment.content} \n\n @${data.username} said`)} \n\n`
+
+  focusTextarea()
+})
 
 // Define form rules
 const rules = defineRules<typeof form>({
@@ -300,7 +315,7 @@ provide('delete-comment', deleteComment)
                 <UserDisplay class="inline-block" size="s" :user-id="replyingTo!.created_by" hide-avatar />:
               </span>
               <p class="ws-wrap">
-                {{ replyingTo!.content }}
+                {{ truncate(replyingTo?.content ?? '', 240) }}
               </p>
             </div>
             <Tooltip>
@@ -354,8 +369,6 @@ provide('delete-comment', deleteComment)
   }
 
   &__add {
-    position: relative;
-
     &:deep(.vui-input-container .vui-input textarea) {
       border-radius: var(--border-radius-m);
       padding-right: 88px;
@@ -368,6 +381,10 @@ provide('delete-comment', deleteComment)
 
     &:deep(.vui-alert-icon) {
       display: none;
+    }
+
+    form {
+      position: relative;
     }
   }
 

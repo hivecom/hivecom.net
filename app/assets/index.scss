@@ -167,6 +167,21 @@ table td {
   }
 }
 
+blockquote {
+  padding-left: var(--space-s);
+  margin-top: 0 !important;
+
+  // TODO: bake this all into VUI
+
+  & > * {
+    margin-top: var(--space-s) !important;
+
+    &:first-child {
+      margin-top: 0 !important;
+    }
+  }
+}
+
 .vui-label {
   display: block;
   text-align: left;

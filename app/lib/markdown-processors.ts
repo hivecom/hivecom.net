@@ -64,3 +64,14 @@ export function stripMarkdown(content: string, truncateAmount = 0) {
     .replace(/\n+/g, ' ')
     .trim()
 }
+
+/**
+ * @param markdownText Original text
+ * @returns Returns the markdown input wrapped in blockquotes
+ */
+export function wrapInBlockquote(markdownText: string) {
+  return markdownText
+    .split('\n')
+    .map(line => `> ${line}`)
+    .join('\n')
+}
