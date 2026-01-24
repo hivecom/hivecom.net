@@ -15,10 +15,10 @@ const {
 <template>
   <div class="discussion-forum">
     <div class="discussion-forum__author">
-      <UserPreviewCard :user-id="data.created_by" :show-activity="false" />
+      <UserPreviewCard :user-id="data.created_by" :show-activity="false" hide />
     </div>
     <div class="discussion-forum__content">
-      <MDRenderer :md="data.content" />
+      <MDRenderer :md="data.content" :skeleton-height="128" />
     </div>
   </div>
 </template>

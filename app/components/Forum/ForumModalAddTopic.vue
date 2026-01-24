@@ -75,10 +75,7 @@ function submitForm() {
             return
           }
 
-          emit('created', {
-            ...data[0],
-            discussions: [],
-          })
+          emit('created', { ...data[0], discussions: [] })
           emit('close')
           pushToast(`Created topic ${payload.name}.`)
         })

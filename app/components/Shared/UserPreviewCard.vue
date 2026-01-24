@@ -15,12 +15,14 @@ interface Props {
   showBadges?: boolean
   showActivity?: boolean
   maxBadges?: number
+  avatarSize?: 's' | 'm' | 'l'
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showBadges: true,
   showActivity: true,
   maxBadges: 4,
+  avatarSize: 'l',
 })
 
 const userIdRef = toRef(props, 'userId')
@@ -121,7 +123,7 @@ watch(() => props.userId, refetchActivity, { immediate: true })
             class="user-preview-card__avatar-link"
             :aria-label="`View profile of ${user.username}`"
           >
-            <Avatar class="user-preview-card__avatar" size="l" :url="user.avatarUrl || undefined">
+            <Avatar class="user-preview-card__avatar" :size="props.avatarSize" :url="user.avatarUrl || undefined">
               <template v-if="!user.avatarUrl" #default>
                 {{ userInitials }}
               </template>
@@ -129,7 +131,7 @@ watch(() => props.userId, refetchActivity, { immediate: true })
           </NuxtLink>
           <Avatar
             v-else
-            size="l"
+            :size="props.avatarSize"
             :url="user.avatarUrl || undefined"
           >
             <template v-if="!user.avatarUrl" #default>
@@ -219,10 +221,10 @@ watch(() => props.userId, refetchActivity, { immediate: true })
   }
 }
 
-.user-preview-card__avatar {
-  min-width: 64px;
-  min-height: 64px;
-}
+// .user-preview-card__avatar {
+//   min-width: 64px;
+//   min-height: 64px;
+// }
 
 .user-preview-card__content {
   display: flex;

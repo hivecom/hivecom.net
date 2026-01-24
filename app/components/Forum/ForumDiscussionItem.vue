@@ -4,8 +4,6 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import BadgeCircle from '../Shared/BadgeCircle.vue'
 
-// TODO: display if discussion / topic is locked or private
-
 const {
   data,
 } = defineProps<Props>()
@@ -19,11 +17,9 @@ interface Props {
 
 <template>
   <li class="forum__category-post" :class="{ pinned: data.is_sticky }">
-    <!-- TODO: the link should point correctly to the right page -->
-    <NuxtLink :to="`/forum/${data.id}`" class="forum__category-post--link">
+    <NuxtLink :to="`/forum/${data.id}`" class="forum__category-post--item">
       <div class="forum__category-post--icon">
-        <!-- TODO: dynamic icon -->
-        <Icon name="ph:scroll" />
+        <Icon name="ph:scroll" :size="20" />
         <!-- <Icon :name="data.icon" :size="20" /> -->
       </div>
       <div class="forum__category-post--name">
@@ -52,22 +48,3 @@ interface Props {
     </NuxtLink>
   </li>
 </template>
-
-<style scoped lang="scss">
-// TODO: merge styles of this and topic list item as they are identical
-
-.forum__category-post {
-  &--meta span {
-    font-size: var(--font-size-m);
-    color: var(--color-text-lighter);
-  }
-
-  &--name {
-    strong {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-    }
-  }
-}
-</style>

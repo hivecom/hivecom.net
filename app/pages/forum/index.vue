@@ -2,6 +2,7 @@
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.types'
 import { BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
+import { useRouteQuery } from '@vueuse/router'
 import dayjs from 'dayjs'
 import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
@@ -54,7 +55,8 @@ onBeforeMount(() => {
 })
 
 // Pathing and topic nesting
-const activeTopicId = ref<string | null>(null)
+// const activeTopicId = ref<string | null>(null)
+const activeTopicId = useRouteQuery<string | null>('activeTopicId', null)
 
 const activeTopicPath = computed(() => composePathToTopic(activeTopicId.value, topics.value))
 
@@ -127,6 +129,9 @@ function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
     topic.discussions.push(discussion)
   }
 }
+
+// Auto-scroll to the top of the page whenever nested topic is changed
+watch(activeTopicId, () => window.scrollTo(0, 0))
 </script>
 
 <template>
@@ -143,14 +148,13 @@ function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
 
       <Flex x-between y-center class="mb-m">
         <Breadcrumbs>
-          <BreadcrumbItem :href="activeTopicId ? undefined : '#'" @click="activeTopicId = null">
+          <BreadcrumbItem @click="activeTopicId = null">
             Frontpage
           </BreadcrumbItem>
           <BreadcrumbItem
             v-for="(item, index) in activeTopicPath"
             :key="item.parent_id"
-            :href="index === activeTopicPath.length - 1 ? undefined : '#'"
-            @click="activeTopicId = item.parent_id"
+            v-bind="index !== activeTopicPath.length - 1 ? { onClick: () => activeTopicId = item.parent_id } : {}"
           >
             {{ item.title }}
           </BreadcrumbItem>
@@ -255,7 +259,7 @@ function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
   }
 
   &__category-title,
-  &__category-post a {
+  &__category-post .forum__category-post--item {
     display: grid;
     grid-template-columns: 40px 5fr repeat(3, 1fr);
     align-items: center;
@@ -295,17 +299,37 @@ function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
       border-bottom: 1px solid var(--color-border);
     }
 
-    &:last-child a {
+    &:last-child .forum__category-post--item {
       border-bottom-right-radius: var(--border-radius-m);
       border-bottom-left-radius: var(--border-radius-m);
     }
 
-    a {
+    .forum__category-post--item {
       background-color: var(--color-bg-card);
       text-decoration: none;
+      cursor: pointer;
 
       &:hover {
         background-color: var(--color-bg-raised);
+      }
+
+      &.topic {
+        .forum__category-post--icon {
+          border: none;
+        }
+      }
+
+      &--meta span {
+        font-size: var(--font-size-m);
+        color: var(--color-text-lighter);
+      }
+
+      &--name {
+        strong {
+          display: flex;
+          gap: 4px;
+          align-items: center;
+        }
       }
     }
   }
