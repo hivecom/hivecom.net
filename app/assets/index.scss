@@ -162,8 +162,14 @@ table td {
 .vui-breadcrumbs li {
   color: var(--color-text-light);
 
+  button {
+    font-size: inherit;
+  }
+
   &:only-child {
     color: var(--color-text);
+    font-size: var(--font-size-m);
+    pointer-events: none;
   }
 }
 

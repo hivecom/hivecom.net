@@ -161,7 +161,7 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
           <BreadcrumbItem
             v-for="(item, index) in activeTopicPath"
             :key="item.parent_id"
-            v-bind="index !== activeTopicPath.length - 1 ? { onClick: () => activeTopicId = item.parent_id } : {}"
+            v-bind="index !== activeTopicPath.length - 1 || activeTopicPath.length > 1 ? { onClick: () => activeTopicId = item.parent_id } : {}"
           >
             {{ item.title }}
           </BreadcrumbItem>
