@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Button, Divider, Flex } from '@dolanske/vui'
+import { Alert, Button, Card, Divider, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
@@ -32,6 +32,13 @@ onBeforeMount(() => {
 
       loading.value = false
     })
+})
+
+useSeoMeta({
+  title: computed(() => post.value ? `${post.value.title} | Forum` : 'post Details'),
+  description: computed(() => post.value?.description || 'post details'),
+  ogTitle: computed(() => post.value ? `${post.value.title} | Forum` : 'post Details'),
+  ogDescription: computed(() => post.value?.description || 'Forum details'),
 })
 </script>
 
@@ -66,15 +73,21 @@ onBeforeMount(() => {
           {{ post?.description }}
         </p>
 
-        <!-- <Divider />
-
-        <Flex x-between y-center>
+        <Flex x-between y-center class="mt-l">
           <UserDisplay :user-id="post.created_by" show-role />
-          <Flex gap="l">
+          <Flex gap="l" y-center>
+            <span>
+              <Icon :size="18" name="ph:eye" />
+              {{ post.view_count }}</span>
+            <span>
+              <Icon :size="18" name="ph:chat-dots" />
+              {{ post.reply_count }}
+            </span>
+            <!-- <Icon name="ph:dot-outline-fill" /> -->
             <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
             <span>Updated {{ dayjs(post.modified_at).fromNow() }}</span>
           </Flex>
-        </Flex> -->
+        </Flex>
       </section>
 
       <Discussion
@@ -82,6 +95,7 @@ onBeforeMount(() => {
         type="discussion_topic"
         model="forum"
         placeholder="Write your reply to this thread..."
+        :input-rows="8"
       />
     </template>
 
@@ -94,7 +108,7 @@ onBeforeMount(() => {
 
 <style scoped lang="scss">
 .page-title {
-  // border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 
   h1 {
     font-size: var(--font-size-xxxxl);
@@ -105,8 +119,11 @@ onBeforeMount(() => {
   }
 
   span {
-    font-size: var(--font-size-s);
     color: var(--color-text-light);
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--font-size-s);
   }
 }
 </style>

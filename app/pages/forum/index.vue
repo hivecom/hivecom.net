@@ -9,6 +9,13 @@ import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import { composePathToTopic } from '@/lib/topics'
 
+useSeoMeta({
+  title: 'Forum',
+  description: 'Forum description TBA',
+  ogTitle: 'Forum',
+  ogDescription: 'Forum description TBA',
+})
+
 // TODO: for search, use the experimental vui Commands component (not done yet)
 
 // TODO: admins should be able to right click delete, lock, archive any topic or discussion
@@ -218,7 +225,7 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
           />
         </ul>
         <div v-else class="forum__category-empty">
-          <p>There are no discussions in this topic yet</p>
+          <p>There are no discussions in this topic</p>
         </div>
       </Card>
 

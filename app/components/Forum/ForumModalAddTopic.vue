@@ -43,6 +43,7 @@ const form = reactive({
   is_locked: false,
 })
 
+// Preselect a topic if we're currently in a nested view
 watch(() => props.activeTopic, (newVal) => {
   form.parent_id = newVal || null
 }, { immediate: true })

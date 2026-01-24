@@ -37,6 +37,7 @@ const form = reactive({
   discussion_topic_id: '',
 })
 
+// Preselect a topic if we're currently in a nested view
 watch(() => props.activeTopic, (newVal) => {
   if (newVal) {
     form.discussion_topic_id = newVal
