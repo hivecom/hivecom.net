@@ -225,6 +225,7 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
       <ForumModalAddTopic
         :open="addingTopic"
         :topics="topics"
+        :active-topic="activeTopicId"
         @close="addingTopic = false"
         @created="(topic) => topics.push(topic)"
       />
@@ -232,6 +233,7 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
       <ForumModalAddDiscussion
         :open="addingDiscussion"
         :topics="topics"
+        :active-topic="activeTopicId"
         @close="addingDiscussion = false"
         @created="appendDiscussionToTopic"
       />

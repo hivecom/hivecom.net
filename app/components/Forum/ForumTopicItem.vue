@@ -32,7 +32,6 @@ interface Props {
           <BadgeCircle v-if="data.is_locked" variant="info" data-title-top="Archived">
             <Icon name="ph:archive" class="text-color-blue" />
           </BadgeCircle>
-
         </strong>
         <p>{{ data.description }}</p>
       </div>

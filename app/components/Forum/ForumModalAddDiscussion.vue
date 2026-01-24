@@ -8,6 +8,7 @@ import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 const props = defineProps<{
   open: boolean
   topics: Tables<'discussion_topics'>[]
+  activeTopic: string | null
 }>()
 
 const emit = defineEmits<{
@@ -35,6 +36,12 @@ const form = reactive({
   is_sticky: false,
   discussion_topic_id: '',
 })
+
+watch(() => props.activeTopic, (newVal) => {
+  if (newVal) {
+    form.discussion_topic_id = newVal
+  }
+}, { immediate: true })
 
 const rules = defineRules<typeof form>({
   title: [required, minLenNoSpace(1), maxLength(128)],
