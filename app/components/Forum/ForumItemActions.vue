@@ -14,13 +14,13 @@ interface Props {
 
 const props = defineProps<Props>()
 
-function handleLock() {}
+// function handleLock() {}
 
-function handleArchive() {}
+// function handleArchive() {}
 
-function handleEdit() {}
+// function handleEdit() {}
 
-function handleDelete() {}
+// function handleDelete() {}
 </script>
 
 <template>
