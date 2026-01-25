@@ -4,6 +4,7 @@ import { Alert, Avatar, Button, ButtonGroup, Divider, Flex, Modal, pushToast, Te
 import dayjs from 'dayjs'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
 import { scrollToId } from '@/lib/utils/common'
 // import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
@@ -128,9 +129,12 @@ watch(editedContent, () => editError.value = [])
 <template>
   <div class="discussion-forum" :class="{ 'discussion-forum--highlight': `#comment-${data.id}` === route.hash }">
     <div v-if="user" class="discussion-forum__author">
-      <!-- <UserPreviewCard :user-id="data.created_by" :show-activity="false" hide /> -->
-      <Avatar :url="user.avatarUrl || undefined" size="l" class="mb-xs" />
-      <UserDisplay :user-id="data.created_by" show-role class="mb-s" hide-avatar />
+      <UserPreviewHover :user-id="data.created_by">
+        <Flex column x-center y-center gap="s" class="mb-s">
+          <Avatar :url="user.avatarUrl || undefined" size="l" />
+          <UserDisplay :user-id="data.created_by" show-role hide-avatar />
+        </Flex>
+      </UserPreviewHover>
       <Flex expand x-center gap="l">
         <p v-if="user.created_at" class="author-meta">
           Joined {{ dayjs(user.created_at).format('MMMM YYYY') }}

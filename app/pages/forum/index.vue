@@ -7,7 +7,7 @@ import dayjs from 'dayjs'
 import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
-import { composePathToTopic } from '@/lib/topics'
+import { composedPathToString, composePathToTopic } from '@/lib/topics'
 
 useSeoMeta({
   title: 'Forum',
@@ -16,11 +16,7 @@ useSeoMeta({
   ogDescription: 'Forum description TBA',
 })
 
-// TODO: for search, use the experimental vui Commands component (not done yet)
-
 // TODO: admins should be able to right click delete, lock, archive any topic or discussion
-
-// TODO: when creating a topic or discussion, allow search dropdown
 
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
   discussions: Tables<'discussions'>[]
@@ -69,35 +65,32 @@ const activeTopicPath = computed(() => composePathToTopic(activeTopicId.value, t
 
 // Search implementation
 const searchOpen = ref(false)
+const router = useRouter()
 
 // Transform topics & discussions into a searchable list of commands. Grouped by topic & discussions
 const searchResults = computed<Command[]>(() => {
-  return topics.value.flatMap((topic) => {
-    // TODO: add option to search through topics
+  return topics.value.flatMap((topic, index) => {
+    const topicItem = {
+      title: topic.name || `Topic ${index + 1}`,
+      group: 'Topics',
+      description: composedPathToString(composePathToTopic(topic.parent_id, topics.value)),
+      handler: () => {
+        activeTopicId.value = topic.parent_id
+        searchOpen.value = false
+      },
+    }
 
-    // const topicCommand: Command = {
-    //   title: topic.name,
-    //   description: composePathToTopic(topic.id, topics.value)
-    //     .map(item => item.title)
-    //     .join(' / '),
-    //   group: 'Topics',
-    //   handler: () => {
-    //     activeTopicId.value = topic.id
-    //     searchOpen.value = false
-    //   },
-    // }
-
-    const discussionCommands: Command[] = topic.discussions.map((discussion, index) => ({
-
+    const discussionResults: Command[] = topic.discussions.map((discussion, index) => ({
       title: discussion.title ?? `Discussion ${index + 1}`,
-      // group: 'Discussions',
-      description: `Discussion in ${topic.name}`,
-      handler: () => {},
+      group: 'Discussions',
+      description: discussion.description ?? undefined,
+      handler: () => {
+        router.push(`/forum/${discussion.id}`)
+        searchOpen.value = false
+      },
     }))
 
-    return discussionCommands
-
-    // return [topicCommand, ...discussionCommands]
+    return [topicItem, ...discussionResults]
   })
 })
 
@@ -270,7 +263,7 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
   &__category-title,
   &__category-post .forum__category-post--item {
     display: grid;
-    grid-template-columns: 40px 5fr repeat(3, 1fr);
+    grid-template-columns: 40px 5fr repeat(3, 1fr) 24px;
     align-items: center;
     gap: var(--space-s);
     padding: var(--space-s) var(--space-m);
@@ -293,6 +286,13 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
   }
 
   &__category-post {
+    &:has(.has-active-dropdown),
+    &:hover {
+      .forum__item-actions {
+        display: block;
+      }
+    }
+
     &.pinned {
       .forum__category-post--icon {
         background-color: var(--color-accent);
@@ -374,6 +374,10 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
     padding: var(--space-m);
     font-size: var(--font-size-m);
     color: var(--color-text-light);
+  }
+
+  &__item-actions {
+    display: none;
   }
 }
 </style>

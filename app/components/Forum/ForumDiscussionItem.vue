@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import BadgeCircle from '../Shared/BadgeCircle.vue'
+import ForumItemActions from './ForumItemActions.vue'
 
 const {
   data,
@@ -45,6 +46,8 @@ interface Props {
       <div class="forum__category-post--meta">
         <span>{{ dayjs(data.modified_at).fromNow() }}</span>
       </div>
+
+      <ForumItemActions type="discussion" :data />
     </NuxtLink>
   </li>
 </template>
