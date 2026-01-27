@@ -5,6 +5,7 @@ import { BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, Dropdown
 import { useRouteQuery } from '@vueuse/router'
 import dayjs from 'dayjs'
 import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
+import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
@@ -201,6 +202,12 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
             <span>Views</span>
             <span>Last update</span>
           </template>
+          <template v-else>
+            <div />
+            <div />
+            <div />
+          </template>
+          <ForumItemActions type="topic" :data="topic" />
         </div>
 
         <ul v-if="topic.discussions.length > 0 || getTopicsByParentId(topic.id).length > 0">
@@ -251,6 +258,18 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
 <style lang="scss">
 .forum {
   &__category {
+    h3 {
+      height: 28px;
+      line-height: 28px;
+    }
+
+    &:has(.forum__category-title .has-active-dropdown),
+    &:hover {
+      .forum__category-title .forum__item-actions {
+        display: block;
+      }
+    }
+
     &:not(:last-of-type) {
       margin-bottom: var(--space-xl);
     }

@@ -7,6 +7,8 @@ import { Button, Divider, Dropdown, DropdownItem } from '@dolanske/vui'
 
 // TODO: should this same menu be attached to forum discussion panel?
 
+// TODO: we could change the data type based on generic type and
+
 interface Props {
   type: 'topic' | 'discussion'
   data: Tables<'discussions'> | Tables<'discussion_topics'>
@@ -32,7 +34,7 @@ const props = defineProps<Props>()
         </Button>
       </template>
       <DropdownItem v-if="props.type === 'discussion'">
-        Sticky
+        {{ props.data }}
       </DropdownItem>
       <DropdownItem>Lock</DropdownItem>
       <DropdownItem v-if="props.type === 'topic'">
