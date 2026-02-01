@@ -8,7 +8,9 @@ import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
+import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
+import { slugify } from '@/lib/utils/formatting'
 
 useSeoMeta({
   title: 'Forum',
@@ -18,6 +20,12 @@ useSeoMeta({
 })
 
 // TODO: admins should be able to right click delete, lock, archive any topic or discussion
+
+// TODO: sort topics (and discussions?) based on defined order
+
+// TODO: sort archived topics at the bottom | or even inside an accordion at the bottom of the list?
+
+// TODO add "add topic / discussion" in topic actions dropdown
 
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
   discussions: Tables<'discussions'>[]
@@ -78,6 +86,11 @@ const searchResults = computed<Command[]>(() => {
       handler: () => {
         activeTopicId.value = topic.parent_id
         searchOpen.value = false
+
+        if (!topic.parent_id) {
+          const el = document.querySelector(`#${slugify(topic.name)}`)
+          el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        }
       },
     }
 
@@ -133,6 +146,27 @@ function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
 
 // Auto-scroll to the top of the page whenever nested topic is changed
 watch(activeTopicId, () => window.scrollTo(0, 0))
+
+// Update methods - whenever a topic or a discussion is updated, replace the new
+// object with the old one ot avoid the need to fetch data
+function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_topics'> | Tables<'discussions'>) {
+  if (type === 'topic') {
+    const index = topics.value.findIndex(({ id }) => id === data.id)
+    const oldTopic = topics.value[index]
+
+    // Merge the updated data with the old topic, preserving discussions
+    topics.value = topics.value.toSpliced(index, 1, { ...oldTopic, ...data } as TopicWithDiscussions)
+  }
+  else {
+    const parentTopic = topics.value.find(topic =>
+      topic.discussions.some(discussion => discussion.id === data.id),
+    )
+    if (parentTopic) {
+      const discussionIndex = parentTopic.discussions.findIndex(({ id }) => id === data.id)
+      parentTopic.discussions[discussionIndex] = data as Tables<'discussions'>
+    }
+  }
+}
 </script>
 
 <template>
@@ -196,7 +230,12 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
 
       <Card v-for="(topic, index) in modelledTopics" :key="topic.id" class="forum__category" separators>
         <div class="forum__category-title">
-          <h3>{{ topic.name }}</h3>
+          <h3 :id="slugify(topic.name)">
+            {{ topic.name }}
+            <BadgeCircle v-if="topic.is_locked" variant="accent" data-title-top="Locked">
+              <Icon name="ph:lock" class="text-color-accent" />
+            </BadgeCircle>
+          </h3>
           <template v-if="index === 0">
             <span>Replies</span>
             <span>Views</span>
@@ -207,7 +246,7 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
             <div />
             <div />
           </template>
-          <ForumItemActions type="topic" :data="topic" />
+          <ForumItemActions table="discussion_topics" :data="topic" @update="replaceItemData('topic', $event)" />
         </div>
 
         <ul v-if="topic.discussions.length > 0 || getTopicsByParentId(topic.id).length > 0">
@@ -216,12 +255,14 @@ watch(activeTopicId, () => window.scrollTo(0, 0))
             :key="subtopic.id"
             :data="subtopic"
             @click="activeTopicId = topic.id"
+            @update="replaceItemData('topic', $event)"
           />
 
           <ForumDiscussionItem
             v-for="discussion of sortDiscussions(topic.discussions)"
             :key="discussion.id"
             :data="discussion"
+            @update="replaceItemData('discussion', $event)"
           />
         </ul>
         <div v-else class="forum__category-empty">

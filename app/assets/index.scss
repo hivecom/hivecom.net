@@ -136,6 +136,7 @@ button {
   }
 }
 
+.vui-toast-wrapper,
 .vui-tooltip {
   z-index: 9999 !important;
 }
@@ -186,6 +187,10 @@ blockquote {
       margin-top: 0 !important;
     }
   }
+}
+
+.text-color-accent {
+  color: var(--color-accent) !important;
 }
 
 .vui-label {

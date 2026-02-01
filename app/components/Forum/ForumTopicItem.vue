@@ -5,15 +5,19 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import BadgeCircle from '../Shared/BadgeCircle.vue'
 import ForumItemActions from './ForumItemActions.vue'
 
+interface Props {
+  data: Tables<'discussion_topics'>
+}
+
 const {
   data,
 } = defineProps<Props>()
 
-dayjs.extend(relativeTime)
+const emit = defineEmits<{
+  update: [data: Tables<'discussion_topics'>]
+}>()
 
-interface Props {
-  data: Tables<'discussion_topics'>
-}
+dayjs.extend(relativeTime)
 </script>
 
 <template>
@@ -30,7 +34,7 @@ interface Props {
             <Icon name="ph:lock" class="text-color-accent" />
           </BadgeCircle>
 
-          <BadgeCircle v-if="data.is_locked" variant="info" data-title-top="Archived">
+          <BadgeCircle v-if="data.is_archived" variant="info" data-title-top="Archived">
             <Icon name="ph:archive" class="text-color-blue" />
           </BadgeCircle>
         </strong>
@@ -43,7 +47,7 @@ interface Props {
         <span>{{ dayjs(data.modified_at).fromNow() }}</span>
       </div>
 
-      <ForumItemActions type="topic" :data />
+      <ForumItemActions table="discussion_topics" :data @update="emit('update', $event as any)" />
     </div>
   </li>
 </template>

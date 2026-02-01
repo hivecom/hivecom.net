@@ -3,15 +3,21 @@ import { Button, Flex, Modal } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
-  title: string | undefined
-  description: string | undefined
-  confirmText: string | undefined
-  cancelText: string | undefined
-  destructive: boolean | undefined
+  title?: string
+  description?: string
+  confirmText?: string
+  confirmLoading?: boolean
+  cancelText?: string
+  destructive?: boolean
+}>()
+
+const emit = defineEmits<{
+  confirm: []
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
-const confirm = defineModel<() => void>('confirm', { default: () => {} })
+// FIXME: get rid of this, use emit instead
+const confirmOld = defineModel<() => void>('confirm', { default: () => {}, required: false })
 const isBelowSmall = useBreakpoint('<xs')
 </script>
 
@@ -40,9 +46,11 @@ const isBelowSmall = useBreakpoint('<xs')
         </Button>
         <Button
           :expand="isBelowSmall"
+          :loading="props.confirmLoading"
           :variant="props.destructive ? 'danger' : 'fill'"
           @click="() => {
-            confirm()
+            emit('confirm')
+            confirmOld()
             close()
           }"
         >

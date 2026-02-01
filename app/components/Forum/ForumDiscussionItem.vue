@@ -5,15 +5,19 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import BadgeCircle from '../Shared/BadgeCircle.vue'
 import ForumItemActions from './ForumItemActions.vue'
 
+interface Props {
+  data: Tables<'discussions'>
+}
+
 const {
   data,
 } = defineProps<Props>()
 
-dayjs.extend(relativeTime)
+const emit = defineEmits<{
+  update: [data: Tables<'discussion_topics'>]
+}>()
 
-interface Props {
-  data: Tables<'discussions'>
-}
+dayjs.extend(relativeTime)
 </script>
 
 <template>
@@ -47,7 +51,7 @@ interface Props {
         <span>{{ dayjs(data.modified_at).fromNow() }}</span>
       </div>
 
-      <ForumItemActions type="discussion" :data />
+      <ForumItemActions table="discussions" :data @update="emit('update', $event as any)" />
     </NuxtLink>
   </li>
 </template>
