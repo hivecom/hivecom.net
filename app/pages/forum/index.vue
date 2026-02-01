@@ -19,10 +19,6 @@ useSeoMeta({
   ogDescription: 'Forum description TBA',
 })
 
-// TODO: sort topics (and discussions?) based on defined order
-
-// TODO: sort archived topics at the bottom | or even inside an accordion at the bottom of the list?
-
 // TODO add "add topic / discussion" in topic actions dropdown
 
 // TODO: implement topic / discussion editing (or decide not to support it)
@@ -123,12 +119,32 @@ function sortDiscussions(discussions: Tables<'discussions'>[]) {
 // List topics based on the activeTopicId. If it's null, list all topics
 // without a parent_id, otherwise list all topics which match the activeTopicId
 const modelledTopics = computed(() => {
+  let filtered
   if (!activeTopicId.value) {
-    return topics.value.filter(topic => topic.parent_id === null)
+    filtered = topics.value.filter(topic => topic.parent_id === null)
   }
   else {
-    return topics.value.filter(topic => topic.parent_id === activeTopicId.value)
+    filtered = topics.value.filter(topic => topic.parent_id === activeTopicId.value)
   }
+
+  return filtered.toSorted((a, b) => {
+    const aHasOrder = a.sort_order !== 0
+    const bHasOrder = b.sort_order !== 0
+
+    if (aHasOrder && bHasOrder) {
+      if (a.sort_order === b.sort_order) {
+        return a.name.localeCompare(b.name)
+      }
+      return a.sort_order - b.sort_order
+    }
+
+    if (aHasOrder && !bHasOrder)
+      return -1
+    if (!aHasOrder && bHasOrder)
+      return 1
+
+    return a.name.localeCompare(b.name)
+  })
 })
 
 // Return all topics which have the given parent id. Used to list nested topics
@@ -234,6 +250,10 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
             {{ topic.name }}
             <BadgeCircle v-if="topic.is_locked" variant="accent" data-title-top="Locked">
               <Icon name="ph:lock" class="text-color-accent" />
+            </BadgeCircle>
+
+            <BadgeCircle v-if="topic.is_archived" variant="warning" data-title-top="Archived">
+              <Icon name="ph:archive" class="text-color-yellow" />
             </BadgeCircle>
           </h3>
           <template v-if="index === 0">
