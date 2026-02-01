@@ -7,7 +7,7 @@ import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
 import { scrollToId } from '@/lib/utils/common'
 
-// TODO: add confirmation dialog when deleting
+// TODO: add confirmation dialog when deleting (generic, add to parent component maybe?)
 
 // TODO: fix comments highlight being outside of the comment itself
 

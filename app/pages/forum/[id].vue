@@ -10,9 +10,9 @@ import { formatDate } from '@/lib/utils/date'
 
 dayjs.extend(relativeTime)
 
-// TODO: do a 2nd design pass on this later
+// TODO: do a 2nd design pass on this later after some feedback & more testing
 
-// TODO: path would be nice, but we'd have to fetch all the parent topics. Maybe a recursive query or some shit?
+// TODO: path to post would be nice, but we'd have to fetch all the parent topics. Maybe a recursive query or some shit?
 
 const route = useRoute()
 
