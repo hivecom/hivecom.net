@@ -10,6 +10,8 @@ import { formatDate } from '@/lib/utils/date'
 
 dayjs.extend(relativeTime)
 
+// TODO: do a 2nd design pass on this later
+
 // TODO: path would be nice, but we'd have to fetch all the parent topics. Maybe a recursive query or some shit?
 
 const route = useRoute()
@@ -118,7 +120,7 @@ useSeoMeta({
         type="discussion_topic"
         model="forum"
         placeholder="Write your reply to this thread..."
-        :input-rows="8"
+        :input-rows="4"
       />
     </template>
 

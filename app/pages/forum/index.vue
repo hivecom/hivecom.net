@@ -19,8 +19,6 @@ useSeoMeta({
   ogDescription: 'Forum description TBA',
 })
 
-// TODO add "add topic / discussion" in topic actions dropdown
-
 // TODO: implement topic / discussion editing (or decide not to support it)
 
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
@@ -127,6 +125,8 @@ const modelledTopics = computed(() => {
     filtered = topics.value.filter(topic => topic.parent_id === activeTopicId.value)
   }
 
+  // Sort topics to prioritize `sort_order` and the rest is sorted
+  // alphabetically below. Only manually-created topics should have a sort_order
   return filtered.toSorted((a, b) => {
     const aHasOrder = a.sort_order !== 0
     const bHasOrder = b.sort_order !== 0

@@ -10,12 +10,6 @@ import { scrollToId } from '@/lib/utils/common'
 // import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { getCountryInfo } from '@/lib/utils/country'
 
-// TODO: implement reply-to design
-
-// TODO: implement reply quote
-
-// TODO: forum
-
 interface Props {
   data: Comment
 }
