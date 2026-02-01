@@ -19,13 +19,13 @@ useSeoMeta({
   ogDescription: 'Forum description TBA',
 })
 
-// TODO: admins should be able to right click delete, lock, archive any topic or discussion
-
 // TODO: sort topics (and discussions?) based on defined order
 
 // TODO: sort archived topics at the bottom | or even inside an accordion at the bottom of the list?
 
 // TODO add "add topic / discussion" in topic actions dropdown
+
+// TODO: implement topic / discussion editing (or decide not to support it)
 
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
   discussions: Tables<'discussions'>[]

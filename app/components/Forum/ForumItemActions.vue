@@ -20,6 +20,10 @@ const emit = defineEmits<{
 const dropdownRef = useTemplateRef('dropdownRef')
 const supabase = useSupabaseClient()
 
+const userId = useUserId()
+
+const { user } = useCacheUserData(userId, { includeRole: true })
+
 // Locking
 function handleLock(mode: 'lock' | 'unlock') {
   dropdownRef.value?.close()
@@ -128,7 +132,7 @@ function handleDelete() {
 </script>
 
 <template>
-  <div class="forum__item-actions">
+  <div v-if="user && (user.id === data.created_by || user.role === 'admin' || user.role === 'moderator')" class="forum__item-actions">
     <Dropdown ref="dropdownRef">
       <template #trigger="{ toggle, isOpen }">
         <Button size="s" plain square :class="{ 'has-active-dropdown': isOpen }" @click.stop.prevent="toggle">
@@ -160,9 +164,6 @@ function handleDelete() {
       <Divider :size="0" margin="8px 0" />
       <DropdownItem disabled>
         Edit
-        <template #hint>
-          Upcoming
-        </template>
       </DropdownItem>
       <DropdownItem @click="deleteConfirm">
         Delete
