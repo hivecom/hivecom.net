@@ -135,7 +135,7 @@ const modelledTopics = computed(() => {
       if (a.sort_order === b.sort_order) {
         return a.name.localeCompare(b.name)
       }
-      return a.sort_order - b.sort_order
+      return b.sort_order - a.sort_order
     }
 
     if (aHasOrder && !bHasOrder)
