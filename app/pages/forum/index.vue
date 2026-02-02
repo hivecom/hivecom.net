@@ -232,6 +232,9 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
 
           <!-- Non-admin or moderators can only create a discussion -->
           <Button v-else variant="accent" size="s" @click="addingDiscussion = true">
+            <template #start>
+              <Icon name="ph:plus" :size="16" />
+            </template>
             Discussion
           </Button>
 
