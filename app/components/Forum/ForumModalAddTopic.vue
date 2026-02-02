@@ -25,7 +25,7 @@ const supabase = useSupabaseClient()
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
   return [
-    { id: '-', label: 'Top-level', parent_id: null, path: '/' },
+    { id: '-', label: 'Top-level', parent_id: null, path: '/', sort_order: 0 },
     ...props.topics.map(topic => ({
       id: topic.id,
       label: topic.name,
@@ -41,6 +41,7 @@ const form = reactive({
   description: '',
   parent_id: null as string | null,
   is_locked: false,
+  sort_order: 0,
 })
 
 // Preselect a topic if we're currently in a nested view
@@ -50,11 +51,12 @@ watch(() => props.activeTopic, (newVal) => {
 
 const rules = defineRules<typeof form>({
   name: [required, minLenNoSpace(1), maxLength(128)],
+  sort_order: [required],
 })
 
 const loading = ref(false)
 
-const { validate, errors } = useValidation(form, rules)
+const { validate, errors } = useValidation(form, rules, { autoclear: true })
 
 function submitForm() {
   if (loading.value)
@@ -104,6 +106,7 @@ function submitForm() {
     <Flex column gap="m">
       <Input v-model="form.name" :errors="normalizeErrors(errors.name)" label="Name" expand placeholder="Topic title" required />
       <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Simply describe the topic" />
+      <Input v-model="form.sort_order" :errors="normalizeErrors(errors.sort_order)" type="number" label="Sort order" expand placeholder="Set the topic sort order" />
 
       <div class="w-100">
         <label class="vui-label">Location</label>

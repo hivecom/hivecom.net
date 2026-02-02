@@ -55,7 +55,7 @@ const rules = defineRules<typeof form>({
 
 const loading = ref(false)
 
-const { validate, errors } = useValidation(form, rules)
+const { validate, errors } = useValidation(form, rules, { autoclear: true })
 
 function submitForm() {
   if (loading.value)
