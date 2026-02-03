@@ -80,8 +80,22 @@ useSeoMeta({
         <MDRenderer v-if="post.description" class="forum-post__content" :md="post.description" :skeleton-height="64" />
 
         <Flex x-between y-center class="mt-xl">
-          <UserDisplay :user-id="post.created_by" show-role />
-          <Flex gap="l" y-center>
+          <Flex y-center x-start expand gap="m">
+            <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
+            <Tooltip>
+              <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
+              <template #tooltip>
+                Posted on {{ formatDate(post.created_at) }}
+              </template>
+            </Tooltip>
+            <Tooltip>
+              <span>Updated {{ dayjs(post.modified_at).fromNow() }}</span>
+              <template #tooltip>
+                Updated on {{ formatDate(post.modified_at) }}
+              </template>
+            </Tooltip>
+          </Flex>
+          <Flex gap="m" y-center>
             <Tooltip>
               <span>
                 <Icon :size="18" name="ph:eye" />
@@ -97,18 +111,6 @@ useSeoMeta({
               </span>
               <template #tooltip>
                 {{ post.reply_count }} replies
-              </template>
-            </Tooltip>
-            <Tooltip>
-              <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
-              <template #tooltip>
-                Posted on {{ formatDate(post.created_at) }}
-              </template>
-            </Tooltip>
-            <Tooltip>
-              <span>Updated {{ dayjs(post.modified_at).fromNow() }}</span>
-              <template #tooltip>
-                Updated on {{ formatDate(post.modified_at) }}
               </template>
             </Tooltip>
           </Flex>

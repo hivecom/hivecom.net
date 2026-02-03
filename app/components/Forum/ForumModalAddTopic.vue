@@ -4,7 +4,7 @@
 import type { TopicWithDiscussions } from '@/pages/forum/index.vue'
 import type { Tables } from '@/types/database.types'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, Card, Dropdown, Flex, Input, Modal, pushToast, searchString, Switch } from '@dolanske/vui'
+import { Button, Card, Dropdown, DropdownTitle, Flex, Input, Modal, pushToast, searchString, Switch } from '@dolanske/vui'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 
