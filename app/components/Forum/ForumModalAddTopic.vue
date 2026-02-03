@@ -4,7 +4,7 @@
 import type { TopicWithDiscussions } from '@/pages/forum/index.vue'
 import type { Tables } from '@/types/database.types'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, Card, Dropdown, Flex, Input, Modal, pushToast, Switch } from '@dolanske/vui'
+import { Button, Card, Dropdown, Flex, Input, Modal, pushToast, searchString, Switch } from '@dolanske/vui'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 
@@ -21,17 +21,23 @@ const emit = defineEmits<{
 
 const supabase = useSupabaseClient()
 
+const search = ref('')
+
 // Options to optionally select a parent topic. A 1-level deep list which
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
   return [
     { id: '-', label: 'Top-level', parent_id: null, path: '/', sort_order: 0 },
-    ...props.topics.map(topic => ({
-      id: topic.id,
-      label: topic.name,
-      parent_id: topic.id,
-      path: composedPathToString(composePathToTopic(topic.id, props.topics)),
-    })),
+    ...props.topics
+      // NOTE: this could instead be shown in the UI as a disabled option with badge?
+      .filter(item => !item.is_archived && !item.is_locked)
+      .map(topic => ({
+        id: topic.id,
+        label: topic.name,
+        parent_id: topic.id,
+        path: composedPathToString(composePathToTopic(topic.id, props.topics)),
+      }))
+      .filter(topic => search.value ? searchString([topic.label, topic.path], search.value) : true),
   ]
 })
 
@@ -124,6 +130,9 @@ function submitForm() {
             </Button>
           </template>
           <template #default="{ close }">
+            <DropdownTitle>
+              <Input v-model="search" placeholder="Search topics..." expand focus />
+            </DropdownTitle>
             <Flex column gap="xxs">
               <button v-for="option in topicOptions" :key="option.id" :label="option.label" expand class="form-add-topic__button" @click="form.parent_id = option.parent_id, close()">
                 <span>{{ option.label }}</span>

@@ -322,6 +322,8 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
 <style lang="scss">
 .forum {
   &__category {
+    background-color: var(--color-bg-medium);
+
     h3 {
       height: 28px;
       line-height: 28px;

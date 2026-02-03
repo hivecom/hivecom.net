@@ -24,6 +24,8 @@ const search = ref('')
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
   return props.topics
+    // NOTE: this could instead be shown in the UI as a disabled option with badge?
+    .filter(item => !item.is_archived && !item.is_locked)
     .map(topic => ({
       id: topic.id,
       label: topic.name,
