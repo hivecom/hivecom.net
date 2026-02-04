@@ -23,6 +23,6 @@ const {
 
 <style scoped lang="scss">
 .discussion-comment-wrapper {
-  display: contents;
+  display: block;
 }
 </style>

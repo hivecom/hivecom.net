@@ -21,9 +21,9 @@ const {
 
 const { timestamps } = inject('discussion-settings') as DiscussionSettings
 
-const userId = useUserId()
-const router = useRouter()
 const route = useRoute()
+const userId = useUserId()
+const self = useTemplateRef('self')
 
 // Generic wrapper around a discussion reply which assigns a reply model depending on the discussion type
 const COMMENT_TRUNCATE = 96
@@ -31,11 +31,18 @@ const COMMENT_TRUNCATE = 96
 const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
 
 function scrollToreply() {
-  const commentId = `#comment-${data.id}`
-  router.replace({ hash: commentId })
+  if (!data.reply) {
+    return
+  }
 
-  // TODO: this just doesnt work, it doesnt wanna scroll!!
-  scrollToId(commentId, 'nearest')
+  const commentId = `#comment-${data.reply.id}`
+  const url = new URL(window.location.href)
+  url.hash = commentId
+  history.replaceState({}, '', url.toString())
+
+  nextTick(() => {
+    scrollToId(commentId)
+  })
 }
 
 const { copy } = useClipboard()
@@ -60,10 +67,19 @@ function beginCommentDeletion() {
       loadingDeletion.value = false
     })
 }
+
+// Scroll to itself when mounted and the hash id matches
+const isActive = computed(() => `#comment-${data.id}` === route.hash)
+
+onMounted(() => {
+  if (isActive.value) {
+    self.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+})
 </script>
 
 <template>
-  <div class="discussion-comment" :class="{ 'discussion-comment--highlight': `#comment-${data.id}` === route.hash }">
+  <div ref="self" class="discussion-comment" :class="{ 'discussion-comment--highlight': isActive }">
     <UserDisplay size="s" :user-id="data.created_by" />
     <Tooltip v-if="data.reply" :delay="750">
       <button varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === userId }" @click="scrollToreply">

@@ -2,6 +2,7 @@
 import type { Comment } from '../Discussion.vue'
 import { Alert, Avatar, Button, ButtonGroup, Divider, Flex, Modal, pushToast, Textarea, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import { nextTick } from 'vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
@@ -18,9 +19,9 @@ const props = defineProps<Props>()
 
 const data = toRef(props, 'data')
 
-const router = useRouter()
 const route = useRoute()
 const userId = useUserId()
+const self = useTemplateRef('self')
 
 const supabase = useSupabaseClient()
 
@@ -44,10 +45,13 @@ function scrollToreply() {
   }
 
   const commentId = `#comment-${data.value.reply.id}`
-  router.replace({ hash: commentId })
+  const url = new URL(window.location.href)
+  url.hash = commentId
+  history.replaceState({}, '', url.toString())
 
-  // TODO: this just doesnt work, it doesnt wanna scroll!!
-  scrollToId(commentId, 'nearest')
+  nextTick(() => {
+    scrollToId(commentId)
+  })
 }
 
 function copyCommentLink() {
@@ -118,10 +122,19 @@ async function submit() {
 }
 
 watch(editedContent, () => editError.value = [])
+
+// Scroll to itself when mounted and the hash id matches
+const isActive = computed(() => `#comment-${props.data.id}` === route.hash)
+
+onMounted(() => {
+  if (isActive.value) {
+    self.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+})
 </script>
 
 <template>
-  <div class="discussion-forum" :class="{ 'discussion-forum--highlight': `#comment-${data.id}` === route.hash }">
+  <div ref="self" class="discussion-forum" :class="{ 'discussion-forum--highlight': isActive }">
     <div v-if="user" class="discussion-forum__author">
       <UserPreviewHover :user-id="data.created_by">
         <Flex column x-center y-center gap="s" class="mb-s">
