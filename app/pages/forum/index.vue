@@ -320,6 +320,9 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
 </template>
 
 <style lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+@use '@/assets/mixins.scss' as *;
+
 .forum {
   &__category {
     background-color: var(--color-bg-medium);
@@ -463,6 +466,71 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
 
   &__item-actions {
     display: none;
+  }
+}
+
+@media screen and (max-width: $breakpoint-m) {
+  .forum__category-title,
+  .forum__category-post .forum__category-post--item {
+    grid-template-columns: 40px 5fr 1fr 24px;
+  }
+
+  .forum__category-title > span,
+  .forum__category-title > div {
+    white-space: nowrap;
+    font-size: var(--font-size-xs);
+
+    &:nth-child(2),
+    &:nth-child(3) {
+      display: none;
+    }
+  }
+
+  .forum__category-post .forum__category-post--item .forum__category-post--meta {
+    span {
+      white-space: nowrap;
+      font-size: var(--font-size-xs);
+    }
+
+    &:nth-child(3),
+    &:nth-child(4) {
+      display: none;
+    }
+  }
+
+  .forum__item-actions {
+    display: block;
+  }
+}
+
+@media screen and (max-width: $breakpoint-s) {
+  .forum__category-title,
+  .forum__category-post .forum__category-post--item {
+    grid-template-columns: 32px 5fr 1fr 24px;
+  }
+
+  .forum__category-post--icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 12px;
+    align-self: start;
+
+    .iconify {
+      font-size: 16px !important;
+    }
+  }
+
+  .forum__category-post--name strong {
+    font-size: var(--font-size-s);
+  }
+
+  .forum__category-post--name p {
+    @include line-clamp(1);
+    font-size: var(--font-size-xs);
+  }
+
+  .forum__category-post .forum__category-post--item .forum__category-post--meta span {
+    font-size: var(--font-size-xxs);
   }
 }
 </style>

@@ -76,7 +76,7 @@ function updateHoveredElement(event: MouseEvent) {
                 }"
               >
                 {{ link.label }}
-                <NavAnnouncementBadge v-if="link.label === 'Announcements'" />
+                <!-- <NavAnnouncementBadge v-if="link.label === 'Announcements'" /> -->
                 <NavEventBadge v-if="link.label === 'Events'" />
                 <Icon v-if="link.children" name="ph:caret-down-fill" size="12px" />
               </NuxtLink>
