@@ -6,6 +6,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDate } from '@/lib/utils/date'
 
 dayjs.extend(relativeTime)
@@ -20,6 +21,8 @@ const supabase = useSupabaseClient()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
 const post = ref<Tables<'discussions'> | null>(null)
+
+const isMobile = useBreakpoint('<m')
 
 onBeforeMount(() => {
   loading.value = true
@@ -58,43 +61,22 @@ useSeoMeta({
 
     <!-- Main Content  -->
     <template v-else-if="post">
-      <section class="page-title mb-xl">
-        <Button
-          variant="gray"
-          plain
-          size="s"
-          class="mb-l"
-          aria-label="Go back to Events page"
-          @click="$router.back()"
-        >
-          <template #start>
-            <Icon name="ph:arrow-left" />
-          </template>
-          Back
-        </Button>
+      <section class="page-title" :class="isMobile ? 'mb-l' : 'mb-xl'">
+        <Flex x-between y-center class="mb-l">
+          <Button
+            variant="gray"
+            plain
+            size="s"
 
-        <h1>
-          {{ post.title ?? 'Unnamed discussion' }}
-        </h1>
+            aria-label="Go back to Events page"
+            @click="$router.back()"
+          >
+            <template #start>
+              <Icon name="ph:arrow-left" />
+            </template>
+            Back
+          </Button>
 
-        <MDRenderer v-if="post.description" class="forum-post__content" :md="post.description" :skeleton-height="64" />
-
-        <Flex x-between y-center class="mt-xl">
-          <Flex y-center x-start expand gap="m">
-            <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
-            <Tooltip>
-              <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
-              <template #tooltip>
-                Posted on {{ formatDate(post.created_at) }}
-              </template>
-            </Tooltip>
-            <Tooltip>
-              <span>Updated {{ dayjs(post.modified_at).fromNow() }}</span>
-              <template #tooltip>
-                Updated on {{ formatDate(post.modified_at) }}
-              </template>
-            </Tooltip>
-          </Flex>
           <Flex gap="m" y-center>
             <Tooltip>
               <span>
@@ -115,6 +97,30 @@ useSeoMeta({
             </Tooltip>
           </Flex>
         </Flex>
+
+        <h1>
+          {{ post.title ?? 'Unnamed discussion' }}
+        </h1>
+
+        <MDRenderer v-if="post.description" class="forum-post__content" :md="post.description" :skeleton-height="64" />
+
+        <Flex x-between y-center :class="isMobile ? 'mt-l' : 'mt-xl'" wrap gap="m">
+          <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
+          <Flex y-center>
+            <Tooltip>
+              <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
+              <template #tooltip>
+                Posted on {{ formatDate(post.created_at) }}
+              </template>
+            </Tooltip>
+            <Tooltip>
+              <span>Updated {{ dayjs(post.modified_at).fromNow() }}</span>
+              <template #tooltip>
+                Updated on {{ formatDate(post.modified_at) }}
+              </template>
+            </Tooltip>
+          </Flex>
+        </Flex>
       </section>
 
       <Discussion
@@ -127,17 +133,24 @@ useSeoMeta({
     </template>
 
     <!-- Nothing found or an error -->
-    <Alert v-else variant="danger">
+    <Alert v-else variant="danger" filled>
       {{ errorMessage ?? 'There was a problem loading the article' }}
     </Alert>
   </div>
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 .forum-post__content {
   p {
     font-size: var(--font-size-xl);
   }
+}
+
+.page section:first-child h1,
+.page section:first-child p {
+  text-align: left !important;
 }
 
 .page-title {
@@ -148,6 +161,7 @@ useSeoMeta({
   }
 
   p {
+    text-align: left !important;
     font-size: var(--font-size-xl);
   }
 
@@ -157,6 +171,18 @@ useSeoMeta({
     align-items: center;
     gap: var(--space-xs);
     font-size: var(--font-size-s);
+  }
+}
+
+@media screen and (max-width: $breakpoint-s) {
+  .page-title {
+    h1 {
+      font-size: var(--font-size-xxxl);
+    }
+
+    p {
+      font-size: var(--font-size-l);
+    }
   }
 }
 </style>

@@ -287,7 +287,7 @@ provide('delete-comment', deleteComment)
     </template>
 
     <template v-else-if="error">
-      <Alert variant="danger">
+      <Alert variant="danger" filled>
         <p>Failed to load discussion</p>
         <p class="text-color-lighter text-size-s">
           {{ error }}
