@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { navigationLinks } from '@/lib/navigation'
 import NavAnnouncementBadge from './NavAnnouncementBadge.vue'
 import NavEventBadge from './NavEventBadge.vue'
@@ -12,6 +13,8 @@ const supabase = useSupabaseClient()
 const authReady = ref(false)
 
 const route = useRoute()
+
+const isMobile = useBreakpoint('<s')
 
 // Mobile menu state
 const mobileMenuOpen = ref(false)
@@ -61,7 +64,7 @@ function updateHoveredElement(event: MouseEvent) {
           <Icon name="ph:list" size="2rem" />
         </Button>
 
-        <SharedLogo class="navigation__logo" />
+        <SharedLogo class="navigation__logo" :compact="isMobile" />
 
         <ul ref="navbarLinksRef" class="navigation__links" @mouseleave="hoveredElement = null">
           <template v-for="link in navigationLinks" :key="link.path">
