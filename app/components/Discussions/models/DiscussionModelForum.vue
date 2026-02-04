@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import type { Comment } from '../Discussion.vue'
-import { Alert, Avatar, Button, ButtonGroup, Divider, Flex, Modal, pushToast, Textarea, Tooltip } from '@dolanske/vui'
+import { Alert, Avatar, Button, ButtonGroup, Divider, Flex, Modal, Textarea, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
-import { nextTick } from 'vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
-import { scrollToId } from '@/lib/utils/common'
 // import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { getCountryInfo } from '@/lib/utils/country'
 
@@ -17,12 +15,14 @@ interface Props {
 
 const props = defineProps<Props>()
 
+const emit = defineEmits<{
+  copyLink: []
+  scrollReply: []
+}>()
+
 const data = toRef(props, 'data')
 
-const route = useRoute()
 const userId = useUserId()
-const self = useTemplateRef('self')
-
 const supabase = useSupabaseClient()
 
 const { user } = useCacheUserData(data.value.created_by!, {
@@ -36,32 +36,6 @@ const country = computed(() => getCountryInfo(user.value?.country))
 
 const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
 const setQuoteOfComment = inject('setQuoteOfComment') as (data: Comment) => void
-
-const { copy } = useClipboard()
-
-function scrollToreply() {
-  if (!data.value.reply) {
-    return
-  }
-
-  const commentId = `#comment-${data.value.reply.id}`
-  const url = new URL(window.location.href)
-  url.hash = commentId
-  history.replaceState({}, '', url.toString())
-
-  nextTick(() => {
-    scrollToId(commentId)
-  })
-}
-
-function copyCommentLink() {
-  const url = new URL(window.location.href)
-  url.hash = `#comment-${data.value.id}`
-  copy(url.toString())
-  pushToast('Link copied to clipboard', {
-    timeout: 1500,
-  })
-}
 
 // Comment deletion
 const deleteComment = inject('delete-comment') as (id: string) => Promise<void>
@@ -122,19 +96,10 @@ async function submit() {
 }
 
 watch(editedContent, () => editError.value = [])
-
-// Scroll to itself when mounted and the hash id matches
-const isActive = computed(() => `#comment-${props.data.id}` === route.hash)
-
-onMounted(() => {
-  if (isActive.value) {
-    self.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-})
 </script>
 
 <template>
-  <div ref="self" class="discussion-forum" :class="{ 'discussion-forum--highlight': isActive }">
+  <div class="discussion-forum">
     <div v-if="user" class="discussion-forum__author">
       <UserPreviewHover :user-id="data.created_by">
         <Flex column x-center y-center gap="s" class="mb-s">
@@ -156,7 +121,7 @@ onMounted(() => {
       </p>
     </div>
     <div class="discussion-forum__content">
-      <Alert v-if="data.reply" icon-align="start" role="button" class="discussion-forum__reply" @click="scrollToreply">
+      <Alert v-if="data.reply" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
         <p v-if="data.reply.created_by !== userId" class="discussion-forum__reply-user">
           <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" hide-avatar /> wrote:
         </p>
@@ -193,7 +158,7 @@ onMounted(() => {
               </template>
             </Tooltip>
           </Button>
-          <Button size="s" square @click="copyCommentLink">
+          <Button size="s" square @click="emit('copyLink')">
             <Tooltip>
               <Icon name="ph:link-bold" />
               <template #tooltip>

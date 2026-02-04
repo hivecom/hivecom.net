@@ -7,8 +7,6 @@ import { truncate } from '@/lib/utils/formatting'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
 
-// TODO: add auto-scrolling to a comment with a hash (unless browsers will do that automatically)
-
 /**
  * Important note (dolan)
  *

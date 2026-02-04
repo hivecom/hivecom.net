@@ -175,8 +175,11 @@ table td {
 }
 
 blockquote {
-  padding-left: var(--space-s);
+  padding-inline: var(--space-s);
   margin-top: 0 !important;
+  border-radius: var(--border-radius-m);
+  background-color: color-mix(in srgb, var(--color-bg-raised) 50%, transparent) !important;
+  box-shadow: 2px 2px 3px rgba(12, 12, 12, 0.1);
 
   // TODO: bake this all into VUI
 
@@ -186,6 +189,12 @@ blockquote {
     &:first-child {
       margin-top: 0 !important;
     }
+  }
+}
+
+:root.light {
+  blockquote {
+    box-shadow: 2px 2px 3px rgba(12, 12, 12, 0.08);
   }
 }
 

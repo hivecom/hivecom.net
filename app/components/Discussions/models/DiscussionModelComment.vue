@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import type { Comment, DiscussionSettings } from '../Discussion.vue'
-import { Button, ButtonGroup, pushToast, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
-import { scrollToId } from '@/lib/utils/common'
 
 // TODO: add confirmation dialog when deleting (generic, add to parent component maybe?)
-
-// TODO: fix comments highlight being outside of the comment itself
 
 interface Props {
   data: Comment
@@ -19,42 +16,19 @@ const {
   data,
 } = defineProps<Props>()
 
+const emit = defineEmits<{
+  copyLink: []
+  scrollReply: []
+}>()
+
 const { timestamps } = inject('discussion-settings') as DiscussionSettings
 
-const route = useRoute()
 const userId = useUserId()
-const self = useTemplateRef('self')
 
 // Generic wrapper around a discussion reply which assigns a reply model depending on the discussion type
 const COMMENT_TRUNCATE = 96
 
 const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
-
-function scrollToreply() {
-  if (!data.reply) {
-    return
-  }
-
-  const commentId = `#comment-${data.reply.id}`
-  const url = new URL(window.location.href)
-  url.hash = commentId
-  history.replaceState({}, '', url.toString())
-
-  nextTick(() => {
-    scrollToId(commentId)
-  })
-}
-
-const { copy } = useClipboard()
-
-function copyCommentLink() {
-  const url = new URL(window.location.href)
-  url.hash = `#comment-${data.id}`
-  copy(url.toString())
-  pushToast('Link copied to clipboard', {
-    timeout: 1500,
-  })
-}
 
 // Comment deletion
 const deleteComment = inject('delete-comment') as (id: string) => Promise<void>
@@ -67,22 +41,13 @@ function beginCommentDeletion() {
       loadingDeletion.value = false
     })
 }
-
-// Scroll to itself when mounted and the hash id matches
-const isActive = computed(() => `#comment-${data.id}` === route.hash)
-
-onMounted(() => {
-  if (isActive.value) {
-    self.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-})
 </script>
 
 <template>
-  <div ref="self" class="discussion-comment" :class="{ 'discussion-comment--highlight': isActive }">
+  <div class="discussion-comment">
     <UserDisplay size="s" :user-id="data.created_by" />
     <Tooltip v-if="data.reply" :delay="750">
-      <button varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === userId }" @click="scrollToreply">
+      <button varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === userId }" @click="emit('scrollReply')">
         <Icon name="ph:arrow-elbow-up-right" />
         <p v-if="data.reply.created_by !== userId" class="discussion-comment__reply-user">
           <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" hide-avatar />:
@@ -120,7 +85,7 @@ onMounted(() => {
             </template>
           </Tooltip>
         </Button>
-        <Button size="s" square @click="copyCommentLink">
+        <Button size="s" square @click="emit('copyLink')">
           <Tooltip>
             <Icon name="ph:link-bold" />
             <template #tooltip>
@@ -158,7 +123,8 @@ onMounted(() => {
     content: '';
     display: block;
     position: absolute;
-    inset: 4px -12px;
+    inset: 8px 0;
+    left: 34px;
     z-index: -1;
     border-radius: var(--border-radius-m);
     background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
@@ -248,7 +214,7 @@ onMounted(() => {
     display: flex;
     gap: 3px;
     position: absolute;
-    right: -4px;
+    right: 4px;
     top: var(--space-s);
 
     opacity: 0;
