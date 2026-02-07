@@ -35,6 +35,7 @@ interface ActivityItem {
   user: string
   href?: string
   onClick?: () => void
+  icon: string
 }
 
 const userId = useUserId()
@@ -94,6 +95,7 @@ onBeforeMount(() => {
             return {
               id: item.id,
               type: 'reply',
+              icon: 'ph:chats-circle',
               content: item.content,
               timestamp: item.modified_at,
               user: item.modified_by!,
@@ -244,6 +246,7 @@ const latestPosts = computed<ActivityItem[]>(() => {
         content: (isTopic ? item.name : item.title) ?? 'Content',
         timestamp: item.modified_at,
         user: item.modified_by,
+        icon: isTopic ? 'ph:folder-open' : 'ph:scroll',
         ...(isTopic
           ? { onClick: () => activeTopicId.value = id }
           : { href: `/forum/${id}` }),
@@ -277,7 +280,10 @@ const latestPosts = computed<ActivityItem[]>(() => {
         <div class="forum__latest-list">
           <NuxtLink v-for="event in latestPosts" :key="event.id" class="forum__latest-item" :href="event.href" @click="event.onClick">
             <Flex x-between y-center>
-              <span>{{ event.type }}</span>
+              <Flex :gap="4">
+                <Icon :name="event.icon" :size="13" />
+                <span> {{ event.type }}</span>
+              </Flex>
               <span>{{ dayjs(event.timestamp).fromNow() }}</span>
             </Flex>
             <p>{{ event.content }}</p>
@@ -435,6 +441,14 @@ const latestPosts = computed<ActivityItem[]>(() => {
       border-radius: var(--border-radius-m);
       border: 1px solid var(--color-border);
 
+      &:first-child {
+        background-color: var(--color-bg-medium);
+
+        &:hover {
+          background-color: var(--color-bg-raised);
+        }
+      }
+
       &:hover {
         background-color: var(--color-bg-medium);
       }
@@ -460,7 +474,7 @@ const latestPosts = computed<ActivityItem[]>(() => {
         font-size: var(--font-size-m);
         color: var(--color-text);
         margin-top: 2px;
-        margin-bottom: 4px;
+        margin-bottom: var(--space-s);
       }
     }
   }
