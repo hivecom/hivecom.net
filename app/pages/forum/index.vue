@@ -417,7 +417,6 @@ const latestPosts = computed<ActivityItem[]>(() => {
 .forum {
   &__latest {
     margin-bottom: var(--space-xl);
-    padding-right: 32px;
 
     & > strong {
       font-size: var(--font-size-l);
