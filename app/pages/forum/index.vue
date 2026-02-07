@@ -4,13 +4,17 @@ import type { Tables } from '@/types/database.types'
 import { BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import { useRouteQuery } from '@vueuse/router'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
+
+dayjs.extend(relativeTime)
 
 useSeoMeta({
   title: 'Forum',
@@ -23,6 +27,16 @@ useSeoMeta({
 
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
   discussions: Tables<'discussions'>[]
+}
+
+interface ActivityItem {
+  id: string
+  type: 'topic' | 'discussion' | 'reply'
+  content: string
+  timestamp: string
+  user: string
+  href?: string
+  onClick?: () => void
 }
 
 const userId = useUserId()
@@ -38,24 +52,52 @@ const supabase = useSupabaseClient()
 const topicsError = ref<string | null>(null)
 const topics = ref<TopicWithDiscussions[]>([])
 
+// Store 10 latest replies for the activity list
+const latestReplies = ref<ActivityItem[]>([])
+
 onBeforeMount(() => {
   loading.value = true
-  supabase
-    .from('discussion_topics')
-    .select(`
-      *,
-      discussions (
-        *
-      )
-    `)
-    .then(({ data, error }) => {
-      if (error) {
-        topicsError.value = error.message
-      }
-      else {
-        topics.value = data
-      }
 
+  Promise.all([
+    supabase
+      .from('discussion_topics')
+      .select(`
+        *,
+        discussions (
+          *
+        )
+      `)
+      .then(({ data, error }) => {
+        if (error) {
+          topicsError.value = error.message
+        }
+        else {
+          topics.value = data
+        }
+      }),
+    // FIXME: we need to limit discussion_replies only to discussion types
+    // which can appear in the forum. No clue how to do that rn
+    supabase
+      .from('discussion_replies')
+      .select('*')
+      .limit(10)
+      .order('created_at')
+      .then(({ data }) => {
+        if (data) {
+          latestReplies.value = data.map((item) => {
+            return {
+              id: item.id,
+              type: 'reply',
+              content: item.content,
+              timestamp: item.modified_at,
+              user: item.modified_by!,
+              href: `/forum/${item.discussion_id}?comment=${item.id}`,
+            }
+          })
+        }
+      }),
+  ])
+    .then(() => {
       loading.value = false
     })
 })
@@ -183,6 +225,33 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
     }
   }
 }
+
+const latestPosts = computed<ActivityItem[]>(() => {
+  const flattenedTopics = topics.value
+    .flatMap(topic => [topic, ...topic.discussions])
+    .filter(item => item.description)
+    .map((item) => {
+      const isTopic = 'slug' in item
+      const id = item.id
+
+      return {
+        id,
+        type: isTopic ? 'topic' : 'discussion',
+        // @ts-expect-error different objects might have fields undefined
+        content: (isTopic ? item.name : item.title) ?? 'Content',
+        timestamp: item.modified_at,
+        user: item.modified_by,
+        ...(isTopic
+          ? { onClick: () => activeTopicId.value = id }
+          : { href: `/forum/${id}` }),
+      } as ActivityItem
+    })
+
+  return flattenedTopics
+    .concat(latestReplies.value)
+    .toSorted((a, b) => new Date(a.timestamp) > new Date(b.timestamp) ? -1 : 1)
+    .splice(0, 10)
+})
 </script>
 
 <template>
@@ -195,6 +264,23 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
         <p>
           Bringing back the old school internet experience
         </p>
+      </section>
+
+      <section class="forum__latest">
+        <h4 class="mb-m">
+          Latest activity
+        </h4>
+
+        <div class="forum__latest-list">
+          <NuxtLink v-for="event in latestPosts" :key="event.id" class="forum__latest-item" :href="event.href" @click="event.onClick">
+            <Flex x-between y-center>
+              <span>{{ event.type }}</span>
+              <span>{{ dayjs(event.timestamp).fromNow() }}</span>
+            </Flex>
+            <p>{{ event.content }}</p>
+            <UserDisplay :user-id="event.user" size="s" />
+          </NuxtLink>
+        </div>
       </section>
 
       <Flex x-between y-center class="mb-m">
@@ -324,6 +410,62 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
 @use '@/assets/mixins.scss' as *;
 
 .forum {
+  &__latest {
+    margin-bottom: var(--space-xl);
+    padding-right: 32px;
+
+    & > strong {
+      font-size: var(--font-size-l);
+      font-weight: var(--font-weight-bold);
+    }
+  }
+
+  &__latest-list {
+    display: flex;
+    gap: var(--space-s);
+    overflow-y: auto;
+    padding-bottom: 16px;
+    scrollbar-width: thin;
+
+    .forum__latest-item {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-xs);
+      padding: var(--space-s);
+      border-radius: var(--border-radius-m);
+      border: 1px solid var(--color-border);
+
+      &:hover {
+        background-color: var(--color-bg-medium);
+      }
+
+      & > .vui-flex {
+        min-width: 292px;
+      }
+
+      span {
+        white-space: nowrap;
+        font-size: var(--font-size-xs);
+        color: var(--color-text-lighter);
+
+        &:first-child {
+          text-transform: capitalize;
+        }
+      }
+
+      p {
+        @include line-clamp(1);
+        text-align: left;
+        flex: 1;
+        font-size: var(--font-size-m);
+        color: var(--color-text);
+        margin-top: 2px;
+        margin-bottom: 4px;
+      }
+    }
+  }
+
   &__category {
     background-color: var(--color-bg-medium);
 
@@ -351,7 +493,7 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
   &__category-title,
   &__category-post .forum__category-post--item {
     display: grid;
-    grid-template-columns: 40px 5fr repeat(3, 1fr) 24px;
+    grid-template-columns: 40px 5fr 64px 64px 128px 24px;
     align-items: center;
     gap: var(--space-s);
     padding: var(--space-s) var(--space-m);
@@ -416,18 +558,22 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
         }
       }
 
-      &--meta span {
-        font-size: var(--font-size-m);
-        color: var(--color-text-lighter);
-      }
-
-      &--name {
+      &--meta &--name {
         strong {
           display: flex;
           gap: 4px;
           align-items: center;
         }
       }
+
+      p {
+        @include line-clamp(1);
+      }
+    }
+
+    .forum__category-post--meta span {
+      font-size: var(--font-size-s);
+      color: var(--color-text-light);
     }
   }
 
@@ -525,12 +671,15 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
   }
 
   .forum__category-post--name p {
-    @include line-clamp(1);
     font-size: var(--font-size-xs);
   }
 
   .forum__category-post .forum__category-post--item .forum__category-post--meta span {
     font-size: var(--font-size-xxs);
+  }
+
+  .forum__latest-list .forum__latest-item > .vui-flex {
+    min-width: 256px;
   }
 }
 </style>

@@ -165,7 +165,7 @@ function handleDelete() {
       <DropdownItem disabled>
         Edit
       </DropdownItem>
-      <DropdownItem @click="deleteConfirm">
+      <DropdownItem @click="deleteConfirm = true">
         Delete
       </DropdownItem>
     </Dropdown>
