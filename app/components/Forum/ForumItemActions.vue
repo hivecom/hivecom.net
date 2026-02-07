@@ -2,6 +2,8 @@
 import type { Tables } from '@/types/database.types'
 import { Alert, Button, Divider, Dropdown, DropdownItem, pushToast } from '@dolanske/vui'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
+import ForumModalAddDiscussion from './ForumModalAddDiscussion.vue'
+import ForumModalAddTopic from './ForumModalAddTopic.vue'
 
 type Props
   = {
@@ -102,6 +104,8 @@ function handleStick(mode: 'stick' | 'unstick') {
     })
 }
 
+// Editing
+const showEditModal = ref(false)
 // function handleEdit() {}
 
 // Delete
@@ -135,9 +139,11 @@ function handleDelete() {
   <div v-if="user && (user.id === data.created_by || user.role === 'admin' || user.role === 'moderator')" class="forum__item-actions">
     <Dropdown ref="dropdownRef">
       <template #trigger="{ toggle, isOpen }">
-        <Button size="s" plain square :class="{ 'has-active-dropdown': isOpen }" @click.stop.prevent="toggle">
-          <Icon name="ph:dots-three-outline-fill" />
-        </Button>
+        <slot :toggle>
+          <Button size="s" plain square :class="{ 'has-active-dropdown': isOpen }" @click.stop.prevent="toggle">
+            <Icon name="ph:dots-three-outline-fill" />
+          </Button>
+        </slot>
       </template>
       <!-- Locking - topic & discussion  -->
       <DropdownItem v-if="props.data.is_locked" @click="handleLock('unlock')">
@@ -162,7 +168,7 @@ function handleDelete() {
         </DropdownItem>
       </template>
       <Divider :size="0" margin="8px 0" />
-      <DropdownItem disabled>
+      <DropdownItem @click="showEditModal = true">
         Edit
       </DropdownItem>
       <DropdownItem @click="deleteConfirm = true">
@@ -190,6 +196,23 @@ function handleDelete() {
       title="Remove"
       description="Are you sure you want to delete this item? This action cannot be undone"
       @confirm="handleDelete"
+    />
+
+    <!-- Editing modals -->
+    <ForumModalAddTopic
+      v-if="props.table === 'discussion_topics'"
+      :open="showEditModal"
+      :edited-item="props.data"
+      @close="showEditModal = false"
+      @created="emit('update', $event)"
+    />
+
+    <ForumModalAddDiscussion
+      v-else
+      :open="showEditModal"
+      :edited-item="props.data"
+      @close="showEditModal = false"
+      @created="emit('update', $event)"
     />
   </div>
 </template>

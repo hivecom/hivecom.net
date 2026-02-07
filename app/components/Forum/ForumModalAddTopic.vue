@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// List items for a discussion under a topic
-
 import type { TopicWithDiscussions } from '@/pages/forum/index.vue'
 import type { Tables } from '@/types/database.types'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
@@ -8,11 +6,12 @@ import { Button, Card, Dropdown, DropdownTitle, Flex, Input, Modal, pushToast, s
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 
-const props = defineProps<{
+interface Props {
   open: boolean
-  topics: Tables<'discussion_topics'>[]
-  activeTopic: string | null
-}>()
+  editedItem?: Tables<'discussion_topics'>
+}
+
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -20,22 +19,26 @@ const emit = defineEmits<{
 }>()
 
 const supabase = useSupabaseClient()
-
 const search = ref('')
+const isEditing = computed(() => !!props.editedItem)
+
+// Inject provided values from parent
+const topics = inject<() => Ref<Tables<'discussion_topics'>[]>>('forumTopics', () => ref([]))()
+const activeTopicId = inject<() => Ref<string | null>>('forumActiveTopicId', () => ref(null))()
 
 // Options to optionally select a parent topic. A 1-level deep list which
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
   return [
     { id: '-', label: 'Top-level', parent_id: null, path: '/', sort_order: 0 },
-    ...props.topics
+    ...topics.value
       // NOTE: this could instead be shown in the UI as a disabled option with badge?
       .filter(item => !item.is_archived && !item.is_locked)
       .map(topic => ({
         id: topic.id,
         label: topic.name,
         parent_id: topic.id,
-        path: composedPathToString(composePathToTopic(topic.id, props.topics)),
+        path: composedPathToString(composePathToTopic(topic.id, topics.value)),
       }))
       .filter(topic => search.value ? searchString([topic.label, topic.path], search.value) : true),
   ]
@@ -50,9 +53,25 @@ const form = reactive({
   sort_order: 0,
 })
 
+// When we're editing, make sure the form and edited data are in sync
+watch(() => props.editedItem, (item) => {
+  if (!item)
+    return
+
+  Object.assign(form, {
+    name: item.name,
+    parent_id: item.parent_id,
+    is_locked: item.is_locked,
+    sort_order: item.sort_order,
+    ...(item.description && { description: item.description }),
+  })
+}, { immediate: true })
+
 // Preselect a topic if we're currently in a nested view
-watch(() => props.activeTopic, (newVal) => {
-  form.parent_id = newVal || null
+watch(activeTopicId, (newVal) => {
+  if (newVal) {
+    form.parent_id = newVal
+  }
 }, { immediate: true })
 
 const rules = defineRules<typeof form>({
@@ -75,23 +94,24 @@ function submitForm() {
       const payload = {
         ...form,
         slug: slugify(form.name),
+        ...(isEditing.value && { id: props.editedItem!.id }),
       }
 
       supabase
         .from('discussion_topics')
-        .insert(payload)
+        .upsert(payload)
         .select()
         .then(({ error, data }) => {
           loading.value = false
 
           if (error) {
-            pushToast('Failed to create topic.')
+            pushToast(`Failed to ${isEditing.value ? 'update' : 'create'} topic`)
             return
           }
 
           emit('created', { ...data[0], discussions: [] })
           emit('close')
-          pushToast(`Created topic ${payload.name}.`)
+          pushToast(`${isEditing.value ? 'Updated' : 'Created'} topic ${payload.name}`)
         })
     })
     .catch(() => {
@@ -103,7 +123,7 @@ function submitForm() {
 <template>
   <Modal v-bind="props" size="s" :card="{ footerSeparator: true }" @close="emit('close')">
     <template #header>
-      <h3>New topic</h3>
+      <h3>{{ isEditing ? 'Edit' : 'Create' }} topic</h3>
     </template>
     <p class="mb-l">
       Topics are top level categories in which you can create discussions. You can also nest topics within topics.
@@ -156,7 +176,7 @@ function submitForm() {
           Cancel
         </Button>
         <Button variant="accent" @click="submitForm">
-          Create
+          {{ isEditing ? 'Save' : 'Create' }}
         </Button>
       </Flex>
     </template>

@@ -23,8 +23,6 @@ useSeoMeta({
   ogDescription: 'Forum description TBA',
 })
 
-// TODO: implement topic / discussion editing (or decide not to support it)
-
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
   discussions: Tables<'discussions'>[]
 }
@@ -54,6 +52,14 @@ const topics = ref<TopicWithDiscussions[]>([])
 
 // Store 10 latest replies for the activity list
 const latestReplies = ref<ActivityItem[]>([])
+
+// Pathing and topic nesting
+// const activeTopicId = ref<string | null>(null)
+const activeTopicId = useRouteQuery<string | null>('activeTopicId', null)
+
+// Provide topics and activeTopicId to child modals
+provide('forumTopics', () => topics)
+provide('forumActiveTopicId', () => activeTopicId)
 
 onBeforeMount(() => {
   loading.value = true
@@ -101,10 +107,6 @@ onBeforeMount(() => {
       loading.value = false
     })
 })
-
-// Pathing and topic nesting
-// const activeTopicId = ref<string | null>(null)
-const activeTopicId = useRouteQuery<string | null>('activeTopicId', null)
 
 const activeTopicPath = computed(() => composePathToTopic(activeTopicId.value, topics.value))
 
@@ -226,6 +228,7 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
   }
 }
 
+// NOTE: could compare timestamp and lists the `type` with a "new" or "updated" labels
 const latestPosts = computed<ActivityItem[]>(() => {
   const flattenedTopics = topics.value
     .flatMap(topic => [topic, ...topic.discussions])
@@ -381,16 +384,12 @@ const latestPosts = computed<ActivityItem[]>(() => {
 
       <ForumModalAddTopic
         :open="addingTopic"
-        :topics="topics"
-        :active-topic="activeTopicId"
         @close="addingTopic = false"
         @created="(topic) => topics.push(topic)"
       />
 
       <ForumModalAddDiscussion
         :open="addingDiscussion"
-        :topics="topics"
-        :active-topic="activeTopicId"
         @close="addingDiscussion = false"
         @created="appendDiscussionToTopic"
       />

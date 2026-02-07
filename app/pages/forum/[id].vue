@@ -4,6 +4,7 @@ import { Alert, Button, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
+import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -16,6 +17,7 @@ dayjs.extend(relativeTime)
 // TODO: path to post would be nice, but we'd have to fetch all the parent topics. Maybe a recursive query or some shit?
 
 const route = useRoute()
+const router = useRouter()
 
 const supabase = useSupabaseClient()
 const loading = ref(false)
@@ -95,6 +97,18 @@ useSeoMeta({
                 {{ post.reply_count }} replies
               </template>
             </Tooltip>
+
+            <ForumItemActions
+              table="discussions"
+              :data="post"
+              @remove="router.back()"
+            >
+              <template #default="{ toggle }">
+                <Button variant="accent" size="s" @click="toggle">
+                  Manage
+                </Button>
+              </template>
+            </ForumItemActions>
           </Flex>
         </Flex>
 
@@ -141,6 +155,10 @@ useSeoMeta({
 
 <style scoped lang="scss">
 @use '@/assets/breakpoints.scss' as *;
+
+:deep(.forum__item-actions) {
+  display: block;
+}
 
 .forum-post__content {
   p {

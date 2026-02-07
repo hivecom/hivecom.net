@@ -5,11 +5,12 @@ import { Button, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushTo
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 
-const props = defineProps<{
+interface Props {
   open: boolean
-  topics: Tables<'discussion_topics'>[]
-  activeTopic: string | null
-}>()
+  editedItem?: Tables<'discussions'>
+}
+
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -17,20 +18,24 @@ const emit = defineEmits<{
 }>()
 
 const supabase = useSupabaseClient()
-
 const search = ref('')
+const isEditing = computed(() => !!props.editedItem)
+
+// Inject provided values from parent
+const topics = inject<() => Ref<Tables<'discussion_topics'>[]>>('forumTopics', () => ref([]))()
+const activeTopicId = inject<() => Ref<string | null>>('forumActiveTopicId', () => ref(null))()
 
 // Options to optionally select a parent topic. A 1-level deep list which
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
-  return props.topics
+  return topics.value
     // NOTE: this could instead be shown in the UI as a disabled option with badge?
     .filter(item => !item.is_archived && !item.is_locked)
     .map(topic => ({
       id: topic.id,
       label: topic.name,
       parent_id: topic.id,
-      path: composedPathToString(composePathToTopic(topic.id, props.topics)),
+      path: composedPathToString(composePathToTopic(topic.id, topics.value)),
     }))
     .filter(topic => search.value ? searchString([topic.label, topic.path], search.value) : true)
 })
@@ -43,8 +48,21 @@ const form = reactive({
   discussion_topic_id: '',
 })
 
+// When we're editing, make sure the form and edited data are in sync
+watch(() => props.editedItem, (item) => {
+  if (!item)
+    return
+
+  Object.assign(form, {
+    name: item.title,
+    description: item.description,
+    is_locked: item.is_locked,
+    is_sticky: item.is_sticky,
+  })
+}, { immediate: true })
+
 // Preselect a topic if we're currently in a nested view
-watch(() => props.activeTopic, (newVal) => {
+watch(activeTopicId, (newVal) => {
   if (newVal) {
     form.discussion_topic_id = newVal
   }
@@ -70,23 +88,24 @@ function submitForm() {
       const payload = {
         ...form,
         slug: slugify(form.title),
+        ...(isEditing.value && { id: props.editedItem!.id }),
       }
 
       supabase
         .from('discussions')
-        .insert(payload)
+        .upsert(payload)
         .select()
         .then(({ error, data }) => {
           loading.value = false
 
           if (error) {
-            pushToast('Failed to create a discussion.')
+            pushToast(`Failed to ${isEditing.value ? 'update' : 'create'} discussion`)
             return
           }
 
           emit('created', data[0])
           emit('close')
-          pushToast(`Created discussion ${payload.title}.`)
+          pushToast(`${isEditing.value ? 'Updated' : 'Created'} discussion ${payload.title}`)
         })
     })
     .catch(() => {
@@ -98,7 +117,7 @@ function submitForm() {
 <template>
   <Modal v-bind="props" size="s" :card="{ footerSeparator: true }" @close="emit('close')">
     <template #header>
-      <h3>New discussion</h3>
+      <h3>{{ isEditing ? 'Edit' : 'New' }}  discussion</h3>
     </template>
     <p class="mb-l">
       Discussions can be created under a topic. Users will be able to post replies within discussions.
@@ -158,7 +177,7 @@ function submitForm() {
           Cancel
         </Button>
         <Button variant="accent" :loading="loading" @click="submitForm">
-          Create
+          {{ isEditing ? 'Save' : 'Create' }}
         </Button>
       </Flex>
     </template>
