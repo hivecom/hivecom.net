@@ -312,7 +312,7 @@ const postSinceYesterday = computed(() => {
           </template>
           <Icon v-if="!isMobile" :name="!activeTopicId ? 'ph:house' : 'ph:arrow-left'" />
           <template v-if="isMobile">
-            {{ !activeTopicId ? 'Fontpage' : "Back" }}
+            {{ !activeTopicId ? 'Frontpage' : "Back" }}
           </template>
         </Button>
         <Breadcrumbs v-if="!isMobile">
@@ -550,6 +550,7 @@ const postSinceYesterday = computed(() => {
     span {
       font-size: var(--font-size-s);
       color: var(--color-text-light);
+      text-align: center;
     }
   }
 
@@ -598,7 +599,7 @@ const postSinceYesterday = computed(() => {
         }
       }
 
-      &--meta &--name {
+      &--name {
         strong {
           display: flex;
           gap: 4px;
@@ -614,6 +615,8 @@ const postSinceYesterday = computed(() => {
     .forum__category-post--meta span {
       font-size: var(--font-size-s);
       color: var(--color-text-light);
+      text-align: center;
+      display: block;
     }
   }
 
