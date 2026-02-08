@@ -443,6 +443,10 @@ const postSinceYesterday = computed(() => {
 @use '@/assets/breakpoints.scss' as *;
 @use '@/assets/mixins.scss' as *;
 
+:root.light .forum__category-post.pinned {
+  background-color: color-mix(in srgb, var(--color-accent) 30%, transparent) !important;
+}
+
 .forum {
   &__latest {
     margin-bottom: var(--space-xl);
