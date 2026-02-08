@@ -111,12 +111,13 @@ export default defineNuxtConfig({
   supabase: {
     url: process.env.SUPABASE_URL,
     key: process.env.SUPABASE_KEY,
+    types: '~~/types/database.types.ts',
     redirect: false, // It would make sense to have redirects based on the path, however due to SSR, this is not possible.
     redirectOptions: {
       login: '/auth/sign-in',
       callback: '/auth/confirm',
     },
-    types: './types/database.types.ts',
+    // types: './types/database.types.ts',
   },
   site: {
     url: process.env.NUXT_PUBLIC_BASE_URL ?? 'https://hivecom.net',

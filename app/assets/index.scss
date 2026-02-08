@@ -98,22 +98,6 @@ button {
   }
 }
 
-.vui-button-variant-accent {
-  .iconify {
-    color: var(--color-text);
-  }
-}
-
-.vui-button-variant-danger {
-  .iconify {
-    color: var(--color-white);
-  }
-}
-
-.vui-card-content {
-  position: relative;
-}
-
 .link-line {
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -121,10 +105,6 @@ button {
   &:hover {
     text-decoration: none;
   }
-}
-
-.vui-input-container.vui-select.expand {
-  width: 100%;
 }
 
 .card-bg {
@@ -135,11 +115,6 @@ button {
   .vui-card-footer {
     background-color: transparent;
   }
-}
-
-.vui-toast-wrapper,
-.vui-tooltip {
-  z-index: 9999 !important;
 }
 
 .vui-modal > .vui-card {
@@ -181,51 +156,12 @@ blockquote {
   border-radius: var(--border-radius-m);
   background-color: color-mix(in srgb, var(--color-bg-raised) 50%, transparent) !important;
   box-shadow: 2px 2px 3px rgba(12, 12, 12, 0.1);
-
-  // TODO: bake this all into VUI
-
-  & > * {
-    margin-top: var(--space-s) !important;
-
-    &:first-child {
-      margin-top: 0 !important;
-    }
-  }
 }
 
 :root.light {
   blockquote {
     box-shadow: 2px 2px 3px rgba(12, 12, 12, 0.08);
   }
-}
-
-.text-color-accent {
-  color: var(--color-accent) !important;
-}
-
-.text-color-yellow {
-  color: var(--color-yellow) !important;
-}
-
-.text-color-blue {
-  color: var(--color-blue) !important;
-}
-
-.vui-label {
-  display: block;
-  text-align: left;
-  margin-bottom: 8px;
-  font-size: var(--font-size-m);
-  color: var(--color-text);
-}
-
-.vui-hint {
-  margin-bottom: 8px;
-  margin-top: -4px;
-  color: var(--color-text-lighter);
-  font-size: var(--font-size-s);
-  display: block;
-  text-align: left;
 }
 
 .vui-popout {
@@ -259,12 +195,6 @@ blockquote {
 
 code {
   background-color: var(--color-bg);
-}
-
-.typeset {
-  & > :first-child {
-    margin-top: 0 !important;
-  }
 }
 
 @media (max-width: $breakpoint-s) {
