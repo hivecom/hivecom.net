@@ -9,7 +9,6 @@ import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
-import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
@@ -370,16 +369,20 @@ const postSinceYesterday = computed(() => {
 
       <Card v-for="(topic, index) in modelledTopics" :key="topic.id" class="forum__category" separators>
         <div class="forum__category-title">
-          <h3 :id="slugify(topic.name)">
-            {{ topic.name }}
-            <BadgeCircle v-if="topic.is_locked" variant="accent" data-title-top="Locked">
-              <Icon name="ph:lock" class="text-color-accent" />
-            </BadgeCircle>
+          <Flex y-center>
+            <h3 :id="slugify(topic.name)">
+              {{ topic.name }}
+            </h3>
+            <Badge v-if="topic.is_locked" variant="info">
+              <Icon name="ph:lock" class="text-color-blue" />
+              Locked
+            </Badge>
 
-            <BadgeCircle v-if="topic.is_archived" variant="warning" data-title-top="Archived">
+            <Badge v-if="topic.is_archived" variant="warning">
               <Icon name="ph:archive" class="text-color-yellow" />
-            </BadgeCircle>
-          </h3>
+              Archived
+            </Badge>
+          </Flex>
           <template v-if="index === 0">
             <span>Replies</span>
             <span>Views</span>
@@ -510,6 +513,7 @@ const postSinceYesterday = computed(() => {
     h3 {
       height: 28px;
       line-height: 28px;
+      font-size: var(--font-size-xl);
     }
 
     &:has(.forum__category-title .has-active-dropdown),
@@ -542,8 +546,7 @@ const postSinceYesterday = computed(() => {
     align-items: center;
     border-bottom: 1px solid var(--color-border);
 
-    h3 {
-      font-size: var(--font-size-xl);
+    & > .vui-flex {
       grid-column: 1 / 3;
     }
 

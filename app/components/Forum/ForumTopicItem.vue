@@ -30,8 +30,8 @@ dayjs.extend(relativeTime)
       <div class="forum__category-post--name">
         <strong>
           {{ data.name }}
-          <BadgeCircle v-if="data.is_locked" variant="accent" data-title-top="Locked">
-            <Icon name="ph:lock" class="text-color-accent" />
+          <BadgeCircle v-if="data.is_locked" variant="info" data-title-top="Locked">
+            <Icon name="ph:lock" class="text-color-blue" />
           </BadgeCircle>
 
           <BadgeCircle v-if="data.is_archived" variant="warning" data-title-top="Archived">
