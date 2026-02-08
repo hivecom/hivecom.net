@@ -11,6 +11,7 @@ import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
 
@@ -39,6 +40,7 @@ interface ActivityItem {
 }
 
 const userId = useUserId()
+const isMobile = useBreakpoint('<s')
 
 const { user } = useCacheUserData(userId, { includeRole: true })
 
@@ -303,19 +305,32 @@ const postSinceYesterday = computed(() => {
         </div>
       </section>
 
-      <Flex x-between y-center class="mb-m">
-        <Breadcrumbs>
+      <Flex x-start y-center class="mb-m">
+        <Button :disabled="!activeTopicId" size="s" :square="!isMobile" outline @click="activeTopicId = activeTopicPath.at(-2)?.parent_id ?? null">
+          <template v-if="isMobile" #start>
+            <Icon :name="!activeTopicId ? 'ph:house' : 'ph:arrow-left'" />
+          </template>
+          <Icon v-if="!isMobile" :name="!activeTopicId ? 'ph:house' : 'ph:arrow-left'" />
+          <template v-if="isMobile">
+            {{ !activeTopicId ? 'Fontpage' : "Back" }}
+          </template>
+        </Button>
+        <Breadcrumbs v-if="!isMobile">
           <BreadcrumbItem @click="activeTopicId = null">
             Frontpage
           </BreadcrumbItem>
           <BreadcrumbItem
             v-for="(item, index) in activeTopicPath"
             :key="item.parent_id"
-            v-bind="index !== activeTopicPath.length - 1 || activeTopicPath.length > 1 ? { onClick: () => activeTopicId = item.parent_id } : {}"
+            v-bind="index !== activeTopicPath.length - 1 ? {
+              onClick: () => activeTopicId = item.parent_id,
+            } : {}"
           >
             {{ item.title }}
           </BreadcrumbItem>
         </Breadcrumbs>
+
+        <div class="flex-1" />
 
         <!-- Only allow creating things for signed in users -->
         <Flex v-if="user" gap="s">
@@ -547,6 +562,8 @@ const postSinceYesterday = computed(() => {
     }
 
     &.pinned {
+      background-color: color-mix(in srgb, var(--color-accent) 15%, transparent) !important;
+
       .forum__category-post--icon {
         background-color: var(--color-accent);
         border-color: var(--color-accent);
