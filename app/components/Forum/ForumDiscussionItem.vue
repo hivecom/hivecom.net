@@ -30,8 +30,8 @@ dayjs.extend(relativeTime)
       <div class="forum__category-post--name">
         <strong>
           {{ data.title }}
-          <BadgeCircle v-if="data.is_sticky" variant="accent">
-            <Icon name="ph:pin" class="text-color-accent" />
+          <BadgeCircle v-if="data.is_sticky" variant="accent" data-title-top="Pinned">
+            <Icon name="ph:push-pin" class="text-color-accent" />
           </BadgeCircle>
 
           <BadgeCircle v-if="data.is_locked" data-title-top="Locked">

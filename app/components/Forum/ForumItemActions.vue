@@ -160,11 +160,11 @@ function handleDelete() {
 
       <!-- Sticking discussions -->
       <template v-if="props.table === 'discussions'">
-        <DropdownItem v-if="!props.data.is_sticky" @click="handleStick('unstick')">
-          Unstick
+        <DropdownItem v-if="props.data.is_sticky" @click="handleStick('unstick')">
+          Unpin
         </DropdownItem>
         <DropdownItem v-else @click="handleStick('stick')">
-          Stick
+          Pin
         </DropdownItem>
       </template>
       <Divider :size="0" margin="8px 0" />

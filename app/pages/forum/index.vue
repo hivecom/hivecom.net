@@ -29,7 +29,7 @@ export type TopicWithDiscussions = Tables<'discussion_topics'> & {
 
 interface ActivityItem {
   id: string
-  type: 'topic' | 'discussion' | 'reply'
+  type: 'Topic' | 'Discussion' | 'Reply'
   content: string
   timestamp: string
   user: string
@@ -94,10 +94,10 @@ onBeforeMount(() => {
           latestReplies.value = data.map((item) => {
             return {
               id: item.id,
-              type: 'reply',
+              type: 'Reply',
               icon: 'ph:chats-circle',
               content: item.content,
-              timestamp: item.modified_at,
+              timestamp: `${item.created_at === item.modified_at ? 'Created' : 'Updated'} ${dayjs(item.modified_at).fromNow()}`,
               user: item.modified_by!,
               href: `/forum/${item.discussion_id}?comment=${item.id}`,
             }
@@ -241,10 +241,10 @@ const latestPosts = computed<ActivityItem[]>(() => {
 
       return {
         id,
-        type: isTopic ? 'topic' : 'discussion',
+        type: isTopic ? 'Topic' : 'Discussion',
         // @ts-expect-error different objects might have fields undefined
-        content: (isTopic ? item.name : item.title) ?? 'Content',
-        timestamp: item.modified_at,
+        content: (isTopic ? item.name : item.title) ?? item.description,
+        timestamp: `${item.created_at === item.modified_at ? 'Created' : 'Updated'} ${dayjs(item.modified_at).fromNow()}`,
         user: item.modified_by,
         icon: isTopic ? 'ph:folder-open' : 'ph:scroll',
         ...(isTopic
@@ -281,7 +281,7 @@ const postSinceYesterday = computed(() => {
       <section class="forum__latest">
         <Flex y-center x-start expand class="mb-s">
           <h5>
-            Latest activity
+            Latest updates
           </h5>
           <Badge variant="accent">
             {{ postSinceYesterday }} today
@@ -291,11 +291,11 @@ const postSinceYesterday = computed(() => {
         <div class="forum__latest-list">
           <NuxtLink v-for="event in latestPosts" :key="event.id" class="forum__latest-item" :href="event.href" @click="event.onClick">
             <Flex x-between y-center>
-              <Flex :gap="4">
+              <Flex :gap="4" y-center>
                 <Icon :name="event.icon" :size="13" />
                 <span> {{ event.type }}</span>
               </Flex>
-              <span>{{ dayjs(event.timestamp).fromNow() }}</span>
+              <span>{{ event.timestamp }}</span>
             </Flex>
             <p>{{ event.content }}</p>
             <UserDisplay :user-id="event.user" size="s" />

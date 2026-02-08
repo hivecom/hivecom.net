@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { Comment, DiscussionSettings } from '../Discussion.vue'
-import { Button, ButtonGroup, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
-
-// TODO: add confirmation dialog when deleting (generic, add to parent component maybe?)
 
 interface Props {
   data: Comment
@@ -33,8 +32,9 @@ const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
 // Comment deletion
 const deleteComment = inject('delete-comment') as (id: string) => Promise<void>
 const loadingDeletion = ref(false)
+const showDeleteModal = ref(false)
 
-function beginCommentDeletion() {
+function handleDeletion() {
   loadingDeletion.value = true
   deleteComment(data.id)
     .finally(() => {
@@ -95,7 +95,7 @@ function beginCommentDeletion() {
         </Button>
       </ButtonGroup>
       <!-- Delete comment option if the comment belongs to me -->
-      <Button v-if="data.created_by === userId" size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="beginCommentDeletion">
+      <Button v-if="data.created_by === userId" size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
         <Tooltip>
           <Icon name="ph:trash-bold" />
           <template #tooltip>
@@ -103,6 +103,22 @@ function beginCommentDeletion() {
           </template>
         </Tooltip>
       </Button>
+
+      <ConfirmModal
+        :open="showDeleteModal"
+        :confirm-loading="loadingDeletion"
+        title="Delete comment"
+        description="Please confirm the deletion. This action cannot be undone"
+        @close="showDeleteModal = false"
+        @confirm="handleDeletion"
+      >
+        <Card
+          class="card-bg" :style="{ maxHeight: 512,
+                                    overflowY: 'auto' }"
+        >
+          <MDRenderer :md="data.content" skeleton-height="0px" />
+        </Card>
+      </ConfirmModal>
     </div>
   </div>
 </template>

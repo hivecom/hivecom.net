@@ -22,3 +22,7 @@ export function slugify(text: string): string {
     .replace(/^-+/, '') // Trim - from start of text
     .replace(/-+$/, '') // Trim - from end of text
 }
+
+export function capitalize(str: string) {
+  return str.charAt(0).toUpperCase() + str.slice(1, str.length)
+}

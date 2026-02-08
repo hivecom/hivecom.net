@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { Comment } from '../Discussion.vue'
-import { Alert, Avatar, Button, ButtonGroup, Divider, Flex, Modal, Textarea, Tooltip } from '@dolanske/vui'
+import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Textarea, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
-// import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { getCountryInfo } from '@/lib/utils/country'
 
 interface Props {
@@ -40,8 +40,9 @@ const setQuoteOfComment = inject('setQuoteOfComment') as (data: Comment) => void
 // Comment deletion
 const deleteComment = inject('delete-comment') as (id: string) => Promise<void>
 const loadingDeletion = ref(false)
+const showDeleteModal = ref(false)
 
-function beginCommentDeletion() {
+function handleDeletion() {
   loadingDeletion.value = true
   deleteComment(data.value.id)
     .finally(() => {
@@ -178,7 +179,7 @@ watch(editedContent, () => editError.value = [])
             </Tooltip>
           </Button>
           <!-- Delete comment option if the comment belongs to me -->
-          <Button size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="beginCommentDeletion">
+          <Button size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
             <Tooltip>
               <Icon name="ph:trash-bold" />
               <template #tooltip>
@@ -186,11 +187,27 @@ watch(editedContent, () => editError.value = [])
               </template>
             </Tooltip>
           </Button>
+
+          <ConfirmModal
+            :open="showDeleteModal"
+            :confirm-loading="loadingDeletion"
+            title="Delete comment"
+            description="Please confirm the deletion. This action cannot be undone"
+            @close="showDeleteModal = false"
+            @confirm="handleDeletion"
+          >
+            <Card
+              class="card-bg" :style="{ maxHeight: 512,
+                                        overflowY: 'auto' }"
+            >
+              <MDRenderer :md="data.content" skeleton-height="0px" />
+            </Card>
+          </ConfirmModal>
         </ButtonGroup>
       </div>
     </div>
 
-    <Modal :open="editing" @close="editing = false">
+    <Modal :open="editing" centered @close="editing = false">
       <template #header>
         <Flex column gap="xxs">
           <h3>Edit post</h3>
