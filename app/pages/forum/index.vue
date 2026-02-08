@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.types'
-import { BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
+import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import { useRouteQuery } from '@vueuse/router'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -258,6 +258,12 @@ const latestPosts = computed<ActivityItem[]>(() => {
     .toSorted((a, b) => new Date(a.timestamp) > new Date(b.timestamp) ? -1 : 1)
     .splice(0, 10)
 })
+
+const postSinceYesterday = computed(() => {
+  return latestPosts.value
+    .filter(item => !dayjs(item.timestamp).isBefore(dayjs().startOf('day')))
+    .length
+})
 </script>
 
 <template>
@@ -273,9 +279,14 @@ const latestPosts = computed<ActivityItem[]>(() => {
       </section>
 
       <section class="forum__latest">
-        <h4 class="mb-m">
-          Latest activity
-        </h4>
+        <Flex y-center x-start expand class="mb-s">
+          <h5>
+            Latest activity
+          </h5>
+          <Badge variant="accent">
+            {{ postSinceYesterday }} today
+          </Badge>
+        </Flex>
 
         <div class="forum__latest-list">
           <NuxtLink v-for="event in latestPosts" :key="event.id" class="forum__latest-item" :href="event.href" @click="event.onClick">
