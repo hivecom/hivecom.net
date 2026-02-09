@@ -321,7 +321,7 @@ const postSinceYesterday = computed(() => {
         </div>
       </section>
 
-      <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xs' : 's'">
+      <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xxs' : 'xs'">
         <Button :disabled="!activeTopicId" size="s" :square="!isMobile" outline @click="activeTopicId = activeTopicPath.at(-2)?.parent_id ?? null">
           <template v-if="isMobile" #start>
             <Icon :name="!activeTopicId ? 'ph:house' : 'ph:arrow-left'" />
@@ -348,20 +348,8 @@ const postSinceYesterday = computed(() => {
 
         <div class="flex-1" />
 
-        <Button ref="settings-anchor" size="s" square @click="showSettings = !showSettings">
-          <Icon name="ph:gear" />
-        </Button>
-
-        <Popout :visible="showSettings" :anchor="settingsAnchor" placement="bottom" @click-outside="showSettings = false">
-          <Flex column class="p-m" gap="s">
-            <span class="text-m mb-xs text-color-light">Display options</span>
-            <Switch v-model="settings.showArchived" label="Show archived topics & discussions" />
-            <Switch v-model="settings.showActivity" label="Show latest updates" />
-          </Flex>
-        </Popout>
-
         <!-- Only allow creating things for signed in users -->
-        <Flex v-if="user" :gap="isMobile ? 'xs' : 's'">
+        <Flex v-if="user" :gap="isMobile ? 'xxs' : 'xs'">
           <Dropdown v-if="user.role === 'admin' || user.role === 'moderator'">
             <template #trigger="{ toggle }">
               <Button size="s" variant="accent" :square="isMobile" @click="toggle">
@@ -402,6 +390,18 @@ const postSinceYesterday = computed(() => {
             </template>
             {{ isMobile ? '' : 'Search' }}
           </Button>
+
+          <Button ref="settings-anchor" size="s" square @click="showSettings = !showSettings">
+            <Icon name="ph:gear" />
+          </Button>
+
+          <Popout :visible="showSettings" :anchor="settingsAnchor" placement="bottom" @click-outside="showSettings = false">
+            <Flex column class="p-m" gap="s">
+              <span class="text-m mb-xs text-color-light">Display options</span>
+              <Switch v-model="settings.showArchived" label="Show archived topics & discussions" />
+              <Switch v-model="settings.showActivity" label="Show latest updates" />
+            </Flex>
+          </Popout>
         </Flex>
       </Flex>
 
