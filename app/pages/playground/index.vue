@@ -7,7 +7,7 @@ const content = ref('')
 <template>
   <div style="padding-block: 128px;width:100%">
     <div class="container container-m">
-      <RichTextEditor v-model="content" class="mb-xl" />
+      <RichTextEditor v-model="content" class="mb-xl" placeholder="Yo whats going on big guy?" />
 
       <pre>{{ content }}</pre>
     </div>

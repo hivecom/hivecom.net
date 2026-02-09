@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.types'
-import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
+import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Switch } from '@dolanske/vui'
+import { useStorage as useLocalStorage } from '@vueuse/core'
 import { useRouteQuery } from '@vueuse/router'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -10,6 +11,7 @@ import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { stripMarkdown } from '@/lib/markdown-processors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
@@ -38,6 +40,21 @@ interface ActivityItem {
   icon: string
 }
 
+// Show display settings & store them in localStorage
+const showSettings = ref(false)
+const settingsAnchor = useTemplateRef('settings-anchor')
+
+const settings = useLocalStorage('forum-settings', {
+  showArchived: false,
+  showActivity: true,
+}, localStorage, {
+  serializer: {
+    read: value => value ? JSON.parse(value) : null,
+    write: value => JSON.stringify(value),
+  },
+})
+
+// Top level variable definitions
 const userId = useUserId()
 const isMobile = useBreakpoint('<s')
 
@@ -164,13 +181,7 @@ function sortDiscussions(discussions: Tables<'discussions'>[]) {
 // List topics based on the activeTopicId. If it's null, list all topics
 // without a parent_id, otherwise list all topics which match the activeTopicId
 const modelledTopics = computed(() => {
-  let filtered
-  if (!activeTopicId.value) {
-    filtered = topics.value.filter(topic => topic.parent_id === null)
-  }
-  else {
-    filtered = topics.value.filter(topic => topic.parent_id === activeTopicId.value)
-  }
+  const filtered = getTopicsByParentId(!activeTopicId.value ? null : activeTopicId.value)
 
   // Sort topics to prioritize `sort_order` and the rest is sorted
   // alphabetically below. Only manually-created topics should have a sort_order
@@ -196,7 +207,14 @@ const modelledTopics = computed(() => {
 
 // Return all topics which have the given parent id. Used to list nested topics
 function getTopicsByParentId(parentId: string | null) {
-  return topics.value.filter(topic => topic.parent_id === parentId)
+  let filtered = topics.value.filter(topic => topic.parent_id === parentId)
+
+  // Filter out archived topics
+  if (!settings.value.showArchived) {
+    filtered = filtered.filter(item => !item.is_archived)
+  }
+
+  return filtered
 }
 
 // When discussion is created, append it to the selected parent topic
@@ -231,7 +249,6 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
   }
 }
 
-// NOTE: could compare timestamp and lists the `type` with a "new" or "updated" labels
 const latestPosts = computed<ActivityItem[]>(() => {
   const flattenedTopics = topics.value
     .flatMap(topic => [topic, ...topic.discussions])
@@ -279,7 +296,7 @@ const postSinceYesterday = computed(() => {
         </p>
       </section>
 
-      <section class="forum__latest">
+      <section v-if="settings.showActivity" class="forum__latest">
         <Flex y-center x-start expand class="mb-s">
           <h5>
             Latest updates
@@ -298,13 +315,13 @@ const postSinceYesterday = computed(() => {
               </Flex>
               <span>{{ event.timestamp }}</span>
             </Flex>
-            <p>{{ event.content }}</p>
+            <p>{{ stripMarkdown(event.content) }}</p>
             <UserDisplay :user-id="event.user" size="s" />
           </NuxtLink>
         </div>
       </section>
 
-      <Flex x-start y-center class="mb-m">
+      <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xs' : 's'">
         <Button :disabled="!activeTopicId" size="s" :square="!isMobile" outline @click="activeTopicId = activeTopicPath.at(-2)?.parent_id ?? null">
           <template v-if="isMobile" #start>
             <Icon :name="!activeTopicId ? 'ph:house' : 'ph:arrow-left'" />
@@ -331,15 +348,30 @@ const postSinceYesterday = computed(() => {
 
         <div class="flex-1" />
 
+        <Button ref="settings-anchor" size="s" square @click="showSettings = !showSettings">
+          <Icon name="ph:gear" />
+        </Button>
+
+        <Popout :visible="showSettings" :anchor="settingsAnchor" placement="bottom" @click-outside="showSettings = false">
+          <Flex column class="p-m" gap="s">
+            <span class="text-m mb-xs text-color-light">Display options</span>
+            <Switch v-model="settings.showArchived" label="Show archived topics & discussions" />
+            <Switch v-model="settings.showActivity" label="Show latest updates" />
+          </Flex>
+        </Popout>
+
         <!-- Only allow creating things for signed in users -->
-        <Flex v-if="user" gap="s">
+        <Flex v-if="user" :gap="isMobile ? 'xs' : 's'">
           <Dropdown v-if="user.role === 'admin' || user.role === 'moderator'">
             <template #trigger="{ toggle }">
-              <Button size="s" variant="accent" @click="toggle">
-                <template #start>
+              <Button size="s" variant="accent" :square="isMobile" @click="toggle">
+                <template v-if="!isMobile" #start>
                   <Icon name="ph:plus" :size="16" />
                 </template>
-                Create
+                <template v-if="isMobile">
+                  <Icon name="ph:plus" :size="16" />
+                </template>
+                {{ isMobile ? '' : 'Create' }}
               </Button>
             </template>
             <DropdownItem size="s" @click="addingDiscussion = true">
@@ -351,18 +383,24 @@ const postSinceYesterday = computed(() => {
           </Dropdown>
 
           <!-- Non-admin or moderators can only create a discussion -->
-          <Button v-else variant="accent" size="s" @click="addingDiscussion = true">
-            <template #start>
+          <Button v-else variant="accent" size="s" :square="isMobile" @click="addingDiscussion = true">
+            <template v-if="!isMobile" #start>
               <Icon name="ph:plus" :size="16" />
             </template>
-            Discussion
+            <template v-if="isMobile">
+              <Icon name="ph:plus" :size="16" />
+            </template>
+            {{ isMobile ? '' : 'Discussion' }}
           </Button>
 
-          <Button size="s" @click="searchOpen = true">
-            <template #start>
+          <Button size="s" :square="isMobile" @click="searchOpen = true">
+            <template v-if="!isMobile" #start>
               <Icon name="ph:magnifying-glass" :size="16" />
             </template>
-            Search
+            <template v-if="isMobile">
+              <Icon name="ph:magnifying-glass" :size="16" />
+            </template>
+            {{ isMobile ? '' : 'Search' }}
           </Button>
         </Flex>
       </Flex>

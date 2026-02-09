@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Comment } from '../Discussion.vue'
-import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Textarea, Tooltip } from '@dolanske/vui'
+import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import RichTextEditor from '@/components/Shared/RichTextEditor.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
@@ -216,12 +217,13 @@ watch(editedContent, () => editError.value = [])
           </p>
         </Flex>
       </template>
-      <Textarea
+
+      <RichTextEditor
         v-model="editedContent"
         :errors="editError"
-        :rows="16"
-        expand
-        placeholder="Do not leave this empty. De"
+        min-height="196px"
+        class="mb-xs"
+        placeholder="Edit your message. Do not leave it empty!"
       />
 
       <template #footer>

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Textarea } from '@dolanske/vui'
+import { Button, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch } from '@dolanske/vui'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
+import RichTextEditor from '../Shared/RichTextEditor.vue'
 
 interface Props {
   open: boolean
@@ -125,7 +126,7 @@ function submitForm() {
 
     <Flex column gap="m">
       <Input v-model="form.title" :errors="normalizeErrors(errors.title)" label="Name" expand placeholder="What is this discussion about?" required />
-      <Textarea v-model="form.description" hint="You can use markdown" :errors="normalizeErrors(errors.description)" label="Content" expand placeholder="Add more context to the discussion" />
+      <RichTextEditor v-model="form.description" min-height="196px" hint="You can use markdown" :errors="normalizeErrors(errors.description)" label="Content" placeholder="Add more context to the discussion" />
 
       <div class="w-100">
         <label class="vui-label">Topic</label>
@@ -154,11 +155,9 @@ function submitForm() {
                 </p>
               </button>
             </Flex>
-            <template v-if="topicOptions.length === 0">
-              <p class="">
-                No options found.
-              </p>
-            </template>
+            <p v-if="topicOptions.length === 0">
+              No options found.
+            </p>
           </template>
         </Dropdown>
       </div>

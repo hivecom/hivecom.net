@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, Button, Flex, Skeleton, Textarea, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import { wrapInBlockquote } from '@/lib/markdown-processors'
 import { truncate } from '@/lib/utils/formatting'
+import RichTextEditor from '../Shared/RichTextEditor.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
 
 /**
- * Important note (dolan)
+ * NOTE
+ *
+ * Important note (@dolanske)
  *
  * For clarity during implementation, this component calls reply a 'comment' and
  * if a comment is replying to another one, it is saved to it as a 'reply'
@@ -327,14 +330,12 @@ provide('delete-comment', deleteComment)
           </Flex>
         </Alert>
         <form @submit.prevent="submitReply">
-          <Textarea
+          <RichTextEditor
             ref="textarea"
             v-model="form.message"
             :errors="Object.values(errors.message.errors)"
             :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
-            :rows="props.inputRows"
-            expand
-            auto-resize
+            min-height="108px"
           />
           <Button size="s" class="discussion__add--send-button" type="submit" :loading="formLoading" :disabled="form.message.length === 0">
             Send
