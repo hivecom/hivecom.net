@@ -398,7 +398,7 @@ const postSinceYesterday = computed(() => {
           <Popout :visible="showSettings" :anchor="settingsAnchor" placement="bottom" @click-outside="showSettings = false">
             <Flex column class="p-m" gap="s">
               <span class="text-m mb-xs text-color-light">Display options</span>
-              <Switch v-model="settings.showArchived" label="Show archived topics & discussions" />
+              <Switch v-model="settings.showArchived" label="Show archived topics" />
               <Switch v-model="settings.showActivity" label="Show latest updates" />
             </Flex>
           </Popout>
