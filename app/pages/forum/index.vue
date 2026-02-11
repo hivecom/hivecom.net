@@ -34,6 +34,7 @@ interface ActivityItem {
   type: 'Topic' | 'Discussion' | 'Reply'
   content: string
   timestamp: string
+  timestampRaw: string
   user: string
   href?: string
   onClick?: () => void
@@ -116,6 +117,7 @@ onBeforeMount(() => {
               icon: 'ph:chats-circle',
               content: item.content,
               timestamp: `${item.created_at === item.modified_at ? 'Created' : 'Updated'} ${dayjs(item.modified_at).fromNow()}`,
+              timestampRaw: item.modified_at,
               user: item.modified_by!,
               href: `/forum/${item.discussion_id}?comment=${item.id}`,
             }
@@ -263,6 +265,7 @@ const latestPosts = computed<ActivityItem[]>(() => {
         // @ts-expect-error different objects might have fields undefined
         content: (isTopic ? item.name : item.title) ?? item.description,
         timestamp: `${item.created_at === item.modified_at ? 'Created' : 'Updated'} ${dayjs(item.modified_at).fromNow()}`,
+        timestampRaw: item.modified_at,
         user: item.modified_by,
         icon: isTopic ? 'ph:folder-open' : 'ph:scroll',
         ...(isTopic
@@ -278,8 +281,9 @@ const latestPosts = computed<ActivityItem[]>(() => {
 })
 
 const postSinceYesterday = computed(() => {
+  const now = dayjs()
   return latestPosts.value
-    .filter(item => !dayjs(item.timestamp).isBefore(dayjs().startOf('day')))
+    .filter(item => dayjs(item.timestampRaw).isAfter(now.subtract(24, 'hour')))
     .length
 })
 </script>
@@ -301,7 +305,7 @@ const postSinceYesterday = computed(() => {
           <h5>
             Latest updates
           </h5>
-          <Badge variant="accent">
+          <Badge v-if="postSinceYesterday" variant="accent">
             {{ postSinceYesterday }} today
           </Badge>
         </Flex>
