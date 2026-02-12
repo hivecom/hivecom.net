@@ -25,7 +25,6 @@ dayjs.extend(relativeTime)
     <div class="forum__category-post--item topic">
       <div class="forum__category-post--icon">
         <Icon name="ph:folder-open" :size="20" />
-        <!-- <Icon :name="data.icon" :size="20" /> -->
       </div>
       <div class="forum__category-post--name">
         <strong>
