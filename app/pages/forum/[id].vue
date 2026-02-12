@@ -102,6 +102,7 @@ useSeoMeta({
               table="discussions"
               :data="post"
               @remove="router.back()"
+              @update="post = ($event as any)"
             >
               <template #default="{ toggle }">
                 <Button variant="accent" size="s" @click="toggle">
@@ -139,6 +140,7 @@ useSeoMeta({
 
       <Discussion
         :id="String(post.discussion_topic_id)"
+        :key="JSON.stringify(post)"
         type="discussion_topic"
         model="forum"
         placeholder="Write your reply to this thread..."

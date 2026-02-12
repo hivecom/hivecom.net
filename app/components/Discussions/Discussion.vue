@@ -8,6 +8,8 @@ import RichTextEditor from '../Shared/RichTextEditor.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
 
+// TODO: unpin doesnt update in main list
+
 /**
  * NOTE
  *
@@ -329,7 +331,15 @@ provide('delete-comment', deleteComment)
             </Tooltip>
           </Flex>
         </Alert>
-        <form @submit.prevent="submitReply">
+        <div v-if="discussion?.is_locked">
+          <Alert variant="neutral">
+            <template #icon>
+              <Icon name="ph:lock" />
+            </template>
+            This discussion is locked
+          </Alert>
+        </div>
+        <form v-else @submit.prevent="submitReply">
           <RichTextEditor
             ref="textarea"
             v-model="form.message"
