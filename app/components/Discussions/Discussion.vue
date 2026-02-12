@@ -72,14 +72,12 @@ const MAX_COMMENT_CHARS = 8192
 // If user isn't signed it, do not allow commenting
 const userId = useUserId()
 
-provide<DiscussionSettings>('discussion-settings', {
-  timestamps: props.timestamps,
-})
-
 export type RawComment = Omit<Tables<'discussion_replies'>, 'meta'> & { meta: never }
 export interface Comment extends RawComment {
   reply: RawComment | null
 }
+
+export type ProvidedDiscussion = Ref<Tables<'discussions'> | undefined>
 
 // Fetch data & state
 const supabase = useSupabaseClient()
@@ -89,6 +87,12 @@ const error = ref<string>()
 
 const discussion = ref<Tables<'discussions'>>()
 const comments = ref<RawComment[]>([])
+
+provide<DiscussionSettings>('discussion-settings', {
+  timestamps: props.timestamps,
+})
+
+provide<ProvidedDiscussion>('discussion', discussion)
 
 watch(() => props.id, async () => {
   loading.value = true

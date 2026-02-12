@@ -4,16 +4,6 @@ export const navigationLinks = [
     label: 'Home',
     icon: 'ph:house',
   },
-  // {
-  //   path: '/announcements',
-  //   label: 'Announcements',
-  //   icon: 'ph:megaphone',
-  // },
-  {
-    path: '/forum',
-    label: 'Forum',
-    icon: 'ph:chats-circle',
-  },
   {
     path: '/community',
     label: 'Community',
@@ -47,6 +37,11 @@ export const navigationLinks = [
         label: 'Calendar',
       },
     ],
+  },
+  {
+    path: '/forum',
+    label: 'Forum',
+    icon: 'ph:chats-circle',
   },
   {
     path: '/servers/gameservers?tab=list',

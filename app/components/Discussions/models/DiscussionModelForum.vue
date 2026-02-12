@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Comment } from '../Discussion.vue'
+import type { Comment, ProvidedDiscussion } from '../Discussion.vue'
 import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -25,6 +25,8 @@ const data = toRef(props, 'data')
 
 const userId = useUserId()
 const supabase = useSupabaseClient()
+
+const discussion = inject('discussion') as ProvidedDiscussion
 
 const { user } = useCacheUserData(data.value.created_by!, {
   includeRole: true,
@@ -144,22 +146,24 @@ watch(editedContent, () => editError.value = [])
 
       <div class="discussion-forum__actions">
         <ButtonGroup v-if="user">
-          <Button square size="s" @click="setReplyToComment(data)">
-            <Tooltip>
-              <Icon name="ph:arrow-elbow-up-left-bold" />
-              <template #tooltip>
-                <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
-              </template>
-            </Tooltip>
-          </Button>
-          <Button v-if="user" square size="s" @click="setQuoteOfComment(data)">
-            <Tooltip>
-              <Icon name="ph:quotes-bold" />
-              <template #tooltip>
-                <p>Quote <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
-              </template>
-            </Tooltip>
-          </Button>
+          <template v-if="!discussion?.is_locked">
+            <Button square size="s" @click="setReplyToComment(data)">
+              <Tooltip>
+                <Icon name="ph:arrow-elbow-up-left-bold" />
+                <template #tooltip>
+                  <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
+                </template>
+              </Tooltip>
+            </Button>
+            <Button v-if="user" square size="s" @click="setQuoteOfComment(data)">
+              <Tooltip>
+                <Icon name="ph:quotes-bold" />
+                <template #tooltip>
+                  <p>Quote <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
+                </template>
+              </Tooltip>
+            </Button>
+          </template>
           <Button size="s" square @click="emit('copyLink')">
             <Tooltip>
               <Icon name="ph:link-bold" />
@@ -170,7 +174,7 @@ watch(editedContent, () => editError.value = [])
           </Button>
         </ButtonGroup>
 
-        <ButtonGroup v-if="user && data.created_by === user.id">
+        <ButtonGroup v-if="user && data.created_by === user.id && discussion?.is_sticky">
           <Button size="s" square :inert="loadingDeletion" @click="startEditing">
             <Tooltip>
               <Icon name="ph:pen-bold" />

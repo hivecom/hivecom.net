@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Comment, DiscussionSettings } from '../Discussion.vue'
+import type { Comment, DiscussionSettings, ProvidedDiscussion } from '../Discussion.vue'
 import { Button, ButtonGroup, Card, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -21,6 +21,8 @@ const emit = defineEmits<{
 }>()
 
 const { timestamps } = inject('discussion-settings') as DiscussionSettings
+
+const discussion = inject('discussion') as ProvidedDiscussion
 
 const userId = useUserId()
 
@@ -77,7 +79,7 @@ function handleDeletion() {
     </p>
     <div class="discussion-comment__actions">
       <ButtonGroup>
-        <Button v-if="userId" square size="s" @click="setReplyToComment(data)">
+        <Button v-if="userId && !discussion?.is_locked" square size="s" @click="setReplyToComment(data)">
           <Tooltip>
             <Icon name="ph:arrow-elbow-up-left-bold" />
             <template #tooltip>
@@ -95,7 +97,7 @@ function handleDeletion() {
         </Button>
       </ButtonGroup>
       <!-- Delete comment option if the comment belongs to me -->
-      <Button v-if="data.created_by === userId" size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
+      <Button v-if="data.created_by === userId && !discussion?.is_locked" size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
         <Tooltip>
           <Icon name="ph:trash-bold" />
           <template #tooltip>
