@@ -84,7 +84,7 @@ function handleStick(mode: 'stick' | 'unstick') {
 
   supabase
     .from('discussions')
-    .update({ is_sticky: true })
+    .update({ is_sticky: !(props.data as Tables<'discussions'>).is_sticky })
     .eq('id', props.data.id)
     .select()
     .then(({ data, error }) => {
@@ -93,10 +93,10 @@ function handleStick(mode: 'stick' | 'unstick') {
       }
       else {
         if (mode === 'stick') {
-          pushToast('Successfully set discussion as sticky')
+          pushToast('Successfully pinned discussion')
         }
         else {
-          pushToast('Successfully removed discussion sticky state')
+          pushToast('Successfully unpinned discussion')
         }
 
         emit('update', data[0] as Props['data'])

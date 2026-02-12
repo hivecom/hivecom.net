@@ -8,8 +8,6 @@ import RichTextEditor from '../Shared/RichTextEditor.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
 
-// TODO: unpin doesnt update in main list
-
 /**
  * NOTE
  *
