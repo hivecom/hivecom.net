@@ -174,7 +174,7 @@ watch(editedContent, () => editError.value = [])
           </Button>
         </ButtonGroup>
 
-        <ButtonGroup v-if="user && data.created_by === user.id && discussion?.is_sticky">
+        <ButtonGroup v-if="user && data.created_by === user.id && !discussion?.is_locked">
           <Button size="s" square :inert="loadingDeletion" @click="startEditing">
             <Tooltip>
               <Icon name="ph:pen-bold" />
