@@ -7,6 +7,7 @@ interface CommunityStats {
   gameservers: number
   age: number
   projects: number
+  forumPosts: number
 }
 
 defineProps<{
@@ -28,7 +29,19 @@ defineProps<{
             {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
           </template>
         </Flex>
-        <span class="text-xs">Community Members</span>
+        <span class="text-xs">Members</span>
+      </NuxtLink>
+
+      <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
+        <Flex x-center class="hero-section__stats-value">
+          <template v-if="loading">
+            <Skeleton height="2.5rem" width="4rem" />
+          </template>
+          <template v-else>
+            {{ communityStats.forumPosts }}
+          </template>
+        </Flex>
+        <span class="text-xs">Forum posts</span>
       </NuxtLink>
 
       <NuxtLink to="/servers/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
@@ -57,7 +70,7 @@ defineProps<{
             {{ communityStats.projects }}
           </template>
         </Flex>
-        <span class="text-xs">Community Projects</span>
+        <span class="text-xs">Projects</span>
       </NuxtLink>
     </div>
   </div>
@@ -108,7 +121,7 @@ defineProps<{
 }
 
 .hero-section__stats-card {
-  width: 160px;
+  width: 142px;
   border-radius: var(--border-radius-m);
   text-align: center;
   padding: var(--space-m);

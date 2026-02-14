@@ -24,6 +24,7 @@ const communityStats = ref({
   gameservers: 0,
   age: new Date().getFullYear() - 2013,
   projects: 0, // Will be fetched from the projects table
+  forumPosts: 0,
 })
 
 // Convert platforms object to array for easier v-for iteration
@@ -109,6 +110,7 @@ onMounted(async () => {
     communityStats.value.members = users > 0 ? users : 100
     communityStats.value.gameservers = metricsSnapshot.totals.gameservers
     communityStats.value.projects = metricsSnapshot.totals.projects
+    communityStats.value.forumPosts = metricsSnapshot.totals.forumPosts
   }
   catch (error: unknown) {
     console.error('Error fetching data:', error)

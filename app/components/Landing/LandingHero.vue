@@ -13,6 +13,7 @@ interface CommunityStats {
   gameservers: number
   age: number
   projects: number
+  forumPosts: number
 }
 
 defineProps<{

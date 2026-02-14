@@ -2,6 +2,7 @@ export interface MetricsTotals {
   users: number
   gameservers: number
   projects: number
+  forumPosts: number
 }
 
 export interface MetricsBreakdowns {

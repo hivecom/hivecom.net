@@ -28,10 +28,11 @@ async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>, path:
 }
 
 async function fetchMetricsFromDatabase(supabase: SupabaseClient<Database>): Promise<MetricsSnapshot> {
-  const [usersResponse, gameserversResponse, projectsResponse] = await Promise.all([
+  const [usersResponse, gameserversResponse, projectsResponse, forumResponse] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
     supabase.from('gameservers').select('id', { count: 'exact', head: true }),
     supabase.from('projects').select('id', { count: 'exact', head: true }),
+    supabase.from('discussions').select('id', { count: 'exact', head: true }).not('discussion_topic_id', 'is', null),
   ])
 
   if (usersResponse.error)
@@ -43,12 +44,16 @@ async function fetchMetricsFromDatabase(supabase: SupabaseClient<Database>): Pro
   if (projectsResponse.error)
     throw new Error(`Unable to get project count: ${projectsResponse.error.message}`)
 
+  if (forumResponse.error)
+    throw new Error(`Unable to get forum discussion count: ${forumResponse.error.message}`)
+
   return {
     collectedAt: new Date().toISOString(),
     totals: {
       users: usersResponse.count ?? 0,
       gameservers: gameserversResponse.count ?? 0,
       projects: projectsResponse.count ?? 0,
+      forumPosts: forumResponse.count ?? 0,
     },
     breakdowns: {
       usersByCountry: {},
