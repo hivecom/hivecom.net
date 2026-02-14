@@ -203,6 +203,12 @@ code {
   }
 }
 
+.typeset {
+  hr {
+    margin-block: var(--space-s);
+  }
+}
+
 @include meta.load-css('./utilities.scss');
 @include meta.load-css('./pages/login.scss');
 @include meta.load-css('./elements/auth.scss');

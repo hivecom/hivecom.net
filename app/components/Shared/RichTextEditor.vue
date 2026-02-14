@@ -1,12 +1,22 @@
 <script setup lang="ts">
+import { Button, ButtonGroup, Flex } from '@dolanske/vui'
 import { Placeholder } from '@tiptap/extensions'
 import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
+import { BubbleMenu } from '@tiptap/vue-3/menus'
 
 // https://tiptap.dev/docs/editor/markdown
 
-// TODO: actual UI for styling
+// TODO: Code block highlighting & dropdown for seleting language
+
+// TODO: add option to add link to bunch of text
+
+// TODO: @mentions
+
+// TODO: hivecom emote sticker / custom emojis & normal emojis too
+
+// TODO: dropdown for headings
 
 interface Props {
   autofocus?: boolean
@@ -37,9 +47,7 @@ const editor = useEditor({
   ],
   contentType: 'markdown',
   onUpdate: () => {
-    const markdown = editor.value?.getMarkdown() || ''
-    const sanitized = markdown.replace(/&nbsp;|\s+/g, '').length === 0 ? '' : markdown
-    content.value = sanitized
+    content.value = editor.value?.getMarkdown() || ''
   },
 })
 
@@ -82,6 +90,54 @@ defineExpose({
       {{ props.hint }}
     </p>
 
+    <BubbleMenu
+      v-if="editor" :editor="editor" :options="{ placement: 'top',
+                                                 offset: 8 }"
+    >
+      <div class="vui-rich-text-menu">
+        <Flex :gap="4">
+          <ButtonGroup>
+            <Button size="s" square @click="editor.chain().focus().toggleBold().run()">
+              <Icon :size="18" name="ph:text-b" />
+            </Button>
+            <Button size="s" square @click="editor.chain().focus().toggleItalic().run()">
+              <Icon :size="18" name="ph:text-italic" />
+            </Button>
+            <Button size="s" square @click="editor.chain().focus().toggleUnderline().run()">
+              <Icon :size="18" name="ph:text-underline" />
+            </Button>
+            <Button size="s" square @click="editor.chain().focus().toggleStrike().run()">
+              <Icon :size="18" name="ph:text-strikethrough" />
+            </Button>
+            <Button size="s" square @click="editor.chain().focus().toggleCode().run()">
+              <Icon :size="18" name="ph:code" />
+            </Button>
+          </ButtonGroup>
+
+          <ButtonGroup>
+            <Button size="s" square @click="editor.chain().focus().toggleBulletList().run()">
+              <Icon :size="18" name="ph:list-bullets" />
+            </Button>
+            <Button size="s" square @click="editor.chain().focus().toggleOrderedList().run()">
+              <Icon :size="18" name="ph:list-numbers" />
+            </Button>
+          <!-- <Button size="s" square>
+            <Icon :size="18" name="ph:list-checks" @click="editor.chain().focus().toggleTaskList().run()" />
+          </Button> -->
+          </ButtonGroup>
+
+          <ButtonGroup>
+            <Button size="s" square @click="editor.chain().focus().toggleCodeBlock().run()">
+              <Icon :size="18" name="ph:code-block" />
+            </Button>
+            <Button size="s" square @click="editor.chain().focus().toggleBlockquote().run()">
+              <Icon :size="18" name="ph:quotes" />
+            </Button>
+          </ButtonGroup>
+        </Flex>
+      </div>
+    </BubbleMenu>
+
     <EditorContent :id="elementId" :editor="editor" class="typeset" />
 
     <ul v-if="errors.length > 0" class="vui-input-errors">
@@ -103,6 +159,10 @@ defineExpose({
     border-radius: var(--border-radius-m);
     padding: var(--space-s);
     min-height: v-bind(minHeight);
+
+    & > :first-child {
+      margin-top: 0 !important;
+    }
   }
 
   // Placeholder styling
@@ -116,19 +176,15 @@ defineExpose({
     font-family: var(--font);
   }
 
-  // TODO: move to vui's .text.scss file
-  .vui-input-errors {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding-top: 6px;
-    list-style: none;
+  .vui-rich-text-menu {
+    box-shadow: var(--box-shadow);
+    background-color: var(--color-bg-medium);
+    padding: 2px;
+  }
 
-    li {
-      display: block;
-      font-size: var(--font-size-s);
-      color: var(--color-text-red);
-    }
+  :deep(hr.ProseMirror-selectednode) {
+    border-color: var(--color-border-strong);
+    // outline: 2px solid var(--color-accent ) !important;
   }
 }
 </style>
