@@ -71,6 +71,12 @@ interface SelectOption {
   value: string
 }
 
+const props = withDefaults(defineProps<{
+  canViewUserEmails?: boolean
+}>(), {
+  canViewUserEmails: false,
+})
+
 // Emits
 const emit = defineEmits<{
   userSelected: [user: AdminUserProfile]
@@ -229,7 +235,7 @@ async function fetchUsers() {
 
     const rows = (overviewData ?? []) as AdminUserOverviewRecord[]
     rows.forEach(({ user_id, email, is_confirmed, discord_display_name, auth_provider, auth_providers }) => {
-      emailsMap[user_id] = email
+      emailsMap[user_id] = props.canViewUserEmails ? email : null
       confirmedMap[user_id] = Boolean(is_confirmed)
       discordNameMap[user_id] = discord_display_name
       providerMap[user_id] = auth_provider
@@ -323,8 +329,8 @@ const filteredData = computed<TransformedUser[]>(() => {
     filtered = filtered.filter((user: QueryUserProfile) => {
       const usernameMatch = user.username?.toLowerCase().includes(searchTerm)
       const idMatch = user.id?.toLowerCase().includes(searchTerm)
-      const emailValue = getUserEmail(user.id)?.toLowerCase() ?? ''
-      const emailMatch = emailValue.includes(searchTerm)
+      const emailValue = props.canViewUserEmails ? (getUserEmail(user.id)?.toLowerCase() ?? '') : ''
+      const emailMatch = props.canViewUserEmails ? emailValue.includes(searchTerm) : false
       return Boolean(usernameMatch || idMatch || emailMatch)
     })
   }
@@ -572,7 +578,7 @@ defineExpose({
 
       <!-- Table skeleton -->
       <TableSkeleton
-        :columns="11"
+        :columns="props.canViewUserEmails ? 11 : 10"
         :rows="10"
         :show-actions="true"
         compact
@@ -638,7 +644,7 @@ defineExpose({
               </div>
             </Table.Cell>
 
-            <Table.Cell class="email-cell" @click.stop>
+            <Table.Cell v-if="props.canViewUserEmails" class="email-cell" @click.stop>
               <template v-if="user.Email">
                 <CopyClipboard :text="user.Email" confirm>
                   <Button variant="gray" plain size="s" class="email-button">

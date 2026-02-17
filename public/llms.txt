@@ -9,7 +9,6 @@ This file is a curated map of the most useful pages for understanding the site.
 ## Key Pages
 
 - [Home](https://hivecom.net/): Overview and entry point
-- [Announcements](https://hivecom.net/announcements): News and updates
 - [Events](https://hivecom.net/events): Community events listing and calendar
 - [Game Servers](https://hivecom.net/gameservers): Server library and live listings
 - [Community](https://hivecom.net/community): About the community and member-focused content

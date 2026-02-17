@@ -117,11 +117,11 @@ defineProps<{
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 1.5rem;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .hero-section__stats-card {
-  width: 142px;
+  width: 152px;
   border-radius: var(--border-radius-m);
   text-align: center;
   padding: var(--space-m);

@@ -133,11 +133,9 @@ const currentUser = useSupabaseUser()
 
     <!-- No user state -->
     <Flex v-else-if="!userId" gap="s" y-center class="user-display__header">
-      <Avatar :size="size">
-        SY
-      </Avatar>
+      <Avatar :size="size" url="/icon.svg" />
       <div class="user-display__info">
-        <span class="user-display__username">System</span>
+        <span class="user-display__username">Hivecom</span>
       </div>
     </Flex>
 
@@ -145,7 +143,7 @@ const currentUser = useSupabaseUser()
     <Flex v-else-if="user" gap="s" y-center class="user-display__header">
       <template v-if="!props.hideAvatar">
         <UserPreviewHover
-          v-if="showProfilePreview"
+          v-if="showProfilePreview && !!currentUser"
           :user-id="user.id"
           class="user-display__avatar-wrapper"
         >
@@ -225,5 +223,11 @@ const currentUser = useSupabaseUser()
   &__avatar-wrapper {
     display: inline-flex;
   }
+}
+
+.system-avatar-icon {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
 }
 </style>

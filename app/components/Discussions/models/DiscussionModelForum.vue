@@ -25,6 +25,7 @@ const data = toRef(props, 'data')
 
 const userId = useUserId()
 const supabase = useSupabaseClient()
+const currentUser = useSupabaseUser()
 
 const discussion = inject('discussion') as ProvidedDiscussion
 
@@ -104,23 +105,27 @@ watch(editedContent, () => editError.value = [])
 
 <template>
   <div class="discussion-forum">
-    <div v-if="user" class="discussion-forum__author">
-      <UserPreviewHover :user-id="data.created_by">
+    <div class="discussion-forum__author">
+      <UserPreviewHover v-if="currentUser" :user-id="data.created_by">
         <Flex column x-center y-center gap="s" class="mb-s">
-          <Avatar :url="user.avatarUrl || undefined" size="l" />
+          <Avatar :url="user?.avatarUrl || undefined" size="l" />
           <UserDisplay :user-id="data.created_by" show-role hide-avatar />
         </Flex>
       </UserPreviewHover>
-      <Flex expand x-center gap="l">
-        <p v-if="user.created_at" class="author-meta">
+      <Flex v-else column x-center y-center gap="s" class="mb-s">
+        <Avatar :url="user?.avatarUrl || undefined" size="l" />
+        <UserDisplay :user-id="data.created_by" show-role hide-avatar />
+      </Flex>
+      <Flex v-if="user?.created_at || country" expand x-center gap="l">
+        <p v-if="user?.created_at" class="author-meta">
           Joined {{ dayjs(user.created_at).format('MMMM YYYY') }}
         </p>
         <p v-if="country" class="author-meta">
           {{ country.name }} {{ country.emoji }}
         </p>
       </Flex>
-      <Divider />
-      <p v-if="user.introduction" class="user-preview-card__intro text-s">
+      <Divider v-if="user?.introduction || user?.created_at || country" />
+      <p v-if="user?.introduction" class="user-preview-card__intro text-s">
         {{ user.introduction }}
       </p>
     </div>

@@ -17,7 +17,6 @@ const errorMessage = ref('')
 
 // Real data from database
 const events = ref<Tables<'events'>[]>([])
-// const pinnedAnnouncements = ref<Tables<'announcements'>[]>([])
 const communityStats = ref({
   members: 100,
   membersAccurate: false,

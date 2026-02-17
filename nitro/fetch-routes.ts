@@ -57,7 +57,6 @@ export default async function fetchRoutes(): Promise<string[]> {
     fetchIds('projects', '/community/projects'),
     fetchIds('discussions', '/forum'),
     fetchIds('gameservers', '/servers/gameservers'),
-    fetchIds('announcements', '/announcements'),
   ])
 
   return routes

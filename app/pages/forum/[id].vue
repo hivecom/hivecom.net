@@ -139,9 +139,9 @@ useSeoMeta({
       </section>
 
       <Discussion
-        :id="String(post.discussion_topic_id)"
+        :id="String(post.id)"
         :key="JSON.stringify(post)"
-        type="discussion_topic"
+        type="discussion"
         model="forum"
         placeholder="Write your reply to this thread..."
         :input-rows="4"

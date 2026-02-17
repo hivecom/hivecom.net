@@ -48,6 +48,7 @@ const props = defineProps<{
     confirmed?: boolean
   } | null
   actionLoading?: Partial<Record<UserActionType, boolean>>
+  canViewUserEmails?: boolean
 }>()
 
 // Define emits
@@ -332,7 +333,7 @@ function getUserInitials(username: string): string {
               <UserLink :user-id="user.id" />
             </Grid>
 
-            <Grid class="detail-item" expand columns="1fr 2fr">
+            <Grid v-if="canViewUserEmails" class="detail-item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Email:</span>
               <template v-if="user.email">
                 <CopyClipboard :text="user.email" confirm>

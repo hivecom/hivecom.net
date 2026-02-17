@@ -137,12 +137,6 @@ const menuItems = [
     permissions: [], // Dashboard is always accessible to admin/moderator
   },
   {
-    name: 'Announcements',
-    path: '/admin/announcements',
-    icon: 'ph:megaphone',
-    permissions: ['announcements.read', 'announcements.create', 'announcements.update', 'announcements.delete'],
-  },
-  {
     name: 'Assets',
     path: '/admin/assets',
     icon: 'ph:images-square',

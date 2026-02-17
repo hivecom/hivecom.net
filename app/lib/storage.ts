@@ -14,22 +14,11 @@ export interface UploadResult {
 const PROJECT_BANNER_BUCKET = 'hivecom-content-static'
 const PROJECT_BANNER_PREFIX = 'projects'
 const PROJECT_BANNER_EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'] as const
-const ANNOUNCEMENT_ASSET_BUCKET = 'hivecom-content-static'
-const ANNOUNCEMENT_ASSET_PREFIX = 'announcements'
-const ANNOUNCEMENT_ASSET_EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'] as const
-type AnnouncementAssetsType = 'banner' | 'background'
 
 function normalizeProjectId(projectId: number | string): number {
   const normalized = Number(projectId)
   if (!Number.isFinite(normalized))
     throw new Error('Invalid project id')
-  return normalized
-}
-
-function normalizeAnnouncementId(announcementId: number | string): number {
-  const normalized = Number(announcementId)
-  if (!Number.isFinite(normalized))
-    throw new Error('Invalid announcement id')
   return normalized
 }
 
@@ -458,23 +447,6 @@ function dispatchProjectBannerUpdated(projectId: number, url: string | null) {
   }))
 }
 
-function buildAnnouncementAssetsPath(announcementId: number, assetType: AnnouncementAssetsType, extension: string) {
-  return `${ANNOUNCEMENT_ASSET_PREFIX}/${announcementId}/${assetType}.${extension}`
-}
-
-function dispatchAnnouncementAssetsUpdated(
-  announcementId: number,
-  assetType: AnnouncementAssetsType,
-  url: string | null,
-) {
-  if (typeof window === 'undefined')
-    return
-
-  window.dispatchEvent(new CustomEvent('announcement-asset-updated', {
-    detail: { announcementId, assetType, url },
-  }))
-}
-
 export async function uploadProjectBanner(
   supabaseClient: SupabaseClient<Database>,
   projectId: number,
@@ -621,199 +593,6 @@ export async function deleteProjectBanner(
       error: error instanceof Error ? error.message : 'Unknown error occurred',
     }
   }
-}
-
-async function uploadAnnouncementAssets(
-  supabaseClient: SupabaseClient<Database>,
-  announcementId: number,
-  file: File,
-  assetType: AnnouncementAssetsType,
-): Promise<UploadResult> {
-  try {
-    const normalizedAnnouncementId = normalizeAnnouncementId(announcementId)
-    const validation = validateImageFile(file)
-    if (!validation.valid)
-      return { success: false, error: validation.error }
-
-    let processedFile: File
-    try {
-      processedFile = await convertImageToWebP(file, 0.85)
-    }
-    catch (conversionError) {
-      console.warn(`Failed to convert announcement ${assetType} to WebP, using original file:`, conversionError)
-      processedFile = file
-    }
-
-    const cleanupResult = await deleteAnnouncementAssets(supabaseClient, normalizedAnnouncementId, assetType, { silent: true })
-    if (!cleanupResult.success)
-      console.warn(`Failed to cleanup existing announcement ${assetType}:`, cleanupResult.error)
-
-    const extension = processedFile.name.split('.').pop()?.toLowerCase() ?? 'png'
-    const effectiveExtension = processedFile.type === 'image/webp' ? 'webp' : extension
-    const filePath = buildAnnouncementAssetsPath(normalizedAnnouncementId, assetType, effectiveExtension)
-
-    const { error } = await supabaseClient.storage
-      .from(ANNOUNCEMENT_ASSET_BUCKET)
-      .upload(filePath, processedFile, {
-        upsert: true,
-        contentType: processedFile.type,
-      })
-
-    if (error) {
-      console.error(`Error uploading announcement ${assetType}:`, error)
-      return { success: false, error: error.message }
-    }
-
-    const { data: urlData } = supabaseClient.storage
-      .from(ANNOUNCEMENT_ASSET_BUCKET)
-      .getPublicUrl(filePath)
-
-    dispatchAnnouncementAssetsUpdated(normalizedAnnouncementId, assetType, urlData.publicUrl)
-
-    return {
-      success: true,
-      url: urlData.publicUrl,
-    }
-  }
-  catch (error) {
-    console.error(`Error uploading announcement ${assetType}:`, error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-    }
-  }
-}
-
-async function getAnnouncementAssetsUrl(
-  supabaseClient: SupabaseClient<Database>,
-  announcementId: number,
-  assetType: AnnouncementAssetsType,
-): Promise<string | null> {
-  try {
-    const normalizedAnnouncementId = normalizeAnnouncementId(announcementId)
-    const prefix = `${ANNOUNCEMENT_ASSET_PREFIX}/${normalizedAnnouncementId}`
-    const bucket = supabaseClient.storage.from(ANNOUNCEMENT_ASSET_BUCKET)
-
-    const { data, error } = await bucket.list(prefix)
-
-    if (error) {
-      if (isStorageNotFoundError(error))
-        return null
-      throw error
-    }
-
-    const files = data ?? []
-    for (const extension of ANNOUNCEMENT_ASSET_EXTENSIONS) {
-      const targetName = `${assetType}.${extension}`
-      if (files.some(file => file.name === targetName)) {
-        const filePath = buildAnnouncementAssetsPath(normalizedAnnouncementId, assetType, extension)
-        const { data: urlData } = bucket.getPublicUrl(filePath)
-        return urlData.publicUrl
-      }
-    }
-
-    return null
-  }
-  catch (error) {
-    console.error(`Error loading announcement ${assetType}:`, error)
-    throw error instanceof Error ? error : new Error(`Failed to load announcement ${assetType}`)
-  }
-}
-
-async function deleteAnnouncementAssets(
-  supabaseClient: SupabaseClient<Database>,
-  announcementId: number,
-  assetType: AnnouncementAssetsType,
-  options: { silent?: boolean } = {},
-): Promise<{ success: boolean, error?: string }> {
-  try {
-    const normalizedAnnouncementId = normalizeAnnouncementId(announcementId)
-    const prefix = `${ANNOUNCEMENT_ASSET_PREFIX}/${normalizedAnnouncementId}`
-    const bucket = supabaseClient.storage.from(ANNOUNCEMENT_ASSET_BUCKET)
-    const { data, error } = await bucket.list(prefix)
-
-    if (error) {
-      if (isStorageNotFoundError(error))
-        return { success: true }
-
-      console.error(`Error listing announcement ${assetType}:`, error)
-      return { success: false, error: error.message }
-    }
-
-    const files = (data ?? []).filter(file => file.name.startsWith(`${assetType}.`))
-
-    if (files.length === 0) {
-      if (!options.silent)
-        dispatchAnnouncementAssetsUpdated(normalizedAnnouncementId, assetType, null)
-      return { success: true }
-    }
-
-    const targets = files.map(file => `${prefix}/${file.name}`)
-    const { error: removeError } = await bucket.remove(targets)
-
-    if (removeError) {
-      console.error(`Error deleting announcement ${assetType}:`, removeError)
-      return { success: false, error: removeError.message }
-    }
-
-    if (!options.silent)
-      dispatchAnnouncementAssetsUpdated(normalizedAnnouncementId, assetType, null)
-
-    return { success: true }
-  }
-  catch (error) {
-    console.error(`Error deleting announcement ${assetType}:`, error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-    }
-  }
-}
-
-export async function uploadAnnouncementBanner(
-  supabaseClient: SupabaseClient<Database>,
-  announcementId: number,
-  file: File,
-) {
-  return uploadAnnouncementAssets(supabaseClient, announcementId, file, 'banner')
-}
-
-export async function uploadAnnouncementBackground(
-  supabaseClient: SupabaseClient<Database>,
-  announcementId: number,
-  file: File,
-) {
-  return uploadAnnouncementAssets(supabaseClient, announcementId, file, 'background')
-}
-
-export async function getAnnouncementBannerUrl(
-  supabaseClient: SupabaseClient<Database>,
-  announcementId: number,
-): Promise<string | null> {
-  return getAnnouncementAssetsUrl(supabaseClient, announcementId, 'banner')
-}
-
-export async function getAnnouncementBackgroundUrl(
-  supabaseClient: SupabaseClient<Database>,
-  announcementId: number,
-): Promise<string | null> {
-  return getAnnouncementAssetsUrl(supabaseClient, announcementId, 'background')
-}
-
-export async function deleteAnnouncementBanner(
-  supabaseClient: SupabaseClient<Database>,
-  announcementId: number,
-  options: { silent?: boolean } = {},
-) {
-  return deleteAnnouncementAssets(supabaseClient, announcementId, 'banner', options)
-}
-
-export async function deleteAnnouncementBackground(
-  supabaseClient: SupabaseClient<Database>,
-  announcementId: number,
-  options: { silent?: boolean } = {},
-) {
-  return deleteAnnouncementAssets(supabaseClient, announcementId, 'background', options)
 }
 
 /**
