@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import FileHandler from '@tiptap/extension-file-handler'
+import Image from '@tiptap/extension-image'
 import Mention from '@tiptap/extension-mention'
 import { Placeholder } from '@tiptap/extensions'
 import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
+import { handleFileUpload } from './plugins/file-upload'
 import { defineSuggestion } from './plugins/suggestion'
 import RichTextMentions from './RichTextMentions.vue'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
@@ -48,6 +51,7 @@ const editor = useEditor({
     StarterKit,
     Markdown,
     Placeholder.configure({ placeholder: props.placeholder }),
+    Image,
     Mention.configure({
       suggestion: defineSuggestion('@', RichTextMentions, async (search_term) => {
         return supabase
@@ -62,6 +66,11 @@ const editor = useEditor({
       renderHTML(props) {
         return `@${props.node.attrs.id}`
       },
+    }),
+    FileHandler.configure({
+      onPaste: (editor, files) => handleFileUpload(editor as never, files),
+      onDrop: (editor, files, pos) => handleFileUpload(editor as never, files, pos),
+      allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
     }),
   ],
   contentType: 'markdown',
@@ -137,6 +146,11 @@ defineExpose({
     padding: var(--space-s);
     min-height: v-bind(minHeight);
 
+    &.ProseMirror-focused {
+      outline: none;
+      border-color: var(--color-border-strong);
+    }
+
     & > :first-child {
       margin-top: 0 !important;
     }
@@ -155,6 +169,10 @@ defineExpose({
 
   hr.ProseMirror-selectednode {
     border-color: var(--color-border-strong);
+  }
+
+  img.ProseMirror-selectednode {
+    outline: 2px solid var(--color-text);
   }
 
   .mention {
