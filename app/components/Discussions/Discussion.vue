@@ -4,7 +4,7 @@ import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidat
 import { Alert, Button, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import { wrapInBlockquote } from '@/lib/markdown-processors'
 import { truncate } from '@/lib/utils/formatting'
-import RichTextEditor from '../Shared/RichTextEditor.vue'
+import RichTextEditor from '../Editor/RichTextEditor.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
 

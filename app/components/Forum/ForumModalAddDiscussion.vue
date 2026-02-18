@@ -4,7 +4,7 @@ import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '
 import { Button, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch } from '@dolanske/vui'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
-import RichTextEditor from '../Shared/RichTextEditor.vue'
+import RichTextEditor from '../Editor/RichTextEditor.vue'
 
 interface Props {
   open: boolean
