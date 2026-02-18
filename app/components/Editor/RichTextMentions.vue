@@ -81,5 +81,7 @@ const query = toRef(props, 'query')
   display: flex;
   gap: 2px;
   flex-direction: column;
+  max-height: 512px;
+  overflow-y: auto;
 }
 </style>

@@ -3,6 +3,7 @@
 /* eslint-disable ts/no-floating-promises */
 
 import type { FloatingElement, VirtualElement } from '@floating-ui/dom'
+import type { PostgrestResponse } from '@supabase/supabase-js'
 import type { Editor as CoreEditor } from '@tiptap/core'
 import type { SuggestionKeyDownProps, SuggestionOptions, SuggestionProps } from '@tiptap/suggestion'
 import type { Component } from 'vue'
@@ -26,26 +27,23 @@ async function updatePosition(editor: CoreEditor, element: HTMLElement) {
   element.style.left = `${result.x}px`
 }
 
-interface MentionOptions<T = unknown> { name: string, data: T }
+// NOTE: This is typed a bit weirdly because supabase and postgres typing
+// systems are complicated af. It gets the job done.
 
-export function createSuggestionPlugin(char: string, options: MentionOptions[], model: Component) {
-  const supabase = useSupabaseClient()
-
+// eslint-disable-next-line ts/no-explicit-any
+export function defineSuggestion(char: string, model: Component, query: (search_term: string) => Promise<any>) {
   const plugin = {
     char,
-    items: async ({ query }: { query: string }) => {
-      if (!query)
+    items: async (props) => {
+      if (!props.query)
         return []
 
-      const result = await supabase
-        .rpc('search_profiles', { search_term: query })
-        .select('username, id')
-        .limit(32)
+      const result = await query(props.query) as PostgrestResponse<unknown>
 
       if (result.error)
         return []
 
-      return result.data as Array<{ username: string, id: string }>
+      return result.data
     },
     render: () => {
       let component: VueRenderer

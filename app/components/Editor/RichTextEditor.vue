@@ -4,7 +4,7 @@ import { Placeholder } from '@tiptap/extensions'
 import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import { createSuggestionPlugin } from './plugins/suggestion'
+import { defineSuggestion } from './plugins/suggestion'
 import RichTextMentions from './RichTextMentions.vue'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 
@@ -20,8 +20,6 @@ const {
 
 // TODO: add option to add link to bunch of text
 
-// TODO: @mentions
-
 // TODO: hivecom emote sticker / custom emojis & normal emojis too
 
 // TODO: dropdown for headings
@@ -29,12 +27,6 @@ const {
 // TODO: image upload
 
 // TODO: image spoiler (or general spoiler tag?)
-
-const UserOptions = [
-  { name: 'dolanske', data: {} },
-  { name: 'zealsprince', data: {} },
-  { name: 'Jokler', data: {} },
-]
 
 interface Props {
   autofocus?: boolean
@@ -48,6 +40,8 @@ interface Props {
 
 const content = defineModel<string>()
 
+const supabase = useSupabaseClient()
+
 const editor = useEditor({
   content: content.value,
   extensions: [
@@ -55,7 +49,12 @@ const editor = useEditor({
     Markdown,
     Placeholder.configure({ placeholder: props.placeholder }),
     Mention.configure({
-      suggestion: createSuggestionPlugin('@', UserOptions, RichTextMentions),
+      suggestion: defineSuggestion('@', RichTextMentions, async (search_term) => {
+        return supabase
+          .rpc('search_profiles', { search_term })
+          .select('username, id')
+          .limit(32)
+      }),
       deleteTriggerWithBackspace: true,
       HTMLAttributes: {
         class: 'mention',
