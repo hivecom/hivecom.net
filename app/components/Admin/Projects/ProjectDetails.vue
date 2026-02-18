@@ -61,7 +61,7 @@ function handleDelete(project: Tables<'projects'>) {
         <Flex y-center gap="s">
           <AdminActions
             v-if="props.project"
-            resource-type="announcements"
+            resource-type="projects"
             :item="props.project"
             :show-labels="true"
             @edit="(projectItem) => handleEdit(projectItem as Tables<'projects'>)"

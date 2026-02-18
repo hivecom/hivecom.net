@@ -2,7 +2,6 @@
 import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { navigationLinks } from '@/lib/navigation'
-import NavAnnouncementBadge from './NavAnnouncementBadge.vue'
 import NavEventBadge from './NavEventBadge.vue'
 import NotificationDropdown from './NotificationDropdown.vue'
 import UserDropdown from './UserDropdown.vue'
@@ -130,7 +129,6 @@ function updateHoveredElement(event: MouseEvent) {
               >
                 <Icon :name="link.icon" />
                 {{ link.label }}
-                <NavAnnouncementBadge v-if="link.label === 'Announcements'" />
                 <NavEventBadge v-if="link.label === 'Events'" />
               </NuxtLink>
 

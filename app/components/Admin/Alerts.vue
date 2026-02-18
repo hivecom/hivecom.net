@@ -82,30 +82,6 @@ async function fetchAlerts() {
       })
     }
 
-    // Check for old pinned announcements
-    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
-    const { data: oldAnnouncements } = await supabase
-      .from('announcements')
-      .select('id, title, created_at')
-      .eq('pinned', true)
-      .lt('created_at', thirtyDaysAgo.toISOString())
-
-    if (oldAnnouncements && oldAnnouncements.length > 0) {
-      // Use the creation date of the oldest pinned announcement
-      const oldestAnnouncement = oldAnnouncements.reduce((oldest, current) =>
-        new Date(current.created_at) < new Date(oldest.created_at) ? current : oldest,
-      )
-
-      newAlerts.push({
-        id: 'old-pinned-announcement',
-        severity: 'warning',
-        title: 'Outdated Pinned Announcement',
-        message: `${oldAnnouncements.length} pinned announcement${oldAnnouncements.length === 1 ? '' : 's'} older than 30 days`,
-        icon: 'ph:push-pin',
-        timestamp: new Date(oldestAnnouncement.created_at),
-      })
-    }
-
     alerts.value = newAlerts
   }
   catch (error) {

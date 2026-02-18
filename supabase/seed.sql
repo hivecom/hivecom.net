@@ -462,10 +462,43 @@ INSERT INTO public.referendums(created_at, created_by, title, description, choic
 INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices)
   VALUES (NOW() + INTERVAL '1 hour', '018d224c-0e49-4b6d-b57a-87299605c2b1', 1, ARRAY[1]);
 
--- Insert test announcements
-INSERT INTO public.announcements(created_at, created_by, title, description, markdown, pinned, tags)
+-- Insert default discussion topics
+INSERT INTO public.discussion_topics (name, slug, description, priority, is_locked)
 VALUES
-  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Welcome to Hivecom', 'Welcome to our gaming community platform!', '
+  ('Announcements', 'announcements', 'Official news and updates from Hivecom.', 100, true),
+  ('Events', 'events', 'Community events and gatherings.', 80, true),
+  ('Projects', 'projects', 'Showcase and discussion of community projects.', 0, true),
+  ('General', 'general', 'General discussion about anything and everything.', 60, false)
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  priority = EXCLUDED.priority,
+  is_locked = EXCLUDED.is_locked;
+
+-- Insert forum discussions (migrated from former announcements seed data)
+WITH seeded_discussions AS (
+  INSERT INTO public.discussions(created_at, created_by, title, description, is_sticky, discussion_topic_id)
+  SELECT
+    v.created_at,
+    v.created_by,
+    v.title,
+    v.description,
+    v.is_sticky,
+    dt.id
+  FROM (VALUES
+    (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid, 'Welcome to Hivecom', 'Welcome to our gaming community platform!', TRUE),
+    (NOW() - INTERVAL '2 days', '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid, 'New CS2 Server Online', 'Our new Counter-Strike 2 server is now live!', FALSE)
+  ) as v(created_at, created_by, title, description, is_sticky)
+  CROSS JOIN public.discussion_topics dt
+  WHERE dt.slug = 'announcements'
+  RETURNING id, title, created_by, created_at
+)
+INSERT INTO public.discussion_replies(discussion_id, reply_to_id, content, meta, created_by, created_at)
+SELECT
+  sd.id,
+  NULL,
+  CASE sd.title
+    WHEN 'Welcome to Hivecom' THEN '
 # Welcome to Hivecom
 
 We are excited to have you join our gaming community! This platform serves as the central hub for all our community activities, events, and server information.
@@ -478,8 +511,8 @@ We are excited to have you join our gaming community! This platform serves as th
 - **Stay Updated**: Get the latest announcements and updates
 
 Feel free to explore and don''t hesitate to reach out if you have any questions!
-  ', TRUE, ARRAY['welcome', 'community', 'getting-started']),
-(NOW() - INTERVAL '2 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'New CS2 Server Online', 'Our new Counter-Strike 2 server is now live!', '
+  '
+    WHEN 'New CS2 Server Online' THEN '
 # New CS2 Server Online
 
 Great news! Our brand new Counter-Strike 2 community server is now online and ready for action.
@@ -494,7 +527,18 @@ Great news! Our brand new Counter-Strike 2 community server is now online and re
 The server is configured for casual play with a friendly, welcoming environment. Whether you''re a seasoned veteran or new to CS2, everyone is welcome!
 
 Come join us and let''s have some fun together!
-  ', FALSE, ARRAY['cs2', 'gameserver', 'gaming', 'announcement']);
+  '
+  END,
+  jsonb_build_object(
+    'tags',
+    CASE sd.title
+      WHEN 'Welcome to Hivecom' THEN ARRAY['welcome', 'community', 'getting-started']
+      WHEN 'New CS2 Server Online' THEN ARRAY['cs2', 'gameserver', 'gaming', 'announcement']
+    END
+  ),
+  sd.created_by,
+  sd.created_at
+FROM seeded_discussions sd;
 
 -- Insert sample MOTDs
 INSERT INTO public.motds(message, created_at, created_by, modified_at, modified_by)

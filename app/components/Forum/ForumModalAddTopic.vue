@@ -30,7 +30,7 @@ const activeTopicId = inject<() => Ref<string | null>>('forumActiveTopicId', () 
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
   return [
-    { id: '-', label: 'Top-level', parent_id: null, path: '/', sort_order: 0 },
+    { id: '-', label: 'Top-level', parent_id: null, path: '/', priority: 0 },
     ...topics.value
       // NOTE: this could instead be shown in the UI as a disabled option with badge?
       .filter(item => !item.is_archived && !item.is_locked)
@@ -50,7 +50,7 @@ const form = reactive({
   description: '',
   parent_id: null as string | null,
   is_locked: false,
-  sort_order: 0,
+  priority: 0,
 })
 
 // When we're editing, make sure the form and edited data are in sync
@@ -62,7 +62,7 @@ watch(() => props.editedItem, (item) => {
     name: item.name,
     parent_id: item.parent_id,
     is_locked: item.is_locked,
-    sort_order: item.sort_order,
+    priority: item.priority,
     ...(item.description && { description: item.description }),
   })
 }, { immediate: true })
@@ -76,7 +76,7 @@ watch(activeTopicId, (newVal) => {
 
 const rules = defineRules<typeof form>({
   name: [required, minLenNoSpace(1), maxLength(128)],
-  sort_order: [required],
+  priority: [required],
 })
 
 const loading = ref(false)
@@ -132,7 +132,7 @@ function submitForm() {
     <Flex column gap="m">
       <Input v-model="form.name" :errors="normalizeErrors(errors.name)" label="Name" expand placeholder="Topic title" required />
       <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Simply describe the topic" />
-      <Input v-model="form.sort_order" :errors="normalizeErrors(errors.sort_order)" type="number" label="Sort order" expand placeholder="Set the topic sort order" />
+      <Input v-model="form.priority" :errors="normalizeErrors(errors.priority)" type="number" label="Priority" expand placeholder="Set the topic priority for the sort order" />
 
       <div class="w-100">
         <label class="vui-label">Location</label>

@@ -98,19 +98,31 @@ watch(() => props.id, async () => {
   loading.value = true
 
   // Query discussion metadata
-  const discussionResponse = await supabase
+  const discussionQuery = supabase
     .from('discussions')
     .select('*')
-    .eq(`${props.type}_id`, props.id)
-    .single()
+
+  if (props.type === 'discussion') {
+    discussionQuery.eq('id', props.id)
+  }
+  else {
+    discussionQuery.eq(`${props.type}_id`, props.id)
+  }
+
+  const discussionResponse = await discussionQuery.maybeSingle()
 
   if (discussionResponse.error) {
     loading.value = false
     return error.value = discussionResponse.error.message
   }
-  else {
-    discussion.value = discussionResponse.data
+
+  if (!discussionResponse.data) {
+    loading.value = false
+    comments.value = []
+    return
   }
+
+  discussion.value = discussionResponse.data
 
   // Query comments under a discussion
   const commentQuery = supabase

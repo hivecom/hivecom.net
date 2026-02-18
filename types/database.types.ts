@@ -86,51 +86,6 @@ export interface Database {
   }
   public: {
     Tables: {
-      announcements: {
-        Row: {
-          created_at: string
-          created_by: string
-          description: string | null
-          id: number
-          link: string | null
-          markdown: string
-          modified_at: string | null
-          modified_by: string | null
-          pinned: boolean
-          published_at: string
-          tags: string[] | null
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          description?: string | null
-          id?: number
-          link?: string | null
-          markdown: string
-          modified_at?: string | null
-          modified_by?: string | null
-          pinned?: boolean
-          published_at?: string
-          tags?: string[] | null
-          title: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          description?: string | null
-          id?: number
-          link?: string | null
-          markdown?: string
-          modified_at?: string | null
-          modified_by?: string | null
-          pinned?: boolean
-          published_at?: string
-          tags?: string[] | null
-          title?: string
-        }
-        Relationships: []
-      }
       complaints: {
         Row: {
           acknowledged: boolean
@@ -296,8 +251,8 @@ export interface Database {
           modified_by: string | null
           name: string
           parent_id: string | null
+          priority: number
           slug: string
-          sort_order: number
         }
         Insert: {
           created_at?: string
@@ -310,8 +265,8 @@ export interface Database {
           modified_by?: string | null
           name: string
           parent_id?: string | null
+          priority?: number
           slug: string
-          sort_order?: number
         }
         Update: {
           created_at?: string
@@ -324,8 +279,8 @@ export interface Database {
           modified_by?: string | null
           name?: string
           parent_id?: string | null
+          priority?: number
           slug?: string
-          sort_order?: number
         }
         Relationships: [
           {
@@ -354,7 +309,6 @@ export interface Database {
       discussions: {
         Row: {
           accepted_reply_id: string | null
-          announcement_id: number | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -376,7 +330,6 @@ export interface Database {
         }
         Insert: {
           accepted_reply_id?: string | null
-          announcement_id?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -398,7 +351,6 @@ export interface Database {
         }
         Update: {
           accepted_reply_id?: string | null
-          announcement_id?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -424,13 +376,6 @@ export interface Database {
             columns: ['accepted_reply_id']
             isOneToOne: false
             referencedRelation: 'discussion_replies'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_announcement_id_fkey'
-            columns: ['announcement_id']
-            isOneToOne: false
-            referencedRelation: 'announcements'
             referencedColumns: ['id']
           },
           {

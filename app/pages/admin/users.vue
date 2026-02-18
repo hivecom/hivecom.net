@@ -54,6 +54,7 @@ const {
   canViewUsers,
   canViewRoles,
   canUpdateRoles,
+  isAdmin,
 } = useAdminPermissions()
 
 const route = useRoute()
@@ -101,6 +102,7 @@ watch(availableTabs, (newTabs) => {
 }, { immediate: true })
 
 const pageTitle = 'Users & Roles'
+const canViewUserEmails = computed(() => isAdmin.value)
 
 const pageSubtitle = computed(() => {
   if (activeTab.value === 'Roles')
@@ -410,6 +412,7 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
 
         <UserTable
           v-model:refresh-signal="refreshSignal"
+          :can-view-user-emails="canViewUserEmails"
           @user-selected="handleUserSelected"
           @action="handleUserAction"
           @update:refresh-signal="handleRefreshSignal"
@@ -429,6 +432,7 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
       v-model:user-action="userAction"
       v-model:refresh-user="userRefreshTrigger"
       :user="selectedUser"
+      :can-view-user-emails="canViewUserEmails"
       :action-loading="detailActionLoading"
       @edit="handleEditFromDetails"
     />

@@ -48,7 +48,7 @@ const settingsAnchor = useTemplateRef('settings-anchor')
 const settings = useLocalStorage('forum-settings', {
   showArchived: false,
   showActivity: true,
-}, localStorage, {
+}, typeof window !== 'undefined' ? window.localStorage : undefined, {
   serializer: {
     read: value => value ? JSON.parse(value) : null,
     write: value => JSON.stringify(value),
@@ -188,14 +188,14 @@ const modelledTopics = computed(() => {
   // Sort topics to prioritize `sort_order` and the rest is sorted
   // alphabetically below. Only manually-created topics should have a sort_order
   return filtered.toSorted((a, b) => {
-    const aHasOrder = a.sort_order !== 0
-    const bHasOrder = b.sort_order !== 0
+    const aHasOrder = a.priority !== 0
+    const bHasOrder = b.priority !== 0
 
     if (aHasOrder && bHasOrder) {
-      if (a.sort_order === b.sort_order) {
+      if (a.priority === b.priority) {
         return a.name.localeCompare(b.name)
       }
-      return b.sort_order - a.sort_order
+      return b.priority - a.priority
     }
 
     if (aHasOrder && !bHasOrder)
@@ -266,7 +266,7 @@ const latestPosts = computed<ActivityItem[]>(() => {
         content: (isTopic ? item.name : item.title) ?? item.description,
         timestamp: `${item.created_at === item.modified_at ? 'Created' : 'Updated'} ${dayjs(item.modified_at).fromNow()}`,
         timestampRaw: item.modified_at,
-        user: item.modified_by,
+        user: item.created_by,
         icon: isTopic ? 'ph:folder-open' : 'ph:scroll',
         ...(isTopic
           ? { onClick: () => activeTopicId.value = id }
@@ -311,16 +311,16 @@ const postSinceYesterday = computed(() => {
         </Flex>
 
         <div class="forum__latest-list">
-          <NuxtLink v-for="event in latestPosts" :key="event.id" class="forum__latest-item" :href="event.href" @click="event.onClick">
+          <NuxtLink v-for="post in latestPosts" :key="post.id" class="forum__latest-item" :href="post.href" @click="post.onClick">
             <Flex x-between y-center>
               <Flex :gap="4" y-center>
-                <Icon :name="event.icon" :size="13" />
-                <span> {{ event.type }}</span>
+                <Icon :name="post.icon" :size="13" />
+                <span> {{ post.type }}</span>
               </Flex>
-              <span>{{ event.timestamp }}</span>
+              <span>{{ post.timestamp }}</span>
             </Flex>
-            <p>{{ stripMarkdown(event.content) }}</p>
-            <UserDisplay :user-id="event.user" size="s" />
+            <p>{{ stripMarkdown(post.content) }}</p>
+            <UserDisplay :user-id="post.user" size="s" />
           </NuxtLink>
         </div>
       </section>
