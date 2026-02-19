@@ -54,5 +54,8 @@
   },
   "files": [
     "content.config.ts"
+  ],
+  "exclude": [
+    "supabase"
   ]
 }

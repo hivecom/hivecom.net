@@ -196,35 +196,65 @@ export async function collectSnapshots(args: {
 export async function loadTeamSpeakProfileMap(
   supabase: SupabaseDbClient,
 ): Promise<Map<string, Tables<"profiles">>> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, teamspeak_identities, supporter_patreon, supporter_lifetime, banned, rich_presence_disabled");
-
-  if (error) throw error;
-
   const map = new Map<string, Tables<"profiles">>();
-  for (const row of data ?? []) {
-    const identities = normalizeTeamSpeakIdentities((row as Tables<"profiles">).teamspeak_identities);
-    for (const identity of identities) {
-      map.set(`${identity.serverId}:${identity.uniqueId}`, row as Tables<"profiles">);
+
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, teamspeak_identities, supporter_patreon, supporter_lifetime, banned, rich_presence_disabled")
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) throw error;
+
+    for (const row of (data ?? [])) {
+      const identities = normalizeTeamSpeakIdentities((row as Tables<"profiles">).teamspeak_identities);
+      for (const identity of identities) {
+        map.set(`${identity.serverId}:${identity.uniqueId}`, row as Tables<"profiles">);
+      }
+    }
+
+    if (!data || data.length < pageSize) {
+      hasMore = false;
+    } else {
+      page++;
     }
   }
+
   return map;
 }
 
 export async function loadTeamSpeakRoleMap(
   supabase: SupabaseDbClient,
 ): Promise<Map<string, Tables<"user_roles">["role"]>> {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("user_id, role");
-
-  if (error) throw error;
-
   const map = new Map<string, Tables<"user_roles">["role"]>();
-  for (const row of data ?? []) {
-    map.set(row.user_id, row.role);
+
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("user_id, role")
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) throw error;
+
+    for (const row of (data ?? [])) {
+      map.set(row.user_id, row.role);
+    }
+
+    if (!data || data.length < pageSize) {
+      hasMore = false;
+    } else {
+      page++;
+    }
   }
+
   return map;
 }
 

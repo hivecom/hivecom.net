@@ -31,12 +31,6 @@ export default antfu({
     html: true,
   },
 }, {
-  // Create a separate config for Supabase functions with disabled no-console rule
-  files: ['**/supabase/functions/**/*.ts'],
-  rules: {
-    'no-console': 'off',
-  },
-}, {
   files: ['**/*.ts', '**/*.tsx'],
   rules: {
     'ts/prefer-nullish-coalescing': 'error',
