@@ -22,6 +22,8 @@ interface ContainerWithServer {
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
+const route = useRoute()
+const router = useRouter()
 
 // Check permissions for each resource type
 const canReadServers = computed(() => hasPermission('servers.read'))
@@ -43,12 +45,48 @@ const availableTabs = computed(() => {
 // Set active tab to first available tab
 const activeTab = ref('')
 
-// Watch for available tabs changes and set default
-watch(availableTabs, (newTabs) => {
+// Focused container from query string
+const focusedContainerName = computed(() => {
+  const containerQuery = route.query.container
+  if (typeof containerQuery === 'string')
+    return containerQuery
+  if (Array.isArray(containerQuery) && containerQuery[0])
+    return containerQuery[0]
+  return ''
+})
+
+// Watch for available tabs changes and set default.
+// If query tab is valid and available, prefer that tab.
+watch([availableTabs, () => route.query.tab], ([newTabs, queryTab]) => {
+  const queryTabValue = typeof queryTab === 'string'
+    ? queryTab
+    : Array.isArray(queryTab) && queryTab[0]
+      ? queryTab[0]
+      : ''
+
+  if (queryTabValue && newTabs.some(tab => tab.value === queryTabValue)) {
+    activeTab.value = queryTabValue
+    return
+  }
+
   if (newTabs.length > 0 && !activeTab.value && newTabs[0]) {
     activeTab.value = newTabs[0].value
   }
 }, { immediate: true })
+
+watch(activeTab, (tab) => {
+  if (!tab)
+    return
+  const currentTab = typeof route.query.tab === 'string'
+    ? route.query.tab
+    : Array.isArray(route.query.tab) && route.query.tab[0]
+      ? route.query.tab[0]
+      : ''
+  if (currentTab === tab)
+    return
+  router.push({ query: { ...route.query, tab } })
+})
+
 const supabase = useSupabaseClient()
 
 // Refresh signals for each tab
@@ -116,6 +154,7 @@ async function handleContainerControl(container: ContainerWithServer, action: 's
       <ContainerTable
         v-model:refresh-signal="refreshSignal"
         :control-container="handleContainerControl"
+        :focus-container-name="focusedContainerName"
         @update:refresh-signal="handleRefreshSignal"
       />
     </Flex>

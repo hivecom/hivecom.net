@@ -305,9 +305,9 @@ onMounted(fetchDropdownData)
     @close="handleClose"
   >
     <template #header>
-      <Flex column gap="xxs">
+      <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit Game Server' : 'Add Game Server' }}</h4>
-        <p v-if="props.isEditMode && props.gameserver" class="text-color-light text-m">
+        <p v-if="props.isEditMode && props.gameserver" class="text-color-light text-xs">
           {{ props.gameserver.name }}
         </p>
       </Flex>
@@ -365,7 +365,7 @@ onMounted(fetchDropdownData)
         <h4>Configuration</h4>
 
         <!-- First row: Game and Container -->
-        <Flex gap="m" wrap>
+        <Flex gap="m" wrap expand>
           <Select
             v-model="selectedGameComputed"
             search
@@ -394,7 +394,7 @@ onMounted(fetchDropdownData)
         </Flex>
 
         <!-- Second row: Administrator and Port -->
-        <Flex gap="m" wrap>
+        <Flex gap="m" wrap expand>
           <Select
             v-model="selectedAdministratorComputed"
             search

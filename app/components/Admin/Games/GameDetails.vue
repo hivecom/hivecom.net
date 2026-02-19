@@ -153,9 +153,9 @@ watchEffect(async () => {
   >
     <template #header>
       <Flex x-between y-center class="pr-s">
-        <Flex column gap="xxs">
+        <Flex column :gap="0">
           <h4>Game Details</h4>
-          <p v-if="props.game" class="text-color-light text-m">
+          <p v-if="props.game" class="text-color-light text-xs">
             {{ props.game.name }}
           </p>
         </Flex>
@@ -241,7 +241,12 @@ watchEffect(async () => {
           <Flex v-else column gap="s" expand>
             <Flex v-for="gameserver in gameservers" :key="gameserver.id" class="game-details__gameserver-item" expand>
               <Flex y-center x-between gap="m" expand>
-                <span class="game-details__gameserver-name">{{ gameserver.name }}</span>
+                <NuxtLink
+                  :to="`/admin/network?tab=Gameservers&gameserver=${gameserver.id}`"
+                  class="game-details__gameserver-name"
+                >
+                  {{ gameserver.name }}
+                </NuxtLink>
 
                 <!-- Addresses -->
                 <Flex v-if="gameserver.addresses && gameserver.addresses.length > 0" y-center gap="xs">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Avatar, Flex, Skeleton } from '@dolanske/vui'
+import { Avatar, Badge, Flex, Skeleton } from '@dolanske/vui'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
@@ -135,7 +135,12 @@ const currentUser = useSupabaseUser()
     <Flex v-else-if="!userId" gap="s" y-center class="user-display__header">
       <Avatar :size="size" url="/icon.svg" />
       <div class="user-display__info">
-        <span class="user-display__username">Hivecom</span>
+        <Flex gap="xs" y-center>
+          <span class="user-display__username">Hivecom</span>
+          <Badge size="xs" variant="accent">
+            System
+          </Badge>
+        </Flex>
       </div>
     </Flex>
 

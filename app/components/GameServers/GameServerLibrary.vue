@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { QueryData } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.types'
 import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
@@ -8,18 +7,17 @@ import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<Props>()
-// Define the type inline to match what the parent component provides
-const supabase = useSupabaseClient()
-const _gameserversQuery = supabase.from('gameservers').select(`
-  *,
-  container (
-    name,
-    running,
-    healthy
-  ),
-  administrator
-`)
-type GameserversType = QueryData<typeof _gameserversQuery>
+
+type GameserverWithContainer = Tables<'gameservers'> & {
+  container?: (Tables<'containers'> & {
+    server?: {
+      docker_control?: boolean | null
+      accessible?: boolean | null
+    } | null
+  }) | null
+}
+
+type GameserversType = GameserverWithContainer[]
 
 interface Props {
   games?: Tables<'games'>[]
@@ -41,7 +39,7 @@ function compareGameServerName(a: GameserversType[0], b: GameserversType[0]) {
   const nameB = b.name ?? ''
 
   const byName = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' })
-  return byName !== 0 ? byName : (a.id ?? '').localeCompare(b.id ?? '')
+  return byName !== 0 ? byName : String(a.id ?? '').localeCompare(String(b.id ?? ''))
 }
 
 async function openGameModal(game: Tables<'games'>) {
@@ -195,8 +193,8 @@ function isCoverLoading(gameId: number): boolean {
         <div v-if="selectedGameServers.length > 0" class="servers-list">
           <GameServerRow
             v-for="gameserver in selectedGameServers" :key="gameserver.id"
-            :gameserver="(gameserver as Tables<'gameservers'>)"
-            :container="(gameserver.container as Tables<'containers'> | null)" :game="(selectedGame as Tables<'games'>)"
+            :gameserver="gameserver"
+            :container="gameserver.container ?? null" :game="selectedGame"
             compact
           />
         </div>

@@ -112,9 +112,9 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
   >
     <template #header>
       <Flex x-between y-center class="pr-s">
-        <Flex column gap="xxs">
+        <Flex column :gap="0">
           <h4>Event Details</h4>
-          <p v-if="props.event" class="text-color-light text-m">
+          <p v-if="props.event" class="text-color-light text-xs">
             {{ props.event.title }}
           </p>
         </Flex>

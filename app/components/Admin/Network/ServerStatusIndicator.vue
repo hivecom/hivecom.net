@@ -2,18 +2,24 @@
 import { Flex, Tooltip } from '@dolanske/vui'
 
 defineProps<{
-  status: 'active' | 'inactive'
+  status: 'active' | 'inactive' | 'accessible' | 'inaccessible' | 'not_enabled'
   showLabel?: boolean
 }>()
 
 const statusLabels = {
   active: 'Active',
   inactive: 'Inactive',
+  accessible: 'Accessible',
+  inaccessible: 'Inaccessible',
+  not_enabled: 'Not enabled',
 }
 
 const statusDescriptions = {
   active: 'The server is active and available.',
   inactive: 'The server is inactive or unavailable.',
+  accessible: 'Docker Control responded successfully.',
+  inaccessible: 'Docker Control is unresponsive.',
+  not_enabled: 'Docker Control is not enabled for this server.',
 }
 </script>
 
@@ -26,7 +32,7 @@ const statusDescriptions = {
     </template>
     <Flex class="servers__status-indicator-wrapper" y-center>
       <span :class="`servers__status-indicator ${status}`" />
-      <span v-if="showLabel">{{ statusLabels[status] }}</span>
+      <span v-if="showLabel" class="text-s">{{ statusLabels[status] }}</span>
     </Flex>
   </Tooltip>
 </template>
@@ -50,6 +56,18 @@ const statusDescriptions = {
 
   &.inactive {
     background-color: var(--color-text-red);
+  }
+
+  &.accessible {
+    background-color: var(--color-text-green);
+  }
+
+  &.inaccessible {
+    background-color: var(--color-text-red);
+  }
+
+  &.not_enabled {
+    background-color: var(--color-text-yellow);
   }
 }
 

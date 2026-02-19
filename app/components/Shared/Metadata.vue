@@ -9,9 +9,12 @@ interface Props {
   modifiedAt?: string | null
   modifiedBy?: string | null
   loading?: boolean
+  showSystemUserForMissingCreatedBy?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showSystemUserForMissingCreatedBy: false,
+})
 
 const showModifiedUser = computed(() => {
   return !!props.modifiedBy && props.modifiedBy !== props.createdBy
@@ -31,7 +34,13 @@ const showModifiedUser = computed(() => {
           Created
         </span>
         <TimestampDate size="xs" :date="createdAt" format="MMM D, YYYY [at] HH:mm" />
-        <UserDisplay v-if="createdBy" class="mt-xs" :user-id="createdBy" show-role size="s" />
+        <UserDisplay
+          v-if="createdBy || props.showSystemUserForMissingCreatedBy"
+          class="mt-xs"
+          :user-id="createdBy"
+          show-role
+          size="s"
+        />
       </Flex>
 
       <Flex v-if="modifiedAt" column gap="xs">

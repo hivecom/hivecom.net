@@ -116,9 +116,9 @@ function handleDelete() {
     @close="isOpen = false"
   >
     <template #header>
-      <Flex column gap="xxs">
+      <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit Server' : 'Add Server' }}</h4>
-        <p v-if="props.isEditMode && props.server" class="text-color-light text-m">
+        <p v-if="props.isEditMode && props.server" class="text-color-light text-xs">
           {{ props.server.address }}
         </p>
       </Flex>

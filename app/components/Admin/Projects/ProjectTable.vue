@@ -37,6 +37,8 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
 const { canManageResource, canCreate } = useTableActions('projects')
+const route = useRoute()
+const router = useRouter()
 
 // Define query
 const supabase = useSupabaseClient()
@@ -73,6 +75,17 @@ const tagOptions = computed<SelectOption[]>(() => {
 // Project detail state
 const selectedProject = ref<QueryProject | null>(null)
 const showProjectDetails = ref(false)
+
+const focusedProjectId = computed(() => {
+  const projectQuery = route.query.project
+  const rawValue = typeof projectQuery === 'string'
+    ? projectQuery
+    : Array.isArray(projectQuery) && projectQuery[0]
+      ? projectQuery[0]
+      : ''
+  const parsed = Number.parseInt(rawValue, 10)
+  return Number.isNaN(parsed) ? null : parsed
+})
 
 // Project form state
 const showProjectForm = ref(false)
@@ -167,6 +180,19 @@ function viewProject(project: QueryProject) {
   showProjectDetails.value = true
 }
 
+function openProjectById(projectId: number | null): boolean {
+  if (projectId === null)
+    return false
+
+  const match = projects.value.find((project: QueryProject) => project.id === projectId)
+
+  if (!match)
+    return false
+
+  viewProject(match)
+  return true
+}
+
 // Open the add project form
 function openAddProjectForm() {
   selectedProject.value = null
@@ -259,6 +285,36 @@ function clearFilters() {
   search.value = ''
   tagFilter.value = []
 }
+
+// Sync project query params with details sheet state
+watch(showProjectDetails, (isOpen) => {
+  if (isOpen && selectedProject.value) {
+    const nextQuery = {
+      ...route.query,
+      project: selectedProject.value.id,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+  if (isOpen)
+    return
+  if (!route.query.project)
+    return
+  const { project, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
+watch(
+  () => [focusedProjectId.value, loading.value] as const,
+  ([projectId, isLoading]) => {
+    if (isLoading)
+      return
+    if (projectId === null)
+      return
+    openProjectById(projectId)
+  },
+  { immediate: true },
+)
 
 // Lifecycle hooks
 onBeforeMount(fetchProjects)

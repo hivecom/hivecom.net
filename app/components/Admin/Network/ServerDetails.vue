@@ -36,16 +36,15 @@ function handleEdit() {
   >
     <template #header>
       <Flex x-between y-center class="pr-s">
-        <Flex column gap="xxs">
+        <Flex column :gap="0">
           <h4>Server Details</h4>
-          <p v-if="props.server" class="text-color-light text-m">
+          <p v-if="props.server" class="text-color-light text-xs">
             {{ props.server.address }}
           </p>
         </Flex>
         <Flex y-center gap="s">
           <Button
             v-if="props.server"
-            size="s"
             @click="handleEdit"
           >
             <template #start>
@@ -74,7 +73,18 @@ function handleEdit() {
 
             <Grid class="detail-item" expand :columns="2">
               <span class="text-color-light text-bold">Status:</span>
-              <ServerStatusIndicator :status="props.server.active ? 'active' : 'inactive'" show-label />
+              <ServerStatusIndicator :status="!props.server.active ? 'inactive' : props.server.docker_control && !props.server.accessible ? 'inaccessible' : 'active'" show-label />
+            </Grid>
+
+            <Grid class="detail-item" expand :columns="2">
+              <span class="text-color-light text-bold">Accessible:</span>
+              <ServerStatusIndicator :status="props.server.docker_control ? (props.server.accessible ? 'accessible' : 'inaccessible') : 'not_enabled'" show-label />
+            </Grid>
+
+            <Grid class="detail-item" expand :columns="2">
+              <span class="text-color-light text-bold">Last Accessed:</span>
+              <TimestampDate v-if="props.server.last_accessed" :date="props.server.last_accessed" />
+              <span v-else>Never</span>
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">

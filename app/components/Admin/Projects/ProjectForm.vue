@@ -294,9 +294,9 @@ function handleTagInputEnter() {
     @close="handleClose"
   >
     <template #header>
-      <Flex column gap="xxs">
+      <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit Project' : 'Add Project' }}</h4>
-        <p v-if="props.isEditMode && props.project" class="text-color-light text-m">
+        <p v-if="props.isEditMode && props.project" class="text-color-light text-xs">
           {{ props.project.title }}
         </p>
       </Flex>

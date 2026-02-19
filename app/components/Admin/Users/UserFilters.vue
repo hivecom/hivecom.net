@@ -33,8 +33,10 @@ function clearFilters() {
 <template>
   <Flex gap="s" x-start wrap expand>
     <!-- Search input -->
+    <!-- I was too lazy to properly scale the search input -->
     <Input
       v-model="search"
+      style="min-width: 16vw"
       placeholder="Search by username, email, or UUID"
       :expand="isBelowMedium"
     >

@@ -14,10 +14,17 @@ const gameserverId = Number.parseInt(route.params.id as string)
 // Supabase client
 const supabase = useSupabaseClient()
 
+type ContainerWithServer = Tables<'containers'> & {
+  server?: {
+    docker_control?: boolean | null
+    accessible?: boolean | null
+  } | null
+}
+
 // Reactive data
 const gameserver = ref<Tables<'gameservers'> | null>(null)
 const game = ref<Tables<'games'> | null>(null)
-const container = ref<Tables<'containers'> | null>(null)
+const container = ref<ContainerWithServer | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const gameBackground = ref<string | null>(null)
@@ -25,6 +32,12 @@ const gameBackground = ref<string | null>(null)
 // Computed server state
 const state = computed(() => {
   if (!container.value)
+    return 'unknown'
+
+  if (container.value.server?.docker_control === false)
+    return 'unknown'
+
+  if (container.value.server?.docker_control && container.value.server?.accessible === false)
     return 'unknown'
 
   if (container.value.running && container.value.healthy === null) {
@@ -117,7 +130,13 @@ async function fetchGameserver() {
     if (gameserverData.container) {
       const { data: containerData } = await supabase
         .from('containers')
-        .select('*')
+        .select(`
+          *,
+          server (
+            docker_control,
+            accessible
+          )
+        `)
         .eq('name', gameserverData.container)
         .single()
       container.value = containerData

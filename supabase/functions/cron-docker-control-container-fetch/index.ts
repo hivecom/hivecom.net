@@ -115,6 +115,17 @@ Deno.serve(async (req: Request) => {
             }),
           );
 
+          const { error: accessError } = await supabaseClient
+            .from("servers")
+            .update({ accessible: true, last_accessed: now })
+            .eq("id", server.id);
+
+          if (accessError) {
+            throw new Error(
+              `Failed to update server access state for ${server.address}: ${accessError.message}`,
+            );
+          }
+
           return {
             server: server.address,
             success: true,
@@ -123,6 +134,17 @@ Deno.serve(async (req: Request) => {
         } catch (err) {
           const error = err as Error;
           console.error(`Error processing server ${server.address}:`, error);
+
+          const { error: accessError } = await supabaseClient
+            .from("servers")
+            .update({ accessible: false })
+            .eq("id", server.id);
+
+          if (accessError) {
+            console.error(
+              `Failed to flag server ${server.address} as inaccessible: ${accessError.message}`,
+            );
+          }
 
           return {
             server: server.address,

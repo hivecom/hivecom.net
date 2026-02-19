@@ -89,9 +89,9 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
   >
     <template #header>
       <Flex x-between y-center class="pr-s">
-        <Flex column gap="xxs">
+        <Flex column :gap="0">
           <h4>Referendum Details</h4>
-          <p v-if="props.referendum" class="text-color-light text-m">
+          <p v-if="props.referendum" class="text-color-light text-xs">
             {{ props.referendum.title }}
           </p>
         </Flex>

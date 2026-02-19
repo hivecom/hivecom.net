@@ -102,7 +102,6 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
   <Flex gap="xs">
     <Button
       v-if="canModifyUsers"
-      size="s"
       variant="gray"
       :square="!showLabels"
       :data-title-top="!showLabels ? 'Edit User' : undefined"
@@ -119,7 +118,6 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 
     <Button
       v-if="!isCurrentlyBanned && canModifyUsers && !isCurrentUser"
-      size="s"
       variant="danger"
       :loading="isActionLoading('ban')"
       :square="!showLabels"
@@ -137,7 +135,6 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 
     <Button
       v-if="isCurrentlyBanned && canModifyUsers && !isCurrentUser"
-      size="s"
       variant="success"
       :loading="isActionLoading('unban')"
       :square="!showLabels"
@@ -155,7 +152,6 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 
     <Button
       v-if="canDeleteUsers && !isCurrentUser"
-      size="s"
       variant="danger"
       :loading="isActionLoading('delete')"
       :square="!showLabels"

@@ -73,8 +73,10 @@ interface SelectOption {
 
 const props = withDefaults(defineProps<{
   canViewUserEmails?: boolean
+  focusUserId?: string | null
 }>(), {
   canViewUserEmails: false,
+  focusUserId: null,
 })
 
 // Emits
@@ -451,6 +453,61 @@ function handleUserClick(userData: unknown) {
   emit('userSelected', user)
 }
 
+function buildAdminProfile(user: QueryUserProfile): AdminUserProfile {
+  const role = userRoles.value[user.id] || null
+  const email = getUserEmail(user.id)
+  const confirmed = getUserConfirmedState(user.id)
+  const discordDisplayName = getUserDiscordDisplayName(user.id)
+  const authProvider = getUserAuthProvider(user.id)
+  const authProviders = getUserAuthProviders(user.id)
+
+  return {
+    id: user.id,
+    username: user.username || 'Unknown',
+    country: user.country,
+    birthday: user.birthday,
+    created_at: user.created_at,
+    modified_at: user.modified_at,
+    modified_by: user.modified_by,
+    supporter_patreon: user.supporter_patreon || false,
+    supporter_lifetime: user.supporter_lifetime || false,
+    badges: user.badges || [],
+    patreon_id: user.patreon_id,
+    steam_id: user.steam_id,
+    discord_id: user.discord_id,
+    introduction: user.introduction,
+    markdown: user.markdown,
+    banned: user.banned || false,
+    ban_reason: user.ban_reason,
+    ban_start: user.ban_start,
+    ban_end: user.ban_end,
+    last_seen: user.last_seen,
+    website: user.website || null,
+    role,
+    email,
+    confirmed,
+    discord_display_name: discordDisplayName,
+    auth_provider: authProvider,
+    auth_providers: authProviders,
+  }
+}
+
+function openUserById(userId: string | null | undefined): boolean {
+  if (!userId)
+    return false
+
+  const normalizedTarget = userId.trim().toLowerCase()
+  if (!normalizedTarget)
+    return false
+
+  const match = users.value.find(user => user.id.toLowerCase() === normalizedTarget)
+  if (!match)
+    return false
+
+  emit('userSelected', buildAdminProfile(match))
+  return true
+}
+
 // Check if action is loading for a specific user and action type
 function isActionLoading(userId: string, action: string): boolean {
   return !!(actionLoading.value[userId]?.[action])
@@ -546,6 +603,17 @@ function getPlatformInfo(platform: string) {
 
   return platformIcons[platform] || { icon: 'ph:question', label: 'Unknown', color: 'var(--color-text-light)' }
 }
+
+// React to external focus requests (e.g. from query params)
+watch(
+  () => [props.focusUserId, loading.value] as const,
+  ([focusUserId, isLoading]) => {
+    if (isLoading)
+      return
+    openUserById(focusUserId)
+  },
+  { immediate: true },
+)
 
 // Lifecycle
 onBeforeMount(fetchUsers)

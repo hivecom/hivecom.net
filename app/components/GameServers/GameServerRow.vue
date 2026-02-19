@@ -5,10 +5,17 @@ import { capitalize } from 'vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+type ContainerWithServer = Tables<'containers'> & {
+  server?: {
+    docker_control?: boolean | null
+    accessible?: boolean | null
+  } | null
+}
+
 const props = defineProps<{
   game?: Tables<'games'> | null
   gameserver: Tables<'gameservers'>
-  container: Tables<'containers'> | null
+  container: ContainerWithServer | null
   compact?: boolean
 }>()
 
@@ -16,6 +23,12 @@ const router = useRouter()
 
 const state = computed(() => {
   if (!props.container)
+    return 'unknown'
+
+  if (props.container.server?.docker_control !== true)
+    return 'unknown'
+
+  if (props.container.server?.accessible === false)
     return 'unknown'
 
   if (props.container.running && props.container.healthy === null) {
@@ -55,7 +68,7 @@ const isCompactLayout = useBreakpoint('<s')
       >
         <Tooltip placement="top">
           <template #tooltip>
-            <p>{{ capitalize(state) }}{{ state === 'offline' ? ' - Ask an administrator to start it' : '' }}</p>
+            <p>{{ capitalize(state) }}{{ state === 'offline' ? ' - Ask an administrator to start it' : state === 'unknown' ? ' - Docker Control is unavailable for this server' : '' }}</p>
           </template>
           <div :class="`gameserver-indicator ${state}`" />
         </Tooltip>

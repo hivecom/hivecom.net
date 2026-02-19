@@ -19,8 +19,10 @@ import ServerStatusIndicator from './ServerStatusIndicator.vue'
 // Define interface for transformed server data
 interface TransformedServer {
   'Address': string
-  'Status': 'active' | 'inactive'
+  'Status': 'active' | 'inactive' | 'inaccessible'
   'Docker Control': boolean
+  'Accessible': boolean
+  'Last Accessed': string | null
   'Created': string
   '_original': Tables<'servers'>
 }
@@ -36,6 +38,8 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
 const { canManageResource, canCreate } = useTableActions('servers')
+const route = useRoute()
+const router = useRouter()
 
 // Define query
 const supabase = useSupabaseClient()
@@ -54,6 +58,17 @@ const isBelowMedium = useBreakpoint('<m')
 const selectedServer = ref<Tables<'servers'> | null>(null)
 const showServerDetails = ref(false)
 
+const focusedServerId = computed(() => {
+  const serverQuery = route.query.server
+  const rawValue = typeof serverQuery === 'string'
+    ? serverQuery
+    : Array.isArray(serverQuery) && serverQuery[0]
+      ? serverQuery[0]
+      : ''
+  const parsed = Number.parseInt(rawValue, 10)
+  return Number.isNaN(parsed) ? null : parsed
+})
+
 // Server form state
 const showServerForm = ref(false)
 const isEditMode = ref(false)
@@ -62,6 +77,7 @@ const isEditMode = ref(false)
 const statusOptions: SelectOption[] = [
   { label: 'Active', value: 'active' },
   { label: 'Inactive', value: 'inactive' },
+  { label: 'Inaccessible', value: 'inaccessible' },
 ]
 
 // Filter based on search and status
@@ -79,7 +95,7 @@ const filteredData = computed<TransformedServer[]>(() => {
     // Filter by status
     if (statusFilter.value && statusFilter.value.length > 0) {
       const statusFilterValue = statusFilter.value[0]?.value
-      const status = item.active ? 'active' : 'inactive'
+      const status = !item.active ? 'inactive' : item.docker_control && !item.accessible ? 'inaccessible' : 'active'
       if (status !== statusFilterValue) {
         return false
       }
@@ -91,8 +107,10 @@ const filteredData = computed<TransformedServer[]>(() => {
   // Transform the data into explicit key-value pairs
   return filtered.map((server: Tables<'servers'>) => ({
     'Address': server.address,
-    'Status': server.active ? 'active' : 'inactive',
+    'Status': !server.active ? 'inactive' : server.docker_control && !server.accessible ? 'inaccessible' : 'active',
     'Docker Control': server.docker_control,
+    'Accessible': server.accessible,
+    'Last Accessed': server.last_accessed,
     'Created': server.created_at,
     // Keep the original object to use when emitting events
     '_original': server,
@@ -152,6 +170,19 @@ async function fetchServers() {
 function viewServer(server: Tables<'servers'>) {
   selectedServer.value = server
   showServerDetails.value = true
+}
+
+function openServerById(serverId: number | null): boolean {
+  if (serverId === null)
+    return false
+
+  const match = servers.value.find((server: Tables<'servers'>) => server.id === serverId)
+
+  if (!match)
+    return false
+
+  viewServer(match)
+  return true
 }
 
 // Open the add server form
@@ -247,6 +278,37 @@ function clearFilters() {
   statusFilter.value = undefined
 }
 
+// Sync server query params with details sheet state
+watch(showServerDetails, (isOpen) => {
+  if (isOpen && selectedServer.value) {
+    const nextQuery = {
+      ...route.query,
+      tab: 'Servers',
+      server: selectedServer.value.id,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+  if (isOpen)
+    return
+  if (!route.query.server)
+    return
+  const { server, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
+watch(
+  () => [focusedServerId.value, loading.value] as const,
+  ([serverId, isLoading]) => {
+    if (isLoading)
+      return
+    if (serverId === null)
+      return
+    openServerById(serverId)
+  },
+  { immediate: true },
+)
+
 // Lifecycle hooks
 onBeforeMount(fetchServers)
 </script>
@@ -285,7 +347,7 @@ onBeforeMount(fetchServers)
 
       <!-- Table skeleton -->
       <TableSkeleton
-        :columns="4"
+        :columns="6"
         :rows="10"
         :show-actions="canManageResource"
       />
@@ -343,6 +405,13 @@ onBeforeMount(fetchServers)
               <ServerStatusIndicator :status="server.Status" show-label />
             </Table.Cell>
             <Table.Cell>{{ server['Docker Control'] ? 'Yes' : 'No' }}</Table.Cell>
+            <Table.Cell>
+              <ServerStatusIndicator :status="server._original.docker_control ? (server.Accessible ? 'accessible' : 'inaccessible') : 'not_enabled'" show-label />
+            </Table.Cell>
+            <Table.Cell>
+              <TimestampDate v-if="server['Last Accessed']" :date="server['Last Accessed']" />
+              <span v-else>Never</span>
+            </Table.Cell>
             <Table.Cell>
               <TimestampDate :date="server.Created" />
             </Table.Cell>

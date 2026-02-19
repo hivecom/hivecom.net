@@ -273,9 +273,9 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
     @close="handleClose"
   >
     <template #header>
-      <Flex column gap="xxs">
+      <Flex column :gap="0">
         <h4>{{ formTitle }}</h4>
-        <p v-if="props.isEditMode && props.event" class="text-color-light text-m">
+        <p v-if="props.isEditMode && props.event" class="text-color-light text-xs">
           {{ props.event.title }}
         </p>
       </Flex>

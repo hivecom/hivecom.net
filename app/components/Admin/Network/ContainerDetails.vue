@@ -29,6 +29,8 @@ const props = defineProps<{
     server: {
       id: number
       address: string
+      docker_control?: boolean | null
+      accessible?: boolean | null
     } | null
   } | null
   logs: string
@@ -52,6 +54,8 @@ interface ContainerWithServer {
   server: {
     id: number
     address: string
+    docker_control?: boolean | null
+    accessible?: boolean | null
   } | null
 }
 
@@ -204,11 +208,18 @@ const containerStatus = computed(() => {
     return 'unknown'
   }
 
-  return getContainerStatus(
-    props.container.reported_at,
-    props.container.running,
-    props.container.healthy,
-  )
+  const isDockerControlEnabled = props.container.server?.docker_control === true
+  const isControlOffline = isDockerControlEnabled
+    && (props.container.server?.accessible === false || !props.container.reported_at)
+
+  return isDockerControlEnabled
+    ? getContainerStatus(
+        props.container.reported_at,
+        props.container.running,
+        props.container.healthy,
+        isControlOffline,
+      )
+    : 'unknown'
 })
 
 // Handle closing the sheet
@@ -351,7 +362,16 @@ watch(() => useCustomDateRange.value, (newValue) => {
         </Card>
 
         <!-- Logs -->
-        <Flex v-if="containerStatus !== 'stale'" column gap="s" expand>
+        <Alert
+          v-if="containerStatus === 'control_offline' || containerStatus === 'unknown'"
+          variant="danger"
+          class="w-100"
+          filled
+        >
+          Logs cannot be retrieved as Docker Control is unavailable.
+        </Alert>
+
+        <Flex v-if="containerStatus !== 'stale' && containerStatus !== 'control_offline' && containerStatus !== 'unknown'" column gap="s" expand>
           <Flex x-between y-center class="mb-s" expand>
             <h4>Logs</h4>
             <ButtonGroup :gap="1">

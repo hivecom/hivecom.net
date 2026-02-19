@@ -9,10 +9,17 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import UserLink from '../Shared/UserLink.vue'
 
+type ContainerWithServer = Tables<'containers'> & {
+  server?: {
+    docker_control?: boolean | null
+    accessible?: boolean | null
+  } | null
+}
+
 interface Props {
   gameserver: Tables<'gameservers'>
   game?: Tables<'games'> | null
-  container?: Tables<'containers'> | null
+  container?: ContainerWithServer | null
   // FIxme: these props are passed in, but unused
   state: string
   stateConfig: unknown // TODO: add type
@@ -44,6 +51,13 @@ function openComplaintModal() {
 }
 
 const isMobile = useBreakpoint('<s')
+const dockerControlEnabled = computed(() => _props.container?.server?.docker_control === true)
+const dockerControlAccessible = computed(() => {
+  if (!dockerControlEnabled.value)
+    return false
+
+  return _props.container?.server?.accessible === true
+})
 </script>
 
 <template>
@@ -160,14 +174,19 @@ const isMobile = useBreakpoint('<s')
 
               <div v-if="container" class="gameserver-header__status-item">
                 <span class="gameserver-header__status-label">Running</span>
-                <Badge :variant="container.running ? 'success' : 'neutral'" size="s">
-                  <Icon :name="container.running ? 'ph:check' : 'ph:x'" />
-                  {{ container.running ? 'Yes' : 'No' }}
+                <Badge
+                  :variant="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'success' : 'neutral') : 'neutral'"
+                  size="s"
+                >
+                  <Icon
+                    :name="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'ph:check' : 'ph:x') : 'ph:question'"
+                  />
+                  {{ dockerControlEnabled && dockerControlAccessible ? (container.running ? 'Yes' : 'No') : 'Unknown' }}
                 </Badge>
               </div>
 
               <div
-                v-if="container && container.healthy !== null && container.running"
+                v-if="container && dockerControlEnabled && dockerControlAccessible && container.healthy !== null && container.running"
                 class="gameserver-header__status-item"
               >
                 <span class="gameserver-header__status-label">Healthy</span>
@@ -179,8 +198,11 @@ const isMobile = useBreakpoint('<s')
 
               <div v-if="container" class="gameserver-header__status-item">
                 <span class="gameserver-header__status-label">Last Reported</span>
-                <Badge v-if="container.reported_at">
+                <Badge v-if="dockerControlEnabled && dockerControlAccessible && container.reported_at">
                   <TimestampDate size="xs" :date="container.reported_at" />
+                </Badge>
+                <Badge v-else>
+                  Unavailable
                 </Badge>
               </div>
 

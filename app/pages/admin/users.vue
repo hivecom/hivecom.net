@@ -32,6 +32,10 @@ type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
 type AdminUserProfile = QueryUserProfile & {
   email: string | null
   role?: string | null
+  confirmed?: boolean
+  discord_display_name?: string | null
+  auth_provider?: string | null
+  auth_providers?: string[] | null
 }
 
 interface UserAction {
@@ -58,6 +62,7 @@ const {
 } = useAdminPermissions()
 
 const route = useRoute()
+const router = useRouter()
 
 const currentUser = useSupabaseUser()
 const currentUserId = useUserId()
@@ -83,6 +88,15 @@ const availableTabs = computed(() => {
 
 const activeTab = ref<'Users' | 'Roles' | ''>('')
 
+const focusedUserId = computed(() => {
+  const userQuery = route.query.user
+  if (typeof userQuery === 'string')
+    return userQuery
+  if (Array.isArray(userQuery) && userQuery[0])
+    return userQuery[0]
+  return ''
+})
+
 watch(availableTabs, (newTabs) => {
   if (newTabs.length === 0)
     return
@@ -100,6 +114,27 @@ watch(availableTabs, (newTabs) => {
     activeTab.value = newTabs[0].value
   }
 }, { immediate: true })
+
+watch(() => route.query.tab, (queryTab) => {
+  const queryValue = typeof queryTab === 'string'
+    ? queryTab
+    : Array.isArray(queryTab) && queryTab[0]
+      ? queryTab[0]
+      : ''
+
+  if (!queryValue)
+    return
+
+  if (queryValue !== 'Users' && queryValue !== 'Roles')
+    return
+
+  const isAllowed = availableTabs.value.some(t => t.value === queryValue)
+  if (!isAllowed)
+    return
+
+  if (activeTab.value !== queryValue)
+    activeTab.value = queryValue
+})
 
 const pageTitle = 'Users & Roles'
 const canViewUserEmails = computed(() => isAdmin.value)
@@ -122,6 +157,46 @@ const detailActionLoading = ref<Partial<Record<ActionType, boolean>>>({})
 const showUserForm = ref(false)
 const isEditMode = ref(false)
 const userToEdit = ref<AdminUserProfile | null>(null)
+
+watch(activeTab, (tab) => {
+  if (!tab)
+    return
+
+  if (tab !== 'Users')
+    showUserDetails.value = false
+
+  const currentTab = typeof route.query.tab === 'string'
+    ? route.query.tab
+    : Array.isArray(route.query.tab) && route.query.tab[0]
+      ? route.query.tab[0]
+      : ''
+
+  if (currentTab === tab)
+    return
+
+  router.push({ query: { ...route.query, tab } })
+})
+
+watch(showUserDetails, (isOpen) => {
+  if (isOpen && selectedUser.value) {
+    const nextQuery = {
+      ...route.query,
+      tab: 'Users',
+      user: selectedUser.value.id,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+
+  if (isOpen)
+    return
+
+  if (!route.query.user)
+    return
+
+  const { user, ...rest } = route.query
+  router.replace({ query: rest })
+})
 
 // Handle user selection from table
 function handleUserSelected(user: AdminUserProfile) {
@@ -413,6 +488,7 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
         <UserTable
           v-model:refresh-signal="refreshSignal"
           :can-view-user-emails="canViewUserEmails"
+          :focus-user-id="focusedUserId"
           @user-selected="handleUserSelected"
           @action="handleUserAction"
           @update:refresh-signal="handleRefreshSignal"

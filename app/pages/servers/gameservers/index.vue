@@ -13,7 +13,12 @@ const gameserversQuery = supabase.from('gameservers').select(`
   container (
     name,
     running,
-    healthy
+    healthy,
+    reported_at,
+    server (
+      docker_control,
+      accessible
+    )
   ),
   administrator
 `)

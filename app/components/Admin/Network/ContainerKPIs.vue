@@ -39,7 +39,11 @@ async function fetchContainerMetrics() {
         name,
         running,
         healthy,
-        reported_at
+        reported_at,
+        server (
+          docker_control,
+          accessible
+        )
       `)
 
     if (error) {
@@ -58,23 +62,33 @@ async function fetchContainerMetrics() {
 
     // Calculate metrics
     data?.forEach((container) => {
-      const status = getContainerStatus(container.reported_at, container.running, container.healthy)
+      const isDockerControlEnabled = container.server?.docker_control === true
+      const isControlOffline = isDockerControlEnabled
+        && (container.server?.accessible === false || !container.reported_at)
+      const status = isDockerControlEnabled
+        ? getContainerStatus(container.reported_at, container.running, container.healthy, isControlOffline)
+        : 'unknown'
 
       switch (status) {
         case 'healthy':
           newMetrics.healthy++
-          break
-        case 'unhealthy':
-          newMetrics.unhealthy++
           break
         case 'running':
           newMetrics.running++
           break
         case 'stopped':
           newMetrics.stopped++
+          newMetrics.unhealthy++
           break
         case 'stale':
           newMetrics.stale++
+          newMetrics.unhealthy++
+          break
+        case 'unhealthy':
+        case 'restarting':
+        case 'control_offline':
+        case 'unknown':
+          newMetrics.unhealthy++
           break
       }
     })

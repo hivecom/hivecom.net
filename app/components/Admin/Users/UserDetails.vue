@@ -27,6 +27,7 @@ const props = defineProps<{
     username: string
     email: string | null
     created_at: string
+    created_by?: string | null
     modified_at: string | null
     modified_by: string | null
     supporter_patreon: boolean
@@ -297,9 +298,9 @@ function getUserInitials(username: string): string {
   >
     <template #header>
       <Flex x-between y-center class="pr-s">
-        <Flex column gap="xxs">
+        <Flex column :gap="0">
           <h4>User Details</h4>
-          <p v-if="user" class="text-color-light text-m">
+          <p v-if="user" class="text-color-light text-xs">
             <UserLink :user-id="user.id" />
           </p>
         </Flex>
@@ -330,7 +331,7 @@ function getUserInitials(username: string): string {
 
             <Grid class="detail-item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Username:</span>
-              <UserLink :user-id="user.id" />
+              <UserLink :user-id="user.id" class="text-m" show-avatar />
             </Grid>
 
             <Grid v-if="canViewUserEmails" class="detail-item" expand columns="1fr 2fr">
@@ -584,8 +585,10 @@ function getUserInitials(username: string): string {
         <!-- Metadata -->
         <Metadata
           :created-at="user.created_at"
+          :created-by="user.created_by"
           :modified-at="user.modified_at"
           :modified-by="user.modified_by"
+          :show-system-user-for-missing-created-by="true"
         />
       </Flex>
     </Flex>

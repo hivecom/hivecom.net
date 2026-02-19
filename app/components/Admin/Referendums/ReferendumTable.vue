@@ -26,6 +26,8 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
 const { canManageResource, canCreate } = useTableActions('referendums')
+const route = useRoute()
+const router = useRouter()
 
 // Define query
 const supabase = useSupabaseClient()
@@ -74,6 +76,17 @@ const typeOptions: SelectOption[] = [
 // Referendum detail state
 const selectedReferendum = ref<QueryReferendum | null>(null)
 const showReferendumDetails = ref(false)
+
+const focusedReferendumId = computed(() => {
+  const referendumQuery = route.query.referendum
+  const rawValue = typeof referendumQuery === 'string'
+    ? referendumQuery
+    : Array.isArray(referendumQuery) && referendumQuery[0]
+      ? referendumQuery[0]
+      : ''
+  const parsed = Number.parseInt(rawValue, 10)
+  return Number.isNaN(parsed) ? null : parsed
+})
 
 // Referendum form state
 const showReferendumForm = ref(false)
@@ -192,6 +205,19 @@ function viewReferendum(referendum: QueryReferendum) {
   showReferendumDetails.value = true
 }
 
+function openReferendumById(referendumId: number | null): boolean {
+  if (referendumId === null)
+    return false
+
+  const match = referendums.value.find((referendum: QueryReferendum) => referendum.id === referendumId)
+
+  if (!match)
+    return false
+
+  viewReferendum(match)
+  return true
+}
+
 // Open the add referendum form
 function openAddReferendumForm() {
   selectedReferendum.value = null
@@ -285,6 +311,36 @@ function clearFilters() {
   statusFilter.value = []
   typeFilter.value = []
 }
+
+// Sync referendum query params with details sheet state
+watch(showReferendumDetails, (isOpen) => {
+  if (isOpen && selectedReferendum.value) {
+    const nextQuery = {
+      ...route.query,
+      referendum: selectedReferendum.value.id,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+  if (isOpen)
+    return
+  if (!route.query.referendum)
+    return
+  const { referendum, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
+watch(
+  () => [focusedReferendumId.value, loading.value] as const,
+  ([referendumId, isLoading]) => {
+    if (isLoading)
+      return
+    if (referendumId === null)
+      return
+    openReferendumById(referendumId)
+  },
+  { immediate: true },
+)
 
 // Lifecycle hooks
 onBeforeMount(fetchReferendums)

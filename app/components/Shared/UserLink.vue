@@ -74,7 +74,7 @@ const profileLink = computed(() => {
         </Avatar>
         <NuxtLink
           :to="profileLink"
-          class="username-link text-s"
+          class="username-link"
           :aria-label="`View profile of ${user.username || 'user'}`"
         >
           {{ user.username || props.userId }}

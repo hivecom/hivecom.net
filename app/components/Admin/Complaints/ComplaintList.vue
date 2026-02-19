@@ -17,6 +17,8 @@ interface SelectOption {
 
 // Props
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+const route = useRoute()
+const router = useRouter()
 
 // Setup Supabase client
 const supabase = useSupabaseClient()
@@ -52,6 +54,17 @@ const statusFilter = ref<SelectOption[]>([])
 // Detail states
 const selectedComplaint = ref<Tables<'complaints'> | null>(null)
 const showComplaintDetails = ref(false)
+
+const focusedComplaintId = computed(() => {
+  const complaintQuery = route.query.complaint
+  const rawValue = typeof complaintQuery === 'string'
+    ? complaintQuery
+    : Array.isArray(complaintQuery) && complaintQuery[0]
+      ? complaintQuery[0]
+      : ''
+  const parsed = Number.parseInt(rawValue, 10)
+  return Number.isNaN(parsed) ? null : parsed
+})
 
 // Action loading states
 const actionLoading = ref<Record<number, boolean>>({})
@@ -144,6 +157,19 @@ async function fetchComplaints() {
 function handleComplaintSelect(complaint: Tables<'complaints'>) {
   selectedComplaint.value = complaint
   showComplaintDetails.value = true
+}
+
+function openComplaintById(complaintId: number | null): boolean {
+  if (complaintId === null)
+    return false
+
+  const match = complaints.value.find((complaint: QueryData<typeof complaintsQuery>[0]) => complaint.id === complaintId)
+
+  if (!match)
+    return false
+
+  handleComplaintSelect(match as Tables<'complaints'>)
+  return true
 }
 
 // Handle acknowledge action
@@ -385,6 +411,36 @@ async function handleDeleteComplaint(complaintId: number) {
     actionLoading.value[complaintId] = false
   }
 }
+
+// Sync complaint query params with details sheet state
+watch(showComplaintDetails, (isOpen) => {
+  if (isOpen && selectedComplaint.value) {
+    const nextQuery = {
+      ...route.query,
+      complaint: selectedComplaint.value.id,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+  if (isOpen)
+    return
+  if (!route.query.complaint)
+    return
+  const { complaint, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
+watch(
+  () => [focusedComplaintId.value, loading.value] as const,
+  ([complaintId, isLoading]) => {
+    if (isLoading)
+      return
+    if (complaintId === null)
+      return
+    openComplaintById(complaintId)
+  },
+  { immediate: true },
+)
 
 // Handle pagination
 function handlePageChange(page: number) {

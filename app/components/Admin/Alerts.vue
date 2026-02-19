@@ -82,6 +82,32 @@ async function fetchAlerts() {
       })
     }
 
+    // Check for inaccessible Docker Control servers
+    const { data: inaccessibleServers, error: inaccessibleServersError } = await supabase
+      .from('servers')
+      .select('id, last_accessed')
+      .eq('docker_control', true)
+      .eq('accessible', false)
+      .order('last_accessed', { ascending: false })
+
+    if (inaccessibleServersError) {
+      console.error('Error fetching inaccessible Docker Control servers:', inaccessibleServersError)
+    }
+
+    if (inaccessibleServers && inaccessibleServers.length > 0) {
+      const latestAccessed = inaccessibleServers[0].last_accessed
+      const referenceTime = latestAccessed ? new Date(latestAccessed) : now
+
+      newAlerts.push({
+        id: 'docker-control-inaccessible',
+        severity: 'critical',
+        title: 'Docker Control Inaccessible',
+        message: `${inaccessibleServers.length} server${inaccessibleServers.length === 1 ? '' : 's'} with Docker Control enabled ${inaccessibleServers.length === 1 ? 'is' : 'are'} unreachable`,
+        icon: 'ph:warning-octagon',
+        timestamp: referenceTime,
+      })
+    }
+
     alerts.value = newAlerts
   }
   catch (error) {

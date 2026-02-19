@@ -14,7 +14,7 @@ const props = defineProps<{
       address: string
     } | null
   }
-  status: string
+  status: 'running' | 'healthy' | 'unhealthy' | 'stopped' | 'stale' | 'unknown' | 'restarting' | 'control_offline'
   isLoading: (action: string) => Record<string, boolean> | boolean
   showLabels?: boolean
 }>()
@@ -82,10 +82,11 @@ function isActionLoading(actionType: string): boolean {
       </template>
     </Button>
     <Button
-      v-if="['running', 'healthy', 'unhealthy'].includes(props.status)"
+      v-if="['running', 'healthy', 'unhealthy', 'restarting'].includes(props.status)"
       :size="props.showLabels ? 'm' : 's'"
       variant="danger"
       :loading="isActionLoading('restart')"
+      :disabled="props.status === 'restarting'"
       @click="handleAction('restart')"
     >
       <Icon v-if="!props.showLabels" name="ph:arrow-clockwise" />
@@ -101,6 +102,7 @@ function isActionLoading(actionType: string): boolean {
       :size="props.showLabels ? 'm' : 's'"
       variant="danger"
       :loading="isActionLoading('stop')"
+      :disabled="props.status === 'restarting'"
       @click="handleAction('stop')"
     >
       <Icon v-if="!props.showLabels" name="ph:stop" />

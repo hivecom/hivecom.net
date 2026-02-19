@@ -24,6 +24,7 @@ interface TransformedGameserver {
   Game: string | null
   Region: string | null
   Created: string
+  Container: string | null
   _original: QueryGameserver
 }
 
@@ -38,6 +39,8 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
 const { canManageResource, canCreate } = useTableActions('gameservers')
+const route = useRoute()
+const router = useRouter()
 
 // Define query
 const supabase = useSupabaseClient()
@@ -63,6 +66,17 @@ const isBelowMedium = useBreakpoint('<m')
 // Gameserver detail state
 const selectedGameserver = ref<QueryGameserver | null>(null)
 const showGameserverDetails = ref(false)
+
+const focusedGameserverId = computed(() => {
+  const gameserverQuery = route.query.gameserver
+  const rawValue = typeof gameserverQuery === 'string'
+    ? gameserverQuery
+    : Array.isArray(gameserverQuery) && gameserverQuery[0]
+      ? gameserverQuery[0]
+      : ''
+  const parsed = Number.parseInt(rawValue, 10)
+  return Number.isNaN(parsed) ? null : parsed
+})
 
 // Gameserver form state
 const showGameserverForm = ref(false)
@@ -139,6 +153,7 @@ const filteredData = computed<TransformedGameserver[]>(() => {
     Game: gameserver.game?.name || 'Unknown',
     Region: gameserver.region || 'Unknown',
     Created: gameserver.created_at,
+    Container: gameserver.container,
     // Keep the original object to use when emitting events
     _original: {
       ...gameserver,
@@ -198,6 +213,19 @@ async function fetchGameservers() {
 function viewGameserver(gameserver: QueryGameserver) {
   selectedGameserver.value = gameserver
   showGameserverDetails.value = true
+}
+
+function openGameserverById(gameserverId: number | null): boolean {
+  if (gameserverId === null)
+    return false
+
+  const match = gameservers.value.find((gameserver: QueryGameserver) => gameserver.id === gameserverId)
+
+  if (!match)
+    return false
+
+  viewGameserver(match)
+  return true
 }
 
 // Open the add game server form
@@ -294,6 +322,37 @@ function clearFilters() {
   gameFilter.value = undefined
 }
 
+// Sync gameserver query params with details sheet state
+watch(showGameserverDetails, (isOpen) => {
+  if (isOpen && selectedGameserver.value) {
+    const nextQuery = {
+      ...route.query,
+      tab: 'Gameservers',
+      gameserver: selectedGameserver.value.id,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+  if (isOpen)
+    return
+  if (!route.query.gameserver)
+    return
+  const { gameserver, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
+watch(
+  () => [focusedGameserverId.value, loading.value] as const,
+  ([gameserverId, isLoading]) => {
+    if (isLoading)
+      return
+    if (gameserverId === null)
+      return
+    openGameserverById(gameserverId)
+  },
+  { immediate: true },
+)
+
 // Lifecycle hooks
 onBeforeMount(fetchGameservers)
 </script>
@@ -343,7 +402,7 @@ onBeforeMount(fetchGameservers)
 
       <!-- Table skeleton -->
       <TableSkeleton
-        :columns="4"
+        :columns="5"
         :rows="10"
         :show-actions="canManageResource"
       />
@@ -408,10 +467,21 @@ onBeforeMount(fetchGameservers)
             <Table.Cell>
               <TimestampDate :date="gameserver.Created" />
             </Table.Cell>
+            <Table.Cell>
+              {{ gameserver.Container || '—' }}
+            </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
                 resource-type="gameservers"
                 :item="gameserver._original"
+                :custom-actions="[
+                  {
+                    icon: 'ph:cube',
+                    label: 'Open Container',
+                    handler: () => navigateTo(`/admin/network?tab=Containers&container=${encodeURIComponent(String((gameserver._original as QueryGameserver).container || ''))}`),
+                    condition: () => !!(gameserver._original as QueryGameserver).container,
+                  },
+                ]"
                 @edit="(gameserverItem) => openEditGameserverForm(gameserverItem as QueryGameserver)"
                 @delete="(gameserverItem) => handleGameserverDelete((gameserverItem as QueryGameserver).id)"
               />

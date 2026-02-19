@@ -132,6 +132,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 
 Make sure your GitHub pages deployment action has the right variables/secrets defined and matches those in the `.env` file.
 
+## Scheduled Deploys
+
+The `deploy` GitHub Actions workflow also runs once a week to rebuild and deploy the site. This ensures new dynamic content gets captured in the generated static paths even if no one pushes code that week. If you need to change the cadence, update the `schedule` cron in `.github/workflows/deploy.yml`.
+
 ## DB Changes / Migrations
 
 First reset your local database to the latest migration with:

@@ -236,9 +236,9 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     @close="handleClose"
   >
     <template #header>
-      <Flex column gap="xxs">
+      <Flex column :gap="0">
         <h4>{{ props.isEditMode ? 'Edit Game' : 'Add Game' }}</h4>
-        <p v-if="props.isEditMode && props.game" class="text-color-light text-m">
+        <p v-if="props.isEditMode && props.game" class="text-color-light text-xs">
           {{ props.game.name }}
         </p>
       </Flex>

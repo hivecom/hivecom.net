@@ -145,9 +145,9 @@ function confirmDelete() {
   >
     <template #header>
       <Flex y-center gap="m" class="pr-s">
-        <Flex column gap="xxs">
+        <Flex column :gap="0">
           <h4>{{ props.isEditMode ? 'Edit Expense' : 'Add Expense' }}</h4>
-          <p v-if="props.isEditMode && props.expense" class="text-color-light text-m">
+          <p v-if="props.isEditMode && props.expense" class="text-color-light text-xs">
             {{ props.expense.description || props.expense.name }}
           </p>
         </Flex>

@@ -30,6 +30,8 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
 const { canManageResource, canCreate } = useTableActions('games')
+const route = useRoute()
+const router = useRouter()
 
 // Setup client and state
 const supabase = useSupabaseClient()
@@ -44,6 +46,17 @@ const showGameDetails = ref(false)
 const showGameForm = ref(false)
 const selectedGame = ref<Game | null>(null)
 const isEditMode = ref(false)
+
+const focusedGameId = computed(() => {
+  const gameQuery = route.query.game
+  const rawValue = typeof gameQuery === 'string'
+    ? gameQuery
+    : Array.isArray(gameQuery) && gameQuery[0]
+      ? gameQuery[0]
+      : ''
+  const parsed = Number.parseInt(rawValue, 10)
+  return Number.isNaN(parsed) ? null : parsed
+})
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
@@ -124,6 +137,19 @@ async function fetchGames() {
 function viewGameDetails(game: Game) {
   selectedGame.value = game
   showGameDetails.value = true
+}
+
+function openGameById(gameId: number | null): boolean {
+  if (gameId === null)
+    return false
+
+  const match = games.value.find((game: Game) => game.id === gameId)
+
+  if (!match)
+    return false
+
+  viewGameDetails(match)
+  return true
 }
 
 // Open the add game form
@@ -226,6 +252,36 @@ async function handleGameDelete(gameId: number) {
     errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the game'
   }
 }
+
+// Sync game query params with details sheet state
+watch(showGameDetails, (isOpen) => {
+  if (isOpen && selectedGame.value) {
+    const nextQuery = {
+      ...route.query,
+      game: selectedGame.value.id,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+  if (isOpen)
+    return
+  if (!route.query.game)
+    return
+  const { game, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
+watch(
+  () => [focusedGameId.value, loading.value] as const,
+  ([gameId, isLoading]) => {
+    if (isLoading)
+      return
+    if (gameId === null)
+      return
+    openGameById(gameId)
+  },
+  { immediate: true },
+)
 
 // Lifecycle hooks
 onBeforeMount(fetchGames)

@@ -31,6 +31,8 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
 const { canManageResource, canCreate } = useTableActions('expenses')
+const route = useRoute()
+const router = useRouter()
 
 // Setup client and state
 const supabase = useSupabaseClient()
@@ -45,6 +47,17 @@ const showExpenseDetails = ref(false)
 const showExpenseForm = ref(false)
 const selectedExpense = ref<Expense | null>(null)
 const isEditMode = ref(false)
+
+const focusedExpenseId = computed(() => {
+  const expenseQuery = route.query.expense
+  const rawValue = typeof expenseQuery === 'string'
+    ? expenseQuery
+    : Array.isArray(expenseQuery) && expenseQuery[0]
+      ? expenseQuery[0]
+      : ''
+  const parsed = Number.parseInt(rawValue, 10)
+  return Number.isNaN(parsed) ? null : parsed
+})
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
@@ -181,6 +194,19 @@ function viewExpenseDetails(expense: Expense) {
   showExpenseDetails.value = true
 }
 
+function openExpenseById(expenseId: number | null): boolean {
+  if (expenseId === null)
+    return false
+
+  const match = expenses.value.find((expense: Expense) => expense.id === expenseId)
+
+  if (!match)
+    return false
+
+  viewExpenseDetails(match)
+  return true
+}
+
 // Open the add expense form
 function openAddExpenseForm() {
   selectedExpense.value = null
@@ -267,6 +293,36 @@ async function handleExpenseDelete(expenseId: number) {
     errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the expense'
   }
 }
+
+// Sync expense query params with details sheet state
+watch(showExpenseDetails, (isOpen) => {
+  if (isOpen && selectedExpense.value) {
+    const nextQuery = {
+      ...route.query,
+      expense: selectedExpense.value.id,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+  if (isOpen)
+    return
+  if (!route.query.expense)
+    return
+  const { expense, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
+watch(
+  () => [focusedExpenseId.value, loading.value] as const,
+  ([expenseId, isLoading]) => {
+    if (isLoading)
+      return
+    if (expenseId === null)
+      return
+    openExpenseById(expenseId)
+  },
+  { immediate: true },
+)
 
 // Lifecycle hooks
 onBeforeMount(fetchExpenses)

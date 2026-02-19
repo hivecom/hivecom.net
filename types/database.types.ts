@@ -1179,6 +1179,7 @@ export interface Database {
       }
       servers: {
         Row: {
+          accessible: boolean
           active: boolean
           address: string
           created_at: string
@@ -1188,10 +1189,12 @@ export interface Database {
           docker_control_secure: boolean
           docker_control_subdomain: string | null
           id: number
+          last_accessed: string | null
           modified_at: string | null
           modified_by: string | null
         }
         Insert: {
+          accessible?: boolean
           active: boolean
           address: string
           created_at?: string
@@ -1201,10 +1204,12 @@ export interface Database {
           docker_control_secure?: boolean
           docker_control_subdomain?: string | null
           id?: number
+          last_accessed?: string | null
           modified_at?: string | null
           modified_by?: string | null
         }
         Update: {
+          accessible?: boolean
           active?: boolean
           address?: string
           created_at?: string
@@ -1214,6 +1219,7 @@ export interface Database {
           docker_control_secure?: boolean
           docker_control_subdomain?: string | null
           id?: number
+          last_accessed?: string | null
           modified_at?: string | null
           modified_by?: string | null
         }
@@ -1313,6 +1319,43 @@ export interface Database {
         }
       }
       pgmq_send: { Args: { msg: Json, queue_name: string }, Returns: number }
+      search_profiles: {
+        Args: { search_term: string }
+        Returns: {
+          badges: Database['public']['Enums']['profile_badge'][]
+          ban_end: string | null
+          ban_reason: string | null
+          ban_start: string | null
+          banned: boolean
+          birthday: string | null
+          country: string | null
+          created_at: string
+          discord_id: string | null
+          email_notifications_bounced: boolean
+          email_notifications_disabled: boolean
+          id: string
+          introduction: string | null
+          last_seen: string
+          markdown: string | null
+          modified_at: string | null
+          modified_by: string | null
+          patreon_id: string | null
+          rich_presence_disabled: boolean
+          steam_id: string | null
+          supporter_lifetime: boolean
+          supporter_patreon: boolean
+          teamspeak_identities: Json
+          username: string
+          username_set: boolean
+          website: string | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'profiles'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       update_user_last_seen: { Args: { user_id?: string }, Returns: undefined }
       validate_github_repo: { Args: { github_repo: string }, Returns: boolean }
       validate_tag_format: { Args: { tag: string }, Returns: boolean }

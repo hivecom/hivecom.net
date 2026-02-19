@@ -27,6 +27,8 @@ interface ContainerWithServer {
   server: {
     id: number
     address: string
+    docker_control?: boolean | null
+    accessible?: boolean | null
   } | null
 }
 
@@ -34,7 +36,7 @@ interface ContainerWithServer {
 interface TransformedContainer {
   'Name': string
   'Server': string
-  'Status': 'running' | 'healthy' | 'unhealthy' | 'stopped' | 'unknown' | 'stale'
+  'Status': 'running' | 'healthy' | 'unhealthy' | 'stopped' | 'unknown' | 'stale' | 'control_offline' | 'restarting'
   'Started': string | null
   'Last Report': string
   '_original': {
@@ -47,6 +49,8 @@ interface TransformedContainer {
     server: {
       id: number
       address: string
+      docker_control?: boolean | null
+      accessible?: boolean | null
     } | null
   }
 }
@@ -60,6 +64,8 @@ interface SelectOption {
 const props = defineProps<{
   // Function to control containers (start, stop, restart)
   controlContainer: (container: ContainerWithServer, action: 'start' | 'stop' | 'restart') => Promise<void>
+  // Optional container name to auto-open in details sheet
+  focusContainerName?: string | null
 }>()
 
 // Define model value for refresh signal to parent
@@ -68,6 +74,8 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 // Get admin permissions
 const { canManageResource } = useTableActions('containers')
 const { hasPermission } = useAdminPermissions()
+const route = useRoute()
+const router = useRouter()
 
 // Check if user can read containers
 const canReadContainers = computed(() => hasPermission('containers.read'))
@@ -83,7 +91,9 @@ const containersQuery = supabase.from('containers').select(`
   reported_at,
   server (
     id,
-    address
+    address,
+    docker_control,
+    accessible
   )
 `)
 
@@ -137,13 +147,22 @@ const statusOptions: SelectOption[] = [
   { label: 'Running', value: 'running' },
   { label: 'Healthy', value: 'healthy' },
   { label: 'Unhealthy', value: 'unhealthy' },
+  { label: 'Restarting', value: 'restarting' },
   { label: 'Stopped', value: 'stopped' },
+  { label: 'Control Offline', value: 'control_offline' },
   { label: 'Stale', value: 'stale' },
 ]
 
 // Filter based on search, server, and status
 const filteredData = computed<TransformedContainer[]>(() => {
   const filtered = containers.value.filter((item: ContainerWithServer) => {
+    const isRestarting = !!actionLoading.value[item.name]?.restart
+    const isDockerControlEnabled = !!item.server?.docker_control
+    const isControlOffline = isDockerControlEnabled
+      && (item.server?.accessible === false || !item.reported_at)
+    const status = isDockerControlEnabled
+      ? getContainerStatus(item.reported_at, item.running, item.healthy, isControlOffline, isRestarting)
+      : 'unknown'
     // Filter by search term
     if (search.value && !Object.values(item).some((value) => {
       if (value === null || value === undefined)
@@ -166,7 +185,6 @@ const filteredData = computed<TransformedContainer[]>(() => {
     // Filter by status
     if (statusFilter.value && statusFilter.value.length > 0) {
       const statusFilterValue = statusFilter.value[0]!.value
-      const status = getContainerStatus(item.reported_at, item.running, item.healthy)
       if (status !== statusFilterValue) {
         return false
       }
@@ -179,7 +197,16 @@ const filteredData = computed<TransformedContainer[]>(() => {
   return filtered.map((container: ContainerWithServer) => ({
     'Name': container.name,
     'Server': container.server ? container.server.address : 'Unknown',
-    'Status': getContainerStatus(container.reported_at, container.running, container.healthy),
+    'Status': container.server?.docker_control
+      ? getContainerStatus(
+          container.reported_at,
+          container.running,
+          container.healthy,
+          !!container.server?.docker_control
+          && (container.server?.accessible === false || !container.reported_at),
+          !!actionLoading.value[container.name]?.restart,
+        )
+      : 'unknown',
     'Started': container.started_at,
     'Last Report': container.reported_at,
     // Keep the original object to use when emitting events
@@ -236,6 +263,25 @@ watch(refreshLogsConfig, async (newConfig) => {
     // Reset the config
     refreshLogsConfig.value = null
   }
+})
+
+// Sync container focus query params with details sheet state
+watch(showContainerDetails, (isOpen) => {
+  if (isOpen && selectedContainer.value) {
+    const nextQuery = {
+      ...route.query,
+      tab: 'Containers',
+      container: selectedContainer.value.name,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+  if (isOpen)
+    return
+  if (!route.query.container)
+    return
+  const { container, ...rest } = route.query
+  router.replace({ query: rest })
 })
 
 // Watch for refreshContainerDetails changes to refresh the selected container data
@@ -308,6 +354,26 @@ function viewContainer(container: ContainerWithServer) {
     containerLogs.value = ''
 }
 
+// Open container details by container name when available in current dataset
+function openContainerByName(containerName: string | null | undefined): boolean {
+  if (!containerName)
+    return false
+
+  const normalizedTarget = containerName.trim().toLowerCase()
+  if (!normalizedTarget)
+    return false
+
+  const match = containers.value.find((container: ContainerWithServer) =>
+    container.name.toLowerCase() === normalizedTarget,
+  )
+
+  if (!match)
+    return false
+
+  viewContainer(match)
+  return true
+}
+
 // Handle container control actions with loading state
 async function handleControl(container: ContainerWithServer, action: 'start' | 'stop' | 'restart') {
   try {
@@ -342,8 +408,15 @@ async function handleControl(container: ContainerWithServer, action: 'start' | '
     console.error(`Error with action ${action} for container ${container.name}:`, error)
   }
   finally {
-    // Clear loading state
-    if (actionLoading.value[container.name]) {
+    // Keep restart loading briefly so UI doesn't flash as stopped before telemetry catches up
+    if (action === 'restart') {
+      setTimeout(() => {
+        if (actionLoading.value[container.name]) {
+          actionLoading.value[container.name]![action] = false
+        }
+      }, 4000)
+    }
+    else if (actionLoading.value[container.name]) {
       actionLoading.value[container.name]![action] = false
     }
   }
@@ -466,6 +539,17 @@ function clearFilters() {
   serverFilter.value = undefined
   statusFilter.value = undefined
 }
+
+// React to external focus requests (e.g. from query params)
+watch(
+  () => [props.focusContainerName, loading.value] as const,
+  ([focusContainerName, isLoading]) => {
+    if (isLoading)
+      return
+    openContainerByName(focusContainerName)
+  },
+  { immediate: true },
+)
 
 // Lifecycle hooks
 onBeforeMount(fetchContainers)

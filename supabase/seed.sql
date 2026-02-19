@@ -399,8 +399,8 @@ ORDER BY
 LIMIT 1;
 
 -- Insert a test server
-INSERT INTO public.servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port)
-  VALUES (TRUE, 'host.docker.internal', NOW(), TRUE, FALSE, 54320);
+INSERT INTO public.servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port, accessible, last_accessed)
+  VALUES (TRUE, 'host.docker.internal', NOW(), TRUE, FALSE, 54320, TRUE, NOW());
 
 -- Insert test games
 INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id)

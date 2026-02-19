@@ -2,7 +2,7 @@
 import { Flex, Tooltip } from '@dolanske/vui'
 
 defineProps<{
-  status: 'running' | 'healthy' | 'unhealthy' | 'stopped' | 'stale' | 'unknown'
+  status: 'running' | 'healthy' | 'unhealthy' | 'stopped' | 'stale' | 'unknown' | 'restarting' | 'control_offline'
   showLabel?: boolean
 }>()
 
@@ -13,6 +13,8 @@ const statusLabels = {
   stopped: 'Stopped',
   stale: 'Stale',
   unknown: 'Unknown',
+  restarting: 'Restarting',
+  control_offline: 'Control Offline',
 }
 
 const statusDescriptions = {
@@ -22,6 +24,8 @@ const statusDescriptions = {
   stopped: 'The container is stopped and not running.',
   stale: 'The container has not reported status in a while and might have been removed.',
   unknown: 'The status of the container is unknown.',
+  restarting: 'The container is currently restarting.',
+  control_offline: 'Docker Control should be active for this server, but it is not responding.',
 }
 </script>
 
@@ -61,8 +65,16 @@ const statusDescriptions = {
   }
 
   &.unhealthy,
-  &.unknown {
+  &.control_offline {
     background-color: var(--color-text-red);
+  }
+
+  &.unknown {
+    background-color: var(--color-text-light);
+  }
+
+  &.restarting {
+    background-color: var(--color-text-blue);
   }
 
   &.stopped {

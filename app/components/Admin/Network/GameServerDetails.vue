@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-
 import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+
+import { watch } from 'vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 
-interface GameServerWithJoins extends Tables<'gameservers'> {
+type GameServerWithJoins = Omit<Tables<'gameservers'>, 'game'> & {
   game_name?: string
+  game?: {
+    id?: number | null
+    name?: string | null
+  } | null
 }
 
 const props = defineProps<{
@@ -24,6 +29,22 @@ const isOpen = defineModel<boolean>('isOpen')
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
 const canUpdateGameservers = computed(() => hasPermission('gameservers.update'))
+const route = useRoute()
+
+watch(
+  () => [route.path, route.query.tab] as const,
+  ([path, tab]) => {
+    const tabValue = typeof tab === 'string'
+      ? tab
+      : Array.isArray(tab) && tab[0]
+        ? tab[0]
+        : ''
+    const isInGameserversContext = path === '/admin/network' && tabValue === 'Gameservers'
+
+    if (!isInGameserversContext && isOpen.value)
+      isOpen.value = false
+  },
+)
 
 // Handle closing the sheet
 function handleClose() {
@@ -84,7 +105,31 @@ function handleEdit() {
 
             <Grid class="gameserver-details__item" expand :columns="2">
               <span class="text-color-light text-bold">Game:</span>
-              <span>{{ props.gameserver.game_name || 'Unknown' }}</span>
+              <NuxtLink
+                v-if="props.gameserver.game?.id"
+                :to="`/admin/games?game=${props.gameserver.game.id}`"
+                class="text-m text-color-accent"
+              >
+                {{ props.gameserver.game_name || props.gameserver.game?.name || 'Unknown' }}
+              </NuxtLink>
+              <span v-else>{{ props.gameserver.game_name || props.gameserver.game?.name || 'Unknown' }}</span>
+            </Grid>
+
+            <Grid class="gameserver-details__item" expand :columns="2">
+              <span class="text-color-light text-bold">Container:</span>
+              <Flex>
+                <NuxtLink
+                  v-if="props.gameserver.container"
+                  :to="`/admin/network?tab=Containers&container=${encodeURIComponent(props.gameserver.container)}`"
+                >
+                  <Badge>
+                    {{ props.gameserver.container }}
+                  </Badge>
+                </NuxtLink>
+                <Badge v-else variant="neutral">
+                  Not linked
+                </Badge>
+              </Flex>
             </Grid>
 
             <Grid class="gameserver-details__item" expand :columns="2">
@@ -140,18 +185,6 @@ function handleEdit() {
             <Grid class="gameserver-details__item" expand :columns="2">
               <span class="text-color-light text-bold">Port:</span>
               <span>{{ props.gameserver.port || 'Not specified' }}</span>
-            </Grid>
-
-            <Grid class="gameserver-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Container:</span>
-              <Flex>
-                <Badge v-if="props.gameserver.container">
-                  {{ props.gameserver.container }}
-                </Badge>
-                <Badge v-if="!props.gameserver.container" variant="neutral">
-                  Not linked
-                </Badge>
-              </Flex>
             </Grid>
           </Flex>
         </Card>

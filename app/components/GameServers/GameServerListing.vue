@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { QueryData } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Button, Card, Flex, Input, Select, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
@@ -11,18 +10,17 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
-// Define the type inline to match what the parent component provides
-const supabase = useSupabaseClient()
-const _gameserversQuery = supabase.from('gameservers').select(`
-  *,
-  container (
-    name,
-    running,
-    healthy
-  ),
-  administrator
-`)
-type GameserversType = QueryData<typeof _gameserversQuery>
+
+type GameserverWithContainer = Tables<'gameservers'> & {
+  container?: (Tables<'containers'> & {
+    server?: {
+      docker_control?: boolean | null
+      accessible?: boolean | null
+    } | null
+  }) | null
+}
+
+type GameserversType = GameserverWithContainer[]
 
 interface Props {
   games?: Tables<'games'>[]
@@ -51,7 +49,7 @@ function compareGameServerName(a: GameserversType[0], b: GameserversType[0]) {
   const nameB = b.name ?? ''
 
   const byName = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' })
-  return byName !== 0 ? byName : (a.id ?? '').localeCompare(b.id ?? '')
+  return byName !== 0 ? byName : String(a.id ?? '').localeCompare(String(b.id ?? ''))
 }
 
 function getServersByGameId(gameId: number) {
@@ -164,9 +162,9 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
               <Flex column class="w-100">
                 <GameServerRow
                   v-for="gameserver in getServersByGameId(game.id)" :key="gameserver.id"
-                  :gameserver="(gameserver as Tables<'gameservers'>)"
-                  :container="(gameserver.container as Tables<'containers'> | null)"
-                  :game="(game as Tables<'games'>)"
+                  :gameserver="gameserver"
+                  :container="gameserver.container ?? null"
+                  :game="game"
                 />
               </Flex>
             </Card>
@@ -185,8 +183,8 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
             <Flex column class="w-100">
               <GameServerRow
                 v-for="gameserver in sortedGameserversWithoutGame" :key="gameserver.id"
-                :gameserver="(gameserver as any)"
-                :container="(gameserver.container as any)"
+                :gameserver="gameserver"
+                :container="gameserver.container ?? null"
                 :game="undefined"
               />
             </Flex>

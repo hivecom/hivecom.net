@@ -168,7 +168,6 @@ function getItemDisplayName(): string {
     <!-- Edit Action -->
     <Button
       v-if="showEditAction"
-      size="s"
       variant="gray"
       :square="!showLabels"
       :data-title-top="!showLabels ? `Edit ${resourceType.slice(0, -1)}` : undefined"
@@ -188,7 +187,6 @@ function getItemDisplayName(): string {
     <Button
       v-for="(action, index) in visibleCustomActions"
       :key="index"
-      size="s"
       :variant="action.variant || 'gray'"
       :square="!showLabels"
       :data-title-top-right="!showLabels ? action.label : undefined"
@@ -207,7 +205,6 @@ function getItemDisplayName(): string {
     <!-- Delete Action -->
     <Button
       v-if="showDeleteAction"
-      size="s"
       variant="danger"
       :square="!showLabels"
       :data-title-top-right="!showLabels ? `Delete ${resourceType.slice(0, -1)}` : undefined"

@@ -202,21 +202,6 @@ function confirmDeleteComplaint() {
     <template #header>
       <Flex x-between y-center gap="l" class="pr-s">
         <h4>Complaint #{{ complaint?.id }}</h4>
-        <Button
-          v-if="canDeleteComplaints"
-          size="s"
-          variant="danger"
-          :square="!showActionLabels"
-          @click="handleDeleteComplaint"
-        >
-          <template v-if="showActionLabels" #start>
-            <Icon name="ph:trash" />
-          </template>
-          <template v-if="showActionLabels">
-            Delete
-          </template>
-          <Icon v-if="!showActionLabels" name="ph:trash" />
-        </Button>
       </Flex>
     </template>
 
@@ -367,7 +352,6 @@ function confirmDeleteComplaint() {
         <!-- Acknowledge button -->
         <Button
           v-if="status === 'pending'"
-          size="s"
           variant="accent"
           :square="!showActionLabels"
           @click="handleAcknowledge"
@@ -379,6 +363,20 @@ function confirmDeleteComplaint() {
           <template v-if="showActionLabels">
             Acknowledge
           </template>
+        </Button>
+        <Button
+          v-if="canDeleteComplaints"
+          variant="danger"
+          :square="!showActionLabels"
+          @click="handleDeleteComplaint"
+        >
+          <template v-if="showActionLabels" #start>
+            <Icon name="ph:trash" />
+          </template>
+          <template v-if="showActionLabels">
+            Delete
+          </template>
+          <Icon v-if="!showActionLabels" name="ph:trash" />
         </Button>
 
         <!-- Respond/Update button -->

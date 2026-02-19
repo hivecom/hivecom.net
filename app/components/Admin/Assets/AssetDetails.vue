@@ -62,16 +62,15 @@ function requestRename() {
   >
     <template #header>
       <Flex x-between y-center class="pr-s">
-        <Flex column gap="xxs">
+        <Flex column :gap="0">
           <h4>Asset Details</h4>
-          <p class="text-m text-color-light">
+          <p class="text-xs text-color-light">
             {{ props.asset?.name }}
           </p>
         </Flex>
         <Flex gap="xs" y-center>
           <Button
             v-if="props.canRename"
-            size="s"
             variant="gray"
             :square="!showActionLabels"
             @click="requestRename"
@@ -86,7 +85,6 @@ function requestRename() {
           </Button>
           <Button
             v-if="props.canDelete"
-            size="s"
             variant="danger"
             :square="!showActionLabels"
             @click="requestDelete"

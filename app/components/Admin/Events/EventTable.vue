@@ -26,6 +26,8 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
 const { canManageResource, canCreate } = useTableActions('events')
+const route = useRoute()
+const router = useRouter()
 
 // Setup client and state
 const supabase = useSupabaseClient()
@@ -39,6 +41,17 @@ const search = ref('')
 const showEventDetails = ref(false)
 const showEventForm = ref(false)
 const selectedEvent = ref<Event | null>(null)
+
+const focusedEventId = computed(() => {
+  const eventQuery = route.query.event
+  const rawValue = typeof eventQuery === 'string'
+    ? eventQuery
+    : Array.isArray(eventQuery) && eventQuery[0]
+      ? eventQuery[0]
+      : ''
+  const parsed = Number.parseInt(rawValue, 10)
+  return Number.isNaN(parsed) ? null : parsed
+})
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 const isEditMode = ref(false)
@@ -138,6 +151,19 @@ async function fetchEvents() {
 function viewEventDetails(event: Event) {
   selectedEvent.value = event
   showEventDetails.value = true
+}
+
+function openEventById(eventId: number | null): boolean {
+  if (eventId === null)
+    return false
+
+  const match = events.value.find((event: Event) => event.id === eventId)
+
+  if (!match)
+    return false
+
+  viewEventDetails(match)
+  return true
 }
 
 // Open the add event form
@@ -262,6 +288,36 @@ function getEventStatus(event: Event): { label: string, variant: 'accent' | 'suc
     return { label: 'Past', variant: 'neutral' }
   }
 }
+
+// Sync event query params with details sheet state
+watch(showEventDetails, (isOpen) => {
+  if (isOpen && selectedEvent.value) {
+    const nextQuery = {
+      ...route.query,
+      event: selectedEvent.value.id,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+  if (isOpen)
+    return
+  if (!route.query.event)
+    return
+  const { event, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
+watch(
+  () => [focusedEventId.value, loading.value] as const,
+  ([eventId, isLoading]) => {
+    if (isLoading)
+      return
+    if (eventId === null)
+      return
+    openEventById(eventId)
+  },
+  { immediate: true },
+)
 
 // Lifecycle hooks
 onBeforeMount(fetchEvents)

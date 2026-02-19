@@ -117,6 +117,11 @@ button {
   }
 }
 
+.vui-card {
+  .vui-card-header {
+    align-items: center;
+  }
+}
 .vui-modal > .vui-card {
   margin-bottom: 0;
 }

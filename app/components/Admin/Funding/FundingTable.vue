@@ -29,6 +29,8 @@ interface TransformedFunding {
 
 // Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+const route = useRoute()
+const router = useRouter()
 
 // Setup client and state
 const supabase = useSupabaseClient()
@@ -40,6 +42,16 @@ const search = ref('')
 // Funding details state
 const showFundingDetails = ref(false)
 const selectedFunding = ref<MonthlyFunding | null>(null)
+
+const focusedFundingMonth = computed(() => {
+  const fundingQuery = route.query.funding
+  const rawValue = typeof fundingQuery === 'string'
+    ? fundingQuery
+    : Array.isArray(fundingQuery) && fundingQuery[0]
+      ? fundingQuery[0]
+      : ''
+  return rawValue || null
+})
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
@@ -125,6 +137,49 @@ function viewFundingDetails(funding: MonthlyFunding) {
   selectedFunding.value = funding
   showFundingDetails.value = true
 }
+
+function openFundingByMonth(fundingMonth: string | null): boolean {
+  if (!fundingMonth)
+    return false
+
+  const match = monthlyFundings.value.find((funding: MonthlyFunding) => funding.month === fundingMonth)
+
+  if (!match)
+    return false
+
+  viewFundingDetails(match)
+  return true
+}
+
+// Sync funding query params with details sheet state
+watch(showFundingDetails, (isOpen) => {
+  if (isOpen && selectedFunding.value) {
+    const nextQuery = {
+      ...route.query,
+      funding: selectedFunding.value.month,
+    }
+    router.replace({ query: nextQuery })
+    return
+  }
+  if (isOpen)
+    return
+  if (!route.query.funding)
+    return
+  const { funding, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
+watch(
+  () => [focusedFundingMonth.value, loading.value] as const,
+  ([fundingMonth, isLoading]) => {
+    if (isLoading)
+      return
+    if (!fundingMonth)
+      return
+    openFundingByMonth(fundingMonth)
+  },
+  { immediate: true },
+)
 
 // Lifecycle hooks
 onBeforeMount(fetchMonthlyFundings)
