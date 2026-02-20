@@ -458,6 +458,7 @@ onBeforeMount(fetchEvents)
               <AdminActions
                 resource-type="events"
                 :item="event._original"
+                button-size="s"
                 :is-loading="(action: string) => isEventActionLoading(event._original.id, action)"
                 @edit="(eventItem) => openEditEventForm(eventItem as Event)"
                 @delete="(eventItem) => handleEventDelete((eventItem as Event).id)"

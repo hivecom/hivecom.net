@@ -237,6 +237,7 @@ onBeforeMount(fetchEntries)
                 <AdminActions
                   resource-type="kvstore"
                   :item="row._original"
+                  button-size="s"
                   :is-loading="(action) => action === 'edit' ? !!actionLoading[row._original.key] : !!actionLoading[`${row._original.key}-delete`]"
                   @edit="(item) => openEditModal(item as unknown as KvEntry)"
                   @delete="(item) => handleDelete(item as unknown as KvEntry)"

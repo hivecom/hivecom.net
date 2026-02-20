@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Button, Flex, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
@@ -16,22 +16,98 @@ dayjs.extend(relativeTime)
 
 // TODO: path to post would be nice, but we'd have to fetch all the parent topics. Maybe a recursive query or some shit?
 
+type DiscussionWithContext = Tables<'discussions'> & {
+  profile?: Pick<Tables<'profiles'>, 'id' | 'username'> | null
+  project?: Pick<Tables<'projects'>, 'id' | 'title'> | null
+  event?: Pick<Tables<'events'>, 'id' | 'title'> | null
+  gameserver?: Pick<Tables<'gameservers'>, 'id' | 'name'> | null
+  referendum?: Pick<Tables<'referendums'>, 'id' | 'title'> | null
+}
+
+interface ContextInfo {
+  label: string
+  href: string
+  icon: string
+}
+
 const route = useRoute()
 const router = useRouter()
 
 const supabase = useSupabaseClient()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
-const post = ref<Tables<'discussions'> | null>(null)
+const post = ref<DiscussionWithContext | null>(null)
 
 const isMobile = useBreakpoint('<m')
+
+const contextInfo = computed<ContextInfo | null>(() => {
+  if (!post.value)
+    return null
+
+  if (post.value.profile_id) {
+    const profileName = post.value.profile?.username ?? post.value.profile_id
+    return {
+      label: 'Profile',
+      href: `/profile/${profileName}`,
+      icon: 'ph:user-circle',
+    }
+  }
+
+  if (post.value.project_id) {
+    return {
+      label: 'Project',
+      href: `/community/projects/${post.value.project_id}`,
+      icon: 'ph:folder',
+    }
+  }
+
+  if (post.value.event_id) {
+    return {
+      label: 'Event',
+      href: `/events/${post.value.event_id}`,
+      icon: 'ph:calendar',
+    }
+  }
+
+  if (post.value.gameserver_id) {
+    return {
+      label: 'Gameserver',
+      href: `/servers/gameservers/${post.value.gameserver_id}`,
+      icon: 'ph:computer-tower',
+    }
+  }
+
+  if (post.value.referendum_id) {
+    return {
+      label: 'Referendum',
+      href: `/votes/${post.value.referendum_id}`,
+      icon: 'ph:user-sound',
+    }
+  }
+
+  return null
+})
+
+function handlePostUpdate(updated: Tables<'discussions'> | Tables<'discussion_topics'>) {
+  if (!('reply_count' in updated))
+    return
+
+  post.value = post.value ? { ...post.value, ...updated } : { ...updated }
+}
 
 onBeforeMount(() => {
   loading.value = true
 
   supabase
     .from('discussions')
-    .select('*')
+    .select(`
+      *,
+      profile:profiles!discussions_profile_id_fkey(id, username),
+      project:projects(id, title),
+      event:events(id, title),
+      gameserver:gameservers(id, name),
+      referendum:referendums(id, title)
+    `)
     .eq('id', route.params.id)
     .single()
     .then(({ data, error }) => {
@@ -83,9 +159,9 @@ useSeoMeta({
             <Tooltip>
               <span>
                 <Icon :size="18" name="ph:eye" />
-                {{ post.view_count }}</span>
+                {{ post.view_count + 1 }}</span>
               <template #tooltip>
-                {{ post.view_count }} views
+                {{ post.view_count + 1 }} views
               </template>
             </Tooltip>
             <Tooltip>
@@ -102,7 +178,7 @@ useSeoMeta({
               table="discussions"
               :data="post"
               @remove="router.back()"
-              @update="post = ($event as any)"
+              @update="handlePostUpdate"
             >
               <template #default="{ toggle }">
                 <Button variant="accent" size="s" @click="toggle">
@@ -117,7 +193,23 @@ useSeoMeta({
           {{ post.title ?? 'Unnamed discussion' }}
         </h1>
 
-        <MDRenderer v-if="post.description" class="forum-post__content" :md="post.description" :skeleton-height="64" />
+        <Card v-if="contextInfo" class="mb-l">
+          <Flex x-between y-center wrap gap="m">
+            <Flex column gap="xs">
+              <Flex y-center gap="xs">
+                <Icon :name="contextInfo.icon" />
+                <span>This discussion is linked to a {{ contextInfo.label }}</span>
+              </Flex>
+            </Flex>
+            <NuxtLink :to="contextInfo.href">
+              <Button variant="accent" size="s">
+                View full {{ contextInfo.label }}
+              </Button>
+            </NuxtLink>
+          </Flex>
+        </Card>
+
+        <MDRenderer v-if="post.markdown" class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
 
         <Flex x-between y-center :class="isMobile ? 'mt-l' : 'mt-xl'" wrap gap="m">
           <UserDisplay :user-id="post.created_by" show-role class="mr-m" />

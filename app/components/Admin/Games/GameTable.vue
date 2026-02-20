@@ -397,6 +397,7 @@ onBeforeMount(fetchGames)
               <AdminActions
                 resource-type="games"
                 :item="game._original"
+                button-size="s"
                 @edit="(gameItem) => openEditGameForm(gameItem as Game)"
                 @delete="(gameItem) => handleGameDelete((gameItem as Game).id)"
               />

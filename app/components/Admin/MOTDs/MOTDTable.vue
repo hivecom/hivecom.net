@@ -236,6 +236,7 @@ onBeforeMount(fetchMotds)
                 <AdminActions
                   resource-type="motds"
                   :item="row._original"
+                  button-size="s"
                   :is-loading="(action) => action === 'edit' ? !!actionLoading[String(row._original.id)] : !!actionLoading[`${row._original.id}-delete`]"
                   @edit="(item) => openEditModal(item as Tables<'motds'>)"
                   @delete="(item) => handleDelete(item as Tables<'motds'>)"

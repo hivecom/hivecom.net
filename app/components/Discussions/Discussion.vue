@@ -88,6 +88,46 @@ const error = ref<string>()
 const discussion = ref<Tables<'discussions'>>()
 const comments = ref<RawComment[]>([])
 
+const lastIncrementedId = ref<string | null>(null)
+
+async function incrementDiscussionView() {
+  const id = discussion.value?.id
+  if (!id || !import.meta.client || id === lastIncrementedId.value)
+    return
+
+  lastIncrementedId.value = id
+
+  await supabase.rpc('increment_discussion_view_count', {
+    target_discussion_id: id,
+  })
+}
+
+function handleVisibilityChange() {
+  if (!document.hidden) {
+    incrementDiscussionView()
+  }
+}
+
+function handleFocus() {
+  incrementDiscussionView()
+}
+
+watch(
+  () => discussion.value?.id,
+  () => incrementDiscussionView(),
+)
+
+onMounted(() => {
+  incrementDiscussionView()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('focus', handleFocus)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  window.removeEventListener('focus', handleFocus)
+})
+
 provide<DiscussionSettings>('discussion-settings', {
   timestamps: props.timestamps,
 })
@@ -221,6 +261,38 @@ const { validate, errors, addError, reset } = useValidation(form, rules, {
   autoclear: true,
 })
 
+async function ensureDiscussion() {
+  if (discussion.value || props.type === 'discussion')
+    return
+
+  const discussionKey = `${props.type}_id`
+  const { data: created, error: createError } = await supabase
+    .from('discussions')
+    .insert({ [discussionKey]: props.id })
+    .select()
+    .single()
+
+  if (createError) {
+    const { data: existing, error: fetchError } = await supabase
+      .from('discussions')
+      .select('*')
+      .eq(discussionKey, props.id)
+      .maybeSingle()
+
+    if (fetchError) {
+      error.value = fetchError.message
+      return
+    }
+
+    if (existing)
+      discussion.value = existing
+
+    return
+  }
+
+  discussion.value = created
+}
+
 async function submitReply() {
   if (formLoading.value)
     return
@@ -229,9 +301,22 @@ async function submitReply() {
 
   validate()
     .then(async () => {
+      if (!discussion.value) {
+        await ensureDiscussion()
+      }
+
+      if (!discussion.value) {
+        addError('message', {
+          key: 'required',
+          message: 'Unable to start discussion for this item.',
+        })
+        formLoading.value = false
+        return
+      }
+
       const commentData = {
         content: form.message,
-        discussion_id: discussion.value?.id,
+        discussion_id: discussion.value.id,
         ...(!!replyingTo.value && { reply_to_id: replyingTo.value.id }),
         ...(props.hash && {
           meta: { hash: props.hash },

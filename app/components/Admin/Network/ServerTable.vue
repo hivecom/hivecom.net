@@ -419,6 +419,7 @@ onBeforeMount(fetchServers)
               <AdminActions
                 resource-type="servers"
                 :item="server._original"
+                button-size="s"
                 @edit="(item) => openEditServerForm(item as Tables<'servers'>)"
                 @delete="(serverItem) => handleServerDelete((serverItem as Tables<'servers'>).id)"
               />

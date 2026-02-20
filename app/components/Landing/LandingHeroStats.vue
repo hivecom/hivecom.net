@@ -41,7 +41,7 @@ defineProps<{
             {{ communityStats.forumPosts }}
           </template>
         </Flex>
-        <span class="text-xs">Forum posts</span>
+        <span class="text-xs">Discussions</span>
       </NuxtLink>
 
       <NuxtLink to="/servers/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">

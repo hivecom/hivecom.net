@@ -474,6 +474,7 @@ onBeforeMount(fetchGameservers)
               <AdminActions
                 resource-type="gameservers"
                 :item="gameserver._original"
+                button-size="s"
                 :custom-actions="[
                   {
                     icon: 'ph:cube',

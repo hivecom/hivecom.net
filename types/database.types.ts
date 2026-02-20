@@ -318,6 +318,7 @@ export interface Database {
           id: string
           is_locked: boolean
           is_sticky: boolean
+          markdown: string | null
           modified_at: string
           modified_by: string | null
           profile_id: string | null
@@ -339,6 +340,7 @@ export interface Database {
           id?: string
           is_locked?: boolean
           is_sticky?: boolean
+          markdown?: string | null
           modified_at?: string
           modified_by?: string | null
           profile_id?: string | null
@@ -360,6 +362,7 @@ export interface Database {
           id?: string
           is_locked?: boolean
           is_sticky?: boolean
+          markdown?: string | null
           modified_at?: string
           modified_by?: string | null
           profile_id?: string | null

@@ -149,6 +149,12 @@ const menuItems = [
     permissions: ['complaints.read', 'complaints.create', 'complaints.update', 'complaints.delete'],
   },
   {
+    name: 'Discussions',
+    path: '/admin/discussions',
+    icon: 'ph:chat-circle',
+    permissions: ['discussions.read', 'discussions.create', 'discussions.update', 'discussions.delete', 'discussions.manage'],
+  },
+  {
     name: 'Events',
     path: '/admin/events',
     icon: 'ph:calendar-blank',

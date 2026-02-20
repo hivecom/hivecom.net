@@ -9,5 +9,7 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": []
+  "include": [
+    "./**/*.ts"
+  ]
 }

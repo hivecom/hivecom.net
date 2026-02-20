@@ -467,6 +467,7 @@ onBeforeMount(fetchReferendums)
               <AdminActions
                 resource-type="referendums"
                 :item="referendum._original"
+                button-size="s"
                 @edit="(referendumItem) => openEditReferendumForm(referendumItem as QueryReferendum)"
                 @delete="(referendumItem) => handleReferendumDelete((referendumItem as QueryReferendum).id)"
               />

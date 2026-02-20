@@ -43,24 +43,53 @@ const topicOptions = computed(() => {
 
 const form = reactive({
   title: '',
+  slug: '',
   description: '',
+  markdown: '',
   is_locked: false,
   is_sticky: false,
   discussion_topic_id: '',
 })
+
+const slugTouched = ref(false)
+const isAutoUpdatingSlug = ref(false)
 
 // When we're editing, make sure the form and edited data are in sync
 watch(() => props.editedItem, (item) => {
   if (!item)
     return
 
+  isAutoUpdatingSlug.value = true
+
   Object.assign(form, {
-    name: item.title,
-    description: item.description,
+    title: item.title ?? '',
+    slug: item.slug ?? '',
+    description: item.description ?? '',
+    markdown: item.markdown ?? '',
+    discussion_topic_id: item.discussion_topic_id ?? '',
     is_locked: item.is_locked,
     is_sticky: item.is_sticky,
   })
+
+  isAutoUpdatingSlug.value = false
+  slugTouched.value = false
 }, { immediate: true })
+
+watch(() => form.title, (value) => {
+  if (!slugTouched.value || !form.slug) {
+    isAutoUpdatingSlug.value = true
+    form.slug = slugify(value)
+  }
+})
+
+watch(() => form.slug, () => {
+  if (isAutoUpdatingSlug.value) {
+    isAutoUpdatingSlug.value = false
+    return
+  }
+
+  slugTouched.value = true
+})
 
 // Preselect a topic if we're currently in a nested view
 watch(activeTopicId, (newVal) => {
@@ -78,45 +107,73 @@ const loading = ref(false)
 
 const { validate, errors } = useValidation(form, rules, { autoclear: true })
 
-function submitForm() {
+async function submitForm() {
   if (loading.value)
     return
 
   loading.value = true
 
-  validate()
-    .then(() => {
-      const payload = {
-        ...form,
-        slug: slugify(form.title),
-        ...(isEditing.value && { id: props.editedItem!.id }),
+  try {
+    await validate()
+
+    const trimmedSlug = form.slug.trim()
+    const resolvedSlug = trimmedSlug ? slugify(trimmedSlug) : null
+
+    if (resolvedSlug) {
+      let slugQuery = supabase
+        .from('discussions')
+        .select('id')
+        .eq('slug', resolvedSlug)
+        .limit(1)
+
+      if (isEditing.value)
+        slugQuery = slugQuery.neq('id', props.editedItem!.id)
+
+      const { data: slugMatches, error: slugError } = await slugQuery
+
+      if (slugError) {
+        loading.value = false
+        pushToast('Failed to validate slug uniqueness')
+        return
       }
 
-      supabase
-        .from('discussions')
-        .upsert(payload)
-        .select()
-        .then(({ error, data }) => {
-          loading.value = false
+      if (slugMatches && slugMatches.length > 0) {
+        loading.value = false
+        pushToast('Slug is already in use')
+        return
+      }
+    }
 
-          if (error) {
-            pushToast(`Failed to ${isEditing.value ? 'update' : 'create'} discussion`)
-            return
-          }
+    const payload = {
+      ...form,
+      slug: resolvedSlug,
+      ...(isEditing.value && { id: props.editedItem!.id }),
+    }
 
-          emit('created', data[0])
-          emit('close')
-          pushToast(`${isEditing.value ? 'Updated' : 'Created'} discussion ${payload.title}`)
-        })
-    })
-    .catch(() => {
-      loading.value = false
-    })
+    const { error, data } = await supabase
+      .from('discussions')
+      .upsert(payload)
+      .select()
+
+    loading.value = false
+
+    if (error) {
+      pushToast(`Failed to ${isEditing.value ? 'update' : 'create'} discussion`)
+      return
+    }
+
+    emit('created', data[0])
+    emit('close')
+    pushToast(`${isEditing.value ? 'Updated' : 'Created'} discussion ${payload.title}`)
+  }
+  catch {
+    loading.value = false
+  }
 }
 </script>
 
 <template>
-  <Modal v-bind="props" size="s" :card="{ footerSeparator: true }" @close="emit('close')">
+  <Modal v-bind="props" size="l" :card="{ footerSeparator: true }" @close="emit('close')">
     <template #header>
       <h3>{{ isEditing ? 'Edit' : 'New' }}  discussion</h3>
     </template>
@@ -126,7 +183,9 @@ function submitForm() {
 
     <Flex column gap="m">
       <Input v-model="form.title" :errors="normalizeErrors(errors.title)" label="Name" expand placeholder="What is this discussion about?" required />
-      <RichTextEditor v-model="form.description" min-height="196px" hint="You can use markdown" :errors="normalizeErrors(errors.description)" label="Content" placeholder="Add more context to the discussion" />
+      <Input v-model="form.slug" :errors="normalizeErrors(errors.slug)" label="Slug (optional)" expand placeholder="Auto-generated from the title" />
+      <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Short summary for the discussion" />
+      <RichTextEditor v-model="form.markdown" min-height="196px" hint="You can use markdown" :errors="normalizeErrors(errors.markdown)" label="Content" placeholder="Add more context to the discussion" />
 
       <div class="w-100">
         <label class="vui-label">Topic</label>

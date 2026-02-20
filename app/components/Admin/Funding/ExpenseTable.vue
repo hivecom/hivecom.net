@@ -434,6 +434,7 @@ onBeforeMount(fetchExpenses)
               <AdminActions
                 resource-type="expenses"
                 :item="expense._original"
+                button-size="s"
                 @edit="(expenseItem) => openEditExpenseForm(expenseItem as Expense)"
                 @delete="(expenseItem) => handleExpenseDelete((expenseItem as Expense).id)"
               />

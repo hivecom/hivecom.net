@@ -453,6 +453,7 @@ onBeforeMount(fetchProjects)
               <AdminActions
                 resource-type="projects"
                 :item="project._original"
+                button-size="s"
                 @edit="(projectItem) => openEditProjectForm(projectItem as QueryProject)"
                 @delete="(projectItem) => handleProjectDelete((projectItem as QueryProject).id)"
               />

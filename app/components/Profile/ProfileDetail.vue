@@ -809,8 +809,8 @@ async function ignoreFriendRequest() {
 
           <!-- PRofile comments -->
           <Discussion
-            v-if="props.userId"
-            :id="props.userId"
+            v-if="profile?.id"
+            :id="profile.id"
             type="profile"
             :placeholder="`Leave a shout for ${profile.username} here! Or not...`"
           />

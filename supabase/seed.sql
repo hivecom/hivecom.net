@@ -204,8 +204,6 @@ INSERT INTO public.friends(created_at, friender, friend)
 -- Insert an upcoming test event (moved 2 weeks earlier)
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, games)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '16 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
-# Community Gaming Night
-
 It is that time of the month again! Join us for our community gaming night where we play various games together, chat, and have fun.
 
 We will probably be playing on our CS2 server, but feel free to suggest other games as well.
@@ -214,8 +212,6 @@ We will probably be playing on our CS2 server, but feel free to suggest other ga
 -- Insert Hivecom Meetup event in Prague
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '1 month', 'Epic 3-day meetup in Prague with pub crawls, LAN parties, and community bonding!', 'Hivecom Meetup - Prague', 'Prague, Czech Republic', '
-# Hivecom Meetup - Prague
-
 The moment we''ve all been waiting for! Join us for a 3-day community meetup in the beautiful city of Prague!
 
 ## What''s Planned
@@ -277,8 +273,6 @@ Hit up in #events on IRC or drop me a direct message if you have any questions a
 -- Insert LAN Crossover Game Night (synced with Prague meetup day 2)
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes, games)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '1 month' + INTERVAL '1 day', 'Join the Prague crew online for an epic crossover LAN party with livestream, games, and drinks!', 'LAN Crossover Game Night', 'Online + Prague Airbnb', '
-# LAN Crossover Game Night!
-
 Tonight''s extra special - we''re crossing over with our Prague meetup crew!
 
 ## What''s Happening
@@ -368,8 +362,6 @@ There are no refunds. Why did you pay for this to begin with?', NOW(), 'TeamSpea
 -- Insert an expired test event
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
   VALUES (NOW() - INTERVAL '10 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '5 days', 'Join us for a scenic 4-day hike through the beautiful Harz National Park!', 'Hike in Harz National Park', 'Harz National Park, Germany', '
-# Hike in Harz National Park
-
 Join us for an amazing 4-day hiking adventure in the Harz National Park, Germany!
 
 ## What we will explore
@@ -476,31 +468,22 @@ ON CONFLICT (slug) DO UPDATE SET
   is_locked = EXCLUDED.is_locked;
 
 -- Insert forum discussions (migrated from former announcements seed data)
-WITH seeded_discussions AS (
-  INSERT INTO public.discussions(created_at, created_by, title, description, is_sticky, discussion_topic_id)
-  SELECT
-    v.created_at,
-    v.created_by,
-    v.title,
-    v.description,
-    v.is_sticky,
-    dt.id
-  FROM (VALUES
-    (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid, 'Welcome to Hivecom', 'Welcome to our gaming community platform!', TRUE),
-    (NOW() - INTERVAL '2 days', '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid, 'New CS2 Server Online', 'Our new Counter-Strike 2 server is now live!', FALSE)
-  ) as v(created_at, created_by, title, description, is_sticky)
-  CROSS JOIN public.discussion_topics dt
-  WHERE dt.slug = 'announcements'
-  RETURNING id, title, created_by, created_at
-)
-INSERT INTO public.discussion_replies(discussion_id, reply_to_id, content, meta, created_by, created_at)
+INSERT INTO public.discussions(created_at, created_by, title, description, markdown, is_sticky, discussion_topic_id)
 SELECT
-  sd.id,
-  NULL,
-  CASE sd.title
-    WHEN 'Welcome to Hivecom' THEN '
-# Welcome to Hivecom
-
+  v.created_at,
+  v.created_by,
+  v.title,
+  v.description,
+  v.markdown,
+  v.is_sticky,
+  dt.id
+FROM (VALUES
+  (
+    NOW(),
+    '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid,
+    'Welcome to Hivecom',
+    'Welcome to our gaming community platform!',
+    '
 We are excited to have you join our gaming community! This platform serves as the central hub for all our community activities, events, and server information.
 
 ## What you can do here
@@ -511,10 +494,15 @@ We are excited to have you join our gaming community! This platform serves as th
 - **Stay Updated**: Get the latest announcements and updates
 
 Feel free to explore and don''t hesitate to reach out if you have any questions!
-  '
-    WHEN 'New CS2 Server Online' THEN '
-# New CS2 Server Online
-
+    ',
+    TRUE
+  ),
+  (
+    NOW() - INTERVAL '2 days',
+    '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid,
+    'New CS2 Server Online',
+    'Our new Counter-Strike 2 server is now live!',
+    '
 Great news! Our brand new Counter-Strike 2 community server is now online and ready for action.
 
 ## Server Details
@@ -527,18 +515,12 @@ Great news! Our brand new Counter-Strike 2 community server is now online and re
 The server is configured for casual play with a friendly, welcoming environment. Whether you''re a seasoned veteran or new to CS2, everyone is welcome!
 
 Come join us and let''s have some fun together!
-  '
-  END,
-  jsonb_build_object(
-    'tags',
-    CASE sd.title
-      WHEN 'Welcome to Hivecom' THEN ARRAY['welcome', 'community', 'getting-started']
-      WHEN 'New CS2 Server Online' THEN ARRAY['cs2', 'gameserver', 'gaming', 'announcement']
-    END
-  ),
-  sd.created_by,
-  sd.created_at
-FROM seeded_discussions sd;
+    ',
+    FALSE
+  )
+) as v(created_at, created_by, title, description, markdown, is_sticky)
+CROSS JOIN public.discussion_topics dt
+WHERE dt.slug = 'announcements';
 
 -- Insert sample MOTDs
 INSERT INTO public.motds(message, created_at, created_by, modified_at, modified_by)
@@ -569,8 +551,6 @@ INSERT INTO public.complaints(created_at, created_by, message, response, respond
 -- Insert test projects
 INSERT INTO public.projects(created_at, created_by, title, description, markdown, link, owner, tags, github)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'VUI', 'The UI library that powers the Hivecom platform interface.', '
-# VUI
-
 VUI is the powerful and elegant Vue 3 component library that drives the user interface of Hivecom and other modern web applications.
 
 It powers every aspect of the Hivecom interface:

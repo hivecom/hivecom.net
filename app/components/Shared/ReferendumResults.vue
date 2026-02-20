@@ -158,7 +158,7 @@ const isBelowSmall = useBreakpoint('<s')
         <div class="result-comments">
           <Discussion
             :id="String(props.referendum.id)"
-            type="event"
+            type="referendum"
             :hash="md5(result.choice)"
             :input-rows="2"
           />

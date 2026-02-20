@@ -603,7 +603,7 @@ function handleChoiceClick(index: number) {
             </h3>
             <Discussion
               :id="String(referendum.id)"
-              type="event"
+              type="referendum"
               hash="general-chat"
             />
           </Card>

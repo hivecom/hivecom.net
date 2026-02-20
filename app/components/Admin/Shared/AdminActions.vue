@@ -8,7 +8,7 @@ interface AdminActionsProps {
   /**
    * Type of resource (used for permission checking)
    */
-  resourceType: 'games' | 'events' | 'gameservers' | 'profiles' | 'expenses' | 'referendums' | 'servers' | 'assets' | 'projects' | 'kvstore' | 'motds'
+  resourceType: 'games' | 'events' | 'gameservers' | 'profiles' | 'expenses' | 'referendums' | 'servers' | 'assets' | 'projects' | 'discussions' | 'kvstore' | 'motds'
 
   /**
    * The item being acted upon
@@ -24,6 +24,11 @@ interface AdminActionsProps {
    * Whether to show action labels (default: false)
    */
   showLabels?: boolean
+
+  /**
+   * Optional button size (e.g., 's' for table actions)
+   */
+  buttonSize?: 's' | 'm' | 'l'
 
   /**
    * Override which actions to show (default: ['edit', 'delete'])
@@ -46,6 +51,7 @@ interface AdminActionsProps {
 
 const props = withDefaults(defineProps<AdminActionsProps>(), {
   showLabels: false,
+  buttonSize: undefined,
   actions: () => ['edit', 'delete'],
   customActions: () => [],
 })
@@ -139,6 +145,7 @@ function getResourceDisplayName(): string {
     referendums: 'Referendum',
     servers: 'Server',
     assets: 'Asset',
+    discussions: 'Discussion',
     kvstore: 'Key/Value',
     motds: 'MOTD',
   }
@@ -169,6 +176,7 @@ function getItemDisplayName(): string {
     <Button
       v-if="showEditAction"
       variant="gray"
+      :size="props.buttonSize"
       :square="!showLabels"
       :data-title-top="!showLabels ? `Edit ${resourceType.slice(0, -1)}` : undefined"
       :loading="isActionLoading('edit')"
@@ -188,6 +196,7 @@ function getItemDisplayName(): string {
       v-for="(action, index) in visibleCustomActions"
       :key="index"
       :variant="action.variant || 'gray'"
+      :size="props.buttonSize"
       :square="!showLabels"
       :data-title-top-right="!showLabels ? action.label : undefined"
       :loading="action.loading"
@@ -206,6 +215,7 @@ function getItemDisplayName(): string {
     <Button
       v-if="showDeleteAction"
       variant="danger"
+      :size="props.buttonSize"
       :square="!showLabels"
       :data-title-top-right="!showLabels ? `Delete ${resourceType.slice(0, -1)}` : undefined"
       :loading="isActionLoading('delete')"
