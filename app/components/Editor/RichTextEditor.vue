@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { JSONContent, MarkdownParseHelpers, MarkdownToken, MarkdownTokenizer } from '@tiptap/core'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
 import Mention from '@tiptap/extension-mention'
@@ -45,6 +46,47 @@ const content = defineModel<string>()
 
 const supabase = useSupabaseClient()
 
+const MentionWithMarkdown = Mention.extend({
+  markdownTokenName: 'mention',
+  parseMarkdown: (token: MarkdownToken, helpers: MarkdownParseHelpers) => {
+    return helpers.createNode('mention', {
+      id: token.attributes?.id ?? null,
+    })
+  },
+  markdownTokenizer: {
+    name: 'mention',
+    level: 'inline',
+    start(src: string) {
+      const index = src.indexOf('@{')
+      return index === -1 ? -1 : index
+    },
+    tokenize(src: string) {
+      const match = /^@\{([0-9a-f-]{36})\}/i.exec(src)
+
+      if (!match) {
+        return undefined
+      }
+
+      return {
+        type: 'mention',
+        raw: match[0],
+        attributes: {
+          id: match[1],
+        },
+      }
+    },
+  } satisfies MarkdownTokenizer,
+  renderMarkdown: (node: JSONContent) => {
+    const id = node.attrs?.id
+
+    if (typeof id !== 'string' || id.trim() === '') {
+      return ''
+    }
+
+    return `@{${id}}`
+  },
+})
+
 const editor = useEditor({
   content: content.value,
   extensions: [
@@ -52,7 +94,7 @@ const editor = useEditor({
     Markdown,
     Placeholder.configure({ placeholder: props.placeholder }),
     Image,
-    Mention.configure({
+    MentionWithMarkdown.configure({
       suggestion: defineSuggestion('@', RichTextMentions, async (search_term) => {
         return supabase
           .rpc('search_profiles', { search_term })
@@ -64,7 +106,10 @@ const editor = useEditor({
         class: 'mention',
       },
       renderHTML(props) {
-        return `@${props.node.attrs.id}`
+        return `@${props.node.attrs.label ?? props.node.attrs.id}`
+      },
+      renderText(props) {
+        return `@{${props.node.attrs.id}}`
       },
     }),
     FileHandler.configure({

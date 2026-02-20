@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Card, Flex, Grid, pushToast, Sheet } from '@dolanske/vui'
+import { Badge, Button, Card, Divider, Flex, Grid, pushToast, Sheet } from '@dolanske/vui'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
@@ -42,19 +43,25 @@ const showDeleteConfirm = ref(false)
 
 const lastUpdatedAt = computed<string | null>(() => props.discussion?.modified_at ?? props.discussion?.created_at ?? null)
 
+const fetchedMarkdown = ref<string | null>(null)
+const contentLoading = ref(false)
+
 const discussionMarkdown = computed(() => {
   if (!props.discussion)
     return ''
-  if (!('markdown' in props.discussion))
-    return ''
   const markdown = (props.discussion as { markdown?: string | null }).markdown
-  return markdown ?? ''
+  return markdown ?? fetchedMarkdown.value ?? ''
 })
 
 const threadReplyCountText = computed(() => {
   const count = props.discussion?.reply_count ?? 0
-  return `(${count} total replies between)`
+  const betweenCount = Math.max(count - 1, 0)
+  const label = betweenCount === 1 ? 'reply' : 'replies'
+  return `${betweenCount} ${label} in between`
 })
+
+const hasReplies = computed(() => (props.discussion?.reply_count ?? 0) > 0)
+const showRepliesBetween = computed(() => (props.discussion?.reply_count ?? 0) > 1)
 
 const lastReply = ref<Tables<'discussion_replies'> | null>(null)
 const lastReplyLoading = ref(false)
@@ -142,7 +149,7 @@ async function fetchLastReply() {
   try {
     const { data, error } = await supabase
       .from('discussion_replies')
-      .select('id, content, created_at, created_by, modified_at, modified_by')
+      .select('id, markdown, created_at, created_by, modified_at, modified_by')
       .eq('discussion_id', props.discussion.id)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -161,10 +168,44 @@ async function fetchLastReply() {
   }
 }
 
+async function fetchDiscussionContent() {
+  fetchedMarkdown.value = null
+  if (!props.discussion?.id)
+    return
+
+  const directMarkdown = (props.discussion as { markdown?: string | null }).markdown
+  if (directMarkdown) {
+    fetchedMarkdown.value = directMarkdown
+    return
+  }
+
+  contentLoading.value = true
+
+  try {
+    const { data, error } = await supabase
+      .from('discussions')
+      .select('markdown')
+      .eq('id', props.discussion.id)
+      .maybeSingle()
+
+    if (error)
+      throw error
+
+    fetchedMarkdown.value = data?.markdown ?? ''
+  }
+  catch {
+    fetchedMarkdown.value = ''
+  }
+  finally {
+    contentLoading.value = false
+  }
+}
+
 watch(
   () => props.discussion?.id,
   () => {
     void fetchLastReply()
+    void fetchDiscussionContent()
   },
   { immediate: true },
 )
@@ -262,11 +303,6 @@ function handleClose() {
             <span>{{ props.discussion.description }}</span>
           </Grid>
 
-          <Grid v-if="discussionMarkdown" class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Markdown:</span>
-            <span class="text-s">{{ discussionMarkdown }}</span>
-          </Grid>
-
           <Grid class="detail-item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Status:</span>
             <Flex gap="xs" y-center wrap>
@@ -276,15 +312,15 @@ function handleClose() {
               <Badge v-if="props.discussion.is_sticky && props.discussion.discussion_topic_id" variant="accent">
                 Pinned
               </Badge>
+              <Badge v-if="props.discussion.is_archived" variant="warning">
+                Archived
+              </Badge>
             </Flex>
           </Grid>
 
           <Grid class="detail-item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Replies:</span>
-            <Flex column :gap="0">
-              <span>{{ props.discussion.reply_count }}</span>
-              <span class="text-color-lighter text-xs">{{ threadReplyCountText }}</span>
-            </Flex>
+            <span>{{ props.discussion.reply_count }}</span>
           </Grid>
 
           <Grid class="detail-item" expand columns="1fr 2fr">
@@ -308,30 +344,55 @@ function handleClose() {
           </Grid>
 
           <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Last Reply:</span>
-            <Flex column :gap="0">
-              <Flex y-center gap="xs">
-                <UserLink :user-id="lastReplyAuthorId" placeholder="Unknown" class="text-m" show-avatar />
-                <TimestampDate size="s" :date="lastReplyTimestamp" />
-              </Flex>
-              <span v-if="lastReplyLoading" class="text-color-lighter text-xs">
-                Loading last reply...
-              </span>
-              <span v-else-if="lastReply?.content" class="text-s">
-                {{ lastReply.content }}
-              </span>
-              <span v-else class="text-color-lighter text-xs">
-                No replies yet
-              </span>
-            </Flex>
-          </Grid>
-
-          <Grid class="detail-item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Author:</span>
             <UserLink :user-id="props.discussion.created_by" placeholder="Unknown" class="text-m" show-avatar />
           </Grid>
         </Flex>
       </Card>
+
+      <Card class="card-bg">
+        <Flex column gap="s">
+          <h5 class="text-bold">
+            Content
+          </h5>
+          <MDRenderer v-if="discussionMarkdown" :md="discussionMarkdown" />
+          <p v-else-if="contentLoading" class="text-color-lighter text-s">
+            Loading content...
+          </p>
+          <p v-else class="text-color-lighter text-s">
+            No content provided.
+          </p>
+        </Flex>
+      </Card>
+
+      <template v-if="hasReplies">
+        <Flex v-if="showRepliesBetween" column gap="xs">
+          <Divider />
+          <Flex x-center>
+            <span class="text-color-lighter text-xs">{{ threadReplyCountText }}</span>
+          </Flex>
+          <Divider />
+        </Flex>
+
+        <Card class="card-bg">
+          <Flex column gap="s">
+            <h5 class="text-bold">
+              Latest reply
+            </h5>
+            <Flex y-center gap="xs">
+              <UserLink :user-id="lastReplyAuthorId" placeholder="Unknown" class="text-m" show-avatar />
+              <TimestampDate size="s" :date="lastReplyTimestamp" />
+            </Flex>
+            <span v-if="lastReplyLoading" class="text-color-lighter text-xs">
+              Loading last reply...
+            </span>
+            <MDRenderer v-else-if="lastReply?.markdown" :md="lastReply.markdown" />
+            <span v-else class="text-color-lighter text-xs">
+              No replies yet
+            </span>
+          </Flex>
+        </Card>
+      </template>
 
       <Card class="card-bg">
         <Flex column gap="s">

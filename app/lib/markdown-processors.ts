@@ -1,19 +1,82 @@
 import { truncate } from './utils/formatting'
 
 /**
+ * Extracts unique mention IDs stored as @{uuid} from markdown.
+ */
+export function extractMentionIds(markdown: string): string[] {
+  if (!markdown)
+    return []
+
+  const mentionIdPatternBraced = /@\{([0-9a-f-]{36})\}/gi
+  const mentionIdPatternLegacy = /@([0-9a-f-]{36})/gi
+  const ids = new Set<string>()
+
+  for (const match of markdown.matchAll(mentionIdPatternBraced)) {
+    const id = match[1]
+    if (typeof id === 'string' && id.trim() !== '') {
+      ids.add(id.toLowerCase())
+    }
+  }
+
+  for (const match of markdown.matchAll(mentionIdPatternLegacy)) {
+    const id = match[1]
+    if (typeof id === 'string' && id.trim() !== '') {
+      ids.add(id.toLowerCase())
+    }
+  }
+
+  return Array.from(ids)
+}
+
+/**
  * Processes markdown text to convert @username mentions into proper markdown links
  * @param markdown The markdown content to process
  * @returns The processed markdown with mentions converted to links
  */
-export function processMentions(markdown: string): string {
+export function processMentions(markdown: string, mentionIdToUsername: Record<string, string> = {}): string {
   if (!markdown)
     return ''
+
+  // Pattern to match mention IDs stored as @{uuid}
+  const mentionIdPatternBraced = /@\{([0-9a-f-]{36})\}/gi
+  const mentionIdPatternLegacy = /@([0-9a-f-]{36})/gi
+  const normalizedMentionLookup = Object.fromEntries(
+    Object.entries(mentionIdToUsername).map(([id, username]) => [id.toLowerCase(), username]),
+  )
 
   // Pattern to match @username mentions
   // Username can contain letters, numbers, and underscores (matching our profile validation)
   const mentionPattern = /@(\w+)/g
 
-  return markdown.replace(mentionPattern, (match, username: string) => {
+  const resolvedMarkdown = markdown
+    .replace(mentionIdPatternBraced, (match, id: string) => {
+      const resolvedUsername = normalizedMentionLookup[id.toLowerCase()]
+
+      if (typeof resolvedUsername !== 'string' || resolvedUsername.trim() === '') {
+        return match
+      }
+
+      if (!isValidMentionUsername(resolvedUsername)) {
+        return match
+      }
+
+      return `@${resolvedUsername}`
+    })
+    .replace(mentionIdPatternLegacy, (match, id: string) => {
+      const resolvedUsername = normalizedMentionLookup[id.toLowerCase()]
+
+      if (typeof resolvedUsername !== 'string' || resolvedUsername.trim() === '') {
+        return match
+      }
+
+      if (!isValidMentionUsername(resolvedUsername)) {
+        return match
+      }
+
+      return `@${resolvedUsername}`
+    })
+
+  return resolvedMarkdown.replace(mentionPattern, (match, username: string) => {
     // Validate username before creating link
     if (!isValidMentionUsername(username)) {
       return match // Return original text if username is invalid
@@ -40,7 +103,11 @@ export function isValidMentionUsername(username: string): boolean {
  * @param content Content to strip markdown out of
  * @param truncateAmount (optional) Optionally truncate the string to make the operation less expensive
  */
-export function stripMarkdown(content: string, truncateAmount = 0) {
+export function stripMarkdown(content?: string | null, truncateAmount = 0) {
+  if (typeof content !== 'string' || content.trim() === '') {
+    return ''
+  }
+
   if (truncateAmount) {
     content = truncate(content, truncateAmount)
   }
@@ -48,7 +115,9 @@ export function stripMarkdown(content: string, truncateAmount = 0) {
   return content
     // 1. Remove HTML tags
     .replace(/<[^>]*>/g, '')
-    // 2. Remove horizontal rules
+    // 2. Normalize non-breaking spaces
+    .replace(/&nbsp;/g, ' ')
+    // 3. Remove horizontal rules
     .replace(/^---/gm, '')
     // 3. Remove headers (###)
     .replace(/^#+\s+/gm, '')

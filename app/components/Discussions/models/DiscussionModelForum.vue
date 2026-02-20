@@ -62,7 +62,7 @@ const editError = ref<string[]>([])
 
 function startEditing() {
   editing.value = true
-  editedContent.value = data.value.content
+  editedContent.value = data.value.markdown
 }
 
 function endEditing() {
@@ -76,7 +76,7 @@ async function submit() {
 
     const res = await supabase
       .from('discussion_replies')
-      .update({ content: editedContent.value })
+      .update({ markdown: editedContent.value })
       .eq('id', data.value.id)
       .single()
 
@@ -88,7 +88,7 @@ async function submit() {
       // for now I am updating the value automatically, but preferable the whole
       // comment object should get replaced by `res.data`
 
-      data.value.content = editedContent.value
+      data.value.markdown = editedContent.value
       data.value.modified_at = dayjs().toISOString()
     }
 
@@ -138,11 +138,11 @@ watch(editedContent, () => editError.value = [])
           You wrote:
         </p>
         <p class="text-color-light">
-          {{ stripMarkdown(data.reply.content, 164) }}
+          {{ stripMarkdown(data.reply.markdown, 164) }}
         </p>
       </Alert>
 
-      <MDRenderer :md="data.content" :skeleton-height="128" />
+      <MDRenderer :md="data.markdown" :skeleton-height="128" />
 
       <p class="discussion-forum__timestamp">
         <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
@@ -151,7 +151,7 @@ watch(editedContent, () => editError.value = [])
 
       <div class="discussion-forum__actions">
         <ButtonGroup v-if="user">
-          <template v-if="!discussion?.is_locked">
+          <template v-if="!discussion?.is_locked && !discussion?.is_archived">
             <Button square size="s" @click="setReplyToComment(data)">
               <Tooltip>
                 <Icon name="ph:arrow-elbow-up-left-bold" />
@@ -179,7 +179,7 @@ watch(editedContent, () => editError.value = [])
           </Button>
         </ButtonGroup>
 
-        <ButtonGroup v-if="user && data.created_by === user.id && !discussion?.is_locked">
+        <ButtonGroup v-if="user && data.created_by === user.id && !discussion?.is_locked && !discussion?.is_archived">
           <Button size="s" square :inert="loadingDeletion" @click="startEditing">
             <Tooltip>
               <Icon name="ph:pen-bold" />
@@ -210,7 +210,7 @@ watch(editedContent, () => editError.value = [])
               class="card-bg" :style="{ maxHeight: 512,
                                         overflowY: 'auto' }"
             >
-              <MDRenderer :md="data.content" skeleton-height="0px" />
+              <MDRenderer :md="data.markdown" skeleton-height="0px" />
             </Card>
           </ConfirmModal>
         </ButtonGroup>

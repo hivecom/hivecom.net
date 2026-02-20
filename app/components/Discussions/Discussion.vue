@@ -241,7 +241,7 @@ provide('setQuoteOfComment', async (comment: Comment) => {
     .eq('id', comment.created_by)
     .single()
 
-  form.message = `${wrapInBlockquote(`${comment.content} \n\n @${data.username} said`)} \n\n`
+  form.message = `${wrapInBlockquote(`${comment.markdown} \n\n @${data.username} said`)} \n\n`
 
   focusTextarea()
 })
@@ -315,7 +315,7 @@ async function submitReply() {
       }
 
       const commentData = {
-        content: form.message,
+        markdown: form.message,
         discussion_id: discussion.value.id,
         ...(!!replyingTo.value && { reply_to_id: replyingTo.value.id }),
         ...(props.hash && {
@@ -417,7 +417,7 @@ provide('delete-comment', deleteComment)
                 <UserDisplay class="inline-block" size="s" :user-id="replyingTo!.created_by" hide-avatar />:
               </span>
               <p class="ws-wrap">
-                {{ truncate(replyingTo?.content ?? '', 240) }}
+                {{ truncate(replyingTo?.markdown ?? '', 240) }}
               </p>
             </div>
             <Tooltip>
@@ -430,7 +430,15 @@ provide('delete-comment', deleteComment)
             </Tooltip>
           </Flex>
         </Alert>
-        <div v-if="discussion?.is_locked">
+        <div v-if="discussion?.is_archived">
+          <Alert variant="warning">
+            <template #icon>
+              <Icon name="ph:archive" />
+            </template>
+            This discussion is archived
+          </Alert>
+        </div>
+        <div v-else-if="discussion?.is_locked">
           <Alert variant="neutral">
             <template #icon>
               <Icon name="ph:lock" />

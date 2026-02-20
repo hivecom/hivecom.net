@@ -61,6 +61,7 @@ const discussionsQuery = supabase
     modified_by,
     is_locked,
     is_sticky,
+    is_archived,
     reply_count,
     view_count,
     slug,
@@ -107,6 +108,7 @@ const statusOptions: SelectOption[] = [
   { label: 'Open', value: 'open' },
   { label: 'Locked', value: 'locked' },
   { label: 'Pinned', value: 'pinned' },
+  { label: 'Archived', value: 'archived' },
 ]
 
 const contextOptions: SelectOption[] = [
@@ -267,11 +269,12 @@ const filteredData = computed<TransformedDiscussion[]>(() => {
 
     const selectedStatuses = (statusFilter.value ?? []).map(option => option.value)
     if (selectedStatuses.length > 0) {
-      const matchesOpen = selectedStatuses.includes('open') && !discussion.is_locked
+      const matchesOpen = selectedStatuses.includes('open') && !discussion.is_locked && !discussion.is_archived
       const matchesLocked = selectedStatuses.includes('locked') && discussion.is_locked
       const matchesPinned = selectedStatuses.includes('pinned') && discussion.is_sticky
+      const matchesArchived = selectedStatuses.includes('archived') && discussion.is_archived
 
-      if (!(matchesOpen || matchesLocked || matchesPinned))
+      if (!(matchesOpen || matchesLocked || matchesPinned || matchesArchived))
         return false
     }
 
@@ -548,6 +551,9 @@ function handleDiscussionDeleted(discussionId: string) {
                   </Badge>
                   <Badge v-if="discussion._original.is_sticky" variant="accent">
                     Pinned
+                  </Badge>
+                  <Badge v-if="discussion._original.is_archived" variant="warning">
+                    Archived
                   </Badge>
                 </Flex>
               </Table.Cell>

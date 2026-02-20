@@ -7,10 +7,12 @@ import ForumItemActions from './ForumItemActions.vue'
 
 interface Props {
   data: Tables<'discussion_topics'>
+  discussionCount?: number
 }
 
 const {
   data,
+  discussionCount,
 } = defineProps<Props>()
 
 const emit = defineEmits<{
@@ -40,7 +42,9 @@ dayjs.extend(relativeTime)
         <p>{{ data.description }}</p>
       </div>
 
-      <div class="forum__category-post--meta" />
+      <div class="forum__category-post--meta">
+        <span>{{ discussionCount || 0 }}</span>
+      </div>
       <div class="forum__category-post--meta" />
       <div class="forum__category-post--meta">
         <span>{{ dayjs(data.modified_at).fromNow() }}</span>

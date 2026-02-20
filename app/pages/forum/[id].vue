@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Button, Card, Flex, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
@@ -109,10 +109,13 @@ onBeforeMount(() => {
       referendum:referendums(id, title)
     `)
     .eq('id', route.params.id)
-    .single()
+    .maybeSingle()
     .then(({ data, error }) => {
       if (error) {
         errorMessage.value = error.message
+      }
+      else if (!data) {
+        errorMessage.value = 'Discussion not found'
       }
       else {
         post.value = data
@@ -189,9 +192,15 @@ useSeoMeta({
           </Flex>
         </Flex>
 
-        <h1>
-          {{ post.title ?? 'Unnamed discussion' }}
-        </h1>
+        <Flex y-center gap="xs" wrap>
+          <h1>
+            {{ post.title ?? 'Unnamed discussion' }}
+          </h1>
+          <Badge v-if="post.is_archived" variant="warning">
+            <Icon name="ph:archive" class="text-color-yellow" />
+            Archived
+          </Badge>
+        </Flex>
 
         <Card v-if="contextInfo" class="mb-l mt-m">
           <Flex x-between y-center wrap gap="m">

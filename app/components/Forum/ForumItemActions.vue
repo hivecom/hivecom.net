@@ -55,14 +55,28 @@ function handleLock(mode: 'lock' | 'unlock') {
 const archiveLoading = ref(false)
 const archiveConfirm = ref(false)
 const archiveError = ref<string | null>(null)
+const archiveMode = ref<'archive' | 'unarchive'>('archive')
+const archiveTarget = computed(() => props.table === 'discussions' ? 'discussion' : 'topic')
+const archiveTitle = computed(() => archiveMode.value === 'archive'
+  ? `Archive ${archiveTarget.value}`
+  : `Unarchive ${archiveTarget.value}`)
+const archiveDescription = computed(() => {
+  if (archiveMode.value === 'archive') {
+    return `Are you sure you want to archive this ${archiveTarget.value}?`
+  }
+  return `Are you sure you want to unarchive this ${archiveTarget.value}?`
+})
 
-function handleArchive() {
+function handleArchive(mode: 'archive' | 'unarchive') {
   archiveError.value = null
   archiveLoading.value = true
 
+  const isArchived = mode === 'archive'
+  const itemType = props.table === 'discussions' ? 'discussion' : 'topic'
+
   supabase
-    .from('discussion_topics')
-    .update({ is_archived: true })
+    .from(props.table)
+    .update({ is_archived: isArchived })
     .eq('id', props.data.id)
     .select()
     .then(({ data, error }) => {
@@ -70,7 +84,7 @@ function handleArchive() {
         archiveError.value = error.message
       }
       else {
-        pushToast('Successfully archived topic')
+        pushToast(`Successfully ${isArchived ? 'archived' : 'unarchived'} ${itemType}`)
         emit('update', data[0] as Props['data'])
         archiveConfirm.value = false
       }
@@ -153,9 +167,18 @@ function handleDelete() {
         Lock
       </DropdownItem>
 
-      <!-- Archiving - topics -->
-      <DropdownItem v-if="props.table === 'discussion_topics' && !props.data.is_archived" @click="archiveConfirm = true">
+      <!-- Archiving - topics & discussions -->
+      <DropdownItem
+        v-if="!props.data.is_archived"
+        @click="archiveMode = 'archive'; archiveConfirm = true"
+      >
         Archive
+      </DropdownItem>
+      <DropdownItem
+        v-if="props.data.is_archived"
+        @click="archiveMode = 'unarchive'; archiveConfirm = true"
+      >
+        Unarchive
       </DropdownItem>
 
       <!-- Sticking discussions -->
@@ -181,9 +204,9 @@ function handleDelete() {
     <ConfirmModal
       v-model:open="archiveConfirm"
       :confirm-loading="archiveLoading"
-      title="Archive topic"
-      description="Are you sure you want to archive this topic? This action cannot be undone"
-      @confirm="handleArchive"
+      :title="archiveTitle"
+      :description="archiveDescription"
+      @confirm="handleArchive(archiveMode)"
     >
       <Alert v-if="archiveError">
         {{ archiveError }}

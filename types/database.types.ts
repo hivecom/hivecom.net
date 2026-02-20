@@ -173,36 +173,36 @@ export interface Database {
       }
       discussion_replies: {
         Row: {
-          content: string
           created_at: string
           created_by: string | null
           discussion_id: string
           id: string
           is_deleted: boolean
+          markdown: string
           meta: Json | null
           modified_at: string
           modified_by: string | null
           reply_to_id: string | null
         }
         Insert: {
-          content: string
           created_at?: string
           created_by?: string | null
           discussion_id: string
           id?: string
           is_deleted?: boolean
+          markdown: string
           meta?: Json | null
           modified_at?: string
           modified_by?: string | null
           reply_to_id?: string | null
         }
         Update: {
-          content?: string
           created_at?: string
           created_by?: string | null
           discussion_id?: string
           id?: string
           is_deleted?: boolean
+          markdown?: string
           meta?: Json | null
           modified_at?: string
           modified_by?: string | null
@@ -316,6 +316,7 @@ export interface Database {
           event_id: number | null
           gameserver_id: number | null
           id: string
+          is_archived: boolean
           is_locked: boolean
           is_sticky: boolean
           markdown: string | null
@@ -338,6 +339,7 @@ export interface Database {
           event_id?: number | null
           gameserver_id?: number | null
           id?: string
+          is_archived?: boolean
           is_locked?: boolean
           is_sticky?: boolean
           markdown?: string | null
@@ -360,6 +362,7 @@ export interface Database {
           event_id?: number | null
           gameserver_id?: number | null
           id?: string
+          is_archived?: boolean
           is_locked?: boolean
           is_sticky?: boolean
           markdown?: string | null
@@ -1307,6 +1310,7 @@ export interface Database {
       }
       is_owner: { Args: { record_user_id: string }, Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }, Returns: boolean }
+      normalize_mentions: { Args: { input_text: string }, Returns: string }
       pgmq_delete: {
         Args: { msg_id: number, queue_name: string }
         Returns: boolean

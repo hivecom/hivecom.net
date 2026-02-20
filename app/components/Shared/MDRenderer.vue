@@ -1,7 +1,7 @@
 <script setup>
 import { Skeleton } from '@dolanske/vui'
-import { computed } from 'vue'
-import { processMentions } from '@/lib/markdown-processors'
+import { computed, ref, watchEffect } from 'vue'
+import { extractMentionIds, processMentions } from '@/lib/markdown-processors'
 import MDRendererSlot from './MDRendererSlot.vue'
 
 const props = defineProps({
@@ -22,9 +22,43 @@ const props = defineProps({
   },
 })
 
+const supabase = useSupabaseClient()
+const mentionLookup = ref({})
+let mentionRequestId = 0
+
+watchEffect(async () => {
+  const ids = extractMentionIds(props.md)
+  const requestId = ++mentionRequestId
+
+  if (ids.length === 0) {
+    mentionLookup.value = {}
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .in('id', ids)
+
+  if (requestId !== mentionRequestId) {
+    return
+  }
+
+  if (error || !data) {
+    mentionLookup.value = {}
+    return
+  }
+
+  mentionLookup.value = Object.fromEntries(
+    data
+      .filter(profile => profile.username)
+      .map(profile => [profile.id, profile.username]),
+  )
+})
+
 // Process the markdown to convert @mentions to links
 const processedMarkdown = computed(() => {
-  return processMentions(props.md)
+  return processMentions(props.md, mentionLookup.value)
 })
 </script>
 

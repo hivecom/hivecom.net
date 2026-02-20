@@ -33,7 +33,7 @@ const topicOptions = computed(() => {
     { id: '-', label: 'Top-level', parent_id: null, path: '/', priority: 0 },
     ...topics.value
       // NOTE: this could instead be shown in the UI as a disabled option with badge?
-      .filter(item => !item.is_archived && !item.is_locked)
+      .filter(item => !item.is_archived)
       .map(topic => ({
         id: topic.id,
         label: topic.name,

@@ -7,7 +7,7 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 type DiscussionRecord = Tables<'discussions'>
 
 const props = defineProps<{
-  discussion: Pick<DiscussionRecord, 'id' | 'is_locked' | 'is_sticky' | 'discussion_topic_id'>
+  discussion: Pick<DiscussionRecord, 'id' | 'is_locked' | 'is_sticky' | 'discussion_topic_id' | 'is_archived'>
   showLabels?: boolean
   size?: 's' | 'm' | 'l'
 }>()
@@ -20,7 +20,10 @@ const supabase = useSupabaseClient()
 
 const lockLoading = ref(false)
 const pinLoading = ref(false)
+const archiveLoading = ref(false)
 const showLockConfirm = ref(false)
+const showArchiveConfirm = ref(false)
+const archiveMode = ref<'archive' | 'unarchive'>('archive')
 
 const shouldShowLabels = computed(() => !!props.showLabels)
 const buttonSize = computed(() => props.size ?? (shouldShowLabels.value ? 'm' : 's'))
@@ -78,6 +81,29 @@ async function applyPin(nextValue: boolean) {
   }
 }
 
+async function applyArchive(nextValue: boolean) {
+  archiveLoading.value = true
+
+  try {
+    const { data, error } = await updateDiscussion({ is_archived: nextValue })
+
+    if (error)
+      throw error
+
+    emit('updated', data)
+    pushToast(nextValue ? 'Discussion archived' : 'Discussion unarchived')
+    showArchiveConfirm.value = false
+  }
+  catch (error) {
+    pushToast('Failed to update discussion', {
+      description: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+  finally {
+    archiveLoading.value = false
+  }
+}
+
 function handleLockClick() {
   if (props.discussion.is_locked) {
     applyLock(false)
@@ -89,6 +115,11 @@ function handleLockClick() {
 
 function handlePinClick() {
   applyPin(!props.discussion.is_sticky)
+}
+
+function handleArchiveClick() {
+  archiveMode.value = props.discussion.is_archived ? 'unarchive' : 'archive'
+  showArchiveConfirm.value = true
 }
 </script>
 
@@ -129,6 +160,23 @@ function handlePinClick() {
       </template>
     </Button>
 
+    <Button
+      variant="gray"
+      :size="buttonSize"
+      :loading="archiveLoading"
+      :square="!shouldShowLabels"
+      :data-title-top-right="shouldShowLabels ? undefined : (props.discussion.is_archived ? 'Unarchive Discussion' : 'Archive Discussion')"
+      @click="handleArchiveClick"
+    >
+      <Icon v-if="!shouldShowLabels" name="ph:archive" />
+      <template v-if="shouldShowLabels" #start>
+        <Icon name="ph:archive" />
+      </template>
+      <template v-if="shouldShowLabels">
+        {{ props.discussion.is_archived ? 'Unarchive' : 'Archive' }}
+      </template>
+    </Button>
+
     <ConfirmModal
       v-model:open="showLockConfirm"
       :confirm="() => applyLock(true)"
@@ -138,6 +186,17 @@ function handlePinClick() {
       confirm-text="Lock"
       cancel-text="Cancel"
       :destructive="true"
+    />
+
+    <ConfirmModal
+      v-model:open="showArchiveConfirm"
+      :confirm="() => applyArchive(archiveMode === 'archive')"
+      :confirm-loading="archiveLoading"
+      :title="archiveMode === 'archive' ? 'Archive discussion' : 'Unarchive discussion'"
+      :description="archiveMode === 'archive' ? 'Are you sure you want to archive this discussion?' : 'Are you sure you want to unarchive this discussion?'"
+      :confirm-text="archiveMode === 'archive' ? 'Archive' : 'Unarchive'"
+      cancel-text="Cancel"
+      :destructive="archiveMode === 'archive'"
     />
   </Flex>
 </template>

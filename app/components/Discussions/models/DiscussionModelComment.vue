@@ -58,7 +58,7 @@ function handleDeletion() {
           You:
         </p>
         <p class="text-overflow-1">
-          {{ stripMarkdown(data.reply.content, 512) }}
+          {{ stripMarkdown(data.reply.markdown, 512) }}
         </p>
       </button>
       <template #tooltip>
@@ -66,20 +66,20 @@ function handleDeletion() {
           <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" />
         </p>
         <MDRenderer
-          v-if="data.reply.content.length > COMMENT_TRUNCATE"
+          v-if="data.reply.markdown.length > COMMENT_TRUNCATE"
           style="max-width: 256px"
-          :md="data.content"
+          :md="data.reply.markdown"
           skeleton-height="0px"
         />
       </template>
     </Tooltip>
-    <MDRenderer :md="data.content" skeleton-height="0px" />
+    <MDRenderer :md="data.markdown" skeleton-height="0px" />
     <p v-if="timestamps" class="discussion-comment__timestamp">
       {{ dayjs(data.created_at).fromNow() }}
     </p>
     <div class="discussion-comment__actions">
       <ButtonGroup>
-        <Button v-if="userId && !discussion?.is_locked" square size="s" @click="setReplyToComment(data)">
+        <Button v-if="userId && !discussion?.is_locked && !discussion?.is_archived" square size="s" @click="setReplyToComment(data)">
           <Tooltip>
             <Icon name="ph:arrow-elbow-up-left-bold" />
             <template #tooltip>
@@ -97,7 +97,7 @@ function handleDeletion() {
         </Button>
       </ButtonGroup>
       <!-- Delete comment option if the comment belongs to me -->
-      <Button v-if="data.created_by === userId && !discussion?.is_locked" size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
+      <Button v-if="data.created_by === userId && !discussion?.is_locked && !discussion?.is_archived" size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
         <Tooltip>
           <Icon name="ph:trash-bold" />
           <template #tooltip>
@@ -118,7 +118,7 @@ function handleDeletion() {
           class="card-bg" :style="{ maxHeight: 512,
                                     overflowY: 'auto' }"
         >
-          <MDRenderer :md="data.content" skeleton-height="0px" />
+          <MDRenderer :md="data.markdown" skeleton-height="0px" />
         </Card>
       </ConfirmModal>
     </div>

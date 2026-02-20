@@ -53,7 +53,7 @@ const query = toRef(props, 'query')
 </script>
 
 <template>
-  <div v-show="query" class="rich-text-mention-menu">
+  <div v-show="query !== null" class="rich-text-mention-menu">
     <span class="block mb-xxs text-xs text-color-lighter">People</span>
     <Button
       v-for="(item, index) in props.items"

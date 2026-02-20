@@ -35,10 +35,8 @@ export function defineSuggestion(char: string, model: Component, query: (search_
   const plugin = {
     char,
     items: async (props) => {
-      if (!props.query)
-        return []
-
-      const result = await query(props.query) as PostgrestResponse<unknown>
+      const searchTerm = props.query ?? ''
+      const result = await query(searchTerm) as PostgrestResponse<unknown>
 
       if (result.error)
         return []
