@@ -193,16 +193,16 @@ useSeoMeta({
           {{ post.title ?? 'Unnamed discussion' }}
         </h1>
 
-        <Card v-if="contextInfo" class="mb-l">
+        <Card v-if="contextInfo" class="mb-l mt-m">
           <Flex x-between y-center wrap gap="m">
             <Flex column gap="xs">
               <Flex y-center gap="xs">
-                <Icon :name="contextInfo.icon" />
+                <Icon :name="contextInfo.icon" :size="20" />
                 <span>This discussion is linked to a {{ contextInfo.label }}</span>
               </Flex>
             </Flex>
             <NuxtLink :to="contextInfo.href">
-              <Button variant="accent" size="s">
+              <Button size="s">
                 View full {{ contextInfo.label }}
               </Button>
             </NuxtLink>
@@ -211,7 +211,7 @@ useSeoMeta({
 
         <MDRenderer v-if="post.markdown" class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
 
-        <Flex x-between y-center :class="isMobile ? 'mt-l' : 'mt-xl'" wrap gap="m">
+        <Flex x-between y-center class="mt-l" wrap gap="m">
           <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
           <Flex y-center>
             <Tooltip>
@@ -266,8 +266,6 @@ useSeoMeta({
 }
 
 .page-title {
-  border-bottom: 1px solid var(--color-border);
-
   h1 {
     font-size: var(--font-size-xxxxl);
   }
