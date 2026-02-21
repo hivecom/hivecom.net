@@ -453,6 +453,7 @@ provide('delete-comment', deleteComment)
             :errors="Object.values(errors.message.errors)"
             :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
             min-height="108px"
+            :media-context="props.id"
           />
           <Button size="s" class="discussion__add--send-button" type="submit" :loading="formLoading" :disabled="form.message.length === 0">
             Send

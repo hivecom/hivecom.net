@@ -30,7 +30,6 @@ const activeTopicId = inject<() => Ref<string | null>>('forumActiveTopicId', () 
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
   return topics.value
-    // NOTE: this could instead be shown in the UI as a disabled option with badge?
     .filter(item => !item.is_archived && !item.is_locked)
     .map(topic => ({
       id: topic.id,

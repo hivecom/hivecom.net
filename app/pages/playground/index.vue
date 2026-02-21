@@ -16,7 +16,11 @@ const content = ref(`<p>
 <template>
   <div style="padding-block: 128px;width:100%">
     <div class="container container-m">
-      <RichTextEditor v-model="content" class="mb-xl" placeholder="Yo whats going on big guy?" />
+      <RichTextEditor
+        v-model="content"
+        class="mb-xl"
+        placeholder="Yo whats going on big guy?"
+      />
     </div>
   </div>
 </template>

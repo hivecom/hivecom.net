@@ -9,7 +9,6 @@ import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { extractMentionIds } from '@/lib/markdown-processors'
-import { handleFileUpload } from './plugins/file-upload'
 import { defineSuggestion } from './plugins/suggestion'
 import RichTextMentions from './RichTextMentions.vue'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
@@ -32,8 +31,6 @@ const {
 
 // TODO: image upload
 
-// TODO: image spoiler (or general spoiler tag?)
-
 interface Props {
   autofocus?: boolean
   disabled?: boolean
@@ -42,6 +39,11 @@ interface Props {
   errors?: string[]
   placeholder?: string
   minHeight?: string
+  /**
+   * If provided, it will enable media upload via pasting/dragging media files
+   * into the editor. Providing a context helps with file management
+   */
+  mediaContext?: string
 }
 
 const content = defineModel<string>()
@@ -124,17 +126,46 @@ const editor = useEditor({
         return `@{${props.node.attrs.id}}`
       },
     }),
-    FileHandler.configure({
-      onPaste: (editor, files) => handleFileUpload(editor as never, files),
-      onDrop: (editor, files, pos) => handleFileUpload(editor as never, files, pos),
-      allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
-    }),
+    // Only allow file uploads if mediaContext is provided
+    ...(props.mediaContext
+      ? [FileHandler.configure({
+          onPaste: (_, files) => handleFileUpload(files),
+          onDrop: (_, files, pos) => handleFileUpload(files, pos),
+          allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+        })]
+      : []),
   ],
   contentType: 'markdown',
   onUpdate: () => {
     content.value = editor.value?.getMarkdown() || ''
   },
 })
+
+// Upload file into the bucket and set the editor node URL
+function handleFileUpload(files: File[], pos?: number) {
+  files.forEach(async (file) => {
+    if (!editor.value)
+      return
+
+    const format = file.type.split('/')[1]
+
+    // Path to the public image upload
+    const { data: src } = await supabase.storage
+      .from('hivecom-content-forums')
+      .upload(`${props.mediaContext}/${crypto.randomUUID()}.${format}`, file, {
+        contentType: file.type,
+      })
+
+    editor.value
+      .chain()
+      .insertContentAt(pos ?? editor.value.state.selection.anchor, {
+        type: 'image',
+        attrs: { src },
+      })
+      .focus()
+      .run()
+  })
+}
 
 let mentionLookupRequestId = 0
 
@@ -191,9 +222,11 @@ async function hydrateMentionLabels(markdown: string) {
   })
 }
 
+// If content is changed externally, make sure mentions are hydrated
 watch(() => editor.value, (value) => {
-  if (value)
-    void hydrateMentionLabels(content.value ?? '')
+  if (value) {
+    hydrateMentionLabels(content.value ?? '')
+  }
 }, { immediate: true })
 
 // Update editor content manually on model change
@@ -212,15 +245,15 @@ watch(content, (newContent) => {
   editor.value?.commands.focus('end')
 })
 
-watch(() => props, () => {
-  editor.value?.setOptions({
-    autofocus: props.autofocus,
-    editable: !props.disabled,
-    extensions: [
-      Placeholder.configure({ placeholder: props.placeholder }),
-    ],
-  })
-}, { deep: true })
+// watch(() => props, () => {
+//   editor.value?.setOptions({
+//     autofocus: props.autofocus,
+//     editable: !props.disabled,
+//     extensions: [
+//       Placeholder.configure({ placeholder: props.placeholder }),
+//     ],
+//   })
+// }, { deep: true })
 
 const elementId = useId()
 
@@ -239,8 +272,6 @@ defineExpose({
 
     <!-- Text selection menu -->
     <RichTextSelectionMenu v-if="editor" :editor />
-
-    <!-- Emote picker menu -->
 
     <!-- Main editor instance -->
     <EditorContent :id="elementId" :editor="editor" class="typeset" />
