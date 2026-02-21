@@ -312,7 +312,7 @@ function formatLastSeen(lastSeenAt: string | null): string {
                   </Flex>
                   <span class="ts-presence__meta">Last seen {{ formatLastSeen(entry.lastSeenAt) }}</span>
 
-                  <Flex x-start class="mt-xs">
+                  <Flex v-if="entry.online" x-start class="mt-xs">
                     <Button size="s" :href="`/servers/voiceservers#${entry.channelId}`">
                       Show TS viewer
                     </Button>

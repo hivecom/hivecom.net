@@ -124,12 +124,12 @@ const currentUser = useSupabaseUser()
     <Flex v-else-if="loading" gap="s" y-center class="user-display__header">
       <Skeleton
         v-if="!hideAvatar"
-        :width="size === 's' ? '32px' : size === 'm' ? '40px' : '48px'"
-        :height="size === 's' ? '32px' : size === 'm' ? '40px' : '48px'"
+        :width="size === 's' ? '28px' : size === 'm' ? '40px' : '48px'"
+        :height="size === 's' ? '28px' : size === 'm' ? '40px' : '48px'"
         style="border-radius: 50%;"
       />
       <div class="user-display__info">
-        <Skeleton width="120px" height="20px" />
+        <Skeleton width="108px" height="20px" />
       </div>
     </Flex>
 
