@@ -116,16 +116,16 @@ watch(editedContent, () => editError.value = [])
         <Avatar :url="user?.avatarUrl || undefined" size="l" />
         <UserDisplay :user-id="data.created_by" show-role hide-avatar />
       </Flex>
-      <Flex v-if="user?.created_at || country" expand x-center gap="l">
+      <Flex v-if="user?.created_at || country" expand x-center gap="xs">
+        <p v-if="country" class="author-meta">
+          {{ country.emoji }}
+        </p>
         <p v-if="user?.created_at" class="author-meta">
           Joined {{ dayjs(user.created_at).format('MMMM YYYY') }}
         </p>
-        <p v-if="country" class="author-meta">
-          {{ country.name }} {{ country.emoji }}
-        </p>
       </Flex>
       <Divider v-if="user?.introduction || user?.created_at || country" />
-      <p v-if="user?.introduction" class="user-preview-card__intro text-s">
+      <p v-if="user?.introduction" class="text-s text-center">
         {{ user.introduction }}
       </p>
     </div>

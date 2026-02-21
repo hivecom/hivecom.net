@@ -36,8 +36,8 @@ dayjs.extend(relativeTime)
             <Icon name="ph:push-pin" class="text-color-accent" />
           </BadgeCircle>
 
-          <BadgeCircle v-if="data.is_locked" data-title-top="Locked" variant="info">
-            <Icon name="ph:lock" class="text-color-blue" />
+          <BadgeCircle v-if="data.is_locked" data-title-top="Locked">
+            <Icon name="ph:lock" />
           </BadgeCircle>
 
           <BadgeCircle v-if="data.is_archived" data-title-top="Archived" variant="warning">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, Button, Card, Flex, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
@@ -11,8 +11,6 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDate } from '@/lib/utils/date'
 
 dayjs.extend(relativeTime)
-
-// TODO: do a 2nd design pass on this later after some feedback & more testing
 
 // TODO: path to post would be nice, but we'd have to fetch all the parent topics. Maybe a recursive query or some shit?
 
@@ -137,7 +135,7 @@ useSeoMeta({
   <div class="page forum container container-m">
     <!-- Loading state -->
     <template v-if="loading">
-      <h1>Loading shit add skeleton</h1>
+      <Spinner />
     </template>
 
     <!-- Main Content  -->

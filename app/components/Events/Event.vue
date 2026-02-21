@@ -62,7 +62,7 @@ updateTime()
 <template>
   <NuxtLink :to="`/events/${data.id}`">
     <Card class="event-item" :class="{ 'event-item--first': props.isHighlight }">
-      <Flex wrap x-between y-center gap="m">
+      <div class="event-item__container">
         <div>
           <Flex class="mb-xs" y-center>
             <h3>{{ props.data.title }}</h3>
@@ -117,7 +117,7 @@ updateTime()
             :simple="!props.isHighlight"
           />
         </div>
-      </Flex>
+      </div>
     </Card>
   </NuxtLink>
 </template>
@@ -155,6 +155,13 @@ updateTime()
     font-size: var(--font-size-xl);
   }
 
+  &__container {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: var(--space-xxl);
+    align-items: center;
+  }
+
   &--first {
     background-color: var(--color-bg-raised);
     padding: var(--space-l);
@@ -179,6 +186,8 @@ updateTime()
   &__countdown-wrap {
     border: 1px solid var(--color-border-strong);
     border-radius: var(--border-radius-m);
+    height: fit-content;
+    width: 420px;
 
     .countdown-timer {
       background-color: var(--color-border-weak);
@@ -260,6 +269,16 @@ updateTime()
       p {
         text-align: center !important;
       }
+    }
+
+    &__container {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-l);
+    }
+
+    &__countdown-wrap {
+      width: fit-content;
     }
 
     // Center the badges container

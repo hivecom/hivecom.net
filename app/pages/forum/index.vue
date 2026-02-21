@@ -595,8 +595,8 @@ const postSinceYesterday = computed(() => {
             >
               {{ topic.name }}
             </h3>
-            <Badge v-if="topic.is_locked" variant="info">
-              <Icon name="ph:lock" class="text-color-blue" />
+            <Badge v-if="topic.is_locked">
+              <Icon name="ph:lock" />
               Locked
             </Badge>
 
