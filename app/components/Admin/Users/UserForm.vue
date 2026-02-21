@@ -2,6 +2,7 @@
 import type { Enums } from '@/types/database.types'
 import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { deleteUserAvatar, getUserAvatarUrl } from '@/lib/storage'
@@ -724,7 +725,7 @@ function clearBirthday() {
       <!-- Admin Guidelines -->
       <Flex v-if="props.isEditMode" column gap="s" class="admin-guidelines" expand>
         <h5>⚠️ Admin Guidelines</h5>
-        <ul class="guidelines-list">
+        <ul class="guidelines-list text-s">
           <li>
             <Icon name="ph:warning-circle" />
             Only modify user information for content moderation purposes
@@ -924,31 +925,26 @@ function clearBirthday() {
           :disabled="!canEditForm"
         />
 
-        <Textarea
+        <RichTextEditor
           v-model="userForm.markdown"
-          expand
           label="Profile Content (Markdown)"
+          hint="You can use markdown"
           placeholder="Detailed profile content in markdown format"
-          :rows="8"
-          :maxlength="MARKDOWN_LIMIT"
+          min-height="216px"
           :disabled="!canEditForm"
-          :valid="markdownValidation.valid"
-          :error="markdownValidation.error"
-        >
-          <template #after>
-            <Flex x-between>
-              <div class="help-text">
-                <Icon name="ph:info" />
-                You can use Markdown formatting. HTML tags are not allowed.
-              </div>
-              <div class="character-count">
-                <span :class="{ 'over-limit': markdownCharCount > MARKDOWN_LIMIT }">
-                  {{ markdownCharCount }}/{{ MARKDOWN_LIMIT }}
-                </span>
-              </div>
-            </Flex>
-          </template>
-        </Textarea>
+          :errors="markdownValidation.valid ? [] : [markdownValidation.error ?? 'Invalid markdown content']"
+        />
+        <Flex x-between class="help-text">
+          <div>
+            <Icon name="ph:info" />
+            You can use Markdown formatting. HTML tags are not allowed.
+          </div>
+          <div class="character-count">
+            <span :class="{ 'over-limit': markdownCharCount > MARKDOWN_LIMIT }">
+              {{ markdownCharCount }}/{{ MARKDOWN_LIMIT }}
+            </span>
+          </div>
+        </Flex>
       </Flex>
 
       <!-- External IDs Section -->

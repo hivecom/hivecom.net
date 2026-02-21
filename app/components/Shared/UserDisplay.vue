@@ -3,7 +3,7 @@ import { Avatar, Badge, Flex, Skeleton } from '@dolanske/vui'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
-import { seedRndMinMax } from '@/lib/utils/random'
+import { getAnonymousUsername } from '@/lib/anonymous-usernames'
 
 interface Props {
   userId?: string | null
@@ -99,6 +99,8 @@ const userInitials = computed(() => {
 
 const loading = computed(() => userLoading.value || (shouldFetchAvatar.value && avatarLoading.value))
 
+const anonymousUsername = computed(() => props.userId ? getAnonymousUsername(props.userId) : 'AnonymousUser')
+
 const currentUser = useSupabaseUser()
 </script>
 
@@ -112,7 +114,7 @@ const currentUser = useSupabaseUser()
       <div class="user-display__info">
         <Flex gap="xs" x-start y-center wrap>
           <div class="user-display__link">
-            <span v-if="props.userId" class="user-display__username">{{ `User ${seedRndMinMax(0, 100000, props.userId)}` }}</span>
+            <span v-if="props.userId" class="user-display__username">{{ anonymousUsername }}</span>
           </div>
         </Flex>
       </div>
@@ -179,7 +181,7 @@ const currentUser = useSupabaseUser()
         </div>
       </template>
       <div class="user-display__info">
-        <Flex gap="xs" x-start y-center wrap>
+        <Flex gap="xs" x-start y-center wrap class="user-display__name-row">
           <NuxtLink
             :to="`/profile/${user.id}`"
             class="user-display__link"
@@ -188,7 +190,7 @@ const currentUser = useSupabaseUser()
             <span class="user-display__username">{{ user.username }}</span>
           </NuxtLink>
           <RoleIndicator
-            v-if="showRole"
+            v-if="showRole && user.role && user.role !== 'user'"
             :role="user.role"
             size="s"
           />
@@ -200,6 +202,15 @@ const currentUser = useSupabaseUser()
 
 <style lang="scss" scoped>
 .user-display {
+  &__info {
+    display: flex;
+    align-items: center;
+  }
+
+  &__name-row {
+    align-items: center;
+  }
+
   &__username {
     font-weight: var(--font-weight-medium);
     color: var(--color-text);

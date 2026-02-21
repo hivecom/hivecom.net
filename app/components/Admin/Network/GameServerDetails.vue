@@ -2,7 +2,8 @@
 import type { Tables } from '@/types/database.types'
 import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 
-import { watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
@@ -21,7 +22,7 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['edit'])
+const emit = defineEmits(['edit', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -29,6 +30,8 @@ const isOpen = defineModel<boolean>('isOpen')
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
 const canUpdateGameservers = computed(() => hasPermission('gameservers.update'))
+const canDeleteGameservers = computed(() => hasPermission('gameservers.delete'))
+const showDeleteConfirm = ref(false)
 const route = useRoute()
 
 watch(
@@ -56,6 +59,19 @@ function handleEdit() {
   emit('edit', props.gameserver)
   isOpen.value = false
 }
+
+function handleDelete() {
+  showDeleteConfirm.value = true
+}
+
+function confirmDelete() {
+  if (!props.gameserver)
+    return
+
+  emit('delete', props.gameserver.id)
+  showDeleteConfirm.value = false
+  isOpen.value = false
+}
 </script>
 
 <template>
@@ -75,6 +91,16 @@ function handleEdit() {
           </span>
         </Flex>
         <Flex y-center gap="s">
+          <Button
+            v-if="props.gameserver && canDeleteGameservers"
+            variant="danger"
+            @click="handleDelete"
+          >
+            <template #start>
+              <Icon name="ph:trash" />
+            </template>
+            Delete
+          </Button>
           <Button
             v-if="props.gameserver && canUpdateGameservers"
             @click="handleEdit"
@@ -198,6 +224,16 @@ function handleEdit() {
         />
       </Flex>
     </Flex>
+
+    <ConfirmModal
+      v-model:open="showDeleteConfirm"
+      :confirm="confirmDelete"
+      title="Confirm Delete Game Server"
+      :description="`Are you sure you want to delete the game server '${props.gameserver?.name}'? This action cannot be undone.`"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      :destructive="true"
+    />
   </Sheet>
 </template>
 

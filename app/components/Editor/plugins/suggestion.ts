@@ -30,12 +30,34 @@ async function updatePosition(editor: CoreEditor, element: HTMLElement) {
 // NOTE: This is typed a bit weirdly because supabase and postgres typing
 // systems are complicated af. It gets the job done.
 
-// eslint-disable-next-line ts/no-explicit-any
-export function defineSuggestion(char: string, model: Component, query: (search_term: string) => Promise<any>) {
+export function defineSuggestion(
+  char: string,
+  model: Component,
+  query: (search_term: string) => Promise<unknown>,
+  options?: {
+    allow?: SuggestionOptions['allow']
+    transformQuery?: (query: string) => string
+    allowEmptyQuery?: boolean
+    shouldFetchRaw?: (query: string) => boolean
+    shouldFetch?: (query: string) => boolean
+  },
+) {
   const plugin = {
     char,
+    allow: options?.allow,
     items: async (props) => {
-      const searchTerm = props.query ?? ''
+      const rawQuery = props.query ?? ''
+      const searchTerm = options?.transformQuery ? options.transformQuery(rawQuery) : rawQuery
+
+      if (!searchTerm.trim() && !options?.allowEmptyQuery)
+        return []
+
+      if (options?.shouldFetchRaw && !options.shouldFetchRaw(rawQuery))
+        return []
+
+      if (options?.shouldFetch && !options.shouldFetch(searchTerm))
+        return []
+
       const result = await query(searchTerm) as PostgrestResponse<unknown>
 
       if (result.error)

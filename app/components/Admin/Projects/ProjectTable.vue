@@ -432,7 +432,7 @@ onBeforeMount(fetchProjects)
               </Flex>
             </Table.Cell>
             <Table.Cell>
-              <div v-if="project.Tags && project.Tags.length > 0" class="tags-cell">
+              <Flex v-if="project.Tags && project.Tags.length > 0" expand class="tags-cell">
                 <Badge
                   v-for="tag in project.Tags"
                   :key="tag"
@@ -442,7 +442,7 @@ onBeforeMount(fetchProjects)
                 >
                   {{ tag }}
                 </Badge>
-              </div>
+              </Flex>
               <span v-else class="text-color-light">No tags</span>
             </Table.Cell>
             <Table.Cell>
@@ -516,7 +516,6 @@ td {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
-  max-width: 200px; // Limit width to prevent table from becoming too wide
 
   .table-tag {
     font-size: var(--font-size-xxs);

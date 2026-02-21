@@ -7,10 +7,12 @@ import ForumItemActions from './ForumItemActions.vue'
 
 interface Props {
   data: Tables<'discussions'>
+  lastActivity?: string | null
 }
 
 const {
   data,
+  lastActivity,
 } = defineProps<Props>()
 
 const emit = defineEmits<{
@@ -52,7 +54,7 @@ dayjs.extend(relativeTime)
         <span>{{ data.view_count }}</span>
       </div>
       <div class="forum__category-post--meta">
-        <span>{{ dayjs(data.modified_at).fromNow() }}</span>
+        <span>{{ dayjs(lastActivity ?? data.created_at).fromNow() }}</span>
       </div>
 
       <ForumItemActions table="discussions" :data @update="emit('update', $event as any)" />

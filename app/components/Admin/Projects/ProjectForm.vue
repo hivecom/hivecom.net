@@ -2,6 +2,7 @@
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Badge, Button, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
+import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { deleteProjectBanner, getProjectBannerUrl, uploadProjectBanner } from '@/lib/storage'
@@ -429,16 +430,13 @@ function handleTagInputEnter() {
       <Flex column gap="m" expand>
         <h4>Content</h4>
 
-        <Textarea
+        <RichTextEditor
           v-model="projectForm.markdown"
-          expand
-          name="markdown"
           label="Markdown Content"
-          required
-          :valid="validation.markdown"
-          error="Markdown content is required"
+          hint="You can use markdown"
           placeholder="Enter markdown content"
-          :rows="12"
+          min-height="216px"
+          :errors="validation.markdown ? [] : ['Markdown content is required']"
         />
       </Flex>
     </Flex>

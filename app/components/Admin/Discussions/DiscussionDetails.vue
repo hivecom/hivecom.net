@@ -74,6 +74,14 @@ const lastReplyTimestamp = computed<string | null>(() =>
   lastReply.value?.created_at ?? null,
 )
 
+const lastActivityAt = computed<string | null>(() =>
+  lastReply.value?.created_at ?? props.discussion?.created_at ?? null,
+)
+
+const lastActivityUserId = computed<string | null>(() =>
+  lastReply.value?.created_by ?? props.discussion?.created_by ?? null,
+)
+
 const contextLinks = computed<ContextLink[]>(() => {
   if (!props.discussion)
     return []
@@ -344,6 +352,14 @@ function handleClose() {
           </Grid>
 
           <Grid class="detail-item" expand columns="1fr 2fr">
+            <span class="text-color-light text-bold">Last activity:</span>
+            <Flex y-center gap="xs">
+              <TimestampDate size="s" :date="lastActivityAt" />
+              <UserLink :user-id="lastActivityUserId" placeholder="Unknown" class="text-m" show-avatar />
+            </Flex>
+          </Grid>
+
+          <Grid class="detail-item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Author:</span>
             <UserLink :user-id="props.discussion.created_by" placeholder="Unknown" class="text-m" show-avatar />
           </Grid>
@@ -366,9 +382,9 @@ function handleClose() {
       </Card>
 
       <template v-if="hasReplies">
-        <Flex v-if="showRepliesBetween" column gap="xs">
+        <Flex v-if="showRepliesBetween" expand column gap="xs">
           <Divider />
-          <Flex x-center>
+          <Flex x-center expand>
             <span class="text-color-lighter text-xs">{{ threadReplyCountText }}</span>
           </Flex>
           <Divider />

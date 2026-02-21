@@ -509,6 +509,7 @@ onBeforeMount(fetchGameservers)
     v-model:is-open="showGameserverDetails"
     :gameserver="selectedGameserver"
     @edit="handleEditFromDetails"
+    @delete="handleGameserverDelete"
   />
 
   <!-- Game Server Form Sheet (for both create and edit) -->

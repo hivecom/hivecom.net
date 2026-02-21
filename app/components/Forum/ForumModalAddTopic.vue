@@ -33,7 +33,7 @@ const topicOptions = computed(() => {
     { id: '-', label: 'Top-level', parent_id: null, path: '/', priority: 0 },
     ...topics.value
       // NOTE: this could instead be shown in the UI as a disabled option with badge?
-      .filter(item => !item.is_archived)
+      .filter(item => !item.is_archived && (!isEditing.value || item.id !== props.editedItem?.id))
       .map(topic => ({
         id: topic.id,
         label: topic.name,
@@ -88,6 +88,12 @@ function submitForm() {
     return
 
   loading.value = true
+
+  if (isEditing.value && form.parent_id === props.editedItem?.id) {
+    pushToast('Topic cannot be its own parent')
+    loading.value = false
+    return
+  }
 
   validate()
     .then(() => {

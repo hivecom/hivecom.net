@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
+import type { Tables } from '@/types/database.types'
 import { computed, onMounted, ref, watch } from 'vue'
 import KPICard from '@/components/Admin/KPICard.vue'
 import KPIContainer from '@/components/Admin/KPIContainer.vue'
+import { formatDurationCompact } from '@/lib/utils/duration'
 
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
@@ -21,13 +23,66 @@ const discussionsQuery = supabase
     event_id,
     gameserver_id,
     referendum_id,
-    reply_count
+    reply_count,
+    last_reply:discussion_replies!discussion_replies_discussion_id_fkey(created_at)
   `)
+  .order('created_at', { foreignTable: 'discussion_replies', ascending: false })
+  .limit(1, { foreignTable: 'discussion_replies' })
 
 const loading = ref(true)
 const errorMessage = ref('')
 
 const discussions = ref<QueryData<typeof discussionsQuery>>([])
+
+type DiscussionRecord = QueryData<typeof discussionsQuery>[number]
+type DiscussionReply = Pick<Tables<'discussion_replies'>, 'created_at'>
+
+function formatDurationSince(dateString: string): string {
+  const date = new Date(dateString)
+  if (Number.isNaN(date.getTime()))
+    return '—'
+
+  const diffMs = Date.now() - date.getTime()
+  if (diffMs < 0)
+    return '—'
+
+  const compact = formatDurationCompact(diffMs)
+  return compact ? `${compact} ago` : '—'
+}
+
+function getLastReplyAt(discussion: DiscussionRecord): string | null {
+  const replies = (discussion.last_reply ?? []) as DiscussionReply[]
+  return replies[0]?.created_at ?? null
+}
+
+function getLastActivityAt(discussion: DiscussionRecord): string | null {
+  return getLastReplyAt(discussion) ?? discussion.created_at ?? null
+}
+
+const lastDiscussionOrReply = computed(() => {
+  let latest: string | null = null
+
+  discussions.value.forEach((discussion: DiscussionRecord) => {
+    const activityAt = getLastActivityAt(discussion)
+    if (!activityAt)
+      return
+
+    const activityTime = new Date(activityAt).getTime()
+    if (Number.isNaN(activityTime))
+      return
+
+    if (!latest) {
+      latest = activityAt
+      return
+    }
+
+    const latestTime = new Date(latest).getTime()
+    if (Number.isNaN(latestTime) || activityTime > latestTime)
+      latest = activityAt
+  })
+
+  return latest ? formatDurationSince(latest) : '—'
+})
 
 const totalDiscussions = computed(() => discussions.value.length)
 
@@ -79,7 +134,7 @@ onMounted(fetchDiscussions)
       :is-loading="loading"
       icon="ph:chat-circle"
       variant="primary"
-      description="All discussions across the platform"
+      description="All discussions across the platform including profiles"
     />
 
     <KPICard
@@ -89,6 +144,15 @@ onMounted(fetchDiscussions)
       icon="ph:calendar-check"
       variant="gray"
       description="New discussions in the last 30 days"
+    />
+
+    <KPICard
+      label="Last Discussion / Reply"
+      :value="lastDiscussionOrReply"
+      :is-loading="loading"
+      icon="ph:timer"
+      variant="gray"
+      description="Time since the most recent discussion or reply"
     />
 
     <KPICard

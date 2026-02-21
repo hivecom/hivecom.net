@@ -230,9 +230,9 @@ useSeoMeta({
               </template>
             </Tooltip>
             <Tooltip>
-              <span>Updated {{ dayjs(post.modified_at).fromNow() }}</span>
+              <span>Last Activity {{ dayjs(post.modified_at).fromNow() }}</span>
               <template #tooltip>
-                Updated on {{ formatDate(post.modified_at) }}
+                Last active on {{ formatDate(post.modified_at) }}
               </template>
             </Tooltip>
           </Flex>

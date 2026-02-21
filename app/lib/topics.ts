@@ -17,8 +17,15 @@ export function composePathToTopic(parent_id: string | null, topics: Tables<'dis
   const path: PathItem[] = []
 
   let currentParentId = parent_id as string | null
+  const visited = new Set<string>()
 
   while (currentParentId !== null) {
+    if (visited.has(currentParentId)) {
+      break
+    }
+
+    visited.add(currentParentId)
+
     const parentTopic = topics.find(topic => topic.id === currentParentId)
     if (parentTopic) {
       path.unshift({ parent_id: parentTopic.id, title: parentTopic.name })

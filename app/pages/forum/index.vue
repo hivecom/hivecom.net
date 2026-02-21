@@ -25,8 +25,14 @@ useSeoMeta({
   ogDescription: 'Forum description TBA',
 })
 
+type DiscussionLastReply = Pick<Tables<'discussion_replies'>, 'created_at'>
+
+type ForumDiscussion = Tables<'discussions'> & {
+  last_reply?: DiscussionLastReply[] | null
+}
+
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
-  discussions: Tables<'discussions'>[]
+  discussions: ForumDiscussion[]
 }
 
 interface ActivityItem {
@@ -95,9 +101,12 @@ onBeforeMount(() => {
       .select(`
         *,
         discussions (
-          *
+          *,
+          last_reply:discussion_replies!discussion_replies_discussion_id_fkey(created_at)
         )
       `)
+      .order('created_at', { foreignTable: 'discussions.discussion_replies', ascending: false })
+      .limit(1, { foreignTable: 'discussions.discussion_replies' })
       .then(({ data, error }) => {
         if (error) {
           topicsError.value = error.message
@@ -122,8 +131,8 @@ onBeforeMount(() => {
               icon: 'ph:chats-circle',
               title: 'Reply',
               description: item.markdown,
-              timestamp: `${item.created_at === item.modified_at ? 'Created' : 'Updated'} ${dayjs(item.modified_at).fromNow()}`,
-              timestampRaw: item.modified_at,
+              timestamp: `${dayjs(item.created_at).fromNow()}`,
+              timestampRaw: item.created_at,
               user: item.modified_by!,
               discussionId: item.discussion_id,
               href: `/forum/${item.discussion_id}?comment=${item.id}`,
@@ -185,7 +194,7 @@ const searchResults = computed<Command[]>(() => {
 })
 
 // Sort results by most recently modified and by sticky (pinned)
-function sortDiscussions(discussions: Tables<'discussions'>[]) {
+function sortDiscussions(discussions: ForumDiscussion[]) {
   const filtered = settings.value.showArchived
     ? discussions
     : discussions.filter(discussion => !discussion.is_archived)
@@ -196,8 +205,32 @@ function sortDiscussions(discussions: Tables<'discussions'>[]) {
     if (!a.is_sticky && b.is_sticky)
       return 1
 
-    return dayjs(b.modified_at).isAfter(dayjs(a.modified_at)) ? 1 : -1
+    return dayjs(getDiscussionLastActivity(b)).isAfter(dayjs(getDiscussionLastActivity(a))) ? 1 : -1
   })
+}
+
+function getDiscussionLastActivity(discussion: ForumDiscussion) {
+  const lastReply = (discussion.last_reply ?? []).reduce<DiscussionLastReply | null>((latest, reply) => {
+    if (!latest)
+      return reply
+
+    return dayjs(reply.created_at).isAfter(dayjs(latest.created_at)) ? reply : latest
+  }, null)
+
+  return lastReply?.created_at ?? discussion.created_at
+}
+
+// Derive the last activity timestamp for a topic from its discussions
+function getTopicLastActivity(topic: TopicWithDiscussions) {
+  const latestDiscussion = topic.discussions.reduce((latest, discussion) => {
+    if (!settings.value.showArchived && discussion.is_archived)
+      return latest
+
+    const discussionActivity = getDiscussionLastActivity(discussion)
+    return dayjs(discussionActivity).isAfter(dayjs(latest)) ? discussionActivity : latest
+  }, topic.created_at)
+
+  return latestDiscussion
 }
 
 // List topics based on the activeTopicId. If it's null, list all topics
@@ -274,7 +307,8 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
     )
     if (parentTopic) {
       const discussionIndex = parentTopic.discussions.findIndex(({ id }) => id === data.id)
-      parentTopic.discussions[discussionIndex] = data as Tables<'discussions'>
+      const oldDiscussion = parentTopic.discussions[discussionIndex]
+      parentTopic.discussions[discussionIndex] = { ...oldDiscussion, ...data } as ForumDiscussion
     }
   }
 }
@@ -290,7 +324,7 @@ const visibleDiscussionIds = computed(() => {
 })
 
 const discussionLookup = computed(() => {
-  const lookup = new Map<string, Tables<'discussions'>>()
+  const lookup = new Map<string, ForumDiscussion>()
 
   topics.value.forEach((topic) => {
     topic.discussions.forEach((discussion) => {
@@ -348,14 +382,17 @@ const latestPosts = computed<ActivityItem[]>(() => {
       const isTopic = !('discussion_topic_id' in item)
       const id = item.id
       const title = (isTopic ? item.name : item.title) ?? (isTopic ? 'Topic' : 'Discussion')
+      const activityAt = isTopic
+        ? getTopicLastActivity(item as TopicWithDiscussions)
+        : getDiscussionLastActivity(item as ForumDiscussion)
 
       return {
         id,
         type: isTopic ? 'Topic' : 'Discussion',
         title,
         description: item.description ?? undefined,
-        timestamp: `${item.created_at === item.modified_at ? 'Created' : 'Updated'} ${dayjs(item.modified_at).fromNow()}`,
-        timestampRaw: item.modified_at,
+        timestamp: `${dayjs(activityAt).fromNow()}`,
+        timestampRaw: activityAt,
         user: item.created_by,
         icon: isTopic ? 'ph:folder-open' : 'ph:scroll',
         isArchived: item.is_archived,
@@ -367,7 +404,7 @@ const latestPosts = computed<ActivityItem[]>(() => {
 
   return flattenedTopics
     .concat(visibleReplies.value)
-    .toSorted((a, b) => new Date(a.timestamp) > new Date(b.timestamp) ? -1 : 1)
+    .toSorted((a, b) => new Date(a.timestampRaw) > new Date(b.timestampRaw) ? -1 : 1)
     .splice(0, 10)
 })
 
@@ -454,7 +491,7 @@ const postSinceYesterday = computed(() => {
               {{ stripMarkdown(processMentions(post.description, mentionLookup)) }}
             </p>
             <Flex y-center x-between expand class="forum__latest-footer">
-              <UserDisplay :user-id="post.user" size="s" />
+              <UserDisplay :user-id="post.user" size="s" show-role />
               <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
             </Flex>
           </NuxtLink>
@@ -571,7 +608,7 @@ const postSinceYesterday = computed(() => {
           <template v-if="index === 0">
             <span>Discussions / Replies</span>
             <span>Views</span>
-            <span>Last update</span>
+            <span>Last activity</span>
           </template>
           <template v-else>
             <div />
@@ -586,6 +623,7 @@ const postSinceYesterday = computed(() => {
             v-for="subtopic of getTopicsByParentId(topic.id)"
             :key="subtopic.id"
             :data="subtopic"
+            :last-activity="getTopicLastActivity(subtopic)"
             :discussion-count="subtopic.discussions.length"
             @click="activeTopicId = subtopic.id"
             @update="replaceItemData('topic', $event)"
@@ -595,6 +633,7 @@ const postSinceYesterday = computed(() => {
             v-for="discussion of sortDiscussions(topic.discussions)"
             :key="discussion.id"
             :data="discussion"
+            :last-activity="getDiscussionLastActivity(discussion)"
             @update="replaceItemData('discussion', $event)"
           />
         </ul>

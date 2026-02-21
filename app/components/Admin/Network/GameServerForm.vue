@@ -2,6 +2,7 @@
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Button, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 // Interface for gameserver query result
@@ -340,13 +341,12 @@ onMounted(fetchDropdownData)
         />
 
         <!-- Markdown Content -->
-        <Textarea
+        <RichTextEditor
           v-model="gameserverForm.markdown"
-          expand
-          name="markdown"
           label="Markdown"
+          hint="You can use markdown"
           placeholder="Enter markdown content (optional)"
-          :rows="9"
+          min-height="216px"
         />
 
         <Select

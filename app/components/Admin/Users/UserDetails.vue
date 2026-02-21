@@ -360,7 +360,7 @@ function getUserInitials(username: string): string {
             </Grid>
 
             <Grid class="detail-item" columns="1fr 2fr" expand>
-              <span class=" text-bold">Last Seen:</span>
+              <span class="text-color-light text-bold">Last Seen:</span>
               <Flex gap="xs" y-center>
                 <span v-if="lastSeenVariant === 'online'" class="online-dot" />
                 <span

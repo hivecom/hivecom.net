@@ -146,7 +146,7 @@ function getLastReply(discussion: QueryDiscussion): DiscussionReply | null {
 
 function getLastActiveAt(discussion: QueryDiscussion): string | null {
   const lastReply = getLastReply(discussion)
-  return lastReply?.modified_at ?? lastReply?.created_at ?? discussion.modified_at ?? discussion.created_at ?? null
+  return lastReply?.created_at ?? discussion.created_at ?? null
 }
 
 function getLastReplierId(discussion: QueryDiscussion): string | null {

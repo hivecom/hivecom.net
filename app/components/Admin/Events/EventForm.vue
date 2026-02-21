@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Button, Calendar, Flex, Grid, Input, Select, Sheet, Textarea } from '@dolanske/vui'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -409,13 +410,12 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
         />
 
         <!-- Markdown Content -->
-        <Textarea
+        <RichTextEditor
           v-model="eventForm.markdown"
-          expand
-          name="markdown"
           label="Markdown"
+          hint="You can use markdown"
           placeholder="Additional event details in markdown format (optional)"
-          :rows="6"
+          min-height="144px"
         />
       </Flex>
 

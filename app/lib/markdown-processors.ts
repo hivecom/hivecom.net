@@ -1,3 +1,4 @@
+import { getAnonymousUsername } from '@/lib/anonymous-usernames'
 import { truncate } from './utils/formatting'
 
 /**
@@ -44,47 +45,37 @@ export function processMentions(markdown: string, mentionIdToUsername: Record<st
     Object.entries(mentionIdToUsername).map(([id, username]) => [id.toLowerCase(), username]),
   )
 
-  // Pattern to match @username mentions
-  // Username can contain letters, numbers, and underscores (matching our profile validation)
-  const mentionPattern = /@(\w+)/g
-
   const resolvedMarkdown = markdown
     .replace(mentionIdPatternBraced, (match, id: string) => {
       const resolvedUsername = normalizedMentionLookup[id.toLowerCase()]
 
-      if (typeof resolvedUsername !== 'string' || resolvedUsername.trim() === '') {
-        return match
+      if (typeof resolvedUsername === 'string' && resolvedUsername.trim() !== '' && isValidMentionUsername(resolvedUsername)) {
+        return `[@${resolvedUsername}](/profile/${resolvedUsername})`
       }
 
-      if (!isValidMentionUsername(resolvedUsername)) {
-        return match
+      const anonymousUsername = getAnonymousUsername(id)
+      if (isValidMentionUsername(anonymousUsername)) {
+        return `@${anonymousUsername}`
       }
 
-      return `@${resolvedUsername}`
+      return match
     })
     .replace(mentionIdPatternLegacy, (match, id: string) => {
       const resolvedUsername = normalizedMentionLookup[id.toLowerCase()]
 
-      if (typeof resolvedUsername !== 'string' || resolvedUsername.trim() === '') {
-        return match
+      if (typeof resolvedUsername === 'string' && resolvedUsername.trim() !== '' && isValidMentionUsername(resolvedUsername)) {
+        return `[@${resolvedUsername}](/profile/${resolvedUsername})`
       }
 
-      if (!isValidMentionUsername(resolvedUsername)) {
-        return match
+      const anonymousUsername = getAnonymousUsername(id)
+      if (isValidMentionUsername(anonymousUsername)) {
+        return `@${anonymousUsername}`
       }
 
-      return `@${resolvedUsername}`
+      return match
     })
 
-  return resolvedMarkdown.replace(mentionPattern, (match, username: string) => {
-    // Validate username before creating link
-    if (!isValidMentionUsername(username)) {
-      return match // Return original text if username is invalid
-    }
-
-    // Convert @username to [username](/profile/username) markdown link
-    return `[@${username}](/profile/${username})`
-  })
+  return resolvedMarkdown
 }
 
 /**

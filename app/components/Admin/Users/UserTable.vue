@@ -686,7 +686,7 @@ defineExpose({
     <TableContainer>
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading">
         <template #header>
-          <Table.Head v-for="header in headers.filter(header => !header.label.startsWith('_'))" :key="header.label" sort :header />
+          <Table.Head v-for="header in headers.filter(header => !header.label.startsWith('_') && (props.canViewUserEmails || header.label !== 'Email'))" :key="header.label" sort :header />
           <Table.Head>Actions</Table.Head>
         </template>
 
@@ -841,10 +841,7 @@ defineExpose({
             </Table.Cell>
 
             <Table.Cell class="supporter-cell">
-              <span
-                :class="{ 'supporter-yes': user.Supporter,
-                          'supporter-no': !user.Supporter }"
-              >
+              <span class="text-s">
                 {{ user.Supporter ? 'Yes' : 'No' }}
               </span>
             </Table.Cell>
@@ -1027,15 +1024,6 @@ defineExpose({
 
 .supporter-cell {
   min-width: 80px;
-}
-
-.supporter-yes {
-  color: var(--color-success);
-  font-weight: var(--font-weight-medium);
-}
-
-.supporter-no {
-  color: var(--color-text-light);
 }
 
 .joined-cell,
