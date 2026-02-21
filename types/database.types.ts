@@ -853,6 +853,8 @@ export interface Database {
       }
       presences_steam: {
         Row: {
+          current_app_id: number | null
+          current_app_name: string | null
           details: Json | null
           fetched_at: string | null
           id: string
@@ -866,6 +868,8 @@ export interface Database {
           visibility: string | null
         }
         Insert: {
+          current_app_id?: number | null
+          current_app_name?: string | null
           details?: Json | null
           fetched_at?: string | null
           id?: string
@@ -879,6 +883,8 @@ export interface Database {
           visibility?: string | null
         }
         Update: {
+          current_app_id?: number | null
+          current_app_name?: string | null
           details?: Json | null
           fetched_at?: string | null
           id?: string

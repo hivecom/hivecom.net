@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Flex, Tooltip } from '@dolanske/vui'
+import RichPresenceSteam from '@/components/Profile/RichPresenceSteam.vue'
 
-type SteamPresence = Tables<'presences_steam'>
+type SteamPresence = Omit<Tables<'presences_steam'>, 'details'> & {
+  details?: unknown | null
+}
 
 interface Props {
   profileId: string
@@ -11,13 +14,6 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
-// Steam profile URL
-const steamProfileUrl = computed(() => {
-  if (!props.steamId)
-    return null
-  return `https://steamcommunity.com/profiles/${props.steamId}`
-})
 
 const supabase = useSupabaseClient()
 
@@ -90,16 +86,96 @@ const statusColor = computed(() => {
 
 // Check if currently playing a game
 const isPlaying = computed(() => {
-  return presence.value?.last_app_id && presence.value?.last_app_name
+  return presence.value?.status
+    && presence.value?.status !== 'offline'
+    && presence.value?.current_app_id
+    && presence.value?.current_app_name
 })
 
-// Get game icon URL from Steam CDN
-const gameIconUrl = computed(() => {
-  if (!presence.value?.last_app_id)
-    return null
+const gameIconIndex = ref(0)
 
-  // Steam CDN URL for game icons
-  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${presence.value.last_app_id}/capsule_sm_120.jpg`
+const gameIconSources = computed(() => {
+  if (!presence.value?.current_app_id)
+    return []
+
+  const appId = presence.value.current_app_id
+  const sources: string[] = []
+
+  const details = presence.value.details as unknown
+  const getDetailString = (key: 'game_icon_url' | 'game_icon' | 'game_icon_hash') => {
+    if (!details || typeof details !== 'object' || Array.isArray(details))
+      return null
+
+    const record = details as { [key: string]: unknown }
+    const value = record[key]
+
+    return typeof value === 'string' ? value : null
+  }
+
+  const iconUrl = getDetailString('game_icon_url')
+  const iconHash = getDetailString('game_icon') || getDetailString('game_icon_hash')
+
+  if (iconUrl)
+    sources.push(iconUrl)
+  if (iconHash)
+    sources.push(`https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appId}/${iconHash}.jpg`)
+
+  sources.push(`https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/capsule_sm_120.jpg`)
+  sources.push(`https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`)
+
+  return sources
+})
+
+// Get game icon URL from Steam CDN (with fallbacks)
+const gameIconUrl = computed(() => {
+  return gameIconSources.value[gameIconIndex.value] || null
+})
+
+function onGameIconError() {
+  if (gameIconIndex.value < gameIconSources.value.length - 1) {
+    gameIconIndex.value += 1
+    return
+  }
+
+  gameIconIndex.value = gameIconSources.value.length
+}
+
+const hasLastPlayed = computed(() => {
+  return !isPlaying.value && presence.value?.status === 'online' && presence.value?.last_app_id
+})
+
+const lastGameIconIndex = ref(0)
+
+const lastGameIconSources = computed(() => {
+  if (!presence.value?.last_app_id)
+    return []
+
+  const appId = presence.value.last_app_id
+  return [
+    `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/capsule_sm_120.jpg`,
+    `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
+  ]
+})
+
+const lastGameIconUrl = computed(() => {
+  return lastGameIconSources.value[lastGameIconIndex.value] || null
+})
+
+function onLastGameIconError() {
+  if (lastGameIconIndex.value < lastGameIconSources.value.length - 1) {
+    lastGameIconIndex.value += 1
+    return
+  }
+
+  lastGameIconIndex.value = lastGameIconSources.value.length
+}
+
+watch(() => presence.value?.last_app_id, () => {
+  lastGameIconIndex.value = 0
+})
+
+watch(() => presence.value?.current_app_id, () => {
+  gameIconIndex.value = 0
 })
 
 // Request a refresh of Steam data (called automatically)
@@ -202,100 +278,94 @@ watch(() => props.profileId, () => {
 </script>
 
 <template>
-  <div class="activity-item">
-    <Flex y-center x-between gap="s">
-      <!-- Loading state -->
-      <template v-if="loading">
-        <div>
-          <span class="activity-item__label">
-            <Icon class="activity-item__icon" name="mdi:steam" size="13" />
-            Loading...
-          </span>
-          <strong class="activity-item__title">—</strong>
-        </div>
-      </template>
-
-      <!-- Has presence data -->
-      <template v-else-if="presence">
-        <div>
-          <span class="activity-item__label">
-            <Tooltip v-if="steamProfileUrl" position="top">
-              <template #tooltip>
-                Steam ID: {{ steamId }}
-              </template>
-              <a
-                :href="steamProfileUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="activity-item__steam-link"
-              >
+  <RichPresenceSteam :steam-id="steamId" :presence="presence" class="w-100">
+    <template #trigger>
+      <div class="activity-item">
+        <Flex expand y-center x-between gap="s">
+          <!-- Loading state -->
+          <template v-if="loading">
+            <div>
+              <span class="activity-item__label">
                 <Icon class="activity-item__icon" name="mdi:steam" size="13" />
-              </a>
-            </Tooltip>
-            <Icon v-else class="activity-item__icon" name="mdi:steam" size="13" />
-            <template v-if="isPlaying">Playing</template>
-            <template v-else>Steam</template>
-          </span>
-          <strong class="activity-item__title">
-            <Tooltip v-if="!isPlaying && presence.status === 'offline' && lastOnlineFormatted" position="top">
-              <template #tooltip>
-                Last online {{ lastOnlineFormatted }}
-              </template>
-              <span
-                class="activity-item__status-dot"
-                :style="{ backgroundColor: statusColor }"
-              />
-            </Tooltip>
-            <span
-              v-else
-              class="activity-item__status-dot"
-              :style="{ backgroundColor: statusColor }"
-            />
-            <template v-if="isPlaying">{{ presence.last_app_name }}</template>
-            <template v-else-if="presence.steam_name">{{ presence.steam_name }}</template>
-            <template v-else>{{ statusLabel }}</template>
-          </strong>
-        </div>
+                Loading...
+              </span>
+              <strong class="activity-item__title">—</strong>
+            </div>
+          </template>
 
-        <!-- Right side: game icon -->
-        <img
-          v-if="isPlaying && gameIconUrl"
-          :src="gameIconUrl"
-          :alt="`${presence.last_app_name} icon`"
-          width="32"
-          height="32"
-          class="activity-item__game-icon"
-        >
-      </template>
-
-      <!-- No presence data -->
-      <template v-else>
-        <div>
-          <span class="activity-item__label">
-            <Tooltip v-if="steamProfileUrl" position="top">
-              <a
-                :href="steamProfileUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="activity-item__steam-link"
-              >
+          <!-- Has presence data -->
+          <template v-else-if="presence">
+            <div>
+              <span class="activity-item__label">
                 <Icon class="activity-item__icon" name="mdi:steam" size="13" />
-              </a>
-              <template #tooltip>
-                Steam ID: {{ steamId }}
-              </template>
-            </Tooltip>
-            <Icon v-else class="activity-item__icon" name="mdi:steam" size="13" />
-            Steam
-          </span>
-          <strong class="activity-item__title">No recent activity</strong>
-        </div>
-      </template>
-    </Flex>
-  </div>
+                Steam
+              </span>
+              <strong class="activity-item__title">
+                <Tooltip v-if="!isPlaying && presence.status === 'offline' && lastOnlineFormatted" position="top">
+                  <template #tooltip>
+                    Last online {{ lastOnlineFormatted }}
+                  </template>
+                  <span
+                    class="activity-item__status-dot"
+                    :style="{ backgroundColor: statusColor }"
+                  />
+                </Tooltip>
+                <span
+                  v-else
+                  class="activity-item__status-dot"
+                  :style="{ backgroundColor: statusColor }"
+                />
+                <template v-if="isPlaying">Playing {{ presence.current_app_name }}</template>
+                <template v-else-if="statusLabel">{{ statusLabel }}</template>
+                <template v-else-if="presence.last_app_name">Last {{ presence.last_app_name }}</template>
+                <template v-else-if="presence.steam_name">{{ presence.steam_name }}</template>
+                <template v-else>Unknown</template>
+              </strong>
+            </div>
+
+            <!-- Right side: game icon -->
+            <img
+              v-if="isPlaying && gameIconUrl"
+              :key="gameIconUrl"
+              :src="gameIconUrl"
+              :alt="`${presence.current_app_name} icon`"
+              width="32"
+              height="32"
+              class="activity-item__game-icon"
+              @error="onGameIconError"
+            >
+            <img
+              v-else-if="hasLastPlayed && lastGameIconUrl"
+              :key="lastGameIconUrl"
+              :src="lastGameIconUrl"
+              :alt="`${presence.last_app_name ?? 'Last played'} icon`"
+              width="32"
+              height="32"
+              class="activity-item__game-icon"
+              @error="onLastGameIconError"
+            >
+          </template>
+
+          <!-- No presence data -->
+          <template v-else>
+            <div>
+              <span class="activity-item__label">
+                <Icon class="activity-item__icon" name="mdi:steam" size="13" />
+                Steam
+              </span>
+              <strong class="activity-item__title">No recent activity</strong>
+            </div>
+          </template>
+        </Flex>
+      </div>
+    </template>
+  </RichPresenceSteam>
 </template>
 
 <style lang="scss" scoped>
+.activity-item {
+  width: 100%;
+}
 .activity-item__status-dot {
   display: inline-block;
   width: 6px;
@@ -308,15 +378,7 @@ watch(() => props.profileId, () => {
   object-fit: cover;
 }
 
-.activity-item__steam-link {
-  display: inline-flex;
-  align-items: center;
-  color: inherit;
-  text-decoration: none;
-  cursor: pointer;
-
-  &:hover {
-    color: var(--color-accent);
-  }
+.activity-item__title {
+  font-size: var(--font-size-s);
 }
 </style>

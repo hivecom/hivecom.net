@@ -196,99 +196,91 @@ watch(() => props.profileId, () => {
 </script>
 
 <template>
-  <div v-if="shouldShow" class="activity-item">
-    <Flex y-center x-between gap="s">
-      <!-- Loading state -->
-      <template v-if="loading">
-        <div>
-          <span class="activity-item__label">
-            <RichPresenceTeamSpeak
-              class="activity-item__icon"
-              :profile-id="props.profileId"
-              :teamspeak-identities="props.teamspeakIdentities"
-              :rich-presence-disabled="props.richPresenceDisabled"
-              :icon-size="13"
-              hide-online-indicator
-              use-accent-color
-            />
-            Loading...
-          </span>
-          <strong class="activity-item__title">—</strong>
-        </div>
-      </template>
+  <RichPresenceTeamSpeak
+    v-if="shouldShow"
+    class="w-100"
+    :profile-id="props.profileId"
+    :teamspeak-identities="props.teamspeakIdentities"
+    :rich-presence-disabled="props.richPresenceDisabled"
+  >
+    <template #trigger>
+      <div class="activity-item">
+        <Flex expand y-center x-between gap="s">
+          <!-- Loading state -->
+          <template v-if="loading">
+            <div>
+              <span class="activity-item__label">
+                <Icon class="activity-item__icon" name="mdi:teamspeak" size="13" />
+                Loading...
+              </span>
+              <strong class="activity-item__title">—</strong>
+            </div>
+          </template>
 
-      <!-- Online with presence data -->
-      <template v-else-if="isOnline && activePresence">
-        <div>
-          <span class="activity-item__label">
-            <RichPresenceTeamSpeak
-              class="activity-item__icon"
-              :profile-id="props.profileId"
-              :teamspeak-identities="props.teamspeakIdentities"
-              :rich-presence-disabled="props.richPresenceDisabled"
-              :icon-size="13"
-              hide-online-indicator
-              use-accent-color
-            />
-            Voice
-          </span>
-          <strong class="activity-item__title">
-            <span
-              class="activity-item__status-dot"
-              :style="{ backgroundColor: statusColor }"
-            />
-            {{ activePresence.channelPath }}
-          </strong>
-        </div>
+          <!-- Online with presence data -->
+          <template v-else-if="isOnline && activePresence">
+            <div>
+              <span class="activity-item__label">
+                <Icon class="activity-item__icon" name="mdi:teamspeak" size="13" />
+                Voice
+              </span>
+              <strong class="activity-item__title">
+                <span
+                  class="activity-item__status-dot"
+                  :style="{ backgroundColor: statusColor }"
+                />
+                {{ activePresence.channelPath }}
+              </strong>
+            </div>
 
-        <RegionIndicator
-          v-if="activePresence.region"
-          size="xxl"
-          :region="activePresence.region"
-          :show-label="false"
-        />
-      </template>
+            <RegionIndicator
+              v-if="activePresence.region"
+              size="xxl"
+              :region="activePresence.region"
+              :show-label="false"
+            />
+          </template>
 
-      <!-- Offline or no presence data -->
-      <template v-else>
-        <div>
-          <span class="activity-item__label">
-            <RichPresenceTeamSpeak
-              class="activity-item__icon"
-              :profile-id="props.profileId"
-              :teamspeak-identities="props.teamspeakIdentities"
-              :rich-presence-disabled="props.richPresenceDisabled"
-              :icon-size="13"
-              hide-online-indicator
-              use-accent-color
-            />
-            TeamSpeak
-          </span>
-          <strong class="activity-item__title">
-            <Tooltip v-if="lastSeenFormatted && hasPresence" position="top">
-              <template #tooltip>
-                Last seen {{ lastSeenFormatted }}
-              </template>
-              <span
-                class="activity-item__status-dot"
-                :style="{ backgroundColor: statusColor }"
-              />
-            </Tooltip>
-            <span
-              v-else
-              class="activity-item__status-dot"
-              :style="{ backgroundColor: statusColor }"
-            />
-            <template v-if="hasPresence">Offline</template>
-            <template v-else>No recent activity</template>
-          </strong>
-        </div>
-      </template>
-    </Flex>
-  </div>
+          <!-- Offline or no presence data -->
+          <template v-else>
+            <div>
+              <span class="activity-item__label">
+                <Icon class="activity-item__icon" name="mdi:teamspeak" size="13" />
+                TeamSpeak
+              </span>
+              <strong class="activity-item__title">
+                <Tooltip v-if="lastSeenFormatted && hasPresence" position="top">
+                  <template #tooltip>
+                    Last seen {{ lastSeenFormatted }}
+                  </template>
+                  <span
+                    class="activity-item__status-dot"
+                    :style="{ backgroundColor: statusColor }"
+                  />
+                </Tooltip>
+                <span
+                  v-else
+                  class="activity-item__status-dot"
+                  :style="{ backgroundColor: statusColor }"
+                />
+                <template v-if="hasPresence">Offline</template>
+                <template v-else>No recent activity</template>
+              </strong>
+            </div>
+          </template>
+        </Flex>
+      </div>
+    </template>
+  </RichPresenceTeamSpeak>
 </template>
 
 <style lang="scss" scoped>
+.activity-item {
+  width: 100%;
+}
+.activity-item__title {
+  font-size: var(--font-size-s);
+}
 .activity-item__status-dot {
   display: inline-block;
   width: 6px;

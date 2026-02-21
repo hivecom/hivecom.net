@@ -128,8 +128,8 @@ INSERT INTO public.user_roles(role, user_id)
   VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Create or update a profile for our admin user
-INSERT INTO public.profiles(id, created_at, username, introduction, supporter_lifetime, markdown)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), 'Hivecom', 'Local develop and test user', 'true', '# whoami
+INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, markdown)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', '76561198000000001', NOW(), 'Hivecom', 'Local develop and test user', 'true', '# whoami
 
 ```javascript
 console.log("Hello, Hivecom!");
@@ -180,9 +180,53 @@ Inline `code` example.
 ###### Heading 6')
 ON CONFLICT (id)
   DO UPDATE SET
+    steam_id = EXCLUDED.steam_id,
     username = EXCLUDED.username,
     introduction = EXCLUDED.introduction,
     markdown = EXCLUDED.markdown;
+
+-- Seed a Steam presence entry for Hivecom (current game + last app)
+INSERT INTO public.presences_steam(
+  profile_id,
+  status,
+  last_online_at,
+  last_app_id,
+  last_app_name,
+  current_app_id,
+  current_app_name,
+  updated_at,
+  fetched_at,
+  visibility,
+  steam_name,
+  details
+)
+VALUES (
+  '018d224c-0e49-4b6d-b57a-87299605c2b1',
+  'online',
+  NOW(),
+  730,
+  'Counter-Strike 2',
+  730,
+  'Counter-Strike 2',
+  NOW(),
+  NOW(),
+  'public',
+  'Hivecom',
+  '{}'::jsonb
+)
+ON CONFLICT (profile_id)
+  DO UPDATE SET
+    status = EXCLUDED.status,
+    last_online_at = EXCLUDED.last_online_at,
+    last_app_id = EXCLUDED.last_app_id,
+    last_app_name = EXCLUDED.last_app_name,
+    current_app_id = EXCLUDED.current_app_id,
+    current_app_name = EXCLUDED.current_app_name,
+    updated_at = EXCLUDED.updated_at,
+    fetched_at = EXCLUDED.fetched_at,
+    visibility = EXCLUDED.visibility,
+    steam_name = EXCLUDED.steam_name,
+    details = EXCLUDED.details;
 
 -- Insert example test user for admin to modify and test with
 INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous")
@@ -190,12 +234,56 @@ INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypt
 
 -- Keep in mind, we're not going to assign the user a role because most users will not have a role assigned.
 -- Create profile for test user
-INSERT INTO public.profiles(id, created_at, username, introduction)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b3', NOW(), 'TestUser', 'Example user for testing admin features and role assignments')
+INSERT INTO public.profiles(id, steam_id, created_at, username, introduction)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b3', '76561198000000002', NOW(), 'TestUser', 'Example user for testing admin features and role assignments')
 ON CONFLICT (id)
   DO UPDATE SET
+    steam_id = EXCLUDED.steam_id,
     username = EXCLUDED.username,
     introduction = EXCLUDED.introduction;
+
+-- Seed a Steam presence entry for TestUser (not currently playing)
+INSERT INTO public.presences_steam(
+  profile_id,
+  status,
+  last_online_at,
+  last_app_id,
+  last_app_name,
+  current_app_id,
+  current_app_name,
+  updated_at,
+  fetched_at,
+  visibility,
+  steam_name,
+  details
+)
+VALUES (
+  '018d224c-0e49-4b6d-b57a-87299605c2b3',
+  'away',
+  NOW() - INTERVAL '20 minutes',
+  4000,
+  'Garrys Mod',
+  NULL,
+  NULL,
+  NOW(),
+  NOW(),
+  'friends_only',
+  'TestUser',
+  '{}'::jsonb
+)
+ON CONFLICT (profile_id)
+  DO UPDATE SET
+    status = EXCLUDED.status,
+    last_online_at = EXCLUDED.last_online_at,
+    last_app_id = EXCLUDED.last_app_id,
+    last_app_name = EXCLUDED.last_app_name,
+    current_app_id = EXCLUDED.current_app_id,
+    current_app_name = EXCLUDED.current_app_name,
+    updated_at = EXCLUDED.updated_at,
+    fetched_at = EXCLUDED.fetched_at,
+    visibility = EXCLUDED.visibility,
+    steam_name = EXCLUDED.steam_name,
+    details = EXCLUDED.details;
 
 -- Create friend relationship between admin and test user
 INSERT INTO public.friends(created_at, friender, friend)

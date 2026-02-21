@@ -730,10 +730,6 @@ const postSinceYesterday = computed(() => {
         white-space: nowrap;
         font-size: var(--font-size-xs);
         color: var(--color-text-lighter);
-
-        &:first-child {
-          text-transform: capitalize;
-        }
       }
 
       .forum__latest-type {

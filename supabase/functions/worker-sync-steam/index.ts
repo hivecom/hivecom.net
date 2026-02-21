@@ -50,6 +50,7 @@ interface SteamPlayer {
   gameid?: string;
   gameserverip?: string;
   gameextrainfo?: string;
+  gameicon?: string;
   loccountrycode?: string;
   locstatecode?: string;
   loccityid?: number;
@@ -185,9 +186,8 @@ async function fetchSteamPlayers(
   }
 
   for (const chunk of chunks) {
-    const url = `${STEAM_API_URL}?key=${STEAM_API_KEY}&steamids=${
-      chunk.join(",")
-    }`;
+    const url = `${STEAM_API_URL}?key=${STEAM_API_KEY}&steamids=${chunk.join(",")
+      }`;
 
     try {
       const response = await fetch(url);
@@ -276,6 +276,21 @@ async function updateSteamPresence(
   const visibility = mapVisibilityState(player.communityvisibilitystate);
   const isOnline = player.personastate !== 0;
 
+  const { data: existingPresence, error: existingError } = await supabase
+    .from("presences_steam")
+    .select(
+      "current_app_id, current_app_name, last_app_id, last_app_name",
+    )
+    .eq("profile_id", profileId)
+    .single();
+
+  if (existingError && existingError.code !== "PGRST116") {
+    console.error(
+      `Failed to load existing Steam presence for ${profileId}:`,
+      existingError.message,
+    );
+  }
+
   // Build the details JSON with all available Steam data
   const details: { [key: string]: Json | undefined } = {
     profileurl: player.profileurl,
@@ -293,6 +308,11 @@ async function updateSteamPresence(
   }
   if (player.primaryclanid) details.primary_clan_id = player.primaryclanid;
   if (player.gameserverip) details.game_server_ip = player.gameserverip;
+  if (player.gameicon && player.gameid) {
+    details.game_icon = player.gameicon;
+    details.game_icon_url =
+      `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${player.gameid}/${player.gameicon}.jpg`;
+  }
 
   const now = new Date().toISOString();
 
@@ -305,8 +325,10 @@ async function updateSteamPresence(
     updated_at: string;
     fetched_at: string;
     last_online_at?: string;
-    last_app_id?: number;
-    last_app_name?: string;
+    current_app_id?: number | null;
+    current_app_name?: string | null;
+    last_app_id?: number | null;
+    last_app_name?: string | null;
     details: { [key: string]: Json | undefined };
   } = {
     profile_id: profileId,
@@ -329,12 +351,33 @@ async function updateSteamPresence(
   }
 
   // Set game info if currently playing
-  if (player.gameid) {
-    presenceData.last_app_id = parseInt(player.gameid, 10);
+  const currentAppId = player.gameid ? parseInt(player.gameid, 10) : null;
+  const currentAppName = player.gameid && player.gameextrainfo
+    ? player.gameextrainfo
+    : null;
+
+  const existingCurrentAppId = existingPresence?.current_app_id ?? null;
+  const existingCurrentAppName = existingPresence?.current_app_name ?? null;
+
+  let lastAppId = existingPresence?.last_app_id ?? null;
+  let lastAppName = existingPresence?.last_app_name ?? null;
+
+  if (!currentAppId && existingCurrentAppId) {
+    lastAppId = existingCurrentAppId;
+    lastAppName = existingCurrentAppName;
+  } else if (
+    currentAppId
+    && existingCurrentAppId
+    && currentAppId !== existingCurrentAppId
+  ) {
+    lastAppId = existingCurrentAppId;
+    lastAppName = existingCurrentAppName;
   }
-  if (player.gameextrainfo) {
-    presenceData.last_app_name = player.gameextrainfo;
-  }
+
+  presenceData.current_app_id = currentAppId;
+  presenceData.current_app_name = currentAppName;
+  presenceData.last_app_id = currentAppId ?? lastAppId;
+  presenceData.last_app_name = currentAppName ?? lastAppName;
 
   // Upsert into presences_steam
   const { error } = await supabase
@@ -352,8 +395,7 @@ async function updateSteamPresence(
   }
 
   console.log(
-    `Synced Steam presence for ${profileId}: ${player.personaname} (${status})${
-      player.gameextrainfo ? ` playing ${player.gameextrainfo}` : ""
+    `Synced Steam presence for ${profileId}: ${player.personaname} (${status})${player.gameextrainfo ? ` playing ${player.gameextrainfo}` : ""
     }`,
   );
 

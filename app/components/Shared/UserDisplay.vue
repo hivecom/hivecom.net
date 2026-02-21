@@ -221,6 +221,7 @@ const currentUser = useSupabaseUser()
   }
 
   &__link {
+    display: flex;
     text-decoration: none;
     color: inherit;
     transition: opacity 0.2s ease;

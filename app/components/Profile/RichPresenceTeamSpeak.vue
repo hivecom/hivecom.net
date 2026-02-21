@@ -258,10 +258,12 @@ function formatLastSeen(lastSeenAt: string | null): string {
     @focusin="handleEnter"
     @focusout="handleLeave"
   >
-    <Flex class="ts-presence__trigger" :class="{ 'ts-presence__trigger--accent': props.useAccentColor }" y-center gap="xs">
-      <Icon class="activity-item__icon" name="mdi:teamspeak" :width="props.iconSize" :height="props.iconSize" />
-      <span v-if="isOnline && !props.hideOnlineIndicator" class="ts-presence__badge" />
-    </Flex>
+    <slot name="trigger">
+      <Flex class="ts-presence__trigger" y-center gap="xs">
+        <Icon class="activity-item__icon" name="mdi:teamspeak" :width="props.iconSize" :height="props.iconSize" />
+        <span v-if="isOnline && !props.hideOnlineIndicator" class="ts-presence__badge" />
+      </Flex>
+    </slot>
 
     <Teleport to="body">
       <Transition name="ts-presence-fade">
