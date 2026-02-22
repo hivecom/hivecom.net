@@ -5,7 +5,7 @@ import { pushToast } from '@dolanske/vui'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
 import Mention from '@tiptap/extension-mention'
-import { Placeholder } from '@tiptap/extensions'
+import { CharacterCount, Placeholder } from '@tiptap/extensions'
 import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
@@ -36,6 +36,7 @@ interface Props {
   errors?: string[]
   placeholder?: string
   minHeight?: string
+  limit?: number
   /**
    * If provided, it will enable media upload via pasting/dragging media files
    * into the editor. Providing a context helps with file management
@@ -103,6 +104,7 @@ const editor = useEditor({
 
     }),
     Image,
+    // User mentions
     MentionWithMarkdown.configure({
       suggestion: defineSuggestion('@', RichTextMentions, async (search_term) => {
         const normalizedSearchTerm = mentionQueryNormalize(search_term)
@@ -126,13 +128,17 @@ const editor = useEditor({
         return `@{${props.node.attrs.id}}`
       },
     }),
-    // Only allow file uploads if mediaContext is provided
+    // Media content setting for file uploads
     ...(props.mediaContext
       ? [FileHandler.configure({
           onPaste: (_, files) => handleFileUpload(files),
           onDrop: (_, files, pos) => handleFileUpload(files, pos),
           allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
         })]
+      : []),
+    // Character limit
+    ...(props.limit
+      ? [CharacterCount.configure({ limit: props.limit })]
       : []),
   ],
   contentType: 'markdown',
@@ -275,6 +281,10 @@ defineExpose({
 
     <!-- Main editor instance -->
     <EditorContent :id="elementId" :editor="editor" class="typeset" />
+
+    <p v-if="limit && editor" class="vui-hint" style="margin-top: var(--space-xxs)">
+      {{ `${editor.storage.characterCount.characters()} / ${limit}` }}
+    </p>
 
     <ul v-if="errors.length > 0" class="vui-input-errors">
       <li v-for="err in errors" :key="err">

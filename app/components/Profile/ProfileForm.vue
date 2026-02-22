@@ -7,6 +7,7 @@ import FileUpload from '@/components/Shared/FileUpload.vue'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { replaceMarkdownH1, stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
+import RichTextEditor from '../Editor/RichTextEditor.vue'
 
 const props = defineProps<{
   profile: Tables<'profiles'> | null
@@ -388,7 +389,6 @@ async function confirmAvatarDelete() {
 }
 
 // Character counts for text areas
-const markdownCharCount = computed(() => profileForm.value.markdown.length)
 const introductionCharCount = computed(() => profileForm.value.introduction.length)
 </script>
 
@@ -397,7 +397,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
     :open="isOpen"
     position="right"
     :card="{ separators: true }"
-    :size="700"
+    :size="792"
     @close="handleClose"
   >
     <template #header>
@@ -554,34 +554,14 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
       <Flex column gap="m" expand>
         <h4>About</h4>
 
-        <Flex class="profile-edit-form__markdown-container" expand>
-          <Textarea
-            v-model="profileForm.markdown"
-            expand
-            name="markdown"
-            label="Profile Content (Markdown)"
-            placeholder="Tell others about yourself!"
-            :rows="8"
-            :maxlength="MARKDOWN_LIMIT"
-            :valid="markdownValidation.valid"
-            :error="markdownValidation.error"
-          >
-          <template #after>
-            <Flex expand x-between>
-              <div class="help-text">
-                <Icon name="ph:info" />
-                You can use Markdown formatting (headings, lists, links, etc.). HTML tags are not allowed.
-              </div>
-
-              <div class="character-count">
-                <span :class="{ 'over-limit': markdownCharCount > MARKDOWN_LIMIT }">
-                  {{ markdownCharCount }}/{{ MARKDOWN_LIMIT }}
-                </span>
-              </div>
-            </Flex>
-          </template>
-        </Textarea>
-        </Flex>
+        <RichTextEditor
+          v-model="profileForm.markdown"
+          :media-context="props.profile?.id"
+          placeholder="Tell others about yourself!"
+          label="Profile content"
+          :limit="MARKDOWN_LIMIT"
+          :errors="markdownValidation.error ? [markdownValidation.error] : undefined"
+        />
       </Flex>
 
       <!-- Tips -->
@@ -589,16 +569,16 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
         <h5>Tips</h5>
         <ul class="tips-list">
           <li>
-            <Icon name="ph:check-circle" />
+            <Icon name="ph:info" />
             You can use @username to mention other users in your profile
           </li>
           <li>
-            <Icon name="ph:warning-circle" />
-            HTML tags are not allowed and will be removed for security
+            <Icon name="ph:info" />
+            You can apply advanced formatting by selecting text or using keyboard shortcuts. You can also use Markdown syntax directly
           </li>
           <li>
-            <Icon name="ph:warning-circle" />
-            H1 tags will be converted to H2
+            <Icon name="ph:info" />
+            Paste or drop images directly into the editor
           </li>
         </ul>
       </Flex>
