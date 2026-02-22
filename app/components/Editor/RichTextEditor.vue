@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { JSONContent, MarkdownParseHelpers, MarkdownToken, MarkdownTokenizer } from '@tiptap/core'
 import type { SuggestionOptions } from '@tiptap/suggestion'
+import { pushToast } from '@dolanske/vui'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
 import Mention from '@tiptap/extension-mention'
@@ -148,22 +149,32 @@ function handleFileUpload(files: File[], pos?: number) {
       return
 
     const format = file.type.split('/')[1]
+    const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
 
     // Path to the public image upload
-    const { data: src } = await supabase.storage
+    const { error } = await supabase.storage
       .from('hivecom-content-forums')
-      .upload(`${props.mediaContext}/${crypto.randomUUID()}.${format}`, file, {
-        contentType: file.type,
-      })
+      .upload(fileUrl, file, { contentType: file.type })
 
-    editor.value
-      .chain()
-      .insertContentAt(pos ?? editor.value.state.selection.anchor, {
-        type: 'image',
-        attrs: { src },
+    if (error) {
+      pushToast('Error uploading media', {
+        description: error.message,
       })
-      .focus()
-      .run()
+    }
+    else {
+      const { data } = supabase.storage
+        .from('hivecom-content-forums')
+        .getPublicUrl(fileUrl)
+
+      editor.value
+        .chain()
+        .insertContentAt(pos ?? editor.value.state.selection.anchor, {
+          type: 'image',
+          attrs: { src: data.publicUrl },
+        })
+        .focus()
+        .run()
+    }
   })
 }
 

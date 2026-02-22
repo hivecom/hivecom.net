@@ -184,7 +184,15 @@ async function submitForm() {
       <Input v-model="form.title" :errors="normalizeErrors(errors.title)" label="Name" expand placeholder="What is this discussion about?" required />
       <Input v-model="form.slug" :errors="normalizeErrors(errors.slug)" label="Slug (optional)" expand placeholder="Auto-generated from the title" />
       <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Short summary for the discussion" />
-      <RichTextEditor v-model="form.markdown" min-height="196px" hint="You can use markdown" :errors="normalizeErrors(errors.markdown)" label="Content" placeholder="Add more context to the discussion" />
+      <RichTextEditor
+        v-model="form.markdown"
+        :errors="normalizeErrors(errors.markdown)"
+        :media-context="props.editedItem ? props.editedItem.id : 'staging'"
+        min-height="196px"
+        hint="You can use markdown"
+        label="Content"
+        placeholder="Add more context to the discussion"
+      />
 
       <div class="w-100">
         <label class="vui-label">Topic</label>
