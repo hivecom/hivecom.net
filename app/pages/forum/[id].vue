@@ -12,7 +12,8 @@ import { formatDate } from '@/lib/utils/date'
 
 dayjs.extend(relativeTime)
 
-// TODO: path to post would be nice, but we'd have to fetch all the parent topics. Maybe a recursive query or some shit?
+// TODO: path to post would be nice, but we'd have to fetch all the parent topics. Maybe a recursive query or some shit? Query parent topics until the parent is null and add breadcrumbs next to the back button
+// The design could maybe be breadcrumbs and then just a button with <- arrow positioned absolutely off the container inline with the breadcrumbs
 
 type DiscussionWithContext = Tables<'discussions'> & {
   profile?: Pick<Tables<'profiles'>, 'id' | 'username'> | null
@@ -129,6 +130,11 @@ useSeoMeta({
   ogTitle: computed(() => post.value ? `${post.value.title} | Forum` : 'post Details'),
   ogDescription: computed(() => post.value?.description || 'Forum details'),
 })
+
+// This updates every 10 seconds and forces a re-render on the timestamps. This
+// way if the post is open for a longer period of time, it won't show "posted 1
+// minute ago" for 10 minutes until you refresh or interact with the page.
+const timestampUpdateKey = useInterval(60000)
 </script>
 
 <template>
@@ -220,7 +226,7 @@ useSeoMeta({
 
         <Flex x-between y-center class="mt-l" wrap gap="m">
           <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
-          <Flex y-center>
+          <Flex :key="timestampUpdateKey" y-center>
             <Tooltip>
               <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
               <template #tooltip>

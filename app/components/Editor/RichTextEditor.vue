@@ -24,13 +24,9 @@ const {
 
 // TODO: Code block highlighting & dropdown for seleting language
 
-// TODO: add option to add link to bunch of text
-
 // TODO: hivecom emote sticker / custom emojis & normal emojis too
 
 // TODO: dropdown for headings
-
-// TODO: image upload
 
 interface Props {
   autofocus?: boolean
@@ -102,7 +98,10 @@ const editor = useEditor({
   extensions: [
     StarterKit,
     Markdown,
-    Placeholder.configure({ placeholder: props.placeholder }),
+    Placeholder.configure({
+      placeholder: props.placeholder,
+
+    }),
     Image,
     MentionWithMarkdown.configure({
       suggestion: defineSuggestion('@', RichTextMentions, async (search_term) => {
@@ -255,16 +254,6 @@ watch(content, (newContent) => {
   // If content is updated externally, focus at the end of it
   editor.value?.commands.focus('end')
 })
-
-// watch(() => props, () => {
-//   editor.value?.setOptions({
-//     autofocus: props.autofocus,
-//     editable: !props.disabled,
-//     extensions: [
-//       Placeholder.configure({ placeholder: props.placeholder }),
-//     ],
-//   })
-// }, { deep: true })
 
 const elementId = useId()
 

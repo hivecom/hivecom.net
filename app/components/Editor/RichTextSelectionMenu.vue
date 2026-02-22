@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { EditorState } from '@tiptap/pm/state'
+import type { EditorView } from '@tiptap/pm/view'
 import type { Editor } from '@tiptap/vue-3'
 import { Button, ButtonGroup, Flex } from '@dolanske/vui'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
@@ -6,6 +8,28 @@ import { BubbleMenu } from '@tiptap/vue-3/menus'
 const props = defineProps<{
   editor: Editor
 }>()
+
+interface ShouldShowProps {
+  editor: unknown
+  element: HTMLElement
+  view: EditorView
+  state: EditorState
+  oldState?: EditorState
+  from: number
+  to: number
+}
+
+// Makes sure that when editor is clicked, we do not show bubble menu for empty text selection
+function shouldShow({ state, from, to }: ShouldShowProps): boolean {
+  const { selection } = state
+  const { empty } = selection
+
+  if (empty) {
+    return false
+  }
+
+  return state.doc.textBetween(from, to).length > 0
+}
 </script>
 
 <template>
@@ -15,6 +39,7 @@ const props = defineProps<{
       placement: 'top',
       offset: 8,
     }"
+    :should-show="shouldShow"
   >
     <div class="vui-rich-text-menu">
       <Flex :gap="4">

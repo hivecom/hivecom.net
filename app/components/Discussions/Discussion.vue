@@ -446,7 +446,7 @@ provide('delete-comment', deleteComment)
             This discussion is locked
           </Alert>
         </div>
-        <form v-else @submit.prevent="submitReply">
+        <div v-else class="relative">
           <RichTextEditor
             ref="textarea"
             v-model="form.message"
@@ -455,13 +455,13 @@ provide('delete-comment', deleteComment)
             min-height="108px"
             :media-context="props.id"
           />
-          <Button size="s" class="discussion__add--send-button" type="submit" :loading="formLoading" :disabled="form.message.length === 0">
+          <Button size="s" class="discussion__add--send-button" type="submit" :loading="formLoading" :disabled="form.message.length === 0" @click="submitReply">
             Send
             <template #end>
               <Icon name="ph:paper-plane-tilt" />
             </template>
           </Button>
-        </form>
+        </div>
       </div>
     </template>
   </div>
@@ -498,10 +498,6 @@ provide('delete-comment', deleteComment)
 
     &:deep(.vui-alert-icon) {
       display: none;
-    }
-
-    form {
-      position: relative;
     }
   }
 
