@@ -47,25 +47,51 @@ const topicOptions = computed(() => {
 // Form validation
 const form = reactive({
   name: '',
+  slug: '',
   description: '',
   parent_id: null as string | null,
   is_locked: false,
   priority: 0,
 })
 
+const slugTouched = ref(false)
+const isAutoUpdatingSlug = ref(false)
+
 // When we're editing, make sure the form and edited data are in sync
 watch(() => props.editedItem, (item) => {
   if (!item)
     return
 
+  isAutoUpdatingSlug.value = true
+
   Object.assign(form, {
     name: item.name,
+    slug: item.slug ?? '',
+    description: item.description ?? '',
     parent_id: item.parent_id,
     is_locked: item.is_locked,
     priority: item.priority,
-    ...(item.description && { description: item.description }),
   })
+
+  isAutoUpdatingSlug.value = false
+  slugTouched.value = false
 }, { immediate: true })
+
+watch(() => form.name, (value) => {
+  if (!slugTouched.value || !form.slug) {
+    isAutoUpdatingSlug.value = true
+    form.slug = slugify(value)
+  }
+})
+
+watch(() => form.slug, () => {
+  if (isAutoUpdatingSlug.value) {
+    isAutoUpdatingSlug.value = false
+    return
+  }
+
+  slugTouched.value = true
+})
 
 // Preselect a topic if we're currently in a nested view
 watch(activeTopicId, (newVal) => {
@@ -83,7 +109,7 @@ const loading = ref(false)
 
 const { validate, errors } = useValidation(form, rules, { autoclear: true })
 
-function submitForm() {
+async function submitForm() {
   if (loading.value)
     return
 
@@ -95,34 +121,60 @@ function submitForm() {
     return
   }
 
-  validate()
-    .then(() => {
-      const payload = {
-        ...form,
-        slug: slugify(form.name),
-        ...(isEditing.value && { id: props.editedItem!.id }),
-      }
+  try {
+    await validate()
 
-      supabase
-        .from('discussion_topics')
-        .upsert(payload)
-        .select()
-        .then(({ error, data }) => {
-          loading.value = false
+    const trimmedSlug = form.slug.trim()
+    const resolvedSlug = trimmedSlug ? slugify(trimmedSlug) : slugify(form.name)
 
-          if (error) {
-            pushToast(`Failed to ${isEditing.value ? 'update' : 'create'} topic`)
-            return
-          }
+    let slugQuery = supabase
+      .from('discussion_topics')
+      .select('id')
+      .eq('slug', resolvedSlug)
+      .limit(1)
 
-          emit('created', { ...data[0], discussions: [] })
-          emit('close')
-          pushToast(`${isEditing.value ? 'Updated' : 'Created'} topic ${payload.name}`)
-        })
-    })
-    .catch(() => {
+    if (isEditing.value)
+      slugQuery = slugQuery.neq('id', props.editedItem!.id)
+
+    const { data: slugMatches, error: slugError } = await slugQuery
+
+    if (slugError) {
       loading.value = false
-    })
+      pushToast('Failed to validate slug uniqueness')
+      return
+    }
+
+    if (slugMatches && slugMatches.length > 0) {
+      loading.value = false
+      pushToast('Slug is already in use')
+      return
+    }
+
+    const payload = {
+      ...form,
+      slug: resolvedSlug,
+      ...(isEditing.value && { id: props.editedItem!.id }),
+    }
+
+    const { error, data } = await supabase
+      .from('discussion_topics')
+      .upsert(payload)
+      .select()
+
+    loading.value = false
+
+    if (error) {
+      pushToast(`Failed to ${isEditing.value ? 'update' : 'create'} topic`)
+      return
+    }
+
+    emit('created', { ...data[0], discussions: [] })
+    emit('close')
+    pushToast(`${isEditing.value ? 'Updated' : 'Created'} topic ${payload.name}`)
+  }
+  catch {
+    loading.value = false
+  }
 }
 </script>
 
@@ -137,6 +189,7 @@ function submitForm() {
 
     <Flex column gap="m">
       <Input v-model="form.name" :errors="normalizeErrors(errors.name)" label="Name" expand placeholder="Topic title" required />
+      <Input v-model="form.slug" :errors="normalizeErrors(errors.slug)" label="Slug (optional)" expand placeholder="Auto-generated from the name" />
       <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Simply describe the topic" />
       <Input v-model="form.priority" :errors="normalizeErrors(errors.priority)" type="number" label="Priority" expand placeholder="Set the topic priority for the sort order" />
 

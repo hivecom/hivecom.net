@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, Button, Card, Flex, Spinner, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Flex, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
@@ -11,9 +11,6 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDate } from '@/lib/utils/date'
 
 dayjs.extend(relativeTime)
-
-// TODO: path to post would be nice, but we'd have to fetch all the parent topics. Maybe a recursive query or some shit? Query parent topics until the parent is null and add breadcrumbs next to the back button
-// The design could maybe be breadcrumbs and then just a button with <- arrow positioned absolutely off the container inline with the breadcrumbs
 
 type DiscussionWithContext = Tables<'discussions'> & {
   profile?: Pick<Tables<'profiles'>, 'id' | 'username'> | null
@@ -29,13 +26,22 @@ interface ContextInfo {
   icon: string
 }
 
+type TopicBreadcrumb = Pick<Tables<'discussion_topics'>, 'id' | 'name' | 'slug' | 'parent_id'>
+
 const route = useRoute()
 const router = useRouter()
+
+const identifier = route.params.id as string
+
+// UUID regex pattern to detect if the identifier is a UUID
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const isUuid = uuidRegex.test(identifier)
 
 const supabase = useSupabaseClient()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
 const post = ref<DiscussionWithContext | null>(null)
+const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
 
 const isMobile = useBreakpoint('<m')
 
@@ -87,6 +93,25 @@ const contextInfo = computed<ContextInfo | null>(() => {
   return null
 })
 
+async function loadTopicBreadcrumbs(topicId: string | null) {
+  if (!topicId) {
+    topicBreadcrumbs.value = []
+    return
+  }
+
+  const { data, error } = await supabase
+    .rpc('get_discussion_topic_breadcrumbs', {
+      target_topic_id: topicId,
+    })
+
+  if (error || !data) {
+    topicBreadcrumbs.value = []
+    return
+  }
+
+  topicBreadcrumbs.value = data as TopicBreadcrumb[]
+}
+
 function handlePostUpdate(updated: Tables<'discussions'> | Tables<'discussion_topics'>) {
   if (!('reply_count' in updated))
     return
@@ -97,7 +122,7 @@ function handlePostUpdate(updated: Tables<'discussions'> | Tables<'discussion_to
 onBeforeMount(() => {
   loading.value = true
 
-  supabase
+  let discussionQuery = supabase
     .from('discussions')
     .select(`
       *,
@@ -107,7 +132,15 @@ onBeforeMount(() => {
       gameserver:gameservers(id, name),
       referendum:referendums(id, title)
     `)
-    .eq('id', route.params.id)
+
+  if (isUuid) {
+    discussionQuery = discussionQuery.or(`id.eq.${identifier},slug.eq.${identifier}`)
+  }
+  else {
+    discussionQuery = discussionQuery.eq('slug', identifier)
+  }
+
+  discussionQuery
     .maybeSingle()
     .then(({ data, error }) => {
       if (error) {
@@ -118,6 +151,7 @@ onBeforeMount(() => {
       }
       else {
         post.value = data
+        void loadTopicBreadcrumbs(data.discussion_topic_id)
       }
 
       loading.value = false
@@ -195,6 +229,19 @@ const timestampUpdateKey = useInterval(60000)
             </ForumItemActions>
           </Flex>
         </Flex>
+
+        <Breadcrumbs v-if="topicBreadcrumbs.length && !isMobile" class="mb-s">
+          <BreadcrumbItem @click="router.push('/forum')">
+            Forum
+          </BreadcrumbItem>
+          <BreadcrumbItem
+            v-for="topic in topicBreadcrumbs"
+            :key="topic.id"
+            @click="router.push(`/forum?activeTopicId=${topic.id}`)"
+          >
+            {{ topic.name }}
+          </BreadcrumbItem>
+        </Breadcrumbs>
 
         <Flex y-center gap="xs" wrap>
           <h1>

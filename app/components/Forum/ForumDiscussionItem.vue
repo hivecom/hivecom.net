@@ -24,7 +24,7 @@ dayjs.extend(relativeTime)
 
 <template>
   <li class="forum__category-post" :class="{ pinned: data.is_sticky }">
-    <NuxtLink :to="`/forum/${data.id}`" class="forum__category-post--item">
+    <NuxtLink :to="`/forum/${data.slug ?? data.id}`" class="forum__category-post--item">
       <div class="forum__category-post--icon">
         <Icon name="ph:scroll" :size="20" />
         <!-- <Icon :name="data.icon" :size="20" /> -->

@@ -108,14 +108,21 @@ const currentUser = useSupabaseUser()
   <div class="user-display">
     <!-- Unauthenticated user state -->
     <Flex v-if="!currentUser" gap="s" y-center class="user-display__header">
-      <div v-if="!props.hideAvatar" class="user-display__avatar-wrapper">
-        <Avatar :size="size" />
-      </div>
+      <template v-if="!props.hideAvatar">
+        <Avatar v-if="props.userId" :size="size" />
+        <Avatar v-else :size="size" url="/icon.svg" />
+      </template>
       <div class="user-display__info">
-        <Flex gap="xs" x-start y-center wrap>
-          <div class="user-display__link">
-            <span v-if="props.userId" class="user-display__username">{{ anonymousUsername }}</span>
-          </div>
+        <Flex gap="xs" y-center>
+          <template v-if="props.userId">
+            <span class="user-display__username">{{ anonymousUsername }}</span>
+          </template>
+          <template v-else>
+            <span class="user-display__username">Hivecom</span>
+            <Badge size="xs" variant="accent">
+              System
+            </Badge>
+          </template>
         </Flex>
       </div>
     </Flex>

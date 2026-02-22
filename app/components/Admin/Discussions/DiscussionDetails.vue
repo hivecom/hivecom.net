@@ -137,9 +137,10 @@ const contextLinks = computed<ContextLink[]>(() => {
   }
 
   if (props.discussion.discussion_topic_id) {
+    const discussionSlug = props.discussion.slug ?? props.discussion.id
     links.push({
-      label: `Forum thread · ${props.discussion.id}`,
-      href: `/forum/${props.discussion.id}`,
+      label: `Forum thread · ${discussionSlug}`,
+      href: `/forum/${discussionSlug}`,
       icon: 'ph:chat-circle',
     })
   }

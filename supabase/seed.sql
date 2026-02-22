@@ -556,11 +556,12 @@ ON CONFLICT (slug) DO UPDATE SET
   is_locked = EXCLUDED.is_locked;
 
 -- Insert forum discussions (migrated from former announcements seed data)
-INSERT INTO public.discussions(created_at, created_by, title, description, markdown, is_sticky, discussion_topic_id)
+INSERT INTO public.discussions(created_at, created_by, title, slug, description, markdown, is_sticky, discussion_topic_id)
 SELECT
   v.created_at,
   v.created_by,
   v.title,
+  v.slug,
   v.description,
   v.markdown,
   v.is_sticky,
@@ -570,6 +571,7 @@ FROM (VALUES
     NOW(),
     '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid,
     'Welcome to Hivecom',
+    'welcome-to-hivecom',
     'Welcome to our gaming community platform!',
     '
 We are excited to have you join our gaming community! This platform serves as the central hub for all our community activities, events, and server information.
@@ -589,6 +591,7 @@ Feel free to explore and don''t hesitate to reach out if you have any questions!
     NOW() - INTERVAL '2 days',
     '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid,
     'New CS2 Server Online',
+    'new-cs2-server-online',
     'Our new Counter-Strike 2 server is now live!',
     '
 Great news! Our brand new Counter-Strike 2 community server is now online and ready for action.
@@ -606,7 +609,7 @@ Come join us and let''s have some fun together!
     ',
     FALSE
   )
-) as v(created_at, created_by, title, description, markdown, is_sticky)
+) as v(created_at, created_by, title, slug, description, markdown, is_sticky)
 CROSS JOIN public.discussion_topics dt
 WHERE dt.slug = 'announcements';
 

@@ -85,8 +85,9 @@ const topics = ref<TopicWithDiscussions[]>([])
 const latestReplies = ref<ActivityItem[]>([])
 
 // Pathing and topic nesting
-// const activeTopicId = ref<string | null>(null)
-const activeTopicId = useRouteQuery<string | null>('activeTopicId', null)
+const activeTopicId = ref<string | null>(null)
+const activeTopicSlug = useRouteQuery<string | null>('activeTopic', null)
+const activeTopicIdQuery = useRouteQuery<string | null>('activeTopicId', null)
 
 // Provide topics and activeTopicId to child modals
 provide('forumTopics', () => topics)
@@ -113,6 +114,27 @@ onBeforeMount(() => {
         }
         else {
           topics.value = data
+
+          if (activeTopicSlug.value) {
+            const matchedTopic = data.find(topic => topic.slug === activeTopicSlug.value)
+            if (matchedTopic) {
+              activeTopicId.value = matchedTopic.id
+            }
+          }
+          else if (activeTopicIdQuery.value) {
+            const matchedTopic = data.find(topic => topic.id === activeTopicIdQuery.value)
+            if (matchedTopic) {
+              activeTopicId.value = matchedTopic.id
+              if (matchedTopic.slug) {
+                activeTopicSlug.value = matchedTopic.slug
+                activeTopicIdQuery.value = null
+              }
+              else {
+                activeTopicSlug.value = null
+                activeTopicIdQuery.value = matchedTopic.id
+              }
+            }
+          }
         }
       }),
     // FIXME: we need to limit discussion_replies only to discussion types
@@ -148,6 +170,54 @@ onBeforeMount(() => {
 
 const activeTopicPath = computed(() => composePathToTopic(activeTopicId.value, topics.value))
 
+function setActiveTopicById(topicId: string | null) {
+  activeTopicId.value = topicId
+  const matchedTopic = topics.value.find(topic => topic.id === topicId)
+
+  if (matchedTopic?.slug) {
+    activeTopicSlug.value = matchedTopic.slug
+    activeTopicIdQuery.value = null
+  }
+  else {
+    activeTopicSlug.value = null
+    activeTopicIdQuery.value = topicId
+  }
+}
+
+function setActiveTopicFromTopic(topic: Tables<'discussion_topics'>) {
+  activeTopicId.value = topic.id
+
+  if (topic.slug) {
+    activeTopicSlug.value = topic.slug
+    activeTopicIdQuery.value = null
+  }
+  else {
+    activeTopicSlug.value = null
+    activeTopicIdQuery.value = topic.id
+  }
+}
+
+watch(
+  () => activeTopicId.value,
+  (value) => {
+    if (!value) {
+      activeTopicSlug.value = null
+      activeTopicIdQuery.value = null
+      return
+    }
+
+    const matchedTopic = topics.value.find(topic => topic.id === value)
+    if (matchedTopic?.slug) {
+      activeTopicSlug.value = matchedTopic.slug
+      activeTopicIdQuery.value = null
+    }
+    else {
+      activeTopicSlug.value = null
+      activeTopicIdQuery.value = value
+    }
+  },
+)
+
 // Search implementation
 const searchOpen = ref(false)
 const router = useRouter()
@@ -163,7 +233,7 @@ const searchResults = computed<Command[]>(() => {
       group: 'Topics',
       description: composedPathToString(composePathToTopic(topic.parent_id, topics.value)),
       handler: () => {
-        activeTopicId.value = topic.parent_id
+        setActiveTopicById(topic.parent_id)
         searchOpen.value = false
 
         if (!topic.parent_id) {
@@ -183,7 +253,8 @@ const searchResults = computed<Command[]>(() => {
           group: 'Discussions',
           description: discussion.description ?? undefined,
           handler: () => {
-            router.push(`/forum/${discussion.id}`)
+            const discussionSlug = discussion.slug ?? discussion.id
+            router.push(`/forum/${discussionSlug}`)
             searchOpen.value = false
           },
         }
@@ -353,6 +424,7 @@ const visibleReplies = computed<ActivityItem[]>(() => {
         typeContext: discussion?.title ?? 'Discussion',
         title: reply.description ?? 'Reply',
         description: undefined,
+        href: `/forum/${discussion?.slug ?? reply.discussionId}?comment=${reply.id}`,
       }
     })
 })
@@ -397,8 +469,8 @@ const latestPosts = computed<ActivityItem[]>(() => {
         icon: isTopic ? 'ph:folder-open' : 'ph:scroll',
         isArchived: item.is_archived,
         ...(isTopic
-          ? { onClick: () => activeTopicId.value = id }
-          : { href: `/forum/${id}` }),
+          ? { onClick: () => setActiveTopicById(id) }
+          : { href: `/forum/${(item as ForumDiscussion).slug ?? id}` }),
       } as ActivityItem
     })
 
@@ -499,7 +571,7 @@ const postSinceYesterday = computed(() => {
       </section>
 
       <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xxs' : 'xs'">
-        <Button :disabled="!activeTopicId" size="s" :square="!isMobile" outline @click="activeTopicId = activeTopicPath.at(-2)?.parent_id ?? null">
+        <Button :disabled="!activeTopicId" size="s" :square="!isMobile" outline @click="setActiveTopicById(activeTopicPath.at(-2)?.parent_id ?? null)">
           <template v-if="isMobile" #start>
             <Icon :name="!activeTopicId ? 'ph:house' : 'ph:arrow-left'" />
           </template>
@@ -509,14 +581,14 @@ const postSinceYesterday = computed(() => {
           </template>
         </Button>
         <Breadcrumbs v-if="!isMobile">
-          <BreadcrumbItem @click="activeTopicId = null">
+          <BreadcrumbItem @click="setActiveTopicById(null)">
             Frontpage
           </BreadcrumbItem>
           <BreadcrumbItem
             v-for="(item, index) in activeTopicPath"
             :key="item.parent_id"
             v-bind="index !== activeTopicPath.length - 1 ? {
-              onClick: () => activeTopicId = item.parent_id,
+              onClick: () => setActiveTopicById(item.parent_id),
             } : {}"
           >
             {{ item.title }}
@@ -590,8 +662,8 @@ const postSinceYesterday = computed(() => {
               class="forum__category-title-button"
               role="button"
               tabindex="0"
-              @click="activeTopicId = topic.id"
-              @keydown.enter="activeTopicId = topic.id"
+              @click="setActiveTopicFromTopic(topic)"
+              @keydown.enter="setActiveTopicFromTopic(topic)"
             >
               {{ topic.name }}
             </h3>
@@ -625,7 +697,7 @@ const postSinceYesterday = computed(() => {
             :data="subtopic"
             :last-activity="getTopicLastActivity(subtopic)"
             :discussion-count="subtopic.discussions.length"
-            @click="activeTopicId = subtopic.id"
+            @click="setActiveTopicFromTopic(subtopic)"
             @update="replaceItemData('topic', $event)"
           />
 
