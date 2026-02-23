@@ -24,10 +24,14 @@ export default async function fetchRoutes(): Promise<string[]> {
 
   const routes: string[] = []
 
-  const fetchIds = async (table: string, routePrefix: string) => {
+  const fetchIds = async <T extends { id: string | number }>(
+    table: string,
+    select: string,
+    getRoute: (item: T) => string,
+  ) => {
     try {
       // Using REST API directly to avoid instantiating a full Supabase client in the config
-      const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=id`, {
+      const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${select}`, {
         headers,
       })
 
@@ -35,10 +39,10 @@ export default async function fetchRoutes(): Promise<string[]> {
         throw new Error(`Supabase API returned ${response.status} ${response.statusText}`)
       }
 
-      const data = (await response.json()) as { id: string | number }[]
+      const data = (await response.json()) as T[]
 
       if (Array.isArray(data)) {
-        const tableRoutes = data.map(item => `${routePrefix}/${item.id}`)
+        const tableRoutes = data.map(item => getRoute(item))
         routes.push(...tableRoutes)
         // eslint-disable-next-line no-console
         console.log(`✔ Added ${tableRoutes.length} routes from ${table}`)
@@ -53,10 +57,21 @@ export default async function fetchRoutes(): Promise<string[]> {
   // Note: We are fetching IDs for all items to generate static pages for them.
   // This allows crawlers to index these pages even though we are an SPA.
   await Promise.all([
-    fetchIds('events', '/events'),
-    fetchIds('projects', '/community/projects'),
-    fetchIds('discussions', '/forum'),
-    fetchIds('gameservers', '/servers/gameservers'),
+    fetchIds<{ id: string | number }>('events', 'id', item => `${'/events'}/${item.id}`),
+    fetchIds<{ id: string | number }>('projects', 'id', item => `${'/community/projects'}/${item.id}`),
+    fetchIds<{ id: string | number, slug: string | null }>(
+      'discussions',
+      'id,slug',
+      (item) => {
+        const discussionSlug = item.slug?.trim()
+        let slugOrId = item.id
+        if (discussionSlug !== undefined && discussionSlug.length > 0) {
+          slugOrId = discussionSlug
+        }
+        return `${'/forum'}/${slugOrId}`
+      },
+    ),
+    fetchIds<{ id: string | number }>('gameservers', 'id', item => `${'/servers/gameservers'}/${item.id}`),
   ])
 
   return routes
