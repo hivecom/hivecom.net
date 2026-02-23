@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.types'
-import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Switch } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Switch } from '@dolanske/vui'
 import { useStorage as useLocalStorage } from '@vueuse/core'
 import { useRouteQuery } from '@vueuse/router'
 import dayjs from 'dayjs'
@@ -514,6 +514,12 @@ const postSinceYesterday = computed(() => {
     .filter(item => dayjs(item.timestampRaw).isAfter(now.subtract(24, 'hour')))
     .length
 })
+
+// Drafts
+
+// TODO: make sure is_draft discussions excluded if the person viewing them is NOT the author
+
+// TODO: allow showing discussion detail page only to the author
 </script>
 
 <template>
@@ -598,37 +604,44 @@ const postSinceYesterday = computed(() => {
         <div class="flex-1" />
 
         <!-- Only allow creating things for signed in users -->
-        <Flex v-if="user" :gap="isMobile ? 'xxs' : 'xs'">
-          <Dropdown v-if="user.role === 'admin' || user.role === 'moderator'">
-            <template #trigger="{ toggle }">
-              <Button size="s" variant="accent" :square="isMobile" @click="toggle">
-                <template v-if="!isMobile" #start>
-                  <Icon name="ph:plus" :size="16" />
+        <Flex :gap="isMobile ? 'xxs' : 'xs'">
+          <template v-if="user">
+            <Dropdown v-if="user.role === 'admin' || user.role === 'moderator'">
+              <template #trigger="{ toggle }">
+                <Button size="s" variant="accent" :square="isMobile" @click="toggle">
+                  <template v-if="!isMobile" #start>
+                    <Icon name="ph:plus" :size="16" />
+                  </template>
+                  <template v-if="isMobile">
+                    <Icon name="ph:plus" :size="16" />
+                  </template>
+                  {{ isMobile ? '' : 'Create' }}
+                </Button>
+              </template>
+              <DropdownItem size="s" @click="addingDiscussion = true">
+                Discussion
+                <template v-if="true" #hint>
+                  <SharedTinyBadge>
+                    3 Drafts
+                  </SharedTinyBadge>
                 </template>
-                <template v-if="isMobile">
-                  <Icon name="ph:plus" :size="16" />
-                </template>
-                {{ isMobile ? '' : 'Create' }}
-              </Button>
-            </template>
-            <DropdownItem size="s" @click="addingDiscussion = true">
-              Discussion
-            </DropdownItem>
-            <DropdownItem size="s" @click="addingTopic = true">
-              Topic
-            </DropdownItem>
-          </Dropdown>
+              </DropdownItem>
+              <DropdownItem size="s" @click="addingTopic = true">
+                Topic
+              </DropdownItem>
+            </Dropdown>
 
-          <!-- Non-admin or moderators can only create a discussion -->
-          <Button v-else variant="accent" size="s" :square="isMobile" @click="addingDiscussion = true">
-            <template v-if="!isMobile" #start>
-              <Icon name="ph:plus" :size="16" />
-            </template>
-            <template v-if="isMobile">
-              <Icon name="ph:plus" :size="16" />
-            </template>
-            {{ isMobile ? '' : 'Discussion' }}
-          </Button>
+            <!-- Non-admin or moderators can only create a discussion -->
+            <Button v-else variant="accent" size="s" :square="isMobile" @click="addingDiscussion = true">
+              <template v-if="!isMobile" #start>
+                <Icon name="ph:plus" :size="16" />
+              </template>
+              <template v-if="isMobile">
+                <Icon name="ph:plus" :size="16" />
+              </template>
+              {{ isMobile ? '' : 'Discussion' }}
+            </Button>
+          </template>
 
           <Button size="s" :square="isMobile" @click="searchOpen = true">
             <template v-if="!isMobile" #start>

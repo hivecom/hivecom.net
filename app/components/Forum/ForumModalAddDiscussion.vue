@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
@@ -17,6 +18,8 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'created', discussion: Tables<'discussions'>): void
 }>()
+
+const isMobile = useBreakpoint('<s')
 
 const supabase = useSupabaseClient()
 const search = ref('')
@@ -47,6 +50,7 @@ const form = reactive({
   markdown: '',
   is_locked: false,
   is_sticky: false,
+  is_draft: false,
   discussion_topic_id: '',
 })
 
@@ -169,6 +173,10 @@ async function submitForm() {
     loading.value = false
   }
 }
+
+// Drafts
+
+const activeTab = ref<'create' | 'drafts'>('create')
 </script>
 
 <template>
@@ -180,7 +188,19 @@ async function submitForm() {
       Discussions can be created under a topic. Users will be able to post replies within discussions.
     </p>
 
-    <Flex column gap="m">
+    <Tabs v-model="activeTab" variant="filled" expand class="mb-m">
+      <Tab value="create">
+        Create
+      </Tab>
+      <Tab value="drafts">
+        Drafts
+        <div class="counter">
+          3
+        </div>
+      </Tab>
+    </Tabs>
+
+    <Flex v-if="activeTab === 'create'" column gap="m">
       <Input v-model="form.title" :errors="normalizeErrors(errors.title)" label="Name" expand placeholder="What is this discussion about?" required />
       <Input v-model="form.slug" :errors="normalizeErrors(errors.slug)" label="Slug (optional)" expand placeholder="Auto-generated from the title" />
       <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Short summary for the discussion" />
@@ -229,19 +249,44 @@ async function submitForm() {
       </div>
 
       <Card class="card-bg">
-        <Grid :columns="2" gap="m">
+        <Grid :columns="isMobile ? 2 : 3" gap="m">
+          <Switch v-model="form.is_draft" label="Draft" />
           <Switch v-model="form.is_locked" label="Locked" />
           <Switch v-model="form.is_sticky" label="Sticky" />
         </Grid>
       </Card>
     </Flex>
 
+    <template v-else>
+      <strong class="mb-s text-l block font-bold">Drafts</strong>
+      <Flex coolumn gap="s">
+        <Card class="card-bg">
+          <Flex x-between y-center>
+            <div>
+              <strong class="font-weight-bold">New burger just dropped</strong>
+              <p class="text-color-lighter">
+                What do you think of the new Katy Perry burger?
+              </p>
+            </div>
+            <ButtonGroup :gap="1">
+              <Button size="s">
+                Edit
+              </Button>
+              <Button square size="s">
+                <Icon name="ph:trash" />
+              </Button>
+            </ButtonGroup>
+          </Flex>
+        </Card>
+      </Flex>
+    </template>
+
     <template #footer>
       <Flex gap="s" x-end>
         <Button plain @click="emit('close')">
           Cancel
         </Button>
-        <Button variant="accent" :loading="loading" @click="submitForm">
+        <Button v-if="activeTab === 'create'" variant="accent" :loading="loading" @click="submitForm">
           {{ isEditing ? 'Save' : 'Create' }}
         </Button>
       </Flex>
