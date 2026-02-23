@@ -52,7 +52,7 @@ const contextInfo = computed<ContextInfo | null>(() => {
   if (post.value.profile_id) {
     const profileName = post.value.profile?.username ?? post.value.profile_id
     return {
-      label: 'Profile',
+      label: 'profile',
       href: `/profile/${profileName}`,
       icon: 'ph:user-circle',
     }
@@ -60,7 +60,7 @@ const contextInfo = computed<ContextInfo | null>(() => {
 
   if (post.value.project_id) {
     return {
-      label: 'Project',
+      label: 'project',
       href: `/community/projects/${post.value.project_id}`,
       icon: 'ph:folder',
     }
@@ -68,7 +68,7 @@ const contextInfo = computed<ContextInfo | null>(() => {
 
   if (post.value.event_id) {
     return {
-      label: 'Event',
+      label: 'event',
       href: `/events/${post.value.event_id}`,
       icon: 'ph:calendar',
     }
@@ -76,7 +76,7 @@ const contextInfo = computed<ContextInfo | null>(() => {
 
   if (post.value.gameserver_id) {
     return {
-      label: 'Gameserver',
+      label: 'gameserver',
       href: `/servers/gameservers/${post.value.gameserver_id}`,
       icon: 'ph:computer-tower',
     }
@@ -84,7 +84,7 @@ const contextInfo = computed<ContextInfo | null>(() => {
 
   if (post.value.referendum_id) {
     return {
-      label: 'Referendum',
+      label: 'referendum',
       href: `/votes/${post.value.referendum_id}`,
       icon: 'ph:user-sound',
     }
@@ -181,20 +181,35 @@ const timestampUpdateKey = useInterval(60000)
     <!-- Main Content  -->
     <template v-else-if="post">
       <section class="page-title" :class="isMobile ? 'mb-l' : 'mb-xl'">
-        <Flex x-between y-center class="mb-l">
-          <Button
-            variant="gray"
-            plain
-            size="s"
+        <Flex x-between y-center>
+          <div class="relative">
+            <template v-if="topicBreadcrumbs.length && !isMobile">
+              <Button
+                class="back-button"
+                variant="gray"
+                plain
+                square
+                size="s"
+                aria-label="Go back to Events page"
+                @click="$router.back()"
+              >
+                <Icon class="text-color" name="ph:arrow-left" :size="16" />
+              </Button>
 
-            aria-label="Go back to Events page"
-            @click="$router.back()"
-          >
-            <template #start>
-              <Icon name="ph:arrow-left" />
+              <Breadcrumbs>
+                <BreadcrumbItem @click="router.push('/forum')">
+                  Forum
+                </BreadcrumbItem>
+                <BreadcrumbItem
+                  v-for="topic in topicBreadcrumbs"
+                  :key="topic.id"
+                  :href="`/forum?activeTopicId=${topic.id}`"
+                >
+                  {{ topic.name }}
+                </BreadcrumbItem>
+              </Breadcrumbs>
             </template>
-            Back
-          </Button>
+          </div>
 
           <Flex gap="m" y-center>
             <Tooltip>
@@ -230,20 +245,7 @@ const timestampUpdateKey = useInterval(60000)
           </Flex>
         </Flex>
 
-        <Breadcrumbs v-if="topicBreadcrumbs.length && !isMobile" class="mb-s">
-          <BreadcrumbItem @click="router.push('/forum')">
-            Forum
-          </BreadcrumbItem>
-          <BreadcrumbItem
-            v-for="topic in topicBreadcrumbs"
-            :key="topic.id"
-            @click="router.push(`/forum?activeTopicId=${topic.id}`)"
-          >
-            {{ topic.name }}
-          </BreadcrumbItem>
-        </Breadcrumbs>
-
-        <Flex y-center gap="xs" wrap>
+        <Flex y-center gap="xs" wrap :class="isMobile ? 'mt-m' : 'mt-xl'">
           <h1>
             {{ post.title ?? 'Unnamed discussion' }}
           </h1>
@@ -258,12 +260,12 @@ const timestampUpdateKey = useInterval(60000)
             <Flex column gap="xs">
               <Flex y-center gap="xs">
                 <Icon :name="contextInfo.icon" :size="20" />
-                <span>This discussion is linked to a {{ contextInfo.label }}</span>
+                <span>This discussion is linked to {{ contextInfo.label === 'event' ? 'an' : 'a' }} {{ contextInfo.label }}</span>
               </Flex>
             </Flex>
             <NuxtLink :to="contextInfo.href">
               <Button size="s">
-                View full {{ contextInfo.label }}
+                View {{ contextInfo.label }}
               </Button>
             </NuxtLink>
           </Flex>
@@ -271,7 +273,7 @@ const timestampUpdateKey = useInterval(60000)
 
         <MDRenderer v-if="post.markdown" class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
 
-        <Flex x-between y-center class="mt-l" wrap gap="m">
+        <Flex x-between y-center class="mt-xl" wrap gap="m">
           <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
           <Flex :key="timestampUpdateKey" y-center>
             <Tooltip>
@@ -310,6 +312,13 @@ const timestampUpdateKey = useInterval(60000)
 <style scoped lang="scss">
 @use '@/assets/breakpoints.scss' as *;
 
+.back-button {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 :deep(.forum__item-actions) {
   display: block;
 }
@@ -318,11 +327,6 @@ const timestampUpdateKey = useInterval(60000)
   p {
     font-size: var(--font-size-xl);
   }
-}
-
-.page section:first-child h1,
-.page section:first-child p {
-  text-align: left !important;
 }
 
 .page-title {
