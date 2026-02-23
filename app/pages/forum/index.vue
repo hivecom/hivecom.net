@@ -540,9 +540,15 @@ const postSinceYesterday = computed(() => {
 
         <div class="forum__latest-list">
           <NuxtLink v-for="post in latestPosts" :key="post.id" class="forum__latest-item" :href="post.href" @click="post.onClick">
-            <Flex x-between y-center>
+            <Flex x-between y-center expand>
               <Flex :gap="4" y-center>
                 <Icon :name="post.icon" :size="13" />
+                <!-- NOTE (@dolanske): I removed the archived badge as we're
+                cramming too much information into small card. Its just a quick
+                update. If user clicks the post they will learn its archived
+                anyway and imho its not really that relevant. If the isArchived
+                only showed as a status update, then we could bring it back
+                though. "Admin arhived <name>" or something like that -->
                 <span class="forum__latest-type">
                   <template v-if="post.type === 'Reply'">
                     {{ post.typeLabel }} <strong>{{ post.typeContext }}</strong>
@@ -551,10 +557,8 @@ const postSinceYesterday = computed(() => {
                     {{ post.typeLabel ?? post.type }}
                   </template>
                 </span>
-                <Badge v-if="post.isArchived" variant="warning">
-                  Archived
-                </Badge>
               </Flex>
+              <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
             </Flex>
             <strong class="forum__latest-title">
               {{ post.type === 'Reply' ? stripMarkdown(processMentions(post.title, mentionLookup)) : post.title }}
@@ -564,7 +568,6 @@ const postSinceYesterday = computed(() => {
             </p>
             <Flex y-center x-between expand class="forum__latest-footer">
               <UserDisplay :user-id="post.user" size="s" show-role />
-              <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
             </Flex>
           </NuxtLink>
         </div>
