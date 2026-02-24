@@ -10,6 +10,7 @@ import RichTextEditor from '../Editor/RichTextEditor.vue'
 interface Props {
   open: boolean
   editedItem?: Tables<'discussions'>
+  drafts?: Tables<'discussions'>[]
 }
 
 const props = defineProps<Props>()
@@ -167,7 +168,7 @@ async function submitForm() {
 
     emit('created', data[0])
     emit('close')
-    pushToast(`${isEditing.value ? 'Updated' : 'Created'} discussion ${payload.title}`)
+    pushToast(`${isEditing.value ? 'Updated' : 'Created'} discussion ${payload.title}${payload.is_draft ? ' (draft)' : ''}`)
   }
   catch {
     loading.value = false
@@ -175,8 +176,63 @@ async function submitForm() {
 }
 
 // Drafts
-
 const activeTab = ref<'create' | 'drafts'>('create')
+const drafts = ref<Tables<'discussions'>[]>([])
+const userId = useUserId()
+const deleteLoading = ref(false)
+
+watchEffect(() => {
+  if (userId.value && !drafts.value.length) {
+    supabase
+      .from('discussions')
+      .select('*')
+      .eq('is_draft', true)
+      .eq('created_by', userId.value)
+      .then(({ data }) => {
+        if (data) {
+          drafts.value = data
+        }
+      })
+  }
+})
+
+function editDraft(draft: Tables<'discussions'>) {
+  form.title = draft.title ?? ''
+  form.slug = draft.slug ?? ''
+  form.description = draft.description ?? ''
+  form.markdown = draft.markdown ?? ''
+  form.discussion_topic_id = draft.discussion_topic_id ?? ''
+  form.is_locked = draft.is_locked
+  form.is_sticky = draft.is_sticky
+  form.is_draft = draft.is_draft
+
+  activeTab.value = 'create'
+}
+
+function deleteDraft(id: string) {
+  deleteLoading.value = true
+
+  supabase
+    .from('discussions')
+    .delete()
+    .eq('id', id)
+    .then(({ error }) => {
+      deleteLoading.value = true
+
+      if (error) {
+        pushToast('Failed to delete draft')
+        return
+      }
+
+      drafts.value = drafts.value.filter(d => d.id !== id)
+      pushToast('Draft deleted')
+
+      // Switch back to create tab
+      if (drafts.value.length === 0) {
+        activeTab.value = 'create'
+      }
+    })
+}
 </script>
 
 <template>
@@ -192,10 +248,10 @@ const activeTab = ref<'create' | 'drafts'>('create')
       <Tab value="create">
         Create
       </Tab>
-      <Tab value="drafts">
+      <Tab value="drafts" :disabled="drafts.length === 0">
         Drafts
-        <div class="counter">
-          3
+        <div v-if="drafts.length > 0" class="counter">
+          {{ drafts.length }}
         </div>
       </Tab>
     </Tabs>
@@ -259,20 +315,20 @@ const activeTab = ref<'create' | 'drafts'>('create')
 
     <template v-else>
       <strong class="mb-s text-l block font-bold">Drafts</strong>
-      <Flex coolumn gap="s">
+      <Flex v-for="draft of drafts" :key="draft.id" column gap="s">
         <Card class="card-bg">
           <Flex x-between y-center>
             <div>
-              <strong class="font-weight-bold">New burger just dropped</strong>
+              <strong class="font-weight-bold">{{ draft.title }}</strong>
               <p class="text-color-lighter">
-                What do you think of the new Katy Perry burger?
+                {{ draft.description }}
               </p>
             </div>
             <ButtonGroup :gap="1">
-              <Button size="s">
+              <Button size="s" @click="editDraft(draft)">
                 Edit
               </Button>
-              <Button square size="s">
+              <Button square size="s" :loading="deleteLoading" @click="deleteDraft(draft.id)">
                 <Icon name="ph:trash" />
               </Button>
             </ButtonGroup>

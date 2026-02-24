@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Switch } from '@dolanske/vui'
+import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Switch } from '@dolanske/vui'
 import { useStorage as useLocalStorage } from '@vueuse/core'
 import { useRouteQuery } from '@vueuse/router'
 import dayjs from 'dayjs'
@@ -515,7 +515,21 @@ const postSinceYesterday = computed(() => {
     .length
 })
 
-// Drafts
+// Draft count for creation dropdown
+const draftCount = ref<number>(0)
+
+onBeforeMount(() => {
+  supabase
+    .from('discussions')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_draft', true)
+    .eq('created_by', userId.value!)
+    .then(({ count }) => {
+      if (count !== null) {
+        draftCount.value = count
+      }
+    })
+})
 
 // TODO: make sure is_draft discussions excluded if the person viewing them is NOT the author
 
@@ -623,9 +637,9 @@ const postSinceYesterday = computed(() => {
               </template>
               <DropdownItem size="s" @click="addingDiscussion = true">
                 Discussion
-                <template v-if="true" #hint>
+                <template v-if="draftCount > 0" #hint>
                   <SharedTinyBadge>
-                    3 Drafts
+                    {{ draftCount }} Draft{{ draftCount > 1 ? 's' : '' }}
                   </SharedTinyBadge>
                 </template>
               </DropdownItem>
