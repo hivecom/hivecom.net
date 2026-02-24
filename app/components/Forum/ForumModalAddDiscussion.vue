@@ -279,6 +279,7 @@ watch(() => props.open, (isOpen) => {
 // 2. Hide tabs on detail page when editing
 // 3. If a discussion exists and it is a draft, we show the tooltip. BUT, when editing existing discussion from the modal, discussion does not technically exist
 // 4. Clicking publish, shows a confirm dialog
+// 5. Double check only the author can view drafted detail page post bro
 </script>
 
 <template>
