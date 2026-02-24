@@ -13,6 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   confirm: []
+  cancel: []
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
@@ -41,7 +42,7 @@ const isBelowSmall = useBreakpoint('<xs')
 
     <template #footer="{ close }">
       <Flex gap="xs" expand x-end>
-        <Button :expand="isBelowSmall" @click="close">
+        <Button :expand="isBelowSmall" @click="close(); emit('cancel')">
           {{ props.cancelText || 'Cancel' }}
         </Button>
         <Button

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Flex, Spinner, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
@@ -169,6 +169,28 @@ useSeoMeta({
 // way if the post is open for a longer period of time, it won't show "posted 1
 // minute ago" for 10 minutes until you refresh or interact with the page.
 const timestampUpdateKey = useInterval(60000)
+
+// Publish post
+function publish() {
+  if (!post.value)
+    return
+
+  supabase
+    .from('discussions')
+    .update({ is_draft: false })
+    .eq('id', post.value.id)
+    .then(({
+      error,
+    }) => {
+      if (error) {
+        pushToast('Error publishing post')
+      }
+      else if (post.value) {
+        post.value.is_draft = false
+        pushToast('Published post')
+      }
+    })
+}
 </script>
 
 <template>
@@ -231,6 +253,7 @@ const timestampUpdateKey = useInterval(60000)
             </Tooltip>
 
             <ForumItemActions
+              :key="post.is_draft.toString()"
               table="discussions"
               :data="post"
               @remove="router.back()"
@@ -254,6 +277,15 @@ const timestampUpdateKey = useInterval(60000)
             Archived
           </Badge>
         </Flex>
+
+        <Alert v-if="post.is_draft" class="mb-l" variant="info">
+          This post is a draft
+          <template #end>
+            <Button size="s" @click="publish">
+              Publish
+            </Button>
+          </template>
+        </Alert>
 
         <Card v-if="contextInfo" class="mb-l mt-m">
           <Flex x-between y-center wrap gap="m">

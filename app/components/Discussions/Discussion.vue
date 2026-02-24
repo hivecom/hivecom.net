@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import { wrapInBlockquote } from '@/lib/markdown-processors'
-import { truncate } from '@/lib/utils/formatting'
+import { normalizeErrors, truncate } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
@@ -450,7 +450,7 @@ provide('delete-comment', deleteComment)
           <RichTextEditor
             ref="textarea"
             v-model="form.message"
-            :errors="Object.values(errors.message.errors)"
+            :errors="normalizeErrors(errors.message)"
             :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
             min-height="108px"
             :media-context="props.id"

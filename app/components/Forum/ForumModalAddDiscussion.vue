@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
+import ConfirmModal from '../Shared/ConfirmModal.vue'
 
 interface Props {
   open: boolean
@@ -18,13 +19,23 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'created', discussion: Tables<'discussions'>): void
+  (e: 'draftUpdated'): void
+
 }>()
 
 const isMobile = useBreakpoint('<s')
+const router = useRouter()
 
 const supabase = useSupabaseClient()
 const search = ref('')
 const isEditing = computed(() => !!props.editedItem)
+
+// Draft state
+const activeTab = ref<'create' | 'drafts'>('create')
+const drafts = ref<Tables<'discussions'>[]>([])
+const userId = useUserId()
+const deleteLoading = ref(false)
+const deleteConfirm = ref<string | null>(null)
 
 // Inject provided values from parent
 const topics = inject<() => Ref<Tables<'discussion_topics'>[]>>('forumTopics', () => ref([]))()
@@ -51,7 +62,7 @@ const form = reactive({
   markdown: '',
   is_locked: false,
   is_sticky: false,
-  is_draft: false,
+  is_draft: true,
   discussion_topic_id: '',
 })
 
@@ -73,6 +84,7 @@ watch(() => props.editedItem, (item) => {
     discussion_topic_id: item.discussion_topic_id ?? '',
     is_locked: item.is_locked,
     is_sticky: item.is_sticky,
+    is_draft: item.is_draft,
   })
 
   isAutoUpdatingSlug.value = false
@@ -166,7 +178,14 @@ async function submitForm() {
       return
     }
 
-    emit('created', data[0])
+    if (payload.is_draft) {
+      drafts.value.push(data[0])
+      emit('draftUpdated')
+    }
+    else {
+      emit('created', data[0])
+    }
+
     emit('close')
     pushToast(`${isEditing.value ? 'Updated' : 'Created'} discussion ${payload.title}${payload.is_draft ? ' (draft)' : ''}`)
   }
@@ -175,13 +194,8 @@ async function submitForm() {
   }
 }
 
-// Drafts
-const activeTab = ref<'create' | 'drafts'>('create')
-const drafts = ref<Tables<'discussions'>[]>([])
-const userId = useUserId()
-const deleteLoading = ref(false)
-
-watchEffect(() => {
+// Draft methods
+onBeforeMount(() => {
   if (userId.value && !drafts.value.length) {
     supabase
       .from('discussions')
@@ -197,25 +211,30 @@ watchEffect(() => {
 })
 
 function editDraft(draft: Tables<'discussions'>) {
-  form.title = draft.title ?? ''
-  form.slug = draft.slug ?? ''
-  form.description = draft.description ?? ''
-  form.markdown = draft.markdown ?? ''
-  form.discussion_topic_id = draft.discussion_topic_id ?? ''
-  form.is_locked = draft.is_locked
-  form.is_sticky = draft.is_sticky
-  form.is_draft = draft.is_draft
+  Object.assign(form, {
+    title: draft.title ?? '',
+    slug: draft.slug ?? '',
+    description: draft.description ?? '',
+    markdown: draft.markdown ?? '',
+    discussion_topic_id: draft.discussion_topic_id ?? '',
+    is_locked: draft.is_locked,
+    is_sticky: draft.is_sticky,
+    is_draft: draft.is_draft,
+  })
 
   activeTab.value = 'create'
 }
 
-function deleteDraft(id: string) {
+function deleteDraft() {
+  if (!deleteConfirm.value)
+    return
+
   deleteLoading.value = true
 
   supabase
     .from('discussions')
     .delete()
-    .eq('id', id)
+    .eq('id', deleteConfirm.value)
     .then(({ error }) => {
       deleteLoading.value = true
 
@@ -224,8 +243,9 @@ function deleteDraft(id: string) {
         return
       }
 
-      drafts.value = drafts.value.filter(d => d.id !== id)
+      drafts.value = drafts.value.filter(d => d.id !== deleteConfirm.value)
       pushToast('Draft deleted')
+      emit('draftUpdated')
 
       // Switch back to create tab
       if (drafts.value.length === 0) {
@@ -233,6 +253,32 @@ function deleteDraft(id: string) {
       }
     })
 }
+
+// Clear form when modal is closed
+watch(() => props.open, (isOpen) => {
+  if (!isOpen) {
+    Object.assign(form, {
+      title: '',
+      slug: '',
+      description: '',
+      markdown: '',
+      is_locked: false,
+      is_sticky: false,
+      is_draft: true,
+      discussion_topic_id: '',
+    })
+
+    activeTab.value = 'create'
+    isAutoUpdatingSlug.value = false
+    slugTouched.value = false
+  }
+})
+
+// TODO
+// 1. EditedItem is not populated in discussion detail page
+// 2. Hide tabs on detail page when editing
+// 3. If a discussion exists and it is a draft, we show the tooltip. BUT, when editing existing discussion from the modal, discussion does not technically exist
+// 4. Clicking publish, shows a confirm dialog
 </script>
 
 <template>
@@ -270,10 +316,10 @@ function deleteDraft(id: string) {
         placeholder="Add more context to the discussion"
       />
       <div class="w-100">
-        <label class="vui-label">Topic</label>
+        <label class="vui-label required">Topic</label>
         <Dropdown expand>
           <template #trigger="{ toggle, isOpen }">
-            <Button expand class="w-100" :loading="loading" outline @click="toggle">
+            <Button expand class="w-100" outline @click="toggle">
               <template #start>
                 <span class="text-size-m">
                   {{ form.discussion_topic_id === null ? 'Top-level' : topicOptions.find(o => o.id === form.discussion_topic_id)?.label || 'Select parent topic' }}
@@ -301,11 +347,20 @@ function deleteDraft(id: string) {
             </p>
           </template>
         </Dropdown>
+
+        <ul v-if="errors.discussion_topic_id.invalid" class="vui-input-errors">
+          <li>A topic is required</li>
+        </ul>
       </div>
 
       <Card class="card-bg">
-        <Grid :columns="isMobile ? 2 : 3" gap="m">
-          <Switch v-model="form.is_draft" label="Draft" />
+        <Grid :columns="(isMobile || (!props.editedItem?.is_draft && props.editedItem)) ? 2 : 3" gap="m">
+          <Tooltip v-if="!!props.editedItem?.is_draft || !props.editedItem">
+            <Switch v-model="form.is_draft" label="Draft" />
+            <template #tooltip>
+              <p>Publishing a discussion cannot be undone</p>
+            </template>
+          </Tooltip>
           <Switch v-model="form.is_locked" label="Locked" />
           <Switch v-model="form.is_sticky" label="Sticky" />
         </Grid>
@@ -314,8 +369,8 @@ function deleteDraft(id: string) {
 
     <template v-else>
       <strong class="mb-s text-l block font-bold">Drafts</strong>
-      <Flex v-for="draft of drafts" :key="draft.id" column gap="s">
-        <Card class="card-bg">
+      <Flex column gap="s">
+        <Card v-for="draft of drafts" :key="draft.id" class="card-bg" @click="router.push(`/forum/${draft.slug ?? draft.id}`)">
           <Flex x-between y-center>
             <div>
               <strong class="font-weight-bold">{{ draft.title }}</strong>
@@ -324,10 +379,10 @@ function deleteDraft(id: string) {
               </p>
             </div>
             <ButtonGroup :gap="1">
-              <Button size="s" @click="editDraft(draft)">
+              <Button size="s" @click.stop="editDraft(draft)">
                 Edit
               </Button>
-              <Button square size="s" :loading="deleteLoading" @click="deleteDraft(draft.id)">
+              <Button square size="s" :loading="deleteLoading" @click.stop="deleteConfirm = draft.id">
                 <Icon name="ph:trash" />
               </Button>
             </ButtonGroup>
@@ -346,7 +401,16 @@ function deleteDraft(id: string) {
         </Button>
       </Flex>
     </template>
-  </modal>
+  </Modal>
+
+  <ConfirmModal
+    :open="!!deleteConfirm"
+    :confirm-loading="deleteLoading"
+    title="Remove"
+    description="Are you sure you want to delete this draft?"
+    @confirm="deleteDraft"
+    @cancel="deleteConfirm = null"
+  />
 </template>
 
 <style scoped lang="scss">

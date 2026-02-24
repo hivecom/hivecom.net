@@ -106,8 +106,8 @@ onBeforeMount(() => {
           last_reply:discussion_replies!discussion_replies_discussion_id_fkey(created_at)
         )
       `)
-      .neq('is_draft', true)
-      .order('created_at', { foreignTable: 'discussions.discussion_replies', ascending: false })
+      .neq('discussions.is_draft', true)
+      .order('created_at', { referencedTable: 'discussions.discussion_replies', ascending: false })
       .limit(1, { foreignTable: 'discussions.discussion_replies' })
       .then(({ data, error }) => {
         if (error) {
@@ -519,20 +519,22 @@ const postSinceYesterday = computed(() => {
 // Draft count for creation dropdown
 const draftCount = ref<number>(0)
 
-onBeforeMount(() => {
+function fetchDraftCount() {
   supabase
     .from('discussions')
     .select('*', { count: 'exact', head: true })
+    .eq('created_by', userId.value)
     .eq('is_draft', true)
-    .eq('created_by', userId.value!)
     .then(({ count }) => {
       if (count !== null) {
         draftCount.value = count
       }
     })
-})
+}
 
-// TODO: make sure is_draft discussions excluded if the person viewing them is NOT the author
+onBeforeMount(() => {
+  fetchDraftCount()
+})
 
 // TODO: allow showing discussion detail page only to the author
 </script>
@@ -755,6 +757,7 @@ onBeforeMount(() => {
         :open="addingDiscussion"
         @close="addingDiscussion = false"
         @created="appendDiscussionToTopic"
+        @draft-updated="fetchDraftCount()"
       />
 
       <Commands
