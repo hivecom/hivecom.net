@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { CmsAsset } from '@/lib/cmsAssets'
+import type { StorageAsset } from '@/lib/storageAssets'
 import { Button, Flex, Input, Modal } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
-import { normalizePrefix } from '@/lib/cmsAssets'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { normalizePrefix } from '@/lib/storageAssets'
 
 const props = defineProps<{
-  asset: CmsAsset | null
+  asset: StorageAsset | null
   loading?: boolean
 }>()
 

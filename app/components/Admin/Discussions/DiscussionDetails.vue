@@ -1,12 +1,14 @@
 <script setup lang="ts">
+import type { StorageAsset } from '@/lib/storageAssets'
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Card, Divider, Flex, Grid, pushToast, Sheet } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, CopyClipboard, Divider, Flex, Grid, pushToast, Sheet } from '@dolanske/vui'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
 
 type DiscussionRecord = Tables<'discussions'>
 
@@ -45,6 +47,48 @@ const lastUpdatedAt = computed<string | null>(() => props.discussion?.modified_a
 
 const fetchedMarkdown = ref<string | null>(null)
 const contentLoading = ref(false)
+
+const assets = ref<StorageAsset[]>([])
+const assetsLoading = ref(false)
+const assetsError = ref('')
+
+const assetsSummary = computed(() => {
+  const count = assets.value.length
+  return `${count} asset${count === 1 ? '' : 's'}`
+})
+
+const assetsPrefix = computed(() => normalizePrefix(props.discussion?.id ?? ''))
+
+async function fetchDiscussionAssets() {
+  assets.value = []
+  assetsError.value = ''
+
+  if (!props.discussion?.id)
+    return
+
+  const prefix = assetsPrefix.value
+  if (!prefix)
+    return
+
+  assetsLoading.value = true
+
+  try {
+    assets.value = await listStorageFilesRecursive(supabase, FORUMS_BUCKET_ID, prefix)
+  }
+  catch (error: unknown) {
+    assetsError.value = error instanceof Error ? error.message : 'Unable to load assets'
+  }
+  finally {
+    assetsLoading.value = false
+  }
+}
+
+function openAssetUrl(asset: StorageAsset) {
+  if (!asset.publicUrl)
+    return
+
+  window.open(asset.publicUrl, '_blank', 'noopener')
+}
 
 const discussionMarkdown = computed(() => {
   if (!props.discussion)
@@ -215,6 +259,7 @@ watch(
   () => {
     void fetchLastReply()
     void fetchDiscussionContent()
+    void fetchDiscussionAssets()
   },
   { immediate: true },
 )
@@ -431,6 +476,85 @@ function handleClose() {
               </Button>
             </NuxtLink>
           </Flex>
+        </Flex>
+      </Card>
+
+      <Card class="card-bg">
+        <Flex column gap="s">
+          <Flex x-between y-center>
+            <h5 class="text-bold">
+              Assets
+            </h5>
+            <span class="text-xxs text-color-light">
+              Forums bucket · {{ assetsSummary }}
+            </span>
+          </Flex>
+
+          <Alert v-if="assetsError" variant="danger">
+            {{ assetsError }}
+          </Alert>
+
+          <p v-else-if="assetsLoading" class="text-color-lighter text-xs">
+            Loading assets...
+          </p>
+
+          <Grid
+            v-else-if="assets.length"
+            expand
+            columns="repeat(auto-fill, minmax(200px, 1fr))"
+            gap="s"
+          >
+            <Card v-for="asset in assets" :key="asset.path" class="card-bg">
+              <Flex column gap="xs">
+                <Flex
+                  y-center
+                  x-center
+                  class="card-bg"
+                  style="height: 120px; border-radius: var(--border-radius-s); overflow: hidden;"
+                >
+                  <template v-if="isImageAsset(asset) && asset.publicUrl">
+                    <img :src="asset.publicUrl" :alt="asset.name" style="width: 100%; height: 100%; object-fit: cover;">
+                  </template>
+                  <template v-else>
+                    <Icon name="ph:file" size="24" />
+                  </template>
+                </Flex>
+
+                <Flex column gap="xxs">
+                  <strong class="text-xs">{{ asset.name }}</strong>
+                  <span class="text-xxs text-color-light">{{ formatBytes(asset.size) }}</span>
+                </Flex>
+
+                <Flex gap="xs" y-center>
+                  <CopyClipboard :text="asset.publicUrl || ''" confirm>
+                    <Button
+                      size="s"
+                      variant="gray"
+                      square
+                      :disabled="!asset.publicUrl"
+                      data-title-top="Copy URL"
+                    >
+                      <Icon name="ph:link-simple" />
+                    </Button>
+                  </CopyClipboard>
+                  <Button
+                    size="s"
+                    variant="gray"
+                    square
+                    :disabled="!asset.publicUrl"
+                    data-title-top="Open"
+                    @click="openAssetUrl(asset)"
+                  >
+                    <Icon name="ph:arrow-square-out" />
+                  </Button>
+                </Flex>
+              </Flex>
+            </Card>
+          </Grid>
+
+          <p v-else class="text-color-lighter text-xs">
+            No assets found for this discussion.
+          </p>
         </Flex>
       </Card>
 

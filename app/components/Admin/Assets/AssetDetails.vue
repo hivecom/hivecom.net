@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { CmsAsset } from '@/lib/cmsAssets'
+import type { StorageAsset } from '@/lib/storageAssets'
 import { Button, Card, CopyClipboard, Flex, Grid, Input, Sheet } from '@dolanske/vui'
 
 import { computed } from 'vue'
-import { formatBytes, isImageAsset } from '@/lib/cmsAssets'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { formatBytes, isImageAsset } from '@/lib/storageAssets'
 
 const props = withDefaults(defineProps<{
-  asset: CmsAsset | null
+  asset: StorageAsset | null
   canDelete?: boolean
   canRename?: boolean
 }>(), {
@@ -16,8 +16,8 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  delete: [asset: CmsAsset]
-  rename: [asset: CmsAsset]
+  delete: [asset: StorageAsset]
+  rename: [asset: StorageAsset]
 }>()
 
 const isOpen = defineModel<boolean>('isOpen', { default: false })

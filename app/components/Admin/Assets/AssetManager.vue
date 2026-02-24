@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
 
-import type { CmsAsset } from '@/lib/cmsAssets'
+import type { StorageAsset as CmsAsset, StorageBucketId } from '@/lib/storageAssets'
 import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table } from '@dolanske/vui'
 
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
@@ -11,12 +11,13 @@ import AssetUpload from '@/components/Admin/Assets/AssetUpload.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
-import { CMS_BUCKET_ID, formatBytes, isImageAsset, listCmsDirectory, listCmsFilesRecursive, normalizePrefix } from '@/lib/cmsAssets'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { CMS_BUCKET_ID, formatBytes, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
 
 interface Props {
   canUpload?: boolean
   canDelete?: boolean
+  bucketId?: StorageBucketId
 }
 
 interface SelectOption<T extends string = string> {
@@ -35,11 +36,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const supabase = useSupabaseClient()
 const runtimeConfig = useRuntimeConfig()
+const resolvedBucketId = computed(() => props.bucketId ?? CMS_BUCKET_ID)
 const storageConsoleUrl = computed(() => {
   const projectRef = runtimeConfig.public?.supabaseProjectRef
   if (typeof projectRef !== 'string' || projectRef.length === 0)
     return ''
-  return `https://supabase.com/dashboard/project/${projectRef}/storage/buckets/${CMS_BUCKET_ID}`
+  return `https://supabase.com/dashboard/project/${projectRef}/storage/buckets/${resolvedBucketId.value}`
 })
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
@@ -232,7 +234,7 @@ async function fetchAssets() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const entries = await listCmsDirectory(supabase, { prefix: currentPrefix.value })
+    const entries = await listCmsDirectory(supabase, resolvedBucketId.value, { prefix: currentPrefix.value })
     assets.value = entries
   }
   catch (error) {
@@ -267,10 +269,10 @@ async function deleteAsset(asset: CmsAsset) {
   setActionLoading(asset.path, 'delete', true)
   try {
     if (asset.type === 'folder') {
-      const files = await listCmsFilesRecursive(supabase, asset.path)
+      const files = await listCmsFilesRecursive(supabase, resolvedBucketId.value, asset.path)
       if (files.length) {
         const { error } = await supabase.storage
-          .from(CMS_BUCKET_ID)
+          .from(resolvedBucketId.value)
           .remove(files.map(file => file.path))
         if (error)
           throw error
@@ -278,7 +280,7 @@ async function deleteAsset(asset: CmsAsset) {
     }
     else {
       const { error } = await supabase.storage
-        .from(CMS_BUCKET_ID)
+        .from(resolvedBucketId.value)
         .remove([asset.path])
       if (error)
         throw error
@@ -365,7 +367,7 @@ async function renameFileAsset(asset: CmsAsset, newPathInput: string): Promise<s
   setActionLoading(asset.path, 'rename', true)
   try {
     const { error } = await supabase.storage
-      .from(CMS_BUCKET_ID)
+      .from(resolvedBucketId.value)
       .move(asset.path, targetPath)
     if (error)
       throw error
@@ -440,6 +442,11 @@ function getAssetTypeLabel(asset: CmsAsset): string {
     return 'Document'
   return 'File'
 }
+
+watch(resolvedBucketId, () => {
+  currentPrefix.value = ''
+  fetchAssets()
+})
 
 watch(currentPrefix, () => {
   fetchAssets()
@@ -737,6 +744,7 @@ onBeforeMount(fetchAssets)
       v-model:is-open="showUploadDrawer"
       :can-upload="props.canUpload"
       :current-prefix="currentPrefix"
+      :bucket-id="resolvedBucketId"
       @uploaded="handleUploadSuccess"
     />
 

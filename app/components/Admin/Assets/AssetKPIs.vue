@@ -1,13 +1,20 @@
 <script setup lang="ts">
+import type { StorageBucketId } from '@/lib/storageAssets'
 import { Alert } from '@dolanske/vui'
-import { onBeforeMount, ref, watch } from 'vue'
 
+import { computed, onBeforeMount, ref, watch } from 'vue'
 import KPICard from '@/components/Admin/KPICard.vue'
 import KPIContainer from '@/components/Admin/KPIContainer.vue'
-import { formatBytes, isImageAsset, listCmsFilesRecursive, normalizePrefix } from '@/lib/cmsAssets'
+import { CMS_BUCKET_ID, formatBytes, getBucketLabel, isImageAsset, listStorageFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
 
+const props = withDefaults(defineProps<{
+  bucketId?: StorageBucketId
+}>(), {
+  bucketId: CMS_BUCKET_ID,
+})
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 const supabase = useSupabaseClient()
+const bucketLabel = computed(() => getBucketLabel(props.bucketId))
 
 const loading = ref(true)
 const errorMessage = ref('')
@@ -23,7 +30,7 @@ async function fetchMetrics() {
   errorMessage.value = ''
 
   try {
-    const files = await listCmsFilesRecursive(supabase)
+    const files = await listStorageFilesRecursive(supabase, props.bucketId)
     const folderSet = new Set<string>()
 
     files.forEach((file) => {
@@ -71,7 +78,7 @@ onBeforeMount(fetchMetrics)
       icon="ph:folders"
       variant="primary"
       :is-loading="loading"
-      description="All files stored in the CMS bucket"
+      :description="`All files stored in the ${bucketLabel} bucket`"
     />
 
     <KPICard
@@ -80,7 +87,7 @@ onBeforeMount(fetchMetrics)
       icon="ph:database"
       variant="success"
       :is-loading="loading"
-      description="Approximate total size of all CMS assets"
+      :description="`Approximate total size of all ${bucketLabel} assets`"
     />
 
     <KPICard
@@ -89,7 +96,7 @@ onBeforeMount(fetchMetrics)
       icon="ph:image"
       variant="warning"
       :is-loading="loading"
-      description="Images available for markdown embeds"
+      :description="`Images available for markdown embeds in the ${bucketLabel} bucket`"
     />
   </KPIContainer>
 

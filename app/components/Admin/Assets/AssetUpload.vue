@@ -1,18 +1,21 @@
 <script setup lang="ts">
+import type { StorageBucketId } from '@/lib/storageAssets'
 import { Alert, Button, Card, Flex, Input, Progress, Sheet, Switch } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
 
+import { computed, ref, watch } from 'vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
-import { CMS_BUCKET_ID, formatBytes, joinAssetPath, normalizePrefix } from '@/lib/cmsAssets'
+import { CMS_BUCKET_ID, formatBytes, getBucketDescription, getBucketLabel, joinAssetPath, normalizePrefix } from '@/lib/storageAssets'
 
 interface Props {
   canUpload?: boolean
   currentPrefix?: string
+  bucketId?: StorageBucketId
 }
 
 const props = withDefaults(defineProps<Props>(), {
   canUpload: false,
   currentPrefix: '',
+  bucketId: CMS_BUCKET_ID,
 })
 
 const emit = defineEmits<{
@@ -28,6 +31,9 @@ interface QueuedFile {
 }
 
 const supabase = useSupabaseClient()
+const resolvedBucketId = computed(() => props.bucketId ?? CMS_BUCKET_ID)
+const bucketLabel = computed(() => getBucketLabel(resolvedBucketId.value))
+const bucketDescription = computed(() => getBucketDescription(resolvedBucketId.value))
 const targetFolder = ref('')
 const fileQueue = ref<QueuedFile[]>([])
 const uploading = ref(false)
@@ -69,7 +75,7 @@ async function handleUpload() {
       uploadProgress.value[item.id] = 0
 
       const { error } = await supabase.storage
-        .from(CMS_BUCKET_ID)
+        .from(resolvedBucketId.value)
         .upload(storagePath, item.file, {
           contentType: item.file.type,
           upsert: replaceExisting.value,
@@ -205,7 +211,7 @@ function updateFileName(id: string, value: string) {
       <Flex column gap="xxs">
         <h4>Upload Assets</h4>
         <p class="text-color-light text-m">
-          Upload images into the hivecom-cms bucket for use inside markdown content.
+          Upload images into the {{ bucketLabel }} bucket for use inside markdown content.
         </p>
       </Flex>
     </template>
@@ -225,6 +231,13 @@ function updateFileName(id: string, value: string) {
               <Icon name="ph:folder-simple" />
             </template>
           </Input>
+
+          <span class="text-xxs text-color-light">
+            Bucket: <strong>{{ bucketLabel }}</strong>
+          </span>
+          <span v-if="bucketDescription" class="text-xxs text-color-light">
+            {{ bucketDescription }}
+          </span>
           <span class="text-xxs text-color-light">
             Current path: <strong>{{ resolvedFolderLabel }}</strong>
           </span>
