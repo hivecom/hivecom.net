@@ -269,7 +269,6 @@ function deleteDraft(id: string) {
         label="Content"
         placeholder="Add more context to the discussion"
       />
-
       <div class="w-100">
         <label class="vui-label">Topic</label>
         <Dropdown expand>

@@ -106,6 +106,7 @@ onBeforeMount(() => {
           last_reply:discussion_replies!discussion_replies_discussion_id_fkey(created_at)
         )
       `)
+      .neq('is_draft', true)
       .order('created_at', { foreignTable: 'discussions.discussion_replies', ascending: false })
       .limit(1, { foreignTable: 'discussions.discussion_replies' })
       .then(({ data, error }) => {
