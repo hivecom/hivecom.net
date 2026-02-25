@@ -270,7 +270,7 @@ onMounted(() => {
                   <Flex gap="xs" y-center>
                     <Icon name="ph:user" class="text-color-light" size="14" />
                     <span class="text-s text-color-light">Related User:</span>
-                    <UserLink :user-id="complaint.context_user" />
+                    <UserLink class="text-s" :user-id="complaint.context_user" />
                   </Flex>
                 </div>
                 <div v-if="complaint.context_gameserver">

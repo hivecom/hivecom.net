@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StorageBucketId } from '@/lib/storageAssets'
-import { Flex, Select } from '@dolanske/vui'
+import { Card, Flex, Select } from '@dolanske/vui'
 
 import { computed, ref } from 'vue'
 import AssetKPIs from '@/components/Admin/Assets/AssetKPIs.vue'
@@ -45,19 +45,24 @@ const bucketDescription = computed(() => getBucketDescription(bucketId.value))
       </p>
     </Flex>
 
-    <Flex column gap="xs">
-      <Select
-        v-model="selectedBucket"
-        :options="bucketOptions"
-        label="Bucket"
-        single
-      />
-      <p v-if="bucketDescription" class="text-color-light text-xs">
-        {{ bucketDescription }}
-      </p>
-    </Flex>
-
-    <AssetKPIs v-model:refresh-signal="refreshSignal" :bucket-id="bucketId" />
+    <AssetKPIs v-model:refresh-signal="refreshSignal" :bucket-id="bucketId">
+      <template #lead>
+        <Card class="card-bg" separators expand>
+          <Flex column gap="xs" expand>
+            <Select
+              v-model="selectedBucket"
+              expand
+              :options="bucketOptions"
+              label="Bucket"
+              single
+            />
+            <p v-if="bucketDescription" class="text-color-light text-xs">
+              {{ bucketDescription }}
+            </p>
+          </Flex>
+        </Card>
+      </template>
+    </AssetKPIs>
 
     <AssetManager
       v-model:refresh-signal="refreshSignal"

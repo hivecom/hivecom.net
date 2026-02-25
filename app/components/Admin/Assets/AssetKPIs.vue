@@ -2,7 +2,7 @@
 import type { StorageBucketId } from '@/lib/storageAssets'
 import { Alert } from '@dolanske/vui'
 
-import { computed, onBeforeMount, ref, watch } from 'vue'
+import { computed, onBeforeMount, ref, useSlots, watch } from 'vue'
 import KPICard from '@/components/Admin/KPICard.vue'
 import KPIContainer from '@/components/Admin/KPIContainer.vue'
 import { CMS_BUCKET_ID, formatBytes, getBucketLabel, isImageAsset, listStorageFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
@@ -15,6 +15,7 @@ const props = withDefaults(defineProps<{
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 const supabase = useSupabaseClient()
 const bucketLabel = computed(() => getBucketLabel(props.bucketId))
+const slots = useSlots()
 
 const loading = ref(true)
 const errorMessage = ref('')
@@ -67,11 +68,18 @@ watch(() => refreshSignal.value, () => {
   fetchMetrics()
 })
 
+watch(() => props.bucketId, () => {
+  fetchMetrics()
+})
+
 onBeforeMount(fetchMetrics)
 </script>
 
 <template>
-  <KPIContainer>
+  <KPIContainer class="asset-kpi-row">
+    <div v-if="slots.lead" class="kpi-lead">
+      <slot name="lead" />
+    </div>
     <KPICard
       label="Total Assets"
       :value="metrics.total"
@@ -104,3 +112,34 @@ onBeforeMount(fetchMetrics)
     {{ errorMessage }}
   </Alert>
 </template>
+
+<style scoped lang="scss">
+.asset-kpi-row {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-m);
+  align-items: stretch;
+}
+
+.asset-kpi-row :deep(> .kpi-card),
+.asset-kpi-row > .kpi-lead {
+  width: 100%;
+  height: 100%;
+}
+
+.kpi-lead {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.kpi-lead :deep(.card-bg) {
+  height: 100%;
+  width: 100%;
+  display: flex;
+}
+
+.kpi-lead :deep(.card-bg > .flex) {
+  flex: 1 1 auto;
+}
+</style>
