@@ -5,11 +5,15 @@ import ConfirmModal from '../Shared/ConfirmModal.vue'
 import ForumModalAddDiscussion from './ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from './ForumModalAddTopic.vue'
 
+interface ModalControls {
+  hideDiscussionTabs?: boolean
+}
+
 type Props
-  = {
+  = ModalControls & {
     table: 'discussion_topics'
     data: Tables<'discussion_topics'>
-  } | {
+  } | ModalControls & {
     table: 'discussions'
     data: Tables<'discussions'>
   }
@@ -234,6 +238,7 @@ function handleDelete() {
       v-else
       :open="showEditModal"
       :edited-item="props.data"
+      :hide-tabs="props.hideDiscussionTabs ?? false"
       @close="showEditModal = false"
       @created="emit('update', $event)"
     />

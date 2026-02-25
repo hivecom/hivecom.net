@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -38,10 +39,12 @@ const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 const isUuid = uuidRegex.test(identifier)
 
 const supabase = useSupabaseClient()
+const userId = useUserId()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
 const post = ref<DiscussionWithContext | null>(null)
 const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
+const publishConfirmOpen = ref(false)
 
 const isMobile = useBreakpoint('<m')
 
@@ -149,6 +152,10 @@ onBeforeMount(() => {
       else if (!data) {
         errorMessage.value = 'Discussion not found'
       }
+      else if (data.is_draft && (!userId.value || data.created_by !== userId.value)) {
+        errorMessage.value = 'Discussion not found'
+        post.value = null
+      }
       else {
         post.value = data
         void loadTopicBreadcrumbs(data.discussion_topic_id)
@@ -174,6 +181,8 @@ const timestampUpdateKey = useInterval(60000)
 function publish() {
   if (!post.value)
     return
+
+  publishConfirmOpen.value = false
 
   supabase
     .from('discussions')
@@ -256,6 +265,7 @@ function publish() {
               :key="post.is_draft.toString()"
               table="discussions"
               :data="post"
+              :hide-discussion-tabs="true"
               @remove="router.back()"
               @update="handlePostUpdate"
             >
@@ -281,11 +291,19 @@ function publish() {
         <Alert v-if="post.is_draft" class="mb-l" variant="info">
           This post is a draft
           <template #end>
-            <Button size="s" @click="publish">
+            <Button size="s" @click="publishConfirmOpen = true">
               Publish
             </Button>
           </template>
         </Alert>
+
+        <ConfirmModal
+          :open="publishConfirmOpen"
+          title="Publish discussion"
+          description="Publishing a discussion cannot be undone. Are you sure you want to publish it?"
+          @confirm="publish"
+          @cancel="publishConfirmOpen = false"
+        />
 
         <Card v-if="contextInfo" class="mb-l mt-m">
           <Flex x-between y-center wrap gap="m">

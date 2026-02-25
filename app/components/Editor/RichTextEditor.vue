@@ -280,7 +280,7 @@ defineExpose({
     <RichTextSelectionMenu v-if="editor" :editor />
 
     <!-- Main editor instance -->
-    <EditorContent :id="elementId" :editor="editor" class="typeset" />
+    <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
 
     <p v-if="limit && editor" class="vui-hint" style="margin-top: var(--space-xxs)">
       {{ `${editor.storage.characterCount.characters()} / ${limit}` }}
