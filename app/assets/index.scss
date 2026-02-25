@@ -121,6 +121,13 @@ button {
   }
 }
 
+label:is(.required):after {
+  content: '*';
+  padding-left: 2px;
+  color: var(--color-text-red);
+  font-size: var(--font-size-l);
+}
+
 .vui-card {
   .vui-card-header {
     align-items: center;

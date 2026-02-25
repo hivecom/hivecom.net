@@ -317,6 +317,7 @@ export interface Database {
           gameserver_id: number | null
           id: string
           is_archived: boolean
+          is_draft: boolean
           is_locked: boolean
           is_sticky: boolean
           markdown: string | null
@@ -340,6 +341,7 @@ export interface Database {
           gameserver_id?: number | null
           id?: string
           is_archived?: boolean
+          is_draft?: boolean
           is_locked?: boolean
           is_sticky?: boolean
           markdown?: string | null
@@ -363,6 +365,7 @@ export interface Database {
           gameserver_id?: number | null
           id?: string
           is_archived?: boolean
+          is_draft?: boolean
           is_locked?: boolean
           is_sticky?: boolean
           markdown?: string | null
@@ -1290,6 +1293,15 @@ export interface Database {
           email: string
           is_confirmed: boolean
           user_id: string
+        }[]
+      }
+      get_discussion_topic_breadcrumbs: {
+        Args: { target_topic_id: string }
+        Returns: {
+          id: string
+          name: string
+          parent_id: string
+          slug: string
         }[]
       }
       get_private_config: { Args: { config_key: string }, Returns: Json }

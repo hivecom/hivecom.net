@@ -106,7 +106,8 @@ onBeforeMount(() => {
           last_reply:discussion_replies!discussion_replies_discussion_id_fkey(created_at)
         )
       `)
-      .order('created_at', { foreignTable: 'discussions.discussion_replies', ascending: false })
+      .neq('discussions.is_draft', true)
+      .order('created_at', { referencedTable: 'discussions.discussion_replies', ascending: false })
       .limit(1, { foreignTable: 'discussions.discussion_replies' })
       .then(({ data, error }) => {
         if (error) {
@@ -514,6 +515,28 @@ const postSinceYesterday = computed(() => {
     .filter(item => dayjs(item.timestampRaw).isAfter(now.subtract(24, 'hour')))
     .length
 })
+
+// Draft count for creation dropdown
+const draftCount = ref<number>(0)
+
+function fetchDraftCount() {
+  supabase
+    .from('discussions')
+    .select('*', { count: 'exact', head: true })
+    .eq('created_by', userId.value)
+    .eq('is_draft', true)
+    .then(({ count }) => {
+      if (count !== null) {
+        draftCount.value = count
+      }
+    })
+}
+
+onBeforeMount(() => {
+  fetchDraftCount()
+})
+
+// TODO: allow showing discussion detail page only to the author
 </script>
 
 <template>
@@ -601,37 +624,44 @@ const postSinceYesterday = computed(() => {
         <div class="flex-1" />
 
         <!-- Only allow creating things for signed in users -->
-        <Flex v-if="user" :gap="isMobile ? 'xxs' : 'xs'">
-          <Dropdown v-if="user.role === 'admin' || user.role === 'moderator'">
-            <template #trigger="{ toggle }">
-              <Button size="s" variant="accent" :square="isMobile" @click="toggle">
-                <template v-if="!isMobile" #start>
-                  <Icon name="ph:plus" :size="16" />
+        <Flex :gap="isMobile ? 'xxs' : 'xs'">
+          <template v-if="user">
+            <Dropdown v-if="user.role === 'admin' || user.role === 'moderator'">
+              <template #trigger="{ toggle }">
+                <Button size="s" variant="accent" :square="isMobile" @click="toggle">
+                  <template v-if="!isMobile" #start>
+                    <Icon name="ph:plus" :size="16" />
+                  </template>
+                  <template v-if="isMobile">
+                    <Icon name="ph:plus" :size="16" />
+                  </template>
+                  {{ isMobile ? '' : 'Create' }}
+                </Button>
+              </template>
+              <DropdownItem size="s" @click="addingDiscussion = true">
+                Discussion
+                <template v-if="draftCount > 0" #hint>
+                  <SharedTinyBadge>
+                    {{ draftCount }} Draft{{ draftCount > 1 ? 's' : '' }}
+                  </SharedTinyBadge>
                 </template>
-                <template v-if="isMobile">
-                  <Icon name="ph:plus" :size="16" />
-                </template>
-                {{ isMobile ? '' : 'Create' }}
-              </Button>
-            </template>
-            <DropdownItem size="s" @click="addingDiscussion = true">
-              Discussion
-            </DropdownItem>
-            <DropdownItem size="s" @click="addingTopic = true">
-              Topic
-            </DropdownItem>
-          </Dropdown>
+              </DropdownItem>
+              <DropdownItem size="s" @click="addingTopic = true">
+                Topic
+              </DropdownItem>
+            </Dropdown>
 
-          <!-- Non-admin or moderators can only create a discussion -->
-          <Button v-else variant="accent" size="s" :square="isMobile" @click="addingDiscussion = true">
-            <template v-if="!isMobile" #start>
-              <Icon name="ph:plus" :size="16" />
-            </template>
-            <template v-if="isMobile">
-              <Icon name="ph:plus" :size="16" />
-            </template>
-            {{ isMobile ? '' : 'Discussion' }}
-          </Button>
+            <!-- Non-admin or moderators can only create a discussion -->
+            <Button v-else variant="accent" size="s" :square="isMobile" @click="addingDiscussion = true">
+              <template v-if="!isMobile" #start>
+                <Icon name="ph:plus" :size="16" />
+              </template>
+              <template v-if="isMobile">
+                <Icon name="ph:plus" :size="16" />
+              </template>
+              {{ isMobile ? '' : 'Discussion' }}
+            </Button>
+          </template>
 
           <Button size="s" :square="isMobile" @click="searchOpen = true">
             <template v-if="!isMobile" #start>
@@ -727,6 +757,7 @@ const postSinceYesterday = computed(() => {
         :open="addingDiscussion"
         @close="addingDiscussion = false"
         @created="appendDiscussionToTopic"
+        @draft-updated="fetchDraftCount()"
       />
 
       <Commands
