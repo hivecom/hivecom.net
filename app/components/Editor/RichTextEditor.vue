@@ -1,17 +1,15 @@
 <script setup lang="ts">
-import type { JSONContent, MarkdownParseHelpers, MarkdownToken, MarkdownTokenizer } from '@tiptap/core'
-import type { SuggestionOptions } from '@tiptap/suggestion'
+import type { Database } from '@/types/database.types'
+import { useSupabaseClient } from '#imports'
 import { pushToast } from '@dolanske/vui'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
-import Mention from '@tiptap/extension-mention'
 import { CharacterCount, Placeholder } from '@tiptap/extensions'
 import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import { extractMentionIds } from '@/lib/markdown-processors'
-import { defineSuggestion } from './plugins/suggestion'
-import RichTextMentions from './RichTextMentions.vue'
+import { useId, watch } from 'vue'
+import { createMentionExtension, hydrateMentionLabels } from './plugins/mentions'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 
 const {
@@ -46,53 +44,7 @@ interface Props {
 
 const content = defineModel<string>()
 
-const supabase = useSupabaseClient()
-
-const mentionSuggestionAllow: NonNullable<SuggestionOptions['allow']> = () => true
-
-const mentionQueryNormalize = (query: string) => query.startsWith('{') ? query.slice(1) : query
-const mentionShouldFetch = () => true
-
-const MentionWithMarkdown = Mention.extend({
-  markdownTokenName: 'mention',
-  parseMarkdown: (token: MarkdownToken, helpers: MarkdownParseHelpers) => {
-    return helpers.createNode('mention', {
-      id: token.attributes?.id ?? null,
-    })
-  },
-  markdownTokenizer: {
-    name: 'mention',
-    level: 'inline',
-    start(src: string) {
-      const index = src.indexOf('@{')
-      return index === -1 ? -1 : index
-    },
-    tokenize(src: string) {
-      const match = /^@\{([0-9a-f-]{36})\}/i.exec(src)
-
-      if (!match) {
-        return undefined
-      }
-
-      return {
-        type: 'mention',
-        raw: match[0],
-        attributes: {
-          id: match[1],
-        },
-      }
-    },
-  } satisfies MarkdownTokenizer,
-  renderMarkdown: (node: JSONContent) => {
-    const id = node.attrs?.id
-
-    if (typeof id !== 'string' || id.trim() === '') {
-      return ''
-    }
-
-    return `@{${id}}`
-  },
-})
+const supabase = useSupabaseClient<Database>()
 
 const editor = useEditor({
   content: content.value,
@@ -105,29 +57,7 @@ const editor = useEditor({
     }),
     Image,
     // User mentions
-    MentionWithMarkdown.configure({
-      suggestion: defineSuggestion('@', RichTextMentions, async (search_term) => {
-        const normalizedSearchTerm = mentionQueryNormalize(search_term)
-        return supabase
-          .rpc('search_profiles', { search_term: normalizedSearchTerm })
-          .select('username, id')
-          .limit(32)
-      }, {
-        allow: mentionSuggestionAllow,
-        allowEmptyQuery: true,
-        shouldFetch: mentionShouldFetch,
-      }),
-      deleteTriggerWithBackspace: true,
-      HTMLAttributes: {
-        class: 'mention',
-      },
-      renderHTML(props) {
-        return `@${props.node.attrs.label ?? props.node.attrs.id}`
-      },
-      renderText(props) {
-        return `@{${props.node.attrs.id}}`
-      },
-    }),
+    createMentionExtension(supabase),
     // Media content setting for file uploads
     ...(props.mediaContext
       ? [FileHandler.configure({
@@ -183,65 +113,10 @@ function handleFileUpload(files: File[], pos?: number) {
   })
 }
 
-let mentionLookupRequestId = 0
-
-async function hydrateMentionLabels(markdown: string) {
-  const currentEditor = editor.value
-  if (!currentEditor)
-    return
-
-  const ids = extractMentionIds(markdown)
-  if (ids.length === 0)
-    return
-
-  const requestId = ++mentionLookupRequestId
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, username')
-    .in('id', ids)
-
-  if (requestId !== mentionLookupRequestId)
-    return
-
-  if (error || !data)
-    return
-
-  const lookup = Object.fromEntries(
-    data
-      .filter(profile => profile.username)
-      .map(profile => [profile.id.toLowerCase(), profile.username]),
-  )
-
-  currentEditor.commands.command(({ tr, state }) => {
-    let modified = false
-
-    state.doc.descendants((node, pos) => {
-      if (node.type.name !== 'mention')
-        return
-
-      const id = typeof node.attrs?.id === 'string' ? node.attrs.id.toLowerCase() : ''
-      const username = lookup[id]
-
-      if (!username || node.attrs?.label === username)
-        return
-
-      tr.setNodeMarkup(pos, undefined, { ...node.attrs, label: username })
-      modified = true
-    })
-
-    if (modified) {
-      tr.setMeta('addToHistory', false)
-      return true
-    }
-
-    return false
-  })
-}
-
 // If content is changed externally, make sure mentions are hydrated
 watch(() => editor.value, (value) => {
   if (value) {
-    hydrateMentionLabels(content.value ?? '')
+    hydrateMentionLabels(value, supabase, content.value ?? '')
   }
 }, { immediate: true })
 
@@ -255,7 +130,7 @@ watch(content, (newContent) => {
     contentType: 'markdown',
   })
 
-  void hydrateMentionLabels(newContent ?? '')
+  void hydrateMentionLabels(editor.value, supabase, newContent ?? '')
 
   // If content is updated externally, focus at the end of it
   editor.value?.commands.focus('end')
