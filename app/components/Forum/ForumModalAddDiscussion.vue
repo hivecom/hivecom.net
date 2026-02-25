@@ -21,7 +21,6 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'created', discussion: Tables<'discussions'>): void
   (e: 'draftUpdated'): void
-
 }>()
 
 const isMobile = useBreakpoint('<s')
@@ -459,7 +458,7 @@ function confirmPublish() {
     <template v-else-if="showTabs">
       <strong class="mb-s text-l block font-bold">Drafts</strong>
       <Flex column gap="s">
-        <Card v-for="draft of drafts" :key="draft.id" class="card-bg" style="cursor: pointer;" @click="router.push(`/forum/${draft.slug ?? draft.id}`)">
+        <Card v-for="draft of drafts" :key="draft.id" class="card-bg draft-item" style="cursor: pointer;" @click="router.push(`/forum/${draft.slug ?? draft.id}`)">
           <Flex x-between y-center>
             <div>
               <strong class="font-weight-bold">{{ draft.title }}</strong>
@@ -511,6 +510,10 @@ function confirmPublish() {
 </template>
 
 <style scoped lang="scss">
+.draft-item:hover {
+  background-color: var(--color-bg-raised);
+}
+
 .form-add-discussion__button {
   display: flex;
   flex-direction: column;

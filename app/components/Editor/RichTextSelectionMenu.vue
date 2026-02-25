@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { EditorState } from '@tiptap/pm/state'
-import type { EditorView } from '@tiptap/pm/view'
+import type { ShouldShowMenuProps } from '@/types/rich-text-editor'
 import type { Editor } from '@tiptap/vue-3'
 import { Button, ButtonGroup, Flex } from '@dolanske/vui'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
@@ -9,18 +8,8 @@ const props = defineProps<{
   editor: Editor
 }>()
 
-interface ShouldShowProps {
-  editor: unknown
-  element: HTMLElement
-  view: EditorView
-  state: EditorState
-  oldState?: EditorState
-  from: number
-  to: number
-}
-
 // Makes sure that when editor is clicked, we do not show bubble menu for empty text selection
-function shouldShow({ state, from, to }: ShouldShowProps): boolean {
+function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
   const { selection } = state
   const { empty } = selection
 
