@@ -9,6 +9,7 @@ import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { useId, watch } from 'vue'
+import { useCurrentUserId } from '@/lib/user'
 import { createMentionExtension, hydrateMentionLabels } from './plugins/mentions'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 
@@ -39,11 +40,11 @@ interface Props {
    * If provided, it will enable media upload via pasting/dragging media files
    * into the editor. Providing a context helps with file management
    */
+
   mediaContext?: string
 }
 
 const content = defineModel<string>()
-
 const supabase = useSupabaseClient<Database>()
 
 const editor = useEditor({
@@ -53,7 +54,6 @@ const editor = useEditor({
     Markdown,
     Placeholder.configure({
       placeholder: props.placeholder,
-
     }),
     Image,
     // User mentions
@@ -61,11 +61,12 @@ const editor = useEditor({
     // Media content setting for file uploads
     ...(props.mediaContext
       ? [FileHandler.configure({
-          onPaste: (_, files) => handleFileUpload(files),
-          onDrop: (_, files, pos) => handleFileUpload(files, pos),
-          allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
-        })]
+        onPaste: (_, files) => handleFileUpload(files),
+        onDrop: (_, files, pos) => handleFileUpload(files, pos),
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+      })]
       : []),
+
     // Character limit
     ...(props.limit
       ? [CharacterCount.configure({ limit: props.limit })]
@@ -84,7 +85,8 @@ function handleFileUpload(files: File[], pos?: number) {
       return
 
     const format = file.type.split('/')[1]
-    const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
+    const userId = useCurrentUserId()
+    const fileUrl = `${props.mediaContext}/${userId}/${crypto.randomUUID()}.${format}`
 
     // Path to the public image upload
     const { error } = await supabase.storage
@@ -186,7 +188,7 @@ defineExpose({
       border-color: var(--color-border-strong);
     }
 
-    & > :first-child {
+    &> :first-child {
       margin-top: 0 !important;
     }
   }
