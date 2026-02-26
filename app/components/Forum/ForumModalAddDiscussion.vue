@@ -434,7 +434,7 @@ function confirmPublish() {
       <RichTextEditor
         v-model="form.markdown"
         :errors="normalizeErrors(errors.markdown)"
-        :media-context="editedDiscussion ? editedDiscussion.id : 'staging'"
+        :media-context="editedDiscussion && userId ? `${editedDiscussion.id}/${userId}` : 'staging'"
         min-height="196px"
         hint="You can use markdown and added media through drag-and-drop"
         label="Content"

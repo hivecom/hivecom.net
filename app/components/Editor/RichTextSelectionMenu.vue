@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ShouldShowMenuProps } from '@/types/rich-text-editor'
 import type { Editor } from '@tiptap/vue-3'
+import type { ShouldShowMenuProps } from '@/types/rich-text-editor'
 import { Button, ButtonGroup, Flex } from '@dolanske/vui'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 

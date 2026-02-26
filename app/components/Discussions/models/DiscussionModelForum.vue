@@ -230,7 +230,7 @@ watch(editedContent, () => editError.value = [])
       <RichTextEditor
         v-model="editedContent"
         :errors="editError"
-        :media-context="data.discussion_id"
+        :media-context="userId ? `${data.discussion_id}/${userId}` : undefined"
         min-height="196px"
         class="mb-xs"
         placeholder="Edit your message. Do not leave it empty!"

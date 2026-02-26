@@ -90,6 +90,19 @@ function openAssetUrl(asset: StorageAsset) {
   window.open(asset.publicUrl, '_blank', 'noopener')
 }
 
+function getAssetUploaderId(asset: StorageAsset): string | null {
+  if (!props.discussion?.id)
+    return null
+
+  const segments = normalizePrefix(asset.path).split('/').filter(Boolean)
+  if (segments.length < 2)
+    return null
+  if (segments[0] !== props.discussion.id)
+    return null
+
+  return segments[1] || null
+}
+
 const discussionMarkdown = computed(() => {
   if (!props.discussion)
     return ''
@@ -523,6 +536,10 @@ function handleClose() {
                 <Flex column gap="xxs">
                   <strong class="text-xs">{{ asset.name }}</strong>
                   <span class="text-xxs text-color-light">{{ formatBytes(asset.size) }}</span>
+                  <Flex y-center gap="xxs">
+                    <span class="text-xxs text-color-light">Uploaded by</span>
+                    <UserLink :user-id="getAssetUploaderId(asset)" placeholder="Unknown" class="text-xxs" />
+                  </Flex>
                 </Flex>
 
                 <Flex gap="xs" y-center>
