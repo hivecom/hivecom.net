@@ -87,6 +87,7 @@ export default defineNuxtConfig({
     ],
   },
   sitemap: {
+    zeroRuntime: true,
     exclude: ['/admin/**', '/auth/**', '/playground/**', '/profile/**', '/votes/**'],
   },
   hooks: {
