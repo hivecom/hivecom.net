@@ -138,53 +138,65 @@ The `deploy` GitHub Actions workflow also runs once a week to rebuild and deploy
 
 ## DB Changes / Migrations
 
-First reset your local database to the latest migration with:
+### Local development workflow
+
+Start by resetting your local database to the latest migrations:
 
 ```bash
 npm run supabase db reset
 ```
 
-Then make sure you're pulling the lastest version of the remote database:
+If you need to sync your local files with the current production schema, pull the latest remote migrations:
 
 ```bash
 npm run supabase db pull
 ```
 
-Next up, depending on how comfortable you are with SQL, you can either use the Supabase Studio to make changes to the database or use the CLI to make changes directly.
+### Creating migrations
 
-For the SQL route, you can create a new migration file with:
+You can create migrations via SQL files:
 
 ```bash
 npm run supabase migration new <migration_name>
 ```
 
-This will create a new SQL file in the `supabase/migrations` directory. You can then edit this file to add your SQL commands. Apply those migrations with `npx supabase migrations up` to apply the changes to your local database.
+Edit the new file in `supabase/migrations`, then apply locally:
 
-Alternatively, use the Supabase Studio to make changes to the database. This is a more user-friendly way to manage your database schema. You can access the Supabase Studio at `http://localhost:54323` when running a local instance.
+```bash
+npx supabase migrations up
+```
 
-Once you have made your database changes in the studio, diff the changes to a migration file with:
+Or make changes in Supabase Studio (`http://localhost:54323`) and generate a migration from the diff:
 
 ```bash
 npm run supabase db diff -f <your_migration_name>
 ```
 
-Now to wrap things up and test your changes, you can make sure your local database will reset to the latest migration with:
+### Verify locally
+
+Make sure your local database resets cleanly:
 
 ```bash
 npm run supabase db reset
 ```
 
-Additionally, you will want to generate the new types for the database. This will create a new `types/database.types.ts` file with the updated types for your database schema. You can do this with:
+Then regenerate types:
 
 ```bash
 npx supabase gen types typescript --local --schema public,private > types/database.types.ts
 ```
 
-Finally once you've confirmed everything is working as expected, you can push the changes to the remote database with:
+### Pushing to production
+
+Only after local validation:
 
 ```bash
 npm run supabase db push
 ```
+
+> [!WARNING]
+> `npm run supabase db push` applies migrations to **production**. Treat it as a production release step.
+> Always review your migration SQL and confirm it’s safe before pushing.
 
 ## DB Triggers
 
