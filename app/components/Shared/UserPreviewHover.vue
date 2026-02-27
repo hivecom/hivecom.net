@@ -97,3 +97,9 @@ watch(() => props.userId, (newId) => {
     </Popout>
   </div>
 </template>
+
+<style lang="scss">
+.user-preview-hover {
+  display: inline-block;
+}
+</style>

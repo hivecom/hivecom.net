@@ -36,12 +36,12 @@ defineExpose({
       return true
     }
 
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' || event.key === 'Tab') {
       selectItem(selectedIndex.value)
       return true
     }
 
-    return true
+    return false
   },
 })
 

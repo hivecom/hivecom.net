@@ -12,6 +12,51 @@ function buildPathFromDate(date: Date) {
   return `metrics/${year}/${month}/${day}.json`
 }
 
+function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
+  if (snapshot === null || snapshot === undefined || typeof snapshot !== 'object')
+    return null
+
+  const record = snapshot as Record<string, unknown>
+  const collectedAt = record.collectedAt
+  const totals = record.totals as Record<string, unknown> | undefined
+  const breakdowns = record.breakdowns as Record<string, unknown> | undefined
+
+  if (typeof collectedAt !== 'string' || totals === undefined)
+    return null
+
+  const users = totals.users
+  const gameservers = totals.gameservers
+  const projects = totals.projects
+  const forumPosts = totals.forumPosts
+
+  if (
+    typeof users !== 'number'
+    || typeof gameservers !== 'number'
+    || typeof projects !== 'number'
+    || typeof forumPosts !== 'number'
+  ) {
+    return null
+  }
+
+  const usersByCountry
+    = typeof breakdowns?.usersByCountry === 'object' && breakdowns.usersByCountry !== null
+      ? (breakdowns.usersByCountry as Record<string, number>)
+      : {}
+
+  return {
+    collectedAt,
+    totals: {
+      users,
+      gameservers,
+      projects,
+      forumPosts,
+    },
+    breakdowns: {
+      usersByCountry,
+    },
+  }
+}
+
 async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>, path: string) {
   const { data, error } = await supabase.storage.from(METRICS_BUCKET).download(path)
 
@@ -20,7 +65,8 @@ async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>, path:
 
   try {
     const json = await data.text()
-    return JSON.parse(json) as MetricsSnapshot
+    const parsed = JSON.parse(json) as unknown
+    return normalizeMetricsSnapshot(parsed)
   }
   catch {
     return null

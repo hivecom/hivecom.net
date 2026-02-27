@@ -95,11 +95,20 @@ export function defineSuggestion(
         },
         onKeyDown(props: SuggestionKeyDownProps) {
           if (props.event.key === 'Escape') {
+            props.event.preventDefault()
+            props.event.stopPropagation()
             component?.destroy()
             return true
           }
 
-          component?.ref?.onKeyDown?.(props)
+          const handled = Boolean(component?.ref?.onKeyDown?.(props))
+
+          if (handled === true) {
+            props.event.preventDefault()
+            props.event.stopPropagation()
+            return true
+          }
+
           return false
         },
         onExit() {

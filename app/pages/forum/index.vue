@@ -11,7 +11,7 @@ import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
-import { extractMentionIds, processMentions, stripMarkdown } from '@/lib/markdown-processors'
+import { extractMentionIds, processMentionsToText, stripMarkdown } from '@/lib/markdown-processors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
@@ -584,10 +584,10 @@ onBeforeMount(() => {
               <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
             </Flex>
             <strong class="forum__latest-title">
-              {{ post.type === 'Reply' ? stripMarkdown(processMentions(post.title, mentionLookup)) : post.title }}
+              {{ post.type === 'Reply' ? stripMarkdown(processMentionsToText(post.title, mentionLookup)) : post.title }}
             </strong>
             <p v-if="post.description" class="forum__latest-description">
-              {{ stripMarkdown(processMentions(post.description, mentionLookup)) }}
+              {{ stripMarkdown(processMentionsToText(post.description, mentionLookup)) }}
             </p>
             <Flex y-center x-between expand class="forum__latest-footer">
               <UserDisplay :user-id="post.user" size="s" show-role />
@@ -836,6 +836,7 @@ onBeforeMount(() => {
         white-space: nowrap;
         font-size: var(--font-size-xs);
         color: var(--color-text-lighter);
+        line-height: 1.2;
       }
 
       .forum__latest-type {
@@ -864,6 +865,7 @@ onBeforeMount(() => {
         overflow: hidden;
         text-overflow: ellipsis;
         margin-top: 2px;
+        line-height: 1.2;
       }
 
       .forum__latest-description {
@@ -873,6 +875,7 @@ onBeforeMount(() => {
         color: var(--color-text-lighter);
         margin-top: 2px;
         margin-bottom: var(--space-s);
+        line-height: 1.3;
       }
 
       .forum__latest-footer {

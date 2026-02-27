@@ -1,6 +1,7 @@
 <script setup>
 import { Skeleton } from '@dolanske/vui'
-import { computed, ref, watchEffect } from 'vue'
+import { computed } from 'vue'
+import { useBulkUserData } from '@/composables/useCacheUserData'
 import { extractMentionIds, processMentions } from '@/lib/markdown-processors'
 import MDRendererSlot from './MDRendererSlot.vue'
 
@@ -22,43 +23,16 @@ const props = defineProps({
   },
 })
 
-const supabase = useSupabaseClient()
-const mentionLookup = ref({})
-let mentionRequestId = 0
+// Extract mention IDs and pre-fetch user data efficiently
+const mentionIds = computed(() => extractMentionIds(props.md))
 
-watchEffect(async () => {
-  const ids = extractMentionIds(props.md)
-  const requestId = ++mentionRequestId
+// We pre-fetch basic profile data so UserMention components
+// can render synchronously (or near-synchronously) without individual fetches.
+useBulkUserData(mentionIds)
 
-  if (ids.length === 0) {
-    mentionLookup.value = {}
-    return
-  }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, username')
-    .in('id', ids)
-
-  if (requestId !== mentionRequestId) {
-    return
-  }
-
-  if (error || !data) {
-    mentionLookup.value = {}
-    return
-  }
-
-  mentionLookup.value = Object.fromEntries(
-    data
-      .filter(profile => profile.username)
-      .map(profile => [profile.id, profile.username]),
-  )
-})
-
-// Process the markdown to convert @mentions to links
+// Process the markdown to convert @mentions to <UserMention> components
 const processedMarkdown = computed(() => {
-  return processMentions(props.md, mentionLookup.value)
+  return processMentions(props.md)
 })
 </script>
 

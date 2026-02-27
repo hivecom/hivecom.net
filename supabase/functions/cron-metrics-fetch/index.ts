@@ -56,22 +56,34 @@ Deno.serve(async (req: Request) => {
     // Create a Supabase client with elevated permissions for internal metrics collection
     const supabaseClient = createClient<Database>(supabaseUrl, supabaseKey);
 
-    const [totalUsersResponse, countryResponse, gameserverResponse, projectResponse] =
-      await Promise.all([
-        supabaseClient.from("profiles").select("id", {
+    const [
+      totalUsersResponse,
+      countryResponse,
+      gameserverResponse,
+      projectResponse,
+      forumResponse,
+    ] = await Promise.all([
+      supabaseClient.from("profiles").select("id", {
+        count: "exact",
+        head: true,
+      }),
+      supabaseClient.from("profiles").select("country"),
+      supabaseClient.from("gameservers").select("id", {
+        count: "exact",
+        head: true,
+      }),
+      supabaseClient.from("projects").select("id", {
+        count: "exact",
+        head: true,
+      }),
+      supabaseClient
+        .from("discussions")
+        .select("id", {
           count: "exact",
           head: true,
-        }),
-        supabaseClient.from("profiles").select("country"),
-        supabaseClient.from("gameservers").select("id", {
-          count: "exact",
-          head: true,
-        }),
-        supabaseClient.from("projects").select("id", {
-          count: "exact",
-          head: true,
-        }),
-      ]);
+        })
+        .not("discussion_topic_id", "is", null),
+    ]);
 
     if (totalUsersResponse.error) {
       throw new Error(
@@ -97,9 +109,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (forumResponse.error) {
+      throw new Error(
+        `Unable to get forum discussion count: ${forumResponse.error.message}`,
+      );
+    }
+
     const totalUsers = totalUsersResponse.count ?? 0;
     const totalGameservers = gameserverResponse.count ?? 0;
     const totalProjects = projectResponse.count ?? 0;
+    const totalForumPosts = forumResponse.count ?? 0;
 
     const countryCounts = (countryResponse.data as CountryRow[] | null)?.reduce(
       (acc, row) => {
@@ -115,9 +134,7 @@ Deno.serve(async (req: Request) => {
     );
 
     const now = new Date();
-    const filePath = `metrics/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${
-      String(now.getDate()).padStart(2, "0")
-    }.json`;
+    const filePath = `metrics/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}.json`;
 
     const payload: MetricsSnapshot = {
       collectedAt: now.toISOString(),
@@ -125,6 +142,7 @@ Deno.serve(async (req: Request) => {
         users: totalUsers,
         gameservers: totalGameservers,
         projects: totalProjects,
+        forumPosts: totalForumPosts,
       },
       breakdowns: {
         usersByCountry,

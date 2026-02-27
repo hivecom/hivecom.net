@@ -205,12 +205,6 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
       return
     }
 
-    // Only fetch if user is authenticated
-    if (currentUser.value === null || currentUser.value === undefined) {
-      user.value = null
-      return
-    }
-
     // Clear cache if forced
     if (force) {
       const keys = getCacheKeys(id)
@@ -401,11 +395,6 @@ export function useBulkUserData(userIds: Ref<string[]>, options: useCacheUserDat
     const ids = unref(userIds)
 
     if (ids.length === 0) {
-      users.value.clear()
-      return
-    }
-
-    if (currentUser.value === null || currentUser.value === undefined) {
       users.value.clear()
       return
     }

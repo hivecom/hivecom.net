@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Button, Divider, Dropdown, DropdownItem, pushToast } from '@dolanske/vui'
+import { Alert, Button, Divider, Dropdown, DropdownItem, pushToast, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
 import ForumModalAddDiscussion from './ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from './ForumModalAddTopic.vue'
@@ -126,6 +126,22 @@ function handleStick(mode: 'stick' | 'unstick') {
 const showEditModal = ref(false)
 // function handleEdit() {}
 
+const linkedDiscussionReason = computed(() => {
+  if (props.table !== 'discussions')
+    return null
+
+  const discussion = props.data as Tables<'discussions'>
+  const isLinked = Boolean(
+    discussion.event_id
+    || discussion.gameserver_id
+    || discussion.project_id
+    || discussion.profile_id
+    || discussion.referendum_id,
+  )
+
+  return isLinked ? 'This discussion is linked to an entity and cannot be deleted.' : null
+})
+
 // Delete
 const deleteLoading = ref(false)
 const deleteConfirm = ref(false)
@@ -198,9 +214,19 @@ function handleDelete() {
       <DropdownItem @click="showEditModal = true">
         Edit
       </DropdownItem>
-      <DropdownItem @click="deleteConfirm = true">
-        Delete
-      </DropdownItem>
+      <template v-if="props.table === 'discussions'">
+        <Tooltip v-if="linkedDiscussionReason" placement="left">
+          <template #tooltip>
+            <p>{{ linkedDiscussionReason }}</p>
+          </template>
+          <DropdownItem class="forum__item-actions-disabled" @click.stop.prevent>
+            Delete
+          </DropdownItem>
+        </Tooltip>
+        <DropdownItem v-else @click="deleteConfirm = true">
+          Delete
+        </DropdownItem>
+      </template>
     </Dropdown>
 
     <!-- Confirmation modal for archiving & deletion -->
@@ -244,3 +270,10 @@ function handleDelete() {
     />
   </div>
 </template>
+
+<style scoped>
+.forum__item-actions-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>

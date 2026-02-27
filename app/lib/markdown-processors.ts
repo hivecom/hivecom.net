@@ -34,7 +34,32 @@ export function extractMentionIds(markdown: string): string[] {
  * @param markdown The markdown content to process
  * @returns The processed markdown with mentions converted to links
  */
-export function processMentions(markdown: string, mentionIdToUsername: Record<string, string> = {}): string {
+export function processMentions(markdown: string): string {
+  if (!markdown)
+    return ''
+
+  // Pattern to match mention IDs stored as @{uuid}
+  const mentionIdPatternBraced = /@\{([0-9a-f-]{36})\}/gi
+  const mentionIdPatternLegacy = /@([0-9a-f-]{36})/gi
+
+  const resolvedMarkdown = markdown
+    .replace(mentionIdPatternBraced, (_match, id: string) => {
+      return `<SharedUserMention user-id="${id}"></SharedUserMention>`
+    })
+    .replace(mentionIdPatternLegacy, (_match, id: string) => {
+      return `<SharedUserMention user-id="${id}"></SharedUserMention>`
+    })
+
+  return resolvedMarkdown
+}
+
+/**
+ * Processes markdown text to convert @mentions to plain text usernames
+ * @param markdown The markdown content to process
+ * @param mentionIdToUsername Lookup map for mention IDs to usernames
+ * @returns The processed text with mentions converted to @Username
+ */
+export function processMentionsToText(markdown: string, mentionIdToUsername: Record<string, string> = {}): string {
   if (!markdown)
     return ''
 
@@ -45,37 +70,24 @@ export function processMentions(markdown: string, mentionIdToUsername: Record<st
     Object.entries(mentionIdToUsername).map(([id, username]) => [id.toLowerCase(), username]),
   )
 
-  const resolvedMarkdown = markdown
-    .replace(mentionIdPatternBraced, (match, id: string) => {
-      const resolvedUsername = normalizedMentionLookup[id.toLowerCase()]
+  const replaceCallback = (_match: string, id: string) => {
+    const resolvedUsername = normalizedMentionLookup[id.toLowerCase()]
 
-      if (typeof resolvedUsername === 'string' && resolvedUsername.trim() !== '' && isValidMentionUsername(resolvedUsername)) {
-        return `[@${resolvedUsername}](/profile/${resolvedUsername})`
-      }
+    if (typeof resolvedUsername === 'string' && resolvedUsername.trim() !== '' && isValidMentionUsername(resolvedUsername)) {
+      return `@${resolvedUsername}`
+    }
 
-      const anonymousUsername = getAnonymousUsername(id)
-      if (isValidMentionUsername(anonymousUsername)) {
-        return `@${anonymousUsername}`
-      }
+    const anonymousUsername = getAnonymousUsername(id)
+    if (isValidMentionUsername(anonymousUsername)) {
+      return `@${anonymousUsername}`
+    }
 
-      return match
-    })
-    .replace(mentionIdPatternLegacy, (match, id: string) => {
-      const resolvedUsername = normalizedMentionLookup[id.toLowerCase()]
+    return `@${id}`
+  }
 
-      if (typeof resolvedUsername === 'string' && resolvedUsername.trim() !== '' && isValidMentionUsername(resolvedUsername)) {
-        return `[@${resolvedUsername}](/profile/${resolvedUsername})`
-      }
-
-      const anonymousUsername = getAnonymousUsername(id)
-      if (isValidMentionUsername(anonymousUsername)) {
-        return `@${anonymousUsername}`
-      }
-
-      return match
-    })
-
-  return resolvedMarkdown
+  return markdown
+    .replace(mentionIdPatternBraced, replaceCallback)
+    .replace(mentionIdPatternLegacy, replaceCallback)
 }
 
 /**
