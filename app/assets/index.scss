@@ -224,6 +224,11 @@ code {
     margin-block: var(--space-s);
   }
 
+  img {
+    max-width: 100%;
+    max-height: 768px;
+  }
+
   h1,
   h2,
   h3,

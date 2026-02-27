@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
-import { pushToast } from '@dolanske/vui'
+import { Button, ButtonGroup, pushToast } from '@dolanske/vui'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
 import { CharacterCount, Placeholder } from '@tiptap/extensions'
@@ -15,8 +15,13 @@ import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 const {
   errors = [],
   minHeight = '47px',
+  showActions = true,
   ...props
 } = defineProps<Props>()
+
+const emit = defineEmits<{
+  (e: 'submit'): void
+}>()
 
 // https://tiptap.dev/docs/editor/markdown
 
@@ -35,6 +40,7 @@ interface Props {
   placeholder?: string
   minHeight?: string
   limit?: number
+  showActions?: boolean
   /**
    * If provided, it will enable media upload via pasting/dragging media files
    * into the editor. Providing a context helps with file management
@@ -78,7 +84,10 @@ const editor = useEditor({
 })
 
 // Upload file into the bucket and set the editor node URL
-function handleFileUpload(files: File[], pos?: number) {
+function handleFileUpload(files: File[] | null, pos?: number) {
+  if (!files)
+    return
+
   files.forEach(async (file) => {
     if (!editor.value)
       return
@@ -113,6 +122,16 @@ function handleFileUpload(files: File[], pos?: number) {
   })
 }
 
+// Converts the FileList from @input event into a File[]
+
+const fileInput = useTemplateRef('file-input')
+function handleFileInput(event: Event) {
+  const files = (event.target as HTMLInputElement).files
+  if (!files)
+    return
+  handleFileUpload(Array.from(files))
+}
+
 // If content is changed externally, make sure mentions are hydrated
 watch(() => editor.value, (value) => {
   if (value) {
@@ -142,6 +161,12 @@ const elementId = useId()
 defineExpose({
   focus: () => editor.value?.commands.focus('end'),
 })
+
+function handleSubmit() {
+  if (content.value && content.value.trim().length > 0) {
+    emit('submit')
+  }
+}
 </script>
 
 <template>
@@ -155,7 +180,26 @@ defineExpose({
     <RichTextSelectionMenu v-if="editor" :editor />
 
     <!-- Main editor instance -->
-    <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
+    <div class="editor-container">
+      <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
+
+      <div v-if="showActions" class="editor-actions">
+        <ButtonGroup :gap="2">
+          <Button square size="s" @click="fileInput?.click()">
+            <Icon name="ph:paperclip" />
+          </Button>
+
+          <input ref="file-input" class="visually-hidden" type="file" accept="image/png, image/jpeg, image/gif, image/webp" @input="handleFileInput">
+
+          <Button size="s" type="submit" @click="handleSubmit">
+            Send
+            <template #end>
+              <Icon name="ph:paper-plane-tilt" />
+            </template>
+          </Button>
+        </ButtonGroup>
+      </div>
+    </div>
 
     <p v-if="limit && editor" class="vui-hint" style="margin-top: var(--space-xxs)">
       {{ `${editor.storage.characterCount.characters()} / ${limit}` }}
@@ -174,20 +218,32 @@ defineExpose({
   display: block;
   width: 100%;
 
-  .ProseMirror {
+  .editor-container {
     background-color: var(--color-bg-card);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-m);
     padding: var(--space-s);
-    min-height: v-bind(minHeight);
 
-    &.ProseMirror-focused {
-      outline: none;
+    &:has(.ProseMirror-focused) {
       border-color: var(--color-border-strong);
     }
 
-    & > :first-child {
-      margin-top: 0 !important;
+    .ProseMirror {
+      min-height: v-bind(minHeight);
+
+      &.ProseMirror-focused {
+        outline: none;
+      }
+
+      & > :first-child {
+        margin-top: 0 !important;
+      }
+    }
+
+    .editor-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-xs);
     }
   }
 

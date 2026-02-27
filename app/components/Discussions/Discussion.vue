@@ -446,22 +446,16 @@ provide('delete-comment', deleteComment)
             This discussion is locked
           </Alert>
         </div>
-        <div v-else class="relative">
-          <RichTextEditor
-            ref="textarea"
-            v-model="form.message"
-            :errors="normalizeErrors(errors.message)"
-            :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
-            min-height="108px"
-            :media-context="discussion?.id ? `${discussion.id}/${userId}` : 'staging'"
-          />
-          <Button size="s" class="discussion__add--send-button" type="submit" :loading="formLoading" :disabled="form.message.length === 0" @click="submitReply">
-            Send
-            <template #end>
-              <Icon name="ph:paper-plane-tilt" />
-            </template>
-          </Button>
-        </div>
+        <RichTextEditor
+          v-else
+          ref="textarea"
+          v-model="form.message"
+          :errors="normalizeErrors(errors.message)"
+          :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
+          min-height="64px"
+          :media-context="discussion?.id ? `${discussion.id}/${userId}` : 'staging'"
+          @submit="submitReply"
+        />
       </div>
     </template>
   </div>
@@ -499,12 +493,6 @@ provide('delete-comment', deleteComment)
     &:deep(.vui-alert-icon) {
       display: none;
     }
-  }
-
-  &__add--send-button {
-    position: absolute;
-    right: 12px;
-    top: 12px;
   }
 
   &__add--replying-label {
