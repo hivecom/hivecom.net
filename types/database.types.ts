@@ -1388,10 +1388,10 @@ export interface Database {
     }
     Enums: {
       app_permission:
-        | 'announcements.create'
-        | 'announcements.delete'
-        | 'announcements.read'
-        | 'announcements.update'
+        | 'assets.create'
+        | 'assets.delete'
+        | 'assets.read'
+        | 'assets.update'
         | 'complaints.create'
         | 'complaints.delete'
         | 'complaints.read'
@@ -1400,6 +1400,14 @@ export interface Database {
         | 'containers.delete'
         | 'containers.read'
         | 'containers.update'
+        | 'discussion_topics.create'
+        | 'discussion_topics.read'
+        | 'discussion_topics.update'
+        | 'discussion_topics.delete'
+        | 'discussions.create'
+        | 'discussions.read'
+        | 'discussions.update'
+        | 'discussions.delete'
         | 'events.create'
         | 'events.delete'
         | 'events.read'
@@ -1408,10 +1416,6 @@ export interface Database {
         | 'expenses.delete'
         | 'expenses.read'
         | 'expenses.update'
-        | 'forums.create'
-        | 'forums.delete'
-        | 'forums.read'
-        | 'forums.update'
         | 'funding.create'
         | 'funding.delete'
         | 'funding.read'
@@ -1424,6 +1428,14 @@ export interface Database {
         | 'gameservers.delete'
         | 'gameservers.read'
         | 'gameservers.update'
+        | 'kvstore.create'
+        | 'kvstore.read'
+        | 'kvstore.update'
+        | 'kvstore.delete'
+        | 'motds.create'
+        | 'motds.read'
+        | 'motds.update'
+        | 'motds.delete'
         | 'profiles.delete'
         | 'profiles.read'
         | 'profiles.update'
@@ -1447,23 +1459,6 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
-        | 'assets.create'
-        | 'assets.delete'
-        | 'assets.read'
-        | 'assets.update'
-        | 'motds.create'
-        | 'motds.read'
-        | 'motds.update'
-        | 'motds.delete'
-        | 'kvstore.create'
-        | 'kvstore.read'
-        | 'kvstore.update'
-        | 'kvstore.delete'
-        | 'discussions.create'
-        | 'discussions.read'
-        | 'discussions.update'
-        | 'discussions.delete'
-        | 'discussions.manage'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       kvstore_type: 'NUMBER' | 'BOOLEAN' | 'STRING' | 'JSON'
@@ -1608,10 +1603,10 @@ export const Constants = {
   public: {
     Enums: {
       app_permission: [
-        'announcements.create',
-        'announcements.delete',
-        'announcements.read',
-        'announcements.update',
+        'assets.create',
+        'assets.delete',
+        'assets.read',
+        'assets.update',
         'complaints.create',
         'complaints.delete',
         'complaints.read',
@@ -1620,6 +1615,14 @@ export const Constants = {
         'containers.delete',
         'containers.read',
         'containers.update',
+        'discussion_topics.create',
+        'discussion_topics.read',
+        'discussion_topics.update',
+        'discussion_topics.delete',
+        'discussions.create',
+        'discussions.read',
+        'discussions.update',
+        'discussions.delete',
         'events.create',
         'events.delete',
         'events.read',
@@ -1628,10 +1631,6 @@ export const Constants = {
         'expenses.delete',
         'expenses.read',
         'expenses.update',
-        'forums.create',
-        'forums.delete',
-        'forums.read',
-        'forums.update',
         'funding.create',
         'funding.delete',
         'funding.read',
@@ -1644,6 +1643,14 @@ export const Constants = {
         'gameservers.delete',
         'gameservers.read',
         'gameservers.update',
+        'kvstore.create',
+        'kvstore.read',
+        'kvstore.update',
+        'kvstore.delete',
+        'motds.create',
+        'motds.read',
+        'motds.update',
+        'motds.delete',
         'profiles.delete',
         'profiles.read',
         'profiles.update',
@@ -1667,23 +1674,6 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
-        'assets.create',
-        'assets.delete',
-        'assets.read',
-        'assets.update',
-        'motds.create',
-        'motds.read',
-        'motds.update',
-        'motds.delete',
-        'kvstore.create',
-        'kvstore.read',
-        'kvstore.update',
-        'kvstore.delete',
-        'discussions.create',
-        'discussions.read',
-        'discussions.update',
-        'discussions.delete',
-        'discussions.manage',
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],

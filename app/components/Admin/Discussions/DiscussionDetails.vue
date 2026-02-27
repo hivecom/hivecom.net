@@ -33,11 +33,11 @@ const supabase = useSupabaseClient()
 const { hasPermission } = useAdminPermissions()
 
 const canUpdate = computed(() =>
-  hasPermission('discussions.update') || hasPermission('discussions.manage'),
+  hasPermission('discussions.update'),
 )
 
 const canDelete = computed(() =>
-  hasPermission('discussions.delete') || hasPermission('discussions.manage'),
+  hasPermission('discussions.delete'),
 )
 
 const deleteLoading = ref(false)

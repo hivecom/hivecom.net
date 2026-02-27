@@ -29,13 +29,13 @@ const router = useRouter()
 const { hasPermission } = useAdminPermissions()
 
 const canView = computed(() =>
-  hasPermission('discussions.read') || hasPermission('discussions.manage'),
+  hasPermission('discussions.read'),
 )
 const canUpdate = computed(() =>
-  hasPermission('discussions.update') || hasPermission('discussions.manage'),
+  hasPermission('discussions.update'),
 )
 const canDelete = computed(() =>
-  hasPermission('discussions.delete') || hasPermission('discussions.manage'),
+  hasPermission('discussions.delete'),
 )
 
 const canManageActions = computed(() =>

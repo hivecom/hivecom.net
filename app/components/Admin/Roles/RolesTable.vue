@@ -16,7 +16,6 @@ const refreshSignal = ref(0)
 const search = ref('')
 
 const defaultUserPermissions = [
-  'announcements.read',
   'events.read',
   'games.read',
   'gameservers.read',

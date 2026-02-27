@@ -303,12 +303,12 @@ const popoverStyle = computed(() => {
         class="steam-presence__link"
       >
         <Flex class="steam-presence__trigger" y-center gap="xs">
-          <Icon class="activity-item__icon" name="mdi:steam" :width="props.iconSize" :height="props.iconSize" />
+          <Icon v-if="isPlaying" class="activity-item__icon" name="mdi:steam" :width="props.iconSize" :height="props.iconSize" />
           <span v-if="isOnline && !props.hideOnlineIndicator" class="steam-presence__badge" />
         </Flex>
       </a>
       <Flex v-else class="steam-presence__trigger" y-center gap="xs">
-        <Icon class="activity-item__icon" name="mdi:steam" :width="props.iconSize" :height="props.iconSize" />
+        <Icon v-if="isPlaying" class="activity-item__icon" name="mdi:steam" :width="props.iconSize" :height="props.iconSize" />
         <span v-if="isOnline && !props.hideOnlineIndicator" class="steam-presence__badge" />
       </Flex>
     </slot>

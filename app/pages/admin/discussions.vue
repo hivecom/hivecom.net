@@ -7,7 +7,7 @@ import DiscussionTable from '@/components/Admin/Discussions/DiscussionTable.vue'
 const { hasPermission } = useAdminPermissions()
 
 const canViewDiscussions = computed(() =>
-  hasPermission('discussions.read') || hasPermission('discussions.manage'),
+  hasPermission('discussions.read'),
 )
 
 if (!canViewDiscussions.value) {
