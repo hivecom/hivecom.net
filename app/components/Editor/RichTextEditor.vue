@@ -178,24 +178,32 @@ function handleSubmit() {
     <RichTextSelectionMenu v-if="editor" :editor />
 
     <!-- Main editor instance -->
-    <div class="editor-container">
-      <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
+    <div class="relative">
+      <div class="editor-overlay">
+        <p>Before being able to add content, you must agree to not be a dick</p>
+        <Button size="s" variant="accent">
+          Acknowledge
+        </Button>
+      </div>
+      <div class="editor-container">
+        <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
 
-      <div v-if="showActions" class="editor-actions">
-        <ButtonGroup :gap="2">
-          <Button square size="s" @click="fileInput?.click()">
-            <Icon name="ph:paperclip" />
-          </Button>
+        <div v-if="showActions" class="editor-actions">
+          <ButtonGroup :gap="2">
+            <Button square size="s" @click="fileInput?.click()">
+              <Icon name="ph:paperclip" />
+            </Button>
 
-          <input ref="file-input" class="visually-hidden" type="file" accept="image/png, image/jpeg, image/gif, image/webp" @input="handleFileInput">
+            <input ref="file-input" class="visually-hidden" type="file" accept="image/png, image/jpeg, image/gif, image/webp" @input="handleFileInput">
 
-          <Button size="s" type="submit" @click="handleSubmit">
-            Send
-            <template #end>
-              <Icon name="ph:paper-plane-tilt" />
-            </template>
-          </Button>
-        </ButtonGroup>
+            <Button size="s" type="submit" @click="handleSubmit">
+              Send
+              <template #end>
+                <Icon name="ph:paper-plane-tilt" />
+              </template>
+            </Button>
+          </ButtonGroup>
+        </div>
       </div>
     </div>
 
@@ -215,12 +223,28 @@ function handleSubmit() {
 .vui-rich-text {
   display: block;
   width: 100%;
+  position: relative;
+  z-index: 1;
+
+  .editor-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-s);
+    z-index: 100;
+    border-radius: var(--border-radius-m);
+    backdrop-filter: blur(7px);
+  }
 
   .editor-container {
     background-color: var(--color-bg-card);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-m);
     padding: var(--space-s);
+    z-index: 1;
 
     &:has(.ProseMirror-focused) {
       border-color: var(--color-border-strong);
