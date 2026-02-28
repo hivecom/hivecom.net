@@ -288,6 +288,10 @@ function publish() {
           </Badge>
         </Flex>
 
+        <p v-if="post.description" class="mb-l">
+          {{ post.description }}
+        </p>
+
         <Alert v-if="post.is_draft" class="mb-l" variant="info">
           This post is a draft
           <template #end>
