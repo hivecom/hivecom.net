@@ -26,7 +26,7 @@ withDefaults(defineProps<Props>(), {
 
 <template>
   <div class="user-display">
-    <Flex gap="s" y-center class="user-display__header">
+    <Flex gap="s" y-center x-center class="user-display__header">
       <!-- Avatar -->
       <template v-if="!hideAvatar">
         <!-- System avatar (no userId) -->
@@ -55,8 +55,8 @@ withDefaults(defineProps<Props>(), {
             <Badge v-if="!userId" size="xs" variant="accent">
               System
             </Badge>
-            <UserRole v-if="showRole && userId" :user-id="userId" size="s" />
           </UserName>
+          <UserRole v-if="showRole && userId" :user-id="userId" size="s" />
         </Flex>
       </div>
     </Flex>

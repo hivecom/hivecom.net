@@ -3,10 +3,13 @@ import type { Comment, ProvidedDiscussion } from '../Discussion.vue'
 import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
+import UserRole from '@/components/Shared/UserRole.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { getCountryInfo } from '@/lib/utils/country'
@@ -104,21 +107,31 @@ async function submit() {
 watch(editedContent, () => editError.value = [])
 
 const showNSFWWarning = ref(!!props.data.is_nsfw)
+const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 </script>
 
 <template>
   <div class="discussion-forum">
+    <DefineReusableUserInfo>
+      <Flex column x-center y-center gap="s" class="mb-s">
+        <Avatar :url="user?.avatarUrl || undefined" size="l" />
+        <Flex wrap gap="xxs" y-center x-center>
+          <UserName :user-id="data.created_by" />
+          <BadgeCircle v-if="data.created_by === discussion?.created_by">
+            <span class="text-xxs text-color-light">OP</span>
+          </BadgeCircle>
+          <UserRole :user-id="data.created_by" />
+        </Flex>
+      </Flex>
+    </DefineReusableUserInfo>
+
     <div class="discussion-forum__author">
       <UserPreviewHover v-if="currentUser" :user-id="data.created_by">
-        <Flex column x-center y-center gap="s" class="mb-s">
-          <Avatar :url="user?.avatarUrl || undefined" size="l" />
-          <UserDisplay centered :user-id="data.created_by" show-role hide-avatar />
-        </Flex>
+        <UserInfo />
       </UserPreviewHover>
-      <Flex v-else column x-center y-center gap="s" class="mb-s">
-        <Avatar :url="user?.avatarUrl || undefined" size="l" />
-        <UserDisplay centered :user-id="data.created_by" show-role hide-avatar />
-      </Flex>
+
+      <UserInfo v-else />
+
       <Flex v-if="user?.created_at || country" expand x-center gap="xs">
         <p v-if="country" class="author-meta">
           {{ country.emoji }}
