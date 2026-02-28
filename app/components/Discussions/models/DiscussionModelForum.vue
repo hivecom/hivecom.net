@@ -106,7 +106,7 @@ watch(editedContent, () => editError.value = [])
 <template>
   <div class="discussion-forum">
     <div class="discussion-forum__author">
-      <UserPreviewHover v-if="currentUser" :user-id="data.created_by">
+      <UserPreviewHover v-if="currentUser" :user-id="data.created_by" :enter-delay="1000">
         <Flex column x-center y-center gap="s" class="mb-s">
           <Avatar :url="user?.avatarUrl || undefined" size="l" />
           <UserDisplay :user-id="data.created_by" show-role hide-avatar />
