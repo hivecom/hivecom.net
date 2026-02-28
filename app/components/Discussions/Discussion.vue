@@ -214,6 +214,7 @@ const formLoading = ref(false)
 
 const form = reactive({
   message: '',
+  is_nsfw: false,
 })
 
 // Holds reference to the comment we're replying to
@@ -317,6 +318,7 @@ async function submitReply() {
 
       const commentData = {
         markdown: normalizeTipTapOutput(form.message),
+        is_nsfw: form.is_nsfw,
         discussion_id: discussion.value.id,
         ...(!!replyingTo.value && { reply_to_id: replyingTo.value.id }),
         ...(props.hash && {
@@ -345,6 +347,7 @@ async function submitReply() {
         reset()
         replyingTo.value = undefined
         form.message = ''
+        form.is_nsfw = false
         comments.value.push(res.data as RawComment)
       }
 
@@ -451,10 +454,11 @@ provide('delete-comment', deleteComment)
           v-else
           ref="textarea"
           v-model="form.message"
+          v-model:nsfw="form.is_nsfw"
+          min-height="64px"
           show-actions
           :errors="normalizeErrors(errors.message)"
           :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
-          min-height="64px"
           :media-context="discussion?.id ? `${discussion.id}/${userId}` : 'staging'"
           :media-bucket-id="FORUMS_BUCKET_ID"
           @submit="submitReply"

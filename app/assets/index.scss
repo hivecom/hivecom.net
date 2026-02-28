@@ -229,6 +229,14 @@ code {
     max-height: 768px;
   }
 
+  p a {
+    text-decoration: underline;
+
+    &:hover {
+      text-decoration: none;
+    }
+  }
+
   h1,
   h2,
   h3,

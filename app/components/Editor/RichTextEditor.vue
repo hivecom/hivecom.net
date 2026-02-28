@@ -58,6 +58,7 @@ interface Props {
 const editorMode = ref <'rich' | 'plain'>('rich')
 
 const content = defineModel<string>()
+const isNsfw = defineModel<boolean>('nsfw', { default: false })
 
 const resolvedMediaBucketId = computed(() => props.mediaBucketId ?? FORUMS_BUCKET_ID)
 
@@ -261,16 +262,20 @@ function handleSubmit() {
         <Textarea v-else v-model="content" expand :placeholder="placeholder" />
 
         <div v-if="showActions" class="editor-actions">
-          <Button square size="s" :data-title-top="editorMode === 'rich' ? 'Switch to plain text' : 'Switch to rich text'" @click="editorMode = editorMode === 'rich' ? 'plain' : 'rich'">
+          <Button plain square size="s" :data-title-top="editorMode === 'rich' ? 'Switch to plain text' : 'Switch to rich text'" @click="editorMode = editorMode === 'rich' ? 'plain' : 'rich'">
             <Icon :name="editorMode === 'rich' ? 'ph:pen-nib' : 'ph:markdown-logo'" />
           </Button>
 
-          <ButtonGroup :gap="2">
-            <Button square size="s" data-title-top="Attach a file" @click="fileInput?.click()">
-              <Icon name="ph:paperclip" />
-            </Button>
+          <Button plain square size="s" data-title-top="Attach a file" @click="fileInput?.click()">
+            <Icon name="ph:paperclip" />
+          </Button>
 
-            <input ref="file-input" class="visually-hidden" type="file" accept="image/png, image/jpeg, image/gif, image/webp" @input="handleFileInput">
+          <input ref="file-input" class="visually-hidden" type="file" accept="image/png, image/jpeg, image/gif, image/webp" @input="handleFileInput">
+
+          <ButtonGroup :gap="2">
+            <Button v-if="isNsfw !== undefined" square size="s" :data-title-top="isNsfw ? 'Marked as NSFW' : 'Marked as safe'" @click="isNsfw = !isNsfw">
+              <Icon :name="isNsfw ? 'ph:eye-closed' : 'ph:eye'" />
+            </Button>
 
             <Button size="s" type="submit" @click="handleSubmit">
               Send

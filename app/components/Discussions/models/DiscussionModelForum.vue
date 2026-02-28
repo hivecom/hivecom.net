@@ -102,6 +102,8 @@ async function submit() {
 }
 
 watch(editedContent, () => editError.value = [])
+
+const showNSFWWarning = ref(!!props.data.is_nsfw)
 </script>
 
 <template>
@@ -143,14 +145,21 @@ watch(editedContent, () => editError.value = [])
         </p>
       </Alert>
 
-      <MDRenderer :md="data.markdown" :skeleton-height="128" />
+      <!-- Content warning -->
+      <button v-if="showNSFWWarning" class="discussion-forum__nsfw" @click="showNSFWWarning = false">
+        <Icon class="text-color-accent" name="ph:caret-down" />
+        <p>Click to reveal potentially sensitive content</p>
+        <Icon class="text-color-accent" name="ph:caret-up" />
+      </button>
+
+      <MDRenderer v-else :md="data.markdown" :skeleton-height="128" />
 
       <p class="discussion-forum__timestamp">
         <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
         <span>{{ data.modified_at !== data.created_at ? `Edited ${dayjs(data.modified_at).fromNow()}` : null }}</span>
       </p>
 
-      <div class="discussion-forum__actions">
+      <div v-if="!showNSFWWarning" class="discussion-forum__actions">
         <ButtonGroup v-if="user">
           <template v-if="!discussion?.is_locked && !discussion?.is_archived">
             <Button square size="s" @click="setReplyToComment(data)">
@@ -273,6 +282,26 @@ watch(editedContent, () => editError.value = [])
 
   &--highlight .discussion-forum__content {
     background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  }
+
+  &__nsfw {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius-l);
+    background-color: var(--color-bg-raised);
+    padding: var(--space-m);
+    margin-bottom: var(--space-m);
+    transition: var(--transition);
+    color: var(--color-text-light);
+    gap: var(--space-xxs);
+    height: 100px;
+
+    &:hover {
+      background-color: var(--color-button-gray);
+      gap: 0;
+    }
   }
 
   &__timestamp {
