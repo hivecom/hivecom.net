@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Divider, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
@@ -325,8 +325,6 @@ function publish() {
           </Flex>
         </Card>
 
-        <MDRenderer v-if="post.markdown" class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
-
         <Flex x-between y-center class="mt-xl" wrap gap="m">
           <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
           <Flex :key="timestampUpdateKey" y-center>
@@ -344,6 +342,10 @@ function publish() {
             </Tooltip>
           </Flex>
         </Flex>
+
+        <Divider class="my-xl" />
+
+        <MDRenderer v-if="post.markdown" class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
       </section>
 
       <Discussion

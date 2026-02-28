@@ -10,6 +10,7 @@ import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
+import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { extractMentionIds, processMentionsToText, stripMarkdown } from '@/lib/markdown-processors'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -74,6 +75,7 @@ const { user } = useCacheUserData(userId, { includeRole: true })
 
 const addingTopic = ref(false)
 const addingDiscussion = ref(false)
+const rulesModalOpen = ref(false)
 
 const loading = ref(false)
 const supabase = useSupabaseClient()
@@ -672,6 +674,17 @@ onBeforeMount(() => {
             </template>
             {{ isMobile ? '' : 'Search' }}
           </Button>
+
+          <Button size="s" :square="isMobile" @click="rulesModalOpen = true">
+            <template v-if="!isMobile" #start>
+              <Icon name="ph:book" :size="16" />
+            </template>
+            <template v-if="isMobile">
+              <Icon name="ph:book" :size="16" />
+            </template>
+            {{ isMobile ? '' : 'Rules' }}
+          </Button>
+          <ContentRulesModal v-model:open="rulesModalOpen" :show-agree-button="false" />
 
           <Button ref="settings-anchor" size="s" square @click="showSettings = !showSettings">
             <Icon name="ph:gear" />

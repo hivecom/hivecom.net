@@ -8,7 +8,9 @@ import { CharacterCount, Placeholder } from '@tiptap/extensions'
 import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import { useId, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
+import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
+import { useUserId } from '@/composables/useUserId'
 import { createMentionExtension, hydrateMentionLabels } from './plugins/mentions'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 
@@ -39,6 +41,7 @@ interface Props {
   minHeight?: string
   limit?: number
   showActions?: boolean
+  contentRulesOverlayText?: string
   /**
    * If provided, it will enable media upload via pasting/dragging media files
    * into the editor. Providing a context helps with file management
@@ -49,6 +52,42 @@ interface Props {
 const content = defineModel<string>()
 
 const supabase = useSupabaseClient<Database>()
+
+const userId = useUserId()
+const fetchedContentRulesAgreement = ref<boolean | null>(null)
+const localAgreedContentRules = ref<boolean | null>(null)
+
+async function refreshContentRulesAgreement() {
+  const id = userId.value
+
+  if (!id) {
+    fetchedContentRulesAgreement.value = null
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('agreed_content_rules')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) {
+    pushToast('Error checking content rules', {
+      description: error.message,
+    })
+    return
+  }
+
+  if (!data)
+    return
+
+  fetchedContentRulesAgreement.value = data.agreed_content_rules
+  localAgreedContentRules.value = null
+}
+
+watch(userId, () => {
+  void refreshContentRulesAgreement()
+}, { immediate: true })
 
 const editor = useEditor({
   content: content.value,
@@ -154,6 +193,19 @@ watch(content, (newContent) => {
 })
 
 const elementId = useId()
+const contentRulesModalOpen = ref(false)
+const resolvedAgreedContentRules = computed(() => localAgreedContentRules.value ?? fetchedContentRulesAgreement.value ?? false)
+const shouldShowContentRulesOverlay = computed(() => resolvedAgreedContentRules.value === false)
+
+watch(contentRulesModalOpen, (open, wasOpen) => {
+  if (wasOpen && !open)
+    void refreshContentRulesAgreement()
+})
+
+async function handleContentRulesConfirmed() {
+  localAgreedContentRules.value = true
+  fetchedContentRulesAgreement.value = true
+}
 
 // Expose some methods for refs
 defineExpose({
@@ -179,12 +231,17 @@ function handleSubmit() {
 
     <!-- Main editor instance -->
     <div class="relative">
-      <div class="editor-overlay">
-        <p>Before being able to add content, you must agree to not be a dick</p>
-        <Button size="s" variant="accent">
+      <div v-if="shouldShowContentRulesOverlay" class="editor-overlay">
+        <p>{{ props.contentRulesOverlayText || 'Before being able to add content, you must agree our content rules' }}</p>
+        <Button size="s" variant="accent" @click="contentRulesModalOpen = true">
           Acknowledge
         </Button>
       </div>
+      <ContentRulesModal
+        v-model:open="contentRulesModalOpen"
+        :show-agree-button="shouldShowContentRulesOverlay"
+        @confirm="handleContentRulesConfirmed"
+      />
       <div class="editor-container">
         <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
 

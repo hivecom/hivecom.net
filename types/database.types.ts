@@ -979,6 +979,8 @@ export interface Database {
           patreon_id: string | null
           rich_presence_disabled: boolean
           steam_id: string | null
+          public: boolean
+          agreed_content_rules: boolean
           supporter_lifetime: boolean
           supporter_patreon: boolean
           teamspeak_identities: Json
@@ -1007,6 +1009,8 @@ export interface Database {
           patreon_id?: string | null
           rich_presence_disabled?: boolean
           steam_id?: string | null
+          public?: boolean
+          agreed_content_rules?: boolean
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
           teamspeak_identities?: Json
@@ -1035,6 +1039,8 @@ export interface Database {
           patreon_id?: string | null
           rich_presence_disabled?: boolean
           steam_id?: string | null
+          public?: boolean
+          agreed_content_rules?: boolean
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
           teamspeak_identities?: Json
@@ -1367,6 +1373,8 @@ export interface Database {
           patreon_id: string | null
           rich_presence_disabled: boolean
           steam_id: string | null
+          public: boolean
+          agreed_content_rules: boolean
           supporter_lifetime: boolean
           supporter_patreon: boolean
           teamspeak_identities: Json
