@@ -92,6 +92,13 @@ const isPlaying = computed(() => {
     && presence.value?.current_app_name
 })
 
+const currentAppUrl = computed(() => {
+  if (!presence.value?.current_app_id)
+    return null
+
+  return `https://store.steampowered.com/app/${presence.value.current_app_id}`
+})
+
 const gameIconIndex = ref(0)
 
 const gameIconSources = computed(() => {
@@ -139,40 +146,6 @@ function onGameIconError() {
 
   gameIconIndex.value = gameIconSources.value.length
 }
-
-const hasLastPlayed = computed(() => {
-  return !isPlaying.value && presence.value?.status === 'online' && presence.value?.last_app_id
-})
-
-const lastGameIconIndex = ref(0)
-
-const lastGameIconSources = computed(() => {
-  if (!presence.value?.last_app_id)
-    return []
-
-  const appId = presence.value.last_app_id
-  return [
-    `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/capsule_sm_120.jpg`,
-    `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
-  ]
-})
-
-const lastGameIconUrl = computed(() => {
-  return lastGameIconSources.value[lastGameIconIndex.value] || null
-})
-
-function onLastGameIconError() {
-  if (lastGameIconIndex.value < lastGameIconSources.value.length - 1) {
-    lastGameIconIndex.value += 1
-    return
-  }
-
-  lastGameIconIndex.value = lastGameIconSources.value.length
-}
-
-watch(() => presence.value?.last_app_id, () => {
-  lastGameIconIndex.value = 0
-})
 
 watch(() => presence.value?.current_app_id, () => {
   gameIconIndex.value = 0
@@ -315,9 +288,18 @@ watch(() => props.profileId, () => {
                   class="activity-item__status-dot"
                   :style="{ backgroundColor: statusColor }"
                 />
-                <template v-if="isPlaying">Playing {{ presence.current_app_name }}</template>
+                <template v-if="isPlaying">
+                  <a
+                    v-if="currentAppUrl"
+                    :href="currentAppUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Playing {{ presence.current_app_name }}
+                  </a>
+                  <span v-else>Playing {{ presence.current_app_name }}</span>
+                </template>
                 <template v-else-if="statusLabel">{{ statusLabel }}</template>
-                <template v-else-if="presence.last_app_name">Last {{ presence.last_app_name }}</template>
                 <template v-else-if="presence.steam_name">{{ presence.steam_name }}</template>
                 <template v-else>Unknown</template>
               </strong>
@@ -333,16 +315,6 @@ watch(() => props.profileId, () => {
               height="32"
               class="activity-item__game-icon"
               @error="onGameIconError"
-            >
-            <img
-              v-else-if="hasLastPlayed && lastGameIconUrl"
-              :key="lastGameIconUrl"
-              :src="lastGameIconUrl"
-              :alt="`${presence.last_app_name ?? 'Last played'} icon`"
-              width="32"
-              height="32"
-              class="activity-item__game-icon"
-              @error="onLastGameIconError"
             >
           </template>
 

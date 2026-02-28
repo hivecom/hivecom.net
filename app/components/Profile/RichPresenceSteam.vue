@@ -363,34 +363,72 @@ const popoverStyle = computed(() => {
             <Divider v-if="hasPresence && !props.richPresenceDisabled" class="m-xxs p-xxs" :margin="0" />
 
             <div v-if="hasPresence && !props.richPresenceDisabled" class="steam-presence__section">
-              <Flex y-center gap="s" class="steam-presence__row">
-                <img
-                  v-if="gameIconUrl"
-                  :key="gameIconUrl"
-                  :src="gameIconUrl"
-                  :alt="displayedAppName ? `${displayedAppName} icon` : 'Steam app icon'"
-                  width="40"
-                  height="40"
-                  class="steam-presence__game-icon"
-                  @error="onGameIconError"
-                >
-                <div class="steam-presence__game-text">
-                  <div class="steam-presence__game-title">
-                    <template v-if="isPlaying && displayedAppName">
-                      Playing {{ displayedAppName }}
-                    </template>
-                    <template v-else-if="displayedAppName">
-                      Last played {{ displayedAppName }}
-                    </template>
-                    <template v-else>
-                      No recent game
-                    </template>
+              <a
+                v-if="displayedAppId"
+                class="steam-presence__row steam-presence__row--link"
+                :href="`https://store.steampowered.com/app/${displayedAppId}`"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Flex y-center gap="s">
+                  <img
+                    v-if="gameIconUrl"
+                    :key="gameIconUrl"
+                    :src="gameIconUrl"
+                    :alt="displayedAppName ? `${displayedAppName} icon` : 'Steam app icon'"
+                    width="40"
+                    height="40"
+                    class="steam-presence__game-icon"
+                    @error="onGameIconError"
+                  >
+                  <div class="steam-presence__game-text">
+                    <div class="steam-presence__game-title">
+                      <template v-if="isPlaying && displayedAppName">
+                        Playing {{ displayedAppName }}
+                      </template>
+                      <template v-else-if="displayedAppName">
+                        Last played {{ displayedAppName }}
+                      </template>
+                      <template v-else>
+                        No recent game
+                      </template>
+                    </div>
+                    <div v-if="lastOnlineFormatted" class="steam-presence__meta">
+                      Last online {{ lastOnlineFormatted }}
+                    </div>
                   </div>
-                  <div v-if="lastOnlineFormatted" class="steam-presence__meta">
-                    Last online {{ lastOnlineFormatted }}
+                </Flex>
+              </a>
+              <div v-else class="steam-presence__row">
+                <Flex y-center gap="s">
+                  <img
+                    v-if="gameIconUrl"
+                    :key="gameIconUrl"
+                    :src="gameIconUrl"
+                    :alt="displayedAppName ? `${displayedAppName} icon` : 'Steam app icon'"
+                    width="40"
+                    height="40"
+                    class="steam-presence__game-icon"
+                    @error="onGameIconError"
+                  >
+                  <div class="steam-presence__game-text">
+                    <div class="steam-presence__game-title">
+                      <template v-if="isPlaying && displayedAppName">
+                        Playing {{ displayedAppName }}
+                      </template>
+                      <template v-else-if="displayedAppName">
+                        Last played {{ displayedAppName }}
+                      </template>
+                      <template v-else>
+                        No recent game
+                      </template>
+                    </div>
+                    <div v-if="lastOnlineFormatted" class="steam-presence__meta">
+                      Last online {{ lastOnlineFormatted }}
+                    </div>
                   </div>
-                </div>
-              </Flex>
+                </Flex>
+              </div>
             </div>
           </div>
         </div>
@@ -504,6 +542,12 @@ const popoverStyle = computed(() => {
   border: 1px solid var(--color-border-weak);
   border-radius: 10px;
   background: var(--color-bg-raised);
+}
+
+.steam-presence__row--link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .steam-presence__row--inline {
