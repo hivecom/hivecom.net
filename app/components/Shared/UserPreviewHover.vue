@@ -11,7 +11,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   userId: null,
   maxBadges: 3,
-  enterDelay: 120,
+  enterDelay: 500,
   leaveDelay: 150,
 })
 
