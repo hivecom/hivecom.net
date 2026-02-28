@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Divider, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
@@ -288,10 +288,11 @@ function publish() {
           </Badge>
         </Flex>
 
-        <p v-if="post.description" class="mb-l">
+        <p v-if="post.description" class="mb-m">
           {{ post.description }}
         </p>
 
+        <!-- Draft alert and publishing -->
         <Alert v-if="post.is_draft" class="mb-l" variant="info">
           This post is a draft
           <template #end>
@@ -309,23 +310,8 @@ function publish() {
           @cancel="publishConfirmOpen = false"
         />
 
-        <Card v-if="contextInfo" class="mb-l mt-m">
-          <Flex x-between y-center wrap gap="m">
-            <Flex column gap="xs">
-              <Flex y-center gap="xs">
-                <Icon :name="contextInfo.icon" :size="20" />
-                <span>This discussion is linked to {{ contextInfo.label === 'event' ? 'an' : 'a' }} {{ contextInfo.label }}</span>
-              </Flex>
-            </Flex>
-            <NuxtLink :to="contextInfo.href">
-              <Button size="s">
-                View {{ contextInfo.label }}
-              </Button>
-            </NuxtLink>
-          </Flex>
-        </Card>
-
-        <Flex x-between y-center class="mt-xl" wrap gap="m">
+        <!-- Post author & metadata row -->
+        <Flex x-between y-center class="mb-l" wrap gap="m">
           <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
           <Flex :key="timestampUpdateKey" y-center>
             <Tooltip>
@@ -343,8 +329,24 @@ function publish() {
           </Flex>
         </Flex>
 
-        <Divider class="my-xl" />
+        <!-- Discussion linking card -->
+        <Card v-if="contextInfo" class="mb-xl mt-l">
+          <Flex x-between y-center wrap gap="m">
+            <Flex column gap="xs">
+              <Flex y-center gap="xs">
+                <Icon :name="contextInfo.icon" :size="20" />
+                <span>This discussion is linked to {{ contextInfo.label === 'event' ? 'an' : 'a' }} {{ contextInfo.label }}</span>
+              </Flex>
+            </Flex>
+            <NuxtLink :to="contextInfo.href">
+              <Button size="s">
+                View {{ contextInfo.label }}
+              </Button>
+            </NuxtLink>
+          </Flex>
+        </Card>
 
+        <!-- Content -->
         <MDRenderer v-if="post.markdown" class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
       </section>
 
