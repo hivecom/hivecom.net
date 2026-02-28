@@ -218,7 +218,7 @@ watch(editedContent, () => editError.value = [])
       </div>
     </div>
 
-    <Modal :open="editing" centered @close="editing = false">
+    <Modal :open="editing" centered scrollable @close="editing = false">
       <template #header>
         <Flex column gap="xxs">
           <h3>Edit post</h3>
