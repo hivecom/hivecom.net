@@ -109,12 +109,12 @@ watch(editedContent, () => editError.value = [])
       <UserPreviewHover v-if="currentUser" :user-id="data.created_by">
         <Flex column x-center y-center gap="s" class="mb-s">
           <Avatar :url="user?.avatarUrl || undefined" size="l" />
-          <UserDisplay :user-id="data.created_by" show-role hide-avatar />
+          <UserDisplay centered :user-id="data.created_by" show-role hide-avatar />
         </Flex>
       </UserPreviewHover>
       <Flex v-else column x-center y-center gap="s" class="mb-s">
         <Avatar :url="user?.avatarUrl || undefined" size="l" />
-        <UserDisplay :user-id="data.created_by" show-role hide-avatar />
+        <UserDisplay centered :user-id="data.created_by" show-role hide-avatar />
       </Flex>
       <Flex v-if="user?.created_at || country" expand x-center gap="xs">
         <p v-if="country" class="author-meta">

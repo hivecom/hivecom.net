@@ -20,6 +20,7 @@ interface Props {
    * Hide avatar, but this option is only respected if
    */
   hideAvatar?: boolean
+  centered?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -188,7 +189,7 @@ const currentUser = useSupabaseUser()
         </div>
       </template>
       <div class="user-display__info">
-        <Flex gap="xs" x-start y-center wrap class="user-display__name-row">
+        <Flex gap="xs" :x-start="!centered" :x-center="!!centered" y-center wrap class="user-display__name-row">
           <NuxtLink
             :to="`/profile/${user.id}`"
             class="user-display__link"
