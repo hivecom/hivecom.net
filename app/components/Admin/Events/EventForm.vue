@@ -6,6 +6,7 @@ import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
 const props = defineProps<{
   event: Tables<'events'> | null
@@ -416,6 +417,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
           hint="You can use markdown"
           placeholder="Additional event details in markdown format (optional)"
           min-height="144px"
+          :media-bucket-id="CMS_BUCKET_ID"
         />
       </Flex>
 

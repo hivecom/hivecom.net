@@ -16,6 +16,7 @@ type ProfileBadgeSlug = Database['public']['Enums']['profile_badge']
 export interface UserDisplayData {
   id: string
   username: string
+  username_set: boolean
   role: string | null
   avatarUrl: string | null
   supporter_lifetime: boolean
@@ -29,6 +30,7 @@ export interface UserDisplayData {
 interface ProfileCacheEntry {
   id: string
   username: string
+  username_set?: boolean
   supporter_lifetime?: boolean
   supporter_patreon?: boolean
   badges?: ProfileBadgeSlug[]
@@ -39,7 +41,8 @@ interface ProfileCacheEntry {
 
 function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is ProfileCacheEntry {
   return (
-    typeof profile?.supporter_lifetime === 'boolean'
+    typeof profile?.username_set === 'boolean'
+    && typeof profile?.supporter_lifetime === 'boolean'
     && typeof profile?.supporter_patreon === 'boolean'
     && Array.isArray(profile?.badges)
   )
@@ -103,7 +106,7 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
       // Fetch from database
       const { data, error: profileError } = await supabase
         .from('profiles')
-        .select('id, username, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at')
+        .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at')
         .eq('id', id)
         .single()
 
@@ -114,6 +117,7 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
       profile = {
         id: data.id,
         username: data.username || 'Unknown',
+        username_set: data.username_set ?? false,
         supporter_lifetime: data.supporter_lifetime ?? false,
         supporter_patreon: data.supporter_patreon ?? false,
         badges: Array.isArray(data.badges) ? [...data.badges] : [],
@@ -227,6 +231,7 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
       user.value = {
         id: profile.id,
         username: profile.username,
+        username_set: profile.username_set ?? false,
         role,
         avatarUrl,
         supporter_lifetime: profile.supporter_lifetime ?? false,
@@ -435,7 +440,7 @@ export function useBulkUserData(userIds: Ref<string[]>, options: useCacheUserDat
         profileIdsToFetch.length > 0
           ? supabase
               .from('profiles')
-              .select('id, username, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at')
+              .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at')
               .in('id', profileIdsToFetch)
           : Promise.resolve({ data: [], error: null }),
         includeRole && roleIdsToFetch.length > 0
@@ -461,6 +466,7 @@ export function useBulkUserData(userIds: Ref<string[]>, options: useCacheUserDat
         cache.set(`user:profile:${profile.id}`, {
           id: profile.id,
           username: profile.username ?? 'Unknown',
+          username_set: profile.username_set ?? false,
           supporter_lifetime: profile.supporter_lifetime ?? false,
           supporter_patreon: profile.supporter_patreon ?? false,
           badges: Array.isArray(profile.badges) ? [...profile.badges] : [],
@@ -502,6 +508,7 @@ export function useBulkUserData(userIds: Ref<string[]>, options: useCacheUserDat
           userMap.set(id, {
             id: profile.id,
             username: profile.username,
+            username_set: profile.username_set ?? false,
             role: role ?? null,
             avatarUrl: avatarUrl ?? null,
             supporter_lifetime: profile.supporter_lifetime ?? false,

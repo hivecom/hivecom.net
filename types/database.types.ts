@@ -178,6 +178,7 @@ export interface Database {
           discussion_id: string
           id: string
           is_deleted: boolean
+          is_nsfw: boolean
           markdown: string
           meta: Json | null
           modified_at: string
@@ -190,6 +191,7 @@ export interface Database {
           discussion_id: string
           id?: string
           is_deleted?: boolean
+          is_nsfw?: boolean
           markdown: string
           meta?: Json | null
           modified_at?: string
@@ -202,6 +204,7 @@ export interface Database {
           discussion_id?: string
           id?: string
           is_deleted?: boolean
+          is_nsfw?: boolean
           markdown?: string
           meta?: Json | null
           modified_at?: string
@@ -319,6 +322,7 @@ export interface Database {
           is_archived: boolean
           is_draft: boolean
           is_locked: boolean
+          is_nsfw: boolean
           is_sticky: boolean
           markdown: string | null
           modified_at: string
@@ -343,6 +347,7 @@ export interface Database {
           is_archived?: boolean
           is_draft?: boolean
           is_locked?: boolean
+          is_nsfw?: boolean
           is_sticky?: boolean
           markdown?: string | null
           modified_at?: string
@@ -367,6 +372,7 @@ export interface Database {
           is_archived?: boolean
           is_draft?: boolean
           is_locked?: boolean
+          is_nsfw?: boolean
           is_sticky?: boolean
           markdown?: string | null
           modified_at?: string
@@ -959,6 +965,7 @@ export interface Database {
       }
       profiles: {
         Row: {
+          agreed_content_rules: boolean
           badges: Database['public']['Enums']['profile_badge'][]
           ban_end: string | null
           ban_reason: string | null
@@ -977,10 +984,9 @@ export interface Database {
           modified_at: string | null
           modified_by: string | null
           patreon_id: string | null
+          public: boolean
           rich_presence_disabled: boolean
           steam_id: string | null
-          public: boolean
-          agreed_content_rules: boolean
           supporter_lifetime: boolean
           supporter_patreon: boolean
           teamspeak_identities: Json
@@ -989,6 +995,7 @@ export interface Database {
           website: string | null
         }
         Insert: {
+          agreed_content_rules?: boolean
           badges?: Database['public']['Enums']['profile_badge'][]
           ban_end?: string | null
           ban_reason?: string | null
@@ -1007,10 +1014,9 @@ export interface Database {
           modified_at?: string | null
           modified_by?: string | null
           patreon_id?: string | null
+          public?: boolean
           rich_presence_disabled?: boolean
           steam_id?: string | null
-          public?: boolean
-          agreed_content_rules?: boolean
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
           teamspeak_identities?: Json
@@ -1019,6 +1025,7 @@ export interface Database {
           website?: string | null
         }
         Update: {
+          agreed_content_rules?: boolean
           badges?: Database['public']['Enums']['profile_badge'][]
           ban_end?: string | null
           ban_reason?: string | null
@@ -1037,10 +1044,9 @@ export interface Database {
           modified_at?: string | null
           modified_by?: string | null
           patreon_id?: string | null
+          public?: boolean
           rich_presence_disabled?: boolean
           steam_id?: string | null
-          public?: boolean
-          agreed_content_rules?: boolean
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
           teamspeak_identities?: Json
@@ -1353,6 +1359,7 @@ export interface Database {
       search_profiles: {
         Args: { search_term: string }
         Returns: {
+          agreed_content_rules: boolean
           badges: Database['public']['Enums']['profile_badge'][]
           ban_end: string | null
           ban_reason: string | null
@@ -1371,10 +1378,9 @@ export interface Database {
           modified_at: string | null
           modified_by: string | null
           patreon_id: string | null
+          public: boolean
           rich_presence_disabled: boolean
           steam_id: string | null
-          public: boolean
-          agreed_content_rules: boolean
           supporter_lifetime: boolean
           supporter_patreon: boolean
           teamspeak_identities: Json

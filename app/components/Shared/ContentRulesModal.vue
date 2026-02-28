@@ -74,8 +74,9 @@ async function handleConfirm(close: () => void) {
         These rules are guidelines, not law, and are interpreted by the staff:
       </p>
       <ul class="rules-list">
-        <li>Although this is the internet, we are not your goon chamber. Don't post sexually explicit content or nudity.</li>
-        <li>Content containing gore, intense violence, or anything adult related should be put behind a spoiler tag.</li>
+        <li>Although this is the internet, we are not your personal goon chamber. Don't post porn or explicit sexual content, it will be removed and result in a temporary ban.</li>
+        <li>Content containing real depictions of violence or gore will be removed and result in a <b>permanent ban</b>.</li>
+        <li>Content containing non-explicit nudity or intense violence should be marked as NSFW.</li>
         <li>Don't be a jerk or harass others. Banter is fine, but read the room.</li>
         <li><b>Use common sense.</b></li>
       </ul>

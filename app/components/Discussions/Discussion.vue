@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import { wrapInBlockquote } from '@/lib/markdown-processors'
+import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { normalizeErrors, normalizeTipTapOutput, truncate } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
@@ -455,6 +456,7 @@ provide('delete-comment', deleteComment)
           :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
           min-height="64px"
           :media-context="discussion?.id ? `${discussion.id}/${userId}` : 'staging'"
+          :media-bucket-id="FORUMS_BUCKET_ID"
           @submit="submitReply"
         />
       </div>

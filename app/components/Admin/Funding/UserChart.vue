@@ -312,7 +312,6 @@ onBeforeMount(fetchAllData)
     </div>
 
     <div v-else ref="chartWrapperRef" :key="theme" class="chart-wrapper">
-      {{ theme }}
       <Line
         ref="chartRef"
         :data="chartData"

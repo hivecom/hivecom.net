@@ -6,6 +6,7 @@ import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { deleteUserAvatar, getUserAvatarUrl } from '@/lib/storage'
+import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
 
@@ -933,6 +934,8 @@ function clearBirthday() {
           min-height="216px"
           :disabled="!canEditForm"
           :errors="markdownValidation.valid ? [] : [markdownValidation.error ?? 'Invalid markdown content']"
+          :media-context="props.user?.id ? `${props.user.id}/markdown/media` : undefined"
+          :media-bucket-id="USERS_BUCKET_ID"
         />
         <Flex x-between class="help-text">
           <div>

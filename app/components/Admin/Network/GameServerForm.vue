@@ -4,6 +4,7 @@ import { Button, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
 // Interface for gameserver query result
 interface QueryGameserver {
@@ -347,6 +348,7 @@ onMounted(fetchDropdownData)
           hint="You can use markdown"
           placeholder="Enter markdown content (optional)"
           min-height="216px"
+          :media-bucket-id="CMS_BUCKET_ID"
         />
 
         <Select

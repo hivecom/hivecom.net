@@ -22,8 +22,11 @@ const displayText = computed(() => {
 })
 
 const profileLink = computed(() => {
-  if (user.value?.username) {
+  if (user.value?.username_set && user.value?.username) {
     return `/profile/${user.value.username}`
+  }
+  if (props.userId) {
+    return `/profile/${props.userId}`
   }
   return null
 })

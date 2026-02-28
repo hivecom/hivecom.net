@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
+import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { replaceMarkdownH1, stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
@@ -556,7 +557,8 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
 
         <RichTextEditor
           v-model="profileForm.markdown"
-          :media-context="props.profile?.id"
+          :media-context="props.profile?.id ? `${props.profile.id}/markdown/media` : undefined"
+          :media-bucket-id="USERS_BUCKET_ID"
           placeholder="Tell others about yourself!"
           label="Profile content"
           :limit="MARKDOWN_LIMIT"

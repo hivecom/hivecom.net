@@ -6,6 +6,7 @@ import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { deleteProjectBanner, getProjectBannerUrl, uploadProjectBanner } from '@/lib/storage'
+import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
 // Interface for project query result
 interface QueryProject {
@@ -437,6 +438,7 @@ function handleTagInputEnter() {
           placeholder="Enter markdown content"
           min-height="216px"
           :errors="validation.markdown ? [] : ['Markdown content is required']"
+          :media-bucket-id="CMS_BUCKET_ID"
         />
       </Flex>
     </Flex>

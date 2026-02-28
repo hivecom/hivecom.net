@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
@@ -435,6 +436,7 @@ function confirmPublish() {
         v-model="form.markdown"
         :errors="normalizeErrors(errors.markdown)"
         :media-context="editedDiscussion && userId ? `${editedDiscussion.id}/${userId}` : 'staging'"
+        :media-bucket-id="FORUMS_BUCKET_ID"
         min-height="196px"
         hint="You can use markdown and added media through drag-and-drop"
         label="Content"

@@ -8,6 +8,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
+import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { getCountryInfo } from '@/lib/utils/country'
 
 interface Props {
@@ -231,6 +232,7 @@ watch(editedContent, () => editError.value = [])
         v-model="editedContent"
         :errors="editError"
         :media-context="userId ? `${data.discussion_id}/${userId}` : undefined"
+        :media-bucket-id="FORUMS_BUCKET_ID"
         min-height="196px"
         class="mb-xs"
         placeholder="Edit your message. Do not leave it empty!"

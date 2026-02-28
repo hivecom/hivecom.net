@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
 import { Button, ButtonGroup, pushToast, Textarea } from '@dolanske/vui'
@@ -11,6 +12,7 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { computed, ref, useId, watch } from 'vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useUserId } from '@/composables/useUserId'
+import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { createMentionExtension, hydrateMentionLabels } from './plugins/mentions'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 
@@ -47,11 +49,17 @@ interface Props {
    * into the editor. Providing a context helps with file management
    */
   mediaContext?: string
+  /**
+   * Optional storage bucket for uploads (defaults to forums bucket).
+   */
+  mediaBucketId?: StorageBucketId
 }
 
 const editorMode = ref <'rich' | 'plain'>('rich')
 
 const content = defineModel<string>()
+
+const resolvedMediaBucketId = computed(() => props.mediaBucketId ?? FORUMS_BUCKET_ID)
 
 const supabase = useSupabaseClient<Database>()
 
@@ -136,7 +144,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
 
     // Path to the public image upload
     const { error } = await supabase.storage
-      .from('hivecom-content-forums')
+      .from(resolvedMediaBucketId.value)
       .upload(fileUrl, file, { contentType: file.type })
 
     if (error) {
@@ -146,7 +154,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     }
     else {
       const { data } = supabase.storage
-        .from('hivecom-content-forums')
+        .from(resolvedMediaBucketId.value)
         .getPublicUrl(fileUrl)
 
       editor.value

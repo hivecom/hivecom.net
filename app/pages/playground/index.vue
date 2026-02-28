@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
 const content = ref(`<p>
           Hey, try to select some text here. There will popup a menu for selecting some inline styles. Remember: you have full control about content and styling of this menu.
@@ -20,6 +21,7 @@ const content = ref(`<p>
         v-model="content"
         class="mb-xl"
         placeholder="Yo whats going on big guy?"
+        :media-bucket-id="CMS_BUCKET_ID"
       />
     </div>
   </div>
