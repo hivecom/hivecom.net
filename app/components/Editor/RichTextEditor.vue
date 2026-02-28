@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
-import { Button, ButtonGroup, pushToast } from '@dolanske/vui'
+import { Button, ButtonGroup, pushToast, Textarea } from '@dolanske/vui'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
 import { CharacterCount, Placeholder } from '@tiptap/extensions'
@@ -48,6 +48,8 @@ interface Props {
    */
   mediaContext?: string
 }
+
+const editorMode = ref <'rich' | 'plain'>('rich')
 
 const content = defineModel<string>()
 
@@ -231,23 +233,32 @@ function handleSubmit() {
 
     <!-- Main editor instance -->
     <div class="relative">
+      <!-- Content agreement -->
       <div v-if="shouldShowContentRulesOverlay" class="editor-overlay">
         <p>{{ props.contentRulesOverlayText || 'Before being able to add content, you must agree our content rules' }}</p>
         <Button size="s" variant="accent" @click="contentRulesModalOpen = true">
           Acknowledge
         </Button>
       </div>
+
       <ContentRulesModal
         v-model:open="contentRulesModalOpen"
         :show-agree-button="shouldShowContentRulesOverlay"
         @confirm="handleContentRulesConfirmed"
       />
-      <div class="editor-container">
-        <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
+
+      <!-- Editor content & controls -->
+      <div class="editor-container" :class="{ 'is-plain': editorMode === 'plain' }">
+        <EditorContent v-if="editorMode === 'rich'" :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
+        <Textarea v-else v-model="content" expand :placeholder="placeholder" />
 
         <div v-if="showActions" class="editor-actions">
+          <Button square size="s" :data-title-top="editorMode === 'rich' ? 'Switch to plain text' : 'Switch to rich text'" @click="editorMode = editorMode === 'rich' ? 'plain' : 'rich'">
+            <Icon :name="editorMode === 'rich' ? 'ph:pen-nib' : 'ph:markdown-logo'" />
+          </Button>
+
           <ButtonGroup :gap="2">
-            <Button square size="s" @click="fileInput?.click()">
+            <Button square size="s" data-title-top="Attach a file" @click="fileInput?.click()">
               <Icon name="ph:paperclip" />
             </Button>
 
@@ -264,6 +275,7 @@ function handleSubmit() {
       </div>
     </div>
 
+    <!-- Limit & errors -->
     <p v-if="limit && editor" class="vui-hint" style="margin-top: var(--space-xxs)">
       {{ `${editor.storage.characterCount.characters()} / ${limit}` }}
     </p>
@@ -282,6 +294,18 @@ function handleSubmit() {
   width: 100%;
   position: relative;
   z-index: 1;
+
+  .vui-input-container .vui-input textarea {
+    padding: 0 !important;
+    height: v-bind(minHeight);
+    min-height: v-bind(minHeight) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background-color: transparent !important;
+    outline: none !important;
+    margin: 0 !important;
+    line-height: var(--line-height-base) !important;
+  }
 
   .editor-overlay {
     position: absolute;

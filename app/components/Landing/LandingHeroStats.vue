@@ -32,7 +32,7 @@ defineProps<{
         <span class="text-xs">Members</span>
       </NuxtLink>
 
-      <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
+      <NuxtLink to="/forum" class="hero-section__stats-card hero-section__stats-card--clickable">
         <Flex x-center class="hero-section__stats-value">
           <template v-if="loading">
             <Skeleton height="2.5rem" width="4rem" />
