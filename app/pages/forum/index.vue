@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.types'
-import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Switch } from '@dolanske/vui'
+import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Switch, Tooltip } from '@dolanske/vui'
 import { useStorage as useLocalStorage } from '@vueuse/core'
 import { useRouteQuery } from '@vueuse/router'
 import dayjs from 'dayjs'
@@ -76,9 +76,72 @@ const { user } = useCacheUserData(userId, { includeRole: true })
 const addingTopic = ref(false)
 const addingDiscussion = ref(false)
 const rulesModalOpen = ref(false)
+const contentRulesGateOpen = ref(false)
+const agreedContentRules = ref<boolean | null>(null)
+const pendingCreateAction = ref<'discussion' | 'topic' | null>(null)
 
 const loading = ref(false)
 const supabase = useSupabaseClient()
+
+async function refreshContentRulesAgreement() {
+  if (!userId.value) {
+    agreedContentRules.value = null
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('agreed_content_rules')
+    .eq('id', userId.value)
+    .maybeSingle()
+
+  if (error || !data)
+    return
+
+  agreedContentRules.value = data.agreed_content_rules
+}
+
+watch(userId, () => {
+  void refreshContentRulesAgreement()
+}, { immediate: true })
+
+watch(contentRulesGateOpen, (open) => {
+  if (!open)
+    pendingCreateAction.value = null
+})
+
+async function requestCreate(action: 'discussion' | 'topic') {
+  if (agreedContentRules.value === null) {
+    await refreshContentRulesAgreement()
+  }
+
+  if (agreedContentRules.value === false) {
+    pendingCreateAction.value = action
+    contentRulesGateOpen.value = true
+    return
+  }
+
+  if (action === 'discussion')
+    addingDiscussion.value = true
+  else
+    addingTopic.value = true
+}
+
+function handleContentRulesConfirmed() {
+  agreedContentRules.value = true
+  contentRulesGateOpen.value = false
+
+  if (pendingCreateAction.value === 'discussion')
+    addingDiscussion.value = true
+  if (pendingCreateAction.value === 'topic')
+    addingTopic.value = true
+
+  pendingCreateAction.value = null
+}
+
+function handleContentRulesCanceled() {
+  pendingCreateAction.value = null
+}
 
 const topicsError = ref<string | null>(null)
 const topics = ref<TopicWithDiscussions[]>([])
@@ -640,7 +703,7 @@ onBeforeMount(() => {
                   {{ isMobile ? '' : 'Create' }}
                 </Button>
               </template>
-              <DropdownItem size="s" @click="addingDiscussion = true">
+              <DropdownItem size="s" @click="requestCreate('discussion')">
                 Discussion
                 <template v-if="draftCount > 0" #hint>
                   <SharedTinyBadge>
@@ -648,13 +711,13 @@ onBeforeMount(() => {
                   </SharedTinyBadge>
                 </template>
               </DropdownItem>
-              <DropdownItem size="s" @click="addingTopic = true">
+              <DropdownItem size="s" @click="requestCreate('topic')">
                 Topic
               </DropdownItem>
             </Dropdown>
 
             <!-- Non-admin or moderators can only create a discussion -->
-            <Button v-else variant="accent" size="s" :square="isMobile" @click="addingDiscussion = true">
+            <Button v-else variant="accent" size="s" :square="isMobile" @click="requestCreate('discussion')">
               <template v-if="!isMobile" #start>
                 <Icon name="ph:plus" :size="16" />
               </template>
@@ -663,6 +726,22 @@ onBeforeMount(() => {
               </template>
               {{ isMobile ? '' : 'Discussion' }}
             </Button>
+          </template>
+          <template v-else>
+            <Tooltip placement="top">
+              <template #tooltip>
+                <p>Sign-in to start a discussion</p>
+              </template>
+              <Button size="s" variant="gray" :square="isMobile" disabled>
+                <template v-if="!isMobile" #start>
+                  <Icon name="ph:plus" :size="16" />
+                </template>
+                <template v-if="isMobile">
+                  <Icon name="ph:plus" :size="16" />
+                </template>
+                {{ isMobile ? '' : 'Create' }}
+              </Button>
+            </Tooltip>
           </template>
 
           <Button size="s" :square="isMobile" @click="searchOpen = true">
@@ -685,6 +764,12 @@ onBeforeMount(() => {
             {{ isMobile ? '' : 'Rules' }}
           </Button>
           <ContentRulesModal v-model:open="rulesModalOpen" :show-agree-button="false" />
+          <ContentRulesModal
+            v-model:open="contentRulesGateOpen"
+            :show-agree-button="true"
+            @confirm="handleContentRulesConfirmed"
+            @cancel="handleContentRulesCanceled"
+          />
 
           <Button ref="settings-anchor" size="s" square @click="showSettings = !showSettings">
             <Icon name="ph:gear" />

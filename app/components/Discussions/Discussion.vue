@@ -458,6 +458,21 @@ provide('delete-comment', deleteComment)
           @submit="submitReply"
         />
       </div>
+      <div v-else-if="props.hideInput !== true && !userId" class="discussion__add">
+        <Alert variant="neutral">
+          <Flex y-center x-between gap="m">
+            <p>Sign in to join the discussion and add a reply.</p>
+            <Tooltip placement="top">
+              <template #tooltip>
+                <p>Sign-in to start the conversation</p>
+              </template>
+              <Button variant="accent" disabled>
+                Sign in
+              </Button>
+            </Tooltip>
+          </Flex>
+        </Alert>
+      </div>
     </template>
   </div>
   <!-- </ClientOnly> -->
