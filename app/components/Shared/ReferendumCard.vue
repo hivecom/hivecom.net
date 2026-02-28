@@ -73,7 +73,7 @@ function goToReferendum() {
     @click="goToReferendum"
   >
     <Flex column gap="m" expand>
-      <Flex x-between y-center expand gap="l" class="referendum-card__title">
+      <Flex x-between y-start expand gap="l" class="referendum-card__title">
         <h2 class="text-xxl">
           {{ referendum.title }}
         </h2>

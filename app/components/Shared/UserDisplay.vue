@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Avatar, Badge, Flex, Skeleton } from '@dolanske/vui'
-import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
-import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
+import { Badge, Flex, Skeleton } from '@dolanske/vui'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
+import UserName from '@/components/Shared/UserName.vue'
+import UserRole from '@/components/Shared/UserRole.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 import { getAnonymousUsername } from '@/lib/anonymous-usernames'
 
@@ -37,7 +38,6 @@ const shouldFetchAvatar = computed(() => props.userProfile && props.userId)
 const {
   user: fetchedUser,
   loading: userLoading,
-  userInitials: fetchedUserInitials,
 } = useCacheUserData(
   computed(() => shouldFetchUser.value ? props.userId : null),
   {
@@ -91,18 +91,38 @@ const user = computed(() => {
   return fetchedUser.value
 })
 
-const userInitials = computed(() => {
-  if (props.userProfile) {
-    return props.userProfile.username.charAt(0).toUpperCase()
-  }
-  return fetchedUserInitials.value
-})
-
 const loading = computed(() => userLoading.value || (shouldFetchAvatar.value && avatarLoading.value))
 
 const anonymousUsername = computed(() => props.userId ? getAnonymousUsername(props.userId) : 'AnonymousUser')
 
 const currentUser = useSupabaseUser()
+
+// Pre-built controlled-mode payloads for sub-components
+const avatarUserData = computed(() => {
+  if (!user.value)
+    return null
+  return {
+    avatarUrl: user.value.avatarUrl ?? null,
+    username: user.value.username,
+  }
+})
+
+const nameUserData = computed(() => {
+  if (!user.value)
+    return null
+  return {
+    id: user.value.id,
+    username: user.value.username,
+  }
+})
+
+function getSkeletonSize(size: 's' | 'm' | 'l'): string {
+  switch (size) {
+    case 's': return '28px'
+    case 'm': return '40px'
+    case 'l': return '48px'
+  }
+}
 </script>
 
 <template>
@@ -110,19 +130,38 @@ const currentUser = useSupabaseUser()
     <!-- Unauthenticated user state -->
     <Flex v-if="!currentUser" gap="s" y-center class="user-display__header">
       <template v-if="!props.hideAvatar">
-        <Avatar v-if="props.userId" :size="size" />
-        <Avatar v-else :size="size" url="/icon.svg" />
+        <UserAvatar
+          v-if="props.userId"
+          :size="size"
+          :user-data="{ avatarUrl: null,
+                        username: null }"
+        />
+        <UserAvatar
+          v-else
+          :size="size"
+          :user-data="{ avatarUrl: '/icon.svg',
+                        username: null }"
+        />
       </template>
       <div class="user-display__info">
         <Flex gap="xs" y-center>
           <template v-if="props.userId">
-            <span class="user-display__username">{{ anonymousUsername }}</span>
+            <UserName
+              no-link
+              :user-data="{ id: props.userId,
+                            username: anonymousUsername }"
+            />
           </template>
           <template v-else>
-            <span class="user-display__username">Hivecom</span>
-            <Badge size="xs" variant="accent">
-              System
-            </Badge>
+            <UserName
+              no-link
+              :user-data="{ id: '',
+                            username: 'Hivecom' }"
+            >
+              <Badge size="xs" variant="accent">
+                System
+              </Badge>
+            </UserName>
           </template>
         </Flex>
       </div>
@@ -132,8 +171,8 @@ const currentUser = useSupabaseUser()
     <Flex v-else-if="loading" gap="s" y-center class="user-display__header">
       <Skeleton
         v-if="!hideAvatar"
-        :width="size === 's' ? '28px' : size === 'm' ? '40px' : '48px'"
-        :height="size === 's' ? '28px' : size === 'm' ? '40px' : '48px'"
+        :width="getSkeletonSize(size)"
+        :height="getSkeletonSize(size)"
         style="border-radius: 50%;"
       />
       <div class="user-display__info">
@@ -141,67 +180,48 @@ const currentUser = useSupabaseUser()
       </div>
     </Flex>
 
-    <!-- No user state -->
+    <!-- No user state (system) -->
     <Flex v-else-if="!userId" gap="s" y-center class="user-display__header">
-      <Avatar :size="size" url="/icon.svg" />
+      <UserAvatar
+        :size="size"
+        :user-data="{ avatarUrl: '/icon.svg',
+                      username: null }"
+      />
       <div class="user-display__info">
-        <Flex gap="xs" y-center>
-          <span class="user-display__username">Hivecom</span>
+        <UserName
+          no-link
+          :user-data="{ id: '',
+                        username: 'Hivecom' }"
+        >
           <Badge size="xs" variant="accent">
             System
           </Badge>
-        </Flex>
+        </UserName>
       </div>
     </Flex>
 
     <!-- User data -->
     <Flex v-else-if="user" gap="s" y-center class="user-display__header">
-      <template v-if="!props.hideAvatar">
-        <UserPreviewHover
-          v-if="showProfilePreview && !!currentUser"
-          :user-id="user.id"
-          class="user-display__avatar-wrapper"
-        >
-          <NuxtLink
-            :to="`/profile/${user.id}`"
-            class="user-display__link"
-            :aria-label="`View profile of ${user.username}`"
-          >
-            <Avatar :size="size" :url="user.avatarUrl || undefined">
-              <template v-if="!user.avatarUrl" #default>
-                {{ userInitials }}
-              </template>
-            </Avatar>
-          </NuxtLink>
-        </UserPreviewHover>
-        <div v-else class="user-display__avatar-wrapper">
-          <NuxtLink
-            :to="`/profile/${user.id}`"
-            class="user-display__link"
-            :aria-label="`View profile of ${user.username}`"
-          >
-            <Avatar :size="size" :url="user.avatarUrl || undefined">
-              <template v-if="!user.avatarUrl" #default>
-                {{ userInitials }}
-              </template>
-            </Avatar>
-          </NuxtLink>
-        </div>
-      </template>
+      <UserAvatar
+        v-if="!props.hideAvatar"
+        :user-id="user.id"
+        :user-data="avatarUserData"
+        :size="size"
+        linked
+        :show-preview="showProfilePreview && !!currentUser"
+      />
       <div class="user-display__info">
         <Flex gap="xs" :x-start="!centered" :x-center="!!centered" y-center wrap class="user-display__name-row">
-          <NuxtLink
-            :to="`/profile/${user.id}`"
-            class="user-display__link"
-            :aria-label="`View profile of ${user.username}`"
+          <UserName
+            :user-id="user.id"
+            :user-data="nameUserData"
           >
-            <span class="user-display__username">{{ user.username }}</span>
-          </NuxtLink>
-          <RoleIndicator
-            v-if="showRole && user.role && user.role !== 'user'"
-            :role="user.role"
-            size="s"
-          />
+            <UserRole
+              v-if="showRole"
+              :role="user.role ?? null"
+              size="s"
+            />
+          </UserName>
         </Flex>
       </div>
     </Flex>
@@ -218,41 +238,5 @@ const currentUser = useSupabaseUser()
   &__name-row {
     align-items: center;
   }
-
-  &__username {
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text);
-
-    &--error {
-      color: var(--color-text-red);
-    }
-  }
-
-  &__link {
-    display: flex;
-    text-decoration: none;
-    color: inherit;
-    transition: opacity 0.2s ease;
-
-    &:hover {
-      opacity: 0.8;
-    }
-
-    .user-display__username {
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-  }
-
-  &__avatar-wrapper {
-    display: inline-flex;
-  }
-}
-
-.system-avatar-icon {
-  width: 60%;
-  height: 60%;
-  object-fit: contain;
 }
 </style>
