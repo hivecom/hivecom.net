@@ -194,7 +194,7 @@ watch(content, (newContent) => {
 
 const elementId = useId()
 const contentRulesModalOpen = ref(false)
-const resolvedAgreedContentRules = computed(() => localAgreedContentRules.value ?? fetchedContentRulesAgreement.value ?? false)
+const resolvedAgreedContentRules = computed(() => localAgreedContentRules.value ?? fetchedContentRulesAgreement.value)
 const shouldShowContentRulesOverlay = computed(() => resolvedAgreedContentRules.value === false)
 
 watch(contentRulesModalOpen, (open, wasOpen) => {
