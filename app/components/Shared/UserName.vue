@@ -3,18 +3,8 @@ import { Badge, Flex, Skeleton } from '@dolanske/vui'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 import { getAnonymousUsername } from '@/lib/anonymous-usernames'
 
-interface UserData {
-  id: string
-  username: string
-}
-
 interface Props {
   userId?: string | null
-  /**
-   * Pre-fetched user data. When provided, the component skips internal
-   * fetching and renders whatever it receives (controlled mode).
-   */
-  userData?: UserData | null
   size?: 's' | 'm' | 'l'
   /**
    * When true the username is rendered as a plain span instead of a
@@ -28,23 +18,11 @@ const props = withDefaults(defineProps<Props>(), {
   noLink: false,
 })
 
-// ---------------------------------------------------------------------------
-// Mode detection
-// ---------------------------------------------------------------------------
-// `userData` explicitly provided (even `null`) → controlled mode.
-// `userData` left `undefined` → standalone / self-fetching mode.
-const isControlled = computed(() => props.userData !== undefined)
-
-// ---------------------------------------------------------------------------
-// Standalone fetching
-// ---------------------------------------------------------------------------
-const shouldFetch = computed(() => !isControlled.value && !!props.userId)
-
 const {
-  user: fetchedUser,
+  user,
   loading,
 } = useCacheUserData(
-  computed(() => shouldFetch.value ? props.userId : null),
+  computed(() => props.userId ?? null),
   {
     includeRole: false,
     includeAvatar: false,
@@ -53,42 +31,25 @@ const {
   },
 )
 
-// ---------------------------------------------------------------------------
-// Auth & anonymous handling
-// ---------------------------------------------------------------------------
 const currentUser = useSupabaseUser()
 
 const anonymousUsername = computed(() =>
   props.userId ? getAnonymousUsername(props.userId) : null,
 )
 
-// ---------------------------------------------------------------------------
-// Resolved display values
-// ---------------------------------------------------------------------------
-const resolvedUsername = computed<string | null>(() => {
+const displayName = computed<string | null>(() => {
   // Unauthenticated users see anonymous names for privacy
   if (!currentUser.value && props.userId) {
     return anonymousUsername.value
   }
 
-  if (isControlled.value) {
-    return props.userData?.username ?? null
-  }
-
-  return fetchedUser.value?.username ?? null
-})
-
-const resolvedId = computed<string | null>(() => {
-  if (isControlled.value) {
-    return props.userData?.id ?? props.userId ?? null
-  }
-  return fetchedUser.value?.id ?? props.userId ?? null
+  return user.value?.username ?? null
 })
 
 const profileLink = computed(() => {
-  if (!resolvedId.value)
+  if (!props.userId)
     return null
-  return `/profile/${resolvedId.value}`
+  return `/profile/${props.userId}`
 })
 
 const canLink = computed(() => {
@@ -96,12 +57,12 @@ const canLink = computed(() => {
 })
 
 const showSkeleton = computed(() => {
-  return shouldFetch.value && loading.value
+  return !!props.userId && loading.value
 })
 
 const ariaLabel = computed(() => {
-  return resolvedUsername.value
-    ? `View profile of ${resolvedUsername.value}`
+  return displayName.value
+    ? `View profile of ${displayName.value}`
     : undefined
 })
 
@@ -115,12 +76,12 @@ const fontClass = computed(() => {
 </script>
 
 <template>
-  <!-- Loading (standalone mode only) -->
+  <!-- Loading -->
   <Skeleton v-if="showSkeleton" width="108px" height="20px" />
 
   <!-- Resolved username -->
   <Flex
-    v-else-if="resolvedUsername"
+    v-else-if="displayName"
     gap="xs"
     y-center
     wrap
@@ -133,17 +94,17 @@ const fontClass = computed(() => {
       class="user-name__link"
       :aria-label="ariaLabel"
     >
-      <span class="user-name__text">{{ resolvedUsername }}</span>
+      <span class="user-name__text">{{ displayName }}</span>
     </NuxtLink>
-    <span v-else class="user-name__text">{{ resolvedUsername }}</span>
+    <span v-else class="user-name__text">{{ displayName }}</span>
 
     <!-- Slot for extra inline content (e.g. System badge, role indicator) -->
     <slot />
   </Flex>
 
-  <!-- System fallback when no userId and not controlled -->
+  <!-- System fallback when no userId -->
   <Flex
-    v-else-if="!userId && !isControlled"
+    v-else-if="!userId"
     gap="xs"
     y-center
     class="user-name"

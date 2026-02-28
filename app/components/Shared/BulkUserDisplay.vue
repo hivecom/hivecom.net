@@ -120,7 +120,6 @@ defineExpose({
           >
             <UserDisplay
               :user-id="user.id"
-              :user-profile="user.profile"
               :show-role="showRole"
               :size="userSize"
               :show-profile-preview="false"

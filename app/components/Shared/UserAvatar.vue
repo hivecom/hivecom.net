@@ -4,18 +4,8 @@ import { computed } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 
-interface UserData {
-  avatarUrl?: string | null
-  username?: string | null
-}
-
 interface Props {
   userId?: string | null
-  /**
-   * Pre-fetched user data. When provided, the component skips internal
-   * fetching and renders the supplied values directly (controlled mode).
-   */
-  userData?: UserData | null
   size?: 's' | 'm' | 'l' | number
   /** Wrap the avatar in a NuxtLink to the user's profile. */
   linked?: boolean
@@ -29,12 +19,8 @@ const props = withDefaults(defineProps<Props>(), {
   showPreview: false,
 })
 
-// Controlled mode: userData prop was explicitly passed (even if null)
-const isControlled = computed(() => props.userData !== undefined)
-
-// Only fetch when in standalone mode with a valid userId
 const { user, loading } = useCacheUserData(
-  computed(() => (!isControlled.value && props.userId) ? props.userId : null),
+  computed(() => props.userId ?? null),
   {
     includeAvatar: true,
     includeRole: false,
@@ -43,18 +29,10 @@ const { user, loading } = useCacheUserData(
   },
 )
 
-const resolvedAvatarUrl = computed(() => {
-  if (isControlled.value) {
-    return props.userData?.avatarUrl ?? null
-  }
-  return user.value?.avatarUrl ?? null
-})
+const avatarUrl = computed(() => user.value?.avatarUrl ?? null)
 
 const initials = computed(() => {
-  const name = isControlled.value
-    ? props.userData?.username
-    : user.value?.username
-
+  const name = user.value?.username
   if (!name)
     return ''
 
@@ -66,8 +44,6 @@ const initials = computed(() => {
     .slice(0, 2)
 })
 
-const showSkeleton = computed(() => !isControlled.value && loading.value)
-
 const profileLink = computed(() => {
   if (!props.userId)
     return null
@@ -75,9 +51,7 @@ const profileLink = computed(() => {
 })
 
 const ariaLabel = computed(() => {
-  const name = isControlled.value
-    ? props.userData?.username
-    : user.value?.username
+  const name = user.value?.username
   return name ? `View profile of ${name}` : 'View profile'
 })
 
@@ -93,9 +67,9 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
 </script>
 
 <template>
-  <!-- Loading skeleton (standalone mode only) -->
+  <!-- Loading skeleton -->
   <Skeleton
-    v-if="showSkeleton"
+    v-if="loading && userId"
     :width="getSizePixels(size)"
     :height="getSizePixels(size)"
     style="border-radius: 50%;"
@@ -112,8 +86,8 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
       class="user-avatar__link"
       :aria-label="ariaLabel"
     >
-      <Avatar :size="size" :url="resolvedAvatarUrl || undefined">
-        <template v-if="!resolvedAvatarUrl && initials" #default>
+      <Avatar :size="size" :url="avatarUrl || undefined">
+        <template v-if="!avatarUrl && initials" #default>
           {{ initials }}
         </template>
       </Avatar>
@@ -126,8 +100,8 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
     :user-id="userId"
     class="user-avatar__wrapper"
   >
-    <Avatar :size="size" :url="resolvedAvatarUrl || undefined">
-      <template v-if="!resolvedAvatarUrl && initials" #default>
+    <Avatar :size="size" :url="avatarUrl || undefined">
+      <template v-if="!avatarUrl && initials" #default>
         {{ initials }}
       </template>
     </Avatar>
@@ -140,16 +114,16 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
     class="user-avatar__link"
     :aria-label="ariaLabel"
   >
-    <Avatar :size="size" :url="resolvedAvatarUrl || undefined">
-      <template v-if="!resolvedAvatarUrl && initials" #default>
+    <Avatar :size="size" :url="avatarUrl || undefined">
+      <template v-if="!avatarUrl && initials" #default>
         {{ initials }}
       </template>
     </Avatar>
   </NuxtLink>
 
   <!-- Plain avatar -->
-  <Avatar v-else :size="size" :url="resolvedAvatarUrl || undefined">
-    <template v-if="!resolvedAvatarUrl && initials" #default>
+  <Avatar v-else :size="size" :url="avatarUrl || undefined">
+    <template v-if="!avatarUrl && initials" #default>
       {{ initials }}
     </template>
   </Avatar>
