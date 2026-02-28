@@ -26,3 +26,19 @@ export function slugify(text: string): string {
 export function capitalize(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1, str.length)
 }
+
+/**
+ * Cleans TipTap HTML content
+ *
+ * 1. Removes a single leading non-breaking space and surrounding whitespace.
+ * 2. Removes all trailing non-breaking spaces and whitespace.
+ * 3. Preserves all internal spacing.
+ */
+export function normalizeTipTapOutput(content: string): string {
+  if (!content)
+    return ''
+
+  return content
+    .replace(/^\s*(?:&nbsp;|\u00A0)\s*/, '')
+    .replace(/(?:\s|&nbsp;)+$/, '')
+}

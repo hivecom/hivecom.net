@@ -15,15 +15,13 @@ import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 const {
   errors = [],
   minHeight = '47px',
-  showActions = true,
+  showActions = false,
   ...props
 } = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'submit'): void
 }>()
-
-// https://tiptap.dev/docs/editor/markdown
 
 // TODO: Code block highlighting & dropdown for seleting language
 

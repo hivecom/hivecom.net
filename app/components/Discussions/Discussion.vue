@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import { wrapInBlockquote } from '@/lib/markdown-processors'
-import { normalizeErrors, truncate } from '@/lib/utils/formatting'
+import { normalizeErrors, normalizeTipTapOutput, truncate } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import DiscussionItem from './DiscussionItem.vue'
@@ -315,7 +315,7 @@ async function submitReply() {
       }
 
       const commentData = {
-        markdown: form.message,
+        markdown: normalizeTipTapOutput(form.message),
         discussion_id: discussion.value.id,
         ...(!!replyingTo.value && { reply_to_id: replyingTo.value.id }),
         ...(props.hash && {
@@ -450,6 +450,7 @@ provide('delete-comment', deleteComment)
           v-else
           ref="textarea"
           v-model="form.message"
+          show-actions
           :errors="normalizeErrors(errors.message)"
           :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
           min-height="64px"
