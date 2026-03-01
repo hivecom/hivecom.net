@@ -356,7 +356,7 @@ function publish() {
         type="discussion"
         model="forum"
         placeholder="Write your reply to this thread..."
-        :input-rows="4"
+        sticky
       />
     </template>
 

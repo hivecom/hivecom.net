@@ -41,8 +41,8 @@
   --shiny-gradient: linear-gradient(100deg, #59d7f7, #3afea2, #a7fc2f);
   --banner-filter: none;
 
-  --dark-color-bg-card: color-mix(in srgb, var(--color-bg-medium) 75%, transparent);
-  --light-color-bg-card: color-mix(in srgb, var(--color-bg-lowered) 60%, transparent);
+  --dark-color-bg-card: #141414;
+  --light-color-bg-card: #f8f8f8;
 }
 
 .vui-backdrop:after {

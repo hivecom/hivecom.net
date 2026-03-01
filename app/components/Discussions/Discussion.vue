@@ -59,6 +59,10 @@ interface Props extends Partial<DiscussionSettings> {
    * Sets the input placeholder
    */
   placeholder?: string
+  /**
+   * Sets the text editor to be sticky
+   */
+  sticky?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -413,7 +417,7 @@ provide('delete-comment', deleteComment)
           :model="props.model"
         />
       </template>
-      <div v-if="props.hideInput !== true && userId" class="discussion__add">
+      <div v-if="props.hideInput !== true && userId" class="discussion__add" :class="{ sticky: !!props.sticky }">
         <Alert v-if="replyingTo">
           <Flex y-start gap="xl" x-between>
             <div>
@@ -489,6 +493,7 @@ provide('delete-comment', deleteComment)
   display: flex;
   width: 100%;
   flex-direction: column;
+  position: relative;
   // In order to increase hover range for each comment,
   // the gaps are 0 and instead items use padding
   gap: 0;
@@ -502,6 +507,12 @@ provide('delete-comment', deleteComment)
   }
 
   &__add {
+    &.sticky {
+      position: sticky;
+      bottom: 8px;
+      z-index: 50;
+    }
+
     &:deep(.vui-input-container .vui-input textarea) {
       border-radius: var(--border-radius-m);
       padding-right: 88px;

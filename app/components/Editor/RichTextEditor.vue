@@ -107,7 +107,6 @@ const editor = useEditor({
     Markdown,
     Placeholder.configure({
       placeholder: props.placeholder,
-
     }),
     Image,
     // User mentions
