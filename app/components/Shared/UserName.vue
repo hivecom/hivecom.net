@@ -117,13 +117,13 @@ const fontClass = computed(() => {
 
 <style lang="scss" scoped>
 .user-name {
-  display: inline-flex;
+  display: inline-flex !important;
 
-  &--s {
+  &--s * {
     font-size: var(--font-size-s);
   }
 
-  &--l {
+  &--l * {
     font-size: var(--font-size-l);
   }
 

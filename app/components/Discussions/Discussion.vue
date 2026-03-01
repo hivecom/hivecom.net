@@ -4,9 +4,10 @@ import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidat
 import { Alert, Button, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import { wrapInBlockquote } from '@/lib/markdown-processors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
-import { normalizeErrors, normalizeTipTapOutput, truncate } from '@/lib/utils/formatting'
+import { normalizeErrors, normalizeTipTapOutput } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
-import UserDisplay from '../Shared/UserDisplay.vue'
+import MarkdownPreview from '../Shared/MarkdownPreview.vue'
+import UserName from '../Shared/UserName.vue'
 import DiscussionItem from './DiscussionItem.vue'
 
 /**
@@ -430,11 +431,9 @@ provide('delete-comment', deleteComment)
           <Flex y-start gap="xl" x-between>
             <div>
               <span class="discussion__add--replying-label">Replying to
-                <UserDisplay class="inline-block" size="s" :user-id="replyingTo!.created_by" hide-avatar />:
+                <UserName size="s" :user-id="replyingTo!.created_by" />:
               </span>
-              <p class="ws-wrap">
-                {{ truncate(replyingTo?.markdown ?? '', 240) }}
-              </p>
+              <MarkdownPreview :markdown="replyingTo.markdown" :max-length="240" />
             </div>
             <Tooltip>
               <Button square size="s" plain @click="replyingTo = undefined">
