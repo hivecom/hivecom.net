@@ -38,7 +38,7 @@
     "@tiptap/pm": "^3.19.0",
     "@tiptap/starter-kit": "^3.20.0",
     "@tiptap/vue-3": "^3.19.0",
-    "@unhead/vue": "^2.1.2",
+    "@unhead/vue": "^2.1.9",
     "@vueuse/nuxt": "^14.1.0",
     "@vueuse/router": "^14.2.0",
     "@yuta-inoue-ph/nuxt-vcalendar": "^1.1.4",
