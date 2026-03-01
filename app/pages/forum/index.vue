@@ -980,6 +980,12 @@ onBeforeMount(() => {
         text-overflow: ellipsis;
         margin-top: 2px;
         line-height: 1.2;
+
+        p {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
       }
 
       .forum__latest-description {

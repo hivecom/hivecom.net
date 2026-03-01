@@ -35,9 +35,12 @@ const preview = computed(() =>
 </template>
 
 <style scoped lang="scss">
-.markdown-preview i {
-  display: inline-flex;
-  gap: var(--space-xxs);
-  align-items: center;
+.markdown-preview {
+  i {
+    display: inline-flex;
+    gap: var(--space-xxs);
+    align-items: center;
+    font-size: inherit;
+  }
 }
 </style>
