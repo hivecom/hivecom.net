@@ -42,10 +42,8 @@ interface Props {
   placeholder?: string
   minHeight?: string
   limit?: number
-  // showActions?: boolean
   showAttachmentButton?: boolean
-  showSubmitButton?: boolean
-  showSensitiveButton?: boolean
+  showSubmitOptions?: boolean
   contentRulesOverlayText?: string
   /**
    * If provided, it will enable media upload via pasting/dragging media files
@@ -276,12 +274,12 @@ function handleSubmit() {
             <input ref="file-input" class="visually-hidden" type="file" accept="image/png, image/jpeg, image/gif, image/webp" @input="handleFileInput">
           </template>
 
-          <ButtonGroup v-if="props.showSubmitButton || (isNsfw !== undefined && props.showSensitiveButton)" :gap="2">
-            <Button v-if="isNsfw !== undefined && props.showSensitiveButton" :variant="!!isNsfw ? 'danger' : 'gray'" square size="s" :data-title-top="isNsfw ? 'Marked as NSFW' : 'Marked as safe'" @click="isNsfw = !isNsfw">
+          <ButtonGroup v-if="props.showSubmitOptions" :gap="2">
+            <Button :variant="!!isNsfw ? 'danger' : 'gray'" square size="s" :data-title-top="isNsfw ? 'Marked as NSFW' : 'Marked as safe'" @click="isNsfw = !isNsfw">
               <Icon :name="isNsfw ? 'ph:eye-closed' : 'ph:eye'" />
             </Button>
 
-            <Button v-if="props.showSubmitButton" size="s" type="submit" @click="handleSubmit">
+            <Button size="s" type="submit" @click="handleSubmit">
               Send
               <template #end>
                 <Icon name="ph:paper-plane-tilt" />

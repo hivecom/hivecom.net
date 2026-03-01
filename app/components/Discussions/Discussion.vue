@@ -460,8 +460,7 @@ provide('delete-comment', deleteComment)
           v-model="form.message"
           v-model:nsfw="form.is_nsfw"
           min-height="64px"
-          show-submit-button
-          show-sensitive-button
+          show-submit-options
           show-attachment-button
           :errors="normalizeErrors(errors.message)"
           :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
