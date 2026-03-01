@@ -10,7 +10,7 @@ const props = defineProps<{
   <Flex y-center gap="xs">
     <button v-for="reaction in props.reactions" :key="reaction.content" class="reactions__button">
       {{ reaction.content }}
-      <span>{{ reaction.count }}</span>
+      <span class="reactions__counter">{{ reaction.count }}</span>
     </button>
   </Flex>
 </template>

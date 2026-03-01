@@ -24,8 +24,8 @@ function selectEmote(emote: string) {
 </script>
 
 <template>
-  <button ref="anchor" class="reactions__trigger" @click="open = !open">
-    <Icon name="ph:smiley" />
+  <button ref="anchor" class="reactions__button" @click="open = !open">
+    <Icon name="ph:smiley" :size="20" />
   </button>
 
   <Popout :anchor :visible="open" @click-outside="open = false">

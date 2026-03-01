@@ -7,12 +7,12 @@ import Reactions from '@/components/Reactions/Reactions.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import UserRole from '@/components/Shared/UserRole.vue'
-import { stripMarkdown } from '@/lib/markdown-processors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { getCountryInfo } from '@/lib/utils/country'
@@ -159,14 +159,12 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
     <div class="discussion-forum__content">
       <Alert v-if="data.reply" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
         <p v-if="data.reply.created_by !== userId" class="discussion-forum__reply-user">
-          <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" hide-avatar /> wrote:
+          <UserName size="s" :user-id="data.reply.created_by" /> wrote:
         </p>
         <p v-else class="discussion-forum__reply-user">
           You wrote:
         </p>
-        <p class="text-color-light">
-          {{ stripMarkdown(data.reply.markdown, 164) }}
-        </p>
+        <MarkdownPreview class="text-color-light" :markdown="data.reply.markdown" :max-length="164" />
       </Alert>
 
       <!-- Content warning -->
@@ -372,12 +370,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
   }
 
   &__reply-user {
-    font-weight: var(--font-weight-bold) !important;
-    white-space: nowrap;
-
-    :deep(.user-display__username) {
-      font-weight: var(--font-weight-bold) !important;
-    }
+    font-size: var(--font-size-s);
   }
 
   &__author {

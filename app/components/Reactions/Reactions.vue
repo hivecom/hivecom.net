@@ -31,17 +31,19 @@ const SampleReactions: Reaction[] = [{ content: '👍', count: 5 }]
 .reactions__button {
   display: flex;
   border-radius: var(--border-radius-m);
-  font-size: var(--font-size-l);
+  font-size: var(--font-size-m);
   width: 32px;
   height: 32px;
   position: relative;
+  justify-content: center;
+  align-items: center;
 
-  span {
+  .reactions__counter {
     font-size: var(--font-size-xxs);
     color: var(--color-text-light);
     position: absolute;
-    top: -1px;
-    right: -1px;
+    top: 2px;
+    right: 2px;
   }
 
   &:hover {

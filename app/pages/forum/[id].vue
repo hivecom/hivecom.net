@@ -265,35 +265,37 @@ function publish() {
               </template>
             </Tooltip>
 
-            <Button
-              v-if="userId && post.created_by !== userId"
-              variant="gray"
-              size="s"
-              square
-              @click="showReportModal = true"
-            >
-              <Tooltip>
-                <Icon name="ph:flag-bold" />
-                <template #tooltip>
-                  <p>Report discussion</p>
-                </template>
-              </Tooltip>
-            </Button>
+            <Flex gap="xxs">
+              <Button
+                v-if="userId && post.created_by !== userId"
+                variant="gray"
+                size="s"
+                square
+                @click="showReportModal = true"
+              >
+                <Tooltip>
+                  <Icon name="ph:flag-bold" />
+                  <template #tooltip>
+                    <p>Report discussion</p>
+                  </template>
+                </Tooltip>
+              </Button>
 
-            <ForumItemActions
-              :key="post.is_draft.toString()"
-              table="discussions"
-              :data="post"
-              :hide-discussion-tabs="true"
-              @remove="router.back()"
-              @update="handlePostUpdate"
-            >
-              <template #default="{ toggle }">
-                <Button variant="accent" size="s" @click="toggle">
-                  Manage
-                </Button>
-              </template>
-            </ForumItemActions>
+              <ForumItemActions
+                :key="post.is_draft.toString()"
+                table="discussions"
+                :data="post"
+                :hide-discussion-tabs="true"
+                @remove="router.back()"
+                @update="handlePostUpdate"
+              >
+                <template #default="{ toggle }">
+                  <Button variant="accent" size="s" @click="toggle">
+                    Manage
+                  </Button>
+                </template>
+              </ForumItemActions>
+            </Flex>
           </Flex>
         </Flex>
 

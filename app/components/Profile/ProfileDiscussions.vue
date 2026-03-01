@@ -79,7 +79,7 @@ async function fetchReplies() {
         href: `/forum/${slug}?comment=${reply.id}`,
       }
     })
-    .filter(reply => reply.content !== '#empty')
+    .filter(reply => reply.markdown !== '#empty')
 
   loading.value = false
 }

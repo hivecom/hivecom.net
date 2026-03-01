@@ -19,11 +19,13 @@ const preview = computed(() =>
 </script>
 
 <template>
-  <p v-if="preview !== '#empty'">
+  <p v-if="preview !== '#empty'" class="markdown-preview">
     <i v-if="preview === '#link'">
+      <Icon name="ph:link" :size="18" />
       Posted a link
     </i>
     <i v-else-if="preview === '#image'">
+      <Icon name="ph:image" :size="18" />
       Posted an image
     </i>
     <template v-else>
@@ -31,3 +33,11 @@ const preview = computed(() =>
     </template>
   </p>
 </template>
+
+<style scoped lang="scss">
+.markdown-preview i {
+  display: inline-flex;
+  gap: var(--space-xxs);
+  align-items: center;
+}
+</style>
