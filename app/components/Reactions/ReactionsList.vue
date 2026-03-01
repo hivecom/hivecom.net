@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Reaction } from './Reactions.vue'
+import { Flex } from '@dolanske/vui'
 
 const props = defineProps<{
   reactions: Reaction[]

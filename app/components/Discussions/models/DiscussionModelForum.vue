@@ -338,6 +338,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
     color: var(--color-text-light);
     gap: var(--space-xxs);
     height: 100px;
+    margin-bottom: var(--space-xs);
 
     &:hover {
       background-color: var(--color-button-gray);
