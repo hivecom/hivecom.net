@@ -30,7 +30,7 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
     }"
     :should-show="shouldShow"
   >
-    <div class="vui-rich-text-menu">
+    <div class="rich-text-menu">
       <Flex :gap="4">
         <ButtonGroup>
           <Button size="s" square @click="props.editor.chain().focus().toggleBold().run()">
@@ -73,9 +73,8 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 </template>
 
 <style scoped lang="scss">
-.vui-rich-text-menu {
+.rich-text-menu {
   box-shadow: var(--box-shadow);
-  background-color: var(--color-bg-medium);
   padding: 2px;
 }
 </style>

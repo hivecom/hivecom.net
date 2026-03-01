@@ -521,11 +521,6 @@ provide('delete-comment', deleteComment)
       z-index: 50;
     }
 
-    &:deep(.vui-input-container .vui-input textarea) {
-      border-radius: var(--border-radius-m);
-      padding-right: 88px;
-    }
-
     &:deep(.vui-alert) {
       background-color: var(--color-bg-medium);
       margin-bottom: 6px;

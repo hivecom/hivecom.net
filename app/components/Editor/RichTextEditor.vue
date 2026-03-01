@@ -14,6 +14,7 @@ import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useUserId } from '@/composables/useUserId'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { createMentionExtension, hydrateMentionLabels } from './plugins/mentions'
+import RichTextImageMenu from './RichTextImageMenu.vue'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 
 const {
@@ -227,6 +228,8 @@ function handleSubmit() {
     emit('submit')
   }
 }
+
+// Media update
 </script>
 
 <template>
@@ -238,6 +241,9 @@ function handleSubmit() {
 
     <!-- Text selection menu -->
     <RichTextSelectionMenu v-if="editor" :editor />
+
+    <!-- Image context menu -->
+    <RichTextImageMenu v-if="editor && props.mediaContext" :editor :bucket-id="resolvedMediaBucketId" :media-context="props.mediaContext" />
 
     <!-- Main editor instance -->
     <div class="relative">
@@ -258,7 +264,7 @@ function handleSubmit() {
       <!-- Editor content & controls -->
       <div class="editor-container" :class="{ 'is-plain': editorMode === 'plain' }">
         <EditorContent v-if="editorMode === 'rich'" :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
-        <Textarea v-else v-model="content" expand :placeholder="placeholder" />
+        <Textarea v-else v-model="content" class="editor-textarea" expand :placeholder="placeholder" />
 
         <div class="editor-actions">
           <Button plain square size="s" :data-title-top="editorMode === 'rich' ? 'Switch to plain text' : 'Switch to rich text'" @click="editorMode = editorMode === 'rich' ? 'plain' : 'rich'">
@@ -309,7 +315,7 @@ function handleSubmit() {
   position: relative;
   z-index: 1;
 
-  .vui-input-container .vui-input textarea {
+  .editor-textarea .vui-input textarea {
     padding: 0 !important;
     height: v-bind(minHeight);
     min-height: v-bind(minHeight) !important;
@@ -392,11 +398,11 @@ function handleSubmit() {
   }
 }
 
-.rich-text-mention-menu {
-  padding: var(--space-xs);
-  background-color: var(--color-bg-raised);
+.rich-text-floating-menu {
+  background-color: var(--color-bg);
   box-shadow: var(--box-shadow-strong);
   border-radius: var(--border-radius-m);
+  border: 1px solid var(--color-border);
   z-index: var(--z-popout);
 }
 </style>

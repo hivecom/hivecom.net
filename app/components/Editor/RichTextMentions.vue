@@ -58,8 +58,8 @@ function selectItem(index: number) {
 </script>
 
 <template>
-  <div v-show="hasQuery" class="rich-text-mention-menu">
-    <span class="block mb-xxs text-xs text-color-lighter">People</span>
+  <div v-show="hasQuery" class="rich-text-floating-menu">
+    <span class="block mb-xs text-xs text-color-lighter">People</span>
     <Button
       v-for="(item, index) in props.items"
       :key="item.username"
@@ -82,11 +82,12 @@ function selectItem(index: number) {
 </template>
 
 <style scoped lang="scss">
-.rich-text-mention-menu {
+.rich-text-floating-menu {
   display: flex;
   gap: 2px;
   flex-direction: column;
   max-height: 512px;
   overflow-y: auto;
+  padding: var(--space-xs);
 }
 </style>
