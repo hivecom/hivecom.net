@@ -126,14 +126,14 @@ function requestRename() {
           <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Created:</span>
             <span>
-              {{ props.asset.created_at ? new Date(props.asset.created_at).toLocaleString() : '—' }}
+              {{ props.asset.created_at ? new Date(props.asset.created_at).toLocaleString() : '-' }}
             </span>
           </Grid>
 
           <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Updated:</span>
             <span>
-              {{ props.asset.updated_at ? new Date(props.asset.updated_at).toLocaleString() : '—' }}
+              {{ props.asset.updated_at ? new Date(props.asset.updated_at).toLocaleString() : '-' }}
             </span>
           </Grid>
         </Flex>

@@ -4,13 +4,18 @@ import type { Enums, Tables } from '@/types/database.types'
 import { Button, Card, Flex } from '@dolanske/vui'
 import { computed } from 'vue'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
+import ProfileBadgeDiscussionReplies from '@/components/Profile/Badges/ProfileBadgeDiscussionReplies.vue'
+import ProfileBadgeDiscussionStarter from '@/components/Profile/Badges/ProfileBadgeDiscussionStarter.vue'
 import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
 import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
 import ProfileBadgeRSVPs from '@/components/Profile/Badges/ProfileBadgeRSVPs.vue'
 import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
 import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
 import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
+import { useCacheBadgeDiscussionReplyCount } from '@/composables/useCacheBadgeDiscussionReplyCount'
+import { useCacheBadgeDiscussionStartedCount } from '@/composables/useCacheBadgeDiscussionStartedCount'
 import { useCacheBadgePartyAnimalCount } from '@/composables/useCacheBadgePartyAnimalCount'
+import { DISCUSSION_REPLY_MIN_COUNT, DISCUSSION_STARTER_MIN_COUNT, getDiscussionReplyVariant, getDiscussionStarterVariant } from '@/lib/discussionBadge'
 import { getPartyAnimalVariant, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/partyAnimalBadge'
 import ProfileBadgeHost from './Badges/ProfileBadgeHost.vue'
 
@@ -101,11 +106,27 @@ const partyAnimalVariant = computed<BadgeVariant | null>(() => {
 })
 const hasPartyAnimalBadge = computed(() => (partyAnimalVariant.value !== null) && PartyAnimalCount.value >= PARTY_ANIMAL_MIN_RSVPS)
 
+const { count: DiscussionStartedCount } = useCacheBadgeDiscussionStartedCount(profileIdRef)
+const discussionStarterVariant = computed<BadgeVariant | null>(() => {
+  const variant = getDiscussionStarterVariant(DiscussionStartedCount.value)
+  return variant ?? null
+})
+const hasDiscussionStarterBadge = computed(() => (discussionStarterVariant.value !== null) && DiscussionStartedCount.value >= DISCUSSION_STARTER_MIN_COUNT)
+
+const { count: DiscussionReplyCount } = useCacheBadgeDiscussionReplyCount(profileIdRef)
+const discussionReplyVariant = computed<BadgeVariant | null>(() => {
+  const variant = getDiscussionReplyVariant(DiscussionReplyCount.value)
+  return variant ?? null
+})
+const hasDiscussionReplyBadge = computed(() => (discussionReplyVariant.value !== null) && DiscussionReplyCount.value >= DISCUSSION_REPLY_MIN_COUNT)
+
 const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
   const memberBadges = new Set(uniqueProfileBadges.value)
   const entries: RenderableBadgeEntry[] = []
   const currentYearsVariant = yearsBadgeVariant.value
   const currentPartyAnimalVariant = partyAnimalVariant.value
+  const currentDiscussionStarterVariant = discussionStarterVariant.value
+  const currentDiscussionReplyVariant = discussionReplyVariant.value
 
   badgeVariantOrder.forEach((variant) => {
     badgeDefinitionsByVariant[variant].forEach((definition) => {
@@ -140,6 +161,28 @@ const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
         componentProps: {
           compact: true,
           rsvps: PartyAnimalCount.value,
+        },
+      })
+    }
+
+    if (hasDiscussionStarterBadge.value && currentDiscussionStarterVariant === variant) {
+      entries.push({
+        id: 'forum_regular',
+        component: ProfileBadgeDiscussionStarter,
+        componentProps: {
+          compact: true,
+          discussions: DiscussionStartedCount.value,
+        },
+      })
+    }
+
+    if (hasDiscussionReplyBadge.value && currentDiscussionReplyVariant === variant) {
+      entries.push({
+        id: 'chatterbox',
+        component: ProfileBadgeDiscussionReplies,
+        componentProps: {
+          compact: true,
+          replies: DiscussionReplyCount.value,
         },
       })
     }

@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
+import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
@@ -47,6 +48,9 @@ const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
 const publishConfirmOpen = ref(false)
 
 const isMobile = useBreakpoint('<m')
+
+// Reporting
+const showReportModal = ref(false)
 
 const contextInfo = computed<ContextInfo | null>(() => {
   if (!post.value)
@@ -261,6 +265,21 @@ function publish() {
               </template>
             </Tooltip>
 
+            <Button
+              v-if="userId && post.created_by !== userId"
+              variant="gray"
+              size="s"
+              square
+              @click="showReportModal = true"
+            >
+              <Tooltip>
+                <Icon name="ph:flag-bold" />
+                <template #tooltip>
+                  <p>Report discussion</p>
+                </template>
+              </Tooltip>
+            </Button>
+
             <ForumItemActions
               :key="post.is_draft.toString()"
               table="discussions"
@@ -349,6 +368,12 @@ function publish() {
         <!-- Content -->
         <MDRenderer v-if="post.markdown" class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
       </section>
+
+      <ComplaintsManager
+        v-model:open="showReportModal"
+        :context-discussion-id="post.id"
+        start-with-submit
+      />
 
       <Discussion
         :id="String(post.id)"

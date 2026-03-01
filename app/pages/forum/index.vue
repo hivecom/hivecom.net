@@ -12,7 +12,7 @@ import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
-import { extractMentionIds, processMentionsToText, stripMarkdown } from '@/lib/markdown-processors'
+import { extractMentionIds, formatMarkdownPreview, processMentionsToText, stripMarkdown } from '@/lib/markdown-processors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
@@ -26,11 +26,7 @@ useSeoMeta({
   ogDescription: 'Forum description TBA',
 })
 
-type DiscussionLastReply = Pick<Tables<'discussion_replies'>, 'created_at'>
-
-type ForumDiscussion = Tables<'discussions'> & {
-  last_reply?: DiscussionLastReply[] | null
-}
+type ForumDiscussion = Tables<'discussions'>
 
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
   discussions: ForumDiscussion[]
@@ -164,16 +160,8 @@ onBeforeMount(() => {
   Promise.all([
     supabase
       .from('discussion_topics')
-      .select(`
-        *,
-        discussions (
-          *,
-          last_reply:discussion_replies!discussion_replies_discussion_id_fkey(created_at)
-        )
-      `)
+      .select('*, discussions(*)')
       .neq('discussions.is_draft', true)
-      .order('created_at', { referencedTable: 'discussions.discussion_replies', ascending: false })
-      .limit(1, { foreignTable: 'discussions.discussion_replies' })
       .then(({ data, error }) => {
         if (error) {
           topicsError.value = error.message
@@ -203,13 +191,13 @@ onBeforeMount(() => {
           }
         }
       }),
-    // FIXME: we need to limit discussion_replies only to discussion types
-    // which can appear in the forum. No clue how to do that rn
+    // Fetch the 10 most recent replies. visibleReplies filters these down to
+    // only forum-scoped discussions client-side via visibleDiscussionIds.
     supabase
-      .from('discussion_replies')
+      .from('forum_discussion_replies')
       .select('*')
       .limit(10)
-      .order('created_at')
+      .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data) {
           latestReplies.value = data.map((item) => {
@@ -342,32 +330,8 @@ function sortDiscussions(discussions: ForumDiscussion[]) {
     if (!a.is_sticky && b.is_sticky)
       return 1
 
-    return dayjs(getDiscussionLastActivity(b)).isAfter(dayjs(getDiscussionLastActivity(a))) ? 1 : -1
+    return dayjs(b.last_activity_at).isAfter(dayjs(a.last_activity_at)) ? 1 : -1
   })
-}
-
-function getDiscussionLastActivity(discussion: ForumDiscussion) {
-  const lastReply = (discussion.last_reply ?? []).reduce<DiscussionLastReply | null>((latest, reply) => {
-    if (!latest)
-      return reply
-
-    return dayjs(reply.created_at).isAfter(dayjs(latest.created_at)) ? reply : latest
-  }, null)
-
-  return lastReply?.created_at ?? discussion.created_at
-}
-
-// Derive the last activity timestamp for a topic from its discussions
-function getTopicLastActivity(topic: TopicWithDiscussions) {
-  const latestDiscussion = topic.discussions.reduce((latest, discussion) => {
-    if (!settings.value.showArchived && discussion.is_archived)
-      return latest
-
-    const discussionActivity = getDiscussionLastActivity(discussion)
-    return dayjs(discussionActivity).isAfter(dayjs(latest)) ? discussionActivity : latest
-  }, topic.created_at)
-
-  return latestDiscussion
 }
 
 // List topics based on the activeTopicId. If it's null, list all topics
@@ -450,6 +414,28 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
   }
 }
 
+// Remove methods - remove a topic or discussion from local state after deletion
+function removeItem(type: 'topic' | 'discussion', id: string) {
+  if (type === 'topic') {
+    topics.value = topics.value.filter(topic => topic.id !== id)
+
+    // If the removed topic was the active one, reset navigation
+    if (activeTopicId.value === id) {
+      activeTopicId.value = null
+      activeTopicSlug.value = null
+      activeTopicIdQuery.value = null
+    }
+  }
+  else {
+    const parentTopic = topics.value.find(topic =>
+      topic.discussions.some(discussion => discussion.id === id),
+    )
+    if (parentTopic) {
+      parentTopic.discussions = parentTopic.discussions.filter(discussion => discussion.id !== id)
+    }
+  }
+}
+
 const visibleDiscussionIds = computed(() => {
   return new Set(
     topics.value
@@ -486,7 +472,7 @@ const visibleReplies = computed<ActivityItem[]>(() => {
       return {
         ...reply,
         type: 'Reply',
-        typeLabel: 'Reply to',
+        typeLabel: 'Reply in',
         typeContext: discussion?.title ?? 'Discussion',
         title: reply.description ?? 'Reply',
         description: undefined,
@@ -520,9 +506,7 @@ const latestPosts = computed<ActivityItem[]>(() => {
       const isTopic = !('discussion_topic_id' in item)
       const id = item.id
       const title = (isTopic ? item.name : item.title) ?? (isTopic ? 'Topic' : 'Discussion')
-      const activityAt = isTopic
-        ? getTopicLastActivity(item as TopicWithDiscussions)
-        : getDiscussionLastActivity(item as ForumDiscussion)
+      const activityAt = item.last_activity_at
 
       return {
         id,
@@ -540,10 +524,46 @@ const latestPosts = computed<ActivityItem[]>(() => {
       } as ActivityItem
     })
 
-  return flattenedTopics
+  const sorted = flattenedTopics
     .concat(visibleReplies.value)
     .toSorted((a, b) => new Date(a.timestampRaw) > new Date(b.timestampRaw) ? -1 : 1)
-    .splice(0, 10)
+
+  // Deduplicate: a reply covers its parent discussion and grandparent topic;
+  // a discussion covers its parent topic. Process in sorted order so the most
+  // specific/recent item wins and the broader duplicates are dropped.
+  const coveredDiscussionIds = new Set<string>()
+  const coveredTopicIds = new Set<string>()
+
+  const deduped = sorted.filter((item) => {
+    if (item.type === 'Reply') {
+      if (item.discussionId) {
+        coveredDiscussionIds.add(item.discussionId)
+        const discussion = discussionLookup.value.get(item.discussionId)
+        if (discussion?.discussion_topic_id) {
+          coveredTopicIds.add(discussion.discussion_topic_id)
+        }
+      }
+      return true
+    }
+
+    if (item.type === 'Discussion') {
+      if (coveredDiscussionIds.has(item.id))
+        return false
+      const discussion = discussionLookup.value.get(item.id)
+      if (discussion?.discussion_topic_id) {
+        coveredTopicIds.add(discussion.discussion_topic_id)
+      }
+      return true
+    }
+
+    if (item.type === 'Topic') {
+      return !coveredTopicIds.has(item.id)
+    }
+
+    return true
+  })
+
+  return deduped.splice(0, 10)
 })
 
 const latestPostMentionIds = computed(() => {
@@ -649,7 +669,7 @@ onBeforeMount(() => {
               <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
             </Flex>
             <strong class="forum__latest-title">
-              {{ post.type === 'Reply' ? stripMarkdown(processMentionsToText(post.title, mentionLookup)) : post.title }}
+              {{ post.type === 'Reply' ? formatMarkdownPreview(post.title, mentionLookup) : post.title }}
             </strong>
             <p v-if="post.description" class="forum__latest-description">
               {{ stripMarkdown(processMentionsToText(post.description, mentionLookup)) }}
@@ -818,7 +838,7 @@ onBeforeMount(() => {
             <div />
             <div />
           </template>
-          <ForumItemActions table="discussion_topics" :data="topic" @update="replaceItemData('topic', $event)" />
+          <ForumItemActions table="discussion_topics" :data="topic" @update="replaceItemData('topic', $event)" @remove="removeItem('topic', $event)" />
         </div>
 
         <ul v-if="topic.discussions.length > 0 || getTopicsByParentId(topic.id).length > 0">
@@ -826,18 +846,20 @@ onBeforeMount(() => {
             v-for="subtopic of getTopicsByParentId(topic.id)"
             :key="subtopic.id"
             :data="subtopic"
-            :last-activity="getTopicLastActivity(subtopic)"
+            :last-activity="subtopic.last_activity_at"
             :discussion-count="subtopic.discussions.length"
             @click="setActiveTopicFromTopic(subtopic)"
             @update="replaceItemData('topic', $event)"
+            @remove="removeItem('topic', $event)"
           />
 
           <ForumDiscussionItem
             v-for="discussion of sortDiscussions(topic.discussions)"
             :key="discussion.id"
             :data="discussion"
-            :last-activity="getDiscussionLastActivity(discussion)"
+            :last-activity="discussion.last_activity_at"
             @update="replaceItemData('discussion', $event)"
+            @remove="removeItem('discussion', $event)"
           />
         </ul>
         <div v-else class="forum__category-empty">

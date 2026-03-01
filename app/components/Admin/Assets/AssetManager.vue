@@ -646,9 +646,9 @@ onBeforeMount(fetchAssets)
                   </Badge>
                 </Table.Cell>
                 <Table.Cell>
-                  {{ row._original.type === 'folder' ? '—' : formatBytes(row._original.size) }}
+                  {{ row._original.type === 'folder' ? '-' : formatBytes(row._original.size) }}
                 </Table.Cell>
-                <Table.Cell>{{ row._original.updated_at ? new Date(row._original.updated_at).toLocaleString() : '—' }}</Table.Cell>
+                <Table.Cell>{{ row._original.updated_at ? new Date(row._original.updated_at).toLocaleString() : '-' }}</Table.Cell>
                 <Table.Cell @click.stop>
                   <Flex gap="xs">
                     <CopyClipboard

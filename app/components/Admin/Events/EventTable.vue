@@ -349,7 +349,7 @@ onBeforeMount(fetchEvents)
           :expand="isBelowMedium"
           :column-reverse="isBelowMedium"
         >
-          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total -</span>
 
           <Flex gap="xs" :wrap="isBelowMedium" :x-center="isBelowMedium" expand>
             <CalendarButtons is-admin />

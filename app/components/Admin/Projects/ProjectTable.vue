@@ -350,7 +350,7 @@ onBeforeMount(fetchProjects)
           :expand="isBelowMedium"
           :column-reverse="isBelowMedium"
         >
-          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total -</span>
 
           <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" loading>
             <template #start>

@@ -4,6 +4,7 @@ import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Tooltip
 import dayjs from 'dayjs'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
+import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
@@ -35,6 +36,7 @@ const currentUser = useSupabaseUser()
 const isMobile = useBreakpoint('<s')
 
 const discussion = inject('discussion') as ProvidedDiscussion
+const canBypassLock = inject('canBypassLock', ref(false)) as Ref<boolean>
 
 const { user } = useCacheUserData(data.value.created_by!, {
   includeRole: true,
@@ -110,6 +112,10 @@ async function submit() {
 watch(editedContent, () => editError.value = [])
 
 const showNSFWWarning = ref(!!props.data.is_nsfw)
+
+// Reporting
+const showReportModal = ref(false)
+
 const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 </script>
 
@@ -178,7 +184,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 
       <div v-if="!showNSFWWarning" class="discussion-forum__actions">
         <ButtonGroup v-if="user">
-          <template v-if="!discussion?.is_locked && !discussion?.is_archived">
+          <template v-if="(!discussion?.is_locked || canBypassLock) && !discussion?.is_archived">
             <Button square size="s" @click="setReplyToComment(data)">
               <Tooltip>
                 <Icon name="ph:arrow-elbow-up-left-bold" />
@@ -241,6 +247,16 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
             </Card>
           </ConfirmModal>
         </ButtonGroup>
+
+        <!-- Report button for other users' posts -->
+        <Button v-if="userId && data.created_by !== userId" size="s" square @click="showReportModal = true">
+          <Tooltip>
+            <Icon name="ph:flag-bold" />
+            <template #tooltip>
+              <p>Report post</p>
+            </template>
+          </Tooltip>
+        </Button>
       </div>
     </div>
 
@@ -275,6 +291,13 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
         </Flex>
       </template>
     </Modal>
+
+    <ComplaintsManager
+      v-model:open="showReportModal"
+      :context-discussion-id="discussion?.id"
+      :context-discussion-reply-id="data.id"
+      start-with-submit
+    />
   </div>
 </template>
 

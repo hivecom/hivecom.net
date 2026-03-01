@@ -409,7 +409,7 @@ const modalTitle = computed(() => {
     return 'Step 1 - Send Verification Message'
   }
   else if (step.value === 'confirm') {
-    return 'Step 2 — Confirm Token'
+    return 'Step 2 - Confirm Token'
   }
   else if (step.value === 'manage') {
     return 'TeamSpeak integration'

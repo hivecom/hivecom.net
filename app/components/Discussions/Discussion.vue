@@ -77,6 +77,13 @@ const MAX_COMMENT_CHARS = 8192
 // If user isn't signed it, do not allow commenting
 const userId = useUserId()
 
+// Check if the current user is an admin or moderator (can bypass discussion locks)
+const { user: currentUserData } = useCacheUserData(userId, { includeRole: true })
+const canBypassLock = computed(() => {
+  const role = currentUserData.value?.role
+  return role === 'admin' || role === 'moderator'
+})
+
 export type RawComment = Omit<Tables<'discussion_replies'>, 'meta'> & { meta: never }
 export interface Comment extends RawComment {
   reply: RawComment | null
@@ -138,6 +145,7 @@ provide<DiscussionSettings>('discussion-settings', {
 })
 
 provide<ProvidedDiscussion>('discussion', discussion)
+provide('canBypassLock', canBypassLock)
 
 watch(() => props.id, async () => {
   loading.value = true
@@ -446,7 +454,7 @@ provide('delete-comment', deleteComment)
             This discussion is archived
           </Alert>
         </div>
-        <div v-else-if="discussion?.is_locked">
+        <div v-else-if="discussion?.is_locked && !canBypassLock">
           <Alert variant="neutral">
             <template #icon>
               <Icon name="ph:lock" />

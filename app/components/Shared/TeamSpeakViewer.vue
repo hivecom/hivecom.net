@@ -519,7 +519,7 @@ const errorMessage = computed(() => {
 
 function formatDuration(seconds?: number): string {
   if (seconds === undefined || !Number.isFinite(seconds))
-    return '—'
+    return '-'
 
   const days = Math.floor(seconds / 86_400)
   const hours = Math.floor((seconds % 86_400) / 3_600)

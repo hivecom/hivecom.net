@@ -71,6 +71,8 @@ const description = computed(() => {
   gap: 2px;
   color: var(--badge-icon-color);
   text-transform: uppercase;
+  cursor: default;
+  text-select: none;
 }
 
 .profile-badge-years__years {

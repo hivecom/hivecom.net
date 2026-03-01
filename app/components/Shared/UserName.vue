@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Flex, Skeleton } from '@dolanske/vui'
+import { Flex, Skeleton } from '@dolanske/vui'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 import { getAnonymousUsername } from '@/lib/anonymous-usernames'
 
@@ -111,9 +111,6 @@ const fontClass = computed(() => {
     :class="fontClass"
   >
     <span class="user-name__text">Hivecom</span>
-    <Badge size="xs" variant="accent">
-      System
-    </Badge>
     <slot />
   </Flex>
 </template>

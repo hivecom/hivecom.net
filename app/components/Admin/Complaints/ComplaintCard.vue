@@ -67,6 +67,19 @@ const truncatedMessage = computed(() => {
   return `${props.complaint.message.substring(0, maxLength)}...`
 })
 
+// Derive a single context type label for the card
+const contextType = computed(() => {
+  if (props.complaint.context_discussion_reply)
+    return { label: 'Reply', icon: 'ph:chat-circle-text' }
+  if (props.complaint.context_discussion)
+    return { label: 'Discussion', icon: 'ph:chats' }
+  if (props.complaint.context_user)
+    return { label: 'User', icon: 'ph:user' }
+  if (props.complaint.context_gameserver)
+    return { label: 'Server', icon: 'ph:game-controller' }
+  return null
+})
+
 // Handle card click
 function handleCardClick() {
   emit('select', props.complaint)
@@ -125,36 +138,44 @@ function handleAcknowledge(event: Event) {
     <!-- Response indicator -->
     <template #footer>
       <!-- Actions -->
-      <Flex gap="xs" x-end>
-        <div v-if="complaint.response" class="complaint-card__response-indicator">
-          <Flex gap="xs" y-center>
-            <Icon name="ph:arrow-bend-down-left" class="text-color-light" />
-            <span class="text-s text-color-light">Response provided</span>
-            <TimestampDate
-              v-if="complaint.responded_at"
-              :date="complaint.responded_at"
-              relative
-              size="s"
-            />
-          </Flex>
-        </div>
-        <div v-else-if="complaint.acknowledged" class="complaint-card__response-indicator">
-          <Flex gap="xs" y-center>
-            <Icon name="ph:arrow-bend-up-right" class="text-color-light" />
-            <span class="text-s text-color-light">No response yet</span>
-          </Flex>
-        </div>
-        <Button
-          v-if="status === 'pending'"
-          size="s"
-          variant="accent"
-          @click="handleAcknowledge"
-        >
-          <template #start>
-            <Icon name="ph:check" />
+      <Flex gap="xs" x-between y-center>
+        <Flex gap="xs" y-center>
+          <template v-if="contextType">
+            <Icon :name="contextType.icon" class="text-color-light" size="14" />
+            <span class="complaint-card__context-label">{{ contextType.label }}</span>
           </template>
-          Acknowledge
-        </Button>
+        </Flex>
+        <Flex gap="xs" y-center>
+          <div v-if="complaint.response" class="complaint-card__response-indicator">
+            <Flex gap="xs" y-center>
+              <Icon name="ph:arrow-bend-down-left" class="text-color-light" />
+              <span class="text-s text-color-light">Response provided</span>
+              <TimestampDate
+                v-if="complaint.responded_at"
+                :date="complaint.responded_at"
+                relative
+                size="s"
+              />
+            </Flex>
+          </div>
+          <div v-else-if="complaint.acknowledged" class="complaint-card__response-indicator">
+            <Flex gap="xs" y-center>
+              <Icon name="ph:arrow-bend-up-right" class="text-color-light" />
+              <span class="text-s text-color-light">No response yet</span>
+            </Flex>
+          </div>
+          <Button
+            v-if="status === 'pending'"
+            size="s"
+            variant="accent"
+            @click="handleAcknowledge"
+          >
+            <template #start>
+              <Icon name="ph:check" />
+            </template>
+            Acknowledge
+          </Button>
+        </Flex>
       </Flex>
     </template>
   </Card>
@@ -235,6 +256,11 @@ function handleAcknowledge(event: Event) {
   padding: var(--space-xs) var(--space-s);
   background-color: var(--color-bg-subtle);
   border-radius: var(--border-radius-s);
+}
+
+.complaint-card__context-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-lighter);
 }
 
 .complaint-card__click-indicator {

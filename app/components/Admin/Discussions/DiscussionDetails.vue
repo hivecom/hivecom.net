@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, Button, Card, CopyClipboard, Divider, Flex, Grid, pushToast, Sheet } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, CopyClipboard, Divider, Dropdown, DropdownTitle, Flex, Grid, Input, pushToast, searchString, Sheet } from '@dolanske/vui'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
@@ -310,6 +310,64 @@ async function handleDelete() {
 function handleClose() {
   isOpen.value = false
 }
+
+// Orphan reassignment
+const isOrphaned = computed(() => !!props.discussion && contextLinks.value.length === 0)
+
+const reassignLoading = ref(false)
+const reassignTopics = ref<Tables<'discussion_topics'>[]>([])
+const reassignSearch = ref('')
+const reassignTopicsLoaded = ref(false)
+
+const filteredReassignTopics = computed(() => {
+  return reassignTopics.value
+    .filter(t => !t.is_archived)
+    .filter(t => reassignSearch.value ? searchString([t.name], reassignSearch.value) : true)
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+async function loadReassignTopics() {
+  if (reassignTopicsLoaded.value)
+    return
+
+  const { data } = await supabase.from('discussion_topics').select('*')
+  if (data) {
+    reassignTopics.value = data
+    reassignTopicsLoaded.value = true
+  }
+}
+
+async function reassignToTopic(topicId: string) {
+  if (!props.discussion)
+    return
+
+  reassignLoading.value = true
+
+  try {
+    const { data, error } = await supabase
+      .from('discussions')
+      .update({ discussion_topic_id: topicId })
+      .eq('id', props.discussion.id)
+      .select()
+      .maybeSingle()
+
+    if (error)
+      throw error
+
+    if (data)
+      emit('updated', data)
+
+    pushToast('Discussion reassigned to topic')
+  }
+  catch (error) {
+    pushToast('Failed to reassign discussion', {
+      description: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+  finally {
+    reassignLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -471,10 +529,48 @@ function handleClose() {
 
       <Card class="card-bg">
         <Flex column gap="s">
-          <h5 class="text-bold">
-            Context
-          </h5>
-          <Flex gap="xs" wrap>
+          <Flex x-between y-center>
+            <h5 class="text-bold">
+              Context
+            </h5>
+            <Dropdown v-if="canUpdate" placement="bottom-end">
+              <template #trigger="{ toggle, isOpen: dropdownOpen }">
+                <Button size="s" variant="gray" outline @click="loadReassignTopics(), toggle()">
+                  <template #start>
+                    <Icon name="ph:arrow-fat-lines-right" :size="14" />
+                  </template>
+                  Reassign
+                  <template #end>
+                    <Icon :name="dropdownOpen ? 'ph:caret-up' : 'ph:caret-down'" :size="14" />
+                  </template>
+                </Button>
+              </template>
+              <template #default="{ close }">
+                <DropdownTitle>
+                  <Input v-model="reassignSearch" placeholder="Search topics..." expand focus />
+                </DropdownTitle>
+                <Flex column gap="xxs">
+                  <button
+                    v-for="topic in filteredReassignTopics"
+                    :key="topic.id"
+                    class="reassign-topic-button"
+                    @click="reassignToTopic(topic.id), close()"
+                  >
+                    {{ topic.name }}
+                  </button>
+                </Flex>
+                <p v-if="filteredReassignTopics.length === 0" class="text-color-lighter text-xs">
+                  No topics found.
+                </p>
+              </template>
+            </Dropdown>
+          </Flex>
+          <template v-if="isOrphaned">
+            <Alert variant="danger" filled>
+              This discussion is orphaned - it has no associated topic or context.
+            </Alert>
+          </template>
+          <Flex v-else gap="xs" wrap>
             <NuxtLink
               v-for="link in contextLinks"
               :key="link.href"
@@ -598,3 +694,18 @@ function handleClose() {
     :destructive="true"
   />
 </template>
+
+<style scoped lang="scss">
+.reassign-topic-button {
+  display: flex;
+  width: 100%;
+  padding: var(--space-xs);
+  align-items: flex-start;
+  border-radius: var(--border-radius-m);
+  font-size: var(--font-size-s);
+
+  &:hover {
+    background-color: var(--color-button-gray-hover);
+  }
+}
+</style>

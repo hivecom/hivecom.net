@@ -230,7 +230,7 @@ onBeforeMount(fetchMotds)
               </Table.Cell>
               <Table.Cell>
                 <TimestampDate v-if="row.Modified" :date="row.Modified" />
-                <span v-else class="text-color-light">—</span>
+                <span v-else class="text-color-light">-</span>
               </Table.Cell>
               <Table.Cell v-if="canManageResource" @click.stop>
                 <AdminActions

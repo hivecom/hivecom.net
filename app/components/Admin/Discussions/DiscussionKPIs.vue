@@ -40,14 +40,14 @@ type DiscussionReply = Pick<Tables<'discussion_replies'>, 'created_at'>
 function formatDurationSince(dateString: string): string {
   const date = new Date(dateString)
   if (Number.isNaN(date.getTime()))
-    return '—'
+    return '-'
 
   const diffMs = Date.now() - date.getTime()
   if (diffMs < 0)
-    return '—'
+    return '-'
 
   const compact = formatDurationCompact(diffMs)
-  return compact ? `${compact} ago` : '—'
+  return compact ? `${compact} ago` : '-'
 }
 
 function getLastReplyAt(discussion: DiscussionRecord): string | null {
@@ -81,7 +81,7 @@ const lastDiscussionOrReply = computed(() => {
       latest = activityAt
   })
 
-  return latest ? formatDurationSince(latest) : '—'
+  return latest ? formatDurationSince(latest) : '-'
 })
 
 const totalDiscussions = computed(() => discussions.value.length)
@@ -95,6 +95,17 @@ const recentDiscussions = computed(() => {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
   return discussions.value.filter((item: QueryData<typeof discussionsQuery>[number]) => new Date(item.created_at) >= thirtyDaysAgo).length
+})
+
+const orphanedDiscussions = computed(() => {
+  return discussions.value.filter((discussion: DiscussionRecord) =>
+    !discussion.discussion_topic_id
+    && !discussion.profile_id
+    && !discussion.project_id
+    && !discussion.event_id
+    && !discussion.gameserver_id
+    && !discussion.referendum_id,
+  ).length
 })
 
 async function fetchDiscussions() {
@@ -162,6 +173,15 @@ onMounted(fetchDiscussions)
       icon="ph:chat-teardrop-dots"
       variant="gray"
       description="Total replies across all discussions"
+    />
+
+    <KPICard
+      label="Orphaned"
+      :value="orphanedDiscussions"
+      :is-loading="loading"
+      icon="ph:link-break"
+      :variant="orphanedDiscussions > 0 ? 'danger' : 'gray'"
+      description="Discussions not linked to any topic or entity"
     />
   </KPIContainer>
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Comment, DiscussionSettings, ProvidedDiscussion } from '../Discussion.vue'
-import { Button, ButtonGroup, Card, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
@@ -23,6 +24,7 @@ const emit = defineEmits<{
 const { timestamps } = inject('discussion-settings') as DiscussionSettings
 
 const discussion = inject('discussion') as ProvidedDiscussion
+const canBypassLock = inject('canBypassLock', ref(false)) as Ref<boolean>
 
 const userId = useUserId()
 
@@ -36,6 +38,9 @@ const deleteComment = inject('delete-comment') as (id: string) => Promise<void>
 const loadingDeletion = ref(false)
 const showDeleteModal = ref(false)
 
+// Reporting
+const showReportModal = ref(false)
+
 function handleDeletion() {
   loadingDeletion.value = true
   deleteComment(data.id)
@@ -47,7 +52,9 @@ function handleDeletion() {
 
 <template>
   <div class="discussion-comment">
-    <UserDisplay size="s" :user-id="data.created_by" />
+    <Flex>
+      <UserDisplay size="s" :user-id="data.created_by" />
+    </Flex>
     <Tooltip v-if="data.reply" :delay="750">
       <button varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === userId }" @click="emit('scrollReply')">
         <Icon name="ph:arrow-elbow-up-right" />
@@ -79,7 +86,7 @@ function handleDeletion() {
     </p>
     <div class="discussion-comment__actions">
       <ButtonGroup>
-        <Button v-if="userId && !discussion?.is_locked && !discussion?.is_archived" square size="s" @click="setReplyToComment(data)">
+        <Button v-if="userId && (!discussion?.is_locked || canBypassLock) && !discussion?.is_archived" square size="s" @click="setReplyToComment(data)">
           <Tooltip>
             <Icon name="ph:arrow-elbow-up-left-bold" />
             <template #tooltip>
@@ -96,6 +103,15 @@ function handleDeletion() {
           </Tooltip>
         </Button>
       </ButtonGroup>
+      <!-- Report button for other users' comments -->
+      <Button v-if="userId && data.created_by !== userId" size="s" square @click="showReportModal = true">
+        <Tooltip>
+          <Icon name="ph:flag-bold" />
+          <template #tooltip>
+            <p>Report comment</p>
+          </template>
+        </Tooltip>
+      </Button>
       <!-- Delete comment option if the comment belongs to me -->
       <Button v-if="data.created_by === userId && !discussion?.is_locked && !discussion?.is_archived" size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
         <Tooltip>
@@ -122,6 +138,13 @@ function handleDeletion() {
         </Card>
       </ConfirmModal>
     </div>
+
+    <ComplaintsManager
+      v-model:open="showReportModal"
+      :context-discussion-id="discussion?.id"
+      :context-discussion-reply-id="data.id"
+      start-with-submit
+    />
   </div>
 </template>
 

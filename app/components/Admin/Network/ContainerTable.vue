@@ -591,7 +591,7 @@ onBeforeMount(fetchContainers)
             :x-start="isBelowMedium"
             :expand="isBelowMedium"
           >
-            <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
+            <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total -</span>
           </Flex>
         </Flex>
 

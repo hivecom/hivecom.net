@@ -9,6 +9,8 @@ const props = defineProps<{
   targetUserName?: string
   contextGameserverId?: number
   contextGameserverName?: string
+  contextDiscussionId?: string
+  contextDiscussionReplyId?: string
   startWithSubmit?: boolean // New prop to control initial view
 }>()
 
@@ -97,6 +99,8 @@ function handleClose() {
     :target-user-name="targetUserName"
     :context-gameserver-id="contextGameserverId"
     :context-gameserver-name="contextGameserverName"
+    :context-discussion-id="contextDiscussionId"
+    :context-discussion-reply-id="contextDiscussionReplyId"
     @submit="handleComplaintSubmit"
     @close="handleCloseNewComplaint"
   />

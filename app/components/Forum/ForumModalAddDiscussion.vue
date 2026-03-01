@@ -24,21 +24,50 @@ const emit = defineEmits<{
   (e: 'draftUpdated'): void
 }>()
 
+// Check if the current user has discussions.update permission by querying the DB directly.
+// This works regardless of which layout (admin or default) renders the component.
+const canUpdateDiscussions = ref(false)
+
 const isMobile = useBreakpoint('<s')
 const router = useRouter()
 
 const supabase = useSupabaseClient()
+const userId = useUserId()
+
+onBeforeMount(async () => {
+  const uid = userId.value
+  if (!uid)
+    return
+
+  const { data: roleData } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', uid)
+    .maybeSingle()
+
+  if (!roleData?.role)
+    return
+
+  const { data: permData } = await supabase
+    .from('role_permissions')
+    .select('permission')
+    .eq('role', roleData.role)
+    .eq('permission', 'discussions.update')
+    .maybeSingle()
+
+  canUpdateDiscussions.value = !!permData
+})
+
 const search = ref('')
 const editingDraft = ref<Tables<'discussions'> | null>(null)
 const editedDiscussion = computed(() => props.editedItem ?? editingDraft.value)
 const isEditing = computed(() => !!editedDiscussion.value)
-const showTabs = computed(() => props.hideTabs !== true)
+const showTabs = computed(() => props.hideTabs !== true && !isEditing.value)
 const publishConfirmOpen = ref(false)
 
 // Draft state
 const activeTab = ref<'create' | 'drafts'>('create')
 const drafts = ref<Tables<'discussions'>[]>([])
-const userId = useUserId()
 const deleteLoading = ref(false)
 const deleteConfirm = ref<string | null>(null)
 
@@ -72,13 +101,14 @@ onBeforeMount(() => {
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
   return resolvedTopics.value
-    .filter(item => item.id === editedDiscussion.value?.discussion_topic_id || (!item.is_archived && !item.is_locked))
+    .filter(item => item.id === editedDiscussion.value?.discussion_topic_id || (!item.is_archived && (canUpdateDiscussions.value || !item.is_locked)))
     .map(topic => ({
       id: topic.id,
       label: topic.name,
       parent_id: topic.id,
       path: composedPathToString(composePathToTopic(topic.id, resolvedTopics.value)),
     }))
+    .sort((a, b) => a.label.localeCompare(b.label))
     .filter(topic => search.value ? searchString([topic.label, topic.path], search.value) : true)
 })
 

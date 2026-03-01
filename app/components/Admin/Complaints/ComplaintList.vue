@@ -38,7 +38,9 @@ const complaintsQuery = supabase
     responded_by,
     response,
     context_user,
-    context_gameserver
+    context_gameserver,
+    context_discussion,
+    context_discussion_reply
   `)
   .order('created_at', { ascending: false })
 

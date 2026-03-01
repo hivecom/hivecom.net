@@ -9,6 +9,8 @@ const props = defineProps<{
   targetUserName?: string
   contextGameserverId?: number
   contextGameserverName?: string
+  contextDiscussionId?: string
+  contextDiscussionReplyId?: string
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +21,7 @@ const emit = defineEmits<{
 // Form state
 const complaintMessage = ref('')
 const isSubmitting = ref(false)
+const submitError = ref('')
 const isBelowSmall = useBreakpoint('<xs')
 
 // Get current user
@@ -39,6 +42,8 @@ async function handleSubmit() {
       message: string
       context_user?: string
       context_gameserver?: number
+      context_discussion?: string
+      context_discussion_reply?: string
     } = {
       created_by: userId.value,
       message: complaintMessage.value.trim(),
@@ -51,13 +56,26 @@ async function handleSubmit() {
     if (props.contextGameserverId) {
       complaintData.context_gameserver = props.contextGameserverId
     }
+    if (props.contextDiscussionId) {
+      complaintData.context_discussion = props.contextDiscussionId
+    }
+    if (props.contextDiscussionReplyId) {
+      complaintData.context_discussion_reply = props.contextDiscussionReplyId
+    }
 
     const { error } = await supabase
       .from('complaints')
       .insert(complaintData)
 
     if (error) {
-      throw error
+      // 23505 is the Postgres unique violation code
+      if (error.code === '23505') {
+        submitError.value = 'You have already submitted a complaint about this.'
+      }
+      else {
+        throw error
+      }
+      return
     }
 
     // Emit success event
@@ -69,7 +87,7 @@ async function handleSubmit() {
   }
   catch (error: unknown) {
     console.error('Error submitting complaint:', (error as Error).message)
-    // You might want to show an error toast/notification here
+    submitError.value = 'Something went wrong submitting your complaint. Please try again.'
   }
   finally {
     isSubmitting.value = false
@@ -79,6 +97,7 @@ async function handleSubmit() {
 function resetForm() {
   complaintMessage.value = ''
   isSubmitting.value = false
+  submitError.value = ''
 }
 
 function handleClose() {
@@ -96,7 +115,13 @@ function handleClose() {
     </template>
 
     <Flex column gap="m" class="complaint-modal-content">
-      <p v-if="targetUserName" class="text-color-light">
+      <p v-if="contextDiscussionReplyId" class="text-color-light">
+        You are reporting a discussion reply. This will be reviewed by our staff.
+      </p>
+      <p v-else-if="contextDiscussionId" class="text-color-light">
+        You are reporting a discussion. This will be reviewed by our staff.
+      </p>
+      <p v-else-if="targetUserName" class="text-color-light">
         You are submitting a complaint about <strong>{{ targetUserName }}</strong>.
         This will be reviewed by our staff.
       </p>
@@ -106,6 +131,10 @@ function handleClose() {
       </p>
       <p v-else class="text-color-light">
         Please describe your complaint in detail. This will be reviewed by our staff.
+      </p>
+
+      <p v-if="submitError" class="complaint-modal-error">
+        {{ submitError }}
       </p>
 
       <Textarea
@@ -185,5 +214,10 @@ function handleClose() {
 
 .complaint-modal-guidelines li:last-child {
   margin-bottom: 0;
+}
+
+.complaint-modal-error {
+  font-size: var(--font-size-s);
+  color: var(--color-text-red);
 }
 </style>

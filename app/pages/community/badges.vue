@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Card, Flex } from '@dolanske/vui'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
+import ProfileBadgeDiscussionReplies from '@/components/Profile/Badges/ProfileBadgeDiscussionReplies.vue'
+import ProfileBadgeDiscussionStarter from '@/components/Profile/Badges/ProfileBadgeDiscussionStarter.vue'
 import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
 import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
 import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
@@ -45,9 +47,6 @@ useSeoMeta({
       <Card class="playground-card">
         <div class="badge-grid">
           <div class="badge-preview">
-            <ProfileBadgeRSVPs :rsvps="12" />
-          </div>
-          <div class="badge-preview">
             <ProfileBadgeHost />
           </div>
           <div class="badge-preview">
@@ -64,6 +63,44 @@ useSeoMeta({
           </div>
           <div class="badge-preview">
             <ProfileBadgeFounder />
+          </div>
+        </div>
+      </Card>
+    </section>
+
+    <section class="playground-section">
+      <Flex class="section-heading" column gap="xxs">
+        <h2>Community Participation</h2>
+        <p>These badges are earned by actively participating in events and conversations.</p>
+      </Flex>
+      <Card class="playground-card">
+        <div class="badge-grid">
+          <div class="badge-preview">
+            <ProfileBadgeRSVPs :rsvps="3" />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeRSVPs :rsvps="10" />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeRSVPs :rsvps="50" />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeDiscussionStarter :discussions="10" />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeDiscussionStarter :discussions="100" />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeDiscussionStarter :discussions="1000" />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeDiscussionReplies :replies="100" />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeDiscussionReplies :replies="1000" />
+          </div>
+          <div class="badge-preview">
+            <ProfileBadgeDiscussionReplies :replies="10000" />
           </div>
         </div>
       </Card>

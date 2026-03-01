@@ -121,7 +121,7 @@ const localChartOptions: ChartOptions<'line'> = {
           const value = context.parsed?.y
 
           if (typeof value !== 'number') {
-            return label ? `${label}: —` : '—'
+            return label ? `${label}: -` : '-'
           }
 
           return `${label}: €${value.toFixed(2)}`

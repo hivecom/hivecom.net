@@ -825,6 +825,9 @@ async function ignoreFriendRequest() {
             :is-own-profile="isOwnProfile"
           />
 
+          <!-- Recent Discussions -->
+          <ProfileDiscussions :profile-id="profile.id" :username="profile.username" />
+
           <!-- Friends Section -->
           <ProfileFriends
             :profile="profile"

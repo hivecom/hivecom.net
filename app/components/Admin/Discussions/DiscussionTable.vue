@@ -112,13 +112,13 @@ const statusOptions: SelectOption[] = [
 ]
 
 const contextOptions: SelectOption[] = [
+  { label: 'Events', value: 'events' },
   { label: 'Forum', value: 'forum' },
+  { label: 'Gameservers', value: 'gameservers' },
+  { label: 'Orphaned', value: 'other' },
   { label: 'Profiles', value: 'profiles' },
   { label: 'Projects', value: 'projects' },
-  { label: 'Events', value: 'events' },
-  { label: 'Gameservers', value: 'gameservers' },
   { label: 'Referendums', value: 'referendums' },
-  { label: 'Other', value: 'other' },
 ]
 
 const isBelowMedium = useBreakpoint('<m')
@@ -221,7 +221,7 @@ function getContextLabel(discussion: QueryDiscussion) {
     const referendumTitle = discussion.referendum?.title
     return referendumTitle ? `Referendum · ${referendumTitle}` : 'Referendum'
   }
-  return 'Other'
+  return 'Orphaned'
 }
 
 function getContextLink(discussion: QueryDiscussion) {
@@ -520,7 +520,7 @@ function handleDiscussionDeleted(discussionId: string) {
                 >
                   {{ discussion.Context }}
                 </NuxtLink>
-                <span v-else>{{ discussion.Context }}</span>
+                <span v-else :class="{ 'text-color-red': getContextType(discussion._original as QueryDiscussion) === 'other' }">{{ discussion.Context }}</span>
               </Table.Cell>
 
               <Table.Cell>{{ discussion.Replies }}</Table.Cell>

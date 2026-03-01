@@ -3,10 +3,8 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Button, Card, Flex, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import GameServerLink from '@/components/Shared/GameServerLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
-import UserLink from '@/components/Shared/UserLink.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
@@ -21,6 +19,47 @@ const emit = defineEmits<{
   (e: 'deleteComplaint', id: number): void
   (e: 'close'): void
 }>()
+
+// Fetch context labels for display
+const supabase = useSupabaseClient()
+
+const discussionTitle = ref<string | null>(null)
+const contextUsername = ref<string | null>(null)
+const contextUserProfilePath = ref<string | null>(null)
+const contextGameserverName = ref<string | null>(null)
+
+async function fetchDiscussionTitle(discussionId: string) {
+  const { data } = await supabase
+    .from('discussions')
+    .select('title, slug')
+    .eq('id', discussionId)
+    .maybeSingle()
+
+  discussionTitle.value = data?.title ?? null
+}
+
+async function fetchContextUser(userId: string) {
+  const { data } = await supabase
+    .from('profiles')
+    .select('username, username_set')
+    .eq('id', userId)
+    .maybeSingle()
+
+  contextUsername.value = data?.username ?? null
+  contextUserProfilePath.value = data?.username_set && data?.username
+    ? `/profile/${data.username}`
+    : `/profile/${userId}`
+}
+
+async function fetchContextGameserver(gameserverId: number) {
+  const { data } = await supabase
+    .from('gameservers')
+    .select('name')
+    .eq('id', gameserverId)
+    .maybeSingle()
+
+  contextGameserverName.value = data?.name ?? null
+}
 
 // Get admin permissions
 const { canDeleteComplaints } = useAdminPermissions()
@@ -85,7 +124,7 @@ const canRespond = computed(() => {
   return props.complaint && (status.value === 'acknowledged' || status.value === 'pending')
 })
 
-// Watch for complaint changes to reset form
+// Watch for complaint changes to reset form and fetch discussion title
 watch(() => props.complaint, (newComplaint) => {
   if (newComplaint && newComplaint.response) {
     responseText.value = newComplaint.response
@@ -95,6 +134,22 @@ watch(() => props.complaint, (newComplaint) => {
   }
   // Reset editing state when complaint changes
   isEditingResponse.value = false
+
+  // Fetch context labels when the complaint changes
+  discussionTitle.value = null
+  contextUsername.value = null
+  contextUserProfilePath.value = null
+  contextGameserverName.value = null
+
+  if (newComplaint?.context_discussion) {
+    void fetchDiscussionTitle(newComplaint.context_discussion)
+  }
+  if (newComplaint?.context_user) {
+    void fetchContextUser(newComplaint.context_user)
+  }
+  if (newComplaint?.context_gameserver) {
+    void fetchContextGameserver(newComplaint.context_gameserver)
+  }
 }, { immediate: true })
 
 // Handle closing the sheet
@@ -242,20 +297,62 @@ function confirmDeleteComplaint() {
                 </Flex>
 
                 <!-- Context information -->
-                <div v-if="complaint.context_user || complaint.context_gameserver">
+                <div v-if="complaint.context_discussion_reply || complaint.context_discussion || complaint.context_user || complaint.context_gameserver">
                   <Flex gap="m" wrap>
+                    <div v-if="complaint.context_discussion_reply && complaint.context_discussion">
+                      <Flex gap="xs" y-center>
+                        <Icon name="ph:chat-circle-text" class="text-color-light" />
+                        <span class="text-s text-color-light">Reply in:</span>
+                        <NuxtLink
+                          class="text-s context-link"
+                          :to="`/forum/${complaint.context_discussion}?comment=${complaint.context_discussion_reply}`"
+                          target="_blank"
+                        >
+                          {{ discussionTitle ?? 'Discussion' }}
+                          <Icon name="ph:arrow-square-out" size="12" />
+                        </NuxtLink>
+                      </Flex>
+                    </div>
+                    <div v-else-if="complaint.context_discussion">
+                      <Flex gap="xs" y-center>
+                        <Icon name="ph:chats" class="text-color-light" />
+                        <span class="text-s text-color-light">Discussion:</span>
+                        <NuxtLink
+                          class="text-s context-link"
+                          :to="`/forum/${complaint.context_discussion}`"
+                          target="_blank"
+                        >
+                          {{ discussionTitle ?? 'View Discussion' }}
+                          <Icon name="ph:arrow-square-out" size="12" />
+                        </NuxtLink>
+                      </Flex>
+                    </div>
                     <div v-if="complaint.context_user">
                       <Flex gap="xs" y-center>
                         <Icon name="ph:user" class="text-color-light" />
-                        <span class="text-s text-color-light">About:</span>
-                        <UserLink :user-id="complaint.context_user" />
+                        <span class="text-s text-color-light">User:</span>
+                        <NuxtLink
+                          class="text-s context-link"
+                          :to="contextUserProfilePath ?? `/profile/${complaint.context_user}`"
+                          target="_blank"
+                        >
+                          {{ contextUsername ?? 'View Profile' }}
+                          <Icon name="ph:arrow-square-out" size="12" />
+                        </NuxtLink>
                       </Flex>
                     </div>
                     <div v-if="complaint.context_gameserver">
                       <Flex gap="xs" y-center>
                         <Icon name="ph:game-controller" class="text-color-light" />
                         <span class="text-s text-color-light">Game Server:</span>
-                        <GameServerLink :gameserver-id="complaint.context_gameserver" />
+                        <NuxtLink
+                          class="text-s context-link"
+                          :to="`/servers/gameservers/${complaint.context_gameserver}`"
+                          target="_blank"
+                        >
+                          {{ contextGameserverName ?? 'View Server' }}
+                          <Icon name="ph:arrow-square-out" size="12" />
+                        </NuxtLink>
                       </Flex>
                     </div>
                   </Flex>
@@ -469,5 +566,18 @@ function confirmDeleteComplaint() {
 
 .flex-1 {
   flex: 1;
+}
+
+.context-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: var(--transition-fast);
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 </style>

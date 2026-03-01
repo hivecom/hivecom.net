@@ -214,8 +214,8 @@ function handleDelete() {
       <DropdownItem @click="showEditModal = true">
         Edit
       </DropdownItem>
-      <template v-if="props.table === 'discussions'">
-        <Tooltip v-if="linkedDiscussionReason" placement="left">
+      <template v-if="props.table === 'discussions' && linkedDiscussionReason">
+        <Tooltip placement="left">
           <template #tooltip>
             <p>{{ linkedDiscussionReason }}</p>
           </template>
@@ -223,10 +223,10 @@ function handleDelete() {
             Delete
           </DropdownItem>
         </Tooltip>
-        <DropdownItem v-else @click="deleteConfirm = true">
-          Delete
-        </DropdownItem>
       </template>
+      <DropdownItem v-else @click="deleteConfirm = true">
+        Delete
+      </DropdownItem>
     </Dropdown>
 
     <!-- Confirmation modal for archiving & deletion -->

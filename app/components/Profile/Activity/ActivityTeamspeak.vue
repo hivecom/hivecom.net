@@ -213,7 +213,7 @@ watch(() => props.profileId, () => {
                 <Icon class="activity-item__icon" name="mdi:teamspeak" size="13" />
                 Loading...
               </span>
-              <strong class="activity-item__title">—</strong>
+              <strong class="activity-item__title">-</strong>
             </div>
           </template>
 

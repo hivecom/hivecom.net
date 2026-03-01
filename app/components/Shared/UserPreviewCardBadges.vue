@@ -5,6 +5,8 @@ import type { Enums } from '@/types/database.types'
 import { Flex } from '@dolanske/vui'
 import { computed } from 'vue'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
+import ProfileBadgeDiscussionReplies from '@/components/Profile/Badges/ProfileBadgeDiscussionReplies.vue'
+import ProfileBadgeDiscussionStarter from '@/components/Profile/Badges/ProfileBadgeDiscussionStarter.vue'
 import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
 import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
 import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
@@ -12,7 +14,10 @@ import ProfileBadgeRSVPs from '@/components/Profile/Badges/ProfileBadgeRSVPs.vue
 import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
 import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
 import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
+import { useCacheBadgeDiscussionReplyCount } from '@/composables/useCacheBadgeDiscussionReplyCount'
+import { useCacheBadgeDiscussionStartedCount } from '@/composables/useCacheBadgeDiscussionStartedCount'
 import { useCacheBadgePartyAnimalCount } from '@/composables/useCacheBadgePartyAnimalCount'
+import { DISCUSSION_REPLY_MIN_COUNT, DISCUSSION_STARTER_MIN_COUNT, getDiscussionReplyVariant, getDiscussionStarterVariant } from '@/lib/discussionBadge'
 import { getPartyAnimalVariant, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/partyAnimalBadge'
 
 const props = defineProps<{
@@ -63,6 +68,20 @@ const partyAnimalVariant = computed<BadgeVariant | null>(() => {
   return variant ?? null
 })
 const hasPartyAnimalBadge = computed(() => (partyAnimalVariant.value !== null) && PartyAnimalCount.value >= PARTY_ANIMAL_MIN_RSVPS)
+
+const { count: DiscussionStartedCount } = useCacheBadgeDiscussionStartedCount(previewedUserId)
+const discussionStarterVariant = computed<BadgeVariant | null>(() => {
+  const variant = getDiscussionStarterVariant(DiscussionStartedCount.value)
+  return variant ?? null
+})
+const hasDiscussionStarterBadge = computed(() => (discussionStarterVariant.value !== null) && DiscussionStartedCount.value >= DISCUSSION_STARTER_MIN_COUNT)
+
+const { count: DiscussionReplyCount } = useCacheBadgeDiscussionReplyCount(previewedUserId)
+const discussionReplyVariant = computed<BadgeVariant | null>(() => {
+  const variant = getDiscussionReplyVariant(DiscussionReplyCount.value)
+  return variant ?? null
+})
+const hasDiscussionReplyBadge = computed(() => (discussionReplyVariant.value !== null) && DiscussionReplyCount.value >= DISCUSSION_REPLY_MIN_COUNT)
 
 function getDaysSince(dateString: string | null | undefined): number {
   if (!dateString)
@@ -143,6 +162,28 @@ const badgeEntries = computed<RenderableBadgeEntry[]>(() => {
         },
       })
     }
+
+    if (hasDiscussionStarterBadge.value && discussionStarterVariant.value === variant) {
+      entries.push({
+        id: 'forum_regular',
+        component: ProfileBadgeDiscussionStarter,
+        componentProps: {
+          discussions: DiscussionStartedCount.value,
+          compact: true,
+        },
+      })
+    }
+
+    if (hasDiscussionReplyBadge.value && discussionReplyVariant.value === variant) {
+      entries.push({
+        id: 'chatterbox',
+        component: ProfileBadgeDiscussionReplies,
+        componentProps: {
+          replies: DiscussionReplyCount.value,
+          compact: true,
+        },
+      })
+    }
   })
 
   return entries
@@ -153,7 +194,7 @@ const hasBadges = computed(() => badgeEntries.value.length > 0)
 </script>
 
 <template>
-  <Flex v-if="hasBadges" :gap="0" role="list" aria-label="User badges">
+  <Flex v-if="hasBadges" :gap="0" role="list" aria-label="User badges" class="user-preview-card-badges">
     <Flex
       v-for="badge in visibleBadges"
       :key="`preview-card-badge-${badge.id}`"
@@ -168,13 +209,17 @@ const hasBadges = computed(() => badgeEntries.value.length > 0)
 </template>
 
 <style scoped lang="scss">
+.user-preview-card-badges {
+  margin-right: -16px;
+}
+
 .user-preview-card-badges__item {
-  min-width: 64px;
-  max-width: 64px;
-  min-height: 64px;
-  max-height: 64px;
-  margin-left: -22px;
-  margin-top: -12px;
+  min-width: 84px;
+  max-width: 84px;
+  min-height: 84px;
+  max-height: 84px;
+  margin-left: -40px;
+  margin-top: -30px;
 }
 
 .user-preview-card-badges__badge {
@@ -194,9 +239,13 @@ const hasBadges = computed(() => badgeEntries.value.length > 0)
   margin-inline: auto;
 }
 
-.user-preview-card-badges__item :deep(.profile-badge.profile-badge--compact .profile-badge__hex-wrapper) {
-  width: 100%;
-  max-width: 100%;
+.user-preview-card-badges__item :deep(.profile-badge-years__years) {
+  font-size: 1.6rem;
+}
+
+.user-preview-card-badges__item :deep(.profile-badge-years__unit) {
+  font-size: 0.55rem;
+  letter-spacing: 0.25em;
 }
 
 .user-preview-card-badges__item :deep(.profile-badge__label) {

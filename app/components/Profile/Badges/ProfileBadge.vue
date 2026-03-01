@@ -404,6 +404,7 @@ onBeforeUnmount(() => {
   box-shadow:
     0 22px 55px rgba(6, 6, 12, 0.72),
     0 0 70px rgba(255, 255, 255, 0.12);
+  z-index: 100;
 }
 
 .profile-badge[data-tilt-active='true']::before {

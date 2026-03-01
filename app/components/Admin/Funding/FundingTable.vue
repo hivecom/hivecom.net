@@ -201,7 +201,7 @@ onBeforeMount(fetchMonthlyFundings)
         </Flex>
 
         <Flex :x-end="!isBelowMedium" :x-center="isBelowMedium" :x-start="isBelowMedium" :expand="isBelowMedium" :y-center="!isBelowMedium" :y-start="isBelowMedium">
-          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total -</span>
         </Flex>
       </Flex>
 

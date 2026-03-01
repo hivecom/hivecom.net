@@ -8,7 +8,7 @@ export type KvEntry = Omit<Tables<'kvstore'>, 'value'> & { value: unknown }
  */
 export function renderKvValue(value: unknown): string {
   if (value === null || value === undefined)
-    return '—'
+    return '-'
 
   if (typeof value === 'string')
     return value

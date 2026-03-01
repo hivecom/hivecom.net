@@ -89,6 +89,8 @@ export interface Database {
       complaints: {
         Row: {
           acknowledged: boolean
+          context_discussion: string | null
+          context_discussion_reply: string | null
           context_gameserver: number | null
           context_user: string | null
           created_at: string
@@ -101,6 +103,8 @@ export interface Database {
         }
         Insert: {
           acknowledged?: boolean
+          context_discussion?: string | null
+          context_discussion_reply?: string | null
           context_gameserver?: number | null
           context_user?: string | null
           created_at?: string
@@ -113,6 +117,8 @@ export interface Database {
         }
         Update: {
           acknowledged?: boolean
+          context_discussion?: string | null
+          context_discussion_reply?: string | null
           context_gameserver?: number | null
           context_user?: string | null
           created_at?: string
@@ -124,6 +130,20 @@ export interface Database {
           response?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: 'complaints_context_discussion_fkey'
+            columns: ['context_discussion']
+            isOneToOne: false
+            referencedRelation: 'discussions'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'complaints_context_discussion_reply_fkey'
+            columns: ['context_discussion_reply']
+            isOneToOne: false
+            referencedRelation: 'discussion_replies'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'complaints_context_gameserver_fkey'
             columns: ['context_gameserver']
@@ -250,6 +270,7 @@ export interface Database {
           id: string
           is_archived: boolean
           is_locked: boolean
+          last_activity_at: string
           modified_at: string
           modified_by: string | null
           name: string
@@ -264,6 +285,7 @@ export interface Database {
           id?: string
           is_archived?: boolean
           is_locked?: boolean
+          last_activity_at?: string
           modified_at?: string
           modified_by?: string | null
           name: string
@@ -278,6 +300,7 @@ export interface Database {
           id?: string
           is_archived?: boolean
           is_locked?: boolean
+          last_activity_at?: string
           modified_at?: string
           modified_by?: string | null
           name?: string
@@ -324,6 +347,7 @@ export interface Database {
           is_locked: boolean
           is_nsfw: boolean
           is_sticky: boolean
+          last_activity_at: string
           markdown: string | null
           modified_at: string
           modified_by: string | null
@@ -349,6 +373,7 @@ export interface Database {
           is_locked?: boolean
           is_nsfw?: boolean
           is_sticky?: boolean
+          last_activity_at?: string
           markdown?: string | null
           modified_at?: string
           modified_by?: string | null
@@ -374,6 +399,7 @@ export interface Database {
           is_locked?: boolean
           is_nsfw?: boolean
           is_sticky?: boolean
+          last_activity_at?: string
           markdown?: string | null
           modified_at?: string
           modified_by?: string | null
@@ -1272,7 +1298,51 @@ export interface Database {
       }
     }
     Views: {
-      [_ in never]: never
+      forum_discussion_replies: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          discussion_id: string
+          id: string
+          is_deleted: boolean
+          is_nsfw: boolean
+          markdown: string
+          meta: Json | null
+          modified_at: string
+          modified_by: string | null
+          reply_to_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'discussion_replies_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'discussion_replies_discussion_id_fkey'
+            columns: ['discussion_id']
+            isOneToOne: false
+            referencedRelation: 'discussions'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'discussion_replies_modified_by_fkey'
+            columns: ['modified_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'discussion_replies_reply_to_id_fkey'
+            columns: ['reply_to_id']
+            isOneToOne: false
+            referencedRelation: 'discussion_replies'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Functions: {
       admin_delete_user_sessions: {

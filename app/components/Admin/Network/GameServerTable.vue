@@ -389,7 +389,7 @@ onBeforeMount(fetchGameservers)
           :expand="isBelowMedium"
           :column-reverse="isBelowMedium"
         >
-          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total —</span>
+          <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total -</span>
 
           <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddGameserverForm">
             <template #start>
@@ -468,7 +468,7 @@ onBeforeMount(fetchGameservers)
               <TimestampDate :date="gameserver.Created" />
             </Table.Cell>
             <Table.Cell>
-              {{ gameserver.Container || '—' }}
+              {{ gameserver.Container || '-' }}
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions

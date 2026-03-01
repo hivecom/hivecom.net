@@ -138,6 +138,45 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
 }
 
 /**
+ * Formats a markdown string into a plain-text preview suitable for display in
+ * compact UI elements (activity feeds, profile sections, etc.).
+ *
+ * - Processes mention UUIDs into readable @username strings first
+ * - Strips all markdown syntax (images, links, bold, etc.) before truncating,
+ *   avoiding broken partial patterns from early truncation
+ * - Falls back to a descriptive label when the entire content was media/links
+ *
+ * @param markdown Raw markdown content
+ * @param mentionLookup Optional map of mention UUID -> username for resolving mentions
+ * @param maxLength Optional character limit applied after stripping (default: 0 = no limit)
+ * @returns Plain-text preview string, never empty
+ */
+export function formatMarkdownPreview(
+  markdown: string | null | undefined,
+  mentionLookup: Record<string, string> = {},
+  maxLength = 0,
+): string {
+  if (markdown === null || markdown === undefined || markdown.trim() === '')
+    return '(empty)'
+
+  const processed = processMentionsToText(markdown, mentionLookup)
+  const stripped = stripMarkdown(processed)
+
+  if (stripped) {
+    return maxLength > 0 ? stripped.slice(0, maxLength) : stripped
+  }
+
+  // Content stripped to nothing - detect what kind of media it was
+  if (/!\[.*?\]\(.*?\)/.test(markdown))
+    return '📷 Posted an image'
+
+  if (/\[.*?\]\(.*?\)/.test(markdown))
+    return '🔗 Posted a link'
+
+  return '(empty)'
+}
+
+/**
  * @param markdownText Original text
  * @returns Returns the markdown input wrapped in blockquotes
  */
