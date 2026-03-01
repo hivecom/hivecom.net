@@ -19,7 +19,6 @@ import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 const {
   errors = [],
   minHeight = '47px',
-  showActions = false,
   ...props
 } = defineProps<Props>()
 
