@@ -157,7 +157,7 @@ export function formatMarkdownPreview(
   maxLength = 0,
 ): string {
   if (markdown === null || markdown === undefined || markdown.trim() === '')
-    return '(empty)'
+    return '#empty'
 
   const processed = processMentionsToText(markdown, mentionLookup)
   const stripped = stripMarkdown(processed)
@@ -168,12 +168,12 @@ export function formatMarkdownPreview(
 
   // Content stripped to nothing - detect what kind of media it was
   if (/!\[.*?\]\(.*?\)/.test(markdown))
-    return '📷 Posted an image'
+    return '#image'
 
   if (/\[.*?\]\(.*?\)/.test(markdown))
-    return '🔗 Posted a link'
+    return '#link'
 
-  return '(empty)'
+  return '#empty'
 }
 
 /**

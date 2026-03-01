@@ -15,7 +15,7 @@ interface Props {
 
 interface ReplyWithDiscussion {
   id: string
-  markdown: string
+  content: string
   created_at: string
   discussion_id: string
   discussionTitle: string | null
@@ -64,19 +64,22 @@ async function fetchReplies() {
     (discussionData ?? []).map(d => [d.id, d]),
   )
 
-  replies.value = replyData.map((reply) => {
-    const discussion = discussionMap.get(reply.discussion_id)
-    const slug = discussion?.slug ?? reply.discussion_id
-    return {
-      id: reply.id,
-      markdown: reply.markdown,
-      created_at: reply.created_at,
-      discussion_id: reply.discussion_id,
-      discussionTitle: discussion?.title ?? null,
-      discussionSlug: slug,
-      href: `/forum/${slug}?comment=${reply.id}`,
-    }
-  })
+  // Format replies and strip out empty content
+  replies.value = replyData
+    .map((reply) => {
+      const discussion = discussionMap.get(reply.discussion_id)
+      const slug = discussion?.slug ?? reply.discussion_id
+      return {
+        id: reply.id,
+        content: formatMarkdownPreview(reply.markdown, {}, 120),
+        created_at: reply.created_at,
+        discussion_id: reply.discussion_id,
+        discussionTitle: discussion?.title ?? null,
+        discussionSlug: slug,
+        href: `/forum/${slug}?comment=${reply.id}`,
+      }
+    })
+    .filter(reply => reply.content !== '#empty')
 
   loading.value = false
 }
@@ -142,7 +145,15 @@ const emptyStateText = computed(() => {
           <span class="profile-discussions__timestamp">{{ dayjs(reply.created_at).fromNow() }}</span>
         </Flex>
         <p class="profile-discussions__content">
-          {{ formatMarkdownPreview(reply.markdown, {}, 120) }}
+          <template v-if="reply.content === '#link'">
+            <i>Posted a link</i>
+          </template>
+          <template v-else-if="reply.content === '#image'">
+            <i>Posted an image</i>
+          </template>
+          <template v-else>
+            {{ reply.content }}
+          </template>
         </p>
       </NuxtLink>
     </div>
@@ -159,19 +170,10 @@ const emptyStateText = computed(() => {
 
 <style lang="scss" scoped>
 @use '@/assets/mixins.scss' as *;
-.profile-discussions {
-  &__view-all {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xxs);
-    font-size: var(--font-size-s);
-    color: var(--color-text-lighter);
-    text-decoration: none;
-    transition: color var(--transition-fast);
 
-    &:hover {
-      color: var(--color-text);
-    }
+.profile-discussions {
+  :deep(.vui-card-content) {
+    padding: var(--space-xs) !important;
   }
 
   &__loading {
@@ -194,12 +196,8 @@ const emptyStateText = computed(() => {
     transition: background-color var(--transition-fast);
     cursor: pointer;
 
-    &:not(:last-child) {
-      border-bottom: 1px solid var(--color-border-weak);
-    }
-
     &:hover {
-      background-color: var(--color-bg-medium);
+      background-color: var(--color-bg-raised);
     }
 
     &--skeleton {
@@ -231,11 +229,11 @@ const emptyStateText = computed(() => {
 
     strong {
       font-size: var(--font-size-xs);
-      font-weight: 600;
-      color: var(--color-text-light);
+      font-weight: var(--font-weight-semibold);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      color: inherit;
     }
   }
 
@@ -251,6 +249,10 @@ const emptyStateText = computed(() => {
     color: var(--color-text);
     line-height: 1.4;
     margin: 0;
+
+    i {
+      color: var(--color-text);
+    }
   }
 
   &__empty {

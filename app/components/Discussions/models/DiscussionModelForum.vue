@@ -3,6 +3,7 @@ import type { Comment, ProvidedDiscussion } from '../Discussion.vue'
 import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import Reactions from '@/components/Reactions/Reactions.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -177,11 +178,17 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 
       <MDRenderer v-else :md="data.markdown" :skeleton-height="128" />
 
-      <p class="discussion-forum__timestamp">
-        <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
-        <span>{{ data.modified_at !== data.created_at ? `Edited ${dayjs(data.modified_at).fromNow()}` : null }}</span>
-      </p>
+      <!-- Bottom row with timestamps and reactions` -->
+      <Flex x-between y-center>
+        <p class="discussion-forum__timestamp">
+          <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
+          <span>{{ data.modified_at !== data.created_at ? `Edited ${dayjs(data.modified_at).fromNow()}` : null }}</span>
+        </p>
 
+        <Reactions />
+      </Flex>
+
+      <!-- Floating actions -->
       <div v-if="!showNSFWWarning" class="discussion-forum__actions">
         <ButtonGroup v-if="user">
           <template v-if="(!discussion?.is_locked || canBypassLock) && !discussion?.is_archived">
@@ -262,12 +269,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 
     <Modal :open="editing" centered scrollable size="l" @close="editing = false">
       <template #header>
-        <Flex column gap="xxs">
-          <h3>Edit post</h3>
-          <p class="text-color-light text-m">
-            Avoid writing offensive things.
-          </p>
-        </Flex>
+        <h3>Edit reply</h3>
       </template>
 
       <RichTextEditor
@@ -345,10 +347,13 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
     }
   }
 
+  &__bottom-row {
+    margin-top: var(--space-l);
+  }
+
   &__timestamp {
     display: flex;
     gap: var(--space-l);
-    margin-top: var(--space-l);
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
 
@@ -395,6 +400,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
     flex-direction: column;
     justify-content: space-between;
     padding: var(--space-m);
+    padding-bottom: var(--space-s);
     background-color: var(--color-bg-medium);
     border-bottom-right-radius: var(--border-radius-m);
     border-top-right-radius: var(--border-radius-m);

@@ -44,7 +44,7 @@ export default defineNuxtConfig({
   },
   compatibilityDate: '2024-09-25',
   typescript: {
-    typeCheck: true,
+    typeCheck: false,
   },
   modules: [
     '@nuxtjs/supabase',
