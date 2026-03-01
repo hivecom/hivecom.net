@@ -1,6 +1,14 @@
+import type { SitemapUrl } from './nitro/fetch-routes'
 import { fileURLToPath } from 'node:url'
 import process from 'process'
 import fetchRoutes from './nitro/fetch-routes'
+
+// Cache the fetch result so it's only called once across hooks
+let fetchRoutesCache: Promise<{ routes: string[], sitemapUrls: SitemapUrl[] }> | null = null
+async function getCachedRoutes() {
+  fetchRoutesCache ??= fetchRoutes()
+  return fetchRoutesCache
+}
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -89,6 +97,10 @@ export default defineNuxtConfig({
   sitemap: {
     zeroRuntime: true,
     exclude: ['/admin/**', '/auth/**', '/playground/**', '/profile/**', '/votes/**'],
+    urls: async () => {
+      const { sitemapUrls } = await getCachedRoutes()
+      return sitemapUrls
+    },
   },
   hooks: {
     'nitro:config': async (nitroConfig) => {
@@ -96,7 +108,7 @@ export default defineNuxtConfig({
         return
       }
 
-      const routes = await fetchRoutes()
+      const { routes } = await getCachedRoutes()
       if (nitroConfig.prerender && nitroConfig.prerender.routes) {
         nitroConfig.prerender.routes.push(...routes)
       }
