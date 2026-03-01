@@ -2,7 +2,7 @@
 import { Card, Flex, Skeleton } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { formatMarkdownPreview } from '@/lib/markdown-processors'
+import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 
 const props = defineProps<Props>()
 
@@ -15,7 +15,7 @@ interface Props {
 
 interface ReplyWithDiscussion {
   id: string
-  content: string
+  markdown: string
   created_at: string
   discussion_id: string
   discussionTitle: string | null
@@ -71,7 +71,7 @@ async function fetchReplies() {
       const slug = discussion?.slug ?? reply.discussion_id
       return {
         id: reply.id,
-        content: formatMarkdownPreview(reply.markdown, {}, 120),
+        markdown: reply.markdown,
         created_at: reply.created_at,
         discussion_id: reply.discussion_id,
         discussionTitle: discussion?.title ?? null,
@@ -144,17 +144,7 @@ const emptyStateText = computed(() => {
           </span>
           <span class="profile-discussions__timestamp">{{ dayjs(reply.created_at).fromNow() }}</span>
         </Flex>
-        <p class="profile-discussions__content">
-          <template v-if="reply.content === '#link'">
-            <i>Posted a link</i>
-          </template>
-          <template v-else-if="reply.content === '#image'">
-            <i>Posted an image</i>
-          </template>
-          <template v-else>
-            {{ reply.content }}
-          </template>
-        </p>
+        <MarkdownPreview :markdown="reply.markdown" :max-length="120" class="profile-discussions__content" />
       </NuxtLink>
     </div>
 
@@ -249,10 +239,6 @@ const emptyStateText = computed(() => {
     color: var(--color-text);
     line-height: 1.4;
     margin: 0;
-
-    i {
-      color: var(--color-text);
-    }
   }
 
   &__empty {

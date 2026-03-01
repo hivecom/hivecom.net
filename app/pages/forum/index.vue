@@ -11,8 +11,9 @@ import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
+import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
-import { extractMentionIds, formatMarkdownPreview, processMentionsToText, stripMarkdown } from '@/lib/markdown-processors'
+import { extractMentionIds, processMentionsToText, stripMarkdown } from '@/lib/markdown-processors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
@@ -620,8 +621,6 @@ function fetchDraftCount() {
 onBeforeMount(() => {
   fetchDraftCount()
 })
-
-// TODO: allow showing discussion detail page only to the author
 </script>
 
 <template>
@@ -651,12 +650,6 @@ onBeforeMount(() => {
             <Flex x-between y-center expand>
               <Flex :gap="4" y-center>
                 <Icon :name="post.icon" :size="13" />
-                <!-- NOTE (@dolanske): I removed the archived badge as we're
-                cramming too much information into small card. Its just a quick
-                update. If user clicks the post they will learn its archived
-                anyway and imho its not really that relevant. If the isArchived
-                only showed as a status update, then we could bring it back
-                though. "Admin arhived <name>" or something like that -->
                 <span class="forum__latest-type">
                   <template v-if="post.type === 'Reply'">
                     {{ post.typeLabel }} <strong>{{ post.typeContext }}</strong>
@@ -669,7 +662,8 @@ onBeforeMount(() => {
               <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
             </Flex>
             <strong class="forum__latest-title">
-              {{ post.type === 'Reply' ? formatMarkdownPreview(post.title, mentionLookup) : post.title }}
+              <MarkdownPreview v-if="post.type === 'Reply'" :markdown="post.title" :mention-lookup />
+              <template v-else>{{ post.title }}</template>
             </strong>
             <p v-if="post.description" class="forum__latest-description">
               {{ stripMarkdown(processMentionsToText(post.description, mentionLookup)) }}
