@@ -244,7 +244,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
       </div>
     </div>
 
-    <Modal :open="editing" centered scrollable @close="editing = false">
+    <Modal :open="editing" centered scrollable size="l" @close="editing = false">
       <template #header>
         <Flex column gap="xxs">
           <h3>Edit post</h3>
