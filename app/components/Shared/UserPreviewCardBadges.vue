@@ -210,33 +210,20 @@ const hasBadges = computed(() => badgeEntries.value.length > 0)
 
 <style scoped lang="scss">
 .user-preview-card-badges {
-  margin-right: -16px;
+  margin-right: -8px;
 }
 
 .user-preview-card-badges__item {
-  min-width: 84px;
-  max-width: 84px;
-  min-height: 84px;
-  max-height: 84px;
-  margin-left: -40px;
-  margin-top: -30px;
+  min-width: 54px;
+  max-width: 54px;
+  min-height: 54px;
+  max-height: 54px;
+  margin-left: -16px;
+  margin-top: -16px;
 }
 
 .user-preview-card-badges__badge {
   width: 100%;
-}
-
-.user-preview-card-badges__item :deep(.profile-badge) {
-  width: 100%;
-  padding: clamp(0.85rem, 2vw, 1.25rem);
-  gap: clamp(0.75rem, 2vw, 1rem);
-  border-radius: 24px;
-}
-
-.user-preview-card-badges__item :deep(.profile-badge__hex-wrapper) {
-  width: 100%;
-  max-width: 140px;
-  margin-inline: auto;
 }
 
 .user-preview-card-badges__item :deep(.profile-badge-years__years) {
@@ -246,15 +233,6 @@ const hasBadges = computed(() => badgeEntries.value.length > 0)
 .user-preview-card-badges__item :deep(.profile-badge-years__unit) {
   font-size: 0.55rem;
   letter-spacing: 0.25em;
-}
-
-.user-preview-card-badges__item :deep(.profile-badge__label) {
-  font-size: clamp(0.75rem, 1.6vw, 1rem);
-  letter-spacing: 0.08em;
-}
-
-.user-preview-card-badges__item :deep(.profile-badge__body) {
-  max-width: 100%;
 }
 
 .user-preview-card-badges__overflow {

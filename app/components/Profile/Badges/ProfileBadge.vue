@@ -399,6 +399,10 @@ onBeforeUnmount(() => {
   filter: contrast(1.1) saturate(1.1);
 }
 
+:root.light .profile-badge {
+  filter: brightness(150%) saturate(0.6);
+}
+
 .profile-badge[data-tilt-active='true'] {
   border-color: rgba(255, 255, 255, 0.16);
   box-shadow:
@@ -562,7 +566,7 @@ onBeforeUnmount(() => {
 
 .profile-badge__description {
   margin: 0;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--color-text);
   font-size: var(--font-size-s);
   line-height: 1.5;
   max-width: 260px;
@@ -633,6 +637,13 @@ onBeforeUnmount(() => {
     0 0 45px var(--badge-glow);
 }
 
+:root.light .profile-badge.profile-badge--compact[data-tilt-active='true'] {
+  background: none;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    0 0 0 transparent;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .profile-badge {
     transition: none;
@@ -649,7 +660,7 @@ onBeforeUnmount(() => {
 }
 
 .profile-badge--compact .profile-badge__hex-wrapper {
-  width: clamp(90px, 26vw, 100%);
+  width: 100%;
 }
 
 @media (max-width: 640px) {
