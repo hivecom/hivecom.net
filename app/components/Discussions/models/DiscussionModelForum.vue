@@ -11,6 +11,7 @@ import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import UserRole from '@/components/Shared/UserRole.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { getCountryInfo } from '@/lib/utils/country'
 
@@ -30,6 +31,8 @@ const data = toRef(props, 'data')
 const userId = useUserId()
 const supabase = useSupabaseClient()
 const currentUser = useSupabaseUser()
+
+const isMobile = useBreakpoint('<s')
 
 const discussion = inject('discussion') as ProvidedDiscussion
 
@@ -113,8 +116,8 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 <template>
   <div class="discussion-forum">
     <DefineReusableUserInfo>
-      <Flex column x-center y-center gap="s" class="mb-s">
-        <Avatar :url="user?.avatarUrl || undefined" size="l" />
+      <Flex column x-center y-center :gap="isMobile ? 'xs' : 's'">
+        <Avatar :url="user?.avatarUrl || undefined" :size="isMobile ? 'm' : 'l'" />
         <Flex wrap gap="xxs" y-center x-center>
           <UserName :user-id="data.created_by" />
           <BadgeCircle v-if="data.created_by === discussion?.created_by">
@@ -132,7 +135,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 
       <UserInfo v-else />
 
-      <Flex v-if="user?.created_at || country" expand x-center gap="xs">
+      <Flex v-if="user?.created_at || country" expand x-center gap="xs" class="mt-s">
         <p v-if="country" class="author-meta">
           {{ country.emoji }}
         </p>
@@ -145,6 +148,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
         {{ user.introduction }}
       </p>
     </div>
+
     <div class="discussion-forum__content">
       <Alert v-if="data.reply" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
         <p v-if="data.reply.created_by !== userId" class="discussion-forum__reply-user">
@@ -275,6 +279,8 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .discussion-forum {
   display: grid;
   grid-template-columns: 212px 1fr;
@@ -305,7 +311,6 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
     border-radius: var(--border-radius-l);
     background-color: var(--color-bg-raised);
     padding: var(--space-m);
-    margin-bottom: var(--space-m);
     transition: var(--transition);
     color: var(--color-text-light);
     gap: var(--space-xxs);
@@ -388,6 +393,30 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
     opacity: 0;
     z-index: -1;
     visibility: hidden;
+  }
+}
+
+@media screen and (max-width: $breakpoint-s) {
+  .discussion-forum {
+    display: flex;
+    flex-direction: column-reverse;
+
+    &__author {
+      width: 100%;
+      padding: var(--space-xs);
+      border-right: none;
+    }
+
+    &__content {
+      width: 100%;
+      border-top-left-radius: var(--border-radius-m);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    &__timestamp {
+      margin-top: var(--space-m);
+    }
   }
 }
 </style>

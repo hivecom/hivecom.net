@@ -155,8 +155,9 @@ onMounted(async () => {
   }
 }
 
+// NOTE (@dolanske) Will test how things look like without this. It is messing a lot of UI up
 // Mobile responsiveness for page header
-@media (max-width: $breakpoint-s) {
+/* @media (max-width: $breakpoint-s) {
   .page section:first-child {
     text-align: center !important;
 
@@ -168,5 +169,5 @@ onMounted(async () => {
       text-align: center !important;
     }
   }
-}
+} */
 </style>
