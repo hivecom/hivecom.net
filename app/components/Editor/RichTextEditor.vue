@@ -42,7 +42,10 @@ interface Props {
   placeholder?: string
   minHeight?: string
   limit?: number
-  showActions?: boolean
+  // showActions?: boolean
+  showAttachmentButton?: boolean
+  showSubmitButton?: boolean
+  showSensitiveButton?: boolean
   contentRulesOverlayText?: string
   /**
    * If provided, it will enable media upload via pasting/dragging media files
@@ -260,23 +263,25 @@ function handleSubmit() {
         <EditorContent v-if="editorMode === 'rich'" :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
         <Textarea v-else v-model="content" expand :placeholder="placeholder" />
 
-        <div v-if="showActions" class="editor-actions">
+        <div class="editor-actions">
           <Button plain square size="s" :data-title-top="editorMode === 'rich' ? 'Switch to plain text' : 'Switch to rich text'" @click="editorMode = editorMode === 'rich' ? 'plain' : 'rich'">
             <Icon :name="editorMode === 'rich' ? 'ph:pen-nib' : 'ph:markdown-logo'" />
           </Button>
 
-          <Button plain square size="s" data-title-top="Attach a file" @click="fileInput?.click()">
-            <Icon name="ph:paperclip" />
-          </Button>
+          <template v-if="props.showAttachmentButton">
+            <Button plain square size="s" data-title-top="Attach a file" @click="fileInput?.click()">
+              <Icon name="ph:paperclip" />
+            </Button>
 
-          <input ref="file-input" class="visually-hidden" type="file" accept="image/png, image/jpeg, image/gif, image/webp" @input="handleFileInput">
+            <input ref="file-input" class="visually-hidden" type="file" accept="image/png, image/jpeg, image/gif, image/webp" @input="handleFileInput">
+          </template>
 
-          <ButtonGroup :gap="2">
-            <Button v-if="isNsfw !== undefined" square size="s" :data-title-top="isNsfw ? 'Marked as NSFW' : 'Marked as safe'" @click="isNsfw = !isNsfw">
+          <ButtonGroup v-if="props.showSubmitButton || (isNsfw !== undefined && props.showSensitiveButton)" :gap="2">
+            <Button v-if="isNsfw !== undefined && props.showSensitiveButton" :variant="!!isNsfw ? 'danger' : 'gray'" square size="s" :data-title-top="isNsfw ? 'Marked as NSFW' : 'Marked as safe'" @click="isNsfw = !isNsfw">
               <Icon :name="isNsfw ? 'ph:eye-closed' : 'ph:eye'" />
             </Button>
 
-            <Button size="s" type="submit" @click="handleSubmit">
+            <Button v-if="props.showSubmitButton" size="s" type="submit" @click="handleSubmit">
               Send
               <template #end>
                 <Icon name="ph:paper-plane-tilt" />
