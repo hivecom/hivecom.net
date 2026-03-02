@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.overrides'
-import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Switch, Tooltip } from '@dolanske/vui'
+import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import { useStorage as useLocalStorage } from '@vueuse/core'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -869,15 +869,18 @@ onBeforeMount(() => {
       </section>
 
       <section v-if="settings.showContinue && userId && (userActivityLoading || userActivity.length > 0)" class="forum__continue">
-        <Flex y-center x-between expand class="mb-s">
-          <h5>Recently visited</h5>
-          <span v-if="userActivityLoading" class="forum__continue-loading">
-            <Icon name="ph:circle-notch" class="spinning" />
-          </span>
-        </Flex>
+        <h5 class="mb-s">
+          Recently visited
+        </h5>
 
         <Card>
-          <ul v-if="userActivity.length > 0" class="forum__continue-list">
+          <ul v-if="userActivityLoading" class="forum__continue-list">
+            <li v-for="item in 6" :key="item">
+              <Skeleton :height="40" width="100%" />
+            </li>
+          </ul>
+
+          <ul v-else-if="userActivity.length > 0" class="forum__continue-list">
             <li v-for="item in userActivity" :key="item.id">
               <NuxtLink :to="item.discussionHref" class="forum__continue-item">
                 <TinyBadge class="ws-nowrap">
