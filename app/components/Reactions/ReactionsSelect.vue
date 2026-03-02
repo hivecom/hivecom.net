@@ -27,6 +27,10 @@ const EMOTE_GROUPS: { label: string, emotes: string[] }[] = [
 const anchor = useTemplateRef('anchor')
 const open = ref(false)
 
+function toggle() {
+  open.value = !open.value
+}
+
 function selectEmote(emote: string) {
   emit('reaction', emote)
   open.value = false
@@ -34,9 +38,13 @@ function selectEmote(emote: string) {
 </script>
 
 <template>
-  <button ref="anchor" class="reactions__button reactions__button--trigger" @click="open = !open">
-    <Icon name="ph:smiley" :size="20" />
-  </button>
+  <div ref="anchor" class="inline-block" :class="{ 'reactions-anchor-active': open }">
+    <slot :toggle="toggle">
+      <div role="button" class="reactions__button" @click="toggle">
+        <Icon name="ph:smiley" :size="20" class="text-color-lighter" />
+      </div>
+    </slot>
+  </div>
 
   <Popout :anchor :visible="open" @click-outside="open = false">
     <div class="reactions__picker">
@@ -60,12 +68,6 @@ function selectEmote(emote: string) {
 </template>
 
 <style scoped lang="scss">
-.reactions__button--trigger {
-  .iconify {
-    color: var(--color-text-lighter);
-  }
-}
-
 .reactions__picker {
   display: flex;
   flex-direction: column;

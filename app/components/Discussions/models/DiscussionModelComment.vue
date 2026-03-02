@@ -4,6 +4,7 @@ import { Alert, Button, ButtonGroup, Card, Flex, Modal, Switch, Tooltip } from '
 import dayjs from 'dayjs'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import Reactions from '@/components/Reactions/Reactions.vue'
+import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
@@ -113,6 +114,14 @@ watch(editedContent, () => editError.value = [])
 // ── Reporting ─────────────────────────────────────────────────────────────────
 
 const showReportModal = ref(false)
+
+// ── Reactions ─────────────────────────────────────────────────────────────────
+
+const { displayReactions, toggleReaction } = useReactions({
+  table: 'discussion_replies',
+  rowId: data.value.id,
+  initialReactions: data.value.reactions,
+})
 </script>
 
 <template>
@@ -160,15 +169,25 @@ const showReportModal = ref(false)
 
     <MDRenderer v-else :md="data.markdown" skeleton-height="0px" />
 
-    <Flex start>
-      <Reactions
-        table="discussion_replies"
-        :row-id="data.id"
-        :reactions="data.reactions"
-      />
+    <Flex v-if="displayReactions.length > 0" y-center x-start gap="xxs" class="discussion-comment__reactions">
+      <ReactionsList :reactions="displayReactions" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
+      <ReactionsSelect @reaction="(emote) => toggleReaction(emote)" />
     </Flex>
 
     <div class="discussion-comment__actions">
+      <ReactionsSelect @reaction="(emote) => toggleReaction(emote)">
+        <template #default="{ toggle }">
+          <Button size="s" square @click="toggle">
+            <Tooltip>
+              <Icon name="ph:smiley-bold" />
+              <template #tooltip>
+                <p>Add reactions</p>
+              </template>
+            </Tooltip>
+          </Button>
+        </template>
+      </ReactionsSelect>
+
       <ButtonGroup>
         <!-- Reply -->
         <Button v-if="currentUserData && (!discussion?.is_locked || canBypassLock) && !discussion?.is_archived" square size="s" @click="setReplyToComment(data)">
@@ -287,6 +306,8 @@ const showReportModal = ref(false)
   display: flex;
   flex-direction: column;
   padding-block: var(--space-xxs);
+  margin-block: var(--space-xs);
+
   position: relative;
   z-index: 1;
 
@@ -311,6 +332,7 @@ const showReportModal = ref(false)
     opacity: 1;
   }
 
+  &:has(.reactions-anchor-active),
   &:hover {
     .discussion-comment__actions {
       opacity: 1;
@@ -368,7 +390,6 @@ const showReportModal = ref(false)
     padding: 2px var(--space-xs);
     margin-left: 40px;
     gap: 4px;
-    /* margin-top: 4px; */
     margin-bottom: 4px;
     cursor: pointer;
     transition: var(--transition-fast);
@@ -425,6 +446,11 @@ const showReportModal = ref(false)
     opacity: 0;
     z-index: -1;
     visibility: hidden;
+  }
+
+  &__reactions {
+    margin-left: 40px;
+    margin-top: 2px;
   }
 }
 </style>
