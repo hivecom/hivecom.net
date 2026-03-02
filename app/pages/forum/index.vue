@@ -883,7 +883,7 @@ onBeforeMount(() => {
           <ul v-else-if="userActivity.length > 0" class="forum__continue-list">
             <li v-for="item in userActivity" :key="item.id">
               <NuxtLink :to="item.discussionHref" class="forum__continue-item">
-                <TinyBadge class="ws-nowrap">
+                <TinyBadge class="ws-nowrap text-color-light">
                   <Icon :name="item.type === 'Reply' ? 'ph:chat-circle' : 'ph:scroll'" :size="16" />
                   {{ item.discussionTopicId ? topicLookup.get(item.discussionTopicId) ?? item.type : item.type }}
                 </TinyBadge>
