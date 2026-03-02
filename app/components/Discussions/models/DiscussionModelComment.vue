@@ -205,8 +205,8 @@ const showReportModal = ref(false)
         </Button>
       </ButtonGroup>
 
-      <!-- Report - other users' comments only; hidden for admins/mods who have edit/delete instead -->
-      <Button v-if="currentUserData && data.created_by !== currentUserData.id && currentUserData.role !== 'admin' && currentUserData.role !== 'moderator'" size="s" square @click="showReportModal = true">
+      <!-- Report - other users' comments only -->
+      <Button v-if="currentUserData && data.created_by !== currentUserData.id" size="s" square @click="showReportModal = true">
         <Tooltip>
           <Icon name="ph:flag-bold" />
           <template #tooltip>
