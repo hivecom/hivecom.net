@@ -365,11 +365,11 @@ const showReportModal = ref(false)
     background-color: var(--color-bg-raised);
     position: relative;
     width: fit-content;
-    padding: 2px var(--space-s);
+    padding: 2px var(--space-xs);
     margin-left: 40px;
     gap: 4px;
-    margin-top: 4px;
-    margin-bottom: 2px;
+    /* margin-top: 4px; */
+    margin-bottom: 4px;
     cursor: pointer;
     transition: var(--transition-fast);
 
