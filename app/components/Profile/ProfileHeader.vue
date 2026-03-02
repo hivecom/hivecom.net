@@ -180,8 +180,8 @@ function getRoleInfo(role: string | null) {
 </script>
 
 <template>
-  <Card class="profile-header card-bg" footer-separator>
-    <Flex column expand y-center x-center>
+  <Card class="profile-header card-bg" :footer-separator="!!(profile.markdown || isOwnProfile)">
+    <Flex column y-center x-center>
       <Grid gap="xl" expand columns="160px 1fr" class="profile-header-grid">
         <!-- Avatar -->
         <div class="profile-avatar">

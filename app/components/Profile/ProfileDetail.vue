@@ -908,6 +908,7 @@ async function ignoreFriendRequest() {
 .profile-sections {
   display: grid;
   grid-template-columns: 1fr 356px;
+  grid-template-rows: auto 1fr auto;
   gap: var(--space-m);
 
   .about-section {
@@ -933,16 +934,19 @@ async function ignoreFriendRequest() {
   .profile-header-col {
     grid-column: 1;
     grid-row: 1;
+    align-self: start;
   }
 
   .profile-sidebar-col {
     grid-column: 2;
-    grid-row: 1 / 3;
+    grid-row: 1 / -1;
+    align-self: start;
   }
 
   .profile-discussion-col {
     grid-column: 1;
     grid-row: 2;
+    align-self: start;
   }
 
   @media (max-width: 768px) {
