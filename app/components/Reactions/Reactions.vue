@@ -51,16 +51,14 @@ const { displayReactions, toggleReaction, isLoading } = useReactions({
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-xs);
+  gap: var(--space-xxs);
   margin-left: auto;
-  min-width: 0;
-  flex-shrink: 1;
 }
 
 .reactions__button {
   display: flex;
   border-radius: var(--border-radius-m);
-  font-size: var(--font-size-m);
+  font-size: var(--font-size-l);
   width: 32px;
   height: 32px;
   position: relative;
@@ -80,15 +78,14 @@ const { displayReactions, toggleReaction, isLoading } = useReactions({
   }
 
   &.reactions__button--active {
-    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-    outline: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+    background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 20%, transparent);
 
     .reactions__counter {
       color: var(--color-accent);
     }
 
     &:hover {
-      background-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+      background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 50%, transparent);
     }
   }
 }

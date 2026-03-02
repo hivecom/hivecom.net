@@ -8,7 +8,9 @@ import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import UserName from '@/components/Shared/UserName.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 
@@ -115,13 +117,13 @@ const showReportModal = ref(false)
 
 <template>
   <div class="discussion-comment">
-    <Flex y-center x-between>
-      <UserDisplay size="s" :user-id="data.created_by" />
-      <Reactions
-        table="discussion_replies"
-        :row-id="data.id"
-        :reactions="data.reactions"
-      />
+    <Flex y-center x-start>
+      <UserAvatar size="s" :user-id="data.created_by" />
+      <UserName size="m" :user-id="data.created_by" />
+      <p v-if="timestamps" class=" discussion-comment__timestamp">
+        {{ dayjs(data.created_at).fromNow() }}
+        <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
+      </p>
     </Flex>
 
     <Tooltip v-if="data.reply" :delay="750">
@@ -158,10 +160,13 @@ const showReportModal = ref(false)
 
     <MDRenderer v-else :md="data.markdown" skeleton-height="0px" />
 
-    <p v-if="timestamps" class="discussion-comment__bottom discussion-comment__timestamp">
-      {{ dayjs(data.created_at).fromNow() }}
-      <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
-    </p>
+    <Flex start>
+      <Reactions
+        table="discussion_replies"
+        :row-id="data.id"
+        :reactions="data.reactions"
+      />
+    </Flex>
 
     <div class="discussion-comment__actions">
       <ButtonGroup>
@@ -248,6 +253,7 @@ const showReportModal = ref(false)
         :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"
         :media-bucket-id="FORUMS_BUCKET_ID"
         min-height="128px"
+        show-submit-options
         placeholder="Edit your comment. Do not leave it empty!"
         class="mb-xs"
       />
@@ -280,7 +286,7 @@ const showReportModal = ref(false)
 .discussion-comment {
   display: flex;
   flex-direction: column;
-  padding-block: 14px;
+  padding-block: var(--space-xxs);
   position: relative;
   z-index: 1;
 
@@ -333,6 +339,9 @@ const showReportModal = ref(false)
   }
 
   &__bottom {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
     padding-left: 40px;
     margin-top: var(--space-xxs);
   }
@@ -412,8 +421,7 @@ const showReportModal = ref(false)
     gap: 3px;
     position: absolute;
     right: 4px;
-    top: calc(14px + var(--interactive-el-height));
-
+    top: var(--space-s);
     opacity: 0;
     z-index: -1;
     visibility: hidden;

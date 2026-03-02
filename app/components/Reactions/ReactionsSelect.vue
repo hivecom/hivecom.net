@@ -73,7 +73,7 @@ function selectEmote(emote: string) {
   padding: var(--space-s);
   max-height: 320px;
   overflow-y: auto;
-  width: 256px;
+  width: 260px;
 }
 
 .reactions__group {
@@ -86,7 +86,6 @@ function selectEmote(emote: string) {
   font-size: var(--font-size-xxs);
   color: var(--color-text-lighter);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
   padding: 0 2px;
   margin: 0;
 }
