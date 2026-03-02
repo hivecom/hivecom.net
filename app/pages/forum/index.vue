@@ -178,13 +178,13 @@ async function fetchUserActivity(uid: string | null | undefined) {
   userActivityLoading.value = true
 
   const [repliesRes, discussionsRes] = await Promise.all([
-    // Query the real table (not the view) so the FK join to discussions works
-    // reliably. Fetch the user's most recent replies with discussion metadata.
+    // Use the forum_discussion_replies view which is already scoped to
+    // discussions that have a discussion_topic_id (i.e. forum threads only),
+    // avoiding the unreliable embedded-filter workaround on the raw table.
     supabase
-      .from('discussion_replies')
-      .select('id, created_at, discussion_id, discussions!inner(id, title, slug, discussion_topic_id)')
+      .from('forum_discussion_replies')
+      .select('id, created_at, discussion_id, discussions!discussion_replies_discussion_id_fkey(id, title, slug, discussion_topic_id)')
       .eq('created_by', uid)
-      .not('discussions.discussion_topic_id', 'is', null)
       .eq('is_deleted', false)
       .limit(20)
       .order('created_at', { ascending: false }),
@@ -192,15 +192,16 @@ async function fetchUserActivity(uid: string | null | undefined) {
     // where the user has no reply yet (brand-new threads with 0 replies from them).
     supabase
       .from('discussions')
-      .select('id, title, slug, created_at, discussion_topic_id')
+      .select('id, title, slug, last_activity_at, discussion_topic_id')
       .eq('created_by', uid)
       .eq('is_draft', false)
       .not('discussion_topic_id', 'is', null)
       .limit(20)
-      .order('created_at', { ascending: false }),
+      .order('last_activity_at', { ascending: false }),
   ])
 
   // Build reply items - timestamp is when the user actually posted the reply
+
   const replyItems: UserActivityItem[] = (repliesRes.data ?? []).map((item) => {
     const discussion = Array.isArray(item.discussions) ? item.discussions[0] : item.discussions
     const slug = discussion?.slug ?? item.discussion_id
@@ -231,8 +232,8 @@ async function fetchUserActivity(uid: string | null | undefined) {
       discussionTopicId: item.discussion_topic_id ?? null,
       discussionTitle: item.title,
       discussionHref: `/forum/${item.slug ?? item.id}`,
-      timestampRaw: item.created_at,
-      timestamp: dayjs(item.created_at).fromNow(),
+      timestampRaw: item.last_activity_at,
+      timestamp: dayjs(item.last_activity_at).fromNow(),
     }))
 
   // Merge, sort by most recent user action, deduplicate by discussion, take top 6
@@ -255,7 +256,10 @@ watch(userId, uid => fetchUserActivity(uid), { immediate: true })
 
 // Also re-fetch on every SPA navigation back to this page so that replies
 // posted elsewhere in the forum session bubble up immediately.
-watch(route, () => fetchUserActivity(userId.value))
+// Watch route.fullPath (a string primitive) instead of the route object so the
+// watcher reliably fires on every path/query change – the route proxy mutates
+// in-place and requires deep:true or a primitive selector to trigger.
+watch(() => route.fullPath, () => fetchUserActivity(userId.value))
 
 // Lookup map from topic id → topic name, used by the personal activity feed
 const topicLookup = computed(() => {
@@ -1177,11 +1181,7 @@ onBeforeMount(() => {
     white-space: nowrap;
     min-width: 96px;
 
-    &--reply {
-      background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 40%, transparent);
-      color: var(--color-accent);
-    }
-
+    &--reply,
     &--discussion {
       background-color: color-mix(in srgb, var(--color-bg-raised) 80%, transparent);
       color: var(--color-text-light);

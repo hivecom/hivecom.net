@@ -45,7 +45,7 @@ async function sendPasswordReset() {
 </script>
 
 <template>
-  <Card v-if="false" class="card-bg" separators>
+  <Card v-if="user?.email" class="card-bg" separators>
     <template #header>
       <Flex gap="xxs" column>
         <h4>Change Password</h4>
