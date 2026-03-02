@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import BadgeCircle from '../Shared/BadgeCircle.vue'

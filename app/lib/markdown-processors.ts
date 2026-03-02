@@ -122,17 +122,21 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
     .replace(/&nbsp;/g, ' ')
     // 3. Remove horizontal rules
     .replace(/^---/gm, '')
-    // 3. Remove headers (###)
+    // 4. Remove headers (###)
     .replace(/^#+\s+/gm, '')
-    // 4. Remove bold/italic (** or __)
+    // 5. Remove blockquote markers (> )
+    .replace(/^>\s*/gm, '')
+    // 6. Remove unordered list markers (- or * at start of line)
+    .replace(/^[\-*]\s+/gm, '')
+    // 7. Remove bold/italic (** or __)
     .replace(/([*_]{1,3})(\S.*?\S?)\1/g, '$2')
-    // 5. Remove links [text](url) -> "text"
+    // 8. Remove links [text](url) -> "text"
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // 6. Remove code blocks and inline code
+    // 9. Remove code blocks and inline code
     .replace(/(`{1,3})([^`]+)\1/g, '$2')
-    // 7. Remove images ![alt](url)
+    // 10. Remove images ![alt](url)
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-    // 8. Trim extra whitespace
+    // 11. Trim extra whitespace
     .replace(/\n+/g, ' ')
     .trim()
 }

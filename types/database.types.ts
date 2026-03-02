@@ -145,6 +145,13 @@ export interface Database {
             referencedColumns: ['id']
           },
           {
+            foreignKeyName: 'complaints_context_discussion_reply_fkey'
+            columns: ['context_discussion_reply']
+            isOneToOne: false
+            referencedRelation: 'forum_discussion_replies'
+            referencedColumns: ['id']
+          },
+          {
             foreignKeyName: 'complaints_context_gameserver_fkey'
             columns: ['context_gameserver']
             isOneToOne: false
@@ -203,6 +210,7 @@ export interface Database {
           meta: Json | null
           modified_at: string
           modified_by: string | null
+          reactions: Json
           reply_to_id: string | null
         }
         Insert: {
@@ -216,6 +224,7 @@ export interface Database {
           meta?: Json | null
           modified_at?: string
           modified_by?: string | null
+          reactions?: Json
           reply_to_id?: string | null
         }
         Update: {
@@ -229,6 +238,7 @@ export interface Database {
           meta?: Json | null
           modified_at?: string
           modified_by?: string | null
+          reactions?: Json
           reply_to_id?: string | null
         }
         Relationships: [
@@ -258,6 +268,13 @@ export interface Database {
             columns: ['reply_to_id']
             isOneToOne: false
             referencedRelation: 'discussion_replies'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'discussion_replies_reply_to_id_fkey'
+            columns: ['reply_to_id']
+            isOneToOne: false
+            referencedRelation: 'forum_discussion_replies'
             referencedColumns: ['id']
           },
         ]
@@ -353,6 +370,7 @@ export interface Database {
           modified_by: string | null
           profile_id: string | null
           project_id: number | null
+          reactions: Json
           referendum_id: number | null
           reply_count: number
           slug: string | null
@@ -379,6 +397,7 @@ export interface Database {
           modified_by?: string | null
           profile_id?: string | null
           project_id?: number | null
+          reactions?: Json
           referendum_id?: number | null
           reply_count?: number
           slug?: string | null
@@ -405,6 +424,7 @@ export interface Database {
           modified_by?: string | null
           profile_id?: string | null
           project_id?: number | null
+          reactions?: Json
           referendum_id?: number | null
           reply_count?: number
           slug?: string | null
@@ -417,6 +437,13 @@ export interface Database {
             columns: ['accepted_reply_id']
             isOneToOne: false
             referencedRelation: 'discussion_replies'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'discussions_accepted_reply_id_fkey'
+            columns: ['accepted_reply_id']
+            isOneToOne: false
+            referencedRelation: 'forum_discussion_replies'
             referencedColumns: ['id']
           },
           {
@@ -1300,15 +1327,15 @@ export interface Database {
     Views: {
       forum_discussion_replies: {
         Row: {
-          created_at: string
+          created_at: string | null
           created_by: string | null
-          discussion_id: string
-          id: string
-          is_deleted: boolean
-          is_nsfw: boolean
-          markdown: string
+          discussion_id: string | null
+          id: string | null
+          is_deleted: boolean | null
+          is_nsfw: boolean | null
+          markdown: string | null
           meta: Json | null
-          modified_at: string
+          modified_at: string | null
           modified_by: string | null
           reply_to_id: string | null
         }
@@ -1339,6 +1366,13 @@ export interface Database {
             columns: ['reply_to_id']
             isOneToOne: false
             referencedRelation: 'discussion_replies'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'discussion_replies_reply_to_id_fkey'
+            columns: ['reply_to_id']
+            isOneToOne: false
+            referencedRelation: 'forum_discussion_replies'
             referencedColumns: ['id']
           },
         ]
@@ -1377,6 +1411,7 @@ export interface Database {
           user_id: string
         }[]
       }
+      get_allowed_hivecom_emotes: { Args: never, Returns: string[] }
       get_discussion_topic_breadcrumbs: {
         Args: { target_topic_id: string }
         Returns: {
@@ -1464,6 +1499,15 @@ export interface Database {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      toggle_reaction: {
+        Args: {
+          p_emote: string
+          p_id: string
+          p_provider?: string
+          p_table: string
+        }
+        Returns: Json
       }
       update_user_last_seen: { Args: { user_id?: string }, Returns: undefined }
       validate_github_repo: { Args: { github_repo: string }, Returns: boolean }

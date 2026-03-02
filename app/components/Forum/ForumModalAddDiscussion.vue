@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -120,6 +120,7 @@ const form = reactive<{
   is_locked: boolean
   is_sticky: boolean
   is_draft: boolean
+  is_nsfw: boolean
   discussion_topic_id: string | null
 }>({
   title: '',
@@ -129,6 +130,7 @@ const form = reactive<{
   is_locked: false,
   is_sticky: false,
   is_draft: true,
+  is_nsfw: false,
   discussion_topic_id: null,
 })
 
@@ -172,6 +174,7 @@ watch(() => editedDiscussion.value, (item) => {
     is_locked: item.is_locked,
     is_sticky: item.is_sticky,
     is_draft: item.is_draft,
+    is_nsfw: item.is_nsfw ?? false,
   })
 
   isAutoUpdatingSlug.value = false
@@ -474,7 +477,7 @@ function confirmPublish() {
       />
 
       <Card class="card-bg">
-        <Grid :columns="(isMobile || (!editedDiscussion?.is_draft && editedDiscussion)) ? 2 : 3" gap="m">
+        <Grid :columns="isMobile ? 2 : ((!editedDiscussion?.is_draft && editedDiscussion) ? 3 : 4)" gap="m">
           <Tooltip :disabled="!showDraftTooltip">
             <Switch v-if="!editedDiscussion || editedDiscussion.is_draft" v-model="form.is_draft" label="Draft" />
             <template #tooltip>
@@ -483,6 +486,7 @@ function confirmPublish() {
           </Tooltip>
           <Switch v-model="form.is_locked" label="Locked" />
           <Switch v-model="form.is_sticky" label="Sticky" />
+          <Switch v-model="form.is_nsfw" label="NSFW" />
         </Grid>
       </Card>
     </Flex>

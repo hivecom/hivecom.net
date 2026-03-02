@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion } from '../Discussion.vue'
-import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Tooltip } from '@dolanske/vui'
+import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import Reactions from '@/components/Reactions/Reactions.vue'
@@ -13,6 +13,8 @@ import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import UserRole from '@/components/Shared/UserRole.vue'
+import { useCacheBadgeDiscussionReplyCount } from '@/composables/useCacheBadgeDiscussionReplyCount'
+import { useCacheUserDiscussionCount } from '@/composables/useCacheUserDiscussionCount'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { getCountryInfo } from '@/lib/utils/country'
@@ -34,10 +36,16 @@ const userId = useUserId()
 const supabase = useSupabaseClient()
 const currentUser = useSupabaseUser()
 
+const { user: currentUserData } = useCacheUserData(userId, { includeRole: true })
+
 const isMobile = useBreakpoint('<s')
 
 const discussion = inject('discussion') as ProvidedDiscussion
 const canBypassLock = inject('canBypassLock', ref(false)) as Ref<boolean>
+
+const authorId = computed(() => data.value.created_by ?? null)
+const { count: discussionCount } = useCacheUserDiscussionCount(authorId)
+const { count: replyCount } = useCacheBadgeDiscussionReplyCount(authorId)
 
 const { user } = useCacheUserData(data.value.created_by!, {
   includeRole: true,
@@ -64,20 +72,25 @@ function handleDeletion() {
     })
 }
 
+const showNSFWWarning = ref(!!props.data.is_nsfw)
+
 // Editing the message
 const editing = ref(false)
 const editedContent = ref('')
+const editedIsNsfw = ref(false)
 const editLoading = ref(false)
 const editError = ref<string[]>([])
 
 function startEditing() {
   editing.value = true
   editedContent.value = data.value.markdown
+  editedIsNsfw.value = !!data.value.is_nsfw
 }
 
 function endEditing() {
   editing.value = false
   editedContent.value = ''
+  editedIsNsfw.value = false
 }
 
 async function submit() {
@@ -86,7 +99,7 @@ async function submit() {
 
     const res = await supabase
       .from('discussion_replies')
-      .update({ markdown: editedContent.value })
+      .update({ markdown: editedContent.value, is_nsfw: editedIsNsfw.value })
       .eq('id', data.value.id)
       .single()
 
@@ -99,7 +112,10 @@ async function submit() {
       // comment object should get replaced by `res.data`
 
       data.value.markdown = editedContent.value
+      data.value.is_nsfw = editedIsNsfw.value
       data.value.modified_at = dayjs().toISOString()
+      // Re-apply the NSFW warning if the user toggled it back on
+      showNSFWWarning.value = editedIsNsfw.value
     }
 
     editLoading.value = false
@@ -111,8 +127,6 @@ async function submit() {
 }
 
 watch(editedContent, () => editError.value = [])
-
-const showNSFWWarning = ref(!!props.data.is_nsfw)
 
 // Reporting
 const showReportModal = ref(false)
@@ -150,6 +164,9 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
           Joined {{ dayjs(user.created_at).format('MMMM YYYY') }}
         </p>
       </Flex>
+      <p class="author-meta mt-xs text-color-lightest">
+        {{ discussionCount }} {{ discussionCount === 1 ? 'discussion' : 'discussions' }} / {{ replyCount }} {{ replyCount === 1 ? 'reply' : 'replies' }}
+      </p>
       <Divider v-if="user?.introduction || user?.created_at || country" />
       <p v-if="user?.introduction" class="text-s text-center">
         {{ user.introduction }}
@@ -158,7 +175,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 
     <div class="discussion-forum__content">
       <Alert v-if="data.reply" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
-        <p v-if="data.reply.created_by !== userId" class="discussion-forum__reply-user">
+        <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
           <UserName size="s" :user-id="data.reply.created_by" /> wrote:
         </p>
         <p v-else class="discussion-forum__reply-user">
@@ -177,18 +194,22 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
       <MDRenderer v-else :md="data.markdown" :skeleton-height="128" />
 
       <!-- Bottom row with timestamps and reactions` -->
-      <Flex x-between y-center>
+      <Flex wrap y-center class="discussion-forum__bottom-row">
         <p class="discussion-forum__timestamp">
           <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
           <span>{{ data.modified_at !== data.created_at ? `Edited ${dayjs(data.modified_at).fromNow()}` : null }}</span>
         </p>
 
-        <Reactions />
+        <Reactions
+          table="discussion_replies"
+          :row-id="data.id"
+          :reactions="data.reactions"
+        />
       </Flex>
 
       <!-- Floating actions -->
       <div v-if="!showNSFWWarning" class="discussion-forum__actions">
-        <ButtonGroup v-if="user">
+        <ButtonGroup v-if="currentUserData">
           <template v-if="(!discussion?.is_locked || canBypassLock) && !discussion?.is_archived">
             <Button square size="s" @click="setReplyToComment(data)">
               <Tooltip>
@@ -198,7 +219,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
                 </template>
               </Tooltip>
             </Button>
-            <Button v-if="user" square size="s" @click="setQuoteOfComment(data)">
+            <Button square size="s" @click="setQuoteOfComment(data)">
               <Tooltip>
                 <Icon name="ph:quotes-bold" />
                 <template #tooltip>
@@ -217,7 +238,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
           </Button>
         </ButtonGroup>
 
-        <ButtonGroup v-if="user && data.created_by === user.id && !discussion?.is_locked && !discussion?.is_archived">
+        <ButtonGroup v-if="currentUserData && (currentUserData.id === data.created_by || currentUserData.role === 'admin' || currentUserData.role === 'moderator') && !discussion?.is_locked && !discussion?.is_archived">
           <Button size="s" square :inert="loadingDeletion" @click="startEditing">
             <Tooltip>
               <Icon name="ph:pen-bold" />
@@ -253,8 +274,8 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
           </ConfirmModal>
         </ButtonGroup>
 
-        <!-- Report button for other users' posts -->
-        <Button v-if="userId && data.created_by !== userId" size="s" square @click="showReportModal = true">
+        <!-- Report button for other users' posts - hidden for admins/mods who have edit/delete instead -->
+        <Button v-if="currentUserData && data.created_by !== currentUserData.id && currentUserData.role !== 'admin' && currentUserData.role !== 'moderator'" size="s" square @click="showReportModal = true">
           <Tooltip>
             <Icon name="ph:flag-bold" />
             <template #tooltip>
@@ -267,13 +288,16 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 
     <Modal :open="editing" centered scrollable size="l" @close="editing = false">
       <template #header>
-        <h3>Edit reply</h3>
+        <h3>Edit post</h3>
+        <p class="text-color-light">
+          Avoid writing offensive things.
+        </p>
       </template>
 
       <RichTextEditor
         v-model="editedContent"
         :errors="editError"
-        :media-context="userId ? `${data.discussion_id}/${userId}` : undefined"
+        :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"
         :media-bucket-id="FORUMS_BUCKET_ID"
         min-height="196px"
         class="mb-xs"
@@ -281,13 +305,16 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
       />
 
       <template #footer>
-        <Flex gap="s" x-end>
-          <Button plain :inert="editLoading" @click="endEditing">
-            Cancel
-          </Button>
-          <Button variant="accent" :inert="editLoading" :loading="editLoading" @click="submit">
-            Update
-          </Button>
+        <Flex gap="s" x-between y-center>
+          <Switch v-model="editedIsNsfw" label="NSFW" />
+          <Flex gap="s">
+            <Button plain :inert="editLoading" @click="endEditing">
+              Cancel
+            </Button>
+            <Button variant="accent" :inert="editLoading" :loading="editLoading" @click="submit">
+              Update
+            </Button>
+          </Flex>
         </Flex>
       </template>
     </Modal>
@@ -347,10 +374,14 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
   }
 
   &__bottom-row {
-    margin-top: var(--space-l);
+    margin-top: var(--space-s);
+    gap: var(--space-xs);
+    min-width: 0;
+    row-gap: var(--space-xxs);
   }
 
   &__timestamp {
+    flex-shrink: 0;
     display: flex;
     gap: var(--space-l);
     font-size: var(--font-size-xs);

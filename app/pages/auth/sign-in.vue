@@ -53,7 +53,7 @@ const requiresMfaChallenge = computed(() => Boolean(pendingMfa.factorId))
 const mfaPromptCopy = 'Finish verification to sign-in.'
 const isBelowS = useBreakpoint('<s')
 const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(720px, 96vh)'))
-const metaballWidth = computed(() => (isBelowS.value ? '100vw' : 'min(520px, 96vw)'))
+const metaballWidth = computed(() => (isBelowS.value ? '100%' : 'min(520px, 96vw)'))
 const postSignInRedirect = computed(() => normalizeInternalRedirect(route.query.redirect))
 const resolvedPostSignInRedirect = computed(() => postSignInRedirect.value ?? '/profile')
 

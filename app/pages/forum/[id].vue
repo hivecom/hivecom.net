@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
+import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
@@ -46,6 +47,7 @@ const errorMessage = ref<string | null>(null)
 const post = ref<DiscussionWithContext | null>(null)
 const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
 const publishConfirmOpen = ref(false)
+const showNSFWWarning = ref(false)
 
 const isMobile = useBreakpoint('<m')
 
@@ -162,6 +164,7 @@ onBeforeMount(() => {
       }
       else {
         post.value = data
+        showNSFWWarning.value = !!data.is_nsfw
         void loadTopicBreadcrumbs(data.discussion_topic_id)
       }
 
@@ -247,6 +250,10 @@ function publish() {
           </div>
 
           <Flex gap="m" y-center>
+            <Badge v-if="post.is_nsfw" variant="danger">
+              <Icon name="ph:warning" class="text-color-red" />
+              NSFW
+            </Badge>
             <Tooltip>
               <span>
                 <Icon :size="18" name="ph:eye" />
@@ -368,7 +375,23 @@ function publish() {
         </Card>
 
         <!-- Content -->
-        <MDRenderer v-if="post.markdown" class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
+        <template v-if="post.markdown">
+          <button v-if="showNSFWWarning" class="forum-post__nsfw" @click="showNSFWWarning = false">
+            <Icon class="text-color-accent" name="ph:caret-down" />
+            <p>This discussion is marked as NSFW - click to reveal potentially sensitive content</p>
+            <Icon class="text-color-accent" name="ph:caret-up" />
+          </button>
+          <MDRenderer v-else class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
+        </template>
+
+        <!-- Top-level discussion reactions -->
+        <Flex x-end class="mt-m">
+          <Reactions
+            table="discussions"
+            :row-id="post.id"
+            :reactions="post.reactions"
+          />
+        </Flex>
       </section>
 
       <ComplaintsManager
@@ -406,6 +429,32 @@ function publish() {
 
 :deep(.forum__item-actions) {
   display: block;
+}
+
+.forum-post__nsfw {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius-l);
+  background-color: var(--color-bg-raised);
+  padding: var(--space-m);
+  transition: var(--transition);
+  color: var(--color-text-light);
+  gap: var(--space-xxs);
+  width: 100%;
+  min-height: 120px;
+  margin-bottom: var(--space-xs);
+
+  p {
+    font-size: var(--font-size-m) !important;
+    text-align: center;
+  }
+
+  &:hover {
+    background-color: var(--color-button-gray);
+    gap: 0;
+  }
 }
 
 .forum-post__content {

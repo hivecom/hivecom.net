@@ -1,25 +1,29 @@
 <script setup lang="ts">
 import type { Comment, DiscussionSettings, ProvidedDiscussion } from '../Discussion.vue'
-import { Button, ButtonGroup, Card, Flex, Tooltip } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
+import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 
 interface Props {
   data: Comment
 }
 
-const {
-  data,
-} = defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   copyLink: []
   scrollReply: []
 }>()
+
+const data = toRef(props, 'data')
 
 const { timestamps } = inject('discussion-settings') as DiscussionSettings
 
@@ -27,27 +31,86 @@ const discussion = inject('discussion') as ProvidedDiscussion
 const canBypassLock = inject('canBypassLock', ref(false)) as Ref<boolean>
 
 const userId = useUserId()
+const supabase = useSupabaseClient()
 
-// Generic wrapper around a discussion reply which assigns a reply model depending on the discussion type
+const { user: currentUserData } = useCacheUserData(userId, { includeRole: true })
+
 const COMMENT_TRUNCATE = 96
 
 const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
 
-// Comment deletion
+// ── NSFW ──────────────────────────────────────────────────────────────────────
+
+const showNSFWWarning = ref(!!data.value.is_nsfw)
+
+// ── Deletion ──────────────────────────────────────────────────────────────────
+
 const deleteComment = inject('delete-comment') as (id: string) => Promise<void>
 const loadingDeletion = ref(false)
 const showDeleteModal = ref(false)
 
-// Reporting
-const showReportModal = ref(false)
-
 function handleDeletion() {
   loadingDeletion.value = true
-  deleteComment(data.id)
+  deleteComment(data.value.id)
     .finally(() => {
       loadingDeletion.value = false
     })
 }
+
+// ── Editing ───────────────────────────────────────────────────────────────────
+
+const editing = ref(false)
+const editedContent = ref('')
+const editedIsNsfw = ref(false)
+const editLoading = ref(false)
+const editError = ref<string[]>([])
+
+function startEditing() {
+  editing.value = true
+  editedContent.value = data.value.markdown
+  editedIsNsfw.value = !!data.value.is_nsfw
+}
+
+function endEditing() {
+  editing.value = false
+  editedContent.value = ''
+  editedIsNsfw.value = false
+  editError.value = []
+}
+
+async function submitEdit() {
+  if (editedContent.value.trim().length === 0) {
+    editError.value = ['You must provide a message']
+    return
+  }
+
+  editLoading.value = true
+
+  const res = await supabase
+    .from('discussion_replies')
+    .update({ markdown: editedContent.value, is_nsfw: editedIsNsfw.value })
+    .eq('id', data.value.id)
+    .single()
+
+  if (res.error) {
+    editError.value = [res.error.message]
+  }
+  else {
+    data.value.markdown = editedContent.value
+    data.value.is_nsfw = editedIsNsfw.value
+    data.value.modified_at = dayjs().toISOString()
+    showNSFWWarning.value = editedIsNsfw.value
+    endEditing()
+  }
+
+  editLoading.value = false
+}
+
+watch(editedContent, () => editError.value = [])
+
+// ── Reporting ─────────────────────────────────────────────────────────────────
+
+const showReportModal = ref(false)
 </script>
 
 <template>
@@ -55,10 +118,11 @@ function handleDeletion() {
     <Flex>
       <UserDisplay size="s" :user-id="data.created_by" />
     </Flex>
+
     <Tooltip v-if="data.reply" :delay="750">
-      <button varia class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === userId }" @click="emit('scrollReply')">
+      <button class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === currentUserData?.id }" @click="emit('scrollReply')">
         <Icon name="ph:arrow-elbow-up-right" />
-        <p v-if="data.reply.created_by !== userId" class="discussion-comment__reply-user">
+        <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-comment__reply-user">
           <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" hide-avatar />:
         </p>
         <p v-else class="discussion-comment__reply-user">
@@ -80,13 +144,32 @@ function handleDeletion() {
         />
       </template>
     </Tooltip>
-    <MDRenderer :md="data.markdown" skeleton-height="0px" />
-    <p v-if="timestamps" class="discussion-comment__timestamp">
-      {{ dayjs(data.created_at).fromNow() }}
-    </p>
+
+    <!-- NSFW gate -->
+    <button v-if="showNSFWWarning" class="discussion-comment__nsfw" @click="showNSFWWarning = false">
+      <Icon class="text-color-accent" name="ph:warning" />
+      <p>Potentially sensitive content - click to reveal</p>
+    </button>
+
+    <MDRenderer v-else :md="data.markdown" skeleton-height="0px" />
+
+    <Flex wrap y-center class="discussion-comment__bottom">
+      <p v-if="timestamps" class="discussion-comment__timestamp">
+        {{ dayjs(data.created_at).fromNow() }}
+        <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
+      </p>
+      <span v-else />
+      <Reactions
+        table="discussion_replies"
+        :row-id="data.id"
+        :reactions="data.reactions"
+      />
+    </Flex>
+
     <div class="discussion-comment__actions">
       <ButtonGroup>
-        <Button v-if="userId && (!discussion?.is_locked || canBypassLock) && !discussion?.is_archived" square size="s" @click="setReplyToComment(data)">
+        <!-- Reply -->
+        <Button v-if="currentUserData && (!discussion?.is_locked || canBypassLock) && !discussion?.is_archived" square size="s" @click="setReplyToComment(data)">
           <Tooltip>
             <Icon name="ph:arrow-elbow-up-left-bold" />
             <template #tooltip>
@@ -94,6 +177,7 @@ function handleDeletion() {
             </template>
           </Tooltip>
         </Button>
+        <!-- Copy link -->
         <Button size="s" square @click="emit('copyLink')">
           <Tooltip>
             <Icon name="ph:link-bold" />
@@ -103,21 +187,33 @@ function handleDeletion() {
           </Tooltip>
         </Button>
       </ButtonGroup>
-      <!-- Report button for other users' comments -->
-      <Button v-if="userId && data.created_by !== userId" size="s" square @click="showReportModal = true">
+
+      <!-- Edit & delete - own comments, or any comment for admins/mods -->
+      <ButtonGroup v-if="currentUserData && (currentUserData.id === data.created_by || currentUserData.role === 'admin' || currentUserData.role === 'moderator') && !discussion?.is_locked && !discussion?.is_archived">
+        <Button size="s" square :inert="loadingDeletion" @click="startEditing">
+          <Tooltip>
+            <Icon name="ph:pen-bold" />
+            <template #tooltip>
+              <p>Edit comment</p>
+            </template>
+          </Tooltip>
+        </Button>
+        <Button size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
+          <Tooltip>
+            <Icon name="ph:trash-bold" />
+            <template #tooltip>
+              <p>Delete comment</p>
+            </template>
+          </Tooltip>
+        </Button>
+      </ButtonGroup>
+
+      <!-- Report - other users' comments only; hidden for admins/mods who have edit/delete instead -->
+      <Button v-if="currentUserData && data.created_by !== currentUserData.id && currentUserData.role !== 'admin' && currentUserData.role !== 'moderator'" size="s" square @click="showReportModal = true">
         <Tooltip>
           <Icon name="ph:flag-bold" />
           <template #tooltip>
             <p>Report comment</p>
-          </template>
-        </Tooltip>
-      </Button>
-      <!-- Delete comment option if the comment belongs to me -->
-      <Button v-if="data.created_by === userId && !discussion?.is_locked && !discussion?.is_archived" size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
-        <Tooltip>
-          <Icon name="ph:trash-bold" />
-          <template #tooltip>
-            <p>Delete comment</p>
           </template>
         </Tooltip>
       </Button>
@@ -126,7 +222,7 @@ function handleDeletion() {
         :open="showDeleteModal"
         :confirm-loading="loadingDeletion"
         title="Delete comment"
-        description="Please confirm the deletion. This action cannot be undone"
+        description="Please confirm the deletion. This action cannot be undone."
         @close="showDeleteModal = false"
         @confirm="handleDeletion"
       >
@@ -138,6 +234,41 @@ function handleDeletion() {
         </Card>
       </ConfirmModal>
     </div>
+
+    <!-- Edit modal -->
+    <Modal :open="editing" centered scrollable size="m" @close="endEditing">
+      <template #header>
+        <h3>Edit comment</h3>
+      </template>
+
+      <Alert v-if="data.reply" icon-align="start" class="mb-s">
+        <MarkdownPreview :markdown="data.reply.markdown" :max-length="164" />
+      </Alert>
+
+      <RichTextEditor
+        v-model="editedContent"
+        :errors="editError"
+        :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"
+        :media-bucket-id="FORUMS_BUCKET_ID"
+        min-height="128px"
+        placeholder="Edit your comment. Do not leave it empty!"
+        class="mb-xs"
+      />
+
+      <template #footer>
+        <Flex gap="s" x-between y-center>
+          <Switch v-model="editedIsNsfw" label="NSFW" />
+          <Flex gap="s">
+            <Button plain :inert="editLoading" @click="endEditing">
+              Cancel
+            </Button>
+            <Button variant="accent" :inert="editLoading" :loading="editLoading" @click="submitEdit">
+              Update
+            </Button>
+          </Flex>
+        </Flex>
+      </template>
+    </Modal>
 
     <ComplaintsManager
       v-model:open="showReportModal"
@@ -185,10 +316,40 @@ function handleDeletion() {
     }
   }
 
-  &__timestamp {
+  &__nsfw {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-left: 40px;
+    margin-block: var(--space-xxs);
+    padding: var(--space-xxs) var(--space-s);
+    border-radius: var(--border-radius-m);
+    background-color: var(--color-bg-raised);
+    color: var(--color-text-light);
+    font-size: var(--font-size-s);
+    transition: var(--transition-fast);
+    width: fit-content;
+
+    &:hover {
+      background-color: var(--color-button-gray-hover);
+    }
+  }
+
+  &__bottom {
+    padding-left: 40px;
     margin-top: var(--space-xxs);
-    padding-left: var(--left-offset);
+    gap: var(--space-xxs) var(--space-xs);
+    min-width: 0;
+  }
+
+  &__timestamp {
     font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    flex-shrink: 0;
+  }
+
+  &__edited {
+    font-size: inherit;
     color: var(--color-text-lighter);
   }
 
@@ -201,7 +362,7 @@ function handleDeletion() {
     position: relative;
     width: fit-content;
     padding: 2px var(--space-s);
-    margin-left: var(--left-offset);
+    margin-left: 40px;
     gap: 4px;
     margin-top: 4px;
     margin-bottom: 2px;

@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Switch, Tooltip } from '@dolanske/vui'
 import { useStorage as useLocalStorage } from '@vueuse/core'
-import { useRouteQuery } from '@vueuse/router'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
@@ -47,6 +46,7 @@ interface ActivityItem {
   href?: string
   onClick?: () => void
   isArchived?: boolean
+  isNsfw?: boolean
   icon: string
 }
 
@@ -57,6 +57,8 @@ const settingsAnchor = useTemplateRef('settings-anchor')
 const settings = useLocalStorage('forum-settings', {
   showArchived: false,
   showActivity: true,
+  showNsfw: false,
+  showContinue: true,
 }, typeof window !== 'undefined' ? window.localStorage : undefined, {
   serializer: {
     read: value => value ? JSON.parse(value) : null,
@@ -146,10 +148,150 @@ const topics = ref<TopicWithDiscussions[]>([])
 // Store 10 latest replies for the activity list
 const latestReplies = ref<ActivityItem[]>([])
 
+// Personal activity feed
+interface UserActivityItem {
+  id: string
+  type: 'Reply' | 'Discussion'
+  discussionId: string
+  discussionTopicId: string | null
+  discussionTitle: string
+  discussionHref: string
+  timestampRaw: string
+  timestamp: string
+}
+
+const userActivity = ref<UserActivityItem[]>([])
+const userActivityLoading = ref(false)
+
+watch(userId, async (uid) => {
+  if (!uid) {
+    userActivity.value = []
+    return
+  }
+
+  userActivityLoading.value = true
+
+  const [repliesRes, discussionsRes] = await Promise.all([
+    // Query the real table (not the view) so the FK join to discussions works
+    // reliably. Fetch the user's most recent replies with discussion metadata.
+    supabase
+      .from('discussion_replies')
+      .select('id, created_at, discussion_id, discussions!inner(id, title, slug, discussion_topic_id)')
+      .eq('created_by', uid)
+      .not('discussions.discussion_topic_id', 'is', null)
+      .eq('is_deleted', false)
+      .limit(20)
+      .order('created_at', { ascending: false }),
+    // Discussions the user created on the forum - we'll only surface ones
+    // where the user has no reply yet (brand-new threads with 0 replies from them).
+    supabase
+      .from('discussions')
+      .select('id, title, slug, created_at, discussion_topic_id')
+      .eq('created_by', uid)
+      .eq('is_draft', false)
+      .not('discussion_topic_id', 'is', null)
+      .limit(20)
+      .order('created_at', { ascending: false }),
+  ])
+
+  // Build reply items - timestamp is when the user actually posted the reply
+  const replyItems: UserActivityItem[] = (repliesRes.data ?? []).map((item) => {
+    const discussion = Array.isArray(item.discussions) ? item.discussions[0] : item.discussions
+    const slug = discussion?.slug ?? item.discussion_id
+    return {
+      id: item.id,
+      type: 'Reply',
+      discussionId: item.discussion_id,
+      discussionTopicId: discussion?.discussion_topic_id ?? null,
+      discussionTitle: discussion?.title ?? 'Discussion',
+      discussionHref: `/forum/${slug}?comment=${item.id}`,
+      timestampRaw: item.created_at,
+      timestamp: dayjs(item.created_at).fromNow(),
+    }
+  })
+
+  // Collect discussion IDs the user has already replied in so we don't
+  // double-count them below with a stale created_at timestamp.
+  const repliedDiscussionIds = new Set(replyItems.map(r => r.discussionId))
+
+  // Only include created discussions that the user hasn't replied in yet -
+  // those are already represented (with correct timestamps) via replyItems.
+  const discussionItems: UserActivityItem[] = (discussionsRes.data ?? [])
+    .filter(item => !repliedDiscussionIds.has(item.id))
+    .map(item => ({
+      id: item.id,
+      type: 'Discussion' as const,
+      discussionId: item.id,
+      discussionTopicId: item.discussion_topic_id ?? null,
+      discussionTitle: item.title,
+      discussionHref: `/forum/${item.slug ?? item.id}`,
+      timestampRaw: item.created_at,
+      timestamp: dayjs(item.created_at).fromNow(),
+    }))
+
+  // Merge, sort by most recent user action, deduplicate by discussion, take top 10
+  const seenDiscussionIds = new Set<string>()
+  userActivity.value = [...replyItems, ...discussionItems]
+    .sort((a, b) => (a.timestampRaw > b.timestampRaw ? -1 : 1))
+    .filter((item) => {
+      if (seenDiscussionIds.has(item.discussionId))
+        return false
+      seenDiscussionIds.add(item.discussionId)
+      return true
+    })
+    .slice(0, 6)
+
+  userActivityLoading.value = false
+}, { immediate: true })
+
+// Lookup map from topic id → topic name, used by the personal activity feed
+const topicLookup = computed(() => {
+  const map = new Map<string, string>()
+  for (const topic of topics.value)
+    map.set(topic.id, topic.name)
+  return map
+})
+
 // Pathing and topic nesting
 const activeTopicId = ref<string | null>(null)
-const activeTopicSlug = useRouteQuery<string | null>('activeTopic', null)
-const activeTopicIdQuery = useRouteQuery<string | null>('activeTopicId', null)
+const route = useRoute()
+const router = useRouter()
+
+// Read initial query values once on mount – we drive URL updates manually via
+// router.push / router.replace so we can control whether each change adds a
+// history entry or not.
+const activeTopicSlug = computed({
+  get: () => (route.query.activeTopic as string | null) ?? null,
+  set: (value: string | null) => {
+    // setter is intentionally a no-op; callers use _setQuery directly
+    void value
+  },
+})
+const activeTopicIdQuery = computed({
+  get: () => (route.query.activeTopicId as string | null) ?? null,
+  set: (value: string | null) => {
+    void value
+  },
+})
+
+/**
+ * Update the URL query params for the active topic.
+ * @param slug  The slug to set in ?activeTopic, or null to clear.
+ * @param uuid  The UUID to set in ?activeTopicId, or null to clear.
+ * @param push  When true uses router.push (adds history entry), otherwise replace.
+ */
+function _setQuery(slug: string | null, uuid: string | null, push: boolean) {
+  const query: Record<string, string> = {}
+  if (slug)
+    query.activeTopic = slug
+  if (uuid)
+    query.activeTopicId = uuid
+
+  if (push)
+    router.push({ path: '/forum', query })
+  else
+    router.replace({ path: '/forum', query })
+}
 
 // Provide topics and activeTopicId to child modals
 provide('forumTopics', () => topics)
@@ -170,6 +312,7 @@ onBeforeMount(() => {
         else {
           topics.value = data
 
+          // Restore active topic from URL query params (replace-only – no new history entry)
           if (activeTopicSlug.value) {
             const matchedTopic = data.find(topic => topic.slug === activeTopicSlug.value)
             if (matchedTopic) {
@@ -180,13 +323,9 @@ onBeforeMount(() => {
             const matchedTopic = data.find(topic => topic.id === activeTopicIdQuery.value)
             if (matchedTopic) {
               activeTopicId.value = matchedTopic.id
+              // Upgrade UUID → slug silently (replace, not push)
               if (matchedTopic.slug) {
-                activeTopicSlug.value = matchedTopic.slug
-                activeTopicIdQuery.value = null
-              }
-              else {
-                activeTopicSlug.value = null
-                activeTopicIdQuery.value = matchedTopic.id
+                _setQuery(matchedTopic.slug, null, false)
               }
             }
           }
@@ -213,6 +352,7 @@ onBeforeMount(() => {
               user: item.modified_by!,
               discussionId: item.discussion_id,
               href: `/forum/${item.discussion_id}?comment=${item.id}`,
+              isNsfw: !!item.is_nsfw,
             }
           })
         }
@@ -225,57 +365,83 @@ onBeforeMount(() => {
 
 const activeTopicPath = computed(() => composePathToTopic(activeTopicId.value, topics.value))
 
+/**
+ * Navigate to a topic by its ID. Used by the breadcrumb back-navigation where
+ * going "up" the tree should push a history entry so the user can go forward
+ * again.
+ */
 function setActiveTopicById(topicId: string | null) {
   activeTopicId.value = topicId
+
+  if (!topicId) {
+    // Navigating back to the root – clear query and push so back-button works
+    _setQuery(null, null, true)
+    return
+  }
+
   const matchedTopic = topics.value.find(topic => topic.id === topicId)
 
   if (matchedTopic?.slug) {
-    activeTopicSlug.value = matchedTopic.slug
-    activeTopicIdQuery.value = null
+    _setQuery(matchedTopic.slug, null, true)
   }
   else {
-    activeTopicSlug.value = null
-    activeTopicIdQuery.value = topicId
+    // No slug yet – use UUID but don't pollute history (replace);
+    // slug will be upgraded silently once available.
+    _setQuery(null, topicId, false)
   }
 }
 
+/**
+ * Navigate into a topic (e.g. clicking a topic row). Always pushes a history
+ * entry so the back-button can return to the previous topic. When the topic has
+ * no slug yet we use replace for the UUID entry, then replace again once we can
+ * upgrade to the slug – this avoids a spurious UUID entry in history.
+ */
 function setActiveTopicFromTopic(topic: Tables<'discussion_topics'>) {
   activeTopicId.value = topic.id
 
   if (topic.slug) {
-    activeTopicSlug.value = topic.slug
-    activeTopicIdQuery.value = null
+    _setQuery(topic.slug, null, true)
   }
   else {
-    activeTopicSlug.value = null
-    activeTopicIdQuery.value = topic.id
+    // UUID fallback – replace so history only gets an entry once the slug lands
+    _setQuery(null, topic.id, false)
   }
 }
 
+// Watch route query changes driven externally (e.g. browser back/forward)
 watch(
-  () => activeTopicId.value,
-  (value) => {
-    if (!value) {
-      activeTopicSlug.value = null
-      activeTopicIdQuery.value = null
+  () => route.query,
+  (query) => {
+    const slug = (query.activeTopic as string | null) ?? null
+    const uuid = (query.activeTopicId as string | null) ?? null
+
+    if (!slug && !uuid) {
+      activeTopicId.value = null
       return
     }
 
-    const matchedTopic = topics.value.find(topic => topic.id === value)
-    if (matchedTopic?.slug) {
-      activeTopicSlug.value = matchedTopic.slug
-      activeTopicIdQuery.value = null
+    if (slug) {
+      const matched = topics.value.find(t => t.slug === slug)
+      if (matched)
+        activeTopicId.value = matched.id
+      return
     }
-    else {
-      activeTopicSlug.value = null
-      activeTopicIdQuery.value = value
+
+    if (uuid) {
+      const matched = topics.value.find(t => t.id === uuid)
+      if (matched) {
+        activeTopicId.value = matched.id
+        // Silently upgrade UUID → slug if possible
+        if (matched.slug)
+          _setQuery(matched.slug, null, false)
+      }
     }
   },
 )
 
 // Search implementation
 const searchOpen = ref(false)
-const router = useRouter()
 
 // Transform topics & discussions into a searchable list of commands. Grouped by topic & discussions
 const searchResults = computed<Command[]>(() => {
@@ -423,8 +589,7 @@ function removeItem(type: 'topic' | 'discussion', id: string) {
     // If the removed topic was the active one, reset navigation
     if (activeTopicId.value === id) {
       activeTopicId.value = null
-      activeTopicSlug.value = null
-      activeTopicIdQuery.value = null
+      _setQuery(null, null, false)
     }
   }
   else {
@@ -465,6 +630,16 @@ const visibleReplies = computed<ActivityItem[]>(() => {
       if (!reply.discussionId)
         return false
 
+      if (!settings.value.showNsfw) {
+        // Hide reply if the reply itself is NSFW
+        if (reply.isNsfw)
+          return false
+        // Hide reply if its parent discussion is NSFW
+        const discussion = discussionLookup.value.get(reply.discussionId)
+        if (discussion?.is_nsfw)
+          return false
+      }
+
       return visibleDiscussionIds.value.has(reply.discussionId)
     })
     .map((reply) => {
@@ -497,6 +672,8 @@ const latestPosts = computed<ActivityItem[]>(() => {
   const flattenedTopics = topics.value
     .flatMap(topic => [topic, ...topic.discussions])
     .filter((item) => {
+      if (!settings.value.showNsfw && 'is_nsfw' in item && item.is_nsfw)
+        return false
       if (settings.value.showArchived)
         return true
       if ('discussion_topic_id' in item && item.discussion_topic_id && hiddenTopicIds.value.has(item.discussion_topic_id))
@@ -646,7 +823,7 @@ onBeforeMount(() => {
         </Flex>
 
         <div class="forum__latest-list">
-          <NuxtLink v-for="post in latestPosts" :key="post.id" class="forum__latest-item" :href="post.href" @click="post.onClick">
+          <NuxtLink v-for="post in latestPosts" :key="post.id" class="forum__latest-item" :href="post.href" @click.exact="post.onClick ? ($event.preventDefault(), post.onClick()) : undefined">
             <Flex x-between y-center expand>
               <Flex :gap="4" y-center>
                 <Icon :name="post.icon" :size="13" />
@@ -675,8 +852,29 @@ onBeforeMount(() => {
         </div>
       </section>
 
+      <section v-if="settings.showContinue && userId && (userActivityLoading || userActivity.length > 0)" class="forum__continue">
+        <Flex y-center x-between expand class="mb-s">
+          <h5>Continue where you left off</h5>
+          <span v-if="userActivityLoading" class="forum__continue-loading">
+            <Icon name="ph:circle-notch" class="spinning" />
+          </span>
+        </Flex>
+        <ul v-if="userActivity.length > 0" class="forum__continue-list">
+          <li v-for="item in userActivity" :key="item.id">
+            <NuxtLink :to="item.discussionHref" class="forum__continue-item">
+              <span class="forum__continue-badge" :class="item.type === 'Reply' ? 'forum__continue-badge--reply' : 'forum__continue-badge--discussion'">
+                <Icon :name="item.type === 'Reply' ? 'ph:chat-circle' : 'ph:scroll'" :size="12" />
+                {{ item.discussionTopicId ? topicLookup.get(item.discussionTopicId) ?? item.type : item.type }}
+              </span>
+              <span class="forum__continue-title">{{ item.discussionTitle }}</span>
+              <span class="forum__continue-time">{{ item.timestamp }}</span>
+            </NuxtLink>
+          </li>
+        </ul>
+      </section>
+
       <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xxs' : 'xs'">
-        <Button :disabled="!activeTopicId" size="s" :square="!isMobile" outline @click="setActiveTopicById(activeTopicPath.at(-2)?.parent_id ?? null)">
+        <Button :disabled="!activeTopicId" size="s" :square="!isMobile" outline @click="setActiveTopicById(activeTopicPath.at(-2)?.parent_id ?? null)" @click.middle.prevent="() => {}">
           <template v-if="isMobile" #start>
             <Icon :name="!activeTopicId ? 'ph:house' : 'ph:arrow-left'" />
           </template>
@@ -794,6 +992,8 @@ onBeforeMount(() => {
               <span class="text-m mb-xs text-color-light">Display options</span>
               <Switch v-model="settings.showArchived" label="Show archived topics & discussions" />
               <Switch v-model="settings.showActivity" label="Show latest updates" />
+              <Switch v-model="settings.showNsfw" label="Show NSFW in latest updates" />
+              <Switch v-model="settings.showContinue" label="Show where you left off" />
             </Flex>
           </Popout>
         </Flex>
@@ -802,16 +1002,14 @@ onBeforeMount(() => {
       <Card v-for="(topic, index) in modelledTopics" :key="topic.id" class="forum__category" separators>
         <div class="forum__category-title">
           <Flex y-center>
-            <h3
+            <NuxtLink
               :id="slugify(topic.name)"
               class="forum__category-title-button"
-              role="button"
-              tabindex="0"
-              @click="setActiveTopicFromTopic(topic)"
-              @keydown.enter="setActiveTopicFromTopic(topic)"
+              :to="`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`"
+              @click.prevent="setActiveTopicFromTopic(topic)"
             >
               {{ topic.name }}
-            </h3>
+            </NuxtLink>
             <Badge v-if="topic.is_locked">
               <Icon name="ph:lock" />
               Locked
@@ -840,6 +1038,7 @@ onBeforeMount(() => {
             v-for="subtopic of getTopicsByParentId(topic.id)"
             :key="subtopic.id"
             :data="subtopic"
+            :href="`/forum?${subtopic.slug ? `activeTopic=${subtopic.slug}` : `activeTopicId=${subtopic.id}`}`"
             :last-activity="subtopic.last_activity_at"
             :discussion-count="subtopic.discussions.length"
             @click="setActiveTopicFromTopic(subtopic)"
@@ -893,8 +1092,108 @@ onBeforeMount(() => {
 }
 
 .forum {
+  &__continue {
+    margin-bottom: var(--space-l);
+
+    h5 {
+      font-size: var(--font-size-m);
+      color: var(--color-text-light);
+      font-weight: var(--font-weight-bold);
+    }
+  }
+
+  &__continue-loading {
+    font-size: var(--font-size-s);
+    color: var(--color-text-lighter);
+
+    .spinning {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  }
+
+  &__continue-empty {
+    font-size: var(--font-size-s);
+    color: var(--color-text-lighter);
+    padding: var(--space-s) 0;
+  }
+
+  &__continue-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  &__continue-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--space-s);
+    padding: var(--space-xs) var(--space-s);
+    border-radius: var(--border-radius-s);
+    text-decoration: none;
+    transition: var(--transition-fast);
+    border-left: 2px solid transparent;
+
+    &:hover {
+      background-color: var(--color-bg-medium);
+      border-left-color: var(--color-accent);
+    }
+  }
+
+  &__continue-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: var(--font-size-xxs);
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px var(--space-xs);
+    border-radius: var(--border-radius-xs);
+    white-space: nowrap;
+    min-width: 96px;
+
+    &--reply {
+      background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 40%, transparent);
+      color: var(--color-accent);
+    }
+
+    &--discussion {
+      background-color: color-mix(in srgb, var(--color-bg-raised) 80%, transparent);
+      color: var(--color-text-light);
+    }
+  }
+
+  &__continue-title {
+    font-size: var(--font-size-s);
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  &__continue-time {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    white-space: nowrap;
+  }
+
   &__latest {
-    margin-bottom: var(--space-xl);
+    margin-bottom: var(--space-s);
 
     & > strong {
       font-size: var(--text-size-s);
@@ -1026,6 +1325,8 @@ onBeforeMount(() => {
     }
 
     .forum__category-title-button {
+      font-weight: var(--font-weight-bold);
+      line-height: 1.7em;
       cursor: pointer;
     }
 
@@ -1175,6 +1476,10 @@ onBeforeMount(() => {
 }
 
 @media screen and (max-width: $breakpoint-m) {
+  .forum__continue-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .forum__category-title,
   .forum__category-post .forum__category-post--item {
     grid-template-columns: 40px 5fr 1fr 24px;
@@ -1239,6 +1544,10 @@ onBeforeMount(() => {
 
   .forum__latest-list .forum__latest-item > .vui-flex {
     min-width: 256px;
+  }
+
+  .forum__continue-list {
+    grid-template-columns: 1fr;
   }
 }
 </style>

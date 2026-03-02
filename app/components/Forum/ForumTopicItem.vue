@@ -9,15 +9,18 @@ interface Props {
   data: Tables<'discussion_topics'>
   discussionCount?: number
   lastActivity?: string | null
+  href?: string
 }
 
 const {
   data,
   discussionCount,
   lastActivity,
+  href,
 } = defineProps<Props>()
 
 const emit = defineEmits<{
+  click: []
   update: [data: Tables<'discussion_topics'>]
   remove: [id: string]
 }>()
@@ -26,8 +29,18 @@ dayjs.extend(relativeTime)
 </script>
 
 <template>
-  <li class="forum__category-post" role="button">
-    <div class="forum__category-post--item topic">
+  <li class="forum__category-post">
+    <!--
+      NuxtLink gives us a real <a> so middle-click / ctrl-click opens a new tab.
+      Left-clicks are intercepted via @click.prevent so the parent's @click
+      handler (which calls setActiveTopicFromTopic) drives navigation instead,
+      allowing us to push a proper history entry.
+    -->
+    <NuxtLink
+      class="forum__category-post--item topic"
+      :to="href ?? '#'"
+      @click.exact.prevent="emit('click')"
+    >
       <div class="forum__category-post--icon">
         <Icon name="ph:folder-open" :size="20" />
       </div>
@@ -54,6 +67,6 @@ dayjs.extend(relativeTime)
       </div>
 
       <ForumItemActions table="discussion_topics" :data @update="emit('update', $event as any)" @remove="emit('remove', $event)" />
-    </div>
+    </NuxtLink>
   </li>
 </template>

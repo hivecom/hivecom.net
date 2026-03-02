@@ -13,7 +13,7 @@ const googleLoading = ref(false)
 const showEmailNotice = ref(false)
 const isBelowS = useBreakpoint('<s')
 const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(720px, 96vh)'))
-const metaballWidth = computed(() => (isBelowS.value ? '100vw' : 'min(520px, 96vw)'))
+const metaballWidth = computed(() => (isBelowS.value ? '100%' : 'min(520px, 96vw)'))
 
 const isDev = process.env.NODE_ENV === 'development'
 

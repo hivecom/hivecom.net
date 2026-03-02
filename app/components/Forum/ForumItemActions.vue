@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Divider, Dropdown, DropdownItem, pushToast, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
 import ForumModalAddDiscussion from './ForumModalAddDiscussion.vue'

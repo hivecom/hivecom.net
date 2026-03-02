@@ -1,21 +1,31 @@
 <script setup lang="ts">
 import { Popout } from '@dolanske/vui'
 
-const emit = defineEmits <{
+const emit = defineEmits<{
   (e: 'reaction', reaction: string): void
 }>()
 
+const EMOTE_GROUPS: { label: string, emotes: string[] }[] = [
+  {
+    label: 'Reactions',
+    emotes: ['👍', '👎', '🙌', '❤️', '🔥', '🎉', '👀', '💯', '💀', '⭐', '🏆'],
+  },
+  {
+    label: 'Emoticons',
+    emotes: ['😂', '😢', '😭', '😳', '🤯', '😍', '😡', '🤔', '😴', '🫠'],
+  },
+  {
+    label: 'Symbols',
+    emotes: ['✅', '❎', '🅰️', '🅱️', '🆒', '🆗', '⚠️'],
+  },
+  {
+    label: 'Other',
+    emotes: ['💅', '🚀', '🏳️‍🌈', '🗿', '🍆', '🍑', '💦', '🌡️', '☀️', '🌧️', '🌞', '🌚', '🌿', '🌱', '🥀'],
+  },
+]
+
 const anchor = useTemplateRef('anchor')
 const open = ref(false)
-
-// TODO: support for stickers (should take 2 or 3 rows of a grid space)
-// TODO: implement provider based fetching
-// TODO: split components into ReactionList (for reactions) and ReactionButton (for listing reactions)
-//  - ReactionList should support max amount of reactions per person
-//  - ReactionList should count reactions
-//
-
-const SampleEmotes = ['👍', '👎', '❤️', '😂', '😢', '🤔', '🚀', '🎉', '💀', '😳', '😳', '🤧', '🌡️', '🌞', '🕶️', '🆒', '💯', '💅', '🏳️‍🌈']
 
 function selectEmote(emote: string) {
   emit('reaction', emote)
@@ -24,41 +34,66 @@ function selectEmote(emote: string) {
 </script>
 
 <template>
-  <button ref="anchor" class="reactions__button" @click="open = !open">
+  <button ref="anchor" class="reactions__button reactions__button--trigger" @click="open = !open">
     <Icon name="ph:smiley" :size="20" />
   </button>
 
   <Popout :anchor :visible="open" @click-outside="open = false">
-    <div class="reactions__grid">
-      <button v-for="emote of SampleEmotes" :key="emote" class="reactions__button" @click="selectEmote(emote)">
-        {{ emote }}
-      </button>
+    <div class="reactions__picker">
+      <div v-for="group in EMOTE_GROUPS" :key="group.label" class="reactions__group">
+        <p class="reactions__group-label">
+          {{ group.label }}
+        </p>
+        <div class="reactions__grid">
+          <button
+            v-for="emote in group.emotes"
+            :key="emote"
+            class="reactions__button"
+            @click="selectEmote(emote)"
+          >
+            {{ emote }}
+          </button>
+        </div>
+      </div>
     </div>
   </Popout>
 </template>
 
 <style scoped lang="scss">
-.reactions__trigger {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 99px;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-bg);
-
-  &:hover {
-    background-color: var(--color-bg-raised);
+.reactions__button--trigger {
+  .iconify {
+    color: var(--color-text-lighter);
   }
 }
 
+.reactions__picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-s);
+  max-height: 320px;
+  overflow-y: auto;
+  width: 256px;
+}
+
+.reactions__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.reactions__group-label {
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-lighter);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 2px;
+  margin: 0;
+}
+
 .reactions__grid {
-  display: grid;
-  grid-template-columns: repeat(8, 32px);
-  grid-auto-rows: 32px;
+  display: flex;
+  flex-wrap: wrap;
   gap: 2px;
-  max-height: 256px;
-  padding: var(--space-xs);
 }
 </style>

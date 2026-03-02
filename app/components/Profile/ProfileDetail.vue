@@ -793,7 +793,7 @@ async function ignoreFriendRequest() {
       <!-- Profile Sections -->
       <div class="profile-sections">
         <!-- About Section (Left) -->
-        <Flex column gap="l">
+        <Flex column gap="l" class="profile-header-col">
           <!-- Profile Header -->
           <ProfileHeader
             :profile="profile"
@@ -806,18 +806,10 @@ async function ignoreFriendRequest() {
             @open-edit-sheet="openEditSheet"
             @open-complaint-modal="openComplaintModal"
           />
-
-          <!-- PRofile comments -->
-          <Discussion
-            v-if="profile?.id"
-            :id="profile.id"
-            type="profile"
-            :placeholder="`Leave a shout for ${profile.username} here! Or not...`"
-          />
         </Flex>
 
         <!-- (Right) -->
-        <Flex column gap="m">
+        <Flex column gap="m" class="profile-sidebar-col">
           <!-- Activity section -->
           <ProfileActivity
             v-if="!profile.rich_presence_disabled && (profile.steam_id !== null || /*profile.discord_id !== null || */ profile.teamspeak_identities?.toString() !== '')"
@@ -847,6 +839,17 @@ async function ignoreFriendRequest() {
           <!-- Badges -->
           <ProfileBadges :profile="profile" :is-own-profile="isOwnProfile" />
         </Flex>
+
+        <!-- Profile comments — full width on mobile, below header on desktop -->
+        <Discussion
+          v-if="profile?.id"
+          :id="profile.id"
+          class="profile-discussion-col"
+          type="profile"
+          :timestamps="true"
+          :placeholder="`Leave a shout for ${profile.username} here! Or not...`"
+        />
+
         <!-- Admin-only UUID display -->
         <Flex x-center expand>
           <CopyClipboard :text="profile.id" confirm>
@@ -927,8 +930,38 @@ async function ignoreFriendRequest() {
     overflow: hidden;
   }
 
+  .profile-header-col {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .profile-sidebar-col {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+
+  .profile-discussion-col {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
+
+    .profile-header-col {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .profile-sidebar-col {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .profile-discussion-col {
+      grid-column: 1;
+      grid-row: 3;
+    }
   }
 }
 </style>

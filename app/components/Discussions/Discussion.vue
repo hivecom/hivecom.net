@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import { wrapInBlockquote } from '@/lib/markdown-processors'

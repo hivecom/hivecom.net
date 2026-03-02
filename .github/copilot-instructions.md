@@ -37,6 +37,9 @@
 - Keep local DB in sync: `npm run supabase db reset` then `npm run supabase db pull`.
 - Create migrations with `npm run supabase migration new <name>`; apply locally via `npx supabase migrations up`.
 - Generate types after schema changes: `npx supabase gen types typescript --local --schema public > types/database.types.ts`.
+- **Never manually edit `types/database.types.ts`** - it is fully generated and will be overwritten. It must stay untouched.
+- For columns where the generated `Json` type is too loose (e.g. known-shape JSONB columns), declare a concrete type in `types/database.overrides.ts` and add an entry to `TableColumnOverrides` there. That file re-exports drop-in `Tables`, `TablesInsert`, and `TablesUpdate` helpers that apply the overrides transparently.
+- **Always import `Tables`, `TablesInsert`, and `TablesUpdate` from `@/types/database.overrides`** in app code, not from `database.types`. Import `Database` and `Json` directly from `database.types` only when needed at the Supabase client level (e.g. `useSupabaseClient<Database>()`).
 - Manual triggers in protected schemas are documented in `TRIGGERS.md`; ensure vault secrets are set for trigger-driven edge calls.
 
 ## Secrets & Vault
