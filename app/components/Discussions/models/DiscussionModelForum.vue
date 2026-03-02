@@ -203,6 +203,8 @@ const { displayReactions, toggleReaction } = useReactions({
 
       <MDRenderer v-else :md="data.markdown" :skeleton-height="128" />
 
+      <div class="flex-1" />
+
       <!-- Bottom row with timestamps and reactions -->
       <Flex wrap y-end x-between class="discussion-forum__bottom-row">
         <p class="discussion-forum__timestamp">
