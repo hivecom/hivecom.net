@@ -4,6 +4,7 @@ import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Switch,
 import dayjs from 'dayjs'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import Reactions from '@/components/Reactions/Reactions.vue'
+import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -74,7 +75,8 @@ function handleDeletion() {
 
 const showNSFWWarning = ref(!!props.data.is_nsfw)
 
-// Editing the message
+// ── Editing ─────────────────────────────────────────────────────────────────
+
 const editing = ref(false)
 const editedContent = ref('')
 const editedIsNsfw = ref(false)
@@ -128,10 +130,19 @@ async function submit() {
 
 watch(editedContent, () => editError.value = [])
 
-// Reporting
+// ── Reporting ─────────────────────────────────────────────────────────────────
+
 const showReportModal = ref(false)
 
 const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
+
+// ── Reactions ─────────────────────────────────────────────────────────────────
+
+const { displayReactions, toggleReaction } = useReactions({
+  table: 'discussion_replies',
+  rowId: data.value.id,
+  initialReactions: data.value.reactions,
+})
 </script>
 
 <template>
@@ -194,21 +205,33 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
       <MDRenderer v-else :md="data.markdown" :skeleton-height="128" />
 
       <!-- Bottom row with timestamps and reactions -->
-      <Flex wrap y-center class="discussion-forum__bottom-row">
+      <Flex wrap y-end x-between class="discussion-forum__bottom-row">
         <p class="discussion-forum__timestamp">
           <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
           <span>{{ data.modified_at !== data.created_at ? `Edited ${dayjs(data.modified_at).fromNow()}` : null }}</span>
         </p>
 
-        <Reactions
-          table="discussion_replies"
-          :row-id="data.id"
-          :reactions="data.reactions"
-        />
+        <Flex v-if="displayReactions.length > 0" y-center x-end gap="xxs">
+          <ReactionsList :reactions="displayReactions" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
+          <ReactionsSelect @reaction="(emote) => toggleReaction(emote)" />
+        </Flex>
       </Flex>
 
       <!-- Floating actions -->
       <div v-if="!showNSFWWarning" class="discussion-forum__actions">
+        <ReactionsSelect @reaction="(emote) => toggleReaction(emote)">
+          <template #default="{ toggle }">
+            <Button size="s" square @click="toggle">
+              <Tooltip>
+                <Icon name="ph:smiley-bold" />
+                <template #tooltip>
+                  <p>Add reactions</p>
+                </template>
+              </Tooltip>
+            </Button>
+          </template>
+        </ReactionsSelect>
+
         <ButtonGroup v-if="currentUserData">
           <template v-if="(!discussion?.is_locked || canBypassLock) && !discussion?.is_archived">
             <Button square size="s" @click="setReplyToComment(data)">
@@ -341,6 +364,7 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
   border-radius: var(--border-radius-m);
   position: relative;
 
+  &:has(.reactions-anchor-active),
   &:hover {
     .discussion-forum__actions {
       opacity: 1;
@@ -376,8 +400,8 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
   &__bottom-row {
     margin-top: var(--space-s);
     gap: var(--space-xs);
-    min-width: 0;
-    row-gap: var(--space-xxs);
+    gap: var(--space-xxs);
+    min-height: 32px;
   }
 
   &__timestamp {
