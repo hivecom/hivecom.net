@@ -11,6 +11,7 @@ import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
+import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { extractMentionIds, processMentionsToText, stripMarkdown } from '@/lib/markdown-processors'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -869,23 +870,26 @@ onBeforeMount(() => {
 
       <section v-if="settings.showContinue && userId && (userActivityLoading || userActivity.length > 0)" class="forum__continue">
         <Flex y-center x-between expand class="mb-s">
-          <h5>Continue where you left off</h5>
+          <h5>Recently visited</h5>
           <span v-if="userActivityLoading" class="forum__continue-loading">
             <Icon name="ph:circle-notch" class="spinning" />
           </span>
         </Flex>
-        <ul v-if="userActivity.length > 0" class="forum__continue-list">
-          <li v-for="item in userActivity" :key="item.id">
-            <NuxtLink :to="item.discussionHref" class="forum__continue-item">
-              <span class="forum__continue-badge" :class="item.type === 'Reply' ? 'forum__continue-badge--reply' : 'forum__continue-badge--discussion'">
-                <Icon :name="item.type === 'Reply' ? 'ph:chat-circle' : 'ph:scroll'" :size="12" />
-                {{ item.discussionTopicId ? topicLookup.get(item.discussionTopicId) ?? item.type : item.type }}
-              </span>
-              <span class="forum__continue-title">{{ item.discussionTitle }}</span>
-              <span class="forum__continue-time">{{ item.timestamp }}</span>
-            </NuxtLink>
-          </li>
-        </ul>
+
+        <Card>
+          <ul v-if="userActivity.length > 0" class="forum__continue-list">
+            <li v-for="item in userActivity" :key="item.id">
+              <NuxtLink :to="item.discussionHref" class="forum__continue-item">
+                <TinyBadge class="ws-nowrap">
+                  <Icon :name="item.type === 'Reply' ? 'ph:chat-circle' : 'ph:scroll'" :size="16" />
+                  {{ item.discussionTopicId ? topicLookup.get(item.discussionTopicId) ?? item.type : item.type }}
+                </TinyBadge>
+                <span class="forum__continue-title">{{ item.discussionTitle }}</span>
+                <span class="forum__continue-time">{{ item.timestamp }}</span>
+              </NuxtLink>
+            </li>
+          </ul>
+        </Card>
       </section>
 
       <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xxs' : 'xs'">
@@ -1005,10 +1009,10 @@ onBeforeMount(() => {
           <Popout :visible="showSettings" :anchor="settingsAnchor" placement="bottom" @click-outside="showSettings = false">
             <Flex column class="p-m" gap="s">
               <span class="text-m mb-xs text-color-light">Display options</span>
-              <Switch v-model="settings.showArchived" label="Show archived topics & discussions" />
               <Switch v-model="settings.showActivity" label="Show latest updates" />
+              <Switch v-model="settings.showContinue" label="Show recently visited" />
+              <Switch v-model="settings.showArchived" label="Show archived topics & discussions" />
               <Switch v-model="settings.showNsfw" label="Show NSFW in latest updates" />
-              <Switch v-model="settings.showContinue" label="Show where you left off" />
             </Flex>
           </Popout>
         </Flex>
@@ -1108,12 +1112,11 @@ onBeforeMount(() => {
 
 .forum {
   &__continue {
-    margin-bottom: var(--space-l);
+    margin-bottom: var(--space-xl);
+    // background-color: var(--card-bg);
 
-    h5 {
-      font-size: var(--font-size-m);
-      color: var(--color-text-light);
-      font-weight: var(--font-weight-bold);
+    .vui-card .vui-card-content {
+      padding: var(--space-xs);
     }
   }
 
@@ -1135,66 +1138,30 @@ onBeforeMount(() => {
     }
   }
 
-  &__continue-empty {
-    font-size: var(--font-size-s);
-    color: var(--color-text-lighter);
-    padding: var(--space-s) 0;
-  }
-
   &__continue-list {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 2px;
+    gap: var(--space-xs);
     list-style: none;
-    padding: 0;
-    margin: 0;
   }
 
   &__continue-item {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+    display: flex;
     align-items: center;
     gap: var(--space-s);
-    padding: var(--space-xs) var(--space-s);
-    border-radius: var(--border-radius-s);
+    padding: var(--space-xs);
+    border-radius: var(--border-radius-m);
     text-decoration: none;
-    transition: var(--transition-fast);
-    border-left: 2px solid transparent;
 
     &:hover {
       background-color: var(--color-bg-medium);
-      border-left-color: var(--color-accent);
-    }
-  }
-
-  &__continue-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    font-size: var(--font-size-xxs);
-    font-weight: var(--font-weight-bold);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 2px var(--space-xs);
-    border-radius: var(--border-radius-xs);
-    white-space: nowrap;
-    min-width: 96px;
-
-    &--reply,
-    &--discussion {
-      background-color: color-mix(in srgb, var(--color-bg-raised) 80%, transparent);
-      color: var(--color-text-light);
     }
   }
 
   &__continue-title {
     font-size: var(--font-size-s);
     color: var(--color-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
+    @include line-clamp(1);
   }
 
   &__continue-time {
@@ -1218,6 +1185,7 @@ onBeforeMount(() => {
     overflow-y: auto;
     padding-bottom: 16px;
     scrollbar-width: thin;
+    margin-bottom: var(--space-l);
 
     .forum__latest-item {
       display: inline-flex;

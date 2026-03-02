@@ -384,7 +384,7 @@ function publish() {
         </Flex>
 
         <!-- Discussion linking card -->
-        <Card v-if="contextInfo" class="mb-xl mt-l">
+        <Card v-if="contextInfo" class="mt-l" :class="{ 'mb-xl': post.markdown }">
           <Flex x-between y-center wrap gap="m">
             <Flex column gap="xs">
               <Flex y-center gap="xs">
@@ -402,6 +402,7 @@ function publish() {
 
         <!-- Content -->
         <template v-if="post.markdown">
+          <hr class="mb-l">
           <button v-if="showNSFWWarning" class="forum-post__nsfw" @click="showNSFWWarning = false">
             <Icon class="text-color-accent" name="ph:caret-down" />
             <p>This discussion is marked as NSFW - click to reveal potentially sensitive content</p>
