@@ -193,18 +193,19 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 
       <MDRenderer v-else :md="data.markdown" :skeleton-height="128" />
 
-      <!-- Bottom row with timestamps and reactions` -->
+      <Reactions
+        class="discussion-forum__reactions"
+        table="discussion_replies"
+        :row-id="data.id"
+        :reactions="data.reactions"
+      />
+
+      <!-- Bottom row with timestamp -->
       <Flex wrap y-center class="discussion-forum__bottom-row">
         <p class="discussion-forum__timestamp">
           <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
           <span>{{ data.modified_at !== data.created_at ? `Edited ${dayjs(data.modified_at).fromNow()}` : null }}</span>
         </p>
-
-        <Reactions
-          table="discussion_replies"
-          :row-id="data.id"
-          :reactions="data.reactions"
-        />
       </Flex>
 
       <!-- Floating actions -->
@@ -373,8 +374,13 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
     }
   }
 
-  &__bottom-row {
+  &__reactions {
     margin-top: var(--space-s);
+    justify-content: flex-start;
+  }
+
+  &__bottom-row {
+    margin-top: var(--space-xs);
     gap: var(--space-xs);
     min-width: 0;
     row-gap: var(--space-xxs);

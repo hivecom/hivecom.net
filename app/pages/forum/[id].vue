@@ -319,19 +319,32 @@ function publish() {
           </Flex>
         </Flex>
 
-        <Flex y-center gap="xs" wrap :class="isMobile ? 'mt-m' : 'mt-xl'">
-          <h1>
-            {{ post.title ?? 'Unnamed discussion' }}
-          </h1>
-          <Badge v-if="post.is_archived" variant="warning">
-            <Icon name="ph:archive" class="text-color-yellow" />
-            Archived
-          </Badge>
+        <Flex y-center x-between gap="m" wrap :class="isMobile ? 'mt-m' : 'mt-xl'">
+          <Flex y-center gap="xs" wrap>
+            <h1>
+              {{ post.title ?? 'Unnamed discussion' }}
+            </h1>
+            <Badge v-if="post.is_archived" variant="warning">
+              <Icon name="ph:archive" class="text-color-yellow" />
+              Archived
+            </Badge>
+          </Flex>
+          <Reactions
+            v-if="!post.description"
+            table="discussions"
+            :row-id="post.id"
+            :reactions="post.reactions"
+          />
         </Flex>
 
-        <p v-if="post.description" class="mb-m">
-          {{ post.description }}
-        </p>
+        <Flex v-if="post.description" y-center x-between gap="m" class="mb-m">
+          <p>{{ post.description }}</p>
+          <Reactions
+            table="discussions"
+            :row-id="post.id"
+            :reactions="post.reactions"
+          />
+        </Flex>
 
         <!-- Draft alert and publishing -->
         <Alert v-if="post.is_draft" class="mb-l" variant="info">
@@ -396,15 +409,6 @@ function publish() {
           </button>
           <MDRenderer v-else class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
         </template>
-
-        <!-- Top-level discussion reactions -->
-        <Flex x-end class="mt-m">
-          <Reactions
-            table="discussions"
-            :row-id="post.id"
-            :reactions="post.reactions"
-          />
-        </Flex>
       </section>
 
       <ComplaintsManager

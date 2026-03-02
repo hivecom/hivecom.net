@@ -115,8 +115,13 @@ const showReportModal = ref(false)
 
 <template>
   <div class="discussion-comment">
-    <Flex>
+    <Flex y-center x-between>
       <UserDisplay size="s" :user-id="data.created_by" />
+      <Reactions
+        table="discussion_replies"
+        :row-id="data.id"
+        :reactions="data.reactions"
+      />
     </Flex>
 
     <Tooltip v-if="data.reply" :delay="750">
@@ -153,18 +158,10 @@ const showReportModal = ref(false)
 
     <MDRenderer v-else :md="data.markdown" skeleton-height="0px" />
 
-    <Flex wrap y-center class="discussion-comment__bottom">
-      <p v-if="timestamps" class="discussion-comment__timestamp">
-        {{ dayjs(data.created_at).fromNow() }}
-        <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
-      </p>
-      <span v-else />
-      <Reactions
-        table="discussion_replies"
-        :row-id="data.id"
-        :reactions="data.reactions"
-      />
-    </Flex>
+    <p v-if="timestamps" class="discussion-comment__bottom discussion-comment__timestamp">
+      {{ dayjs(data.created_at).fromNow() }}
+      <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
+    </p>
 
     <div class="discussion-comment__actions">
       <ButtonGroup>
@@ -338,8 +335,6 @@ const showReportModal = ref(false)
   &__bottom {
     padding-left: 40px;
     margin-top: var(--space-xxs);
-    gap: var(--space-xxs) var(--space-xs);
-    min-width: 0;
   }
 
   &__timestamp {
