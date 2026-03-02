@@ -21,9 +21,9 @@ dayjs.extend(relativeTime)
 
 useSeoMeta({
   title: 'Forum',
-  description: 'Forum description TBA',
+  description: 'Browse and participate in discussions across the Hivecom community forum.',
   ogTitle: 'Forum',
-  ogDescription: 'Forum description TBA',
+  ogDescription: 'Browse and participate in discussions across the Hivecom community forum.',
 })
 
 type ForumDiscussion = Tables<'discussions'>
@@ -163,7 +163,13 @@ interface UserActivityItem {
 const userActivity = ref<UserActivityItem[]>([])
 const userActivityLoading = ref(false)
 
-watch(userId, async (uid) => {
+// Pathing and topic nesting (declared here so route is available for the
+// userActivity route-watch below; the activeTopicId ref and query-watch remain
+// in their original location further down).
+const route = useRoute()
+const router = useRouter()
+
+async function fetchUserActivity(uid: string | null | undefined) {
   if (!uid) {
     userActivity.value = []
     return
@@ -229,7 +235,7 @@ watch(userId, async (uid) => {
       timestamp: dayjs(item.created_at).fromNow(),
     }))
 
-  // Merge, sort by most recent user action, deduplicate by discussion, take top 10
+  // Merge, sort by most recent user action, deduplicate by discussion, take top 6
   const seenDiscussionIds = new Set<string>()
   userActivity.value = [...replyItems, ...discussionItems]
     .sort((a, b) => (a.timestampRaw > b.timestampRaw ? -1 : 1))
@@ -242,7 +248,14 @@ watch(userId, async (uid) => {
     .slice(0, 6)
 
   userActivityLoading.value = false
-}, { immediate: true })
+}
+
+// Re-fetch when the logged-in user changes.
+watch(userId, uid => fetchUserActivity(uid), { immediate: true })
+
+// Also re-fetch on every SPA navigation back to this page so that replies
+// posted elsewhere in the forum session bubble up immediately.
+watch(route, () => fetchUserActivity(userId.value))
 
 // Lookup map from topic id → topic name, used by the personal activity feed
 const topicLookup = computed(() => {
@@ -254,8 +267,6 @@ const topicLookup = computed(() => {
 
 // Pathing and topic nesting
 const activeTopicId = ref<string | null>(null)
-const route = useRoute()
-const router = useRouter()
 
 // Read initial query values once on mount – we drive URL updates manually via
 // router.push / router.replace so we can control whether each change adds a
@@ -349,7 +360,7 @@ onBeforeMount(() => {
               description: item.markdown,
               timestamp: `${dayjs(item.created_at).fromNow()}`,
               timestampRaw: item.created_at,
-              user: item.modified_by!,
+              user: item.created_by!,
               discussionId: item.discussion_id,
               href: `/forum/${item.discussion_id}?comment=${item.id}`,
               isNsfw: !!item.is_nsfw,

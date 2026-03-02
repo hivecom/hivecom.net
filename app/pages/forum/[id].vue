@@ -10,6 +10,7 @@ import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { stripMarkdown } from '@/lib/markdown-processors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDate } from '@/lib/utils/date'
 
@@ -172,11 +173,23 @@ onBeforeMount(() => {
     })
 })
 
+const seoDescription = computed(() => {
+  if (!post.value)
+    return 'Forum post details'
+  return post.value.description
+    || stripMarkdown(post.value.markdown, 160)
+    || 'A forum post on Hivecom'
+})
+
 useSeoMeta({
-  title: computed(() => post.value ? `${post.value.title} | Forum` : 'post Details'),
-  description: computed(() => post.value?.description || 'post details'),
-  ogTitle: computed(() => post.value ? `${post.value.title} | Forum` : 'post Details'),
-  ogDescription: computed(() => post.value?.description || 'Forum details'),
+  title: computed(() => post.value ? `${post.value.title} | Forum` : 'Forum Post'),
+  description: seoDescription,
+  ogTitle: computed(() => post.value ? `${post.value.title} | Forum` : 'Forum Post'),
+  ogDescription: seoDescription,
+})
+
+useHead({
+  title: computed(() => post.value ? post.value.title ?? 'Forum Post' : 'Forum Post'),
 })
 
 // This updates every 10 seconds and forces a re-render on the timestamps. This

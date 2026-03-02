@@ -1,7 +1,8 @@
 /**
  * Shared helper to load and cache the total number of discussions a user has created.
  * Unlike useCacheBadgeDiscussionStartedCount, this counts ALL non-draft discussions
- * regardless of context (forum threads, event discussions, profile discussions, etc.).
+ * regardless of context (forum threads, event discussions, etc.), but excludes
+ * profile discussions (where profile_id is set).
  * Reduces duplicate Supabase queries when the same profile is shown repeatedly.
  */
 
@@ -65,12 +66,14 @@ export function useCacheUserDiscussionCount(
     error.value = null
 
     try {
-      // Count all non-draft discussions the user has created, across all contexts.
+      // Count all non-draft discussions the user has created, across all contexts,
+      // excluding profile discussions (e.g. the user's own profile wall posts).
       const { count: discussionCount, error: supabaseError } = await supabase
         .from('discussions')
         .select('id', { count: 'exact', head: true })
         .eq('created_by', normalizedId)
         .eq('is_draft', false)
+        .is('profile_id', null)
 
       if (supabaseError)
         throw supabaseError
