@@ -412,7 +412,7 @@ const showReportModal = ref(false)
     gap: 3px;
     position: absolute;
     right: 4px;
-    top: var(--space-s);
+    top: calc(14px + var(--interactive-el-height));
 
     opacity: 0;
     z-index: -1;

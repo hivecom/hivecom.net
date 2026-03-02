@@ -468,6 +468,16 @@ const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
       border-bottom-right-radius: 0;
     }
 
+    &__actions {
+      position: static;
+      opacity: 1;
+      z-index: auto;
+      visibility: visible;
+      order: -1;
+      align-self: flex-end;
+      margin-bottom: var(--space-xs);
+    }
+
     &__timestamp {
       margin-top: var(--space-m);
     }
