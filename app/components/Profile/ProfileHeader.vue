@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
-import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Tooltip } from '@dolanske/vui'
+import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Modal, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -177,6 +177,8 @@ function getRoleInfo(role: string | null) {
 
   return { display: roleDisplay, variant }
 }
+
+const showAvatarLightbox = ref(false)
 </script>
 
 <template>
@@ -186,7 +188,7 @@ function getRoleInfo(role: string | null) {
         <!-- Avatar -->
         <div class="profile-avatar">
           <div class="avatar-container">
-            <Avatar :size="isMobile ? 96 : 160" :url="avatarUrl || undefined">
+            <Avatar :size="isMobile ? 96 : 160" :url="avatarUrl || undefined" @click="avatarUrl && (showAvatarLightbox = true)">
               <template v-if="!avatarUrl" #default>
                 {{ getUserInitials(profile.username) }}
               </template>
@@ -203,6 +205,13 @@ function getRoleInfo(role: string | null) {
             </Tooltip>
           </div>
         </div>
+
+        <Modal v-if="avatarUrl" size="l" :open="showAvatarLightbox" @close="showAvatarLightbox = false">
+          <template #header>
+            <h4>{{ profile.username }}'s avatar</h4>
+          </template>
+          <img :src="avatarUrl" class="avatar-lightbox">
+        </Modal>
 
         <Flex column gap="s" expand x-end class="h-100">
           <!-- Username, Role, Badges and Action Buttons Row -->
@@ -376,6 +385,14 @@ function getRoleInfo(role: string | null) {
 
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
+
+.avatar-lightbox {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+  border-radius: var(--border-radius-m);
+}
 
 .profile-action-buttons {
   position: absolute;
