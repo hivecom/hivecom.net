@@ -8,14 +8,17 @@ import ForumItemActions from './ForumItemActions.vue'
 interface Props {
   data: Tables<'discussions'>
   lastActivity?: string | null
+  hasNew?: boolean
 }
 
 const {
   data,
   lastActivity,
+  hasNew,
 } = defineProps<Props>()
 
 const emit = defineEmits<{
+  click: []
   update: [data: Tables<'discussion_topics'>]
   remove: [id: string]
 }>()
@@ -25,8 +28,8 @@ dayjs.extend(relativeTime)
 
 <template>
   <li class="forum__category-post" :class="{ pinned: data.is_sticky }">
-    <NuxtLink :to="`/forum/${data.slug ?? data.id}`" class="forum__category-post--item">
-      <div class="forum__category-post--icon">
+    <NuxtLink :to="`/forum/${data.slug ?? data.id}`" class="forum__category-post--item" @click="emit('click')">
+      <div class="forum__category-post--icon" :class="{ 'has-new': hasNew }">
         <Icon name="ph:scroll" :size="20" />
         <!-- <Icon :name="data.icon" :size="20" /> -->
       </div>
@@ -62,3 +65,21 @@ dayjs.extend(relativeTime)
     </NuxtLink>
   </li>
 </template>
+
+<style scoped lang="scss">
+.forum__category-post--icon {
+  position: relative;
+
+  &.has-new::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    border: 2px solid var(--color-bg);
+  }
+}
+</style>

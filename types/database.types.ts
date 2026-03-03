@@ -294,6 +294,8 @@ export interface Database {
           parent_id: string | null
           priority: number
           slug: string
+          total_reply_count: number
+          total_view_count: number
         }
         Insert: {
           created_at?: string
@@ -309,6 +311,8 @@ export interface Database {
           parent_id?: string | null
           priority?: number
           slug: string
+          total_reply_count?: number
+          total_view_count?: number
         }
         Update: {
           created_at?: string
@@ -324,6 +328,8 @@ export interface Database {
           parent_id?: string | null
           priority?: number
           slug?: string
+          total_reply_count?: number
+          total_view_count?: number
         }
         Relationships: [
           {

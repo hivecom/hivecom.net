@@ -8,15 +8,21 @@ import ForumItemActions from './ForumItemActions.vue'
 interface Props {
   data: Tables<'discussion_topics'>
   discussionCount?: number
+  replyCount?: number
+  viewCount?: number
   lastActivity?: string | null
   href?: string
+  hasNew?: boolean
 }
 
 const {
   data,
   discussionCount,
+  replyCount,
+  viewCount,
   lastActivity,
   href,
+  hasNew,
 } = defineProps<Props>()
 
 const emit = defineEmits<{
@@ -41,7 +47,7 @@ dayjs.extend(relativeTime)
       :to="href ?? '#'"
       @click.exact.prevent="emit('click')"
     >
-      <div class="forum__category-post--icon">
+      <div class="forum__category-post--icon" :class="{ 'has-new': hasNew }">
         <Icon name="ph:folder-open" :size="20" />
       </div>
       <div class="forum__category-post--name">
@@ -59,9 +65,11 @@ dayjs.extend(relativeTime)
       </div>
 
       <div class="forum__category-post--meta">
-        <span>{{ discussionCount || 0 }}</span>
+        <span>{{ discussionCount || 0 }} / {{ replyCount ?? 0 }}</span>
       </div>
-      <div class="forum__category-post--meta" />
+      <div class="forum__category-post--meta">
+        <span>{{ viewCount ?? 0 }}</span>
+      </div>
       <div class="forum__category-post--meta">
         <span>{{ dayjs(lastActivity ?? data.modified_at).fromNow() }}</span>
       </div>
@@ -70,3 +78,21 @@ dayjs.extend(relativeTime)
     </NuxtLink>
   </li>
 </template>
+
+<style scoped lang="scss">
+.forum__category-post--icon {
+  position: relative;
+
+  &.has-new::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    border: 2px solid var(--color-bg);
+  }
+}
+</style>

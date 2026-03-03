@@ -9,6 +9,7 @@ import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
+import ForumTopicItem from '@/components/Forum/ForumTopicItem.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
@@ -73,6 +74,9 @@ const userId = useUserId()
 const isMobile = useBreakpoint('<s')
 
 const { user } = useCacheUserData(userId, { includeRole: true })
+
+// Track which topics/discussions have new content since last visit
+const forumUnread = useForumUnread()
 
 const addingTopic = ref(false)
 const addingDiscussion = ref(false)
@@ -320,7 +324,7 @@ onBeforeMount(() => {
   Promise.all([
     supabase
       .from('discussion_topics')
-      .select('*, discussions(*)')
+      .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_by, discussion_topic_id)')
       .neq('discussions.is_draft', true)
       .then(({ data, error }) => {
         if (error) {
@@ -328,6 +332,11 @@ onBeforeMount(() => {
         }
         else {
           topics.value = data
+
+          // Seed localStorage seen-state for any topic/discussion not yet tracked.
+          // First-time visitors get everything marked as "seen" so only future
+          // activity triggers the new-post dots.
+          forumUnread.initializeTopics(data)
 
           // Restore active topic from URL query params (replace-only – no new history entry)
           if (activeTopicSlug.value) {
@@ -414,8 +423,15 @@ function setActiveTopicById(topicId: string | null) {
  * no slug yet we use replace for the UUID entry, then replace again once we can
  * upgrade to the slug – this avoids a spurious UUID entry in history.
  */
-function setActiveTopicFromTopic(topic: Tables<'discussion_topics'>) {
+function setActiveTopicFromTopic(topic: TopicWithDiscussions) {
   activeTopicId.value = topic.id
+
+  // Mark this topic as seen so the new-post dot clears after navigation
+  forumUnread.markTopicSeen(
+    topic.id,
+    topic.discussions.length,
+    topic.total_reply_count ?? 0,
+  )
 
   if (topic.slug) {
     _setQuery(topic.slug, null, true)
@@ -1064,6 +1080,9 @@ onBeforeMount(() => {
             :href="`/forum?${subtopic.slug ? `activeTopic=${subtopic.slug}` : `activeTopicId=${subtopic.id}`}`"
             :last-activity="subtopic.last_activity_at"
             :discussion-count="subtopic.discussions.length"
+            :reply-count="subtopic.total_reply_count"
+            :view-count="subtopic.total_view_count"
+            :has-new="forumUnread.isTopicNew(subtopic.id, subtopic.discussions.length, subtopic.total_reply_count ?? 0)"
             @click="setActiveTopicFromTopic(subtopic)"
             @update="replaceItemData('topic', $event)"
             @remove="removeItem('topic', $event)"
@@ -1074,6 +1093,8 @@ onBeforeMount(() => {
             :key="discussion.id"
             :data="discussion"
             :last-activity="discussion.last_activity_at"
+            :has-new="forumUnread.isDiscussionNew(discussion.id, discussion.reply_count ?? 0)"
+            @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
             @update="replaceItemData('discussion', $event)"
             @remove="removeItem('discussion', $event)"
           />
