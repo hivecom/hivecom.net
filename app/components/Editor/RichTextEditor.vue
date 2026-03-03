@@ -144,7 +144,6 @@ const editor = useEditor({
   extensions: [
     StarterKit,
     Markdown,
-
     Image,
     // Checklist / task list support (markdown: - [ ] / - [x])
     TaskList,

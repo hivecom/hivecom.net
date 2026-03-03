@@ -422,7 +422,7 @@ function scrollHandler() {
         />
 
         <!-- Post author & metadata row -->
-        <Flex x-between y-center class="mb-l" wrap gap="m">
+        <Flex x-between y-center wrap gap="m" :class="{ 'mb-l': contextInfo || !!post.markdown }">
           <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
           <Flex :key="timestampUpdateKey" y-center>
             <Tooltip>
@@ -441,7 +441,7 @@ function scrollHandler() {
         </Flex>
 
         <!-- Discussion linking card -->
-        <Card v-if="contextInfo" class="mt-l" :class="{ 'mb-xl': post.markdown }">
+        <Card v-if="contextInfo" class="mt-l" :class="{ 'mb-xl': !!post.markdown }">
           <Flex x-between y-center wrap gap="m">
             <Flex column gap="xs">
               <Flex y-center gap="xs">
@@ -504,6 +504,7 @@ function scrollHandler() {
 
 <style scoped lang="scss">
 @use '@/assets/breakpoints.scss' as *;
+@use '@/assets/mixins.scss' as *;
 
 .back-button {
   position: absolute;
@@ -594,7 +595,7 @@ function scrollHandler() {
 
 .forum-post__scroll-title {
   display: block;
-  font-size: var(--font-size-xxl);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-black);
   margin-bottom: var(--space-xs);
   position: relative;
@@ -614,6 +615,13 @@ function scrollHandler() {
   margin-top: -28px;
 }
 
+@media screen and (max-width: $breakpoint-m) {
+  // Scrolling is easier on phone so this isn't really needed
+  .forum-post__fast-travel {
+    display: none;
+  }
+}
+
 @media screen and (max-width: $breakpoint-s) {
   .page-title {
     h1 {
@@ -626,10 +634,11 @@ function scrollHandler() {
   }
 
   .forum-post__scroll-title {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-l);
 
     & + p {
       font-size: var(--font-size-s);
+      @include line-clamp(1);
     }
   }
 }
