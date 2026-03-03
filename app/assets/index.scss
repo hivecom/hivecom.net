@@ -259,7 +259,8 @@ code {
 // once it has loaded, and falls back to 16:9 while it is still in-flight.
 .forum-post__content {
   img {
-    width: 100%;
+    // Note (@dolanske) rendered images had the colorted backghround added above in the .typeset on some edges. Removing width: 100% seems to have fixed it.
+    // width: 100%;
     aspect-ratio: auto 16 / 9;
     object-fit: contain;
   }

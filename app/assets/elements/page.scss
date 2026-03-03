@@ -21,7 +21,7 @@
     font-size: var(--font-size-xxxl);
   }
 
-  p {
+  & > p {
     font-size: var(--font-size-m);
     color: var(--color-text-light);
   }
