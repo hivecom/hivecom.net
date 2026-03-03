@@ -37,7 +37,7 @@ function handleConfirm() {
       <h4>Embed YouTube video</h4>
     </template>
 
-    <Flex column gap="s">
+    <Flex column gap="m">
       <Input
         v-model="url"
         label="YouTube URL"

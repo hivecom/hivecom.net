@@ -62,7 +62,7 @@ function handleConfirm() {
       <h4>{{ isEditing ? 'Edit math' : 'Insert math' }}</h4>
     </template>
 
-    <Flex column gap="s">
+    <Flex column gap="m">
       <!-- Type selector – only shown when inserting a new node -->
       <ButtonGroup if="!isEditing">
         <Button
