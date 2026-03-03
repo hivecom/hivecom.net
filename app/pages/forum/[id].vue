@@ -231,9 +231,13 @@ const { y } = useWindowScroll()
 
 const isUserAtBottom = computed(() => {
   const scrollPosition = y.value
+
+  if (scrollPosition === 0)
+    return false
+
   const windowHeight = window.innerHeight
   const documentHeight = document.documentElement.scrollHeight
-  return scrollPosition + windowHeight >= documentHeight - (windowHeight / 2)
+  return scrollPosition + windowHeight >= documentHeight - windowHeight
 })
 
 function scrollHandler() {
@@ -284,17 +288,6 @@ function scrollHandler() {
           </div>
         </section>
       </Transition>
-
-      <div class="forum-post__fast-travel">
-        <Tooltip>
-          <Button size="s" variant="accent" square @click="scrollHandler">
-            <Icon :name="isUserAtBottom ? 'ph:arrow-up' : 'ph:arrow-down'" :size="20" />
-          </Button>
-          <template #tooltip>
-            {{ isUserAtBottom ? 'Scroll to top' : 'Scroll to bottom' }}
-          </template>
-        </Tooltip>
-      </div>
 
       <section ref="page-title" class="page-title" :class="isMobile ? 'mb-l' : 'mb-xl'">
         <Flex x-between y-center>
@@ -489,6 +482,17 @@ function scrollHandler() {
         model="forum"
         placeholder="Write your reply to this thread..."
       />
+
+      <div class="forum-post__fast-travel">
+        <Tooltip>
+          <Button size="s" variant="accent" square @click="scrollHandler">
+            <Icon :name="isUserAtBottom ? 'ph:arrow-up' : 'ph:arrow-down'" :size="20" />
+          </Button>
+          <template #tooltip>
+            {{ isUserAtBottom ? 'Scroll to top' : 'Scroll to bottom' }}
+          </template>
+        </Tooltip>
+      </div>
     </template>
 
     <!-- Nothing found or an error -->
@@ -569,7 +573,7 @@ function scrollHandler() {
   left: 0;
   width: 100%;
   background-color: var(--color-bg);
-  padding-block: var(--space-m);
+  padding-block: var(--space-s);
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
   z-index: var(--z-nav);
@@ -601,10 +605,13 @@ function scrollHandler() {
 }
 
 .forum-post__fast-travel {
-  position: fixed;
-  left: calc(50% + calc(var(--container-m) / 2));
-  bottom: 16px;
+  position: sticky;
+  bottom: var(--space-m);
+  width: fit-content;
+  margin-left: auto;
   z-index: var(--z-nav);
+  transform: translateX(48px);
+  margin-top: -28px;
 }
 
 @media screen and (max-width: $breakpoint-s) {
