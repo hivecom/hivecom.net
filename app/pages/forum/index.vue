@@ -1167,13 +1167,14 @@ onBeforeMount(() => {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--space-xs);
+    column-gap: var(--space-m);
     list-style: none;
   }
 
   &__continue-item {
     display: flex;
     align-items: center;
-    gap: var(--space-s);
+    gap: var(--space-xs);
     padding: var(--space-xs);
     border-radius: var(--border-radius-m);
     text-decoration: none;
@@ -1187,6 +1188,7 @@ onBeforeMount(() => {
     font-size: var(--font-size-s);
     color: var(--color-text);
     @include line-clamp(1);
+    flex: 1;
   }
 
   &__continue-time {

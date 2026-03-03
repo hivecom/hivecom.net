@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Modal } from '@dolanske/vui'
+import { Button, ButtonGroup, Flex, Input, Modal } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
@@ -62,9 +62,9 @@ function handleConfirm() {
       <h4>{{ isEditing ? 'Edit math' : 'Insert math' }}</h4>
     </template>
 
-    <Flex column :gap="12">
+    <Flex column gap="s">
       <!-- Type selector – only shown when inserting a new node -->
-      <Flex v-if="!isEditing" :gap="8">
+      <ButtonGroup if="!isEditing">
         <Button
           size="s"
           :variant="selectedType === 'inline' ? 'accent' : 'gray'"
@@ -79,7 +79,7 @@ function handleConfirm() {
         >
           Block
         </Button>
-      </Flex>
+      </ButtonGroup>
 
       <Input
         v-model="latex"
@@ -98,7 +98,7 @@ function handleConfirm() {
     </Flex>
 
     <template #footer="{ close }">
-      <Flex :gap="8" x-end expand>
+      <Flex gap="s" x-end expand>
         <Button @click="close">
           Cancel
         </Button>
@@ -116,13 +116,15 @@ function handleConfirm() {
 
 <style scoped lang="scss">
 .math-modal-hint {
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-lighter);
-  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-light);
 
   a {
-    color: var(--color-accent);
     text-decoration: underline;
+
+    &:hover {
+      text-decoration: none;
+    }
   }
 }
 </style>

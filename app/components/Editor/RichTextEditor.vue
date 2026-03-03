@@ -495,10 +495,6 @@ async function handleSubmit() {
         <Textarea v-else v-model="content" class="editor-textarea" expand :placeholder="placeholder" />
 
         <div class="editor-actions">
-          <Button plain square size="s" :data-title-top="editorMode === 'rich' ? 'Switch to plain text' : 'Switch to rich text'" @click="handleEditorModeSwitch">
-            <Icon :name="editorMode === 'rich' ? 'ph:pen-nib' : 'ph:markdown-logo'" />
-          </Button>
-
           <template v-if="editorMode === 'rich'">
             <Button plain square size="s" data-title-top="Insert math" @click="() => { mathModalEditPos = null; mathModalType = 'inline'; mathModalLatex = ''; mathModalOpen = true }">
               <Icon name="ph:sigma" />
@@ -507,6 +503,10 @@ async function handleSubmit() {
               <Icon name="ph:youtube-logo" />
             </Button>
           </template>
+
+          <Button plain square size="s" :data-title-top="editorMode === 'rich' ? 'Switch to plain text' : 'Switch to rich text'" @click="handleEditorModeSwitch">
+            <Icon :name="editorMode === 'rich' ? 'ph:pen-nib' : 'ph:markdown-logo'" />
+          </Button>
 
           <template v-if="props.showAttachmentButton">
             <Button plain square size="s" data-title-top="Attach a file" @click="fileInput?.click()">

@@ -60,10 +60,6 @@ interface Props extends Partial<DiscussionSettings> {
    * Sets the input placeholder
    */
   placeholder?: string
-  /**
-   * Sets the text editor to be sticky
-   */
-  sticky?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -426,7 +422,7 @@ provide('delete-comment', deleteComment)
           :model="props.model"
         />
       </template>
-      <div v-if="props.hideInput !== true && userId" class="discussion__add" :class="{ sticky: !!props.sticky }">
+      <div v-if="props.hideInput !== true && userId" class="discussion__add">
         <Alert v-if="replyingTo">
           <Flex y-start gap="xl" x-between>
             <div>
@@ -515,12 +511,6 @@ provide('delete-comment', deleteComment)
   }
 
   &__add {
-    &.sticky {
-      position: sticky;
-      bottom: 8px;
-      z-index: 50;
-    }
-
     &:deep(.vui-alert) {
       background-color: var(--color-bg-medium);
       margin-bottom: 6px;

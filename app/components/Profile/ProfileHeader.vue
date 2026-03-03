@@ -385,7 +385,6 @@ function getRoleInfo(role: string | null) {
 
 .profile-markdown {
   line-height: 1.6;
-  min-height: 512px;
 }
 
 .empty-state {

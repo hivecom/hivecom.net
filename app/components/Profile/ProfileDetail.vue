@@ -912,10 +912,6 @@ async function ignoreFriendRequest() {
   grid-template-rows: auto 1fr auto;
   gap: var(--space-m);
 
-  .about-section {
-    min-height: 680px;
-  }
-
   .badges-section,
   .friends-section-skeleton {
     min-height: 256px;

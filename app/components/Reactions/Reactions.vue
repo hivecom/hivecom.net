@@ -65,12 +65,13 @@ const { displayReactions, toggleReaction, isLoading } = useReactions({
   justify-content: center;
   align-items: center;
 
+  &:has(.reactions__counter) {
+    width: fit-content;
+  }
+
   .reactions__counter {
     font-size: var(--font-size-xxs);
     color: var(--color-text-light);
-    position: absolute;
-    top: 2px;
-    right: 2px;
   }
 
   &:hover {

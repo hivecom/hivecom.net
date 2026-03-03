@@ -9,6 +9,7 @@ import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { stripMarkdown } from '@/lib/markdown-processors'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -220,6 +221,29 @@ function publish() {
       }
     })
 }
+
+// Track user scroll and display header when the page-title is no longer visible
+const pageTitle = useTemplateRef('page-title')
+const isPageTitleVisible = useElementVisibility(pageTitle)
+
+// Track if user is at the bottom of the page with about half a screen size of leeway
+const { y } = useWindowScroll()
+
+const isUserAtBottom = computed(() => {
+  const scrollPosition = y.value
+  const windowHeight = window.innerHeight
+  const documentHeight = document.documentElement.scrollHeight
+  return scrollPosition + windowHeight >= documentHeight - (windowHeight / 2)
+})
+
+function scrollHandler() {
+  if (isUserAtBottom.value) {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  else {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+  }
+}
 </script>
 
 <template>
@@ -231,7 +255,48 @@ function publish() {
 
     <!-- Main Content  -->
     <template v-else-if="post">
-      <section class="page-title" :class="isMobile ? 'mb-l' : 'mb-xl'">
+      <!-- Floating header when scrolling down -->
+      <Transition name="fade">
+        <section v-if="!isPageTitleVisible" class="forum-post__scroll">
+          <div class="container container-m">
+            <div>
+              <strong class="forum-post__scroll-title">
+                <Button
+                  class="back-button"
+                  variant="gray"
+                  plain
+                  square
+                  size="s"
+                  aria-label="Go back to Events page"
+                  @click="$router.back()"
+                >
+                  <Icon class="text-color" name="ph:arrow-left" :size="16" />
+                </Button>
+                {{ post.title ?? 'Unnamed discussion' }}
+              </strong>
+              <p v-if="post.description">
+                {{ post.description }}
+              </p>
+            </div>
+
+            <UserAvatar v-if="isMobile" :user-id="post.created_by" />
+            <UserDisplay v-else :user-id="post.created_by" show-role />
+          </div>
+        </section>
+      </Transition>
+
+      <div class="forum-post__fast-travel">
+        <Tooltip>
+          <Button size="s" variant="accent" square @click="scrollHandler">
+            <Icon :name="isUserAtBottom ? 'ph:arrow-up' : 'ph:arrow-down'" :size="20" />
+          </Button>
+          <template #tooltip>
+            {{ isUserAtBottom ? 'Scroll to top' : 'Scroll to bottom' }}
+          </template>
+        </Tooltip>
+      </div>
+
+      <section ref="page-title" class="page-title" :class="isMobile ? 'mb-l' : 'mb-xl'">
         <Flex x-between y-center>
           <div class="relative">
             <template v-if="topicBreadcrumbs.length && !isMobile">
@@ -246,7 +311,6 @@ function publish() {
               >
                 <Icon class="text-color" name="ph:arrow-left" :size="16" />
               </Button>
-
               <Breadcrumbs>
                 <BreadcrumbItem @click="router.push('/forum')">
                   Forum
@@ -424,7 +488,6 @@ function publish() {
         type="discussion"
         model="forum"
         placeholder="Write your reply to this thread..."
-        sticky
       />
     </template>
 
@@ -500,6 +563,50 @@ function publish() {
   }
 }
 
+.forum-post__scroll {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  width: 100%;
+  background-color: var(--color-bg);
+  padding-block: var(--space-m);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  z-index: var(--z-nav);
+
+  .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  // I couldn't get flex-shrink working without issues, so in this instance I'll
+  // set the min-width to the size that will always be there
+  :deep(.vui-avatar) {
+    min-width: 36px;
+  }
+}
+
+.forum-post__scroll-title {
+  display: block;
+  font-size: var(--font-size-xxl);
+  font-weight: var(--font-weight-black);
+  margin-bottom: var(--space-xs);
+  position: relative;
+
+  & + p {
+    color: var(--color-text-lighter);
+  }
+}
+
+.forum-post__fast-travel {
+  position: fixed;
+  left: calc(50% + calc(var(--container-m) / 2));
+  bottom: 16px;
+  z-index: var(--z-nav);
+}
+
 @media screen and (max-width: $breakpoint-s) {
   .page-title {
     h1 {
@@ -508,6 +615,14 @@ function publish() {
 
     p {
       font-size: var(--font-size-l);
+    }
+  }
+
+  .forum-post__scroll-title {
+    font-size: var(--font-size-xl);
+
+    & + p {
+      font-size: var(--font-size-s);
     }
   }
 }

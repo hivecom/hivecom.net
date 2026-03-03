@@ -37,7 +37,7 @@ function handleConfirm() {
       <h4>Embed YouTube video</h4>
     </template>
 
-    <Flex column :gap="12">
+    <Flex column gap="s">
       <Input
         v-model="url"
         label="YouTube URL"
@@ -72,8 +72,7 @@ function handleConfirm() {
 
 <style scoped lang="scss">
 .youtube-modal-hint {
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-lighter);
-  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-light);
 }
 </style>
