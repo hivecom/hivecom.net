@@ -22,8 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
   showBadges: true,
   showActivity: true,
   maxBadges: 4,
-  // avatarSize: 88,
-  avatarSize: 'l',
+  avatarSize: 88,
 })
 
 const userIdRef = toRef(props, 'userId')
