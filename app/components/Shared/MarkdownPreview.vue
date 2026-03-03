@@ -28,6 +28,14 @@ const preview = computed(() =>
       <Icon name="ph:image" :size="18" />
       Posted an image
     </i>
+    <i v-else-if="preview === '#youtube'">
+      <Icon name="ph:youtube-logo" :size="18" />
+      Posted a video
+    </i>
+    <i v-else-if="preview === '#math'">
+      <Icon name="ph:math-operations" :size="18" />
+      Posted math
+    </i>
     <template v-else>
       {{ preview }}
     </template>

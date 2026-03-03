@@ -225,6 +225,12 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
   }
 
   return content
+    // 0a. Remove YouTube directives: :::youtube {src="..." ...} :::
+    .replace(/:::youtube(?:\s+\{[^}]*\})?\s*:::/g, '')
+    // 0b. Remove block math: $$...$$
+    .replace(/\$\$[\s\S]*?\$\$/g, '')
+    // 0c. Remove inline math: $...$  (avoid matching lone $ signs like currency $5)
+    .replace(/\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/g, '')
     // 1. Remove HTML tags
     .replace(/<[^>]*>/g, '')
     // 2. Normalize non-breaking spaces
@@ -285,6 +291,12 @@ export function formatMarkdownPreview(
 
   if (/\[.*?\]\(.*?\)/.test(markdown))
     return '#link'
+
+  if (/:::youtube(?:\s+\{[^}]*\})?\s*:::/.test(markdown))
+    return '#youtube'
+
+  if (/\$\$[\s\S]*?\$\$|\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/.test(markdown))
+    return '#math'
 
   return '#empty'
 }
