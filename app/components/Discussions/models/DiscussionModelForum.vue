@@ -129,14 +129,11 @@ async function submit() {
 
 watch(editedContent, () => editError.value = [])
 
-// ── Reporting ─────────────────────────────────────────────────────────────────
-
+// Reports
 const showReportModal = ref(false)
-
 const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 
-// ── Reactions ─────────────────────────────────────────────────────────────────
-
+// Reactions
 const { displayReactions, toggleReaction } = useReactions({
   table: 'discussion_replies',
   rowId: data.value.id,
@@ -146,6 +143,7 @@ const { displayReactions, toggleReaction } = useReactions({
 
 <template>
   <div class="discussion-forum">
+    <!-- Define a part of UI which can be used multiple times in the same component -->
     <DefineReusableUserInfo>
       <Flex column x-center y-center :gap="isMobile ? 'xs' : 's'">
         <Avatar :url="user?.avatarUrl || undefined" :size="isMobile ? 'm' : 'l'" />
@@ -159,6 +157,7 @@ const { displayReactions, toggleReaction } = useReactions({
       </Flex>
     </DefineReusableUserInfo>
 
+    <!-- Author information -->
     <div class="discussion-forum__author">
       <UserPreviewHover v-if="currentUser" :user-id="data.created_by">
         <UserInfo />
@@ -183,7 +182,9 @@ const { displayReactions, toggleReaction } = useReactions({
       </p>
     </div>
 
+    <!-- Content -->
     <div class="discussion-forum__content">
+      <!-- Reply information -->
       <Alert v-if="data.reply" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
         <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
           <UserName size="s" :user-id="data.reply.created_by" /> wrote:
@@ -201,7 +202,12 @@ const { displayReactions, toggleReaction } = useReactions({
         <Icon class="text-color-accent" name="ph:caret-up" />
       </button>
 
-      <MDRenderer v-else :md="data.markdown" :skeleton-height="128" />
+      <!-- Content -->
+      <MDRenderer
+        v-else
+        :md="data.markdown"
+        :skeleton-height="128"
+      />
 
       <div class="flex-1" />
 
@@ -310,6 +316,7 @@ const { displayReactions, toggleReaction } = useReactions({
       </div>
     </div>
 
+    <!-- Edit Modal and Report Modal -->
     <Modal :open="editing" centered scrollable size="l" @close="editing = false">
       <template #header>
         <h3>Edit post</h3>

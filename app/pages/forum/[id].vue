@@ -248,6 +248,8 @@ function scrollHandler() {
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
   }
 }
+
+const { height } = useWindowSize()
 </script>
 
 <template>
@@ -459,7 +461,7 @@ function scrollHandler() {
 
         <!-- Content -->
         <template v-if="post.markdown">
-          <hr class="mb-l">
+          <hr v-if="!contextInfo" class="mb-l">
           <button v-if="showNSFWWarning" class="forum-post__nsfw" @click="showNSFWWarning = false">
             <Icon class="text-color-accent" name="ph:caret-down" />
             <p>This discussion is marked as NSFW - click to reveal potentially sensitive content</p>
@@ -483,7 +485,7 @@ function scrollHandler() {
         placeholder="Write your reply to this thread..."
       />
 
-      <div class="forum-post__fast-travel">
+      <div v-if="height > 2000" class="forum-post__fast-travel">
         <Tooltip>
           <Button size="s" variant="accent" square @click="scrollHandler">
             <Icon :name="isUserAtBottom ? 'ph:arrow-up' : 'ph:arrow-down'" :size="20" />

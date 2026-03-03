@@ -16,6 +16,7 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useUserId } from '@/composables/useUserId'
+import { allowedMediaExtensions, allowedMediaTypes } from '@/lib/storage'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorMathModal from './EditorMathModal.vue'
 import EditorYoutubeModal from './EditorYoutubeModal.vue'
@@ -156,7 +157,7 @@ const editor = useEditor({
       ? [FileHandler.configure({
           onPaste: (_, files) => handleFileUpload(files),
           onDrop: (_, files, pos) => handleFileUpload(files, pos),
-          allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+          allowedMimeTypes: allowedMediaTypes,
         })]
       : []),
     // Character limit
@@ -512,7 +513,7 @@ async function handleSubmit() {
               <Icon name="ph:paperclip" />
             </Button>
 
-            <input ref="file-input" class="visually-hidden" type="file" accept="image/png, image/jpeg, image/gif, image/webp" @input="handleFileInput">
+            <input ref="file-input" class="visually-hidden" type="file" :accept="allowedMediaExtensions" @input="handleFileInput">
           </template>
 
           <ButtonGroup v-if="props.showSubmitOptions" :gap="2">

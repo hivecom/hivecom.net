@@ -1,9 +1,9 @@
 <script setup>
 import { Skeleton } from '@dolanske/vui'
-import { computed } from 'vue'
+import { computed, nextTick } from 'vue'
 import { useBulkUserData } from '@/composables/useCacheUserData'
 import { extractMentionIds, processMentions } from '@/lib/markdown-processors'
-import MDRendererSlot from './MDRendererSlot.vue'
+import MDLightbox from './MDLightbox.vue'
 
 const props = defineProps({
   tag: {
@@ -34,36 +34,38 @@ useBulkUserData(mentionIds)
 const processedMarkdown = computed(() => {
   return processMentions(props.md)
 })
+
+// Called when markdown is fully rendered
+const lightbox = useTemplateRef('lightbox')
+
+function onSuspenseResolve() {
+  nextTick(() => {
+    if (lightbox.value) {
+      lightbox.value.register()
+    }
+  })
+}
 </script>
 
 <template>
-  <Suspense suspensible>
+  <Suspense suspensible @resolve="onSuspenseResolve">
     <template #fallback>
       <Skeleton :style="{ height: props.skeletonHeight }" />
     </template>
-    <MDRendererSlot>
+    <div style="display: contents;">
       <MDC
         :partial="true"
         :value="processedMarkdown"
         :tag="props.tag"
         :class="`typeset ${props.class}`"
       />
-    </MDRendererSlot>
+
+      <MDLightbox v-if="props.md" ref="lightbox" :markdown="props.md" />
+    </div>
   </Suspense>
 </template>
 
 <style lang="scss">
-/* Style all links in markdown content */
-p a {
-  color: var(--color-accent);
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-
-p a:hover {
-  opacity: 0.8;
-}
-
 /* YouTube embed produced by processYoutubeDirectives */
 .md-youtube-embed {
   display: flex;

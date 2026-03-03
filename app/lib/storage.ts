@@ -15,6 +15,9 @@ const PROJECT_BANNER_BUCKET = 'hivecom-content-static'
 const PROJECT_BANNER_PREFIX = 'projects'
 const PROJECT_BANNER_EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'] as const
 
+export const allowedMediaTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+export const allowedMediaExtensions = allowedMediaTypes.join(', ')
+
 function normalizeProjectId(projectId: number | string): number {
   const normalized = Number(projectId)
   if (!Number.isFinite(normalized))

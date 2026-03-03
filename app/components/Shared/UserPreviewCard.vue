@@ -15,13 +15,14 @@ interface Props {
   showBadges?: boolean
   showActivity?: boolean
   maxBadges?: number
-  avatarSize?: 's' | 'm' | 'l'
+  avatarSize?: 's' | 'm' | 'l' | number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showBadges: true,
   showActivity: true,
   maxBadges: 4,
+  // avatarSize: 88,
   avatarSize: 'l',
 })
 
