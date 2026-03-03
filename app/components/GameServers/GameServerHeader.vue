@@ -9,6 +9,10 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import UserLink from '../Shared/UserLink.vue'
 
+const _props = defineProps<Props>()
+
+const { navigateToSignIn } = useAuthRedirect()
+
 type ContainerWithServer = Tables<'containers'> & {
   server?: {
     docker_control?: boolean | null
@@ -24,8 +28,6 @@ interface Props {
   state: string
   stateConfig: unknown // TODO: add type
 }
-
-const _props = defineProps<Props>()
 
 // Get current user for authentication check
 const user = useSupabaseUser()
@@ -43,7 +45,7 @@ function openComplaintModal() {
   // Check if user is authenticated
   if (!user.value) {
     // Redirect to sign-in page if not authenticated
-    navigateTo('/auth/sign-in')
+    navigateToSignIn()
     return
   }
 

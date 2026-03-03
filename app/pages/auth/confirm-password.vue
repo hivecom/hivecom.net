@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Alert, Button, Card, Flex, Input, Spinner } from '@dolanske/vui'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import PasswordPolicyHint from '@/components/Shared/PasswordPolicyHint.vue'
+import { isPasswordValid } from '@/lib/utils/password'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -16,7 +18,14 @@ const passwordResetReady = ref(false)
 const passwordResetSuccess = ref(false)
 const passwordResetError = ref('')
 
+const isDev = process.env.NODE_ENV === 'development'
+
+const isDevPreview = computed(() => isDev && route.query.preview === '1')
+
 const hasRecoveryParams = computed(() => {
+  if (isDevPreview.value)
+    return true
+
   const hashSource = route.hash || (typeof window !== 'undefined' ? window.location.hash : '')
   const hashIncludesRecovery = typeof hashSource === 'string' && hashSource.includes('type=recovery')
   const query = route.query || {}
@@ -45,6 +54,12 @@ function clearAuthSubscription() {
 async function initializeRecoveryFlow() {
   if (!hasRecoveryParams.value) {
     router.replace('/auth/forgot-password')
+    return
+  }
+
+  if (isDevPreview.value) {
+    passwordResetReady.value = true
+    loading.value = false
     return
   }
 
@@ -93,8 +108,8 @@ async function initializeRecoveryFlow() {
 }
 
 async function submitPasswordReset() {
-  if (!password.value || password.value.length < 8) {
-    passwordResetError.value = 'Password must be at least 8 characters long.'
+  if (!password.value || !isPasswordValid(password.value)) {
+    passwordResetError.value = 'Your password does not meet the requirements listed below.'
     return
   }
 
@@ -173,6 +188,7 @@ onBeforeUnmount(() => {
           <p>Enter and confirm the new password for your Hivecom account.</p>
           <Flex x-center column gap="l" class="w-100 mt-l" style="max-width: 320px;">
             <Input v-model="password" expand label="New Password" placeholder="Enter new password" type="password" />
+            <PasswordPolicyHint :password="password" />
             <Input v-model="passwordConfirm" expand label="Confirm Password" placeholder="Confirm new password" type="password" />
             <Alert v-if="passwordResetError" variant="danger" filled>
               {{ passwordResetError }}

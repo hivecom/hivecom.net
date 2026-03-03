@@ -1,6 +1,93 @@
 import { getAnonymousUsername } from '@/lib/anonymous-usernames'
 import { truncate } from './utils/formatting'
 
+// ---------------------------------------------------------------------------
+// YouTube directive pre-processor
+// ---------------------------------------------------------------------------
+
+/**
+ * Parses a TipTap attribute string like `src="..." width="640"` into a plain
+ * object. Only double-quoted string values are supported (which is all TipTap
+ * ever emits from `serializeAttributes`).
+ */
+function parseTiptapAttrs(attrString: string): Record<string, string> {
+  const attrs: Record<string, string> = {}
+  // Match key="value" pairs (value may be empty)
+  const attrPattern = /(\w+)="([^"]*)"/g
+  for (const match of attrString.matchAll(attrPattern)) {
+    const key = match[1]
+    const value = match[2]
+    if (typeof key === 'string' && typeof value === 'string') {
+      attrs[key] = value
+    }
+  }
+  return attrs
+}
+
+/**
+ * Converts a plain YouTube watch/share URL (as stored by the TipTap Youtube
+ * extension in its `src` attribute) into a youtube-nocookie.com embed URL.
+ * Returns `null` if the URL isn't recognised as a YouTube URL.
+ */
+function youtubeUrlToEmbedUrl(src: string, start?: string): string | null {
+  if (!src)
+    return null
+
+  // Already an embed URL – use as-is
+  if (src.includes('/embed/'))
+    return src
+
+  // youtu.be short URLs
+  const shortMatch = src.match(/youtu\.be\/([^?&\s]+)/)
+  const shortId = shortMatch?.[1] ?? ''
+  if (shortId) {
+    const startParam = start != null && Number(start) > 0 ? `?start=${start}` : ''
+    return `https://www.youtube-nocookie.com/embed/${shortId}${startParam}`
+  }
+
+  // Standard watch URLs (v=…) and /shorts/
+  const idMatch = src.match(/(?:[?&]v=|\/shorts\/)([\w-]+)/)
+  const videoId = idMatch?.[1] ?? ''
+  if (videoId) {
+    const startParam = start != null && Number(start) > 0 ? `?start=${start}` : ''
+    return `https://www.youtube-nocookie.com/embed/${videoId}${startParam}`
+  }
+
+  return null
+}
+
+/**
+ * Converts TipTap's proprietary `:::youtube {src="..." ...} :::` directive
+ * syntax into an HTML iframe block that MDC / remark will pass through as raw
+ * HTML.  This must run **before** the markdown is handed to `<MDC>`.
+ *
+ * TipTap's format (from `createAtomBlockMarkdownSpec`):
+ *   :::youtube {src="URL" width="640" height="360" start="0"} :::
+ *
+ * Note: this is NOT the same as MDC's `:::name{props}` container syntax,
+ * hence we preprocess it here instead of relying on a content component.
+ */
+export function processYoutubeDirectives(markdown: string): string {
+  // Matches the full `:::youtube { ... } :::` token on a single line
+  const DIRECTIVE = /:::youtube(?:\s+\{([^}]*)\})?\s*:::/g
+
+  return markdown.replace(DIRECTIVE, (_full, attrString: string = '') => {
+    const attrs = parseTiptapAttrs(attrString)
+    const embedUrl = youtubeUrlToEmbedUrl(attrs.src ?? '', attrs.start)
+
+    if (embedUrl == null)
+      return ''
+
+    const width = attrs.width ?? '640'
+    const height = attrs.height ?? '360'
+
+    // Wrap in a block-level div so remark treats it as an HTML block, not
+    // inline HTML. The surrounding blank lines are important for remark to
+    // recognise the opening tag as the start of an HTML block.
+    return `\n<div class="md-youtube-embed"><iframe src="${embedUrl}" width="${width}" height="${height}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>\n`
+  })
+}
+
 /**
  * Extracts unique mention IDs stored as @{uuid} from markdown.
  */
@@ -38,16 +125,38 @@ export function processMentions(markdown: string): string {
   if (!markdown)
     return ''
 
+  // Convert TipTap YouTube directives to raw HTML iframes first so that MDC
+  // doesn't see the `:::youtube` syntax it cannot parse.
+  markdown = processYoutubeDirectives(markdown)
+
   // Pattern to match mention IDs stored as @{uuid}
   const mentionIdPatternBraced = /@\{([0-9a-f-]{36})\}/gi
   const mentionIdPatternLegacy = /@([0-9a-f-]{36})/gi
 
   const resolvedMarkdown = markdown
+    // remark-mdc parses any `:word` sequence (after whitespace or at line start) as an
+    // inline component reference, even single-letter names like `:D` or `:C`. Unknown
+    // components are silently dropped, eating emoticons and other colon-prefixed text.
+    // We escape those patterns with a CommonMark backslash escape (\:) so the colon is
+    // treated as a literal character.
+    //
+    // IMPORTANT: this must run BEFORE the mention substitution below. The mention
+    // substitution adds `:shared-user-mention{...}` to the string, and a negative
+    // lookahead approach to skip it is defeated by regex backtracking. Running this
+    // step first means the source string only contains user-authored text - no
+    // `:shared-user-mention{...}` patterns can exist yet - so the simple replacement
+    // is safe and correct.
+    .replace(/(^|[ \t\n]):([A-Z][A-Z0-9-]*)/gim, '$1\\:$2')
     .replace(mentionIdPatternBraced, (_match, id: string) => {
-      return `<SharedUserMention user-id="${id}"></SharedUserMention>`
+      // Use MDC inline component syntax (:name{props}) instead of raw HTML tags.
+      // When a raw <SharedUserMention> tag starts a line, remark-mdc treats it as a
+      // block-level component, consuming all following text on that line as its children
+      // and applying block-level (heading-like) styling. The :name{} inline syntax
+      // explicitly marks the component as inline, regardless of its position in a paragraph.
+      return `:shared-user-mention{user-id="${id}"}`
     })
     .replace(mentionIdPatternLegacy, (_match, id: string) => {
-      return `<SharedUserMention user-id="${id}"></SharedUserMention>`
+      return `:shared-user-mention{user-id="${id}"}`
     })
 
   return resolvedMarkdown

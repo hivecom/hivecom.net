@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Calendar, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
+import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
@@ -33,6 +34,7 @@ const profileForm = ref({
   website: '',
   country: '',
   birthday: '',
+  public: true,
 })
 
 type CountrySelectOption = (typeof COUNTRY_SELECT_OPTIONS)[number]
@@ -260,6 +262,7 @@ watch(
         website: (newProfile as Tables<'profiles'> & { website?: string }).website || '',
         country: hasValidCountry ? normalizedCountry : '',
         birthday: newProfile.birthday || '',
+        public: newProfile.public,
       }
 
       // Initialize avatar URL
@@ -275,6 +278,7 @@ watch(
         website: '',
         country: '',
         birthday: '',
+        public: true,
       }
 
       avatarUrl.value = null
@@ -312,6 +316,7 @@ function handleSubmit() {
     website: profileForm.value.website.trim() ? normalizeWebsiteUrl(profileForm.value.website.trim()) : null,
     country: profileForm.value.country.trim() ? profileForm.value.country.trim().toUpperCase() : null,
     birthday: profileForm.value.birthday.trim() ? profileForm.value.birthday.trim() : null,
+    public: profileForm.value.public,
   }
 
   emit('save', profileData)
@@ -385,6 +390,8 @@ async function handleAvatarDelete() {
 }
 
 // Wrapper function for the confirm modal
+const isMobile = useBreakpoint('<s')
+
 async function confirmAvatarDelete() {
   await handleAvatarDelete()
 }
@@ -412,10 +419,23 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
 
     <Flex column gap="l" class="profile-edit-form" expand>
       <!-- Avatar Section -->
-      <Flex gap="m" expand>
+      <Flex gap="m" expand :column="isMobile">
         <!-- Basic Information -->
         <Flex column gap="m" expand>
           <h4>Basic Information</h4>
+
+          <Flex y-center gap="xs">
+            <Switch
+              v-model="profileForm.public"
+              label="Public profile"
+            />
+            <Tooltip placement="top">
+              <Icon name="ph:info" class="public-profile-info-icon" />
+              <template #tooltip>
+                <p>When enabled, anyone - including visitors who are not logged in - can view your full profile page, including your introduction, content, and other public details.</p>
+              </template>
+            </Tooltip>
+          </Flex>
 
           <Flex expand class="profile-edit-form__username-container">
             <Input
@@ -534,7 +554,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
             />
           </Flex>
         </Flex>
-        <Flex column gap="m">
+        <Flex column gap="m" :style="isMobile ? { order: -1 } : {}">
           <h4>Avatar</h4>
           <FileUpload
             variant="avatar"
@@ -563,6 +583,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
           label="Profile content"
           :limit="MARKDOWN_LIMIT"
           :errors="markdownValidation.error ? [markdownValidation.error] : undefined"
+          :show-attachment-button="!!props.profile?.id"
         />
       </Flex>
 
@@ -643,6 +664,16 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
         color: var(--color-text-light);
         font-size: var(--font-size-m);
       }
+    }
+  }
+
+  .public-profile-info-icon {
+    color: var(--color-text-lighter);
+    font-size: var(--font-size-m);
+    cursor: help;
+
+    &:hover {
+      color: var(--color-text);
     }
   }
 

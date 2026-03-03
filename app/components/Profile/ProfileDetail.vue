@@ -23,6 +23,7 @@ const props = defineProps<Props>()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId() // Use helper to get ID from JWT claims
+const { navigateToSignIn } = useAuthRedirect()
 type ProfileRecord = Tables<'profiles'>
 
 type ProfileRecordInput = ProfileRecord | (Omit<ProfileRecord, 'badges'> & {
@@ -350,7 +351,7 @@ function openComplaintModal() {
   // Check if user is authenticated
   if (!user.value) {
     // Redirect to sign-in page if not authenticated
-    navigateTo('/auth/sign-in')
+    navigateToSignIn()
     return
   }
 
@@ -840,7 +841,7 @@ async function ignoreFriendRequest() {
           <ProfileBadges :profile="profile" :is-own-profile="isOwnProfile" />
         </Flex>
 
-        <!-- Profile comments — full width on mobile, below header on desktop -->
+        <!-- Profile comments - full width on mobile, below header on desktop -->
         <Discussion
           v-if="profile?.id"
           :id="profile.id"

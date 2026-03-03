@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import type { UserActivityStatus } from '@/lib/lastSeen'
+import type { Enums } from '@/types/database.types'
 
 import { Avatar, Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
+import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
+import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
+import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
+import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
@@ -20,6 +25,7 @@ import UserActions from './UserActions.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
 
 type UserActionType = 'ban' | 'unban' | 'edit' | 'delete'
+type ProfileBadge = Enums<'profile_badge'>
 
 const props = defineProps<{
   user: {
@@ -46,6 +52,9 @@ const props = defineProps<{
     ban_duration?: string
     role?: string | null
     country?: string | null
+    birthday?: string | null
+    badges?: ProfileBadge[]
+    public?: boolean
     confirmed?: boolean
   } | null
   actionLoading?: Partial<Record<UserActionType, boolean>>
@@ -54,6 +63,13 @@ const props = defineProps<{
 
 // Define emits
 const emit = defineEmits(['edit'])
+
+const BADGE_COMPONENTS: Record<ProfileBadge, unknown> = {
+  builder: ProfileBadgeBuilder,
+  earlybird: ProfileBadgeEarlybird,
+  founder: ProfileBadgeFounder,
+  host: ProfileBadgeHost,
+}
 
 const isBelowSmall = useBreakpoint('<s')
 
@@ -360,6 +376,16 @@ function getUserInitials(username: string): string {
             </Grid>
 
             <Grid class="detail-item" columns="1fr 2fr" expand>
+              <span class="text-color-light text-bold">Is Public:</span>
+              <Flex gap="xs" y-center>
+                <Icon :name="user.public ? 'ph:eye' : 'ph:eye-slash'" />
+                <span class="text-s">
+                  {{ user.public ? 'Yes' : 'No' }}
+                </span>
+              </Flex>
+            </Grid>
+
+            <Grid class="detail-item" columns="1fr 2fr" expand>
               <span class="text-color-light text-bold">Last Seen:</span>
               <Flex gap="xs" y-center>
                 <span v-if="lastSeenVariant === 'online'" class="online-dot" />
@@ -582,6 +608,22 @@ function getUserInitials(username: string): string {
           </div>
         </Card>
 
+        <!-- Fixed Badges -->
+        <Card v-if="user.badges?.length" separators class="card-bg">
+          <template #header>
+            <h6>Badges</h6>
+          </template>
+          <div class="badges-grid">
+            <div
+              v-for="badge in user.badges"
+              :key="badge"
+              class="badge-cell"
+            >
+              <component :is="BADGE_COMPONENTS[badge]" compact />
+            </div>
+          </div>
+        </Card>
+
         <!-- Metadata -->
         <Metadata
           :created-at="user.created_at"
@@ -709,6 +751,27 @@ function getUserInitials(username: string): string {
   .country-emoji {
     font-size: var(--font-size-m);
     line-height: 1;
+  }
+}
+
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-s);
+}
+
+.badge-cell {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+
+  :deep(.profile-badge__tooltip-wrapper),
+  :deep(.profile-badge) {
+    width: 100%;
+  }
+
+  :deep(.profile-badge__hex-wrapper) {
+    width: 100%;
   }
 }
 </style>

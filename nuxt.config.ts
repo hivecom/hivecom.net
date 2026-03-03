@@ -69,7 +69,21 @@ export default defineNuxtConfig({
   },
   css: [
     '@/assets/index.scss',
+    'katex/dist/katex.min.css',
   ],
+  mdc: {
+    remarkPlugins: {
+      'remark-math': {},
+    },
+    rehypePlugins: {
+      'rehype-katex': {
+        options: {
+          throwOnError: false,
+          output: 'html',
+        },
+      },
+    },
+  },
   vite: {
     optimizeDeps: {
       include: ['debug'],

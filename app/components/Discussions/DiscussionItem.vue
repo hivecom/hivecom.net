@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Comment } from './Discussion.vue'
 import { pushToast } from '@dolanske/vui'
-import { scrollToId } from '@/lib/utils/common'
+import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'
 import DiscussionModelComment from './models/DiscussionModelComment.vue'
 import DiscussionModelForum from './models/DiscussionModelForum.vue'
 
@@ -22,8 +22,16 @@ const router = useRouter()
 // Scroll to itself when mounted and the query id matches
 const isActive = computed(() => data.id === route.query.comment)
 
-onMounted(() => {
+onMounted(async () => {
   if (isActive.value) {
+    // Wait until the page layout has fully settled before scrolling.
+    // waitForImages() alone is insufficient because MDRenderer sits behind a
+    // <Suspense> boundary — its images may not exist in the DOM yet at mount
+    // time, so a DOM-snapshot approach resolves immediately and the scroll
+    // fires before the content (and non-16:9 images) have shifted the layout.
+    // waitForLayoutStability() polls scrollHeight each animation frame instead,
+    // catching late-rendered markdown, portrait images, avatars, etc.
+    await waitForLayoutStability()
     self.value?.$el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 })

@@ -57,6 +57,9 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
           <Button size="s" square @click="props.editor.chain().focus().toggleOrderedList().run()">
             <Icon :size="18" name="ph:list-numbers" />
           </Button>
+          <Button size="s" square data-title-bottom="Checklist" @click="props.editor.chain().focus().toggleTaskList().run()">
+            <Icon :size="18" name="ph:check-square" />
+          </Button>
         </ButtonGroup>
 
         <ButtonGroup>

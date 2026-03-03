@@ -95,3 +95,92 @@ export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = '
     el.scrollIntoView({ behavior: 'smooth', block })
   }
 }
+
+/**
+ * Waits for all currently-loading images in the document to either finish
+ * loading or error out before resolving. Falls back after `timeoutMs`
+ * milliseconds so a slow/broken image never blocks a scroll indefinitely.
+ *
+ * Use this before programmatic `scrollIntoView` calls that follow dynamic
+ * content (markdown renders, image-heavy posts, etc.) to avoid the scroll
+ * landing in the wrong spot due to images shifting the layout after mount.
+ */
+export async function waitForImages(timeoutMs = 4000): Promise<void> {
+  return new Promise((resolve) => {
+    if (!import.meta.client) {
+      resolve()
+      return
+    }
+
+    const images = Array.from(document.querySelectorAll<HTMLImageElement>('img'))
+    const incomplete = images.filter(img => !img.complete)
+
+    if (incomplete.length === 0) {
+      resolve()
+      return
+    }
+
+    let settled = false
+    const resolveOnce = () => {
+      if (settled)
+        return
+      settled = true
+      resolve()
+    }
+
+    let loadedCount = 0
+    for (const img of incomplete) {
+      const onSettle = () => {
+        loadedCount++
+        if (loadedCount >= incomplete.length)
+          resolveOnce()
+      }
+      img.addEventListener('load', onSettle, { once: true })
+      img.addEventListener('error', onSettle, { once: true })
+    }
+
+    // Safety-net: resolve after the timeout even if some images are still pending
+    setTimeout(resolveOnce, timeoutMs)
+  })
+}
+
+/**
+ * Polls `document.body.scrollHeight` on every animation frame and resolves
+ * once the height has been stable for `stableForMs` milliseconds, or the
+ * hard `timeoutMs` deadline is reached.
+ *
+ * This is more robust than `waitForImages` for scroll-to-comment use-cases
+ * because it catches late-rendered content (e.g. MDRenderer behind a
+ * <Suspense> boundary whose images aren't in the DOM yet at mount time) and
+ * images with non-16:9 aspect ratios that shift the layout more than the CSS
+ * placeholder pre-allocated.
+ */
+export async function waitForLayoutStability(timeoutMs = 5000, stableForMs = 500): Promise<void> {
+  if (!import.meta.client)
+    return
+
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs
+    let lastHeight = document.body.scrollHeight
+    let stableStart = Date.now()
+
+    const tick = () => {
+      const now = Date.now()
+      const currentHeight = document.body.scrollHeight
+
+      if (currentHeight !== lastHeight) {
+        lastHeight = currentHeight
+        stableStart = now
+      }
+
+      if (now - stableStart >= stableForMs || now >= deadline) {
+        resolve()
+        return
+      }
+
+      requestAnimationFrame(tick)
+    }
+
+    requestAnimationFrame(tick)
+  })
+}

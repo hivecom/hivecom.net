@@ -6,6 +6,8 @@ import NavEventBadge from './NavEventBadge.vue'
 import NotificationDropdown from './NotificationDropdown.vue'
 import UserDropdown from './UserDropdown.vue'
 
+const { signInPath } = useAuthRedirect()
+
 // Listen for auth events
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
@@ -162,7 +164,7 @@ function updateHoveredElement(event: MouseEvent) {
 
         <div v-else class="navigation__auth">
           <div class="navigation__auth-buttons">
-            <Button plain @click="$router.push('/auth/sign-in')">
+            <Button plain @click="$router.push(signInPath())">
               Sign in
             </Button>
 
@@ -173,7 +175,7 @@ function updateHoveredElement(event: MouseEvent) {
 
           <!-- On mobile we just have a little user icon -->
           <div class="navigation__auth-mobile-button">
-            <Button square aria-label="Sign in" @click="$router.push('/auth/sign-in')">
+            <Button square aria-label="Sign in" @click="$router.push(signInPath())">
               <Icon name="ph:sign-in" />
             </Button>
           </div>

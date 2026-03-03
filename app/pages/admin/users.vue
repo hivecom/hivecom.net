@@ -27,7 +27,8 @@ type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
   | 'ban_reason'
   | 'ban_start'
   | 'ban_end'
-  | 'last_seen'>
+  | 'last_seen'
+  | 'public'>
 
 type AdminUserProfile = QueryUserProfile & {
   email: string | null

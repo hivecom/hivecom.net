@@ -417,7 +417,9 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
           hint="You can use markdown"
           placeholder="Additional event details in markdown format (optional)"
           min-height="144px"
+          :media-context="props.event?.id ? `events/${props.event.id}/markdown/media` : undefined"
           :media-bucket-id="CMS_BUCKET_ID"
+          :show-attachment-button="!!props.event?.id"
         />
       </Flex>
 

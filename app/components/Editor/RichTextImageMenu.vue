@@ -71,24 +71,9 @@ function getStoragePath(src: string): string | null {
   return `${props.mediaContext}/${filename}`
 }
 
-async function removeMedia() {
-  const src = getSelectedImageSrc()
-
-  if (src && props.bucketId) {
-    const storagePath = getStoragePath(src)
-
-    if (storagePath) {
-      const { error } = await supabase.storage
-        .from(props.bucketId)
-        .remove([storagePath])
-
-      if (error) {
-        pushToast('Error deleting media', { description: error.message })
-        return
-      }
-    }
-  }
-
+function removeMedia() {
+  // Storage cleanup is handled automatically by the editor's onTransaction
+  // listener in RichTextEditor, which detects removed image nodes.
   props.editor.chain().deleteSelection().focus().run()
 }
 

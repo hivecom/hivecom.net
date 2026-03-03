@@ -10,7 +10,6 @@ const authRequiredRoutes = [
   'votes',
   'votes-id',
   'profile',
-  'profile-id',
   'profile-settings',
 ]
 

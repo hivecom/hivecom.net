@@ -37,7 +37,8 @@ type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
   | 'ban_start'
   | 'ban_end'
   | 'last_seen'
-  | 'website'>
+  | 'website'
+  | 'public'>
 
 type AdminUserProfile = QueryUserProfile & {
   email: string | null
@@ -114,7 +115,8 @@ const _profilesQuery = supabase.from('profiles').select(`
   ban_start,
   ban_end,
   last_seen,
-  website
+  website,
+  public
 `)
 
 // Define interface for transformed user data
@@ -197,7 +199,8 @@ async function fetchUsers() {
         ban_start,
         ban_end,
         last_seen,
-        website
+        website,
+        public
       `)
       .order('created_at', { ascending: false })
 
@@ -411,6 +414,7 @@ const filteredData = computed<TransformedUser[]>(() => {
         ban_end: user.ban_end,
         last_seen: user.last_seen,
         website: user.website || null,
+        public: user.public,
         role,
         email,
         confirmed,
@@ -483,6 +487,7 @@ function buildAdminProfile(user: QueryUserProfile): AdminUserProfile {
     ban_end: user.ban_end,
     last_seen: user.last_seen,
     website: user.website || null,
+    public: user.public,
     role,
     email,
     confirmed,

@@ -61,6 +61,7 @@ const settings = useLocalStorage('forum-settings', {
   showNsfw: false,
   showContinue: true,
 }, typeof window !== 'undefined' ? window.localStorage : undefined, {
+  mergeDefaults: true,
   serializer: {
     read: value => value ? JSON.parse(value) : null,
     write: value => JSON.stringify(value),

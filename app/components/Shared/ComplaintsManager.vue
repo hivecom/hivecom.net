@@ -22,6 +22,7 @@ const open = defineModel<boolean>('open', { default: false })
 
 // Get current user for authentication check
 const user = useSupabaseUser()
+const { navigateToSignIn } = useAuthRedirect()
 
 // State for nested modals
 const showViewer = ref(!props.startWithSubmit) // Show viewer by default unless startWithSubmit is true
@@ -33,7 +34,7 @@ watch(open, (isOpen) => {
     // Check if user is authenticated
     if (!user.value) {
       // Redirect to sign-in page if not authenticated
-      navigateTo('/auth/sign-in')
+      navigateToSignIn()
       open.value = false
       return
     }

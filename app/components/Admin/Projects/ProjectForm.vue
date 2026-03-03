@@ -438,7 +438,9 @@ function handleTagInputEnter() {
           placeholder="Enter markdown content"
           min-height="216px"
           :errors="validation.markdown ? [] : ['Markdown content is required']"
+          :media-context="props.project?.id ? `projects/${props.project.id}/markdown/media` : undefined"
           :media-bucket-id="CMS_BUCKET_ID"
+          :show-attachment-button="!!props.project?.id"
         />
       </Flex>
     </Flex>

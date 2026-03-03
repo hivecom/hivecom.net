@@ -225,8 +225,12 @@ code {
   }
 
   img {
+    display: block;
     max-width: 100%;
     max-height: 692px;
+    // Show a neutral placeholder while the image is in-flight so the page
+    // layout is less likely to shift dramatically before images load.
+    background-color: var(--color-bg-raised);
   }
 
   p a {
@@ -246,6 +250,18 @@ code {
     a:before {
       display: none;
     }
+  }
+}
+
+// Forum post body images: pre-allocate full-width 16:9 space before the image
+// loads so that the layout is stable when the page scrolls to a linked comment.
+// `aspect-ratio: auto 16/9` means the browser uses the image's intrinsic ratio
+// once it has loaded, and falls back to 16:9 while it is still in-flight.
+.forum-post__content {
+  img {
+    width: 100%;
+    aspect-ratio: auto 16 / 9;
+    object-fit: contain;
   }
 }
 

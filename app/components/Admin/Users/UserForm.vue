@@ -3,6 +3,10 @@ import type { Enums } from '@/types/database.types'
 import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
+import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
+import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
+import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { deleteUserAvatar, getUserAvatarUrl } from '@/lib/storage'
@@ -18,9 +22,6 @@ interface SelectOption {
 }
 
 type ProfileBadge = Enums<'profile_badge'>
-interface BadgeSelectOption extends SelectOption {
-  value: ProfileBadge
-}
 
 const props = defineProps<{
   user: {
@@ -42,6 +43,7 @@ const props = defineProps<{
     birthday?: string | null
     badges?: ProfileBadge[]
     website?: string | null
+    public?: boolean
   } | null
   isEditMode: boolean
 }>()
@@ -58,6 +60,7 @@ interface UserFormState {
   website: string
   country: string
   birthday: string
+  public: boolean
   supporter_patreon: boolean
   supporter_lifetime: boolean
   patreon_id: string
@@ -90,6 +93,7 @@ function createDefaultUserFormState(): UserFormState {
     website: '',
     country: '',
     birthday: '',
+    public: true,
     supporter_patreon: false,
     supporter_lifetime: false,
     patreon_id: '',
@@ -122,16 +126,17 @@ function formatBadgeLabel(badge: ProfileBadge) {
     .join(' ')
 }
 
-const badgeSelectOptions: BadgeSelectOption[] = BADGE_VALUES.map(badge => ({
-  label: formatBadgeLabel(badge),
-  value: badge,
-  description: BADGE_DESCRIPTIONS[badge] ?? 'Supporter badge',
-}))
-
-const badgeLabelMap = badgeSelectOptions.reduce<Record<ProfileBadge, string>>((acc, option) => {
-  acc[option.value as ProfileBadge] = option.label
+const badgeLabelMap = BADGE_VALUES.reduce<Record<ProfileBadge, string>>((acc, badge) => {
+  acc[badge] = formatBadgeLabel(badge)
   return acc
 }, {} as Record<ProfileBadge, string>)
+
+const BADGE_COMPONENTS: Record<ProfileBadge, unknown> = {
+  builder: ProfileBadgeBuilder,
+  earlybird: ProfileBadgeEarlybird,
+  founder: ProfileBadgeFounder,
+  host: ProfileBadgeHost,
+}
 
 // Convert roles to Select component options format
 const roleSelectOptions = computed(() =>
@@ -175,18 +180,16 @@ const BIRTHDAY_MIN_VALUE = '1900-01-01' as const
 function dedupeBadges(badges?: readonly ProfileBadge[]) {
   return Array.from(new Set(badges ?? [])) as ProfileBadge[]
 }
-const selectedBadges = ref<BadgeSelectOption[]>([])
 
-watch(selectedBadges, (newSelection) => {
-  if (newSelection && Array.isArray(newSelection))
-    userForm.value.badges = dedupeBadges(newSelection.map(option => option.value))
+function isBadgeActive(badge: ProfileBadge): boolean {
+  return userForm.value.badges.includes(badge)
+}
+
+function toggleBadge(badge: ProfileBadge) {
+  if (isBadgeActive(badge))
+    userForm.value.badges = userForm.value.badges.filter(b => b !== badge)
   else
-    userForm.value.badges = []
-}, { deep: true })
-
-function syncSelectedBadges() {
-  const formBadges = userForm.value.badges || []
-  selectedBadges.value = badgeSelectOptions.filter(option => formBadges.includes(option.value))
+    userForm.value.badges = dedupeBadges([...userForm.value.badges, badge])
 }
 
 // Username validation rules based on database constraints
@@ -504,6 +507,7 @@ watch(
         website: newUser.website || '',
         country: hasValidCountry ? normalizedCountry : '',
         birthday: newUser.birthday || '',
+        public: newUser.public ?? true,
         supporter_patreon: newUser.supporter_patreon,
         supporter_lifetime: newUser.supporter_lifetime,
         patreon_id: newUser.patreon_id || '',
@@ -511,7 +515,7 @@ watch(
         steam_id: newUser.steam_id || '',
         badges: sanitizedBadges,
       }
-      syncSelectedBadges()
+
       // Fetch user roles when editing existing user
       if (props.isEditMode) {
         fetchUserRoles()
@@ -526,7 +530,6 @@ watch(
     else {
       // Reset form for new user
       userForm.value = createDefaultUserFormState()
-      selectedBadges.value = []
       // Reset role for new user
       selectedRole.value = 'user'
       originalRole.value = 'user'
@@ -576,6 +579,7 @@ function handleSubmit() {
     website: userForm.value.website.trim() ? normalizeWebsiteUrl(userForm.value.website.trim()) : null,
     country: userForm.value.country.trim() ? userForm.value.country.trim().toUpperCase() : null,
     birthday: userForm.value.birthday.trim() ? userForm.value.birthday.trim() : null,
+    public: userForm.value.public,
     supporter_patreon: userForm.value.supporter_patreon,
     supporter_lifetime: userForm.value.supporter_lifetime,
     patreon_id: userForm.value.patreon_id.trim() || null,
@@ -744,6 +748,15 @@ function clearBirthday() {
 
       <Flex column gap="m" expand>
         <h4>User Information</h4>
+
+        <Flex gap="m">
+          <Switch
+            v-model="userForm.public"
+            label="Public profile"
+            description="Allow anyone to view this user's profile page"
+            :disabled="!canEditForm"
+          />
+        </Flex>
 
         <Input
           v-model="userForm.username"
@@ -936,6 +949,7 @@ function clearBirthday() {
           :errors="markdownValidation.valid ? [] : [markdownValidation.error ?? 'Invalid markdown content']"
           :media-context="props.user?.id ? `${props.user.id}/markdown/media` : undefined"
           :media-bucket-id="USERS_BUCKET_ID"
+          :show-attachment-button="!!props.user?.id"
         />
         <Flex x-between class="help-text">
           <div>
@@ -1038,18 +1052,22 @@ function clearBirthday() {
           />
         </Flex>
 
+        <h4>Badges</h4>
         <Flex column gap="xs">
-          <Select
-            v-model="selectedBadges"
-            label="Badges"
-            placeholder="Select badges"
-            :options="badgeSelectOptions"
-            :disabled="!canEditForm"
-            :single="false"
-            expand
-            search
-            show-clear
-          />
+          <div class="badge-grid">
+            <div
+              v-for="badge in BADGE_VALUES"
+              :key="badge"
+              class="badge-toggle" :class="[{ 'badge-inactive': !isBadgeActive(badge),
+                                              'badge-toggle--disabled': !canEditForm }]"
+              :role="canEditForm ? 'button' : undefined"
+              :aria-pressed="isBadgeActive(badge)"
+              :data-title-bottom="BADGE_DESCRIPTIONS[badge]"
+              @click="canEditForm && toggleBadge(badge)"
+            >
+              <component :is="BADGE_COMPONENTS[badge]" compact />
+            </div>
+          </div>
           <div class="help-text">
             <Icon name="ph:info" />
             {{ badgeSummaryText }}
@@ -1196,6 +1214,46 @@ function clearBirthday() {
           color: var(--color-text-green);
         }
       }
+    }
+  }
+}
+
+.badge-grid-label {
+  font-size: var(--font-size-s);
+  color: var(--color-text-light);
+  font-weight: var(--font-weight-medium);
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-s);
+}
+
+.badge-toggle {
+  display: flex;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: var(--border-radius-m);
+  transition:
+    filter var(--transition),
+    opacity var(--transition);
+
+  &:hover:not(.badge-toggle--disabled) {
+    filter: brightness(1.15);
+  }
+
+  &--disabled {
+    cursor: default;
+  }
+
+  &.badge-inactive {
+    filter: grayscale(1);
+    opacity: 0.35;
+
+    &:hover:not(.badge-toggle--disabled) {
+      filter: grayscale(0.5);
+      opacity: 0.6;
     }
   }
 }

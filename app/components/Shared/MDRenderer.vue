@@ -63,4 +63,25 @@ p a {
 p a:hover {
   opacity: 0.8;
 }
+
+/* YouTube embed produced by processYoutubeDirectives */
+.md-youtube-embed {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-s) 0;
+
+  iframe {
+    max-width: 100%;
+    border-radius: var(--border-radius-s);
+    aspect-ratio: 16 / 9;
+    height: auto;
+  }
+}
+
+/* KaTeX math produced by rehype-katex */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--space-xs) 0;
+}
 </style>

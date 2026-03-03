@@ -11,6 +11,7 @@ import { scrollToId } from '@/lib/utils/common'
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
+const { navigateToSignIn } = useAuthRedirect()
 
 const profile = ref<Tables<'profiles'> | null>(null)
 const loading = ref(true)
@@ -59,7 +60,7 @@ onMounted(() => {
     authReady.value = true
 
     if (event === 'SIGNED_OUT' || (!user.value && authReady.value))
-      navigateTo('/auth/sign-in')
+      navigateToSignIn()
   })
 
   authSubscription = data.subscription
@@ -71,7 +72,7 @@ onMounted(() => {
   else {
     setTimeout(() => {
       if (!user.value && authReady.value)
-        navigateTo('/auth/sign-in')
+        navigateToSignIn()
     }, 1000)
   }
 })

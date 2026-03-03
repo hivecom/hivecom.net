@@ -5,6 +5,7 @@ import ProfileDetail from '@/components/Profile/ProfileDetail.vue'
 const user = useSupabaseUser()
 const userId = useUserId()
 const client = useSupabaseClient()
+const { navigateToSignIn } = useAuthRedirect()
 
 const loading = ref(true)
 
@@ -15,7 +16,7 @@ onMounted(async () => {
   // Set up auth state change listener
   const authListener = client.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT' || !session) {
-      navigateTo('/auth/sign-in')
+      navigateToSignIn()
     }
   })
 
@@ -26,7 +27,7 @@ onMounted(async () => {
 
   // Check initial auth state
   if (!session) {
-    navigateTo('/auth/sign-in')
+    navigateToSignIn()
     return
   }
 
