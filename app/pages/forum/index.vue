@@ -181,7 +181,10 @@ async function fetchUserActivity(uid: string | null | undefined) {
     return
   }
 
-  userActivityLoading.value = true
+  // Only show loading state on first load
+  if (userActivity.value.length === 0) {
+    userActivityLoading.value = true
+  }
 
   const [repliesRes, discussionsRes] = await Promise.all([
     // Use the forum_discussion_replies view which is already scoped to
@@ -263,11 +266,7 @@ watch(userId, uid => fetchUserActivity(uid), { immediate: true })
 // Only refetch activity when navigating back to the mainpage. Navigating
 // between topics/discussions triggers the skeleton loading all the time causing
 // annoying visual feedback
-watch(() => route.fullPath, () => {
-  if (Object.keys(route.params).length === 0) {
-    fetchUserActivity(userId.value)
-  }
-})
+watch(() => route.fullPath, () => fetchUserActivity(userId.value))
 
 // Lookup map from topic id → topic name, used by the personal activity feed
 const topicLookup = computed(() => {
