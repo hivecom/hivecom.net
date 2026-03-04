@@ -857,10 +857,6 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
         </p>
       </section>
 
-      <button @click="loading = !loading; userActivityLoading = !userActivityLoading">
-        switch
-      </button>
-
       <section v-if="settings.showActivity" class="forum__latest">
         <Flex y-center x-start expand class="mb-s">
           <h5>
@@ -1085,74 +1081,100 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
         </Flex>
       </Flex>
 
-      <!-- TODO: add skeleton loading for 1 fake category -->
-      <!-- <template /> -->
-
-      <Card v-for="(topic, index) in modelledTopics" :key="topic.id" class="forum__category" separators>
+      <Card v-if="loading" class="forum__category" separators>
         <div class="forum__category-title">
-          <Flex y-center>
-            <NuxtLink
-              :id="slugify(topic.name)"
-              class="forum__category-title-button"
-              :to="`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`"
-              @click.prevent="setActiveTopicFromTopic(topic)"
-            >
-              {{ topic.name }}
-            </NuxtLink>
-            <Badge v-if="topic.is_locked">
-              <Icon name="ph:lock" />
-              Locked
-            </Badge>
-
-            <Badge v-if="topic.is_archived" variant="warning">
-              <Icon name="ph:archive" class="text-color-yellow" />
-              Archived
-            </Badge>
-          </Flex>
-          <template v-if="index === 0">
-            <span>Discussions / Replies</span>
-            <span>Views</span>
-            <span>Last activity</span>
-          </template>
-          <template v-else>
-            <div />
-            <div />
-            <div />
-          </template>
-          <ForumItemActions table="discussion_topics" :data="topic" @update="replaceItemData('topic', $event)" @remove="removeItem('topic', $event)" />
+          <Skeleton width="175px" height="32px" />
+          <div />
+          <!-- <Skeleton width="124px" height="24px" /> -->
+          <Skeleton width="128px" height="16px" />
+          <Skeleton width="57px" height="16px" />
+          <Skeleton width="49px" height="16px" />
         </div>
 
-        <ul v-if="topic.discussions.length > 0 || getTopicsByParentId(topic.id).length > 0">
-          <ForumTopicItem
-            v-for="subtopic of getTopicsByParentId(topic.id)"
-            :key="subtopic.id"
-            :data="subtopic"
-            :href="`/forum?${subtopic.slug ? `activeTopic=${subtopic.slug}` : `activeTopicId=${subtopic.id}`}`"
-            :last-activity="subtopic.last_activity_at"
-            :discussion-count="subtopic.discussions.length"
-            :reply-count="subtopic.total_reply_count"
-            :view-count="subtopic.total_view_count"
-            :has-new="forumUnread.isTopicNew(subtopic.id, subtopic.discussions.length, subtopic.total_reply_count ?? 0)"
-            @click="setActiveTopicFromTopic(subtopic)"
-            @update="replaceItemData('topic', $event)"
-            @remove="removeItem('topic', $event)"
-          />
+        <ul>
+          <li v-for="item in 6" :key="item" class="forum__category-post" style="height:71.3px">
+            <div class="forum__category-post--item">
+              <Skeleton width="40px" height="40px" />
 
-          <ForumDiscussionItem
-            v-for="discussion of sortDiscussions(topic.discussions)"
-            :key="discussion.id"
-            :data="discussion"
-            :last-activity="discussion.last_activity_at"
-            :has-new="forumUnread.isDiscussionNew(discussion.id, discussion.reply_count ?? 0)"
-            @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
-            @update="replaceItemData('discussion', $event)"
-            @remove="removeItem('discussion', $event)"
-          />
+              <div class="forum__category-post--name">
+                <Skeleton width="128px" height="20px" class="mb-xs" />
+                <Skeleton width="242px" height="18px" />
+              </div>
+
+              <div v-for="skel of 3" :key="skel" class="forum__category-post--meta">
+                <Skeleton width="32px" height="16px" />
+              </div>
+            </div>
+          </li>
         </ul>
-        <div v-else class="forum__category-empty">
-          <p>There are no discussions in this topic</p>
-        </div>
       </Card>
+      <template v-else>
+        <Card v-for="(topic, index) in modelledTopics" :key="topic.id" class="forum__category" separators>
+          <div class="forum__category-title">
+            <Flex y-center>
+              <NuxtLink
+                :id="slugify(topic.name)"
+                class="forum__category-title-button"
+                :to="`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`"
+                @click.prevent="setActiveTopicFromTopic(topic)"
+              >
+                {{ topic.name }}
+              </NuxtLink>
+              <Badge v-if="topic.is_locked">
+                <Icon name="ph:lock" />
+                Locked
+              </Badge>
+
+              <Badge v-if="topic.is_archived" variant="warning">
+                <Icon name="ph:archive" class="text-color-yellow" />
+                Archived
+              </Badge>
+            </Flex>
+            <template v-if="index === 0">
+              <span>Discussions / Replies</span>
+              <span>Views</span>
+              <span>Last activity</span>
+            </template>
+            <template v-else>
+              <div />
+              <div />
+              <div />
+            </template>
+            <ForumItemActions table="discussion_topics" :data="topic" @update="replaceItemData('topic', $event)" @remove="removeItem('topic', $event)" />
+          </div>
+
+          <ul v-if="topic.discussions.length > 0 || getTopicsByParentId(topic.id).length > 0">
+            <ForumTopicItem
+              v-for="subtopic of getTopicsByParentId(topic.id)"
+              :key="subtopic.id"
+              :data="subtopic"
+              :href="`/forum?${subtopic.slug ? `activeTopic=${subtopic.slug}` : `activeTopicId=${subtopic.id}`}`"
+              :last-activity="subtopic.last_activity_at"
+              :discussion-count="subtopic.discussions.length"
+              :reply-count="subtopic.total_reply_count"
+              :view-count="subtopic.total_view_count"
+              :has-new="forumUnread.isTopicNew(subtopic.id, subtopic.discussions.length, subtopic.total_reply_count ?? 0)"
+              @click="setActiveTopicFromTopic(subtopic)"
+              @update="replaceItemData('topic', $event)"
+              @remove="removeItem('topic', $event)"
+            />
+
+            <ForumDiscussionItem
+              v-for="discussion of sortDiscussions(topic.discussions)"
+              :key="discussion.id"
+              :data="discussion"
+              :last-activity="discussion.last_activity_at"
+              :has-new="forumUnread.isDiscussionNew(discussion.id, discussion.reply_count ?? 0)"
+              @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
+              @update="replaceItemData('discussion', $event)"
+              @remove="removeItem('discussion', $event)"
+            />
+          </ul>
+          <div v-else class="forum__category-empty">
+            <p>There are no discussions in this topic</p>
+          </div>
+        </Card>
+      </template>
 
       <ForumModalAddTopic
         :open="addingTopic"
