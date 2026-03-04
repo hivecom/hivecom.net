@@ -94,6 +94,15 @@ function endEditing() {
   editedIsNsfw.value = false
 }
 
+// I couldn't get the damn timestamps to update for whatever reason. So this
+// counter simply forces the timestamp element to re-render after each edit
+const timestampUpdateKey = ref(0)
+
+// Also run an update interval every 60 seconds to update timestamps
+useIntervalFn(() => {
+  timestampUpdateKey.value++
+}, 60000)
+
 async function submit() {
   if (editedContent.value.length > 0) {
     editLoading.value = true
@@ -117,6 +126,8 @@ async function submit() {
       data.value.modified_at = dayjs().toISOString()
       // Re-apply the NSFW warning if the user toggled it back on
       showNSFWWarning.value = editedIsNsfw.value
+
+      timestampUpdateKey.value++
     }
 
     editLoading.value = false
@@ -212,10 +223,10 @@ const { displayReactions, toggleReaction } = useReactions({
       <div class="flex-1" />
 
       <!-- Bottom row with timestamps and reactions -->
-      <Flex wrap y-end x-between class="discussion-forum__bottom-row">
+      <Flex :key="timestampUpdateKey" wrap y-end x-between class="discussion-forum__bottom-row">
         <p class="discussion-forum__timestamp">
           <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
-          <span>{{ data.modified_at !== data.created_at ? `Edited ${dayjs(data.modified_at).fromNow()}` : null }}</span>
+          <span v-if="data.modified_at !== data.created_at">{{ `Edited ${dayjs(data.modified_at).fromNow()}` }}</span>
         </p>
 
         <Flex v-if="displayReactions.length > 0" y-center x-end gap="xxs">
