@@ -487,7 +487,7 @@ const { height } = useWindowSize()
 
       <div v-if="height > 1200" class="forum-post__fast-travel">
         <Tooltip>
-          <Button size="s" variant="accent" square @click="scrollHandler">
+          <Button size="s" plain square @click="scrollHandler">
             <Icon :name="isUserAtBottom ? 'ph:arrow-up' : 'ph:arrow-down'" :size="20" />
           </Button>
           <template #tooltip>
@@ -614,7 +614,11 @@ const { height } = useWindowSize()
   margin-left: auto;
   z-index: var(--z-nav);
   transform: translateX(48px);
-  margin-top: -28px;
+  margin-top: -40px;
+
+  .iconify {
+    color: var(--color-accent);
+  }
 }
 
 @media screen and (max-width: $breakpoint-m) {
