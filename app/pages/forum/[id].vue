@@ -407,9 +407,9 @@ const { height } = useWindowSize()
 
         <!-- Draft alert and publishing -->
         <Alert v-if="post.is_draft" class="mb-l" variant="info">
-          This post is a draft
+          This post is a draft and is currently only visible to you.
           <template #end>
-            <Button size="s" @click="publishConfirmOpen = true">
+            <Button size="s" variant="accent" @click="publishConfirmOpen = true">
               Publish
             </Button>
           </template>
@@ -485,7 +485,7 @@ const { height } = useWindowSize()
         placeholder="Write your reply to this thread..."
       />
 
-      <div v-if="height > 2000" class="forum-post__fast-travel">
+      <div v-if="height > 1200" class="forum-post__fast-travel">
         <Tooltip>
           <Button size="s" variant="accent" square @click="scrollHandler">
             <Icon :name="isUserAtBottom ? 'ph:arrow-up' : 'ph:arrow-down'" :size="20" />

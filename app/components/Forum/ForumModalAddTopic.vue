@@ -197,7 +197,7 @@ async function submitForm() {
         <label class="vui-label">Location</label>
         <Dropdown expand>
           <template #trigger="{ toggle, isOpen }">
-            <Button expand class="w-100" :loading="loading" outline @click="toggle">
+            <Button expand class="w-100 vui-button-select" :loading="loading" outline @click="toggle">
               <template #start>
                 <span class="text-size-m">
                   {{ form.parent_id === null ? 'Top-level' : topicOptions.find(o => o.parent_id === form.parent_id)?.label || 'Select parent topic' }}

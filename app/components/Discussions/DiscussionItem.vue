@@ -55,7 +55,7 @@ function scrollReply() {
   }
 
   router.replace({ query: { comment: data.reply.id } })
-  scrollToId(`#comment-${data.reply.id}`)
+  scrollToId(`#comment-${data.reply.id}`, 'start')
 }
 </script>
 

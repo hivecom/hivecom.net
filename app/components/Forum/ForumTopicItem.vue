@@ -81,18 +81,8 @@ dayjs.extend(relativeTime)
 
 <style scoped lang="scss">
 .forum__category-post--icon {
-  position: relative;
-
-  &.has-new::after {
-    content: '';
-    position: absolute;
-    bottom: -3px;
-    right: -3px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--color-accent);
-    border: 2px solid var(--color-bg);
+  .iconify {
+    color: var(--color-text);
   }
 }
 </style>

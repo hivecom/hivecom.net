@@ -155,6 +155,17 @@ table td {
   }
 }
 
+// Used for dropdowns to match input/textarea styling
+.vui-button-select.vui-button-variant-gray {
+  background-color: var(--color-bg-medium);
+}
+
+:root.light {
+  .vui-button-select.vui-button-variant-gray {
+    background-color: var(--color-bg-lowered) !important;
+  }
+}
+
 .vui-breadcrumbs li {
   color: var(--color-text-light);
 
@@ -266,6 +277,31 @@ code {
     // width: 100%;
     aspect-ratio: auto 16 / 9;
     object-fit: contain;
+  }
+}
+
+// .vui-dropdown-trigger-wrap,
+.vui-select,
+.vui-input-container .vui-input .vui-input-style,
+.vui-input-container .vui-input textarea {
+  background-color: var(--color-bg-card);
+}
+
+.vui-table-container {
+  .vui-table-pagination-wrap,
+  table th,
+  table td {
+    background-color: var(--color-bg-medium);
+  }
+}
+
+:root.light {
+  .vui-table-container {
+    .vui-table-pagination-wrap,
+    table th,
+    table td {
+      background-color: var(--color-bg-lowered) !important;
+    }
   }
 }
 

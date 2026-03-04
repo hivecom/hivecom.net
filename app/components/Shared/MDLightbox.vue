@@ -89,8 +89,6 @@ defineExpose({ register })
 
 <style lang="scss">
 .md-lightbox {
-  background-color: red;
-
   // 136 is composed of the vertical header & footer which are both 60 pixels
   // + the default 16px padding on the entire modal content
   --height: calc(100vh - 136px);

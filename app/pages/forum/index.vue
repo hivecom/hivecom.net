@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.overrides'
-import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import { useStorage as useLocalStorage } from '@vueuse/core'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -260,12 +260,14 @@ async function fetchUserActivity(uid: string | null | undefined) {
 // Re-fetch when the logged-in user changes.
 watch(userId, uid => fetchUserActivity(uid), { immediate: true })
 
-// Also re-fetch on every SPA navigation back to this page so that replies
-// posted elsewhere in the forum session bubble up immediately.
-// Watch route.fullPath (a string primitive) instead of the route object so the
-// watcher reliably fires on every path/query change – the route proxy mutates
-// in-place and requires deep:true or a primitive selector to trigger.
-watch(() => route.fullPath, () => fetchUserActivity(userId.value))
+// Only refetch activity when navigating back to the mainpage. Navigating
+// between topics/discussions triggers the skeleton loading all the time causing
+// annoying visual feedback
+watch(() => route.fullPath, () => {
+  if (Object.keys(route.params).length === 0) {
+    fetchUserActivity(userId.value)
+  }
+})
 
 // Lookup map from topic id → topic name, used by the personal activity feed
 const topicLookup = computed(() => {
@@ -774,7 +776,7 @@ const latestPosts = computed<ActivityItem[]>(() => {
     return true
   })
 
-  return deduped.splice(0, 10)
+  return deduped.splice(0, 20)
 })
 
 const latestPostMentionIds = computed(() => {
@@ -831,6 +833,16 @@ function fetchDraftCount() {
 onBeforeMount(() => {
   fetchDraftCount()
 })
+
+// Shortcut to open search
+useEventListener('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+    event.preventDefault()
+    searchOpen.value = true
+  }
+})
+
+const isMac = import.meta.client && /Mac/i.test(navigator.platform)
 </script>
 
 <template>
@@ -845,6 +857,10 @@ onBeforeMount(() => {
         </p>
       </section>
 
+      <button @click="loading = !loading; userActivityLoading = !userActivityLoading">
+        switch
+      </button>
+
       <section v-if="settings.showActivity" class="forum__latest">
         <Flex y-center x-start expand class="mb-s">
           <h5>
@@ -856,32 +872,52 @@ onBeforeMount(() => {
         </Flex>
 
         <div class="forum__latest-list">
-          <NuxtLink v-for="post in latestPosts" :key="post.id" class="forum__latest-item" :href="post.href" @click.exact="post.onClick ? ($event.preventDefault(), post.onClick()) : undefined">
-            <Flex x-between y-center expand>
-              <Flex :gap="4" y-center>
-                <Icon :name="post.icon" :size="13" />
-                <span class="forum__latest-type">
-                  <template v-if="post.type === 'Reply'">
-                    {{ post.typeLabel }} <strong>{{ post.typeContext }}</strong>
-                  </template>
-                  <template v-else>
-                    {{ post.typeLabel ?? post.type }}
-                  </template>
-                </span>
+          <template v-if="loading">
+            <div v-for="item in 4" :key="item" class="forum__latest-item">
+              <Flex x-between y-center expand>
+                <Flex :gap="4" y-center>
+                  <Skeleton width="96px" height="15px" />
+                  <Skeleton width="64px" height="15px" />
+                </Flex>
+                <Skeleton width="40px" height="15px" />
               </Flex>
-              <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
-            </Flex>
-            <strong class="forum__latest-title">
-              <MarkdownPreview v-if="post.type === 'Reply'" :markdown="post.title" :mention-lookup />
-              <template v-else>{{ post.title }}</template>
-            </strong>
-            <p v-if="post.description" class="forum__latest-description">
-              {{ stripMarkdown(processMentionsToText(post.description, mentionLookup)) }}
-            </p>
-            <Flex y-center x-between expand class="forum__latest-footer">
-              <UserDisplay :user-id="post.user" size="s" show-role />
-            </Flex>
-          </NuxtLink>
+              <Skeleton class="forum__latest-title" width="45%" height="20px" />
+              <Skeleton v-if="item < 3" class="forum__latest-description" width="80%" height="15px" />
+              <Flex y-center x-start expand class="forum__latest-footer">
+                <Skeleton circle width="28px" height="28px" />
+                <Skeleton width="80px" height="16px" />
+              </Flex>
+            </div>
+          </template>
+
+          <template v-else>
+            <NuxtLink v-for="post in latestPosts" :key="post.id" class="forum__latest-item" :href="post.href" @click.exact="post.onClick ? ($event.preventDefault(), post.onClick()) : undefined">
+              <Flex x-between y-center expand>
+                <Flex :gap="4" y-center>
+                  <Icon :name="post.icon" :size="13" />
+                  <span class="forum__latest-type">
+                    <template v-if="post.type === 'Reply'">
+                      {{ post.typeLabel }} <strong>{{ post.typeContext }}</strong>
+                    </template>
+                    <template v-else>
+                      {{ post.typeLabel ?? post.type }}
+                    </template>
+                  </span>
+                </Flex>
+                <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
+              </Flex>
+              <strong class="forum__latest-title">
+                <MarkdownPreview v-if="post.type === 'Reply'" :markdown="post.title" :mention-lookup />
+                <template v-else>{{ post.title }}</template>
+              </strong>
+              <p v-if="post.description" class="forum__latest-description">
+                {{ stripMarkdown(processMentionsToText(post.description, mentionLookup)) }}
+              </p>
+              <Flex y-center x-between expand class="forum__latest-footer">
+                <UserDisplay :user-id="post.user" size="s" show-role />
+              </Flex>
+            </NuxtLink>
+          </template>
         </div>
       </section>
 
@@ -995,15 +1031,26 @@ onBeforeMount(() => {
             </Tooltip>
           </template>
 
-          <Button size="s" :square="isMobile" @click="searchOpen = true">
-            <template v-if="!isMobile" #start>
-              <Icon name="ph:magnifying-glass" :size="16" />
+          <Tooltip :delay="1000">
+            <Button size="s" :square="isMobile" @click="searchOpen = true">
+              <template v-if="!isMobile" #start>
+                <Icon name="ph:magnifying-glass" :size="16" />
+              </template>
+              <template v-if="isMobile">
+                <Icon name="ph:magnifying-glass" :size="16" />
+              </template>
+              {{ isMobile ? '' : 'Search' }}
+            </Button>
+
+            <template #tooltip>
+              <p>
+                Keyboard shortcut: <KbdGroup>
+                  <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
+                  <Kbd keys="K" />
+                </KbdGroup>
+              </p>
             </template>
-            <template v-if="isMobile">
-              <Icon name="ph:magnifying-glass" :size="16" />
-            </template>
-            {{ isMobile ? '' : 'Search' }}
-          </Button>
+          </Tooltip>
 
           <Button size="s" :square="isMobile" @click="rulesModalOpen = true">
             <template v-if="!isMobile" #start>
@@ -1037,6 +1084,9 @@ onBeforeMount(() => {
           </Popout>
         </Flex>
       </Flex>
+
+      <!-- TODO: add skeleton loading for 1 fake category -->
+      <!-- <template /> -->
 
       <Card v-for="(topic, index) in modelledTopics" :key="topic.id" class="forum__category" separators>
         <div class="forum__category-title">
@@ -1131,8 +1181,8 @@ onBeforeMount(() => {
 @use '@/assets/breakpoints.scss' as *;
 @use '@/assets/mixins.scss' as *;
 
-:root.light .forum__category-post.pinned {
-  background-color: color-mix(in srgb, var(--color-accent) 30%, transparent) !important;
+:root.light .forum__category-post.pinned .forum__category-post--icon {
+  background-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
 }
 
 .forum {
@@ -1386,15 +1436,9 @@ onBeforeMount(() => {
     }
 
     &.pinned {
-      background-color: color-mix(in srgb, var(--color-accent) 15%, transparent) !important;
-
       .forum__category-post--icon {
-        background-color: var(--color-accent);
-        border-color: var(--color-accent);
-
-        .iconify {
-          color: var(--color-text-invert);
-        }
+        background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
+        border-color: var(--color-bg-accent-lowered);
       }
     }
 
@@ -1414,12 +1458,6 @@ onBeforeMount(() => {
 
       &:hover {
         background-color: var(--color-bg-raised);
-      }
-
-      &.topic {
-        .forum__category-post--icon {
-          border: none;
-        }
       }
 
       &--name {
@@ -1451,9 +1489,22 @@ onBeforeMount(() => {
     height: 40px;
     border-radius: 16px;
     border: 1px solid var(--color-border);
+    position: relative;
 
     .iconify {
       color: var(--color-accent);
+    }
+
+    &.has-new:after {
+      content: '';
+      position: absolute;
+      bottom: -3px;
+      right: -3px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-accent);
+      border: 2px solid var(--color-bg);
     }
   }
 

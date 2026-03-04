@@ -281,6 +281,8 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
       return
     }
 
+    pushToast(`${isEditing.value ? 'Updated' : 'Created'} discussion ${payload.title}${payload.is_draft ? ' (draft)' : ''}`)
+
     if (payload.is_draft) {
       const existingIndex = drafts.value.findIndex(d => d.id === data[0].id)
       if (existingIndex === -1) {
@@ -290,6 +292,9 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
         drafts.value[existingIndex] = data[0]
       }
       emit('draftUpdated')
+
+      // Redirect to the draft page
+      router.push(`/forum/${data[0].slug ?? data[0].id}`)
     }
     else {
       if (drafts.value.some(d => d.id === data[0].id)) {
@@ -297,10 +302,8 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
         emit('draftUpdated')
       }
       emit('created', data[0])
+      emit('close')
     }
-
-    emit('close')
-    pushToast(`${isEditing.value ? 'Updated' : 'Created'} discussion ${payload.title}${payload.is_draft ? ' (draft)' : ''}`)
   }
   catch {
     loading.value = false
@@ -429,7 +432,7 @@ function confirmPublish() {
         <label class="vui-label required">Topic</label>
         <Dropdown expand>
           <template #trigger="{ toggle, isOpen }">
-            <Button expand class="w-100" outline @click="toggle">
+            <Button expand class="w-100 vui-button-select" outline @click="toggle">
               <template #start>
                 <span class="text-size-m">
                   {{ topicOptions.find(o => o.id === form.discussion_topic_id)?.label || 'Select parent topic' }}
