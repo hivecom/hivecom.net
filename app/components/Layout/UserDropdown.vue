@@ -97,34 +97,46 @@ async function signOut() {
           <RoleIndicator v-if="isAdminOrMod && userData?.role" :role="userData.role" size="s" />
         </div>
       </DropdownTitle>
-      <DropdownItem @click="navigateToWrap('/profile')">
-        <template #icon>
-          <Icon name="ph:user" />
-        </template>
-        Profile
-      </DropdownItem>
-      <DropdownItem @click="navigateToWrap('/profile/settings')">
-        <template #icon>
-          <Icon name="ph:gear-six" />
-        </template>
-        Settings
-      </DropdownItem>
+
+      <NuxtLink to="/profile">
+        <DropdownItem>
+          <template #icon>
+            <Icon name="ph:user" />
+          </template>
+          Profile
+        </DropdownItem>
+      </NuxtLink>
+
+      <NuxtLink to="/profile/settings">
+        <DropdownItem>
+          <template #icon>
+            <Icon name="ph:gear-six" />
+          </template>
+          Settings
+        </DropdownItem>
+      </NuxtLink>
+
       <DropdownItem @click="openComplaintModal">
         <template #icon>
           <Icon name="ph:chat-circle-text" />
         </template>
         Complaints
       </DropdownItem>
+
       <template v-if="isAdminOrMod">
-        <Divider size="4" style="margin-bottom: 4px;" />
-        <DropdownItem @click="navigateToWrap('/admin')">
-          <template #icon>
-            <Icon name="ph:faders" />
-          </template>
-          Admin Panel
-        </DropdownItem>
+        <Divider size="2" margin="4px 0" />
+        <NuxtLink to="/admin">
+          <DropdownItem>
+            <template #icon>
+              <Icon name="ph:faders" />
+            </template>
+            Admin Panel
+          </DropdownItem>
+        </NuxtLink>
       </template>
-      <Divider size="4" />
+
+      <Divider size="2" margin="4px 0" />
+
       <div class="user-dropdown__footer">
         <SharedThemeToggle no-text />
         <Button square plain aria-label="Sign out" @click="signOut">
