@@ -252,7 +252,7 @@ provide('setQuoteOfComment', async (comment: Comment) => {
     .eq('id', comment.created_by)
     .single()
 
-  form.message = `${wrapInBlockquote(`${comment.markdown} \n\n @${data.username} said`)} \n\n`
+  form.message = `${form.message}\n\n${wrapInBlockquote(`${comment.markdown} \n\n @${data.username} said`)}`
 
   focusTextarea()
 })
