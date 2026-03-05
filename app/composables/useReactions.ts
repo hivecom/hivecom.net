@@ -1,9 +1,8 @@
-import type { KnownProvider, RawReactions } from '@/lib/reactions'
+import type { RawReactions } from '@/lib/reactions'
 import {
   applyOptimisticToggle,
   buildDisplayReactions,
   HIVECOM_PROVIDER,
-  isAllowedHivecomEmote,
   parseRawReactions,
 } from '@/lib/reactions'
 
@@ -104,12 +103,6 @@ export function useReactions(options: UseReactionsOptions) {
     const uid = userId.value
     if (uid == null || uid === '') {
       error.value = 'Not authenticated'
-      return
-    }
-
-    // Client-side guard for the hivecom provider
-    if ((provider as KnownProvider) === HIVECOM_PROVIDER && !isAllowedHivecomEmote(emote)) {
-      error.value = `Emote "${emote}" is not in the hivecom allow-list`
       return
     }
 

@@ -8,16 +8,17 @@
  *       "👍": ["<uuid>", "<uuid>"],       ← emote → array of user UUIDs
  *       "❤️": ["<uuid>"]
  *     },
- *     "xdd": {                            ← future external provider
+ *     "xdd": {                            ← external provider
  *       "PogChamp": ["<uuid>"]
  *     }
  *   }
  *
- * The top-level provider key makes it safe to merge reactions from external
- * sources (e.g. the xdd project) without colliding with native Hivecom ones.
+ * The top-level provider key makes it safe to merge reactions from different
+ * sources without colliding.
  *
- * IMPORTANT: Keep ALLOWED_HIVECOM_EMOTES in sync with
- * get_allowed_hivecom_emotes() in the DB migration.
+ * The DB accepts any emote string (up to 32 characters) and any provider key
+ * (up to 64 characters). Front-ends decide which emotes to render — if an
+ * emote doesn't map to anything the UI recognises, it is simply not displayed.
  */
 
 import type { ReactionData } from '@/types/database.overrides'
@@ -30,27 +31,24 @@ export type { ReactionData } from '@/types/database.overrides'
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Built-in first-party provider.  Emotes are validated against
- * ALLOWED_HIVECOM_EMOTES on both the client and the DB trigger.
+ * Built-in first-party provider key. Used as the default when toggling
+ * reactions from the hivecom front-end.
  */
 export const HIVECOM_PROVIDER = 'hivecom' as const
 
-/**
- * Known provider keys.  Extend this union as new integrations are added.
- * The DB itself stores any string key - the type only enforces what we know
- * about on the front-end.
- */
-export type KnownProvider = typeof HIVECOM_PROVIDER | 'xdd'
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Allowed emotes (hivecom provider)
+// Display-layer emote manifest (hivecom provider)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Canonical emote list for the "hivecom" provider.
- * Must stay in sync with get_allowed_hivecom_emotes() in the DB.
+ * The set of emotes the hivecom front-end knows how to group and display in
+ * its reaction picker. This is a **display-layer constant**, not a validation
+ * list — the DB accepts any emoji.
+ *
+ * If you add emotes here, consider also updating the groups in
+ * `ReactionsSelect.vue` so users can pick them from the UI.
  */
-export const ALLOWED_HIVECOM_EMOTES = [
+export const HIVECOM_EMOTES = [
   // ── Reactions ─────────────────────────────────────────────────────────────
   '👍',
   '👎',
@@ -100,13 +98,17 @@ export const ALLOWED_HIVECOM_EMOTES = [
   '🥀',
 ] as const
 
-export type HivecomEmote = typeof ALLOWED_HIVECOM_EMOTES[number]
+export type HivecomEmote = typeof HIVECOM_EMOTES[number]
 
-/** Fast O(1) membership check */
-const ALLOWED_HIVECOM_SET = new Set<string>(ALLOWED_HIVECOM_EMOTES)
+/** Fast O(1) membership check for display-layer filtering. */
+const HIVECOM_EMOTE_SET = new Set<string>(HIVECOM_EMOTES)
 
-export function isAllowedHivecomEmote(emote: string): emote is HivecomEmote {
-  return ALLOWED_HIVECOM_SET.has(emote)
+/**
+ * Returns true if the emote is in the hivecom display manifest.
+ * Useful for display-layer filtering — NOT used as a write-path guard.
+ */
+export function isHivecomEmote(emote: string): emote is HivecomEmote {
+  return HIVECOM_EMOTE_SET.has(emote)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
