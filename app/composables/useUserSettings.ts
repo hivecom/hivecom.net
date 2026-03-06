@@ -1,3 +1,4 @@
 export function useUserSettings() {
-  const userId = getUserI
+  const userId = useUserId()
+  const settings = ref()
 }
