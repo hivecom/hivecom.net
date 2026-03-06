@@ -36,8 +36,6 @@ const emit = defineEmits<{
 
 // TODO: Code block highlighting & dropdown for seleting language
 
-// TODO: hivecom emote sticker / custom emojis & normal emojis too
-
 // TODO: dropdown for headings
 
 interface Props {
@@ -610,6 +608,16 @@ async function handleSubmit() {
           display: flex !important;
           align-items: flex-start;
           gap: var(--space-xs);
+          padding-left: 0;
+          margin-bottom: var(--space-xs);
+
+          &:last-of-type {
+            margin-bottom: 0 !important;
+          }
+
+          &:before {
+            display: none !important;
+          }
 
           // The label wraps the checkbox and is marked contenteditable=false
           > label {
@@ -622,8 +630,8 @@ async function handleSubmit() {
             input[type='checkbox'] {
               cursor: pointer;
               accent-color: var(--color-accent);
-              width: 15px;
-              height: 15px;
+              width: 16px;
+              height: 16px;
               margin: 0;
             }
           }
@@ -636,12 +644,17 @@ async function handleSubmit() {
             p {
               margin: 0;
             }
+
+            ul {
+              // margin-block: 0 !important;
+              margin-bottom: 0 !important;
+            }
           }
 
           // Checked state: strike through the text content
-          &[data-checked='true'] > div {
+          &[data-checked='true'] > div > p {
             color: var(--color-text-lighter);
-            text-decoration: line-through;
+            // text-decoration: line-through;
           }
         }
       }

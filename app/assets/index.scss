@@ -212,6 +212,19 @@ blockquote {
   }
 }
 
+.vui-switch.reversed {
+  width: 100%;
+
+  input + label {
+    grid-template-columns: 1fr 44px;
+    // grid-template-areas: 'label switch';
+
+    .vui-switch-icon {
+      order: 1;
+    }
+  }
+}
+
 .vui-otp {
   .vui-otp-items {
     gap: var(--space-xs);
@@ -245,6 +258,11 @@ code {
     // Show a neutral placeholder while the image is in-flight so the page
     // layout is less likely to shift dramatically before images load.
     background-color: var(--color-bg-raised);
+
+    &:before {
+      display: block;
+      padding: 4px 8px;
+    }
   }
 
   p a {

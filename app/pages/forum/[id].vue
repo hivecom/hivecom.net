@@ -485,7 +485,7 @@ const { height } = useWindowSize()
         placeholder="Write your reply to this thread..."
       />
 
-      <div v-if="height > 1200" class="forum-post__fast-travel">
+      <div v-if="height > 1600" class="forum-post__fast-travel">
         <Tooltip>
           <Button size="s" plain square @click="scrollHandler">
             <Icon :name="isUserAtBottom ? 'ph:arrow-up' : 'ph:arrow-down'" :size="20" />

@@ -57,7 +57,7 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
           <Button size="s" square @click="props.editor.chain().focus().toggleOrderedList().run()">
             <Icon :size="18" name="ph:list-numbers" />
           </Button>
-          <Button size="s" square data-title-bottom="Checklist" @click="props.editor.chain().focus().toggleTaskList().run()">
+          <Button size="s" square @click="props.editor.chain().focus().toggleTaskList().run()">
             <Icon :size="18" name="ph:check-square" />
           </Button>
         </ButtonGroup>
@@ -76,8 +76,12 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 </template>
 
 <style scoped lang="scss">
+:root.light .rich-text-menu :deep(.vui-button-group) {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-m);
+}
+
 .rich-text-menu {
-  box-shadow: var(--box-shadow);
   padding: 2px;
 }
 </style>

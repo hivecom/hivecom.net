@@ -64,7 +64,7 @@ interface Props extends Partial<DiscussionSettings> {
 
 const props = withDefaults(defineProps<Props>(), {
   model: 'comment',
-  timestamps: false,
+  timestamps: true,
   inputRows: 3,
   placeholder: 'Leave your comment...',
 })
