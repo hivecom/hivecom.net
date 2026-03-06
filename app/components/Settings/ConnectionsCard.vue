@@ -202,10 +202,7 @@ function toggleRichPresence() {
 <template>
   <Card separators class="connected-card w-100 card-bg">
     <template #header>
-      <Flex x-between y-center>
-        <h4>Connections</h4>
-        <Icon name="ph:link" />
-      </Flex>
+      <h4>Connections</h4>
     </template>
 
     <div>

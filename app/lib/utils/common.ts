@@ -184,3 +184,7 @@ export async function waitForLayoutStability(timeoutMs = 5000, stableForMs = 500
     requestAnimationFrame(tick)
   })
 }
+
+export function isNil(value: unknown): value is null | undefined {
+  return value === null || value === undefined
+}

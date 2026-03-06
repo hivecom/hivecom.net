@@ -74,6 +74,14 @@ interface TableColumnOverrides {
   forum_discussion_replies: {
     reactions: ReactionData
   }
+  settings: {
+    data: {
+      show_nsfw_warning: boolean
+      show_nsfw_content: boolean
+
+      editor_floating: boolean
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
