@@ -2,7 +2,6 @@
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.overrides'
 import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
-import { useStorage as useLocalStorage } from '@vueuse/core'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
