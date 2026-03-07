@@ -7,7 +7,7 @@ import { isNil } from '@/lib/utils/common'
 export function getDefaultUserSettings(): Tables<'settings'>['data'] {
   return {
     theme: 'dark',
-    show_nsfw_content: false,
+    show_nsfw_content: true,
     show_nsfw_warning: true,
     show_forum_updates: true,
     show_forum_recently_visited: true,
