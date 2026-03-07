@@ -249,11 +249,12 @@ function scrollHandler() {
   }
 }
 
-const { height } = useWindowSize()
+const page = useTemplateRef('page')
+const { height: contentHeight } = useElementSize(page)
 </script>
 
 <template>
-  <div class="page forum container container-m">
+  <div ref="page" class="page forum container container-m">
     <!-- Loading state -->
     <template v-if="loading">
       <Spinner />
@@ -485,7 +486,7 @@ const { height } = useWindowSize()
         placeholder="Write your reply to this thread..."
       />
 
-      <div v-if="height > 1600" class="forum-post__fast-travel">
+      <div v-if="contentHeight > 1600" class="forum-post__fast-travel">
         <Tooltip>
           <Button size="s" plain square @click="scrollHandler">
             <Icon :name="isUserAtBottom ? 'ph:arrow-up' : 'ph:arrow-down'" :size="20" />

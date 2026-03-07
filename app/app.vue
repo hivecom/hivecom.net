@@ -4,7 +4,6 @@ import { computed } from 'vue'
 import { useLastSeenTracking } from '@/lib/lastSeen'
 
 const route = useRoute()
-
 const site = useSiteConfig()
 const canonicalUrl = useCanonicalUrl()
 

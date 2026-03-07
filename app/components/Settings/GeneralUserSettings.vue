@@ -1,85 +1,100 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Card, Divider, Flex, pushToast, Switch } from '@dolanske/vui'
-import { isNil } from '@/lib/utils/common'
+import { Card, Divider, Flex, Select, setColorTheme, Switch } from '@dolanske/vui'
 
-const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+const { settings, settingsError } = useUserSettings()
 
-const settingsError = ref(false)
+// Theme options & setting
+const themeOptions = [
+  // I spent _so_ damn long on this and I couldn't get the system theme working
+  // properly. It just wouldn't update if system theme changed
 
-const settings = reactive<Tables<'settings'>['data']>({
-  show_nsfw_warning: true,
-  show_nsfw_content: true,
-  editor_floating: false,
-})
+  // { label: 'System', value: 'system' },
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+]
 
-// Fetch settings on load
-onBeforeMount(async () => {
-  if (user.value) {
-    const { data, error } = await supabase
-      .from('settings')
-      .select('*')
-      .maybeSingle()
-
-    if (error) {
-      return settingsError.value = true
+const selectedTheme = computed({
+  get() {
+    const option = themeOptions.find(option => option.value === settings.value.theme)
+    if (!option) {
+      return []
     }
-
-    if (data) {
-      // Assign fetched values into settings only if they are defined
-      if (!isNil(data.data.show_nsfw_content))
-        settings.show_nsfw_content = data.data.show_nsfw_content
-      if (!isNil(data.data.show_nsfw_warning))
-        settings.show_nsfw_warning = data.data.show_nsfw_warning
-      if (!isNil(data.data.editor_floating))
-        settings.editor_floating = data.data.editor_floating
+    return [option]
+  },
+  set(options) {
+    if (options && options[0]) {
+      const value = options[0].value as Tables<'settings'>['data']['theme']
+      settings.value.theme = value
+      setColorTheme(value)
     }
-  }
+  },
 })
-
-// Immedaitely update settings on change
-watch(settings, async (newSettings) => {
-  if (!user.value)
-    return
-
-  const { error } = await supabase
-    .from('settings')
-    .upsert({ id: user.value.id, data: newSettings })
-
-  if (error) {
-    pushToast('Failed to save settings', { description: error.message })
-  }
-}, { deep: true })
 </script>
 
 <template>
   <Card v-if="!settingsError" class="card-bg" separators>
     <template #header>
-      <h4>General</h4>
+      <h3>
+        General
+      </h3>
     </template>
 
-    <Switch disabled class="reversed" label="User high contrast theme" />
+    <strong class="text-color-lighter text-s block mb-m">
+      Appearance
+    </strong>
 
-    <Divider :size="40" />
-
-    <!-- <strong class="block mb-m text-m text-semibold text-color-light">Discussions</strong> -->
-    <Flex gap="xs" column>
-      <Switch v-model="settings.show_nsfw_content" class="reversed" label="Show NSFW content" />
-      <Switch v-model="settings.show_nsfw_warning" class="reversed" label="Show NSFW content warnings" />
-      <p class="text-color-lightest text-s">
-        These settings apply to all discussions on the website. Including forum and comment sections
-      </p>
+    <Flex x-between y-center class="mb-s">
+      <p>Color theme</p>
+      <Select v-model="selectedTheme" class="settings-select" :show-clear="false" :options="themeOptions" size="s" />
     </Flex>
+    <Switch disabled class="reversed">
+      <Flex y-center gap="xxs">
+        <p>High contrast colors</p>
+        <SharedTinyBadge>
+          Planned
+        </SharedTinyBadge>
+      </Flex>
+    </Switch>
 
-    <Divider :size="40" />
+    <Divider :size="64" />
 
-    <!-- <strong class="block mb-m text-m text-semibold text-color-light">Text editor</strong> -->
-    <Flex gap="xs" column>
-      <Switch v-model="settings.editor_floating" class="reversed" label="Floating editor" />
-      <p class="text-color-lightest text-s">
-        If enabled, the text editor will float at the bottom of the screen when viewing forum posts.
-      </p>
-    </Flex>
+    <strong class="text-color-lighter text-s block mb-m">
+      Discussions
+    </strong>
+    <Switch v-model="settings.show_nsfw_content" class="reversed mb-m" label="Show NSFW content" />
+    <Switch v-model="settings.show_nsfw_warning" class="reversed mb-xxs" label="Show NSFW content warnings" />
+
+    <p class="text-color-lightest text-s block">
+      You will be warned before viewing content marked as NSFW each time.
+    </p>
+
+    <Divider :size="64" />
+
+    <strong class="text-color-lighter text-s block mb-m">
+      Forum
+    </strong>
+
+    <Switch class="reversed mb-m" label="Show latest updates" />
+    <Switch class="reversed mb-m" label="Show recently visited" />
+    <Switch class="reversed mb-m" label="Show archived topics & discussions" />
+
+    <Switch v-model="settings.editor_floating" class="reversed mb-xxs">
+      <Flex y-center ga="xxs">
+        <p>Floating editor</p>
+        <SharedTinyBadge variant="info">
+          Beta
+        </SharedTinyBadge>
+      </Flex>
+    </Switch>
+    <p class="text-color-lightest text-s block">
+      If enabled, the text editor will stay at the bottom of the screen while scrolling through large forum posts.
+    </p>
   </Card>
 </template>
+
+<style lang="scss" scoped>
+.settings-select {
+  --interactive-el-height: 28px;
+}
+</style>
