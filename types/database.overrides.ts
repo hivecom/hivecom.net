@@ -74,6 +74,17 @@ interface TableColumnOverrides {
   forum_discussion_replies: {
     reactions: ReactionData
   }
+  settings: {
+    data: {
+      theme: 'dark' | 'light'
+      show_nsfw_warning: boolean
+      show_nsfw_content: boolean
+      show_forum_updates: boolean
+      show_forum_recently_visited: boolean
+      show_forum_archived: boolean
+      editor_floating: boolean
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

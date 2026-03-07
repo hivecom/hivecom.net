@@ -36,6 +36,8 @@ type TopicBreadcrumb = Pick<Tables<'discussion_topics'>, 'id' | 'name' | 'slug' 
 const route = useRoute()
 const router = useRouter()
 
+const { settings } = useUserSettings()
+
 const identifier = route.params.id as string
 
 // UUID regex pattern to detect if the identifier is a UUID
@@ -249,11 +251,27 @@ function scrollHandler() {
   }
 }
 
-const { height } = useWindowSize()
+const page = useTemplateRef('page')
+const { height: contentHeight } = useElementSize(page)
+
+// If post is NSFW and user has disabled NSFW content, go back to the previous
+// page. This is to prevent users from accidentally seeing NSFW content if they
+// click on a link or refresh the page. When redirecting, we make sure to check if
+// there is a previous page in the history, and if not, we redirect to the forum
+watchEffect(() => {
+  if (post.value && post.value.is_nsfw && !settings.value.show_nsfw_content) {
+    if (window.history.state.back) {
+      router.back()
+    }
+    else {
+      router.push('/forum')
+    }
+  }
+})
 </script>
 
 <template>
-  <div class="page forum container container-m">
+  <div ref="page" class="page forum container container-m">
     <!-- Loading state -->
     <template v-if="loading">
       <Spinner />
@@ -485,7 +503,7 @@ const { height } = useWindowSize()
         placeholder="Write your reply to this thread..."
       />
 
-      <div v-if="height > 1600" class="forum-post__fast-travel">
+      <div v-if="contentHeight > 1600" class="forum-post__fast-travel">
         <Tooltip>
           <Button size="s" plain square @click="scrollHandler">
             <Icon :name="isUserAtBottom ? 'ph:arrow-up' : 'ph:arrow-down'" :size="20" />

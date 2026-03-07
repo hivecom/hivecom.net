@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Alert, Card, DropdownItem, Flex, Skeleton } from '@dolanske/vui'
+import { useIntersectionObserver } from '@vueuse/core'
 import ChangeEmailCard from '@/components/Settings/ChangeEmailCard.vue'
 import ChangePasswordCard from '@/components/Settings/ChangePasswordCard.vue'
 import ConnectionsCard from '@/components/Settings/ConnectionsCard.vue'
 import DeleteAccountCard from '@/components/Settings/DeleteAccountCard.vue'
+import GeneralUserSettings from '@/components/Settings/GeneralUserSettings.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
 import { scrollToId } from '@/lib/utils/common'
 
@@ -55,7 +57,7 @@ function handleProfileUpdated() {
 
 let authSubscription: { unsubscribe: () => void } | null = null
 
-onMounted(() => {
+onBeforeMount(() => {
   const { data } = supabase.auth.onAuthStateChange((event) => {
     authReady.value = true
 
@@ -85,6 +87,44 @@ onUnmounted(() => {
 watch(user, (newUser) => {
   if (newUser) {
     fetchProfile()
+  }
+})
+
+const sections = [
+  { id: 'general', label: 'General' },
+  { id: 'connections', label: 'Connections' },
+  { id: 'security', label: 'Security' },
+  { id: 'account', label: 'Account' },
+] as const
+
+type SectionId = typeof sections[number]['id']
+
+const activeSection = ref<SectionId>('general')
+const sectionVisibility = reactive<Record<SectionId, boolean>>(
+  Object.fromEntries(sections.map(({ id }) => [id, false])) as Record<SectionId, boolean>,
+)
+
+onMounted(() => {
+  for (const { id } of sections) {
+    const el = document
+      .getElementById(id)
+      ?.querySelector('h4')
+
+    if (!el)
+      continue
+
+    useIntersectionObserver(
+      el,
+      ([entry]) => {
+        if (!entry)
+          return
+        sectionVisibility[id] = entry.isIntersecting
+        const firstVisible = sections.find(s => sectionVisibility[s.id])?.id
+        if (firstVisible)
+          activeSection.value = firstVisible
+      },
+      { threshold: 0, rootMargin: '0px 0px -70% 0px' },
+    )
   }
 })
 </script>
@@ -135,6 +175,9 @@ watch(user, (newUser) => {
 
       <div class="settings">
         <Flex expand column gap="xxxl" class="settings__container">
+          <div id="general" class="w-100">
+            <GeneralUserSettings />
+          </div>
           <div id="connections" class="w-100">
             <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" />
           </div>
@@ -158,14 +201,14 @@ watch(user, (newUser) => {
 
         <div class="settings__nav">
           <div class="settings__nav--inner">
-            <DropdownItem expand @click="scrollToId('#connections')">
-              Connections
-            </DropdownItem>
-            <DropdownItem expand @click="scrollToId('#security')">
-              Security
-            </DropdownItem>
-            <DropdownItem expand @click="scrollToId('#account')">
-              Account
+            <DropdownItem
+              v-for="section in sections"
+              :key="section.id"
+              expand
+              :class="{ active: activeSection === section.id }"
+              @click="scrollToId(`#${section.id}`, 'center')"
+            >
+              {{ section.label }}
             </DropdownItem>
           </div>
         </div>
@@ -225,6 +268,14 @@ watch(user, (newUser) => {
     &--inner {
       position: sticky;
       top: calc(64px + var(--space-s));
+
+      :deep(.vui-dropdown-item.active) {
+        background-color: var(--color-bg-raised);
+
+        .vui-dropdown-item-slot {
+          color: var(--color-accent) !important;
+        }
+      }
     }
   }
 }

@@ -16,9 +16,15 @@ const props = defineProps({
   },
 })
 
+const { settings } = useUserSettings()
+
 const isLight = computed({
   get: () => theme.value === 'light',
-  set: value => setColorTheme(value ? 'light' : 'dark'),
+  set: (value) => {
+    const newTheme = value ? 'light' : 'dark'
+    setColorTheme(newTheme)
+    settings.value.theme = newTheme
+  },
 })
 
 function toggleTheme() {

@@ -2,7 +2,6 @@
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.overrides'
 import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
-import { useStorage as useLocalStorage } from '@vueuse/core'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
@@ -56,19 +55,6 @@ interface ActivityItem {
 const showSettings = ref(false)
 const settingsAnchor = useTemplateRef('settings-anchor')
 
-const settings = useLocalStorage('forum-settings', {
-  showArchived: false,
-  showActivity: true,
-  showNsfw: false,
-  showContinue: true,
-}, typeof window !== 'undefined' ? window.localStorage : undefined, {
-  mergeDefaults: true,
-  serializer: {
-    read: value => value ? JSON.parse(value) : null,
-    write: value => JSON.stringify(value),
-  },
-})
-
 // Top level variable definitions
 const userId = useUserId()
 const isMobile = useBreakpoint('<s')
@@ -84,6 +70,8 @@ const rulesModalOpen = ref(false)
 const contentRulesGateOpen = ref(false)
 const agreedContentRules = ref<boolean | null>(null)
 const pendingCreateAction = ref<'discussion' | 'topic' | null>(null)
+
+const { settings } = useUserSettings()
 
 const loading = ref(false)
 const supabase = useSupabaseClient()
@@ -480,7 +468,7 @@ const searchOpen = ref(false)
 // Transform topics & discussions into a searchable list of commands. Grouped by topic & discussions
 const searchResults = computed<Command[]>(() => {
   return topics.value.flatMap((topic, index) => {
-    if (!settings.value.showArchived && topic.is_archived)
+    if (!settings.value.show_forum_archived && topic.is_archived)
       return []
 
     const topicItem = {
@@ -499,7 +487,7 @@ const searchResults = computed<Command[]>(() => {
     }
 
     const discussionResults: Command[] = topic.discussions
-      .filter(discussion => settings.value.showArchived || !discussion.is_archived)
+      .filter(discussion => settings.value.show_forum_archived || !discussion.is_archived)
       .map((discussion, index) => {
         const fallbackTitle = discussion.title ?? `Discussion ${index + 1}`
 
@@ -521,7 +509,7 @@ const searchResults = computed<Command[]>(() => {
 
 // Sort results by most recently modified and by sticky (pinned)
 function sortDiscussions(discussions: ForumDiscussion[]) {
-  const filtered = settings.value.showArchived
+  const filtered = settings.value.show_forum_archived
     ? discussions
     : discussions.filter(discussion => !discussion.is_archived)
 
@@ -543,7 +531,7 @@ const modelledTopics = computed(() => {
     : topics.value.filter((topic) => {
         if (topic.id !== activeTopicId.value)
           return false
-        if (!settings.value.showArchived && topic.is_archived)
+        if (!settings.value.show_forum_archived && topic.is_archived)
           return false
         return true
       })
@@ -575,7 +563,7 @@ function getTopicsByParentId(parentId: string | null) {
   let filtered = topics.value.filter(topic => topic.parent_id === parentId)
 
   // Filter out archived topics
-  if (!settings.value.showArchived) {
+  if (!settings.value.show_forum_archived) {
     filtered = filtered.filter(item => !item.is_archived)
   }
 
@@ -639,9 +627,9 @@ function removeItem(type: 'topic' | 'discussion', id: string) {
 const visibleDiscussionIds = computed(() => {
   return new Set(
     topics.value
-      .filter(topic => settings.value.showArchived || !topic.is_archived)
+      .filter(topic => settings.value.show_forum_archived || !topic.is_archived)
       .flatMap(topic => topic.discussions)
-      .filter(discussion => settings.value.showArchived || !discussion.is_archived)
+      .filter(discussion => settings.value.show_forum_archived || !discussion.is_archived)
       .map(discussion => discussion.id),
   )
 })
@@ -664,7 +652,7 @@ const visibleReplies = computed<ActivityItem[]>(() => {
       if (!reply.discussionId)
         return false
 
-      if (!settings.value.showNsfw) {
+      if (!settings.value.show_nsfw_content) {
         // Hide reply if the reply itself is NSFW
         if (reply.isNsfw)
           return false
@@ -692,7 +680,7 @@ const visibleReplies = computed<ActivityItem[]>(() => {
 })
 
 const hiddenTopicIds = computed(() => {
-  if (settings.value.showArchived)
+  if (settings.value.show_forum_archived)
     return new Set<string>()
 
   return new Set(
@@ -706,9 +694,9 @@ const latestPosts = computed<ActivityItem[]>(() => {
   const flattenedTopics = topics.value
     .flatMap(topic => [topic, ...topic.discussions])
     .filter((item) => {
-      if (!settings.value.showNsfw && 'is_nsfw' in item && item.is_nsfw)
+      if (!settings.value.show_nsfw_content && 'is_nsfw' in item && item.is_nsfw)
         return false
-      if (settings.value.showArchived)
+      if (settings.value.show_forum_archived)
         return true
       if ('discussion_topic_id' in item && item.discussion_topic_id && hiddenTopicIds.value.has(item.discussion_topic_id))
         return false
@@ -856,7 +844,7 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
         </p>
       </section>
 
-      <section v-if="settings.showActivity" class="forum__latest">
+      <section v-if="settings.show_forum_updates" class="forum__latest">
         <Flex y-center x-start expand class="mb-s">
           <h5>
             Latest updates
@@ -916,7 +904,7 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
         </div>
       </section>
 
-      <section v-if="settings.showContinue && userId && (userActivityLoading || userActivity.length > 0)" class="forum__continue">
+      <section v-if="settings.show_forum_recently_visited && userId && (userActivityLoading || userActivity.length > 0)" class="forum__continue">
         <h5 class="mb-s">
           Recently visited
         </h5>
@@ -1069,12 +1057,19 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
           </Button>
 
           <Popout :visible="showSettings" :anchor="settingsAnchor" placement="bottom" @click-outside="showSettings = false">
-            <Flex column class="p-m" gap="s">
-              <span class="text-m mb-xs text-color-light">Display options</span>
-              <Switch v-model="settings.showActivity" label="Show latest updates" />
-              <Switch v-model="settings.showContinue" label="Show recently visited" />
-              <Switch v-model="settings.showArchived" label="Show archived topics & discussions" />
-              <Switch v-model="settings.showNsfw" label="Show NSFW in latest updates" />
+            <Flex column class="p-m" gap="s" expand>
+              <Flex x-between y-center expand>
+                <span class="text-m mb-xs text-color-light">Display options</span>
+                <NuxtLink to="/profile/settings">
+                  <Button size="s">
+                    All settings
+                  </Button>
+                </NuxtLink>
+              </Flex>
+              <Switch v-model="settings.show_forum_updates" label="Show latest updates" />
+              <Switch v-model="settings.show_forum_recently_visited" label="Show recently visited" />
+              <Switch v-model="settings.show_forum_archived" label="Show archived topics & discussions" />
+              <!-- <Switch v-model="settings.showNsfw" label="Show NSFW in latest updates" /> -->
             </Flex>
           </Popout>
         </Flex>
