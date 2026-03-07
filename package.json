@@ -29,7 +29,7 @@
     "@nuxtjs/robots": "^5.6.7",
     "@nuxtjs/seo": "^3.4.0",
     "@nuxtjs/sitemap": "^7.5.2",
-    "@nuxtjs/supabase": "^2.0.3",
+    "@nuxtjs/supabase": "^2.0.4",
     "@pinia/nuxt": "^0.11.3",
     "@tiptap/extension-file-handler": "^3.20.0",
     "@tiptap/extension-image": "^3.20.0",
@@ -38,11 +38,11 @@
     "@tiptap/extension-task-item": "^3.20.0",
     "@tiptap/extension-task-list": "^3.20.0",
     "@tiptap/extension-youtube": "^3.20.0",
-    "@tiptap/markdown": "^3.19.0",
+    "@tiptap/markdown": "^3.20.0",
     "@tiptap/pm": "^3.19.0",
     "@tiptap/starter-kit": "^3.20.0",
     "@tiptap/vue-3": "^3.20.0",
-    "@unhead/vue": "^2.1.9",
+    "@unhead/vue": "^2.1.10",
     "@vueuse/nuxt": "^14.2.1",
     "@vueuse/router": "^14.2.0",
     "@yuta-inoue-ph/nuxt-vcalendar": "^1.1.4",
@@ -71,7 +71,7 @@
     "eslint-plugin-format": "^2.0.1",
     "eslint-plugin-vue": "^10.7.0",
     "nuxi": "^3.32.0",
-    "supabase": "^2.76.14",
+    "supabase": "^2.77.0",
     "vue-tsc": "^3.2.4"
   }
 }
