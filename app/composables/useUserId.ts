@@ -1,4 +1,4 @@
-import { extractUserIdFromSupabaseUser } from '@/lib/user'
+import { extractSupabaseUserId } from '@/lib/user'
 
 /**
  * Helper composable to get the current user's ID from JWT claims.
@@ -12,7 +12,7 @@ export function useUserId() {
   const user = useSupabaseUser()
 
   return computed(() => {
-    return extractUserIdFromSupabaseUser(user.value)
+    return extractSupabaseUserId(user.value)
     // if (!user.value)
     //   return null
 
