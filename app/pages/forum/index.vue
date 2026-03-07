@@ -1057,8 +1057,15 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
           </Button>
 
           <Popout :visible="showSettings" :anchor="settingsAnchor" placement="bottom" @click-outside="showSettings = false">
-            <Flex column class="p-m" gap="s">
-              <span class="text-m mb-xs text-color-light">Display options</span>
+            <Flex column class="p-m" gap="s" expand>
+              <Flex x-between y-center expand>
+                <span class="text-m mb-xs text-color-light">Display options</span>
+                <NuxtLink to="/profile/settings">
+                  <Button size="s">
+                    All settings
+                  </Button>
+                </NuxtLink>
+              </Flex>
               <Switch v-model="settings.show_forum_updates" label="Show latest updates" />
               <Switch v-model="settings.show_forum_recently_visited" label="Show recently visited" />
               <Switch v-model="settings.show_forum_archived" label="Show archived topics & discussions" />
