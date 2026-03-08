@@ -2,7 +2,7 @@
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
-import { Button, ButtonGroup, pushToast, Textarea } from '@dolanske/vui'
+import { Button, ButtonGroup, pushToast, Textarea, Tooltip } from '@dolanske/vui'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
 import { Mathematics } from '@tiptap/extension-mathematics'
@@ -494,30 +494,55 @@ async function handleSubmit() {
 
         <div class="editor-actions">
           <template v-if="editorMode === 'rich'">
-            <Button plain square size="s" data-title-top="Insert math" @click="() => { mathModalEditPos = null; mathModalType = 'inline'; mathModalLatex = ''; mathModalOpen = true }">
-              <Icon name="ph:sigma" />
-            </Button>
-            <Button plain square size="s" data-title-top="Embed YouTube video" @click="youtubeModalOpen = true">
-              <Icon name="ph:youtube-logo" />
-            </Button>
+            <Tooltip>
+              <Button plain square size="s" @click="() => { mathModalEditPos = null; mathModalType = 'inline'; mathModalLatex = ''; mathModalOpen = true }">
+                <Icon name="ph:sigma" />
+              </Button>
+              <template #tooltip>
+                <p>Insert math</p>
+              </template>
+            </Tooltip>
+            <Tooltip>
+              <Button plain square size="s" @click="youtubeModalOpen = true">
+                <Icon name="ph:youtube-logo" />
+              </Button>
+              <template #tooltip>
+                <p>Embed YouTube video</p>
+              </template>
+            </Tooltip>
           </template>
 
-          <Button plain square size="s" :data-title-top="editorMode === 'rich' ? 'Switch to plain text' : 'Switch to rich text'" @click="handleEditorModeSwitch">
-            <Icon :name="editorMode === 'rich' ? 'ph:pen-nib' : 'ph:markdown-logo'" />
-          </Button>
+          <Tooltip>
+            <Button plain square size="s" @click="handleEditorModeSwitch">
+              <Icon :name="editorMode === 'rich' ? 'ph:pen-nib' : 'ph:markdown-logo'" />
+            </Button>
+            <template #tooltip>
+              <p>{{ editorMode === 'rich' ? 'Switch to plain text' : 'Switch to rich text' }}</p>
+            </template>
+          </Tooltip>
 
           <template v-if="props.showAttachmentButton">
-            <Button plain square size="s" data-title-top="Attach a file" @click="fileInput?.click()">
-              <Icon name="ph:paperclip" />
-            </Button>
+            <Tooltip>
+              <Button plain square size="s" @click="fileInput?.click()">
+                <Icon name="ph:paperclip" />
+              </Button>
+              <template #tooltip>
+                <p>Attach a file</p>
+              </template>
+            </Tooltip>
 
             <input ref="file-input" class="visually-hidden" type="file" :accept="allowedMediaExtensions" @input="handleFileInput">
           </template>
 
           <ButtonGroup v-if="props.showSubmitOptions" :gap="2">
-            <Button :variant="!!isNsfw ? 'danger' : 'gray'" square size="s" :data-title-top="isNsfw ? 'Marked as NSFW' : 'Marked as safe'" @click="isNsfw = !isNsfw">
-              <Icon :name="isNsfw ? 'ph:eye-closed' : 'ph:eye'" />
-            </Button>
+            <Tooltip>
+              <Button :variant="!!isNsfw ? 'danger' : 'gray'" square size="s" @click="isNsfw = !isNsfw">
+                <Icon :name="isNsfw ? 'ph:eye-closed' : 'ph:eye'" />
+              </Button>
+              <template #tooltip>
+                <p>{{ isNsfw ? 'Marked as NSFW' : 'Marked as safe' }}</p>
+              </template>
+            </Tooltip>
 
             <Button size="s" type="submit" @click="handleSubmit">
               Send

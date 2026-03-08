@@ -63,11 +63,7 @@ const selectedTheme = computed({
       Discussions
     </strong>
     <Switch v-model="settings.show_nsfw_content" class="reversed mb-m" label="Show NSFW content" />
-    <Switch v-model="settings.show_nsfw_warning" class="reversed mb-xxs" label="Show NSFW content warnings" :disabled="!settings.show_nsfw_content" />
-
-    <p class="text-color-lightest text-s block">
-      You will be warned before viewing content marked as NSFW each time.
-    </p>
+    <Switch v-model="settings.show_nsfw_warning" class="reversed" label="Show NSFW content warnings" :disabled="!settings.show_nsfw_content" hint="You will be warned before viewing content marked as NSFW each time." />
 
     <Divider :size="64" />
 
@@ -79,7 +75,7 @@ const selectedTheme = computed({
     <Switch v-model="settings.show_forum_recently_visited" class="reversed mb-m" label="Show recently visited" />
     <Switch v-model="settings.show_forum_archived" class="reversed mb-m" label="Show archived topics & discussions" />
 
-    <Switch v-model="settings.editor_floating" class="reversed mb-xxs" disabled>
+    <Switch v-model="settings.editor_floating" class="reversed" disabled hint="If enabled, the text editor will stay at the bottom of the screen while scrolling through large forum posts.">
       <Flex y-center ga="xxs">
         <p>Floating text editor</p>
         <!-- <SharedTinyBadge variant="info">
@@ -90,17 +86,10 @@ const selectedTheme = computed({
         </SharedTinyBadge>
       </Flex>
     </Switch>
-    <p class="text-color-lightest text-s block">
-      If enabled, the text editor will stay at the bottom of the screen while scrolling through large forum posts.
-    </p>
   </Card>
 </template>
 
 <style lang="scss" scoped>
-.settings-select {
-  --interactive-el-height: 28px;
-}
-
 :deep(.vui-switch) {
   &.disabled {
     filter: grayscale(100%) opacity(0.6);
