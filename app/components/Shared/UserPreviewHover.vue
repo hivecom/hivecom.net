@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Popout } from '@dolanske/vui'
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 
 const props = withDefaults(defineProps<{
@@ -16,62 +16,11 @@ const props = withDefaults(defineProps<{
 })
 
 const anchorRef = ref<HTMLElement | null>(null)
-const previewVisible = ref(false)
-let showTimeout: ReturnType<typeof setTimeout> | null = null
-let hideTimeout: ReturnType<typeof setTimeout> | null = null
-
-function clearTimeouts() {
-  if (showTimeout) {
-    clearTimeout(showTimeout)
-    showTimeout = null
-  }
-  if (hideTimeout) {
-    clearTimeout(hideTimeout)
-    hideTimeout = null
-  }
-}
-
-function handleEnter() {
-  if (!props.userId)
-    return
-
-  if (showTimeout) {
-    clearTimeout(showTimeout)
-    showTimeout = null
-  }
-  if (hideTimeout) {
-    clearTimeout(hideTimeout)
-    hideTimeout = null
-  }
-
-  if (previewVisible.value)
-    return
-
-  showTimeout = setTimeout(() => {
-    previewVisible.value = true
-  }, props.enterDelay)
-}
-
-function handleLeave() {
-  if (showTimeout) {
-    clearTimeout(showTimeout)
-    showTimeout = null
-  }
-
-  hideTimeout = setTimeout(() => {
-    previewVisible.value = false
-  }, props.leaveDelay)
-}
-
-onBeforeUnmount(() => {
-  clearTimeouts()
-})
+const visible = ref(false)
 
 watch(() => props.userId, (newId) => {
-  if (!newId) {
-    clearTimeouts()
-    previewVisible.value = false
-  }
+  if (!newId)
+    visible.value = false
 })
 </script>
 
@@ -79,16 +28,16 @@ watch(() => props.userId, (newId) => {
   <div
     ref="anchorRef"
     class="user-preview-hover"
-    @mouseenter="handleEnter"
-    @mouseleave="handleLeave"
-    @focusin="handleEnter"
-    @focusout="handleLeave"
+    @mouseenter="visible = true"
+    @mouseleave="visible = false"
+    @focusin="visible = true"
+    @focusout="visible = false"
   >
     <slot />
 
     <Popout
-      :anchor="anchorRef" :visible="!!(previewVisible && props.userId)" placement="bottom" :offset="16" @mouseenter="handleEnter"
-      @mouseleave="handleLeave"
+      :anchor="anchorRef" :visible="!!(visible && props.userId)" placement="bottom" :offset="16" :enter-delay="props.enterDelay" :leave-delay="props.leaveDelay" @mouseenter="visible = true"
+      @mouseleave="visible = false"
     >
       <UserPreviewCard
         :user-id="props.userId"

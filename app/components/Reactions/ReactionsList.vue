@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DisplayReaction } from '@/lib/reactions'
 import { Flex, Popout } from '@dolanske/vui'
-import { onBeforeUnmount, ref } from 'vue'
+import { ref } from 'vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 
 const props = defineProps<{
@@ -13,37 +13,11 @@ const emit = defineEmits<{
   toggle: [emote: string, provider: string]
 }>()
 
-// ── Per-reaction popout state ─────────────────────────────────────────────────
-
-interface ReactionPopoutState {
-  anchor: HTMLElement | null
-  visible: boolean
-  showTimeout: ReturnType<typeof setTimeout> | null
-  hideTimeout: ReturnType<typeof setTimeout> | null
-}
-
-const ENTER_DELAY = 400
-const LEAVE_DELAY = 200
-
-// Keyed by `provider:content`
-const popoutStates = ref(new Map<string, ReactionPopoutState>())
-// Anchor element refs keyed by `provider:content`
 const anchorRefs = ref(new Map<string, HTMLElement | null>())
+const visibleMap = ref(new Map<string, boolean>())
 
 function getKey(reaction: DisplayReaction) {
   return `${reaction.provider}:${reaction.content}`
-}
-
-function getState(key: string): ReactionPopoutState {
-  if (!popoutStates.value.has(key)) {
-    popoutStates.value.set(key, {
-      anchor: null,
-      visible: false,
-      showTimeout: null,
-      hideTimeout: null,
-    })
-  }
-  return popoutStates.value.get(key)!
 }
 
 function setAnchorRef(key: string, el: Element | ComponentPublicInstance | null) {
@@ -51,56 +25,20 @@ function setAnchorRef(key: string, el: Element | ComponentPublicInstance | null)
 }
 
 function handleEnter(key: string) {
-  const state = getState(key)
-
-  if (state.showTimeout) {
-    clearTimeout(state.showTimeout)
-    state.showTimeout = null
-  }
-  if (state.hideTimeout) {
-    clearTimeout(state.hideTimeout)
-    state.hideTimeout = null
-  }
-
-  if (state.visible)
-    return
-
-  state.showTimeout = setTimeout(() => {
-    state.visible = true
-    state.showTimeout = null
-  }, ENTER_DELAY)
+  visibleMap.value.set(key, true)
 }
 
 function handleLeave(key: string) {
-  const state = getState(key)
-
-  if (state.showTimeout) {
-    clearTimeout(state.showTimeout)
-    state.showTimeout = null
-  }
-
-  state.hideTimeout = setTimeout(() => {
-    state.visible = false
-    state.hideTimeout = null
-  }, LEAVE_DELAY)
+  visibleMap.value.set(key, false)
 }
 
 function isVisible(key: string): boolean {
-  return popoutStates.value.get(key)?.visible ?? false
+  return visibleMap.value.get(key) ?? false
 }
 
 function getAnchor(key: string): HTMLElement | null {
   return anchorRefs.value.get(key) ?? null
 }
-
-onBeforeUnmount(() => {
-  for (const state of popoutStates.value.values()) {
-    if (state.showTimeout)
-      clearTimeout(state.showTimeout)
-    if (state.hideTimeout)
-      clearTimeout(state.hideTimeout)
-  }
-})
 </script>
 
 <template>
@@ -129,6 +67,8 @@ onBeforeUnmount(() => {
         :visible="isVisible(getKey(reaction))"
         placement="top"
         :offset="8"
+        :enter-delay="400"
+        :leave-delay="200"
         @mouseenter="handleEnter(getKey(reaction))"
         @mouseleave="handleLeave(getKey(reaction))"
       >
