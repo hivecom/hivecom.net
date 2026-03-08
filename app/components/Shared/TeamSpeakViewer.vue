@@ -781,28 +781,35 @@ function openRawSnapshot() {
             </template>
           </Tooltip>
 
-          <Button
-            size="s"
-            square
-            :loading="snapshotLoading || manualRefreshPending"
-            :disabled="snapshotLoading || manualRefreshPending || !canRefresh"
-            :data-title-top="!isBelowLarge ? 'Refresh' : null"
-            aria-label="Refresh TeamSpeak snapshot"
-            @click="handleRefresh"
-          >
-            <Icon name="ph:arrow-clockwise" size="16" />
-          </Button>
-          <Button
-            size="s"
-            square
-            :disabled="!rawSnapshotUrl"
-
-            :data-title-top="!isBelowLarge ? 'Open raw snapshot' : null"
-            aria-label="Open raw TeamSpeak snapshot"
-            @click="openRawSnapshot"
-          >
-            <Icon name="ph:code" size="16" />
-          </Button>
+          <Tooltip :disabled="isBelowLarge">
+            <Button
+              size="s"
+              square
+              :loading="snapshotLoading || manualRefreshPending"
+              :disabled="snapshotLoading || manualRefreshPending || !canRefresh"
+              aria-label="Refresh TeamSpeak snapshot"
+              @click="handleRefresh"
+            >
+              <Icon name="ph:arrow-clockwise" size="16" />
+            </Button>
+            <template #tooltip>
+              <p>Refresh</p>
+            </template>
+          </Tooltip>
+          <Tooltip :disabled="isBelowLarge">
+            <Button
+              size="s"
+              square
+              :disabled="!rawSnapshotUrl"
+              aria-label="Open raw TeamSpeak snapshot"
+              @click="openRawSnapshot"
+            >
+              <Icon name="ph:code" size="16" />
+            </Button>
+            <template #tooltip>
+              <p>Open raw snapshot</p>
+            </template>
+          </Tooltip>
           <Button
             v-if="teamspeakConnectUrl"
             size="s"

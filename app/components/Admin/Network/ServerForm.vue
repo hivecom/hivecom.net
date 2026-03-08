@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables, TablesInsert } from '@/types/database.types'
-import { Button, Flex, Input, Sheet, Switch } from '@dolanske/vui'
+import { Button, Flex, Input, Sheet, Switch, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
@@ -183,15 +183,18 @@ function handleDelete() {
           Cancel
         </Button>
         <div class="flex-1" />
-        <Button
-          v-if="props.isEditMode"
-          variant="danger"
-          square
-          data-title-left="Delete server"
-          @click.prevent="showDeleteConfirm = true"
-        >
-          <Icon name="ph:trash" />
-        </Button>
+        <Tooltip v-if="props.isEditMode">
+          <Button
+            variant="danger"
+            square
+            @click.prevent="showDeleteConfirm = true"
+          >
+            <Icon name="ph:trash" />
+          </Button>
+          <template #tooltip>
+            <p>Delete server</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
 

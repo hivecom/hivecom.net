@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.types'
-import { Button, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
+import { Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -486,15 +486,18 @@ onMounted(fetchDropdownData)
 
         <div class="flex-1" />
 
-        <Button
-          v-if="props.isEditMode"
-          variant="danger"
-          square
-          data-title-left="Delete game server"
-          @click.prevent="handleDelete"
-        >
-          <Icon name="ph:trash" />
-        </Button>
+        <Tooltip v-if="props.isEditMode">
+          <Button
+            variant="danger"
+            square
+            @click.prevent="handleDelete"
+          >
+            <Icon name="ph:trash" />
+          </Button>
+          <template #tooltip>
+            <p>Delete game server</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
 

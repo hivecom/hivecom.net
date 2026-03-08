@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
+import { Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import BadgeCircle from '../Shared/BadgeCircle.vue'
@@ -53,13 +54,23 @@ dayjs.extend(relativeTime)
       <div class="forum__category-post--name">
         <strong>
           {{ data.name }}
-          <BadgeCircle v-if="data.is_locked" data-title-top="Locked">
-            <Icon name="ph:lock" />
-          </BadgeCircle>
+          <Tooltip>
+            <BadgeCircle v-if="data.is_locked">
+              <Icon name="ph:lock" />
+            </BadgeCircle>
+            <template #tooltip>
+              <p>Locked</p>
+            </template>
+          </Tooltip>
 
-          <BadgeCircle v-if="data.is_archived" variant="warning" data-title-top="Archived">
-            <Icon name="ph:archive" class="text-color-yellow" />
-          </BadgeCircle>
+          <Tooltip>
+            <BadgeCircle v-if="data.is_archived" variant="warning">
+              <Icon name="ph:archive" class="text-color-yellow" />
+            </BadgeCircle>
+            <template #tooltip>
+              <p>Archived</p>
+            </template>
+          </Tooltip>
         </strong>
         <p>{{ data.description }}</p>
       </div>

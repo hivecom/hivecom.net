@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Calendar, Flex, Grid, Input, Select, Sheet, Textarea } from '@dolanske/vui'
+import { Button, Calendar, Flex, Grid, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 
@@ -463,16 +463,19 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
 
         <div class="flex-1" />
 
-        <Button
-          v-if="isEditMode && canDeleteEvents"
-          variant="danger"
-          square
-          :loading="deleteLoading"
-          data-title-left="Delete event"
-          @click.prevent="handleDelete"
-        >
-          <Icon name="ph:trash" />
-        </Button>
+        <Tooltip v-if="isEditMode && canDeleteEvents">
+          <Button
+            variant="danger"
+            square
+            :loading="deleteLoading"
+            @click.prevent="handleDelete"
+          >
+            <Icon name="ph:trash" />
+          </Button>
+          <template #tooltip>
+            <p>Delete event</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
   </Sheet>

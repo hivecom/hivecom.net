@@ -51,9 +51,14 @@ function scrollUp() {
             {{ link.label }}
           </Button>
 
-          <Button class="footer__scroll-up" square plain data-title-left="Scroll up" @click="scrollUp">
-            <Icon name="ph:arrow-up" />
-          </Button>
+          <Tooltip>
+            <Button class="footer__scroll-up" square plain @click="scrollUp">
+              <Icon name="ph:arrow-up" />
+            </Button>
+            <template #tooltip>
+              <p>Scroll up</p>
+            </template>
+          </Tooltip>
         </Flex>
 
         <template #footer>

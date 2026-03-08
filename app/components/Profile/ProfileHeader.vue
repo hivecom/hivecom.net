@@ -262,9 +262,14 @@ const showAvatarLightbox = ref(false)
 
           <!-- Action Buttons -->
           <Flex gap="xs" class="profile-action-buttons">
-            <Button v-if="isOwnProfile" variant="accent" square data-title-top="Edit profile" @click="emit('openEditSheet')">
-              <Icon name="ph:pencil" />
-            </Button>
+            <Tooltip v-if="isOwnProfile">
+              <Button variant="accent" square @click="emit('openEditSheet')">
+                <Icon name="ph:pencil" />
+              </Button>
+              <template #tooltip>
+                <p>Edit profile</p>
+              </template>
+            </Tooltip>
             <Button v-else variant="gray" @click="emit('openComplaintModal')">
               <template #start>
                 <Icon name="ph:chat-circle-text" />
@@ -272,9 +277,14 @@ const showAvatarLightbox = ref(false)
               Complaint
             </Button>
             <CopyClipboard :text="profileUrl" confirm>
-              <Button variant="gray" square data-title-top="Copy link to profile">
-                <Icon name="ph:link" />
-              </Button>
+              <Tooltip>
+                <Button variant="gray" square>
+                  <Icon name="ph:link" />
+                </Button>
+                <template #tooltip>
+                  <p>Copy link to profile</p>
+                </template>
+              </Tooltip>
             </CopyClipboard>
           </Flex>
 

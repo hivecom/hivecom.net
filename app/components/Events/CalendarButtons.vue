@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex } from '@dolanske/vui'
+import { Button, Flex, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -37,40 +37,46 @@ const isBelowMedium = computed(() => isBelowMediumBreakpoint.value && !!props.is
 <template>
   <Flex gap="xs" :x-center="isBelowMedium" :expand="isBelowMedium">
     <!-- Google Calendar button -->
-    <Button
-      v-if="constants.EVENT_CALENDAR.GOOGLE"
-      :expand="isBelowMedium"
-      :variant="variant"
-      :size="size"
-      :href="constants.EVENT_CALENDAR.GOOGLE"
-      target="_blank"
-      :square="!showLabels && !isBelowMedium"
-      rel="noreferrer"
-      data-title-bottom="Add to your Google Calendar"
-    >
-      <template v-if="showLabels" #start>
-        <Icon name="ph:calendar" />
+    <Tooltip v-if="constants.EVENT_CALENDAR.GOOGLE">
+      <Button
+        :expand="isBelowMedium"
+        :variant="variant"
+        :size="size"
+        :href="constants.EVENT_CALENDAR.GOOGLE"
+        target="_blank"
+        :square="!showLabels && !isBelowMedium"
+        rel="noreferrer"
+      >
+        <template v-if="showLabels" #start>
+          <Icon name="ph:calendar" />
+        </template>
+        <Icon v-if="!showLabels" name="ph:calendar" />
+        <span v-if="showLabels" class="text-s">Subscribe</span>
+      </Button>
+      <template #tooltip>
+        <p>Add to your Google Calendar</p>
       </template>
-      <Icon v-if="!showLabels" name="ph:calendar" />
-      <span v-if="showLabels" class="text-s">Subscribe</span>
-    </Button>
+    </Tooltip>
 
     <!-- Export to ICAL button -->
-    <Button
-      v-if="constants.EVENT_CALENDAR.ICAL"
-      :expand="isBelowMedium"
-      :variant="variant"
-      :size="size"
-      :square="!showLabels && !isBelowMedium"
-      :href="constants.EVENT_CALENDAR.ICAL"
-      rel="noreferrer"
-      data-title-bottom="Export ICAL"
-    >
-      <template v-if="showLabels" #start>
-        <Icon name="ph:download" />
+    <Tooltip v-if="constants.EVENT_CALENDAR.ICAL">
+      <Button
+        :expand="isBelowMedium"
+        :variant="variant"
+        :size="size"
+        :square="!showLabels && !isBelowMedium"
+        :href="constants.EVENT_CALENDAR.ICAL"
+        rel="noreferrer"
+      >
+        <template v-if="showLabels" #start>
+          <Icon name="ph:download" />
+        </template>
+        <Icon v-if="!showLabels" name="ph:download" />
+        <span v-if="showLabels" class="text-s">Export</span>
+      </Button>
+      <template #tooltip>
+        <p>Export ICAL</p>
       </template>
-      <Icon v-if="!showLabels" name="ph:download" />
-      <span v-if="showLabels" class="text-s">Export</span>
-    </Button>
+    </Tooltip>
   </Flex>
 </template>

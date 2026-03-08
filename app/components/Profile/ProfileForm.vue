@@ -521,15 +521,18 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
                   </Button>
                 </template>
               </Calendar>
-              <Button
-                v-if="hasBirthday"
-                square
-                outline
-                data-title-top="Clear birthday"
-                @click="clearBirthday"
-              >
-                <Icon name="ph:x" />
-              </Button>
+              <Tooltip v-if="hasBirthday">
+                <Button
+                  square
+                  outline
+                  @click="clearBirthday"
+                >
+                  <Icon name="ph:x" />
+                </Button>
+                <template #tooltip>
+                  <p>Clear birthday</p>
+                </template>
+              </Tooltip>
             </Flex>
             <span v-if="!birthdayValidation.valid && hasBirthday" class="text-xs text-color-red">
               {{ birthdayValidation.error }}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Button, Dropdown, DropdownItem, DropdownTitle, Flex, Input, Sheet } from '@dolanske/vui'
+import { Alert, Button, Dropdown, DropdownItem, DropdownTitle, Flex, Input, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
@@ -292,13 +292,17 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
         <Flex x-between y-center expand>
           <h4>Game Assets</h4>
           <Flex gap="xs" y-center>
-            <Button
-              square
-              data-title-bottom="Open on SteamGridDB"
-              @click="openExternalLink(steamGridUrl)"
-            >
-              <Icon name="ph:squares-four" />
-            </Button>
+            <Tooltip>
+              <Button
+                square
+                @click="openExternalLink(steamGridUrl)"
+              >
+                <Icon name="ph:squares-four" />
+              </Button>
+              <template #tooltip>
+                <p>Open on SteamGridDB</p>
+              </template>
+            </Tooltip>
 
             <Dropdown v-if="steamAssetLinks" placement="bottom-end">
               <template #trigger="{ toggle }">
@@ -422,15 +426,18 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
 
         <div class="flex-1" />
 
-        <Button
-          v-if="props.isEditMode"
-          variant="danger"
-          square
-          data-title-left="Delete game"
-          @click.prevent="handleDelete"
-        >
-          <Icon name="ph:trash" />
-        </Button>
+        <Tooltip v-if="props.isEditMode">
+          <Button
+            variant="danger"
+            square
+            @click.prevent="handleDelete"
+          >
+            <Icon name="ph:trash" />
+          </Button>
+          <template #tooltip>
+            <p>Delete game</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
 

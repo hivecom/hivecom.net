@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
+import { Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import BadgeCircle from '../Shared/BadgeCircle.vue'
@@ -36,21 +37,41 @@ dayjs.extend(relativeTime)
       <div class="forum__category-post--name">
         <strong>
           {{ data.title }}
-          <BadgeCircle v-if="data.is_sticky" variant="accent" data-title-top="Pinned">
-            <Icon name="ph:push-pin" class="text-color-accent" />
-          </BadgeCircle>
+          <Tooltip>
+            <BadgeCircle v-if="data.is_sticky" variant="accent">
+              <Icon name="ph:push-pin" class="text-color-accent" />
+            </BadgeCircle>
+            <template #tooltip>
+              <p>Pinned</p>
+            </template>
+          </Tooltip>
 
-          <BadgeCircle v-if="data.is_locked" data-title-top="Locked">
-            <Icon name="ph:lock" />
-          </BadgeCircle>
+          <Tooltip>
+            <BadgeCircle v-if="data.is_locked">
+              <Icon name="ph:lock" />
+            </BadgeCircle>
+            <template #tooltip>
+              <p>Locked</p>
+            </template>
+          </Tooltip>
 
-          <BadgeCircle v-if="data.is_archived" data-title-top="Archived" variant="warning">
-            <Icon name="ph:archive" class="text-color-yellow" />
-          </BadgeCircle>
+          <Tooltip>
+            <BadgeCircle v-if="data.is_archived" variant="warning">
+              <Icon name="ph:archive" class="text-color-yellow" />
+            </BadgeCircle>
+            <template #tooltip>
+              <p>Archived</p>
+            </template>
+          </Tooltip>
 
-          <BadgeCircle v-if="data.is_nsfw" data-title-top="Sensitive content" variant="danger">
-            <Icon name="ph:warning" class="text-color-red" />
-          </BadgeCircle>
+          <Tooltip>
+            <BadgeCircle v-if="data.is_nsfw" variant="danger">
+              <Icon name="ph:warning" class="text-color-red" />
+            </BadgeCircle>
+            <template #tooltip>
+              <p>Sensitive content</p>
+            </template>
+          </Tooltip>
         </strong>
         <p>{{ data.description }}</p>
       </div>

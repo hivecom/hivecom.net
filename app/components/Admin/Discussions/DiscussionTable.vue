@@ -563,7 +563,6 @@ function handleDiscussionDeleted(discussionId: string) {
                   v-if="canUpdate"
                   :discussion="discussion._original as QueryDiscussion"
                   size="s"
-                  show-labels
                   @updated="handleDiscussionUpdated"
                 />
               </Table.Cell>
