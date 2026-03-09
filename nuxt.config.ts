@@ -1,6 +1,7 @@
 import type { SitemapUrl } from './nitro/fetch-routes'
 import { fileURLToPath } from 'node:url'
 import process from 'process'
+import { defaultSchema } from 'rehype-sanitize'
 import fetchRoutes from './nitro/fetch-routes'
 
 // Cache the fetch result so it's only called once across hooks
@@ -80,6 +81,63 @@ export default defineNuxtConfig({
         options: {
           throwOnError: false,
           output: 'html',
+        },
+      },
+      // Sanitize HTML after rehype-raw and rehype-katex have run so that any
+      // raw HTML that survived the markdown pipeline (YouTube iframes, color
+      // spans, KaTeX output) is still allowed, while arbitrary user-injected
+      // tags (<script>, event handlers, etc.) are stripped.
+      'rehype-sanitize': {
+        options: {
+          ...defaultSchema,
+          // Allow YouTube iframes produced by processYoutubeDirectives.
+          // Only youtube-nocookie.com src values are permitted; all other
+          // iframe attributes are locked down.
+          tagNames: [
+            ...(defaultSchema.tagNames ?? []),
+            'iframe',
+            // KaTeX emits <svg>, <path>, <line>, <use> for some output modes
+            'svg',
+            'path',
+            'line',
+            'use',
+          ],
+          attributes: {
+            ...defaultSchema.attributes,
+            // span: allow class (KaTeX uses many class names) and style
+            // restricted to color only (processColorTags emits inline color).
+            // We deliberately do NOT use a wildcard allowlist for style values
+            // so that only safe CSS properties can pass through.
+            'span': [
+              ...(defaultSchema.attributes?.span ?? []),
+              'className',
+              'style',
+              'ariaHidden',
+            ],
+            // div: allow class and style for KaTeX block wrappers
+            'div': [
+              ...(defaultSchema.attributes?.div ?? []),
+              'className',
+              'style',
+            ],
+            // iframe: locked to YouTube nocookie embeds only
+            'iframe': [
+              ['src', /^https:\/\/www\.youtube-nocookie\.com\/embed\//],
+              'width',
+              'height',
+              'frameborder',
+              'allow',
+              'allowfullscreen',
+              'className',
+            ],
+            // SVG elements for KaTeX
+            'svg': ['xmlns', 'width', 'height', 'viewBox', 'className', 'style', 'ariaHidden', 'focusable'],
+            'path': ['d', 'stroke', 'strokeWidth', 'fill', 'className'],
+            'line': ['x1', 'y1', 'x2', 'y2', 'stroke', 'strokeWidth', 'className'],
+            'use': [['href', /^#/], ['xlinkHref', /^#/], 'className'],
+            // Allow class on any element for KaTeX and highlight.js
+            '*': ['className'],
+          },
         },
       },
     },

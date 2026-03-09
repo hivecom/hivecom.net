@@ -58,6 +58,7 @@
     "nuxt-toc": "^2.7.2",
     "pinia": "^3.0.4",
     "rehype-katex": "^7.0.1",
+    "rehype-sanitize": "^6.0.0",
     "remark-math": "^6.0.0",
     "sass": "^1.97.3",
     "unstorage": "^1.17.4",
