@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Enums } from '@/types/database.types'
-import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea } from '@dolanske/vui'
+import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
@@ -910,16 +910,19 @@ function clearBirthday() {
                 </Button>
               </template>
             </Calendar>
-            <Button
-              v-if="hasBirthday"
-              variant="link"
-              square
-              :disabled="!canEditForm"
-              data-title-left="Clear birthday"
-              @click="clearBirthday"
-            >
-              <Icon name="ph:x" />
-            </Button>
+            <Tooltip v-if="hasBirthday">
+              <Button
+                variant="link"
+                square
+                :disabled="!canEditForm"
+                @click="clearBirthday"
+              >
+                <Icon name="ph:x" />
+              </Button>
+              <template #tooltip>
+                <p>Clear birthday</p>
+              </template>
+            </Tooltip>
           </Flex>
           <span v-if="!birthdayValidation.valid && hasBirthday" class="text-xs text-color-red">
             {{ birthdayValidation.error }}
@@ -1055,18 +1058,23 @@ function clearBirthday() {
         <h4>Badges</h4>
         <Flex column gap="xs">
           <div class="badge-grid">
-            <div
+            <Tooltip
               v-for="badge in BADGE_VALUES"
               :key="badge"
-              class="badge-toggle" :class="[{ 'badge-inactive': !isBadgeActive(badge),
-                                              'badge-toggle--disabled': !canEditForm }]"
-              :role="canEditForm ? 'button' : undefined"
-              :aria-pressed="isBadgeActive(badge)"
-              :data-title-bottom="BADGE_DESCRIPTIONS[badge]"
-              @click="canEditForm && toggleBadge(badge)"
             >
-              <component :is="BADGE_COMPONENTS[badge]" compact />
-            </div>
+              <div
+                class="badge-toggle" :class="[{ 'badge-inactive': !isBadgeActive(badge),
+                                                'badge-toggle--disabled': !canEditForm }]"
+                :role="canEditForm ? 'button' : undefined"
+                :aria-pressed="isBadgeActive(badge)"
+                @click="canEditForm && toggleBadge(badge)"
+              >
+                <component :is="BADGE_COMPONENTS[badge]" compact />
+              </div>
+              <template #tooltip>
+                <p>{{ BADGE_DESCRIPTIONS[badge] }}</p>
+              </template>
+            </Tooltip>
           </div>
           <div class="help-text">
             <Icon name="ph:info" />
@@ -1095,16 +1103,19 @@ function clearBirthday() {
 
         <div class="flex-1" />
 
-        <Button
-          v-if="showDeleteButton"
-          variant="danger"
-          square
-          :loading="deleteLoading"
-          data-title-left="Delete user"
-          @click="handleDelete"
-        >
-          <Icon name="ph:trash" />
-        </Button>
+        <Tooltip v-if="showDeleteButton">
+          <Button
+            variant="danger"
+            square
+            :loading="deleteLoading"
+            @click="handleDelete"
+          >
+            <Icon name="ph:trash" />
+          </Button>
+          <template #tooltip>
+            <p>Delete user</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
   </Sheet>

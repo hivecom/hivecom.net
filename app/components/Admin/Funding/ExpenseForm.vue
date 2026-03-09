@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Calendar, Flex, Input, Sheet } from '@dolanske/vui'
+import { Button, Calendar, Flex, Input, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
@@ -257,15 +257,18 @@ function confirmDelete() {
                   </Button>
                 </template>
               </Calendar>
-              <Button
-                v-if="expenseForm.ended_at"
-                variant="link"
-                square
-                data-title-left="Clear end date"
-                @click="expenseForm.ended_at = null"
-              >
-                <Icon name="ph:x" />
-              </Button>
+              <Tooltip v-if="expenseForm.ended_at">
+                <Button
+                  variant="link"
+                  square
+                  @click="expenseForm.ended_at = null"
+                >
+                  <Icon name="ph:x" />
+                </Button>
+                <template #tooltip>
+                  <p>Clear end date</p>
+                </template>
+              </Tooltip>
             </Flex>
             <span v-if="!validation.ended_at && expenseForm.ended_at" class="text-xs text-color-red">
               End date cannot be before start date
@@ -305,15 +308,18 @@ function confirmDelete() {
 
         <div class="flex-1" />
 
-        <Button
-          v-if="props.isEditMode"
-          variant="danger"
-          square
-          data-title-left="Delete expense"
-          @click.prevent="handleDelete"
-        >
-          <Icon name="ph:trash" />
-        </Button>
+        <Tooltip v-if="props.isEditMode">
+          <Button
+            variant="danger"
+            square
+            @click.prevent="handleDelete"
+          >
+            <Icon name="ph:trash" />
+          </Button>
+          <template #tooltip>
+            <p>Delete expense</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Calendar, Checkbox, Flex, Input, Sheet, Textarea } from '@dolanske/vui'
+import { Badge, Button, Calendar, Checkbox, Flex, Input, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
@@ -417,16 +417,19 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
 
         <div class="flex-1" />
 
-        <Button
-          v-if="isEditMode && canDeleteReferendums"
-          variant="danger"
-          square
-          :loading="deleteLoading"
-          data-title-left="Delete referendum"
-          @click.prevent="handleDelete"
-        >
-          <Icon name="ph:trash" />
-        </Button>
+        <Tooltip v-if="isEditMode && canDeleteReferendums">
+          <Button
+            variant="danger"
+            square
+            :loading="deleteLoading"
+            @click.prevent="handleDelete"
+          >
+            <Icon name="ph:trash" />
+          </Button>
+          <template #tooltip>
+            <p>Delete referendum</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
 

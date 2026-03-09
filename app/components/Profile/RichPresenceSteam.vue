@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Badge, Button, Divider, Flex } from '@dolanske/vui'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { Badge, Button, Divider, Flex, Popout } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
 
 type SteamPresence = Omit<Tables<'presences_steam'>, 'details'> & {
   details?: unknown | null
@@ -145,143 +145,7 @@ watch(displayedAppId, () => {
 })
 
 const anchorRef = ref<HTMLElement | null>(null)
-const popoverRef = ref<HTMLElement | null>(null)
-const popoverVisible = ref(false)
-const popoverPosition = ref<{ top: number, left: number } | null>(null)
-const popoverPlacement = ref<'bottom' | 'top'>('bottom')
-const lastPopoverHeight = ref(0)
-let showTimeout: ReturnType<typeof setTimeout> | null = null
-let hideTimeout: ReturnType<typeof setTimeout> | null = null
-let listenersAttached = false
-
-const ENTER_DELAY_MS = 120
-const LEAVE_DELAY_MS = 150
-
-function clearTimeouts() {
-  if (showTimeout) {
-    clearTimeout(showTimeout)
-    showTimeout = null
-  }
-  if (hideTimeout) {
-    clearTimeout(hideTimeout)
-    hideTimeout = null
-  }
-}
-
-function updatePopoverPosition() {
-  if (typeof window === 'undefined')
-    return
-
-  const target = anchorRef.value
-  if (!target)
-    return
-
-  const rect = target.getBoundingClientRect()
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight
-  const offset = 8
-
-  const popoverEl = popoverRef.value
-  const popoverHeight = popoverEl?.offsetHeight ?? lastPopoverHeight.value
-  if (popoverEl)
-    lastPopoverHeight.value = popoverEl.offsetHeight
-
-  let placement: 'bottom' | 'top' = 'bottom'
-  let top = rect.bottom + offset
-  const projectedBottom = top + (popoverHeight || 0)
-  if (popoverHeight && projectedBottom > viewportHeight - offset) {
-    placement = 'top'
-    top = rect.top - offset
-  }
-
-  popoverPlacement.value = placement
-  popoverPosition.value = {
-    top,
-    left: rect.left + rect.width / 2,
-  }
-}
-
-function handleGlobalReposition() {
-  if (popoverVisible.value)
-    updatePopoverPosition()
-}
-
-function attachGlobalListeners() {
-  if (listenersAttached || typeof window === 'undefined')
-    return
-
-  window.addEventListener('scroll', handleGlobalReposition, true)
-  window.addEventListener('resize', handleGlobalReposition)
-  listenersAttached = true
-}
-
-function detachGlobalListeners() {
-  if (!listenersAttached || typeof window === 'undefined')
-    return
-
-  window.removeEventListener('scroll', handleGlobalReposition, true)
-  window.removeEventListener('resize', handleGlobalReposition)
-  listenersAttached = false
-}
-
-function handleEnter() {
-  if (!showWidget.value)
-    return
-
-  if (showTimeout) {
-    clearTimeout(showTimeout)
-    showTimeout = null
-  }
-  if (hideTimeout) {
-    clearTimeout(hideTimeout)
-    hideTimeout = null
-  }
-
-  if (popoverVisible.value)
-    return
-
-  showTimeout = setTimeout(() => {
-    popoverVisible.value = true
-    nextTick(() => {
-      updatePopoverPosition()
-    }).catch(() => {})
-  }, ENTER_DELAY_MS)
-}
-
-function handleLeave() {
-  if (showTimeout) {
-    clearTimeout(showTimeout)
-    showTimeout = null
-  }
-
-  hideTimeout = setTimeout(() => {
-    popoverVisible.value = false
-  }, LEAVE_DELAY_MS)
-}
-
-onBeforeUnmount(() => {
-  clearTimeouts()
-  detachGlobalListeners()
-})
-
-watch(popoverVisible, (visible) => {
-  if (visible) {
-    updatePopoverPosition()
-    attachGlobalListeners()
-  }
-  else {
-    detachGlobalListeners()
-  }
-})
-
-const popoverStyle = computed(() => {
-  if (!popoverPosition.value)
-    return undefined
-
-  return {
-    top: `${popoverPosition.value.top}px`,
-    left: `${popoverPosition.value.left}px`,
-  }
-})
+const visible = ref(false)
 </script>
 
 <template>
@@ -289,10 +153,10 @@ const popoverStyle = computed(() => {
     v-if="showWidget"
     ref="anchorRef"
     class="steam-presence"
-    @mouseenter="handleEnter"
-    @mouseleave="handleLeave"
-    @focusin="handleEnter"
-    @focusout="handleLeave"
+    @mouseenter="visible = true"
+    @mouseleave="visible = false"
+    @focusin="visible = true"
+    @focusout="visible = false"
   >
     <slot name="trigger">
       <a
@@ -313,131 +177,126 @@ const popoverStyle = computed(() => {
       </Flex>
     </slot>
 
-    <Teleport to="body">
-      <Transition name="steam-presence-fade">
-        <div
-          v-if="popoverVisible && popoverStyle"
-          ref="popoverRef"
-          class="steam-presence__popover"
-          :class="`steam-presence__popover--${popoverPlacement}`"
-          :style="popoverStyle"
-          @mouseenter="handleEnter"
-          @mouseleave="handleLeave"
-          @focusin="handleEnter"
-          @focusout="handleLeave"
-        >
-          <div class="steam-presence__tooltip">
-            <Flex x-between y-center class="mb-s">
-              <strong class="text-l text-bold">
-                Steam
-              </strong>
-              <Button
-                v-if="props.steamId"
-                size="s"
-                variant="link"
-                :href="`https://steamcommunity.com/profiles/${props.steamId}`"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View profile
-              </Button>
-            </Flex>
+    <Popout
+      :anchor="anchorRef"
+      :visible="visible"
+      placement="bottom"
+      :offset="8"
+      :enter-delay="120"
+      :leave-delay="150"
+      @mouseenter="visible = true"
+      @mouseleave="visible = false"
+    >
+      <div class="steam-presence__tooltip">
+        <Flex x-between y-center class="mb-s">
+          <strong class="text-l text-bold">
+            Steam
+          </strong>
+          <Button
+            v-if="props.steamId"
+            size="s"
+            variant="link"
+            :href="`https://steamcommunity.com/profiles/${props.steamId}`"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View profile
+          </Button>
+        </Flex>
 
-            <div class="steam-presence__section">
-              <div class="steam-presence__row">
-                <span class="steam-presence__label">Steam ID</span>
-                <span class="steam-presence__value">{{ props.steamId || 'Unknown' }}</span>
-              </div>
-              <div v-if="presenceRow?.steam_name" class="steam-presence__row">
-                <span class="steam-presence__label">Name</span>
-                <span class="steam-presence__value">{{ presenceRow.steam_name }}</span>
-              </div>
-              <div v-if="presenceRow?.status" class="steam-presence__row steam-presence__row--inline">
-                <span class="steam-presence__label">Status</span>
-                <Badge :variant="statusBadgeVariant" size="s">
-                  {{ statusLabel }}
-                </Badge>
-              </div>
-            </div>
-
-            <Divider v-if="hasPresence && !props.richPresenceDisabled" class="m-xxs p-xxs" :margin="0" />
-
-            <div v-if="hasPresence && !props.richPresenceDisabled" class="steam-presence__section">
-              <a
-                v-if="displayedAppId"
-                class="steam-presence__row steam-presence__row--link"
-                :href="`https://store.steampowered.com/app/${displayedAppId}`"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Flex y-center gap="s">
-                  <img
-                    v-if="gameIconUrl"
-                    :key="gameIconUrl"
-                    :src="gameIconUrl"
-                    :alt="displayedAppName ? `${displayedAppName} icon` : 'Steam app icon'"
-                    width="40"
-                    height="40"
-                    class="steam-presence__game-icon"
-                    @error="onGameIconError"
-                  >
-                  <div class="steam-presence__game-text">
-                    <div class="steam-presence__game-title">
-                      <template v-if="isPlaying && displayedAppName">
-                        Playing {{ displayedAppName }}
-                      </template>
-                      <template v-else-if="displayedAppName">
-                        Last played {{ displayedAppName }}
-                      </template>
-                      <template v-else>
-                        No recent game
-                      </template>
-                    </div>
-                    <div v-if="lastOnlineFormatted" class="steam-presence__meta">
-                      Last online {{ lastOnlineFormatted }}
-                    </div>
-                  </div>
-                </Flex>
-              </a>
-              <div v-else class="steam-presence__row">
-                <Flex y-center gap="s">
-                  <img
-                    v-if="gameIconUrl"
-                    :key="gameIconUrl"
-                    :src="gameIconUrl"
-                    :alt="displayedAppName ? `${displayedAppName} icon` : 'Steam app icon'"
-                    width="40"
-                    height="40"
-                    class="steam-presence__game-icon"
-                    @error="onGameIconError"
-                  >
-                  <div class="steam-presence__game-text">
-                    <div class="steam-presence__game-title">
-                      <template v-if="isPlaying && displayedAppName">
-                        Playing {{ displayedAppName }}
-                      </template>
-                      <template v-else-if="displayedAppName">
-                        Last played {{ displayedAppName }}
-                      </template>
-                      <template v-else>
-                        No recent game
-                      </template>
-                    </div>
-                    <div v-if="lastOnlineFormatted" class="steam-presence__meta">
-                      Last online {{ lastOnlineFormatted }}
-                    </div>
-                  </div>
-                </Flex>
-              </div>
-            </div>
+        <div class="steam-presence__section">
+          <div class="steam-presence__row">
+            <span class="steam-presence__label">Steam ID</span>
+            <span class="steam-presence__value">{{ props.steamId || 'Unknown' }}</span>
+          </div>
+          <div v-if="presenceRow?.steam_name" class="steam-presence__row">
+            <span class="steam-presence__label">Name</span>
+            <span class="steam-presence__value">{{ presenceRow.steam_name }}</span>
+          </div>
+          <div v-if="presenceRow?.status" class="steam-presence__row steam-presence__row--inline">
+            <span class="steam-presence__label">Status</span>
+            <Badge :variant="statusBadgeVariant" size="s">
+              {{ statusLabel }}
+            </Badge>
           </div>
         </div>
-      </Transition>
-    </Teleport>
+
+        <Divider v-if="hasPresence && !props.richPresenceDisabled" class="m-xxs p-xxs" :margin="0" />
+
+        <div v-if="hasPresence && !props.richPresenceDisabled" class="steam-presence__section">
+          <a
+            v-if="displayedAppId"
+            class="steam-presence__row steam-presence__row--link"
+            :href="`https://store.steampowered.com/app/${displayedAppId}`"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Flex y-center gap="s">
+              <img
+                v-if="gameIconUrl"
+                :key="gameIconUrl"
+                :src="gameIconUrl"
+                :alt="displayedAppName ? `${displayedAppName} icon` : 'Steam app icon'"
+                width="40"
+                height="40"
+                class="steam-presence__game-icon"
+                @error="onGameIconError"
+              >
+              <div class="steam-presence__game-text">
+                <div class="steam-presence__game-title">
+                  <template v-if="isPlaying && displayedAppName">
+                    Playing {{ displayedAppName }}
+                  </template>
+                  <template v-else-if="displayedAppName">
+                    Last played {{ displayedAppName }}
+                  </template>
+                  <template v-else>
+                    No recent game
+                  </template>
+                </div>
+                <div v-if="lastOnlineFormatted" class="steam-presence__meta">
+                  Last online {{ lastOnlineFormatted }}
+                </div>
+              </div>
+            </Flex>
+          </a>
+          <div v-else class="steam-presence__row">
+            <Flex y-center gap="s">
+              <img
+                v-if="gameIconUrl"
+                :key="gameIconUrl"
+                :src="gameIconUrl"
+                :alt="displayedAppName ? `${displayedAppName} icon` : 'Steam app icon'"
+                width="40"
+                height="40"
+                class="steam-presence__game-icon"
+                @error="onGameIconError"
+              >
+              <div class="steam-presence__game-text">
+                <div class="steam-presence__game-title">
+                  <template v-if="isPlaying && displayedAppName">
+                    Playing {{ displayedAppName }}
+                  </template>
+                  <template v-else-if="displayedAppName">
+                    Last played {{ displayedAppName }}
+                  </template>
+                  <template v-else>
+                    No recent game
+                  </template>
+                </div>
+                <div v-if="lastOnlineFormatted" class="steam-presence__meta">
+                  Last online {{ lastOnlineFormatted }}
+                </div>
+              </div>
+            </Flex>
+          </div>
+        </div>
+      </div>
+    </Popout>
   </div>
 </template>
 
-<style scoped>
+<style>
 .steam-presence {
   width: 100%;
   display: inline-flex;
@@ -471,60 +330,11 @@ const popoverStyle = computed(() => {
   box-shadow: 0 0 0 2px var(--color-bg);
 }
 
-.steam-presence__popover {
-  position: fixed;
-  z-index: 9999;
-  min-width: 320px;
-  max-width: 420px;
-  pointer-events: auto;
-}
-
-.steam-presence__popover--bottom {
-  transform: translate(-50%, 0);
-}
-
-.steam-presence__popover--top {
-  transform: translate(-50%, -100%);
-}
-
-.steam-presence-fade-enter-active,
-.steam-presence-fade-leave-active {
-  transition:
-    opacity 0.12s ease,
-    transform 0.12s ease;
-}
-
-.steam-presence-fade-enter-from,
-.steam-presence-fade-leave-to {
-  opacity: 0;
-  transform: translate(-50%, -6px);
-}
-
-.steam-presence-fade-enter-to,
-.steam-presence-fade-leave-from {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
-
-.steam-presence__popover--top.steam-presence-fade-enter-from,
-.steam-presence__popover--top.steam-presence-fade-leave-to {
-  transform: translate(-50%, calc(-100% - 6px));
-}
-
-.steam-presence__popover--top.steam-presence-fade-enter-to,
-.steam-presence__popover--top.steam-presence-fade-leave-from {
-  transform: translate(-50%, -100%);
-}
-
 .steam-presence__tooltip {
-  width: 100%;
+  width: 328px;
   display: flex;
   flex-direction: column;
   padding: var(--space-m);
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
   user-select: text;
 }
 
@@ -539,7 +349,7 @@ const popoverStyle = computed(() => {
   flex-direction: column;
   gap: 6px;
   padding: 10px;
-  border: 1px solid var(--color-border-weak);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-bg-raised);
 }

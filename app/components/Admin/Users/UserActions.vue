@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex } from '@dolanske/vui'
+import { Button, Flex, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import BanUserModal from './BanUserModal.vue'
@@ -100,72 +100,96 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 
 <template>
   <Flex gap="xs">
-    <Button
-      v-if="canModifyUsers"
-      variant="gray"
-      :square="!showLabels"
-      :data-title-top="!showLabels ? 'Edit User' : undefined"
-      @click="openEditConfirm"
-    >
-      <template v-if="showLabels" #start>
-        <Icon name="ph:pencil-simple" />
+    <Tooltip v-if="canModifyUsers" :disabled="showLabels">
+      <Button
+        size="s"
+        variant="gray"
+        :square="!showLabels"
+        @click="openEditConfirm"
+      >
+        <template v-if="showLabels" #start>
+          <Icon name="ph:pencil-simple" />
+        </template>
+        <Icon v-if="!showLabels" name="ph:pencil-simple" />
+        <template v-if="showLabels">
+          Edit
+        </template>
+      </Button>
+      <template #tooltip>
+        <p>
+          Edit User
+        </p>
       </template>
-      <Icon v-if="!showLabels" name="ph:pencil-simple" />
-      <template v-if="showLabels">
-        Edit
-      </template>
-    </Button>
+    </Tooltip>
 
-    <Button
-      v-if="!isCurrentlyBanned && canModifyUsers && !isCurrentUser"
-      variant="danger"
-      :loading="isActionLoading('ban')"
-      :square="!showLabels"
-      :data-title-top="!showLabels ? 'Ban User' : undefined"
-      @click="openBanModal"
-    >
-      <template v-if="showLabels" #start>
-        <Icon name="ph:prohibit" />
+    <Tooltip v-if="!isCurrentlyBanned && canModifyUsers && !isCurrentUser" :disabled="showLabels">
+      <Button
+        size="s"
+        variant="danger"
+        :loading="isActionLoading('ban')"
+        :square="!showLabels"
+        @click="openBanModal"
+      >
+        <template v-if="showLabels" #start>
+          <Icon name="ph:prohibit" />
+        </template>
+        <Icon v-if="!showLabels" name="ph:prohibit" />
+        <template v-if="showLabels">
+          Ban
+        </template>
+      </Button>
+      <template #tooltip>
+        <p>
+          Ban User
+        </p>
       </template>
-      <Icon v-if="!showLabels" name="ph:prohibit" />
-      <template v-if="showLabels">
-        Ban
-      </template>
-    </Button>
+    </Tooltip>
 
-    <Button
-      v-if="isCurrentlyBanned && canModifyUsers && !isCurrentUser"
-      variant="success"
-      :loading="isActionLoading('unban')"
-      :square="!showLabels"
-      :data-title-top="!showLabels ? 'Unban User' : undefined"
-      @click="openUnbanConfirm"
-    >
-      <template v-if="showLabels" #start>
-        <Icon name="ph:check-circle" />
+    <Tooltip v-if="isCurrentlyBanned && canModifyUsers && !isCurrentUser" :disabled="showLabels">
+      <Button
+        size="s"
+        variant="success"
+        :loading="isActionLoading('unban')"
+        :square="!showLabels"
+        @click="openUnbanConfirm"
+      >
+        <template v-if="showLabels" #start>
+          <Icon name="ph:check-circle" />
+        </template>
+        <Icon v-if="!showLabels" name="ph:check-circle" />
+        <template v-if="showLabels">
+          Unban
+        </template>
+      </Button>
+      <template #tooltip>
+        <p>
+          Unban User
+        </p>
       </template>
-      <Icon v-if="!showLabels" name="ph:check-circle" />
-      <template v-if="showLabels">
-        Unban
-      </template>
-    </Button>
+    </Tooltip>
 
-    <Button
-      v-if="canDeleteUsers && !isCurrentUser"
-      variant="danger"
-      :loading="isActionLoading('delete')"
-      :square="!showLabels"
-      :data-title-top="!showLabels ? 'Delete User' : undefined"
-      @click="openDeleteConfirm"
-    >
-      <template v-if="showLabels" #start>
-        <Icon name="ph:trash" />
+    <Tooltip v-if="canDeleteUsers && !isCurrentUser" :disabled="showLabels">
+      <Button
+        size="s"
+        variant="danger"
+        :loading="isActionLoading('delete')"
+        :square="!showLabels"
+        @click="openDeleteConfirm"
+      >
+        <template v-if="showLabels" #start>
+          <Icon name="ph:trash" />
+        </template>
+        <Icon v-if="!showLabels" name="ph:trash" />
+        <template v-if="showLabels">
+          Delete
+        </template>
+      </Button>
+      <template #tooltip>
+        <p>
+          Delete User
+        </p>
       </template>
-      <Icon v-if="!showLabels" name="ph:trash" />
-      <template v-if="showLabels">
-        Delete
-      </template>
-    </Button>
+    </Tooltip>
 
     <!-- Ban User Modal -->
     <BanUserModal

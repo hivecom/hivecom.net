@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, CopyClipboard, Flex, Skeleton } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import ProfileBadges from '@/components/Profile/ProfileBadges.vue'
 import ProfileBanStatus from '@/components/Profile/ProfileBanStatus.vue'
@@ -854,12 +854,17 @@ async function ignoreFriendRequest() {
         <!-- Admin-only UUID display -->
         <Flex x-center expand>
           <CopyClipboard :text="profile.id" confirm>
-            <Button v-if="isCurrentUserAdmin" size="s" plain data-title-top="Copy user id">
-              <template #start>
-                <Icon class="text-color-lightest" name="ph:hash" size="12" />
+            <Tooltip v-if="isCurrentUserAdmin">
+              <Button size="s" plain>
+                <template #start>
+                  <Icon class="text-color-lightest" name="ph:hash" size="12" />
+                </template>
+                <span class="text-xxs text-color-lightest font-mono">{{ profile.id }}</span>
+              </Button>
+              <template #tooltip>
+                <p>Copy user id</p>
               </template>
-              <span class="text-xxs text-color-lightest font-mono">{{ profile.id }}</span>
-            </Button>
+            </Tooltip>
           </CopyClipboard>
         </Flex>
       </div>

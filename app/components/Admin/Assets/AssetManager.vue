@@ -2,7 +2,7 @@
 import type { Ref } from 'vue'
 
 import type { StorageAsset as CmsAsset, StorageBucketId } from '@/lib/storageAssets'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Tooltip } from '@dolanske/vui'
 
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
@@ -650,44 +650,54 @@ onBeforeMount(fetchAssets)
                 </Table.Cell>
                 <Table.Cell>{{ row._original.updated_at ? new Date(row._original.updated_at).toLocaleString() : '-' }}</Table.Cell>
                 <Table.Cell @click.stop>
-                  <Flex gap="xs">
+                  <Flex gap="xxs">
                     <CopyClipboard
                       v-if="row._original.type === 'file'"
                       :text="row._original.publicUrl || ''"
                       confirm
                     >
+                      <Tooltip>
+                        <Button
+                          size="s"
+                          variant="gray"
+                          square
+                          :disabled="!row._original.publicUrl"
+                        >
+                          <Icon name="ph:link-simple" />
+                        </Button>
+                        <template #tooltip>
+                          <p>Copy URL</p>
+                        </template>
+                      </Tooltip>
+                    </CopyClipboard>
+                    <Tooltip v-if="canRenameAsset(row._original)">
                       <Button
                         size="s"
                         variant="gray"
                         square
-                        :disabled="!row._original.publicUrl"
-                        data-title-top="Copy URL"
+                        :loading="isActionLoading(row._original.path, 'rename')"
+                        @click="promptRenameAsset(row._original)"
                       >
-                        <Icon name="ph:link-simple" />
+                        <Icon name="ph:text-t" />
                       </Button>
-                    </CopyClipboard>
-                    <Button
-                      v-if="canRenameAsset(row._original)"
-                      size="s"
-                      variant="gray"
-                      square
-                      :loading="isActionLoading(row._original.path, 'rename')"
-                      data-title-top="Rename"
-                      @click="promptRenameAsset(row._original)"
-                    >
-                      <Icon name="ph:text-t" />
-                    </Button>
-                    <Button
-                      v-if="props.canDelete"
-                      size="s"
-                      variant="danger"
-                      square
-                      :loading="isActionLoading(row._original.path, 'delete')"
-                      data-title-top="Delete"
-                      @click="promptDeleteAsset(row._original)"
-                    >
-                      <Icon name="ph:trash" />
-                    </Button>
+                      <template #tooltip>
+                        <p>Rename</p>
+                      </template>
+                    </Tooltip>
+                    <Tooltip v-if="props.canDelete">
+                      <Button
+                        size="s"
+                        variant="danger"
+                        square
+                        :loading="isActionLoading(row._original.path, 'delete')"
+                        @click="promptDeleteAsset(row._original)"
+                      >
+                        <Icon name="ph:trash" />
+                      </Button>
+                      <template #tooltip>
+                        <p>Delete</p>
+                      </template>
+                    </Tooltip>
                   </Flex>
                 </Table.Cell>
               </tr>

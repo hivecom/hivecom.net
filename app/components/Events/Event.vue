@@ -66,22 +66,25 @@ updateTime()
         <div>
           <Flex class="mb-xs" y-center>
             <h3>{{ props.data.title }}</h3>
-            <Button
-              v-if="props.data.link"
-              square
-              outline
-              plain
-              :size="props.isHighlight ? 'm' : 's'"
-              target="_blank"
-              rel="noopener noreferrer"
-              :href="props.data.link"
-              data-title-top="Visit website"
-            >
-              <span class="visually-hidden">
-                Visit Event Link
-              </span>
-              <Icon name="ph:arrow-square-out" size="14" />
-            </Button>
+            <Tooltip v-if="props.data.link">
+              <Button
+                square
+                outline
+                plain
+                :size="props.isHighlight ? 'm' : 's'"
+                target="_blank"
+                rel="noopener noreferrer"
+                :href="props.data.link"
+              >
+                <span class="visually-hidden">
+                  Visit Event Link
+                </span>
+                <Icon name="ph:arrow-square-out" size="14" />
+              </Button>
+              <template #tooltip>
+                <p>Visit website</p>
+              </template>
+            </Tooltip>
           </Flex>
           <p class="mb-m text-color-light">
             {{ props.data.description }}

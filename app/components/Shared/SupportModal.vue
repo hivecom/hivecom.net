@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Card, CopyClipboard, Divider, Flex, Modal } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Divider, Flex, Modal, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -163,12 +163,17 @@ function handleClose() {
           </Button>
         </CopyClipboard>
         <a :href="ircUrl" target="_blank" rel="noopener noreferrer" class="support-modal__link">
-          <Button :expand="isBelowSmall" :data-title-top="`Join the ${ircChannel} channel`">
-            <template #start>
-              <Icon name="ph:chats-circle" />
+          <Tooltip>
+            <Button :expand="isBelowSmall">
+              <template #start>
+                <Icon name="ph:chats-circle" />
+              </template>
+              Join IRC
+            </Button>
+            <template #tooltip>
+              <p>Join the {{ ircChannel }} channel</p>
             </template>
-            Join IRC
-          </Button>
+          </Tooltip>
         </a>
         <NuxtLink
           v-if="discordUrl" :to="discordUrl" target="_blank" rel="noopener noreferrer"

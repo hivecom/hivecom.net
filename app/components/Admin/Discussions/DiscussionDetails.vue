@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, Button, Card, CopyClipboard, Divider, Dropdown, DropdownTitle, Flex, Grid, Input, pushToast, searchString, Sheet } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, CopyClipboard, Divider, Dropdown, DropdownTitle, Flex, Grid, Input, pushToast, searchString, Sheet, Tooltip } from '@dolanske/vui'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
@@ -640,26 +640,34 @@ async function reassignToTopic(topicId: string) {
 
                 <Flex gap="xs" y-center>
                   <CopyClipboard :text="asset.publicUrl || ''" confirm>
+                    <Tooltip>
+                      <Button
+                        size="s"
+                        variant="gray"
+                        square
+                        :disabled="!asset.publicUrl"
+                      >
+                        <Icon name="ph:link-simple" />
+                      </Button>
+                      <template #tooltip>
+                        <p>Copy URL</p>
+                      </template>
+                    </Tooltip>
+                  </CopyClipboard>
+                  <Tooltip>
                     <Button
                       size="s"
                       variant="gray"
                       square
                       :disabled="!asset.publicUrl"
-                      data-title-top="Copy URL"
+                      @click="openAssetUrl(asset)"
                     >
-                      <Icon name="ph:link-simple" />
+                      <Icon name="ph:arrow-square-out" />
                     </Button>
-                  </CopyClipboard>
-                  <Button
-                    size="s"
-                    variant="gray"
-                    square
-                    :disabled="!asset.publicUrl"
-                    data-title-top="Open"
-                    @click="openAssetUrl(asset)"
-                  >
-                    <Icon name="ph:arrow-square-out" />
-                  </Button>
+                    <template #tooltip>
+                      <p>Open</p>
+                    </template>
+                  </Tooltip>
                 </Flex>
               </Flex>
             </Card>

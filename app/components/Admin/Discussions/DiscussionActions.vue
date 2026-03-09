@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Button, Flex, pushToast } from '@dolanske/vui'
+import { Button, Flex, pushToast, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
@@ -125,57 +125,68 @@ function handleArchiveClick() {
 
 <template>
   <Flex :gap="shouldShowLabels ? 's' : 'xs'" y-center>
-    <Button
-      variant="danger"
-      :size="buttonSize"
-      :loading="lockLoading"
-      :square="!shouldShowLabels"
-      :data-title-top="shouldShowLabels ? undefined : (props.discussion.is_locked ? 'Unlock Discussion' : 'Lock Discussion')"
-      @click="handleLockClick"
-    >
-      <Icon v-if="!shouldShowLabels" :name="props.discussion.is_locked ? 'ph:lock-open' : 'ph:lock'" />
-      <template v-if="shouldShowLabels" #start>
-        <Icon :name="props.discussion.is_locked ? 'ph:lock-open' : 'ph:lock'" />
+    <Tooltip :disabled="shouldShowLabels">
+      <Button
+        variant="danger"
+        :size="buttonSize"
+        :loading="lockLoading"
+        :square="!shouldShowLabels"
+        @click="handleLockClick"
+      >
+        <Icon v-if="!shouldShowLabels" :name="props.discussion.is_locked ? 'ph:lock-open' : 'ph:lock'" />
+        <template v-if="shouldShowLabels" #start>
+          <Icon :name="props.discussion.is_locked ? 'ph:lock-open' : 'ph:lock'" />
+        </template>
+        <template v-if="shouldShowLabels">
+          {{ props.discussion.is_locked ? 'Unlock' : 'Lock' }}
+        </template>
+      </Button>
+      <template #tooltip>
+        <p>{{ props.discussion.is_locked ? 'Unlock Discussion' : 'Lock Discussion' }}</p>
       </template>
-      <template v-if="shouldShowLabels">
-        {{ props.discussion.is_locked ? 'Unlock' : 'Lock' }}
-      </template>
-    </Button>
+    </Tooltip>
 
-    <Button
-      v-if="props.discussion.discussion_topic_id"
-      variant="gray"
-      :size="buttonSize"
-      :loading="pinLoading"
-      :square="!shouldShowLabels"
-      :data-title-top-right="shouldShowLabels ? undefined : (props.discussion.is_sticky ? 'Unpin Discussion' : 'Pin Discussion')"
-      @click="handlePinClick"
-    >
-      <Icon v-if="!shouldShowLabels" :name="props.discussion.is_sticky ? 'ph:push-pin-slash' : 'ph:push-pin'" />
-      <template v-if="shouldShowLabels" #start>
-        <Icon :name="props.discussion.is_sticky ? 'ph:push-pin-slash' : 'ph:push-pin'" />
+    <Tooltip v-if="props.discussion.discussion_topic_id" :disabled="shouldShowLabels">
+      <Button
+        variant="gray"
+        :size="buttonSize"
+        :loading="pinLoading"
+        :square="!shouldShowLabels"
+        @click="handlePinClick"
+      >
+        <Icon v-if="!shouldShowLabels" :name="props.discussion.is_sticky ? 'ph:push-pin-slash' : 'ph:push-pin'" />
+        <template v-if="shouldShowLabels" #start>
+          <Icon :name="props.discussion.is_sticky ? 'ph:push-pin-slash' : 'ph:push-pin'" />
+        </template>
+        <template v-if="shouldShowLabels">
+          {{ props.discussion.is_sticky ? 'Unpin' : 'Pin' }}
+        </template>
+      </Button>
+      <template #tooltip>
+        <p>{{ props.discussion.is_sticky ? 'Unpin Discussion' : 'Pin Discussion' }}</p>
       </template>
-      <template v-if="shouldShowLabels">
-        {{ props.discussion.is_sticky ? 'Unpin' : 'Pin' }}
-      </template>
-    </Button>
+    </Tooltip>
 
-    <Button
-      variant="gray"
-      :size="buttonSize"
-      :loading="archiveLoading"
-      :square="!shouldShowLabels"
-      :data-title-top-right="shouldShowLabels ? undefined : (props.discussion.is_archived ? 'Unarchive Discussion' : 'Archive Discussion')"
-      @click="handleArchiveClick"
-    >
-      <Icon v-if="!shouldShowLabels" name="ph:archive" />
-      <template v-if="shouldShowLabels" #start>
-        <Icon name="ph:archive" />
+    <Tooltip :disabled="shouldShowLabels">
+      <Button
+        variant="gray"
+        :size="buttonSize"
+        :loading="archiveLoading"
+        :square="!shouldShowLabels"
+        @click="handleArchiveClick"
+      >
+        <Icon v-if="!shouldShowLabels" name="ph:archive" />
+        <template v-if="shouldShowLabels" #start>
+          <Icon name="ph:archive" />
+        </template>
+        <template v-if="shouldShowLabels">
+          {{ props.discussion.is_archived ? 'Unarchive' : 'Archive' }}
+        </template>
+      </Button>
+      <template #tooltip>
+        <p>{{ props.discussion.is_archived ? 'Unarchive Discussion' : 'Archive Discussion' }}</p>
       </template>
-      <template v-if="shouldShowLabels">
-        {{ props.discussion.is_archived ? 'Unarchive' : 'Archive' }}
-      </template>
-    </Button>
+    </Tooltip>
 
     <ConfirmModal
       v-model:open="showLockConfirm"

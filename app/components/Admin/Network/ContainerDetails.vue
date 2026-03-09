@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Alert, Button, ButtonGroup, Card, Flex, Grid, Input, Select, Sheet, Skeleton } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Flex, Grid, Input, Select, Sheet, Skeleton, Tooltip } from '@dolanske/vui'
 import Convert from 'ansi-to-html'
 
 import { computed, nextTick, ref, watch } from 'vue'
@@ -375,39 +375,51 @@ watch(() => useCustomDateRange.value, (newValue) => {
           <Flex x-between y-center class="mb-s" expand>
             <h4>Logs</h4>
             <ButtonGroup :gap="1">
-              <Button
-                square
-                size="s"
-                :variant="useCustomDateRange ? 'accent' : 'gray'"
-                :disabled="!props.logs || props.logsLoading"
-                data-title-bottom="Custom date range"
-                aria-label="Toggle custom date range"
-                @click="useCustomDateRange = !useCustomDateRange"
-              >
-                <Icon name="ph:calendar-dots" />
-              </Button>
-              <Button
-                square
-                size="s"
-                variant="gray"
-                :disabled="!props.logs || props.logsLoading"
-                data-title-bottom="Copy logs"
-                aria-label="Copy logs to clipboard"
-                @click="copyLogsToClipboard"
-              >
-                <Icon name="ph:copy" />
-              </Button>
-              <Button
-                square
-                size="s"
-                variant="gray"
-                :disabled="!props.logs || props.logsLoading"
-                data-title-bottom-right="Refresh logs"
-                aria-label="Refresh logs"
-                @click="handleRefreshLogs"
-              >
-                <Icon name="ph:arrow-clockwise" />
-              </Button>
+              <Tooltip>
+                <Button
+                  square
+                  size="s"
+                  :variant="useCustomDateRange ? 'accent' : 'gray'"
+                  :disabled="!props.logs || props.logsLoading"
+                  aria-label="Toggle custom date range"
+                  @click="useCustomDateRange = !useCustomDateRange"
+                >
+                  <Icon name="ph:calendar-dots" />
+                </Button>
+                <template #tooltip>
+                  <p>Custom date range</p>
+                </template>
+              </Tooltip>
+              <Tooltip>
+                <Button
+                  square
+                  size="s"
+                  variant="gray"
+                  :disabled="!props.logs || props.logsLoading"
+                  aria-label="Copy logs to clipboard"
+                  @click="copyLogsToClipboard"
+                >
+                  <Icon name="ph:copy" />
+                </Button>
+                <template #tooltip>
+                  <p>Copy logs</p>
+                </template>
+              </Tooltip>
+              <Tooltip>
+                <Button
+                  square
+                  size="s"
+                  variant="gray"
+                  :disabled="!props.logs || props.logsLoading"
+                  aria-label="Refresh logs"
+                  @click="handleRefreshLogs"
+                >
+                  <Icon name="ph:arrow-clockwise" />
+                </Button>
+                <template #tooltip>
+                  <p>Refresh logs</p>
+                </template>
+              </Tooltip>
             </ButtonGroup>
           </Flex>
 

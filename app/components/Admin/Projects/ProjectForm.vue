@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
-import { Badge, Button, Flex, Input, Select, Sheet, Textarea } from '@dolanske/vui'
+import { Badge, Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -466,15 +466,18 @@ function handleTagInputEnter() {
 
         <div class="flex-1" />
 
-        <Button
-          v-if="props.isEditMode"
-          variant="danger"
-          square
-          data-title-left="Delete project"
-          @click.prevent="handleDelete"
-        >
-          <Icon name="ph:trash" />
-        </Button>
+        <Tooltip v-if="props.isEditMode">
+          <Button
+            variant="danger"
+            square
+            @click.prevent="handleDelete"
+          >
+            <Icon name="ph:trash" />
+          </Button>
+          <template #tooltip>
+            <p>Delete project</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
 

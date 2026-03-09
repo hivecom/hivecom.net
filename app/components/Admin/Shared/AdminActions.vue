@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex } from '@dolanske/vui'
+import { Button, Flex, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -173,62 +173,74 @@ function getItemDisplayName(): string {
 <template>
   <Flex v-if="hasVisibleActions" gap="xs">
     <!-- Edit Action -->
-    <Button
-      v-if="showEditAction"
-      variant="gray"
-      :size="props.buttonSize"
-      :square="!showLabels"
-      :data-title-top="!showLabels ? `Edit ${resourceType.slice(0, -1)}` : undefined"
-      :loading="isActionLoading('edit')"
-      @click="handleEdit"
-    >
-      <template v-if="showLabels" #start>
-        <Icon name="ph:pencil-simple" />
+    <Tooltip v-if="showEditAction" :disabled="showLabels">
+      <Button
+        variant="gray"
+        :size="props.buttonSize"
+        :square="!showLabels"
+        :loading="isActionLoading('edit')"
+        @click="handleEdit"
+      >
+        <template v-if="showLabels" #start>
+          <Icon name="ph:pencil-simple" />
+        </template>
+        <Icon v-if="!showLabels" name="ph:pencil-simple" />
+        <template v-if="showLabels">
+          Edit
+        </template>
+      </Button>
+      <template #tooltip>
+        <p>Edit {{ resourceType.slice(0, -1) }}</p>
       </template>
-      <Icon v-if="!showLabels" name="ph:pencil-simple" />
-      <template v-if="showLabels">
-        Edit
-      </template>
-    </Button>
+    </Tooltip>
 
     <!-- Custom Actions -->
-    <Button
+    <Tooltip
       v-for="(action, index) in visibleCustomActions"
       :key="index"
-      :variant="action.variant || 'gray'"
-      :size="props.buttonSize"
-      :square="!showLabels"
-      :data-title-top-right="!showLabels ? action.label : undefined"
-      :loading="action.loading"
-      @click="action.handler"
+      :disabled="showLabels"
     >
-      <template v-if="showLabels" #start>
-        <Icon :name="action.icon" />
+      <Button
+        :variant="action.variant || 'gray'"
+        :size="props.buttonSize"
+        :square="!showLabels"
+        :loading="action.loading"
+        @click="action.handler"
+      >
+        <template v-if="showLabels" #start>
+          <Icon :name="action.icon" />
+        </template>
+        <Icon v-if="!showLabels" :name="action.icon" />
+        <template v-if="showLabels">
+          {{ action.label }}
+        </template>
+      </Button>
+      <template #tooltip>
+        <p>{{ action.label }}</p>
       </template>
-      <Icon v-if="!showLabels" :name="action.icon" />
-      <template v-if="showLabels">
-        {{ action.label }}
-      </template>
-    </Button>
+    </Tooltip>
 
     <!-- Delete Action -->
-    <Button
-      v-if="showDeleteAction"
-      variant="danger"
-      :size="props.buttonSize"
-      :square="!showLabels"
-      :data-title-top-right="!showLabels ? `Delete ${resourceType.slice(0, -1)}` : undefined"
-      :loading="isActionLoading('delete')"
-      @click="handleDelete"
-    >
-      <template v-if="showLabels" #start>
-        <Icon name="ph:trash" />
+    <Tooltip v-if="showDeleteAction" :disabled="showLabels">
+      <Button
+        variant="danger"
+        :size="props.buttonSize"
+        :square="!showLabels"
+        :loading="isActionLoading('delete')"
+        @click="handleDelete"
+      >
+        <template v-if="showLabels" #start>
+          <Icon name="ph:trash" />
+        </template>
+        <Icon v-if="!showLabels" name="ph:trash" />
+        <template v-if="showLabels">
+          Delete
+        </template>
+      </Button>
+      <template #tooltip>
+        <p>Delete {{ resourceType.slice(0, -1) }}</p>
       </template>
-      <Icon v-if="!showLabels" name="ph:trash" />
-      <template v-if="showLabels">
-        Delete
-      </template>
-    </Button>
+    </Tooltip>
   </Flex>
 
   <!-- Delete Confirmation Modal -->
