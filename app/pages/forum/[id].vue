@@ -406,7 +406,7 @@ watchEffect(() => {
                 <Icon class="text-color" name="ph:arrow-left" :size="16" />
               </Button>
               <Breadcrumbs>
-                <BreadcrumbItem @click="router.push('/forum')">
+                <BreadcrumbItem href="/forum">
                   Forum
                 </BreadcrumbItem>
                 <BreadcrumbItem

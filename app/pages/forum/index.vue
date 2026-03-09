@@ -830,6 +830,10 @@ useEventListener('keydown', (event) => {
 })
 
 const isMac = import.meta.client && /Mac/i.test(navigator.platform)
+
+function handleBreadcrumbMiddleClick(path: string = '/forum') {
+  window.open(path, '_blank')
+}
 </script>
 
 <template>
@@ -942,7 +946,10 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
           </template>
         </Button>
         <Breadcrumbs v-if="!isMobile">
-          <BreadcrumbItem @click="setActiveTopicById(null)">
+          <BreadcrumbItem
+            @click="setActiveTopicById(null)"
+            @mousedown.middle="handleBreadcrumbMiddleClick"
+          >
             Frontpage
           </BreadcrumbItem>
           <BreadcrumbItem
@@ -950,6 +957,12 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
             :key="item.parent_id"
             v-bind="index !== activeTopicPath.length - 1 ? {
               onClick: () => setActiveTopicById(item.parent_id),
+              onMousedown: (event: MouseEvent) => {
+                if (event.button === 1) {
+                  event.preventDefault()
+                  handleBreadcrumbMiddleClick(`/forum?activeTopicId=${item.parent_id}`)
+                }
+              },
             } : {}"
           >
             {{ item.title }}
