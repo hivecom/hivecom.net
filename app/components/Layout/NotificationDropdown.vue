@@ -2,11 +2,36 @@
 import type { Database } from '@/types/database.types'
 import { Button, Flex, Popout } from '@dolanske/vui'
 import NotificationCardBirthday from '@/components/Notifications/NotificationCardBirthday.vue'
+import NotificationCardDiscussion from '@/components/Notifications/NotificationCardDiscussion.vue'
 import NotificationCardEmpty from '@/components/Notifications/NotificationCardEmpty.vue'
 import NotificationCardError from '@/components/Notifications/NotificationCardError.vue'
 import NotificationCardInvite from '@/components/Notifications/NotificationCardInvite.vue'
 import NotificationCardLoading from '@/components/Notifications/NotificationCardLoading.vue'
+import NotificationCardMention from '@/components/Notifications/NotificationCardMention.vue'
 import NotificationCardPendingComplaints from '@/components/Notifications/NotificationCardPendingComplaints.vue'
+import NotificationCardReply from '@/components/Notifications/NotificationCardReply.vue'
+
+/**
+ * Inline row type for the notifications table.
+ *
+ * The generated `database.types.ts` has not been regenerated since the
+ * notifications table was created, so we define the shape here until the
+ * next `npx supabase gen types` run.
+ */
+interface NotificationRow {
+  id: string
+  user_id: string
+  title: string
+  body: string | null
+  href: string | null
+  is_read: boolean
+  source: string | null
+  source_id: string | null
+  created_at: string
+  created_by: string | null
+  modified_at: string
+  modified_by: string | null
+}
 
 const supabase = useSupabaseClient<Database>()
 const user = useSupabaseUser()
@@ -19,6 +44,7 @@ const profileMeta = ref<{ birthday: string | null, username: string } | null>(nu
 const inviteActionLoading = ref<Record<string, boolean>>({})
 const userRole = ref<Database['public']['Enums']['app_role'] | null>(null)
 const pendingComplaintCount = ref(0)
+const unreadNotifications = ref<NotificationRow[]>([])
 
 const hasUser = computed(() => Boolean(user.value && userId.value))
 
@@ -32,6 +58,7 @@ async function fetchNotifications() {
     inviteActionLoading.value = {}
     userRole.value = null
     pendingComplaintCount.value = 0
+    unreadNotifications.value = []
     loading.value = false
     error.value = null
     return
@@ -41,7 +68,7 @@ async function fetchNotifications() {
   error.value = null
 
   try {
-    const [friendsResponse, profileResponse, roleResponse] = await Promise.all([
+    const [friendsResponse, profileResponse, roleResponse, notificationsResponse] = await Promise.all([
       supabase
         .from('friends')
         .select('id, friender, friend')
@@ -56,6 +83,14 @@ async function fetchNotifications() {
         .select('role')
         .eq('user_id', userId.value as string)
         .maybeSingle(),
+      // Fetch unread notifications (table may not yet be in generated types)
+      // @ts-expect-error notifications table not yet in generated database types
+      supabase.from('notifications')
+        .select('*')
+        .eq('user_id', userId.value as string)
+        .eq('is_read', false)
+        .order('modified_at', { ascending: false })
+        .limit(20),
     ])
 
     if (friendsResponse.error)
@@ -72,6 +107,15 @@ async function fetchNotifications() {
     if (!roleResponse.error)
       userRole.value = roleResponse.data?.role ?? null
     inviteActionLoading.value = {}
+
+    // Process notifications response
+    if (notificationsResponse.error) {
+      // Don't throw — the table might not exist yet in dev; just silently skip
+      unreadNotifications.value = []
+    }
+    else {
+      unreadNotifications.value = (notificationsResponse.data ?? []) as unknown as NotificationRow[]
+    }
 
     pendingComplaintCount.value = 0
 
@@ -104,6 +148,7 @@ watch(hasUser, (ready) => {
     inviteActionLoading.value = {}
     userRole.value = null
     pendingComplaintCount.value = 0
+    unreadNotifications.value = []
     error.value = null
   }
 }, { immediate: true })
@@ -170,11 +215,29 @@ const birthdayWidget = computed(() => {
   }
 })
 
+// Discussion notifications from the notifications table
+const discussionNotifications = computed(() => {
+  return unreadNotifications.value.filter(n => n.source === 'discussion_reply')
+})
+
+// Mention notifications from the notifications table
+const mentionNotifications = computed(() => {
+  return unreadNotifications.value.filter(n => n.source === 'mention')
+})
+
+// Reply-to-reply notifications from the notifications table
+const replyNotifications = computed(() => {
+  return unreadNotifications.value.filter(n => n.source === 'discussion_reply_reply')
+})
+
 const notificationCount = computed(() => {
   const inviteCount = pendingRequestIds.value.length
   const birthdayCount = birthdayWidget.value ? 1 : 0
   const complaintCount = pendingComplaintCount.value
-  return inviteCount + birthdayCount + complaintCount
+  const discussionCount = discussionNotifications.value.length
+  const mentionCount = mentionNotifications.value.length
+  const replyCount = replyNotifications.value.length
+  return inviteCount + birthdayCount + complaintCount + discussionCount + mentionCount + replyCount
 })
 
 const badgeText = computed(() => {
@@ -191,6 +254,9 @@ const showEmptyCard = computed(() => {
     && pendingRequestIds.value.length === 0
     && !birthdayWidget.value
     && pendingComplaintCount.value === 0
+    && discussionNotifications.value.length === 0
+    && mentionNotifications.value.length === 0
+    && replyNotifications.value.length === 0
 })
 
 const loadingCardCount = computed(() => {
@@ -200,7 +266,10 @@ const loadingCardCount = computed(() => {
   const inviteCount = pendingRequestIds.value.length
   const birthdayCount = birthdayWidget.value ? 1 : 0
   const complaintCount = pendingComplaintCount.value
-  const total = inviteCount + birthdayCount + complaintCount
+  const discussionCount = discussionNotifications.value.length
+  const mentionCount = mentionNotifications.value.length
+  const replyCount = replyNotifications.value.length
+  const total = inviteCount + birthdayCount + complaintCount + discussionCount + mentionCount + replyCount
   return total > 0 ? total : 1
 })
 
@@ -248,6 +317,28 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
   }
   finally {
     setInviteLoading(requestUserId, false)
+  }
+}
+
+/**
+ * Mark a single notification as read and navigate to its href.
+ * After marking it read, we remove it from the local list immediately so the
+ * UI feels responsive — no need to re-fetch the full list.
+ */
+async function handleNotificationClick(notification: NotificationRow) {
+  // Optimistically remove from local list
+  unreadNotifications.value = unreadNotifications.value.filter(n => n.id !== notification.id)
+
+  // Mark as read in the background
+  // @ts-expect-error notifications table not yet in generated database types
+  const notifQuery = supabase.from('notifications')
+  // @ts-expect-error notifications table not yet in generated database types
+  await notifQuery.update({ is_read: true }).eq('id', notification.id)
+
+  // Close the dropdown and navigate
+  open.value = false
+  if (notification.href) {
+    void navigateTo(notification.href)
   }
 }
 </script>
@@ -308,6 +399,33 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
             v-if="pendingComplaintCount > 0"
             :count="pendingComplaintCount"
             to="/admin/complaints"
+          />
+
+          <NotificationCardMention
+            v-for="notification in mentionNotifications"
+            :key="`mention-${notification.id}`"
+            :title="notification.title"
+            :body="notification.body"
+            :href="notification.href"
+            @click="handleNotificationClick(notification)"
+          />
+
+          <NotificationCardReply
+            v-for="notification in replyNotifications"
+            :key="`reply-${notification.id}`"
+            :title="notification.title"
+            :body="notification.body"
+            :href="notification.href"
+            @click="handleNotificationClick(notification)"
+          />
+
+          <NotificationCardDiscussion
+            v-for="notification in discussionNotifications"
+            :key="`notif-${notification.id}`"
+            :title="notification.title"
+            :body="notification.body"
+            :href="notification.href"
+            @click="handleNotificationClick(notification)"
           />
 
           <NotificationCardEmpty v-if="showEmptyCard" />

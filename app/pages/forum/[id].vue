@@ -58,6 +58,55 @@ const isMobile = useBreakpoint('<m')
 // Reporting
 const showReportModal = ref(false)
 
+// Subscription
+const isSubscribed = ref(false)
+const subscriptionLoading = ref(false)
+
+async function fetchSubscription(discussionId: string) {
+  if (!userId.value)
+    return
+
+  const { data } = await supabase
+    .from('discussion_subscriptions')
+    .select('id')
+    .eq('user_id', userId.value)
+    .eq('discussion_id', discussionId)
+    .maybeSingle()
+
+  isSubscribed.value = !!data
+}
+
+async function toggleSubscription() {
+  if (!userId.value || !post.value || subscriptionLoading.value)
+    return
+
+  subscriptionLoading.value = true
+
+  if (isSubscribed.value) {
+    const { error } = await supabase
+      .from('discussion_subscriptions')
+      .delete()
+      .eq('user_id', userId.value)
+      .eq('discussion_id', post.value.id)
+
+    if (!error)
+      isSubscribed.value = false
+  }
+  else {
+    const { error } = await supabase
+      .from('discussion_subscriptions')
+      .insert({
+        user_id: userId.value,
+        discussion_id: post.value.id,
+      })
+
+    if (!error)
+      isSubscribed.value = true
+  }
+
+  subscriptionLoading.value = false
+}
+
 const contextInfo = computed<ContextInfo | null>(() => {
   if (!post.value)
     return null
@@ -170,11 +219,43 @@ onBeforeMount(() => {
         post.value = data
         showNSFWWarning.value = !!data.is_nsfw
         void loadTopicBreadcrumbs(data.discussion_topic_id)
+        void markDiscussionSeen(data.id)
+        void fetchSubscription(data.id)
       }
 
       loading.value = false
     })
 })
+
+/**
+ * Bump `last_seen_at` on the user's subscription (if any) and mark the
+ * corresponding discussion-reply notification as read so the badge clears.
+ *
+ * Both operations are fire-and-forget — we don't want a failure here to
+ * block the page from rendering.
+ */
+async function markDiscussionSeen(discussionId: string) {
+  if (!userId.value)
+    return
+
+  await Promise.allSettled([
+    // 1. Bump last_seen_at on the subscription row (if the user is subscribed)
+    supabase
+      .from('discussion_subscriptions')
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq('user_id', userId.value)
+      .eq('discussion_id', discussionId),
+
+    // 2. Mark the notification as read (source = 'discussion_reply', source_id = discussionId)
+    supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId.value)
+      .eq('source', 'discussion_reply')
+      .eq('source_id', discussionId)
+      .eq('is_read', false),
+  ])
+}
 
 const seoDescription = computed(() => {
   if (!post.value)
@@ -364,6 +445,22 @@ watchEffect(() => {
 
             <Flex gap="xxs">
               <Button
+                v-if="userId"
+                variant="gray"
+                size="s"
+                square
+                :loading="subscriptionLoading"
+                @click="toggleSubscription"
+              >
+                <Tooltip>
+                  <Icon :name="isSubscribed ? 'ph:bell-ringing-fill' : 'ph:bell'" />
+                  <template #tooltip>
+                    <p>{{ isSubscribed ? 'Unsubscribe' : 'Subscribe' }}</p>
+                  </template>
+                </Tooltip>
+              </Button>
+
+              <Button
                 v-if="userId && post.created_by !== userId"
                 variant="gray"
                 size="s"
@@ -401,6 +498,10 @@ watchEffect(() => {
             <h1>
               {{ post.title ?? 'Unnamed discussion' }}
             </h1>
+            <Badge v-if="post.is_locked" variant="neutral">
+              <Icon name="ph:lock" />
+              Locked
+            </Badge>
             <Badge v-if="post.is_archived" variant="warning">
               <Icon name="ph:archive" class="text-color-yellow" />
               Archived

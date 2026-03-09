@@ -174,6 +174,9 @@ watch(() => props.id, async () => {
 
   discussion.value = discussionResponse.data
 
+  // Bump subscription last_seen_at and mark notification read
+  void markDiscussionSeen(discussionResponse.data.id)
+
   // Query comments under a discussion
   const commentQuery = supabase
     .from('discussion_replies')
@@ -197,6 +200,41 @@ watch(() => props.id, async () => {
 
   loading.value = false
 }, { immediate: true })
+
+/**
+ * Bump `last_seen_at` on the user's subscription (if any) and mark the
+ * corresponding discussion-reply notification as read so the badge clears.
+ *
+ * Fire-and-forget — failures here should never block the discussion from
+ * rendering.
+ *
+ * The `@ts-expect-error` comments below are needed because
+ * `discussion_subscriptions` and `notifications` are not yet in the
+ * generated `database.types.ts`. They can be removed after the next
+ * `npx supabase gen types` run.
+ */
+async function markDiscussionSeen(discussionId: string) {
+  if (!userId.value)
+    return
+
+  await Promise.allSettled([
+    // 1. Bump last_seen_at on the subscription row (if the user is subscribed)
+    supabase
+      .from('discussion_subscriptions')
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq('user_id', userId.value)
+      .eq('discussion_id', discussionId),
+
+    // 2. Mark the notification as read (source = 'discussion_reply', source_id = discussionId)
+    supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId.value)
+      .eq('source', 'discussion_reply')
+      .eq('source_id', discussionId)
+      .eq('is_read', false),
+  ])
+}
 
 // Add replies to the message object so the UI can display it
 const modelledComments = computed((): Comment[] => {
@@ -244,15 +282,15 @@ watch(replyingTo, focusTextarea)
 
 // Quoting - if a quote is requested, the full original markdown as a quote at
 // the beginning. Users can then trim the quote or keep it as it is
-provide('setQuoteOfComment', async (comment: Comment) => {
-  // Query username from the comment
-  const { data } = await supabase
-    .from('profiles')
-    .select('username')
-    .eq('id', comment.created_by)
-    .single()
+provide('setQuoteOfComment', (comment: Comment) => {
+  // Use the @{uuid} mention format so TipTap parses it as a real mention node.
+  // The editor's hydrateMentionLabels will resolve the UUID to a display name.
+  const quoted = wrapInBlockquote(`@{${comment.created_by}} said\n\n${comment.markdown}`)
 
-  form.message = `${form.message}\n\n${wrapInBlockquote(`${comment.markdown} \n\n @${data.username} said`)}`
+  // Append to existing content so multiple quotes can be added
+  form.message = form.message.length > 0
+    ? `${form.message}\n\n${quoted}`
+    : quoted
 
   focusTextarea()
 })
@@ -457,20 +495,27 @@ provide('delete-comment', deleteComment)
             This discussion is locked
           </Alert>
         </div>
-        <RichTextEditor
-          v-else
-          ref="textarea"
-          v-model="form.message"
-          v-model:nsfw="form.is_nsfw"
-          min-height="64px"
-          show-submit-options
-          show-attachment-button
-          :errors="normalizeErrors(errors.message)"
-          :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
-          :media-context="discussion?.id ? `${discussion.id}/${userId}` : 'staging'"
-          :media-bucket-id="FORUMS_BUCKET_ID"
-          @submit="submitReply"
-        />
+        <template v-else>
+          <Alert v-if="discussion?.is_locked && canBypassLock" variant="warning">
+            <template #icon>
+              <Icon name="ph:lock" />
+            </template>
+            This discussion is locked. Only admins and moderators can post replies.
+          </Alert>
+          <RichTextEditor
+            ref="textarea"
+            v-model="form.message"
+            v-model:nsfw="form.is_nsfw"
+            min-height="64px"
+            show-submit-options
+            show-attachment-button
+            :errors="normalizeErrors(errors.message)"
+            :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
+            :media-context="discussion?.id ? `${discussion.id}/${userId}` : 'staging'"
+            :media-bucket-id="FORUMS_BUCKET_ID"
+            @submit="submitReply"
+          />
+        </template>
       </div>
       <div v-else-if="props.hideInput !== true && !userId" class="discussion__add">
         <Alert variant="neutral">

@@ -9,6 +9,7 @@ export function getDefaultUserSettings(): Tables<'settings'>['data'] {
     theme: 'dark',
     show_nsfw_content: true,
     show_nsfw_warning: true,
+    show_offtopic_replies: false,
     show_forum_updates: true,
     show_forum_recently_visited: true,
     show_forum_archived: false,

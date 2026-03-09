@@ -79,6 +79,7 @@ interface TableColumnOverrides {
       theme: 'dark' | 'light'
       show_nsfw_warning: boolean
       show_nsfw_content: boolean
+      show_offtopic_replies: boolean
       show_forum_updates: boolean
       show_forum_recently_visited: boolean
       show_forum_archived: boolean

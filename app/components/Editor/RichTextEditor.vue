@@ -2,7 +2,8 @@
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
-import { Button, ButtonGroup, pushToast, Textarea, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, pushToast, Textarea } from '@dolanske/vui'
+import { Extension } from '@tiptap/core'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
 import { Mathematics } from '@tiptap/extension-mathematics'
@@ -13,6 +14,7 @@ import { CharacterCount } from '@tiptap/extensions'
 import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
+import { marked } from 'marked'
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useUserId } from '@/composables/useUserId'
@@ -21,6 +23,7 @@ import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorMathModal from './EditorMathModal.vue'
 import EditorYoutubeModal from './EditorYoutubeModal.vue'
 import { createMentionExtension, hydrateMentionLabels, resolvePlainTextMentions } from './plugins/mentions'
+import { TextColor } from './plugins/textColor'
 import RichTextImageMenu from './RichTextImageMenu.vue'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 
@@ -65,6 +68,32 @@ const editorMode = ref <'rich' | 'plain'>('rich')
 const editorIsEmpty = ref(true)
 
 const content = defineModel<string>()
+
+// ---------------------------------------------------------------------------
+// Plain-text display helpers
+//
+// The content model always stores HTML angle brackets escaped as &lt;/&gt; so
+// that the markdown renderer never interprets them as real HTML.  When the user
+// switches to the plain-text textarea we decode those entities so they see
+// "<foo>" instead of "&lt;foo&gt;".  Any edits they make are re-escaped before
+// being written back into the content model, preserving the invariant.
+// ---------------------------------------------------------------------------
+
+function encodeHtmlEntities(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function decodeHtmlEntities(str: string): string {
+  return str.replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&')
+}
+
+// Decoded version of `content` used exclusively by the plain-text textarea.
+const plainTextContent = ref('')
+
+function handlePlainTextInput(value: string) {
+  plainTextContent.value = value
+  content.value = encodeHtmlEntities(value)
+}
 const isNsfw = defineModel<boolean>('nsfw', { default: false })
 
 const resolvedMediaBucketId = computed(() => props.mediaBucketId ?? FORUMS_BUCKET_ID)
@@ -138,12 +167,68 @@ const mathModalEditPos = ref<number | null>(null)
 // YouTube modal state
 const youtubeModalOpen = ref(false)
 
+// A custom marked instance that intercepts inline HTML tokens so that raw tags
+// typed or pasted into the editor are treated as literal text rather than being
+// parsed as real HTML nodes.
+//
+// marked's inline `tag` tokenizer produces `type: "html"` tokens for anything
+// matching `<tagname ...>`. @tiptap/markdown receives those and calls
+// generateJSON() on them, which silently drops unrecognised tag names and
+// swallows their inner content (e.g. `<tag>example</tag>` → `example` or
+// nothing at all).
+//
+// The single inline extension below intercepts those tokens before marked emits
+// them and re-emits them as `type: "text"` instead, so `<foo>bar</foo>` is
+// stored as the literal visible string `<foo>bar</foo>` in the Tiptap editor.
+// getEditorMarkdown() then escapes the raw angle brackets to `&lt;`/`&gt;`
+// on the way out so the markdown renderer never interprets them as HTML.
+const noHtmlMarked = marked.use({
+  extensions: [
+    {
+      // Inline-level HTML: intercepts marked's `tag` rule (inline HTML like
+      // `<b>`, `</em>`, `<br/>`) before it produces an `html` token.
+      // We re-emit it as a `text` token so the angle-bracket sequence is
+      // stored verbatim and never handed to @tiptap/markdown's HTML parser.
+      name: 'stripInlineHtml',
+      level: 'inline',
+      start(src: string) {
+        return src.indexOf('<')
+      },
+      tokenizer(src: string) {
+        // Matches any inline HTML tag: opening, closing, self-closing, or comment.
+        const match = /^<(?:[a-z][a-z0-9-]*(?:\s[^>]*)?\/?|\/[a-z][a-z0-9-]*\s*|!--[\s\S]*?--)>/i.exec(src)
+        if (match) {
+          return {
+            type: 'text',
+            raw: match[0],
+            text: match[0],
+          }
+        }
+      },
+    },
+  ],
+})
+
 const editor = useEditor({
   content: content.value,
   extensions: [
     StarterKit,
-    Markdown,
+    Markdown.configure({ marked: noHtmlMarked }),
     Image,
+    // Ctrl+Enter to submit
+    Extension.create({
+      name: 'submitShortcut',
+      addKeyboardShortcuts() {
+        return {
+          'Mod-Enter': () => {
+            handleSubmit()
+            return true
+          },
+        }
+      },
+    }),
+    // Text color (triple-colon directive: :::color[#rrggbb]text:::)
+    TextColor,
     // Checklist / task list support (markdown: - [ ] / - [x])
     TaskList,
     TaskItem.configure({ nested: true }),
@@ -272,7 +357,21 @@ function getEditorMarkdown(): string {
   if (!editor.value || editor.value.isEmpty)
     return ''
   const raw = editor.value.getMarkdown() ?? ''
-  const stripped = raw.replace(/(\n+)?&nbsp;$/, '')
+  // @tiptap/extension-paragraph emits "&nbsp;" for every empty paragraph —
+  // not just the trailing one — so we must replace all of them.
+  // A line whose only content is "&nbsp;" represents an empty paragraph;
+  // replace it with a genuinely empty line so the plain-text view is clean.
+  // We also strip a lone trailing "&nbsp;" that has no preceding newline
+  // (single-paragraph empty doc edge-case).
+  const stripped = raw
+    .replace(/^&nbsp;$/gm, '')
+    .replace(/&nbsp;$/, '')
+    // Escape any HTML tag-like sequences (<...>) so they are stored and rendered
+    // as visible literal text rather than being interpreted as HTML by the
+    // markdown renderer. Tiptap now stores these as raw angle-bracket text nodes
+    // (the noHtmlMarked inline interceptor prevents them from being parsed as
+    // real HTML on input), so we must re-escape them on the way out.
+    .replace(/<([^>]*)>/g, '&lt;$1&gt;')
   return stripped.trim() === '' ? '' : stripped
 }
 
@@ -366,6 +465,20 @@ watch(() => editor.value, (value) => {
 
 // Update editor content manually on model change
 watch(content, (newContent) => {
+  // In plain-text mode the textarea owns the content directly; do not forward
+  // changes to the Tiptap editor or its onUpdate hook will fire and run
+  // getEditorMarkdown(), which escapes angle brackets and writes the mangled
+  // value back into the model — stripping any HTML the user just typed.
+  // The plainTextContent ref is kept in sync separately via handlePlainTextInput,
+  // except when content is cleared externally (e.g. after submit) — in that case
+  // we must reset plainTextContent too so the textarea actually clears.
+  if (editorMode.value === 'plain') {
+    if (!newContent) {
+      plainTextContent.value = ''
+    }
+    return
+  }
+
   // Normalise the current editor markdown the same way onUpdate does so that
   // an empty editor (whose raw getMarkdown() returns "&nbsp;") compares equal
   // to an empty string coming from the model, preventing a spurious setContent
@@ -415,10 +528,49 @@ defineExpose({
 async function handleEditorModeSwitch() {
   const newMode = editorMode.value === 'rich' ? 'plain' : 'rich'
 
-  // When switching back to rich mode, resolve any plain-text @username mentions
-  // so the Tiptap editor can display and hydrate them as proper mention nodes.
-  if (newMode === 'rich' && content.value) {
-    content.value = await resolvePlainTextMentions(content.value, supabase)
+  if (newMode === 'plain') {
+    // Decode stored entities so the textarea shows readable "<foo>" rather than
+    // the "&lt;foo&gt;" that the content model carries internally.
+    plainTextContent.value = decodeHtmlEntities(content.value ?? '')
+  }
+  else if (newMode === 'rich') {
+    // The model always stores the escaped form (&lt;/&gt;) for the DB/renderer.
+    // Tiptap receives the decoded form (raw angle brackets) — the noHtmlMarked
+    // inline interceptor converts them to plain text tokens so they are never
+    // parsed as real HTML. getEditorMarkdown() then re-escapes them on the way
+    // out, keeping the model invariant intact.
+    const tiptapContent = plainTextContent.value
+    let newContent = encodeHtmlEntities(tiptapContent)
+
+    // Resolve any plain-text @username mentions so the Tiptap editor can
+    // display and hydrate them as proper mention nodes.
+    if (newContent) {
+      newContent = await resolvePlainTextMentions(newContent, supabase)
+    }
+
+    // Update the model so external consumers stay in sync.
+    content.value = newContent
+
+    // Switch the mode before calling setContent so that if onUpdate fires it
+    // does not immediately write back a mangled value via the plain-text guard.
+    editorMode.value = newMode
+
+    // Directly call setContent instead of relying on watch(content): the watcher
+    // skips the update when newContent equals the value already in the model
+    // (which is common — handlePlainTextInput keeps content in sync while the
+    // user types, so by the time they switch modes the values are identical and
+    // Vue never fires the watcher).
+    // We pass tiptapContent (decoded, raw angle brackets) so the noHtmlMarked
+    // inline interceptor can store them as literal text. getEditorMarkdown()
+    // re-escapes them to &lt;/&gt; on serialization.
+    externalContentUpdate = true
+    editor.value?.commands.setContent(tiptapContent, { contentType: 'markdown' })
+    externalContentUpdate = false
+    editorIsEmpty.value = editor.value?.isEmpty ?? true
+
+    void hydrateMentionLabels(editor.value, supabase, newContent)
+
+    return
   }
 
   editorMode.value = newMode
@@ -428,9 +580,13 @@ async function handleSubmit() {
   if (!content.value || content.value.trim().length === 0)
     return
 
-  // In plain-text mode the Tiptap suggestion flow never ran, so any @username
-  // tokens must be resolved to @{uuid} before the content is submitted.
   if (editorMode.value === 'plain') {
+    // Ensure the final value in the model is properly escaped — the textarea
+    // binds to plainTextContent (decoded) so we must re-encode before submit.
+    content.value = encodeHtmlEntities(plainTextContent.value)
+
+    // In plain-text mode the Tiptap suggestion flow never ran, so any @username
+    // tokens must be resolved to @{uuid} before the content is submitted.
     content.value = await resolvePlainTextMentions(content.value, supabase)
   }
 
@@ -490,7 +646,7 @@ async function handleSubmit() {
           <span v-if="editorIsEmpty && props.placeholder" class="editor-placeholder">{{ props.placeholder }}</span>
           <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
         </div>
-        <Textarea v-else v-model="content" class="editor-textarea" expand :placeholder="placeholder" />
+        <Textarea v-else :model-value="plainTextContent" class="editor-textarea" expand :placeholder="placeholder" @update:model-value="handlePlainTextInput" @keydown.ctrl.enter="handleSubmit" @keydown.meta.enter="handleSubmit" />
 
         <div class="editor-actions">
           <template v-if="editorMode === 'rich'">

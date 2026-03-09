@@ -56,6 +56,7 @@ VALUES
 ('admin', 'users.delete'),
 ('admin', 'users.read'),
 ('admin', 'users.update'),
+('admin', 'alerts.read'),
 ('admin', 'assets.create'),
 ('admin', 'assets.delete'),
 ('admin', 'assets.read'),
@@ -91,6 +92,7 @@ VALUES
 ('moderator', 'users.create'),
 ('moderator', 'users.read'),
 ('moderator', 'users.update'),
+('moderator', 'alerts.read'),
 ('moderator', 'assets.create'),
 ('moderator', 'assets.delete'),
 ('moderator', 'assets.read'),
@@ -627,6 +629,36 @@ INSERT INTO public.complaints(created_at, created_by, message, response, respond
 (NOW() - INTERVAL '4 hours', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'The CS2 server is experiencing severe performance issues. There are frequent lag spikes, players are getting disconnected randomly, and hit registration seems inconsistent. This makes the game unplayable.', NULL, NULL, NULL, TRUE, NULL, 1),
   -- New unacknowledged complaint with no context
 (NOW() - INTERVAL '30 minutes', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'I noticed that the community voting system seems to have a bug where my vote doesn''t get saved properly. I tried voting on the recent referendum but it keeps asking me to vote again.', NULL, NULL, NULL, FALSE, NULL, NULL);
+
+-- Insert a discussion by TestUser in the General topic, with a reply mentioning the Hivecom user.
+-- The auto-subscribe triggers will subscribe TestUser on discussion create.
+-- The mention trigger will create a notification for the Hivecom user.
+INSERT INTO public.discussions(created_at, created_by, title, slug, description, markdown, is_sticky, discussion_topic_id)
+SELECT
+  NOW() - INTERVAL '1 hour',
+  '018d224c-0e49-4b6d-b57a-87299605c2b3'::uuid,
+  'Looking for people to play CS2 with',
+  'looking-for-people-to-play-cs2-with',
+  'Anyone down for some casual CS2 this weekend?',
+  'Hey everyone! I just joined and I''m looking for some people to queue up with this weekend on the community server. I''m not the best player but I''m here to have fun. Let me know if you''re interested!',
+  FALSE,
+  dt.id
+FROM public.discussion_topics dt
+WHERE dt.slug = 'general'
+;
+
+-- TestUser replies to their own discussion and mentions the Hivecom admin user.
+-- This fires both the subscription fan-out trigger (no-op for TestUser since
+-- they are already subscribed) and the mention notification trigger which will
+-- create a notification for the Hivecom user.
+INSERT INTO public.discussion_replies(created_at, created_by, discussion_id, markdown)
+SELECT
+  NOW() - INTERVAL '30 minutes',
+  '018d224c-0e49-4b6d-b57a-87299605c2b3'::uuid,
+  d.id,
+  'Hey @{018d224c-0e49-4b6d-b57a-87299605c2b1} do you know if the CS2 server will be up this weekend? Would love to get a few games in!'
+FROM public.discussions d
+WHERE d.slug = 'looking-for-people-to-play-cs2-with';
 
 -- Insert test projects
 INSERT INTO public.projects(created_at, created_by, title, description, markdown, link, owner, tags, github)

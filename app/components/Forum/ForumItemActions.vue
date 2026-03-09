@@ -31,7 +31,26 @@ const userId = useUserId()
 const { user } = useCacheUserData(userId, { includeRole: true })
 
 // Locking
+const lockLoading = ref(false)
+const lockConfirm = ref(false)
+const lockError = ref<string | null>(null)
+const lockMode = ref<'lock' | 'unlock'>('lock')
+const lockTarget = computed(() => props.table === 'discussions' ? 'discussion' : 'topic')
+const lockTitle = computed(() => lockMode.value === 'lock'
+  ? `Lock ${lockTarget.value}`
+  : `Unlock ${lockTarget.value}`)
+const lockDescription = computed(() => {
+  if (lockMode.value === 'lock') {
+    return props.table === 'discussions' && user.value?.role !== 'admin' && user.value?.role !== 'moderator'
+      ? `Are you sure you want to lock this ${lockTarget.value}? Only admins and moderators will be able to unlock it.`
+      : `Are you sure you want to lock this ${lockTarget.value}?`
+  }
+  return `Are you sure you want to unlock this ${lockTarget.value}?`
+})
+
 function handleLock(mode: 'lock' | 'unlock') {
+  lockError.value = null
+  lockLoading.value = true
   dropdownRef.value?.close()
 
   supabase
@@ -44,6 +63,7 @@ function handleLock(mode: 'lock' | 'unlock') {
       const itemAction = mode === 'lock' ? 'locked' : 'unlocked'
 
       if (error) {
+        lockError.value = error.message
         pushToast(`The ${itemType} could not be ${itemAction}`, {
           description: error.message,
         })
@@ -51,7 +71,10 @@ function handleLock(mode: 'lock' | 'unlock') {
       else {
         pushToast(`The ${itemType} has been ${itemAction}`)
         emit('update', data[0] as Props['data'])
+        lockConfirm.value = false
       }
+
+      lockLoading.value = false
     })
 }
 
@@ -180,10 +203,14 @@ function handleDelete() {
         </slot>
       </template>
       <!-- Locking - topic & discussion  -->
-      <DropdownItem v-if="props.data.is_locked" @click="handleLock('unlock')">
+      <!-- Unlock is restricted to admins/moderators; authors can only lock -->
+      <DropdownItem
+        v-if="props.data.is_locked && (user?.role === 'admin' || user?.role === 'moderator')"
+        @click="lockMode = 'unlock'; lockConfirm = true"
+      >
         Unlock
       </DropdownItem>
-      <DropdownItem v-else @click="handleLock('lock')">
+      <DropdownItem v-else-if="!props.data.is_locked" @click="lockMode = 'lock'; lockConfirm = true">
         Lock
       </DropdownItem>
 
@@ -228,6 +255,19 @@ function handleDelete() {
         Delete
       </DropdownItem>
     </Dropdown>
+
+    <!-- Confirmation modal for locking -->
+    <ConfirmModal
+      v-model:open="lockConfirm"
+      :confirm-loading="lockLoading"
+      :title="lockTitle"
+      :description="lockDescription"
+      @confirm="handleLock(lockMode)"
+    >
+      <Alert v-if="lockError">
+        {{ lockError }}
+      </Alert>
+    </ConfirmModal>
 
     <!-- Confirmation modal for archiving & deletion -->
     <!-- @confirm="handleArchive" -->

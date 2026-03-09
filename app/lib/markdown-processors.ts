@@ -121,6 +121,30 @@ export function extractMentionIds(markdown: string): string[] {
  * @param markdown The markdown content to process
  * @returns The processed markdown with mentions converted to links
  */
+// ---------------------------------------------------------------------------
+// Color tag pre-processor
+// ---------------------------------------------------------------------------
+
+/**
+ * Converts :::color[#rrggbb]text::: directives into inline HTML spans that
+ * MDC / rehype-raw will render as styled text.  Only valid 6-digit hex colors
+ * are accepted; anything else is left untouched so no arbitrary CSS expressions
+ * can be injected.
+ *
+ * Nesting is intentionally not supported — the outer directive wins.
+ */
+export function processColorTags(markdown: string): string {
+  if (!markdown)
+    return ''
+
+  return markdown.replace(
+    /:::color\[(#[0-9a-f]{6})\]([\s\S]*?):::/gi,
+    (_full, color: string, inner: string) => {
+      return `<span style="color: ${color.toLowerCase()}">${inner}</span>`
+    },
+  )
+}
+
 export function processMentions(markdown: string): string {
   if (!markdown)
     return ''
@@ -128,6 +152,9 @@ export function processMentions(markdown: string): string {
   // Convert TipTap YouTube directives to raw HTML iframes first so that MDC
   // doesn't see the `:::youtube` syntax it cannot parse.
   markdown = processYoutubeDirectives(markdown)
+
+  // Convert :::color[#rrggbb]text::: directives into inline HTML spans.
+  markdown = processColorTags(markdown)
 
   // Pattern to match mention IDs stored as @{uuid}
   const mentionIdPatternBraced = /@\{([0-9a-f-]{36})\}/gi
@@ -227,6 +254,8 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
   return content
     // 0a. Remove YouTube directives: :::youtube {src="..." ...} :::
     .replace(/:::youtube(?:\s+\{[^}]*\})?\s*:::/g, '')
+    // 0b-pre. Remove color directives: :::color[#rrggbb]text::: → keep inner text
+    .replace(/:::color\[#[0-9a-f]{6}\]([\s\S]*?):::/gi, '$1')
     // 0b. Remove block math: $$...$$
     .replace(/\$\$[\s\S]*?\$\$/g, '')
     // 0c. Remove inline math: $...$  (avoid matching lone $ signs like currency $5)

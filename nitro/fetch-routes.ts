@@ -108,7 +108,7 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
           lastmod: item.modified_at,
         }
       },
-      'profile_id=is.null',
+      'profile_id=is.null&is_nsfw=eq.false',
     ),
 
     fetchIds<{ id: number, created_at: string, modified_at: string | null }>(
