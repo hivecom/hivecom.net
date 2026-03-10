@@ -4,6 +4,7 @@ import { computed, toRefs, useSlots } from 'vue'
 
 interface Props {
   text?: string
+  description?: string | null
   icon?: string
   badge?: string | number | null
   highlight?: boolean
@@ -13,6 +14,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   text: '',
+  description: null,
   icon: undefined,
   badge: null,
   highlight: false,
@@ -22,6 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const {
   text,
+  description,
   icon,
   badge,
   highlight,
@@ -61,7 +64,7 @@ function handleCardClick() {
       <Flex gap="xs" y-center class="notification-card__main">
         <Flex
           v-if="icon"
-          class="p-m notification-card__icon-container"
+          class="notification-card__icon-container"
           :class="{
             'notification-card__icon-container--highlight': highlight,
             'notification-card__icon-container--shiny': shiny,
@@ -69,9 +72,10 @@ function handleCardClick() {
         >
           <Icon :name="icon" class="notification-card__icon" />
         </Flex>
-        <p v-if="text" class="notification-card__text">
-          {{ text }}
-        </p>
+        <div v-if="text || description" class="notification-card__text">
+          <span v-if="text" class="notification-card__title">{{ text }}</span>
+          <span v-if="description" class="notification-card__description">{{ description }}</span>
+        </div>
         <div v-if="hasInlineContent" class="notification-card__extra">
           <slot />
         </div>
@@ -149,6 +153,7 @@ function handleCardClick() {
   }
 
   &__main {
+    min-width: 256px !important;
     flex: 1;
     min-width: 0;
   }
@@ -158,6 +163,7 @@ function handleCardClick() {
   }
 
   &__icon-container {
+    padding: var(--space-m);
     background-color: var(--color-bg-raised);
     border-right: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
     border-radius: var(--border-radius-s);
@@ -202,7 +208,8 @@ function handleCardClick() {
   }
 
   &__title {
-    margin: 0;
+    font-size: var(--font-size-s);
+    font-weight: var(--font-weight-semibold);
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
@@ -210,9 +217,8 @@ function handleCardClick() {
   }
 
   &__description {
-    margin: 0;
     font-size: var(--font-size-xs);
-    color: var(--color-text-muted);
+    color: var(--color-text-lighter);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

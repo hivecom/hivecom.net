@@ -222,13 +222,13 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
     </template>
 
     <div v-if="hasBadges" class="badges-stack">
-      <div
+      <Flex
         v-for="badge in profileBadgesToRender"
         :key="`profile-badge-${badge.id}`"
-        class="badges-stack__item"
+        x-center
       >
         <component :is="badge.component" v-bind="badge.componentProps ?? {}" />
-      </div>
+      </Flex>
     </div>
 
     <Flex v-else column y-center x-center class="badges-empty">
@@ -283,12 +283,6 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
   gap: var(--space-m);
   width: 100%;
   // padding-block: var(--space-m) 0;
-}
-
-.badges-stack__item {
-  width: 100%;
-  display: flex;
-  justify-content: center;
 }
 
 .badges-empty {

@@ -518,11 +518,11 @@ onMounted(fetchComplaints)
 
       <!-- Pagination -->
       <Flex v-if="totalPages > 1" x-center class="pagination-container">
-        <div class="pagination-placeholder">
+        <Flex column x-center gap="s">
           <p class="text-s text-color-light">
             Showing {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredComplaints.length) }} of {{ filteredComplaints.length }} complaints
           </p>
-          <div class="pagination-buttons">
+          <Flex y-center gap="m">
             <Button
               v-if="currentPage > 1"
               variant="gray"
@@ -542,8 +542,8 @@ onMounted(fetchComplaints)
             >
               Next
             </Button>
-          </div>
-        </div>
+          </Flex>
+        </Flex>
       </Flex>
     </Flex>
 
@@ -564,19 +564,6 @@ onMounted(fetchComplaints)
 <style scoped lang="scss">
 .pagination-container {
   margin-top: var(--space-l);
-}
-
-.pagination-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-s);
-}
-
-.pagination-buttons {
-  display: flex;
-  align-items: center;
-  gap: var(--space-m);
 }
 
 .pagination-current {

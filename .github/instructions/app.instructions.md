@@ -1,6 +1,7 @@
 # App (Nuxt) Instructions
 
 - Use VUI first: prefer `@dolanske/vui` primitives (`<Flex>`, buttons, inputs, tabs, cards, alerts, spinners, tables) over custom elements or utility classes. Remove bespoke flex/grid CSS when a VUI prop (`gap`, `x-center`, `y-center`, `wrap`, `align`, `justify`) covers it.
+- When modifying any UI, use the `/vui-ui` chat slash command to apply VUI/CSS-token guardrails before making changes.
 - Reuse existing components under `app/components/**`; if a pattern recurs (button+modal, card layout, list item), extract/extend a component rather than restyling per page. Keep page files thin composition shells.
 - Keep SCSS minimal and co-located. Reach for theme tokens/variants before adding ad-hoc classes; avoid new global styles unless absolutely necessary.
 - Follow Nuxt conventions: `<script setup>`, `defineProps/defineEmits`, composables from `app/composables/**`, and alias imports (`@/components/...`, `@/lib/...`).

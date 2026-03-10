@@ -147,86 +147,80 @@ function getGrowthIndicator(growth: number | null) {
 <template>
   <div v-if="historicalData.length > 0 || props.monthlyFunding.length > 0">
     <!-- Year Filter -->
-    <Flex x-between y-center class="mb-l">
+    <Flex x-between y-center expand class="funding-history__header">
       <h2>Funding History</h2>
       <Select
         v-if="availableYears.length > 1"
         v-model="selectedYearOption"
         :options="yearOptions"
         single
-        style="width: 8rem;"
+        class="funding-history__year-select"
       />
     </Flex>
 
     <!-- Funding History -->
-    <div v-if="historicalData.length > 0">
+    <Flex v-if="historicalData.length > 0" column gap="l">
       <!-- Latest Month - Full Card (current year only) -->
-      <Card v-if="historicalData[0] && isCurrentYear" class="p-l mb-l">
+      <Card v-if="historicalData[0] && isCurrentYear" class="p-l">
         <!-- Header with month -->
-        <Flex x-between y-center class="mb-l">
-          <Flex y-center gap="s">
-            <h3 class="text-bold text-xxxl">
-              {{ historicalData[0].monthName }}
-            </h3>
-            <Badge v-if="!isBelowExtraSmall" variant="accent">
-              Latest
-            </Badge>
+        <Flex column gap="l" expand>
+          <Flex x-between y-center>
+            <Flex y-center gap="s">
+              <h3 class="text-bold text-xxxl">
+                {{ historicalData[0].monthName }}
+              </h3>
+              <Badge v-if="!isBelowExtraSmall" variant="accent">
+                Latest
+              </Badge>
+            </Flex>
+
+            <!-- Total monthly funding highlight -->
+            <Flex column x-end class="text-right">
+              <span class="text-xs text-color-light">Month-to-date</span>
+              <span class="text-bold text-xxxl">{{ formatCurrency(historicalData[0].totalMonthly) }}</span>
+            </Flex>
           </Flex>
 
-          <!-- Total monthly funding highlight -->
-          <div class="text-right">
-            <div class="text-xs text-color-light mb-xs">
-              Month-to-date
-            </div>
-            <div class="text-bold text-xxxl">
-              {{ formatCurrency(historicalData[0].totalMonthly) }}
-            </div>
-          </div>
+          <!-- Funding source cards -->
+          <Grid :columns="2" gap="m" expand>
+            <!-- Patreon Card -->
+            <Card class="p-m">
+              <Flex column gap="xs">
+                <Flex x-between y-center>
+                  <span class="text-s text-bold text-color-light">Patreon</span>
+                  <Icon name="ph:patreon-logo" size="2rem" class="color-accent" />
+                </Flex>
+                <span class="text-l text-bold">{{ formatCurrency(historicalData[0].patreonMonthly) }}</span>
+                <span class="text-xs text-color-light">
+                  {{ historicalData[0].supporterCount || 0 }} {{ historicalData[0].supporterCount === 1 ? 'patron' : 'patrons' }}
+                </span>
+              </Flex>
+            </Card>
+
+            <!-- Single Donations Card -->
+            <Card class="p-m">
+              <Flex column gap="xs">
+                <Flex x-between y-center>
+                  <span class="text-s text-bold text-color-light">Single Donations</span>
+                  <Icon name="ph:coin-fill" size="2rem" class="color-accent" />
+                </Flex>
+                <span class="text-l text-bold">{{ formatCurrency(historicalData[0].donationMonthly) }}</span>
+                <span class="text-xs text-color-light">
+                  {{ historicalData[0].donationCount || 0 }} {{ historicalData[0].donationCount === 1 ? 'donation' : 'donations' }}
+                </span>
+              </Flex>
+            </Card>
+          </Grid>
         </Flex>
-
-        <!-- Funding source cards -->
-        <Grid :columns="2" gap="m">
-          <!-- Patreon Card -->
-          <Card class="p-m">
-            <Flex x-between y-start class="mb-s">
-              <div class="text-s text-bold text-color-light">
-                Patreon
-              </div>
-              <Icon name="ph:patreon-logo" size="2rem" class="color-accent" />
-            </Flex>
-            <div class="text-l text-bold mb-xs">
-              {{ formatCurrency(historicalData[0].patreonMonthly) }}
-            </div>
-            <div class="text-xs text-color-light">
-              {{ historicalData[0].supporterCount || 0 }} {{ historicalData[0].supporterCount === 1 ? 'patron' : 'patrons' }}
-            </div>
-          </Card>
-
-          <!-- Single Donations Card -->
-          <Card class="p-m">
-            <Flex x-between y-start class="mb-s">
-              <div class="text-s text-bold text-color-light">
-                Single Donations
-              </div>
-              <Icon name="ph:coin-fill" size="2rem" class="color-accent" />
-            </Flex>
-            <div class="text-l text-bold mb-xs">
-              {{ formatCurrency(historicalData[0].donationMonthly) }}
-            </div>
-            <div class="text-xs text-color-light">
-              {{ historicalData[0].donationCount || 0 }} {{ historicalData[0].donationCount === 1 ? 'donation' : 'donations' }}
-            </div>
-          </Card>
-        </Grid>
       </Card>
 
       <!-- Previous Months - Table -->
-      <div v-if="isCurrentYear ? historicalData.length > 1 : historicalData.length > 0">
-        <h3 v-if="isCurrentYear" class="text-bold mb-m">
+      <Flex v-if="isCurrentYear ? historicalData.length > 1 : historicalData.length > 0" column expand>
+        <h3 v-if="isCurrentYear" class="text-bold text-semibold">
           Previous Months
         </h3>
         <TableContainer>
-          <Table.Root v-if="rows.length > 0" separate-cells class="mb-l table-container">
+          <Table.Root v-if="rows.length > 0" separate-cells class="table-container">
             <template #header>
               <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" :header />
             </template>
@@ -274,8 +268,8 @@ function getGrowthIndicator(growth: number | null) {
             </template>
           </Table.Root>
         </TableContainer>
-      </div>
-    </div>
+      </Flex>
+    </Flex>
 
     <!-- Show more message if there's more data -->
     <Card v-if="historicalData.length > 25" class="mt-m">
@@ -298,11 +292,11 @@ function getGrowthIndicator(growth: number | null) {
 </template>
 
 <style scoped lang="scss">
-.space-y-xs > * + * {
-  margin-top: 0.25rem;
+.funding-history__header {
+  margin-bottom: var(--space-l);
 }
 
-.mb-l {
-  margin-bottom: var(--space-l);
+.funding-history__year-select {
+  width: 8rem;
 }
 </style>

@@ -370,7 +370,7 @@ async function handleNotificationClick(notification: NotificationRow) {
         </Button>
       </Flex>
 
-      <div class="notification-menu__body">
+      <Flex column gap="xs" class="notification-menu__body">
         <template v-if="loading">
           <NotificationCardLoading
             v-for="index in loadingCardCount"
@@ -432,7 +432,7 @@ async function handleNotificationClick(notification: NotificationRow) {
 
           <NotificationCardEmpty v-if="showEmptyCard" />
         </template>
-      </div>
+      </Flex>
     </Popout>
   </div>
 </template>
@@ -466,14 +466,6 @@ async function handleNotificationClick(notification: NotificationRow) {
     justify-content: center;
   }
 
-  &__title-row {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-m);
-  }
-
   &__title {
     padding-left: var(--space-xxs);
     margin: 0;
@@ -482,9 +474,6 @@ async function handleNotificationClick(notification: NotificationRow) {
   }
 
   &__body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
     padding: var(--space-xs);
     padding-top: 0;
     width: 328px;

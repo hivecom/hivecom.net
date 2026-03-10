@@ -510,7 +510,7 @@ function updateHoveredElement(event: MouseEvent) {
 }
 
 /* We make a custom breakpoint here simply because the navigation is a bit of an edge case */
-@media (max-width: 864px) {
+@media (max-width: 920px) {
   .navigation {
     &__items {
       justify-content: space-between;

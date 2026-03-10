@@ -130,7 +130,7 @@ const emptyStateText = computed(() => {
     </Flex>
 
     <!-- Replies List -->
-    <div v-else-if="hasReplies" class="profile-discussions__list">
+    <Flex v-else-if="hasReplies" column class="profile-discussions__list">
       <NuxtLink
         v-for="reply in replies"
         :key="reply.id"
@@ -138,15 +138,15 @@ const emptyStateText = computed(() => {
         class="profile-discussions__item"
       >
         <Flex x-between y-center expand class="profile-discussions__item-header">
-          <span class="profile-discussions__context">
+          <Flex y-center gap="xxs" class="profile-discussions__context">
             <Icon name="ph:chats-circle" :size="12" />
             Reply in <strong>{{ reply.discussionTitle ?? 'Discussion' }}</strong>
-          </span>
+          </Flex>
           <span class="profile-discussions__timestamp">{{ dayjs(reply.created_at).fromNow() }}</span>
         </Flex>
         <MarkdownPreview :markdown="reply.markdown" :max-length="120" class="profile-discussions__content" />
       </NuxtLink>
-    </div>
+    </Flex>
 
     <!-- Empty State -->
     <Flex v-else column y-center x-center class="profile-discussions__empty">
@@ -168,11 +168,6 @@ const emptyStateText = computed(() => {
 
   &__loading {
     padding: 0;
-  }
-
-  &__list {
-    display: flex;
-    flex-direction: column;
   }
 
   &__item {
@@ -206,9 +201,6 @@ const emptyStateText = computed(() => {
   }
 
   &__context {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xxs);
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
     white-space: nowrap;

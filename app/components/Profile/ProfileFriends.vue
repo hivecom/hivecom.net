@@ -93,8 +93,8 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
     </div>
 
     <!-- Loading State -->
-    <div v-else-if="loading" class="friends-loading">
-      <Flex :gap="8" class="friends-loading__avatars">
+    <Flex v-else-if="loading" x-center>
+      <Flex :gap="8">
         <div
           v-for="index in 6"
           :key="`friends-loading-avatar-${index}`"
@@ -103,10 +103,10 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
           <Skeleton width="100%" height="100%" class="friends-loading__avatar-skeleton" />
         </div>
       </Flex>
-    </div>
+    </Flex>
 
     <!-- Friends Avatar Display -->
-    <div v-else-if="friends.length > 0 && isLoggedIn" class="friends-content">
+    <Flex v-else-if="friends.length > 0 && isLoggedIn" column gap="m">
       <Alert v-if="pendingUsers.size > 0 && props.isOwnProfile" icon-align="start">
         <p>
           You have {{ pendingUsers.size }} pending friend request{{ pendingUsers.size > 1 ? 's' : '' }} from
@@ -123,7 +123,7 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
         :show-names="true"
         :gap="8"
       />
-    </div>
+    </Flex>
 
     <!-- Empty State -->
     <div v-else-if="isLoggedIn" class="friends-empty">
@@ -251,17 +251,6 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
   }
 }
 
-.friends-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-m);
-}
-
-.friends-loading {
-  display: flex;
-  justify-content: center;
-}
-
 .friends-loading__avatar {
   width: 40px;
   height: 40px;
@@ -272,20 +261,4 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
 .friends-loading__avatar-skeleton {
   border-radius: 50%;
 }
-
-.friends-loading__avatars {
-  display: inline-flex;
-  gap: 0;
-  min-height: 36px;
-  justify-content: center;
-  align-items: center;
-  width: fit-content;
-  margin: 0 auto;
-}
-
-// .friends-empty {
-//   p {
-//     margin: 0;
-//   }
-// }
 </style>

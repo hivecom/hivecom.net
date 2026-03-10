@@ -111,20 +111,20 @@ watch(() => props.userId, refetchActivity, { immediate: true })
 
 <template>
   <div v-if="!loading" class="user-preview-card">
-    <div v-if="!props.userId" class="user-preview-card__state user-preview-card__state--empty">
+    <div v-if="!props.userId" class="user-preview-card__state text-center text-color-light">
       <p>Select a user to preview.</p>
     </div>
 
     <template v-else-if="isExpectedEmpty" />
 
-    <div v-else-if="error || !user" class="user-preview-card__state user-preview-card__state--error">
+    <Flex v-else-if="error || !user" column y-center gap="s" class="user-preview-card__state text-center text-color-light">
       <p>{{ error ?? 'We could not load this profile right now.' }}</p>
       <Button size="s" variant="gray" @click="handleRetry">
         Retry
       </Button>
-    </div>
+    </Flex>
 
-    <div v-else class="user-preview-card__content">
+    <Flex v-else column>
       <Flex expand x-between class="user-preview-card__header">
         <Flex>
           <NuxtLink
@@ -158,8 +158,8 @@ watch(() => props.userId, refetchActivity, { immediate: true })
         />
       </Flex>
 
-      <div class="user-preview-card__identity">
-        <div class="user-preview-card__name-row">
+      <Flex column gap="xs" class="user-preview-card__identity">
+        <Flex y-center wrap gap="xs">
           <NuxtLink
             v-if="profileLink"
             :to="profileLink"
@@ -171,7 +171,7 @@ watch(() => props.userId, refetchActivity, { immediate: true })
             {{ user.username }}
           </span>
           <RoleIndicator v-if="user.role" :role="user.role" size="s" />
-        </div>
+        </Flex>
 
         <Flex expand x-between>
           <p v-if="memberSince" class="user-preview-card__meta text-xs">
@@ -181,7 +181,7 @@ watch(() => props.userId, refetchActivity, { immediate: true })
             {{ countryInfo.name }} {{ countryInfo.emoji }}
           </p>
         </Flex>
-      </div>
+      </Flex>
 
       <div v-if="hasCustomIntroduction">
         <Divider />
@@ -190,34 +190,34 @@ watch(() => props.userId, refetchActivity, { immediate: true })
           {{ introductionText }}
         </p>
       </div>
+    </Flex>
 
-      <Flex v-if="activity && props.showActivity" column gap="xxs" expand class="user-preview-card__activity">
-        <ActivitySteam
-          v-if="activity.steam_id"
-          :profile-id="user.id"
-          :steam-id="activity.steam_id"
-          :is-own-profile="false"
-        />
+    <Flex v-if="activity && props.showActivity && user" column gap="xxs" expand class="user-preview-card__activity">
+      <ActivitySteam
+        v-if="activity.steam_id"
+        :profile-id="user.id"
+        :steam-id="activity.steam_id"
+        :is-own-profile="false"
+      />
 
-        <ActivityTeamspeak
-          v-if="activity.teamspeak_identities && activity.teamspeak_identities.length > 0"
-          :profile-id="user.id"
-          :teamspeak-identities="activity.teamspeak_identities"
-          :is-own-profile="false"
-        />
-      </Flex>
-    </div>
+      <ActivityTeamspeak
+        v-if="activity.teamspeak_identities && activity.teamspeak_identities.length > 0"
+        :profile-id="user.id"
+        :teamspeak-identities="activity.teamspeak_identities"
+        :is-own-profile="false"
+      />
+    </Flex>
   </div>
 </template>
 
 <style scoped lang="scss">
 .user-preview-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-m);
   width: 320px;
   max-width: 100%;
   padding: var(--space-m);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-m);
 
   &__activity {
     margin-top: var(--space-s);
@@ -231,28 +231,6 @@ watch(() => props.userId, refetchActivity, { immediate: true })
   }
 }
 
-// .user-preview-card__avatar {
-//   min-width: 64px;
-//   min-height: 64px;
-// }
-
-.user-preview-card__content {
-  display: flex;
-  flex-direction: column;
-}
-
-.user-preview-card__state {
-  text-align: center;
-  color: var(--color-text-light);
-}
-
-.user-preview-card__state--error {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-s);
-  align-items: center;
-}
-
 .user-preview-card__header {
   margin-bottom: var(--space-m);
 }
@@ -262,17 +240,7 @@ watch(() => props.userId, refetchActivity, { immediate: true })
 }
 
 .user-preview-card__identity {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
   text-align: left;
-}
-
-.user-preview-card__name-row {
-  display: inline-flex;
-  gap: var(--space-xs);
-  align-items: center;
-  flex-wrap: wrap;
 }
 
 .user-preview-card__name {
@@ -300,18 +268,11 @@ watch(() => props.userId, refetchActivity, { immediate: true })
   padding-top: 12px;
 }
 
-.user-preview-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-s);
-  align-items: center;
-}
-
 .user-preview-card__cta {
   text-decoration: none;
 }
 
-.user-preview-card__state--empty p {
+.user-preview-card__state p {
   margin: 0;
 }
 </style>

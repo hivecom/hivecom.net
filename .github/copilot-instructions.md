@@ -2,6 +2,7 @@
 
 - ALWAYS CHECK FILES FOR PROBLEMS AFTER MAKING CHANGES.
 - THIS PROJECT DOES NOT USE TAILWIND. DO NOT ADD TAILWIND CLASSES.
+- DON'T USE EMDASHES. USE NORMAL DASHES.
 
 ## Environment & Tooling
 
@@ -20,6 +21,7 @@
 ## Frontend Guidelines (Nuxt 4 + VUI)
 
 - Prefer VUI components from `@dolanske/vui` for layout and widgets: use `<Flex>` and other primitives instead of custom flex CSS; lean on VUI buttons, inputs, tabs, cards, alerts, spinners, etc. before adding bespoke markup.
+- When modifying any UI, use the `/vui-ui` chat slash command to apply VUI/CSS-token guardrails before making changes.
 - Avoid custom CSS/utility classes when a VUI prop or component exists; remove ad-hoc style classes in favor of VUI variants and spacing props (e.g., `gap`, `x-center`, `y-center`).
 - Reuse existing local components in `app/components/**` before introducing new styles; if a pattern recurs, extract/extend a component rather than duplicating styles.
 - Functionally decompose: modals, buttons-with-modals, and complex UI chunks should live in dedicated components, not page files; keep pages as thin composition shells.

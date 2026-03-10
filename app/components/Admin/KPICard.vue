@@ -22,7 +22,7 @@ defineProps<{
         </div>
         <Flex class="kpi-card__label" y-center x-between expand>
           {{ label }}
-          <div v-if="description" class="kpi-card__description-icon">
+          <Flex v-if="description" y-center>
             <Tooltip placement="top">
               <Icon name="ph:info" size="18" class="kpi-card__info-icon" />
               <template #tooltip>
@@ -31,19 +31,17 @@ defineProps<{
                 </p>
               </template>
             </Tooltip>
-          </div>
+          </Flex>
         </Flex>
       </Flex>
-      <div class="kpi-card__content">
-        <div v-if="isLoading" class="kpi-card__value-container">
-          <Skeleton :height="32" width="60%" />
-        </div>
-        <div v-else class="kpi-card__value-row">
+      <Flex column expand>
+        <Skeleton v-if="isLoading" :height="32" width="60%" class="mt-xs" />
+        <Flex v-else y-center gap="xs" class="mt-xs">
           <div class="kpi-card__value" :class="`kpi-card__value--${variant || 'primary'}`">
             {{ prefix }}{{ value }}{{ suffix }}
           </div>
-        </div>
-      </div>
+        </Flex>
+      </Flex>
     </Flex>
   </Card>
 </template>
@@ -90,28 +88,11 @@ defineProps<{
     }
   }
 
-  &__content {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-  }
-
   &__label {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
     color: var(--color-text-light);
     line-height: 1.5em;
-  }
-
-  &__value-container {
-    margin-top: var(--space-xs);
-  }
-
-  &__value-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    margin-top: var(--space-xs);
   }
 
   &__value {
@@ -135,11 +116,6 @@ defineProps<{
     &--gray {
       color: var(--color-text);
     }
-  }
-
-  &__description-icon {
-    display: flex;
-    align-items: center;
   }
 
   &__info-icon {

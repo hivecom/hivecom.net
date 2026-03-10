@@ -206,7 +206,7 @@ onBeforeMount(fetchRolePermissions)
             </Flex>
           </template>
 
-          <Flex column gap="m">
+          <Flex column gap="m" expand>
             <template v-for="j in (i === 1 ? 8 : i === 2 ? 6 : 4)" :key="j">
               <Flex y-center gap="xs" expand>
                 <Skeleton :width="16" :height="16" :radius="2" />
@@ -216,7 +216,7 @@ onBeforeMount(fetchRolePermissions)
 
               <Flex class="permissions-list" style="padding-right: 24px;" gap="s" expand column>
                 <template v-for="k in (Math.floor(Math.random() * 3) + 2)" :key="k">
-                  <Flex y-center gap="xs" class="permission-item">
+                  <Flex y-center gap="xs" class="permission-item" expand>
                     <Skeleton :width="12" :height="12" :radius="50" />
                     <Skeleton :height="16" :radius="4" />
                   </Flex>
@@ -259,9 +259,9 @@ onBeforeMount(fetchRolePermissions)
           </Flex>
         </template>
 
-        <div v-if="Object.keys(groupedPermissions[role] ?? {}).length > 0" class="permissions-container">
-          <div v-for="(permissions, category) in groupedPermissions[role]" :key="category" class="permission-category">
-            <Flex y-center gap="xs" class="category-header">
+        <Flex v-if="Object.keys(groupedPermissions[role] ?? {}).length > 0" column gap="l" class="permissions-container">
+          <Flex v-for="(permissions, category) in groupedPermissions[role]" :key="category" column gap="xs" expand>
+            <Flex y-center gap="xs" class="mb-xxs">
               <Icon :name="getCategoryIcon(category)" size="14" class="category-icon" />
               <h4 class="category-title">
                 {{ formatCategoryName(category) }}
@@ -269,28 +269,27 @@ onBeforeMount(fetchRolePermissions)
               <span class="text-color-light text-xs">({{ permissions.length }})</span>
             </Flex>
 
-            <div class="permissions-list">
-              <div v-for="permission in permissions" :key="permission" class="permission-item">
-                <!-- <Icon name="ph:check-circle" class="permission-check" size="14" /> -->
+            <Flex column gap="xxs" class="permissions-list" expand>
+              <Flex v-for="permission in permissions" :key="permission" y-center gap="xs" class="permission-item" expand style="width:96%">
                 <span class="permission-text">{{ formatPermissionName(permission) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+              </Flex>
+            </Flex>
+          </Flex>
+        </Flex>
 
-        <div v-else-if="search" class="no-permissions">
+        <Flex v-else-if="search" y-center x-center gap="s" class="no-permissions">
           <Icon name="ph:warning-circle" size="1.2rem" class="text-color-light" />
           <p class="text-color-light">
             No permissions found
           </p>
-        </div>
+        </Flex>
 
-        <div v-else class="no-permissions">
+        <Flex v-else y-center x-center gap="s" class="no-permissions">
           <Icon name="ph:warning-circle" size="1.2rem" class="text-color-light" />
           <p class="text-color-light">
             No permissions assigned
           </p>
-        </div>
+        </Flex>
       </Card>
     </Grid>
   </template>
@@ -318,25 +317,11 @@ onBeforeMount(fetchRolePermissions)
 }
 
 .permissions-container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-l);
-
   &:hover {
     .permission-text {
       color: var(--color-text);
     }
   }
-}
-
-.permission-category {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.category-header {
-  margin-bottom: var(--space-xxs);
 }
 
 .category-icon {
@@ -351,17 +336,11 @@ onBeforeMount(fetchRolePermissions)
 }
 
 .permissions-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xxs);
   margin-left: var(--space-l);
 }
 
 .permission-item {
-  width: 100% !important;
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
+  width: 100%;
   padding: var(--space-xs);
   background: var(--color-bg-raised);
   border-radius: var(--border-radius-s);
@@ -379,14 +358,10 @@ onBeforeMount(fetchRolePermissions)
 }
 
 .no-permissions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
   padding: var(--space-m);
   background: var(--color-bg-raised);
   border-radius: var(--border-radius-m);
   text-align: center;
-  justify-content: center;
 }
 
 @media (max-width: 768px) {

@@ -173,7 +173,7 @@ const PREVIEW_LENGTH = 120
         <Flex
           v-if="repliesExpanded"
           column
-          :gap="0"
+          :gap="1"
           class="discussion-comment-wrapper__thread-list"
         >
           <Button
@@ -269,13 +269,15 @@ const PREVIEW_LENGTH = 120
   }
 
   &__thread-toggle {
-    // Pill shape override on top of VUI plain button
-    border-radius: 99px !important;
-    font-size: var(--font-size-xs) !important;
-    color: var(--color-text-light) !important;
+    // Pill shape — VUI plain button doesn't have a pill variant
+    :deep(.vui-button) {
+      border-radius: 99px;
+      font-size: var(--font-size-xs);
+      color: var(--color-text-light);
 
-    &:hover {
-      color: var(--color-text) !important;
+      &:hover {
+        color: var(--color-text);
+      }
     }
   }
 
@@ -293,17 +295,18 @@ const PREVIEW_LENGTH = 120
   &__thread-list {
     margin-top: var(--space-xxs);
     overflow: hidden;
-    gap: 1px !important;
   }
 
   &__thread-row {
-    padding: 4px var(--space-xs) !important;
-    border-radius: var(--border-radius-s) !important;
-    text-align: left;
-    justify-content: flex-start !important;
+    :deep(.vui-button) {
+      padding: 4px var(--space-xs);
+      border-radius: var(--border-radius-s);
+      text-align: left;
+      justify-content: flex-start;
 
-    &:hover {
-      background-color: var(--color-bg-raised) !important;
+      &:hover {
+        background-color: var(--color-bg-raised);
+      }
     }
 
     &--offtopic {
@@ -319,19 +322,13 @@ const PREVIEW_LENGTH = 120
     flex-shrink: 0;
     // Override the default avatar size to be a touch smaller inline
     :deep(.vui-avatar) {
-      width: 18px !important;
-      height: 18px !important;
+      width: 18px;
+      height: 18px;
     }
   }
 
   &__thread-author {
     flex-shrink: 0;
-    // Keep the username compact
-    :deep(.user-display__link .user-display__username) {
-      font-size: var(--font-size-xs) !important;
-      font-weight: var(--font-weight-bold);
-      color: var(--color-text);
-    }
   }
 
   &__thread-preview {
