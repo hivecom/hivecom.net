@@ -488,6 +488,7 @@ const searchResults = computed<Command[]>(() => {
 
     const discussionResults: Command[] = topic.discussions
       .filter(discussion => settings.value.show_forum_archived || !discussion.is_archived)
+      .filter(discussion => settings.value.show_nsfw_content || !discussion.is_nsfw)
       .map((discussion, index) => {
         const fallbackTitle = discussion.title ?? `Discussion ${index + 1}`
 
@@ -509,9 +510,13 @@ const searchResults = computed<Command[]>(() => {
 
 // Sort results by most recently modified and by sticky (pinned)
 function sortDiscussions(discussions: ForumDiscussion[]) {
-  const filtered = settings.value.show_forum_archived
+  let filtered = settings.value.show_forum_archived
     ? discussions
     : discussions.filter(discussion => !discussion.is_archived)
+
+  if (!settings.value.show_nsfw_content) {
+    filtered = filtered.filter(discussion => !discussion.is_nsfw)
+  }
 
   return filtered.slice().sort((a, b) => {
     if (a.is_sticky && !b.is_sticky)
@@ -630,6 +635,7 @@ const visibleDiscussionIds = computed(() => {
       .filter(topic => settings.value.show_forum_archived || !topic.is_archived)
       .flatMap(topic => topic.discussions)
       .filter(discussion => settings.value.show_forum_archived || !discussion.is_archived)
+      .filter(discussion => settings.value.show_nsfw_content || !discussion.is_nsfw)
       .map(discussion => discussion.id),
   )
 })
@@ -644,6 +650,19 @@ const discussionLookup = computed(() => {
   })
 
   return lookup
+})
+
+// Filters the raw userActivity list reactively so toggling show_nsfw_content
+// immediately hides NSFW discussions from the "Recently visited" section.
+// discussionLookup already contains is_nsfw from the topics fetch.
+const visibleUserActivity = computed(() => {
+  if (settings.value.show_nsfw_content)
+    return userActivity.value
+
+  return userActivity.value.filter((item) => {
+    const discussion = discussionLookup.value.get(item.discussionId)
+    return !discussion?.is_nsfw
+  })
 })
 
 const visibleReplies = computed<ActivityItem[]>(() => {
@@ -908,7 +927,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         </div>
       </section>
 
-      <section v-if="settings.show_forum_recently_visited && userId && (userActivityLoading || userActivity.length > 0)" class="forum__continue">
+      <section v-if="settings.show_forum_recently_visited && userId && (userActivityLoading || visibleUserActivity.length > 0)" class="forum__continue">
         <h5 class="mb-s">
           Recently visited
         </h5>
@@ -920,8 +939,8 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
             </li>
           </ul>
 
-          <ul v-else-if="userActivity.length > 0" class="forum__continue-list">
-            <li v-for="item in userActivity" :key="item.id">
+          <ul v-else-if="visibleUserActivity.length > 0" class="forum__continue-list">
+            <li v-for="item in visibleUserActivity" :key="item.id">
               <NuxtLink :to="item.discussionHref" class="forum__continue-item">
                 <TinyBadge class="ws-nowrap text-color-light">
                   <Icon :name="item.type === 'Reply' ? 'ph:chat-circle' : 'ph:scroll'" :size="16" />

@@ -125,11 +125,35 @@ export function extractMentionIds(markdown: string): string[] {
 // Color tag pre-processor
 // ---------------------------------------------------------------------------
 
+// The canonical palette names must match those exported by the textColor plugin
+// and the CSS custom properties defined in app/assets/index.scss.
+const TEXT_COLOR_NAMES = new Set([
+  'red',
+  'orange',
+  'amber',
+  'yellow',
+  'lime',
+  'green',
+  'teal',
+  'blue',
+  'indigo',
+  'purple',
+  'fuchsia',
+  'pink',
+  'text-invert',
+  'text-lightest',
+  'text-lighter',
+  'text',
+])
+
 /**
- * Converts :::color[#rrggbb]text::: directives into inline HTML spans that
- * MDC / rehype-raw will render as styled text.  Only valid 6-digit hex colors
- * are accepted; anything else is left untouched so no arbitrary CSS expressions
- * can be injected.
+ * Converts :::color[name]text::: directives into inline HTML spans that
+ * MDC / rehype-raw will render as styled text.  Only palette color names
+ * defined in TEXT_COLOR_NAMES are accepted; anything else is left untouched
+ * so no arbitrary CSS expressions can be injected.
+ *
+ * The span carries both a data attribute (for the TipTap editor to round-trip
+ * the name cleanly) and an inline CSS variable reference (for static renders).
  *
  * Nesting is intentionally not supported — the outer directive wins.
  */
@@ -138,9 +162,74 @@ export function processColorTags(markdown: string): string {
     return ''
 
   return markdown.replace(
-    /:::color\[(#[0-9a-f]{6})\]([\s\S]*?):::/gi,
-    (_full, color: string, inner: string) => {
-      return `<span style="color: ${color.toLowerCase()}">${inner}</span>`
+    /:::color\[([a-z-]+)\]([\s\S]*?):::(?![a-z[])/gi,
+    (_full, name: string, inner: string) => {
+      const colorName = name.toLowerCase()
+      if (!TEXT_COLOR_NAMES.has(colorName))
+        return _full
+      return `<span data-text-color="${colorName}" style="color: var(--text-color-${colorName})">${inner}</span>`
+    },
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Font tag pre-processor
+// ---------------------------------------------------------------------------
+
+const TEXT_FONT_NAMES = new Set([
+  'sans',
+  'serif',
+  'mono',
+  'cursive',
+  'fantasy',
+])
+
+/**
+ * Converts :::font[name]text::: directives into inline HTML spans.
+ * Only palette font names defined in TEXT_FONT_NAMES are accepted.
+ */
+export function processFontTags(markdown: string): string {
+  if (!markdown)
+    return ''
+
+  return markdown.replace(
+    /:::font\[([a-z]+)\]([\s\S]*?):::(?![a-z[])/gi,
+    (_full, name: string, inner: string) => {
+      const fontName = name.toLowerCase()
+      if (!TEXT_FONT_NAMES.has(fontName))
+        return _full
+      return `<span data-text-font="${fontName}" style="font-family: var(--text-font-${fontName})">${inner}</span>`
+    },
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Size tag pre-processor
+// ---------------------------------------------------------------------------
+
+const TEXT_SIZE_NAMES = new Set([
+  'xs',
+  's',
+  'l',
+  'xl',
+  'xxl',
+])
+
+/**
+ * Converts :::size[name]text::: directives into inline HTML spans.
+ * Only palette size names defined in TEXT_SIZE_NAMES are accepted.
+ */
+export function processSizeTags(markdown: string): string {
+  if (!markdown)
+    return ''
+
+  return markdown.replace(
+    /:::size\[([a-z]+)\]([\s\S]*?):::(?![a-z[])/gi,
+    (_full, name: string, inner: string) => {
+      const sizeName = name.toLowerCase()
+      if (!TEXT_SIZE_NAMES.has(sizeName))
+        return _full
+      return `<span data-text-size="${sizeName}" style="font-size: var(--text-size-${sizeName})">${inner}</span>`
     },
   )
 }
@@ -153,8 +242,14 @@ export function processMentions(markdown: string): string {
   // doesn't see the `:::youtube` syntax it cannot parse.
   markdown = processYoutubeDirectives(markdown)
 
-  // Convert :::color[#rrggbb]text::: directives into inline HTML spans.
+  // Convert :::color[name]text::: directives into inline HTML spans.
   markdown = processColorTags(markdown)
+
+  // Convert :::font[name]text::: directives into inline HTML spans.
+  markdown = processFontTags(markdown)
+
+  // Convert :::size[name]text::: directives into inline HTML spans.
+  markdown = processSizeTags(markdown)
 
   // Pattern to match mention IDs stored as @{uuid}
   const mentionIdPatternBraced = /@\{([0-9a-f-]{36})\}/gi
@@ -242,6 +337,22 @@ export function isValidMentionUsername(username: string): boolean {
  * @param content Content to strip markdown out of
  * @param truncateAmount (optional) Optionally truncate the string to make the operation less expensive
  */
+// Iteratively strips nested :::color/font/size[name]text::: directives, keeping
+// only the inner text. The regex matches the innermost directive first by
+// requiring that the captured content contains no `:::` sequences — this ensures
+// we peel one layer at a time from the inside out, correctly handling arbitrary
+// nesting (e.g. :::size[xxl]:::font[serif]text:::::: → Test! in two passes).
+const INLINE_DIRECTIVE_RE = /:::(?:color|font|size)\[[a-z0-9#-]+\]((?:(?!:::)[\s\S])*?):::(?![a-z[])/gi
+
+function stripInlineDirectives(s: string): string {
+  let prev: string
+  do {
+    prev = s
+    s = s.replace(INLINE_DIRECTIVE_RE, '$1')
+  } while (s !== prev)
+  return s
+}
+
 export function stripMarkdown(content?: string | null, truncateAmount = 0) {
   if (typeof content !== 'string' || content.trim() === '') {
     return ''
@@ -251,11 +362,13 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
     content = truncate(content, truncateAmount)
   }
 
+  // 0b-pre. Remove inline directives: :::color/font/size[name]text::: → keep inner text
+  // Must run before the chain since it needs iterative application for nested directives.
+  content = stripInlineDirectives(content)
+
   return content
     // 0a. Remove YouTube directives: :::youtube {src="..." ...} :::
     .replace(/:::youtube(?:\s+\{[^}]*\})?\s*:::/g, '')
-    // 0b-pre. Remove color directives: :::color[#rrggbb]text::: → keep inner text
-    .replace(/:::color\[#[0-9a-f]{6}\]([\s\S]*?):::/gi, '$1')
     // 0b. Remove block math: $$...$$
     .replace(/\$\$[\s\S]*?\$\$/g, '')
     // 0c. Remove inline math: $...$  (avoid matching lone $ signs like currency $5)

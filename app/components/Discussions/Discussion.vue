@@ -69,6 +69,10 @@ const props = withDefaults(defineProps<Props>(), {
   placeholder: 'Leave your comment...',
 })
 
+const emit = defineEmits<{
+  replySubmitted: [newReplyCount: number]
+}>()
+
 const MAX_COMMENT_CHARS = 8192
 
 // If user isn't signed it, do not allow commenting
@@ -396,6 +400,9 @@ async function submitReply() {
         form.message = ''
         form.is_nsfw = false
         comments.value.push(res.data as RawComment)
+        // Notify parent so the forum unread state can be updated, preventing
+        // a spurious activity indicator when the user was the last poster.
+        emit('replySubmitted', comments.value.length)
       }
 
       formLoading.value = false

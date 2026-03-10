@@ -172,6 +172,12 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
     if (!includeAvatar)
       return null
 
+    // Don't attempt to fetch avatars when the user is not authenticated –
+    // RLS will block the storage list call and the null result would be
+    // cached, preventing the avatar from loading once the user signs in.
+    if (!currentUser.value)
+      return null
+
     const cacheKey = getCacheKeys(id).avatar
 
     // Check cache first
@@ -434,7 +440,10 @@ export function useBulkUserData(userIds: Ref<string[]>, options: useCacheUserDat
         return false
       })
       const roleIdsToFetch = includeRole ? ids.filter(id => !cache.has(`user:role:${id}`)) : []
-      const avatarIdsToFetch = includeAvatar ? ids.filter(id => !cache.has(`user:avatar:${id}`)) : []
+      // Don't attempt to fetch avatars when the user is not authenticated –
+      // RLS will block the storage list call and the null result would be
+      // cached, preventing avatars from loading once the user signs in.
+      const avatarIdsToFetch = includeAvatar && currentUser.value ? ids.filter(id => !cache.has(`user:avatar:${id}`)) : []
 
       const [profileResults, roleResults] = await Promise.all([
         profileIdsToFetch.length > 0

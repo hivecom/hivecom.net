@@ -11,6 +11,7 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useForumUnread } from '@/composables/useForumUnread'
 import { stripMarkdown } from '@/lib/markdown-processors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDate } from '@/lib/utils/date'
@@ -37,6 +38,7 @@ const route = useRoute()
 const router = useRouter()
 
 const { settings } = useUserSettings()
+const forumUnread = useForumUnread()
 
 const identifier = route.params.id as string
 
@@ -52,6 +54,7 @@ const post = ref<DiscussionWithContext | null>(null)
 const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
 const publishConfirmOpen = ref(false)
 const showNSFWWarning = ref(false)
+const nsfwRevealed = ref(false)
 
 const isMobile = useBreakpoint('<m')
 
@@ -217,7 +220,12 @@ onBeforeMount(() => {
       }
       else {
         post.value = data
-        showNSFWWarning.value = !!data.is_nsfw
+        // Show the NSFW overlay only when the post is NSFW and the user has
+        // warnings enabled. If they have show_nsfw_content disabled entirely,
+        // the watchEffect below will redirect them away instead.
+        showNSFWWarning.value = !!data.is_nsfw && settings.value.show_nsfw_warning
+        // If warnings are disabled but content is allowed, consider it auto-revealed
+        nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
         void loadTopicBreadcrumbs(data.discussion_topic_id)
         void markDiscussionSeen(data.id)
         void fetchSubscription(data.id)
@@ -272,6 +280,10 @@ useSeoMeta({
   ogDescription: seoDescription,
 })
 
+defineOgImageComponent('Discussion', {
+  identifier,
+})
+
 useHead({
   title: computed(() => post.value ? post.value.title ?? 'Forum Post' : 'Forum Post'),
 })
@@ -306,6 +318,17 @@ function publish() {
 }
 
 // Track user scroll and display header when the page-title is no longer visible
+/**
+ * When the user successfully posts a reply, mark the discussion as seen with
+ * the new reply count so that the forum-index activity indicator doesn't fire
+ * for discussions the current user was the last to post in.
+ */
+function handleReplySubmitted(newReplyCount: number) {
+  if (post.value) {
+    forumUnread.markDiscussionSeen(post.value.id, newReplyCount)
+  }
+}
+
 const pageTitle = useTemplateRef('page-title')
 const isPageTitleVisible = useElementVisibility(pageTitle)
 
@@ -349,6 +372,16 @@ watchEffect(() => {
     }
   }
 })
+
+// Provide a flag to all descendant discussion reply components so they can
+// skip their individual per-reply NSFW gates when the thread overlay has
+// already been dismissed (or warnings are turned off in settings).
+provide('thread-nsfw-revealed', nsfwRevealed)
+
+function revealNsfw() {
+  showNSFWWarning.value = false
+  nsfwRevealed.value = true
+}
 </script>
 
 <template>
@@ -412,7 +445,7 @@ watchEffect(() => {
                 <BreadcrumbItem
                   v-for="topic in topicBreadcrumbs"
                   :key="topic.id"
-                  :href="`/forum?activeTopicId=${topic.id}`"
+                  @click="router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`)"
                 >
                   {{ topic.name }}
                 </BreadcrumbItem>
@@ -581,14 +614,28 @@ watchEffect(() => {
         <!-- Content -->
         <template v-if="post.markdown">
           <hr v-if="!contextInfo" class="mb-l">
-          <button v-if="showNSFWWarning" class="forum-post__nsfw" @click="showNSFWWarning = false">
-            <Icon class="text-color-accent" name="ph:caret-down" />
-            <p>This discussion is marked as NSFW - click to reveal potentially sensitive content</p>
-            <Icon class="text-color-accent" name="ph:caret-up" />
-          </button>
-          <MDRenderer v-else class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
+          <MDRenderer class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
         </template>
       </section>
+
+      <!-- Fullscreen NSFW overlay -->
+      <Transition name="fade">
+        <div v-if="showNSFWWarning" class="forum-post__nsfw-overlay">
+          <div class="forum-post__nsfw-overlay-inner">
+            <Icon class="forum-post__nsfw-overlay-icon" name="ph:warning" />
+            <h2>Sensitive Content</h2>
+            <p>This discussion is marked as NSFW and may contain potentially sensitive or explicit content.</p>
+            <Flex gap="s" y-center x-center wrap>
+              <Button variant="accent" @click="revealNsfw">
+                Reveal content
+              </Button>
+              <Button variant="gray" @click="$router.back()">
+                Go back
+              </Button>
+            </Flex>
+          </div>
+        </div>
+      </Transition>
 
       <ComplaintsManager
         v-model:open="showReportModal"
@@ -602,6 +649,7 @@ watchEffect(() => {
         type="discussion"
         model="forum"
         placeholder="Write your reply to this thread..."
+        @reply-submitted="handleReplySubmitted"
       />
 
       <div v-if="contentHeight > 1600" class="forum-post__fast-travel">
@@ -627,6 +675,46 @@ watchEffect(() => {
 @use '@/assets/breakpoints.scss' as *;
 @use '@/assets/mixins.scss' as *;
 
+.forum-post__nsfw-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: color-mix(in srgb, var(--color-bg) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.forum-post__nsfw-overlay-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-m);
+  max-width: 480px;
+  padding: var(--space-xl);
+  border-radius: var(--border-radius-l);
+  background-color: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  margin: var(--space-l);
+
+  h2 {
+    font-size: var(--font-size-xxl);
+  }
+
+  p {
+    color: var(--color-text-light);
+    font-size: var(--font-size-m);
+  }
+}
+
+.forum-post__nsfw-overlay-icon {
+  font-size: 48px;
+  color: var(--color-text-red);
+}
+
 .back-button {
   position: absolute;
   right: calc(100% + 12px);
@@ -636,32 +724,6 @@ watchEffect(() => {
 
 :deep(.forum__item-actions) {
   display: block;
-}
-
-.forum-post__nsfw {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--border-radius-l);
-  background-color: var(--color-bg-raised);
-  padding: var(--space-m);
-  transition: var(--transition);
-  color: var(--color-text-light);
-  gap: var(--space-xxs);
-  width: 100%;
-  min-height: 120px;
-  margin-bottom: var(--space-xs);
-
-  p {
-    font-size: var(--font-size-m) !important;
-    text-align: center;
-  }
-
-  &:hover {
-    background-color: var(--color-button-gray);
-    gap: 0;
-  }
 }
 
 .forum-post__content {

@@ -10,6 +10,40 @@
   --container-m: 968px;
   --container-s: 728px;
 
+  // Text color palette — used by the rich text editor color picker.
+  // These are defined here so they can be overridden by future themes and
+  // automatically adapt between light and dark modes via the overrides below.
+  --text-color-red: #f04040;
+  --text-color-orange: #f97316;
+  --text-color-amber: #f59e0b;
+  --text-color-yellow: #eab308;
+  --text-color-lime: #84cc16;
+  --text-color-green: #22c55e;
+  --text-color-teal: #14b8a6;
+  --text-color-blue: #0ea5e9;
+  --text-color-indigo: #6366f1;
+  --text-color-purple: #8b5cf6;
+  --text-color-fuchsia: #d946ef;
+  --text-color-pink: #ec4899;
+  --text-color-text-invert: var(--color-text-invert);
+  --text-color-text-lighter: var(--color-text-light);
+  --text-color-text-lightest: var(--color-text-lightest);
+  --text-color-text: var(--color-text);
+
+  // Font family palette — system-safe stacks, no web fonts required.
+  --text-font-sans: ui-sans-serif, system-ui, sans-serif;
+  --text-font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --text-font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+  --text-font-cursive: 'Comic Sans MS', 'Comic Sans', Chalkboard, cursive;
+  --text-font-fantasy: Impact, 'Arial Narrow', fantasy;
+
+  // Font size palette — named steps relative to the base body size.
+  --text-size-xs: 0.75rem;
+  --text-size-s: 0.875rem;
+  --text-size-l: 1.125rem;
+  --text-size-xl: 1.375rem;
+  --text-size-xxl: 1.75rem;
+
   // Dark (default) theme colors
   --dark-color-bg: #111;
   --dark-color-fg: #0a0a0a;
@@ -65,6 +99,21 @@
 :root:not(.dark) {
   --banner-filter: invert(1);
   --color-bg-card: var(--light-color-bg-card);
+
+  // Light theme text-color palette overrides — slightly darker shades for
+  // better contrast on light backgrounds.
+  --text-color-red: #dc2626;
+  --text-color-orange: #ea6a08;
+  --text-color-amber: #d97706;
+  --text-color-yellow: #ca8a04;
+  --text-color-lime: #65a30d;
+  --text-color-green: #16a34a;
+  --text-color-teal: #0f766e;
+  --text-color-blue: #0284c7;
+  --text-color-indigo: #4f46e5;
+  --text-color-purple: #7c3aed;
+  --text-color-fuchsia: #c026d3;
+  --text-color-pink: #db2777;
 
   .vui-progress {
     background-color: var(--color-border) !important;
@@ -281,6 +330,21 @@ code {
   h6 {
     a:before {
       display: none;
+    }
+
+    // The VUI CSS reset includes a global rule `span, strong, p { font-size: var(--font-size-m) }`
+    // which overrides the inherited font-size from heading elements whenever an inline
+    // mark (textFont span, bold strong, italic em, etc.) is rendered inside a heading.
+    // We override that here so inline marks inside headings always inherit the heading's
+    // own font-size rather than being reset to the paragraph default.
+    span,
+    strong,
+    em,
+    b,
+    i,
+    a,
+    code {
+      font-size: inherit;
     }
   }
 }

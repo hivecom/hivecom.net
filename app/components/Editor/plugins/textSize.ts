@@ -2,45 +2,34 @@ import type { JSONContent, MarkdownLexerConfiguration, MarkdownParseHelpers, Mar
 import { Mark, mergeAttributes } from '@tiptap/core'
 
 // ---------------------------------------------------------------------------
-// Named color palette
+// Named size palette
 // ---------------------------------------------------------------------------
 
-// The canonical set of allowed color names. Each name maps to a CSS custom
-// property defined in app/assets/index.scss so that the actual hue adapts
-// automatically to the active theme (light / dark / future themes).
-export const TEXT_COLOR_NAMES = [
-  'red',
-  'orange',
-  'amber',
-  'yellow',
-  'lime',
-  'green',
-  'teal',
-  'blue',
-  'indigo',
-  'purple',
-  'fuchsia',
-  'pink',
-  'text-invert',
-  'text-lightest',
-  'text-lighter',
-  'text',
+// Each name maps to a CSS custom property defined in app/assets/index.scss.
+// Named steps are used instead of raw values so the scale can be adjusted
+// globally per theme without touching stored content.
+export const TEXT_SIZE_NAMES = [
+  'xs',
+  's',
+  'l',
+  'xl',
+  'xxl',
 ] as const
 
-export type TextColorName = (typeof TEXT_COLOR_NAMES)[number]
+export type TextSizeName = (typeof TEXT_SIZE_NAMES)[number]
 
-/** Returns the CSS custom property name for a palette color, e.g. "red" → "--text-color-red". */
-export function textColorVar(name: TextColorName): string {
-  return `--text-color-${name}`
+/** Returns the CSS custom property name for a size, e.g. "l" → "--text-size-l". */
+export function textSizeVar(name: TextSizeName): string {
+  return `--text-size-${name}`
 }
 
-/** Returns the CSS value string for a palette color, e.g. "red" → "var(--text-color-red)". */
-export function textColorValue(name: TextColorName): string {
-  return `var(${textColorVar(name)})`
+/** Returns the CSS value string for a size, e.g. "l" → "var(--text-size-l)". */
+export function textSizeValue(name: TextSizeName): string {
+  return `var(${textSizeVar(name)})`
 }
 
-function isValidColorName(value: string): value is TextColorName {
-  return (TEXT_COLOR_NAMES as readonly string[]).includes(value)
+function isValidSizeName(value: string): value is TextSizeName {
+  return (TEXT_SIZE_NAMES as readonly string[]).includes(value)
 }
 
 // ---------------------------------------------------------------------------
@@ -49,19 +38,18 @@ function isValidColorName(value: string): value is TextColorName {
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
-    textColor: {
-      /** Apply a named palette color to the selected text, e.g. "red". */
-      setTextColor: (color: TextColorName) => ReturnType
-      /** Remove the text color mark from the selection. */
-      unsetTextColor: () => ReturnType
+    textSize: {
+      /** Apply a named size step to the selected text, e.g. "xl". */
+      setTextSize: (size: TextSizeName) => ReturnType
+      /** Remove the text size mark from the selection. */
+      unsetTextSize: () => ReturnType
     }
   }
 }
 
-export const TextColor = Mark.create({
-  name: 'textColor',
+export const TextSize = Mark.create({
+  name: 'textSize',
 
-  // Lower priority than standard marks (bold, italic, etc.)
   priority: 900,
 
   // ---------------------------------------------------------------------------
@@ -70,31 +58,29 @@ export const TextColor = Mark.create({
 
   addAttributes() {
     return {
-      color: {
+      size: {
         default: null,
         parseHTML: (element: HTMLElement) => {
-          // Support both the data attribute (written by renderHTML) and a
-          // legacy inline style for graceful degradation.
-          const fromAttr = element.getAttribute('data-text-color')
-          if (fromAttr !== null && fromAttr !== '' && isValidColorName(fromAttr))
+          const fromAttr = element.getAttribute('data-text-size')
+          if (fromAttr !== null && fromAttr !== '' && isValidSizeName(fromAttr))
             return fromAttr
 
-          // Fallback: try to recover a name from a CSS-variable inline style.
-          const raw = element.style.color ?? ''
-          const varMatch = /var\(--text-color-([a-z-]+)\)/.exec(raw)
+          // Fallback: recover name from a CSS-variable inline style.
+          const raw = element.style.fontSize ?? ''
+          const varMatch = /var\(--text-size-([a-z]+)\)/.exec(raw)
           const varName = varMatch?.[1] ?? null
-          if (varName !== null && isValidColorName(varName))
+          if (varName !== null && isValidSizeName(varName))
             return varName
 
           return null
         },
         renderHTML: (attributes: Record<string, unknown>) => {
-          const color = attributes.color
-          if (typeof color !== 'string' || !isValidColorName(color))
+          const size = attributes.size
+          if (typeof size !== 'string' || !isValidSizeName(size))
             return {}
           return {
-            'data-text-color': color,
-            'style': `color: ${textColorValue(color)}`,
+            'data-text-size': size,
+            'style': `font-size: ${textSizeValue(size)}`,
           }
         },
       },
@@ -102,31 +88,31 @@ export const TextColor = Mark.create({
   },
 
   // ---------------------------------------------------------------------------
-  // HTML (ProseMirror DOM) parsing & rendering
+  // HTML parsing & rendering
   // ---------------------------------------------------------------------------
 
   parseHTML() {
     return [
       {
-        tag: 'span[data-text-color]',
+        tag: 'span[data-text-size]',
         getAttrs: (node: HTMLElement) => {
-          const color = node.getAttribute('data-text-color')
-          if (color !== null && color !== '' && isValidColorName(color))
-            return { color }
+          const size = node.getAttribute('data-text-size')
+          if (size !== null && size !== '' && isValidSizeName(size))
+            return { size }
           return false
         },
       },
-      // Graceful fallback for legacy spans that carry a CSS-variable inline style.
+      // Graceful fallback for spans with a CSS-variable font-size style.
       {
         tag: 'span',
         getAttrs: (node: HTMLElement) => {
-          const raw = node.style.color
+          const raw = node.style.fontSize
           if (!raw)
             return false
-          const varMatch = /var\(--text-color-([a-z-]+)\)/.exec(raw)
+          const varMatch = /var\(--text-size-([a-z]+)\)/.exec(raw)
           const name = varMatch?.[1] ?? null
-          if (name !== null && isValidColorName(name))
-            return { color: name }
+          if (name !== null && isValidSizeName(name))
+            return { size: name }
           return false
         },
       },
@@ -143,15 +129,15 @@ export const TextColor = Mark.create({
 
   addCommands() {
     return {
-      setTextColor:
-        (color: TextColorName) =>
+      setTextSize:
+        (size: TextSizeName) =>
           ({ commands }) => {
-            if (!isValidColorName(color))
+            if (!isValidSizeName(size))
               return false
-            return commands.setMark(this.name, { color })
+            return commands.setMark(this.name, { size })
           },
 
-      unsetTextColor:
+      unsetTextSize:
         () =>
           ({ commands }) =>
             commands.unsetMark(this.name),
@@ -159,44 +145,38 @@ export const TextColor = Mark.create({
   },
 
   // ---------------------------------------------------------------------------
-  // Markdown serialization
-  // Serializes to :::color[name]text::: — triple-colon inline directive
-  // syntax, consistent with other custom directives in the markdown dialect.
+  // Markdown serialization  :::size[name]text:::
   // ---------------------------------------------------------------------------
 
   renderMarkdown(node: JSONContent, h: MarkdownRendererHelpers, _ctx: RenderContext): string {
-    const color = (node.attrs as Record<string, unknown> | undefined)?.color
-    if (typeof color !== 'string' || !isValidColorName(color))
+    const size = (node.attrs as Record<string, unknown> | undefined)?.size
+    if (typeof size !== 'string' || !isValidSizeName(size))
       return h.renderChildren(node)
 
-    return `:::color[${color}]${h.renderChildren(node)}:::`
+    return `:::size[${size}]${h.renderChildren(node)}:::`
   },
 
-  // ---------------------------------------------------------------------------
-  // Markdown tokenizer — teaches marked.js to recognise :::color[name]text:::
-  // ---------------------------------------------------------------------------
-
   markdownTokenizer: {
-    name: 'textColor',
+    name: 'textSize',
     level: 'inline',
 
     start(src: string): number {
-      const idx = src.indexOf(':::color[')
+      const idx = src.indexOf(':::size[')
       return idx === -1 ? -1 : idx
     },
 
     tokenize(src: string, _tokens: MarkdownToken[], lexer: MarkdownLexerConfiguration): MarkdownToken | undefined {
-      const prefixMatch = /^:::color\[([a-z-]+)\]/i.exec(src)
+      const prefixMatch = /^:::size\[([a-z]+)\]/i.exec(src)
       if (!prefixMatch)
         return undefined
 
-      const color = prefixMatch[1]?.toLowerCase() ?? ''
-      if (!isValidColorName(color))
+      const size = prefixMatch[1]?.toLowerCase() ?? ''
+      if (!isValidSizeName(size))
         return undefined
 
       // Find the closing ::: that matches this opening, accounting for nesting.
       // A plain lazy regex ([\s\S]*?) stops at the first ::: it encounters, which
-      // is wrong when directives are stacked (e.g. :::color[red]:::font[serif]text::::::).
+      // is wrong when directives are stacked (e.g. :::size[xxl]:::font[serif]text::::::).
       // We walk the string and track depth so we always find the correct outer close.
       const contentStart = prefixMatch[0].length
       let depth = 1
@@ -218,11 +198,9 @@ export const TextColor = Mark.create({
               const rawInner = src.slice(contentStart, i)
               const raw = src.slice(0, i + 3)
               return {
-                type: 'textColor',
+                type: 'textSize',
                 raw,
-                color,
-                // Tokenize inner content as inline tokens so nested marks
-                // (bold, italic, mentions, etc.) are preserved.
+                size,
                 tokens: lexer.inlineTokens(rawInner),
               } as unknown as MarkdownToken
             }
@@ -237,21 +215,19 @@ export const TextColor = Mark.create({
     },
   } satisfies MarkdownTokenizer,
 
-  // Must match the tokenizer name so the framework wires up parseMarkdown.
-  markdownTokenName: 'textColor',
+  markdownTokenName: 'textSize',
 
   parseMarkdown(token: MarkdownToken, helpers: MarkdownParseHelpers): MarkdownParseResult {
     const raw = token as unknown as Record<string, unknown>
-    const rawColor = typeof raw.color === 'string' ? raw.color.toLowerCase() : ''
-    const color: TextColorName | null = isValidColorName(rawColor) ? rawColor : null
+    const rawSize = typeof raw.size === 'string' ? raw.size.toLowerCase() : ''
+    const size: TextSizeName | null = isValidSizeName(rawSize) ? rawSize : null
 
     const innerTokens = (raw.tokens as MarkdownToken[] | undefined) ?? []
     const content = helpers.parseInline(innerTokens)
 
-    // Fall back to plain inline content if the color name is invalid.
-    if (color === null)
+    if (size === null)
       return content
 
-    return helpers.applyMark('textColor', content, { color })
+    return helpers.applyMark('textSize', content, { size })
   },
 })

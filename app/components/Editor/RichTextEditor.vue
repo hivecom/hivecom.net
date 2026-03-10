@@ -2,7 +2,7 @@
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
-import { Button, ButtonGroup, pushToast, Textarea } from '@dolanske/vui'
+import { Button, ButtonGroup, pushToast } from '@dolanske/vui'
 import { Extension } from '@tiptap/core'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
@@ -24,6 +24,8 @@ import EditorMathModal from './EditorMathModal.vue'
 import EditorYoutubeModal from './EditorYoutubeModal.vue'
 import { createMentionExtension, hydrateMentionLabels, resolvePlainTextMentions } from './plugins/mentions'
 import { TextColor } from './plugins/textColor'
+import { TextFont } from './plugins/textFont'
+import { TextSize } from './plugins/textSize'
 import RichTextImageMenu from './RichTextImageMenu.vue'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 
@@ -227,8 +229,12 @@ const editor = useEditor({
         }
       },
     }),
-    // Text color (triple-colon directive: :::color[#rrggbb]text:::)
+    // Text color (triple-colon directive: :::color[name]text:::)
     TextColor,
+    // Text font family (triple-colon directive: :::font[name]text:::)
+    TextFont,
+    // Text font size (triple-colon directive: :::size[name]text:::)
+    TextSize,
     // Checklist / task list support (markdown: - [ ] / - [x])
     TaskList,
     TaskItem.configure({ nested: true }),
@@ -417,6 +423,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
 // Converts the FileList from @input event into a File[]
 
 const fileInput = useTemplateRef('file-input')
+const plainTextarea = useTemplateRef<HTMLTextAreaElement>('plain-textarea')
 function handleFileInput(event: Event) {
   const files = (event.target as HTMLInputElement).files
   if (!files)
@@ -473,8 +480,11 @@ watch(content, (newContent) => {
   // except when content is cleared externally (e.g. after submit) — in that case
   // we must reset plainTextContent too so the textarea actually clears.
   if (editorMode.value === 'plain') {
-    if (!newContent) {
-      plainTextContent.value = ''
+    // Always sync external content changes into the textarea, not just clears.
+    // This covers quotes, external resets, and any other programmatic writes.
+    const decoded = decodeHtmlEntities(newContent ?? '')
+    if (plainTextContent.value !== decoded) {
+      plainTextContent.value = decoded
     }
     return
   }
@@ -603,9 +613,6 @@ async function handleSubmit() {
       {{ props.hint }}
     </p>
 
-    <!-- Text selection menu -->
-    <RichTextSelectionMenu v-if="editor" :editor />
-
     <!-- Image context menu -->
     <RichTextImageMenu v-if="editor && props.mediaContext" :editor :bucket-id="resolvedMediaBucketId" :media-context="props.mediaContext" />
 
@@ -642,11 +649,23 @@ async function handleSubmit() {
 
       <!-- Editor content & controls -->
       <div class="editor-container" :class="{ 'is-plain': editorMode === 'plain' }">
+        <!-- Toolbar: floating bubble in rich mode, static bar in plain mode -->
+        <RichTextSelectionMenu v-if="editor" :editor :plain-text="editorMode === 'plain'" :textarea-el="editorMode === 'plain' ? plainTextarea ?? null : null" />
+
         <div v-if="editorMode === 'rich'" class="editor-rich-wrapper">
           <span v-if="editorIsEmpty && props.placeholder" class="editor-placeholder">{{ props.placeholder }}</span>
           <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
         </div>
-        <Textarea v-else :model-value="plainTextContent" class="editor-textarea" expand :placeholder="placeholder" @update:model-value="handlePlainTextInput" @keydown.ctrl.enter="handleSubmit" @keydown.meta.enter="handleSubmit" />
+        <textarea
+          v-else
+          ref="plain-textarea"
+          class="plain-textarea"
+          :value="plainTextContent"
+          :placeholder="placeholder"
+          @input="handlePlainTextInput(($event.target as HTMLTextAreaElement).value)"
+          @keydown.ctrl.enter="handleSubmit"
+          @keydown.meta.enter="handleSubmit"
+        />
 
         <div class="editor-actions">
           <template v-if="editorMode === 'rich'">
@@ -731,7 +750,8 @@ async function handleSubmit() {
   position: relative;
   z-index: 1;
 
-  .editor-textarea .vui-input textarea {
+  .editor-textarea .vui-input textarea,
+  .plain-textarea {
     padding: 0 !important;
     height: v-bind(minHeight);
     min-height: v-bind(minHeight) !important;
@@ -741,6 +761,15 @@ async function handleSubmit() {
     outline: none !important;
     margin: 0 !important;
     line-height: var(--line-height-base) !important;
+  }
+
+  .plain-textarea {
+    display: block;
+    width: 100%;
+    resize: vertical;
+    font-family: inherit;
+    font-size: var(--font-size-m);
+    color: var(--color-text);
   }
 
   .editor-overlay {
@@ -837,6 +866,28 @@ async function handleSubmit() {
             color: var(--color-text-lighter);
             // text-decoration: line-through;
           }
+        }
+      }
+
+      // The VUI CSS reset includes a global rule `span, strong, p { font-size: var(--font-size-m) }`
+      // which overrides the inherited font-size from heading elements (h1–h4) whenever an inline
+      // mark (textFont span, bold strong, italic em, etc.) is applied inside a heading.
+      // We override that here so inline marks inside headings always inherit the heading's
+      // own font-size rather than being reset to the paragraph default.
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        span,
+        strong,
+        em,
+        b,
+        i,
+        a,
+        code {
+          font-size: inherit;
         }
       }
     }

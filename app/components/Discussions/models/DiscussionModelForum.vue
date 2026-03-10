@@ -72,7 +72,14 @@ function handleDeletion() {
     })
 }
 
-const showNSFWWarning = ref(!!props.data.is_nsfw)
+// When the parent thread's fullscreen NSFW overlay has already been dismissed
+// (or warnings are disabled in settings), we skip the per-reply gate entirely.
+const threadNsfwRevealed = inject('thread-nsfw-revealed', ref(false))
+const _showNSFWWarning = ref(!!props.data.is_nsfw)
+const showNSFWWarning = computed({
+  get: () => !!data.value.is_nsfw && !threadNsfwRevealed.value && _showNSFWWarning.value,
+  set: (val: boolean) => { _showNSFWWarning.value = val },
+})
 
 // ── Editing ─────────────────────────────────────────────────────────────────
 
@@ -125,7 +132,7 @@ async function submit() {
       data.value.is_nsfw = editedIsNsfw.value
       data.value.modified_at = dayjs().toISOString()
       // Re-apply the NSFW warning if the user toggled it back on
-      showNSFWWarning.value = editedIsNsfw.value
+      _showNSFWWarning.value = editedIsNsfw.value
 
       timestampUpdateKey.value++
     }

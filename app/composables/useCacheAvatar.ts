@@ -24,6 +24,15 @@ export function useCacheAvatar(userId: string | Ref<string | null | undefined>) 
       return
     }
 
+    // Don't attempt to fetch avatars when the user is not authenticated –
+    // RLS will block the storage list call and the null result would be
+    // cached, preventing the avatar from loading once the user signs in.
+    const currentUser = useSupabaseUser()
+    if (!currentUser.value) {
+      avatarUrl.value = null
+      return
+    }
+
     loading.value = true
     error.value = null
 
