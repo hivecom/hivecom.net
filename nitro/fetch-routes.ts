@@ -119,6 +119,16 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
         lastmod: item.modified_at ?? item.created_at,
       }),
     ),
+
+    fetchIds<{ id: string, username: string, created_at: string, modified_at: string | null }>(
+      'profiles',
+      'id,username,created_at,modified_at',
+      item => ({
+        route: `/profile/${item.username}`,
+        lastmod: item.modified_at ?? item.created_at,
+      }),
+      'public=eq.true',
+    ),
   ])
 
   return { routes, sitemapUrls }

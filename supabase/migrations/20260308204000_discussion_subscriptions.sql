@@ -17,7 +17,7 @@ CREATE TABLE public.discussion_subscriptions (
   -- deletion and remain consistent with notifications)
   user_id uuid NOT NULL REFERENCES auth.users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 
-  -- The discussion being subscribed to (cascade delete — if the discussion
+  -- The discussion being subscribed to (cascade delete - if the discussion
   -- goes away, subscriptions are meaningless)
   discussion_id uuid NOT NULL REFERENCES public.discussions(id) ON DELETE CASCADE,
 

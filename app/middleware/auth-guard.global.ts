@@ -11,6 +11,7 @@ const authRequiredRoutes = [
   'votes-id',
   'profile',
   'profile-settings',
+  // 'profile-id' is intentionally excluded — public profiles are accessible without auth
 ]
 
 export default defineNuxtRouteMiddleware(async (to: RouteLocationNormalizedLoaded) => {

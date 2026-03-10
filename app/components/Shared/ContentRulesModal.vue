@@ -77,6 +77,7 @@ async function handleConfirm(close: () => void) {
         <li>Although this is the internet, we are not your personal goon chamber. Don't post porn or explicit sexual content, it will be removed and result in a temporary ban.</li>
         <li>Content containing real depictions of violence or gore will be removed and result in a <b>permanent ban</b>.</li>
         <li>Content containing non-explicit nudity or intense violence should be marked as NSFW.</li>
+        <li>Automated responses such as through agentic LLMs or other means are not allowed.</li>
         <li>Don't be a jerk or harass others. Banter is fine, but read the room.</li>
         <li><b>Use common sense.</b></li>
       </ul>

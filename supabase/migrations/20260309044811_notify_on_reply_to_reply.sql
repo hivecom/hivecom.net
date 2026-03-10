@@ -1,7 +1,7 @@
 -- Migration: Notify a user when someone replies directly to their discussion reply
 --
 -- When a reply has a non-null reply_to_id, look up the original reply's author
--- and send them a notification — unless the replier is the same person.
+-- and send them a notification - unless the replier is the same person.
 --
 -- Deduplication key:
 --   source     = 'discussion_reply_reply'

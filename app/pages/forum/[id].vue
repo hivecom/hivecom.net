@@ -239,7 +239,7 @@ onBeforeMount(() => {
  * Bump `last_seen_at` on the user's subscription (if any) and mark the
  * corresponding discussion-reply notification as read so the badge clears.
  *
- * Both operations are fire-and-forget — we don't want a failure here to
+ * Both operations are fire-and-forget - we don't want a failure here to
  * block the page from rendering.
  */
 async function markDiscussionSeen(discussionId: string) {
@@ -439,7 +439,7 @@ function revealNsfw() {
                 <Icon class="text-color" name="ph:arrow-left" :size="16" />
               </Button>
               <Breadcrumbs>
-                <BreadcrumbItem href="/forum">
+                <BreadcrumbItem @click="router.push('/forum')">
                   Forum
                 </BreadcrumbItem>
                 <BreadcrumbItem

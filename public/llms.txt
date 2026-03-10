@@ -42,7 +42,7 @@ Hivecom bridges the following platforms so members are never siloed:
 ## Key Pages
 
 - [Home](https://hivecom.net/): Overview, community stats, upcoming events, and platform connection links
-- [Events](https://hivecom.net/events): Community events listing and calendar — includes ongoing, upcoming, and past events
+- [Events](https://hivecom.net/events): Community events listing and calendar - includes ongoing, upcoming, and past events
 - [Game Servers](https://hivecom.net/servers/gameservers): Live game server listings and status
 - [Voice Servers](https://hivecom.net/servers/voiceservers): Live TeamSpeak channel viewer and connection info
 - [Forum](https://hivecom.net/forum): Community discussion board with topics and threaded discussions
@@ -52,7 +52,7 @@ Hivecom bridges the following platforms so members are never siloed:
 ## Community Sub-pages
 
 - [Community Projects](https://hivecom.net/community/projects): Public projects and initiatives hosted by or for the Hivecom community
-- [Community Badges](https://hivecom.net/community/badges): Overview of earnable badges — awarded for milestones like years of membership, event hosting, forum activity, and financial support
+- [Community Badges](https://hivecom.net/community/badges): Overview of earnable badges - awarded for milestones like years of membership, event hosting, forum activity, and financial support
 - [Funding](https://hivecom.net/community/funding): Transparent breakdown of community funding and server expenses
 
 ## Events & Calendar
@@ -82,7 +82,7 @@ Hivecom runs regular community events including game sessions, movie/watch night
 
 - The website is built with **Nuxt 4** (Vue 3, TypeScript) and uses **Supabase** as its backend (database, auth, edge functions).
 - The site is statically generated and deployed via GitHub Actions.
-- Hivecom has been continuously operating since **2013** — it is one of the longer-running independent gaming communities on the internet.
+- Hivecom has been continuously operating since **2013** - it is one of the longer-running independent gaming communities on the internet.
 - Membership is free. Optional financial support is available via Patreon.
 - The community is **not affiliated with any game studio, publisher, or commercial entity**.
-- IRC remains a first-class platform — Hivecom runs its own IRC server, and Discord is bridged to it rather than replacing it.
+- IRC remains a first-class platform - Hivecom runs its own IRC server, and Discord is bridged to it rather than replacing it.

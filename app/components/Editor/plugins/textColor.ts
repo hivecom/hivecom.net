@@ -165,7 +165,7 @@ export const TextColor = Mark.create({
 
   // ---------------------------------------------------------------------------
   // Markdown serialization
-  // Serializes to :::color[name]text::: — triple-colon inline directive
+  // Serializes to :::color[name]text::: - triple-colon inline directive
   // syntax, consistent with other custom directives in the markdown dialect.
   // ---------------------------------------------------------------------------
 
@@ -178,7 +178,7 @@ export const TextColor = Mark.create({
   },
 
   // ---------------------------------------------------------------------------
-  // Markdown tokenizer — teaches marked.js to recognise :::color[name]text:::
+  // Markdown tokenizer - teaches marked.js to recognise :::color[name]text:::
   // ---------------------------------------------------------------------------
 
   markdownTokenizer: {
@@ -210,12 +210,12 @@ export const TextColor = Mark.create({
         if (src[i] === ':' && src[i + 1] === ':' && src[i + 2] === ':') {
           const after = src.slice(i + 3)
           if (OPENING_DIRECTIVE_RE.test(after)) {
-            // Another opening directive — go deeper
+            // Another opening directive - go deeper
             depth++
             i += 3
             continue
           }
-          // Closing ::: — anything NOT followed by a letter or '[' counts,
+          // Closing ::: - anything NOT followed by a letter or '[' counts,
           // including being followed by another ':' (which is the next closing :::).
           if (!CLOSING_DIRECTIVE_RE.test(after)) {
             depth--

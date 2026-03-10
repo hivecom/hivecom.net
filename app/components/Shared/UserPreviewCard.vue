@@ -82,6 +82,14 @@ function handleRetry() {
   void refetch()
 }
 
+const currentUser = useSupabaseUser()
+
+// When unauthenticated, a missing profile is expected (RLS only returns public
+// profiles to anon). Don't show an error — just render nothing.
+const isExpectedEmpty = computed(() =>
+  !currentUser.value && (!!error.value || !user.value),
+)
+
 // Activity data
 const {
   data: activity,
@@ -106,6 +114,8 @@ watch(() => props.userId, refetchActivity, { immediate: true })
     <div v-if="!props.userId" class="user-preview-card__state user-preview-card__state--empty">
       <p>Select a user to preview.</p>
     </div>
+
+    <template v-else-if="isExpectedEmpty" />
 
     <div v-else-if="error || !user" class="user-preview-card__state user-preview-card__state--error">
       <p>{{ error ?? 'We could not load this profile right now.' }}</p>

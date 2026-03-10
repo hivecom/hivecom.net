@@ -112,7 +112,7 @@ async function fetchNotifications() {
 
     // Process notifications response
     if (notificationsResponse.error) {
-      // Don't throw — the table might not exist yet in dev; just silently skip
+      // Don't throw - the table might not exist yet in dev; just silently skip
       unreadNotifications.value = []
     }
     else {
@@ -325,7 +325,7 @@ async function handleInviteAction(requestUserId: string, action: 'accept' | 'ign
 /**
  * Mark a single notification as read and navigate to its href.
  * After marking it read, we remove it from the local list immediately so the
- * UI feels responsive — no need to re-fetch the full list.
+ * UI feels responsive - no need to re-fetch the full list.
  */
 async function handleNotificationClick(notification: NotificationRow) {
   // Optimistically remove from local list

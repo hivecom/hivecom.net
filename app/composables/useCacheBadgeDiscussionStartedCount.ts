@@ -65,8 +65,7 @@ export function useCacheBadgeDiscussionStartedCount(
 
     try {
       // Only count pure forum threads: must have a topic, must not be attached to any
-      // entity (event, announcement, referendum, profile, project, gameserver), and
-      // must not be a draft.
+      // entity (event, referendum, profile, project, gameserver), and must not be a draft.
       const { count: threadCount, error: supabaseError } = await supabase
         .from('discussions')
         .select('id', { count: 'exact', head: true })
@@ -74,7 +73,6 @@ export function useCacheBadgeDiscussionStartedCount(
         .eq('is_draft', false)
         .not('discussion_topic_id', 'is', null)
         .is('event_id', null)
-        .is('announcement_id', null)
         .is('referendum_id', null)
         .is('profile_id', null)
         .is('project_id', null)

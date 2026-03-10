@@ -17,7 +17,7 @@ CREATE TABLE public.notifications (
   -- so notifications survive profile deletion)
   user_id uuid NOT NULL REFERENCES auth.users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 
-  -- Simple text content — no markdown needed
+  -- Simple text content - no markdown needed
   title text NOT NULL,
   body text,
 

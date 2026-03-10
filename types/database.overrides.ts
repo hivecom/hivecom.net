@@ -80,6 +80,8 @@ interface TableColumnOverrides {
       show_nsfw_warning: boolean
       show_nsfw_content: boolean
       show_offtopic_replies: boolean
+      show_thread_replies: boolean
+      discussion_view_mode: 'flat' | 'threaded'
       show_forum_updates: boolean
       show_forum_recently_visited: boolean
       show_forum_archived: boolean

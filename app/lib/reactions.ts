@@ -17,7 +17,7 @@
  * sources without colliding.
  *
  * The DB accepts any emote string (up to 32 characters) and any provider key
- * (up to 64 characters). Front-ends decide which emotes to render — if an
+ * (up to 64 characters). Front-ends decide which emotes to render - if an
  * emote doesn't map to anything the UI recognises, it is simply not displayed.
  */
 
@@ -43,7 +43,7 @@ export const HIVECOM_PROVIDER = 'hivecom' as const
 /**
  * The set of emotes the hivecom front-end knows how to group and display in
  * its reaction picker. This is a **display-layer constant**, not a validation
- * list — the DB accepts any emoji.
+ * list - the DB accepts any emoji.
  *
  * If you add emotes here, consider also updating the groups in
  * `ReactionsSelect.vue` so users can pick them from the UI.
@@ -105,7 +105,7 @@ const HIVECOM_EMOTE_SET = new Set<string>(HIVECOM_EMOTES)
 
 /**
  * Returns true if the emote is in the hivecom display manifest.
- * Useful for display-layer filtering — NOT used as a write-path guard.
+ * Useful for display-layer filtering - NOT used as a write-path guard.
  */
 export function isHivecomEmote(emote: string): emote is HivecomEmote {
   return HIVECOM_EMOTE_SET.has(emote)

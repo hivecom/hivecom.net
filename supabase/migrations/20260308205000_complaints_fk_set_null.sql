@@ -1,7 +1,7 @@
 -- Fix complaint FK cascades: change ON DELETE CASCADE to ON DELETE SET NULL
 --
 -- Complaints should never be deleted when their associated entity is removed.
--- The complaint record is the audit trail — losing it because a user deleted
+-- The complaint record is the audit trail - losing it because a user deleted
 -- their account, a discussion was removed, or a gameserver was decommissioned
 -- defeats the purpose.
 --

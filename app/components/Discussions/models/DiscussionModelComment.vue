@@ -28,6 +28,7 @@ const emit = defineEmits<{
 const data = toRef(props, 'data')
 
 const { timestamps } = inject('discussion-settings') as DiscussionSettings
+const viewMode = inject('viewMode', ref<'flat' | 'threaded'>('flat'))
 
 const discussion = inject('discussion') as ProvidedDiscussion
 const canBypassLock = inject('canBypassLock', ref(false)) as Ref<boolean>
@@ -40,6 +41,18 @@ const { user: currentUserData } = useCacheUserData(userId, { includeRole: true }
 const COMMENT_TRUNCATE = 96
 
 const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
+
+// ── Off-topic ─────────────────────────────────────────────────────────────────
+
+const canMarkOfftopic = inject('canMarkOfftopic', ref(false)) as Ref<boolean>
+const toggleOfftopic = inject('toggleOfftopic') as (comment: Comment) => Promise<void>
+const offtopicLoading = ref(false)
+
+async function handleToggleOfftopic() {
+  offtopicLoading.value = true
+  await toggleOfftopic(data.value)
+  offtopicLoading.value = false
+}
 
 // ── NSFW ──────────────────────────────────────────────────────────────────────
 
@@ -133,7 +146,7 @@ const { displayReactions, toggleReaction } = useReactions({
 <template>
   <div class="discussion-comment">
     <Flex y-center x-start>
-      <UserAvatar size="s" :user-id="data.created_by" />
+      <UserAvatar size="s" :user-id="data.created_by" show-preview />
       <UserName size="m" :user-id="data.created_by" />
       <p v-if="timestamps" class=" discussion-comment__timestamp">
         {{ dayjs(data.created_at).fromNow() }}
@@ -141,7 +154,7 @@ const { displayReactions, toggleReaction } = useReactions({
       </p>
     </Flex>
 
-    <Tooltip v-if="data.reply" :delay="750">
+    <Tooltip v-if="data.reply && viewMode !== 'threaded'" :delay="750">
       <button class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === currentUserData?.id }" @click="emit('scrollReply')">
         <Icon name="ph:arrow-elbow-up-right" />
         <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-comment__reply-user">
@@ -176,12 +189,12 @@ const { displayReactions, toggleReaction } = useReactions({
     <MDRenderer v-else :md="data.markdown" skeleton-height="0px" />
 
     <Flex v-if="displayReactions.length > 0" y-center x-start gap="xxs" class="discussion-comment__reactions">
-      <ReactionsList :reactions="displayReactions" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
-      <ReactionsSelect @reaction="(emote) => toggleReaction(emote)" />
+      <ReactionsList :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
+      <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)" />
     </Flex>
 
     <div class="discussion-comment__actions">
-      <ReactionsSelect @reaction="(emote) => toggleReaction(emote)">
+      <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
         <template #default="{ toggle }">
           <Button size="s" square @click="toggle">
             <Tooltip>
@@ -235,15 +248,33 @@ const { displayReactions, toggleReaction } = useReactions({
         </Button>
       </ButtonGroup>
 
-      <!-- Report - other users' comments only -->
-      <Button v-if="currentUserData && data.created_by !== currentUserData.id" size="s" square @click="showReportModal = true">
-        <Tooltip>
-          <Icon name="ph:flag-bold" />
-          <template #tooltip>
-            <p>Report comment</p>
-          </template>
-        </Tooltip>
-      </Button>
+      <!-- Off-topic toggle + report grouped on the right -->
+      <!-- Admins/mods can flag any reply including their own; plain OPs cannot flag themselves -->
+      <ButtonGroup v-if="(canMarkOfftopic && (canBypassLock || userId !== data.created_by)) || (currentUserData && data.created_by !== currentUserData.id)">
+        <Button
+          v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by)"
+          size="s"
+          square
+          :loading="offtopicLoading"
+          :variant="data.is_offtopic ? 'danger' : 'gray'"
+          @click="handleToggleOfftopic"
+        >
+          <Tooltip>
+            <Icon :name="data.is_offtopic ? 'ph:warning-circle-fill' : 'ph:warning-circle'" />
+            <template #tooltip>
+              <p>{{ data.is_offtopic ? 'Remove off-topic flag' : 'Mark as off-topic' }}</p>
+            </template>
+          </Tooltip>
+        </Button>
+        <Button v-if="currentUserData && data.created_by !== currentUserData.id" size="s" square @click="showReportModal = true">
+          <Tooltip>
+            <Icon name="ph:flag-bold" />
+            <template #tooltip>
+              <p>Report comment</p>
+            </template>
+          </Tooltip>
+        </Button>
+      </ButtonGroup>
 
       <ConfirmModal
         :open="showDeleteModal"

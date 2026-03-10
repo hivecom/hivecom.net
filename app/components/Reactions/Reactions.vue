@@ -30,16 +30,18 @@ const { displayReactions, toggleReaction, isLoading } = useReactions({
   rowId: toRef(props, 'rowId'),
   initialReactions: toRef(props, 'reactions'),
 })
+
+const userId = useUserId()
 </script>
 
 <template>
   <div class="reactions">
     <ReactionsList
       :reactions="displayReactions"
-      :disabled="isLoading"
+      :disabled="isLoading || !userId"
       @toggle="(emote, provider) => toggleReaction(emote, provider)"
     />
-    <ReactionsSelect @reaction="(emote) => toggleReaction(emote)" />
+    <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)" />
   </div>
 </template>
 

@@ -129,6 +129,7 @@ export interface Database {
           id: string
           is_deleted: boolean
           is_nsfw: boolean
+          is_offtopic: boolean
           markdown: string
           meta: Json | null
           modified_at: string
@@ -143,6 +144,7 @@ export interface Database {
           id?: string
           is_deleted?: boolean
           is_nsfw?: boolean
+          is_offtopic?: boolean
           markdown: string
           meta?: Json | null
           modified_at?: string
@@ -157,6 +159,7 @@ export interface Database {
           id?: string
           is_deleted?: boolean
           is_nsfw?: boolean
+          is_offtopic?: boolean
           markdown?: string
           meta?: Json | null
           modified_at?: string
@@ -1283,6 +1286,7 @@ export interface Database {
           id: string | null
           is_deleted: boolean | null
           is_nsfw: boolean | null
+          is_offtopic: boolean | null
           markdown: string | null
           meta: Json | null
           modified_at: string | null

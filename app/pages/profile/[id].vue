@@ -9,6 +9,7 @@ const { navigateToSignIn } = useAuthRedirect()
 const identifier = route.params.id as string
 
 const loading = ref(true)
+const isPublicProfile = ref<boolean | null>(null)
 
 // UUID regex pattern to detect if the identifier is a UUID
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -19,25 +20,49 @@ const userId = isUuid ? identifier : undefined
 const username = !isUuid ? identifier : undefined
 
 onMounted(async () => {
-  // First, wait for the initial session to be determined
+  // Resolve session first
   const { data: { session } } = await client.auth.getSession()
 
-  // Set up auth state change listener
-  const authListener = client.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT' || !session) {
-      navigateToSignIn()
-    }
-  })
+  // Fetch just the public field of the profile to decide access
+  let profilePublic: boolean | null = null
 
-  // Cleanup listener on component unmount
-  onUnmounted(() => {
-    authListener.data.subscription.unsubscribe()
-  })
+  if (isUuid) {
+    const { data } = await client
+      .from('profiles')
+      .select('public')
+      .eq('id', identifier)
+      .maybeSingle()
+    profilePublic = data?.public ?? null
+  }
+  else {
+    const { data } = await client
+      .from('profiles')
+      .select('public')
+      .ilike('username', identifier)
+      .maybeSingle()
+    profilePublic = data?.public ?? null
+  }
 
-  // Check initial auth state
-  if (!session) {
+  isPublicProfile.value = profilePublic
+
+  // If the profile is private and the user is not signed in, redirect to sign-in
+  if (!session && !profilePublic) {
     navigateToSignIn()
     return
+  }
+
+  // Only attach the sign-out redirect listener for authenticated sessions
+  if (session) {
+    const authListener = client.auth.onAuthStateChange((event, newSession) => {
+      // If the user signs out while viewing a private profile, redirect them away
+      if ((event === 'SIGNED_OUT' || !newSession) && !isPublicProfile.value) {
+        navigateToSignIn()
+      }
+    })
+
+    onUnmounted(() => {
+      authListener.data.subscription.unsubscribe()
+    })
   }
 
   loading.value = false
@@ -50,8 +75,8 @@ onMounted(async () => {
       <Spinner size="l" />
     </template>
 
-    <template v-else-if="!user">
-      <div>Please sign in to view profiles.</div>
+    <template v-else-if="!user && !isPublicProfile">
+      <div>Please sign in to view this profile.</div>
     </template>
 
     <template v-else>

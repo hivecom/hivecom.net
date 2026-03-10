@@ -10,7 +10,7 @@
   --container-m: 968px;
   --container-s: 728px;
 
-  // Text color palette — used by the rich text editor color picker.
+  // Text color palette - used by the rich text editor color picker.
   // These are defined here so they can be overridden by future themes and
   // automatically adapt between light and dark modes via the overrides below.
   --text-color-red: #f04040;
@@ -30,14 +30,14 @@
   --text-color-text-lightest: var(--color-text-lightest);
   --text-color-text: var(--color-text);
 
-  // Font family palette — system-safe stacks, no web fonts required.
+  // Font family palette - system-safe stacks, no web fonts required.
   --text-font-sans: ui-sans-serif, system-ui, sans-serif;
   --text-font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --text-font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   --text-font-cursive: 'Comic Sans MS', 'Comic Sans', Chalkboard, cursive;
   --text-font-fantasy: Impact, 'Arial Narrow', fantasy;
 
-  // Font size palette — named steps relative to the base body size.
+  // Font size palette - named steps relative to the base body size.
   --text-size-xs: 0.75rem;
   --text-size-s: 0.875rem;
   --text-size-l: 1.125rem;
@@ -100,7 +100,7 @@
   --banner-filter: invert(1);
   --color-bg-card: var(--light-color-bg-card);
 
-  // Light theme text-color palette overrides — slightly darker shades for
+  // Light theme text-color palette overrides - slightly darker shades for
   // better contrast on light backgrounds.
   --text-color-red: #dc2626;
   --text-color-orange: #ea6a08;

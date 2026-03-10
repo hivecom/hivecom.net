@@ -372,8 +372,8 @@ function getEditorMarkdown(): string {
   if (!editor.value || editor.value.isEmpty)
     return ''
   const raw = editor.value.getMarkdown() ?? ''
-  // @tiptap/extension-paragraph emits "&nbsp;" for every empty paragraph —
-  // not just the trailing one — so we must replace all of them.
+  // @tiptap/extension-paragraph emits "&nbsp;" for every empty paragraph -
+  // not just the trailing one - so we must replace all of them.
   // A line whose only content is "&nbsp;" represents an empty paragraph;
   // replace it with a genuinely empty line so the plain-text view is clean.
   // We also strip a lone trailing "&nbsp;" that has no preceding newline
@@ -484,9 +484,9 @@ watch(content, (newContent) => {
   // In plain-text mode the textarea owns the content directly; do not forward
   // changes to the Tiptap editor or its onUpdate hook will fire and run
   // getEditorMarkdown(), which escapes angle brackets and writes the mangled
-  // value back into the model — stripping any HTML the user just typed.
+  // value back into the model - stripping any HTML the user just typed.
   // The plainTextContent ref is kept in sync separately via handlePlainTextInput,
-  // except when content is cleared externally (e.g. after submit) — in that case
+  // except when content is cleared externally (e.g. after submit) - in that case
   // we must reset plainTextContent too so the textarea actually clears.
   if (editorMode.value === 'plain') {
     // Always sync external content changes into the textarea, not just clears.
@@ -554,7 +554,7 @@ async function handleEditorModeSwitch() {
   }
   else if (newMode === 'rich') {
     // The model always stores the escaped form (&lt;/&gt;) for the DB/renderer.
-    // Tiptap receives the decoded form (raw angle brackets) — the noHtmlMarked
+    // Tiptap receives the decoded form (raw angle brackets) - the noHtmlMarked
     // inline interceptor converts them to plain text tokens so they are never
     // parsed as real HTML. getEditorMarkdown() then re-escapes them on the way
     // out, keeping the model invariant intact.
@@ -576,7 +576,7 @@ async function handleEditorModeSwitch() {
 
     // Directly call setContent instead of relying on watch(content): the watcher
     // skips the update when newContent equals the value already in the model
-    // (which is common — handlePlainTextInput keeps content in sync while the
+    // (which is common - handlePlainTextInput keeps content in sync while the
     // user types, so by the time they switch modes the values are identical and
     // Vue never fires the watcher).
     // We pass tiptapContent (decoded, raw angle brackets) so the noHtmlMarked
@@ -600,7 +600,7 @@ async function handleSubmit() {
     return
 
   if (editorMode.value === 'plain') {
-    // Ensure the final value in the model is properly escaped — the textarea
+    // Ensure the final value in the model is properly escaped - the textarea
     // binds to plainTextContent (decoded) so we must re-encode before submit.
     content.value = encodeHtmlEntities(plainTextContent.value)
 

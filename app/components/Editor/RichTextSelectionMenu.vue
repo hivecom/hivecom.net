@@ -581,7 +581,7 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
             <Icon :size="18" name="ph:code" />
           </Button>
 
-          <!-- Paint bucket — anchor for the color Popout -->
+          <!-- Paint bucket - anchor for the color Popout -->
           <Button
             ref="bucketButtonRef"
             size="s"
@@ -629,7 +629,7 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
             </div>
           </Popout>
 
-          <!-- Font family — anchor for the font Popout -->
+          <!-- Font family - anchor for the font Popout -->
           <Button
             ref="fontButtonRef"
             size="s"
@@ -668,7 +668,7 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
             </div>
           </Popout>
 
-          <!-- Font size — anchor for the size Popout -->
+          <!-- Font size - anchor for the size Popout -->
           <Button
             ref="sizeButtonRef"
             size="s"

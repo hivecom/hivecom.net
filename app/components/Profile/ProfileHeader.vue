@@ -8,7 +8,9 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import MDRenderer from '../Shared/MDRenderer.vue'
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  isLoggedIn: false,
+})
 
 const emit = defineEmits<{
   openEditSheet: []
@@ -25,6 +27,7 @@ interface Props {
   isOwnProfile: boolean
   friendshipStatus: ProfileFriendshipStatus
   isCurrentUserAdmin: boolean
+  isLoggedIn?: boolean
 }
 
 const isMobile = useBreakpoint('<xs')
@@ -273,7 +276,7 @@ const showAvatarLightbox = ref(false)
                 <p>Edit profile</p>
               </template>
             </Tooltip>
-            <Button v-else variant="gray" @click="emit('openComplaintModal')">
+            <Button v-else-if="props.isLoggedIn" variant="gray" @click="emit('openComplaintModal')">
               <template #start>
                 <Icon name="ph:chat-circle-text" />
               </template>

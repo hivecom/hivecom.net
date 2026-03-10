@@ -5,7 +5,7 @@
 -- marked is_nsfw = true are only visible to their author and users with the
 -- discussions.update permission (admins / moderators).
 --
--- NSFW replies are intentionally unaffected — reply visibility is already
+-- NSFW replies are intentionally unaffected - reply visibility is already
 -- gated on the parent discussion being readable, so if the discussion is
 -- hidden the replies are implicitly hidden too. Standalone NSFW reply
 -- filtering (e.g. for replies in non-NSFW discussions) is left to the

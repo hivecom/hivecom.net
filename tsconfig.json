@@ -53,7 +53,8 @@
     "skipLibCheck": true
   },
   "files": [
-    "content.config.ts"
+    "content.config.ts",
+    "mdc.config.ts"
   ],
   "exclude": [
     "supabase"

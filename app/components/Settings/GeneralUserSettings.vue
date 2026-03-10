@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Card, Divider, Flex, Select, setColorTheme, Switch } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Divider, Flex, Select, setColorTheme, Switch } from '@dolanske/vui'
 
 const { settings, settingsError } = useUserSettings()
 
@@ -63,7 +63,36 @@ const selectedTheme = computed({
       Discussions
     </strong>
     <Switch v-model="settings.show_nsfw_content" class="reversed mb-m" label="Show NSFW content" />
-    <Switch v-model="settings.show_nsfw_warning" class="reversed" label="Show NSFW content warnings" :disabled="!settings.show_nsfw_content" hint="You will be warned before viewing content marked as NSFW each time." />
+    <Switch v-model="settings.show_nsfw_warning" class="reversed mb-m" label="Show NSFW content warnings" :disabled="!settings.show_nsfw_content" hint="You will be warned before viewing content marked as NSFW each time." />
+    <Switch v-model="settings.show_offtopic_replies" class="reversed mb-m" label="Show off-topic replies by default" hint="When enabled, replies marked as off-topic by the discussion author will be visible (but dimmed) by default." />
+
+    <Flex x-between y-center class="mb-m">
+      <p>Default reply view</p>
+      <ButtonGroup size="s">
+        <Button
+          :variant="settings.discussion_view_mode === 'flat' ? 'accent' : 'gray'"
+          size="s"
+          @click="settings.discussion_view_mode = 'flat'"
+        >
+          Flat
+        </Button>
+        <Button
+          :variant="settings.discussion_view_mode === 'threaded' ? 'accent' : 'gray'"
+          size="s"
+          @click="settings.discussion_view_mode = 'threaded'"
+        >
+          Threaded
+        </Button>
+      </ButtonGroup>
+    </Flex>
+
+    <Switch
+      v-model="settings.show_thread_replies"
+      class="reversed"
+      label="Expand reply threads by default"
+      hint="When enabled, inline reply previews will be expanded automatically on each post."
+      :disabled="settings.discussion_view_mode === 'threaded'"
+    />
 
     <Divider :size="64" />
 

@@ -38,9 +38,11 @@ const anonymousUsername = computed(() =>
 )
 
 const displayName = computed<string | null>(() => {
-  // Unauthenticated users see anonymous names for privacy
   if (!currentUser.value && props.userId) {
-    return anonymousUsername.value
+    // For unauthenticated visitors, only public profiles are returned by RLS.
+    // If we received user data back, the profile is public – show the real name.
+    // Otherwise fall back to the anonymous placeholder.
+    return user.value?.username ?? anonymousUsername.value
   }
 
   return user.value?.username ?? null
@@ -49,11 +51,19 @@ const displayName = computed<string | null>(() => {
 const profileLink = computed(() => {
   if (!props.userId)
     return null
+  if (user.value?.username_set && user.value?.username)
+    return `/profile/${user.value.username}`
   return `/profile/${props.userId}`
 })
 
 const canLink = computed(() => {
-  return !props.noLink && !!currentUser.value && !!profileLink.value
+  if (props.noLink || !profileLink.value)
+    return false
+  // Allow linking to public profiles even when unauthenticated.
+  // If RLS returned user data, the profile is public and linkable.
+  if (!currentUser.value)
+    return !!user.value
+  return true
 })
 
 const showSkeleton = computed(() => {

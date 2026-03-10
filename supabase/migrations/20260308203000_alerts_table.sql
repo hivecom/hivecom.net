@@ -1,7 +1,7 @@
 -- Create alerts table
 --
 -- System-wide alerts readable by admins and moderators (anyone with the
--- alerts.read permission). Alerts are global — when any privileged user
+-- alerts.read permission). Alerts are global - when any privileged user
 -- acknowledges one it is acknowledged for everyone.
 
 BEGIN;
@@ -35,7 +35,7 @@ ON CONFLICT (role, permission) DO NOTHING;
 CREATE TABLE public.alerts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
-  -- Simple text content — no markdown needed
+  -- Simple text content - no markdown needed
   title text NOT NULL,
   body text,
 
@@ -46,7 +46,7 @@ CREATE TABLE public.alerts (
   -- Optional link for the alert to navigate to in the UI
   href text,
 
-  -- Global acknowledgement — once any admin/mod marks it read, it is
+  -- Global acknowledgement - once any admin/mod marks it read, it is
   -- considered read for everyone.
   is_acknowledged boolean NOT NULL DEFAULT false,
   acknowledged_at timestamptz,
@@ -114,7 +114,7 @@ CREATE POLICY "Authorized roles can read alerts"
   USING (authorize('alerts.read'::public.app_permission));
 
 -- Only service_role (triggers / CRON) should create alerts
--- No authenticated INSERT policy — alerts come from the system.
+-- No authenticated INSERT policy - alerts come from the system.
 
 -- Authorized roles can update alerts (acknowledge them)
 CREATE POLICY "Authorized roles can update alerts"

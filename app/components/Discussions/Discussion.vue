@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, Button, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Flex, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import { wrapInBlockquote } from '@/lib/markdown-processors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { normalizeErrors, normalizeTipTapOutput } from '@/lib/utils/formatting'
@@ -19,7 +19,7 @@ import DiscussionItem from './DiscussionItem.vue'
  * if a comment is replying to another one, it is saved to it as a 'reply'
  */
 
-// Settings which will be provided to all components within a Discusson
+// Settings which will be provided to all components within a Discussion
 export interface DiscussionSettings {
   /**
    * If set to true, comments will display a timestamp
@@ -75,7 +75,7 @@ const emit = defineEmits<{
 
 const MAX_COMMENT_CHARS = 8192
 
-// If user isn't signed it, do not allow commenting
+// If user isn't signed in, do not allow commenting
 const userId = useUserId()
 
 // Check if the current user is an admin or moderator (can bypass discussion locks)
@@ -90,6 +90,15 @@ export interface Comment extends RawComment {
   reply: RawComment | null
 }
 
+/**
+ * A thread node is a comment plus its direct children (also thread nodes),
+ * used to render the tree-view structure.
+ */
+export interface ThreadNode {
+  comment: Comment
+  children: ThreadNode[]
+}
+
 export type ProvidedDiscussion = Ref<Tables<'discussions'> | undefined>
 
 // Fetch data & state
@@ -101,6 +110,58 @@ const error = ref<string>()
 const discussion = ref<Tables<'discussions'>>()
 const comments = ref<RawComment[]>([])
 
+// ── View mode ─────────────────────────────────────────────────────────────────
+// Per-session toggle: defaults to the user's saved setting.
+const { settings } = useUserSettings()
+
+type ViewMode = 'flat' | 'threaded'
+const viewMode = ref<ViewMode>(settings.value.discussion_view_mode ?? 'flat')
+watch(() => settings.value.discussion_view_mode, (val) => {
+  viewMode.value = val ?? 'flat'
+})
+
+// ── Off-topic toggle ──────────────────────────────────────────────────────────
+const showOfftopic = ref(settings.value.show_offtopic_replies ?? false)
+const showThreadReplies = ref(settings.value.show_thread_replies ?? false)
+
+// Keep in sync if the global setting changes (e.g. user visits settings page
+// in another tab) but do not overwrite a manual per-session choice made after
+// the component has mounted.
+const hasManuallySwitched = ref(false)
+watch(
+  () => settings.value.show_offtopic_replies,
+  (val) => {
+    if (!hasManuallySwitched.value) {
+      showOfftopic.value = val ?? false
+    }
+  },
+)
+
+watch(
+  () => settings.value.show_thread_replies,
+  (val) => { showThreadReplies.value = val ?? false },
+)
+
+function toggleShowOfftopic() {
+  hasManuallySwitched.value = true
+  showOfftopic.value = !showOfftopic.value
+}
+
+// Whether the current user is the discussion author (OP)
+const isDiscussionAuthor = computed(() =>
+  !!userId.value && !!discussion.value && discussion.value.created_by === userId.value,
+)
+
+// Can mark replies as off-topic
+const canMarkOfftopic = computed(() => isDiscussionAuthor.value || canBypassLock.value)
+
+// Provide context to all descendant components
+provide('showOfftopic', showOfftopic)
+provide('canMarkOfftopic', canMarkOfftopic)
+provide('showThreadReplies', showThreadReplies)
+provide('viewMode', viewMode)
+
+// ── View count ────────────────────────────────────────────────────────────────
 const lastIncrementedId = ref<string | null>(null)
 
 async function incrementDiscussionView() {
@@ -148,6 +209,7 @@ provide<DiscussionSettings>('discussion-settings', {
 provide<ProvidedDiscussion>('discussion', discussion)
 provide('canBypassLock', canBypassLock)
 
+// ── Data loading ──────────────────────────────────────────────────────────────
 watch(() => props.id, async () => {
   loading.value = true
 
@@ -209,13 +271,8 @@ watch(() => props.id, async () => {
  * Bump `last_seen_at` on the user's subscription (if any) and mark the
  * corresponding discussion-reply notification as read so the badge clears.
  *
- * Fire-and-forget — failures here should never block the discussion from
+ * Fire-and-forget - failures here should never block the discussion from
  * rendering.
- *
- * The `@ts-expect-error` comments below are needed because
- * `discussion_subscriptions` and `notifications` are not yet in the
- * generated `database.types.ts`. They can be removed after the next
- * `npx supabase gen types` run.
  */
 async function markDiscussionSeen(discussionId: string) {
   if (!userId.value)
@@ -240,7 +297,10 @@ async function markDiscussionSeen(discussionId: string) {
   ])
 }
 
-// Add replies to the message object so the UI can display it
+// ── Comment modelling ─────────────────────────────────────────────────────────
+/**
+ * Flat list of comments with their `reply` object resolved.
+ */
 const modelledComments = computed((): Comment[] => {
   const data = comments.value ?? []
 
@@ -255,12 +315,85 @@ const modelledComments = computed((): Comment[] => {
 
     return {
       ...item,
-      reply: foundReply || null,
+      reply: foundReply ?? null,
     }
   })
 })
 
-// Comment writing & validation
+/**
+ * Build a node map from the flat `modelledComments` list.
+ * Maps comment.id → ThreadNode (comment + direct children).
+ * Used both for threaded view roots and for flat-mode inline previews.
+ */
+const threadNodeMap = computed((): Map<string, ThreadNode> => {
+  const data = modelledComments.value
+  const lookup = new Map<string, Comment>(data.map(c => [c.id, c]))
+  const nodeMap = new Map<string, ThreadNode>(
+    data.map(c => [c.id, { comment: c, children: [] }]),
+  )
+
+  for (const comment of data) {
+    if (comment.reply_to_id && lookup.has(comment.reply_to_id)) {
+      nodeMap.get(comment.reply_to_id)!.children.push(nodeMap.get(comment.id)!)
+    }
+  }
+
+  return nodeMap
+})
+
+/**
+ * Top-level thread roots for threaded view - only comments that are not a
+ * child of another comment in this discussion. Orphaned replies (parent
+ * deleted) are also treated as roots so nothing is silently hidden.
+ */
+const threadRoots = computed((): ThreadNode[] => {
+  const data = modelledComments.value
+  const lookup = new Map<string, Comment>(data.map(c => [c.id, c]))
+  return data
+    .filter(c => !c.reply_to_id || !lookup.has(c.reply_to_id))
+    .map(c => threadNodeMap.value.get(c.id)!)
+})
+
+// ── Off-topic toggle action ───────────────────────────────────────────────────
+async function toggleOfftopic(comment: Comment) {
+  const nextValue = !comment.is_offtopic
+
+  const { error: updateError } = await supabase
+    .from('discussion_replies')
+    .update({ is_offtopic: nextValue })
+    .eq('id', comment.id)
+
+  if (updateError)
+    return
+
+  // Optimistically cascade in the local list: mark all descendants too.
+  const descendantIds = collectDescendantIds(comment.id)
+  for (const c of comments.value) {
+    if (c.id === comment.id || descendantIds.has(c.id)) {
+      c.is_offtopic = nextValue
+    }
+  }
+}
+
+/** Collect all ids that are descendants of `parentId` in the flat list. */
+function collectDescendantIds(parentId: string): Set<string> {
+  const result = new Set<string>()
+  const queue = [parentId]
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const c of comments.value) {
+      if (c.reply_to_id === current) {
+        result.add(c.id)
+        queue.push(c.id)
+      }
+    }
+  }
+  return result
+}
+
+provide('toggleOfftopic', toggleOfftopic)
+
+// ── Comment writing & validation ──────────────────────────────────────────────
 const formLoading = ref(false)
 
 const form = reactive({
@@ -439,6 +572,30 @@ function deleteComment(id: string) {
 }
 
 provide('delete-comment', deleteComment)
+
+// ── Off-topic visibility helpers ──────────────────────────────────────────────
+/**
+ * Whether a given thread node (and thus its sub-tree) should be visible
+ * at all.  A node is hidden when:
+ *   - it is off-topic AND
+ *   - the user has "show off-topic" toggled off
+ */
+function isCommentVisible(comment: Comment): boolean {
+  if (!comment.is_offtopic)
+    return true
+  return showOfftopic.value
+}
+
+function isNodeVisible(node: ThreadNode): boolean {
+  return isCommentVisible(node.comment)
+}
+
+/**
+ * How many off-topic replies exist across all comments.
+ */
+const offtopicCount = computed(() =>
+  comments.value.filter(c => c.is_offtopic).length,
+)
 </script>
 
 <template>
@@ -459,14 +616,83 @@ provide('delete-comment', deleteComment)
 
     <!-- Listing view -->
     <template v-else>
-      <template v-if="modelledComments.length > 0">
-        <DiscussionItem
-          v-for="comment in modelledComments"
-          :key="comment.id"
-          :data="comment"
-          :model="props.model"
-        />
+      <!-- Toolbar: view mode selector + off-topic toggle -->
+      <Flex y-center x-between gap="s" class="discussion__toolbar">
+        <!-- View mode segmented control -->
+        <ButtonGroup size="s">
+          <Button
+            :variant="viewMode === 'flat' ? 'accent' : 'gray'"
+            size="s"
+            @click="viewMode = 'flat'"
+          >
+            <Tooltip>
+              <Icon name="ph:list" />
+              <template #tooltip>
+                <p>Flat view - all replies in chronological order</p>
+              </template>
+            </Tooltip>
+          </Button>
+          <Button
+            :variant="viewMode === 'threaded' ? 'accent' : 'gray'"
+            size="s"
+            @click="viewMode = 'threaded'"
+          >
+            <Tooltip>
+              <Icon name="ph:tree-structure" />
+              <template #tooltip>
+                <p>Threaded view - replies nested under their parent</p>
+              </template>
+            </Tooltip>
+          </Button>
+        </ButtonGroup>
+
+        <!-- Off-topic toggle - only shown when relevant -->
+        <Flex v-if="offtopicCount > 0" y-center gap="xs">
+          <Icon name="ph:warning-circle" class="text-color-lighter" :size="16" />
+          <span class="discussion__offtopic-label">
+            {{ offtopicCount }} off-topic
+          </span>
+          <Tooltip>
+            <Switch
+              :model-value="showOfftopic"
+              class="discussion__offtopic-switch"
+              @update:model-value="toggleShowOfftopic"
+            />
+            <template #tooltip>
+              <p>{{ showOfftopic ? 'Hide off-topic replies' : 'Show off-topic replies' }}</p>
+            </template>
+          </Tooltip>
+        </Flex>
+      </Flex>
+
+      <!-- Flat view: all comments chronologically with inline reply previews -->
+      <template v-if="viewMode === 'flat' && modelledComments.length > 0">
+        <template v-for="comment in modelledComments" :key="comment.id">
+          <DiscussionItem
+            v-if="isCommentVisible(comment)"
+            :data="comment"
+            :model="props.model"
+            :thread-node="threadNodeMap.get(comment.id)"
+            :show-offtopic="showOfftopic"
+            :show-thread-replies="showThreadReplies"
+          />
+        </template>
       </template>
+
+      <!-- Threaded view: only roots rendered, children nest recursively -->
+      <template v-else-if="viewMode === 'threaded' && threadRoots.length > 0">
+        <template v-for="node in threadRoots" :key="node.comment.id">
+          <DiscussionItem
+            v-if="isNodeVisible(node)"
+            :data="node.comment"
+            :model="props.model"
+            :children="node.children"
+            :show-offtopic="showOfftopic"
+            :depth="0"
+          />
+        </template>
+      </template>
+
       <div v-if="props.hideInput !== true && userId" class="discussion__add">
         <Alert v-if="replyingTo">
           <Flex y-start gap="xl" x-between>
@@ -559,6 +785,27 @@ provide('delete-comment', deleteComment)
   &--forum {
     .discussion__add {
       padding-left: 0;
+    }
+  }
+
+  &__toolbar {
+    padding: var(--space-xs) var(--space-s);
+    margin-bottom: var(--space-xs);
+    background-color: var(--color-bg-raised);
+    border-radius: var(--border-radius-m);
+    border: 1px solid var(--color-border);
+    min-height: 40px;
+  }
+
+  &__offtopic-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+  }
+
+  &__offtopic-switch {
+    // Compact the switch so it fits neatly in the bar
+    :deep(.vui-switch__track) {
+      transform: scale(0.85);
     }
   }
 

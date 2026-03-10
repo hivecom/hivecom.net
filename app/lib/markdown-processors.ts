@@ -189,7 +189,7 @@ const TEXT_COLOR_NAMES = new Set([
  * The span carries both a data attribute (for the TipTap editor to round-trip
  * the name cleanly) and an inline CSS variable reference (for static renders).
  *
- * Nesting is intentionally not supported — the outer directive wins.
+ * Nesting is intentionally not supported - the outer directive wins.
  */
 export function processColorTags(markdown: string): string {
   if (!markdown)
@@ -370,7 +370,7 @@ export function isValidMentionUsername(username: string): boolean {
  */
 // Iteratively strips nested :::color/font/size[name]text::: directives, keeping
 // only the inner text. The regex matches the innermost directive first by
-// requiring that the captured content contains no `:::` sequences — this ensures
+// requiring that the captured content contains no `:::` sequences - this ensures
 // we peel one layer at a time from the inside out, correctly handling arbitrary
 // nesting (e.g. :::size[xxl]:::font[serif]text:::::: → Test! in two passes).
 const INLINE_DIRECTIVE_RE = /:::(?:color|font|size)\[[a-z0-9#-]+\]((?:(?!:::)[\s\S])*?):::(?![a-z[])/gi

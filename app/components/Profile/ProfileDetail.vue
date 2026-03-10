@@ -22,6 +22,7 @@ const props = defineProps<Props>()
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const isLoggedIn = computed(() => !!user.value)
 const userId = useUserId() // Use helper to get ID from JWT claims
 const { navigateToSignIn } = useAuthRedirect()
 type ProfileRecord = Tables<'profiles'>
@@ -804,6 +805,7 @@ async function ignoreFriendRequest() {
             :is-own-profile="isOwnProfile"
             :friendship-status="friendshipStatus"
             :is-current-user-admin="isCurrentUserAdmin"
+            :is-logged-in="isLoggedIn"
             @open-edit-sheet="openEditSheet"
             @open-complaint-modal="openComplaintModal"
           />
@@ -828,6 +830,7 @@ async function ignoreFriendRequest() {
             :friendship-status="friendshipStatus"
             :pending-requests="pendingRequests"
             :is-own-profile="isOwnProfile"
+            :is-logged-in="isLoggedIn"
             :loading="friendsLoading"
             @open-friends-modal="openFriendsModal"
             @send-friend-request="sendFriendRequest"

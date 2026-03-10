@@ -40,6 +40,7 @@ const { user: currentUserData } = useCacheUserData(userId, { includeRole: true }
 
 const isMobile = useBreakpoint('<s')
 
+const viewMode = inject('viewMode', ref<'flat' | 'threaded'>('flat'))
 const discussion = inject('discussion') as ProvidedDiscussion
 const canBypassLock = inject('canBypassLock', ref(false)) as Ref<boolean>
 
@@ -58,6 +59,18 @@ const country = computed(() => getCountryInfo(user.value?.country))
 
 const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
 const setQuoteOfComment = inject('setQuoteOfComment') as (data: Comment) => void
+
+// ── Off-topic ────────────────────────────────────────────────────────────────
+
+const canMarkOfftopic = inject('canMarkOfftopic', ref(false)) as Ref<boolean>
+const toggleOfftopic = inject('toggleOfftopic') as (comment: Comment) => Promise<void>
+const offtopicLoading = ref(false)
+
+async function handleToggleOfftopic() {
+  offtopicLoading.value = true
+  await toggleOfftopic(data.value)
+  offtopicLoading.value = false
+}
 
 // Comment deletion
 const deleteComment = inject('delete-comment') as (id: string) => Promise<void>
@@ -177,7 +190,7 @@ const { displayReactions, toggleReaction } = useReactions({
 
     <!-- Author information -->
     <div class="discussion-forum__author">
-      <UserPreviewHover v-if="currentUser" :user-id="data.created_by">
+      <UserPreviewHover v-if="currentUser || user" :user-id="data.created_by">
         <UserInfo />
       </UserPreviewHover>
 
@@ -203,7 +216,7 @@ const { displayReactions, toggleReaction } = useReactions({
     <!-- Content -->
     <div class="discussion-forum__content">
       <!-- Reply information -->
-      <Alert v-if="data.reply" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
+      <Alert v-if="data.reply && viewMode !== 'threaded'" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
         <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
           <UserName size="s" :user-id="data.reply.created_by" /> wrote:
         </p>
@@ -237,14 +250,14 @@ const { displayReactions, toggleReaction } = useReactions({
         </p>
 
         <Flex v-if="displayReactions.length > 0" y-center x-end gap="xxs">
-          <ReactionsList :reactions="displayReactions" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
-          <ReactionsSelect @reaction="(emote) => toggleReaction(emote)" />
+          <ReactionsList :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
+          <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)" />
         </Flex>
       </Flex>
 
       <!-- Floating actions -->
       <div v-if="!showNSFWWarning" class="discussion-forum__actions">
-        <ReactionsSelect @reaction="(emote) => toggleReaction(emote)">
+        <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
           <template #default="{ toggle }">
             <Button size="s" square @click="toggle">
               <Tooltip>
@@ -322,15 +335,33 @@ const { displayReactions, toggleReaction } = useReactions({
           </ConfirmModal>
         </ButtonGroup>
 
-        <!-- Report button for other users' posts -->
-        <Button v-if="currentUserData && data.created_by !== currentUserData.id" size="s" square @click="showReportModal = true">
-          <Tooltip>
-            <Icon name="ph:flag-bold" />
-            <template #tooltip>
-              <p>Report post</p>
-            </template>
-          </Tooltip>
-        </Button>
+        <!-- Off-topic toggle + report grouped on the right -->
+        <!-- Admins/mods can flag any reply including their own; plain OPs cannot flag themselves -->
+        <ButtonGroup v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by) || (currentUserData && data.created_by !== currentUserData.id)">
+          <Button
+            v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by)"
+            size="s"
+            square
+            :loading="offtopicLoading"
+            :variant="data.is_offtopic ? 'danger' : 'gray'"
+            @click="handleToggleOfftopic"
+          >
+            <Tooltip>
+              <Icon :name="data.is_offtopic ? 'ph:warning-circle-fill' : 'ph:warning-circle'" />
+              <template #tooltip>
+                <p>{{ data.is_offtopic ? 'Remove off-topic flag' : 'Mark as off-topic' }}</p>
+              </template>
+            </Tooltip>
+          </Button>
+          <Button v-if="currentUserData && data.created_by !== currentUserData.id" size="s" square @click="showReportModal = true">
+            <Tooltip>
+              <Icon name="ph:flag-bold" />
+              <template #tooltip>
+                <p>Report post</p>
+              </template>
+            </Tooltip>
+          </Button>
+        </ButtonGroup>
       </div>
     </div>
 

@@ -313,7 +313,7 @@ onBeforeMount(() => {
   Promise.all([
     supabase
       .from('discussion_topics')
-      .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_by, discussion_topic_id)')
+      .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, discussion_topic_id)')
       .neq('discussions.is_draft', true)
       .then(({ data, error }) => {
         if (error) {
@@ -346,12 +346,12 @@ onBeforeMount(() => {
           }
         }
       }),
-    // Fetch the 10 most recent replies. visibleReplies filters these down to
+    // Fetch the 20 most recent replies. visibleReplies filters these down to
     // only forum-scoped discussions client-side via visibleDiscussionIds.
     supabase
       .from('forum_discussion_replies')
       .select('*')
-      .limit(10)
+      .limit(20)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data) {
@@ -725,15 +725,14 @@ const latestPosts = computed<ActivityItem[]>(() => {
       const isTopic = !('discussion_topic_id' in item)
       const id = item.id
       const title = (isTopic ? item.name : item.title) ?? (isTopic ? 'Topic' : 'Discussion')
-      const activityAt = item.last_activity_at
 
       return {
         id,
         type: isTopic ? 'Topic' : 'Discussion',
         title,
         description: item.description ?? undefined,
-        timestamp: `${dayjs(activityAt).fromNow()}`,
-        timestampRaw: activityAt,
+        timestamp: `${dayjs(item.created_at).fromNow()}`,
+        timestampRaw: item.created_at,
         user: item.created_by,
         icon: isTopic ? 'ph:folder-open' : 'ph:scroll',
         isArchived: item.is_archived,
@@ -743,45 +742,13 @@ const latestPosts = computed<ActivityItem[]>(() => {
       } as ActivityItem
     })
 
-  const sorted = [...flattenedTopics, ...visibleReplies.value]
-    .toSorted((a, b) => new Date(a.timestampRaw) > new Date(b.timestampRaw) ? -1 : 1)
-
-  // Deduplicate: a reply covers its parent discussion and grandparent topic;
-  // a discussion covers its parent topic. Process in sorted order so the most
-  // specific/recent item wins and the broader duplicates are dropped.
-  const coveredDiscussionIds = new Set<string>()
-  const coveredTopicIds = new Set<string>()
-
-  const deduped = sorted.filter((item) => {
-    if (item.type === 'Reply') {
-      if (item.discussionId) {
-        coveredDiscussionIds.add(item.discussionId)
-        const discussion = discussionLookup.value.get(item.discussionId)
-        if (discussion?.discussion_topic_id) {
-          coveredTopicIds.add(discussion.discussion_topic_id)
-        }
-      }
-      return true
-    }
-
-    if (item.type === 'Discussion') {
-      if (coveredDiscussionIds.has(item.id))
-        return false
-      const discussion = discussionLookup.value.get(item.id)
-      if (discussion?.discussion_topic_id) {
-        coveredTopicIds.add(discussion.discussion_topic_id)
-      }
-      return true
-    }
-
-    if (item.type === 'Topic') {
-      return !coveredTopicIds.has(item.id)
-    }
-
-    return true
-  })
-
-  return deduped.splice(0, 20)
+  return [...flattenedTopics, ...visibleReplies.value]
+    .toSorted((a, b) => {
+      const ta = new Date(a.timestampRaw).getTime()
+      const tb = new Date(b.timestampRaw).getTime()
+      return ta > tb ? -1 : ta < tb ? 1 : 0
+    })
+    .slice(0, 20)
 })
 
 const latestPostMentionIds = computed(() => {
@@ -1306,7 +1273,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
   &__latest-list {
     display: flex;
     gap: var(--space-s);
-    overflow-y: auto;
+    overflow-x: auto;
     padding-bottom: 16px;
     scrollbar-width: thin;
     margin-bottom: var(--space-l);

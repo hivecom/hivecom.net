@@ -27,7 +27,7 @@ export default antfu({
     html: true,
   },
 }, {
-  // Scope vue rules to Vue files only — applying them globally (e.g. to .md)
+  // Scope vue rules to Vue files only - applying them globally (e.g. to .md)
   // causes crashes because getTemplateBodyTokenStore() only exists in Vue contexts.
   files: ['**/*.vue'],
   rules: {

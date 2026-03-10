@@ -189,12 +189,12 @@ export const TextFont = Mark.create({
         if (src[i] === ':' && src[i + 1] === ':' && src[i + 2] === ':') {
           const after = src.slice(i + 3)
           if (OPENING_DIRECTIVE_RE.test(after)) {
-            // Another opening directive — go deeper
+            // Another opening directive - go deeper
             depth++
             i += 3
             continue
           }
-          // Closing :::  — anything that is NOT followed by a letter or '[' counts,
+          // Closing :::  - anything that is NOT followed by a letter or '[' counts,
           // including being followed by another ':' (which is the next closing :::).
           if (!CLOSING_DIRECTIVE_RE.test(after)) {
             depth--

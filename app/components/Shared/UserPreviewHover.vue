@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Popout } from '@dolanske/vui'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 
 const props = withDefaults(defineProps<{
   userId?: string | null
@@ -22,6 +23,16 @@ watch(() => props.userId, (newId) => {
   if (!newId)
     visible.value = false
 })
+
+const { user } = useCacheUserData(computed(() => props.userId ?? null), {
+  includeAvatar: false,
+  includeRole: false,
+})
+
+// Only open the popout when we actually have profile data to show.
+// This prevents an empty card from appearing for non-public profiles
+// when the visitor is unauthenticated (RLS returns nothing for them).
+const canShowPopout = computed(() => !!(visible.value && props.userId && user.value))
 </script>
 
 <template>
@@ -36,7 +47,7 @@ watch(() => props.userId, (newId) => {
     <slot />
 
     <Popout
-      :anchor="anchorRef" :visible="!!(visible && props.userId)" placement="bottom" :offset="16" :enter-delay="props.enterDelay" :leave-delay="props.leaveDelay" @mouseenter="visible = true"
+      :anchor="anchorRef" :visible="canShowPopout" placement="bottom" :offset="16" :enter-delay="props.enterDelay" :leave-delay="props.leaveDelay" @mouseenter="visible = true"
       @mouseleave="visible = false"
     >
       <UserPreviewCard

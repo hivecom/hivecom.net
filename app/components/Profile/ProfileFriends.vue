@@ -12,10 +12,12 @@ interface Props {
   isOwnProfile: boolean
   loading?: boolean
   friendshipStatus: ProfileFriendshipStatus
+  isLoggedIn?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
+  isLoggedIn: false,
 })
 
 const emit = defineEmits<{
@@ -31,19 +33,19 @@ const showRemoveFriendConfirm = ref(false)
 
 // Computed properties for friendship status
 const canSendFriendRequest = computed(() => {
-  return !props.isOwnProfile && props.friendshipStatus === 'none'
+  return props.isLoggedIn && !props.isOwnProfile && props.friendshipStatus === 'none'
 })
 
 const areMutualFriends = computed(() => {
-  return props.friendshipStatus === 'mutual'
+  return props.isLoggedIn && props.friendshipStatus === 'mutual'
 })
 
 const hasSentRequest = computed(() => {
-  return props.friendshipStatus === 'sent_request'
+  return props.isLoggedIn && props.friendshipStatus === 'sent_request'
 })
 
 const hasReceivedRequest = computed(() => {
-  return props.friendshipStatus === 'received_request'
+  return props.isLoggedIn && props.friendshipStatus === 'received_request'
 })
 
 // Handle remove friend confirmation
@@ -67,11 +69,11 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
       <Flex x-between y-center>
         <Flex gap="xs" y-center>
           <h4>Friends</h4>
-          <span class="counter">
+          <span v-if="isLoggedIn" class="counter">
             {{ friends.length }}
           </span>
         </Flex>
-        <Button variant="gray" size="s" plain @click="emit('openFriendsModal')">
+        <Button v-if="isLoggedIn" variant="gray" size="s" plain @click="emit('openFriendsModal')">
           <template #start>
             <Icon name="ph:users" />
           </template>
@@ -80,8 +82,18 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
       </Flex>
     </template>
 
+    <!-- Unauthenticated State -->
+    <div v-if="!isLoggedIn" class="friends-empty">
+      <Flex column y-center x-center gap="s">
+        <Icon name="ph:lock" size="32" class="text-color-light" />
+        <p class="text-color-light text-s text-center">
+          Sign in to see {{ profile.username }}'s friends.
+        </p>
+      </Flex>
+    </div>
+
     <!-- Loading State -->
-    <div v-if="loading" class="friends-loading">
+    <div v-else-if="loading" class="friends-loading">
       <Flex :gap="8" class="friends-loading__avatars">
         <div
           v-for="index in 6"
@@ -94,7 +106,7 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
     </div>
 
     <!-- Friends Avatar Display -->
-    <div v-else-if="friends.length > 0" class="friends-content">
+    <div v-else-if="friends.length > 0 && isLoggedIn" class="friends-content">
       <Alert v-if="pendingUsers.size > 0 && props.isOwnProfile" icon-align="start">
         <p>
           You have {{ pendingUsers.size }} pending friend request{{ pendingUsers.size > 1 ? 's' : '' }} from
@@ -114,7 +126,7 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
     </div>
 
     <!-- Empty State -->
-    <div v-else class="friends-empty">
+    <div v-else-if="isLoggedIn" class="friends-empty">
       <Flex column y-center x-center gap="s">
         <Icon name="ph:users" size="32" class="text-color-light" />
         <p class="text-color-light text-s text-center mb-m">
@@ -138,8 +150,8 @@ const { users: pendingUsers } = useBulkUserData(pendingRequests)
       </Flex>
     </div>
 
-    <!-- Action Buttons for friend-ship management -->
-    <template v-if="!props.isOwnProfile" #footer>
+    <!-- Action Buttons for friend-ship management (only for logged-in users viewing others' profiles) -->
+    <template v-if="!props.isOwnProfile && props.isLoggedIn" #footer>
       <Flex x-center gap="m">
         <Button
           v-if="canSendFriendRequest"
