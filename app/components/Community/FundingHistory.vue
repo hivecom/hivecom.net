@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
-import { Alert, Badge, Card, defineTable, Flex, Grid, Table } from '@dolanske/vui'
+import { Alert, Badge, Card, defineTable, Flex, Grid, Select, Table } from '@dolanske/vui'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+
+interface SelectOption { value: number, label: string }
 
 interface Props {
   monthlyFunding: Tables<'monthly_funding'>[]
@@ -27,13 +29,30 @@ interface TransformedFunding {
 // Year filter
 const selectedYear = ref<number>(new Date().getFullYear())
 
+const selectedYearOption = computed({
+  get: () => {
+    const year = selectedYear.value
+    return [{ value: year, label: String(year) }]
+  },
+  set: (options: SelectOption[] | undefined) => {
+    if (options?.[0] != null)
+      selectedYear.value = options[0].value
+  },
+})
+
 // Get available years from data
 const availableYears = computed(() => {
   const years = new Set(
     props.monthlyFunding.map(funding => new Date(`${funding.month}T00:00:00Z`).getFullYear()),
   )
-  return years.toSorted((a, b) => b - a) // Most recent first
+  return [...years].toSorted((a, b) => b - a) // Most recent first
 })
+
+const yearOptions = computed(() =>
+  availableYears.value.map((year: number) => ({ value: year, label: String(year) })),
+)
+
+const isCurrentYear = computed(() => selectedYear.value === new Date().getFullYear())
 
 // Process historical data for display
 const historicalData = computed(() => {
@@ -130,22 +149,19 @@ function getGrowthIndicator(growth: number | null) {
     <!-- Year Filter -->
     <Flex x-between y-center class="mb-l">
       <h2>Funding History</h2>
-      <div v-if="availableYears.length > 1" class="w-40">
-        <select
-          v-model="selectedYear"
-          class="w-full px-3 py-2 border border-border rounded-l bg-surface text-text text-s"
-        >
-          <option v-for="year in availableYears" :key="year" :value="year">
-            {{ year }}
-          </option>
-        </select>
-      </div>
+      <Select
+        v-if="availableYears.length > 1"
+        v-model="selectedYearOption"
+        :options="yearOptions"
+        single
+        style="width: 8rem;"
+      />
     </Flex>
 
     <!-- Funding History -->
     <div v-if="historicalData.length > 0">
-      <!-- Latest Month - Full Card -->
-      <Card v-if="historicalData[0]" class="p-l mb-l">
+      <!-- Latest Month - Full Card (current year only) -->
+      <Card v-if="historicalData[0] && isCurrentYear" class="p-l mb-l">
         <!-- Header with month -->
         <Flex x-between y-center class="mb-l">
           <Flex y-center gap="s">
@@ -205,8 +221,8 @@ function getGrowthIndicator(growth: number | null) {
       </Card>
 
       <!-- Previous Months - Table -->
-      <div v-if="historicalData.length > 1">
-        <h3 class="text-bold mb-m">
+      <div v-if="isCurrentYear ? historicalData.length > 1 : historicalData.length > 0">
+        <h3 v-if="isCurrentYear" class="text-bold mb-m">
           Previous Months
         </h3>
         <TableContainer>
@@ -284,10 +300,6 @@ function getGrowthIndicator(growth: number | null) {
 <style scoped lang="scss">
 .space-y-xs > * + * {
   margin-top: 0.25rem;
-}
-
-.w-40 {
-  width: 10rem;
 }
 
 .mb-l {
