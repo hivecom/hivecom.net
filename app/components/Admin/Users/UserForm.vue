@@ -14,15 +14,6 @@ import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
 
-// Interface for Select options
-interface SelectOption {
-  label: string
-  value: string
-  description?: string
-}
-
-type ProfileBadge = Enums<'profile_badge'>
-
 const props = defineProps<{
   user: {
     id: string
@@ -47,9 +38,24 @@ const props = defineProps<{
   } | null
   isEditMode: boolean
 }>()
-
 // Define emits
 const emit = defineEmits(['save', 'delete'])
+const WORD_ONLY_RE = /^\w+$/
+const WHITESPACE_RE = /\s/
+const DIGITS_ONLY_RE = /^\d+$/
+const DISCORD_ID_RE = /^\d{17,19}$/
+const STEAM_ID_RE = /^\d{17}$/
+const HTTP_PROTOCOL_RE = /^https?:\/\//
+const BIRTHDAY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+// Interface for Select options
+interface SelectOption {
+  label: string
+  value: string
+  description?: string
+}
+
+type ProfileBadge = Enums<'profile_badge'>
 
 const BADGE_VALUES = ['builder', 'earlybird', 'founder', 'host'] as const satisfies ReadonlyArray<ProfileBadge>
 
@@ -178,7 +184,7 @@ const MARKDOWN_LIMIT = 8128
 const BIRTHDAY_MIN_VALUE = '1900-01-01' as const
 
 function dedupeBadges(badges?: readonly ProfileBadge[]) {
-  return Array.from(new Set(badges ?? [])) as ProfileBadge[]
+  return [...new Set(badges ?? [])] as ProfileBadge[]
 }
 
 function isBadgeActive(badge: ProfileBadge): boolean {
@@ -204,11 +210,11 @@ const usernameValidation = computed(() => {
     return { valid: false, error: `Username must be ${USERNAME_LIMIT} characters or less` }
   }
 
-  if (!/^\w+$/.test(username)) {
+  if (!WORD_ONLY_RE.test(username)) {
     return { valid: false, error: 'Username can only contain letters, numbers, and underscores' }
   }
 
-  if (/\s/.test(username)) {
+  if (WHITESPACE_RE.test(username)) {
     return { valid: false, error: 'Username cannot contain spaces' }
   }
 
@@ -221,7 +227,7 @@ const patreonIdValidation = computed(() => {
   if (!id)
     return { valid: true, error: null }
 
-  if (!/^\d+$/.test(id)) {
+  if (!DIGITS_ONLY_RE.test(id)) {
     return { valid: false, error: 'Patreon ID must be numeric' }
   }
 
@@ -233,7 +239,7 @@ const discordIdValidation = computed(() => {
   if (!id)
     return { valid: true, error: null }
 
-  if (!/^\d{17,19}$/.test(id)) {
+  if (!DISCORD_ID_RE.test(id)) {
     return { valid: false, error: 'Discord ID must be 17-19 digits' }
   }
 
@@ -245,7 +251,7 @@ const steamIdValidation = computed(() => {
   if (!id)
     return { valid: true, error: null }
 
-  if (!/^\d{17}$/.test(id)) {
+  if (!STEAM_ID_RE.test(id)) {
     return { valid: false, error: 'Steam ID must be 17 digits' }
   }
 
@@ -284,7 +290,7 @@ const websiteValidation = computed(() => {
 
   // Auto-prepend https:// if no protocol is provided for validation
   let normalizedUrl = website
-  if (!website.match(/^https?:\/\//)) {
+  if (!HTTP_PROTOCOL_RE.test(website)) {
     normalizedUrl = `https://${website}`
   }
 
@@ -323,7 +329,7 @@ const birthdayValidation = computed(() => {
   if (!birthday)
     return { valid: true, error: null }
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+  if (!BIRTHDAY_DATE_RE.test(birthday)) {
     return { valid: false, error: 'Please enter a valid date (YYYY-MM-DD)' }
   }
 
@@ -350,7 +356,7 @@ function normalizeWebsiteUrl(url: string): string {
   if (!trimmed)
     return trimmed
 
-  if (!trimmed.match(/^https?:\/\//)) {
+  if (!HTTP_PROTOCOL_RE.test(trimmed)) {
     return `https://${trimmed}`
   }
 

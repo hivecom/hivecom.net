@@ -12,8 +12,11 @@ const FALLBACK_DATASET: UsernameDataset = {
   animals: ['Panda', 'Fox', 'Otter', 'Eagle', 'Tiger', 'Dolphin'],
 }
 
+const UUID_RE = /^[0-9a-f-]{36}$/i
+const NON_WORD_RE = /\W/g
+
 function isUuid(value: string) {
-  return /^[0-9a-f-]{36}$/i.test(value)
+  return UUID_RE.test(value)
 }
 
 function normalizeList(list: unknown): string[] {
@@ -58,7 +61,7 @@ function pick(list: string[], hash: number) {
 }
 
 function sanitizePart(value: string) {
-  return value.replace(/\W/g, '')
+  return value.replace(NON_WORD_RE, '')
 }
 
 export function getAnonymousUsername(uuid: string) {

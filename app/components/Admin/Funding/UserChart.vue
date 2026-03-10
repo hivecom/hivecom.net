@@ -140,8 +140,7 @@ async function fetchAllData() {
     })
 
     // Convert to sorted array
-    const combinedData = Array.from(monthsMap.values())
-      .sort((a, b) => dayjs(a.month).valueOf() - dayjs(b.month).valueOf())
+    const combinedData = monthsMap.values().toSorted((a, b) => dayjs(a.month).valueOf() - dayjs(b.month).valueOf())
 
     // Calculate cumulative values
     let cumulativeUsers = 0

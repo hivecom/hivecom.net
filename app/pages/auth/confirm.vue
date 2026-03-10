@@ -6,6 +6,10 @@ import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useCache } from '@/composables/useCache'
 import { normalizeInternalRedirect } from '@/lib/utils/common'
 
+const WHITESPACE_RE = /\s+/g
+const NON_WORD_RE = /\W+/g
+const WORD_ONLY_RE = /^\w+$/
+
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -182,8 +186,8 @@ function sanitizeUsernameCandidate(rawValue: string | null) {
     return null
 
   const cleaned = trimmed
-    .replace(/\s+/g, '_')
-    .replace(/\W+/g, '')
+    .replace(WHITESPACE_RE, '_')
+    .replace(NON_WORD_RE, '')
     .slice(0, USERNAME_LIMIT)
 
   return cleaned.length >= 3 ? cleaned : null
@@ -209,7 +213,7 @@ async function updateUsernameValue(newUsername: string): Promise<UpdateUsernameR
   if (normalized.length > USERNAME_LIMIT)
     return { success: false, message: `Username must be ${USERNAME_LIMIT} characters or less` }
 
-  if (!/^\w+$/.test(normalized))
+  if (!WORD_ONLY_RE.test(normalized))
     return { success: false, message: 'Username can only contain letters, numbers, and underscores' }
 
   if (!userId.value && !debugOptions.bypassAuth)

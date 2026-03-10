@@ -8,6 +8,18 @@ import FileUpload from '@/components/Shared/FileUpload.vue'
 import { deleteProjectBanner, getProjectBannerUrl, uploadProjectBanner } from '@/lib/storage'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
+const props = defineProps<{
+  project: QueryProject | null
+  isEditMode: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'save', project: TablesInsert<'projects'> | TablesUpdate<'projects'>): void
+  (e: 'delete', projectId: number): void
+}>()
+
+const TAG_SPACES_RE = /\s+/g
+
 // Interface for project query result
 interface QueryProject {
   created_at: string
@@ -35,16 +47,6 @@ interface SelectOption {
   label: string
   value: string
 }
-
-const props = defineProps<{
-  project: QueryProject | null
-  isEditMode: boolean
-}>()
-
-const emit = defineEmits<{
-  (e: 'save', project: TablesInsert<'projects'> | TablesUpdate<'projects'>): void
-  (e: 'delete', projectId: number): void
-}>()
 
 const isOpen = defineModel<boolean>('open', { default: false })
 const supabase = useSupabaseClient()
@@ -268,7 +270,7 @@ function addTag() {
   const rawTag = newTagInput.value.trim()
   if (rawTag) {
     // Normalize tag: lowercase and replace spaces with hyphens
-    const normalizedTag = rawTag.toLowerCase().replace(/\s+/g, '-')
+    const normalizedTag = rawTag.toLowerCase().replace(TAG_SPACES_RE, '-')
     if (!projectForm.value.tags.includes(normalizedTag)) {
       projectForm.value.tags.push(normalizedTag)
       newTagInput.value = ''

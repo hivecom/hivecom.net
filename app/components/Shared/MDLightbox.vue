@@ -1,24 +1,17 @@
 <script setup lang="ts">
 import { Button, Flex, Modal } from '@dolanske/vui'
 
+const props = defineProps<Props>()
+
+const IMAGE_URL_SOURCE = String.raw`!\[.*?\]\((.*?\.(?:jpe?g|png|webp)(?:\?[^)]*)?)\)`
+
 interface Props {
   markdown: string
 }
 
-const props = defineProps<Props>()
-
 // Extract image URLs from the markdown content
 const imageUrls = computed(() => {
-  const regex = /!\[.*?\]\((.*?\.(?:jpe?g|png|webp)(?:\?[^)]*)?)\)/gi
-  const urls: string[] = []
-  let match = regex.exec(props.markdown)
-
-  while (match !== null) {
-    urls.push(match[1]!)
-    match = regex.exec(props.markdown)
-  }
-
-  return urls
+  return Array.from(props.markdown.matchAll(new RegExp(IMAGE_URL_SOURCE, 'gi')), m => m[1]!)
 })
 
 const activeIndex = ref(-1)

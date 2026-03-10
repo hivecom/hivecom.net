@@ -136,7 +136,7 @@ const serverOptions = computed<SelectOption[]>(() => {
     }
   })
 
-  return Array.from(uniqueServers).map(server => ({
+  return Array.from(uniqueServers, server => ({
     label: server,
     value: server,
   }))

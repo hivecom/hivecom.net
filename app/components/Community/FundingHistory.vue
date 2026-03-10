@@ -32,7 +32,7 @@ const availableYears = computed(() => {
   const years = new Set(
     props.monthlyFunding.map(funding => new Date(`${funding.month}T00:00:00Z`).getFullYear()),
   )
-  return Array.from(years).sort((a, b) => b - a) // Most recent first
+  return years.toSorted((a, b) => b - a) // Most recent first
 })
 
 // Process historical data for display

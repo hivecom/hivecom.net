@@ -1,6 +1,11 @@
 import type { JSONContent, MarkdownLexerConfiguration, MarkdownParseHelpers, MarkdownParseResult, MarkdownRendererHelpers, MarkdownToken, MarkdownTokenizer, RenderContext } from '@tiptap/core'
 import { Mark, mergeAttributes } from '@tiptap/core'
 
+const CSS_VAR_SIZE_RE = /var\(--text-size-([a-z]+)\)/
+const PREFIX_SIZE_RE = /^:::size\[([a-z]+)\]/i
+const OPENING_DIRECTIVE_RE = /^[a-z]+\[/i
+const CLOSING_DIRECTIVE_RE = /^[a-z[]/i
+
 // ---------------------------------------------------------------------------
 // Named size palette
 // ---------------------------------------------------------------------------
@@ -67,7 +72,7 @@ export const TextSize = Mark.create({
 
           // Fallback: recover name from a CSS-variable inline style.
           const raw = element.style.fontSize ?? ''
-          const varMatch = /var\(--text-size-([a-z]+)\)/.exec(raw)
+          const varMatch = CSS_VAR_SIZE_RE.exec(raw)
           const varName = varMatch?.[1] ?? null
           if (varName !== null && isValidSizeName(varName))
             return varName
@@ -109,7 +114,7 @@ export const TextSize = Mark.create({
           const raw = node.style.fontSize
           if (!raw)
             return false
-          const varMatch = /var\(--text-size-([a-z]+)\)/.exec(raw)
+          const varMatch = CSS_VAR_SIZE_RE.exec(raw)
           const name = varMatch?.[1] ?? null
           if (name !== null && isValidSizeName(name))
             return { size: name }
@@ -166,7 +171,7 @@ export const TextSize = Mark.create({
     },
 
     tokenize(src: string, _tokens: MarkdownToken[], lexer: MarkdownLexerConfiguration): MarkdownToken | undefined {
-      const prefixMatch = /^:::size\[([a-z]+)\]/i.exec(src)
+      const prefixMatch = PREFIX_SIZE_RE.exec(src)
       if (!prefixMatch)
         return undefined
 
@@ -184,7 +189,7 @@ export const TextSize = Mark.create({
       while (i < src.length && depth > 0) {
         if (src[i] === ':' && src[i + 1] === ':' && src[i + 2] === ':') {
           const after = src.slice(i + 3)
-          if (/^[a-z]+\[/i.test(after)) {
+          if (OPENING_DIRECTIVE_RE.test(after)) {
             // Another opening directive — go deeper
             depth++
             i += 3
@@ -192,7 +197,7 @@ export const TextSize = Mark.create({
           }
           // Closing ::: — anything NOT followed by a letter or '[' counts,
           // including being followed by another ':' (which is the next closing :::).
-          if (!/^[a-z[]/i.test(after)) {
+          if (!CLOSING_DIRECTIVE_RE.test(after)) {
             depth--
             if (depth === 0) {
               const rawInner = src.slice(contentStart, i)

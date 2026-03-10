@@ -67,7 +67,7 @@ const badgeDefinitionsByVariant: BadgeDefinitionsByVariant = {
 
 const uniqueProfileBadges = computed<ProfileBadgeSlug[]>(() => {
   const rawBadges = props.profile.badges ?? []
-  return Array.from(new Set(rawBadges)) as ProfileBadgeSlug[]
+  return [...new Set(rawBadges)] as ProfileBadgeSlug[]
 })
 
 const YEARS_BADGE_THRESHOLD_DAYS = 365

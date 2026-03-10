@@ -10,13 +10,8 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
 import { getContainerStatus } from '@/lib/containerStatus'
 import ContainerActions from './ContainerActions.vue'
-import ContainerStatusIndicator from './ContainerStatusIndicator.vue'
 
-// Define interface for Select options
-interface SelectOption {
-  label: string
-  value: string
-}
+import ContainerStatusIndicator from './ContainerStatusIndicator.vue'
 
 const props = defineProps<{
   container: {
@@ -38,6 +33,14 @@ const props = defineProps<{
   logsError: string
   actionLoading: Record<string, Record<string, boolean>>
 }>()
+
+const HTML_TAG_RE = /<[^>]*>/g
+
+// Define interface for Select options
+interface SelectOption {
+  label: string
+  value: string
+}
 
 // Define models for two-way binding with proper type definitions
 const isOpen = defineModel<boolean>('isOpen', { default: false })
@@ -234,7 +237,7 @@ async function copyLogsToClipboard() {
 
   try {
     // Remove HTML tags to get plain text
-    const plainText = props.logs.replace(/<[^>]*>/g, '')
+    const plainText = props.logs.replace(HTML_TAG_RE, '')
     await navigator.clipboard.writeText(plainText)
   }
   catch (error) {

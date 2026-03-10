@@ -5,6 +5,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 
+const FILE_EXTENSION_RE = /\.[^/.]+$/
+
 export interface UploadResult {
   success: boolean
   url?: string
@@ -88,7 +90,7 @@ export async function convertImageToWebP(file: File, quality: number = 0.8): Pro
         (blob) => {
           if (blob) {
             // Create new File with WebP format
-            const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.webp'), {
+            const webpFile = new File([blob], file.name.replace(FILE_EXTENSION_RE, '.webp'), {
               type: 'image/webp',
               lastModified: Date.now(),
             })

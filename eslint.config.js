@@ -11,10 +11,6 @@ export default antfu({
     'node/prefer-global/process': 'off',
     'ts/no-explicit-any': 'error',
     'n/prefer-global/process': 'off',
-    // Override the problematic vue/object-property-newline rule
-    'vue/object-property-newline': ['error', {
-      allowAllPropertiesOnSameLine: false,
-    }],
   },
   ignores: [
     'package.json',
@@ -29,6 +25,15 @@ export default antfu({
     scss: true,
     markdown: true,
     html: true,
+  },
+}, {
+  // Scope vue rules to Vue files only — applying them globally (e.g. to .md)
+  // causes crashes because getTemplateBodyTokenStore() only exists in Vue contexts.
+  files: ['**/*.vue'],
+  rules: {
+    'vue/object-property-newline': ['error', {
+      allowAllPropertiesOnSameLine: false,
+    }],
   },
 }, {
   files: ['**/*.ts', '**/*.tsx'],

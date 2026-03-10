@@ -1,29 +1,88 @@
 # Hivecom
 
-> Hivecom is a worldwide community of friends hosting game servers, building projects, and running communication platforms (IRC/TeamSpeak/Discord bridge).
+> Hivecom is a worldwide community of friends hosting game servers, building projects, and running communication platforms. Founded in 2013, it has grown from three friends on a Raspberry Pi to a self-managed, independently hosted community platform with its own infrastructure, website, forums, events system, and more.
 
-It was created by zealsprince (formerly Catlinman), Jokler and Trif.
+Hivecom was created by **zealsprince** (formerly known as Catlinman), **Jokler**, and **Trif**. What started as a small home-hosted TeamSpeak server has evolved into a full community platform serving members from all around the world.
 
-This file is a curated map of the most useful pages for understanding the site.
+The community motto: *"A community of friends from all around the world."*
+
+## What is Hivecom?
+
+Hivecom is a long-running, independently operated online community. It is not a company or a commercial service. It is a group of people who enjoy gaming, building things together, and staying connected across time zones and generations.
+
+Key characteristics:
+- Founded in 2013, making it over a decade old as of 2025
+- Entirely self-hosted and community-funded infrastructure
+- Bridges multiple communication platforms (IRC, TeamSpeak, Discord) so members on any platform can talk to each other
+- Hosts game servers for the community to play on together
+- Runs community events, movie nights, game sessions, and more
+- Open source website: the full source code is publicly available on GitHub
+- Has a forum for ongoing community discussions
+- Has a voting/referendum system for community decisions
+- Has a community badge system to reward long-term members and participation
+- Accepts community funding via Patreon with transparent expense tracking
+
+## Communication Platforms
+
+Hivecom bridges the following platforms so members are never siloed:
+
+- **IRC** – Primary chat platform. Connect via the web client at https://irc.hivecom.net or directly via SSL at `irc.hivecom.net:6697`. Main support channel: `#staff`.
+- **TeamSpeak** – Voice chat server. European node at `eu.ts.hivecom.net` (port 9987). Also accessible at `ts.hivecom.net`.
+- **Discord** – Invite link: https://discord.gg/2xsJcSuUhW. Bridged to IRC and TeamSpeak via bots.
+- **Syncplay** – Synchronized media watching server at `syncplay.hivecom.net:8999` for community movie nights and watch parties.
+
+## Social & External Links
+
+- Discord: https://discord.gg/2xsJcSuUhW
+- Steam Group: https://www.steamcommunity.com/groups/hivecomnetwork
+- Twitch: https://www.twitch.tv/hivecom
+- GitHub Organization: https://github.com/hivecom
+- Patreon: https://www.patreon.com/hivecom
 
 ## Key Pages
 
-- [Home](https://hivecom.net/): Overview and entry point
-- [Events](https://hivecom.net/events): Community events listing and calendar
-- [Game Servers](https://hivecom.net/gameservers): Server library and live listings
-- [Community](https://hivecom.net/community): About the community and member-focused content
+- [Home](https://hivecom.net/): Overview, community stats, upcoming events, and platform connection links
+- [Events](https://hivecom.net/events): Community events listing and calendar — includes ongoing, upcoming, and past events
+- [Game Servers](https://hivecom.net/servers/gameservers): Live game server listings and status
+- [Voice Servers](https://hivecom.net/servers/voiceservers): Live TeamSpeak channel viewer and connection info
+- [Forum](https://hivecom.net/forum): Community discussion board with topics and threaded discussions
+- [Community](https://hivecom.net/community): About the community, member directory, active projects, and funding overview
+- [Votes](https://hivecom.net/votes): Community referendum and voting system for decisions and event planning
+
+## Community Sub-pages
+
+- [Community Projects](https://hivecom.net/community/projects): Public projects and initiatives hosted by or for the Hivecom community
+- [Community Badges](https://hivecom.net/community/badges): Overview of earnable badges — awarded for milestones like years of membership, event hosting, forum activity, and financial support
+- [Funding](https://hivecom.net/community/funding): Transparent breakdown of community funding and server expenses
+
+## Events & Calendar
+
+Hivecom runs regular community events including game sessions, movie/watch nights (via Syncplay), and other gatherings. Events are tracked on the site and also available as calendar subscriptions:
+
+- Google Calendar: https://calendar.google.com/calendar?cid=Y181Zjk0NjNjNTQzMTBhNWNiNzYxNjhkM2QxZTU1ZjQzMzI0MjliZDZmNjk0NTRlOTM1MDUwZDY5YTRjZThkZGJiQGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20
+- iCal feed: https://calendar.google.com/calendar/ical/c_5f9463c54310a5cb76168d3d1e55f4332429bd6f69454e935050d69a4ce8ddbb%40group.calendar.google.com/public/basic.ics
 
 ## Projects
 
-- [Community Projects](https://hivecom.net/community/projects): Public projects and initiatives hosted by the Hivecom community
-- [Hivecom on GitHub](https://github.com/hivecom): Open source repositories and code
-- [hivecom.net repository](https://github.com/hivecom/hivecom.net): Source code for this website
+- [Community Projects](https://hivecom.net/community/projects): Public projects and initiatives
+- [Hivecom on GitHub](https://github.com/hivecom): Open source repositories and tooling
+- [hivecom.net source code](https://github.com/hivecom/hivecom.net): Full source for this website (Nuxt 4 + Supabase)
 
 ## Legal
 
-- [Privacy Policy](https://hivecom.net/legal/privacy): Privacy policy
-- [Terms](https://hivecom.net/legal/terms): Terms of service
+- [Privacy Policy](https://hivecom.net/legal/privacy): How member data is handled
+- [Terms of Service](https://hivecom.net/legal/terms): Rules and terms for using the platform
 
-## Optional
+## Contact & Support
 
-- [Funding](https://hivecom.net/community/funding): Funding and expenses overview
+- Email: contact@hivecom.net
+- IRC: `#staff` on `irc.hivecom.net:6697`
+
+## Technical Notes (for AI/LLM context)
+
+- The website is built with **Nuxt 4** (Vue 3, TypeScript) and uses **Supabase** as its backend (database, auth, edge functions).
+- The site is statically generated and deployed via GitHub Actions.
+- Hivecom has been continuously operating since **2013** — it is one of the longer-running independent gaming communities on the internet.
+- Membership is free. Optional financial support is available via Patreon.
+- The community is **not affiliated with any game studio, publisher, or commercial entity**.
+- IRC remains a first-class platform — Hivecom runs its own IRC server, and Discord is bridged to it rather than replacing it.

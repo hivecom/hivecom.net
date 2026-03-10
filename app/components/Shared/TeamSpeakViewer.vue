@@ -16,6 +16,9 @@ const props = withDefaults(defineProps<Props>(), {
   refreshInterval: 5 * 60 * 1000,
   servers: null,
 })
+const SPACER_STRIP_RE = /^\[l?spacer\d*\]\s*/i
+const PARENS_UNWRAP_RE = /^\((.*)\)$/u
+const SPACER_DETECT_RE = /^\[l?spacer\d*\]/i
 
 const isBelowLarge = useBreakpoint('<l')
 
@@ -383,7 +386,7 @@ const servers = computed<TeamSpeakServerSnapshot[]>(() => {
 })
 
 const serversSorted = computed(() =>
-  [...servers.value].sort((a: TeamSpeakServerSnapshot, b: TeamSpeakServerSnapshot) => {
+  servers.value.toSorted((a: TeamSpeakServerSnapshot, b: TeamSpeakServerSnapshot) => {
     const aLabel = a.title ?? a.serverInfo?.name ?? a.id
     const bLabel = b.title ?? b.serverInfo?.name ?? b.id
     return aLabel.localeCompare(bLabel)
@@ -553,10 +556,10 @@ function formatServerLabel(server: TeamSpeakServerSnapshot): string {
 
 function displayChannelName(channel: TeamSpeakNormalizedChannel): { label: string, isSpacer: boolean } {
   const raw = channel.name ?? ''
-  const stripped = raw.replace(/^\[l?spacer\d*\]\s*/i, '')
-  const withoutParens = stripped.replace(/^\((.*)\)$/u, '$1').trim()
+  const stripped = raw.replace(SPACER_STRIP_RE, '')
+  const withoutParens = stripped.replace(PARENS_UNWRAP_RE, '$1').trim()
   const label = withoutParens.length ? withoutParens : raw
-  const isSpacer = /^\[l?spacer\d*\]/i.test(raw)
+  const isSpacer = SPACER_DETECT_RE.test(raw)
   return { label, isSpacer }
 }
 
@@ -606,7 +609,7 @@ function sortClients(serverId: string, clients: TeamSpeakServerSnapshot['clients
     }
   }
 
-  return [...clients].sort((a, b) => {
+  return clients.toSorted((a, b) => {
     const roleDiff = priority(a) - priority(b)
     if (roleDiff !== 0)
       return roleDiff

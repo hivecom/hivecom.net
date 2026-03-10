@@ -83,7 +83,7 @@ const aspectRatioStyle = computed(() => {
 // Handle file selection
 function handleFileSelect(event: Event) {
   const target = event.target as HTMLInputElement
-  const files = target.files ? Array.from(target.files) : []
+  const files = target.files ? [...target.files] : []
   if (!files.length)
     return
 
@@ -101,7 +101,7 @@ function handleDrop(event: DragEvent) {
   if (!files || !files.length)
     return
 
-  const fileArray = Array.from(files)
+  const fileArray = [...files]
   const selection = props.multiple ? fileArray : fileArray.slice(0, 1)
   selection.forEach(processFile)
 }

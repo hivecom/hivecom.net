@@ -9,6 +9,9 @@ import { normalizeInternalRedirect } from '@/lib/utils/common'
 
 import '@/assets/elements/auth.scss'
 
+const OTP_6DIGIT_RE = /\b(\d{6})\b/
+const NON_DIGIT_RE = /\D/g
+
 const route = useRoute()
 const supabase = useSupabaseClient()
 const loading = ref(false)
@@ -58,11 +61,11 @@ const postSignInRedirect = computed(() => normalizeInternalRedirect(route.query.
 const resolvedPostSignInRedirect = computed(() => postSignInRedirect.value ?? '/profile')
 
 function normalizeOtpFromText(text: string) {
-  const match = text.match(/\b(\d{6})\b/)
+  const match = text.match(OTP_6DIGIT_RE)
   if (match)
     return match[1]
 
-  const digitsOnly = text.replace(/\D/g, '')
+  const digitsOnly = text.replace(NON_DIGIT_RE, '')
   if (digitsOnly.length === 6)
     return digitsOnly
 

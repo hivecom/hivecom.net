@@ -207,7 +207,7 @@ const tableRowsFolderFirst = computed(() => {
   if (!nameSortDirection.value)
     return tableRows.value
 
-  return [...tableRows.value].sort((a, b) => sortNameFolderFirst(a, b, nameSortDirection.value as 'asc' | 'desc'))
+  return tableRows.value.toSorted((a, b) => sortNameFolderFirst(a, b, nameSortDirection.value as 'asc' | 'desc'))
 })
 
 function sortFiles(a: CmsAsset, b: CmsAsset) {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
+
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -9,13 +10,6 @@ import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
 
-interface Props {
-  open: boolean
-  editedItem?: Tables<'discussions'>
-  drafts?: Tables<'discussions'>[]
-  hideTabs?: boolean
-}
-
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
@@ -23,6 +17,15 @@ const emit = defineEmits<{
   (e: 'created', discussion: Tables<'discussions'>): void
   (e: 'draftUpdated'): void
 }>()
+
+const SLUG_DATE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}/
+
+interface Props {
+  open: boolean
+  editedItem?: Tables<'discussions'>
+  drafts?: Tables<'discussions'>[]
+  hideTabs?: boolean
+}
 
 // Check if the current user has discussions.update permission by querying the DB directly.
 // This works regardless of which layout (admin or default) renders the component.
@@ -153,7 +156,7 @@ function getDatePrefix() {
 }
 
 function getSlugPrefix(slug: string) {
-  const match = slug.match(/^\d{4}-\d{2}-\d{2}/)
+  const match = slug.match(SLUG_DATE_PREFIX_RE)
   return match?.[0] ?? null
 }
 

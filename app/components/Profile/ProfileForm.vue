@@ -16,9 +16,12 @@ const props = defineProps<{
   isOpen: boolean
   submissionError?: string | null
 }>()
-
 // Define emits
 const emit = defineEmits(['save', 'close', 'update:isOpen', 'clearError'])
+const WORD_ONLY_RE = /^\w+$/
+const WHITESPACE_RE = /\s/
+const HTTP_PROTOCOL_RE = /^https?:\/\//
+const BIRTHDAY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 // Limits (matching database constraints)
 const USERNAME_LIMIT = 32
@@ -51,11 +54,11 @@ const usernameValidation = computed(() => {
     return { valid: false, error: `Username must be ${USERNAME_LIMIT} characters or less` }
   }
 
-  if (!/^\w+$/.test(username)) {
+  if (!WORD_ONLY_RE.test(username)) {
     return { valid: false, error: 'Username can only contain letters, numbers, and underscores' }
   }
 
-  if (/\s/.test(username)) {
+  if (WHITESPACE_RE.test(username)) {
     return { valid: false, error: 'Username cannot contain spaces' }
   }
 
@@ -88,7 +91,7 @@ const websiteValidation = computed(() => {
 
   // Auto-prepend https:// if no protocol is provided for validation
   let normalizedUrl = website
-  if (!website.match(/^https?:\/\//)) {
+  if (!HTTP_PROTOCOL_RE.test(website)) {
     normalizedUrl = `https://${website}`
   }
 
@@ -126,7 +129,7 @@ const birthdayValidation = computed(() => {
   if (!birthday)
     return { valid: true, error: null }
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+  if (!BIRTHDAY_DATE_RE.test(birthday)) {
     return { valid: false, error: 'Please enter a valid date (YYYY-MM-DD)' }
   }
 
@@ -153,7 +156,7 @@ function normalizeWebsiteUrl(url: string): string {
   if (!trimmed)
     return trimmed
 
-  if (!trimmed.match(/^https?:\/\//)) {
+  if (!HTTP_PROTOCOL_RE.test(trimmed)) {
     return `https://${trimmed}`
   }
 

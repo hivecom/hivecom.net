@@ -1,3 +1,23 @@
+const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g
+const SCRIPT_STYLE_RE = /<(script|style)[^>]*>[\s\S]*?<\/\1>/gi
+const HTML_TAG_RE = /<[^>]*>/g
+const AMP_RE = /&amp;/g
+const LT_RE = /&lt;/g
+const GT_RE = /&gt;/g
+const QUOT_RE = /&quot;/g
+const APOS_RE = /&#x27;/g
+const SLASH_RE = /&#x2F;/g
+const NBSP_RE = /&nbsp;/g
+const INLINE_SPACE_RE = /[ \t]+/g
+const MULTI_NEWLINE_RE = /\n\s*\n/g
+
+const HTML_TAG_DETECT_RE = /<[^>]*>/g
+const EMAIL_RE = /^<[^@\s]+@[^@\s>]+>$/
+const URL_RE = /^<https?:\/\/[^>]+>$/
+const HTML_ELEMENT_RE = /^<\/?[a-z][^>]*>$/i
+
+const H1_RE = /^# (.*)$/gm
+
 /**
  * Removes HTML tags from a string, leaving only plain text and markdown syntax
  * @param input The input string that may contain HTML
@@ -10,22 +30,22 @@ export function stripHtmlTags(input: string): string {
   // Remove HTML tags while preserving markdown syntax
   return input
     // Remove HTML comments
-    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(HTML_COMMENT_RE, '')
     // Remove script and style tags with their content
-    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .replace(SCRIPT_STYLE_RE, '')
     // Remove all other HTML tags but keep their content
-    .replace(/<[^>]*>/g, '')
+    .replace(HTML_TAG_RE, '')
     // Decode common HTML entities
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#x27;/g, '\'')
-    .replace(/&#x2F;/g, '/')
-    .replace(/&nbsp;/g, ' ')
+    .replace(AMP_RE, '&')
+    .replace(LT_RE, '<')
+    .replace(GT_RE, '>')
+    .replace(QUOT_RE, '"')
+    .replace(APOS_RE, '\'')
+    .replace(SLASH_RE, '/')
+    .replace(NBSP_RE, ' ')
     // Clean up extra whitespace while preserving newlines
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n\s*\n/g, '\n\n')
+    .replace(INLINE_SPACE_RE, ' ')
+    .replace(MULTI_NEWLINE_RE, '\n\n')
     .trim()
 }
 
@@ -39,16 +59,15 @@ export function validateMarkdownNoHtml(markdown: string): { valid: boolean, erro
     return { valid: true, error: null }
 
   // Check for HTML tags (excluding markdown syntax)
-  const htmlTagRegex = /<[^>]*>/g
-  const htmlMatches = markdown.match(htmlTagRegex)
+  const htmlMatches = markdown.match(HTML_TAG_DETECT_RE)
 
   if (htmlMatches) {
     // Filter out false positives that might be valid markdown (like email addresses with < >)
     const actualHtmlTags = htmlMatches.filter((match) => {
       // Allow some basic patterns that aren't HTML
-      return !match.match(/^<[^@\s]+@[^@\s>]+>$/) // email addresses
-        && !match.match(/^<https?:\/\/[^>]+>$/) // URLs
-        && match.match(/^<\/?[a-z][^>]*>$/i) // HTML tag pattern
+      return !match.match(EMAIL_RE) // email addresses
+        && !match.match(URL_RE) // URLs
+        && match.match(HTML_ELEMENT_RE) // HTML tag pattern
     })
 
     if (actualHtmlTags.length > 0) {
@@ -66,5 +85,5 @@ export function replaceMarkdownH1(markdown: string): string {
   if (!markdown)
     return ''
 
-  return markdown.replace(/^# (.*)$/gm, '## $1')
+  return markdown.replace(H1_RE, '## $1')
 }

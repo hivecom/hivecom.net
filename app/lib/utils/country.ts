@@ -259,6 +259,7 @@ const COUNTRY_DATA = [
   { code: 'ZW', name: 'Zimbabwe' },
 ] as const satisfies ReadonlyArray<CountryDefinition>
 
+const COUNTRY_CODE_RE = /^[A-Z]{2}$/
 const COUNTRY_MAP = new Map<string, CountryDefinition>(COUNTRY_DATA.map(country => [country.code, country]))
 const DEFAULT_FLAG = String.fromCodePoint(0x1F310)
 
@@ -267,7 +268,7 @@ function normalizeCountryCode(code: string | null | undefined): string | null {
     return null
 
   const normalized = code.trim().toUpperCase()
-  if (!/^[A-Z]{2}$/.test(normalized))
+  if (!COUNTRY_CODE_RE.test(normalized))
     return null
 
   return COUNTRY_MAP.has(normalized) ? normalized : null
@@ -313,7 +314,7 @@ export function getCountryInfo(code: string | null | undefined): CountryInfo | n
 }
 
 export const COUNTRIES: CountryDefinition[]
-  = [...COUNTRY_DATA].sort((a, b) => a.name.localeCompare(b.name))
+  = COUNTRY_DATA.toSorted((a, b) => a.name.localeCompare(b.name))
 
 export const COUNTRY_SELECT_OPTIONS = COUNTRIES.map((country) => {
   const emoji = computeFlagEmoji(country.code)

@@ -1,6 +1,8 @@
 import { useMediaQuery } from '@vueuse/core'
 import { computed } from 'vue'
 
+const BREAKPOINT_OPERATOR_RE = /^[<>]=?/
+
 // Keep these values in sync with app/assets/breakpoints.scss
 export const BREAKPOINTS = {
   xs: 480,
@@ -20,7 +22,7 @@ function createMediaQuery(query: string) {
 
 export function useBreakpoint(query: BreakpointQuery) {
   const operator = query.startsWith('>=') ? '>=' : '<'
-  const key = query.replace(/^[<>]=?/, '') as BreakpointKey
+  const key = query.replace(BREAKPOINT_OPERATOR_RE, '') as BreakpointKey
   const value = BREAKPOINTS[key]
 
   if (!value)

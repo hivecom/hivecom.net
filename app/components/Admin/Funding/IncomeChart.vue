@@ -61,7 +61,7 @@ const chartData = computed(() => {
   }
 
   // Sort data by month ascending for chronological display
-  const sortedData = [...monthlyFundings.value].sort((a, b) => {
+  const sortedData = monthlyFundings.value.toSorted((a, b) => {
     return dayjs(a.month).valueOf() - dayjs(b.month).valueOf()
   })
 

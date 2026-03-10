@@ -118,7 +118,7 @@ function enforceCacheSizeLimit(cache: Map<string, CacheEntry>, maxSize: number) 
     return
 
   // Convert to array and sort by timestamp (oldest first)
-  const entries = Array.from(cache.entries()).sort((a, b) => a[1].timestamp - b[1].timestamp)
+  const entries = [...cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)
 
   // Remove oldest entries until we're under the limit
   const toRemove = cache.size - maxSize

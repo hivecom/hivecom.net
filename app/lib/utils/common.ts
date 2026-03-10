@@ -112,7 +112,7 @@ export async function waitForImages(timeoutMs = 4000): Promise<void> {
       return
     }
 
-    const images = Array.from(document.querySelectorAll<HTMLImageElement>('img'))
+    const images = [...document.querySelectorAll<HTMLImageElement>('img')]
     const incomplete = images.filter(img => !img.complete)
 
     if (incomplete.length === 0) {

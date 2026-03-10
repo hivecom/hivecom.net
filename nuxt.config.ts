@@ -170,6 +170,9 @@ export default defineNuxtConfig({
     zeroRuntime: true,
     exclude: ['/admin/**', '/auth/**', '/playground/**', '/profile/**', '/votes/**'],
     urls: async () => {
+      if (process.env.NODE_ENV !== 'production') {
+        return []
+      }
       const { sitemapUrls } = await getCachedRoutes()
       return sitemapUrls
     },

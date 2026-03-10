@@ -34,10 +34,19 @@ const {
   minHeight = '47px',
   ...props
 } = defineProps<Props>()
-
 const emit = defineEmits<{
   (e: 'submit'): void
 }>()
+const ENCODE_AMP_RE = /&/g
+const ENCODE_LT_RE = /</g
+const ENCODE_GT_RE = />/g
+const DECODE_GT_RE = /&gt;/g
+const DECODE_LT_RE = /&lt;/g
+const DECODE_AMP_RE = /&amp;/g
+const INLINE_HTML_TAG_RE = /^<(?:[a-z][a-z0-9-]*(?:\s[^>]*)?\/?|\/[a-z][a-z0-9-]*\s*|!--[\s\S]*?--)>/i
+const NBSP_TRAILING_RE = /^&nbsp;$/gm
+const NBSP_SINGLE_RE = /&nbsp;$/
+const HTML_ANGLE_RE = /<([^>]*)>/g
 
 // TODO: Code block highlighting & dropdown for seleting language
 
@@ -82,11 +91,11 @@ const content = defineModel<string>()
 // ---------------------------------------------------------------------------
 
 function encodeHtmlEntities(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return str.replace(ENCODE_AMP_RE, '&amp;').replace(ENCODE_LT_RE, '&lt;').replace(ENCODE_GT_RE, '&gt;')
 }
 
 function decodeHtmlEntities(str: string): string {
-  return str.replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&')
+  return str.replace(DECODE_GT_RE, '>').replace(DECODE_LT_RE, '<').replace(DECODE_AMP_RE, '&')
 }
 
 // Decoded version of `content` used exclusively by the plain-text textarea.
@@ -198,7 +207,7 @@ const noHtmlMarked = marked.use({
       },
       tokenizer(src: string) {
         // Matches any inline HTML tag: opening, closing, self-closing, or comment.
-        const match = /^<(?:[a-z][a-z0-9-]*(?:\s[^>]*)?\/?|\/[a-z][a-z0-9-]*\s*|!--[\s\S]*?--)>/i.exec(src)
+        const match = INLINE_HTML_TAG_RE.exec(src)
         if (match) {
           return {
             type: 'text',
@@ -370,14 +379,14 @@ function getEditorMarkdown(): string {
   // We also strip a lone trailing "&nbsp;" that has no preceding newline
   // (single-paragraph empty doc edge-case).
   const stripped = raw
-    .replace(/^&nbsp;$/gm, '')
-    .replace(/&nbsp;$/, '')
+    .replace(NBSP_TRAILING_RE, '')
+    .replace(NBSP_SINGLE_RE, '')
     // Escape any HTML tag-like sequences (<...>) so they are stored and rendered
     // as visible literal text rather than being interpreted as HTML by the
     // markdown renderer. Tiptap now stores these as raw angle-bracket text nodes
     // (the noHtmlMarked inline interceptor prevents them from being parsed as
     // real HTML on input), so we must re-escape them on the way out.
-    .replace(/<([^>]*)>/g, '&lt;$1&gt;')
+    .replace(HTML_ANGLE_RE, '&lt;$1&gt;')
   return stripped.trim() === '' ? '' : stripped
 }
 
@@ -428,7 +437,7 @@ function handleFileInput(event: Event) {
   const files = (event.target as HTMLInputElement).files
   if (!files)
     return
-  handleFileUpload(Array.from(files))
+  handleFileUpload([...files])
 }
 
 // Insert or update a math node (called from EditorMathModal)

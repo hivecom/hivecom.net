@@ -8,6 +8,15 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import MDRenderer from '../Shared/MDRenderer.vue'
 
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  openEditSheet: []
+  openComplaintModal: []
+}>()
+
+const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
+
 interface Props {
   profile: Tables<'profiles'>
   avatarUrl: string | null
@@ -17,12 +26,6 @@ interface Props {
   friendshipStatus: ProfileFriendshipStatus
   isCurrentUserAdmin: boolean
 }
-
-const props = defineProps<Props>()
-const emit = defineEmits<{
-  openEditSheet: []
-  openComplaintModal: []
-}>()
 
 const isMobile = useBreakpoint('<xs')
 const isTablet = useBreakpoint('<m')
@@ -40,7 +43,7 @@ function parseBirthdayDate(value: string | null): Date | null {
   if (!value)
     return null
 
-  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const dateOnlyMatch = value.match(BIRTHDAY_DATE_RE)
   if (dateOnlyMatch) {
     const [, yearStr, monthStr, dayStr] = dateOnlyMatch
     const year = Number(yearStr)

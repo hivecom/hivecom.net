@@ -11,6 +11,8 @@ import NotificationCardMention from '@/components/Notifications/NotificationCard
 import NotificationCardPendingComplaints from '@/components/Notifications/NotificationCardPendingComplaints.vue'
 import NotificationCardReply from '@/components/Notifications/NotificationCardReply.vue'
 
+const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
+
 /**
  * Inline row type for the notifications table.
  *
@@ -172,7 +174,7 @@ function parseBirthdayDate(value: string | null) {
   if (!value)
     return null
 
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const match = value.match(BIRTHDAY_DATE_RE)
   if (match) {
     const [, year, month, day] = match
     const date = new Date(Number(year), Number(month) - 1, Number(day))

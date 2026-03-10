@@ -3,6 +3,13 @@ import { Badge, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
 import BadgeCircle from './BadgeCircle.vue'
 
+const props = withDefaults(defineProps<Props>(), {
+  size: 's',
+  shorten: false,
+})
+
+const ROLE_SEPARATOR_RE = /[-_]/g
+
 interface Props {
   role: string | null | undefined
   size?: 'xs' | 's' | 'm' | 'l'
@@ -10,15 +17,10 @@ interface Props {
   shorten?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  size: 's',
-  shorten: false,
-})
-
 // Get role display text
 const roleDisplay = computed(() => {
   const role = props.role || 'user'
-  const normalized = role.replace(/[-_]/g, ' ')
+  const normalized = role.replace(ROLE_SEPARATOR_RE, ' ')
   return normalized
     .split(' ')
     .filter(Boolean)

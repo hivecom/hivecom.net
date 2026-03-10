@@ -44,9 +44,7 @@ function compareGameServerName(a: GameserversType[0], b: GameserversType[0]) {
 
 async function openGameModal(game: Tables<'games'>) {
   selectedGame.value = game
-  selectedGameServers.value = (props.gameservers?.filter((gs: GameserversType[0]) => gs.game === game.id) || [])
-    .slice()
-    .sort(compareGameServerName)
+  selectedGameServers.value = props.gameservers?.filter((gs: GameserversType[0]) => gs.game === game.id) || [].toSorted(compareGameServerName)
   showModal.value = true
 }
 

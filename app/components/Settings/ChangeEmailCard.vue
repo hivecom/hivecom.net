@@ -2,6 +2,8 @@
 import { Alert, Button, Card, Flex, Input } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+const TRAILING_SLASH_RE = /\/$/
+
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 
@@ -59,7 +61,7 @@ async function requestEmailChange() {
   try {
     const origin = import.meta.client ? window.location.origin : undefined
     const redirectUrl = origin
-      ? `${origin.replace(/\/$/, '')}/auth/confirm`
+      ? `${origin.replace(TRAILING_SLASH_RE, '')}/auth/confirm`
       : undefined
 
     const { error } = await supabase.auth.updateUser(

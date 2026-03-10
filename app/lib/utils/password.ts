@@ -1,3 +1,8 @@
+const LOWERCASE_RE = /[a-z]/
+const UPPERCASE_RE = /[A-Z]/
+const DIGIT_RE = /\d/
+const SYMBOL_RE = /[^a-z0-9]/i
+
 export interface PasswordRule {
   key: string
   label: string
@@ -13,22 +18,22 @@ export const PASSWORD_RULES: PasswordRule[] = [
   {
     key: 'lowercase',
     label: 'At least one lowercase letter',
-    test: p => /[a-z]/.test(p),
+    test: p => LOWERCASE_RE.test(p),
   },
   {
     key: 'uppercase',
     label: 'At least one uppercase letter',
-    test: p => /[A-Z]/.test(p),
+    test: p => UPPERCASE_RE.test(p),
   },
   {
     key: 'digit',
     label: 'At least one digit',
-    test: p => /\d/.test(p),
+    test: p => DIGIT_RE.test(p),
   },
   {
     key: 'symbol',
     label: 'At least one symbol',
-    test: p => /[^a-z0-9]/i.test(p),
+    test: p => SYMBOL_RE.test(p),
   },
 ]
 

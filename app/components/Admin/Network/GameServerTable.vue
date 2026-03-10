@@ -99,7 +99,7 @@ const gameOptions = computed<SelectOption[]>(() => {
     }
   })
 
-  return Array.from(uniqueGames.entries()).map(([id, name]) => ({
+  return Array.from(uniqueGames.entries(), ([id, name]) => ({
     label: name,
     value: id.toString(),
   }))

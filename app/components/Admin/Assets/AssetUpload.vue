@@ -6,21 +6,22 @@ import { computed, ref, watch } from 'vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { CMS_BUCKET_ID, formatBytes, getBucketDescription, getBucketLabel, joinAssetPath, normalizePrefix } from '@/lib/storageAssets'
 
-interface Props {
-  canUpload?: boolean
-  currentPrefix?: string
-  bucketId?: StorageBucketId
-}
-
 const props = withDefaults(defineProps<Props>(), {
   canUpload: false,
   currentPrefix: '',
   bucketId: CMS_BUCKET_ID,
 })
-
 const emit = defineEmits<{
   uploaded: [paths: string[]]
 }>()
+const NON_ALPHANUM_RE = /[^a-z0-9]+/gi
+const LEADING_TRAILING_HYPHEN_RE = /^-+|-+$/g
+
+interface Props {
+  canUpload?: boolean
+  currentPrefix?: string
+  bucketId?: StorageBucketId
+}
 
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 
@@ -172,8 +173,8 @@ function sanitizeFileName(filename: string): string {
   const base = dotIndex >= 0 ? filename.slice(0, dotIndex) : filename
   const slug = base
     .normalize('NFKD')
-    .replace(/[^a-z0-9]+/gi, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(NON_ALPHANUM_RE, '-')
+    .replace(LEADING_TRAILING_HYPHEN_RE, '')
     .toLowerCase()
     || 'asset'
 

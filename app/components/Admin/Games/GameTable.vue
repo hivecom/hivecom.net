@@ -14,6 +14,8 @@ import GameDetails from './GameDetails.vue'
 import GameFilters from './GameFilters.vue'
 import GameForm from './GameForm.vue'
 
+const WHITESPACE_RE = /\s+/g
+
 // Game table type
 type Game = Tables<'games'>
 
@@ -185,7 +187,7 @@ async function handleGameSave(gameData: Partial<Game>) {
         normalizedData.shorthand = null
       }
       else {
-        normalizedData.shorthand = normalizedData.shorthand.toLowerCase().replace(/\s+/g, '')
+        normalizedData.shorthand = normalizedData.shorthand.toLowerCase().replace(WHITESPACE_RE, '')
         if (normalizedData.shorthand === '') {
           normalizedData.shorthand = null
         }

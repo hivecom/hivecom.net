@@ -2,6 +2,40 @@ import { getAnonymousUsername } from '@/lib/anonymous-usernames'
 import { truncate } from './utils/formatting'
 
 // ---------------------------------------------------------------------------
+// Module-scope regex constants
+// ---------------------------------------------------------------------------
+
+const TIPTAP_ATTR_RE = /(\w+)="([^"]*)"/g
+const YOUTUBE_SHORT_RE = /youtu\.be\/([^?&\s]+)/
+const YOUTUBE_ID_RE = /(?:[?&]v=|\/shorts\/)([\w-]+)/
+const YOUTUBE_DIRECTIVE_RE = /:::youtube(?:\s+\{([^}]*)\})?\s*:::/g
+const MENTION_BRACED_RE = /@\{([0-9a-f-]{36})\}/gi
+const MENTION_LEGACY_RE = /@([0-9a-f-]{36})/gi
+const COLOR_TAG_RE = /:::color\[([a-z-]+)\]([\s\S]*?):::(?![a-z[])/gi
+const FONT_TAG_RE = /:::font\[([a-z]+)\]([\s\S]*?):::(?![a-z[])/gi
+const SIZE_TAG_RE = /:::size\[([a-z]+)\]([\s\S]*?):::(?![a-z[])/gi
+const COLON_COMPONENT_RE = /(^|[ \t\n]):([A-Z][A-Z0-9-]*)/gim
+const WORD_ONLY_RE = /^\w+$/
+const STRIP_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/g
+const STRIP_BLOCK_MATH_RE = /\$\$[\s\S]*?\$\$/g
+const STRIP_INLINE_MATH_RE = /\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/g
+const STRIP_HTML_TAGS_RE = /<[^>]*>/g
+const STRIP_NBSP_RE = /&nbsp;/g
+const STRIP_HR_RE = /^---/gm
+const STRIP_HEADERS_RE = /^#+\s+/gm
+const STRIP_BLOCKQUOTE_RE = /^>\s*/gm
+const STRIP_LIST_MARKERS_RE = /^[-*]\s+/gm
+const STRIP_BOLD_ITALIC_RE = /([*_]{1,3})(\S.*?\S?)\1/g
+const STRIP_LINKS_RE = /\[([^\]]+)\]\([^)]+\)/g
+const STRIP_CODE_RE = /(`{1,3})([^`]+)\1/g
+const STRIP_IMAGES_RE = /!\[([^\]]*)\]\([^)]+\)/g
+const STRIP_NEWLINES_RE = /\n+/g
+const DETECT_IMAGE_RE = /!\[.*?\]\(.*?\)/
+const DETECT_LINK_RE = /\[.*?\]\(.*?\)/
+const DETECT_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/
+const DETECT_MATH_RE = /\$\$[\s\S]*?\$\$|\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/
+
+// ---------------------------------------------------------------------------
 // YouTube directive pre-processor
 // ---------------------------------------------------------------------------
 
@@ -13,7 +47,7 @@ import { truncate } from './utils/formatting'
 function parseTiptapAttrs(attrString: string): Record<string, string> {
   const attrs: Record<string, string> = {}
   // Match key="value" pairs (value may be empty)
-  const attrPattern = /(\w+)="([^"]*)"/g
+  const attrPattern = TIPTAP_ATTR_RE
   for (const match of attrString.matchAll(attrPattern)) {
     const key = match[1]
     const value = match[2]
@@ -38,7 +72,7 @@ function youtubeUrlToEmbedUrl(src: string, start?: string): string | null {
     return src
 
   // youtu.be short URLs
-  const shortMatch = src.match(/youtu\.be\/([^?&\s]+)/)
+  const shortMatch = src.match(YOUTUBE_SHORT_RE)
   const shortId = shortMatch?.[1] ?? ''
   if (shortId) {
     const startParam = start != null && Number(start) > 0 ? `?start=${start}` : ''
@@ -46,7 +80,7 @@ function youtubeUrlToEmbedUrl(src: string, start?: string): string | null {
   }
 
   // Standard watch URLs (v=…) and /shorts/
-  const idMatch = src.match(/(?:[?&]v=|\/shorts\/)([\w-]+)/)
+  const idMatch = src.match(YOUTUBE_ID_RE)
   const videoId = idMatch?.[1] ?? ''
   if (videoId) {
     const startParam = start != null && Number(start) > 0 ? `?start=${start}` : ''
@@ -69,7 +103,7 @@ function youtubeUrlToEmbedUrl(src: string, start?: string): string | null {
  */
 export function processYoutubeDirectives(markdown: string): string {
   // Matches the full `:::youtube { ... } :::` token on a single line
-  const DIRECTIVE = /:::youtube(?:\s+\{([^}]*)\})?\s*:::/g
+  const DIRECTIVE = YOUTUBE_DIRECTIVE_RE
 
   return markdown.replace(DIRECTIVE, (_full, attrString: string = '') => {
     const attrs = parseTiptapAttrs(attrString)
@@ -95,8 +129,8 @@ export function extractMentionIds(markdown: string): string[] {
   if (!markdown)
     return []
 
-  const mentionIdPatternBraced = /@\{([0-9a-f-]{36})\}/gi
-  const mentionIdPatternLegacy = /@([0-9a-f-]{36})/gi
+  const mentionIdPatternBraced = MENTION_BRACED_RE
+  const mentionIdPatternLegacy = MENTION_LEGACY_RE
   const ids = new Set<string>()
 
   for (const match of markdown.matchAll(mentionIdPatternBraced)) {
@@ -113,7 +147,7 @@ export function extractMentionIds(markdown: string): string[] {
     }
   }
 
-  return Array.from(ids)
+  return [...ids]
 }
 
 /**
@@ -162,7 +196,7 @@ export function processColorTags(markdown: string): string {
     return ''
 
   return markdown.replace(
-    /:::color\[([a-z-]+)\]([\s\S]*?):::(?![a-z[])/gi,
+    COLOR_TAG_RE,
     (_full, name: string, inner: string) => {
       const colorName = name.toLowerCase()
       if (!TEXT_COLOR_NAMES.has(colorName))
@@ -193,7 +227,7 @@ export function processFontTags(markdown: string): string {
     return ''
 
   return markdown.replace(
-    /:::font\[([a-z]+)\]([\s\S]*?):::(?![a-z[])/gi,
+    FONT_TAG_RE,
     (_full, name: string, inner: string) => {
       const fontName = name.toLowerCase()
       if (!TEXT_FONT_NAMES.has(fontName))
@@ -224,7 +258,7 @@ export function processSizeTags(markdown: string): string {
     return ''
 
   return markdown.replace(
-    /:::size\[([a-z]+)\]([\s\S]*?):::(?![a-z[])/gi,
+    SIZE_TAG_RE,
     (_full, name: string, inner: string) => {
       const sizeName = name.toLowerCase()
       if (!TEXT_SIZE_NAMES.has(sizeName))
@@ -252,8 +286,8 @@ export function processMentions(markdown: string): string {
   markdown = processSizeTags(markdown)
 
   // Pattern to match mention IDs stored as @{uuid}
-  const mentionIdPatternBraced = /@\{([0-9a-f-]{36})\}/gi
-  const mentionIdPatternLegacy = /@([0-9a-f-]{36})/gi
+  const mentionIdPatternBraced = MENTION_BRACED_RE
+  const mentionIdPatternLegacy = MENTION_LEGACY_RE
 
   const resolvedMarkdown = markdown
     // remark-mdc parses any `:word` sequence (after whitespace or at line start) as an
@@ -268,7 +302,7 @@ export function processMentions(markdown: string): string {
     // step first means the source string only contains user-authored text - no
     // `:shared-user-mention{...}` patterns can exist yet - so the simple replacement
     // is safe and correct.
-    .replace(/(^|[ \t\n]):([A-Z][A-Z0-9-]*)/gim, '$1\\:$2')
+    .replace(COLON_COMPONENT_RE, '$1\\:$2')
     .replace(mentionIdPatternBraced, (_match, id: string) => {
       // Use MDC inline component syntax (:name{props}) instead of raw HTML tags.
       // When a raw <SharedUserMention> tag starts a line, remark-mdc treats it as a
@@ -294,9 +328,6 @@ export function processMentionsToText(markdown: string, mentionIdToUsername: Rec
   if (!markdown)
     return ''
 
-  // Pattern to match mention IDs stored as @{uuid}
-  const mentionIdPatternBraced = /@\{([0-9a-f-]{36})\}/gi
-  const mentionIdPatternLegacy = /@([0-9a-f-]{36})/gi
   const normalizedMentionLookup = Object.fromEntries(
     Object.entries(mentionIdToUsername).map(([id, username]) => [id.toLowerCase(), username]),
   )
@@ -317,8 +348,8 @@ export function processMentionsToText(markdown: string, mentionIdToUsername: Rec
   }
 
   return markdown
-    .replace(mentionIdPatternBraced, replaceCallback)
-    .replace(mentionIdPatternLegacy, replaceCallback)
+    .replace(MENTION_BRACED_RE, replaceCallback)
+    .replace(MENTION_LEGACY_RE, replaceCallback)
 }
 
 /**
@@ -328,7 +359,7 @@ export function processMentionsToText(markdown: string, mentionIdToUsername: Rec
  */
 export function isValidMentionUsername(username: string): boolean {
   // Same validation as in ProfileForm - only letters, numbers, and underscores
-  return /^\w+$/.test(username) && username.length <= 32
+  return WORD_ONLY_RE.test(username) && username.length <= 32
 }
 
 /**
@@ -368,33 +399,33 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
 
   return content
     // 0a. Remove YouTube directives: :::youtube {src="..." ...} :::
-    .replace(/:::youtube(?:\s+\{[^}]*\})?\s*:::/g, '')
+    .replace(STRIP_YOUTUBE_RE, '')
     // 0b. Remove block math: $$...$$
-    .replace(/\$\$[\s\S]*?\$\$/g, '')
+    .replace(STRIP_BLOCK_MATH_RE, '')
     // 0c. Remove inline math: $...$  (avoid matching lone $ signs like currency $5)
-    .replace(/\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/g, '')
+    .replace(STRIP_INLINE_MATH_RE, '')
     // 1. Remove HTML tags
-    .replace(/<[^>]*>/g, '')
+    .replace(STRIP_HTML_TAGS_RE, '')
     // 2. Normalize non-breaking spaces
-    .replace(/&nbsp;/g, ' ')
+    .replace(STRIP_NBSP_RE, ' ')
     // 3. Remove horizontal rules
-    .replace(/^---/gm, '')
+    .replace(STRIP_HR_RE, '')
     // 4. Remove headers (###)
-    .replace(/^#+\s+/gm, '')
+    .replace(STRIP_HEADERS_RE, '')
     // 5. Remove blockquote markers (> )
-    .replace(/^>\s*/gm, '')
+    .replace(STRIP_BLOCKQUOTE_RE, '')
     // 6. Remove unordered list markers (- or * at start of line)
-    .replace(/^[\-*]\s+/gm, '')
+    .replace(STRIP_LIST_MARKERS_RE, '')
     // 7. Remove bold/italic (** or __)
-    .replace(/([*_]{1,3})(\S.*?\S?)\1/g, '$2')
+    .replace(STRIP_BOLD_ITALIC_RE, '$2')
     // 8. Remove links [text](url) -> "text"
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(STRIP_LINKS_RE, '$1')
     // 9. Remove code blocks and inline code
-    .replace(/(`{1,3})([^`]+)\1/g, '$2')
+    .replace(STRIP_CODE_RE, '$2')
     // 10. Remove images ![alt](url)
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+    .replace(STRIP_IMAGES_RE, '$1')
     // 11. Trim extra whitespace
-    .replace(/\n+/g, ' ')
+    .replace(STRIP_NEWLINES_RE, ' ')
     .trim()
 }
 
@@ -428,16 +459,16 @@ export function formatMarkdownPreview(
   }
 
   // Content stripped to nothing - detect what kind of media it was
-  if (/!\[.*?\]\(.*?\)/.test(markdown))
+  if (DETECT_IMAGE_RE.test(markdown))
     return '#image'
 
-  if (/\[.*?\]\(.*?\)/.test(markdown))
+  if (DETECT_LINK_RE.test(markdown))
     return '#link'
 
-  if (/:::youtube(?:\s+\{[^}]*\})?\s*:::/.test(markdown))
+  if (DETECT_YOUTUBE_RE.test(markdown))
     return '#youtube'
 
-  if (/\$\$[\s\S]*?\$\$|\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/.test(markdown))
+  if (DETECT_MATH_RE.test(markdown))
     return '#math'
 
   return '#empty'

@@ -54,10 +54,10 @@ function compareGameServerName(a: GameserversType[0], b: GameserversType[0]) {
 
 function getServersByGameId(gameId: number) {
   const servers = props.filteredGameservers?.filter((gameserver: GameserversType[0]) => gameserver.game === gameId) ?? []
-  return [...servers].sort(compareGameServerName)
+  return servers.toSorted(compareGameServerName)
 }
 
-const sortedGameserversWithoutGame = computed(() => [...(props.gameserversWithoutGame ?? [])].sort(compareGameServerName))
+const sortedGameserversWithoutGame = computed(() => props.gameserversWithoutGame ?? [].toSorted(compareGameServerName))
 const isCompactLayout = useBreakpoint('<s')
 
 function clearFilters() {

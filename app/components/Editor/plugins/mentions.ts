@@ -9,6 +9,9 @@ import { extractMentionIds, isValidMentionUsername } from '@/lib/markdown-proces
 import RichTextMentions from '../RichTextMentions.vue'
 import { defineSuggestion } from './suggestion'
 
+const MENTION_BRACED_TOKEN_RE = /^@\{([0-9a-f-]{36})\}/i
+const PLAIN_MENTION_RE = /@(\w{1,32})/g
+
 const mentionComponent: Component = RichTextMentions as Component
 
 export const mentionSuggestionAllow: NonNullable<SuggestionOptions['allow']> = () => true
@@ -46,7 +49,7 @@ export const MentionWithMarkdown = Mention.extend({
       return index === -1 ? -1 : index
     },
     tokenize(src: string) {
-      const match = /^@\{([0-9a-f-]{36})\}/i.exec(src)
+      const match = MENTION_BRACED_TOKEN_RE.exec(src)
 
       if (!match) {
         return undefined
@@ -233,7 +236,7 @@ export async function resolvePlainTextMentions(
     return content
 
   // Matches @username - @{uuid} is NOT matched because { is not a \w char.
-  const plainMentionPattern = /@(\w{1,32})/g
+  const plainMentionPattern = PLAIN_MENTION_RE
 
   const usernames = new Set<string>()
   for (const match of content.matchAll(plainMentionPattern)) {
@@ -245,7 +248,7 @@ export async function resolvePlainTextMentions(
   if (usernames.size === 0)
     return content
 
-  const usernameList = Array.from(usernames)
+  const usernameList = [...usernames]
 
   // Use ilike per username so the lookup is case-insensitive.
   const { data, error } = await supabase

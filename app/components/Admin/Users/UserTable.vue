@@ -583,7 +583,7 @@ function normalizeAuthProviders(providers: readonly string[] | null | undefined,
   ;(providers ?? []).forEach(p => combined.add(p))
   if (provider)
     combined.add(provider)
-  return Array.from(combined)
+  return [...combined]
 }
 
 function getProviderInfo(provider: string) {

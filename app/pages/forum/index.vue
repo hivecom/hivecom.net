@@ -518,7 +518,7 @@ function sortDiscussions(discussions: ForumDiscussion[]) {
     filtered = filtered.filter(discussion => !discussion.is_nsfw)
   }
 
-  return filtered.slice().sort((a, b) => {
+  return filtered.toSorted((a, b) => {
     if (a.is_sticky && !b.is_sticky)
       return -1
     if (!a.is_sticky && b.is_sticky)
@@ -743,8 +743,7 @@ const latestPosts = computed<ActivityItem[]>(() => {
       } as ActivityItem
     })
 
-  const sorted = flattenedTopics
-    .concat(visibleReplies.value)
+  const sorted = [...flattenedTopics, ...visibleReplies.value]
     .toSorted((a, b) => new Date(a.timestampRaw) > new Date(b.timestampRaw) ? -1 : 1)
 
   // Deduplicate: a reply covers its parent discussion and grandparent topic;
@@ -793,7 +792,7 @@ const latestPostMentionIds = computed(() => {
     extractMentionIds(text ?? '').forEach(id => ids.add(id))
   })
 
-  return Array.from(ids)
+  return [...ids]
 })
 
 const { users: mentionUsers } = useBulkUserData(latestPostMentionIds, {

@@ -1,3 +1,11 @@
+const SPACES_RE = /\s+/g
+const NON_WORD_HYPHEN_RE = /[^\w\-]+/g
+const MULTI_HYPHEN_RE = /-{2,}/g
+const LEADING_HYPHEN_RE = /^-+/
+const TRAILING_HYPHEN_RE = /-+$/
+const LEADING_NBSP_RE = /^\s*(?:&nbsp;|\u00A0)\s*/
+const TRAILING_NBSP_RE = /(?:\s|&nbsp;)+$/
+
 export function truncate(value: string, length: number, suffix = '...'): string {
   if (value.length <= length)
     return value
@@ -16,11 +24,11 @@ export function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-    .replace(/-{2,}/g, '-') // Replace multiple - with single -
-    .replace(/^-+/, '') // Trim - from start of text
-    .replace(/-+$/, '') // Trim - from end of text
+    .replace(SPACES_RE, '-') // Replace spaces with -
+    .replace(NON_WORD_HYPHEN_RE, '') // Remove all non-word chars
+    .replace(MULTI_HYPHEN_RE, '-') // Replace multiple - with single -
+    .replace(LEADING_HYPHEN_RE, '') // Trim - from start of text
+    .replace(TRAILING_HYPHEN_RE, '') // Trim - from end of text
 }
 
 export function capitalize(str: string) {
@@ -39,6 +47,6 @@ export function normalizeTipTapOutput(content: string): string {
     return ''
 
   return content
-    .replace(/^\s*(?:&nbsp;|\u00A0)\s*/, '')
-    .replace(/(?:\s|&nbsp;)+$/, '')
+    .replace(LEADING_NBSP_RE, '')
+    .replace(TRAILING_NBSP_RE, '')
 }

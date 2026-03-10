@@ -4,6 +4,10 @@ import { useMetrics } from '@/composables/useMetrics'
 import scanPassFragSrc from './LandingHeroGlobeScanPass.frag.glsl?raw'
 import scanPassVertSrc from './LandingHeroGlobeScanPass.vert.glsl?raw'
 
+const ISO2_RE = /^[A-Z]{2}$/
+const ISO3_RE = /^[A-Z]{3}$/
+const HEX_PAIR_RE = /.{1,2}/g
+
 type PolygonCoords = number[][][]
 type MultiPolygonCoords = number[][][][]
 
@@ -322,10 +326,10 @@ function normalizeMetricCountryCode(
     return null
 
   const normalized = code.trim().toUpperCase()
-  if (/^[A-Z]{2}$/.test(normalized))
+  if (ISO2_RE.test(normalized))
     return normalized
 
-  if (/^[A-Z]{3}$/.test(normalized))
+  if (ISO3_RE.test(normalized))
     return iso3Map.get(normalized) ?? null
 
   return null
@@ -334,7 +338,7 @@ function normalizeMetricCountryCode(
 function blendHex(from: string, to: string, t: number): string {
   const clamp = Math.max(0, Math.min(1, t))
   const parse = (hex: string): [number, number, number] => {
-    const parts = hex.replace('#', '').match(/.{1,2}/g) ?? ['00', '00', '00']
+    const parts = hex.replace('#', '').match(HEX_PAIR_RE) ?? ['00', '00', '00']
     const [r = '00', g = '00', b = '00'] = parts
     return [
       Number.parseInt(r, 16),
