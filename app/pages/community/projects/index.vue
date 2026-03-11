@@ -32,7 +32,7 @@ const tagOptions = computed<SelectOption[]>(() => {
       project.tags.forEach(tag => allTags.add(tag))
     }
   })
-  return [...allTags].sort().map((tag: string) => ({
+  return [...allTags].toSorted().map((tag: string) => ({
     label: tag,
     value: tag,
   }))
