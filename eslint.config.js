@@ -17,6 +17,7 @@ export default antfu({
     'package-lock.json',
     '**/supabase/functions/**/*.ts',
     '**/hash.js',
+    'REFACTOR.md',
   ],
   // Add additional configurations for specific file patterns
   formatters: {
