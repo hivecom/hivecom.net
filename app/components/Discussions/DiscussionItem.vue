@@ -145,28 +145,22 @@ const PREVIEW_LENGTH = 120
       :class="model === 'forum' ? 'discussion-comment-wrapper__thread--forum' : 'discussion-comment-wrapper__thread--comment'"
     >
       <!-- Toggle button -->
-      <Button
-        plain
-        size="s"
-        class="discussion-comment-wrapper__thread-toggle"
-        @click="toggleReplies"
-      >
-        <template #start>
-          <Icon
-            name="ph:chat-dots"
-            :size="13"
-            class="discussion-comment-wrapper__thread-icon"
-          />
-        </template>
-        {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
-        <template #end>
-          <Icon
-            :name="repliesExpanded ? 'ph:caret-up' : 'ph:caret-down'"
-            :size="12"
-            class="discussion-comment-wrapper__thread-caret"
-          />
-        </template>
-      </Button>
+      <Flex x-center class="discussion-comment-wrapper__thread-toggle">
+        <Button
+          plain
+          size="s"
+          @click="toggleReplies"
+        >
+          {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
+          <template #end>
+            <Icon
+              :name="repliesExpanded ? 'ph:caret-up' : 'ph:caret-down'"
+              :size="12"
+              class="discussion-comment-wrapper__thread-caret"
+            />
+          </template>
+        </Button>
+      </Flex>
 
       <!-- Compact one-liner previews -->
       <Transition name="thread-expand">
@@ -190,14 +184,17 @@ const PREVIEW_LENGTH = 120
                 size="s"
                 class="discussion-comment-wrapper__thread-avatar"
               />
+
               <SharedUserName
                 :user-id="child.comment.created_by"
                 size="s"
                 class="discussion-comment-wrapper__thread-author"
               />
+
               <span class="discussion-comment-wrapper__thread-preview">
                 {{ stripMarkdown(child.comment.markdown, PREVIEW_LENGTH) }}
               </span>
+
               <Icon
                 v-if="child.children.length > 0"
                 name="ph:git-branch"
@@ -247,7 +244,7 @@ const PREVIEW_LENGTH = 120
 
   &__thread {
     margin-top: 2px;
-    margin-bottom: var(--space-xs);
+    margin-bottom: var(--space-m);
 
     // Comment model: indent to align with the text content past the avatar
     &--comment {
@@ -263,21 +260,102 @@ const PREVIEW_LENGTH = 120
 
   &__children {
     // Threaded mode: indent with a left border thread-line
-    padding-left: 12px;
-    border-left: 2px solid
-      color-mix(in srgb, var(--color-border) calc(100% - (var(--nest-depth, 1) * 10%)), transparent);
+    position: relative;
+    padding-left: var(--space-m);
+
+    border-left: 1px solid
+      color-mix(in srgb, var(--color-border) calc(100% - (var(--nest-depth, 1) * 20%)), transparent);
+
+    // NOTE(@dolanske) Failed experiment to add lines which end in rounded quarter circle leading into the comment card. I got stuck at ending the thread line at half size of the last item of each depth
+
+    // &:before {
+    //   content: '';
+    //   display: block;
+    //   position: absolute;
+    //   top: -40px;
+    //   left: 0;
+    //   // bottom: 112px;
+    //   // height: 50%;
+    //   width: 2px;
+    //   z-index: -1;
+    //   background-color: color-mix(
+    //     in srgb,
+    //     var(--color-border-strong) calc(100% - (var(--nest-depth, 1) * 20%)),
+    //     transparent
+    //   );
+    // }
+
+    // .discussion-comment-wrapper {
+    //   &:first-child {
+    //     position: relative;
+    //     z-index: 1;
+
+    //     &:after {
+    //       content: '';
+    //       display: block;
+    //       position: absolute;
+    //       bottom: 50%;
+    //       top: -24px;
+    //       left: calc(var(--space-l) * -1);
+    //       z-index: -1;
+    //       border-left: 1px solid var(--color-border);
+    //       // background-color: color-mix(
+    //       //   in srgb,
+    //       //   var(--color-border-strong) calc(100% - (var(--nest-depth, 1) * 20%)),
+    //       //   transparent
+    //       // );
+    //     }
+
+    //     &:before {
+    //       content: '';
+    //       width: calc(var(--space-l) * 2);
+    //       height: calc(var(--space-l) * 2);
+    //       border: 1px solid var(--color-border);
+    //       // border: 1px solid
+    //       //   color-mix(in srgb, var(--color-border-strong) calc(100% - (var(--nest-depth, 1) * 20%)), transparent);
+    //       border-radius: 50%;
+    //       position: absolute;
+    //       top: 50%;
+    //       transform: translateY(-50%);
+    //       left: calc(var(--space-l) * -1);
+    //       clip-path: inset(var(--space-l) var(--space-l) 0 0);
+    //       z-index: -1;
+    //     }
+    //   }
+    // }
   }
 
   &__thread-toggle {
-    // Pill shape — VUI plain button doesn't have a pill variant
-    :deep(.vui-button) {
-      border-radius: 99px;
-      font-size: var(--font-size-xs);
-      color: var(--color-text-light);
+    width: 100%;
+    position: relative;
 
-      &:hover {
-        color: var(--color-text);
-      }
+    &:before {
+      content: '';
+      display: block;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      left: 0;
+      right: 0;
+      border-bottom: 2px dashed var(--color-border-weak);
+      z-index: 1;
+    }
+
+    &:after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      height: 4px;
+      width: 80px;
+      background-color: var(--color-bg);
+      z-index: 1;
+    }
+
+    :deep(.vui-button) {
+      position: relative;
+      z-index: 3;
     }
   }
 
@@ -292,30 +370,29 @@ const PREVIEW_LENGTH = 120
     margin-left: 2px;
   }
 
-  &__thread-list {
-    margin-top: var(--space-xxs);
-    overflow: hidden;
-  }
+  // &__thread-list {
+  //   margin-top: var(--space-xxs);
+  //   overflow: hidden;
+  // }
 
   &__thread-row {
-    :deep(.vui-button) {
-      padding: 4px var(--space-xs);
-      border-radius: var(--border-radius-s);
-      text-align: left;
-      justify-content: flex-start;
+    --button-padding: 0 !important;
 
-      &:hover {
-        background-color: var(--color-bg-raised);
-      }
-    }
+    // NOTE: this seletor wasn't working because __thread-row is a class on the button itself
+    // :deep(.vui-button) {
+    //   // padding: 4px var(--space-xs);
+    //   border-radius: var(--border-radius-s);
+    //   text-align: left;
+    //   justify-content: flex-start;
+
+    //   &:hover {
+    //     background-color: var(--color-bg-raised);
+    //   }
+    // }
 
     &--offtopic {
       opacity: 0.5;
     }
-  }
-
-  &__thread-row-inner {
-    min-width: 0;
   }
 
   &__thread-avatar {

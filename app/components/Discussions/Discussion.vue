@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, Button, ButtonGroup, Flex, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import { wrapInBlockquote } from '@/lib/markdown-processors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { normalizeErrors, normalizeTipTapOutput } from '@/lib/utils/formatting'
@@ -617,28 +617,33 @@ const offtopicCount = computed(() =>
     <!-- Listing view -->
     <template v-else>
       <!-- Toolbar: view mode selector + off-topic toggle -->
-      <Flex y-center x-between gap="s" class="discussion__toolbar">
+      <Flex y-center x-start gap="xs" class="mb-m">
         <!-- View mode segmented control -->
         <ButtonGroup size="s">
           <Button
-            :variant="viewMode === 'flat' ? 'accent' : 'gray'"
+            square
+            :variant="viewMode === 'flat' ? 'fill' : 'gray'"
+            :outline="viewMode !== 'flat'"
             size="s"
+
             @click="viewMode = 'flat'"
           >
             <Tooltip>
-              <Icon name="ph:list" />
+              <Icon :size="18" name="ph:square-split-vertical" />
               <template #tooltip>
                 <p>Flat view - all replies in chronological order</p>
               </template>
             </Tooltip>
           </Button>
           <Button
-            :variant="viewMode === 'threaded' ? 'accent' : 'gray'"
+            square
+            :variant="viewMode === 'threaded' ? 'fill' : 'gray'"
+            :outline="viewMode !== 'threaded'"
             size="s"
             @click="viewMode = 'threaded'"
           >
             <Tooltip>
-              <Icon name="ph:tree-structure" />
+              <Icon :size="18" name="ph:arrows-split" />
               <template #tooltip>
                 <p>Threaded view - replies nested under their parent</p>
               </template>
@@ -647,22 +652,23 @@ const offtopicCount = computed(() =>
         </ButtonGroup>
 
         <!-- Off-topic toggle - only shown when relevant -->
-        <Flex v-if="offtopicCount > 0" y-center gap="xs">
-          <Icon name="ph:warning-circle" class="text-color-lighter" :size="16" />
-          <span class="discussion__offtopic-label">
-            {{ offtopicCount }} off-topic
-          </span>
-          <Tooltip>
-            <Switch
-              :model-value="showOfftopic"
-              class="discussion__offtopic-switch"
-              @update:model-value="toggleShowOfftopic"
-            />
-            <template #tooltip>
-              <p>{{ showOfftopic ? 'Hide off-topic replies' : 'Show off-topic replies' }}</p>
+        <Tooltip v-if="offtopicCount > 0">
+          <Button
+            size="s"
+            :variant="showOfftopic ? 'fill' : 'gray'"
+            :outline="!showOfftopic"
+            class="discussion__offtopic-switch"
+            @click="toggleShowOfftopic"
+          >
+            <template #start>
+              <Icon :size="18" :name="showOfftopic ? 'ph:chat-centered-text' : 'ph:chat-centered-slash'" />
             </template>
-          </Tooltip>
-        </Flex>
+            Off topic ({{ offtopicCount }})
+          </Button>
+          <template #tooltip>
+            <p>{{ showOfftopic ? 'Hide off-topic replies' : 'Show off-topic replies' }}</p>
+          </template>
+        </Tooltip>
       </Flex>
 
       <!-- Flat view: all comments chronologically with inline reply previews -->
@@ -788,17 +794,8 @@ const offtopicCount = computed(() =>
     }
   }
 
-  &__toolbar {
-    padding: var(--space-xs) var(--space-s);
-    margin-bottom: var(--space-xs);
-    background-color: var(--color-bg-raised);
-    border-radius: var(--border-radius-m);
-    border: 1px solid var(--color-border);
-    min-height: 40px;
-  }
-
   &__offtopic-label {
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-s);
     color: var(--color-text-lighter);
   }
 

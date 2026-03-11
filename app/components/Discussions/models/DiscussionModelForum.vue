@@ -233,7 +233,7 @@ const { displayReactions, toggleReaction } = useReactions({
         <Icon class="text-color-accent" name="ph:caret-up" />
       </button>
 
-      <!-- Content -->
+      <!-- Content markdown -->
       <MDRenderer
         v-else
         :md="data.markdown"
@@ -494,6 +494,9 @@ const { displayReactions, toggleReaction } = useReactions({
     height: 100%;
     border-right: 1px solid var(--color-border);
     padding: var(--space-m);
+    background-color: var(--color-bg);
+    border-top-left-radius: var(--border-radius-m);
+    border-bottom-left-radius: var(--border-radius-m);
 
     .author-meta {
       font-size: var(--font-size-xs);
@@ -540,6 +543,7 @@ const { displayReactions, toggleReaction } = useReactions({
       width: 100%;
       padding: var(--space-xs);
       border-right: none;
+      border-bottom-right-radius: var(--border-radius-m);
     }
 
     &__content {

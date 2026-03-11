@@ -304,6 +304,8 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 </script>
 
 <template>
+  <!-- FIXME: isnt this just a duplicate of the bubble menu's fix this later via `createReusableTemplate` -->
+
   <!-- In plain text mode render a static toolbar above the textarea instead
        of a floating bubble menu. Buttons splice markdown syntax directly into
        the textarea so the content model stays in sync. -->
@@ -319,7 +321,7 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
             :class="{ 'is-active': headingPickerOpen || getActiveHeading() !== null }"
             @click="headingPickerOpen = !headingPickerOpen"
           >
-            <Icon :size="18" name="ph:text-h" />
+            <Icon :size="18" name="ph:text-h-one" />
           </Button>
 
           <Popout
@@ -533,7 +535,7 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
             :class="{ 'is-active': headingPickerOpen || getActiveHeading() !== null }"
             @click="headingPickerOpen = !headingPickerOpen"
           >
-            <Icon :size="18" name="ph:text-h" />
+            <Icon :size="18" name="ph:text-h-one" />
           </Button>
 
           <Popout
@@ -751,11 +753,10 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 
   // Static variant sits flush above the textarea inside the editor container
   &--static {
-    border-bottom: 1px solid var(--color-border);
-    margin-bottom: var(--space-xxs);
+    margin-bottom: var(--space-s);
     padding: none;
     // Slightly muted so it's clearly a toolbar, not floating UI
-    opacity: 0.75;
+    // opacity: 0.75;
     transition: opacity var(--transition-fast);
 
     &:hover {
@@ -813,7 +814,7 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
     background-color: var(--color-button-gray) !important;
     color: var(--color-text-lighter);
     width: 100%;
-    height: 14px;
+    height: 16px;
     border-radius: var(--border-radius-s);
 
     &:hover {

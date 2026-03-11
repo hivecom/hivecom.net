@@ -2,7 +2,7 @@
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
-import { Button, ButtonGroup, pushToast } from '@dolanske/vui'
+import { Button, ButtonGroup, pushToast, Tooltip } from '@dolanske/vui'
 import { Extension } from '@tiptap/core'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
@@ -758,6 +758,10 @@ async function handleSubmit() {
   width: 100%;
   position: relative;
   z-index: 1;
+
+  // FIXME: textarea and rich text editor cannot share the same min-height. Textare needs to be slightly smaller
+  // and rich text editor needs to be slightly taller (so they meet in the middle) Due to the bubble menu being
+  // always in the view. Switching between rich text & plain text must not cause a layout shift
 
   .editor-textarea .vui-input textarea,
   .plain-textarea {

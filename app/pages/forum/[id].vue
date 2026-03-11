@@ -652,7 +652,7 @@ function revealNsfw() {
         @reply-submitted="handleReplySubmitted"
       />
 
-      <div v-if="contentHeight > 1600" class="forum-post__fast-travel">
+      <div v-show="contentHeight > 1600" class="forum-post__fast-travel">
         <Tooltip>
           <Button size="s" plain square @click="scrollHandler">
             <Icon :name="isUserAtBottom ? 'ph:arrow-up' : 'ph:arrow-down'" :size="20" />
@@ -794,8 +794,7 @@ function revealNsfw() {
   width: fit-content;
   margin-left: auto;
   z-index: var(--z-nav);
-  transform: translateX(48px);
-  margin-top: -40px;
+  transform: translateX(48px) translateY(-40px);
 
   .iconify {
     color: var(--color-accent);
