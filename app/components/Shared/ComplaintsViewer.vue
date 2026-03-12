@@ -3,6 +3,7 @@ import type { Database } from '@/types/database.types'
 import { Badge, Button, Card, Flex, Modal, Spinner, Tooltip } from '@dolanske/vui'
 import { onMounted, ref, watch } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { formatDateWithTime } from '@/lib/utils/date'
 import ConfirmModal from './ConfirmModal.vue'
 import GameServerLink from './GameServerLink.vue'
 import UserDisplay from './UserDisplay.vue'
@@ -65,15 +66,6 @@ async function fetchComplaints() {
 }
 
 // Format date helper
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 // Get status badge variant
 function getStatusVariant(complaint: Complaint) {
@@ -229,11 +221,11 @@ onMounted(() => {
                 <Tooltip>
                   <template #tooltip>
                     <p class="text-xs">
-                      Complaint made: {{ formatDate(complaint.created_at) }}
+                      Complaint made: {{ formatDateWithTime(complaint.created_at) }}
                     </p>
                   </template>
                   <span class="text-s">
-                    {{ formatDate(complaint.response ? complaint.responded_at || complaint.created_at : complaint.created_at) }}
+                    {{ formatDateWithTime(complaint.response ? complaint.responded_at || complaint.created_at : complaint.created_at) }}
                   </span>
                 </Tooltip>
                 <Button

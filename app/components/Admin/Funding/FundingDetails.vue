@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import { formatCurrency } from '@/lib/utils/currency'
+import { formatMonth } from '@/lib/utils/date'
 
 const props = defineProps<{
   funding: Tables<'monthly_funding'> | null
@@ -16,12 +17,6 @@ function handleClose() {
 }
 
 // Format month helper
-function formatMonth(month: string): string {
-  return new Date(`${month}T00:00:00Z`).toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  })
-}
 </script>
 
 <template>

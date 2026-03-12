@@ -2,16 +2,17 @@
 import type { QueryData } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
-
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+
 import { capitalize } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
-
 import TableContainer from '@/components/Shared/TableContainer.vue'
+
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getReferendumStatus, getReferendumStatusVariant } from '@/lib/referendums'
+import { getRouteQueryString } from '@/lib/utils/common'
 import ReferendumDetails from './ReferendumDetails.vue'
 import ReferendumFilters from './ReferendumFilters.vue'
 import ReferendumForm from './ReferendumForm.vue'
@@ -80,11 +81,7 @@ const showReferendumDetails = ref(false)
 
 const focusedReferendumId = computed(() => {
   const referendumQuery = route.query.referendum
-  const rawValue = typeof referendumQuery === 'string'
-    ? referendumQuery
-    : Array.isArray(referendumQuery) && referendumQuery[0]
-      ? referendumQuery[0]
-      : ''
+  const rawValue = getRouteQueryString(referendumQuery)
   const parsed = Number.parseInt(rawValue, 10)
   return Number.isNaN(parsed) ? null : parsed
 })

@@ -8,7 +8,9 @@ import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getRouteQueryString } from '@/lib/utils/common'
 import { formatCurrency } from '@/lib/utils/currency'
+import { formatDateShort } from '@/lib/utils/date'
 import { calculateDurationBetweenDates } from '@/lib/utils/duration'
 import ExpenseDetails from './ExpenseDetails.vue'
 import ExpenseFilters from './ExpenseFilters.vue'
@@ -50,12 +52,7 @@ const selectedExpense = ref<Expense | null>(null)
 const isEditMode = ref(false)
 
 const focusedExpenseId = computed(() => {
-  const expenseQuery = route.query.expense
-  const rawValue = typeof expenseQuery === 'string'
-    ? expenseQuery
-    : Array.isArray(expenseQuery) && expenseQuery[0]
-      ? expenseQuery[0]
-      : ''
+  const rawValue = getRouteQueryString(route.query.expense)
   const parsed = Number.parseInt(rawValue, 10)
   return Number.isNaN(parsed) ? null : parsed
 })
@@ -63,13 +60,6 @@ const focusedExpenseId = computed(() => {
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
 // Format date helper
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
 
 // Check if expense is planned (start date in the future)
 function isPlannedExpense(startDate: string): boolean {
@@ -110,7 +100,7 @@ const transformedExpenses = computed<TransformedExpense[]>(() => {
     Name: expense.name || 'Unnamed Expense',
     Amount: formatCurrency(expense.amount_cents),
     Status: getExpenseStatus(expense),
-    Started: formatDate(expense.started_at),
+    Started: formatDateShort(expense.started_at),
     Duration: calculateDurationBetweenDates(expense.started_at, expense.ended_at),
     _original: expense,
   }))

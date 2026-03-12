@@ -2,7 +2,7 @@
 import { Skeleton } from '@dolanske/vui'
 import { computed, nextTick } from 'vue'
 import { useBulkUserData } from '@/composables/useCacheUserData'
-import { extractMentionIds, processMentions } from '@/lib/markdown-processors'
+import { extractMentionIds, processMentions } from '@/lib/markdownProcessors'
 import MDLightbox from './MDLightbox.vue'
 
 const props = defineProps({

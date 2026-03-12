@@ -2,7 +2,7 @@
 import { computed, toRef } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
-import { getAnonymousUsername } from '@/lib/anonymous-usernames'
+import { getAnonymousUsername } from '@/lib/anonymousUsernames'
 
 const props = defineProps<{
   userId: string

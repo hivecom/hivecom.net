@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatMarkdownPreview } from '@/lib/markdown-processors'
+import { formatMarkdownPreview } from '@/lib/markdownProcessors'
 
 interface Props {
   markdown?: string | null

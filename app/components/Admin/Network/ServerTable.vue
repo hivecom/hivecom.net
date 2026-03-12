@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-
 import type { Ref } from 'vue'
+
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
-
 import TableContainer from '@/components/Shared/TableContainer.vue'
+
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getRouteQueryString } from '@/lib/utils/common'
 import ServerDetails from './ServerDetails.vue'
 import ServerFilters from './ServerFilters.vue'
 import ServerForm from './ServerForm.vue'
@@ -60,11 +61,7 @@ const showServerDetails = ref(false)
 
 const focusedServerId = computed(() => {
   const serverQuery = route.query.server
-  const rawValue = typeof serverQuery === 'string'
-    ? serverQuery
-    : Array.isArray(serverQuery) && serverQuery[0]
-      ? serverQuery[0]
-      : ''
+  const rawValue = getRouteQueryString(serverQuery)
   const parsed = Number.parseInt(rawValue, 10)
   return Number.isNaN(parsed) ? null : parsed
 })

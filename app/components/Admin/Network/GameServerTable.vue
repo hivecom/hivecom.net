@@ -11,6 +11,7 @@ import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getRouteQueryString } from '@/lib/utils/common'
 import GameserverDetails from './GameServerDetails.vue'
 import GameserverFilters from './GameServerFilters.vue'
 import GameserverForm from './GameServerForm.vue'
@@ -69,11 +70,7 @@ const showGameserverDetails = ref(false)
 
 const focusedGameserverId = computed(() => {
   const gameserverQuery = route.query.gameserver
-  const rawValue = typeof gameserverQuery === 'string'
-    ? gameserverQuery
-    : Array.isArray(gameserverQuery) && gameserverQuery[0]
-      ? gameserverQuery[0]
-      : ''
+  const rawValue = getRouteQueryString(gameserverQuery)
   const parsed = Number.parseInt(rawValue, 10)
   return Number.isNaN(parsed) ? null : parsed
 })

@@ -12,7 +12,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useForumUnread } from '@/composables/useForumUnread'
-import { stripMarkdown } from '@/lib/markdown-processors'
+import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDate } from '@/lib/utils/date'
 

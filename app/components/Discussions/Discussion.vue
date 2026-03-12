@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, ButtonGroup, Flex, Skeleton, Tooltip } from '@dolanske/vui'
-import { wrapInBlockquote } from '@/lib/markdown-processors'
+import { wrapInBlockquote } from '@/lib/markdownProcessors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { normalizeErrors, normalizeTipTapOutput } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'

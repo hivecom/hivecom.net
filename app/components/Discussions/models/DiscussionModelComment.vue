@@ -11,7 +11,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
-import { stripMarkdown } from '@/lib/markdown-processors'
+import { stripMarkdown } from '@/lib/markdownProcessors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 
 interface Props {

@@ -5,6 +5,7 @@ import type { Tables, TablesUpdate } from '@/types/database.types'
 import { Alert, Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 import { computed, inject, onMounted, ref, watch } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getRouteQueryString } from '@/lib/utils/common'
 import ComplaintCard from './ComplaintCard.vue'
 import ComplaintDetails from './ComplaintDetails.vue'
 import ComplaintFilters from './ComplaintFilters.vue'
@@ -59,11 +60,7 @@ const showComplaintDetails = ref(false)
 
 const focusedComplaintId = computed(() => {
   const complaintQuery = route.query.complaint
-  const rawValue = typeof complaintQuery === 'string'
-    ? complaintQuery
-    : Array.isArray(complaintQuery) && complaintQuery[0]
-      ? complaintQuery[0]
-      : ''
+  const rawValue = getRouteQueryString(complaintQuery)
   const parsed = Number.parseInt(rawValue, 10)
   return Number.isNaN(parsed) ? null : parsed
 })

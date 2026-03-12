@@ -1,20 +1,12 @@
 <script setup>
 import { Divider } from '@dolanske/vui'
+import { formatDateLong } from '@/lib/utils/date'
 
 const name = useRoute().params.name.join('/')
 
 const { data: content } = await useAsyncData(name, async () => {
   return await queryCollection('legal').path(`/legal/${name}`).first()
 })
-
-// Format dates nicely
-function formatDate(dateString) {
-  return new Date(dateString).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
 
 useSeoMeta(() => {
   const legalTitle = content.value
@@ -37,7 +29,7 @@ useSeoMeta(() => {
         <h1>{{ content.title || name }}</h1>
 
         <p class="legal-page__last-updated">
-          Last updated on {{ formatDate(content.date) }}
+          Last updated on {{ formatDateLong(content.date) }}
           <a
             v-if="content.revisions && content.revisions.length"
             href="#revisions"
@@ -63,9 +55,9 @@ useSeoMeta(() => {
             <li v-for="revision in content.revisions" :key="revision">
               <NuxtLink
                 :to="`/legal/${name}/${revision}`"
-                :aria-label="`View revision from ${formatDate(revision)}`"
+                :aria-label="`View revision from ${formatDateLong(revision)}`"
               >
-                {{ formatDate(revision) }}
+                {{ formatDateLong(revision) }}
               </NuxtLink>
             </li>
           </ul>

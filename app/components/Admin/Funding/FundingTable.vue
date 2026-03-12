@@ -3,11 +3,12 @@ import type { Ref } from 'vue'
 import type { Tables } from '@/types/database.types'
 import { Alert, Badge, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
-
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getRouteQueryString } from '@/lib/utils/common'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatMonth } from '@/lib/utils/date'
 import FundingDetails from './FundingDetails.vue'
@@ -45,11 +46,7 @@ const selectedFunding = ref<MonthlyFunding | null>(null)
 
 const focusedFundingMonth = computed(() => {
   const fundingQuery = route.query.funding
-  const rawValue = typeof fundingQuery === 'string'
-    ? fundingQuery
-    : Array.isArray(fundingQuery) && fundingQuery[0]
-      ? fundingQuery[0]
-      : ''
+  const rawValue = getRouteQueryString(fundingQuery)
   return rawValue || null
 })
 

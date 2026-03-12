@@ -40,3 +40,56 @@ export function formatDateOnly(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
+
+/**
+ * Formats a date string as a short human-readable date: "Jan 5, 2025".
+ * Returns 'Unknown' when the value is falsy or not a valid date.
+ */
+export function formatDateShort(dateString: string | null | undefined): string {
+  if (dateString == null || dateString === '')
+    return 'Unknown'
+  const parsed = new Date(dateString)
+  if (Number.isNaN(parsed.getTime()))
+    return 'Unknown'
+  return parsed.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+/**
+ * Formats a date string as a long human-readable date: "January 5, 2025".
+ * Returns 'Unknown' when the value is falsy or not a valid date.
+ */
+export function formatDateLong(dateString: string | null | undefined): string {
+  if (dateString == null || dateString === '')
+    return 'Unknown'
+  const parsed = new Date(dateString)
+  if (Number.isNaN(parsed.getTime()))
+    return 'Unknown'
+  return parsed.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+}
+
+/**
+ * Formats a date string with time: "Jan 5, 2025, 02:30 PM".
+ * Returns 'Unknown' when the value is falsy or not a valid date.
+ */
+export function formatDateWithTime(dateString: string | null | undefined): string {
+  if (dateString == null || dateString === '')
+    return 'Unknown'
+  const parsed = new Date(dateString)
+  if (Number.isNaN(parsed.getTime()))
+    return 'Unknown'
+  return parsed.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}

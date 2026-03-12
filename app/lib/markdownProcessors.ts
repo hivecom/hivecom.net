@@ -1,4 +1,4 @@
-import { getAnonymousUsername } from '@/lib/anonymous-usernames'
+import { getAnonymousUsername } from '@/lib/anonymousUsernames'
 import { truncate } from './utils/formatting'
 
 // ---------------------------------------------------------------------------

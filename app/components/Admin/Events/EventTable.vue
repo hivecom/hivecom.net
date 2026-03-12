@@ -9,6 +9,7 @@ import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getRouteQueryString } from '@/lib/utils/common'
 import EventDetails from './EventDetails.vue'
 import EventFilters from './EventFilters.vue'
 import EventForm from './EventForm.vue'
@@ -44,11 +45,7 @@ const selectedEvent = ref<Event | null>(null)
 
 const focusedEventId = computed(() => {
   const eventQuery = route.query.event
-  const rawValue = typeof eventQuery === 'string'
-    ? eventQuery
-    : Array.isArray(eventQuery) && eventQuery[0]
-      ? eventQuery[0]
-      : ''
+  const rawValue = getRouteQueryString(eventQuery)
   const parsed = Number.parseInt(rawValue, 10)
   return Number.isNaN(parsed) ? null : parsed
 })

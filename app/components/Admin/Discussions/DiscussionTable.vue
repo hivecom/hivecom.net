@@ -14,6 +14,7 @@ import TableContainer from '@/components/Shared/TableContainer.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getRouteQueryString } from '@/lib/utils/common'
 
 interface SelectOption {
   label: string
@@ -126,14 +127,7 @@ const isBelowMedium = useBreakpoint('<m')
 const selectedDiscussion = ref<QueryDiscussion | null>(null)
 const showDiscussionDetails = ref(false)
 
-const focusedDiscussionId = computed(() => {
-  const discussionQuery = route.query.discussion
-  if (typeof discussionQuery === 'string')
-    return discussionQuery
-  if (Array.isArray(discussionQuery) && discussionQuery[0])
-    return discussionQuery[0]
-  return ''
-})
+const focusedDiscussionId = computed(() => getRouteQueryString(route.query.discussion))
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 

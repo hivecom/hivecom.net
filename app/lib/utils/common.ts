@@ -188,3 +188,36 @@ export async function waitForLayoutStability(timeoutMs = 5000, stableForMs = 500
 export function isNil(value: unknown): value is null | undefined {
   return value === null || value === undefined
 }
+
+/**
+ * Extracts a plain string from a Vue Router `LocationQueryValue` (which can be
+ * `string | null`) or an array thereof.  Returns the first string found, or an
+ * empty string when nothing useful is present.
+ *
+ * Replaces the repeated inline ternary pattern:
+ *   `typeof q === 'string' ? q : Array.isArray(q) && q[0] ? q[0] : ''`
+ * that appears across ~12 admin / auth pages.
+ */
+export function getRouteQueryString(
+  value: string | null | (string | null)[] | undefined,
+): string {
+  if (typeof value === 'string')
+    return value
+  if (Array.isArray(value)) {
+    const first = value.find(v => typeof v === 'string')
+    return first ?? ''
+  }
+  return ''
+}
+
+/**
+ * Same as `getRouteQueryString` but returns `null` instead of `''` when the
+ * query parameter is absent or non-string.  Useful when the caller needs to
+ * distinguish "not provided" from "provided as empty string".
+ */
+export function getRouteQueryStringOrNull(
+  value: string | null | (string | null)[] | undefined,
+): string | null {
+  const result = getRouteQueryString(value)
+  return result === '' ? null : result
+}

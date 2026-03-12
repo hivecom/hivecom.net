@@ -10,6 +10,7 @@ import GameIcon from '@/components/GameServers/GameIcon.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getRouteQueryString } from '@/lib/utils/common'
 import GameDetails from './GameDetails.vue'
 import GameFilters from './GameFilters.vue'
 import GameForm from './GameForm.vue'
@@ -51,11 +52,7 @@ const isEditMode = ref(false)
 
 const focusedGameId = computed(() => {
   const gameQuery = route.query.game
-  const rawValue = typeof gameQuery === 'string'
-    ? gameQuery
-    : Array.isArray(gameQuery) && gameQuery[0]
-      ? gameQuery[0]
-      : ''
+  const rawValue = getRouteQueryString(gameQuery)
   const parsed = Number.parseInt(rawValue, 10)
   return Number.isNaN(parsed) ? null : parsed
 })

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
-
 import RolesTable from '@/components/Admin/Roles/RolesTable.vue'
+
 import UserDetails from '@/components/Admin/Users/UserDetails.vue'
 import UserForm from '@/components/Admin/Users/UserForm.vue'
 import UserKPIs from '@/components/Admin/Users/UserKPIs.vue'
 import UserTable from '@/components/Admin/Users/UserTable.vue'
+import { getRouteQueryString } from '@/lib/utils/common'
 
 // Define types for user data and actions - matching what UserTable expects
 type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
@@ -90,12 +91,7 @@ const availableTabs = computed(() => {
 const { activeTab } = useAdminTabs(availableTabs)
 
 const focusedUserId = computed(() => {
-  const userQuery = route.query.user
-  if (typeof userQuery === 'string')
-    return userQuery
-  if (Array.isArray(userQuery) && userQuery[0])
-    return userQuery[0]
-  return ''
+  return getRouteQueryString(route.query.user)
 })
 
 const pageTitle = 'Users & Roles'

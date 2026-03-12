@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
-
 import ContainerKPIs from '@/components/Admin/Network/ContainerKPIs.vue'
+
 import ContainerTable from '@/components/Admin/Network/ContainerTable.vue'
 import GameserverTable from '@/components/Admin/Network/GameServerTable.vue'
 import ServerTable from '@/components/Admin/Network/ServerTable.vue'
+import { getRouteQueryString } from '@/lib/utils/common'
 
 // Define container with server interface to match what ContainerTable expects
 interface ContainerWithServer {
@@ -44,14 +45,7 @@ const availableTabs = computed(() => {
 const { activeTab } = useAdminTabs(availableTabs)
 
 // Focused container from query string
-const focusedContainerName = computed(() => {
-  const containerQuery = route.query.container
-  if (typeof containerQuery === 'string')
-    return containerQuery
-  if (Array.isArray(containerQuery) && containerQuery[0])
-    return containerQuery[0]
-  return ''
-})
+const focusedContainerName = computed(() => getRouteQueryString(route.query.container))
 
 const supabase = useSupabaseClient()
 

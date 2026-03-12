@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex } from '@dolanske/vui'
 import { formatCurrency } from '@/lib/utils/currency'
+import { formatDateShort } from '@/lib/utils/date'
 
 interface Props {
   expense: Tables<'expenses'>
@@ -22,14 +23,6 @@ const isPlannedExpense = computed(() => {
   startDate.setHours(0, 0, 0, 0)
   return startDate > today
 })
-
-// Format dates
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    year: 'numeric',
-  })
-}
 
 // Get expense status
 const expenseStatus = computed(() => {
@@ -71,9 +64,9 @@ const expenseStatus = computed(() => {
 
       <!-- Date range -->
       <Flex x-between y-center class="text-xs text-color-light">
-        <span v-if="isPlannedExpense">Starts {{ formatDate(expense.started_at) }}</span>
-        <span v-else>Since {{ formatDate(expense.started_at) }}</span>
-        <span v-if="expense.ended_at">Ended {{ formatDate(expense.ended_at) }}</span>
+        <span v-if="isPlannedExpense">Starts {{ formatDateShort(expense.started_at) }}</span>
+        <span v-else>Since {{ formatDateShort(expense.started_at) }}</span>
+        <span v-if="expense.ended_at">Ended {{ formatDateShort(expense.ended_at) }}</span>
       </Flex>
 
       <!-- External link if available -->

@@ -5,7 +5,7 @@ import type { SuggestionOptions } from '@tiptap/suggestion'
 import type { Component } from 'vue'
 import type { Database } from '@/types/database.types'
 import Mention from '@tiptap/extension-mention'
-import { extractMentionIds, isValidMentionUsername } from '@/lib/markdown-processors'
+import { extractMentionIds, isValidMentionUsername } from '@/lib/markdownProcessors'
 import RichTextMentions from '../RichTextMentions.vue'
 import { defineSuggestion } from './suggestion'
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Flex, Skeleton } from '@dolanske/vui'
 import { useCacheUserData } from '@/composables/useCacheUserData'
-import { getAnonymousUsername } from '@/lib/anonymous-usernames'
+import { getAnonymousUsername } from '@/lib/anonymousUsernames'
 
 interface Props {
   userId?: string | null

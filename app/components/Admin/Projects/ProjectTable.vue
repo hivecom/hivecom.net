@@ -2,15 +2,16 @@
 import type { QueryData } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
 import type { TablesInsert, TablesUpdate } from '@/types/database.types'
-
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
-
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
+
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getRouteQueryString } from '@/lib/utils/common'
 import ProjectDetails from './ProjectDetails.vue'
 import ProjectFilters from './ProjectFilters.vue'
 import ProjectForm from './ProjectForm.vue'
@@ -78,11 +79,7 @@ const showProjectDetails = ref(false)
 
 const focusedProjectId = computed(() => {
   const projectQuery = route.query.project
-  const rawValue = typeof projectQuery === 'string'
-    ? projectQuery
-    : Array.isArray(projectQuery) && projectQuery[0]
-      ? projectQuery[0]
-      : ''
+  const rawValue = getRouteQueryString(projectQuery)
   const parsed = Number.parseInt(rawValue, 10)
   return Number.isNaN(parsed) ? null : parsed
 })
