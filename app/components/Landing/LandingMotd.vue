@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { shuffleArray } from '@/lib/utils/random'
 
 const props = withDefaults(defineProps<{
   fallbackText: string
@@ -55,17 +56,6 @@ function prefersReducedMotion(): boolean {
   }
 }
 
-function shuffle(list: string[]): string[] {
-  const arr = [...list]
-  for (let i = arr.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-    const temp = arr[i]!
-    arr[i] = arr[j]!
-    arr[j] = temp
-  }
-  return arr
-}
-
 function getOffset(count: number | null, size: number): number {
   if (!count || count <= size)
     return 0
@@ -91,7 +81,7 @@ async function fetchBatch() {
 
     totalAvailable.value = count ?? totalAvailable.value
     const messages = (data || []).map(entry => entry.message).filter(Boolean)
-    motdPool.value = shuffle(messages)
+    motdPool.value = shuffleArray(messages)
   }
   catch (error) {
     console.error('Failed to fetch MOTDs', error)

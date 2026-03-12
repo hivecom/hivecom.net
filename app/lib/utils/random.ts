@@ -21,3 +21,18 @@ export function seedRndMinMax(min: number, max: number, seed: string) {
   max = Math.floor(max)
   return Math.floor(randomSeed(seed) * (max - min + 1)) + min
 }
+
+/**
+ * Returns a new array with elements in a random order using the Fisher-Yates shuffle.
+ * Does not mutate the original array.
+ */
+export function shuffleArray<T>(arr: T[]): T[] {
+  const result = [...arr]
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const temp = result[i] as T
+    result[i] = result[j] as T
+    result[j] = temp
+  }
+  return result
+}

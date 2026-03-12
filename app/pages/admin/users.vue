@@ -87,7 +87,7 @@ const availableTabs = computed(() => {
   return tabs
 })
 
-const activeTab = ref<'Users' | 'Roles' | ''>('')
+const { activeTab } = useAdminTabs(availableTabs)
 
 const focusedUserId = computed(() => {
   const userQuery = route.query.user
@@ -96,45 +96,6 @@ const focusedUserId = computed(() => {
   if (Array.isArray(userQuery) && userQuery[0])
     return userQuery[0]
   return ''
-})
-
-watch(availableTabs, (newTabs) => {
-  if (newTabs.length === 0)
-    return
-
-  const queryTab = route.query.tab
-  if (typeof queryTab === 'string' && (queryTab === 'Users' || queryTab === 'Roles')) {
-    const isAllowed = newTabs.some(t => t.value === queryTab)
-    if (isAllowed) {
-      activeTab.value = queryTab
-      return
-    }
-  }
-
-  if (!activeTab.value && newTabs[0]) {
-    activeTab.value = newTabs[0].value
-  }
-}, { immediate: true })
-
-watch(() => route.query.tab, (queryTab) => {
-  const queryValue = typeof queryTab === 'string'
-    ? queryTab
-    : Array.isArray(queryTab) && queryTab[0]
-      ? queryTab[0]
-      : ''
-
-  if (!queryValue)
-    return
-
-  if (queryValue !== 'Users' && queryValue !== 'Roles')
-    return
-
-  const isAllowed = availableTabs.value.some(t => t.value === queryValue)
-  if (!isAllowed)
-    return
-
-  if (activeTab.value !== queryValue)
-    activeTab.value = queryValue
 })
 
 const pageTitle = 'Users & Roles'
@@ -159,23 +120,10 @@ const showUserForm = ref(false)
 const isEditMode = ref(false)
 const userToEdit = ref<AdminUserProfile | null>(null)
 
+// Close the details panel when leaving the Users tab.
 watch(activeTab, (tab) => {
-  if (!tab)
-    return
-
   if (tab !== 'Users')
     showUserDetails.value = false
-
-  const currentTab = typeof route.query.tab === 'string'
-    ? route.query.tab
-    : Array.isArray(route.query.tab) && route.query.tab[0]
-      ? route.query.tab[0]
-      : ''
-
-  if (currentTab === tab)
-    return
-
-  router.push({ query: { ...route.query, tab } })
 })
 
 watch(showUserDetails, (isOpen) => {

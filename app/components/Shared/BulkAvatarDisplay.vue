@@ -4,6 +4,7 @@ import { Avatar, Flex, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useBulkUserData } from '@/composables/useCacheUserData'
+import { shuffleArray } from '@/lib/utils/random'
 
 interface Props {
   userIds: string[]
@@ -53,17 +54,7 @@ const {
 // Determine user ordering (optionally randomized)
 const orderedUserIds = computed(() => {
   if (props.random) {
-    // Create a copy of the array and shuffle it
-    const shuffled = [...props.userIds]
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      const temp = shuffled[i]
-      if (temp !== undefined && shuffled[j] !== undefined) {
-        shuffled[i] = shuffled[j]
-        shuffled[j] = temp
-      }
-    }
-    return shuffled
+    return shuffleArray(props.userIds)
   }
   return [...props.userIds]
 })

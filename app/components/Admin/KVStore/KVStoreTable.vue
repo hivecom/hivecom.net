@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { KvEntry } from '../../../lib/kvstore'
+import type { KvEntry } from '@/lib/kvstore'
 import { Alert, Badge, Button, defineTable, Flex, Input, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
+import { renderKvValue } from '@/lib/kvstore'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { renderKvValue } from '../../../lib/kvstore'
 
 import KVStoreEditModal from './KVStoreEditModal.vue'
 

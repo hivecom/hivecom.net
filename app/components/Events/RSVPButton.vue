@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Database, Tables } from '@/types/database.types'
 import { Button, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
+import { useEventTiming } from '@/composables/useEventTiming'
 
 type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
 
@@ -22,30 +23,8 @@ const userId = useUserId()
 const rsvpStatus = ref<RSVPStatus | null>(null)
 const rsvpLoading = ref(false)
 const rsvpId = ref<number | null>(null)
-const now = ref(new Date())
 
-const eventStart = computed(() => props.event ? new Date(props.event.date) : null)
-const eventEnd = computed(() => {
-  if (!eventStart.value)
-    return null
-
-  if (props.event.duration_minutes) {
-    return new Date(eventStart.value.getTime() + props.event.duration_minutes * 60 * 1000)
-  }
-
-  return eventStart.value
-})
-
-const hasEventEnded = computed(() => {
-  if (!eventEnd.value)
-    return false
-
-  return now.value >= eventEnd.value
-})
-
-useIntervalFn(() => {
-  now.value = new Date()
-}, 60_000, { immediate: true })
+const { hasEventEnded } = useEventTiming(() => props.event)
 
 // Computed properties
 const canRsvp = computed(() => {

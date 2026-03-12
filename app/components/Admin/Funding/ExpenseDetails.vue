@@ -5,6 +5,7 @@ import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatCurrency } from '@/lib/utils/currency'
+import { calculateDurationBetweenDates } from '@/lib/utils/duration'
 
 const props = defineProps<{
   expense: {
@@ -43,31 +44,6 @@ function handleEdit(expense: Tables<'expenses'>) {
 function handleDelete(expense: Tables<'expenses'>) {
   emit('delete', expense)
   isOpen.value = false
-}
-
-// Calculate duration
-function calculateDuration(startDate: string, endDate?: string | null): string {
-  const start = new Date(startDate)
-  const end = endDate ? new Date(endDate) : new Date()
-
-  const diffTime = Math.abs(end.getTime() - start.getTime())
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-  if (diffDays < 30) {
-    return `${diffDays} days`
-  }
-  else if (diffDays < 365) {
-    const months = Math.floor(diffDays / 30)
-    return `${months} month${months > 1 ? 's' : ''}`
-  }
-  else {
-    const years = Math.floor(diffDays / 365)
-    const remainingMonths = Math.floor((diffDays % 365) / 30)
-    if (remainingMonths > 0) {
-      return `${years}y ${remainingMonths}m`
-    }
-    return `${years} year${years > 1 ? 's' : ''}`
-  }
 }
 </script>
 
@@ -134,7 +110,7 @@ function calculateDuration(startDate: string, endDate?: string | null): string {
 
             <Grid class="expense-details__item" expand :columns="2">
               <span class="expense-details__label">Duration:</span>
-              <span>{{ calculateDuration(props.expense.started_at, props.expense.ended_at) }}</span>
+              <span>{{ calculateDurationBetweenDates(props.expense.started_at, props.expense.ended_at) }}</span>
             </Grid>
 
             <Grid v-if="props.expense.url" class="expense-details__item" expand :columns="2">

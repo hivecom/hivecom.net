@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Badge, Skeleton } from '@dolanske/vui'
-import { useIntervalFn } from '@vueuse/core'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useEventTiming } from '@/composables/useEventTiming'
 
 interface Props {
   event: Tables<'events'>
@@ -21,34 +21,12 @@ const props = withDefaults(defineProps<Props>(), {
 const supabase = useSupabaseClient()
 const goingCount = ref<number>(0)
 const loadingCount = ref(true)
-const now = ref(new Date())
 
-const eventStart = computed(() => props.event ? new Date(props.event.date) : null)
-const eventEnd = computed(() => {
-  if (!eventStart.value)
-    return null
-
-  if (props.event.duration_minutes) {
-    return new Date(eventStart.value.getTime() + props.event.duration_minutes * 60 * 1000)
-  }
-
-  return eventStart.value
-})
-
-const hasEventEnded = computed(() => {
-  if (!eventEnd.value)
-    return false
-
-  return now.value >= eventEnd.value
-})
+const { hasEventEnded } = useEventTiming(() => props.event)
 
 const badgeVariant = computed(() => {
   return hasEventEnded.value ? 'neutral' : 'accent'
 })
-
-useIntervalFn(() => {
-  now.value = new Date()
-}, 60_000, { immediate: true })
 
 // Computed properties for display text
 const displayText = computed(() => {

@@ -23,14 +23,13 @@ interface ContainerWithServer {
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
 const route = useRoute()
-const router = useRouter()
 
 // Check permissions for each resource type
 const canReadServers = computed(() => hasPermission('servers.read'))
 const canReadGameservers = computed(() => hasPermission('gameservers.read'))
 const canReadContainers = computed(() => hasPermission('containers.read'))
 
-// Tab management - compute available tabs and set default
+// Tab management
 const availableTabs = computed(() => {
   const tabs = []
   if (canReadContainers.value)
@@ -42,8 +41,7 @@ const availableTabs = computed(() => {
   return tabs
 })
 
-// Set active tab to first available tab
-const activeTab = ref('')
+const { activeTab } = useAdminTabs(availableTabs)
 
 // Focused container from query string
 const focusedContainerName = computed(() => {
@@ -53,38 +51,6 @@ const focusedContainerName = computed(() => {
   if (Array.isArray(containerQuery) && containerQuery[0])
     return containerQuery[0]
   return ''
-})
-
-// Watch for available tabs changes and set default.
-// If query tab is valid and available, prefer that tab.
-watch([availableTabs, () => route.query.tab], ([newTabs, queryTab]) => {
-  const queryTabValue = typeof queryTab === 'string'
-    ? queryTab
-    : Array.isArray(queryTab) && queryTab[0]
-      ? queryTab[0]
-      : ''
-
-  if (queryTabValue && newTabs.some(tab => tab.value === queryTabValue)) {
-    activeTab.value = queryTabValue
-    return
-  }
-
-  if (newTabs.length > 0 && !activeTab.value && newTabs[0]) {
-    activeTab.value = newTabs[0].value
-  }
-}, { immediate: true })
-
-watch(activeTab, (tab) => {
-  if (!tab)
-    return
-  const currentTab = typeof route.query.tab === 'string'
-    ? route.query.tab
-    : Array.isArray(route.query.tab) && route.query.tab[0]
-      ? route.query.tab[0]
-      : ''
-  if (currentTab === tab)
-    return
-  router.push({ query: { ...route.query, tab } })
 })
 
 const supabase = useSupabaseClient()

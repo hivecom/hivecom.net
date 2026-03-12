@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Button, Flex, Modal, Skeleton, Tab, Tabs } from '@dolanske/vui'
-import { useIntervalFn } from '@vueuse/core'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
+import { useEventTiming } from '@/composables/useEventTiming'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
@@ -27,7 +27,6 @@ const activeTab = ref<'yes' | 'tentative' | 'no'>('yes')
 const supabase = useSupabaseClient()
 const loading = ref(true)
 const error = ref('')
-const now = ref(new Date())
 
 // RSVP data by status
 const rsvpData = ref<{
@@ -51,31 +50,10 @@ const currentTabData = computed(() => {
   return rsvpData.value[activeTab.value] || []
 })
 
-const eventStart = computed(() => props.event ? new Date(props.event.date) : null)
-const eventEnd = computed(() => {
-  if (!eventStart.value)
-    return null
-
-  if (props.event.duration_minutes) {
-    return new Date(eventStart.value.getTime() + props.event.duration_minutes * 60 * 1000)
-  }
-
-  return eventStart.value
-})
-
-const hasEventEnded = computed(() => {
-  if (!eventEnd.value)
-    return false
-
-  return now.value >= eventEnd.value
-})
+const { hasEventEnded } = useEventTiming(() => props.event)
 
 const yesTabLabel = computed(() => hasEventEnded.value ? 'Went' : 'Going')
 const yesEmptyCopy = computed(() => hasEventEnded.value ? 'as having gone' : 'as going')
-
-useIntervalFn(() => {
-  now.value = new Date()
-}, 60_000, { immediate: true })
 
 // Fetch RSVP data
 async function fetchRSVPs() {

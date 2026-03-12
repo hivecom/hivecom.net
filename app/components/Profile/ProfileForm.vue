@@ -8,6 +8,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
+import { formatDateOnly } from '@/lib/utils/date'
 import { replaceMarkdownH1, stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 
@@ -215,13 +216,6 @@ function parseDateOnly(value: string): Date | null {
 
   const date = new Date(year, month - 1, day)
   return Number.isNaN(date.getTime()) ? null : date
-}
-
-function formatDateOnly(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
 }
 
 const birthdayDateModel = computed<Date | null>({

@@ -9,6 +9,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
+import { calculateDurationBetweenDates } from '@/lib/utils/duration'
 import ExpenseDetails from './ExpenseDetails.vue'
 import ExpenseFilters from './ExpenseFilters.vue'
 import ExpenseForm from './ExpenseForm.vue'
@@ -70,31 +71,6 @@ function formatDate(dateString: string): string {
   })
 }
 
-// Calculate duration
-function calculateDuration(startDate: string, endDate?: string | null): string {
-  const start = new Date(startDate)
-  const end = endDate ? new Date(endDate) : new Date()
-
-  const diffTime = Math.abs(end.getTime() - start.getTime())
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-  if (diffDays < 30) {
-    return `${diffDays} days`
-  }
-  else if (diffDays < 365) {
-    const months = Math.floor(diffDays / 30)
-    return `${months} month${months > 1 ? 's' : ''}`
-  }
-  else {
-    const years = Math.floor(diffDays / 365)
-    const remainingMonths = Math.floor((diffDays % 365) / 30)
-    if (remainingMonths > 0) {
-      return `${years}y ${remainingMonths}m`
-    }
-    return `${years} year${years > 1 ? 's' : ''}`
-  }
-}
-
 // Check if expense is planned (start date in the future)
 function isPlannedExpense(startDate: string): boolean {
   const today = new Date()
@@ -135,7 +111,7 @@ const transformedExpenses = computed<TransformedExpense[]>(() => {
     Amount: formatCurrency(expense.amount_cents),
     Status: getExpenseStatus(expense),
     Started: formatDate(expense.started_at),
-    Duration: calculateDuration(expense.started_at, expense.ended_at),
+    Duration: calculateDurationBetweenDates(expense.started_at, expense.ended_at),
     _original: expense,
   }))
 })

@@ -5,6 +5,7 @@ import Discussion from '@/components/Discussions/Discussion.vue'
 import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
+import { useEventTiming } from '@/composables/useEventTiming'
 
 // Get route parameter
 const route = useRoute()
@@ -23,109 +24,7 @@ defineOgImageComponent('Event', {
   eventId,
 })
 
-// Countdown for upcoming events
-const countdown = ref<{
-  days: number
-  hours: number
-  minutes: number
-  seconds: number
-} | null>(null)
-
-// Check if event is upcoming
-const isUpcoming = computed(() => {
-  if (!event.value)
-    return false
-  const now = new Date()
-  const eventStart = new Date(event.value.date)
-  return eventStart > now
-})
-
-// Check if event is ongoing
-const isOngoing = computed(() => {
-  if (!event.value)
-    return false
-  const now = new Date()
-  const eventStart = new Date(event.value.date)
-  const eventEnd = event.value.duration_minutes
-    ? new Date(eventStart.getTime() + event.value.duration_minutes * 60 * 1000)
-    : eventStart
-
-  return eventStart <= now && now <= eventEnd
-})
-
-// Calculate "time ago" for past events
-const timeAgo = computed(() => {
-  if (!event.value || isUpcoming.value || isOngoing.value)
-    return ''
-
-  const now = new Date()
-  const eventDate = new Date(event.value.date)
-  const eventEnd = event.value.duration_minutes
-    ? new Date(eventDate.getTime() + event.value.duration_minutes * 60 * 1000)
-    : eventDate
-  const diff = now.getTime() - eventEnd.getTime()
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-
-  if (days > 0) {
-    return days === 1 ? '1 day ago' : `${days} days ago`
-  }
-  else if (hours > 0) {
-    return hours === 1 ? '1 hour ago' : `${hours} hours ago`
-  }
-  else if (minutes > 0) {
-    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
-  }
-  else {
-    return 'Just now'
-  }
-})
-
-// Update countdown
-function updateTime() {
-  if (!event.value || (!isUpcoming.value && !isOngoing.value))
-    return
-
-  const now = new Date()
-  const eventDate = new Date(event.value.date)
-
-  if (isOngoing.value) {
-    // For ongoing events, set countdown to zeros (will display "NOW")
-    countdown.value = {
-      days: 0,
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
-    }
-    return
-  }
-
-  const diff = eventDate.getTime() - now.getTime()
-
-  if (diff <= 0) {
-    countdown.value = {
-      days: 0,
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
-    }
-    return
-  }
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-
-  countdown.value = {
-    days,
-    hours,
-    minutes,
-    seconds,
-  }
-}
+const { isUpcoming, isOngoing, timeAgo, countdown } = useEventTiming(event)
 
 // Fetch event data
 async function fetchEvent() {
@@ -176,9 +75,6 @@ async function fetchEvent() {
     loading.value = false
   }
 }
-
-// Set up interval for countdown updates
-useIntervalFn(updateTime, 1000, { immediate: true })
 
 // Fetch data on mount
 onMounted(() => {

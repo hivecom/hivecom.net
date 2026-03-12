@@ -6,6 +6,7 @@ import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
 import { isBanActive } from '@/lib/banStatus'
+import { shuffleArray } from '@/lib/utils/random'
 
 // Get current user for authentication checks
 const user = useSupabaseUser()
@@ -141,11 +142,7 @@ async function fetchCommunityData() {
       }
       else if (projectsResult.data) {
         // Shuffle projects and take 3 random ones
-        const shuffledProjects = projectsResult.data
-          .map(project => ({ project, sort: Math.random() }))
-          .sort((a, b) => a.sort - b.sort)
-          .map(({ project }) => project)
-          .slice(0, 3)
+        const shuffledProjects = shuffleArray(projectsResult.data).slice(0, 3)
 
         recentProjects.value = shuffledProjects
       }
@@ -162,11 +159,7 @@ async function fetchCommunityData() {
       }
       else if (projectsData) {
         // Shuffle projects and take 3 random ones
-        const shuffledProjects = projectsData
-          .map(project => ({ project, sort: Math.random() }))
-          .sort((a, b) => a.sort - b.sort)
-          .map(({ project }) => project)
-          .slice(0, 3)
+        const shuffledProjects = shuffleArray(projectsData).slice(0, 3)
 
         recentProjects.value = shuffledProjects
       }
