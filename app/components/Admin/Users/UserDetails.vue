@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { UserActivityStatus } from '@/lib/lastSeen'
 import type { Enums } from '@/types/database.types'
 
 import { Avatar, Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
@@ -17,7 +16,7 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useCacheQuery } from '@/composables/useCache'
 import { isBanActive } from '@/lib/banStatus'
-import { getUserActivityStatus } from '@/lib/lastSeen'
+import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getUserAvatarUrl } from '@/lib/storage'
 import { getCountryInfo } from '@/lib/utils/country'
@@ -235,52 +234,7 @@ const activityStatus = computed(() => {
   return getUserActivityStatus(props.user.last_seen)
 })
 
-type LastSeenVariant = 'online' | 'fresh' | 'light' | 'lighter' | 'lightest'
-
-function getLastSeenVariant(status: UserActivityStatus | null): LastSeenVariant {
-  if (!status)
-    return 'lightest'
-  if (Number.isNaN(status.lastSeenTimestamp.getTime()))
-    return 'lightest'
-  if (status.isActive)
-    return 'online'
-
-  const diffMs = Date.now() - status.lastSeenTimestamp.getTime()
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-  // Last 24 hours
-  if (diffHours < 24)
-    return 'fresh'
-
-  // Last 3 days
-  if (diffDays < 3)
-    return 'light'
-
-  // Last 14 days
-  if (diffDays < 14)
-    return 'lighter'
-
-  // > 14 days
-  return 'lightest'
-}
-
 const lastSeenVariant = computed(() => getLastSeenVariant(activityStatus.value))
-
-function getLastSeenTextClass(variant: LastSeenVariant): string {
-  switch (variant) {
-    case 'online':
-      return 'last-seen-online'
-    case 'fresh':
-      return 'text-color'
-    case 'light':
-      return 'text-color-light'
-    case 'lighter':
-      return 'text-color-lighter'
-    case 'lightest':
-      return 'text-color-lightest'
-  }
-}
 
 const countryInfo = computed(() => (props.user ? getCountryInfo(props.user.country ?? null) : null))
 

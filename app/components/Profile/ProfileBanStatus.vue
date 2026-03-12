@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Card, Flex } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { isBanActive } from '@/lib/banStatus'
 import { formatDuration } from '@/lib/utils/duration'
 
 interface Props {
@@ -10,22 +11,6 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// Function to check if ban is active
-function isBanActive() {
-  if (!props.profile.banned)
-    return false
-
-  // If no end date, it's a permanent ban
-  if (!props.profile.ban_end)
-    return true
-
-  // Check if ban end date is in the future
-  const banEndDate = new Date(props.profile.ban_end)
-  const now = new Date()
-  return banEndDate > now
-}
-
-// Function to format ban duration
 function getBanDuration() {
   if (!props.profile.ban_start)
     return ''
@@ -57,26 +42,26 @@ function getBanEndDate() {
 </script>
 
 <template>
-  <Card v-if="profile.banned" class="ban-status-card" :class="{ 'ban-expired': !isBanActive() }">
+  <Card v-if="profile.banned" class="ban-status-card" :class="{ 'ban-expired': !isBanActive(profile.banned, profile.ban_end) }">
     <Flex gap="m" y-center>
       <Icon
-        :name="isBanActive() ? 'ph:warning-circle-fill' : 'ph:clock-fill'"
+        :name="isBanActive(profile.banned, profile.ban_end) ? 'ph:warning-circle-fill' : 'ph:clock-fill'"
         size="24"
         class="ban-icon"
       />
       <Flex column gap="xs" expand>
         <h3 class="ban-title">
-          {{ isBanActive() ? 'This user has been banned' : 'This user was previously banned' }}
+          {{ isBanActive(profile.banned, profile.ban_end) ? 'This user has been banned' : 'This user was previously banned' }}
         </h3>
         <p v-if="profile.ban_reason" class="ban-reason">
           <strong>Reason:</strong> {{ profile.ban_reason }}
         </p>
         <p class="text-s text-color-light">
           {{ getBanDuration() }}
-          <span v-if="getBanEndDate() && isBanActive()" class="text-xs text-color-lighter">
+          <span v-if="getBanEndDate() && isBanActive(profile.banned, profile.ban_end)" class="text-xs text-color-lighter">
             - expires <TimestampDate :date="getBanEndDate()!" size="xs" relative />
           </span>
-          <span v-else-if="getBanEndDate() && !isBanActive()" class="text-xs text-color-lighter">
+          <span v-else-if="getBanEndDate() && !isBanActive(profile.banned, profile.ban_end)" class="text-xs text-color-lighter">
             - expired <TimestampDate :date="getBanEndDate()!" size="xs" relative />
           </span>
         </p>

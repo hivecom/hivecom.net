@@ -1,8 +1,7 @@
 <script setup lang="ts">
+import type { BadgeVariant } from '@/lib/badges'
 import { computed } from 'vue'
 import ProfileBadge from '@/components/Profile/Badges/ProfileBadge.vue'
-
-type BadgeVariant = 'shiny' | 'gold' | 'silver' | 'bronze'
 
 const props = defineProps<{
   years: number

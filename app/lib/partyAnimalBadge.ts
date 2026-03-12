@@ -1,25 +1,7 @@
-export type BadgeVariant = 'shiny' | 'gold' | 'silver' | 'bronze'
-type PartyAnimalVariant = Extract<BadgeVariant, 'gold' | 'silver' | 'bronze'>
+// Re-exported from lib/badges.ts - this file is kept for backwards compatibility.
+// Import directly from '@/lib/badges' in new code.
+export type { BadgeVariant } from '@/lib/badges'
+export { getPartyAnimalVariant, PARTY_ANIMAL_BADGE_THRESHOLDS, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/badges'
 
-// TODO: This shouldn't be here there's a better way to share this logic
-
-export const PARTY_ANIMAL_BADGETHRESHOLDS: Record<PartyAnimalVariant, number> = {
-  gold: 50,
-  silver: 10,
-  bronze: 3,
-}
-
-export const PARTY_ANIMAL_MIN_RSVPS = PARTY_ANIMAL_BADGETHRESHOLDS.bronze
-
-export function getPartyAnimalVariant(rsvpCount: number | null | undefined): PartyAnimalVariant | undefined {
-  const safeCount = typeof rsvpCount === 'number' && Number.isFinite(rsvpCount) ? rsvpCount : 0
-
-  if (safeCount >= PARTY_ANIMAL_BADGETHRESHOLDS.gold)
-    return 'gold'
-  if (safeCount >= PARTY_ANIMAL_BADGETHRESHOLDS.silver)
-    return 'silver'
-  if (safeCount >= PARTY_ANIMAL_BADGETHRESHOLDS.bronze)
-    return 'bronze'
-
-  return undefined
-}
+// Legacy alias so existing callers that reference the old typo name still compile.
+export { PARTY_ANIMAL_BADGE_THRESHOLDS as PARTY_ANIMAL_BADGETHRESHOLDS } from '@/lib/badges'

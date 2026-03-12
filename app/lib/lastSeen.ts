@@ -6,6 +6,57 @@ import type { User } from '@supabase/supabase-js'
 import type { WatchStopHandle } from 'vue'
 import { isRef, onMounted, onUnmounted, ref, watch } from 'vue'
 
+export type LastSeenVariant = 'online' | 'fresh' | 'light' | 'lighter' | 'lightest'
+
+/**
+ * Maps a UserActivityStatus to a VUI color-variant string for last-seen indicators.
+ */
+export function getLastSeenVariant(status: UserActivityStatus | null): LastSeenVariant {
+  if (!status)
+    return 'lightest'
+  if (Number.isNaN(status.lastSeenTimestamp.getTime()))
+    return 'lightest'
+  if (status.isActive)
+    return 'online'
+
+  const diffMs = Date.now() - status.lastSeenTimestamp.getTime()
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  // Last 24 hours
+  if (diffHours < 24)
+    return 'fresh'
+
+  // Last 3 days
+  if (diffDays < 3)
+    return 'light'
+
+  // Last 14 days
+  if (diffDays < 14)
+    return 'lighter'
+
+  // > 14 days
+  return 'lightest'
+}
+
+/**
+ * Maps a LastSeenVariant to the corresponding CSS text-color utility class.
+ */
+export function getLastSeenTextClass(variant: LastSeenVariant): string {
+  switch (variant) {
+    case 'online':
+      return 'last-seen-online'
+    case 'fresh':
+      return 'text-color'
+    case 'light':
+      return 'text-color-light'
+    case 'lighter':
+      return 'text-color-lighter'
+    case 'lightest':
+      return 'text-color-lightest'
+  }
+}
+
 export interface UserActivityStatus {
   isActive: boolean
   lastSeenText: string

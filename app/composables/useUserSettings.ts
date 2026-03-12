@@ -21,12 +21,16 @@ export function getDefaultUserSettings(): Tables<'settings'>['data'] {
 
 export function useUserSettings() {
   const settings = useState<Tables<'settings'>['data']>('user-settings', getDefaultUserSettings)
+  const hasFetched = useState<boolean>('user-settings-fetched', () => false)
   const settingsLoading = ref(false)
   const settingsError = ref<Error | null>(null)
   const supabase = useSupabaseClient<Database>()
   const user = useUserId()
 
   const fetchSettings = async (): Promise<Error | null> => {
+    if (hasFetched.value)
+      return null
+
     settingsLoading.value = true
 
     const { data, error } = await supabase
@@ -47,6 +51,7 @@ export function useUserSettings() {
       Object.assign(settings.value, nonNillSettingValues)
     }
 
+    hasFetched.value = true
     return null
   }
 
@@ -86,6 +91,7 @@ export function useUserSettings() {
 
   watch(user, async (newUser) => {
     if (isNil(newUser)) {
+      hasFetched.value = false
       return
     }
 

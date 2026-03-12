@@ -6,6 +6,7 @@ import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import ReferendumResults from '@/components/Shared/ReferendumResults.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { getReferendumStatus, getReferendumStatusVariant } from '@/lib/referendums'
 
 const props = defineProps<{
   referendum: Tables<'referendums'> | null
@@ -62,19 +63,6 @@ function handleDelete(referendum: Tables<'referendums'>) {
   isOpen.value = false
 }
 
-// Helper function to determine referendum status
-function getReferendumStatus(referendum: Tables<'referendums'>): string {
-  const now = new Date()
-  const start = new Date(referendum.date_start)
-  const end = new Date(referendum.date_end)
-
-  if (now < start)
-    return 'upcoming'
-  if (now > end)
-    return 'concluded'
-  return 'active'
-}
-
 // Computed vote count
 const voteCount = computed(() => referendumVotes.value?.length || 0)
 </script>
@@ -129,7 +117,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
 
                 <Badge
                   size="xs"
-                  :variant="getReferendumStatus(props.referendum) === 'active' ? 'success' : getReferendumStatus(props.referendum) === 'upcoming' ? 'warning' : 'neutral'"
+                  :variant="getReferendumStatusVariant(getReferendumStatus(props.referendum))"
                 >
                   {{ capitalize(getReferendumStatus(props.referendum)) }}
                 </Badge>

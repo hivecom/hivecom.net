@@ -7,6 +7,8 @@ import ReferendumCard from '@/components/Shared/ReferendumCard.vue'
 import { useCacheQuery } from '@/composables/useCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+import { getReferendumStatus } from '@/lib/referendums'
+
 // Redirect to login if user is not authenticated
 const user = useSupabaseUser()
 
@@ -20,8 +22,6 @@ useHead({
 const tab = ref<'Active' | 'Concluded'>('Active')
 const search = ref('')
 const isBelowSmall = useBreakpoint('<s')
-
-type ReferendumStatus = 'active' | 'upcoming' | 'concluded'
 
 // Get current date for filtering
 const currentDate = new Date().toISOString()
@@ -136,18 +136,6 @@ const currentReferendums = computed(() => {
     || referendum.description?.toLowerCase().includes(searchLower),
   )
 })
-
-function getReferendumStatus(referendum: { date_start: string, date_end: string }): ReferendumStatus {
-  const now = new Date()
-  const start = new Date(referendum.date_start)
-  const end = new Date(referendum.date_end)
-
-  if (now < start)
-    return 'upcoming'
-  if (now > end)
-    return 'concluded'
-  return 'active'
-}
 </script>
 
 <template>

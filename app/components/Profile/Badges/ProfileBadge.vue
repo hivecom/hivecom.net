@@ -1,8 +1,7 @@
 <script setup lang="ts">
+import type { BadgeVariant } from '@/lib/badges'
 import { Tooltip } from '@dolanske/vui'
 import { computed, onBeforeUnmount, ref } from 'vue'
-
-type BadgeVariant = 'shiny' | 'gold' | 'silver' | 'bronze'
 
 const props = withDefaults(defineProps<{
   label: string

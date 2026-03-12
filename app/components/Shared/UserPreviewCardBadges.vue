@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { UserDisplayData } from '@/composables/useCacheUserData'
+import type { BadgeVariant } from '@/lib/badges'
 import type { Enums } from '@/types/database.types'
 import { Flex } from '@dolanske/vui'
 import { computed } from 'vue'
@@ -26,7 +27,6 @@ const props = defineProps<{
 }>()
 
 type ProfileBadgeSlug = Enums<'profile_badge'>
-type BadgeVariant = 'shiny' | 'gold' | 'silver' | 'bronze'
 
 interface BadgeDefinition {
   id: string

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import type { BadgeVariant } from '@/lib/badges'
 import type { Enums, Tables } from '@/types/database.types'
 import { Button, Card, Flex } from '@dolanske/vui'
 import { computed } from 'vue'
@@ -25,7 +26,6 @@ interface Props {
 }
 
 type ProfileBadgeSlug = Enums<'profile_badge'>
-type BadgeVariant = 'shiny' | 'gold' | 'silver' | 'bronze'
 
 interface BadgeDefinition {
   id: string

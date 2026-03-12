@@ -10,7 +10,7 @@ import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { isBanActive } from '@/lib/banStatus'
-import { getUserActivityStatus } from '@/lib/lastSeen'
+import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import UserActions from './UserActions.vue'
 import UserFilters from './UserFilters.vue'
@@ -276,51 +276,6 @@ function getRoleSortValue(role: string | null | undefined): number {
       return 1
     default:
       return 0
-  }
-}
-
-function getLastSeenVariant(status: ReturnType<typeof getUserActivityStatus> | null): 'online' | 'fresh' | 'light' | 'lighter' | 'lightest' {
-  if (!status)
-    return 'lightest'
-
-  if (Number.isNaN(status.lastSeenTimestamp.getTime()))
-    return 'lightest'
-
-  if (status.isActive)
-    return 'online'
-
-  const diffMs = Date.now() - status.lastSeenTimestamp.getTime()
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-  // Last 24 hours
-  if (diffHours < 24)
-    return 'fresh'
-
-  // Last 3 days
-  if (diffDays < 3)
-    return 'light'
-
-  // Last 14 days
-  if (diffDays < 14)
-    return 'lighter'
-
-  // > 14 days
-  return 'lightest'
-}
-
-function getLastSeenTextClass(variant: TransformedUser['_lastSeenVariant']): string {
-  switch (variant) {
-    case 'online':
-      return 'last-seen-online'
-    case 'fresh':
-      return 'text-color'
-    case 'light':
-      return 'text-color-light'
-    case 'lighter':
-      return 'text-color-lighter'
-    case 'lightest':
-      return 'text-color-lightest'
   }
 }
 
