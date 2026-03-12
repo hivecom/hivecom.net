@@ -2,6 +2,7 @@
 import type { Database, Tables } from '@/types/database.types'
 import { Button, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
 import { useEventTiming } from '@/composables/useEventTiming'
+import { useRsvpBus } from '@/composables/useRsvpBus'
 
 type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
 
@@ -25,6 +26,7 @@ const rsvpLoading = ref(false)
 const rsvpId = ref<number | null>(null)
 
 const { hasEventEnded } = useEventTiming(() => props.event)
+const { dispatch: dispatchRsvpUpdated } = useRsvpBus()
 
 // Computed properties
 const canRsvp = computed(() => {
@@ -168,9 +170,7 @@ async function updateRsvp(newStatus: RSVPStatus) {
     }
 
     // Emit event to notify other components
-    window.dispatchEvent(new CustomEvent('rsvp-updated', {
-      detail: { eventId: props.event.id, newStatus },
-    }))
+    dispatchRsvpUpdated({ eventId: props.event.id, newStatus })
   }
   catch (error) {
     console.error('Error updating RSVP:', error)
@@ -205,9 +205,7 @@ async function removeRsvp() {
     rsvpId.value = null
 
     // Emit event to notify other components
-    window.dispatchEvent(new CustomEvent('rsvp-updated', {
-      detail: { eventId: props.event.id, newStatus: null },
-    }))
+    dispatchRsvpUpdated({ eventId: props.event.id, newStatus: null })
   }
   catch (error) {
     console.error('Error removing RSVP:', error)

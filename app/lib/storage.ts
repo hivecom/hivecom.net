@@ -4,6 +4,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
+import { buildProjectBannerPath, dispatchProjectBannerUpdated, normalizeProjectId, PROJECT_BANNER_BUCKET, PROJECT_BANNER_EXTENSIONS, PROJECT_BANNER_PREFIX } from '@/lib/projectBanner'
 
 const FILE_EXTENSION_RE = /\.[^/.]+$/
 
@@ -13,19 +14,8 @@ export interface UploadResult {
   error?: string
 }
 
-const PROJECT_BANNER_BUCKET = 'hivecom-content-static'
-const PROJECT_BANNER_PREFIX = 'projects'
-const PROJECT_BANNER_EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'] as const
-
 export const allowedMediaTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 export const allowedMediaExtensions = allowedMediaTypes.join(', ')
-
-function normalizeProjectId(projectId: number | string): number {
-  const normalized = Number(projectId)
-  if (!Number.isFinite(normalized))
-    throw new Error('Invalid project id')
-  return normalized
-}
 
 function isStorageNotFoundError(error: unknown): boolean {
   if (error == null || typeof error !== 'object')
@@ -437,19 +427,6 @@ export async function deleteGameAsset(
       error: error instanceof Error ? error.message : 'Unknown error occurred',
     }
   }
-}
-
-function buildProjectBannerPath(projectId: number, extension: string) {
-  return `${PROJECT_BANNER_PREFIX}/${projectId}/banner.${extension}`
-}
-
-function dispatchProjectBannerUpdated(projectId: number, url: string | null) {
-  if (typeof window === 'undefined')
-    return
-
-  window.dispatchEvent(new CustomEvent('project-banner-updated', {
-    detail: { projectId, url },
-  }))
 }
 
 export async function uploadProjectBanner(

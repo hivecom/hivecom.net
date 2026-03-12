@@ -12,6 +12,7 @@ import { getRouteQueryString } from '@/lib/utils/common'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatDateShort } from '@/lib/utils/date'
 import { calculateDurationBetweenDates } from '@/lib/utils/duration'
+import { getExpenseStatus } from '@/lib/utils/expenses'
 import ExpenseDetails from './ExpenseDetails.vue'
 import ExpenseFilters from './ExpenseFilters.vue'
 import ExpenseForm from './ExpenseForm.vue'
@@ -59,30 +60,6 @@ const focusedExpenseId = computed(() => {
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
-// Format date helper
-
-// Check if expense is planned (start date in the future)
-function isPlannedExpense(startDate: string): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const start = new Date(startDate)
-  start.setHours(0, 0, 0, 0)
-  return start > today
-}
-
-// Get expense status
-function getExpenseStatus(expense: Expense): 'Planned' | 'Active' | 'Ended' {
-  if (isPlannedExpense(expense.started_at)) {
-    return 'Planned'
-  }
-  else if (expense.ended_at) {
-    return 'Ended'
-  }
-  else {
-    return 'Active'
-  }
-}
-
 // Filtered and transformed expenses
 const transformedExpenses = computed<TransformedExpense[]>(() => {
   let filteredExpenses = expenses.value
@@ -99,7 +76,7 @@ const transformedExpenses = computed<TransformedExpense[]>(() => {
   return filteredExpenses.map(expense => ({
     Name: expense.name || 'Unnamed Expense',
     Amount: formatCurrency(expense.amount_cents),
-    Status: getExpenseStatus(expense),
+    Status: getExpenseStatus(expense.started_at, expense.ended_at),
     Started: formatDateShort(expense.started_at),
     Duration: calculateDurationBetweenDates(expense.started_at, expense.ended_at),
     _original: expense,

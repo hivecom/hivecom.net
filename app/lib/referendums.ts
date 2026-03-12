@@ -18,6 +18,14 @@ export function getReferendumStatus(referendum: { date_start: string, date_end: 
 }
 
 /**
+ * Extracts the vote count from a referendum's aggregated vote_count relation.
+ * Returns 0 when the relation is absent or empty.
+ */
+export function getVoteCount(referendum: { vote_count?: Array<{ count: number }> }): number {
+  return referendum.vote_count?.[0]?.count ?? 0
+}
+
+/**
  * Maps a referendum status to its corresponding VUI badge variant.
  */
 export function getReferendumStatusVariant(status: ReferendumStatus): ReferendumStatusVariant {

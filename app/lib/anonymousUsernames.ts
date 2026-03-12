@@ -1,4 +1,4 @@
-import rawUsernames from '../../usernames.json'
+import rawUsernames from '@/assets/usernames.json'
 
 interface UsernameDataset {
   attributes: string[]

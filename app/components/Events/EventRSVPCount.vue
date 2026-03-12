@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Badge, Skeleton } from '@dolanske/vui'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useEventTiming } from '@/composables/useEventTiming'
+import { useRsvpBus } from '@/composables/useRsvpBus'
 
 interface Props {
   event: Tables<'events'>
@@ -73,22 +74,18 @@ async function fetchRsvpCount() {
   }
 }
 
-// Listen for RSVP updates to refresh count
-function handleRsvpUpdate(event: Event) {
-  const customEvent = event as CustomEvent
-  if (customEvent.detail?.eventId === props.event.id) {
+const { onRsvpUpdated } = useRsvpBus()
+
+// Subscribe at setup time so auto-cleanup via onUnmounted is registered correctly
+onRsvpUpdated(({ eventId }) => {
+  if (eventId === props.event.id) {
     fetchRsvpCount()
   }
-}
+})
 
 // Lifecycle
 onMounted(() => {
   fetchRsvpCount()
-  window.addEventListener('rsvp-updated', handleRsvpUpdate)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('rsvp-updated', handleRsvpUpdate)
 })
 
 // Watch for event changes

@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
 import EventGames from '@/components/Events/EventGames.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useRsvpBus } from '@/composables/useRsvpBus'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
 import CountdownTimer from './CountdownTimer.vue'
@@ -84,21 +85,16 @@ async function fetchRSVPCounts() {
   // Fetch cmment counts
 }
 
-// Listen for RSVP updates
-function handleRsvpUpdate(event: Event) {
-  const customEvent = event as CustomEvent
-  if (customEvent.detail?.eventId === props.event.id) {
+const { onRsvpUpdated } = useRsvpBus()
+
+onRsvpUpdated(({ eventId }) => {
+  if (eventId === props.event.id) {
     fetchRSVPCounts()
   }
-}
+})
 
 onMounted(() => {
   fetchRSVPCounts()
-  window.addEventListener('rsvp-updated', handleRsvpUpdate)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('rsvp-updated', handleRsvpUpdate)
 })
 </script>
 

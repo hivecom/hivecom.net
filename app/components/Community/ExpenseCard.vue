@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.types'
 import { Badge, Card, Flex } from '@dolanske/vui'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatDateShort } from '@/lib/utils/date'
+import { isPlannedExpense } from '@/lib/utils/expenses'
 
 interface Props {
   expense: Tables<'expenses'>
@@ -16,17 +17,11 @@ const isActive = computed(() => {
 })
 
 // Check if this is a planned expense (start date in the future)
-const isPlannedExpense = computed(() => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const startDate = new Date(props.expense.started_at)
-  startDate.setHours(0, 0, 0, 0)
-  return startDate > today
-})
+const planned = computed(() => isPlannedExpense(props.expense.started_at))
 
 // Get expense status
 const expenseStatus = computed(() => {
-  if (isPlannedExpense.value) {
+  if (planned.value) {
     return { label: 'Planned', variant: 'accent' as const }
   }
   else if (isActive.value) {
@@ -64,7 +59,7 @@ const expenseStatus = computed(() => {
 
       <!-- Date range -->
       <Flex x-between y-center class="text-xs text-color-light">
-        <span v-if="isPlannedExpense">Starts {{ formatDateShort(expense.started_at) }}</span>
+        <span v-if="planned">Starts {{ formatDateShort(expense.started_at) }}</span>
         <span v-else>Since {{ formatDateShort(expense.started_at) }}</span>
         <span v-if="expense.ended_at">Ended {{ formatDateShort(expense.ended_at) }}</span>
       </Flex>

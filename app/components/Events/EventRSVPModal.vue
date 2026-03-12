@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.types'
 import { Alert, Badge, Button, Flex, Modal, Skeleton, Tab, Tabs } from '@dolanske/vui'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
 import { useEventTiming } from '@/composables/useEventTiming'
+import { useRsvpBus } from '@/composables/useRsvpBus'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
@@ -125,19 +126,11 @@ watch(() => props.open, (isOpen) => {
 }, { immediate: true })
 
 // Listen for RSVP updates to refresh data
-function handleRsvpUpdate(event: Event) {
-  const customEvent = event as CustomEvent
-  if (customEvent.detail?.eventId === props.event.id) {
+const { onRsvpUpdated } = useRsvpBus()
+onRsvpUpdated(({ eventId }) => {
+  if (eventId === props.event.id) {
     fetchRSVPs()
   }
-}
-
-onMounted(() => {
-  window.addEventListener('rsvp-updated', handleRsvpUpdate)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('rsvp-updated', handleRsvpUpdate)
 })
 
 function handleClose() {

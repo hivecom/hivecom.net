@@ -28,8 +28,15 @@ export function useTableActions(resourceType: string) {
       canDelete,
     }
   }
-  catch {
-    // If useAdminPermissions throws (not in admin context), return false for all permissions
+  catch (error) {
+    // Only swallow errors that are expected when useAdminPermissions is called outside
+    // the admin layout context (i.e. inject returns undefined). Re-throw anything else.
+    const isContextError = error instanceof Error
+      && (error.message.includes('admin') || error.message.includes('inject'))
+    if (!isContextError) {
+      throw error
+    }
+
     const canManageResource = computed(() => false)
     const canCreate = computed(() => false)
     const canUpdate = computed(() => false)

@@ -11,7 +11,7 @@ import TableContainer from '@/components/Shared/TableContainer.vue'
 
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { getReferendumStatus, getReferendumStatusVariant } from '@/lib/referendums'
+import { getReferendumStatus, getReferendumStatusVariant, getVoteCount } from '@/lib/referendums'
 import { getRouteQueryString } from '@/lib/utils/common'
 import ReferendumDetails from './ReferendumDetails.vue'
 import ReferendumFilters from './ReferendumFilters.vue'
@@ -89,11 +89,6 @@ const focusedReferendumId = computed(() => {
 // Referendum form state
 const showReferendumForm = ref(false)
 const isEditMode = ref(false)
-
-// Helper function to get vote count
-function getVoteCount(referendum: QueryReferendum): number {
-  return referendum.vote_count?.[0]?.count || 0
-}
 
 // Filter based on search, status, and type
 const filteredData = computed<TransformedReferendum[]>(() => {

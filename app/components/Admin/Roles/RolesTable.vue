@@ -3,6 +3,7 @@ import { Alert, Card, Flex, Grid, Input, searchString, Skeleton } from '@dolansk
 import RoleKPIs from '@/components/Admin/Roles/RoleKPIs.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { formatCategoryName, formatPermissionName, getCategoryIcon, getRoleColor, getRoleVariant } from '@/lib/rolePermissions'
 
 const isBelowMedium = useBreakpoint('<m')
 
@@ -99,89 +100,6 @@ async function fetchRolePermissions() {
   finally {
     loading.value = false
   }
-}
-
-function formatPermissionName(permission: string): string {
-  const parts = permission.split('.')
-  const [category, action, scope] = parts
-
-  if (scope === 'own' && action) {
-    return `${action.charAt(0).toUpperCase() + action.slice(1)} own ${category}`
-  }
-
-  if (permission === 'referendum_votes.create')
-    return 'Vote on referendums'
-  if (permission === 'referendum_votes.update.own')
-    return 'Update own votes'
-  if (permission === 'referendum_votes.delete.own')
-    return 'Delete own votes'
-
-  if (permission === 'profiles.update.own')
-    return 'Update own profile'
-  if (permission === 'complaints.create.own')
-    return 'Create own complaints'
-  if (permission === 'complaints.read.own')
-    return 'View own complaints'
-
-  if (action) {
-    return `${action.charAt(0).toUpperCase() + action.slice(1)} ${category}`
-  }
-  return category || permission
-}
-
-function formatCategoryName(category: string): string {
-  return category.charAt(0).toUpperCase() + category.slice(1)
-}
-
-function getRoleColor(role: string): string {
-  switch (role) {
-    case 'admin':
-      return 'var(--color-text-red)'
-    case 'moderator':
-      return 'var(--color-text-blue)'
-    case 'user':
-      return 'var(--color-text-green)'
-    default:
-      return 'var(--color-text)'
-  }
-}
-
-function getRoleVariant(role: string) {
-  switch (role) {
-    case 'admin':
-      return 'danger'
-    case 'moderator':
-      return 'info'
-    case 'user':
-      return 'success'
-    default:
-      return 'neutral'
-  }
-}
-
-function getCategoryIcon(category: string): string {
-  const icons: Record<string, string> = {
-    announcements: 'ph:megaphone',
-    assets: 'ph:images-square',
-    complaints: 'ph:flag',
-    containers: 'ph:computer-tower',
-    events: 'ph:calendar-blank',
-    expenses: 'ph:coins',
-    forums: 'ph:chat-circle',
-    funding: 'ph:coins',
-    games: 'ph:game-controller',
-    gameservers: 'ph:computer-tower',
-    kvstore: 'ph:database',
-    motds: 'ph:speaker-simple-high',
-    profiles: 'ph:user',
-    projects: 'ph:folder',
-    referendums: 'ph:user-sound',
-    referendum_votes: 'ph:user-sound',
-    roles: 'ph:user',
-    servers: 'ph:computer-tower',
-    users: 'ph:user',
-  }
-  return icons[category] || 'ph:circle'
 }
 
 onBeforeMount(fetchRolePermissions)
