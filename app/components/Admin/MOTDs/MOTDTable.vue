@@ -1,52 +1,65 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, defineTable, Flex, Input, Pagination, Table } from '@dolanske/vui'
-import { computed, onBeforeMount, ref } from 'vue'
+import { computed } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import MOTDEditModal from './MOTDEditModal.vue'
 
+type Motd = Tables<'motds'>
+
 const supabase = useSupabaseClient()
 const userId = useUserId()
-const { canManageResource, canCreate } = useTableActions('motds')
-
-const loading = ref(true)
-const errorMessage = ref('')
-const motds = ref<Tables<'motds'>[]>([])
-const search = ref('')
 const isBelowMedium = useBreakpoint('<m')
 
-const showModal = ref(false)
-const isEditMode = ref(false)
-const selectedEntry = ref<Tables<'motds'> | null>(null)
+const {
+  items: _motds,
+  loading,
+  errorMessage,
+  filteredRows,
+  totalCount,
+  filteredCount,
+  search,
+  selectedItem: selectedEntry,
+  showForm: showModal,
+  isEditMode,
+  canManageResource,
+  canCreate,
+  isActionLoading,
+  setActionLoading,
+  openAdd: openCreateModal,
+  openEdit: openEditModal,
+  refresh: fetchMotds,
+} = useAdminCrudTable<Motd, { Message: string, Created: string | null, Modified: string | null }>({
+  resourceType: 'motds',
+  queryParamKey: false,
+  fetch: async () => {
+    const { data, error } = await supabase
+      .from('motds')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-const actionLoading = ref<Record<string, boolean>>({})
+    if (error)
+      throw error
 
-const filteredMotds = computed(() => {
-  if (!search.value.trim())
-    return motds.value
-
-  const term = search.value.toLowerCase()
-  return motds.value.filter(entry => entry.message.toLowerCase().includes(term))
+    return data ?? []
+  },
+  transform: item => ({
+    Message: item.message,
+    Created: item.created_at,
+    Modified: item.modified_at,
+  }),
+  defaultSort: { column: 'Created', direction: 'desc' },
 })
 
-const totalCount = computed(() => motds.value.length)
-const filteredCount = computed(() => filteredMotds.value.length)
-
-const displayRows = computed(() => filteredMotds.value.map(entry => ({
-  Message: entry.message,
-  Created: entry.created_at,
-  Modified: entry.modified_at,
-  _original: entry,
-})))
+const displayRows = computed(() => filteredRows.value)
 
 const { headers, rows, pagination, setPage, setSort } = defineTable(displayRows, {
-  pagination: {
-    enabled: true,
-  },
+  pagination: { enabled: true },
   select: false,
 })
 
@@ -57,48 +70,13 @@ const shouldShowPagination = computed(() => {
 
 setSort('Created', 'desc')
 
-async function fetchMotds() {
-  loading.value = true
-  errorMessage.value = ''
-
-  try {
-    const { data, error } = await supabase
-      .from('motds')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error)
-      throw error
-
-    motds.value = data || []
-  }
-  catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Failed to load MOTDs'
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-function openCreateModal() {
-  selectedEntry.value = null
-  isEditMode.value = false
-  showModal.value = true
-}
-
-function openEditModal(entry: Tables<'motds'>) {
-  selectedEntry.value = entry
-  isEditMode.value = true
-  showModal.value = true
-}
-
 async function handleSave(payload: { id?: number, message: string }) {
   errorMessage.value = ''
   const now = new Date().toISOString()
 
   try {
     if (payload.id) {
-      actionLoading.value[String(payload.id)] = true
+      setActionLoading(payload.id, 'edit', true)
       const { error } = await supabase
         .from('motds')
         .update({
@@ -133,15 +111,15 @@ async function handleSave(payload: { id?: number, message: string }) {
   }
   finally {
     if (payload.id)
-      actionLoading.value[String(payload.id)] = false
+      setActionLoading(payload.id, 'edit', false)
   }
 }
 
-async function handleDelete(entry: Tables<'motds'>) {
+async function handleDelete(entry: Motd) {
   errorMessage.value = ''
 
   try {
-    actionLoading.value[`${entry.id}-delete`] = true
+    setActionLoading(entry.id, 'delete', true)
     const { error } = await supabase
       .from('motds')
       .delete()
@@ -156,11 +134,9 @@ async function handleDelete(entry: Tables<'motds'>) {
     errorMessage.value = error instanceof Error ? error.message : 'Failed to delete MOTD'
   }
   finally {
-    actionLoading.value[`${entry.id}-delete`] = false
+    setActionLoading(entry.id, 'delete', false)
   }
 }
-
-onBeforeMount(fetchMotds)
 </script>
 
 <template>
@@ -211,7 +187,7 @@ onBeforeMount(fetchMotds)
       <TableContainer>
         <Table.Root :loading="loading" separate-cells>
           <template #header>
-            <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+            <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
             <Table.Head
               v-if="canManageResource"
               key="actions"
@@ -237,9 +213,9 @@ onBeforeMount(fetchMotds)
                   resource-type="motds"
                   :item="row._original"
                   button-size="s"
-                  :is-loading="(action) => action === 'edit' ? !!actionLoading[String(row._original.id)] : !!actionLoading[`${row._original.id}-delete`]"
-                  @edit="(item) => openEditModal(item as Tables<'motds'>)"
-                  @delete="(item) => handleDelete(item as Tables<'motds'>)"
+                  :is-loading="(action) => isActionLoading(row._original.id, action)"
+                  @edit="(item) => openEditModal(item as Motd)"
+                  @delete="(item) => handleDelete(item as Motd)"
                 />
               </Table.Cell>
             </tr>

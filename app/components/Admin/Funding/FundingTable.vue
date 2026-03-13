@@ -31,6 +31,9 @@ interface TransformedFunding {
 
 // Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
+// Track the last value we ourselves emitted so the re-fetch watcher can ignore our own bumps
+const lastSelfEmittedSignal = ref(-1)
 const route = useRoute()
 const router = useRouter()
 
@@ -117,8 +120,10 @@ watch([allFunding, fundingLoading, fundingError], () => {
   if (!fundingLoading.value) {
     monthlyFundings.value = allFunding.value as MonthlyFunding[]
     loading.value = false
-    // Notify parent charts that data is ready
-    refreshSignal.value = (refreshSignal.value || 0) + 1
+    // Notify parent charts that data is ready - track this so the re-fetch watcher ignores it
+    const next = (refreshSignal.value || 0) + 1
+    lastSelfEmittedSignal.value = next
+    refreshSignal.value = next
   }
 }, { immediate: true })
 
@@ -172,9 +177,9 @@ watch(
 )
 
 // Refresh signal from parent (e.g. after admin writes): bust cache and re-fetch
+// Ignore increments we emitted ourselves - only react to external bumps (e.g. ExpenseTable writes)
 watch(() => refreshSignal.value, (sig, prev) => {
-  // Only react to external increments (prev === undefined on first run, skip that)
-  if (prev != null && sig !== prev) {
+  if (prev != null && sig !== prev && sig !== lastSelfEmittedSignal.value) {
     void refreshFunding()
   }
 })

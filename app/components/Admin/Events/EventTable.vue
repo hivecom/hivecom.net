@@ -1,112 +1,77 @@
 <script setup lang="ts">
-import type { Ref } from 'vue'
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, inject, onBeforeMount, ref, watch } from 'vue'
+import { watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { getRouteQueryString } from '@/lib/utils/common'
 import EventDetails from './EventDetails.vue'
 import EventFilters from './EventFilters.vue'
 import EventForm from './EventForm.vue'
-
-// Event table type
-type Event = Tables<'events'>
 
 // Props
 const _props = defineProps<{
   canManage?: boolean
 }>()
 
-// Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
-// Get admin permissions
-const { canManageResource, canCreate } = useTableActions('events')
-const route = useRoute()
-const router = useRouter()
+type Event = Tables<'events'>
 
-// Setup client and state
 const supabase = useSupabaseClient()
 const userId = useUserId()
-const loading = ref(true)
-const errorMessage = ref('')
-const events = ref<Event[]>([])
-const search = ref('')
 
-// Event details state
-const showEventDetails = ref(false)
-const showEventForm = ref(false)
-const selectedEvent = ref<Event | null>(null)
-
-const focusedEventId = computed(() => {
-  const eventQuery = route.query.event
-  const rawValue = getRouteQueryString(eventQuery)
-  const parsed = Number.parseInt(rawValue, 10)
-  return Number.isNaN(parsed) ? null : parsed
-})
-
-const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
-const isEditMode = ref(false)
-
-// Loading states for individual events
-const eventLoadingStates = ref<Record<number, Record<string, boolean>>>({})
-
-// Helper function to check if an action is loading for a specific event
-function isEventActionLoading(eventId: number, action: string): boolean {
-  return eventLoadingStates.value[eventId]?.[action] || false
-}
-
-// Helper function to set loading state for an event action
-function setEventActionLoading(eventId: number, action: string, loading: boolean) {
-  if (!eventLoadingStates.value[eventId]) {
-    eventLoadingStates.value[eventId] = {}
-  }
-  eventLoadingStates.value[eventId][action] = loading
-}
-
-// Filtered and transformed events
-const transformedEvents = computed(() => {
-  if (!search.value) {
-    return events.value.map(event => ({
-      Title: event.title,
-      Date: event.date,
-      Location: event.location,
-      _original: event,
-    }))
-  }
-
-  const searchTerm = search.value.toLowerCase()
-  return events.value.filter(event =>
-    event.title?.toLowerCase().includes(searchTerm)
-    || event.description?.toLowerCase().includes(searchTerm)
-    || event.location?.toLowerCase().includes(searchTerm)
-    || event.note?.toLowerCase().includes(searchTerm),
-  ).map(event => ({
+const {
+  loading,
+  errorMessage,
+  filteredRows,
+  totalCount,
+  filteredCount,
+  isFiltered,
+  search,
+  selectedItem: selectedEvent,
+  showDetails: showEventDetails,
+  showForm: showEventForm,
+  isEditMode,
+  isActionLoading,
+  setActionLoading,
+  canManageResource,
+  canCreate,
+  adminTablePerPage,
+  viewItem: viewEventDetails,
+  openAdd: openAddEventForm,
+  openEdit: openEditEventForm,
+  handleEditFromDetails,
+  refresh: fetchEvents,
+} = useAdminCrudTable<Event, { Title: string | null, Date: string | null, Location: string | null }>({
+  resourceType: 'events',
+  queryParamKey: 'event',
+  refreshSignal,
+  fetch: async () => {
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .order('date', { ascending: false })
+    if (error)
+      throw error
+    return (data as Event[]) || []
+  },
+  transform: event => ({
     Title: event.title,
     Date: event.date,
     Location: event.location,
-    Description: event.description,
-    _original: event,
-  }))
+  }),
+  defaultSort: { column: 'Date', direction: 'desc' },
 })
-
-const totalCount = computed(() => events.value.length)
-const filteredCount = computed(() => transformedEvents.value.length)
-const isFiltered = computed(() => Boolean(search.value))
 
 const isBelowMedium = useBreakpoint('<m')
 
-// Table configuration
-const { headers, rows, pagination, setPage, setSort, options } = defineTable(transformedEvents, {
-  pagination: {
-    enabled: true,
-    perPage: adminTablePerPage.value,
-  },
+const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredRows, {
+  pagination: { enabled: true, perPage: adminTablePerPage.value },
   select: false,
 })
 
@@ -115,97 +80,38 @@ watch(adminTablePerPage, (perPage) => {
   setPage(1)
 })
 
-// Set default sorting by date (newest first)
 setSort('Date', 'desc')
 
-// Fetch events data
-async function fetchEvents() {
-  loading.value = true
-  errorMessage.value = ''
+function getEventStatus(event: Event): { label: string, variant: 'accent' | 'success' | 'neutral' } {
+  const now = new Date()
+  const eventStart = new Date(event.date)
+  const eventEnd = event.duration_minutes
+    ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
+    : eventStart
 
-  try {
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .order('date', { ascending: false })
-
-    if (error)
-      throw error
-
-    events.value = data as Event[] || []
-    // Increment the refresh signal to notify the parent
-    refreshSignal.value = (refreshSignal.value || 0) + 1
-  }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading events'
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// View event details
-function viewEventDetails(event: Event) {
-  selectedEvent.value = event
-  showEventDetails.value = true
-}
-
-function openEventById(eventId: number | null): boolean {
-  if (eventId === null)
-    return false
-
-  const match = events.value.find((event: Event) => event.id === eventId)
-
-  if (!match)
-    return false
-
-  viewEventDetails(match)
-  return true
-}
-
-// Open the add event form
-function openAddEventForm() {
-  selectedEvent.value = null
-  isEditMode.value = false
-  showEventForm.value = true
-}
-
-// Open the edit event form
-function openEditEventForm(event: Event, clickEvent?: MouseEvent) {
-  // Prevent the click from triggering the view details
-  if (clickEvent)
-    clickEvent.stopPropagation()
-
-  selectedEvent.value = event
-  isEditMode.value = true
-  showEventForm.value = true
-}
-
-// Handle edit from EventDetails
-function handleEditFromDetails(event: Event) {
-  openEditEventForm(event)
+  if (now < eventStart)
+    return { label: 'Upcoming', variant: 'accent' }
+  if (now >= eventStart && now <= eventEnd)
+    return { label: 'Ongoing', variant: 'success' }
+  return { label: 'Past', variant: 'neutral' }
 }
 
 async function handleEventSave(eventData: Partial<Event>) {
   try {
     if (isEditMode.value && selectedEvent.value) {
-      // Update existing event with modification tracking
       const updateData: TablesUpdate<'events'> = {
         ...eventData,
         modified_at: new Date().toISOString(),
         modified_by: userId.value ?? null,
       }
-
       const { error } = await supabase
         .from('events')
         .update(updateData)
         .eq('id', selectedEvent.value.id)
-
       if (error)
         throw error
     }
     else {
-      // Create new event with creation and modification tracking
       const createData: TablesInsert<'events'> = {
         ...eventData,
         title: eventData.title || '',
@@ -215,109 +121,43 @@ async function handleEventSave(eventData: Partial<Event>) {
         modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
-
       const { error } = await supabase
         .from('events')
         .insert(createData)
         .select('id')
         .single()
-
       if (error)
         throw error
     }
 
-    // Google Calendar sync is now handled automatically by database triggers
-    // No manual sync call needed - the database will handle it automatically
-
-    // Refresh events data and close form
     showEventForm.value = false
     await fetchEvents()
   }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while saving the event'
+  catch (err: unknown) {
+    errorMessage.value = err instanceof Error ? err.message : 'An error occurred while saving the event'
   }
 }
 
-// Handle event deletion
 async function handleEventDelete(eventId: number) {
   try {
-    // Set loading state
-    setEventActionLoading(eventId, 'delete', true)
-
-    // Google Calendar sync is now handled automatically by database triggers
-    // No manual sync call needed - the database will handle it automatically
-
+    setActionLoading(eventId, 'delete', true)
     const { error } = await supabase
       .from('events')
       .delete()
       .eq('id', eventId)
-
     if (error)
       throw error
 
     showEventForm.value = false
     await fetchEvents()
   }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the event'
+  catch (err: unknown) {
+    errorMessage.value = err instanceof Error ? err.message : 'An error occurred while deleting the event'
   }
   finally {
-    // Clear loading state (though component will reload anyway)
-    setEventActionLoading(eventId, 'delete', false)
+    setActionLoading(eventId, 'delete', false)
   }
 }
-
-// Helper function to get event status
-function getEventStatus(event: Event): { label: string, variant: 'accent' | 'success' | 'neutral' } {
-  const now = new Date()
-  const eventStart = new Date(event.date)
-  const eventEnd = event.duration_minutes
-    ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
-    : eventStart
-
-  if (now < eventStart) {
-    return { label: 'Upcoming', variant: 'accent' }
-  }
-  else if (now >= eventStart && now <= eventEnd) {
-    return { label: 'Ongoing', variant: 'success' }
-  }
-  else {
-    return { label: 'Past', variant: 'neutral' }
-  }
-}
-
-// Sync event query params with details sheet state
-watch(showEventDetails, (isOpen) => {
-  if (isOpen && selectedEvent.value) {
-    const nextQuery = {
-      ...route.query,
-      event: selectedEvent.value.id,
-    }
-    router.replace({ query: nextQuery })
-    return
-  }
-  if (isOpen)
-    return
-  if (!route.query.event)
-    return
-  const { event, ...rest } = route.query
-  router.replace({ query: rest })
-})
-
-watch(
-  () => [focusedEventId.value, loading.value] as const,
-  ([eventId, isLoading]) => {
-    if (isLoading)
-      return
-    if (eventId === null)
-      return
-    openEventById(eventId)
-  },
-  { immediate: true },
-)
-
-// Lifecycle hooks
-onBeforeMount(fetchEvents)
 </script>
 
 <template>
@@ -329,7 +169,6 @@ onBeforeMount(fetchEvents)
   <!-- Loading state -->
   <template v-else-if="loading">
     <Flex gap="s" column expand>
-      <!-- Header and filters -->
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
           <EventFilters v-model:search="search" />
@@ -350,15 +189,7 @@ onBeforeMount(fetchEvents)
 
           <Flex gap="xs" :wrap="isBelowMedium" :x-center="isBelowMedium" expand>
             <CalendarButtons is-admin />
-
-            <!-- Create event button -->
-            <Button
-              v-if="canCreate"
-              variant="accent"
-              loading
-              :expand="isBelowMedium"
-              @click="openAddEventForm"
-            >
+            <Button v-if="canCreate" variant="accent" loading :expand="isBelowMedium" @click="openAddEventForm">
               <template #start>
                 <Icon name="ph:plus" />
               </template>
@@ -368,17 +199,11 @@ onBeforeMount(fetchEvents)
         </Flex>
       </Flex>
 
-      <!-- Table skeleton -->
-      <TableSkeleton
-        :columns="3"
-        :rows="10"
-        :show-actions="canManageResource"
-      />
+      <TableSkeleton :columns="3" :rows="10" :show-actions="canManageResource" />
     </Flex>
   </template>
 
   <Flex v-else gap="s" column expand>
-    <!-- Header and filters -->
     <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
       <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
         <EventFilters v-model:search="search" />
@@ -401,14 +226,7 @@ onBeforeMount(fetchEvents)
 
         <Flex :gap="isBelowMedium ? 's' : 'xs'" :wrap="isBelowMedium" :x-center="isBelowMedium" :expand="isBelowMedium">
           <CalendarButtons is-admin />
-
-          <!-- Create event button -->
-          <Button
-            v-if="canCreate"
-            variant="accent"
-            :expand="isBelowMedium"
-            @click="openAddEventForm"
-          >
+          <Button v-if="canCreate" variant="accent" :expand="isBelowMedium" @click="openAddEventForm">
             <template #start>
               <Icon name="ph:plus" />
             </template>
@@ -418,19 +236,20 @@ onBeforeMount(fetchEvents)
       </Flex>
     </Flex>
 
-    <!-- Table -->
     <TableContainer>
       <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
-          <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
           <Table.Head
-            key="status" :header="{ label: 'Status',
-                                    sortToggle: () => {} }"
+            key="status"
+            :header="{ label: 'Status',
+                       sortToggle: () => {} }"
           />
           <Table.Head
             v-if="canManageResource"
-            key="actions" :header="{ label: 'Actions',
-                                     sortToggle: () => {} }"
+            key="actions"
+            :header="{ label: 'Actions',
+                       sortToggle: () => {} }"
           />
         </template>
 
@@ -456,34 +275,31 @@ onBeforeMount(fetchEvents)
                 resource-type="events"
                 :item="event._original"
                 button-size="s"
-                :is-loading="(action: string) => isEventActionLoading(event._original.id, action)"
-                @edit="(eventItem) => openEditEventForm(eventItem as Event)"
-                @delete="(eventItem) => handleEventDelete((eventItem as Event).id)"
+                :is-loading="(action: string) => isActionLoading(event._original.id, action)"
+                @edit="(item) => openEditEventForm(item as Event)"
+                @delete="(item) => handleEventDelete((item as Event).id)"
               />
             </Table.Cell>
           </tr>
         </template>
 
-        <template v-if="transformedEvents.length > adminTablePerPage" #pagination>
+        <template v-if="filteredRows.length > adminTablePerPage" #pagination>
           <Pagination :pagination="pagination" @change="setPage" />
         </template>
       </Table.Root>
 
-      <!-- No results message -->
       <Alert v-else-if="!loading" variant="info">
         No events found
       </Alert>
     </TableContainer>
 
-    <!-- Event Detail Sheet -->
     <EventDetails
       v-model:is-open="showEventDetails"
       :event="selectedEvent"
       @edit="handleEditFromDetails"
-      @delete="(eventItem) => handleEventDelete((eventItem as Event).id)"
+      @delete="(item) => handleEventDelete((item as Event).id)"
     />
 
-    <!-- Event Form Sheet (for both create and edit) -->
     <EventForm
       v-model:is-open="showEventForm"
       :event="selectedEvent"
@@ -506,11 +322,5 @@ onBeforeMount(fetchEvents)
 }
 td {
   vertical-align: middle;
-}
-.description-truncate {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 </style>

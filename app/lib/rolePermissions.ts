@@ -1,6 +1,6 @@
 /**
  * Pure helper functions for role permission display formatting.
- * Extracted from Admin/Roles/RolesTable.vue - no Vue dependency.
+ * Extracted from Admin/Roles/RolesGrid.vue - no Vue dependency.
  */
 
 export type RoleVariant = 'danger' | 'info' | 'success' | 'neutral'

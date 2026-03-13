@@ -1,133 +1,113 @@
 <script setup lang="ts">
-import type { QueryData } from '@supabase/supabase-js'
-import type { Ref } from 'vue'
-
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, inject, onBeforeMount, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
-
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { getRouteQueryString } from '@/lib/utils/common'
 import ServerDetails from './ServerDetails.vue'
 import ServerFilters from './ServerFilters.vue'
 import ServerForm from './ServerForm.vue'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
-// Define interface for transformed server data
-interface TransformedServer {
+type Server = Tables<'servers'>
+
+interface SelectOption {
+  label: string
+  value: string
+}
+
+interface TransformedServer extends Record<string, unknown> {
   'Address': string
   'Status': 'active' | 'inactive' | 'inaccessible'
   'Docker Control': boolean
   'Accessible': boolean
   'Last Accessed': string | null
   'Created': string
-  '_original': Tables<'servers'>
 }
 
-// Define interface for Select options
-interface SelectOption {
-  label: string
-  value: string
-}
-
-// Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
-// Get admin permissions
-const { canManageResource, canCreate } = useTableActions('servers')
-const route = useRoute()
-const router = useRouter()
-
-// Define query
 const supabase = useSupabaseClient()
 const userId = useUserId()
-const serversQuery = supabase.from('servers').select('*')
-
-// Data states
-const loading = ref(true)
-const errorMessage = ref('')
-const servers = ref<QueryData<typeof serversQuery>>([])
-const search = ref('')
-const statusFilter = ref<SelectOption[]>()
 const isBelowMedium = useBreakpoint('<m')
 
-// Server detail state
-const selectedServer = ref<Tables<'servers'> | null>(null)
-const showServerDetails = ref(false)
+// Filter states kept local - status filter goes beyond simple search
+const statusFilter = ref<SelectOption[]>()
 
-const focusedServerId = computed(() => {
-  const serverQuery = route.query.server
-  const rawValue = getRouteQueryString(serverQuery)
-  const parsed = Number.parseInt(rawValue, 10)
-  return Number.isNaN(parsed) ? null : parsed
-})
-
-// Server form state
-const showServerForm = ref(false)
-const isEditMode = ref(false)
-
-// Status options for filter
 const statusOptions: SelectOption[] = [
   { label: 'Active', value: 'active' },
   { label: 'Inactive', value: 'inactive' },
   { label: 'Inaccessible', value: 'inaccessible' },
 ]
 
-// Filter based on search and status
-const filteredData = computed<TransformedServer[]>(() => {
-  const filtered = servers.value.filter((item: Tables<'servers'>) => {
-    // Filter by search term
-    if (search.value && !Object.values(item).some((value) => {
-      if (value === null || value === undefined)
-        return false
-      return String(value).toLowerCase().includes(search.value.toLowerCase())
-    })) {
-      return false
-    }
+function getServerStatus(server: Server): 'active' | 'inactive' | 'inaccessible' {
+  if (!server.active)
+    return 'inactive'
+  if (server.docker_control && !server.accessible)
+    return 'inaccessible'
+  return 'active'
+}
 
-    // Filter by status
-    if (statusFilter.value && statusFilter.value.length > 0) {
-      const statusFilterValue = statusFilter.value[0]?.value
-      const status = !item.active ? 'inactive' : item.docker_control && !item.accessible ? 'inaccessible' : 'active'
-      if (status !== statusFilterValue) {
-        return false
-      }
-    }
-
-    return true
-  })
-
-  // Transform the data into explicit key-value pairs
-  return filtered.map((server: Tables<'servers'>) => ({
+const {
+  loading,
+  errorMessage,
+  filteredRows: searchFilteredRows,
+  totalCount,
+  search,
+  selectedItem: selectedServer,
+  showDetails: showServerDetails,
+  showForm: showServerForm,
+  isEditMode,
+  canManageResource,
+  canCreate,
+  adminTablePerPage,
+  viewItem: viewServer,
+  openAdd: openAddServerForm,
+  openEdit: openEditServerForm,
+  handleEditFromDetails,
+  refresh: fetchServers,
+} = useAdminCrudTable<Server, TransformedServer>({
+  resourceType: 'servers',
+  queryParamKey: 'server',
+  refreshSignal,
+  fetch: async () => {
+    const { data, error } = await supabase.from('servers').select('*')
+    if (error)
+      throw error
+    return data ?? []
+  },
+  transform: server => ({
     'Address': server.address,
-    'Status': !server.active ? 'inactive' : server.docker_control && !server.accessible ? 'inaccessible' : 'active',
+    'Status': getServerStatus(server),
     'Docker Control': server.docker_control,
     'Accessible': server.accessible,
     'Last Accessed': server.last_accessed,
     'Created': server.created_at,
-    // Keep the original object to use when emitting events
-    '_original': server,
-  }))
+  }),
+  defaultSort: { column: 'Address', direction: 'asc' },
 })
-const totalCount = computed(() => servers.value.length)
+
+// Apply status filter on top of search-filtered rows
+const filteredData = computed(() => {
+  return searchFilteredRows.value.filter((row) => {
+    if (statusFilter.value != null && statusFilter.value.length > 0) {
+      const statusFilterValue = statusFilter.value[0]?.value
+      if (row.Status !== statusFilterValue)
+        return false
+    }
+    return true
+  })
+})
+
 const filteredCount = computed(() => filteredData.value.length)
-const isFiltered = computed(() => Boolean(
-  search.value
-  || (statusFilter.value && statusFilter.value.length > 0),
-))
+const isFiltered = computed(() => filteredCount.value !== totalCount.value)
 
-const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
-
-// Table configuration
 const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredData, {
-  pagination: {
-    enabled: true,
-    perPage: adminTablePerPage.value,
-  },
+  pagination: { enabled: true, perPage: adminTablePerPage.value },
   select: false,
 })
 
@@ -136,95 +116,23 @@ watch(adminTablePerPage, (perPage) => {
   setPage(1)
 })
 
-// Set default sorting.
 setSort('Address', 'asc')
 
-// Fetch servers data
-async function fetchServers() {
-  loading.value = true
-  errorMessage.value = ''
-
-  try {
-    const { data, error } = await serversQuery
-
-    if (error) {
-      throw error
-    }
-
-    servers.value = data || []
-    // Increment the refresh signal to notify the parent
-    refreshSignal.value = (refreshSignal.value || 0) + 1
-  }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading servers'
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Handle row click - View server details
-function viewServer(server: Tables<'servers'>) {
-  selectedServer.value = server
-  showServerDetails.value = true
-}
-
-function openServerById(serverId: number | null): boolean {
-  if (serverId === null)
-    return false
-
-  const match = servers.value.find((server: Tables<'servers'>) => server.id === serverId)
-
-  if (!match)
-    return false
-
-  viewServer(match)
-  return true
-}
-
-// Open the add server form
-function openAddServerForm() {
-  selectedServer.value = null
-  isEditMode.value = false
-  showServerForm.value = true
-}
-
-// Open the edit server form
-function openEditServerForm(server: Tables<'servers'>, event?: Event) {
-  if (event)
-    event.stopPropagation()
-  selectedServer.value = server
-  isEditMode.value = true
-  showServerForm.value = true
-}
-
-// Handle edit from ServerDetails
-function handleEditFromDetails(server: Tables<'servers'>) {
-  openEditServerForm(server)
-}
-
-// Handle server save (create or update)
-// ---
 async function handleServerSave(serverData: TablesInsert<'servers'> | TablesUpdate<'servers'>) {
-  console.warn('handleServerSave called with:', serverData)
   try {
     if (isEditMode.value && selectedServer.value) {
-      // Update existing server
-      const updateData = {
-        ...serverData,
-        modified_at: new Date().toISOString(),
-        modified_by: userId.value ?? null,
-      }
       const { error } = await supabase
         .from('servers')
-        .update(updateData)
+        .update({
+          ...serverData,
+          modified_at: new Date().toISOString(),
+          modified_by: userId.value ?? null,
+        })
         .eq('id', selectedServer.value.id)
       if (error)
         throw error
     }
     else {
-      // Create new server
-      // Only include fields defined in TablesInsert<'servers'>
       const createData: TablesInsert<'servers'> = {
         address: serverData.address ?? '',
         active: serverData.active ?? true,
@@ -236,90 +144,45 @@ async function handleServerSave(serverData: TablesInsert<'servers'> | TablesUpda
         modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
-      const { error } = await supabase
-        .from('servers')
-        .insert([createData])
+      const { error } = await supabase.from('servers').insert([createData])
       if (error)
         throw error
     }
     showServerForm.value = false
     await fetchServers()
   }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while saving the server'
+  catch (err: unknown) {
+    errorMessage.value = err instanceof Error ? err.message : 'An error occurred while saving the server'
   }
 }
 
-// Handle server deletion
 async function handleServerDelete(serverId: number) {
-  console.warn('handleServerDelete called with:', serverId)
   try {
-    const { error } = await supabase
-      .from('servers')
-      .delete()
-      .eq('id', serverId)
+    const { error } = await supabase.from('servers').delete().eq('id', serverId)
     if (error)
       throw error
     showServerForm.value = false
     await fetchServers()
   }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the server'
+  catch (err: unknown) {
+    errorMessage.value = err instanceof Error ? err.message : 'An error occurred while deleting the server'
     showServerForm.value = false
   }
 }
 
-// Clear all filters
 function clearFilters() {
   search.value = ''
   statusFilter.value = undefined
 }
-
-// Sync server query params with details sheet state
-watch(showServerDetails, (isOpen) => {
-  if (isOpen && selectedServer.value) {
-    const nextQuery = {
-      ...route.query,
-      tab: 'Servers',
-      server: selectedServer.value.id,
-    }
-    router.replace({ query: nextQuery })
-    return
-  }
-  if (isOpen)
-    return
-  if (!route.query.server)
-    return
-  const { server, ...rest } = route.query
-  router.replace({ query: rest })
-})
-
-watch(
-  () => [focusedServerId.value, loading.value] as const,
-  ([serverId, isLoading]) => {
-    if (isLoading)
-      return
-    if (serverId === null)
-      return
-    openServerById(serverId)
-  },
-  { immediate: true },
-)
-
-// Lifecycle hooks
-onBeforeMount(fetchServers)
 </script>
 
 <template>
-  <!-- Error message -->
   <Alert v-if="errorMessage" variant="danger">
     {{ errorMessage }}
   </Alert>
 
-  <!-- Loading state -->
   <template v-else-if="loading">
     <Flex gap="s" column expand>
-      <!-- Search and Filters -->
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <ServerFilters
           v-model:search="search"
@@ -342,17 +205,11 @@ onBeforeMount(fetchServers)
         </Flex>
       </Flex>
 
-      <!-- Table skeleton -->
-      <TableSkeleton
-        :columns="6"
-        :rows="10"
-        :show-actions="canManageResource"
-      />
+      <TableSkeleton :columns="6" :rows="10" :show-actions="canManageResource" />
     </Flex>
   </template>
 
   <Flex v-else gap="s" column expand>
-    <!-- Header and filters -->
     <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
       <ServerFilters
         v-model:search="search"
@@ -387,11 +244,12 @@ onBeforeMount(fetchServers)
     <TableContainer>
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
-          <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
           <Table.Head
             v-if="canManageResource"
-            key="actions" :header="{ label: 'Actions',
-                                     sortToggle: () => {} }"
+            key="actions"
+            :header="{ label: 'Actions',
+                       sortToggle: () => {} }"
           />
         </template>
 
@@ -403,7 +261,10 @@ onBeforeMount(fetchServers)
             </Table.Cell>
             <Table.Cell>{{ server['Docker Control'] ? 'Yes' : 'No' }}</Table.Cell>
             <Table.Cell>
-              <ServerStatusIndicator :status="server._original.docker_control ? (server.Accessible ? 'accessible' : 'inaccessible') : 'not_enabled'" show-label />
+              <ServerStatusIndicator
+                :status="server._original.docker_control ? (server.Accessible ? 'accessible' : 'inaccessible') : 'not_enabled'"
+                show-label
+              />
             </Table.Cell>
             <Table.Cell>
               <TimestampDate v-if="server['Last Accessed']" :date="server['Last Accessed']" />
@@ -417,8 +278,8 @@ onBeforeMount(fetchServers)
                 resource-type="servers"
                 :item="server._original"
                 button-size="s"
-                @edit="(item) => openEditServerForm(item as Tables<'servers'>)"
-                @delete="(serverItem) => handleServerDelete((serverItem as Tables<'servers'>).id)"
+                @edit="(item) => openEditServerForm(item as Server)"
+                @delete="(item) => handleServerDelete((item as Server).id)"
               />
             </Table.Cell>
           </tr>
@@ -429,7 +290,6 @@ onBeforeMount(fetchServers)
         </template>
       </Table.Root>
 
-      <!-- No results message -->
       <Flex v-if="!loading && (!rows || rows.length === 0)" expand>
         <Alert variant="info" class="w-100">
           No servers found
@@ -438,14 +298,12 @@ onBeforeMount(fetchServers)
     </TableContainer>
   </Flex>
 
-  <!-- Server Detail Sheet -->
   <ServerDetails
     v-model:is-open="showServerDetails"
     :server="selectedServer"
     @edit="handleEditFromDetails"
   />
 
-  <!-- Server Form Sheet (for both create and edit) -->
   <ServerForm
     v-model:is-open="showServerForm"
     :server="selectedServer"
@@ -462,11 +320,9 @@ onBeforeMount(fetchServers)
 .w-100 {
   width: 100%;
 }
-
 td {
   vertical-align: middle;
 }
-
 .clickable-row:hover {
   td {
     cursor: pointer;

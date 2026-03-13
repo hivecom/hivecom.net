@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
-import RolesTable from '@/components/Admin/Roles/RolesTable.vue'
+import RolesGrid from '@/components/Admin/Roles/RolesGrid.vue'
 
 import UserDetails from '@/components/Admin/Users/UserDetails.vue'
 import UserForm from '@/components/Admin/Users/UserForm.vue'
@@ -442,7 +442,7 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
 
       <!-- Roles Tab -->
       <Flex v-if="canViewRoles" v-show="activeTab === 'Roles'" column gap="l" expand>
-        <RolesTable />
+        <RolesGrid />
       </Flex>
     </Flex>
 

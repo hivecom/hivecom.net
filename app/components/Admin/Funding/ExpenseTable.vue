@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import type { Ref } from 'vue'
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, inject, onBeforeMount, ref, watch } from 'vue'
-
+import { watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
+import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { getRouteQueryString } from '@/lib/utils/common'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatDateShort } from '@/lib/utils/date'
 import { calculateDurationBetweenDates } from '@/lib/utils/duration'
@@ -17,83 +15,70 @@ import ExpenseDetails from './ExpenseDetails.vue'
 import ExpenseFilters from './ExpenseFilters.vue'
 import ExpenseForm from './ExpenseForm.vue'
 
-// Expense table type
 type Expense = Tables<'expenses'>
 
-// Define transformed expense data interface
-interface TransformedExpense {
+type ExpenseStatus = 'Planned' | 'Active' | 'Ended'
+
+interface TransformedExpense extends Record<string, unknown> {
   Name: string
   Amount: string
-  Status: 'Planned' | 'Active' | 'Ended'
+  Status: ExpenseStatus
   Started: string
   Duration: string
-  _original: Expense
 }
 
-// Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
-// Get admin permissions
-const { canManageResource, canCreate } = useTableActions('expenses')
-const route = useRoute()
-const router = useRouter()
-
-// Setup client and state
 const supabase = useSupabaseClient()
 const userId = useUserId()
-const loading = ref(true)
-const errorMessage = ref('')
-const expenses = ref<Expense[]>([])
-const search = ref('')
+const isBelowMedium = useBreakpoint('<m')
 
-// Expense details state
-const showExpenseDetails = ref(false)
-const showExpenseForm = ref(false)
-const selectedExpense = ref<Expense | null>(null)
-const isEditMode = ref(false)
-
-const focusedExpenseId = computed(() => {
-  const rawValue = getRouteQueryString(route.query.expense)
-  const parsed = Number.parseInt(rawValue, 10)
-  return Number.isNaN(parsed) ? null : parsed
-})
-
-const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
-
-// Filtered and transformed expenses
-const transformedExpenses = computed<TransformedExpense[]>(() => {
-  let filteredExpenses = expenses.value
-
-  if (search.value) {
-    const searchTerm = search.value.toLowerCase()
-    filteredExpenses = expenses.value.filter(expense =>
-      expense.name?.toLowerCase().includes(searchTerm)
-      || expense.description?.toLowerCase().includes(searchTerm)
-      || formatCurrency(expense.amount_cents).toLowerCase().includes(searchTerm),
-    )
-  }
-
-  return filteredExpenses.map(expense => ({
+const {
+  items: _expenses,
+  loading,
+  errorMessage,
+  filteredRows,
+  totalCount,
+  filteredCount,
+  isFiltered,
+  search,
+  selectedItem: selectedExpense,
+  showDetails: showExpenseDetails,
+  showForm: showExpenseForm,
+  isEditMode,
+  canManageResource,
+  canCreate,
+  adminTablePerPage,
+  viewItem: viewExpenseDetails,
+  openAdd: openAddExpenseForm,
+  openEdit: openEditExpenseForm,
+  handleEditFromDetails,
+  refresh: fetchExpenses,
+} = useAdminCrudTable<Expense, TransformedExpense>({
+  resourceType: 'expenses',
+  queryParamKey: 'expense',
+  refreshSignal,
+  fetch: async () => {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .order('started_at', { ascending: false })
+    if (error)
+      throw error
+    return (data as Expense[]) || []
+  },
+  transform: expense => ({
     Name: expense.name || 'Unnamed Expense',
     Amount: formatCurrency(expense.amount_cents),
     Status: getExpenseStatus(expense.started_at, expense.ended_at),
     Started: formatDateShort(expense.started_at),
     Duration: calculateDurationBetweenDates(expense.started_at, expense.ended_at),
-    _original: expense,
-  }))
+  }),
+  defaultSort: { column: 'Started', direction: 'desc' },
 })
-const totalCount = computed(() => expenses.value.length)
-const filteredCount = computed(() => transformedExpenses.value.length)
-const isFiltered = computed(() => Boolean(search.value))
 
-const isBelowMedium = useBreakpoint('<m')
-
-// Table configuration
-const { headers, rows, pagination, setPage, setSort, options } = defineTable(transformedExpenses, {
-  pagination: {
-    enabled: true,
-    perPage: adminTablePerPage.value,
-  },
+const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredRows, {
+  pagination: { enabled: true, perPage: adminTablePerPage.value },
   select: false,
 })
 
@@ -102,173 +87,59 @@ watch(adminTablePerPage, (perPage) => {
   setPage(1)
 })
 
-// Set default sorting
 setSort('Started', 'desc')
 
-// Fetch expenses data
-async function fetchExpenses() {
-  loading.value = true
-  errorMessage.value = ''
-
-  try {
-    const { data, error } = await supabase
-      .from('expenses')
-      .select('*')
-      .order('started_at', { ascending: false })
-
-    if (error)
-      throw error
-
-    expenses.value = data as Expense[] || []
-    // Increment the refresh signal to notify the parent
-    refreshSignal.value = (refreshSignal.value || 0) + 1
-  }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading games'
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// View expense details
-function viewExpenseDetails(expense: Expense) {
-  selectedExpense.value = expense
-  showExpenseDetails.value = true
-}
-
-function openExpenseById(expenseId: number | null): boolean {
-  if (expenseId === null)
-    return false
-
-  const match = expenses.value.find((expense: Expense) => expense.id === expenseId)
-
-  if (!match)
-    return false
-
-  viewExpenseDetails(match)
-  return true
-}
-
-// Open the add expense form
-function openAddExpenseForm() {
-  selectedExpense.value = null
-  isEditMode.value = false
-  showExpenseForm.value = true
-}
-
-// Open the edit expense form
-function openEditExpenseForm(expense: Expense, event?: Event) {
-  // Prevent the click from triggering the view details
-  if (event)
-    event.stopPropagation()
-
-  selectedExpense.value = expense
-  isEditMode.value = true
-  showExpenseForm.value = true
-}
-
-// Handle edit from ExpenseDetails
-function handleEditFromDetails(expense: Expense) {
-  openEditExpenseForm(expense)
-}
-
-// Handle expense save (both create and update)
 async function handleExpenseSave(expenseData: Partial<Expense>) {
   try {
     if (isEditMode.value && selectedExpense.value) {
-      // Update existing expense with modification tracking
-      const updateData = {
-        ...expenseData,
-        modified_at: new Date().toISOString(),
-        modified_by: userId.value ?? null,
-      }
-
       const { error } = await supabase
         .from('expenses')
-        .update(updateData)
+        .update({
+          ...expenseData,
+          modified_at: new Date().toISOString(),
+          modified_by: userId.value ?? null,
+        })
         .eq('id', selectedExpense.value.id)
-
       if (error)
         throw error
     }
     else {
-      // Create new expense with creation and modification tracking
-      const createData = {
-        ...expenseData,
-        created_by: userId.value ?? null,
-        modified_by: userId.value ?? null,
-        modified_at: new Date().toISOString(),
-      }
-
       const { error } = await supabase
         .from('expenses')
-        .insert(createData)
-
+        .insert({
+          ...expenseData,
+          created_by: userId.value ?? null,
+          modified_by: userId.value ?? null,
+          modified_at: new Date().toISOString(),
+        })
       if (error)
         throw error
     }
 
-    // Refresh expenses data and close form
     showExpenseForm.value = false
     await fetchExpenses()
   }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while saving the expense'
+  catch (err: unknown) {
+    errorMessage.value = err instanceof Error ? err.message : 'An error occurred while saving the expense'
   }
 }
 
-// Handle expense deletion
 async function handleExpenseDelete(expenseId: number) {
   try {
     const { error } = await supabase
       .from('expenses')
       .delete()
       .eq('id', expenseId)
-
     if (error)
       throw error
 
     showExpenseForm.value = false
     await fetchExpenses()
   }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while deleting the expense'
+  catch (err: unknown) {
+    errorMessage.value = err instanceof Error ? err.message : 'An error occurred while deleting the expense'
   }
 }
-
-// Sync expense query params with details sheet state
-watch(showExpenseDetails, (isOpen) => {
-  if (isOpen && selectedExpense.value) {
-    const nextQuery = {
-      ...route.query,
-      expense: selectedExpense.value.id,
-    }
-    router.replace({ query: nextQuery })
-    return
-  }
-  if (isOpen)
-    return
-  if (!route.query.expense)
-    return
-  const { expense, ...rest } = route.query
-  router.replace({ query: rest })
-})
-
-watch(
-  () => [focusedExpenseId.value, loading.value] as const,
-  ([expenseId, isLoading]) => {
-    if (isLoading)
-      return
-    if (expenseId === null)
-      return
-    openExpenseById(expenseId)
-  },
-  { immediate: true },
-)
-
-// Lifecycle hooks
-onBeforeMount(fetchExpenses)
 </script>
 
 <template>
@@ -280,7 +151,6 @@ onBeforeMount(fetchExpenses)
   <!-- Loading state -->
   <template v-else-if="loading">
     <Flex gap="s" column expand>
-      <!-- Header and filters -->
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
           <ExpenseFilters v-model:search="search" />
@@ -308,17 +178,11 @@ onBeforeMount(fetchExpenses)
         </Flex>
       </Flex>
 
-      <!-- Table skeleton -->
-      <TableSkeleton
-        :columns="5"
-        :rows="10"
-        :show-actions="canManageResource"
-      />
+      <TableSkeleton :columns="5" :rows="10" :show-actions="canManageResource" />
     </Flex>
   </template>
 
   <Flex v-else gap="s" column expand>
-    <!-- Header and filters -->
     <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
       <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
         <ExpenseFilters v-model:search="search" />
@@ -348,15 +212,15 @@ onBeforeMount(fetchExpenses)
       </Flex>
     </Flex>
 
-    <!-- Table -->
     <TableContainer>
       <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
-          <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
           <Table.Head
             v-if="canManageResource"
-            key="actions" :header="{ label: 'Actions',
-                                     sortToggle: () => {} }"
+            key="actions"
+            :header="{ label: 'Actions',
+                       sortToggle: () => {} }"
           />
         </template>
 
@@ -378,33 +242,30 @@ onBeforeMount(fetchExpenses)
                 resource-type="expenses"
                 :item="expense._original"
                 button-size="s"
-                @edit="(expenseItem) => openEditExpenseForm(expenseItem as Expense)"
-                @delete="(expenseItem) => handleExpenseDelete((expenseItem as Expense).id)"
+                @edit="(item) => openEditExpenseForm(item as Expense)"
+                @delete="(item) => handleExpenseDelete((item as Expense).id)"
               />
             </Table.Cell>
           </tr>
         </template>
 
-        <template v-if="transformedExpenses.length > adminTablePerPage" #pagination>
+        <template v-if="filteredRows.length > adminTablePerPage" #pagination>
           <Pagination :pagination="pagination" @change="setPage" />
         </template>
       </Table.Root>
 
-      <!-- No results message -->
       <Alert v-else-if="!loading" variant="info">
         No expenses found
       </Alert>
     </TableContainer>
 
-    <!-- Expense Detail Sheet -->
     <ExpenseDetails
       v-model:is-open="showExpenseDetails"
       :expense="selectedExpense"
       @edit="handleEditFromDetails"
-      @delete="(expenseItem) => handleExpenseDelete(expenseItem.id)"
+      @delete="(item) => handleExpenseDelete(item.id)"
     />
 
-    <!-- Expense Form Sheet (for both create and edit) -->
     <ExpenseForm
       v-model:is-open="showExpenseForm"
       :expense="selectedExpense"
