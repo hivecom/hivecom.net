@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { Database, Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
+import type { Database } from '@/types/database.types'
 import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'

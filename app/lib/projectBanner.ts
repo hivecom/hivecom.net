@@ -6,6 +6,7 @@
  * uploadProjectBanner / getProjectBannerUrl / deleteProjectBanner still live in
  * lib/storage.ts and import the helpers from here.
  */
+import { dispatchProjectBannerUpdated as _dispatch } from '@/composables/useProjectBannerBus'
 
 export const PROJECT_BANNER_BUCKET = 'hivecom-content-static'
 export const PROJECT_BANNER_PREFIX = 'projects'
@@ -30,17 +31,13 @@ export function buildProjectBannerPath(projectId: number, extension: string): st
 }
 
 /**
- * Dispatches a typed `project-banner-updated` CustomEvent on `window` so that
+ * Dispatches a typed `project-banner-updated` event via the shared bus so that
  * composables (e.g. `useCacheProjectBanner`) can react without polling.
  * No-op in non-browser environments.
+ *
+ * Delegates to `useProjectBannerBus.dispatchProjectBannerUpdated` which owns
+ * the event name constant and payload type.
  */
 export function dispatchProjectBannerUpdated(projectId: number, url: string | null): void {
-  if (typeof window === 'undefined')
-    return
-
-  window.dispatchEvent(
-    new CustomEvent('project-banner-updated', {
-      detail: { projectId, url },
-    }),
-  )
+  _dispatch({ projectId, url })
 }

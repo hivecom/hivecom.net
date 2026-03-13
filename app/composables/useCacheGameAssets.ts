@@ -3,7 +3,8 @@
  * Handles both icons and covers for games with fallback to Steam assets
  */
 
-import type { Database, Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
+import type { Database } from '@/types/database.types'
 import { getGameAssetUrl } from '@/lib/storage'
 
 export interface GameAssetOptions {

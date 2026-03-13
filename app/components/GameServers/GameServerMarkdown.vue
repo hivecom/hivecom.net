@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Card, Flex } from '@dolanske/vui'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '../Shared/MetadataCard.vue'

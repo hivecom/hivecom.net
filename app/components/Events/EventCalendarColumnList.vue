@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import dayjs from 'dayjs'
 import { formatDate } from '@/lib/utils/date'
 

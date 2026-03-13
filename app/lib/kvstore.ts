@@ -1,4 +1,4 @@
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 
 // Use a permissive value type to avoid recursive Json instantiation in consumers.
 export type KvEntry = Omit<Tables<'kvstore'>, 'value'> & { value: unknown }

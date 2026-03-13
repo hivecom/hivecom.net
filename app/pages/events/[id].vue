@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Button, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import EventHeader from '@/components/Events/EventHeader.vue'

@@ -4,6 +4,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
+import { dispatchAvatarUpdated } from '@/composables/useAvatarBus'
 import { buildProjectBannerPath, dispatchProjectBannerUpdated, normalizeProjectId, PROJECT_BANNER_BUCKET, PROJECT_BANNER_EXTENSIONS, PROJECT_BANNER_PREFIX } from '@/lib/projectBanner'
 
 const FILE_EXTENSION_RE = /\.[^/.]+$/
@@ -151,11 +152,7 @@ export async function uploadUserAvatar(
     invalidateAvatarCache(userId)
 
     // Dispatch avatar updated event
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('avatar-updated', {
-        detail: { userId, url: urlData.publicUrl },
-      }))
-    }
+    dispatchAvatarUpdated({ userId, url: urlData.publicUrl })
 
     return {
       success: true,
@@ -614,11 +611,7 @@ export async function deleteUserAvatar(
         invalidateAvatarCache(userId)
 
         // Dispatch avatar deleted event
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('avatar-updated', {
-            detail: { userId, url: null },
-          }))
-        }
+        dispatchAvatarUpdated({ userId, url: null })
 
         return { success: true }
       }

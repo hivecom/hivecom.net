@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Avatar, Card, Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'

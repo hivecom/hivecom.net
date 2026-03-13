@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Card, Flex, Tooltip } from '@dolanske/vui'
 // import { useBreakpoint } from '@/lib/mediaQuery'
 import CountdownTimer from './CountdownTimer.vue'

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeMount, ref, watch } from 'vue'
+import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
 import KPICard from './KPICard.vue'
 import KPIContainer from './KPIContainer.vue'
 
@@ -12,6 +13,7 @@ const props = defineProps<Props>()
 
 // Setup
 const supabase = useSupabaseClient()
+const { latestFunding } = useMonthlyFunding()
 const loading = ref(true)
 
 // State
@@ -56,21 +58,9 @@ async function fetchKPIData() {
 
     monthlyExpenses.value = expenses?.reduce((sum, expense) => sum + expense.amount_cents, 0) || 0
 
-    // Fetch current month donations from monthly_funding (get latest record)
-    const { data: funding, error: fundingError } = await supabase
-      .from('monthly_funding')
-      .select('donation_month_amount_cents, patreon_month_amount_cents')
-      .order('month', { ascending: false })
-      .limit(1)
-      .single()
-
-    // Handle case where no funding data exists yet
-    if (fundingError && fundingError.code !== 'PGRST116') {
-      console.error('Error fetching funding data:', fundingError)
-    }
-
-    monthlyDonations.value = funding
-      ? (funding.donation_month_amount_cents || 0) + (funding.patreon_month_amount_cents || 0)
+    // monthly_funding served from shared cache via useMonthlyFunding
+    monthlyDonations.value = latestFunding.value
+      ? (latestFunding.value.donation_month_amount_cents || 0) + (latestFunding.value.patreon_month_amount_cents || 0)
       : 0
 
     // Fetch upcoming events

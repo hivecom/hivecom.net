@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
+import { useEvents } from '@/composables/useEvents'
 import { formatDurationCompact } from '@/lib/utils/duration'
 
-interface NavEvent {
-  date: string
-  duration_minutes: number | null
-}
+const { events } = useEvents()
 
-const supabase = useSupabaseClient()
-
-const events = ref<NavEvent[]>([])
 const badge = ref<string | null>(null)
 
 function computeBadge(now = dayjs()) {
@@ -55,22 +50,12 @@ function computeBadge(now = dayjs()) {
   badge.value = formatDurationCompact(diffMs) || null
 }
 
-async function loadEvents() {
-  const { data } = await supabase
-    .from('events')
-    .select('date, duration_minutes')
-    .order('date', { ascending: false })
-    .limit(25)
-
-  events.value = (data ?? []) as NavEvent[]
-  computeBadge()
-}
+// Recompute badge whenever the events list populates or changes
+watch(events, () => computeBadge(), { immediate: true })
 
 let intervalId: number | null = null
 
-onMounted(async () => {
-  await loadEvents()
-
+onMounted(() => {
   intervalId = window.setInterval(() => {
     computeBadge()
   }, 1000)

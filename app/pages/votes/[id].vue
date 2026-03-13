@@ -1,5 +1,5 @@
 <script setup lang='ts'>
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Card, Checkbox, Flex, Radio, Skeleton, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 

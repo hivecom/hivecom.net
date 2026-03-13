@@ -4,6 +4,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
 import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.vue'
@@ -304,8 +305,8 @@ function _setQuery(slug: string | null, uuid: string | null, push: boolean) {
 }
 
 // Provide topics and activeTopicId to child modals
-provide('forumTopics', () => topics)
-provide('forumActiveTopicId', () => activeTopicId)
+provide(FORUM_KEYS.forumTopics, () => topics)
+provide(FORUM_KEYS.forumActiveTopicId, () => activeTopicId)
 
 onBeforeMount(() => {
   loading.value = true

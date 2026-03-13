@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Button, Flex, theme } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -29,7 +29,8 @@ const date = ref(dayjs().startOf('day'))
 const isDark = computed(() => theme.value === 'dark')
 
 // Convert events to calendar attributes
-const calendarAttributes = computed(() => {
+// eslint-disable-next-line ts/no-explicit-any
+const calendarAttributes = computed<any[]>(() => {
   if (!props.events)
     return []
 

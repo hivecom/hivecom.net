@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
-import type { Tables, TablesUpdate } from '@/types/database.types'
+import type { Tables, TablesUpdate } from '@/types/database.overrides'
 import { Alert, Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 import { computed, inject, onMounted, ref, watch } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'

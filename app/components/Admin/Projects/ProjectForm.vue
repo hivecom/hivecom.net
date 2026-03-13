@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TablesInsert, TablesUpdate } from '@/types/database.types'
+import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Badge, Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'

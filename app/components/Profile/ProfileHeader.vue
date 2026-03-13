@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
 import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Modal, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
@@ -335,15 +335,15 @@ const showAvatarLightbox = ref(false)
                 </Flex>
               </Tooltip>
 
-              <Flex v-if="(profile as any).website" gap="xs" y-center>
+              <Flex v-if="profile.website" gap="xs" y-center>
                 <Icon class="text-color-lighter" name="ph:link" size="16" />
                 <a
-                  :href="(profile as any).website"
+                  :href="profile.website"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="website-link text-s"
                 >
-                  {{ (profile as any).website }}
+                  {{ profile.website }}
                 </a>
               </Flex>
 

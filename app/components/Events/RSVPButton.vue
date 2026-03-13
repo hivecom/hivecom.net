@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { Database, Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
+import type { Database } from '@/types/database.types'
 import { Button, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useRsvpBus } from '@/composables/useRsvpBus'

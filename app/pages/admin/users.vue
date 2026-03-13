@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
 import RolesTable from '@/components/Admin/Roles/RolesTable.vue'
 

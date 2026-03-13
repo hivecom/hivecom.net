@@ -1,4 +1,4 @@
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 
 export function normalizeTeamSpeakIdentities(

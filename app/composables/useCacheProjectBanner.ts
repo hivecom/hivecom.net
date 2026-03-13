@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
 import type { Database } from '@/types/database.types'
-import { onBeforeUnmount, onMounted, readonly, ref, unref, watchEffect } from 'vue'
+import { onMounted, readonly, ref, unref, watchEffect } from 'vue'
+import { useProjectBannerBus } from '@/composables/useProjectBannerBus'
 import { getProjectBannerUrl } from '@/lib/storage'
 
 const CACHE_PREFIX = 'project-banner:'
@@ -154,27 +155,19 @@ export function useCacheProjectBanner(
   }
 
   if (import.meta.client) {
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ projectId: number, url: string | null }>).detail
-      if (detail == null)
-        return
-
-      const id = unref(projectId)
-      if (id === null || id === undefined || id !== detail.projectId)
-        return
-
-      bannerUrl.value = detail.url
-      error.value = null
-      loading.value = false
-      writeCache(detail.projectId, detail.url, ttl, negativeTtl)
-    }
+    const { onProjectBannerUpdated } = useProjectBannerBus()
 
     onMounted(() => {
-      window.addEventListener('project-banner-updated', handler as EventListener)
-    })
+      onProjectBannerUpdated((detail) => {
+        const id = unref(projectId)
+        if (id === null || id === undefined || id !== detail.projectId)
+          return
 
-    onBeforeUnmount(() => {
-      window.removeEventListener('project-banner-updated', handler as EventListener)
+        bannerUrl.value = detail.url
+        error.value = null
+        loading.value = false
+        writeCache(detail.projectId, detail.url, ttl, negativeTtl)
+      })
     })
   }
 

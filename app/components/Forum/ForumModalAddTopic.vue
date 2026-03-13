@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TopicWithDiscussions } from '@/pages/forum/index.vue'
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, Card, Dropdown, DropdownTitle, Flex, Input, Modal, pushToast, searchString, Switch } from '@dolanske/vui'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'

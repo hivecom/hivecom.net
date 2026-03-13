@@ -18,6 +18,7 @@ export default antfu({
     '**/supabase/functions/**/*.ts',
     '**/hash.js',
     'REFACTOR.md',
+    '.you/**',
   ],
   // Add additional configurations for specific file patterns
   formatters: {

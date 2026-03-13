@@ -3,6 +3,8 @@ import type { Tables } from '@/types/database.overrides'
 
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
+import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
+import { useForumTopics } from '@/composables/useForumTopics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
@@ -81,24 +83,14 @@ watch(() => props.editedItem, (item) => {
 })
 
 // Inject provided values from parent
-const injectedTopics = inject<() => Ref<Tables<'discussion_topics'>[]>>('forumTopics', () => ref([]))()
-const activeTopicId = inject<() => Ref<string | null>>('forumActiveTopicId', () => ref(null))()
-const fallbackTopics = ref<Tables<'discussion_topics'>[]>([])
-const resolvedTopics = computed(() => injectedTopics.value.length ? injectedTopics.value : fallbackTopics.value)
+const injectedTopics = inject(FORUM_KEYS.forumTopics, () => ref<Tables<'discussion_topics'>[]>([]))()
+const activeTopicId = inject(FORUM_KEYS.forumActiveTopicId, () => ref<string | null>(null))()
 
-onBeforeMount(() => {
-  if (injectedTopics.value.length)
-    return
-
-  supabase
-    .from('discussion_topics')
-    .select('*')
-    .then(({ data }) => {
-      if (data) {
-        fallbackTopics.value = data
-      }
-    })
-})
+// Fall back to shared cached topics when the parent forum page hasn't provided them via inject
+const { topics: cachedTopics } = useForumTopics()
+const resolvedTopics = computed(() =>
+  injectedTopics.value.length ? injectedTopics.value : cachedTopics.value,
+)
 
 // Options to optionally select a parent topic. A 1-level deep list which
 // contains paths to possibly deeply nested topics

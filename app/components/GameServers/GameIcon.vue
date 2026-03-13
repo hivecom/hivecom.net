@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
 
 interface Props {

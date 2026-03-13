@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, CopyClipboard, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'

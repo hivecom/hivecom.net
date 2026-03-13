@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Card, DropdownItem, Flex, Skeleton } from '@dolanske/vui'
 import { useIntersectionObserver } from '@vueuse/core'
 import ChangeEmailCard from '@/components/Settings/ChangeEmailCard.vue'

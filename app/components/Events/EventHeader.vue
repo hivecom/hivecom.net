@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
 import EventGames from '@/components/Events/EventGames.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'

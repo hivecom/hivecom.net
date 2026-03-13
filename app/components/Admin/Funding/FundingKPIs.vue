@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
+import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
 import { formatCurrency } from '@/lib/utils/currency'
 import KPICard from '../KPICard.vue'
 import KPIContainer from '../KPIContainer.vue'
@@ -22,24 +23,15 @@ const errorMessage = ref('')
 // Get Supabase client
 const supabase = useSupabaseClient()
 
+// monthly_funding served from shared cache
+const { latestFunding, loading: fundingLoading, error: fundingError } = useMonthlyFunding()
+
 // Fetch funding metrics
 async function fetchFundingMetrics() {
   loading.value = true
   errorMessage.value = ''
 
   try {
-    // Get current month's funding data
-    const { data: currentFundingData, error: fundingError } = await supabase
-      .from('monthly_funding')
-      .select('*')
-      .order('month', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (fundingError && fundingError.code !== 'PGRST116') {
-      throw fundingError
-    }
-
     // Get current active expenses (started and not ended)
     const { data: expensesData, error: expensesError } = await supabase
       .from('expenses')
@@ -51,31 +43,11 @@ async function fetchFundingMetrics() {
       throw expensesError
     }
 
-    // Get total funding records count
-    const { error: countError } = await supabase
-      .from('monthly_funding')
-      .select('*', { count: 'exact', head: true })
-
-    if (countError) {
-      throw countError
-    }
-
-    // Calculate metrics
-    const currentMonthFunding = currentFundingData
-      ? (currentFundingData.patreon_month_amount_cents || 0) + (currentFundingData.donation_month_amount_cents || 0)
-      : 0
-
-    const lifetimeFunding = (currentFundingData?.patreon_lifetime_amount_cents || 0)
-      + (currentFundingData?.donation_lifetime_amount_cents || 0)
-
     const currentMonthExpenses = expensesData?.reduce((sum, expense) => sum + expense.amount_cents, 0) || 0
-    const totalPatrons = currentFundingData?.patreon_count || 0
 
     metrics.value = {
-      currentMonthFunding,
+      ...metrics.value,
       currentMonthExpenses,
-      lifetimeFunding,
-      totalPatrons,
     }
   }
   catch (error: unknown) {
@@ -85,6 +57,26 @@ async function fetchFundingMetrics() {
     loading.value = false
   }
 }
+
+// Derive funding metrics from cached latest funding row
+watch([latestFunding, fundingLoading], () => {
+  if (fundingError.value) {
+    errorMessage.value = fundingError.value
+    return
+  }
+
+  const currentFundingData = latestFunding.value
+
+  metrics.value = {
+    ...metrics.value,
+    currentMonthFunding: currentFundingData
+      ? (currentFundingData.patreon_month_amount_cents || 0) + (currentFundingData.donation_month_amount_cents || 0)
+      : 0,
+    lifetimeFunding: (currentFundingData?.patreon_lifetime_amount_cents || 0)
+      + (currentFundingData?.donation_lifetime_amount_cents || 0),
+    totalPatrons: currentFundingData?.patreon_count || 0,
+  }
+}, { immediate: true })
 
 // Calculate funding balance
 const fundingBalance = computed(() => {

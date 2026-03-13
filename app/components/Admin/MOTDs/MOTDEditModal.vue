@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Flex, Modal, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { computed, onMounted, ref } from 'vue'
 
 import KPICard from '../KPICard.vue'

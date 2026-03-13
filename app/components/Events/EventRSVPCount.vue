@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Badge, Skeleton } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useEventTiming } from '@/composables/useEventTiming'

@@ -2,6 +2,7 @@
 import { Card, Flex } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
 
 interface Props {
   supporterCount?: number
@@ -20,23 +21,27 @@ const fetchedSupporterIds = ref<string[]>([])
 const resolvedSupporterIds = computed(() => (props.supporterIds.length > 0 ? props.supporterIds : fetchedSupporterIds.value))
 const currentUser = useSupabaseUser()
 
+// Use shared cache for monthly_funding - avoids a third parallel fetch on the funding page
+const { latestFunding } = useMonthlyFunding()
+
+// Derive supporter count from cached funding data when not provided via props
+watch(latestFunding, (funding) => {
+  if (props.supporterCount === 0 && funding != null) {
+    externalSupporterCount.value = (funding.patreon_count ?? 0) + (funding.donation_count ?? 0)
+  }
+}, { immediate: true })
+
 onMounted(async () => {
-  const shouldFetchFunding = props.supporterCount === 0
   const shouldFetchSupporterIds = props.supporterIds.length === 0
+
+  if (props.supporterCount !== 0) {
+    externalSupporterCount.value = props.supporterCount
+  }
 
   try {
     const supabase = useSupabaseClient()
 
-    const [fundingResult, lifetimeResult, supportersResult] = await Promise.all([
-      shouldFetchFunding
-        ? supabase
-            .from('monthly_funding')
-            .select('patreon_count, donation_count')
-            .order('month', { ascending: false })
-            .limit(1)
-            .single()
-        : Promise.resolve(null),
-
+    const [lifetimeResult, supportersResult] = await Promise.all([
       supabase
         .from('profiles')
         .select('id', { count: 'exact', head: true })
@@ -52,14 +57,6 @@ onMounted(async () => {
             .order('created_at', { ascending: true })
         : Promise.resolve(null),
     ])
-
-    if (shouldFetchFunding && fundingResult && !fundingResult.error && fundingResult.data) {
-      externalSupporterCount.value = (fundingResult.data.patreon_count ?? 0) + (fundingResult.data.donation_count ?? 0)
-    }
-
-    if (!shouldFetchFunding) {
-      externalSupporterCount.value = props.supporterCount
-    }
 
     if (lifetimeResult && !lifetimeResult.error) {
       lifetimeSupporterCount.value = lifetimeResult.count ?? 0

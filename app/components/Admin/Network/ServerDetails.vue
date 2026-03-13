@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'

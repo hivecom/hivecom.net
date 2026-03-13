@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
-import type { TablesInsert, TablesUpdate } from '@/types/database.types'
+import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 
 import { capitalize } from 'vue'

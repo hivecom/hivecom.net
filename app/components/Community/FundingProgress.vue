@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
 import { Badge, Button, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
 import constants from '~~/constants.json'
+import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
-
-// Data setup
-const supabase = useSupabaseClient()
-const loading = ref(true)
-const errorMessage = ref('')
 
 // Check if we're on the funding page
 const route = useRoute()
@@ -16,44 +11,29 @@ const isOnFundingPage = computed(() => route.path === '/community/funding')
 
 const isBelowSmall = useBreakpoint('<s')
 
-// Funding data
-const currentFunding = ref<Tables<'monthly_funding'> | null>(null)
+// Funding data via shared cache
+const { latestFunding: currentFunding, loading, error } = useMonthlyFunding()
+const errorMessage = computed(() => error.value)
+
+// Active expenses still fetched locally - not shared enough to warrant its own composable yet
+const supabase = useSupabaseClient()
 const monthlyExpenses = ref(0)
 
-// Fetch funding data
 onBeforeMount(async () => {
   try {
-    // Fetch current month's funding data
-    const { data: fundingData, error: fundingError } = await supabase
-      .from('monthly_funding')
-      .select('*')
-      .order('month', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (fundingError && fundingError.code !== 'PGRST116') // Ignore "no rows" error
-      throw fundingError
-
-    currentFunding.value = fundingData
-
-    // Fetch current active expenses to calculate goal (started and not ended)
     const { data: expensesData, error: expensesError } = await supabase
       .from('expenses')
       .select('amount_cents')
-      .is('ended_at', null) // Only active expenses
-      .lte('started_at', new Date().toISOString()) // Only expenses that have started
+      .is('ended_at', null)
+      .lte('started_at', new Date().toISOString())
 
     if (expensesError)
       throw expensesError
 
-    // Calculate total monthly expenses
     monthlyExpenses.value = expensesData?.reduce((sum, expense) => sum + expense.amount_cents, 0) || 0
   }
-  catch (error: unknown) {
-    errorMessage.value = (error as Error).message || 'Failed to load funding data'
-  }
-  finally {
-    loading.value = false
+  catch {
+    // Non-fatal - progress bar will show 0 goal rather than crashing
   }
 })
 

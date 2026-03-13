@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Divider, Flex, Grid, Input, Select, Skeleton } from '@dolanske/vui'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'

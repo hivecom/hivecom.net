@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Button, Card, CopyClipboard, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import ProfileBadges from '@/components/Profile/ProfileBadges.vue'
@@ -9,6 +9,7 @@ import ProfileFriends from '@/components/Profile/ProfileFriends.vue'
 import ProfileHeader from '@/components/Profile/ProfileHeader.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import { useAvatarBus } from '@/composables/useAvatarBus'
 import { useCacheQuery } from '@/composables/useCache'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 import Discussion from '../Discussions/Discussion.vue'
@@ -273,21 +274,13 @@ watch(profileLoading, (isLoading) => {
   loading.value = isLoading
 }, { immediate: true })
 
-onMounted(() => {
-  // Profile data will be fetched automatically by the cached query
-  // Listen for custom avatar update events
-  window.addEventListener('avatar-updated', handleAvatarUpdate)
-
-  // Listen for storage events (when avatar is updated)
-  window.addEventListener('storage', (event) => {
-    if (event.key?.includes('avatar-updated') && profile.value?.id) {
-      refreshAvatar()
-    }
-  })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('avatar-updated', handleAvatarUpdate)
+// Typed avatar bus - replaces the raw window.addEventListener('avatar-updated') +
+// the redundant window.addEventListener('storage') double-listener pattern
+const { onAvatarUpdated } = useAvatarBus()
+onAvatarUpdated(({ userId }) => {
+  if (userId === profile.value?.id) {
+    void refreshAvatar()
+  }
 })
 
 // Profile editing functions
@@ -403,14 +396,6 @@ defineExpose({
   triggerAvatarRefresh,
   refreshAvatar,
 })
-
-// Handle avatar update events
-function handleAvatarUpdate(event: Event) {
-  const customEvent = event as CustomEvent
-  if (customEvent.detail?.userId === profile.value?.id) {
-    refreshAvatar()
-  }
-}
 
 // Friend-related functions
 async function checkFriendshipStatus() {

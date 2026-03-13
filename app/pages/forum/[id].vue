@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { DISCUSSION_KEYS } from '@/components/Discussions/Discussion.keys'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import Reactions from '@/components/Reactions/Reactions.vue'
@@ -376,7 +377,7 @@ watchEffect(() => {
 // Provide a flag to all descendant discussion reply components so they can
 // skip their individual per-reply NSFW gates when the thread overlay has
 // already been dismissed (or warnings are turned off in settings).
-provide('thread-nsfw-revealed', nsfwRevealed)
+provide(DISCUSSION_KEYS.threadNsfwRevealed, nsfwRevealed)
 
 function revealNsfw() {
   showNSFWWarning.value = false

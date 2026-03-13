@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 import { Flex, Tooltip } from '@dolanske/vui'
 import RichPresenceTeamSpeak from '@/components/Profile/RichPresenceTeamSpeak.vue'

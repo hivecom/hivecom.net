@@ -20,7 +20,7 @@
  */
 
 import type { ComputedRef, MaybeRefOrGetter } from 'vue'
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { useIntervalFn } from '@vueuse/core'
 import { computed, ref, toValue } from 'vue'
 

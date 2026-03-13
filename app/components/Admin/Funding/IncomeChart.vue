@@ -16,8 +16,9 @@ import {
   Tooltip,
 } from 'chart.js'
 import dayjs from 'dayjs'
-import { computed, onBeforeMount, ref, watch, watchEffect } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
+import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
 import { getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
@@ -42,11 +43,13 @@ interface Props {
   refreshSignal?: number
 }
 
-// Setup client and state
-const supabase = useSupabaseClient()
+// Setup state
 const loading = ref(true)
 const errorMessage = ref('')
 const monthlyFundings = ref<MonthlyFunding[]>([])
+
+// monthly_funding served from shared cache
+const { allFunding, loading: fundingLoading, error: fundingError } = useMonthlyFunding()
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartRef = ref<ChartComponentRef<'line'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
@@ -158,34 +161,25 @@ const localChartOptions: ChartOptions<'line'> = {
   },
 }
 
-// Fetch monthly funding data
-async function fetchMonthlyFundings() {
-  loading.value = true
-  errorMessage.value = ''
-
-  try {
-    const { data, error } = await supabase
-      .from('monthly_funding')
-      .select('*')
-      .order('month', { ascending: true })
-
-    if (error)
-      throw error
-
-    monthlyFundings.value = data as MonthlyFunding[] || []
+// Sync from shared cache - allFunding is ordered descending, chart needs ascending
+watch([allFunding, fundingLoading, fundingError], () => {
+  if (fundingError.value) {
+    errorMessage.value = fundingError.value
+    loading.value = false
+    return
   }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading funding data'
-  }
-  finally {
+
+  if (!fundingLoading.value) {
+    monthlyFundings.value = [...allFunding.value].reverse() as MonthlyFunding[]
     loading.value = false
   }
-}
+}, { immediate: true })
 
-// Watch for refresh signal changes
+// Refresh signal: bust the cache and let the watcher above repopulate
+const { refresh: refreshFunding } = useMonthlyFunding()
 watch(() => props.refreshSignal, () => {
   if (props.refreshSignal) {
-    fetchMonthlyFundings()
+    void refreshFunding()
   }
 })
 
@@ -199,9 +193,6 @@ watchEffect(() => {
   const containerHeight = chartWrapperRef.value?.clientHeight
   chart.resize(Math.floor(width), containerHeight)
 })
-
-// Lifecycle hooks
-onBeforeMount(fetchMonthlyFundings)
 </script>
 
 <template>

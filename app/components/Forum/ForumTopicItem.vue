@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -28,7 +28,7 @@ const {
 
 const emit = defineEmits<{
   click: []
-  update: [data: Tables<'discussion_topics'>]
+  update: [data: Tables<'discussion_topics'> | Tables<'discussions'>]
   remove: [id: string]
 }>()
 
@@ -85,7 +85,7 @@ dayjs.extend(relativeTime)
         <span>{{ dayjs(lastActivity ?? data.modified_at).fromNow() }}</span>
       </div>
 
-      <ForumItemActions table="discussion_topics" :data @update="emit('update', $event as any)" @remove="emit('remove', $event)" />
+      <ForumItemActions table="discussion_topics" :data @update="emit('update', $event)" @remove="emit('remove', $event)" />
     </NuxtLink>
   </li>
 </template>

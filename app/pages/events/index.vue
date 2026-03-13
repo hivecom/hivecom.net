@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
 import { Tab, Tabs } from '@dolanske/vui'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import EventsCalendar from '@/components/Events/EventsCalendar.vue'
 import EventsListing from '@/components/Events/EventsListing.vue'
+import { useEvents } from '@/composables/useEvents'
 
 // Tab management
 const activeTab = ref('list')
@@ -48,33 +48,14 @@ onMounted(() => {
 })
 
 // Fetch data
-const supabase = useSupabaseClient()
-const loading = ref(true)
-const errorMessage = ref('')
-const events = ref<Tables<'events'>[]>()
+const { events, loading, error } = useEvents()
+const errorMessage = computed(() => error.value ?? '')
 
 useSeoMeta({
   title: 'Events',
   description: 'Discover upcoming, ongoing, and past events in the Hivecom community.',
   ogTitle: 'Events',
   ogDescription: 'Discover upcoming, ongoing, and past events in the Hivecom community.',
-})
-
-onMounted(async () => {
-  loading.value = true
-
-  try {
-    const responseEvents = await supabase.from('events').select('*').order('date', { ascending: true })
-    if (responseEvents.error) {
-      errorMessage.value = responseEvents.error.message
-      return
-    }
-
-    events.value = responseEvents.data
-  }
-  finally {
-    loading.value = false
-  }
 })
 </script>
 

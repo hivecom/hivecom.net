@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, inject, onBeforeMount, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getRouteQueryString } from '@/lib/utils/common'
 import { formatCurrency } from '@/lib/utils/currency'
@@ -33,12 +34,14 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 const route = useRoute()
 const router = useRouter()
 
-// Setup client and state
-const supabase = useSupabaseClient()
+// Setup state
 const loading = ref(true)
 const errorMessage = ref('')
 const monthlyFundings = ref<MonthlyFunding[]>([])
 const search = ref('')
+
+// monthly_funding served from shared cache
+const { allFunding, loading: fundingLoading, error: fundingError, refresh: refreshFunding } = useMonthlyFunding()
 
 // Funding details state
 const showFundingDetails = ref(false)
@@ -103,31 +106,21 @@ watch(adminTablePerPage, (perPage) => {
 
 // Note: We pre-sort data by date in transformedFundings computed property
 
-// Fetch monthly funding data
-async function fetchMonthlyFundings() {
-  loading.value = true
-  errorMessage.value = ''
+// Sync from shared cache - allFunding is already ordered month descending
+watch([allFunding, fundingLoading, fundingError], () => {
+  if (fundingError.value) {
+    errorMessage.value = fundingError.value
+    loading.value = false
+    return
+  }
 
-  try {
-    const { data, error } = await supabase
-      .from('monthly_funding')
-      .select('*')
-      .order('month', { ascending: false })
-
-    if (error)
-      throw error
-
-    monthlyFundings.value = data as MonthlyFunding[] || []
-    // Increment the refresh signal to notify the parent
+  if (!fundingLoading.value) {
+    monthlyFundings.value = allFunding.value as MonthlyFunding[]
+    loading.value = false
+    // Notify parent charts that data is ready
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading funding data'
-  }
-  finally {
-    loading.value = false
-  }
-}
+}, { immediate: true })
 
 // View funding details
 function viewFundingDetails(funding: MonthlyFunding) {
@@ -178,8 +171,13 @@ watch(
   { immediate: true },
 )
 
-// Lifecycle hooks
-onBeforeMount(fetchMonthlyFundings)
+// Refresh signal from parent (e.g. after admin writes): bust cache and re-fetch
+watch(() => refreshSignal.value, (sig, prev) => {
+  // Only react to external increments (prev === undefined on first run, skip that)
+  if (prev != null && sig !== prev) {
+    void refreshFunding()
+  }
+})
 </script>
 
 <template>

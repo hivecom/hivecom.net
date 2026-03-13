@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { BadgeVariant } from '@/lib/badges'
-import type { Enums, Tables } from '@/types/database.types'
+import type { Enums, Tables } from '@/types/database.overrides'
 import { Button, Card, Flex } from '@dolanske/vui'
 import { computed } from 'vue'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'

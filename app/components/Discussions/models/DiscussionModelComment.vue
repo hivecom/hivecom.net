@@ -13,6 +13,7 @@ import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
+import { DISCUSSION_KEYS } from '../Discussion.keys'
 
 interface Props {
   data: Comment
@@ -27,11 +28,11 @@ const emit = defineEmits<{
 
 const data = toRef(props, 'data')
 
-const { timestamps } = inject('discussion-settings') as DiscussionSettings
-const viewMode = inject('viewMode', ref<'flat' | 'threaded'>('flat'))
+const { timestamps } = inject(DISCUSSION_KEYS.discussionSettings) as DiscussionSettings
+const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
 
-const discussion = inject('discussion') as ProvidedDiscussion
-const canBypassLock = inject('canBypassLock', ref(false)) as Ref<boolean>
+const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
+const canBypassLock = inject(DISCUSSION_KEYS.canBypassLock, ref(false))
 
 const userId = useUserId()
 const supabase = useSupabaseClient()
@@ -40,12 +41,12 @@ const { user: currentUserData } = useCacheUserData(userId, { includeRole: true }
 
 const COMMENT_TRUNCATE = 96
 
-const setReplyToComment = inject('setReplyToComment') as (data: Comment) => void
+const setReplyToComment = inject(DISCUSSION_KEYS.setReplyToComment) as (data: Comment) => void
 
 // ── Off-topic ─────────────────────────────────────────────────────────────────
 
-const canMarkOfftopic = inject('canMarkOfftopic', ref(false)) as Ref<boolean>
-const toggleOfftopic = inject('toggleOfftopic') as (comment: Comment) => Promise<void>
+const canMarkOfftopic = inject(DISCUSSION_KEYS.canMarkOfftopic, ref(false))
+const toggleOfftopic = inject(DISCUSSION_KEYS.toggleOfftopic) as (comment: Comment) => Promise<void>
 const offtopicLoading = ref(false)
 
 async function handleToggleOfftopic() {
@@ -58,7 +59,7 @@ async function handleToggleOfftopic() {
 
 // When the parent thread's fullscreen NSFW overlay has already been dismissed
 // (or warnings are disabled in settings), we skip the per-reply gate entirely.
-const threadNsfwRevealed = inject('thread-nsfw-revealed', ref(false))
+const threadNsfwRevealed = inject(DISCUSSION_KEYS.threadNsfwRevealed, ref(false))
 const _showNSFWWarning = ref(!!data.value.is_nsfw)
 const showNSFWWarning = computed({
   get: () => !!data.value.is_nsfw && !threadNsfwRevealed.value && _showNSFWWarning.value,
@@ -67,7 +68,7 @@ const showNSFWWarning = computed({
 
 // ── Deletion ──────────────────────────────────────────────────────────────────
 
-const deleteComment = inject('delete-comment') as (id: string) => Promise<void>
+const deleteComment = inject(DISCUSSION_KEYS.deleteComment) as (id: string) => Promise<void>
 const loadingDeletion = ref(false)
 const showDeleteModal = ref(false)
 

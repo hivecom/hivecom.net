@@ -1,22 +1,53 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import EventCardLanding from '@/components/Events/EventCardLanding.vue'
+import { useEvents } from '@/composables/useEvents'
 
 definePageMeta({
   layout: 'landing',
 })
 
 // Fetch data from database
-const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const { fetchMetrics } = useMetrics()
 const loading = ref(true)
 const errorMessage = ref('')
 
-// Real data from database
-const events = ref<Tables<'events'>[]>([])
+// Events via shared cache - no dedicated fetch needed here
+const { events: allEvents } = useEvents()
+
+// Sorted/sliced events for the landing page cards
+const events = computed<Tables<'events'>[]>(() => {
+  const now = new Date()
+
+  function getStatus(event: Tables<'events'>): 'ongoing' | 'upcoming' | 'past' {
+    const start = new Date(event.date)
+    const end = event.duration_minutes
+      ? new Date(start.getTime() + event.duration_minutes * 60 * 1000)
+      : start
+
+    if (now < start)
+      return 'upcoming'
+    if (now >= start && now <= end)
+      return 'ongoing'
+    return 'past'
+  }
+
+  const statusOrder = { ongoing: 0, upcoming: 1, past: 2 }
+
+  return [...allEvents.value].sort((a, b) => {
+    const statusDiff = statusOrder[getStatus(a)] - statusOrder[getStatus(b)]
+    if (statusDiff !== 0)
+      return statusDiff
+    // Past: most recent first; ongoing/upcoming: earliest first
+    return getStatus(a) === 'past'
+      ? new Date(b.date).getTime() - new Date(a.date).getTime()
+      : new Date(a.date).getTime() - new Date(b.date).getTime()
+  }).slice(0, 3)
+})
+
 const communityStats = ref({
   members: 100,
   membersAccurate: false,
@@ -34,74 +65,6 @@ onMounted(async () => {
   loading.value = true
 
   try {
-    // Fetch all events and sort by status (ongoing first, then upcoming, then past)
-    const { data: eventsData, error: eventsError } = await supabase
-      .from('events')
-      .select('*')
-      .order('date', { ascending: true })
-
-    if (eventsError)
-      throw eventsError
-
-    // Sort events by status: ongoing first, then upcoming, then past
-    const sortedEvents = (eventsData || []).sort((a, b) => {
-      const now = new Date()
-
-      // Get status for event a
-      const eventAStart = new Date(a.date)
-      const eventAEnd = a.duration_minutes
-        ? new Date(eventAStart.getTime() + a.duration_minutes * 60 * 1000)
-        : eventAStart
-
-      let statusA: 'ongoing' | 'upcoming' | 'past'
-      if (now < eventAStart) {
-        statusA = 'upcoming'
-      }
-      else if (now >= eventAStart && now <= eventAEnd) {
-        statusA = 'ongoing'
-      }
-      else {
-        statusA = 'past'
-      }
-
-      // Get status for event b
-      const eventBStart = new Date(b.date)
-      const eventBEnd = b.duration_minutes
-        ? new Date(eventBStart.getTime() + b.duration_minutes * 60 * 1000)
-        : eventBStart
-
-      let statusB: 'ongoing' | 'upcoming' | 'past'
-      if (now < eventBStart) {
-        statusB = 'upcoming'
-      }
-      else if (now >= eventBStart && now <= eventBEnd) {
-        statusB = 'ongoing'
-      }
-      else {
-        statusB = 'past'
-      }
-
-      // Sort by status priority: ongoing (0), upcoming (1), past (2)
-      const statusOrder = { ongoing: 0, upcoming: 1, past: 2 }
-      const statusDiff = statusOrder[statusA] - statusOrder[statusB]
-
-      if (statusDiff !== 0) {
-        return statusDiff
-      }
-
-      // Within same status, sort by date
-      if (statusA === 'past') {
-        // For past events, show most recent first
-        return new Date(b.date).getTime() - new Date(a.date).getTime()
-      }
-      else {
-        // For ongoing and upcoming events, show earliest first
-        return new Date(a.date).getTime() - new Date(b.date).getTime()
-      }
-    })
-
-    events.value = sortedEvents.slice(0, 3) // Show up to 6 events
-
     // Prefer metrics snapshots from storage with DB fallback
     const metricsSnapshot = await fetchMetrics()
     const users = metricsSnapshot.totals.users

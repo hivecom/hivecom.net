@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import { capitalize, computed } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'

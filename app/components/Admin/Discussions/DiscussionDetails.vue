@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, Card, CopyClipboard, Divider, Dropdown, DropdownTitle, Flex, Grid, Input, pushToast, searchString, Sheet, Tooltip } from '@dolanske/vui'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -8,6 +8,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useForumTopics } from '@/composables/useForumTopics'
 import { formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
 
 type DiscussionRecord = Tables<'discussions'>
@@ -315,9 +316,10 @@ function handleClose() {
 const isOrphaned = computed(() => !!props.discussion && contextLinks.value.length === 0)
 
 const reassignLoading = ref(false)
-const reassignTopics = ref<Tables<'discussion_topics'>[]>([])
 const reassignSearch = ref('')
-const reassignTopicsLoaded = ref(false)
+
+// Topics served from shared cache
+const { topics: reassignTopics } = useForumTopics()
 
 const filteredReassignTopics = computed(() => {
   return reassignTopics.value
@@ -326,16 +328,8 @@ const filteredReassignTopics = computed(() => {
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-async function loadReassignTopics() {
-  if (reassignTopicsLoaded.value)
-    return
-
-  const { data } = await supabase.from('discussion_topics').select('*')
-  if (data) {
-    reassignTopics.value = data
-    reassignTopicsLoaded.value = true
-  }
-}
+// Topics are pre-loaded by useForumTopics - no explicit fetch needed
+async function loadReassignTopics() {}
 
 async function reassignToTopic(topicId: string) {
   if (!props.discussion)
@@ -355,7 +349,7 @@ async function reassignToTopic(topicId: string) {
       throw error
 
     if (data)
-      emit('updated', data)
+      emit('updated', data as DiscussionRecord)
 
     pushToast('Discussion reassigned to topic')
   }
@@ -392,7 +386,7 @@ async function reassignToTopic(topicId: string) {
             v-if="props.discussion && canUpdate"
             :discussion="props.discussion"
             show-labels
-            @updated="emit('updated', $event)"
+            @updated="emit('updated', $event as DiscussionRecord)"
           />
 
           <Button

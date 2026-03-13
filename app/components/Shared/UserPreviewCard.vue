@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 import { Avatar, Button, Divider, Flex } from '@dolanske/vui'
 import { computed, toRef } from 'vue'

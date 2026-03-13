@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Button, Flex, Skeleton } from '@dolanske/vui'
 import Event from './Event.vue'
 import EventPast from './EventPast.vue'

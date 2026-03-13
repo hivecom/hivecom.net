@@ -20,7 +20,7 @@ const {
 
 const emit = defineEmits<{
   click: []
-  update: [data: Tables<'discussion_topics'>]
+  update: [data: Tables<'discussion_topics'> | Tables<'discussions'>]
   remove: [id: string]
 }>()
 
@@ -86,7 +86,7 @@ dayjs.extend(relativeTime)
         <span>{{ dayjs(lastActivity ?? data.created_at).fromNow() }}</span>
       </div>
 
-      <ForumItemActions table="discussions" :data @update="emit('update', $event as any)" @remove="emit('remove', $event)" />
+      <ForumItemActions table="discussions" :data @update="emit('update', $event)" @remove="emit('remove', $event)" />
     </NuxtLink>
   </li>
 </template>

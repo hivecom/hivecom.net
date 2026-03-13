@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex } from '@dolanske/vui'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatDateShort } from '@/lib/utils/date'

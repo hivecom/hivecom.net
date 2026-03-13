@@ -55,6 +55,7 @@ const props = defineProps<{
     badges?: ProfileBadge[]
     public?: boolean
     confirmed?: boolean
+    website?: string | null
   } | null
   actionLoading?: Partial<Record<UserActionType, boolean>>
   canViewUserEmails?: boolean
@@ -353,15 +354,15 @@ function getUserInitials(username: string): string {
             </Grid>
 
             <!-- Website Information -->
-            <Grid v-if="(user as any).website" class="detail-item" columns="1fr 2fr" expand>
+            <Grid v-if="user.website" class="detail-item" columns="1fr 2fr" expand>
               <span class="text-color-light text-bold">Website:</span>
               <a
-                :href="(user as any).website"
+                :href="user.website"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="website-link"
               >
-                {{ (user as any).website }}
+                {{ user.website }}
               </a>
             </Grid>
 

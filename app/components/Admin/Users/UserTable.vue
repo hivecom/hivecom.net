@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
-import type { Database, Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
+import type { Database } from '@/types/database.types'
 import { Alert, Button, CopyClipboard, defineTable, Flex, Pagination, Table, Tooltip } from '@dolanske/vui'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 

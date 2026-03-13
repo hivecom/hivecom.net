@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 
 import { Button, Tab, Tabs } from '@dolanske/vui'
 import GameLibrary from '@/components/GameServers/GameServerLibrary.vue'

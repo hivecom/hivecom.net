@@ -3,6 +3,7 @@ import type { Comment, ThreadNode } from './Discussion.vue'
 import { Button, Flex, pushToast } from '@dolanske/vui'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'
+import { DISCUSSION_KEYS } from './Discussion.keys'
 import DiscussionModelComment from './models/DiscussionModelComment.vue'
 import DiscussionModelForum from './models/DiscussionModelForum.vue'
 
@@ -28,7 +29,7 @@ const {
   showThreadReplies = false,
 } = defineProps<Props>()
 
-const viewMode = inject('viewMode', ref<'flat' | 'threaded'>('flat'))
+const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
 
 const self = useTemplateRef('self')
 const route = useRoute()

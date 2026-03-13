@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Card, Flex } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { isBanActive } from '@/lib/banStatus'

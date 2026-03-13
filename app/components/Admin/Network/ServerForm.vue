@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables, TablesInsert } from '@/types/database.types'
+import type { Tables, TablesInsert } from '@/types/database.overrides'
 import { Button, Flex, Input, Sheet, Switch, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'

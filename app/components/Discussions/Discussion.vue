@@ -8,6 +8,7 @@ import { normalizeErrors, normalizeTipTapOutput } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 import MarkdownPreview from '../Shared/MarkdownPreview.vue'
 import UserName from '../Shared/UserName.vue'
+import { DISCUSSION_KEYS } from './Discussion.keys'
 import DiscussionItem from './DiscussionItem.vue'
 
 /**
@@ -156,10 +157,10 @@ const isDiscussionAuthor = computed(() =>
 const canMarkOfftopic = computed(() => isDiscussionAuthor.value || canBypassLock.value)
 
 // Provide context to all descendant components
-provide('showOfftopic', showOfftopic)
-provide('canMarkOfftopic', canMarkOfftopic)
-provide('showThreadReplies', showThreadReplies)
-provide('viewMode', viewMode)
+provide(DISCUSSION_KEYS.showOfftopic, showOfftopic)
+provide(DISCUSSION_KEYS.canMarkOfftopic, canMarkOfftopic)
+provide(DISCUSSION_KEYS.showThreadReplies, showThreadReplies)
+provide(DISCUSSION_KEYS.viewMode, viewMode)
 
 // ── View count ────────────────────────────────────────────────────────────────
 const lastIncrementedId = ref<string | null>(null)
@@ -202,12 +203,12 @@ onUnmounted(() => {
   window.removeEventListener('focus', handleFocus)
 })
 
-provide<DiscussionSettings>('discussion-settings', {
+provide(DISCUSSION_KEYS.discussionSettings, {
   timestamps: props.timestamps,
 })
 
-provide<ProvidedDiscussion>('discussion', discussion)
-provide('canBypassLock', canBypassLock)
+provide(DISCUSSION_KEYS.discussion, discussion)
+provide(DISCUSSION_KEYS.canBypassLock, canBypassLock)
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 watch(() => props.id, async () => {
@@ -391,7 +392,7 @@ function collectDescendantIds(parentId: string): Set<string> {
   return result
 }
 
-provide('toggleOfftopic', toggleOfftopic)
+provide(DISCUSSION_KEYS.toggleOfftopic, toggleOfftopic)
 
 // ── Comment writing & validation ──────────────────────────────────────────────
 const formLoading = ref(false)
@@ -405,7 +406,7 @@ const form = reactive({
 const replyingTo = ref<Comment>()
 
 // To avoid prop drilling, expose this to all child components
-provide('setReplyToComment', (comment: Comment) => replyingTo.value = comment)
+provide(DISCUSSION_KEYS.setReplyToComment, (comment: Comment) => replyingTo.value = comment)
 
 const textareaRef = useTemplateRef('textarea')
 
@@ -419,7 +420,7 @@ watch(replyingTo, focusTextarea)
 
 // Quoting - if a quote is requested, the full original markdown as a quote at
 // the beginning. Users can then trim the quote or keep it as it is
-provide('setQuoteOfComment', (comment: Comment) => {
+provide(DISCUSSION_KEYS.setQuoteOfComment, (comment: Comment) => {
   // Use the @{uuid} mention format so TipTap parses it as a real mention node.
   // The editor's hydrateMentionLabels will resolve the UUID to a display name.
   const quoted = wrapInBlockquote(`@{${comment.created_by}} said\n\n${comment.markdown}`)
@@ -571,7 +572,7 @@ function deleteComment(id: string) {
   })
 }
 
-provide('delete-comment', deleteComment)
+provide(DISCUSSION_KEYS.deleteComment, deleteComment)
 
 // ── Off-topic visibility helpers ──────────────────────────────────────────────
 /**
