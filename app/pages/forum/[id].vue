@@ -178,6 +178,38 @@ async function loadTopicBreadcrumbs(topicId: string | null) {
   topicBreadcrumbs.value = data as TopicBreadcrumb[]
 }
 
+/**
+ * Returns the entity page href for entity-linked discussions that have no
+ * discussion_topic_id. These are not browseable via /forum/[id] and should
+ * redirect to their parent entity instead.
+ *
+ * If the discussion has a topic assigned (regardless of entity type), it is a
+ * legitimate forum thread and should render normally.
+ */
+function getEntityHref(data: DiscussionWithContext): string | null {
+  // If the discussion has a topic it renders normally - don't redirect.
+  if (data.discussion_topic_id != null)
+    return null
+
+  if (data.profile_id != null) {
+    const profileName = data.profile?.username ?? data.profile_id
+    return `/profile/${profileName}`
+  }
+  if (data.project_id != null) {
+    return `/community/projects/${data.project_id}`
+  }
+  if (data.event_id != null) {
+    return `/events/${data.event_id}`
+  }
+  if (data.gameserver_id != null) {
+    return `/servers/gameservers/${data.gameserver_id}`
+  }
+  if (data.referendum_id != null) {
+    return `/votes/${data.referendum_id}`
+  }
+  return null
+}
+
 function handlePostUpdate(updated: Tables<'discussions'> | Tables<'discussion_topics'>) {
   if (!('reply_count' in updated))
     return
@@ -220,6 +252,15 @@ onBeforeMount(() => {
         post.value = null
       }
       else {
+        // Entity-linked discussions are not browseable via /forum/[id].
+        // Redirect to the entity page if we can, otherwise treat as not found.
+        const entityHref = getEntityHref(data)
+        if (entityHref != null) {
+          void router.replace(entityHref)
+          loading.value = false
+          return
+        }
+
         post.value = data
         // Show the NSFW overlay only when the post is NSFW and the user has
         // warnings enabled. If they have show_nsfw_content disabled entirely,

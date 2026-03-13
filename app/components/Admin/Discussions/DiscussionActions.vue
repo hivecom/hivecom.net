@@ -9,6 +9,7 @@ type DiscussionRecord = Tables<'discussions'>
 const props = defineProps<{
   discussion: Pick<DiscussionRecord, 'id' | 'is_locked' | 'is_sticky' | 'discussion_topic_id' | 'is_archived'>
   showLabels?: boolean
+  hidePinButton?: boolean
   size?: 's' | 'm' | 'l'
 }>()
 
@@ -146,7 +147,7 @@ function handleArchiveClick() {
       </template>
     </Tooltip>
 
-    <Tooltip v-if="props.discussion.discussion_topic_id" :disabled="shouldShowLabels">
+    <Tooltip v-if="props.discussion.discussion_topic_id && !props.hidePinButton" :disabled="shouldShowLabels">
       <Button
         variant="gray"
         :size="buttonSize"

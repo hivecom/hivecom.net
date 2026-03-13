@@ -818,7 +818,7 @@ defineExpose({
                 :status="user.Status"
                 :is-loading="(action) => isActionLoading(user._original.id, action)"
                 :current-user-id="currentUser?.id"
-                variant="compact"
+                size="s"
               />
             </Table.Cell>
           </tr>

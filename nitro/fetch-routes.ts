@@ -94,7 +94,9 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
       }),
     ),
 
-    // Exclude profile-associated discussions (profile_id IS NOT NULL)
+    // Pre-render all discussions that have a discussion_topic_id. This covers pure forum
+    // threads and any entity-linked discussion that has been assigned a topic. Discussions
+    // without a topic redirect to their parent entity and should not be indexed.
     fetchIds<{ id: string, slug: string | null, created_at: string, modified_at: string }>(
       'discussions',
       'id,slug,created_at,modified_at',
@@ -108,7 +110,7 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
           lastmod: item.modified_at,
         }
       },
-      'profile_id=is.null&is_nsfw=eq.false',
+      'discussion_topic_id=not.is.null&is_draft=eq.false&is_nsfw=eq.false',
     ),
 
     fetchIds<{ id: number, created_at: string, modified_at: string | null }>(

@@ -16,6 +16,7 @@ const props = defineProps<{
   status: 'active' | 'banned'
   isLoading?: (action: string) => Record<string, boolean> | boolean
   showLabels?: boolean
+  size?: 's' | 'm' | 'l'
   currentUserId?: string // Add current user ID to hide ban/delete for self
 }>()
 
@@ -102,7 +103,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
   <Flex gap="xs">
     <Tooltip v-if="canModifyUsers" :disabled="showLabels">
       <Button
-        size="s"
+        :size="props.size"
         variant="gray"
         :square="!showLabels"
         @click="openEditConfirm"
@@ -124,7 +125,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 
     <Tooltip v-if="!isCurrentlyBanned && canModifyUsers && !isCurrentUser" :disabled="showLabels">
       <Button
-        size="s"
+        :size="props.size"
         variant="danger"
         :loading="isActionLoading('ban')"
         :square="!showLabels"
@@ -147,7 +148,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 
     <Tooltip v-if="isCurrentlyBanned && canModifyUsers && !isCurrentUser" :disabled="showLabels">
       <Button
-        size="s"
+        :size="props.size"
         variant="success"
         :loading="isActionLoading('unban')"
         :square="!showLabels"
@@ -170,7 +171,7 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 
     <Tooltip v-if="canDeleteUsers && !isCurrentUser" :disabled="showLabels">
       <Button
-        size="s"
+        :size="props.size"
         variant="danger"
         :loading="isActionLoading('delete')"
         :square="!showLabels"

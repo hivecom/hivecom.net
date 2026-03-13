@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, Card, CopyClipboard, Divider, Dropdown, DropdownTitle, Flex, Grid, Input, pushToast, searchString, Sheet, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, CopyClipboard, Divider, Dropdown, DropdownTitle, Flex, Grid, pushToast, searchString, Sheet, Tooltip } from '@dolanske/vui'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
-import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import DiscussionEditSheet from '@/components/Admin/Discussions/DiscussionEditSheet.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -37,12 +37,7 @@ const canUpdate = computed(() =>
   hasPermission('discussions.update'),
 )
 
-const canDelete = computed(() =>
-  hasPermission('discussions.delete'),
-)
-
-const deleteLoading = ref(false)
-const showDeleteConfirm = ref(false)
+const editSheetOpen = ref(false)
 
 const lastUpdatedAt = computed<string | null>(() => props.discussion?.modified_at ?? props.discussion?.created_at ?? null)
 
@@ -278,36 +273,6 @@ watch(
   { immediate: true },
 )
 
-async function handleDelete() {
-  if (!props.discussion)
-    return
-
-  deleteLoading.value = true
-
-  try {
-    const { error } = await supabase
-      .from('discussions')
-      .delete()
-      .eq('id', props.discussion.id)
-
-    if (error)
-      throw error
-
-    emit('deleted', props.discussion.id)
-    showDeleteConfirm.value = false
-    isOpen.value = false
-    pushToast('Discussion deleted')
-  }
-  catch (error) {
-    pushToast('Failed to delete discussion', {
-      description: error instanceof Error ? error.message : 'Unknown error',
-    })
-  }
-  finally {
-    deleteLoading.value = false
-  }
-}
-
 function handleClose() {
   isOpen.value = false
 }
@@ -385,20 +350,20 @@ async function reassignToTopic(topicId: string) {
           <DiscussionActions
             v-if="props.discussion && canUpdate"
             :discussion="props.discussion"
+            hide-pin-button
             show-labels
             @updated="emit('updated', $event as DiscussionRecord)"
           />
 
           <Button
-            v-if="props.discussion && canDelete"
-            variant="danger"
-            :loading="deleteLoading"
-            @click="showDeleteConfirm = true"
+            v-if="canUpdate"
+            variant="gray"
+            @click="editSheetOpen = true"
           >
             <template #start>
-              <Icon name="ph:trash" />
+              <Icon name="ph:pencil-simple" />
             </template>
-            Delete
+            Edit
           </Button>
         </Flex>
       </Flex>
@@ -408,8 +373,10 @@ async function reassignToTopic(topicId: string) {
       <Card class="card-bg">
         <Flex column gap="l">
           <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">ID:</span>
-            <span>{{ props.discussion.id }}</span>
+            <span class="text-color-light text-bold">UUID:</span>
+            <CopyClipboard :text="props.discussion.id">
+              <code class="discussion-code">{{ props.discussion.id }}</code>
+            </CopyClipboard>
           </Grid>
 
           <Grid class="detail-item" expand columns="1fr 2fr">
@@ -449,7 +416,10 @@ async function reassignToTopic(topicId: string) {
 
           <Grid class="detail-item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Slug:</span>
-            <span>{{ props.discussion.slug || '-' }}</span>
+            <CopyClipboard v-if="props.discussion.slug" :text="props.discussion.slug">
+              <code class="discussion-code">{{ props.discussion.slug }}</code>
+            </CopyClipboard>
+            <span v-else class="text-color-lighter">-</span>
           </Grid>
 
           <Grid class="detail-item" expand columns="1fr 2fr">
@@ -462,17 +432,12 @@ async function reassignToTopic(topicId: string) {
             <TimestampDate size="s" :date="lastUpdatedAt" />
           </Grid>
 
-          <Grid class="detail-item" expand columns="1fr 2fr">
+          <Grid v-if="lastActivityUserId" class="detail-item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Last activity:</span>
             <Flex y-center gap="xs">
               <TimestampDate size="s" :date="lastActivityAt" />
               <UserLink :user-id="lastActivityUserId" placeholder="Unknown" class="text-m" show-avatar />
             </Flex>
-          </Grid>
-
-          <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Author:</span>
-            <UserLink :user-id="props.discussion.created_by" placeholder="Unknown" class="text-m" show-avatar />
           </Grid>
         </Flex>
       </Card>
@@ -685,19 +650,24 @@ async function reassignToTopic(topicId: string) {
     </Flex>
   </Sheet>
 
-  <ConfirmModal
-    v-model:open="showDeleteConfirm"
-    :confirm="handleDelete"
-    :confirm-loading="deleteLoading"
-    title="Delete discussion"
-    description="Are you sure you want to delete this discussion? This action cannot be undone."
-    confirm-text="Delete"
-    cancel-text="Cancel"
-    :destructive="true"
+  <DiscussionEditSheet
+    v-model:is-open="editSheetOpen"
+    :discussion="props.discussion"
+    @updated="emit('updated', $event)"
+    @deleted="emit('deleted', $event)"
   />
 </template>
 
 <style scoped lang="scss">
+.discussion-code {
+  font-family: monospace;
+  font-size: var(--font-size-s);
+  background-color: var(--color-bg-lowered);
+  padding: 2px 6px;
+  border-radius: var(--border-radius-xs);
+  word-break: break-all;
+}
+
 .reassign-topic-button {
   display: flex;
   width: 100%;

@@ -448,38 +448,6 @@ const { validate, errors, addError, reset } = useValidation(form, rules, {
   autoclear: true,
 })
 
-async function ensureDiscussion() {
-  if (discussion.value || props.type === 'discussion')
-    return
-
-  const discussionKey = `${props.type}_id`
-  const { data: created, error: createError } = await supabase
-    .from('discussions')
-    .insert({ [discussionKey]: props.id })
-    .select()
-    .single()
-
-  if (createError) {
-    const { data: existing, error: fetchError } = await supabase
-      .from('discussions')
-      .select('*')
-      .eq(discussionKey, props.id)
-      .maybeSingle()
-
-    if (fetchError) {
-      error.value = fetchError.message
-      return
-    }
-
-    if (existing)
-      discussion.value = existing
-
-    return
-  }
-
-  discussion.value = created
-}
-
 async function submitReply() {
   if (formLoading.value)
     return
@@ -489,13 +457,9 @@ async function submitReply() {
   validate()
     .then(async () => {
       if (!discussion.value) {
-        await ensureDiscussion()
-      }
-
-      if (!discussion.value) {
         addError('message', {
           key: 'required',
-          message: 'Unable to start discussion for this item.',
+          message: 'Discussion is not available yet. Please try again in a moment.',
         })
         formLoading.value = false
         return

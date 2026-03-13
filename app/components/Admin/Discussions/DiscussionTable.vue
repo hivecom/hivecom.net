@@ -3,11 +3,12 @@ import type { QueryData } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
 import type { Tables } from '@/types/database.overrides'
 
-import { Alert, Badge, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import DiscussionDetails from '@/components/Admin/Discussions/DiscussionDetails.vue'
+import DiscussionEditSheet from '@/components/Admin/Discussions/DiscussionEditSheet.vue'
 import DiscussionFilters from '@/components/Admin/Discussions/DiscussionFilters.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
@@ -126,6 +127,9 @@ const isBelowMedium = useBreakpoint('<m')
 
 const selectedDiscussion = ref<QueryDiscussion | null>(null)
 const showDiscussionDetails = ref(false)
+
+const editingDiscussion = ref<QueryDiscussion | null>(null)
+const showDiscussionEdit = ref(false)
 
 const focusedDiscussionId = computed(() => getRouteQueryString(route.query.discussion))
 
@@ -361,6 +365,11 @@ function openDiscussionDetails(discussion: QueryDiscussion) {
   showDiscussionDetails.value = true
 }
 
+function openDiscussionEdit(discussion: QueryDiscussion) {
+  editingDiscussion.value = discussion
+  showDiscussionEdit.value = true
+}
+
 function openDiscussionById(discussionId: string): boolean {
   const match = discussions.value.find((discussion: QueryDiscussion) => discussion.id === discussionId)
   if (!match)
@@ -553,12 +562,24 @@ function handleDiscussionDeleted(discussionId: string) {
               </Table.Cell>
 
               <Table.Cell v-if="canManageActions" @click.stop>
-                <DiscussionActions
-                  v-if="canUpdate"
-                  :discussion="discussion._original as QueryDiscussion"
-                  size="s"
-                  @updated="handleDiscussionUpdated"
-                />
+                <Flex gap="xs" y-center>
+                  <DiscussionActions
+                    v-if="canUpdate"
+                    :discussion="discussion._original as QueryDiscussion"
+                    size="s"
+                    hide-pin-button
+                    @updated="handleDiscussionUpdated"
+                  />
+                  <Button
+                    v-if="canUpdate"
+                    size="s"
+                    variant="gray"
+                    square
+                    @click="openDiscussionEdit(discussion._original as QueryDiscussion)"
+                  >
+                    <Icon name="ph:pencil-simple" />
+                  </Button>
+                </Flex>
               </Table.Cell>
             </tr>
           </template>
@@ -578,6 +599,13 @@ function handleDiscussionDeleted(discussionId: string) {
   <DiscussionDetails
     v-model:is-open="showDiscussionDetails"
     :discussion="selectedDiscussion"
+    @updated="handleDiscussionUpdated"
+    @deleted="handleDiscussionDeleted"
+  />
+
+  <DiscussionEditSheet
+    v-model:is-open="showDiscussionEdit"
+    :discussion="editingDiscussion"
     @updated="handleDiscussionUpdated"
     @deleted="handleDiscussionDeleted"
   />
