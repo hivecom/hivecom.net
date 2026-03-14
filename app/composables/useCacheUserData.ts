@@ -3,11 +3,10 @@
  * Provides efficient caching for user profile and role data
  */
 
-import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
 import type { CacheConfig } from './useCache'
 import type { Database } from '@/types/database.types'
-import { computed, onScopeDispose, readonly, ref, unref, watch } from 'vue'
+import { computed, readonly, ref, unref, watch } from 'vue'
 import { getUserAvatarUrl } from '@/lib/storage'
 import { useCache } from './useCache'
 
@@ -70,13 +69,10 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
   const cache = useCache(cacheConfig)
   const supabase = useSupabaseClient<Database>()
   const currentUser = useSupabaseUser()
-  const isClient = typeof window !== 'undefined'
 
   const user = ref<UserDisplayData | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
-  let profileChannel: RealtimeChannel | null = null
-  let subscribedProfileId: string | null = null
 
   /**
    * Generate cache keys for different data types
@@ -263,46 +259,6 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
     }
   }
 
-  async function cleanupProfileChannel(): Promise<void> {
-    if (!profileChannel)
-      return
-
-    try {
-      await supabase.removeChannel(profileChannel)
-    }
-    finally {
-      profileChannel = null
-      subscribedProfileId = null
-    }
-  }
-
-  function setupProfileSubscription(id: string | null | undefined): void {
-    const normalizedId = typeof id === 'string' ? id.trim() : ''
-
-    if (!isClient || normalizedId === '') {
-      void cleanupProfileChannel()
-      return
-    }
-
-    if (profileChannel && subscribedProfileId === normalizedId)
-      return
-
-    void cleanupProfileChannel()
-
-    profileChannel = supabase.channel(`user-profile:${normalizedId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'profiles',
-        filter: `id=eq.${normalizedId}`,
-      }, () => {
-        void fetchUserData(true)
-      })
-      .subscribe()
-
-    subscribedProfileId = normalizedId
-  }
-
   /**
    * Refetch user data (bypasses cache)
    */
@@ -332,20 +288,14 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
   }
 
   // Watch for userId changes
-  watch(() => unref(userId), (id) => {
-    setupProfileSubscription(id)
+  watch(() => unref(userId), () => {
     void fetchUserData()
   }, { immediate: true })
 
   // Watch for authentication changes - force refetch on sign-in to bust any
   // stale null-cached role/avatar data that may have been stored pre-auth.
   watch(currentUser, (newUser) => {
-    setupProfileSubscription(unref(userId))
     void fetchUserData(newUser != null)
-  })
-
-  onScopeDispose(() => {
-    void cleanupProfileChannel()
   })
 
   // Computed helpers
