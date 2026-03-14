@@ -170,7 +170,7 @@ watch([allFunding, fundingLoading, fundingError], () => {
   }
 
   if (!fundingLoading.value) {
-    monthlyFundings.value = [...allFunding.value].reverse() as MonthlyFunding[]
+    monthlyFundings.value = allFunding.value.toReversed() as MonthlyFunding[]
     loading.value = false
   }
 }, { immediate: true })

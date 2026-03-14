@@ -2,6 +2,7 @@
 import type { Comment, ProvidedDiscussion } from '../Discussion.vue'
 import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
@@ -20,16 +21,18 @@ import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { getCountryInfo } from '@/lib/utils/country'
 import { DISCUSSION_KEYS } from '../Discussion.keys'
 
-interface Props {
-  data: Comment
-}
-
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
   copyLink: []
   scrollReply: []
 }>()
+
+dayjs.extend(relativeTime)
+
+interface Props {
+  data: Comment
+}
 
 const data = toRef(props, 'data')
 
@@ -331,7 +334,7 @@ const { displayReactions, toggleReaction } = useReactions({
               class="card-bg" :style="{ maxHeight: 512,
                                         overflowY: 'auto' }"
             >
-              <MDRenderer :md="data.markdown" skeleton-height="0px" />
+              <MDRenderer :md="data.markdown" skeleton-height="48px" />
             </Card>
           </ConfirmModal>
         </ButtonGroup>

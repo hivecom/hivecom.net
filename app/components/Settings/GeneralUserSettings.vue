@@ -104,17 +104,7 @@ const selectedTheme = computed({
     <Switch v-model="settings.show_forum_recently_visited" class="reversed mb-m" label="Show recently visited" />
     <Switch v-model="settings.show_forum_archived" class="reversed mb-m" label="Show archived topics & discussions" />
 
-    <Switch v-model="settings.editor_floating" class="reversed" disabled hint="If enabled, the text editor will stay at the bottom of the screen while scrolling through large forum posts.">
-      <Flex y-center ga="xxs">
-        <p>Floating text editor</p>
-        <!-- <SharedTinyBadge variant="info">
-          Beta
-        </SharedTinyBadge> -->
-        <SharedTinyBadge>
-          Planned
-        </SharedTinyBadge>
-      </Flex>
-    </Switch>
+    <Switch v-model="settings.editor_floating" class="reversed" label="Floating text editor" hint="If enabled, the text editor will stay at the bottom of the screen while scrolling through large forum posts." />
   </Card>
 </template>
 

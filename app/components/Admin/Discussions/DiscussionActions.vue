@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Button, Flex, pushToast, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
 
 type DiscussionRecord = Tables<'discussions'>
 
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 }>()
 
 const supabase = useSupabaseClient()
+const discussionCache = useCacheDiscussion()
 
 const lockLoading = ref(false)
 const pinLoading = ref(false)
@@ -47,6 +49,7 @@ async function applyLock(nextValue: boolean) {
     if (error)
       throw error
 
+    discussionCache.set(data)
     emit('updated', data)
     pushToast(nextValue ? 'Discussion locked' : 'Discussion unlocked')
   }
@@ -69,6 +72,7 @@ async function applyPin(nextValue: boolean) {
     if (error)
       throw error
 
+    discussionCache.set(data)
     emit('updated', data)
     pushToast(nextValue ? 'Discussion pinned' : 'Discussion unpinned')
   }
@@ -91,6 +95,7 @@ async function applyArchive(nextValue: boolean) {
     if (error)
       throw error
 
+    discussionCache.set(data)
     emit('updated', data)
     pushToast(nextValue ? 'Discussion archived' : 'Discussion unarchived')
     showArchiveConfirm.value = false

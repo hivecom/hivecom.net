@@ -17,6 +17,7 @@ interface Props {
   depth?: number
   showOfftopic?: boolean
   showThreadReplies?: boolean
+  staggerIndex?: number
 }
 
 const {
@@ -27,6 +28,7 @@ const {
   depth = 0,
   showOfftopic = false,
   showThreadReplies = false,
+  staggerIndex,
 } = defineProps<Props>()
 
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
@@ -93,8 +95,8 @@ const visibleChildren = computed((): ThreadNode[] =>
 
 const hasReplies = computed(() => visibleChildren.value.length > 0)
 
-// Expand state: seeded from the per-discussion `showThreadReplies` setting
-// but overridable per-item by the user clicking the toggle.
+// Flat mode: expand state seeded from the per-discussion `showThreadReplies`
+// setting but overridable per-item by the user clicking the toggle.
 const repliesExpanded = ref(showThreadReplies)
 
 // Keep in sync when the parent setting changes (unless the user has already
@@ -106,6 +108,13 @@ watch(
 
 function toggleReplies() {
   repliesExpanded.value = !repliesExpanded.value
+}
+
+// Threaded mode: whether this node's sub-tree is folded closed
+const threadCollapsed = ref(false)
+
+function toggleThreadCollapsed() {
+  threadCollapsed.value = !threadCollapsed.value
 }
 
 function scrollToReply(childComment: Comment) {
@@ -121,6 +130,7 @@ const PREVIEW_LENGTH = 120
     :id="`comment-${data.id}`"
     class="discussion-comment-wrapper"
     :class="data.is_offtopic && 'discussion-comment-wrapper--offtopic'"
+    :style="staggerIndex != null ? { '--stagger-index': staggerIndex } : undefined"
   >
     <DiscussionModelComment
       v-if="model === 'comment'"
@@ -209,22 +219,54 @@ const PREVIEW_LENGTH = 120
     </div>
 
     <!-- Threaded mode: recursively render children as full DiscussionItems -->
-    <div
-      v-else-if="viewMode === 'threaded' && hasReplies"
-      class="discussion-comment-wrapper__children"
-      :style="{ '--nest-depth': Math.min(depth + 1, 6) }"
-    >
-      <DiscussionItem
-        v-for="child in visibleChildren"
-        :key="child.comment.id"
-        :data="child.comment"
-        :model
-        :children="child.children"
-        :depth="depth + 1"
-        :show-offtopic
-        :show-thread-replies
-      />
-    </div>
+    <template v-else-if="viewMode === 'threaded' && hasReplies">
+      <!-- Collapsed summary pill -->
+      <Flex
+        v-if="threadCollapsed"
+        x-center
+        class="discussion-comment-wrapper__thread-toggle discussion-comment-wrapper__thread-toggle--threaded"
+      >
+        <Button
+          plain
+          size="s"
+          @click="toggleThreadCollapsed"
+        >
+          {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
+          <template #end>
+            <Icon
+              name="ph:caret-down"
+              :size="12"
+              class="discussion-comment-wrapper__thread-caret"
+            />
+          </template>
+        </Button>
+      </Flex>
+
+      <!-- Expanded children with clickable left border line -->
+      <div
+        v-else
+        class="discussion-comment-wrapper__children"
+        :style="{ '--nest-depth': Math.min(depth + 1, 6) }"
+      >
+        <!-- Invisible button over the left border - click to collapse -->
+        <button
+          class="discussion-comment-wrapper__thread-line"
+          title="Collapse thread"
+          @click="toggleThreadCollapsed"
+        />
+
+        <DiscussionItem
+          v-for="child in visibleChildren"
+          :key="child.comment.id"
+          :data="child.comment"
+          :model
+          :children="child.children"
+          :depth="depth + 1"
+          :show-offtopic
+          :show-thread-replies
+        />
+      </div>
+    </template>
   </div>
 </template>
 
@@ -260,75 +302,50 @@ const PREVIEW_LENGTH = 120
   }
 
   &__children {
-    // Threaded mode: indent with a left border thread-line
+    // Threaded mode: indent children; the visible left border is rendered by
+    // __thread-line::after so it can respond to hover state on the button.
     position: relative;
     padding-left: var(--space-m);
+  }
 
-    border-left: 1px solid
-      color-mix(in srgb, var(--color-border) calc(100% - (var(--nest-depth, 1) * 20%)), transparent);
+  &__thread-line {
+    // Invisible button sitting exactly over the left border - click to collapse/expand
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 12px;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    z-index: 2;
 
-    // NOTE(@dolanske) Failed experiment to add lines which end in rounded quarter circle leading into the comment card. I got stuck at ending the thread line at half size of the last item of each depth
+    // The visible border line lives inside the button so it reacts to hover
+    &::after {
+      content: '';
+      display: block;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background-color: color-mix(in srgb, var(--color-border) calc(100% - (var(--nest-depth, 1) * 20%)), transparent);
+      transition: background-color var(--transition-fast);
+    }
 
-    // &:before {
-    //   content: '';
-    //   display: block;
-    //   position: absolute;
-    //   top: -40px;
-    //   left: 0;
-    //   // bottom: 112px;
-    //   // height: 50%;
-    //   width: 2px;
-    //   z-index: -1;
-    //   background-color: color-mix(
-    //     in srgb,
-    //     var(--color-border-strong) calc(100% - (var(--nest-depth, 1) * 20%)),
-    //     transparent
-    //   );
-    // }
-
-    // .discussion-comment-wrapper {
-    //   &:first-child {
-    //     position: relative;
-    //     z-index: 1;
-
-    //     &:after {
-    //       content: '';
-    //       display: block;
-    //       position: absolute;
-    //       bottom: 50%;
-    //       top: -24px;
-    //       left: calc(var(--space-l) * -1);
-    //       z-index: -1;
-    //       border-left: 1px solid var(--color-border);
-    //       // background-color: color-mix(
-    //       //   in srgb,
-    //       //   var(--color-border-strong) calc(100% - (var(--nest-depth, 1) * 20%)),
-    //       //   transparent
-    //       // );
-    //     }
-
-    //     &:before {
-    //       content: '';
-    //       width: calc(var(--space-l) * 2);
-    //       height: calc(var(--space-l) * 2);
-    //       border: 1px solid var(--color-border);
-    //       // border: 1px solid
-    //       //   color-mix(in srgb, var(--color-border-strong) calc(100% - (var(--nest-depth, 1) * 20%)), transparent);
-    //       border-radius: 50%;
-    //       position: absolute;
-    //       top: 50%;
-    //       transform: translateY(-50%);
-    //       left: calc(var(--space-l) * -1);
-    //       clip-path: inset(var(--space-l) var(--space-l) 0 0);
-    //       z-index: -1;
-    //     }
-    //   }
-    // }
+    &:hover::after {
+      background-color: var(--color-accent);
+    }
   }
 
   &__thread-toggle {
     width: 100%;
     position: relative;
+
+    &--threaded {
+      margin-top: var(--space-xs);
+      margin-bottom: var(--space-s);
+    }
 
     &:before {
       content: '';
@@ -371,25 +388,8 @@ const PREVIEW_LENGTH = 120
     margin-left: 2px;
   }
 
-  // &__thread-list {
-  //   margin-top: var(--space-xxs);
-  //   overflow: hidden;
-  // }
-
   &__thread-row {
     --button-padding: 0 !important;
-
-    // NOTE: this seletor wasn't working because __thread-row is a class on the button itself
-    // :deep(.vui-button) {
-    //   // padding: 4px var(--space-xs);
-    //   border-radius: var(--border-radius-s);
-    //   text-align: left;
-    //   justify-content: flex-start;
-
-    //   &:hover {
-    //     background-color: var(--color-bg-raised);
-    //   }
-    // }
 
     &--offtopic {
       opacity: 0.5;

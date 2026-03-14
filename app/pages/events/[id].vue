@@ -6,6 +6,7 @@ import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useEventTiming } from '@/composables/useEventTiming'
+import { useForumUnread } from '@/composables/useForumUnread'
 
 // Get route parameter
 const route = useRoute()
@@ -25,6 +26,11 @@ defineOgImageComponent('Event', {
 })
 
 const { isUpcoming, isOngoing, timeAgo, countdown } = useEventTiming(event)
+const forumUnread = useForumUnread()
+
+function handleReplySubmitted(newReplyCount: number, discussionId: string) {
+  forumUnread.markDiscussionSeen(discussionId, newReplyCount)
+}
 
 // Fetch event data
 async function fetchEvent() {
@@ -149,6 +155,7 @@ useHead({
           :id="String(event.id)"
           class="event-discussion"
           type="event"
+          @reply-submitted="handleReplySubmitted"
         />
       </div>
     </div>

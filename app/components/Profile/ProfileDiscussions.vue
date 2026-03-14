@@ -3,6 +3,7 @@ import { Card, Flex, Skeleton } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
+import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
 
 const props = defineProps<Props>()
 
@@ -24,6 +25,7 @@ interface ReplyWithDiscussion {
 }
 
 const supabase = useSupabaseClient()
+const discussionCache = useCacheDiscussion()
 
 const replies = ref<ReplyWithDiscussion[]>([])
 const loading = ref(true)
@@ -57,15 +59,21 @@ async function fetchReplies() {
 
   const { data: discussionData } = await supabase
     .from('discussions')
-    .select('id, title, slug, discussion_topic_id')
+    .select('*')
     .in('id', discussionIds)
 
   const discussionMap = new Map(
     (discussionData ?? []).map(d => [d.id, d]),
   )
 
+  // Warm the discussion cache as a side effect so subsequent Discussion.vue
+  // renders of the same discussions don't need to re-fetch.
+  for (const d of discussionData ?? []) {
+    discussionCache.set(d)
+  }
+
   // Format replies and strip out empty content
-  replies.value = replyData
+  const result = replyData
     .map((reply) => {
       const discussion = discussionMap.get(reply.discussion_id)
       const slug = discussion?.slug ?? reply.discussion_id
@@ -81,6 +89,7 @@ async function fetchReplies() {
     })
     .filter(reply => reply.markdown !== '#empty')
 
+  replies.value = result
   loading.value = false
 }
 

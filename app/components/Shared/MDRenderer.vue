@@ -1,9 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import { Skeleton } from '@dolanske/vui'
-import { computed, nextTick } from 'vue'
-import { useBulkUserData } from '@/composables/useCacheUserData'
-import { extractMentionIds, processMentions } from '@/lib/markdownProcessors'
-import MDLightbox from './MDLightbox.vue'
+import { computed, nextTick, ref } from 'vue'
+import MDRendererInner from './MDRendererInner.vue'
 
 const props = defineProps({
   tag: {
@@ -23,67 +21,78 @@ const props = defineProps({
   },
 })
 
-// Extract mention IDs and pre-fetch user data efficiently
-const mentionIds = computed(() => extractMentionIds(props.md))
+const showSkeleton = computed(() => props.skeletonHeight !== '0px' && props.skeletonHeight !== 0)
 
-// We pre-fetch basic profile data so UserMention components
-// can render synchronously (or near-synchronously) without individual fetches.
-useBulkUserData(mentionIds)
+const skeletonStyle = computed(() => ({
+  height: typeof props.skeletonHeight === 'number'
+    ? `${props.skeletonHeight}px`
+    : props.skeletonHeight,
+}))
 
-// Process the markdown to convert @mentions to <UserMention> components
-const processedMarkdown = computed(() => {
-  return processMentions(props.md)
-})
-
-// Called when markdown is fully rendered
-const lightbox = useTemplateRef('lightbox')
+// nextTick defers the flip so skeleton has been painted before its leave transition runs
+const resolved = ref(false)
 
 function onSuspenseResolve() {
   nextTick(() => {
-    if (lightbox.value) {
-      lightbox.value.register()
-    }
+    resolved.value = true
   })
 }
 </script>
 
 <template>
-  <Suspense suspensible @resolve="onSuspenseResolve">
-    <template #fallback>
-      <Skeleton :style="{ height: props.skeletonHeight }" />
-    </template>
-    <div style="display: contents;">
-      <MDC
-        :partial="true"
-        :value="processedMarkdown"
-        :tag="props.tag"
-        :class="`typeset ${props.class}`"
+  <div class="md-renderer" :style="!resolved ? skeletonStyle : undefined">
+    <Transition name="md-skeleton">
+      <Skeleton
+        v-if="showSkeleton && !resolved"
+        class="md-renderer__skeleton"
+        :style="skeletonStyle"
       />
-
-      <MDLightbox v-if="props.md" ref="lightbox" :markdown="props.md" />
-    </div>
-  </Suspense>
+    </Transition>
+    <Suspense @resolve="onSuspenseResolve">
+      <template #fallback>
+        <span />
+      </template>
+      <Transition name="md-content">
+        <MDRendererInner
+          v-if="resolved || !showSkeleton"
+          :extra-class="props.class"
+          :md="props.md"
+          :tag="props.tag"
+        />
+      </Transition>
+    </Suspense>
+  </div>
 </template>
 
-<style lang="scss">
-/* YouTube embed produced by processYoutubeDirectives */
-.md-youtube-embed {
-  display: flex;
-  justify-content: center;
-  margin: var(--space-s) 0;
-
-  iframe {
-    max-width: 100%;
-    border-radius: var(--border-radius-s);
-    aspect-ratio: 16 / 9;
-    height: auto;
-  }
+<style scoped lang="scss">
+.md-renderer {
+  position: relative;
 }
 
-/* KaTeX math produced by rehype-katex */
-.katex-display {
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: var(--space-xs) 0;
+.md-renderer__skeleton {
+  position: absolute;
+  inset: 0;
+}
+
+// Skeleton fades out while sitting absolutely on top of the incoming content
+.md-skeleton-leave-active {
+  transition: opacity 0.2s ease;
+  animation: none !important;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.md-skeleton-leave-to {
+  opacity: 0;
+}
+
+// Content fades in underneath the leaving skeleton, staggered by index if provided
+.md-content-enter-active {
+  transition: opacity 0.2s ease calc(var(--stagger-index, 0) * 0.05s);
+}
+
+.md-content-enter-from {
+  opacity: 0;
 }
 </style>

@@ -15,7 +15,7 @@ export function getDefaultUserSettings(): Tables<'settings'>['data'] {
     show_forum_updates: true,
     show_forum_recently_visited: true,
     show_forum_archived: false,
-    editor_floating: true,
+    editor_floating: false,
   }
 }
 

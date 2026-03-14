@@ -37,7 +37,7 @@ const events = computed<Tables<'events'>[]>(() => {
 
   const statusOrder = { ongoing: 0, upcoming: 1, past: 2 }
 
-  return [...allEvents.value].sort((a, b) => {
+  return allEvents.value.toSorted((a, b) => {
     const statusDiff = statusOrder[getStatus(a)] - statusOrder[getStatus(b)]
     if (statusDiff !== 0)
       return statusDiff
@@ -397,7 +397,6 @@ h4 {
   &__list {
     margin: 2rem auto 0;
     text-align: left;
-    // grid-auto-rows: 1fr;
     align-items: stretch !important;
 
     @media screen and (max-width: $breakpoint-s) {

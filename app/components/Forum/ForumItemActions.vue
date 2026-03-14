@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Divider, Dropdown, DropdownItem, pushToast, Tooltip } from '@dolanske/vui'
+import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
 import ForumModalAddDiscussion from './ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from './ForumModalAddTopic.vue'
@@ -29,6 +30,7 @@ const supabase = useSupabaseClient()
 const userId = useUserId()
 
 const { user } = useCacheUserData(userId, { includeRole: true })
+const discussionCache = useCacheDiscussion()
 
 // Locking
 const lockLoading = ref(false)
@@ -70,7 +72,11 @@ function handleLock(mode: 'lock' | 'unlock') {
       }
       else {
         pushToast(`The ${itemType} has been ${itemAction}`)
-        emit('update', data[0] as Props['data'])
+        const updated = data[0] as Props['data']
+        if (props.table === 'discussions') {
+          discussionCache.set(updated as Tables<'discussions'>)
+        }
+        emit('update', updated)
         lockConfirm.value = false
       }
 
@@ -112,7 +118,11 @@ function handleArchive(mode: 'archive' | 'unarchive') {
       }
       else {
         pushToast(`Successfully ${isArchived ? 'archived' : 'unarchived'} ${itemType}`)
-        emit('update', data[0] as Props['data'])
+        const updated = data[0] as Props['data']
+        if (props.table === 'discussions') {
+          discussionCache.set(updated as Tables<'discussions'>)
+        }
+        emit('update', updated)
         archiveConfirm.value = false
       }
 
@@ -140,7 +150,9 @@ function handleStick(mode: 'stick' | 'unstick') {
           pushToast('Successfully unpinned discussion')
         }
 
-        emit('update', data[0] as Props['data'])
+        const updated = data[0] as Tables<'discussions'>
+        discussionCache.set(updated)
+        emit('update', updated)
       }
     })
 }

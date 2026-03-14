@@ -2,6 +2,8 @@ import type { ComputedRef, Ref } from 'vue'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import { useTableActions } from '@/composables/useTableActions'
 
+const TRAILING_S_RE = /s$/
+
 /**
  * Options for configuring the admin CRUD table composable.
  *
@@ -101,7 +103,7 @@ export function useAdminCrudTable<
   // Resolve the URL param key. Strip trailing 's' by default (games -> game).
   const resolvedParamKey: string | false = queryParamKey === false
     ? false
-    : (queryParamKey ?? resourceType.replace(/s$/, ''))
+    : (queryParamKey ?? resourceType.replace(TRAILING_S_RE, ''))
 
   // Permissions
   const { canManageResource, canCreate, canUpdate, canDelete } = useTableActions(resourceType)

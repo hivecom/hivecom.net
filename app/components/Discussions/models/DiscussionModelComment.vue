@@ -2,6 +2,7 @@
 import type { Comment, DiscussionSettings, ProvidedDiscussion } from '../Discussion.vue'
 import { Alert, Button, ButtonGroup, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
@@ -15,16 +16,18 @@ import { stripMarkdown } from '@/lib/markdownProcessors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { DISCUSSION_KEYS } from '../Discussion.keys'
 
-interface Props {
-  data: Comment
-}
-
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
   copyLink: []
   scrollReply: []
 }>()
+
+dayjs.extend(relativeTime)
+
+interface Props {
+  data: Comment
+}
 
 const data = toRef(props, 'data')
 
@@ -187,7 +190,7 @@ const { displayReactions, toggleReaction } = useReactions({
       <p>Potentially sensitive content - click to reveal</p>
     </button>
 
-    <MDRenderer v-else :md="data.markdown" skeleton-height="0px" />
+    <MDRenderer v-else :md="data.markdown" skeleton-height="24px" />
 
     <Flex v-if="displayReactions.length > 0" y-center x-start gap="xxs" class="discussion-comment__reactions">
       <ReactionsList :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />

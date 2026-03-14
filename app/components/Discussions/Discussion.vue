@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, ButtonGroup, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { normalizeErrors, normalizeTipTapOutput } from '@/lib/utils/formatting'
@@ -71,7 +73,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  replySubmitted: [newReplyCount: number]
+  replySubmitted: [newReplyCount: number, discussionId: string]
 }>()
 
 const MAX_COMMENT_CHARS = 8192
@@ -87,6 +89,9 @@ const canBypassLock = computed(() => {
 })
 
 export type RawComment = Omit<Tables<'discussion_replies'>, 'meta'> & { meta: never }
+
+// The realtime INSERT payload shape - Supabase sends the new row as `new`
+interface RealtimeReplyPayload { new: RawComment }
 export interface Comment extends RawComment {
   reply: RawComment | null
 }
@@ -104,12 +109,130 @@ export type ProvidedDiscussion = Ref<Tables<'discussions'> | undefined>
 
 // Fetch data & state
 const supabase = useSupabaseClient()
+const discussionCache = useCacheDiscussion()
 
 const loading = ref(false)
 const error = ref<string>()
 
 const discussion = ref<Tables<'discussions'>>()
 const comments = ref<RawComment[]>([])
+
+// ── Realtime: new reply notifications ─────────────────────────────────────────
+/**
+ * Count of replies received via realtime that have not been loaded yet.
+ * We only track the count (not the payloads) to keep it simple - loading
+ * them fetches from the DB so we get the canonical server-side row.
+ */
+const pendingReplyCount = ref(0)
+const pendingLoading = ref(false)
+let replyChannel: RealtimeChannel | null = null
+let subscribedDiscussionId: string | null = null
+
+/**
+ * The `created_at` timestamp of the most recently loaded reply, used to
+ * fetch only replies that arrived after the current set.
+ */
+const latestCommentTime = computed((): string | null => {
+  if (comments.value.length === 0)
+    return null
+  const first = comments.value[0]!.created_at
+  return comments.value.reduce((latest, c) =>
+    c.created_at > latest ? c.created_at : latest, first)
+})
+
+async function loadPendingReplies() {
+  if (!discussion.value || pendingLoading.value)
+    return
+
+  pendingLoading.value = true
+
+  try {
+    const query = supabase
+      .from('discussion_replies')
+      .select('*')
+      .eq('discussion_id', discussion.value.id)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: props.model !== 'comment' })
+
+    if (latestCommentTime.value != null) {
+      query.gt('created_at', latestCommentTime.value)
+    }
+
+    const { data, error: fetchError } = await query
+
+    if (fetchError != null || data == null)
+      return
+
+    // Filter out any IDs already in the local list (e.g. own posts pushed
+    // optimistically by submitReply) to avoid duplicates.
+    const existingIds = new Set(comments.value.map(c => c.id))
+    const newReplies = data.filter(r => !existingIds.has(r.id))
+
+    if (props.model === 'comment')
+      comments.value = [...newReplies as RawComment[], ...comments.value]
+    else
+      comments.value = [...comments.value, ...newReplies as RawComment[]]
+    pendingReplyCount.value = 0
+
+    // Invalidate the cache - reply_count has changed server-side.
+    discussionCache.invalidate(discussion.value.id, discussion.value.slug)
+  }
+  finally {
+    pendingLoading.value = false
+  }
+}
+
+function subscribeToReplies(discussionId: string) {
+  // No-op if already subscribed to this discussion - avoids redundant channel
+  // recreation when the watch fires without the id actually changing.
+  if (replyChannel != null && subscribedDiscussionId === discussionId)
+    return
+
+  void unsubscribeFromReplies()
+
+  replyChannel = supabase
+    .channel(`discussion-replies:${discussionId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'discussion_replies',
+        filter: `discussion_id=eq.${discussionId}`,
+      },
+      (payload: RealtimeReplyPayload) => {
+        const newReply = payload.new
+        // Skip replies already present in the local list - this covers the
+        // case where submitReply pushed the reply optimistically in this tab.
+        // We cannot skip by author ID because the same user may have the
+        // thread open in another tab, where the optimistic push didn't happen.
+        const alreadyLoaded = comments.value.some(c => c.id === newReply.id)
+        if (alreadyLoaded)
+          return
+
+        pendingReplyCount.value++
+      },
+    )
+    .subscribe()
+
+  subscribedDiscussionId = discussionId
+}
+
+async function unsubscribeFromReplies() {
+  if (replyChannel == null)
+    return
+  try {
+    await supabase.removeChannel(replyChannel)
+  }
+  finally {
+    replyChannel = null
+    subscribedDiscussionId = null
+  }
+}
+
+onScopeDispose(() => {
+  void unsubscribeFromReplies()
+})
 
 // ── View mode ─────────────────────────────────────────────────────────────────
 // Per-session toggle: defaults to the user's saved setting.
@@ -214,48 +337,47 @@ provide(DISCUSSION_KEYS.canBypassLock, canBypassLock)
 watch(() => props.id, async () => {
   loading.value = true
 
-  // Query discussion metadata
-  const discussionQuery = supabase
-    .from('discussions')
-    .select('*')
+  // Query discussion metadata - use cache for both lookup paths
+  let fetchedDiscussion: Tables<'discussions'> | null = null
+  let fetchError: string | null = null
 
   if (props.type === 'discussion') {
-    discussionQuery.eq('id', props.id)
+    fetchedDiscussion = await discussionCache.fetchById(props.id)
+    fetchError = discussionCache.error.value
   }
   else {
-    discussionQuery.eq(`${props.type}_id`, props.id)
+    fetchedDiscussion = await discussionCache.fetchByEntity(props.type, props.id)
+    fetchError = discussionCache.error.value
   }
 
-  const discussionResponse = await discussionQuery.maybeSingle()
-
-  if (discussionResponse.error) {
+  if (fetchError != null) {
     loading.value = false
-    return error.value = discussionResponse.error.message
+    return error.value = fetchError
   }
 
-  if (!discussionResponse.data) {
+  if (fetchedDiscussion == null) {
     loading.value = false
     comments.value = []
     return
   }
 
-  discussion.value = discussionResponse.data
+  discussion.value = fetchedDiscussion
 
   // Bump subscription last_seen_at and mark notification read
-  void markDiscussionSeen(discussionResponse.data.id)
+  void markDiscussionSeen(fetchedDiscussion.id)
 
   // Query comments under a discussion
   const commentQuery = supabase
     .from('discussion_replies')
     .select('*')
-    .eq('discussion_id', discussionResponse.data.id)
+    .eq('discussion_id', fetchedDiscussion.id)
 
   // Optionally return answer under a specific hash
   if (props.hash) {
     commentQuery.eq('meta->>hash', props.hash)
   }
 
-  const commentsResponse = await commentQuery.order('created_at')
+  const commentsResponse = await commentQuery.order('created_at', { ascending: props.model !== 'comment' })
 
   if (commentsResponse.error) {
     loading.value = false
@@ -266,6 +388,12 @@ watch(() => props.id, async () => {
   }
 
   loading.value = false
+  // Subscribe to realtime inserts for this discussion.
+  if (fetchedDiscussion != null) {
+    subscribeToReplies(fetchedDiscussion.id)
+    // Reset pending count when the discussion changes.
+    pendingReplyCount.value = 0
+  }
 }, { immediate: true })
 
 /**
@@ -497,10 +625,21 @@ async function submitReply() {
         replyingTo.value = undefined
         form.message = ''
         form.is_nsfw = false
-        comments.value.push(res.data as RawComment)
+        if (props.model === 'comment')
+          comments.value.unshift(res.data as RawComment)
+        else
+          comments.value.push(res.data as RawComment)
+        // Invalidate the cached discussion row - the DB trigger has incremented
+        // reply_count server-side so the cached value is now stale.
+        if (discussion.value) {
+          discussionCache.invalidate(discussion.value.id, discussion.value.slug)
+        }
+        // The realtime subscription will fire for our own post too - pre-emptively
+        // bump latestCommentTime by ensuring the new reply is in the list before
+        // the INSERT event arrives, which is guaranteed since we already pushed it.
         // Notify parent so the forum unread state can be updated, preventing
         // a spurious activity indicator when the user was the last poster.
-        emit('replySubmitted', comments.value.length)
+        emit('replySubmitted', comments.value.length, discussion.value.id)
       }
 
       formLoading.value = false
@@ -581,6 +720,84 @@ const offtopicCount = computed(() =>
 
     <!-- Listing view -->
     <template v-else>
+      <!-- Comment model: input at top, then comments (newest first) -->
+      <template v-if="props.model === 'comment'">
+        <div v-if="props.hideInput !== true && userId" class="discussion__add" :class="{ 'discussion__add--floating': settings.editor_floating }">
+          <Alert v-if="replyingTo">
+            <Flex y-start gap="xl" x-between>
+              <div>
+                <span class="discussion__add--replying-label">Replying to
+                  <UserName size="s" :user-id="replyingTo!.created_by" />:
+                </span>
+                <MarkdownPreview :markdown="replyingTo.markdown" :max-length="240" />
+              </div>
+              <Tooltip>
+                <Button square size="s" plain @click="replyingTo = undefined">
+                  <Icon name="ph:x" />
+                </Button>
+                <template #tooltip>
+                  <p>Remove attached reply</p>
+                </template>
+              </Tooltip>
+            </Flex>
+          </Alert>
+          <div v-if="discussion?.is_archived">
+            <Alert variant="warning">
+              <template #icon>
+                <Icon name="ph:archive" />
+              </template>
+              This discussion is archived
+            </Alert>
+          </div>
+          <div v-else-if="discussion?.is_locked && !canBypassLock">
+            <Alert variant="neutral">
+              <template #icon>
+                <Icon name="ph:lock" />
+              </template>
+              This discussion is locked
+            </Alert>
+          </div>
+          <template v-else>
+            <Alert v-if="discussion?.is_locked && canBypassLock" variant="warning">
+              <template #icon>
+                <Icon name="ph:lock" />
+              </template>
+              This discussion is locked. Only admins and moderators can post replies.
+            </Alert>
+            <RichTextEditor
+              ref="textarea"
+              v-model="form.message"
+              v-model:nsfw="form.is_nsfw"
+              min-height="64px"
+              show-submit-options
+              show-attachment-button
+              :errors="normalizeErrors(errors.message)"
+              :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
+              :media-context="discussion?.id ? `${discussion.id}/${userId}` : 'staging'"
+              :media-bucket-id="FORUMS_BUCKET_ID"
+              @submit="submitReply"
+            />
+          </template>
+        </div>
+        <div v-else-if="props.hideInput !== true && !userId" class="discussion__add">
+          <Alert variant="neutral">
+            <Flex y-center x-between gap="m">
+              <p>Sign in to join the discussion and add a reply.</p>
+              <Tooltip placement="top">
+                <template #tooltip>
+                  <p>Sign-in to start the conversation</p>
+                </template>
+                <Button variant="accent" disabled>
+                  Sign in
+                </Button>
+              </Tooltip>
+            </Flex>
+          </Alert>
+        </div>
+
+        <div class="mb-m" />
+      </template>
+
       <!-- Toolbar: view mode selector + off-topic toggle -->
       <Flex y-center x-start gap="xs" class="mb-m">
         <!-- View mode segmented control -->
@@ -636,9 +853,22 @@ const offtopicCount = computed(() =>
         </Tooltip>
       </Flex>
 
+      <!-- Pending banner for comment model: sits between toolbar and comments -->
+      <div
+        v-if="pendingReplyCount > 0 && props.model === 'comment'"
+        class="discussion__pending-banner"
+        @click="!pendingLoading && loadPendingReplies()"
+      >
+        <button :disabled="pendingLoading">
+          <Icon name="ph:arrow-up" :size="12" />
+          Click to load {{ pendingReplyCount }} new {{ pendingReplyCount === 1 ? 'comment' : 'comments' }}
+          <Icon name="ph:arrow-up" :size="12" />
+        </button>
+      </div>
+
       <!-- Flat view: all comments chronologically with inline reply previews -->
       <template v-if="viewMode === 'flat' && modelledComments.length > 0">
-        <template v-for="comment in modelledComments" :key="comment.id">
+        <template v-for="(comment, index) in modelledComments" :key="comment.id">
           <DiscussionItem
             v-if="isCommentVisible(comment)"
             :data="comment"
@@ -646,13 +876,14 @@ const offtopicCount = computed(() =>
             :thread-node="threadNodeMap.get(comment.id)"
             :show-offtopic="showOfftopic"
             :show-thread-replies="showThreadReplies"
+            :stagger-index="Math.min(index, 10)"
           />
         </template>
       </template>
 
       <!-- Threaded view: only roots rendered, children nest recursively -->
       <template v-else-if="viewMode === 'threaded' && threadRoots.length > 0">
-        <template v-for="node in threadRoots" :key="node.comment.id">
+        <template v-for="(node, index) in threadRoots" :key="node.comment.id">
           <DiscussionItem
             v-if="isNodeVisible(node)"
             :data="node.comment"
@@ -660,82 +891,99 @@ const offtopicCount = computed(() =>
             :children="node.children"
             :show-offtopic="showOfftopic"
             :depth="0"
+            :stagger-index="Math.min(index, 10)"
           />
         </template>
       </template>
 
-      <div v-if="props.hideInput !== true && userId" class="discussion__add">
-        <Alert v-if="replyingTo">
-          <Flex y-start gap="xl" x-between>
-            <div>
-              <span class="discussion__add--replying-label">Replying to
-                <UserName size="s" :user-id="replyingTo!.created_by" />:
-              </span>
-              <MarkdownPreview :markdown="replyingTo.markdown" :max-length="240" />
-            </div>
-            <Tooltip>
-              <Button square size="s" plain @click="replyingTo = undefined">
-                <Icon name="ph:x" />
-              </Button>
-              <template #tooltip>
-                <p>Remove attached reply</p>
-              </template>
-            </Tooltip>
-          </Flex>
-        </Alert>
-        <div v-if="discussion?.is_archived">
-          <Alert variant="warning">
-            <template #icon>
-              <Icon name="ph:archive" />
-            </template>
-            This discussion is archived
+      <!-- Pending replies banner - forum model: sits below comments (newest appended at bottom) -->
+      <div
+        v-if="pendingReplyCount > 0 && props.model === 'forum'"
+        class="discussion__pending-banner"
+        @click="!pendingLoading && loadPendingReplies()"
+      >
+        <button :disabled="pendingLoading">
+          <Icon name="ph:arrow-down" :size="12" />
+          Click to load {{ pendingReplyCount }} new {{ pendingReplyCount === 1 ? 'reply' : 'replies' }}
+          <Icon name="ph:arrow-down" :size="12" />
+        </button>
+      </div>
+
+      <!-- Forum model: input at bottom -->
+      <template v-if="props.model !== 'comment'">
+        <div v-if="props.hideInput !== true && userId" class="discussion__add" :class="{ 'discussion__add--floating': settings.editor_floating }">
+          <Alert v-if="replyingTo">
+            <Flex y-start gap="xl" x-between>
+              <div>
+                <span class="discussion__add--replying-label">Replying to
+                  <UserName size="s" :user-id="replyingTo!.created_by" />:
+                </span>
+                <MarkdownPreview :markdown="replyingTo.markdown" :max-length="240" />
+              </div>
+              <Tooltip>
+                <Button square size="s" plain @click="replyingTo = undefined">
+                  <Icon name="ph:x" />
+                </Button>
+                <template #tooltip>
+                  <p>Remove attached reply</p>
+                </template>
+              </Tooltip>
+            </Flex>
           </Alert>
+          <div v-if="discussion?.is_archived">
+            <Alert variant="warning">
+              <template #icon>
+                <Icon name="ph:archive" />
+              </template>
+              This discussion is archived
+            </Alert>
+          </div>
+          <div v-else-if="discussion?.is_locked && !canBypassLock">
+            <Alert variant="neutral">
+              <template #icon>
+                <Icon name="ph:lock" />
+              </template>
+              This discussion is locked
+            </Alert>
+          </div>
+          <template v-else>
+            <Alert v-if="discussion?.is_locked && canBypassLock" variant="warning">
+              <template #icon>
+                <Icon name="ph:lock" />
+              </template>
+              This discussion is locked. Only admins and moderators can post replies.
+            </Alert>
+            <RichTextEditor
+              ref="textarea"
+              v-model="form.message"
+              v-model:nsfw="form.is_nsfw"
+              min-height="64px"
+              show-submit-options
+              show-attachment-button
+              :errors="normalizeErrors(errors.message)"
+              :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
+              :media-context="discussion?.id ? `${discussion.id}/${userId}` : 'staging'"
+              :media-bucket-id="FORUMS_BUCKET_ID"
+              @submit="submitReply"
+            />
+          </template>
         </div>
-        <div v-else-if="discussion?.is_locked && !canBypassLock">
+        <div v-else-if="props.hideInput !== true && !userId" class="discussion__add">
           <Alert variant="neutral">
-            <template #icon>
-              <Icon name="ph:lock" />
-            </template>
-            This discussion is locked
+            <Flex y-center x-between gap="m">
+              <p>Sign in to join the discussion and add a reply.</p>
+              <Tooltip placement="top">
+                <template #tooltip>
+                  <p>Sign-in to start the conversation</p>
+                </template>
+                <Button variant="accent" disabled>
+                  Sign in
+                </Button>
+              </Tooltip>
+            </Flex>
           </Alert>
         </div>
-        <template v-else>
-          <Alert v-if="discussion?.is_locked && canBypassLock" variant="warning">
-            <template #icon>
-              <Icon name="ph:lock" />
-            </template>
-            This discussion is locked. Only admins and moderators can post replies.
-          </Alert>
-          <RichTextEditor
-            ref="textarea"
-            v-model="form.message"
-            v-model:nsfw="form.is_nsfw"
-            min-height="64px"
-            show-submit-options
-            show-attachment-button
-            :errors="normalizeErrors(errors.message)"
-            :placeholder="replyingTo ? 'Write your reply here...' : props.placeholder"
-            :media-context="discussion?.id ? `${discussion.id}/${userId}` : 'staging'"
-            :media-bucket-id="FORUMS_BUCKET_ID"
-            @submit="submitReply"
-          />
-        </template>
-      </div>
-      <div v-else-if="props.hideInput !== true && !userId" class="discussion__add">
-        <Alert variant="neutral">
-          <Flex y-center x-between gap="m">
-            <p>Sign in to join the discussion and add a reply.</p>
-            <Tooltip placement="top">
-              <template #tooltip>
-                <p>Sign-in to start the conversation</p>
-              </template>
-              <Button variant="accent" disabled>
-                Sign in
-              </Button>
-            </Tooltip>
-          </Flex>
-        </Alert>
-      </div>
+      </template>
     </template>
   </div>
   <!-- </ClientOnly> -->
@@ -743,6 +991,53 @@ const offtopicCount = computed(() =>
 
 <style scoped lang="scss">
 .discussion {
+  &__pending-banner {
+    width: 100%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    margin-bottom: var(--space-s);
+    cursor: pointer;
+
+    &:before {
+      content: '';
+      display: block;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      left: 0;
+      right: 0;
+      border-bottom: 1px solid var(--color-accent);
+      opacity: 0.5;
+      z-index: 1;
+      transition: opacity var(--transition);
+    }
+
+    &:hover:before {
+      opacity: 1;
+    }
+
+    button {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: 0 var(--space-s);
+      border: none;
+      background-color: var(--color-bg);
+      font-size: var(--font-size-xs);
+      color: var(--color-accent);
+      cursor: pointer;
+      transition: color var(--transition);
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+    }
+  }
+
   display: flex;
   width: 100%;
   flex-direction: column;
@@ -779,6 +1074,19 @@ const offtopicCount = computed(() =>
 
     &:deep(.vui-alert-icon) {
       display: none;
+    }
+
+    &--floating {
+      position: sticky;
+      bottom: 0;
+      z-index: var(--z-sticky);
+      padding-top: var(--space-s);
+      background: linear-gradient(to bottom, transparent, var(--color-bg) var(--space-s));
+
+      // Keep the replying-to alert visually consistent when floating
+      &:deep(.vui-alert) {
+        background-color: var(--color-bg-medium);
+      }
     }
   }
 

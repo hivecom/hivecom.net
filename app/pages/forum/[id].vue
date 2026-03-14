@@ -12,6 +12,7 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
 import { useForumUnread } from '@/composables/useForumUnread'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -48,6 +49,7 @@ const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 const isUuid = uuidRegex.test(identifier)
 
 const supabase = useSupabaseClient()
+const discussionCache = useCacheDiscussion()
 const userId = useUserId()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
@@ -262,6 +264,9 @@ onBeforeMount(() => {
         }
 
         post.value = data
+        // Warm the discussion cache so back-navigation and Discussion.vue
+        // embeds of the same row don't re-fetch within the TTL window.
+        discussionCache.set(data)
         // Show the NSFW overlay only when the post is NSFW and the user has
         // warnings enabled. If they have show_nsfw_content disabled entirely,
         // the watchEffect below will redirect them away instead.
@@ -354,6 +359,7 @@ function publish() {
       }
       else if (post.value) {
         post.value.is_draft = false
+        discussionCache.set(post.value)
         pushToast('Published post')
       }
     })
@@ -365,10 +371,8 @@ function publish() {
  * the new reply count so that the forum-index activity indicator doesn't fire
  * for discussions the current user was the last to post in.
  */
-function handleReplySubmitted(newReplyCount: number) {
-  if (post.value) {
-    forumUnread.markDiscussionSeen(post.value.id, newReplyCount)
-  }
+function handleReplySubmitted(newReplyCount: number, discussionId: string) {
+  forumUnread.markDiscussionSeen(discussionId, newReplyCount)
 }
 
 const pageTitle = useTemplateRef('page-title')

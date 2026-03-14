@@ -142,6 +142,11 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
 
     const cacheKey = getCacheKeys(id).role
 
+    // Don't fetch role when unauthenticated - RLS will block the query and
+    // the null result would be cached, preventing the role from loading after sign-in.
+    if (!currentUser.value)
+      return null
+
     // Check cache first
     const hasCachedRole = cache.has(cacheKey)
 
@@ -332,10 +337,11 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
     void fetchUserData()
   }, { immediate: true })
 
-  // Watch for authentication changes
-  watch(currentUser, () => {
+  // Watch for authentication changes - force refetch on sign-in to bust any
+  // stale null-cached role/avatar data that may have been stored pre-auth.
+  watch(currentUser, (newUser) => {
     setupProfileSubscription(unref(userId))
-    void fetchUserData()
+    void fetchUserData(newUser != null)
   })
 
   onScopeDispose(() => {
