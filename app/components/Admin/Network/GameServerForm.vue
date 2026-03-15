@@ -4,6 +4,7 @@ import { Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske
 import { computed, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useGames } from '@/composables/useGames'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
 // Interface for gameserver query result
@@ -70,12 +71,13 @@ const newAddress = ref('')
 const showDeleteConfirm = ref(false)
 
 // Loading states for dropdowns
-const loadingGames = ref(true)
 const loadingContainers = ref(true)
 const loadingProfiles = ref(true)
 
+// Games via shared composable
+const { games, loading: loadingGames } = useGames()
+
 // Options for dropdowns
-const games = ref<Tables<'games'>[]>([])
 const containers = ref<Tables<'containers'>[]>([])
 const profiles = ref<ProfileSelect[]>([])
 
@@ -167,17 +169,6 @@ const isValid = computed(() => Object.values(validation.value).every(Boolean))
 // Fetch dropdown data
 async function fetchDropdownData() {
   try {
-    // Fetch games
-    const { data: gamesData, error: gamesError } = await supabase
-      .from('games')
-      .select('*')
-      .order('name')
-
-    if (gamesError)
-      throw gamesError
-    games.value = gamesData || []
-    loadingGames.value = false
-
     // Fetch containers
     const { data: containersData, error: containersError } = await supabase
       .from('containers')

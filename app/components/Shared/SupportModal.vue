@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, Card, CopyClipboard, Divider, Flex, Modal, Tooltip } from '@dolanske/vui'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import UserDisplay from './UserDisplay.vue'
@@ -87,14 +87,17 @@ async function loadAdmins() {
   }
 }
 
-onMounted(() => {
-  if (canViewAdmins.value)
+// Only load admins when the modal is first opened - not on every mount
+watch(isOpen, (opened) => {
+  if (opened && admins.value.length === 0 && !adminsLoading.value)
     loadAdmins()
-})
+}, { once: false })
 
 watch(user, (newUser) => {
   if (newUser) {
-    loadAdmins()
+    // Re-load if modal is already open when user signs in
+    if (isOpen.value)
+      loadAdmins()
   }
   else {
     admins.value = []

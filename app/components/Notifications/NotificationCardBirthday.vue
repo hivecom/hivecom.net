@@ -8,19 +8,11 @@ const props = withDefaults(defineProps<{ title: string, description?: string | n
 </script>
 
 <template>
-  <NotificationCard :text="props.title" icon="ph:cake" shiny :to="props.to">
-    <template v-if="props.description" #meta>
-      <p class="notification-card-birthday__description">
-        {{ props.description }}
-      </p>
-    </template>
-  </NotificationCard>
+  <NotificationCard
+    :text="props.title"
+    :description="props.description"
+    icon="ph:cake"
+    shiny
+    :to="props.to"
+  />
 </template>
-
-<style scoped>
-.notification-card-birthday__description {
-  margin: 0;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-</style>

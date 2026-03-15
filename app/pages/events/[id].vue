@@ -7,6 +7,7 @@ import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useForumUnread } from '@/composables/useForumUnread'
+import { useGames } from '@/composables/useGames'
 
 // Get route parameter
 const route = useRoute()
@@ -15,11 +16,16 @@ const eventId = Number.parseInt(route.params.id as string)
 // Supabase client
 const supabase = useSupabaseClient()
 
+// Games from shared cache
+const { getByIds } = useGames()
+
 // Reactive data
 const event = ref<Tables<'events'> | null>(null)
-const games = ref<Tables<'games'>[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+// Derive event games from the cached list
+const games = computed(() => event.value?.games ? getByIds(event.value.games) : [])
 
 defineOgImageComponent('Event', {
   eventId,
@@ -55,24 +61,6 @@ async function fetchEvent() {
     }
 
     event.value = data
-
-    // Fetch related games if the event has games
-    if (data.games && data.games.length > 0) {
-      const { data: gamesData, error: gamesError } = await supabase
-        .from('games')
-        .select('*')
-        .in('id', data.games)
-
-      if (gamesError) {
-        console.error('Error fetching games:', gamesError)
-      }
-      else {
-        games.value = gamesData || []
-      }
-    }
-    else {
-      games.value = []
-    }
   }
   catch (err: unknown) {
     error.value = (err as Error).message || 'An error occurred while loading the event'

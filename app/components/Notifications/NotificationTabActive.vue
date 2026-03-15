@@ -1,0 +1,261 @@
+<script setup lang="ts">
+import type { NotificationRow } from '@/composables/useNotifications'
+import type { Database } from '@/types/database.types'
+import { Flex } from '@dolanske/vui'
+import NotificationCard from './NotificationCard.vue'
+import NotificationCardEmpty from './NotificationCardEmpty.vue'
+import NotificationCardError from './NotificationCardError.vue'
+import NotificationCardLoading from './NotificationCardLoading.vue'
+
+const emit = defineEmits<{ (e: 'navigate'): void }>()
+
+const supabase = useSupabaseClient<Database>()
+const userId = useUserId()
+
+const loading = ref(false)
+const error = ref<string | null>(null)
+const notifications = ref<NotificationRow[]>([])
+const loaded = ref(false)
+const deleteLoading = ref<Record<string, boolean>>({})
+const clearAllLoading = ref(false)
+
+const isDev = import.meta.dev
+
+// ── Dev fixtures ──────────────────────────────────────────────────────────────
+const DEV_FIXTURE_READ: NotificationRow[] = import.meta.dev
+  ? [
+      {
+        id: 'dev-read-1',
+        user_id: 'dev',
+        title: 'zealsprince replied to your comment',
+        body: 'In Old Thread',
+        href: '/forum/old-thread',
+        is_read: true,
+        source: 'discussion_reply_reply',
+        source_id: 'dev-read-1',
+        created_at: new Date(Date.now() - 86400000).toISOString(),
+        created_by: 'dev',
+        modified_at: new Date(Date.now() - 86400000).toISOString(),
+        modified_by: 'dev',
+      },
+      {
+        id: 'dev-read-2',
+        user_id: 'dev',
+        title: 'zealsprince mentioned you',
+        body: 'In Old Announcements',
+        href: '/forum/old-announcements',
+        is_read: true,
+        source: 'mention',
+        source_id: 'dev-read-2',
+        created_at: new Date(Date.now() - 172800000).toISOString(),
+        created_by: 'dev',
+        modified_at: new Date(Date.now() - 172800000).toISOString(),
+        modified_by: 'dev',
+      },
+      {
+        id: 'dev-read-3',
+        user_id: 'dev',
+        title: 'zealsprince posted a new reply',
+        body: 'In Old General Discussion',
+        href: '/forum/old-general',
+        is_read: true,
+        source: 'discussion_reply',
+        source_id: 'dev-read-3',
+        created_at: new Date(Date.now() - 259200000).toISOString(),
+        created_by: 'dev',
+        modified_at: new Date(Date.now() - 259200000).toISOString(),
+        modified_by: 'dev',
+      },
+    ]
+  : []
+
+const devFixturesActive = defineModel<boolean>('devFixturesActive', { default: false })
+
+const activeNotifications = computed<NotificationRow[]>(() =>
+  isDev && devFixturesActive.value ? DEV_FIXTURE_READ : notifications.value,
+)
+
+const hasNotifications = computed(() => activeNotifications.value.length > 0)
+
+const showEmpty = computed(() =>
+  !loading.value
+  && !error.value
+  && !hasNotifications.value
+  && !(isDev && devFixturesActive.value),
+)
+
+function iconForSource(source: string | null): string {
+  if (source === 'mention')
+    return 'ph:at'
+  if (source === 'discussion_reply_reply')
+    return 'ph:chat-circle'
+  return 'ph:chat-circle-dots'
+}
+
+async function load() {
+  if (!userId.value || loaded.value)
+    return
+
+  loading.value = true
+  error.value = null
+
+  try {
+    // @ts-expect-error notifications table not yet in generated database types
+    const { data, error: fetchError } = await supabase.from('notifications')
+      .select('*')
+      .eq('user_id', userId.value as string)
+      .eq('is_read', true)
+      .order('modified_at', { ascending: false })
+      .limit(30)
+
+    if (fetchError)
+      throw fetchError
+
+    notifications.value = (data ?? []) as unknown as NotificationRow[]
+    loaded.value = true
+  }
+  catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to load read notifications'
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+function reset() {
+  notifications.value = []
+  loaded.value = false
+  error.value = null
+}
+
+async function deleteNotification(notification: NotificationRow) {
+  if (notification.id.startsWith('dev-'))
+    return
+
+  deleteLoading.value = { ...deleteLoading.value, [notification.id]: true }
+
+  // @ts-expect-error notifications table not yet in generated database types
+  const { error: deleteError } = await supabase.from('notifications')
+    .delete()
+    .eq('id', notification.id)
+
+  if (!deleteError)
+    notifications.value = notifications.value.filter(n => n.id !== notification.id)
+
+  deleteLoading.value = { ...deleteLoading.value, [notification.id]: false }
+}
+
+async function clearAll() {
+  if (!userId.value)
+    return
+
+  clearAllLoading.value = true
+
+  // @ts-expect-error notifications table not yet in generated database types
+  const { error: deleteError } = await supabase.from('notifications')
+    .delete()
+    .eq('user_id', userId.value as string)
+    .eq('is_read', true)
+
+  if (!deleteError)
+    notifications.value = []
+
+  clearAllLoading.value = false
+}
+
+function onNotificationClick(notification: NotificationRow) {
+  emit('navigate')
+  if (notification.href)
+    void navigateTo(notification.href)
+}
+
+defineExpose({ load, reset, clearAll, clearAllLoading, hasNotifications })
+</script>
+
+<template>
+  <Flex column gap="xs" expand>
+    <template v-if="loading">
+      <NotificationCardLoading />
+    </template>
+
+    <template v-else>
+      <NotificationCardError v-if="error" @retry="load" />
+
+      <NotificationCard
+        v-for="notification in activeNotifications"
+        :key="`past-${notification.id}`"
+        :icon="iconForSource(notification.source)"
+        :text="notification.title"
+        :description="notification.body"
+        :timestamp="notification.modified_at"
+        clickable
+        @click="onNotificationClick(notification)"
+      >
+        <template #actions>
+          <button
+            class="notification-tab-past__delete-btn"
+            :aria-label="deleteLoading[notification.id] ? 'Deleting...' : 'Delete notification'"
+            :disabled="!!deleteLoading[notification.id]"
+            @click.stop="deleteNotification(notification)"
+          >
+            <Icon
+              :name="deleteLoading[notification.id] ? 'ph:spinner' : 'ph:trash'"
+              class="notification-tab-past__delete-icon"
+              :class="{ 'notification-tab-past__delete-icon--spin': deleteLoading[notification.id] }"
+            />
+          </button>
+        </template>
+      </NotificationCard>
+
+      <NotificationCardEmpty v-if="showEmpty" message="No past notifications" />
+    </template>
+  </Flex>
+</template>
+
+<style lang="scss" scoped>
+.notification-tab-past {
+  &__delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--border-radius-s);
+    background: transparent;
+    color: var(--color-text-lighter);
+    cursor: pointer;
+    transition:
+      background var(--transition-fast),
+      color var(--transition-fast);
+    flex-shrink: 0;
+
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--color-text-red) 12%, transparent);
+      color: var(--color-text-red);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+
+  &__delete-icon {
+    font-size: 16px;
+
+    &--spin {
+      animation: spin 1s linear infinite;
+    }
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>

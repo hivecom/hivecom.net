@@ -52,6 +52,9 @@ export function useAvatarBus() {
       }
     }
 
+    if (typeof window === 'undefined')
+      return () => {}
+
     window.addEventListener(AVATAR_UPDATED_EVENT, listener)
 
     const off = () => window.removeEventListener(AVATAR_UPDATED_EVENT, listener)

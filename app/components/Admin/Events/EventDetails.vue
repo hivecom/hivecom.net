@@ -9,6 +9,7 @@ import GameIcon from '@/components/GameServers/GameIcon.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useGames } from '@/composables/useGames'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
 
 const props = defineProps<{
@@ -25,45 +26,13 @@ const isOpen = defineModel<boolean>('isOpen')
 const showRSVPModal = ref(false)
 
 // Games data
-const supabase = useSupabaseClient()
-const eventGames = ref<Tables<'games'>[]>([])
-const loadingGames = ref(false)
+const { loading: loadingGames, getByIds } = useGames()
 
-// Fetch games for the event
-async function fetchEventGames() {
-  if (!props.event?.games || props.event.games.length === 0) {
-    eventGames.value = []
-    return
-  }
-
-  loadingGames.value = true
-  try {
-    const { data: gamesData, error: gamesError } = await supabase
-      .from('games')
-      .select('*')
-      .in('id', props.event.games)
-      .order('name')
-
-    if (gamesError)
-      throw gamesError
-
-    eventGames.value = gamesData || []
-  }
-  catch (error) {
-    console.error('Error fetching event games:', error)
-    eventGames.value = []
-  }
-  finally {
-    loadingGames.value = false
-  }
-}
-
-// Watch for event changes and fetch games
-watch(() => props.event, (newEvent) => {
-  if (newEvent) {
-    fetchEventGames()
-  }
-}, { immediate: true })
+const eventGames = computed(() => {
+  if (!props.event?.games || props.event.games.length === 0)
+    return []
+  return getByIds(props.event.games)
+})
 
 // Handle closing the sheet
 function handleClose() {

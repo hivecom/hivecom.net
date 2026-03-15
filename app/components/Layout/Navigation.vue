@@ -3,7 +3,7 @@ import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/v
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { navigationLinks } from '@/lib/navigation'
 import NavEventBadge from './NavEventBadge.vue'
-import NotificationDropdown from './NotificationDropdown.vue'
+import NotificationSheet from './NotificationSheet.vue'
 import UserDropdown from './UserDropdown.vue'
 
 const { signInPath } = useAuthRedirect()
@@ -158,7 +158,7 @@ function updateHoveredElement(event: MouseEvent) {
         </div>
 
         <div v-else-if="user" class="navigation__user">
-          <NotificationDropdown />
+          <NotificationSheet />
           <UserDropdown />
         </div>
 

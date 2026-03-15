@@ -1,4 +1,7 @@
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
 
 export const dateFormat = {
   display: 'dddd YYYY-MM-DD',
@@ -92,4 +95,17 @@ export function formatDateWithTime(dateString: string | null | undefined): strin
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+/**
+ * Returns a human-readable relative time string, e.g. "3 minutes ago", "2 days ago".
+ * Returns an empty string when the value is falsy or not a valid date.
+ */
+export function formatTimeAgo(dateString: string | null | undefined): string {
+  if (dateString == null || dateString === '')
+    return ''
+  const parsed = dayjs(dateString)
+  if (!parsed.isValid())
+    return ''
+  return parsed.fromNow()
 }

@@ -5,6 +5,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useGames } from '@/composables/useGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
@@ -18,9 +19,6 @@ const emit = defineEmits(['save', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
-
-// Setup Supabase client
-const supabase = useSupabaseClient()
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
@@ -47,7 +45,6 @@ const showDeleteConfirm = ref(false)
 // Loading states for buttons and dropdowns
 const saveLoading = ref(false)
 const deleteLoading = ref(false)
-const loadingGames = ref(true)
 
 // Interface for Select options
 interface SelectOption {
@@ -56,7 +53,7 @@ interface SelectOption {
 }
 
 // Games data
-const games = ref<Tables<'games'>[]>([])
+const { games, loading: loadingGames } = useGames()
 
 // Computed options for games select
 const gameOptions = computed(() =>
@@ -87,28 +84,6 @@ function syncSelectedGames() {
   selectedGames.value = gameOptions.value.filter(option =>
     formGames.includes(option.value),
   )
-}
-
-// Fetch games data
-async function fetchGames() {
-  loadingGames.value = true
-  try {
-    const { data: gamesData, error: gamesError } = await supabase
-      .from('games')
-      .select('*')
-      .order('name')
-
-    if (gamesError)
-      throw gamesError
-
-    games.value = gamesData || []
-  }
-  catch (error) {
-    console.error('Error fetching games:', error)
-  }
-  finally {
-    loadingGames.value = false
-  }
 }
 
 // Form validation
@@ -201,9 +176,7 @@ watch(
 )
 
 // Initialize data on mount and update form when games are loaded
-onMounted(async () => {
-  await fetchGames()
-  // Update form data after games are loaded
+onMounted(() => {
   updateFormData(props.event)
 })
 

@@ -5,7 +5,7 @@ import { computed } from 'vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
-import { getPlaceholderBannerProject } from '@/lib/placeholderBannerProjects'
+import { getPlaceholderBannerProject } from '@/lib/projectBannerPlaceholders'
 
 interface Props {
   project: Tables<'projects'>

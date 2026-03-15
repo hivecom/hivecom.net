@@ -11,13 +11,16 @@ const props = withDefaults(defineProps<Props>(), {
   body: null,
   href: null,
 })
+
+const emit = defineEmits<{ (e: 'click'): void }>()
 </script>
 
 <template>
   <NotificationCard
     icon="ph:chat-circle"
-    highlight
+    clickable
     :text="props.title"
     :description="props.body"
+    @click="emit('click')"
   />
 </template>

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import type { Database } from '@/types/database.types'
 import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
+import { useGames } from '@/composables/useGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
@@ -23,7 +23,7 @@ const emit = defineEmits<{
 // Controlled modal visibility
 const isOpen = defineModel<boolean>('open', { default: false })
 
-const supabase = useSupabaseClient<Database>()
+const { games, getById: getGameById } = useGames()
 const { getGameCoverUrl, getGameBackgroundUrl } = useCacheGameAssets()
 
 interface GameDetailsEntry {
@@ -66,17 +66,11 @@ async function loadGameDetails(gameId: number) {
   const currentFetchToken = ++fetchToken
 
   try {
-    const { data, error: fetchError } = await supabase
-      .from('games')
-      .select('*')
-      .eq('id', gameId)
-      .maybeSingle()
+    // Derive from the shared games cache; fall back to null if not yet populated
+    const data = getGameById(gameId)
 
     if (currentFetchToken !== fetchToken)
       return
-
-    if (fetchError)
-      throw fetchError
 
     if (!data) {
       currentDetails.value = null
@@ -116,6 +110,12 @@ function handleClose() {
   emit('close')
 }
 
+// Re-attempt lookup when the games list populates (useGames fetches async on mount)
+watch(games, () => {
+  if (props.gameId && isOpen.value && !currentDetails.value)
+    void loadGameDetails(props.gameId)
+})
+
 // Prime cache data when props change and lazily fetch when modal opens
 watch(
   [() => props.gameId, () => isOpen.value],
@@ -131,7 +131,7 @@ watch(
       currentDetails.value = detailsCache.get(gameId) || null
 
     if (open)
-      loadGameDetails(gameId)
+      void loadGameDetails(gameId)
   },
   { immediate: true },
 )

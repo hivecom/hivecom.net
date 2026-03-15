@@ -6,6 +6,8 @@ import RichPresenceTeamSpeak from '@/components/Profile/RichPresenceTeamSpeak.vu
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
 
+type TeamspeakPresenceData = Tables<'presences_teamspeak'>
+
 interface Props {
   profileId: string
   teamspeakIdentities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
@@ -47,18 +49,6 @@ const normalizedIdentities = computed<TeamSpeakIdentityRecord[]>(() =>
 const hasIdentities = computed(() => normalizedIdentities.value.length > 0)
 
 const supabase = useSupabaseClient()
-
-// Define a simpler interface for presence data to avoid deep type issues
-interface TeamspeakPresenceData {
-  id: string
-  profile_id: string
-  server_id: string | null
-  channel_id: string | null
-  channel_name: string | null
-  channel_path: string[] | null
-  last_seen_at: string | null
-  updated_at: string | null
-}
 
 const presenceList = ref<TeamspeakPresenceData[]>([])
 const loading = ref(true)
@@ -202,6 +192,7 @@ watch(() => props.profileId, () => {
     :profile-id="props.profileId"
     :teamspeak-identities="props.teamspeakIdentities"
     :rich-presence-disabled="props.richPresenceDisabled"
+    :presences="loading ? null : presenceList"
   >
     <template #trigger>
       <div class="activity-item">

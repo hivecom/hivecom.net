@@ -35,6 +35,9 @@ export function useRsvpBus() {
       }
     }
 
+    if (typeof window === 'undefined')
+      return () => {}
+
     window.addEventListener(RSVP_UPDATED_EVENT, listener)
 
     const off = () => window.removeEventListener(RSVP_UPDATED_EVENT, listener)

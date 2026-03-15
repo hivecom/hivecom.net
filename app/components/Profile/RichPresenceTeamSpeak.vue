@@ -6,6 +6,8 @@ import { computed, ref } from 'vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
 
+type PresenceRow = Tables<'presences_teamspeak'>
+
 interface Props {
   profileId: string
   teamspeakIdentities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
@@ -13,6 +15,8 @@ interface Props {
   hideOnlineIndicator?: boolean
   iconSize?: number
   useAccentColor?: boolean
+  /** When provided, skips the internal fetch and uses this data directly. */
+  presences?: PresenceRow[] | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -20,6 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
   hideOnlineIndicator: false,
   iconSize: 18,
   useAccentColor: false,
+  presences: null,
 })
 
 const ONLINE_WINDOW_MS = 15 * 60 * 1000
@@ -50,10 +55,12 @@ const hasIdentities = computed(() => normalizedIdentities.value.length > 0)
 
 const supabase = useSupabaseClient()
 
-const { data: presenceRows } = await useAsyncData(
+// Only run the internal fetch when no presences are passed in from a parent
+const { data: fetchedPresenceRows } = await useAsyncData(
   () => `teamspeak-presence-${props.profileId}`,
   async () => {
-    if (props.richPresenceDisabled)
+    // Skip fetch if parent already supplied presence data
+    if (props.presences !== null || props.richPresenceDisabled)
       return []
 
     const { data, error } = await supabase
@@ -74,10 +81,13 @@ const { data: presenceRows } = await useAsyncData(
 
 const now = computed(() => Date.now())
 
-type PresenceRow = Tables<'presences_teamspeak'>
+// Prefer parent-supplied presences; fall back to internally fetched rows
+const presenceRows = computed<PresenceRow[]>(() =>
+  props.presences !== null ? (props.presences ?? []) : (fetchedPresenceRows.value ?? []),
+)
 
 const presenceEntries = computed(() => {
-  const rows = (presenceRows.value ?? []) as PresenceRow[]
+  const rows = presenceRows.value
   return rows.map((row) => {
     const lastSeenMs = row.last_seen_at ? new Date(row.last_seen_at).getTime() : null
     const online = lastSeenMs ? now.value - lastSeenMs <= ONLINE_WINDOW_MS : false

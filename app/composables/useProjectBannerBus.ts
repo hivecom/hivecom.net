@@ -53,6 +53,9 @@ export function useProjectBannerBus() {
       }
     }
 
+    if (typeof window === 'undefined')
+      return () => {}
+
     window.addEventListener(PROJECT_BANNER_UPDATED_EVENT, listener)
 
     const off = () => window.removeEventListener(PROJECT_BANNER_UPDATED_EVENT, listener)

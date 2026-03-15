@@ -13,17 +13,11 @@ export interface GameAssetOptions {
    * @default 30 minutes
    */
   ttl?: number
-  /**
-   * TTL for negative results (when asset doesn't exist)
-   * @default 5 minutes
-   */
-  negativeTtl?: number
 }
 
 export function useCacheGameAssets(options: GameAssetOptions = {}) {
   const {
     ttl = 30 * 60 * 1000, // 30 minutes
-    negativeTtl = 5 * 60 * 1000, // 5 minutes
   } = options
 
   const supabase = useSupabaseClient<Database>()
@@ -52,8 +46,14 @@ export function useCacheGameAssets(options: GameAssetOptions = {}) {
     try {
       const parsed = JSON.parse(cached) as { url: string | null, timestamp: number }
       const { url, timestamp } = parsed
-      const cacheTtl = (url !== null && url !== undefined) ? ttl : negativeTtl
-      const isExpired = Date.now() - timestamp > cacheTtl
+
+      // Evict legacy negative cache entries - we no longer cache null results
+      if (url === null) {
+        window.localStorage.removeItem(cacheKey)
+        return undefined
+      }
+
+      const isExpired = Date.now() - timestamp > ttl
 
       if (isExpired) {
         window.localStorage.removeItem(cacheKey)
@@ -105,8 +105,9 @@ export function useCacheGameAssets(options: GameAssetOptions = {}) {
         // Not in cache, fetch from storage
         const customIconUrl = await getGameAssetUrl(supabase, game.shorthand, 'icon')
 
-        // Cache the result
-        cacheAssetUrl(customIconCacheKey, customIconUrl)
+        // Only cache positive results - don't cache null so newly uploaded assets are picked up
+        if (customIconUrl !== null)
+          cacheAssetUrl(customIconCacheKey, customIconUrl)
 
         return customIconUrl
       }
@@ -138,8 +139,9 @@ export function useCacheGameAssets(options: GameAssetOptions = {}) {
         // Not in cache, fetch from storage
         const customCoverUrl = await getGameAssetUrl(supabase, game.shorthand, 'cover')
 
-        // Cache the result
-        cacheAssetUrl(customCoverCacheKey, customCoverUrl)
+        // Only cache positive results - don't cache null so newly uploaded assets are picked up
+        if (customCoverUrl !== null)
+          cacheAssetUrl(customCoverCacheKey, customCoverUrl)
 
         return customCoverUrl
       }
@@ -170,8 +172,9 @@ export function useCacheGameAssets(options: GameAssetOptions = {}) {
         // Not in cache, fetch from storage
         const customBgUrl = await getGameAssetUrl(supabase, game.shorthand, 'background')
 
-        // Cache the result
-        cacheAssetUrl(customBgCacheKey, customBgUrl)
+        // Only cache positive results - don't cache null so newly uploaded assets are picked up
+        if (customBgUrl !== null)
+          cacheAssetUrl(customBgCacheKey, customBgUrl)
 
         return customBgUrl
       }

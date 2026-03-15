@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Button, Divider, DropdownItem, Flex, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
-import { useStorage as useLocalStorage, useMediaQuery } from '@vueuse/core'
+import { until, useStorage as useLocalStorage, useMediaQuery } from '@vueuse/core'
 import IconLogo from '@/components/Shared/IconLogo.vue'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const router = useRouter()
@@ -13,10 +14,13 @@ const sessionUserId = ref<string | null>(null)
 const resolvedUserId = computed(() => userId.value ?? sessionUserId.value)
 
 // Initialize user role and permissions from database
-const userRole = ref<string | null>(null)
 const userPermissions = ref<string[]>([])
 const isLoading = ref(true)
 const isAuthorized = ref(false)
+
+// Use cached user data to avoid a raw user_roles query on every admin page mount
+const { user: cachedUserData } = useCacheUserData(resolvedUserId, { includeRole: true, includeAvatar: false })
+const userRole = computed(() => cachedUserData.value?.role ?? null)
 
 defineOgImageComponent('Default', {
   title: 'Hivecom',
@@ -46,38 +50,26 @@ async function getAuthenticatedUserId(): Promise<string | null> {
   }
 }
 
-// Check user role and permissions, redirect if not authorized
+// Check user role and permissions, redirect if not authorized.
+// Role is read from useCacheUserData (shared with UserDropdown etc.) so no extra query fires.
 onMounted(async () => {
   try {
     const targetUserId = await getAuthenticatedUserId()
 
     if (!targetUserId) {
-      // User not authenticated, redirect to landing page
       await router.push('/')
       return
     }
 
-    // Fetch user role from user_roles table
-    const { error, data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', targetUserId)
-      .single()
+    // Wait for cachedUserData to populate (it fetches on watch inside useCacheUserData)
+    // If role is already cached this resolves synchronously via the computed.
+    // For a cold cache we poll briefly - role data loads fast (single row).
+    await until(cachedUserData).toMatch(d => d !== null, { timeout: 8000 }).catch(() => null)
 
-    if (error) {
-      console.error('Error fetching user role:', error)
-      // If error fetching role or no role found, redirect to landing page
-      await router.push('/')
-      return
-    }
-
-    userRole.value = roleData?.role || null
-
-    // Check if user has admin or moderator role
-    const hasRequiredRole = userRole.value === 'admin' || userRole.value === 'moderator'
+    const role = userRole.value
+    const hasRequiredRole = role === 'admin' || role === 'moderator'
 
     if (!hasRequiredRole) {
-      // User doesn't have required role, redirect to landing page
       await router.push('/')
       return
     }
@@ -86,17 +78,15 @@ onMounted(async () => {
     const { data: permissionsData, error: permissionsError } = await supabase
       .from('role_permissions')
       .select('permission')
-      .eq('role', userRole.value as 'admin' | 'moderator')
+      .eq('role', role as 'admin' | 'moderator')
 
     if (permissionsError) {
       console.error('Error fetching role permissions:', permissionsError)
-      // Continue with empty permissions - this will limit access
     }
     else {
-      userPermissions.value = permissionsData?.map(p => p.permission) || []
+      userPermissions.value = permissionsData?.map(p => p.permission) ?? []
     }
 
-    // User is authorized (has admin/moderator role)
     isAuthorized.value = true
   }
   catch (error) {

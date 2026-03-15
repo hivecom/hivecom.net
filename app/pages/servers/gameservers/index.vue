@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-import type { Tables } from '@/types/database.overrides'
 
 import { Button, Tab, Tabs } from '@dolanske/vui'
 import GameLibrary from '@/components/GameServers/GameServerLibrary.vue'
 import GameListing from '@/components/GameServers/GameServerListing.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
+import { useGames } from '@/composables/useGames'
 
 const supabase = useSupabaseClient()
 const gameserversQuery = supabase.from('gameservers').select(`
@@ -67,9 +67,10 @@ onMounted(() => {
 // Fetch data
 const loading = ref(true)
 const errorMessage = ref('')
-const games = ref<Tables<'games'>[]>()
 const gameservers = ref<GameserversType>()
 const supportModalOpen = ref(false)
+
+const { games, loading: gamesLoading } = useGames()
 
 useSeoMeta({
   title: 'Game Servers',
@@ -79,36 +80,28 @@ useSeoMeta({
 })
 
 onBeforeMount(async () => {
-  // Make our requests at the same time.
-  const requests = [
-    supabase.from('games').select('*'),
-    gameserversQuery,
-  ] as const
-  const [responseGames, responseGameservers] = await Promise.all(requests)
+  const { data, error } = await gameserversQuery
   loading.value = false
 
-  if (responseGames.error || responseGameservers.error) {
-    errorMessage.value = (responseGames.error?.message || responseGameservers.error?.message) || 'Unknown error'
+  if (error) {
+    errorMessage.value = error.message || 'Unknown error'
     return
   }
 
-  games.value = responseGames.data
-  gameservers.value = responseGameservers.data
+  gameservers.value = data
 })
 
 const search = ref('')
 const selectedGames = ref<{ label: string, value: number }[]>()
 const selectedRegions = ref<{ label: string, value: string }[]>()
 const gameOptions = computed(() => {
-  return (
-    games.value?.filter(game => game.name !== null)
-      .map(game => ({
-        label: game.name ?? 'Unassigned',
-        value: game.id,
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label))
-      ?? []
-  )
+  return games.value
+    .filter(game => game.name !== null)
+    .map(game => ({
+      label: game.name ?? 'Unassigned',
+      value: game.id,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label))
 })
 
 const regionOptions = [
@@ -124,7 +117,7 @@ const filteredGameservers = computed(() => {
 
   return gameservers.value.filter((gameserver) => {
     // Find the game object for this gameserver
-    const gameObj = games.value?.find(g => g.id === gameserver.game)
+    const gameObj = games.value.find(g => g.id === gameserver.game)
     const searchLower = search.value?.toLowerCase() || ''
     const matchesSearch = search.value
       ? (
@@ -153,7 +146,7 @@ const filteredGameservers = computed(() => {
 })
 
 const filteredGames = computed(() => {
-  if (!games.value || !gameservers.value)
+  if (!gameservers.value)
     return []
 
   return games.value.filter((game) => {
@@ -197,12 +190,12 @@ const filteredGames = computed(() => {
 })
 
 const gameserversWithoutGame = computed(() => {
-  if (!gameservers.value)
+  if (!gameservers.value || !games.value)
     return []
 
   return gameservers.value.filter((gameserver) => {
     // Check if gameserver doesn't have a game or the game doesn't exist
-    const hasNoGame = !gameserver.game || !games.value?.some(game => game.id === gameserver.game)
+    const hasNoGame = !gameserver.game || !games.value.some(game => game.id === gameserver.game)
 
     if (!hasNoGame)
       return false
@@ -276,7 +269,7 @@ function clearFilters() {
         v-if="activeTab === 'list'"
         :games="games"
         :gameservers="gameservers"
-        :loading="loading"
+        :loading="loading || gamesLoading"
         :error-message="errorMessage"
         :filtered-games="filteredGames"
         :filtered-gameservers="filteredGameservers"
@@ -297,7 +290,7 @@ function clearFilters() {
         v-else-if="activeTab === 'library'"
         :games="games"
         :gameservers="gameservers"
-        :loading="loading"
+        :loading="loading || gamesLoading"
         :error-message="errorMessage"
         :filtered-games="filteredGames"
       />

@@ -7,7 +7,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
-import { getPlaceholderBannerProject } from '@/lib/placeholderBannerProjects'
+import { getPlaceholderBannerProject } from '@/lib/projectBannerPlaceholders'
 
 // Get route parameter
 const route = useRoute()

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { Button, Flex, Tooltip } from '@dolanske/vui'
+import { Button, Tooltip } from '@dolanske/vui'
 import { toRefs } from 'vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
+import UserName from '@/components/Shared/UserName.vue'
+import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import NotificationCard from './NotificationCard.vue'
 
 interface Props {
@@ -27,10 +29,16 @@ function handleIgnore() {
 </script>
 
 <template>
-  <NotificationCard icon="ph:user-plus">
-    <Flex class="w-full ml-xxs" x-end>
-      <UserDisplay :user-id="requestId" size="s" />
-    </Flex>
+  <NotificationCard icon="ph:user-plus" text="Friend Request">
+    <template #below>
+      <div class="notification-card-invite__user">
+        <UserAvatar :user-id="requestId" :size="16" linked show-preview />
+        <UserPreviewHover :user-id="requestId" :enter-delay="300">
+          <UserName :user-id="requestId" size="s" />
+        </UserPreviewHover>
+      </div>
+    </template>
+
     <template #actions>
       <Tooltip placement="top">
         <Button
@@ -65,3 +73,14 @@ function handleIgnore() {
     </template>
   </NotificationCard>
 </template>
+
+<style lang="scss" scoped>
+.notification-card-invite {
+  &__user {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    cursor: default;
+  }
+}
+</style>

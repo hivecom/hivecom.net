@@ -239,6 +239,25 @@ watch(hydratedProfileData, (newData) => {
   }
 }, { immediate: true })
 
+// Private-profile guard: redirect unauthenticated visitors away from private profiles.
+// This replaces the duplicate guard-only query that used to live in pages/profile/[id].vue.
+// We only act once the profile has loaded (so we know the public flag) and only when
+// the caller passed explicit userId/username props (i.e. we're on a public profile route,
+// not the "my own profile" fallback path).
+watch(
+  [hydratedProfileData, user],
+  ([loadedProfile, currentUser]) => {
+    const isExplicitRoute = !!(props.userId ?? props.username)
+    if (!isExplicitRoute || !loadedProfile)
+      return
+
+    if (!loadedProfile.public && !currentUser) {
+      navigateToSignIn()
+    }
+  },
+  { immediate: true },
+)
+
 // Handle profile errors
 watch(profileError, (error) => {
   if (error) {

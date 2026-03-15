@@ -5,6 +5,7 @@ import Discussion from '@/components/Discussions/Discussion.vue'
 import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
+import { useGames } from '@/composables/useGames'
 
 // Get route parameter
 const route = useRoute()
@@ -28,6 +29,8 @@ const container = ref<ContainerWithServer | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const gameBackground = ref<string | null>(null)
+
+const { getById: getGameById } = useGames()
 
 // Computed server state
 const state = computed(() => {
@@ -118,12 +121,7 @@ async function fetchGameserver() {
 
     // Fetch related game data
     if (gameserverData.game) {
-      const { data: gameData } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameserverData.game)
-        .single()
-      game.value = gameData
+      game.value = getGameById(gameserverData.game)
     }
 
     // Fetch related container data
