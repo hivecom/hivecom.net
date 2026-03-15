@@ -800,8 +800,8 @@ const offtopicCount = computed(() =>
 
       <!-- Toolbar: view mode selector + off-topic toggle -->
       <Flex y-center x-start gap="xs" class="mb-m">
-        <!-- View mode segmented control -->
-        <ButtonGroup size="s">
+        <!-- View mode segmented control - hidden when there are no replies -->
+        <ButtonGroup v-if="modelledComments.length > 0" size="s">
           <Button
             square
             :variant="viewMode === 'flat' ? 'fill' : 'gray'"

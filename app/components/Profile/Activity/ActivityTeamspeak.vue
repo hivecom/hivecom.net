@@ -4,6 +4,7 @@ import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 import { Flex, Tooltip } from '@dolanske/vui'
 import RichPresenceTeamSpeak from '@/components/Profile/RichPresenceTeamSpeak.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
+import { useCacheQuery } from '@/composables/useCache'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
 
 type TeamspeakPresenceData = Tables<'presences_teamspeak'>
@@ -48,38 +49,27 @@ const normalizedIdentities = computed<TeamSpeakIdentityRecord[]>(() =>
 )
 const hasIdentities = computed(() => normalizedIdentities.value.length > 0)
 
-const supabase = useSupabaseClient()
+// Cache presence with a short TTL - presence is transient but we don't need
+// to hit Supabase every time the sheet opens
+const PRESENCE_TTL_MS = 60 * 1000
 
-const presenceList = ref<TeamspeakPresenceData[]>([])
-const loading = ref(true)
+const presenceEnabled = computed(() => !props.richPresenceDisabled && hasIdentities.value)
 
-// Fetch presence data
-async function fetchPresence() {
-  if (props.richPresenceDisabled || !hasIdentities.value) {
-    loading.value = false
-    return
-  }
+const {
+  data: cachedPresence,
+  loading,
+  refetch: refetchPresence,
+} = useCacheQuery({
+  table: 'presences_teamspeak',
+  select: '*',
+  filters: { profile_id: props.profileId },
+  orderBy: { updated_at: 'desc' },
+}, {
+  ttl: PRESENCE_TTL_MS,
+  enabled: presenceEnabled,
+})
 
-  try {
-    const { data, error } = await supabase
-      .from('presences_teamspeak')
-      .select('*')
-      .eq('profile_id', props.profileId)
-      .order('updated_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching TeamSpeak presence:', error)
-    }
-
-    presenceList.value = (data ?? []) as TeamspeakPresenceData[]
-  }
-  catch (err) {
-    console.error('Error fetching TeamSpeak presence:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
+const presenceList = computed(() => (cachedPresence.value ?? []) as TeamspeakPresenceData[])
 
 interface PresenceEntry {
   id: string
@@ -172,16 +162,11 @@ const statusColor = computed(() => {
   return 'var(--color-text-lighter)'
 })
 
-// Fetch on mount
-onMounted(() => {
-  fetchPresence()
-})
+// Note: initial fetch is handled by useCacheQuery's refetchOnMount
 
-// Watch for profile changes
+// Watch for profile changes - refetch bypasses cache to get fresh data
 watch(() => props.profileId, () => {
-  loading.value = true
-  presenceList.value = []
-  fetchPresence()
+  void refetchPresence()
 })
 </script>
 

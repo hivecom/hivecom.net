@@ -200,7 +200,7 @@ const visible = ref(false)
             target="_blank"
             rel="noopener noreferrer"
           >
-            View profile
+           <Icon name="mdi:open-in-new" />
           </Button>
         </Flex>
 

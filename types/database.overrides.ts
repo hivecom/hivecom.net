@@ -85,6 +85,7 @@ interface TableColumnOverrides {
       show_forum_updates: boolean
       show_forum_recently_visited: boolean
       show_forum_archived: boolean
+      show_forum_unread_bubbles: boolean
       editor_floating: boolean
     }
   }

@@ -9,6 +9,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { isBanActive } from '@/lib/banStatus'
 import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
@@ -669,6 +670,7 @@ defineExpose({
 
             <Table.Cell class="username-cell">
               <div class="username-content">
+                <UserAvatar :user-id="user._original.id" :size="20" show-preview />
                 <UserLink :user-id="user._original.id" />
               </div>
             </Table.Cell>
@@ -935,8 +937,8 @@ defineExpose({
 
 .username-content {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: var(--space-xs);
 }
 
 .username {

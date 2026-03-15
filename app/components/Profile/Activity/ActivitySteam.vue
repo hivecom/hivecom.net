@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { Flex, Tooltip } from '@dolanske/vui'
 import RichPresenceSteam from '@/components/Profile/RichPresenceSteam.vue'
+import { useCacheQuery } from '@/composables/useCache'
 
 type SteamPresence = Omit<Tables<'presences_steam'>, 'details'> & {
   details?: unknown | null
@@ -20,33 +21,25 @@ const supabase = useSupabaseClient()
 // Auto-refresh interval (1 minute)
 const REFRESH_INTERVAL_MS = 60 * 1000
 
-const presence = ref<SteamPresence | null>(null)
-const loading = ref(true)
+// Cache presence with a short TTL - presence is transient but we don't need
+// to hit Supabase every time the sheet opens
+const PRESENCE_TTL_MS = 60 * 1000
+
+const {
+  data: presence,
+  loading,
+  refetch: refetchPresence,
+} = useCacheQuery<SteamPresence>({
+  table: 'presences_steam',
+  select: '*',
+  filters: { profile_id: props.profileId },
+  single: true,
+}, {
+  ttl: PRESENCE_TTL_MS,
+})
+
 const refreshing = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
-
-// Fetch presence data
-async function fetchPresence() {
-  try {
-    const { data, error } = await supabase
-      .from('presences_steam')
-      .select('*')
-      .eq('profile_id', props.profileId)
-      .single()
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching Steam presence:', error)
-    }
-
-    presence.value = data
-  }
-  catch (err) {
-    console.error('Error fetching Steam presence:', err)
-  }
-  finally {
-    loading.value = false
-  }
-}
 
 // Format the status for display
 const statusLabel = computed(() => {
@@ -166,9 +159,9 @@ async function refreshSteamData() {
       return
     }
 
-    // Wait a moment for the background job to complete, then refetch
+    // Wait a moment for the background job to complete, then refetch (bypasses cache)
     await new Promise(resolve => setTimeout(resolve, 2000))
-    await fetchPresence()
+    await refetchPresence()
   }
   catch (err) {
     console.error('Error refreshing Steam data:', err)
@@ -221,12 +214,10 @@ function stopAutoRefresh() {
 }
 
 // Auto-refresh on mount (only for own profile)
-onMounted(async () => {
-  await fetchPresence()
-
-  // If it's the user's own profile, trigger an immediate refresh and start timer
+// Note: initial fetch is handled by useCacheQuery's refetchOnMount
+onMounted(() => {
   if (props.isOwnProfile) {
-    refreshSteamData()
+    void refreshSteamData()
     startAutoRefresh()
   }
 })
@@ -236,15 +227,13 @@ onUnmounted(() => {
   stopAutoRefresh()
 })
 
-// Watch for profile changes
+// Watch for profile changes - refetch bypasses cache to get fresh data
 watch(() => props.profileId, () => {
-  loading.value = true
-  presence.value = null
   stopAutoRefresh()
-  fetchPresence()
+  void refetchPresence()
 
   if (props.isOwnProfile) {
-    refreshSteamData()
+    void refreshSteamData()
     startAutoRefresh()
   }
 })

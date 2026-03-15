@@ -1068,6 +1068,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               <Switch v-model="settings.show_forum_updates" label="Show latest updates" />
               <Switch v-model="settings.show_forum_recently_visited" label="Show recently visited" />
               <Switch v-model="settings.show_forum_archived" label="Show archived topics & discussions" />
+              <Switch v-model="settings.show_forum_unread_bubbles" label="Show unread bubbles" />
               <!-- <Switch v-model="settings.showNsfw" label="Show NSFW in latest updates" /> -->
             </Flex>
           </Popout>
@@ -1146,7 +1147,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :discussion-count="subtopic.discussions.length"
               :reply-count="subtopic.total_reply_count"
               :view-count="subtopic.total_view_count"
-              :has-new="forumUnread.isTopicNew(subtopic.id, subtopic.discussions.length, subtopic.total_reply_count ?? 0)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNew(subtopic.id, subtopic.discussions.length, subtopic.total_reply_count ?? 0)"
               @click="setActiveTopicFromTopic(subtopic)"
               @update="replaceItemData('topic', $event)"
               @remove="removeItem('topic', $event)"
@@ -1157,7 +1158,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :key="discussion.id"
               :data="discussion"
               :last-activity="discussion.last_activity_at"
-              :has-new="forumUnread.isDiscussionNew(discussion.id, discussion.reply_count ?? 0)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count ?? 0)"
               @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
               @update="replaceItemData('discussion', $event)"
               @remove="removeItem('discussion', $event)"
