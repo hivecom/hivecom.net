@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Comment, DiscussionSettings, ProvidedDiscussion } from '../Discussion.vue'
+import type { Comment, DiscussionSettings, ProvidedDiscussion } from '../Discussion.types'
 import { Alert, Button, ButtonGroup, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'

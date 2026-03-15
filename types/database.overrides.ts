@@ -89,6 +89,13 @@ interface TableColumnOverrides {
       editor_floating: boolean
     }
   }
+  // is_public is not yet in the generated types - added via migration
+  // 20260315190002_referendums_is_public.sql. Remove this override once
+  // `npx supabase gen types` has been re-run and the column appears in
+  // database.types.ts.
+  referendums: {
+    is_public: boolean
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

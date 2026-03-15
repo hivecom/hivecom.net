@@ -3,107 +3,67 @@
   "format_on_save": "on",
   "languages": {
     "JavaScript": {
-      "formatter": {
-        "language_server": {
-          "name": "eslint"
-        }
-      },
+      "formatter": [],
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
     },
     "TypeScript": {
-      "formatter": {
-        "language_server": {
-          "name": "eslint"
-        }
-      },
+      "formatter": [],
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
     },
     "TSX": {
-      "formatter": {
-        "language_server": {
-          "name": "eslint"
-        }
-      },
+      "formatter": [],
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
     },
     "Vue.js": {
-      "formatter": {
-        "language_server": {
-          "name": "eslint"
-        }
-      },
+      "formatter": [],
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
     },
     "JSONC": {
       "language_servers": ["eslint", "json-language-server"],
-      "formatter": {
-        "language_server": {
-          "name": "eslint"
-        }
-      },
+      "formatter": [],
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
     },
     "JSON": {
       "language_servers": ["eslint", "json-language-server"],
-      "formatter": {
-        "language_server": {
-          "name": "eslint"
-        }
-      },
+      "formatter": [],
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
     },
     "Markdown": {
       "language_servers": ["eslint", "marksman"],
-      "formatter": {
-        "language_server": {
-          "name": "eslint"
-        }
-      },
+      "formatter": [],
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
     },
     "HTML": {
       "language_servers": ["eslint", "vscode-html-language-server"],
-      "formatter": {
-        "language_server": {
-          "name": "eslint"
-        }
-      },
+      "formatter": [],
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
     },
     "CSS": {
       "language_servers": ["eslint", "vscode-css-language-server"],
-      "formatter": {
-        "language_server": {
-          "name": "eslint"
-        }
-      },
+      "formatter": [],
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
     },
     "SCSS": {
       "language_servers": ["eslint", "vscode-css-language-server"],
-      "formatter": {
-        "language_server": {
-          "name": "eslint"
-        }
-      },
+      "formatter": [],
       "code_actions_on_format": {
         "source.fixAll.eslint": true
       }
@@ -111,7 +71,11 @@
   },
   "lsp": {
     "eslint": {
-      "settings": {}
+      "settings": {
+        "workingDirectory": {
+          "mode": "auto"
+        }
+      }
     }
   }
 }

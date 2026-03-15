@@ -1,14 +1,18 @@
 <script setup lang='ts'>
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Checkbox, Flex, Radio, Skeleton, Tooltip } from '@dolanske/vui'
+import { Button, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 
-import Discussion from '@/components/Discussions/Discussion.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import ReferendumResults from '@/components/Shared/ReferendumResults.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import ReferendumModal from '@/components/Votes/ReferendumModal.vue'
+import VoteChoices from '@/components/Votes/VoteChoices.vue'
+import VoteHeader from '@/components/Votes/VoteHeader.vue'
+import VoteLoadingSkeleton from '@/components/Votes/VoteLoadingSkeleton.vue'
+import VoteResults from '@/components/Votes/VoteResults.vue'
 import { useCacheQuery } from '@/composables/useCache'
-import { useBreakpoint } from '@/lib/mediaQuery'
+import { useReferendumVotesRealtime } from '@/composables/useReferendumVotesRealtime'
+
 import { formatDuration } from '@/lib/utils/duration'
 
 const route = useRoute()
@@ -16,8 +20,6 @@ const router = useRouter()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
-
-const isBelowSmall = useBreakpoint('<s')
 
 const referendumId = computed(() => Number(route.params.id))
 
@@ -37,6 +39,28 @@ const { data: referendum, loading: loadingReferendum, refetch: _refetchReferendu
   },
 )
 
+// ─── Edit modal ───────────────────────────────────────────────────────────────
+
+const editModalOpen = ref(false)
+
+const isOwnReferendum = computed(() =>
+  !!userId.value && referendum.value?.created_by === userId.value,
+)
+
+function handleUpdated(updated: Tables<'referendums'>) {
+  // Patch the local referendum ref so the page reflects changes immediately
+  // without a full refetch. useCacheQuery will eventually re-sync on next load.
+  if (referendum.value != null) {
+    // @ts-expect-error - referendum from useCacheQuery is readonly
+    referendum.value = updated
+  }
+  editModalOpen.value = false
+}
+
+function handleDeleted() {
+  void router.push('/votes')
+}
+
 // Fetch user's existing vote
 const { data: userVote, loading: _loadingVote, refetch: refetchVote } = useCacheQuery<Tables<'referendum_votes'>>(
   {
@@ -55,7 +79,7 @@ const { data: userVote, loading: _loadingVote, refetch: refetchVote } = useCache
 )
 
 // Fetch all votes for this referendum (for displaying results)
-const { data: allVotes, loading: loadingAllVotes, refetch: refetchAllVotes } = useCacheQuery<Tables<'referendum_votes'>[]>(
+const { data: fetchedVotes, loading: loadingAllVotes, refetch: refetchAllVotes } = useCacheQuery<Tables<'referendum_votes'>[]>(
   {
     table: 'referendum_votes',
     select: '*',
@@ -67,6 +91,13 @@ const { data: allVotes, loading: loadingAllVotes, refetch: refetchAllVotes } = u
     enabled: computed(() => !Number.isNaN(referendumId.value) && !!user.value),
     ttl: 30000, // 30 second cache
   },
+)
+
+// Keep allVotes live via realtime subscription - starts from the cache query
+// result and patches in INSERT/UPDATE/DELETE events from other tabs/users.
+const { votes: allVotes } = useReferendumVotesRealtime(
+  computed(() => referendumId.value),
+  computed(() => fetchedVotes.value as Tables<'referendum_votes'>[] | null | undefined),
 )
 
 // Voting state
@@ -154,7 +185,7 @@ const timeAgo = computed(() => {
   return `${formatDuration(diff)} ago`
 })
 
-const totalVoters = computed(() => allVotes.value?.length || 0)
+const totalVoters = computed(() => allVotes.value.length)
 
 const shouldShowResults = computed(() => {
   // Always show results if user has voted or if the referendum has concluded
@@ -219,7 +250,8 @@ async function submitVote() {
         throw error
     }
 
-    // Refetch data
+    // Refetch data - realtime will also patch allVotes, but an explicit
+    // refetch ensures the user's own vote is reflected immediately.
     await Promise.all([
       refetchVote(),
       refetchAllVotes(),
@@ -304,74 +336,14 @@ function handleChoiceClick(index: number) {
   <div class="page">
     <div class="container container-s">
       <!-- Loading state -->
-      <div v-if="loadingReferendum" class="loading-skeleton">
-        <!-- Back button skeleton -->
-        <Flex class="mb-m">
-          <Skeleton :width="120" :height="36" :radius="8" />
-        </Flex>
-
-        <!-- Header section skeleton -->
-        <section class="mb-l">
-          <Flex :gap="0" expand column>
-            <Flex y-start x-between gap="xl" expand class="mb-m">
-              <!-- Title skeleton -->
-              <div class="flex-1">
-                <Skeleton :width="400" :height="40" :radius="8" class="mb-s" />
-              </div>
-              <!-- User display skeleton -->
-              <Flex gap="s" y-center>
-                <Skeleton :width="32" :height="32" style="border-radius: 50%;" />
-                <Skeleton :width="80" :height="20" :radius="4" />
-              </Flex>
-            </Flex>
-
-            <!-- Description skeleton -->
-            <Skeleton :width="320" :height="24" :radius="4" class="mb-m" />
-
-            <!-- Badges skeleton -->
-            <Flex gap="xs" class="mb-m">
-              <Skeleton :width="60" :height="24" :radius="12" />
-              <Skeleton :width="100" :height="24" :radius="12" />
-              <Skeleton :width="80" :height="24" :radius="12" />
-            </Flex>
-          </Flex>
-        </section>
-
-        <!-- Voting section skeleton -->
-        <section class="mb-xl">
-          <Card :class="{ 'p-l': !isBelowSmall }">
-            <Skeleton :width="140" :height="24" :radius="4" class="mb-m" />
-
-            <!-- Choices skeleton -->
-            <div class="mb-l">
-              <div v-for="n in 3" :key="n" class="choice-skeleton">
-                <Skeleton :height="56" :radius="8" />
-              </div>
-            </div>
-
-            <!-- Buttons skeleton -->
-            <Flex gap="s" y-center>
-              <Skeleton :width="120" :height="40" :radius="8" />
-              <Skeleton :width="100" :height="40" :radius="8" />
-            </Flex>
-          </Card>
-        </section>
-
-        <!-- Results section skeleton -->
-        <section>
-          <Card :class="{ 'p-l': !isBelowSmall }">
-            <Skeleton :width="80" :height="24" :radius="4" class="mb-m" />
-            <Skeleton :height="120" :radius="8" />
-          </Card>
-        </section>
-      </div>
+      <VoteLoadingSkeleton v-if="loadingReferendum" />
 
       <!-- Referendum not found -->
       <Flex v-else-if="!referendum" column class="text-center p-xl" x-center y-center>
         <Icon name="ph:question" size="3rem" class="text-color-light mb-m" />
-        <h2>Referendum not found</h2>
+        <h2>Vote not found</h2>
         <p class="text-color-light mb-l">
-          The referendum you're looking for doesn't exist or has been removed.
+          The vote you're looking for doesn't exist or has been removed.
         </p>
         <Button @click="router.push('/votes')">
           <template #start>
@@ -397,217 +369,67 @@ function handleChoiceClick(index: number) {
             </template>
             Back to Votes
           </Button>
-          <UserDisplay :user-id="referendum.created_by" />
+          <Flex gap="s" y-center>
+            <Button
+              v-if="isOwnReferendum"
+              variant="gray"
+              size="s"
+              @click="editModalOpen = true"
+            >
+              <template #start>
+                <Icon name="ph:pencil-simple" />
+              </template>
+              Edit
+            </Button>
+            <UserDisplay :user-id="referendum.created_by" />
+          </Flex>
         </Flex>
 
         <!-- Header -->
-        <section class="mb-l">
-          <Flex y-start x-between gap="xl" expand>
-            <h1>
-              {{ referendum.title }}
-            </h1>
-          </Flex>
+        <VoteHeader
+          :referendum="referendum as Tables<'referendums'>"
+          :is-active="isActive"
+          :is-upcoming="isUpcoming"
+          :status-variant="statusVariant"
+          :status-label="statusLabel"
+          :total-voters="totalVoters"
+          :time-remaining="timeRemaining"
+          :time-until-start="timeUntilStart"
+          :time-ago="timeAgo"
+        />
 
-          <p v-if="referendum.description" class="text-xl text-color-light mb-xl">
-            {{ referendum.description }}
-          </p>
-
-          <Flex x-between y-center expand class="mt-m" wrap>
-            <Flex gap="xs" wrap>
-              <Badge :variant="statusVariant">
-                {{ statusLabel }}
-              </Badge>
-
-              <Badge v-if="referendum.multiple_choice">
-                Multiple Choice
-              </Badge>
-              <Badge v-else>
-                Single Choice
-              </Badge>
-
-              <Badge v-if="!isUpcoming">
-                {{ totalVoters }} vote{{ totalVoters !== 1 ? 's' : '' }}
-              </Badge>
-            </Flex>
-            <Flex v-if="isActive" gap="xxs" y-center>
-              <Icon name="ph:clock" />
-              <p class="flex align-center text-s text-color-light">
-                {{ timeRemaining }}
-              </p>
-            </Flex>
-            <Flex v-else-if="isUpcoming" gap="s" y-center>
-              <Icon name="ph:calendar" />
-              <p class="text-s text-color-light">
-                {{ timeUntilStart }}
-              </p>
-            </Flex>
-            <Flex v-else gap="s" y-center>
-              <Icon name="ph:calendar" />
-              <p class="text-s text-color-light">
-                {{ timeAgo }}
-              </p>
-            </Flex>
-          </Flex>
-        </section>
-
-        <!-- Voting Section -->
-        <section v-if="isActive && user" class="mb-xl">
-          <Card class="card-bg" :class="{ 'p-l': !isBelowSmall }">
-            <template #header>
-              <h3>
-                Cast your vote
-              </h3>
-            </template>
-
-            <template #header-end>
-              <Badge v-if="hasVoted" variant="success">
-                <Icon name="ph:check-circle" class="text-color-accent" />
-                <span class="text-s text-color-accent flex items-center">
-                  You have voted
-                </span>
-              </Badge>
-            </template>
-
-            <div class="choices-voting my-l">
-              <button
-                v-for="(choice, index) in referendum.choices"
-                :key="index"
-                class="choice-voting"
-                :class="{ selected: selectedChoices.includes(index) }"
-                @click="handleChoiceClick(index)"
-              >
-                <!-- To make whole button clickable, checkbox / radio are only fols -->
-                <Checkbox
-                  v-if="referendum.multiple_choice"
-                  :model-value="selectedChoices.includes(index)"
-                  :label="choice"
-                  inert
-                />
-                <Radio
-                  v-else
-                  :model-value="selectedChoices[0]"
-                  :value="index"
-                  :label="choice"
-                  inert
-                />
-              </button>
-            </div>
-
-            <Flex y-center x-between expand :column="isBelowSmall" gap="xl">
-              <Flex gap="s" y-center wrap :expand="isBelowSmall" :column="isBelowSmall">
-                <Button
-                  variant="accent"
-                  :disabled="selectedChoices.length === 0 || isSubmitting"
-                  :loading="isSubmitting"
-                  :expand="isBelowSmall"
-                  @click="submitVote"
-                >
-                  <template #start>
-                    <Icon name="ph:check" />
-                  </template>
-                  {{ hasVoted ? 'Update Vote' : 'Submit Vote' }}
-                </Button>
-
-                <Button
-                  v-if="hasVoted"
-                  variant="danger"
-                  plain
-                  :disabled="isSubmitting || isRemovingVote"
-                  :loading="isRemovingVote"
-                  :expand="isBelowSmall"
-                  @click="requestRemoveVote"
-                >
-                  <template #start>
-                    <Icon name="ph:trash" />
-                  </template>
-                  Remove Vote
-                </Button>
-              </Flex>
-            </flex>
-          </Card>
-        </section>
-
-        <!-- Login prompt -->
-        <section v-else-if="isActive && !user" class="mb-xl">
-          <Card class="text-center" :class="{ 'p-l': !isBelowSmall }">
-            <Icon name="ph:sign-in" size="2rem" class="text-color-light mb-m" />
-            <h3 class="mb-s">
-              Sign in to vote
-            </h3>
-            <p class="text-color-light mb-l">
-              You need to be logged in to participate in this referendum.
-            </p>
-            <Button variant="accent" @click="navigateTo('/auth/login')">
-              Sign In
-            </Button>
-          </Card>
-        </section>
+        <!-- Voting / login prompt -->
+        <VoteChoices
+          v-if="isActive"
+          :referendum="referendum as Tables<'referendums'>"
+          :selected-choices="selectedChoices"
+          :has-voted="hasVoted"
+          :is-submitting="isSubmitting"
+          :is-removing-vote="isRemovingVote"
+          @choice-click="handleChoiceClick"
+          @submit="submitVote"
+          @request-remove-vote="requestRemoveVote"
+        />
 
         <!-- Results Section -->
-        <section>
-          <!-- Hidden results message -->
-          <Card
-            v-if="!shouldShowResults" :class="{ 'card-bg': showResults,
-                                                'p-l': !isBelowSmall }"
-          >
-            <Flex x-between y-center>
-              <h3>
-                Results
-              </h3>
-              <!-- Show reveal button if user hasn't voted and referendum is active -->
-              <Tooltip :style="{ maxWidth: '324px' }">
-                <Button
-                  v-if="!shouldShowResults && isActive"
-                  variant="gray"
-                  @click="requestRevealResults"
-                >
-                  <template #start>
-                    <Icon name="ph:eye" />
-                  </template>
-                  Reveal
-                </Button>
-                <template #tooltip>
-                  <p>Vote to see the current results, or reveal them early using the button above.</p>
-                </template>
-              </Tooltip>
-            </Flex>
-          </Card>
+        <VoteResults
+          :referendum="referendum as Tables<'referendums'>"
+          :votes="allVotes"
+          :should-show-results="shouldShowResults"
+          :is-loading-results="isLoadingResults"
+          :is-active="isActive"
+          @request-reveal-results="requestRevealResults"
+        />
 
-          <!-- Loading results -->
-          <Card v-else-if="isLoadingResults" :class="{ 'p-l': !isBelowSmall }">
-            <Flex x-between y-center class="mb-m">
-              <Skeleton :width="80" :height="24" :radius="4" />
-            </Flex>
-            <div class="results-skeleton">
-              <div v-for="n in 3" :key="n" class="result-skeleton">
-                <Flex x-between y-center class="mb-xs">
-                  <Skeleton :width="150" :height="16" :radius="4" />
-                  <Skeleton :width="60" :height="16" :radius="4" />
-                </Flex>
-                <Skeleton :height="8" :radius="4" class="mb-xs" />
-                <Skeleton :width="40" :height="14" :radius="4" />
-              </div>
-            </div>
-          </Card>
-
-          <!-- Actual results -->
-          <ReferendumResults
-            v-else-if="referendum && allVotes"
-            :referendum="referendum"
-            :votes="allVotes"
-          />
-
-          <Card class="card-bg mt-xl p-l">
-            <h3 class="mb-m">
-              Comments
-            </h3>
-            <Discussion
-              :id="String(referendum.id)"
-              type="referendum"
-              hash="general-chat"
-            />
-          </Card>
-        </section>
+        <!-- Edit Modal -->
+        <ReferendumModal
+          v-if="isOwnReferendum && referendum"
+          :open="editModalOpen"
+          :edited-item="referendum as Tables<'referendums'>"
+          @close="editModalOpen = false"
+          @updated="handleUpdated"
+          @deleted="handleDeleted"
+        />
 
         <!-- Reveal Results Confirmation Modal -->
         <ConfirmModal
@@ -634,61 +456,3 @@ function handleChoiceClick(index: number) {
     </div>
   </div>
 </template>
-
-<style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
-.loading-skeleton {
-  .choice-skeleton {
-    margin-bottom: var(--space-s);
-  }
-}
-
-.results-skeleton {
-  .result-skeleton {
-    margin-bottom: var(--space-l);
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-}
-
-.choices-voting {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-s);
-}
-
-.choice-voting {
-  padding: var(--space-m);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-m);
-  cursor: pointer;
-  transition: var(--transition-fast);
-
-  :deep(.vui-radio input + label),
-  :deep(.vui-checkbox input + label) {
-    gap: var(--space-m);
-    text-align: left;
-  }
-
-  &:hover {
-    background-color: var(--color-bg-lowered);
-    border-color: var(--color-accent);
-  }
-
-  &.selected {
-    background-color: var(--color-accent-bg);
-    border-color: var(--color-accent);
-  }
-}
-
-@media (max-width: $breakpoint-s) {
-  :deep(.vui-card .vui-card-header) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-s);
-  }
-}
-</style>

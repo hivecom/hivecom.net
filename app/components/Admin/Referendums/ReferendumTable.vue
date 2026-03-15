@@ -35,6 +35,7 @@ interface TransformedReferendum extends Record<string, unknown> {
   'Status': string
   'Vote Count': number
   'Date Start': string
+  'Visibility': string
 }
 
 // Filter states kept local since they go beyond simple search
@@ -89,6 +90,7 @@ const {
     'Status': getReferendumStatus(item),
     'Vote Count': getVoteCount(item),
     'Date Start': item.date_start,
+    'Visibility': item.is_public ? 'Public' : 'Private',
   }),
   defaultSort: { column: 'Date Start', direction: 'desc' },
 })
@@ -295,6 +297,12 @@ function clearFilters() {
               </Badge>
             </Table.Cell>
             <Table.Cell>{{ referendum['Vote Count'] }}</Table.Cell>
+            <Table.Cell>
+              <Badge size="xs" :variant="referendum.Visibility === 'Public' ? 'success' : 'neutral'">
+                <Icon :name="referendum.Visibility === 'Public' ? 'ph:globe' : 'ph:lock'" />
+                {{ referendum.Visibility }}
+              </Badge>
+            </Table.Cell>
             <Table.Cell>
               <TimestampDate :date="referendum['Date Start']" />
             </Table.Cell>

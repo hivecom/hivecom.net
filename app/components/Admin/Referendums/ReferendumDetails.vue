@@ -137,6 +137,19 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
             </Grid>
 
             <Grid class="referendum-details__item" expand :columns="2">
+              <span class="text-color-light text-bold">Visibility:</span>
+              <span>
+                <Badge
+                  size="xs"
+                  :variant="props.referendum.is_public ? 'success' : 'neutral'"
+                >
+                  <Icon :name="props.referendum.is_public ? 'ph:globe' : 'ph:lock'" />
+                  {{ props.referendum.is_public ? 'Public' : 'Private' }}
+                </Badge>
+              </span>
+            </Grid>
+
+            <Grid class="referendum-details__item" expand :columns="2">
               <span class="text-color-light text-bold">Start Date:</span>
               <TimestampDate
                 :date="props.referendum.date_start"

@@ -525,13 +525,19 @@ VALUES
 (DATE_TRUNC('month', NOW()) - INTERVAL '4 months', 1000, 1000, 1, 10000, 10000, 1),
 (DATE_TRUNC('month', NOW()) - INTERVAL '5 months', 0, 0, 0, 0, 0, 0);
 
--- Insert a test referendum
-INSERT INTO public.referendums(created_at, created_by, title, description, choices, date_start, date_end, multiple_choice)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Next Community Game Server', 'Which game should we host as our next community server? This will help us decide where to invest our resources for the best community experience.', ARRAY['Minecraft', 'Valheim', 'Rust', 'Team Fortress 2'], NOW(), NOW() + INTERVAL '14 days', FALSE);
+-- Insert a public referendum from Hivecom
+INSERT INTO public.referendums(created_at, created_by, title, description, choices, date_start, date_end, multiple_choice, is_public)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Next Community Game Server', 'Which game should we host as our next community server? This will help us decide where to invest our resources for the best community experience.', ARRAY['Minecraft', 'Valheim', 'Rust', 'Team Fortress 2'], NOW(), NOW() + INTERVAL '14 days', FALSE, TRUE);
 
--- Insert a test vote for the referendum
+-- Insert a private referendum from TestUser
+INSERT INTO public.referendums(created_at, created_by, title, description, choices, date_start, date_end, multiple_choice, is_public)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b3', 'Movie Night Pick', 'Hey everyone, which movie should we watch this Friday? Drop your vote!', ARRAY['Interstellar', 'In Brugges', 'Bo Burnham: Inside'], NOW(), NOW() + INTERVAL '3 days', FALSE, FALSE);
+
+-- Insert a test vote on the public referendum from Hivecom
 INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices)
-  VALUES (NOW() + INTERVAL '1 hour', '018d224c-0e49-4b6d-b57a-87299605c2b1', 1, ARRAY[1]);
+  SELECT NOW() + INTERVAL '1 hour', '018d224c-0e49-4b6d-b57a-87299605c2b1', id, ARRAY[1]
+  FROM public.referendums
+  WHERE title = 'Next Community Game Server';
 
 -- Insert default discussion topics
 INSERT INTO public.discussion_topics (name, slug, description, priority, is_locked)

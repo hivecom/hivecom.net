@@ -4,6 +4,7 @@ import { Badge, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
 import EventGames from '@/components/Events/EventGames.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useRsvpBus } from '@/composables/useRsvpBus'
+import { useRsvpRealtime } from '@/composables/useRsvpRealtime'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
 import CountdownTimer from './CountdownTimer.vue'
@@ -92,6 +93,12 @@ onRsvpUpdated(({ eventId }) => {
     fetchRSVPCounts()
   }
 })
+
+// Subscribe to cross-tab realtime RSVP changes for this event.
+// useRsvpBus.onRsvpUpdated is already wired in EventRSVPCount and
+// EventRSVPModal, so dispatching through the bus here is enough to
+// keep all child components in sync without any further changes.
+useRsvpRealtime(computed(() => props.event?.id ?? null))
 
 onMounted(() => {
   fetchRSVPCounts()

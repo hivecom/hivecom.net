@@ -18,6 +18,7 @@ const isOpen = defineModel<boolean>('isOpen')
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
 const canDeleteReferendums = computed(() => hasPermission('referendums.delete'))
+const canMakePublic = computed(() => hasPermission('referendums.update'))
 
 // Form state
 const referendumForm = ref({
@@ -26,6 +27,7 @@ const referendumForm = ref({
   date_start: new Date() as Date | null,
   date_end: null as Date | null,
   multiple_choice: false,
+  is_public: false,
   choices: [] as string[],
 })
 
@@ -82,6 +84,7 @@ function updateFormData(newReferendum: Tables<'referendums'> | null) {
       date_start: newReferendum.date_start ? new Date(newReferendum.date_start) : new Date(),
       date_end: newReferendum.date_end ? new Date(newReferendum.date_end) : null,
       multiple_choice: newReferendum.multiple_choice,
+      is_public: newReferendum.is_public,
       choices: [...(newReferendum.choices || [])],
     }
   }
@@ -93,6 +96,7 @@ function updateFormData(newReferendum: Tables<'referendums'> | null) {
       date_start: new Date(),
       date_end: null,
       multiple_choice: false,
+      is_public: false,
       choices: [],
     }
     newChoiceInput.value = ''
@@ -165,6 +169,7 @@ function handleSubmit() {
     date_start: dateStart,
     date_end: dateEnd,
     multiple_choice: referendumForm.value.multiple_choice,
+    is_public: referendumForm.value.is_public,
     choices: referendumForm.value.choices,
   }
 
@@ -325,6 +330,21 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
             name="multiple_choice"
             label="Allow multiple choice voting"
           />
+        </Flex>
+
+        <!-- Public visibility - moderators and above only -->
+        <Flex v-if="canMakePublic" gap="xs" y-center>
+          <Checkbox
+            v-model="referendumForm.is_public"
+            name="is_public"
+            label="Show on public votes page"
+          />
+          <Tooltip>
+            <Icon name="ph:info" class="text-color-light" />
+            <template #tooltip>
+              <p>Public referendums appear on the /votes page for all users. Private referendums are only accessible via direct link.</p>
+            </template>
+          </Tooltip>
         </Flex>
 
         <!-- Choices Section -->

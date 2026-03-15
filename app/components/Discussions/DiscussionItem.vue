@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Comment, ThreadNode } from './Discussion.vue'
+import type { Comment, ThreadNode } from './Discussion.types'
 import { Button, Flex, pushToast } from '@dolanske/vui'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'

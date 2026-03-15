@@ -29,11 +29,14 @@ interface Props {
   voteCount: number
   status: ReferendumStatus
   voterIds?: string[]
+  isPrivate?: boolean
+  /** Highlight that the current user voted in this vote */
+  hasVoted?: boolean
 }
 
 const props = defineProps<Props>()
 
-// Calculate time remaining for active referendums
+// Calculate time remaining for active votes
 function getTimeRemaining(dateEnd: string) {
   const diff = dayjs(dateEnd).diff(dayjs())
 
@@ -60,7 +63,7 @@ const statusText = computed(() => {
   return 'Concluded'
 })
 
-// Navigate to referendum detail
+// Navigate to vote detail
 function goToReferendum() {
   navigateTo(`/votes/${props.referendum.id}`)
 }
@@ -69,14 +72,18 @@ function goToReferendum() {
 <template>
   <Card
     class="referendum-card card-bg"
+    :class="{ 'referendum-card--private': isPrivate }"
     role="button"
     @click="goToReferendum"
   >
     <Flex column gap="m" expand>
       <Flex x-between y-start expand gap="l" class="referendum-card__title">
-        <h2 class="text-xxl">
-          {{ referendum.title }}
-        </h2>
+        <Flex y-center gap="s">
+          <h2 class="text-xxl">
+            {{ referendum.title }}
+          </h2>
+          <Icon v-if="isPrivate" name="ph:lock-simple" class="referendum-card__lock-icon" />
+        </Flex>
         <UserDisplay :user-id="referendum.created_by" size="s" />
       </Flex>
 
@@ -86,9 +93,14 @@ function goToReferendum() {
 
       <Flex x-start y-center expand>
         <Flex column gap="xs">
-          <Flex gap="xs">
+          <Flex gap="xs" wrap>
             <Badge :variant="statusVariant">
               {{ statusText }}
+            </Badge>
+
+            <Badge v-if="hasVoted" variant="accent" outline>
+              <Icon name="ph:check" />
+              Voted
             </Badge>
             <Badge v-if="referendum.multiple_choice" variant="neutral">
               Multiple choice
@@ -118,7 +130,6 @@ function goToReferendum() {
 .referendum-card {
   transition: all 0.2s ease;
   cursor: pointer;
-
   // Container setup
   container-type: inline-size; // We monitor the inline size (horizontal)
   container-name: card; // We name the container to specifically select it
@@ -128,10 +139,25 @@ function goToReferendum() {
     box-shadow: var(--shadow-m);
   }
 
-  .line-clamp-2 {
+  &--private {
+    border-color: var(--color-border-weak);
+    opacity: 0.85;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  &__lock-icon {
+    color: var(--color-text-lighter);
+    font-size: var(--font-size-m);
+    flex-shrink: 0;
+  }
+
+  .line-clamp-3 {
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }

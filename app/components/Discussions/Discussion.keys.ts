@@ -15,7 +15,7 @@
  */
 
 import type { InjectionKey, Ref } from 'vue'
-import type { Comment, DiscussionSettings, ProvidedDiscussion } from './Discussion.vue'
+import type { Comment, DiscussionSettings, ProvidedDiscussion } from './Discussion.types'
 
 export const DISCUSSION_KEYS = {
   /** The current view mode: 'flat' | 'threaded' */
