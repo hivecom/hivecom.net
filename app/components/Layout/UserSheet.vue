@@ -131,7 +131,7 @@ async function signOut() {
       <template #footer>
         <Flex x-between y-center expand>
           <SharedThemeToggle no-text />
-          <Button variant="danger" size="s" @click="signOut" icon>
+          <Button variant="danger" size="s" icon @click="signOut">
             <template #start>
               <Icon name="ph:sign-out" />
             </template>

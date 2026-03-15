@@ -183,7 +183,7 @@ watch(() => props.userId, refetchActivity, { immediate: true })
         </Flex>
       </Flex>
 
-      <Flex column expand v-if="hasCustomIntroduction">
+      <Flex v-if="hasCustomIntroduction" column expand>
         <Divider />
 
         <p class="user-preview-card__intro text-s">

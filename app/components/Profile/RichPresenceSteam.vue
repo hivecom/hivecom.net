@@ -200,7 +200,7 @@ const visible = ref(false)
             target="_blank"
             rel="noopener noreferrer"
           >
-           <Icon name="mdi:open-in-new" />
+            <Icon name="mdi:open-in-new" />
           </Button>
         </Flex>
 
