@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Alert, Button, Card, Flex, Input } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Input, Separator } from '@dolanske/vui'
 import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import '@/assets/elements/auth.scss'
