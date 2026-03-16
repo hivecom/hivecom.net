@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NotificationRow } from '@/composables/useNotifications'
-import { Divider, Flex } from '@dolanske/vui'
+import { Button, Flex, Tooltip } from '@dolanske/vui'
 import { useNotifications } from '@/composables/useNotifications'
 import NotificationCard from './NotificationCard.vue'
 import NotificationCardBirthday from './NotificationCardBirthday.vue'
@@ -208,27 +208,25 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
 <template>
   <Flex column gap="xs" expand>
     <template v-if="(isDev && devFixtureLoading) || loading">
-      <NotificationCardLoading
-        v-for="index in loadingCount"
-        :key="`loading-${index}`"
-      />
+      <NotificationCardLoading :loading-count />
       <NotificationCardLoading v-if="isDev && devFixtureLoading && loadingCount === 0" />
     </template>
 
     <template v-else>
       <NotificationCardError
         v-if="(isDev && devFixtureError) || error"
+        class="mb-m"
         @retry="devFixtureError ? undefined : fetch"
       />
 
       <!-- Pinned section -->
       <template v-if="hasPinned">
+        <span class="text-s text-color-lighter block">Updates</span>
+
         <NotificationCardInvite
           v-if="isDev && devFixturesActive"
           :request-id="devFixtureInviteId"
           :loading="false"
-          @accept="() => {}"
-          @ignore="() => {}"
         />
         <NotificationCardInvite
           v-for="requestId in pendingRequestIds"
@@ -251,14 +249,11 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
           :count="(isDev && devFixturesActive) ? DEV_FIXTURE_COMPLAINT_COUNT : pendingComplaintCount"
           to="/admin/complaints"
         />
-
-        <!-- Separator between pinned and regular notifications -->
-        <Divider v-if="hasActionable" class="notification-tab__pinned-divider">
-          <span class="notification-tab__divider-label">Recent</span>
-        </Divider>
+        <div class="block mb-s" />
       </template>
 
       <!-- Regular actionable notifications -->
+      <span class="text-s text-color-lighter">Recent</span>
       <NotificationCard
         v-for="notification in actionableNotifications"
         :key="`active-${notification.id}`"
@@ -270,15 +265,22 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
         @click="onNotificationClick(notification)"
       >
         <template #actions>
-          <button
-            class="notification-tab__mark-read-btn"
-            :aria-label="markReadLoading[notification.id] ? 'Marking as read...' : 'Mark as read'"
-            :disabled="!!markReadLoading[notification.id]"
-            @click.stop="onMarkRead(notification)"
-          >
-            <Icon v-if="markReadLoading[notification.id]" name="ph:spinner" class="notification-tab__mark-read-icon notification-tab__mark-read-icon--spin" />
-            <Icon v-else name="ph:check" class="notification-tab__mark-read-icon" />
-          </button>
+          <Tooltip placement="left">
+            <Button
+              size="s"
+              square
+              :aria-label="markReadLoading[notification.id] ? 'Marking as read...' : 'Mark as read'"
+              :disabled="!!markReadLoading[notification.id]"
+              @click.stop="onMarkRead(notification)"
+            >
+              <Icon v-if="markReadLoading[notification.id]" name="ph:spinner" class="notification-tab__mark-read-icon--spin" />
+              <Icon v-else name="ph:check" :size="18" />
+            </Button>
+            <template #tooltip>
+              {{ markReadLoading[notification.id] ? 'Marking as read...' : 'Mark as read' }}
+            </template>
+            <Tooltip />
+          </tooltip>
         </template>
       </NotificationCard>
 
@@ -297,40 +299,16 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
     font-size: var(--font-size-xxs);
     color: var(--color-text-lighter);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    // letter-spacing: 0.05em;
     padding: 0 var(--space-xs);
-  }
-
-  &__mark-read-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: var(--border-radius-s);
-    background: transparent;
-    color: var(--color-text-lighter);
-    cursor: pointer;
-    transition:
-      background var(--transition-fast),
-      color var(--transition-fast);
-    flex-shrink: 0;
-
-    &:hover:not(:disabled) {
-      background: var(--color-bg-raised);
-      color: var(--color-text);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
+    background-color: var(--color-bg);
+    z-index: 1;
+    // Fix vertical offset
+    display: block;
+    margin-top: -2px;
   }
 
   &__mark-read-icon {
-    font-size: 16px;
-
     &--spin {
       animation: spin 1s linear infinite;
     }

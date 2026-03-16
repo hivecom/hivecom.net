@@ -140,14 +140,6 @@ function triggerClearAll() {
   confirmOpen.value = true
 }
 
-function getHref(sub: SubscriptionRow): string {
-  return `/forum/${sub.discussion?.slug ?? sub.discussion_id}`
-}
-
-function handleClick() {
-  emit('navigate')
-}
-
 defineExpose({ load, reset, triggerClearAll, clearAllLoading, hasSubscriptions })
 </script>
 
@@ -164,9 +156,9 @@ defineExpose({ load, reset, triggerClearAll, clearAllLoading, hasSubscriptions }
         v-for="sub in activeSubscriptions"
         :key="`sub-${sub.id}`"
         :title="sub.discussion?.title ?? 'Unknown discussion'"
-        :href="getHref(sub)"
+        :href="`/forum/${sub.discussion?.slug ?? sub.discussion_id}`"
         :loading="!!unsubscribeLoading[sub.id]"
-        @click="handleClick"
+        @click="emit('navigate')"
         @unsubscribe="handleUnsubscribe(sub)"
       />
 

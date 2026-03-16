@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Badge, Card, Flex } from '@dolanske/vui'
-import { computed, toRefs, useSlots } from 'vue'
+import { Card, Flex } from '@dolanske/vui'
+import { computed, toRefs } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatTimeAgo } from '@/lib/utils/date'
+import TinyBadge from '../Shared/TinyBadge.vue'
 
 interface Props {
   text?: string
@@ -28,6 +29,8 @@ const props = withDefaults(defineProps<Props>(), {
   timestamp: null,
 })
 
+const slots = defineSlots()
+
 const {
   text,
   description,
@@ -40,9 +43,6 @@ const {
   timestamp,
 } = toRefs(props)
 
-const slots = useSlots()
-const hasInlineContent = computed(() => Boolean(slots.default))
-const hasActions = computed(() => Boolean(slots.actions))
 const isClickable = computed(() => Boolean(to.value) || clickable.value)
 const isMobile = useBreakpoint('<s')
 
@@ -63,7 +63,7 @@ function handleCardClick() {
       'notification-card--highlight': highlight,
       'notification-card--shiny': shiny,
       'notification-card--clickable': isClickable,
-      'notification-card--hover-actions': hasActions && !isMobile,
+      'notification-card--hover-actions': !!slots.actions && !isMobile,
     }"
     :tabindex="isClickable ? 0 : undefined"
     :role="isClickable ? 'link' : undefined"
@@ -74,7 +74,7 @@ function handleCardClick() {
     <template #footer />
     <div class="notification-card__row">
       <Flex gap="xs" y-center class="notification-card__main">
-        <Flex
+        <div
           v-if="icon"
           class="notification-card__icon-container"
           :class="{
@@ -82,24 +82,29 @@ function handleCardClick() {
             'notification-card__icon-container--shiny': shiny,
           }"
         >
-          <Icon :name="icon" class="notification-card__icon" />
-        </Flex>
-        <div v-if="text || description || timestamp || $slots.below" class="notification-card__text">
+          <Icon :name="icon" :size="20" />
+        </div>
+        <div v-if="text || description || $slots.below" class="notification-card__text">
           <span v-if="text" class="notification-card__title">{{ text }}</span>
           <span v-if="description" class="notification-card__description">{{ description }}</span>
-          <span v-if="timestamp" class="notification-card__timestamp">{{ formatTimeAgo(timestamp) }}</span>
           <slot name="below" />
         </div>
-        <div v-if="hasInlineContent" class="notification-card__extra">
+        <div v-if="slots.default" class="notification-card__extra">
           <slot />
         </div>
-        <Badge v-if="badge" size="s" class="notification-card__badge">
+        <TinyBadge v-if="badge">
           {{ badge }}
-        </Badge>
+        </TinyBadge>
         <slot name="meta" />
       </Flex>
-
-      <Flex v-if="hasActions" gap="xxs" class="notification-card__actions">
+      <span
+        v-if="timestamp"
+        class="notification-card__timestamp"
+        :class="{ 'notification-card__timestamp--mobile': isMobile }"
+      >
+        {{ formatTimeAgo(timestamp) }}
+      </span>
+      <Flex v-if="slots.actions" gap="xxs" class="notification-card__actions">
         <slot name="actions" />
       </Flex>
     </div>
@@ -107,22 +112,18 @@ function handleCardClick() {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/mixins.scss' as *;
+@use '@/assets/breakpoints.scss' as *;
+
 .notification-card {
   position: relative;
-  z-index: var(--z-toast); // lift stacking context so tooltip can clear dropdown header
   width: 100%;
-  padding: var(--space-2xs) var(--space-m);
-  background: var(--color-bg-subtle);
-  overflow: visible; // allow floating elements (tooltips) to escape the card
-
-  &--highlight {
-    border-left: 3px solid var(--color-accent);
-  }
+  background-color: var(--color-bg-medium);
 
   &--shiny {
     border: none;
 
-    &::after {
+    &:after {
       content: '';
       position: absolute;
       inset: 0;
@@ -140,19 +141,14 @@ function handleCardClick() {
       -webkit-mask-composite: xor;
       mask-composite: exclude;
       pointer-events: none;
-      z-index: -1;
     }
-  }
-
-  &--highlight.notification-card--shiny {
-    border: none;
   }
 
   &--clickable {
     cursor: pointer;
 
     &:hover {
-      background: var(--color-bg-medium);
+      background: var(--color-bg-raised);
     }
 
     &:focus-visible {
@@ -184,8 +180,8 @@ function handleCardClick() {
     gap: var(--space-s);
     position: relative;
     z-index: 1;
-    // Ensure the right edge of badge/extra/actions has breathing room
-    padding-right: var(--space-s);
+    padding-inline: var(--space-xs);
+    min-height: 52px;
   }
 
   &__main {
@@ -193,20 +189,17 @@ function handleCardClick() {
     min-width: 0;
   }
 
-  &__icon {
-    font-size: 20px;
-  }
-
   &__icon-container {
-    padding: var(--space-m);
-    background-color: var(--color-bg-raised);
-    border-right: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
-    border-radius: var(--border-radius-s);
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    background-color: var(--color-bg-raised);
+    border-radius: var(--border-radius-m);
+    border: 1px solid var(--color-border);
+
     transition:
       border-color 0.2s ease,
       box-shadow 0.2s ease;
@@ -234,40 +227,30 @@ function handleCardClick() {
   }
 
   &__text {
-    flex: 1;
-    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    margin-left: var(--space-s);
   }
 
   &__title {
+    @include line-clamp(1);
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-semibold);
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   &__description {
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    @include line-clamp(1);
   }
 
   &__timestamp {
     font-size: var(--font-size-xxs);
-    color: var(--color-text-lighter);
-    opacity: 0.7;
-  }
+    color: var(--color-text-lightest);
 
-  &__badge {
-    margin-left: auto;
-    flex-shrink: 0;
+    &--mobile {
+      padding-right: 32px;
+    }
   }
 
   &__extra {
@@ -282,8 +265,11 @@ function handleCardClick() {
     display: flex;
     align-items: center;
     gap: var(--space-2xs);
-    padding: var(--space-s) 0;
-    flex-shrink: 0;
+    padding-block: var(--space-s);
+    position: absolute;
+    top: 50%;
+    right: var(--space-xs);
+    transform: translateY(-50%);
   }
 }
 </style>

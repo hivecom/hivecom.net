@@ -81,14 +81,14 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
     <Sheet
       :open="open"
       position="right"
-       :card="{ separators: true }"
-      :size="400"
+      :card="{ separators: true }"
+      :size="472"
       @close="open = false"
     >
       <template #header>
-        <Flex x-between y-center expand class="mb-m">
+        <Flex x-between y-center expand class="mb-s">
           <h4>Notifications</h4>
-          <Flex v-if="isDev" y-center>
+          <Flex v-if="isDev" y-center gap="xs" class="mr-xxs">
             <Button
               square
               size="s"
@@ -119,34 +119,23 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
           </Flex>
         </Flex>
 
-        <Tabs v-model="activeTab" variant="filled" expand>
+        <Tabs v-model="activeTab" class="notification-menu__tabs">
           <Tab value="active">
             Active
           </Tab>
-          <Tab value="past">
-            Past
-          </Tab>
           <Tab value="subscriptions">
             Subscriptions
+          </Tab>
+          <Tab value="past">
+            Past
           </Tab>
         </Tabs>
       </template>
 
       <Flex column class="notification-menu__body">
-
-
         <Flex expand>
-          <NotificationTabPast
-            v-if="activeTab === 'active'"
-            ref="unreadTab"
-            v-model:dev-fixtures-active="devFixturesActive"
-            v-model:dev-fixture-error="devFixtureError"
-            v-model:dev-fixture-loading="devFixtureLoading"
-            @navigate="handleNavigate"
-          />
-
           <NotificationTabActive
-            v-else-if="activeTab === 'past'"
+            v-if="activeTab === 'past'"
             ref="readTab"
             v-model:dev-fixtures-active="devFixturesActive"
             @navigate="handleNavigate"
@@ -156,6 +145,15 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
             v-else-if="activeTab === 'subscriptions'"
             ref="subscriptionsTab"
             v-model:dev-fixtures-active="devFixturesActive"
+            @navigate="handleNavigate"
+          />
+
+          <NotificationTabPast
+            v-else-if="activeTab === 'active'"
+            ref="unreadTab"
+            v-model:dev-fixtures-active="devFixturesActive"
+            v-model:dev-fixture-error="devFixtureError"
+            v-model:dev-fixture-loading="devFixtureLoading"
             @navigate="handleNavigate"
           />
         </Flex>
@@ -176,7 +174,7 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
           v-if="showPastFooter"
           expand
           size="s"
-          variant="danger"
+          variant="gray"
           :loading="readTab?.clearAllLoading ?? false"
           @click="readTab?.clearAll()"
         >
@@ -190,7 +188,7 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
           :loading="subscriptionsTab?.clearAllLoading ?? false"
           @click="subscriptionsTab?.triggerClearAll()"
         >
-          Clear subscriptions
+          Remove subscriptions
         </Button>
       </template>
     </Sheet>
@@ -201,21 +199,21 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
 .notification-menu {
   position: relative;
 
-  .vui-button {
-    position: relative;
-    overflow: visible;
+  // Aligns tabs with the header boreder (12px + 1px border)
+  &__tabs {
+    margin-bottom: -13px;
   }
-}
 
-.notification-menu__badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: var(--color-text-green);
-  border: 2px solid var(--color-bg);
-  pointer-events: none;
+  &__badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: var(--color-text-green);
+    border: 2px solid var(--color-bg);
+    pointer-events: none;
+  }
 }
 </style>

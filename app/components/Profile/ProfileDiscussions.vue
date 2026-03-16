@@ -139,7 +139,7 @@ const emptyStateText = computed(() => {
     </Flex>
 
     <!-- Replies List -->
-    <Flex v-else-if="hasReplies" column class="profile-discussions__list">
+    <Flex v-else-if="hasReplies" column gap="xxs">
       <NuxtLink
         v-for="reply in replies"
         :key="reply.id"
@@ -183,12 +183,13 @@ const emptyStateText = computed(() => {
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
-    padding: var(--space-s);
-    border-radius: var(--border-radius-s);
+    padding: var(--space-xs);
+    border-radius: var(--border-radius-m);
     text-decoration: none;
     color: inherit;
-    transition: background-color var(--transition-fast);
+    transition: var(--transition-fast);
     cursor: pointer;
+    width: 100%;
 
     &:hover {
       background-color: var(--color-bg-raised);

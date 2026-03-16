@@ -32,7 +32,7 @@ function handleIgnore() {
   <NotificationCard icon="ph:user-plus" text="Friend Request">
     <template #below>
       <div class="notification-card-invite__user">
-        <UserAvatar :user-id="requestId" :size="16" linked show-preview />
+        <UserAvatar :user-id="requestId" :size="18" linked show-preview class="notification-avatar" />
         <UserPreviewHover :user-id="requestId" :enter-delay="300">
           <UserName :user-id="requestId" size="s" />
         </UserPreviewHover>
@@ -79,8 +79,14 @@ function handleIgnore() {
   &__user {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-xs);
+    gap: var(--space-xxs);
     cursor: default;
+
+    :deep(.vui-avatar) {
+      span {
+        font-size: var(--font-size-xxs);
+      }
+    }
   }
 }
 </style>

@@ -2,22 +2,17 @@
 import { Button } from '@dolanske/vui'
 import NotificationCard from './NotificationCard.vue'
 
-const props = withDefaults(defineProps<{ message?: string, to?: string | null }>(), {
+const props = withDefaults(defineProps<{ message?: string }>(), {
   message: 'Unable to refresh',
-  to: '/profile',
 })
 
 const emit = defineEmits<{ (e: 'retry'): void }>()
-
-function handleRetry() {
-  emit('retry')
-}
 </script>
 
 <template>
-  <NotificationCard :text="props.message" icon="ph:warning-circle" :to="props.to">
+  <NotificationCard :text="props.message" icon="ph:warning-circle">
     <template #actions>
-      <Button size="s" variant="gray" @click="handleRetry">
+      <Button size="s" variant="gray" @click="emit('retry')">
         Retry
       </Button>
     </template>

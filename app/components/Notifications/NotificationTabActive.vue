@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { NotificationRow } from '@/composables/useNotifications'
 import type { Database } from '@/types/database.types'
-import { Flex } from '@dolanske/vui'
+import { Button, Flex } from '@dolanske/vui'
 import NotificationCard from './NotificationCard.vue'
 import NotificationCardEmpty from './NotificationCardEmpty.vue'
 import NotificationCardError from './NotificationCardError.vue'
@@ -189,18 +189,19 @@ defineExpose({ load, reset, clearAll, clearAllLoading, hasNotifications })
         @click="onNotificationClick(notification)"
       >
         <template #actions>
-          <button
-            class="notification-tab-past__delete-btn"
+          <Button
+            size="s"
+            square
             :aria-label="deleteLoading[notification.id] ? 'Deleting...' : 'Delete notification'"
             :disabled="!!deleteLoading[notification.id]"
             @click.stop="deleteNotification(notification)"
           >
             <Icon
               :name="deleteLoading[notification.id] ? 'ph:spinner' : 'ph:trash'"
-              class="notification-tab-past__delete-icon"
+              :size="20"
               :class="{ 'notification-tab-past__delete-icon--spin': deleteLoading[notification.id] }"
             />
-          </button>
+          </Button>
         </template>
       </NotificationCard>
 
@@ -211,39 +212,8 @@ defineExpose({ load, reset, clearAll, clearAllLoading, hasNotifications })
 
 <style lang="scss" scoped>
 .notification-tab-past {
-  &__delete-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: var(--border-radius-s);
-    background: transparent;
-    color: var(--color-text-lighter);
-    cursor: pointer;
-    transition:
-      background var(--transition-fast),
-      color var(--transition-fast);
-    flex-shrink: 0;
-
-    &:hover:not(:disabled) {
-      background: color-mix(in srgb, var(--color-text-red) 12%, transparent);
-      color: var(--color-text-red);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-  }
-
-  &__delete-icon {
-    font-size: 16px;
-
-    &--spin {
-      animation: spin 1s linear infinite;
-    }
+  &__delete-icon--spin {
+    animation: spin 1s linear infinite;
   }
 }
 

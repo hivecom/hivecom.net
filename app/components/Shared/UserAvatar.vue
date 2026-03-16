@@ -71,6 +71,8 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
     case 'l': return '48px'
   }
 }
+
+const attrs = useAttrs()
 </script>
 
 <template>
@@ -93,7 +95,7 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
       class="user-avatar__link"
       :aria-label="ariaLabel"
     >
-      <Avatar :size="size" :url="avatarUrl || undefined">
+      <Avatar :size="size" :url="avatarUrl || undefined" v-bind="attrs">
         <template v-if="!avatarUrl && initials" #default>
           {{ initials }}
         </template>
@@ -107,7 +109,7 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
     :user-id="userId"
     class="user-avatar__wrapper"
   >
-    <Avatar :size="size" :url="avatarUrl || undefined">
+    <Avatar :size="size" :url="avatarUrl || undefined" v-bind="attrs">
       <template v-if="!avatarUrl && initials" #default>
         {{ initials }}
       </template>
@@ -121,7 +123,7 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
     class="user-avatar__link"
     :aria-label="ariaLabel"
   >
-    <Avatar :size="size" :url="avatarUrl || undefined">
+    <Avatar :size="size" :url="avatarUrl || undefined" v-bind="attrs">
       <template v-if="!avatarUrl && initials" #default>
         {{ initials }}
       </template>
@@ -129,7 +131,7 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
   </NuxtLink>
 
   <!-- Plain avatar -->
-  <Avatar v-else :size="size" :url="avatarUrl || undefined">
+  <Avatar v-else :size="size" :url="avatarUrl || undefined" v-bind="attrs">
     <template v-if="!avatarUrl && initials" #default>
       {{ initials }}
     </template>
