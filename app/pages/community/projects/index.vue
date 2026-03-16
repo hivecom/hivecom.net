@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Divider, Flex, Grid, Input, Select, Skeleton } from '@dolanske/vui'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import { useProjects } from '@/composables/useProjects'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 // Interface for Select options
@@ -11,13 +11,10 @@ interface SelectOption {
   value: string
 }
 
-const supabase = useSupabaseClient()
+const isBelowExtraSmall = useBreakpoint('<xs')
 
 // Reactive data
-const projects = ref<Tables<'projects'>[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
-const isBelowExtraSmall = useBreakpoint('<xs')
+const { projects, loading, error } = useProjects()
 const isBelowM = useBreakpoint('<m')
 
 // Filters
@@ -38,35 +35,9 @@ const tagOptions = computed<SelectOption[]>(() => {
   }))
 })
 
-// Fetch projects
-async function fetchProjects() {
-  try {
-    loading.value = true
-    error.value = null
-
-    const { data, error: fetchError } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (fetchError) {
-      error.value = fetchError.message
-      return
-    }
-
-    projects.value = data || []
-  }
-  catch (err: unknown) {
-    error.value = (err as Error).message || 'An error occurred while loading projects'
-  }
-  finally {
-    loading.value = false
-  }
-}
-
 // Filtered projects
 const filteredProjects = computed(() => {
-  if (!projects.value)
+  if (!projects.value.length)
     return []
 
   return projects.value.filter((project) => {
@@ -95,11 +66,6 @@ function clearFilters() {
   search.value = ''
   tagFilter.value = []
 }
-
-// Fetch data on mount
-onMounted(() => {
-  fetchProjects()
-})
 
 // SEO and page metadata
 useSeoMeta({

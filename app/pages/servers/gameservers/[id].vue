@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { GameserverWithContainer } from '@/composables/useGameservers'
 import type { Tables } from '@/types/database.overrides'
 import { Button, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
@@ -6,31 +7,35 @@ import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useGames } from '@/composables/useGames'
+import { useGameservers } from '@/composables/useGameservers'
 
 // Get route parameter
 const route = useRoute()
 const router = useRouter()
 const gameserverId = Number.parseInt(route.params.id as string)
 
-// Supabase client
-const supabase = useSupabaseClient()
-
-type ContainerWithServer = Tables<'containers'> & {
-  server?: {
-    docker_control?: boolean | null
-    accessible?: boolean | null
-  } | null
-}
-
 // Reactive data
 const gameserver = ref<Tables<'gameservers'> | null>(null)
 const game = ref<Tables<'games'> | null>(null)
-const container = ref<ContainerWithServer | null>(null)
-const loading = ref(true)
 const error = ref<string | null>(null)
 const gameBackground = ref<string | null>(null)
 
+const { gameservers, loading, error: gameserversError, getById: getGameserverById } = useGameservers()
 const { getById: getGameById } = useGames()
+
+// Derive container from the cached gameserver entry
+const container = computed((): GameserverWithContainer['container'] => {
+  const gs = gameserver.value
+  if (!gs)
+    return null
+  const cached = getGameserverById(gs.id)
+  return cached?.container ?? null
+})
+
+// Typed as Tables<'containers'> for GameServerHeader prop - the joined shape is compatible
+const containerForHeader = computed((): Tables<'containers'> | null =>
+  container.value as Tables<'containers'> | null,
+)
 
 // Computed server state
 const state = computed(() => {
@@ -95,87 +100,35 @@ const stateConfig = computed(() => {
   return configs[state.value] || configs.unknown
 })
 
-// Fetch gameserver data
-async function fetchGameserver() {
-  try {
-    loading.value = true
-    error.value = null
-
-    const { data: gameserverData, error: gameserverError } = await supabase
-      .from('gameservers')
-      .select('*')
-      .eq('id', gameserverId)
-      .single()
-
-    if (gameserverError) {
-      if (gameserverError.code === 'PGRST116') {
-        error.value = 'Gameserver not found'
-      }
-      else {
-        error.value = gameserverError.message
-      }
-      return
-    }
-
-    gameserver.value = gameserverData
-
-    // Fetch related game data
-    if (gameserverData.game) {
-      game.value = getGameById(gameserverData.game)
-    }
-
-    // Fetch related container data
-    if (gameserverData.container) {
-      const { data: containerData } = await supabase
-        .from('containers')
-        .select(`
-          *,
-          server (
-            docker_control,
-            accessible
-          )
-        `)
-        .eq('name', gameserverData.container)
-        .single()
-      container.value = containerData
-    }
+// Resolve gameserver and related game from cache once loaded
+watch([gameservers, loading], () => {
+  const found = getGameserverById(gameserverId)
+  if (found != null) {
+    gameserver.value = found
+    game.value = found.game != null ? getGameById(found.game) : null
   }
-  catch (err: unknown) {
-    error.value = (err as Error).message || 'An error occurred while loading the gameserver'
+  else if (!loading.value && gameservers.value.length > 0) {
+    // Only report not-found after the fetch has completed and returned data
+    error.value = 'Gameserver not found'
   }
-  finally {
-    loading.value = false
-  }
-}
+}, { immediate: true })
 
-// Get game background image using the cached composable
-async function getGameBackground(game: Tables<'games'>) {
-  const { getGameBackgroundUrl } = useCacheGameAssets()
-  return await getGameBackgroundUrl(game)
-}
-
-// Load game background when game data is available
-async function loadGameBackground() {
-  if (game.value) {
-    try {
-      gameBackground.value = await getGameBackground(game.value)
-    }
-    catch (error) {
-      console.error('Failed to load game background:', error)
-      gameBackground.value = null
-    }
-  }
-}
-
-// Fetch data on mount
-onMounted(() => {
-  fetchGameserver()
+// Propagate fetch error
+watch(gameserversError, (err) => {
+  if (err != null)
+    error.value = err
 })
 
-// Watch for game changes to load background
-watch(game, (newGame) => {
+// Load game background when game data is available
+watch(game, async (newGame) => {
   if (newGame) {
-    loadGameBackground()
+    try {
+      const { getGameBackgroundUrl } = useCacheGameAssets()
+      gameBackground.value = await getGameBackgroundUrl(newGame)
+    }
+    catch {
+      gameBackground.value = null
+    }
   }
 }, { immediate: true })
 
@@ -237,7 +190,7 @@ useHead({
       <GameServerHeader
         :gameserver="gameserver"
         :game="game"
-        :container="container"
+        :container="containerForHeader"
         :state="state"
         :state-config="stateConfig"
       />

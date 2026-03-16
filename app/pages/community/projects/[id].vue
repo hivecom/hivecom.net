@@ -7,18 +7,16 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
+import { useProjects } from '@/composables/useProjects'
 import { getPlaceholderBannerProject } from '@/lib/projectBannerPlaceholders'
 
 // Get route parameter
 const route = useRoute()
 const projectId = Number.parseInt(route.params.id as string)
 
-// Supabase client
-const supabase = useSupabaseClient()
-
 // Reactive data
+const { projects, loading, error: projectsError, getById } = useProjects()
 const project = ref<Tables<'projects'> | null>(null)
-const loading = ref(true)
 const error = ref<string | null>(null)
 
 const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(
@@ -42,41 +40,22 @@ const heroBannerStyle = computed(() => {
   return style
 })
 
-// Fetch project data
-async function fetchProject() {
-  try {
-    loading.value = true
-    error.value = null
-
-    const { data, error: fetchError } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .single()
-
-    if (fetchError) {
-      if (fetchError.code === 'PGRST116') {
-        error.value = 'Project not found'
-      }
-      else {
-        error.value = fetchError.message
-      }
-      return
-    }
-
-    project.value = data
+// Resolve project from cache once loaded
+watch([projects, loading], () => {
+  const found = getById(projectId)
+  if (found != null) {
+    project.value = found
   }
-  catch (err: unknown) {
-    error.value = (err as Error).message || 'An error occurred while loading the project'
+  else if (!loading.value && projects.value.length > 0) {
+    // Only report not-found after the fetch has completed and returned data
+    error.value = 'Project not found'
   }
-  finally {
-    loading.value = false
-  }
-}
+}, { immediate: true })
 
-// Fetch data on mount
-onMounted(() => {
-  fetchProject()
+// Propagate projects fetch error
+watch(projectsError, (err) => {
+  if (err != null)
+    error.value = err
 })
 
 // SEO and page metadata

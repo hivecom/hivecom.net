@@ -1,28 +1,10 @@
 <script setup lang="ts">
-import type { QueryData } from '@supabase/supabase-js'
-
 import { Button, Tab, Tabs } from '@dolanske/vui'
 import GameLibrary from '@/components/GameServers/GameServerLibrary.vue'
 import GameListing from '@/components/GameServers/GameServerListing.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useGames } from '@/composables/useGames'
-
-const supabase = useSupabaseClient()
-const gameserversQuery = supabase.from('gameservers').select(`
-  *,
-  container (
-    name,
-    running,
-    healthy,
-    reported_at,
-    server (
-      docker_control,
-      accessible
-    )
-  ),
-  administrator
-`)
-type GameserversType = QueryData<typeof gameserversQuery>
+import { useGameservers } from '@/composables/useGameservers'
 
 // Tab management
 const activeTab = ref('library')
@@ -65,30 +47,17 @@ onMounted(() => {
 })
 
 // Fetch data
-const loading = ref(true)
-const errorMessage = ref('')
-const gameservers = ref<GameserversType>()
 const supportModalOpen = ref(false)
 
 const { games, loading: gamesLoading } = useGames()
+const { gameservers, loading, error: gameserversError } = useGameservers()
+const errorMessage = computed(() => gameserversError.value ?? '')
 
 useSeoMeta({
   title: 'Game Servers',
   description: 'Browse the Hivecom game server library and live server listings.',
   ogTitle: 'Game Servers',
   ogDescription: 'Browse the Hivecom game server library and live server listings.',
-})
-
-onBeforeMount(async () => {
-  const { data, error } = await gameserversQuery
-  loading.value = false
-
-  if (error) {
-    errorMessage.value = error.message || 'Unknown error'
-    return
-  }
-
-  gameservers.value = data
 })
 
 const search = ref('')
@@ -112,7 +81,7 @@ const regionOptions = [
 ]
 
 const filteredGameservers = computed(() => {
-  if (!gameservers.value)
+  if (!gameservers.value.length)
     return []
 
   return gameservers.value.filter((gameserver) => {
@@ -146,11 +115,11 @@ const filteredGameservers = computed(() => {
 })
 
 const filteredGames = computed(() => {
-  if (!gameservers.value)
+  if (!gameservers.value.length)
     return []
 
   return games.value.filter((game) => {
-    const gameServers = gameservers.value!.filter((gameserver) => {
+    const gameServers = gameservers.value.filter((gameserver) => {
       const belongsToGame = gameserver.game === game.id
       const matchesRegionFilter = selectedRegions.value
         ? selectedRegions.value.some((selectedRegion) => {
@@ -190,7 +159,7 @@ const filteredGames = computed(() => {
 })
 
 const gameserversWithoutGame = computed(() => {
-  if (!gameservers.value || !games.value)
+  if (!gameservers.value.length || !games.value.length)
     return []
 
   return gameservers.value.filter((gameserver) => {

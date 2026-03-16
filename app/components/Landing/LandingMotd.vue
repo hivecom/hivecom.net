@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useCache } from '@/composables/useCache'
 import { shuffleArray } from '@/lib/utils/random'
 
 const props = withDefaults(defineProps<{
@@ -10,6 +11,7 @@ const props = withDefaults(defineProps<{
 })
 
 const supabase = useSupabaseClient()
+const { get: cacheGet, set: cacheSet } = useCache({ ttl: 10 * 60 * 1000 })
 
 const displayText = ref(props.fallbackText)
 const phase = ref<'idle' | 'out' | 'in'>('idle')
@@ -70,6 +72,15 @@ async function fetchBatch() {
 
   try {
     const offset = getOffset(totalAvailable.value, props.batchSize)
+    const cacheKey = `motds:batch:${offset}`
+    const cached = cacheGet<{ messages: string[], count: number }>(cacheKey)
+
+    if (cached != null) {
+      totalAvailable.value = cached.count
+      motdPool.value = shuffleArray(cached.messages)
+      return
+    }
+
     const { data, error, count } = await supabase
       .from('motds')
       .select('message', { count: 'estimated' })
@@ -81,6 +92,7 @@ async function fetchBatch() {
 
     totalAvailable.value = count ?? totalAvailable.value
     const messages = (data || []).map(entry => entry.message).filter(Boolean)
+    cacheSet(cacheKey, { messages, count: totalAvailable.value ?? 0 })
     motdPool.value = shuffleArray(messages)
   }
   catch (error) {

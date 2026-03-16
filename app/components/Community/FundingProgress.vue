@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Badge, Button, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
 import constants from '~~/constants.json'
+import { useExpenses } from '@/composables/useExpenses'
 import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
@@ -15,34 +16,15 @@ const isBelowSmall = useBreakpoint('<s')
 const { latestFunding: currentFunding, loading, error } = useMonthlyFunding()
 const errorMessage = computed(() => error.value)
 
-// Active expenses still fetched locally - not shared enough to warrant its own composable yet
-const supabase = useSupabaseClient()
-const monthlyExpenses = ref(0)
-
-onBeforeMount(async () => {
-  try {
-    const { data: expensesData, error: expensesError } = await supabase
-      .from('expenses')
-      .select('amount_cents')
-      .is('ended_at', null)
-      .lte('started_at', new Date().toISOString())
-
-    if (expensesError)
-      throw expensesError
-
-    monthlyExpenses.value = expensesData?.reduce((sum, expense) => sum + expense.amount_cents, 0) || 0
-  }
-  catch {
-    // Non-fatal - progress bar will show 0 goal rather than crashing
-  }
-})
+// Active expenses via shared cache
+const { totalActiveAmountCents: monthlyExpenses } = useExpenses()
 
 // Calculate funding progress
 const fundingProgress = computed(() => {
   if (!currentFunding.value)
     return { percentage: 0, current: 0, goal: monthlyExpenses.value }
 
-  const current = (currentFunding.value.patreon_month_amount_cents || 0) + (currentFunding.value.donation_month_amount_cents || 0)
+  const current = (currentFunding.value.patreon_month_amount_cents ?? 0) + (currentFunding.value.donation_month_amount_cents ?? 0)
   const goal = monthlyExpenses.value || 1 // Use actual expenses as goal, avoid division by zero
   const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0
 

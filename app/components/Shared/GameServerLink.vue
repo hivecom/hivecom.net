@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { CopyClipboard, Flex } from '@dolanske/vui'
 import { onMounted, ref, watch } from 'vue'
+import { useCache } from '@/composables/useCache'
 
 const props = defineProps<{
   gameserverId: number | null
@@ -13,6 +14,8 @@ const gameserverName = ref<string | null>(null)
 const loading = ref(true)
 const error = ref(false)
 
+const { get: cacheGet, set: cacheSet } = useCache({ ttl: 30 * 60 * 1000 })
+
 // Fetch gameserver data
 async function fetchGameserver() {
   if (!props.gameserverId) {
@@ -22,6 +25,14 @@ async function fetchGameserver() {
 
   // Only fetch gameserver if current user is authenticated
   if (!currentUser.value) {
+    loading.value = false
+    return
+  }
+
+  const cacheKey = `gameserver:name:${props.gameserverId}`
+  const cached = cacheGet<string>(cacheKey)
+  if (cached != null) {
+    gameserverName.value = cached
     loading.value = false
     return
   }
@@ -37,7 +48,10 @@ async function fetchGameserver() {
       throw gameserverError
     }
 
-    gameserverName.value = gameserver?.name || null
+    gameserverName.value = gameserver?.name ?? null
+    if (gameserver?.name != null) {
+      cacheSet(cacheKey, gameserver.name)
+    }
   }
   catch (err) {
     console.error('Failed to fetch gameserver:', err)

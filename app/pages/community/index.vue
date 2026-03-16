@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Database } from '@/types/database.types'
 import { Button, Card, Flex, Grid } from '@dolanske/vui'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
+import { useProjects } from '@/composables/useProjects'
 import { isBanActive } from '@/lib/banStatus'
 import { shuffleArray } from '@/lib/utils/random'
 
@@ -36,7 +36,9 @@ const loading = ref(true)
 const error = ref('')
 
 // State for recent projects
-const recentProjects = ref<Database['public']['Tables']['projects']['Row'][]>([])
+const recentProjects = ref<ReturnType<typeof useProjects>['projects']['value']>([])
+
+const { projects: allProjects } = useProjects()
 
 interface SupporterProfile {
   id: string
@@ -107,7 +109,7 @@ async function fetchCommunityData() {
       const activeProfilesFilter = buildActiveProfileFilter(nowIso)
 
       // Fetch supporters, random users, and recent projects in parallel for authenticated users
-      const [supportersResult, randomUserIds, projectsResult] = await Promise.all([
+      const [supportersResult, randomUserIds] = await Promise.all([
         // Fetch supporters (lifetime and patreon)
         supabase
           .from('profiles')
@@ -118,11 +120,6 @@ async function fetchCommunityData() {
         // Fetch random selection of users
         fetchRandomActiveCommunityMembers(activeProfilesFilter),
 
-        // Fetch random projects
-        supabase
-          .from('projects')
-          .select('*')
-          .limit(50), // Get more projects to randomize from
       ])
 
       if (supportersResult.error) {
@@ -136,34 +133,10 @@ async function fetchCommunityData() {
       }
 
       randomUsers.value = randomUserIds
-
-      if (projectsResult.error) {
-        console.warn('Error fetching random projects:', projectsResult.error)
-      }
-      else if (projectsResult.data) {
-        // Shuffle projects and take 3 random ones
-        const shuffledProjects = shuffleArray(projectsResult.data).slice(0, 3)
-
-        recentProjects.value = shuffledProjects
-      }
     }
-    else {
-      // For non-authenticated users, just fetch random projects
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select('*')
-        .limit(50) // Get more projects to randomize from
 
-      if (projectsError) {
-        console.warn('Error fetching random projects:', projectsError)
-      }
-      else if (projectsData) {
-        // Shuffle projects and take 3 random ones
-        const shuffledProjects = shuffleArray(projectsData).slice(0, 3)
-
-        recentProjects.value = shuffledProjects
-      }
-    }
+    // Pick 3 random projects from the cached list (works for both auth states)
+    recentProjects.value = shuffleArray([...allProjects.value]).slice(0, 3)
   }
   catch (err) {
     console.error('Error fetching community data:', err)

@@ -6,6 +6,7 @@ import FundingHistory from '@/components/Community/FundingHistory.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import { useExpenses } from '@/composables/useExpenses'
 import { formatCurrency } from '@/lib/utils/currency'
 
 // Data setup
@@ -16,8 +17,10 @@ const errorMessage = ref('')
 
 // Funding data
 const monthlyFunding = ref<Tables<'monthly_funding'>[]>([])
-const expenses = ref<Tables<'expenses'>[]>([])
 const supporters = ref<string[]>([])
+
+// Expenses via shared cache
+const { expenses, loading: expensesLoading, error: expensesError } = useExpenses()
 
 // UI state
 const showPastExpenses = ref(false)
@@ -34,17 +37,13 @@ onMounted(async () => {
   loading.value = true
 
   try {
-    // Fetch monthly funding data for history, expenses, and supporters in parallel
-    const [fundingResult, expensesResult, supportersResult] = await Promise.all([
+    // Fetch monthly funding history and supporters in parallel
+    // Expenses are handled by useExpenses() composable
+    const [fundingResult, supportersResult] = await Promise.all([
       supabase
         .from('monthly_funding')
         .select('*')
         .order('month', { ascending: false }),
-
-      supabase
-        .from('expenses')
-        .select('*')
-        .order('started_at', { ascending: false }),
 
       supabase
         .from('profiles')
@@ -58,11 +57,6 @@ onMounted(async () => {
       throw fundingResult.error
 
     monthlyFunding.value = fundingResult.data || []
-
-    if (expensesResult.error)
-      throw expensesResult.error
-
-    expenses.value = expensesResult.data || []
 
     if (supportersResult.error) {
       console.warn('Error fetching supporters:', supportersResult.error)
@@ -86,9 +80,13 @@ const filteredExpenses = computed(() => {
     return expenses.value
   }
   else {
-    return expenses.value.filter(expense => !expense.ended_at)
+    return expenses.value.filter(expense => expense.ended_at == null)
   }
 })
+
+// Combine loading states
+const isLoading = computed(() => loading.value || expensesLoading.value)
+const combinedError = computed(() => errorMessage.value || expensesError.value || '')
 </script>
 
 <template>
@@ -102,7 +100,7 @@ const filteredExpenses = computed(() => {
     <Divider />
 
     <!-- Loading state -->
-    <section v-if="loading" class="mt-xl">
+    <section v-if="isLoading" class="mt-xl">
       <Flex column gap="l">
         <Skeleton :width="300" :height="32" :radius="8" />
         <Skeleton :height="120" :radius="8" />
@@ -115,14 +113,14 @@ const filteredExpenses = computed(() => {
     </section>
 
     <!-- Error state -->
-    <section v-else-if="errorMessage" class="mt-xl">
+    <section v-else-if="combinedError" class="mt-xl">
       <Alert variant="danger">
-        {{ errorMessage }}
+        {{ combinedError }}
       </Alert>
     </section>
 
     <!-- Main content -->
-    <template v-else>
+    <template v-else-if="!isLoading && !combinedError">
       <!-- Our Supporters -->
       <Card v-if="user && supporters.length > 0" class="pb-l">
         <Flex column gap="m" x-center y-center>
