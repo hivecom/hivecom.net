@@ -4,6 +4,7 @@ import type { Tables } from '@/types/database.overrides'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 import { useForumTopics } from '@/composables/useForumTopics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -29,39 +30,20 @@ interface Props {
   hideTabs?: boolean
 }
 
-// Check if the current user has discussions.update permission by querying the DB directly.
-// This works regardless of which layout (admin or default) renders the component.
-const canUpdateDiscussions = ref(false)
-
 const isMobile = useBreakpoint('<s')
 const router = useRouter()
 
 const supabase = useSupabaseClient()
 const userId = useUserId()
 
-onBeforeMount(async () => {
-  const uid = userId.value
-  if (!uid)
-    return
+// Use the cached user data composable - role is already fetched and shared
+// with ForumItemActions and the parent page. No extra DB queries needed.
+const { user: cachedUser } = useCacheUserData(userId, { includeRole: true })
 
-  const { data: roleData } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', uid)
-    .maybeSingle()
-
-  if (!roleData?.role)
-    return
-
-  const { data: permData } = await supabase
-    .from('role_permissions')
-    .select('permission')
-    .eq('role', roleData.role)
-    .eq('permission', 'discussions.update')
-    .maybeSingle()
-
-  canUpdateDiscussions.value = !!permData
-})
+// discussions.update is granted to admin and moderator only.
+const canUpdateDiscussions = computed(() =>
+  cachedUser.value?.role === 'admin' || cachedUser.value?.role === 'moderator',
+)
 
 const search = ref('')
 const editingDraft = ref<Tables<'discussions'> | null>(null)
@@ -305,20 +287,27 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
   }
 }
 
-// Draft methods
-onBeforeMount(() => {
-  if (userId.value && !drafts.value.length) {
-    supabase
-      .from('discussions')
-      .select('*')
-      .eq('is_draft', true)
-      .eq('created_by', userId.value)
-      .then(({ data }) => {
-        if (data) {
-          drafts.value = data
-        }
-      })
-  }
+// Draft methods - load lazily on first open rather than on every mount.
+// ForumModalAddDiscussion is always mounted on the forum page (no v-if), so
+// onBeforeMount would fire on every page render. Deferring to first open
+// eliminates the spurious draft fetch for users who never open the modal.
+const draftsLoaded = ref(false)
+
+watch(() => props.open, (isOpen) => {
+  if (!isOpen || draftsLoaded.value || !userId.value)
+    return
+
+  draftsLoaded.value = true
+
+  supabase
+    .from('discussions')
+    .select('*')
+    .eq('is_draft', true)
+    .eq('created_by', userId.value)
+    .then(({ data }) => {
+      if (data)
+        drafts.value = data
+    })
 })
 
 function editDraft(draft: Tables<'discussions'>) {

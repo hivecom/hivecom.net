@@ -79,7 +79,6 @@ async function load() {
   error.value = null
 
   try {
-    // @ts-expect-error discussion_subscriptions not yet in generated database types
     const { data, error: fetchError } = await supabase.from('discussion_subscriptions')
       .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug)')
       .eq('user_id', userId.value as string)
@@ -111,7 +110,6 @@ async function handleUnsubscribe(sub: SubscriptionRow) {
 
   unsubscribeLoading.value = { ...unsubscribeLoading.value, [sub.id]: true }
 
-  // @ts-expect-error discussion_subscriptions not yet in generated database types
   const { error: deleteError } = await supabase.from('discussion_subscriptions')
     .delete()
     .eq('id', sub.id)
@@ -128,7 +126,6 @@ async function clearAll() {
 
   clearAllLoading.value = true
 
-  // @ts-expect-error discussion_subscriptions not yet in generated database types
   const { error: deleteError } = await supabase.from('discussion_subscriptions')
     .delete()
     .eq('user_id', userId.value as string)

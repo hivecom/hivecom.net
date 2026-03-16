@@ -2,6 +2,7 @@
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Badge, Button, Calendar, Checkbox, Flex, Input, Modal, Textarea, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 
 interface Props {
   open: boolean
@@ -20,35 +21,19 @@ const emit = defineEmits<{
 const supabase = useSupabaseClient()
 const userId = useUserId()
 
-// ─── Permission check (direct DB query, works outside admin layout) ───────────
+// ─── Permission check ─────────────────────────────────────────────────────────
+// Use the cached user data composable instead of raw DB queries - role is
+// already fetched and shared across the page. referendums.update and
+// referendums.delete are granted to admin and moderator only.
 
-const canMakePublic = ref(false)
-const canDelete = ref(false)
+const { user: cachedUser } = useCacheUserData(userId, { includeRole: true })
 
-onBeforeMount(async () => {
-  const uid = userId.value
-  if (!uid)
-    return
-
-  const { data: roleData } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', uid)
-    .maybeSingle()
-
-  if (!roleData?.role)
-    return
-
-  const { data: permData } = await supabase
-    .from('role_permissions')
-    .select('permission')
-    .eq('role', roleData.role)
-    .in('permission', ['referendums.update', 'referendums.delete'])
-
-  const perms = new Set((permData ?? []).map(p => p.permission))
-  canMakePublic.value = perms.has('referendums.update')
-  canDelete.value = perms.has('referendums.delete')
-})
+const canMakePublic = computed(() =>
+  cachedUser.value?.role === 'admin' || cachedUser.value?.role === 'moderator',
+)
+const canDelete = computed(() =>
+  cachedUser.value?.role === 'admin' || cachedUser.value?.role === 'moderator',
+)
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 

@@ -7,8 +7,130 @@ export type Json
     | Json[]
 
 export interface Database {
+  private: {
+    Tables: {
+      kvstore: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          key: string
+          modified_at: string | null
+          modified_by: string | null
+          type: Database['public']['Enums']['kvstore_type']
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          key: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database['public']['Enums']['kvstore_type']
+          value: Json
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          key?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database['public']['Enums']['kvstore_type']
+          value?: Json
+        }
+        Relationships: []
+      }
+      teamspeak_tokens: {
+        Row: {
+          attempts: number
+          created_at: string
+          expires_at: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id?: string
+          token_hash?: string
+          unique_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      queue_dispatch_worker_sync_steam: { Args: never, Returns: undefined }
+      queue_enqueue_worker_sync_steam: { Args: never, Returns: undefined }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          body: string | null
+          created_at: string
+          created_by: string | null
+          href: string | null
+          id: string
+          is_acknowledged: boolean
+          modified_at: string
+          modified_by: string | null
+          severity: string
+          title: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          href?: string | null
+          id?: string
+          is_acknowledged?: boolean
+          modified_at?: string
+          modified_by?: string | null
+          severity?: string
+          title: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          href?: string | null
+          id?: string
+          is_acknowledged?: boolean
+          modified_at?: string
+          modified_by?: string | null
+          severity?: string
+          title?: string
+        }
+        Relationships: []
+      }
       complaints: {
         Row: {
           acknowledged: boolean
@@ -17,7 +139,7 @@ export interface Database {
           context_gameserver: number | null
           context_user: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           id: number
           message: string
           responded_at: string | null
@@ -31,7 +153,7 @@ export interface Database {
           context_gameserver?: number | null
           context_user?: string | null
           created_at?: string
-          created_by: string
+          created_by?: string | null
           id?: number
           message: string
           responded_at?: string | null
@@ -45,7 +167,7 @@ export interface Database {
           context_gameserver?: number | null
           context_user?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           id?: number
           message?: string
           responded_at?: string | null
@@ -128,6 +250,7 @@ export interface Database {
           discussion_id: string
           id: string
           is_deleted: boolean
+          is_forum_reply: boolean
           is_nsfw: boolean
           is_offtopic: boolean
           markdown: string
@@ -143,6 +266,7 @@ export interface Database {
           discussion_id: string
           id?: string
           is_deleted?: boolean
+          is_forum_reply?: boolean
           is_nsfw?: boolean
           is_offtopic?: boolean
           markdown: string
@@ -158,6 +282,7 @@ export interface Database {
           discussion_id?: string
           id?: string
           is_deleted?: boolean
+          is_forum_reply?: boolean
           is_nsfw?: boolean
           is_offtopic?: boolean
           markdown?: string
@@ -201,6 +326,44 @@ export interface Database {
             columns: ['reply_to_id']
             isOneToOne: false
             referencedRelation: 'forum_discussion_replies'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      discussion_subscriptions: {
+        Row: {
+          created_at: string
+          discussion_id: string
+          id: string
+          last_seen_at: string
+          modified_at: string
+          modified_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discussion_id: string
+          id?: string
+          last_seen_at?: string
+          modified_at?: string
+          modified_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discussion_id?: string
+          id?: string
+          last_seen_at?: string
+          modified_at?: string
+          modified_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'discussion_subscriptions_discussion_id_fkey'
+            columns: ['discussion_id']
+            isOneToOne: false
+            referencedRelation: 'discussions'
             referencedColumns: ['id']
           },
         ]
@@ -792,6 +955,51 @@ export interface Database {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          created_by: string | null
+          href: string | null
+          id: string
+          is_read: boolean
+          modified_at: string
+          modified_by: string | null
+          source: string | null
+          source_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          href?: string | null
+          id?: string
+          is_read?: boolean
+          modified_at?: string
+          modified_by?: string | null
+          source?: string | null
+          source_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          href?: string | null
+          id?: string
+          is_read?: boolean
+          modified_at?: string
+          modified_by?: string | null
+          source?: string | null
+          source_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       presences_discord: {
         Row: {
           activity_details: string | null
@@ -1138,6 +1346,7 @@ export interface Database {
           date_start: string
           description: string | null
           id: number
+          is_public: boolean
           modified_at: string
           modified_by: string | null
           multiple_choice: boolean
@@ -1151,6 +1360,7 @@ export interface Database {
           date_start?: string
           description?: string | null
           id?: number
+          is_public?: boolean
           modified_at?: string
           modified_by?: string | null
           multiple_choice?: boolean
@@ -1164,6 +1374,7 @@ export interface Database {
           date_start?: string
           description?: string | null
           id?: number
+          is_public?: boolean
           modified_at?: string
           modified_by?: string | null
           multiple_choice?: boolean
@@ -1285,13 +1496,47 @@ export interface Database {
           discussion_id: string | null
           id: string | null
           is_deleted: boolean | null
+          is_forum_reply: boolean | null
           is_nsfw: boolean | null
           is_offtopic: boolean | null
           markdown: string | null
           meta: Json | null
           modified_at: string | null
           modified_by: string | null
+          reactions: Json | null
           reply_to_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          discussion_id?: string | null
+          id?: string | null
+          is_deleted?: boolean | null
+          is_forum_reply?: boolean | null
+          is_nsfw?: boolean | null
+          is_offtopic?: boolean | null
+          markdown?: string | null
+          meta?: Json | null
+          modified_at?: string | null
+          modified_by?: string | null
+          reactions?: Json | null
+          reply_to_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          discussion_id?: string | null
+          id?: string | null
+          is_deleted?: boolean | null
+          is_forum_reply?: boolean | null
+          is_nsfw?: boolean | null
+          is_offtopic?: boolean | null
+          markdown?: string | null
+          meta?: Json | null
+          modified_at?: string | null
+          modified_by?: string | null
+          reactions?: Json | null
+          reply_to_id?: string | null
         }
         Relationships: [
           {
@@ -1348,6 +1593,10 @@ export interface Database {
         Returns: boolean
       }
       contains_html_tags: { Args: { input_text: string }, Returns: boolean }
+      current_user_role: {
+        Args: never
+        Returns: Database['public']['Enums']['app_role']
+      }
       custom_access_token_hook: { Args: { event: Json }, Returns: Json }
       event_rsvp_window_open: {
         Args: { target_event_id: number }
@@ -1417,42 +1666,11 @@ export interface Database {
       search_profiles: {
         Args: { search_term: string }
         Returns: {
-          agreed_content_rules: boolean
-          badges: Database['public']['Enums']['profile_badge'][]
-          ban_end: string | null
-          ban_reason: string | null
-          ban_start: string | null
-          banned: boolean
-          birthday: string | null
-          country: string | null
-          created_at: string
-          discord_id: string | null
-          email_notifications_bounced: boolean
-          email_notifications_disabled: boolean
           id: string
-          introduction: string | null
-          last_seen: string
-          markdown: string | null
-          modified_at: string | null
-          modified_by: string | null
-          patreon_id: string | null
-          public: boolean
-          rich_presence_disabled: boolean
-          steam_id: string | null
-          supporter_lifetime: boolean
-          supporter_patreon: boolean
-          teamspeak_identities: Json
           username: string
-          username_set: boolean
-          website: string | null
         }[]
-        SetofOptions: {
-          from: '*'
-          to: 'profiles'
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
+      slugify: { Args: { input: string }, Returns: string }
       toggle_reaction: {
         Args: {
           p_emote: string
@@ -1462,6 +1680,7 @@ export interface Database {
         }
         Returns: Json
       }
+      unique_discussion_slug: { Args: { base_slug: string }, Returns: string }
       update_user_last_seen: { Args: { user_id?: string }, Returns: undefined }
       validate_github_repo: { Args: { github_repo: string }, Returns: boolean }
       validate_tag_format: { Args: { tag: string }, Returns: boolean }
@@ -1540,6 +1759,7 @@ export interface Database {
         | 'users.delete'
         | 'users.read'
         | 'users.update'
+        | 'alerts.read'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       kvstore_type: 'NUMBER' | 'BOOLEAN' | 'STRING' | 'JSON'
@@ -1678,6 +1898,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  private: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_permission: [
@@ -1752,6 +1975,7 @@ export const Constants = {
         'users.delete',
         'users.read',
         'users.update',
+        'alerts.read',
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],

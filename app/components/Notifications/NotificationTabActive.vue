@@ -100,7 +100,6 @@ async function load() {
   error.value = null
 
   try {
-    // @ts-expect-error notifications table not yet in generated database types
     const { data, error: fetchError } = await supabase.from('notifications')
       .select('*')
       .eq('user_id', userId.value as string)
@@ -134,7 +133,6 @@ async function deleteNotification(notification: NotificationRow) {
 
   deleteLoading.value = { ...deleteLoading.value, [notification.id]: true }
 
-  // @ts-expect-error notifications table not yet in generated database types
   const { error: deleteError } = await supabase.from('notifications')
     .delete()
     .eq('id', notification.id)
@@ -151,7 +149,6 @@ async function clearAll() {
 
   clearAllLoading.value = true
 
-  // @ts-expect-error notifications table not yet in generated database types
   const { error: deleteError } = await supabase.from('notifications')
     .delete()
     .eq('user_id', userId.value as string)

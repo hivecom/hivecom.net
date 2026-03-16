@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Flex, Skeleton } from '@dolanske/vui'
+import { computed } from 'vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 import { getAnonymousUsername } from '@/lib/anonymousUsernames'
 
@@ -11,18 +12,33 @@ interface Props {
    * NuxtLink to the user's profile.
    */
   noLink?: boolean
+  /**
+   * Pre-resolved username from a parent that already has the data (e.g.
+   * UserDisplay with useBulkUserData). When provided, useCacheUserData is
+   * skipped entirely - no extra profiles query fires.
+   */
+  resolvedUsername?: string | null
+  /**
+   * Pre-resolved username_set flag. Required alongside resolvedUsername to
+   * build the correct profile link without a cache lookup.
+   */
+  resolvedUsernameSet?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'm',
   noLink: false,
+  resolvedUsername: undefined,
+  resolvedUsernameSet: undefined,
 })
+
+const hasResolvedData = computed(() => props.resolvedUsername !== undefined)
 
 const {
   user,
   loading,
 } = useCacheUserData(
-  computed(() => props.userId ?? null),
+  computed(() => hasResolvedData.value ? null : (props.userId ?? null)),
   {
     includeRole: false,
     includeAvatar: false,
@@ -38,10 +54,11 @@ const anonymousUsername = computed(() =>
 )
 
 const displayName = computed<string | null>(() => {
+  if (hasResolvedData.value) {
+    return props.resolvedUsername ?? null
+  }
+
   if (!currentUser.value && props.userId) {
-    // For unauthenticated visitors, only public profiles are returned by RLS.
-    // If we received user data back, the profile is public – show the real name.
-    // Otherwise fall back to the anonymous placeholder.
     return user.value?.username ?? anonymousUsername.value
   }
 
@@ -51,6 +68,13 @@ const displayName = computed<string | null>(() => {
 const profileLink = computed(() => {
   if (!props.userId)
     return null
+
+  if (hasResolvedData.value) {
+    if (props.resolvedUsernameSet && props.resolvedUsername)
+      return `/profile/${props.resolvedUsername}`
+    return `/profile/${props.userId}`
+  }
+
   if (user.value?.username_set && user.value?.username)
     return `/profile/${user.value.username}`
   return `/profile/${props.userId}`
@@ -59,14 +83,14 @@ const profileLink = computed(() => {
 const canLink = computed(() => {
   if (props.noLink || !profileLink.value)
     return false
-  // Allow linking to public profiles even when unauthenticated.
-  // If RLS returned user data, the profile is public and linkable.
   if (!currentUser.value)
-    return !!user.value
+    return hasResolvedData.value ? !!props.resolvedUsername : !!user.value
   return true
 })
 
 const showSkeleton = computed(() => {
+  if (hasResolvedData.value)
+    return false
   return !!props.userId && loading.value
 })
 

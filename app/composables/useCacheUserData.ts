@@ -74,6 +74,11 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // In-flight deduplication: if a fetch for a given key is already in progress,
+  // subsequent callers attach to the same promise instead of firing a new request.
+  const _inflightProfiles = new Map<string, Promise<ProfileCacheEntry | null>>()
+  const _inflightRoles = new Map<string, Promise<string | null>>()
+
   /**
    * Generate cache keys for different data types
    */
@@ -99,31 +104,41 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
     }
 
     if (!profile) {
-      // Fetch from database
-      const { data, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at')
-        .eq('id', id)
-        .single()
+      // Coalesce concurrent fetches for the same ID into one request.
+      let inflight = _inflightProfiles.get(id)
+      if (inflight == null) {
+        inflight = Promise.resolve(
+          supabase
+            .from('profiles')
+            .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at')
+            .eq('id', id)
+            .single(),
+        ).then(({ data, error: profileError }) => {
+          if (profileError)
+            throw profileError
 
-      if (profileError) {
-        throw profileError
+          const result: ProfileCacheEntry = {
+            id: data.id,
+            username: data.username || 'Unknown',
+            username_set: data.username_set ?? false,
+            supporter_lifetime: data.supporter_lifetime ?? false,
+            supporter_patreon: data.supporter_patreon ?? false,
+            badges: Array.isArray(data.badges) ? [...data.badges] : [],
+            introduction: data.introduction ?? null,
+            country: data.country ?? null,
+            created_at: data.created_at ?? null,
+          }
+
+          cache.set(cacheKey, result, userTtl)
+          return result
+        }).finally(() => {
+          _inflightProfiles.delete(id)
+        })
+
+        _inflightProfiles.set(id, inflight)
       }
 
-      profile = {
-        id: data.id,
-        username: data.username || 'Unknown',
-        username_set: data.username_set ?? false,
-        supporter_lifetime: data.supporter_lifetime ?? false,
-        supporter_patreon: data.supporter_patreon ?? false,
-        badges: Array.isArray(data.badges) ? [...data.badges] : [],
-        introduction: data.introduction ?? null,
-        country: data.country ?? null,
-        created_at: data.created_at ?? null,
-      }
-
-      // Cache the result
-      cache.set(cacheKey, profile, userTtl)
+      profile = await inflight
     }
 
     return profile
@@ -147,19 +162,27 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
     const hasCachedRole = cache.has(cacheKey)
 
     if (!hasCachedRole) {
-      // Fetch from database
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', id)
-        .single()
+      // Coalesce concurrent fetches for the same ID into one request.
+      let inflight = _inflightRoles.get(id)
+      if (inflight == null) {
+        inflight = Promise.resolve(
+          supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', id)
+            .maybeSingle(),
+        ).then(({ data }) => {
+          const role = data?.role ?? null
+          cache.set(cacheKey, role, userTtl)
+          return role
+        }).finally(() => {
+          _inflightRoles.delete(id)
+        })
 
-      const role = data?.role ?? null
+        _inflightRoles.set(id, inflight)
+      }
 
-      // Cache the result
-      cache.set(cacheKey, role, userTtl)
-
-      return role
+      return inflight
     }
 
     // Return cached value (could be null if user has no role)
@@ -235,19 +258,21 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
         fetchAvatarUrl(id),
       ])
 
-      user.value = {
-        id: profile.id,
-        username: profile.username,
-        username_set: profile.username_set ?? false,
-        role,
-        avatarUrl,
-        supporter_lifetime: profile.supporter_lifetime ?? false,
-        supporter_patreon: profile.supporter_patreon ?? false,
-        badges: profile.badges ? [...profile.badges] : [],
-        introduction: profile.introduction ?? null,
-        country: profile.country ?? null,
-        created_at: profile.created_at ?? null,
-      }
+      user.value = profile != null
+        ? {
+            id: profile.id,
+            username: profile.username,
+            username_set: profile.username_set ?? false,
+            role,
+            avatarUrl,
+            supporter_lifetime: profile.supporter_lifetime ?? false,
+            supporter_patreon: profile.supporter_patreon ?? false,
+            badges: profile.badges ? [...profile.badges] : [],
+            introduction: profile.introduction ?? null,
+            country: profile.country ?? null,
+            created_at: profile.created_at ?? null,
+          }
+        : null
     }
     catch (err) {
       console.error('Failed to fetch user data:', err)

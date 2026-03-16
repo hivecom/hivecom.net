@@ -11,16 +11,37 @@ interface Props {
   linked?: boolean
   /** Wrap the avatar in a UserPreviewHover popout. */
   showPreview?: boolean
+  /**
+   * Pre-resolved avatar URL from a parent that already has the data (e.g.
+   * UserDisplay with useBulkUserData). When provided, useCacheUserData is
+   * skipped entirely - no extra profiles or storage query fires.
+   */
+  resolvedAvatarUrl?: string | null
+  /**
+   * Pre-resolved username. Used to build the profile link without a cache
+   * lookup when resolvedAvatarUrl is also provided.
+   */
+  resolvedUsername?: string | null
+  /**
+   * Pre-resolved username_set flag. Used alongside resolvedUsername to build
+   * the correct profile link.
+   */
+  resolvedUsernameSet?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'm',
   linked: false,
   showPreview: false,
+  resolvedAvatarUrl: undefined,
+  resolvedUsername: undefined,
+  resolvedUsernameSet: undefined,
 })
 
+const hasResolvedData = computed(() => props.resolvedAvatarUrl !== undefined)
+
 const { user, loading } = useCacheUserData(
-  computed(() => props.userId ?? null),
+  computed(() => hasResolvedData.value ? null : (props.userId ?? null)),
   {
     includeAvatar: true,
     includeRole: false,
@@ -29,10 +50,12 @@ const { user, loading } = useCacheUserData(
   },
 )
 
-const avatarUrl = computed(() => user.value?.avatarUrl ?? null)
+const avatarUrl = computed(() =>
+  hasResolvedData.value ? (props.resolvedAvatarUrl ?? null) : (user.value?.avatarUrl ?? null),
+)
 
 const initials = computed(() => {
-  const name = user.value?.username
+  const name = hasResolvedData.value ? props.resolvedUsername : user.value?.username
   if (!name)
     return ''
 
@@ -47,15 +70,26 @@ const initials = computed(() => {
 const profileLink = computed(() => {
   if (!props.userId)
     return null
+
+  if (hasResolvedData.value) {
+    if (props.resolvedUsernameSet && props.resolvedUsername)
+      return `/profile/${props.resolvedUsername}`
+    return `/profile/${props.userId}`
+  }
+
   if (user.value?.username_set && user.value?.username)
     return `/profile/${user.value.username}`
   return `/profile/${props.userId}`
 })
 
 const ariaLabel = computed(() => {
-  const name = user.value?.username
+  const name = hasResolvedData.value ? props.resolvedUsername : user.value?.username
   return name ? `View profile of ${name}` : 'View profile'
 })
+
+const showSkeleton = computed(() =>
+  !hasResolvedData.value && loading.value && !!props.userId,
+)
 
 function getSizePixels(size: 's' | 'm' | 'l' | number): string {
   if (typeof size === 'number')
@@ -71,7 +105,7 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
 <template>
   <!-- Loading skeleton -->
   <Skeleton
-    v-if="loading && userId"
+    v-if="showSkeleton"
     :width="getSizePixels(size)"
     :height="getSizePixels(size)"
     style="border-radius: 50%;"

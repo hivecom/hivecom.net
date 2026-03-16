@@ -147,7 +147,6 @@ export function useNotifications() {
           .select('id, username, birthday')
           .eq('id', userId.value)
           .single(),
-        // @ts-expect-error notifications table not yet in generated database types
         supabase.from('notifications')
           .select('*')
           .eq('user_id', userId.value)
@@ -212,7 +211,6 @@ export function useNotifications() {
       return
     }
 
-    // @ts-expect-error notifications table not yet in generated database types
     await supabase.from('notifications').update({ is_read: true }).in('id', ids)
 
     unreadNotifications.value = []
@@ -250,7 +248,6 @@ export function useNotifications() {
     markRead(notification.id)
 
     if (!notification.id.startsWith('dev-')) {
-      // @ts-expect-error notifications table not yet in generated database types
       await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id)
     }
   }

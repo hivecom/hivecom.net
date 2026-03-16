@@ -397,7 +397,9 @@ Policies would then call `current_user_role()` instead of querying `user_roles` 
 
 | # | Affected tables | Priority |
 |---|----------------|----------|
-| 187 | `discussions`, `discussion_replies`, `discussion_topics`, `alerts`, `complaints`, `motds`, `kvstore`, `role_permissions` - any table with multiple `authorize()`-gated policies | Medium |
+| ~~187~~ | ~~`discussions`, `discussion_replies`, `discussion_topics`, `alerts`, `complaints`, `motds`, `kvstore`, `role_permissions` - any table with multiple `authorize()`-gated policies~~ | ~~Medium~~ |
+
+**DONE**: `current_user_role()` GUC-cache function created in `20260315225000_cache_user_role_in_guc.sql`. `authorize()` rewritten to call `current_user_role()` internally, so all existing policies gain the cache benefit without individual rewrites. Role resolved once per transaction, subsequent calls return from `app.user_role_cache` GUC (transaction-local, resets on commit).
 
 ### Reactions JSONB - linear fan-out on popular discussions
 
@@ -415,7 +417,7 @@ The `notify_discussion_subscribers()` trigger function uses a `FOR v_sub IN SELE
 
 | # | Location | Issue | Suggested fix | Priority |
 |---|----------|-------|---------------|----------|
-| 189 | `supabase/migrations/20260308224800_notification_source_and_discussion_fanout.sql` | Cursor loop fires N INSERTs synchronously inside the reply INSERT trigger; blocks the writer and scales O(n) with subscriber count | Replace the `FOR...LOOP` with a single set-based `INSERT ... ON CONFLICT ... DO UPDATE` using a `SELECT` from `discussion_subscriptions` as the source: `INSERT INTO notifications (...) SELECT ..., ds.user_id FROM discussion_subscriptions ds WHERE ds.discussion_id = NEW.discussion_id AND ds.user_id IS DISTINCT FROM NEW.created_by ON CONFLICT ... DO UPDATE SET ...`. One statement replaces N. For extreme scale (thousands of subscribers) the trigger should push to `pgmq` (already available in the schema) and fan-out asynchronously via an Edge Function. | High |
+| ~~189~~ | ~~`supabase/migrations/20260308224800_notification_source_and_discussion_fanout.sql`~~ | ~~Cursor loop fires N INSERTs synchronously inside the reply INSERT trigger; blocks the writer and scales O(n) with subscriber count~~ | ~~Replace the `FOR...LOOP` with a single set-based `INSERT ... ON CONFLICT ... DO UPDATE` using a `SELECT` from `discussion_subscriptions` as the source.~~ - **DONE**: cursor loop replaced with `INSERT INTO notifications (...) SELECT ..., ds.user_id FROM discussion_subscriptions ds WHERE ds.discussion_id = NEW.discussion_id AND ds.user_id IS DISTINCT FROM NEW.created_by ON CONFLICT ... DO UPDATE SET ...` in `20260315225001_notify_discussion_subscribers_set_based.sql`. N round-trips reduced to 1 statement. | ~~High~~ |
 
 ### `update_topic_aggregate_counts()` - repeated full recomputes
 
@@ -423,7 +425,7 @@ The `update_topic_aggregate_counts()` trigger does `SELECT SUM(reply_count)` + `
 
 | # | Location | Issue | Suggested fix | Priority |
 |---|----------|-------|---------------|----------|
-| 190 | `supabase/migrations/20260303062113_discussion_topic_aggregate_counts.sql` | Full `SUM()` recompute for DELETE/re-parent paths; fires two subqueries against `discussions` per trigger invocation | The DELETE path can use a delta approach: `total_reply_count = total_reply_count - OLD.reply_count, total_view_count = total_view_count - OLD.view_count` (same as the INSERT fast path but subtracted). Only fall back to a full recompute if the result would go negative (integrity guard). The re-parent path already must recompute the old topic but can use incremental add on the new topic since the discussion's counts are known from `NEW.*`. | Medium |
+| ~~190~~ | ~~`supabase/migrations/20260303062113_discussion_topic_aggregate_counts.sql`~~ | ~~Full `SUM()` recompute for DELETE/re-parent paths; fires two subqueries against `discussions` per trigger invocation~~ | ~~The DELETE path can use a delta approach.~~ - **DONE**: DELETE path now uses `GREATEST(total_reply_count - OLD.reply_count, 0)` / `GREATEST(total_view_count - OLD.view_count, 0)` incremental delta in `20260315225002_topic_aggregate_delta_delete.sql`. Draft deletions skip the update entirely (drafts never contributed). Re-parent and draft-toggle UPDATE paths remain full recomputes (low frequency, correctness matters). | ~~Medium~~ |
 
 ### `search_profiles()` - returns full profile rows
 
@@ -431,7 +433,7 @@ The `search_profiles()` fuzzy-search RPC (added in `20260218145920_add_fuzzy_sea
 
 | # | Function | Issue | Suggested fix | Priority |
 |---|----------|-------|---------------|----------|
-| 191 | `public.search_profiles(text)` | Transfers full `profiles` row (including large text columns like `markdown`) for a search that only needs `id` + `username` | Change the return type to a lightweight composite or `TABLE(id uuid, username text, ...whatever callers need)` and project only those columns in the function body. This reduces network payload and avoids materializing `markdown`/`teamspeak_identities` for every search keystroke. | Medium |
+| ~~191~~ | ~~`public.search_profiles(text)`~~ | ~~Transfers full `profiles` row (including large text columns like `markdown`) for a search that only needs `id` + `username`~~ | ~~Change the return type to a lightweight composite or `TABLE(id uuid, username text, ...whatever callers need)`.~~ - **DONE**: return type changed from `SETOF public.profiles` to `TABLE(id uuid, username text)` in `20260315225003_search_profiles_slim_return.sql`. Existing caller in `mentions.ts` already projected `.select('username, id')` so no call-site changes needed. | ~~Medium~~ |
 
 ### `settings` table - overly broad grants to `anon`
 
@@ -460,10 +462,12 @@ Several columns are declared nullable (`NULL`) in the schema but are treated as 
 | 196 | `discussion_replies.created_by` | Same as above - nullable but effectively required by all write paths. | Low |
 | 197 | `events_rsvps.created_by` | Nullable FK to `profiles`; `user_id` (the actual RSVP owner) is `NOT NULL`, making `created_by` redundant as a nullable shadow. | Low |
 
+**WITHDRAWN** (#195-197): All three columns have `ON DELETE SET NULL` on their FK to `profiles`/`auth.users`. Profile deletion intentionally nulls these columns to preserve content as authorless records - that is an active, legitimate code path. `NOT NULL` is directly incompatible with `ON DELETE SET NULL`; Postgres would reject the profile delete rather than null the column. Migration `20260315225004_not_null_required_fks.sql` is now a no-op. If authorless records should be prevented, the FK would need to change to `ON DELETE CASCADE` or `ON DELETE RESTRICT` first - that is a product decision.
+
 ### `forum_discussion_replies` view - implicit JOIN on every reply fetch
 
 The `forum_discussion_replies` view adds an `INNER JOIN discussions ON discussions.id = dr.discussion_id WHERE discussions.discussion_topic_id IS NOT NULL`. Every query against this view (including the 20-reply activity feed on `forum/index.vue`) incurs this join even when the caller doesn't need `discussions` columns at all. The join is well-indexed (`discussion_replies_discussion_id_idx` + `discussions` PK) so it's not catastrophic, but it adds overhead on every forum page load.
 
 | # | View | Issue | Suggested fix | Priority |
 |---|------|-------|---------------|----------|
-| 198 | `public.forum_discussion_replies` | Adds an implicit `JOIN discussions` on every SELECT, even column-only queries that just need reply fields | Add an `is_forum_reply boolean` denormalized column to `discussion_replies` maintained by trigger (set `true` when the parent discussion has a non-null `discussion_topic_id`). The view then becomes `WHERE is_forum_reply = true` - no join, index-only scan on the partial index. Alternatively, filter server-side only when genuinely needed and query `discussion_replies` directly. | Low |
+| ~~198~~ | ~~`public.forum_discussion_replies`~~ | ~~Adds an implicit `JOIN discussions` on every SELECT, even column-only queries that just need reply fields~~ | ~~Add an `is_forum_reply boolean` denormalized column to `discussion_replies` maintained by trigger.~~ - **DONE**: `is_forum_reply boolean NOT NULL DEFAULT false` added to `discussion_replies` in `20260315225005_forum_discussion_replies_denorm.sql`. Backfilled via JOIN. `set_reply_is_forum_reply()` BEFORE INSERT trigger sets the flag on new replies. `sync_replies_is_forum_reply()` AFTER UPDATE trigger propagates changes when a discussion is re-parented. View recreated as `WHERE is_forum_reply = true` - no JOIN. Partial index `idx_discussion_replies_is_forum_reply ON discussion_replies(created_at DESC) WHERE is_forum_reply = true` added. | ~~Low~~ |

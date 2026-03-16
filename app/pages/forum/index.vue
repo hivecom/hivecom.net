@@ -14,10 +14,16 @@ import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useCache } from '@/composables/useCache'
 import { extractMentionIds, processMentionsToText, stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
+
+const FORUM_TOPICS_CACHE_KEY = 'forum:topics-with-discussions'
+const FORUM_TOPICS_TTL = 5 * 60 * 1000 // 5 minutes
+const FORUM_REPLIES_CACHE_KEY = 'forum:latest-replies'
+const FORUM_REPLIES_TTL = 2 * 60 * 1000 // 2 minutes
 
 dayjs.extend(relativeTime)
 
@@ -69,19 +75,31 @@ const addingTopic = ref(false)
 const addingDiscussion = ref(false)
 const rulesModalOpen = ref(false)
 const contentRulesGateOpen = ref(false)
-const agreedContentRules = ref<boolean | null>(null)
+// useState survives navigation (no remount reset) so back-navigation doesn't
+// refetch. Reset to null when the user changes so switching accounts doesn't
+// bleed state.
+const agreedContentRules = useState<boolean | null>('forum:agreed-content-rules', () => null)
+
+watch(userId, () => {
+  agreedContentRules.value = null
+})
 const pendingCreateAction = ref<'discussion' | 'topic' | null>(null)
 
 const { settings } = useUserSettings()
 
 const loading = ref(false)
 const supabase = useSupabaseClient()
+const forumCache = useCache()
 
 async function refreshContentRulesAgreement() {
   if (!userId.value) {
     agreedContentRules.value = null
     return
   }
+
+  // Already resolved - no need to re-fetch (useState persists across navigations)
+  if (agreedContentRules.value !== null)
+    return
 
   const { data, error } = await supabase
     .from('profiles')
@@ -308,11 +326,35 @@ function _setQuery(slug: string | null, uuid: string | null, push: boolean) {
 provide(FORUM_KEYS.forumTopics, () => topics)
 provide(FORUM_KEYS.forumActiveTopicId, () => activeTopicId)
 
-onBeforeMount(() => {
+onBeforeMount(async () => {
   loading.value = true
 
-  Promise.all([
-    supabase
+  // ── Topics + nested discussions ──────────────────────────────────────────
+  // Cache for 5 minutes. New discussions and reply counts change frequently
+  // enough that a short TTL is appropriate, but remounting within a session
+  // (back navigation) should never refetch.
+  const cachedTopics = forumCache.get<TopicWithDiscussions[]>(FORUM_TOPICS_CACHE_KEY)
+
+  if (cachedTopics !== null) {
+    topics.value = cachedTopics
+    forumUnread.initializeTopics(cachedTopics)
+
+    if (activeTopicSlug.value) {
+      const matched = cachedTopics.find(t => t.slug === activeTopicSlug.value)
+      if (matched)
+        activeTopicId.value = matched.id
+    }
+    else if (activeTopicIdQuery.value) {
+      const matched = cachedTopics.find(t => t.id === activeTopicIdQuery.value)
+      if (matched) {
+        activeTopicId.value = matched.id
+        if (matched.slug)
+          _setQuery(matched.slug, null, false)
+      }
+    }
+  }
+  else {
+    await supabase
       .from('discussion_topics')
       .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, discussion_topic_id)')
       .neq('discussions.is_draft', true)
@@ -322,6 +364,7 @@ onBeforeMount(() => {
         }
         else {
           topics.value = data
+          forumCache.set(FORUM_TOPICS_CACHE_KEY, data, FORUM_TOPICS_TTL)
 
           // Seed localStorage seen-state for any topic/discussion not yet tracked.
           // First-time visitors get everything marked as "seen" so only future
@@ -346,17 +389,26 @@ onBeforeMount(() => {
             }
           }
         }
-      }),
-    // Fetch the 20 most recent replies. visibleReplies filters these down to
-    // only forum-scoped discussions client-side via visibleDiscussionIds.
-    supabase
+      })
+  }
+
+  // ── Latest replies ───────────────────────────────────────────────────────
+  // Cache for 2 minutes. Short TTL since the activity feed should feel live,
+  // but remounting within a session shouldn't refetch on every back-navigation.
+  const cachedReplies = forumCache.get<ActivityItem[]>(FORUM_REPLIES_CACHE_KEY)
+
+  if (cachedReplies !== null) {
+    latestReplies.value = cachedReplies
+  }
+  else {
+    await supabase
       .from('forum_discussion_replies')
       .select('*')
       .limit(20)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data) {
-          latestReplies.value = data.map((item) => {
+          const mapped = data.map((item) => {
             return {
               id: item.id,
               type: 'Reply',
@@ -369,14 +421,15 @@ onBeforeMount(() => {
               discussionId: item.discussion_id,
               href: `/forum/${item.discussion_id}?comment=${item.id}`,
               isNsfw: !!item.is_nsfw,
-            }
+            } as ActivityItem
           })
+          latestReplies.value = mapped
+          forumCache.set(FORUM_REPLIES_CACHE_KEY, mapped, FORUM_REPLIES_TTL)
         }
-      }),
-  ])
-    .then(() => {
-      loading.value = false
-    })
+      })
+  }
+
+  loading.value = false
 })
 
 const activeTopicPath = computed(() => composePathToTopic(activeTopicId.value, topics.value))
@@ -581,6 +634,8 @@ function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
   const topic = topics.value.find(topic => topic.id === discussion.discussion_topic_id)
   if (topic) {
     topic.discussions.push(discussion)
+    // Bust the topics cache so the next full remount picks up the new discussion.
+    forumCache.delete(FORUM_TOPICS_CACHE_KEY)
   }
 }
 
@@ -607,6 +662,8 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
       parentTopic.discussions[discussionIndex] = { ...oldDiscussion, ...data } as ForumDiscussion
     }
   }
+  // Bust cache so remounts reflect the mutation.
+  forumCache.delete(FORUM_TOPICS_CACHE_KEY)
 }
 
 // Remove methods - remove a topic or discussion from local state after deletion
@@ -628,6 +685,8 @@ function removeItem(type: 'topic' | 'discussion', id: string) {
       parentTopic.discussions = parentTopic.discussions.filter(discussion => discussion.id !== id)
     }
   }
+  // Bust cache so remounts reflect the deletion.
+  forumCache.delete(FORUM_TOPICS_CACHE_KEY)
 }
 
 const visibleDiscussionIds = computed(() => {
@@ -768,6 +827,33 @@ const { users: mentionUsers } = useBulkUserData(latestPostMentionIds, {
   includeRole: false,
 })
 
+// Pre-warm the role cache for all post authors so the UserRole components
+// rendered inside each UserDisplay don't each fire their own user_roles query.
+// useBulkUserData batches these into a single IN(...) query and populates the
+// shared cache keyed by user:role:<id>. When UserRole mounts and calls
+// useCacheUserData, it finds a cache hit instead of going to the DB.
+//
+// latestPostAuthorIds is a ref (not computed) so useBulkUserData's watch only
+// fires when the actual ID set changes, not on every reactive evaluation that
+// returns a new array reference. We sync it via a watchEffect with a sorted
+// join comparison to avoid spurious re-fetches.
+const latestPostAuthorIds = ref<string[]>([])
+let _lastAuthorKey = ''
+
+watchEffect(() => {
+  const ids = [...new Set(latestPosts.value.map(p => p.user).filter((id): id is string => id != null))]
+  const key = ids.toSorted().join(',')
+  if (key !== _lastAuthorKey) {
+    _lastAuthorKey = key
+    latestPostAuthorIds.value = ids
+  }
+})
+
+const { users: postAuthorUsers } = useBulkUserData(latestPostAuthorIds, {
+  includeAvatar: true,
+  includeRole: true,
+})
+
 const mentionLookup = computed<Record<string, string>>(() => {
   const lookup: Record<string, string> = {}
 
@@ -789,18 +875,41 @@ const postSinceYesterday = computed(() => {
 
 // Draft count for creation dropdown
 const draftCount = ref<number>(0)
+const draftCountCache = useCache()
+const DRAFT_COUNT_TTL = 2 * 60 * 1000 // 2 minutes
 
-function fetchDraftCount() {
+function fetchDraftCount(force = false) {
+  const uid = userId.value
+  if (!uid)
+    return
+
+  const cacheKey = `draft-count:${uid}`
+
+  if (!force && draftCountCache.has(cacheKey)) {
+    const cached = draftCountCache.get<number>(cacheKey)
+    if (cached !== null)
+      draftCount.value = cached
+    return
+  }
+
   supabase
     .from('discussions')
-    .select('*', { count: 'exact', head: true })
-    .eq('created_by', userId.value)
+    .select('id', { count: 'exact', head: true })
+    .eq('created_by', uid)
     .eq('is_draft', true)
     .then(({ count }) => {
       if (count !== null) {
         draftCount.value = count
+        draftCountCache.set(cacheKey, count, DRAFT_COUNT_TTL)
       }
     })
+}
+
+function handleDraftUpdated() {
+  const uid = userId.value
+  if (uid)
+    draftCountCache.delete(`draft-count:${uid}`)
+  fetchDraftCount(true)
 }
 
 onBeforeMount(() => {
@@ -887,7 +996,14 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
                 {{ stripMarkdown(processMentionsToText(post.description, mentionLookup)) }}
               </p>
               <Flex y-center x-between expand class="forum__latest-footer">
-                <UserDisplay :user-id="post.user" size="s" show-role />
+                <UserDisplay
+                  :user-id="post.user"
+                  size="s"
+                  show-role
+                  :role="post.user ? (postAuthorUsers.get(post.user)?.role ?? undefined) : undefined"
+                  :username="post.user ? (postAuthorUsers.get(post.user)?.username ?? undefined) : undefined"
+                  :avatar-url="post.user ? (postAuthorUsers.get(post.user)?.avatarUrl ?? undefined) : undefined"
+                />
               </Flex>
             </NuxtLink>
           </template>
@@ -1180,7 +1296,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         :open="addingDiscussion"
         @close="addingDiscussion = false"
         @created="appendDiscussionToTopic"
-        @draft-updated="fetchDraftCount()"
+        @draft-updated="handleDraftUpdated()"
       />
 
       <Commands
