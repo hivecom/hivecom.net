@@ -1,15 +1,8 @@
 <script setup lang="ts">
-import { onBeforeMount, ref, watch } from 'vue'
+import { onBeforeMount, ref } from 'vue'
 import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
 import KPICard from './KPICard.vue'
 import KPIContainer from './KPIContainer.vue'
-
-// Props
-interface Props {
-  refreshSignal?: number
-}
-
-const props = defineProps<Props>()
 
 // Setup
 const supabase = useSupabaseClient()
@@ -83,13 +76,6 @@ async function fetchKPIData() {
 function formatCurrency(cents: number) {
   return `€${Math.round(cents / 100)}`
 }
-
-// Watch for refresh signal changes
-watch(() => props.refreshSignal, () => {
-  if (props.refreshSignal) {
-    fetchKPIData()
-  }
-})
 
 // Load data on mount
 onBeforeMount(() => {

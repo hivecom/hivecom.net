@@ -26,15 +26,15 @@ function toggleDevFixtures() {
   }
 }
 
-// Refs to lazy-loaded tab components for load/reset control
-const unreadTab = useTemplateRef<InstanceType<typeof NotificationTabPast>>('unreadTab')
-const readTab = useTemplateRef<InstanceType<typeof NotificationTabActive>>('readTab')
+// Refs to tab components for load/reset control
+const activeTabRef = useTemplateRef<InstanceType<typeof NotificationTabActive>>('activeTabRef')
+const pastTabRef = useTemplateRef<InstanceType<typeof NotificationTabPast>>('pastTabRef')
 const subscriptionsTab = useTemplateRef<InstanceType<typeof NotificationTabSubscriptions>>('subscriptionsTab')
 
 watch(activeTab, async (tab) => {
   await nextTick()
   if (tab === 'past')
-    readTab.value?.load()
+    pastTabRef.value?.load()
   else if (tab === 'subscriptions')
     subscriptionsTab.value?.load()
 })
@@ -50,7 +50,7 @@ watch(hasUser, (ready) => {
 watch(open, (isOpen) => {
   if (!isOpen) {
     activeTab.value = 'active'
-    readTab.value?.reset()
+    pastTabRef.value?.reset()
     subscriptionsTab.value?.reset()
   }
 })
@@ -60,10 +60,10 @@ function handleNavigate() {
 }
 
 const showActiveFooter = computed(
-  () => activeTab.value === 'active' && (unreadTab.value?.hasAnyNotifications ?? false),
+  () => activeTab.value === 'active' && (activeTabRef.value?.hasActionable ?? false),
 )
 const showPastFooter = computed(
-  () => activeTab.value === 'past' && (readTab.value?.hasNotifications ?? false),
+  () => activeTab.value === 'past' && (pastTabRef.value?.hasNotifications ?? false),
 )
 const showSubscriptionsFooter = computed(
   () => activeTab.value === 'subscriptions' && (subscriptionsTab.value?.hasSubscriptions ?? false),
@@ -135,9 +135,11 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
       <Flex column class="notification-menu__body">
         <Flex expand>
           <NotificationTabActive
-            v-if="activeTab === 'past'"
-            ref="readTab"
+            v-if="activeTab === 'active'"
+            ref="activeTabRef"
             v-model:dev-fixtures-active="devFixturesActive"
+            v-model:dev-fixture-error="devFixtureError"
+            v-model:dev-fixture-loading="devFixtureLoading"
             @navigate="handleNavigate"
           />
 
@@ -149,8 +151,8 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
           />
 
           <NotificationTabPast
-            v-else-if="activeTab === 'active'"
-            ref="unreadTab"
+            v-else-if="activeTab === 'past'"
+            ref="pastTabRef"
             v-model:dev-fixtures-active="devFixturesActive"
             v-model:dev-fixture-error="devFixtureError"
             v-model:dev-fixture-loading="devFixtureLoading"
@@ -165,8 +167,8 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
           expand
           size="s"
           variant="gray"
-          :loading="unreadTab?.markAllLoading ?? false"
-          @click="unreadTab?.markAllAsRead()"
+          :loading="activeTabRef?.markAllLoading ?? false"
+          @click="activeTabRef?.markAllAsRead()"
         >
           Mark all as read
         </Button>
@@ -175,8 +177,8 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
           expand
           size="s"
           variant="gray"
-          :loading="readTab?.clearAllLoading ?? false"
-          @click="readTab?.clearAll()"
+          :loading="pastTabRef?.clearAllLoading ?? false"
+          @click="pastTabRef?.clearAll()"
         >
           Clear all
         </Button>

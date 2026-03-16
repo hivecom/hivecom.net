@@ -1,6 +1,17 @@
 import type { ChartOptions } from 'chart.js'
 import { getCSSVariable } from './utils/common'
 
+/**
+ * Returns the CSS variable value for a chart grid line color given the current
+ * VUI theme name (e.g. "light" or "dark").
+ *
+ * The theme prefix convention (`--${theme}-color-border-weak`) is documented
+ * here so callers don't need to reconstruct it manually.
+ */
+export function getChartGridColor(theme: string): string {
+  return getCSSVariable(`--${theme}-color-border-weak`)
+}
+
 export function getLineChartDefaults(theme: string): ChartOptions<'line'> {
   return {
     responsive: true,
@@ -30,7 +41,7 @@ export function getLineChartDefaults(theme: string): ChartOptions<'line'> {
       x: {
         display: true,
         grid: {
-          color: getCSSVariable(`--${theme}-color-border-weak`),
+          color: getChartGridColor(theme),
         },
       },
       y: {
@@ -39,7 +50,7 @@ export function getLineChartDefaults(theme: string): ChartOptions<'line'> {
         position: 'left',
         beginAtZero: true,
         grid: {
-          color: getCSSVariable(`--${theme}-color-border-weak`),
+          color: getChartGridColor(theme),
         },
       },
     },

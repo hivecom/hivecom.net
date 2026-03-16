@@ -1,9 +1,16 @@
 /**
- * Shared helper to load and cache the total number of discussions a user has created.
- * Unlike useCacheBadgeDiscussionStartedCount, this counts ALL non-draft discussions
- * regardless of context (forum threads, event discussions, etc.), but excludes
- * profile discussions (where profile_id is set).
- * Reduces duplicate Supabase queries when the same profile is shown repeatedly.
+ * Cached total discussion count for a given user - used for display counters
+ * (e.g. "X discussions" on a profile card).
+ *
+ * ## Distinction from `useCacheBadgeDiscussionStartedCount`
+ *
+ * | Composable                           | Counts                                              | Used for              |
+ * |--------------------------------------|-----------------------------------------------------|-----------------------|
+ * | `useCacheUserDiscussionCount`        | ALL non-draft discussions, any context except profile wall | Display counter  |
+ * | `useCacheBadgeDiscussionStartedCount`| Pure forum threads only (topic set, no entity FKs, not draft) | Badge threshold |
+ *
+ * These look similar but query different predicates and serve different consumers.
+ * Do NOT merge them - the badge composable is intentionally stricter.
  */
 
 import type { Ref } from 'vue'

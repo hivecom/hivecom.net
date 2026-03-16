@@ -13,11 +13,6 @@ import EventDetails from './EventDetails.vue'
 import EventFilters from './EventFilters.vue'
 import EventForm from './EventForm.vue'
 
-// Props
-const _props = defineProps<{
-  canManage?: boolean
-}>()
-
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 type Event = Tables<'events'>

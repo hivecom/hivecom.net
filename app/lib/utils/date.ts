@@ -11,7 +11,17 @@ export const dateFormat = {
   time: 'HH:mm',
 }
 
-// Format date for display
+/**
+ * @deprecated Produces a non-standard format ("YYYY-MM-DD, HH:mm") that
+ * differs from all other date helpers in this file.  Prefer:
+ * - `formatDateShort`    → "Jan 5, 2025"
+ * - `formatDateLong`     → "January 5, 2025"
+ * - `formatDateWithTime` → "Jan 5, 2025, 02:30 PM"
+ * - `formatDate` from dayjs directly if you need a custom format string
+ *
+ * This function is not imported anywhere in the app - it exists only for
+ * backwards compatibility.  Remove once confirmed unused.
+ */
 export function formatDate(dateStr: string) {
   return dayjs(dateStr).format(dateFormat.default)
 }

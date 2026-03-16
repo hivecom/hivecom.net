@@ -15,12 +15,10 @@ import {
   Tooltip,
 } from 'chart.js'
 import dayjs from 'dayjs'
-import { computed, onBeforeMount, ref, watch, watchEffect } from 'vue'
+import { computed, onBeforeMount, ref, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
 import { getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
-
-const props = defineProps<Props>()
 
 // Register Chart.js components
 ChartJS.register(
@@ -39,11 +37,6 @@ interface MonthlyUserData {
   totalUsers: number
   patreonSupporters: number
   totalSupporters: number
-}
-
-// Props
-interface Props {
-  refreshSignal?: number
 }
 
 // Setup client and state
@@ -245,13 +238,6 @@ const localChartOptions: ChartOptions<'line'> = {
     },
   },
 }
-
-// Watch for refresh signal changes
-watch(() => props.refreshSignal, () => {
-  if (props.refreshSignal) {
-    fetchAllData()
-  }
-})
 
 watchEffect(() => {
   const width = chartWrapperWidth.value

@@ -10,7 +10,6 @@ const { hasPermission } = useAdminPermissions()
 
 // Permission checks
 const canViewEvents = computed(() => hasPermission('events.read'))
-const canManageEvents = computed(() => hasPermission('events.create') || hasPermission('events.update') || hasPermission('events.delete'))
 
 // State for refresh coordination between components
 const refreshSignal = ref(0)
@@ -31,10 +30,7 @@ const refreshSignal = ref(0)
       <EventKPIs :refresh-signal="refreshSignal" />
 
       <!-- Events Table -->
-      <EventTable
-        v-model:refresh-signal="refreshSignal"
-        :can-manage="canManageEvents"
-      />
+      <EventTable v-model:refresh-signal="refreshSignal" />
     </template>
 
     <!-- No permission message -->

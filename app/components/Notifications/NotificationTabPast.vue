@@ -1,143 +1,87 @@
 <script setup lang="ts">
 import type { NotificationRow } from '@/composables/useNotifications'
-import { Button, Flex, Tooltip } from '@dolanske/vui'
-import { useNotifications } from '@/composables/useNotifications'
+import type { Database } from '@/types/database.types'
+import { Button, Flex } from '@dolanske/vui'
 import NotificationCard from './NotificationCard.vue'
-import NotificationCardBirthday from './NotificationCardBirthday.vue'
 import NotificationCardEmpty from './NotificationCardEmpty.vue'
 import NotificationCardError from './NotificationCardError.vue'
-import NotificationCardInvite from './NotificationCardInvite.vue'
 import NotificationCardLoading from './NotificationCardLoading.vue'
-import NotificationCardPendingComplaints from './NotificationCardPendingComplaints.vue'
 
 const emit = defineEmits<{ (e: 'navigate'): void }>()
 
-const supabase = useSupabaseClient()
+const supabase = useSupabaseClient<Database>()
 const userId = useUserId()
 
-const {
-  loading,
-  error,
-  pendingRequestIds,
-  birthdayWidget,
-  pendingComplaintCount,
-  discussionNotifications,
-  mentionNotifications,
-  replyNotifications,
-  fetch,
-  markAllAsRead,
-  handleInviteAction,
-  handleNotificationClick,
-  isInviteLoading,
-} = useNotifications()
-
-const markReadLoading = ref<Record<string, boolean>>({})
-const markAllLoading = ref(false)
+const loading = ref(false)
+const error = ref<string | null>(null)
+const notifications = ref<NotificationRow[]>([])
+const loaded = ref(false)
+const deleteLoading = ref<Record<string, boolean>>({})
+const clearAllLoading = ref(false)
 
 const isDev = import.meta.dev
 
 // ── Dev fixtures ──────────────────────────────────────────────────────────────
-const DEV_FIXTURE_NOTIFICATIONS: NotificationRow[] = import.meta.dev
+const DEV_FIXTURE_READ: NotificationRow[] = import.meta.dev
   ? [
       {
-        id: 'dev-discussion',
-        user_id: 'dev',
-        title: 'zealsprince posted a new reply',
-        body: 'In General Discussion',
-        href: '/forum/general',
-        is_read: false,
-        source: 'discussion_reply',
-        source_id: 'dev-discussion',
-        created_at: new Date(Date.now() - 300000).toISOString(),
-        created_by: 'dev',
-        modified_at: new Date(Date.now() - 300000).toISOString(),
-        modified_by: 'dev',
-      },
-      {
-        id: 'dev-mention',
-        user_id: 'dev',
-        title: 'zealsprince mentioned you',
-        body: 'In Announcements',
-        href: '/forum/announcements',
-        is_read: false,
-        source: 'mention',
-        source_id: 'dev-mention',
-        created_at: new Date(Date.now() - 3600000).toISOString(),
-        created_by: 'dev',
-        modified_at: new Date(Date.now() - 3600000).toISOString(),
-        modified_by: 'dev',
-      },
-      {
-        id: 'dev-reply',
+        id: 'dev-read-1',
         user_id: 'dev',
         title: 'zealsprince replied to your comment',
-        body: 'In Site Feedback',
-        href: '/forum/site-feedback',
-        is_read: false,
+        body: 'In Old Thread',
+        href: '/forum/old-thread',
+        is_read: true,
         source: 'discussion_reply_reply',
-        source_id: 'dev-reply',
+        source_id: 'dev-read-1',
         created_at: new Date(Date.now() - 86400000).toISOString(),
         created_by: 'dev',
         modified_at: new Date(Date.now() - 86400000).toISOString(),
         modified_by: 'dev',
       },
+      {
+        id: 'dev-read-2',
+        user_id: 'dev',
+        title: 'zealsprince mentioned you',
+        body: 'In Old Announcements',
+        href: '/forum/old-announcements',
+        is_read: true,
+        source: 'mention',
+        source_id: 'dev-read-2',
+        created_at: new Date(Date.now() - 172800000).toISOString(),
+        created_by: 'dev',
+        modified_at: new Date(Date.now() - 172800000).toISOString(),
+        modified_by: 'dev',
+      },
+      {
+        id: 'dev-read-3',
+        user_id: 'dev',
+        title: 'zealsprince posted a new reply',
+        body: 'In Old General Discussion',
+        href: '/forum/old-general',
+        is_read: true,
+        source: 'discussion_reply',
+        source_id: 'dev-read-3',
+        created_at: new Date(Date.now() - 259200000).toISOString(),
+        created_by: 'dev',
+        modified_at: new Date(Date.now() - 259200000).toISOString(),
+        modified_by: 'dev',
+      },
     ]
   : []
 
-const devFixtureInviteId = computed(() => userId.value ?? '00000000-0000-0000-0000-000000000001')
-const DEV_FIXTURE_COMPLAINT_COUNT = 3
-const DEV_FIXTURE_BIRTHDAY = {
-  title: 'Happy Birthday!',
-  description: 'Another year with us around the sun!',
-}
-
 const devFixturesActive = defineModel<boolean>('devFixturesActive', { default: false })
-const devFixtureError = defineModel<boolean>('devFixtureError', { default: false })
-const devFixtureLoading = defineModel<boolean>('devFixtureLoading', { default: false })
 
 const activeNotifications = computed<NotificationRow[]>(() =>
-  isDev && devFixturesActive.value ? DEV_FIXTURE_NOTIFICATIONS : [],
+  isDev && devFixturesActive.value ? DEV_FIXTURE_READ : notifications.value,
 )
 
-const activeDiscussionNotifications = computed(() =>
-  isDev && devFixturesActive.value
-    ? activeNotifications.value.filter(n => n.source === 'discussion_reply')
-    : discussionNotifications.value,
-)
+const hasNotifications = computed(() => activeNotifications.value.length > 0)
 
-const activeMentionNotifications = computed(() =>
-  isDev && devFixturesActive.value
-    ? activeNotifications.value.filter(n => n.source === 'mention')
-    : mentionNotifications.value,
-)
-
-const activeReplyNotifications = computed(() =>
-  isDev && devFixturesActive.value
-    ? activeNotifications.value.filter(n => n.source === 'discussion_reply_reply')
-    : replyNotifications.value,
-)
-
-const actionableNotifications = computed(() => [
-  ...activeMentionNotifications.value,
-  ...activeReplyNotifications.value,
-  ...activeDiscussionNotifications.value,
-])
-
-// Pinned = birthday + pending complaints + friend invites
-const hasPinned = computed(() => {
-  if (isDev && devFixturesActive.value)
-    return true
-  return (
-    pendingRequestIds.value.length > 0
-    || Boolean(birthdayWidget.value)
-    || pendingComplaintCount.value > 0
-  )
-})
-
-const hasActionable = computed(() => actionableNotifications.value.length > 0)
-
-const hasAnyNotifications = computed(() =>
-  hasPinned.value || hasActionable.value,
+const showEmpty = computed(() =>
+  !loading.value
+  && !error.value
+  && !hasNotifications.value
+  && !(isDev && devFixturesActive.value),
 )
 
 function iconForSource(source: string | null): string {
@@ -148,115 +92,95 @@ function iconForSource(source: string | null): string {
   return 'ph:chat-circle-dots'
 }
 
-const loadingCount = computed(() => {
-  if (!loading.value)
-    return 0
-  const total = pendingRequestIds.value.length
-    + (birthdayWidget.value ? 1 : 0)
-    + pendingComplaintCount.value
-    + discussionNotifications.value.length
-    + mentionNotifications.value.length
-    + replyNotifications.value.length
-  return total > 0 ? total : 1
-})
+async function load() {
+  if (!userId.value || loaded.value)
+    return
 
-const showEmpty = computed(() => {
-  if (isDev && (devFixturesActive.value || devFixtureError.value || devFixtureLoading.value))
-    return false
-  return !loading.value
-    && !error.value
-    && pendingRequestIds.value.length === 0
-    && !birthdayWidget.value
-    && pendingComplaintCount.value === 0
-    && discussionNotifications.value.length === 0
-    && mentionNotifications.value.length === 0
-    && replyNotifications.value.length === 0
-})
+  loading.value = true
+  error.value = null
 
-async function onNotificationClick(notification: NotificationRow) {
-  await handleNotificationClick(notification)
+  try {
+    const { data, error: fetchError } = await supabase.from('notifications')
+      .select('*')
+      .eq('user_id', userId.value as string)
+      .eq('is_read', true)
+      .order('modified_at', { ascending: false })
+      .limit(30)
+
+    if (fetchError)
+      throw fetchError
+
+    notifications.value = (data ?? []) as unknown as NotificationRow[]
+    loaded.value = true
+  }
+  catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to load read notifications'
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+function reset() {
+  notifications.value = []
+  loaded.value = false
+  error.value = null
+}
+
+async function deleteNotification(notification: NotificationRow) {
+  if (notification.id.startsWith('dev-'))
+    return
+
+  deleteLoading.value = { ...deleteLoading.value, [notification.id]: true }
+
+  const { error: deleteError } = await supabase.from('notifications')
+    .delete()
+    .eq('id', notification.id)
+
+  if (!deleteError)
+    notifications.value = notifications.value.filter(n => n.id !== notification.id)
+
+  deleteLoading.value = { ...deleteLoading.value, [notification.id]: false }
+}
+
+async function clearAll() {
+  if (!userId.value)
+    return
+
+  clearAllLoading.value = true
+
+  const { error: deleteError } = await supabase.from('notifications')
+    .delete()
+    .eq('user_id', userId.value as string)
+    .eq('is_read', true)
+
+  if (!deleteError)
+    notifications.value = []
+
+  clearAllLoading.value = false
+}
+
+function onNotificationClick(notification: NotificationRow) {
   emit('navigate')
   if (notification.href)
     void navigateTo(notification.href)
 }
 
-async function onMarkRead(notification: NotificationRow) {
-  if (notification.id.startsWith('dev-'))
-    return
-
-  markReadLoading.value = { ...markReadLoading.value, [notification.id]: true }
-
-  const { error: updateError } = await supabase.from('notifications')
-    .update({ is_read: true })
-    .eq('id', notification.id)
-
-  if (!updateError)
-    await handleNotificationClick(notification)
-
-  markReadLoading.value = { ...markReadLoading.value, [notification.id]: false }
-}
-
-async function onMarkAllAsRead() {
-  markAllLoading.value = true
-  await markAllAsRead()
-  markAllLoading.value = false
-}
-
-defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotifications })
+defineExpose({ load, reset, clearAll, clearAllLoading, hasNotifications })
 </script>
 
 <template>
   <Flex column gap="xs" expand>
-    <template v-if="(isDev && devFixtureLoading) || loading">
-      <NotificationCardLoading :loading-count />
-      <NotificationCardLoading v-if="isDev && devFixtureLoading && loadingCount === 0" />
+    <template v-if="loading">
+      <NotificationCardLoading />
     </template>
 
     <template v-else>
-      <NotificationCardError
-        v-if="(isDev && devFixtureError) || error"
-        class="mb-m"
-        @retry="devFixtureError ? undefined : fetch"
-      />
+      <NotificationCardError v-if="error" @retry="load" />
 
-      <!-- Pinned section -->
-      <template v-if="hasPinned">
-        <span class="text-s text-color-lighter block">Updates</span>
-
-        <NotificationCardInvite
-          v-if="isDev && devFixturesActive"
-          :request-id="devFixtureInviteId"
-          :loading="false"
-        />
-        <NotificationCardInvite
-          v-for="requestId in pendingRequestIds"
-          :key="`invite-${requestId}`"
-          :request-id="requestId"
-          :loading="isInviteLoading(requestId)"
-          @accept="handleInviteAction(requestId, 'accept')"
-          @ignore="handleInviteAction(requestId, 'ignore')"
-        />
-
-        <NotificationCardBirthday
-          v-if="(isDev && devFixturesActive) || birthdayWidget"
-          :title="(isDev && devFixturesActive) ? DEV_FIXTURE_BIRTHDAY.title : birthdayWidget!.title"
-          :description="(isDev && devFixturesActive) ? DEV_FIXTURE_BIRTHDAY.description : birthdayWidget!.description"
-          to="/profile"
-        />
-
-        <NotificationCardPendingComplaints
-          v-if="(isDev && devFixturesActive) || pendingComplaintCount > 0"
-          :count="(isDev && devFixturesActive) ? DEV_FIXTURE_COMPLAINT_COUNT : pendingComplaintCount"
-          to="/admin/complaints"
-        />
-        <div class="block mb-s" />
-      </template>
-
-      <!-- Regular actionable notifications -->
-      <span class="text-s text-color-lighter">Recent</span>
       <NotificationCard
-        v-for="notification in actionableNotifications"
-        :key="`active-${notification.id}`"
+        v-for="notification in activeNotifications"
+        :key="`past-${notification.id}`"
         :icon="iconForSource(notification.source)"
         :text="notification.title"
         :description="notification.body"
@@ -265,53 +189,31 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
         @click="onNotificationClick(notification)"
       >
         <template #actions>
-          <Tooltip placement="left">
-            <Button
-              size="s"
-              square
-              :aria-label="markReadLoading[notification.id] ? 'Marking as read...' : 'Mark as read'"
-              :disabled="!!markReadLoading[notification.id]"
-              @click.stop="onMarkRead(notification)"
-            >
-              <Icon v-if="markReadLoading[notification.id]" name="ph:spinner" class="notification-tab__mark-read-icon--spin" />
-              <Icon v-else name="ph:check" :size="18" />
-            </Button>
-            <template #tooltip>
-              {{ markReadLoading[notification.id] ? 'Marking as read...' : 'Mark as read' }}
-            </template>
-            <Tooltip />
-          </tooltip>
+          <Button
+            size="s"
+            square
+            :aria-label="deleteLoading[notification.id] ? 'Deleting...' : 'Delete notification'"
+            :disabled="!!deleteLoading[notification.id]"
+            @click.stop="deleteNotification(notification)"
+          >
+            <Icon
+              :name="deleteLoading[notification.id] ? 'ph:spinner' : 'ph:trash'"
+              :size="20"
+              :class="{ 'notification-tab-past__delete-icon--spin': deleteLoading[notification.id] }"
+            />
+          </Button>
         </template>
       </NotificationCard>
 
-      <NotificationCardEmpty v-if="showEmpty" />
+      <NotificationCardEmpty v-if="showEmpty" message="No past notifications" />
     </template>
   </Flex>
 </template>
 
 <style lang="scss" scoped>
-.notification-tab {
-  &__pinned-divider {
-    margin: var(--space-xxs) 0;
-  }
-
-  &__divider-label {
-    font-size: var(--font-size-xxs);
-    color: var(--color-text-lighter);
-    text-transform: uppercase;
-    // letter-spacing: 0.05em;
-    padding: 0 var(--space-xs);
-    background-color: var(--color-bg);
-    z-index: 1;
-    // Fix vertical offset
-    display: block;
-    margin-top: -2px;
-  }
-
-  &__mark-read-icon {
-    &--spin {
-      animation: spin 1s linear infinite;
-    }
+.notification-tab-past {
+  &__delete-icon--spin {
+    animation: spin 1s linear infinite;
   }
 }
 

@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { Card, Flex, Skeleton } from '@dolanske/vui'
-import { onBeforeMount, ref, watch } from 'vue'
+import { onBeforeMount, ref } from 'vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-
-// Props
-interface Props {
-  refreshSignal?: number
-}
 
 interface Alert {
   id: string
@@ -16,8 +11,6 @@ interface Alert {
   icon: string
   timestamp: Date
 }
-
-const props = defineProps<Props>()
 
 // Setup
 const supabase = useSupabaseClient()
@@ -137,13 +130,6 @@ function getSeverityIconColor(severity: string) {
     default: return 'var(--color-text-light)'
   }
 }
-
-// Watch for refresh signal changes
-watch(() => props.refreshSignal, () => {
-  if (props.refreshSignal) {
-    fetchAlerts()
-  }
-})
 
 // Load data on mount
 onBeforeMount(() => {

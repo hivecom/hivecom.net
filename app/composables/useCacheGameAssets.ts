@@ -1,6 +1,28 @@
 /**
  * Composable for managing game assets with caching
  * Handles both icons and covers for games with fallback to Steam assets
+ *
+ * ## Why localStorage instead of `useCache`?
+ *
+ * Game asset URLs are signed/public CDN paths that change only when an admin
+ * explicitly re-uploads an asset. They are worth caching across page reloads
+ * so that navigating away and back doesn't re-hit storage on every visit.
+ *
+ * `useCache` (in-memory, module-level Map) is cleared on every full page
+ * reload, making it unsuitable for this use-case.  localStorage survives
+ * reloads and makes the asset cache effectively persistent until the TTL or
+ * an explicit `clearGameAssets()` call.
+ *
+ * Tradeoffs vs `useCache`:
+ * - NOT visible to `cache.invalidateByPattern` / `cache.clearCache`
+ * - NOT swept by the shared TTL cleanup timer
+ * - Survives hard reloads (desirable here)
+ * - Bounded by localStorage quota (mitigated by only caching positive results
+ *   and evicting on TTL expiry)
+ *
+ * If a cross-reload persistent cache becomes a common need, consider
+ * extracting a `usePersistentCache` composable and adopting it here and
+ * elsewhere consistently.
  */
 
 import type { Tables } from '@/types/database.overrides'

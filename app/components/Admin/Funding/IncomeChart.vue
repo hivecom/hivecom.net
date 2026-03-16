@@ -16,13 +16,11 @@ import {
   Tooltip,
 } from 'chart.js'
 import dayjs from 'dayjs'
-import { computed, ref, watch, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
 import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
 import { getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
-
-const props = defineProps<Props>()
 
 // Register Chart.js components
 ChartJS.register(
@@ -37,11 +35,6 @@ ChartJS.register(
 
 // Monthly funding table type
 type MonthlyFunding = Database['public']['Tables']['monthly_funding']['Row']
-
-// Props
-interface Props {
-  refreshSignal?: number
-}
 
 // Setup state
 const loading = ref(true)
@@ -174,14 +167,6 @@ watch([allFunding, fundingLoading, fundingError], () => {
     loading.value = false
   }
 }, { immediate: true })
-
-// Refresh signal: bust the cache and let the watcher above repopulate
-const { refresh: refreshFunding } = useMonthlyFunding()
-watch(() => props.refreshSignal, () => {
-  if (props.refreshSignal) {
-    void refreshFunding()
-  }
-})
 
 watchEffect(() => {
   const width = chartWrapperWidth.value
