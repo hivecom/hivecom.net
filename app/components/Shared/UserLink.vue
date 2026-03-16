@@ -8,11 +8,13 @@ interface Props {
   userId: string | null
   placeholder?: string
   showAvatar?: boolean
+  public?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: undefined,
   showAvatar: false,
+  public: false,
 })
 
 // Use the cached user data composable
@@ -40,8 +42,8 @@ const profileLink = computed(() => {
 </script>
 
 <template>
-  <!-- Only show content if user is authenticated -->
-  <div v-if="!currentUser" class="text-xs user-display">
+  <!-- Only show content if user is authenticated (or prop is public) -->
+  <div v-if="!props.public && !currentUser" class="text-xs user-display">
     {{ props.placeholder || 'Sign-in to view' }}
   </div>
 

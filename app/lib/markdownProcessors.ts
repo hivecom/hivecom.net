@@ -268,7 +268,7 @@ export function processSizeTags(markdown: string): string {
   )
 }
 
-export function processMentions(markdown: string): string {
+export function processMarkdown(markdown: string): string {
   if (!markdown)
     return ''
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useBulkUserData } from '@/composables/useCacheUserData'
-import { extractMentionIds, processMentions } from '@/lib/markdownProcessors'
+import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import MDLightbox from './MDLightbox.vue'
 
 const props = defineProps({
@@ -20,7 +20,7 @@ const props = defineProps({
 const mentionIds = computed(() => extractMentionIds(props.md))
 useBulkUserData(mentionIds)
 
-const processedMarkdown = computed(() => processMentions(props.md))
+const processedMarkdown = computed(() => processMarkdown(props.md))
 
 // Top-level await - makes this a genuine async component that Suspense can track
 const { parseMarkdown } = await import('@nuxtjs/mdc/runtime')

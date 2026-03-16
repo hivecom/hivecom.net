@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, CopyClipboard, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
+import { Badge, Button, CopyClipboard, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
@@ -176,15 +176,23 @@ const dockerControlAccessible = computed(() => {
 
               <div v-if="container" class="gameserver-header__status-item">
                 <span class="gameserver-header__status-label">Running</span>
-                <Badge
-                  :variant="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'success' : 'neutral') : 'neutral'"
-                  size="s"
-                >
-                  <Icon
-                    :name="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'ph:check' : 'ph:x') : 'ph:question'"
-                  />
-                  {{ dockerControlEnabled && dockerControlAccessible ? (container.running ? 'Yes' : 'No') : 'Unknown' }}
-                </Badge>
+                <Tooltip placement="top" :disabled="!dockerControlEnabled || !dockerControlAccessible || !container.reported_at">
+                  <template #tooltip>
+                    <Flex column gap="xxs">
+                      <span class="text-xs">Last reported</span>
+                      <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
+                    </Flex>
+                  </template>
+                  <Badge
+                    :variant="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'success' : 'neutral') : 'neutral'"
+                    size="s"
+                  >
+                    <Icon
+                      :name="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'ph:check' : 'ph:x') : 'ph:question'"
+                    />
+                    {{ dockerControlEnabled && dockerControlAccessible ? (container.running ? 'Yes' : 'No') : 'Unknown' }}
+                  </Badge>
+                </Tooltip>
               </div>
 
               <div
@@ -192,27 +200,25 @@ const dockerControlAccessible = computed(() => {
                 class="gameserver-header__status-item"
               >
                 <span class="gameserver-header__status-label">Healthy</span>
-                <Badge :variant="container.healthy ? 'success' : 'warning'" size="s">
-                  <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
-                  {{ container.healthy ? 'Yes' : 'No' }}
-                </Badge>
-              </div>
-
-              <div v-if="container" class="gameserver-header__status-item">
-                <span class="gameserver-header__status-label">Last Reported</span>
-                <Badge v-if="dockerControlEnabled && dockerControlAccessible && container.reported_at">
-                  <TimestampDate size="xs" :date="container.reported_at" />
-                </Badge>
-                <Badge v-else>
-                  Unavailable
-                </Badge>
+                <Tooltip placement="top" :disabled="!container.reported_at">
+                  <template #tooltip>
+                    <Flex column gap="xxs">
+                      <span class="text-xs">Last reported</span>
+                      <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
+                    </Flex>
+                  </template>
+                  <Badge :variant="container.healthy ? 'success' : 'warning'" size="l">
+                    <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
+                    {{ container.healthy ? 'Yes' : 'No' }}
+                  </Badge>
+                </Tooltip>
               </div>
 
               <!-- Administrator -->
               <div v-if="gameserver.administrator" class="gameserver-header__status-item">
                 <span class="gameserver-header__status-label">Admin</span>
-                <Badge>
-                  <UserLink :user-id="gameserver.administrator" size="s" />
+                <Badge size="l">
+                  <UserLink :user-id="gameserver.administrator" size="s" show-avatar public />
                 </Badge>
               </div>
 

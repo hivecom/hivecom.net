@@ -1,5 +1,6 @@
-{ pkgs ? import <nixpkgs> { } }:
-
+{
+  pkgs ? import <nixpkgs> { },
+}:
 let
   # Read `.node-version` (e.g. "24.11.1") and map it to the closest nixpkgs Node line (e.g. nodejs_24).
   #
@@ -13,10 +14,10 @@ let
     let
       m = builtins.match "^([0-9]+)(\\..*)?$" nodeVersion;
     in
-      if m == null then
-        throw "Invalid .node-version '${nodeVersion}'. Expected e.g. '20.11.1' or '20'."
-      else
-        builtins.elemAt m 0;
+    if m == null then
+      throw "Invalid .node-version '${nodeVersion}'. Expected e.g. '20.11.1' or '20'."
+    else
+      builtins.elemAt m 0;
 
   nodeAttrName = "nodejs_${majorStr}";
 
@@ -41,6 +42,7 @@ pkgs.mkShell {
   # Tools commonly needed for Node-based workflows.
   packages = with pkgs; [
     node
+    supabase-cli
     git
   ];
 
