@@ -59,6 +59,21 @@ function register() {
   })
 }
 
+useEventListener('keydown', (event) => {
+  if (!isOpen.value)
+    return
+
+  if (event.key === 'Escape') {
+    close()
+  }
+  else if (event.key === 'ArrowLeft') {
+    prev()
+  }
+  else if (event.key === 'ArrowRight') {
+    next()
+  }
+})
+
 defineExpose({ register })
 </script>
 
