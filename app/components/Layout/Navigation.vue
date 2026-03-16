@@ -4,7 +4,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { navigationLinks } from '@/lib/navigation'
 import NavEventBadge from './NavEventBadge.vue'
 import NotificationSheet from './NotificationSheet.vue'
-import UserSheet from './UserSheet.vue'
+import UserDropdown from './UserDropdown.vue'
 
 const { signInPath } = useAuthRedirect()
 
@@ -159,7 +159,7 @@ function updateHoveredElement(event: MouseEvent) {
 
         <div v-else-if="user" class="navigation__user">
           <NotificationSheet />
-          <UserSheet />
+          <UserDropdown />
         </div>
 
         <div v-else class="navigation__auth">
