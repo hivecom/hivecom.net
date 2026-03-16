@@ -185,6 +185,7 @@ label:is(.required):after {
     align-items: center;
   }
 }
+
 .vui-modal > .vui-card {
   margin-bottom: 0;
 }
@@ -393,3 +394,4 @@ code {
 @include meta.load-css('./elements/main.scss');
 @include meta.load-css('./elements/page.scss');
 @include meta.load-css('./elements/activity.scss');
+@include meta.load-css('./elements/reactions.scss');

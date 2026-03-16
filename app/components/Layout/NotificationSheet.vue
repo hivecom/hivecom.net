@@ -81,14 +81,14 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
     <Sheet
       :open="open"
       position="right"
-      :card="{ separators: true }"
+       :card="{ separators: true }"
       :size="400"
       @close="open = false"
     >
       <template #header>
-        <Flex x-between y-center expand>
+        <Flex x-between y-center expand class="mb-m">
           <h4>Notifications</h4>
-          <Flex v-if="isDev" gap="xs" y-center>
+          <Flex v-if="isDev" y-center>
             <Button
               square
               size="s"
@@ -118,9 +118,7 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
             </Button>
           </Flex>
         </Flex>
-      </template>
 
-      <Flex column class="notification-menu__body">
         <Tabs v-model="activeTab" variant="filled" expand>
           <Tab value="active">
             Active
@@ -132,6 +130,10 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
             Subscriptions
           </Tab>
         </Tabs>
+      </template>
+
+      <Flex column class="notification-menu__body">
+
 
         <Flex expand>
           <NotificationTabPast

@@ -66,35 +66,3 @@ function selectEmote(emote: string) {
     </div>
   </Popout>
 </template>
-
-<style scoped lang="scss">
-.reactions__picker {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-s);
-  max-height: 320px;
-  overflow-y: auto;
-  width: 260px;
-}
-
-.reactions__group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xxs);
-}
-
-.reactions__group-label {
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-lighter);
-  text-transform: uppercase;
-  padding: 0 2px;
-  margin: 0;
-}
-
-.reactions__grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-}
-</style>

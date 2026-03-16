@@ -86,19 +86,3 @@ function getAnchor(key: string): HTMLElement | null {
     </div>
   </div>
 </template>
-
-<style lang="scss">
-.reactions__list {
-  display: contents;
-}
-
-.reactions__button-wrapper {
-  position: relative;
-  display: inline-flex;
-}
-
-.reactions__popout {
-  padding: var(--space-xs);
-  max-width: 168px;
-}
-</style>
