@@ -27,7 +27,7 @@ const refreshSignal = ref(0)
     <!-- Show content only if user can view events -->
     <template v-if="canViewEvents">
       <!-- Event KPIs -->
-      <EventKPIs :refresh-signal="refreshSignal" />
+      <EventKPIs />
 
       <!-- Events Table -->
       <EventTable v-model:refresh-signal="refreshSignal" />

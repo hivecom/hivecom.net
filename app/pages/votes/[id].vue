@@ -10,7 +10,7 @@ import VoteChoices from '@/components/Votes/VoteChoices.vue'
 import VoteHeader from '@/components/Votes/VoteHeader.vue'
 import VoteLoadingSkeleton from '@/components/Votes/VoteLoadingSkeleton.vue'
 import VoteResults from '@/components/Votes/VoteResults.vue'
-import { useCacheQuery } from '@/composables/useCache'
+import { useCachedFetch } from '@/composables/useCache'
 import { useReferendumVotesRealtime } from '@/composables/useReferendumVotesRealtime'
 
 import { formatDuration } from '@/lib/utils/duration'
@@ -24,17 +24,16 @@ const userId = useUserId()
 const referendumId = computed(() => Number(route.params.id))
 
 // Fetch referendum details
-const { data: referendum, loading: loadingReferendum, refetch: _refetchReferendum } = useCacheQuery<Tables<'referendums'>>(
+const { data: referendum, loading: loadingReferendum, refetch: _refetchReferendum } = useCachedFetch<Tables<'referendums'>>(
+  () => !Number.isNaN(referendumId.value) && !!user.value
+    ? {
+        table: 'referendums',
+        select: '*',
+        filters: { id: referendumId.value },
+        single: true,
+      }
+    : null,
   {
-    table: 'referendums',
-    select: '*',
-    filters: {
-      id: referendumId.value,
-    },
-    single: true,
-  },
-  {
-    enabled: computed(() => !Number.isNaN(referendumId.value) && !!user.value),
     ttl: 60000, // 1 minute cache
   },
 )
@@ -49,9 +48,9 @@ const isOwnReferendum = computed(() =>
 
 function handleUpdated(updated: Tables<'referendums'>) {
   // Patch the local referendum ref so the page reflects changes immediately
-  // without a full refetch. useCacheQuery will eventually re-sync on next load.
+  // without a full refetch. useCachedFetch will re-sync on next load.
   if (referendum.value != null) {
-    // @ts-expect-error - referendum from useCacheQuery is readonly
+    // @ts-expect-error - referendum from useCachedFetch is readonly
     referendum.value = updated
   }
   editModalOpen.value = false
@@ -62,33 +61,33 @@ function handleDeleted() {
 }
 
 // Fetch user's existing vote
-const { data: userVote, loading: _loadingVote, refetch: refetchVote } = useCacheQuery<Tables<'referendum_votes'>>(
+const { data: userVote, loading: _loadingVote, refetch: refetchVote } = useCachedFetch<Tables<'referendum_votes'>>(
+  () => !Number.isNaN(referendumId.value) && !!user.value?.id
+    ? {
+        table: 'referendum_votes',
+        select: '*',
+        filters: {
+          referendum_id: referendumId.value,
+          user_id: user.value!.id,
+        },
+        single: true,
+      }
+    : null,
   {
-    table: 'referendum_votes',
-    select: '*',
-    filters: {
-      referendum_id: referendumId.value,
-      user_id: user.value?.id,
-    },
-    single: true,
-  },
-  {
-    enabled: computed(() => !Number.isNaN(referendumId.value) && !!user.value),
     ttl: 30000, // 30 second cache for votes
   },
 )
 
 // Fetch all votes for this referendum (for displaying results)
-const { data: fetchedVotes, loading: loadingAllVotes, refetch: refetchAllVotes } = useCacheQuery<Tables<'referendum_votes'>[]>(
+const { data: fetchedVotes, loading: loadingAllVotes, refetch: refetchAllVotes } = useCachedFetch<Tables<'referendum_votes'>[]>(
+  () => !Number.isNaN(referendumId.value) && !!user.value
+    ? {
+        table: 'referendum_votes',
+        select: '*',
+        filters: { referendum_id: referendumId.value },
+      }
+    : null,
   {
-    table: 'referendum_votes',
-    select: '*',
-    filters: {
-      referendum_id: referendumId.value,
-    },
-  },
-  {
-    enabled: computed(() => !Number.isNaN(referendumId.value) && !!user.value),
     ttl: 30000, // 30 second cache
   },
 )

@@ -5,6 +5,7 @@ import { Avatar, Button, Divider, Flex } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
+import { useCachedFetch } from '@/composables/useCache'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 import { getCountryInfo } from '@/lib/utils/country'
 import ActivitySteam from '../Profile/Activity/ActivitySteam.vue'
@@ -93,20 +94,22 @@ const isExpectedEmpty = computed(() =>
 // Activity data
 const {
   data: activity,
-  refetch: refetchActivity,
-} = useCacheQuery<{
+} = useCachedFetch<{
   steam_id: string | null
   teamspeak_identities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
-}>({
-  table: 'profiles',
-  select: 'steam_id,teamspeak_identities',
-  filters: { id: props.userId },
-  single: true,
-}, {
-  enabled: computed(() => !!props.userId),
-})
-
-watch(() => props.userId, refetchActivity, { immediate: true })
+}>(
+  () => props.userId
+    ? {
+        table: 'profiles',
+        select: 'steam_id,teamspeak_identities',
+        filters: { id: props.userId },
+        single: true,
+      }
+    : null,
+  {
+    enabled: computed(() => !!props.userId),
+  },
+)
 </script>
 
 <template>

@@ -10,7 +10,7 @@ import ProfileHeader from '@/components/Profile/ProfileHeader.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useAvatarBus } from '@/composables/useAvatarBus'
-import { useCacheQuery } from '@/composables/useCache'
+import { useCachedFetch } from '@/composables/useCache'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 import Discussion from '../Discussions/Discussion.vue'
 
@@ -78,7 +78,7 @@ const {
 // Get profile user's data with caching (once we have the profile ID)
 const profileUserId = computed(() => profile.value?.id || null)
 const {
-  user: profileUserData,
+  user: _profileUserData,
   refetch: refetchProfileUserData,
 } = useCacheUserData(
   profileUserId,
@@ -91,24 +91,25 @@ const {
 )
 
 // Computed properties to get cached data
-const avatarUrl = computed(() => profileUserData.value?.avatarUrl || null)
-const userRole = computed(() => profileUserData.value?.role || null)
 const currentUserRole = computed(() => currentUserData.value?.role || null)
 
 // Fetch friendships data with caching
 const {
   data: _friendshipsData,
   refetch: _refetchFriendships,
-} = useCacheQuery<Array<{ id: number, friender: string, friend: string }>>({
-  table: 'friends',
-  select: 'id, friender, friend',
-  filters: {
-    // We'll handle the complex OR logic in the computed
+} = useCachedFetch<Array<{ id: number, friender: string, friend: string }>>(
+  () => ({
+    table: 'friends',
+    select: 'id, friender, friend',
+    filters: {
+      // We'll handle the complex OR logic in the computed
+    },
+  }),
+  {
+    enabled: computed(() => !!userId.value && !!profile.value && !isOwnProfile.value),
+    ttl: 2 * 60 * 1000, // 2 minutes for friendship data
   },
-}, {
-  enabled: computed(() => !!userId.value && !!profile.value && !isOwnProfile.value),
-  ttl: 2 * 60 * 1000, // 2 minutes for friendship data
-})
+)
 
 // Computed property to check if the current user is an admin
 const isCurrentUserAdmin = computed(() => {
@@ -219,8 +220,8 @@ const {
   loading: profileLoading,
   error: profileError,
   refetch: _refetchProfile,
-} = useCacheQuery<Tables<'profiles'>>(
-  profileQuery.value || { table: 'profiles', select: '*', filters: {} },
+} = useCachedFetch<Tables<'profiles'>>(
+  profileQuery,
   {
     enabled: computed(() => !!(props.userId || props.username || user.value?.id)),
     ttl: 10 * 60 * 1000, // 10 minutes for profile data
@@ -803,12 +804,8 @@ async function ignoreFriendRequest() {
           <!-- Profile Header -->
           <ProfileHeader
             :profile="profile"
-            :avatar-url="avatarUrl"
-            :user-role="userRole"
-            :current-user-role="currentUserRole"
             :is-own-profile="isOwnProfile"
             :friendship-status="friendshipStatus"
-            :is-current-user-admin="isCurrentUserAdmin"
             :is-logged-in="isLoggedIn"
             @open-edit-sheet="openEditSheet"
             @open-complaint-modal="openComplaintModal"

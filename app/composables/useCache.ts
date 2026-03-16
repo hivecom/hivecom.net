@@ -9,9 +9,9 @@
  * - Memory-efficient with configurable size limits
  */
 
-import type { Ref } from 'vue'
+import type { MaybeRefOrGetter, Ref } from 'vue'
 import type { Database } from '@/types/database.types'
-import { computed, ref } from 'vue'
+import { computed, ref, toValue, watch } from 'vue'
 
 export interface CacheEntry<T = unknown> {
   data: T
@@ -358,18 +358,22 @@ export function useCache(config: CacheConfig = {}) {
 }
 
 /**
- * Cached Supabase query composable
- * Automatically handles caching for Supabase queries
+ * Reactive cached Supabase query composable.
+ *
+ * Accepts a reactive query (MaybeRefOrGetter) so filter values derived from
+ * props, route params, or other reactive state are always reflected correctly.
+ * Passing `null` as the resolved query value is treated as "not ready" and
+ * suppresses fetching the same way `enabled: false` does.
  */
-export function useCacheQuery<T = unknown>(
-  query: QueryCacheKey,
+export function useCachedFetch<T = unknown>(
+  query: MaybeRefOrGetter<QueryCacheKey | null>,
   config: CacheConfig & {
-    enabled?: Ref<boolean> | boolean
+    enabled?: MaybeRefOrGetter<boolean>
     refetchOnMount?: boolean
   } = {},
 ) {
   const {
-    enabled = ref(true),
+    enabled = true,
     refetchOnMount = true,
     ...cacheConfig
   } = config
@@ -381,17 +385,24 @@ export function useCacheQuery<T = unknown>(
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  /**
-   * Execute the Supabase query
-   */
-  async function executeQuery(): Promise<T | null> {
-    try {
-      let queryBuilder = supabase.from(query.table).select(query.select ?? '*')
+  function resolvedQuery(): QueryCacheKey | null {
+    return toValue(query)
+  }
 
-      // Apply filters
-      if (query.filters) {
-        for (const [key, value] of Object.entries(query.filters)) {
-          const operator = query.filterOperators?.[key] ?? 'eq'
+  function isEnabled(): boolean {
+    return toValue(enabled)
+  }
+
+  /**
+   * Execute the Supabase query against the current resolved query value.
+   */
+  async function executeQuery(q: QueryCacheKey): Promise<T | null> {
+    try {
+      let queryBuilder = supabase.from(q.table).select(q.select ?? '*')
+
+      if (q.filters) {
+        for (const [key, value] of Object.entries(q.filters)) {
+          const operator = q.filterOperators?.[key] ?? 'eq'
 
           if (Array.isArray(value)) {
             queryBuilder = queryBuilder.in(key, value)
@@ -439,22 +450,19 @@ export function useCacheQuery<T = unknown>(
         }
       }
 
-      // Apply ordering
-      if (query.orderBy) {
-        for (const [column, direction] of Object.entries(query.orderBy)) {
+      if (q.orderBy) {
+        for (const [column, direction] of Object.entries(q.orderBy)) {
           queryBuilder = queryBuilder.order(column, {
             ascending: direction === 'asc',
           })
         }
       }
 
-      // Apply limit
-      if (query.limit !== null && query.limit !== undefined && query.limit > 0) {
-        queryBuilder = queryBuilder.limit(query.limit)
+      if (q.limit != null && q.limit > 0) {
+        queryBuilder = queryBuilder.limit(q.limit)
       }
 
-      // Execute query
-      const result = query.single
+      const result = q.single
         ? await queryBuilder.single()
         : await queryBuilder
 
@@ -470,18 +478,15 @@ export function useCacheQuery<T = unknown>(
     }
   }
 
-  /**
-   * Fetch data with caching
-   */
   async function fetch(force = false): Promise<void> {
-    if (!unref(enabled))
+    const q = resolvedQuery()
+    if (q === null || !isEnabled())
       return
 
-    // Check cache first unless forced
     if (!force) {
-      const cachedResult = cache.getCachedQuery<T>(query)
-      if (cachedResult !== null) {
-        data.value = cachedResult
+      const cached = cache.getCachedQuery<T>(q)
+      if (cached !== null) {
+        data.value = cached
         return
       }
     }
@@ -490,11 +495,9 @@ export function useCacheQuery<T = unknown>(
     error.value = null
 
     try {
-      const result = await executeQuery()
+      const result = await executeQuery(q)
       data.value = result
-
-      // Cache the result
-      cache.cacheQuery(query, result)
+      cache.cacheQuery(q, result)
     }
     catch (err) {
       console.error('Error fetching data:', err)
@@ -506,26 +509,40 @@ export function useCacheQuery<T = unknown>(
     }
   }
 
-  /**
-   * Refetch data (bypasses cache)
-   */
   async function refetch(): Promise<void> {
     await fetch(true)
   }
 
-  // Auto-fetch on mount if enabled
   if (refetchOnMount) {
     onMounted(() => {
       void fetch()
     })
   }
 
-  // Watch for enabled changes
-  watch(() => unref(enabled), (newEnabled) => {
-    if (newEnabled && refetchOnMount) {
-      void fetch()
-    }
-  })
+  // Re-fetch whenever the resolved query shape changes (covers prop/route changes).
+  watch(
+    () => JSON.stringify(resolvedQuery()),
+    () => {
+      if (isEnabled()) {
+        void fetch()
+      }
+    },
+  )
+
+  // Re-fetch when enabled flips false → true.
+  watch(
+    () => isEnabled(),
+    (nowEnabled) => {
+      if (nowEnabled) {
+        void fetch()
+      }
+    },
+  )
+
+  function invalidate(): number {
+    const q = resolvedQuery()
+    return q ? cache.invalidateTable(q.table) : 0
+  }
 
   return {
     data: readonly(data),
@@ -533,6 +550,6 @@ export function useCacheQuery<T = unknown>(
     error: readonly(error),
     fetch,
     refetch,
-    invalidate: () => cache.invalidateTable(query.table),
+    invalidate,
   }
 }

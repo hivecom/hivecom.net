@@ -5,7 +5,7 @@ import { Button, Flex, Input, Tab, Tabs } from '@dolanske/vui'
 
 import ReferendumGrid from '@/components/Votes/ReferendumGrid.vue'
 import ReferendumModal from '@/components/Votes/ReferendumModal.vue'
-import { useCacheQuery } from '@/composables/useCache'
+import { useCachedFetch } from '@/composables/useCache'
 
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -25,47 +25,49 @@ const currentDate = new Date().toISOString()
 
 // ─── Public referendums ───────────────────────────────────────────────────────
 
-const { data: activePublic, loading: loadingActivePublic } = useCacheQuery<Tables<'referendums'>[]>(
+const { data: activePublic, loading: loadingActivePublic } = useCachedFetch<Tables<'referendums'>[]>(
+  () => tab.value === 'Active' && !!user.value
+    ? {
+        table: 'referendums',
+        select: '*',
+        filters: {
+          date_end: currentDate,
+          is_public: true,
+        },
+        filterOperators: {
+          date_end: 'gte',
+        },
+        orderBy: { created_at: false },
+      }
+    : null,
   {
-    table: 'referendums',
-    select: '*',
-    filters: {
-      date_end: currentDate,
-      is_public: true,
-    },
-    filterOperators: {
-      date_end: 'gte',
-    },
-    orderBy: { created_at: false },
-  },
-  {
-    enabled: computed(() => tab.value === 'Active' && !!user.value),
     ttl: 60000,
   },
 )
 
-const { data: concludedPublic, loading: loadingConcludedPublic } = useCacheQuery<Tables<'referendums'>[]>(
+const { data: concludedPublic, loading: loadingConcludedPublic } = useCachedFetch<Tables<'referendums'>[]>(
+  () => tab.value === 'Concluded' && !!user.value
+    ? {
+        table: 'referendums',
+        select: '*',
+        filters: {
+          date_end: currentDate,
+          is_public: true,
+        },
+        filterOperators: {
+          date_end: 'lt',
+        },
+        orderBy: { created_at: false },
+      }
+    : null,
   {
-    table: 'referendums',
-    select: '*',
-    filters: {
-      date_end: currentDate,
-      is_public: true,
-    },
-    filterOperators: {
-      date_end: 'lt',
-    },
-    orderBy: { created_at: false },
-  },
-  {
-    enabled: computed(() => tab.value === 'Concluded' && !!user.value),
     ttl: 300000,
   },
 )
 
 // ─── User's own private referendums + voted-in private referendums ────────────
-// These can't use useCacheQuery because the userId filter needs to be reactive
-// at fetch time, not at composable setup time.
+// These use direct Supabase calls because they require complex OR/join logic
+// that doesn't map cleanly to the useCachedFetch query shape.
 
 const ownPrivateActive = ref<Tables<'referendums'>[]>([])
 const ownPrivateConcluded = ref<Tables<'referendums'>[]>([])
@@ -244,13 +246,14 @@ const allVisibleIds = computed(() => {
   return [...ids]
 })
 
-const { data: allVotesForCounting } = useCacheQuery<Tables<'referendum_votes'>[]>(
+const { data: allVotesForCounting } = useCachedFetch<Tables<'referendum_votes'>[]>(
+  () => !!user.value && allVisibleIds.value.length > 0
+    ? {
+        table: 'referendum_votes',
+        select: 'referendum_id, user_id',
+      }
+    : null,
   {
-    table: 'referendum_votes',
-    select: 'referendum_id, user_id',
-  },
-  {
-    enabled: computed(() => !!user.value && allVisibleIds.value.length > 0),
     ttl: 60000,
   },
 )

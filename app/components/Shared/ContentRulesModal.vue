@@ -3,6 +3,7 @@ import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
 import { Button, Flex, Modal } from '@dolanske/vui'
 import { ref } from 'vue'
+import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useUserId } from '@/composables/useUserId'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -22,6 +23,7 @@ const emit = defineEmits<{
 
 const supabase = useSupabaseClient<Database>()
 const userId = useUserId()
+const { markAgreed } = useContentRulesAgreement()
 const isSaving = ref(false)
 
 const open = defineModel<boolean>('open', { default: false })
@@ -46,6 +48,7 @@ async function handleConfirm(close: () => void) {
   if (error)
     return
 
+  markAgreed()
   emit('confirm')
   close()
 }

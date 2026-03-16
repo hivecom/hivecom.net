@@ -4,7 +4,7 @@ import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 import { Flex, Tooltip } from '@dolanske/vui'
 import RichPresenceTeamSpeak from '@/components/Profile/RichPresenceTeamSpeak.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
-import { useCacheQuery } from '@/composables/useCache'
+import { useCachedFetch } from '@/composables/useCache'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
 
 type TeamspeakPresenceData = Tables<'presences_teamspeak'>
@@ -59,15 +59,18 @@ const {
   data: cachedPresence,
   loading,
   refetch: refetchPresence,
-} = useCacheQuery({
-  table: 'presences_teamspeak',
-  select: '*',
-  filters: { profile_id: props.profileId },
-  orderBy: { updated_at: 'desc' },
-}, {
-  ttl: PRESENCE_TTL_MS,
-  enabled: presenceEnabled,
-})
+} = useCachedFetch(
+  () => ({
+    table: 'presences_teamspeak' as const,
+    select: '*',
+    filters: { profile_id: props.profileId },
+    orderBy: { updated_at: 'desc' },
+  }),
+  {
+    ttl: PRESENCE_TTL_MS,
+    enabled: presenceEnabled,
+  },
+)
 
 const presenceList = computed(() => (cachedPresence.value ?? []) as TeamspeakPresenceData[])
 

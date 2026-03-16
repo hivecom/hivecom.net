@@ -3,10 +3,18 @@ import type { Tables } from '@/types/database.overrides'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
 import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Modal, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import MDRenderer from '../Shared/MDRenderer.vue'
+
+interface Props {
+  profile: Tables<'profiles'>
+  isOwnProfile: boolean
+  friendshipStatus: ProfileFriendshipStatus
+  isLoggedIn?: boolean
+}
 
 const props = withDefaults(defineProps<Props>(), {
   isLoggedIn: false,
@@ -19,16 +27,16 @@ const emit = defineEmits<{
 
 const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
-interface Props {
-  profile: Tables<'profiles'>
-  avatarUrl: string | null
-  userRole: string | null
-  currentUserRole: string | null
-  isOwnProfile: boolean
-  friendshipStatus: ProfileFriendshipStatus
-  isCurrentUserAdmin: boolean
-  isLoggedIn?: boolean
-}
+const profileUserId = computed(() => props.profile.id)
+const { user } = useCacheUserData(profileUserId, {
+  includeRole: true,
+  includeAvatar: true,
+  userTtl: 10 * 60 * 1000,
+  avatarTtl: 60 * 60 * 1000,
+})
+
+const avatarUrl = computed(() => user.value?.avatarUrl ?? null)
+const userRole = computed(() => user.value?.role ?? null)
 
 const isMobile = useBreakpoint('<xs')
 const isTablet = useBreakpoint('<m')

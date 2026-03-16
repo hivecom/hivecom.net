@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { Flex, Tooltip } from '@dolanske/vui'
 import RichPresenceSteam from '@/components/Profile/RichPresenceSteam.vue'
-import { useCacheQuery } from '@/composables/useCache'
+import { useCachedFetch } from '@/composables/useCache'
 
 type SteamPresence = Omit<Tables<'presences_steam'>, 'details'> & {
   details?: unknown | null
@@ -29,14 +29,17 @@ const {
   data: presence,
   loading,
   refetch: refetchPresence,
-} = useCacheQuery<SteamPresence>({
-  table: 'presences_steam',
-  select: '*',
-  filters: { profile_id: props.profileId },
-  single: true,
-}, {
-  ttl: PRESENCE_TTL_MS,
-})
+} = useCachedFetch<SteamPresence>(
+  () => ({
+    table: 'presences_steam',
+    select: '*',
+    filters: { profile_id: props.profileId },
+    single: true,
+  }),
+  {
+    ttl: PRESENCE_TTL_MS,
+  },
+)
 
 const refreshing = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | null = null

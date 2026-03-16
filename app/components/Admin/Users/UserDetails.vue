@@ -14,7 +14,7 @@ import Metadata from '@/components/Shared/Metadata.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { useCacheQuery } from '@/composables/useCache'
+import { useCachedFetch } from '@/composables/useCache'
 import { isBanActive } from '@/lib/banStatus'
 import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -90,14 +90,17 @@ const allFriendships = ref<Array<{ id: number, friender: string, friend: string 
 const {
   data: friendshipsData,
   refetch: refetchFriendships,
-} = useCacheQuery<Array<{ id: number, friender: string, friend: string }>>({
-  table: 'friends',
-  select: 'id, friender, friend',
-  filters: {},
-}, {
-  enabled: computed(() => !!props.user?.id),
-  ttl: 2 * 60 * 1000, // 2 minutes for friendship data
-})
+} = useCachedFetch<Array<{ id: number, friender: string, friend: string }>>(
+  () => ({
+    table: 'friends',
+    select: 'id, friender, friend',
+    filters: {},
+  }),
+  {
+    enabled: computed(() => !!props.user?.id),
+    ttl: 2 * 60 * 1000, // 2 minutes for friendship data
+  },
+)
 
 // Update local friendships data when query data changes
 watch(friendshipsData, (newData) => {

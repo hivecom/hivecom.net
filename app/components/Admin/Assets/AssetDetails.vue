@@ -6,23 +6,22 @@ import { computed } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatBytes, isImageAsset } from '@/lib/storageAssets'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   asset: StorageAsset | null
-  canDelete?: boolean
-  canRename?: boolean
-}>(), {
-  canDelete: false,
-  canRename: false,
-})
+}>()
 
 const emit = defineEmits<{
   delete: [asset: StorageAsset]
   rename: [asset: StorageAsset]
 }>()
 
+const { canDeleteAssets } = useAdminPermissions()
+const canDelete = computed(() => canDeleteAssets.value)
+const canRename = computed(() => canDeleteAssets.value)
+
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 
-const hasPreview = computed(() => props.asset && props.asset.type === 'file' && isImageAsset(props.asset))
+const hasPreview = computed(() => props.asset != null && props.asset.type === 'file' && isImageAsset(props.asset))
 const assetUrl = computed(() => props.asset?.publicUrl ?? '')
 const markdownSnippet = computed(() => assetUrl.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
 
@@ -70,7 +69,7 @@ function requestRename() {
         </Flex>
         <Flex gap="xs" y-center>
           <Button
-            v-if="props.canRename"
+            v-if="canRename"
             variant="gray"
             :square="!showActionLabels"
             @click="requestRename"
@@ -84,7 +83,7 @@ function requestRename() {
             </template>
           </Button>
           <Button
-            v-if="props.canDelete"
+            v-if="canDelete"
             variant="danger"
             :square="!showActionLabels"
             @click="requestDelete"

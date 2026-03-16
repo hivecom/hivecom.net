@@ -18,13 +18,23 @@ const props = withDefaults(defineProps<{
 
 const anchorRef = ref<HTMLElement | null>(null)
 const visible = ref(false)
+// Only activate the useCacheUserData fetch after first hover - this prevents
+// N individual profile queries racing against the useBulkUserData batch load.
+// Once hovered, the bulk cache is warm and useCacheUserData will hit it instantly.
+const everHovered = ref(false)
 
 watch(() => props.userId, (newId) => {
-  if (!newId)
+  if (!newId) {
     visible.value = false
+    everHovered.value = false
+  }
 })
 
-const { user } = useCacheUserData(computed(() => props.userId ?? null), {
+// Supply the ID lazily - resolves to null until the first hover event, at
+// which point useBulkUserData will have already populated the shared cache.
+const lazyUserId = computed(() => everHovered.value ? (props.userId ?? null) : null)
+
+const { user } = useCacheUserData(lazyUserId, {
   includeAvatar: false,
   includeRole: false,
 })
@@ -39,9 +49,9 @@ const canShowPopout = computed(() => !!(visible.value && props.userId && user.va
   <div
     ref="anchorRef"
     class="user-preview-hover"
-    @mouseenter="visible = true"
+    @mouseenter="everHovered = true; visible = true"
     @mouseleave="visible = false"
-    @focusin="visible = true"
+    @focusin="everHovered = true; visible = true"
     @focusout="visible = false"
   >
     <slot />

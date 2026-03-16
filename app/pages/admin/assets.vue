@@ -2,16 +2,12 @@
 import type { StorageBucketId } from '@/lib/storageAssets'
 import { Flex, Tab, Tabs } from '@dolanske/vui'
 
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import AssetKPIs from '@/components/Admin/Assets/AssetKPIs.vue'
 import AssetManager from '@/components/Admin/Assets/AssetManager.vue'
 import { CMS_BUCKET_ID, getBucketDescription, getBucketLabel, getBucketOptions } from '@/lib/storageAssets'
 
-const {
-  canViewAssets,
-  canCreateAssets,
-  canDeleteAssets,
-} = useAdminPermissions()
+const { canViewAssets } = useAdminPermissions()
 
 if (!canViewAssets.value) {
   throw createError({
@@ -21,8 +17,6 @@ if (!canViewAssets.value) {
 }
 
 const refreshSignal = ref(0)
-const canUpload = computed(() => canCreateAssets.value)
-const canDelete = computed(() => canDeleteAssets.value)
 
 const bucketOptions = getBucketOptions()
 const activeTab = ref<StorageBucketId>(CMS_BUCKET_ID)
@@ -52,8 +46,6 @@ const bucketDescription = computed(() => getBucketDescription(activeTab.value))
 
     <AssetManager
       v-model:refresh-signal="refreshSignal"
-      :can-upload="canUpload"
-      :can-delete="canDelete"
       :bucket-id="activeTab"
     />
   </Flex>

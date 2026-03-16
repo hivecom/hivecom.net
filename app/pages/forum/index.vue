@@ -15,6 +15,7 @@ import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCache } from '@/composables/useCache'
+import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { extractMentionIds, processMentionsToText, stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
@@ -75,14 +76,7 @@ const addingTopic = ref(false)
 const addingDiscussion = ref(false)
 const rulesModalOpen = ref(false)
 const contentRulesGateOpen = ref(false)
-// useState survives navigation (no remount reset) so back-navigation doesn't
-// refetch. Reset to null when the user changes so switching accounts doesn't
-// bleed state.
-const agreedContentRules = useState<boolean | null>('forum:agreed-content-rules', () => null)
-
-watch(userId, () => {
-  agreedContentRules.value = null
-})
+const { agreed: agreedContentRules, loading: contentRulesLoading, markAgreed } = useContentRulesAgreement()
 const pendingCreateAction = ref<'discussion' | 'topic' | null>(null)
 
 const { settings } = useUserSettings()
@@ -91,40 +85,15 @@ const loading = ref(false)
 const supabase = useSupabaseClient()
 const forumCache = useCache()
 
-async function refreshContentRulesAgreement() {
-  if (!userId.value) {
-    agreedContentRules.value = null
-    return
-  }
-
-  // Already resolved - no need to re-fetch (useState persists across navigations)
-  if (agreedContentRules.value !== null)
-    return
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('agreed_content_rules')
-    .eq('id', userId.value)
-    .maybeSingle()
-
-  if (error || !data)
-    return
-
-  agreedContentRules.value = data.agreed_content_rules
-}
-
-watch(userId, () => {
-  void refreshContentRulesAgreement()
-}, { immediate: true })
-
 watch(contentRulesGateOpen, (open) => {
   if (!open)
     pendingCreateAction.value = null
 })
 
 async function requestCreate(action: 'discussion' | 'topic') {
-  if (agreedContentRules.value === null) {
-    await refreshContentRulesAgreement()
+  // Wait for the initial fetch to settle before checking
+  if (contentRulesLoading.value) {
+    await until(contentRulesLoading).toBe(false)
   }
 
   if (agreedContentRules.value === false) {
@@ -140,7 +109,7 @@ async function requestCreate(action: 'discussion' | 'topic') {
 }
 
 function handleContentRulesConfirmed() {
-  agreedContentRules.value = true
+  markAgreed()
   contentRulesGateOpen.value = false
 
   if (pendingCreateAction.value === 'discussion')

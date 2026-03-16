@@ -1,21 +1,10 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.overrides'
-import { computed, onMounted, ref } from 'vue'
-
+import { computed } from 'vue'
+import { useEvents } from '@/composables/useEvents'
 import KPICard from '../KPICard.vue'
 import KPIContainer from '../KPIContainer.vue'
 
-type Event = Tables<'events'>
-
-// Props
-const props = defineProps<{
-  refreshSignal?: number
-}>()
-
-// State
-const supabase = useSupabaseClient()
-const loading = ref(true)
-const events = ref<Event[]>([])
+const { events, loading } = useEvents()
 
 // Computed KPIs
 const totalEvents = computed(() => events.value.length)
@@ -50,38 +39,6 @@ const eventsThisMonth = computed(() => {
     return eventDate >= startOfMonth && eventDate <= endOfMonth
   }).length
 })
-
-// Fetch events data
-async function fetchEvents() {
-  loading.value = true
-
-  try {
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-
-    if (error)
-      throw error
-
-    events.value = data || []
-  }
-  catch (error) {
-    console.error('Error fetching events for KPIs:', error)
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Watch for refresh signal from parent
-watch(() => props.refreshSignal, () => {
-  if (props.refreshSignal) {
-    fetchEvents()
-  }
-}, { immediate: false })
-
-// Initial fetch
-onMounted(fetchEvents)
 </script>
 
 <template>

@@ -15,8 +15,6 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { CMS_BUCKET_ID, formatBytes, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
 
 interface Props {
-  canUpload?: boolean
-  canDelete?: boolean
   bucketId?: StorageBucketId
 }
 
@@ -29,10 +27,11 @@ type TypeFilterValue = 'all' | 'images' | 'documents' | 'other'
 type SortOptionValue = 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc' | 'newest' | 'oldest'
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'neutral' | 'info' | 'accent'
 
-const props = withDefaults(defineProps<Props>(), {
-  canUpload: false,
-  canDelete: false,
-})
+const props = defineProps<Props>()
+
+const { canCreateAssets, canDeleteAssets } = useAdminPermissions()
+const canUpload = computed(() => canCreateAssets.value)
+const canDelete = computed(() => canDeleteAssets.value)
 
 const supabase = useSupabaseClient()
 const runtimeConfig = useRuntimeConfig()
@@ -313,7 +312,7 @@ function confirmDeleteAsset() {
 }
 
 function canRenameAsset(asset: CmsAsset): boolean {
-  return props.canDelete && asset.type === 'file'
+  return canDelete.value && asset.type === 'file'
 }
 
 function promptRenameAsset(asset: CmsAsset) {
@@ -589,7 +588,7 @@ onBeforeMount(fetchAssets)
                 </Button>
               </Flex>
               <Button
-                v-if="props.canUpload"
+                v-if="canUpload"
                 variant="accent"
                 :expand="isBelowMedium"
                 @click="showUploadDrawer = true"
@@ -684,7 +683,7 @@ onBeforeMount(fetchAssets)
                         <p>Rename</p>
                       </template>
                     </Tooltip>
-                    <Tooltip v-if="props.canDelete">
+                    <Tooltip v-if="canDelete">
                       <Button
                         size="s"
                         variant="danger"
@@ -752,7 +751,7 @@ onBeforeMount(fetchAssets)
 
     <AssetUpload
       v-model:is-open="showUploadDrawer"
-      :can-upload="props.canUpload"
+      :can-upload="canUpload"
       :current-prefix="currentPrefix"
       :bucket-id="resolvedBucketId"
       @uploaded="handleUploadSuccess"
@@ -761,8 +760,6 @@ onBeforeMount(fetchAssets)
     <AssetDetails
       v-model:is-open="showDetailsDrawer"
       :asset="selectedAsset"
-      :can-delete="props.canDelete"
-      :can-rename="props.canDelete"
       @delete="promptDeleteAsset"
       @rename="promptRenameAsset"
     />
