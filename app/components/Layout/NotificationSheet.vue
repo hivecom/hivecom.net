@@ -81,7 +81,7 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
     <Sheet
       :open="open"
       position="right"
-       :card="{ separators: true }"
+      :card="{ separators: true }"
       :size="400"
       @close="open = false"
     >
@@ -133,8 +133,6 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
       </template>
 
       <Flex column class="notification-menu__body">
-
-
         <Flex expand>
           <NotificationTabPast
             v-if="activeTab === 'active'"

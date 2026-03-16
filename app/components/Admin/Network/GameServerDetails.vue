@@ -119,17 +119,17 @@ function confirmDelete() {
         <!-- Basic info -->
         <Card>
           <Flex column gap="l" expand>
-            <Grid class="gameserver-details__item" expand :columns="2">
+            <Grid expand :columns="2">
               <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.gameserver.id }}</span>
             </Grid>
 
-            <Grid class="gameserver-details__item" expand :columns="2">
+            <Grid expand :columns="2">
               <span class="text-color-light text-bold">Name:</span>
               <span>{{ props.gameserver.name }}</span>
             </Grid>
 
-            <Grid class="gameserver-details__item" expand :columns="2">
+            <Grid expand :columns="2">
               <span class="text-color-light text-bold">Game:</span>
               <NuxtLink
                 v-if="props.gameserver.game?.id"
@@ -141,7 +141,7 @@ function confirmDelete() {
               <span v-else>{{ props.gameserver.game_name || props.gameserver.game?.name || 'Unknown' }}</span>
             </Grid>
 
-            <Grid class="gameserver-details__item" expand :columns="2">
+            <Grid expand :columns="2">
               <span class="text-color-light text-bold">Container:</span>
               <Flex>
                 <NuxtLink
@@ -158,15 +158,15 @@ function confirmDelete() {
               </Flex>
             </Grid>
 
-            <Grid class="gameserver-details__item" expand :columns="2">
+            <Grid expand :columns="2">
               <span class="text-color-light text-bold">Region:</span>
               <RegionIndicator :region="props.gameserver.region" show-label />
             </Grid>
 
-            <Grid class="gameserver-details__item" expand :columns="2">
+            <Grid expand :columns="2">
               <span class="text-color-light text-bold">Administrator:</span>
               <div :class="{ 'gameserver-details__not-assigned': !props.gameserver.administrator }">
-                <UserLink v-if="props.gameserver.administrator" :user-id="props.gameserver.administrator" />
+                <UserLink v-if="props.gameserver.administrator" :user-id="props.gameserver.administrator" class="text-m" show-avatar />
                 <span v-else>Not Assigned</span>
               </div>
             </Grid>
@@ -198,7 +198,7 @@ function confirmDelete() {
           </template>
 
           <Flex column gap="l" expand>
-            <Grid class="gameserver-details__item" expand :columns="2">
+            <Grid expand :columns="2">
               <span class="text-color-light text-bold">Addresses:</span>
               <Flex v-if="props.gameserver.addresses && props.gameserver.addresses.length" gap="xs" wrap>
                 <Badge v-for="address in props.gameserver.addresses" :key="address">
@@ -208,7 +208,7 @@ function confirmDelete() {
               <span v-else>None configured</span>
             </Grid>
 
-            <Grid class="gameserver-details__item" expand :columns="2">
+            <Grid expand :columns="2">
               <span class="text-color-light text-bold">Port:</span>
               <span>{{ props.gameserver.port || 'Not specified' }}</span>
             </Grid>

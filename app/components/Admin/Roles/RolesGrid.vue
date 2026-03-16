@@ -17,10 +17,21 @@ const refreshSignal = ref(0)
 const search = ref('')
 
 const defaultUserPermissions = [
+  'containers.read',
+  'discussion_topics.read',
+  'discussions.read',
+  'discussions.create',
+  'discussions.update.own',
+  'discussions.delete.own',
+  'discussion_replies.read',
+  'discussion_replies.create',
+  'discussion_replies.update.own',
+  'discussion_replies.delete.own',
   'events.read',
   'games.read',
   'gameservers.read',
   'profiles.read',
+  'referendums.create',
   'referendums.read',
   'roles.read',
   'profiles.update.own',
@@ -45,6 +56,19 @@ const permissionsByRole = computed(() => {
 
   grouped.user = [...defaultUserPermissions]
     .filter(permission => searchString([permission], search.value))
+
+  // Inject implied discussion_replies permissions for roles that can manage discussions.
+  // The DB policies for reply UPDATE/DELETE gate on discussions.update/delete respectively,
+  // so these aren't seeded as separate permissions but are functionally granted.
+  for (const role of Object.keys(grouped)) {
+    const perms = grouped[role]
+    if (!perms)
+      continue
+    if (perms.includes('discussions.update') && !perms.includes('discussion_replies.update'))
+      perms.push('discussion_replies.update')
+    if (perms.includes('discussions.delete') && !perms.includes('discussion_replies.delete'))
+      perms.push('discussion_replies.delete')
+  }
 
   Object.keys(grouped).forEach((role) => {
     if (grouped[role]) {

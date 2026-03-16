@@ -3,6 +3,8 @@ import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
 import EventGames from '@/components/Events/EventGames.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useCacheUserData } from '@/composables/useCacheUserData'
 import { useRsvpBus } from '@/composables/useRsvpBus'
 import { useRsvpRealtime } from '@/composables/useRsvpRealtime'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -35,6 +37,14 @@ const isBelowSmall = useBreakpoint('<s')
 
 // Get current user for authentication checks
 const user = useSupabaseUser()
+
+// Fetch organizer profile to check public visibility
+const { user: organizer } = useCacheUserData(
+  computed(() => props.event.created_by ?? null),
+  { includeRole: false, includeAvatar: false },
+)
+
+const showOrganizer = computed(() => !!user.value || organizer.value?.isPublic === true)
 
 // State for RSVP modal
 const showRSVPModal = ref(false)
@@ -132,6 +142,11 @@ onMounted(() => {
         <p v-if="event.description" class="event-header__description">
           {{ props.event.description }}
         </p>
+        <!-- Organizer -->
+        <Flex v-if="showOrganizer" y-center gap="xs" class="event-header__organizer">
+          <span class="event-header__organizer-label">Organized by</span>
+          <UserDisplay :user-id="event.created_by" size="s" :show-profile-preview="true" :hide-avatar="false" />
+        </Flex>
         <!-- Games Section -->
         <template v-if="games && games.length > 0">
           <EventGames :games="games" :show-label="false" />
@@ -278,6 +293,15 @@ onMounted(() => {
     font-weight: var(--font-weight-bold);
     margin: 0;
     line-height: 1.2;
+  }
+
+  &__organizer {
+    margin-top: var(--space-xs);
+
+    &-label {
+      font-size: var(--font-size-s);
+      color: var(--color-text-lighter);
+    }
   }
 
   &__description {

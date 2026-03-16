@@ -87,23 +87,9 @@ function handleDelete(project: Tables<'projects'>) {
             </Grid>
 
             <Grid class="project-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Banner:</span>
-              <div class="project-details__banner">
-                <div
-                  v-if="projectBannerUrl"
-                  class="project-details__banner-preview"
-                  :style="{ backgroundImage: `url(${projectBannerUrl})` }"
-                  role="img"
-                  :aria-label="`${props.project.title} banner preview`"
-                />
-                <span v-else class="project-details__not-assigned">No banner provided</span>
-              </div>
-            </Grid>
-
-            <Grid class="project-details__item" expand :columns="2">
               <span class="text-color-light text-bold">Owner:</span>
               <div :class="{ 'project-details__not-assigned': !props.project.owner }">
-                <UserLink v-if="props.project.owner" :user-id="props.project.owner" />
+                <UserLink v-if="props.project.owner" :user-id="props.project.owner" class="text-m" show-avatar />
                 <span v-else>Not Assigned</span>
               </div>
             </Grid>
@@ -143,6 +129,16 @@ function handleDelete(project: Tables<'projects'>) {
               </div>
             </Grid>
           </Flex>
+        </Card>
+
+        <!-- Banner -->
+        <Card v-if="projectBannerUrl" class="card-bg project-details__banner-card">
+          <div
+            class="project-details__banner-preview"
+            :style="{ backgroundImage: `url(${projectBannerUrl})` }"
+            role="img"
+            :aria-label="`${props.project.title} banner preview`"
+          />
         </Card>
 
         <!-- Description -->
@@ -202,16 +198,15 @@ function handleDelete(project: Tables<'projects'>) {
   gap: var(--space-xs);
 }
 
-.project-details__banner {
-  width: 100%;
+.project-details__banner-card {
+  padding: 0;
+  overflow: hidden;
 }
 
 .project-details__banner-preview {
   width: 100%;
-  height: 120px;
-  border-radius: var(--border-radius-s);
+  height: 160px;
   background-size: cover;
   background-position: center;
-  border: 1px solid var(--color-border);
 }
 </style>
