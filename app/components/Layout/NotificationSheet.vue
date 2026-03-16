@@ -196,4 +196,24 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
 </template>
 
 <style lang="scss">
+.notification-menu {
+  position: relative;
+
+  .vui-button {
+    position: relative;
+    overflow: visible;
+  }
+}
+
+.notification-menu__badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color-text-green);
+  border: 2px solid var(--color-bg);
+  pointer-events: none;
+}
 </style>

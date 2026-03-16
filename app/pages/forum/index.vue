@@ -849,7 +849,10 @@ watchEffect(() => {
   }
 })
 
-const { users: postAuthorUsers } = useBulkUserData(latestPostAuthorIds, {
+// We don't need the returned `users` map - the bulk call's only job is to
+// pre-warm the global cache so individual UserDisplay/UserRole/UserAvatar
+// components get cache hits instead of firing their own queries.
+useBulkUserData(latestPostAuthorIds, {
   includeAvatar: true,
   includeRole: true,
 })
@@ -1000,9 +1003,6 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
                   :user-id="post.user"
                   size="s"
                   show-role
-                  :role="post.user ? (postAuthorUsers.get(post.user)?.role ?? undefined) : undefined"
-                  :username="post.user ? (postAuthorUsers.get(post.user)?.username ?? undefined) : undefined"
-                  :avatar-url="post.user ? (postAuthorUsers.get(post.user)?.avatarUrl ?? undefined) : undefined"
                 />
               </Flex>
             </NuxtLink>

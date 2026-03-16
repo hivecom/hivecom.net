@@ -12,33 +12,18 @@ interface Props {
    * NuxtLink to the user's profile.
    */
   noLink?: boolean
-  /**
-   * Pre-resolved username from a parent that already has the data (e.g.
-   * UserDisplay with useBulkUserData). When provided, useCacheUserData is
-   * skipped entirely - no extra profiles query fires.
-   */
-  resolvedUsername?: string | null
-  /**
-   * Pre-resolved username_set flag. Required alongside resolvedUsername to
-   * build the correct profile link without a cache lookup.
-   */
-  resolvedUsernameSet?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'm',
   noLink: false,
-  resolvedUsername: undefined,
-  resolvedUsernameSet: undefined,
 })
-
-const hasResolvedData = computed(() => props.resolvedUsername !== undefined)
 
 const {
   user,
   loading,
 } = useCacheUserData(
-  computed(() => hasResolvedData.value ? null : (props.userId ?? null)),
+  computed(() => props.userId ?? null),
   {
     includeRole: false,
     includeAvatar: false,
@@ -54,10 +39,6 @@ const anonymousUsername = computed(() =>
 )
 
 const displayName = computed<string | null>(() => {
-  if (hasResolvedData.value) {
-    return props.resolvedUsername ?? null
-  }
-
   if (!currentUser.value && props.userId) {
     return user.value?.username ?? anonymousUsername.value
   }
@@ -69,12 +50,6 @@ const profileLink = computed(() => {
   if (!props.userId)
     return null
 
-  if (hasResolvedData.value) {
-    if (props.resolvedUsernameSet && props.resolvedUsername)
-      return `/profile/${props.resolvedUsername}`
-    return `/profile/${props.userId}`
-  }
-
   if (user.value?.username_set && user.value?.username)
     return `/profile/${user.value.username}`
   return `/profile/${props.userId}`
@@ -84,13 +59,11 @@ const canLink = computed(() => {
   if (props.noLink || !profileLink.value)
     return false
   if (!currentUser.value)
-    return hasResolvedData.value ? !!props.resolvedUsername : !!user.value
+    return !!user.value
   return true
 })
 
 const showSkeleton = computed(() => {
-  if (hasResolvedData.value)
-    return false
   return !!props.userId && loading.value
 })
 
