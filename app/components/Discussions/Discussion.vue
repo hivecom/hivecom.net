@@ -4,6 +4,7 @@ import type { Comment, DiscussionSettings, RawComment, ThreadNode } from './Disc
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Skeleton } from '@dolanske/vui'
+import { useBulkUserData } from '@/composables/useCacheUserData'
 import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
@@ -96,6 +97,34 @@ const modelRef = computed(() => props.model)
 // initialized before useDataDiscussionReplies populates them.
 const comments = ref<RawComment[]>([])
 const discussion = ref<Tables<'discussions'>>()
+
+// Pre-warm user cache for all reply authors so each DiscussionModelForum
+// instance gets a cache hit instead of firing its own user_roles + profiles
+// queries. Same pattern as forum/index.vue does for post authors.
+// We use a stable ref (not computed) to avoid spurious bulk re-fetches when
+// the array reference changes but the contents don't.
+const replyAuthorIds = ref<string[]>([])
+let _lastAuthorKey = ''
+
+watchEffect(() => {
+  const ids = [...new Set(
+    comments.value
+      .map(c => c.created_by)
+      .filter((id): id is string => id != null),
+  )]
+  const key = ids.toSorted().join(',')
+  if (key !== _lastAuthorKey) {
+    _lastAuthorKey = key
+    replyAuthorIds.value = ids
+  }
+})
+
+useBulkUserData(replyAuthorIds, {
+  includeRole: true,
+  includeAvatar: true,
+  userTtl: 10 * 60 * 1000,
+  avatarTtl: 30 * 60 * 1000,
+})
 
 const realtime = useRealtimeDiscussion(comments, discussion, modelRef)
 

@@ -26,6 +26,11 @@ const FORUM_TOPICS_CACHE_KEY = 'forum:topics-with-discussions'
 const FORUM_TOPICS_TTL = 5 * 60 * 1000 // 5 minutes
 const FORUM_REPLIES_CACHE_KEY = 'forum:latest-replies'
 const FORUM_REPLIES_TTL = 2 * 60 * 1000 // 2 minutes
+const FORUM_USER_ACTIVITY_TTL = 2 * 60 * 1000 // 2 minutes - short enough to feel live
+
+function forumUserActivityCacheKey(uid: string): string {
+  return `forum:user-activity:${uid}`
+}
 
 dayjs.extend(relativeTime)
 
@@ -159,6 +164,14 @@ async function fetchUserActivity(uid: string | null | undefined) {
     return
   }
 
+  // Check cache first - avoids a round-trip on back-navigation within TTL
+  const cacheKey = forumUserActivityCacheKey(uid)
+  const cached = forumCache.get<UserActivityItem[]>(cacheKey)
+  if (cached !== null) {
+    userActivity.value = cached
+    return
+  }
+
   // Only show loading state on first load
   if (userActivity.value.length === 0) {
     userActivityLoading.value = true
@@ -235,6 +248,7 @@ async function fetchUserActivity(uid: string | null | undefined) {
     })
     .slice(0, 6)
 
+  forumCache.set(cacheKey, userActivity.value, FORUM_USER_ACTIVITY_TTL)
   userActivityLoading.value = false
 }
 

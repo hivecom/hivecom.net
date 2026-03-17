@@ -1,26 +1,19 @@
 <script setup lang="ts">
+import type { SubscriptionRow } from '@/composables/useCacheDiscussionSubscriptions'
 import type { Database } from '@/types/database.types'
 import { Flex } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useCacheDiscussionSubscriptions } from '@/composables/useCacheDiscussionSubscriptions'
 import NotificationCardEmpty from './NotificationCardEmpty.vue'
 import NotificationCardError from './NotificationCardError.vue'
 import NotificationCardLoading from './NotificationCardLoading.vue'
 import NotificationCardSubscription from './NotificationCardSubscription.vue'
 
-interface SubscriptionRow {
-  id: string
-  discussion_id: string
-  last_seen_at: string
-  discussion: {
-    title: string
-    slug: string | null
-  } | null
-}
-
 const emit = defineEmits<{ (e: 'navigate'): void }>()
 
 const supabase = useSupabaseClient<Database>()
 const userId = useUserId()
+const subscriptionsCache = useCacheDiscussionSubscriptions()
 
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -75,6 +68,14 @@ async function load() {
   if (!userId.value || loaded.value)
     return
 
+  // Check cache first
+  const cached = subscriptionsCache.getList(userId.value)
+  if (cached !== null) {
+    subscriptions.value = cached
+    loaded.value = true
+    return
+  }
+
   loading.value = true
   error.value = null
 
@@ -87,7 +88,9 @@ async function load() {
     if (fetchError)
       throw fetchError
 
-    subscriptions.value = (data ?? []) as unknown as SubscriptionRow[]
+    const rows = (data ?? []) as unknown as SubscriptionRow[]
+    subscriptions.value = rows
+    subscriptionsCache.setList(userId.value, rows)
     loaded.value = true
   }
   catch (err) {
@@ -114,8 +117,10 @@ async function handleUnsubscribe(sub: SubscriptionRow) {
     .delete()
     .eq('id', sub.id)
 
-  if (!deleteError)
+  if (!deleteError) {
     subscriptions.value = subscriptions.value.filter(s => s.id !== sub.id)
+    subscriptionsCache.applyUnsubscribe(userId.value, sub.id, sub.discussion_id)
+  }
 
   unsubscribeLoading.value = { ...unsubscribeLoading.value, [sub.id]: false }
 }
@@ -130,8 +135,10 @@ async function clearAll() {
     .delete()
     .eq('user_id', userId.value as string)
 
-  if (!deleteError)
+  if (!deleteError) {
     subscriptions.value = []
+    subscriptionsCache.applyUnsubscribeAll(userId.value)
+  }
 
   clearAllLoading.value = false
 }

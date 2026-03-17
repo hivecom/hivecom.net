@@ -2,6 +2,8 @@ import type { Comment, RawComment, ThreadNode } from '@/components/Discussions/D
 import type { Tables } from '@/types/database.overrides'
 import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
 import { useCacheDiscussionReplies } from '@/composables/useCacheDiscussionReplies'
+import { useCacheDiscussionSubscriptions } from '@/composables/useCacheDiscussionSubscriptions'
+import { useDataNotifications } from '@/composables/useDataNotifications'
 
 /**
  * Manages all comment data for a discussion: fetching, modelling into the
@@ -26,6 +28,8 @@ export function useDataDiscussionReplies(
   const supabase = useSupabaseClient()
   const discussionCache = useCacheDiscussion()
   const repliesCache = useCacheDiscussionReplies()
+  const subscriptionsCache = useCacheDiscussionSubscriptions()
+  const notifications = useDataNotifications()
 
   const loading = ref(false)
   const error = ref<string>()
@@ -111,21 +115,50 @@ export function useDataDiscussionReplies(
     if (userId.value == null)
       return
 
-    await Promise.allSettled([
-      supabase
-        .from('discussion_subscriptions')
-        .update({ last_seen_at: new Date().toISOString() })
-        .eq('user_id', userId.value)
-        .eq('discussion_id', discussionId),
+    // Patch the list cache in-place - no re-fetch needed after bumping last_seen_at
+    subscriptionsCache.applyLastSeen(userId.value, discussionId)
 
-      supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', userId.value)
-        .eq('source', 'discussion_reply')
-        .eq('source_id', discussionId)
-        .eq('is_read', false),
-    ])
+    // Find any unread discussion_reply notification for this discussion in the
+    // singleton notification state. If there isn't one, skip the PATCH entirely -
+    // a no-op UPDATE is still a round-trip we don't need.
+    const pendingNotification = notifications.discussionNotifications.value.find(
+      n => n.source_id === discussionId,
+    )
+
+    // Only PATCH discussion_subscriptions if we know (or suspect) the user is
+    // subscribed. getStatus() returns null when the cache is cold - in that case
+    // we fire the PATCH anyway because we can't be sure. We only skip it when
+    // the cache explicitly says false.
+    const isSubscribed = subscriptionsCache.getStatus(userId.value, discussionId)
+
+    const ops: PromiseLike<unknown>[] = []
+
+    if (isSubscribed !== false) {
+      ops.push(
+        supabase
+          .from('discussion_subscriptions')
+          .update({ last_seen_at: new Date().toISOString() })
+          .eq('user_id', userId.value)
+          .eq('discussion_id', discussionId),
+      )
+    }
+
+    if (pendingNotification != null) {
+      ops.push(
+        supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', userId.value)
+          .eq('source', 'discussion_reply')
+          .eq('source_id', discussionId)
+          .eq('is_read', false),
+      )
+      // Mark read locally in the singleton so the badge clears immediately
+      // without waiting for the next notification fetch.
+      notifications.markRead(pendingNotification.id)
+    }
+
+    await Promise.allSettled(ops)
   }
 
   // ── Comment modelling ───────────────────────────────────────────────────────

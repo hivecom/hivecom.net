@@ -13,6 +13,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
+import { useCacheDiscussionSubscriptions } from '@/composables/useCacheDiscussionSubscriptions'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -50,6 +51,7 @@ const isUuid = uuidRegex.test(identifier)
 
 const supabase = useSupabaseClient()
 const discussionCache = useCacheDiscussion()
+const subscriptionsCache = useCacheDiscussionSubscriptions()
 const userId = useUserId()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
@@ -72,6 +74,13 @@ async function fetchSubscription(discussionId: string) {
   if (!userId.value)
     return
 
+  // Check status cache first - avoids a DB round-trip on every page visit
+  const cached = subscriptionsCache.getStatus(userId.value, discussionId)
+  if (cached !== null) {
+    isSubscribed.value = cached
+    return
+  }
+
   const { data } = await supabase
     .from('discussion_subscriptions')
     .select('id')
@@ -80,6 +89,7 @@ async function fetchSubscription(discussionId: string) {
     .maybeSingle()
 
   isSubscribed.value = !!data
+  subscriptionsCache.setStatus(userId.value, discussionId, !!data)
 }
 
 async function toggleSubscription() {
@@ -88,26 +98,44 @@ async function toggleSubscription() {
 
   subscriptionLoading.value = true
 
+  const discussionId = post.value.id
+
   if (isSubscribed.value) {
     const { error } = await supabase
       .from('discussion_subscriptions')
       .delete()
       .eq('user_id', userId.value)
-      .eq('discussion_id', post.value.id)
+      .eq('discussion_id', discussionId)
 
-    if (!error)
+    if (!error) {
       isSubscribed.value = false
+      subscriptionsCache.applyUnsubscribeByDiscussion(userId.value, discussionId)
+    }
   }
   else {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('discussion_subscriptions')
       .insert({
         user_id: userId.value,
-        discussion_id: post.value.id,
+        discussion_id: discussionId,
       })
+      .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug)')
+      .single()
 
-    if (!error)
+    if (!error && data) {
       isSubscribed.value = true
+      // Patch the list + status caches so the notification sheet reflects the
+      // new subscription without a re-fetch the next time it opens
+      subscriptionsCache.applySubscribe(
+        userId.value,
+        data as unknown as import('@/composables/useCacheDiscussionSubscriptions').SubscriptionRow,
+      )
+    }
+    else if (!error) {
+      // insert succeeded but .single() returned no data - just update status
+      isSubscribed.value = true
+      subscriptionsCache.setStatus(userId.value, discussionId, true)
+    }
   }
 
   subscriptionLoading.value = false
@@ -219,8 +247,42 @@ function handlePostUpdate(updated: Tables<'discussions'> | Tables<'discussion_to
   post.value = post.value ? { ...post.value, ...updated } : { ...updated }
 }
 
-onBeforeMount(() => {
+onBeforeMount(async () => {
   loading.value = true
+
+  // Fast-path: use the cached discussion row if it's still within TTL.
+  // The cache stores the enriched DiscussionWithContext shape (extra join fields
+  // are carried along even though the cache type is Tables<'discussions'>),
+  // so a cache hit is sufficient to render the full page without a DB round-trip.
+  const cached = isUuid
+    ? (discussionCache.getById(identifier) ?? discussionCache.getBySlug(identifier))
+    : discussionCache.getBySlug(identifier)
+
+  if (cached !== null) {
+    const data = cached as DiscussionWithContext
+
+    if (data.is_draft && (!userId.value || data.created_by !== userId.value)) {
+      errorMessage.value = 'Discussion not found'
+      post.value = null
+    }
+    else {
+      const entityHref = getEntityHref(data)
+      if (entityHref != null) {
+        void router.replace(entityHref)
+        loading.value = false
+        return
+      }
+
+      post.value = data
+      showNSFWWarning.value = !!data.is_nsfw && settings.value.show_nsfw_warning
+      nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
+      void loadTopicBreadcrumbs(data.discussion_topic_id)
+      void fetchSubscription(data.id)
+    }
+
+    loading.value = false
+    return
+  }
 
   let discussionQuery = supabase
     .from('discussions')
@@ -264,8 +326,9 @@ onBeforeMount(() => {
         }
 
         post.value = data
-        // Warm the discussion cache so back-navigation and Discussion.vue
-        // embeds of the same row don't re-fetch within the TTL window.
+        // Warm the discussion cache so back-navigation and the next visit
+        // within TTL don't re-fetch. The enriched join fields are stored
+        // alongside the base row and will be present on a cache hit.
         discussionCache.set(data)
         // Show the NSFW overlay only when the post is NSFW and the user has
         // warnings enabled. If they have show_nsfw_content disabled entirely,
@@ -274,43 +337,12 @@ onBeforeMount(() => {
         // If warnings are disabled but content is allowed, consider it auto-revealed
         nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
         void loadTopicBreadcrumbs(data.discussion_topic_id)
-        void markDiscussionSeen(data.id)
         void fetchSubscription(data.id)
       }
 
       loading.value = false
     })
 })
-
-/**
- * Bump `last_seen_at` on the user's subscription (if any) and mark the
- * corresponding discussion-reply notification as read so the badge clears.
- *
- * Both operations are fire-and-forget - we don't want a failure here to
- * block the page from rendering.
- */
-async function markDiscussionSeen(discussionId: string) {
-  if (!userId.value)
-    return
-
-  await Promise.allSettled([
-    // 1. Bump last_seen_at on the subscription row (if the user is subscribed)
-    supabase
-      .from('discussion_subscriptions')
-      .update({ last_seen_at: new Date().toISOString() })
-      .eq('user_id', userId.value)
-      .eq('discussion_id', discussionId),
-
-    // 2. Mark the notification as read (source = 'discussion_reply', source_id = discussionId)
-    supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', userId.value)
-      .eq('source', 'discussion_reply')
-      .eq('source_id', discussionId)
-      .eq('is_read', false),
-  ])
-}
 
 const seoDescription = computed(() => {
   if (!post.value)
