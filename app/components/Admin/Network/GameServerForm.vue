@@ -4,7 +4,7 @@ import { Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske
 import { computed, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useGames } from '@/composables/useDataGames'
+import { useDataGames } from '@/composables/useDataGames'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
 // Interface for gameserver query result
@@ -75,7 +75,7 @@ const loadingContainers = ref(true)
 const loadingProfiles = ref(true)
 
 // Games via shared composable
-const { games, loading: loadingGames } = useGames()
+const { games, loading: loadingGames } = useDataGames()
 
 // Options for dropdowns
 const containers = ref<Tables<'containers'>[]>([])

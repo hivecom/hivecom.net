@@ -5,8 +5,8 @@ import EventGames from '@/components/Events/EventGames.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useRealtimeRsvp } from '@/composables/useRealtimeRsvp'
 import { useRsvpBus } from '@/composables/useRsvpBus'
-import { useRsvpRealtime } from '@/composables/useRealtimeRsvp'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
 import CountdownTimer from './CountdownTimer.vue'
@@ -108,7 +108,7 @@ onRsvpUpdated(({ eventId }) => {
 // useRsvpBus.onRsvpUpdated is already wired in EventRSVPCount and
 // EventRSVPModal, so dispatching through the bus here is enough to
 // keep all child components in sync without any further changes.
-useRsvpRealtime(computed(() => props.event?.id ?? null))
+useRealtimeRsvp(computed(() => props.event?.id ?? null))
 
 onMounted(() => {
   fetchRSVPCounts()

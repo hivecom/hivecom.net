@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
+import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { formatCurrency } from '@/lib/utils/currency'
 import KPICard from '../KPICard.vue'
 import KPIContainer from '../KPIContainer.vue'
@@ -24,7 +24,7 @@ const errorMessage = ref('')
 const supabase = useSupabaseClient()
 
 // monthly_funding served from shared cache
-const { latestFunding, loading: fundingLoading, error: fundingError } = useMonthlyFunding()
+const { latestFunding, loading: fundingLoading, error: fundingError } = useDataMonthlyFunding()
 
 // Fetch funding metrics
 async function fetchFundingMetrics() {

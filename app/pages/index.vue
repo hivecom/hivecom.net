@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import EventCardLanding from '@/components/Events/EventCardLanding.vue'
-import { useEvents } from '@/composables/useDataEvents'
+import { useDataEvents } from '@/composables/useDataEvents'
 
 definePageMeta({
   layout: 'landing',
@@ -11,12 +11,12 @@ definePageMeta({
 
 // Fetch data from database
 const user = useSupabaseUser()
-const { fetchMetrics } = useMetrics()
+const { fetchMetrics } = useDataMetrics()
 const loading = ref(true)
 const errorMessage = ref('')
 
 // Events via shared cache - no dedicated fetch needed here
-const { events: allEvents } = useEvents()
+const { events: allEvents } = useDataEvents()
 
 // Sorted/sliced events for the landing page cards
 const events = computed<Tables<'events'>[]>(() => {

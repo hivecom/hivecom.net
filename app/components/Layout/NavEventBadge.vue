@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { useEvents } from '@/composables/useDataEvents'
+import { useDataEvents } from '@/composables/useDataEvents'
 import { formatDurationCompact } from '@/lib/utils/duration'
 
-const { events } = useEvents()
+const { events } = useDataEvents()
 
 const badge = ref<string | null>(null)
 

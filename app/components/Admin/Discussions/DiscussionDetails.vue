@@ -8,7 +8,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { useForumTopics } from '@/composables/useDataForumTopics'
+import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
 
 type DiscussionRecord = Tables<'discussions'>
@@ -284,7 +284,7 @@ const reassignLoading = ref(false)
 const reassignSearch = ref('')
 
 // Topics served from shared cache
-const { topics: reassignTopics } = useForumTopics()
+const { topics: reassignTopics } = useDataForumTopics()
 
 const filteredReassignTopics = computed(() => {
   return reassignTopics.value
@@ -293,7 +293,7 @@ const filteredReassignTopics = computed(() => {
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-// Topics are pre-loaded by useForumTopics - no explicit fetch needed
+// Topics are pre-loaded by useDataForumTopics - no explicit fetch needed
 async function loadReassignTopics() {}
 
 async function reassignToTopic(topicId: string) {

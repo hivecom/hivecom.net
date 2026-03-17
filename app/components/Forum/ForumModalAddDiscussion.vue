@@ -5,7 +5,7 @@ import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '
 import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
 import { useCacheUserData } from '@/composables/useCacheUserData'
-import { useForumTopics } from '@/composables/useDataForumTopics'
+import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
@@ -69,7 +69,7 @@ const injectedTopics = inject(FORUM_KEYS.forumTopics, () => ref<Tables<'discussi
 const activeTopicId = inject(FORUM_KEYS.forumActiveTopicId, () => ref<string | null>(null))()
 
 // Fall back to shared cached topics when the parent forum page hasn't provided them via inject
-const { topics: cachedTopics } = useForumTopics()
+const { topics: cachedTopics } = useDataForumTopics()
 const resolvedTopics = computed(() =>
   injectedTopics.value.length ? injectedTopics.value : cachedTopics.value,
 )

@@ -18,7 +18,7 @@ import {
 import dayjs from 'dayjs'
 import { computed, ref, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
-import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
+import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
@@ -42,7 +42,7 @@ const errorMessage = ref('')
 const monthlyFundings = ref<MonthlyFunding[]>([])
 
 // monthly_funding served from shared cache
-const { allFunding, loading: fundingLoading, error: fundingError } = useMonthlyFunding()
+const { allFunding, loading: fundingLoading, error: fundingError } = useDataMonthlyFunding()
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartRef = ref<ChartComponentRef<'line'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })

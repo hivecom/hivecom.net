@@ -2,7 +2,7 @@
 import { Card, Flex } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
-import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
+import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 
 interface Props {
   supporterCount?: number
@@ -22,7 +22,7 @@ const resolvedSupporterIds = computed(() => (props.supporterIds.length > 0 ? pro
 const currentUser = useSupabaseUser()
 
 // Use shared cache for monthly_funding - avoids a third parallel fetch on the funding page
-const { latestFunding } = useMonthlyFunding()
+const { latestFunding } = useDataMonthlyFunding()
 
 // Derive supporter count from cached funding data when not provided via props
 watch(latestFunding, (funding) => {

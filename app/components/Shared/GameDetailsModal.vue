@@ -4,7 +4,7 @@ import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
-import { useGames } from '@/composables/useDataGames'
+import { useDataGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
@@ -23,7 +23,7 @@ const emit = defineEmits<{
 // Controlled modal visibility
 const isOpen = defineModel<boolean>('open', { default: false })
 
-const { games, getById: getGameById } = useGames()
+const { games, getById: getGameById } = useDataGames()
 const { getGameCoverUrl, getGameBackgroundUrl } = useCacheGameAssets()
 
 interface GameDetailsEntry {
@@ -110,7 +110,7 @@ function handleClose() {
   emit('close')
 }
 
-// Re-attempt lookup when the games list populates (useGames fetches async on mount)
+// Re-attempt lookup when the games list populates (useDataGames fetches async on mount)
 watch(games, () => {
   if (props.gameId && isOpen.value && !currentDetails.value)
     void loadGameDetails(props.gameId)

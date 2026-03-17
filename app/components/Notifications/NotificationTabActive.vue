@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { NotificationRow } from '@/composables/useDataNotifications'
 import { Button, Flex, Tooltip } from '@dolanske/vui'
-import { useNotifications } from '@/composables/useDataNotifications'
+import { useDataNotifications } from '@/composables/useDataNotifications'
 import NotificationCard from './NotificationCard.vue'
 import NotificationCardBirthday from './NotificationCardBirthday.vue'
 import NotificationCardEmpty from './NotificationCardEmpty.vue'
@@ -29,7 +29,7 @@ const {
   handleInviteAction,
   handleNotificationClick,
   isInviteLoading,
-} = useNotifications()
+} = useDataNotifications()
 
 const markReadLoading = ref<Record<string, boolean>>({})
 const markAllLoading = ref(false)

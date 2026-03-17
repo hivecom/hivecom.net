@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useMetrics } from '@/composables/useDataMetrics'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import scanPassFragSrc from './LandingHeroGlobeScanPass.frag.glsl?raw'
 import scanPassVertSrc from './LandingHeroGlobeScanPass.vert.glsl?raw'
 
@@ -102,7 +102,7 @@ let arcInterval: ReturnType<typeof setInterval> | null = null
 let timeouts: ReturnType<typeof setTimeout>[] = []
 let animationFrame: number | null = null
 const highlighted = new Map<string, { started: number, duration: number }>()
-const { fetchMetrics } = useMetrics()
+const { fetchMetrics } = useDataMetrics()
 let maxConcurrentArcs = MAX_CONCURRENT_ARCS
 
 function clearTimers() {

@@ -7,7 +7,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
+import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getRouteQueryString } from '@/lib/utils/common'
 import { formatCurrency } from '@/lib/utils/currency'
@@ -44,7 +44,7 @@ const monthlyFundings = ref<MonthlyFunding[]>([])
 const search = ref('')
 
 // monthly_funding served from shared cache
-const { allFunding, loading: fundingLoading, error: fundingError, refresh: refreshFunding } = useMonthlyFunding()
+const { allFunding, loading: fundingLoading, error: fundingError, refresh: refreshFunding } = useDataMonthlyFunding()
 
 // Funding details state
 const showFundingDetails = ref(false)

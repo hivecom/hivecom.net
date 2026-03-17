@@ -2,7 +2,7 @@
 import { Alert, Button, Divider, Flex, Grid, Input, Select, Skeleton } from '@dolanske/vui'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
-import { useProjects } from '@/composables/useDataProjects'
+import { useDataProjects } from '@/composables/useDataProjects'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 // Interface for Select options
@@ -14,7 +14,7 @@ interface SelectOption {
 const isBelowExtraSmall = useBreakpoint('<xs')
 
 // Reactive data
-const { projects, loading, error } = useProjects()
+const { projects, loading, error } = useDataProjects()
 const isBelowM = useBreakpoint('<m')
 
 // Filters

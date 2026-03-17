@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useEvents } from '@/composables/useDataEvents'
+import { useDataEvents } from '@/composables/useDataEvents'
 import KPICard from '../KPICard.vue'
 import KPIContainer from '../KPIContainer.vue'
 
-const { events, loading } = useEvents()
+const { events, loading } = useDataEvents()
 
 // Computed KPIs
 const totalEvents = computed(() => events.value.length)

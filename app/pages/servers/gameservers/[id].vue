@@ -6,8 +6,8 @@ import Discussion from '@/components/Discussions/Discussion.vue'
 import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
-import { useGames } from '@/composables/useDataGames'
-import { useGameservers } from '@/composables/useDataGameservers'
+import { useDataGames } from '@/composables/useDataGames'
+import { useDataGameservers } from '@/composables/useDataGameservers'
 
 // Get route parameter
 const route = useRoute()
@@ -20,8 +20,8 @@ const game = ref<Tables<'games'> | null>(null)
 const error = ref<string | null>(null)
 const gameBackground = ref<string | null>(null)
 
-const { gameservers, loading, error: gameserversError, getById: getGameserverById } = useGameservers()
-const { getById: getGameById } = useGames()
+const { gameservers, loading, error: gameserversError, getById: getGameserverById } = useDataGameservers()
+const { getById: getGameById } = useDataGames()
 
 // Derive container from the cached gameserver entry
 const container = computed((): GameserverWithContainer['container'] => {

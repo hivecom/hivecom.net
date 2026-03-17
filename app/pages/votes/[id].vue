@@ -11,7 +11,7 @@ import VoteHeader from '@/components/Votes/VoteHeader.vue'
 import VoteLoadingSkeleton from '@/components/Votes/VoteLoadingSkeleton.vue'
 import VoteResults from '@/components/Votes/VoteResults.vue'
 import { useCachedFetch } from '@/composables/useCache'
-import { useReferendumVotesRealtime } from '@/composables/useRealtimeReferendumVotes'
+import { useRealtimeReferendumVotes } from '@/composables/useRealtimeReferendumVotes'
 
 import { formatDuration } from '@/lib/utils/duration'
 
@@ -94,7 +94,7 @@ const { data: fetchedVotes, loading: loadingAllVotes, refetch: refetchAllVotes }
 
 // Keep allVotes live via realtime subscription - starts from the cache query
 // result and patches in INSERT/UPDATE/DELETE events from other tabs/users.
-const { votes: allVotes } = useReferendumVotesRealtime(
+const { votes: allVotes } = useRealtimeReferendumVotes(
   computed(() => referendumId.value),
   computed(() => fetchedVotes.value as Tables<'referendum_votes'>[] | null | undefined),
 )

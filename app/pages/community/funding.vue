@@ -6,7 +6,7 @@ import FundingHistory from '@/components/Community/FundingHistory.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
-import { useExpenses } from '@/composables/useDataExpenses'
+import { useDataExpenses } from '@/composables/useDataExpenses'
 import { formatCurrency } from '@/lib/utils/currency'
 
 // Data setup
@@ -20,7 +20,7 @@ const monthlyFunding = ref<Tables<'monthly_funding'>[]>([])
 const supporters = ref<string[]>([])
 
 // Expenses via shared cache
-const { expenses, loading: expensesLoading, error: expensesError } = useExpenses()
+const { expenses, loading: expensesLoading, error: expensesError } = useDataExpenses()
 
 // UI state
 const showPastExpenses = ref(false)
@@ -38,7 +38,7 @@ onMounted(async () => {
 
   try {
     // Fetch monthly funding history and supporters in parallel
-    // Expenses are handled by useExpenses() composable
+    // Expenses are handled by useDataExpenses() composable
     const [fundingResult, supportersResult] = await Promise.all([
       supabase
         .from('monthly_funding')

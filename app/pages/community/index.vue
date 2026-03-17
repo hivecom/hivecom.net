@@ -4,7 +4,7 @@ import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
-import { useProjects } from '@/composables/useDataProjects'
+import { useDataProjects } from '@/composables/useDataProjects'
 import { isBanActive } from '@/lib/banStatus'
 import { shuffleArray } from '@/lib/utils/random'
 
@@ -36,9 +36,9 @@ const loading = ref(true)
 const error = ref('')
 
 // State for recent projects
-const recentProjects = ref<ReturnType<typeof useProjects>['projects']['value']>([])
+const recentProjects = ref<ReturnType<typeof useDataProjects>['projects']['value']>([])
 
-const { projects: allProjects } = useProjects()
+const { projects: allProjects } = useDataProjects()
 
 interface SupporterProfile {
   id: string

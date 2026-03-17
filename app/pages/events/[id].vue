@@ -5,9 +5,9 @@ import Discussion from '@/components/Discussions/Discussion.vue'
 import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
+import { useDataForumUnread } from '@/composables/useDataForumUnread'
+import { useDataGames } from '@/composables/useDataGames'
 import { useEventTiming } from '@/composables/useEventTiming'
-import { useForumUnread } from '@/composables/useDataForumUnread'
-import { useGames } from '@/composables/useDataGames'
 
 // Get route parameter
 const route = useRoute()
@@ -17,7 +17,7 @@ const eventId = Number.parseInt(route.params.id as string)
 const supabase = useSupabaseClient()
 
 // Games from shared cache
-const { getByIds } = useGames()
+const { getByIds } = useDataGames()
 
 // Reactive data
 const event = ref<Tables<'events'> | null>(null)
@@ -32,7 +32,7 @@ defineOgImageComponent('Event', {
 })
 
 const { isUpcoming, isOngoing, timeAgo, countdown } = useEventTiming(event)
-const forumUnread = useForumUnread()
+const forumUnread = useDataForumUnread()
 
 function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)

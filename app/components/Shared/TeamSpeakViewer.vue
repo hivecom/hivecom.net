@@ -6,7 +6,7 @@ import constants from '~~/constants.json'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { useTeamSpeakSnapshot } from '@/composables/useDataTeamSpeakSnapshot'
+import { useDataTeamSpeakSnapshot } from '@/composables/useDataTeamSpeakSnapshot'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryEmoji } from '@/lib/utils/country'
 import BadgeCircle from './BadgeCircle.vue'
@@ -260,7 +260,7 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
   ],
 }
 
-const { data, pending, error, refresh, lastUpdated, status } = useTeamSpeakSnapshot({
+const { data, pending, error, refresh, lastUpdated, status } = useDataTeamSpeakSnapshot({
   refreshInterval: props.refreshInterval,
 })
 

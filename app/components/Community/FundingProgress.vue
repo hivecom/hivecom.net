@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Badge, Button, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
 import constants from '~~/constants.json'
-import { useExpenses } from '@/composables/useDataExpenses'
-import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
+import { useDataExpenses } from '@/composables/useDataExpenses'
+import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
 
@@ -13,11 +13,11 @@ const isOnFundingPage = computed(() => route.path === '/community/funding')
 const isBelowSmall = useBreakpoint('<s')
 
 // Funding data via shared cache
-const { latestFunding: currentFunding, loading, error } = useMonthlyFunding()
+const { latestFunding: currentFunding, loading, error } = useDataMonthlyFunding()
 const errorMessage = computed(() => error.value)
 
 // Active expenses via shared cache
-const { totalActiveAmountCents: monthlyExpenses } = useExpenses()
+const { totalActiveAmountCents: monthlyExpenses } = useDataExpenses()
 
 // Calculate funding progress
 const fundingProgress = computed(() => {

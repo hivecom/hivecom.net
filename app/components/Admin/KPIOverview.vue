@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { onBeforeMount, ref } from 'vue'
-import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
+import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import KPICard from './KPICard.vue'
 import KPIContainer from './KPIContainer.vue'
 
 // Setup
 const supabase = useSupabaseClient()
-const { latestFunding } = useMonthlyFunding()
+const { latestFunding } = useDataMonthlyFunding()
 const loading = ref(true)
 
 // State
@@ -51,7 +51,7 @@ async function fetchKPIData() {
 
     monthlyExpenses.value = expenses?.reduce((sum, expense) => sum + expense.amount_cents, 0) || 0
 
-    // monthly_funding served from shared cache via useMonthlyFunding
+    // monthly_funding served from shared cache via useDataMonthlyFunding
     monthlyDonations.value = latestFunding.value
       ? (latestFunding.value.donation_month_amount_cents || 0) + (latestFunding.value.patreon_month_amount_cents || 0)
       : 0

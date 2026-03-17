@@ -13,7 +13,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
-import { useForumUnread } from '@/composables/useDataForumUnread'
+import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDate } from '@/lib/utils/date'
@@ -39,8 +39,8 @@ type TopicBreadcrumb = Pick<Tables<'discussion_topics'>, 'id' | 'name' | 'slug' 
 const route = useRoute()
 const router = useRouter()
 
-const { settings } = useUserSettings()
-const forumUnread = useForumUnread()
+const { settings } = useDataUserSettings()
+const forumUnread = useDataForumUnread()
 
 const identifier = route.params.id as string
 

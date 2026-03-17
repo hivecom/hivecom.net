@@ -9,7 +9,7 @@ import GameIcon from '@/components/GameServers/GameIcon.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { useGames } from '@/composables/useDataGames'
+import { useDataGames } from '@/composables/useDataGames'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
 
 const props = defineProps<{
@@ -26,7 +26,7 @@ const isOpen = defineModel<boolean>('isOpen')
 const showRSVPModal = ref(false)
 
 // Games data
-const { loading: loadingGames, getByIds } = useGames()
+const { loading: loadingGames, getByIds } = useDataGames()
 
 const eventGames = computed(() => {
   if (!props.event?.games || props.event.games.length === 0)

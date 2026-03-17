@@ -3,8 +3,8 @@ import { Button, Tab, Tabs } from '@dolanske/vui'
 import GameLibrary from '@/components/GameServers/GameServerLibrary.vue'
 import GameListing from '@/components/GameServers/GameServerListing.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
-import { useGames } from '@/composables/useDataGames'
-import { useGameservers } from '@/composables/useDataGameservers'
+import { useDataGames } from '@/composables/useDataGames'
+import { useDataGameservers } from '@/composables/useDataGameservers'
 
 // Tab management
 const activeTab = ref('library')
@@ -49,8 +49,8 @@ onMounted(() => {
 // Fetch data
 const supportModalOpen = ref(false)
 
-const { games, loading: gamesLoading } = useGames()
-const { gameservers, loading, error: gameserversError } = useGameservers()
+const { games, loading: gamesLoading } = useDataGames()
+const { gameservers, loading, error: gameserversError } = useDataGameservers()
 const errorMessage = computed(() => gameserversError.value ?? '')
 
 useSeoMeta({

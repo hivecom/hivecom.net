@@ -7,7 +7,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
-import { useProjects } from '@/composables/useDataProjects'
+import { useDataProjects } from '@/composables/useDataProjects'
 import { getPlaceholderBannerProject } from '@/lib/projectBannerPlaceholders'
 
 // Get route parameter
@@ -15,7 +15,7 @@ const route = useRoute()
 const projectId = Number.parseInt(route.params.id as string)
 
 // Reactive data
-const { projects, loading, error: projectsError, getById } = useProjects()
+const { projects, loading, error: projectsError, getById } = useDataProjects()
 const project = ref<Tables<'projects'> | null>(null)
 const error = ref<string | null>(null)
 

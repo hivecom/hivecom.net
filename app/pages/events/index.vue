@@ -3,7 +3,7 @@ import { Tab, Tabs } from '@dolanske/vui'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import EventsCalendar from '@/components/Events/EventsCalendar.vue'
 import EventsListing from '@/components/Events/EventsListing.vue'
-import { useEvents } from '@/composables/useDataEvents'
+import { useDataEvents } from '@/composables/useDataEvents'
 
 // Tab management
 const activeTab = ref('list')
@@ -48,7 +48,7 @@ onMounted(() => {
 })
 
 // Fetch data
-const { events, loading, error } = useEvents()
+const { events, loading, error } = useDataEvents()
 const errorMessage = computed(() => error.value ?? '')
 
 useSeoMeta({
