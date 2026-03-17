@@ -4,7 +4,7 @@ import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
-import { useProjects } from '@/composables/useProjects'
+import { useProjects } from '@/composables/useDataProjects'
 import { isBanActive } from '@/lib/banStatus'
 import { shuffleArray } from '@/lib/utils/random'
 

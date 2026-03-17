@@ -6,7 +6,7 @@ import FundingHistory from '@/components/Community/FundingHistory.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
-import { useExpenses } from '@/composables/useExpenses'
+import { useExpenses } from '@/composables/useDataExpenses'
 import { formatCurrency } from '@/lib/utils/currency'
 
 // Data setup

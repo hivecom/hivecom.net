@@ -1,6 +1,7 @@
 import type { Comment, RawComment, ThreadNode } from '@/components/Discussions/Discussion.types'
 import type { Tables } from '@/types/database.overrides'
 import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
+import { useCacheDiscussionReplies } from '@/composables/useCacheDiscussionReplies'
 
 /**
  * Manages all comment data for a discussion: fetching, modelling into the
@@ -9,7 +10,7 @@ import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
  * Returns reactive state and actions that Discussion.vue wires up via provide()
  * so descendant components can consume them through DISCUSSION_KEYS.
  */
-export function useDiscussionComments(
+export function useDataDiscussionReplies(
   props: {
     id: string
     type: string
@@ -24,6 +25,7 @@ export function useDiscussionComments(
 ) {
   const supabase = useSupabaseClient()
   const discussionCache = useCacheDiscussion()
+  const repliesCache = useCacheDiscussionReplies()
 
   const loading = ref(false)
   const error = ref<string>()
@@ -63,24 +65,32 @@ export function useDiscussionComments(
 
       void markDiscussionSeen(fetchedDiscussion.id)
 
-      const commentQuery = supabase
-        .from('discussion_replies')
-        .select('*')
-        .eq('discussion_id', fetchedDiscussion.id)
+      // Check the replies cache first - avoids a round-trip on back-navigation
+      // within the TTL window. The cache is invalidated by useRealtimeDiscussion
+      // whenever any realtime event fires, so stale data is not a concern while
+      // the user has the discussion open.
+      const ascending = props.model !== 'comment'
+      const cachedReplies = repliesCache.get(fetchedDiscussion.id)
 
-      if (props.hash != null) {
-        commentQuery.eq('meta->>hash', props.hash)
-      }
-
-      const commentsResponse = await commentQuery.order('created_at', { ascending: props.model !== 'comment' })
-
-      if (commentsResponse.error) {
+      if (cachedReplies !== null) {
+        comments.value = cachedReplies
         loading.value = false
-        error.value = commentsResponse.error.message
+        onLoaded(fetchedDiscussion.id)
         return
       }
 
-      comments.value = commentsResponse.data as RawComment[]
+      const fetchedReplies = await repliesCache.fetch(fetchedDiscussion.id, {
+        hash: props.hash,
+        ascending,
+      })
+
+      if (repliesCache.error.value != null) {
+        loading.value = false
+        error.value = repliesCache.error.value
+        return
+      }
+
+      comments.value = fetchedReplies ?? []
       loading.value = false
 
       onLoaded(fetchedDiscussion.id)

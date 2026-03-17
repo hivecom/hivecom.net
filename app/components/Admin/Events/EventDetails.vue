@@ -9,7 +9,7 @@ import GameIcon from '@/components/GameServers/GameIcon.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { useGames } from '@/composables/useGames'
+import { useGames } from '@/composables/useDataGames'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
 
 const props = defineProps<{

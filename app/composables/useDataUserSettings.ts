@@ -21,7 +21,7 @@ export function getDefaultUserSettings(): Tables<'settings'>['data'] {
   }
 }
 
-export function useUserSettings() {
+export function useDataUserSettings() {
   const settings = useState<Tables<'settings'>['data']>('user-settings', getDefaultUserSettings)
   const hasFetched = useState<boolean>('user-settings-fetched', () => false)
   const settingsLoading = ref(false)

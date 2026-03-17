@@ -15,7 +15,7 @@ import type { Tables } from '@/types/database.overrides'
  * @param initialVotes - Optional initial votes array (e.g. from SSR or a cache
  *   query). The composable will keep this list live from that starting point.
  */
-export function useReferendumVotesRealtime(
+export function useRealtimeReferendumVotes(
   referendumId: MaybeRef<number | null | undefined>,
   initialVotes: MaybeRef<Tables<'referendum_votes'>[] | null | undefined> = [],
 ) {

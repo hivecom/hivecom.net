@@ -17,7 +17,7 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
  * - `invalidate()` should be called after admin writes to the events table
  * - `refresh()` forces a cache-busting re-fetch (e.g. after RSVP mutations)
  */
-export function useEvents() {
+export function useDataEvents() {
   const cache = useCache()
   const supabase = useSupabaseClient<Database>()
 

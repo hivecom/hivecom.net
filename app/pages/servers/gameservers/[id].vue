@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { GameserverWithContainer } from '@/composables/useGameservers'
+import type { GameserverWithContainer } from '@/composables/useDataGameservers'
 import type { Tables } from '@/types/database.overrides'
 import { Button, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
-import { useGames } from '@/composables/useGames'
-import { useGameservers } from '@/composables/useGameservers'
+import { useGames } from '@/composables/useDataGames'
+import { useGameservers } from '@/composables/useDataGameservers'
 
 // Get route parameter
 const route = useRoute()

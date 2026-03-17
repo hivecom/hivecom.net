@@ -7,7 +7,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
+import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getRouteQueryString } from '@/lib/utils/common'
 import { formatCurrency } from '@/lib/utils/currency'

@@ -22,7 +22,7 @@ const CACHE_TTL = 60 * 60 * 1000 // 1 hour - expenses change infrequently
  * - `invalidate()` should be called after admin writes to the expenses table
  * - `refresh()` forces a cache-busting re-fetch
  */
-export function useExpenses() {
+export function useDataExpenses() {
   const cache = useCache()
   const supabase = useSupabaseClient<Database>()
 

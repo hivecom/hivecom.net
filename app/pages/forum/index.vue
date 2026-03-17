@@ -15,6 +15,7 @@ import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCache } from '@/composables/useCache'
+import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { extractMentionIds, processMentionsToText, stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -70,7 +71,7 @@ const isMobile = useBreakpoint('<s')
 const { user } = useCacheUserData(userId, { includeRole: true })
 
 // Track which topics/discussions have new content since last visit
-const forumUnread = useForumUnread()
+const forumUnread = useDataForumUnread()
 
 const addingTopic = ref(false)
 const addingDiscussion = ref(false)
@@ -79,11 +80,12 @@ const contentRulesGateOpen = ref(false)
 const { agreed: agreedContentRules, loading: contentRulesLoading, markAgreed } = useContentRulesAgreement()
 const pendingCreateAction = ref<'discussion' | 'topic' | null>(null)
 
-const { settings } = useUserSettings()
+const { settings } = useDataUserSettings()
 
 const loading = ref(false)
 const supabase = useSupabaseClient()
 const forumCache = useCache()
+const discussionCache = useCacheDiscussion()
 
 watch(contentRulesGateOpen, (open) => {
   if (!open)
@@ -334,6 +336,15 @@ onBeforeMount(async () => {
         else {
           topics.value = data
           forumCache.set(FORUM_TOPICS_CACHE_KEY, data, FORUM_TOPICS_TTL)
+
+          // Warm the per-discussion cache so navigating into forum/[id].vue is a
+          // cache hit within the TTL window. The topics query fetches a projection
+          // (not the full row), but it's enough for Discussion.vue's base-row needs.
+          for (const topic of data) {
+            for (const discussion of topic.discussions) {
+              discussionCache.set(discussion)
+            }
+          }
 
           // Seed localStorage seen-state for any topic/discussion not yet tracked.
           // First-time visitors get everything marked as "seen" so only future

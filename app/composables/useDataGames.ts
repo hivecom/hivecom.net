@@ -26,7 +26,7 @@ const CACHE_TTL = 30 * 60 * 1000 // 30 minutes - games are slow-changing referen
  * - `invalidate()` should be called after admin writes to the games table
  * - `refresh()` forces a cache-busting re-fetch
  */
-export function useGames() {
+export function useDataGames() {
   const cache = useCache()
   const supabase = useSupabaseClient<Database>()
 

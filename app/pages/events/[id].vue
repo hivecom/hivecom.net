@@ -6,8 +6,8 @@ import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useEventTiming } from '@/composables/useEventTiming'
-import { useForumUnread } from '@/composables/useForumUnread'
-import { useGames } from '@/composables/useGames'
+import { useForumUnread } from '@/composables/useDataForumUnread'
+import { useGames } from '@/composables/useDataGames'
 
 // Get route parameter
 const route = useRoute()

@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { Button, ButtonGroup, Card, Divider, Flex, Select, setColorTheme, Switch } from '@dolanske/vui'
 
-const { settings, settingsError } = useUserSettings()
+const { settings, settingsError } = useDataUserSettings()
 
 // Theme options & setting
 const themeOptions = [

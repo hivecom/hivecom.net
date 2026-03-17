@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useEvents } from '@/composables/useEvents'
+import { useEvents } from '@/composables/useDataEvents'
 import KPICard from '../KPICard.vue'
 import KPIContainer from '../KPIContainer.vue'
 

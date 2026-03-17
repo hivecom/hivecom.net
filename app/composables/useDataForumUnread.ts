@@ -25,7 +25,7 @@ const STORAGE_KEY = 'forum-unread'
  * first visit). Subsequent visits compare the live counts to those stored
  * values and surface a dot indicator whenever counts have grown.
  */
-export function useForumUnread() {
+export function useDataForumUnread() {
   const storage = useStorage<ForumUnreadStorage>(
     STORAGE_KEY,
     { topics: {}, discussions: {} },

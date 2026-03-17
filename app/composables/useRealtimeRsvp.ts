@@ -21,7 +21,7 @@ type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
  *
  * @param eventId - Reactive or static event ID to subscribe to.
  */
-export function useRsvpRealtime(eventId: MaybeRef<number | null | undefined>) {
+export function useRealtimeRsvp(eventId: MaybeRef<number | null | undefined>) {
   const supabase = useSupabaseClient()
   const { dispatch } = useRsvpBus()
 

@@ -25,7 +25,7 @@ const CACHE_TTL = 30 * 60 * 1000 // 30 minutes
  * - `invalidate()` should be called after admin writes to monthly_funding
  * - `refresh()` forces a cache-busting re-fetch
  */
-export function useMonthlyFunding() {
+export function useDataMonthlyFunding() {
   const cache = useCache()
   const supabase = useSupabaseClient<Database>()
 

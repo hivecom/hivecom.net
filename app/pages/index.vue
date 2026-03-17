@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import EventCardLanding from '@/components/Events/EventCardLanding.vue'
-import { useEvents } from '@/composables/useEvents'
+import { useEvents } from '@/composables/useDataEvents'
 
 definePageMeta({
   layout: 'landing',

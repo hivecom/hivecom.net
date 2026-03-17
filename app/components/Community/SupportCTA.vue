@@ -2,7 +2,7 @@
 import { Card, Flex } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
-import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
+import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 
 interface Props {
   supporterCount?: number

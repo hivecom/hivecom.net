@@ -11,7 +11,7 @@ import VoteHeader from '@/components/Votes/VoteHeader.vue'
 import VoteLoadingSkeleton from '@/components/Votes/VoteLoadingSkeleton.vue'
 import VoteResults from '@/components/Votes/VoteResults.vue'
 import { useCachedFetch } from '@/composables/useCache'
-import { useReferendumVotesRealtime } from '@/composables/useReferendumVotesRealtime'
+import { useReferendumVotesRealtime } from '@/composables/useRealtimeReferendumVotes'
 
 import { formatDuration } from '@/lib/utils/duration'
 

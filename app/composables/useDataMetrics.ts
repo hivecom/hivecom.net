@@ -123,7 +123,7 @@ async function fetchMetricsWithFallback(supabase: SupabaseClient<Database>) {
   return fetchMetricsFromDatabase(supabase)
 }
 
-export function useMetrics() {
+export function useDataMetrics() {
   const supabase = useSupabaseClient<Database>()
   const metrics = ref<MetricsSnapshot | null>(null)
   const loading = ref(false)

@@ -39,7 +39,7 @@ export type GameserverWithContainer = Tables<'gameservers'> & {
   administrator?: string | null
 }
 
-export function useGameservers() {
+export function useDataGameservers() {
   const cache = useCache()
   const supabase = useSupabaseClient<Database>()
 

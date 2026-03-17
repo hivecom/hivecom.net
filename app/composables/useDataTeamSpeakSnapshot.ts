@@ -25,7 +25,7 @@ function isSnapshotFresh(snapshot: TeamSpeakSnapshot | null, maxAgeMs: number): 
   return Date.now() - collectedAt < maxAgeMs
 }
 
-export function useTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) {
+export function useDataTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = {}) {
   const supabase = useSupabaseClient<Database>()
   const key = options.key ?? 'teamspeak-snapshot'
   const refreshingEndpoint = ref(false)

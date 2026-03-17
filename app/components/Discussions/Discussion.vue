@@ -4,8 +4,8 @@ import type { Comment, DiscussionSettings, RawComment, ThreadNode } from './Disc
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Skeleton } from '@dolanske/vui'
-import { useDiscussionComments } from '@/composables/useDiscussionComments'
-import { useDiscussionRealtime } from '@/composables/useDiscussionRealtime'
+import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies'
+import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
 import { normalizeTipTapOutput } from '@/lib/utils/formatting'
 import { DISCUSSION_KEYS } from './Discussion.keys'
@@ -84,20 +84,20 @@ export type { Comment, DiscussionSettings, ProvidedDiscussion, RawComment, Threa
 
 const supabase = useSupabaseClient()
 
-// ── Reply form state (declared early - referenced in useDiscussionComments callback) ──
+// ── Reply form state (declared early - referenced in useDataDiscussionReplies callback) ──
 
 const replyingTo = ref<Comment>()
 
-// ── Realtime (declared early - referenced in useDiscussionComments callback) ──
+// ── Realtime (declared early - referenced in useDataDiscussionReplies callback) ──
 
 const modelRef = computed(() => props.model)
 
 // comments/discussion refs are passed by reference so realtime can be
-// initialized before useDiscussionComments populates them.
+// initialized before useDataDiscussionReplies populates them.
 const comments = ref<RawComment[]>([])
 const discussion = ref<Tables<'discussions'>>()
 
-const realtime = useDiscussionRealtime(comments, discussion, modelRef)
+const realtime = useRealtimeDiscussion(comments, discussion, modelRef)
 
 // ── Comment data ──────────────────────────────────────────────────────────────
 
@@ -110,7 +110,7 @@ const {
   toggleOfftopic,
   deleteComment: deleteCommentFromList,
   offtopicCount,
-} = useDiscussionComments(
+} = useDataDiscussionReplies(
   {
     id: props.id,
     type: props.type,
@@ -134,7 +134,7 @@ const {
 
 // ── View settings ─────────────────────────────────────────────────────────────
 
-const { settings } = useUserSettings()
+const { settings } = useDataUserSettings()
 
 type ViewMode = 'flat' | 'threaded'
 const viewMode = ref<ViewMode>(settings.value.discussion_view_mode ?? 'flat')

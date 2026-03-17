@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useMetrics } from '@/composables/useMetrics'
+import { useMetrics } from '@/composables/useDataMetrics'
 import scanPassFragSrc from './LandingHeroGlobeScanPass.frag.glsl?raw'
 import scanPassVertSrc from './LandingHeroGlobeScanPass.vert.glsl?raw'
 

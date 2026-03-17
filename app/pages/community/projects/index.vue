@@ -2,7 +2,7 @@
 import { Alert, Button, Divider, Flex, Grid, Input, Select, Skeleton } from '@dolanske/vui'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
-import { useProjects } from '@/composables/useProjects'
+import { useProjects } from '@/composables/useDataProjects'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 // Interface for Select options

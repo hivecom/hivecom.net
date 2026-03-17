@@ -4,7 +4,7 @@ import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
-import { useGames } from '@/composables/useGames'
+import { useGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {

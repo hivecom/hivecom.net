@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { NotificationRow } from '@/composables/useNotifications'
+import type { NotificationRow } from '@/composables/useDataNotifications'
 import { Button, Flex, Tooltip } from '@dolanske/vui'
-import { useNotifications } from '@/composables/useNotifications'
+import { useNotifications } from '@/composables/useDataNotifications'
 import NotificationCard from './NotificationCard.vue'
 import NotificationCardBirthday from './NotificationCardBirthday.vue'
 import NotificationCardEmpty from './NotificationCardEmpty.vue'

@@ -42,7 +42,7 @@ function parseBirthdayDate(value: string | null): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-export function useNotifications() {
+export function useDataNotifications() {
   const supabase = useSupabaseClient<Database>()
   const userId = useUserId()
   const { user: cachedUserData } = useCacheUserData(userId, { includeRole: true, includeAvatar: false })

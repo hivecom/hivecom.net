@@ -5,7 +5,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useGames } from '@/composables/useGames'
+import { useGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 

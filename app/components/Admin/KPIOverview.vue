@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeMount, ref } from 'vue'
-import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
+import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import KPICard from './KPICard.vue'
 import KPIContainer from './KPIContainer.vue'
 

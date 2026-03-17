@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { useEvents } from '@/composables/useEvents'
+import { useEvents } from '@/composables/useDataEvents'
 import { formatDurationCompact } from '@/lib/utils/duration'
 
 const { events } = useEvents()

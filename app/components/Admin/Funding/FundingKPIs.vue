@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
+import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { formatCurrency } from '@/lib/utils/currency'
 import KPICard from '../KPICard.vue'
 import KPIContainer from '../KPIContainer.vue'

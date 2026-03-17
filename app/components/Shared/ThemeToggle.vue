@@ -16,7 +16,7 @@ const props = defineProps({
   },
 })
 
-const { settings } = useUserSettings()
+const { settings } = useDataUserSettings()
 
 const isLight = computed({
   get: () => theme.value === 'light',

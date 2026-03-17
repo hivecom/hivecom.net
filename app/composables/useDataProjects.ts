@@ -22,7 +22,7 @@ const CACHE_TTL = 60 * 60 * 1000 // 1 hour - projects change infrequently
  * - `invalidate()` should be called after admin writes to the projects table
  * - `refresh()` forces a cache-busting re-fetch
  */
-export function useProjects() {
+export function useDataProjects() {
   const cache = useCache()
   const supabase = useSupabaseClient<Database>()
 

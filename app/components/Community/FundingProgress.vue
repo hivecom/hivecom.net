@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Badge, Button, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
 import constants from '~~/constants.json'
-import { useExpenses } from '@/composables/useExpenses'
-import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
+import { useExpenses } from '@/composables/useDataExpenses'
+import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
 

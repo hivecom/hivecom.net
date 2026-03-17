@@ -1,28 +1,34 @@
 import type { RealtimeChannel, RealtimePostgresDeletePayload, RealtimePostgresInsertPayload, RealtimePostgresUpdatePayload } from '@supabase/supabase-js'
 import type { RawComment } from '@/components/Discussions/Discussion.types'
+import type { Tables } from '@/types/database.overrides'
 import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
+import { useCacheDiscussionReplies } from '@/composables/useCacheDiscussionReplies'
 
 /**
- * Manages the Supabase realtime channel for a discussion's replies.
+ * Manages the Supabase realtime channel for a discussion's replies and the
+ * discussion row itself.
  *
- * Handles INSERT (pending banner), UPDATE (edits, offtopic, soft-deletes),
- * and DELETE (hard deletes) events, patching the shared `comments` ref
- * in place so all consumers see live updates without polling.
+ * Handles reply INSERT (pending banner), UPDATE (edits, offtopic, soft-deletes),
+ * and DELETE (hard deletes) events, patching the shared `comments` ref in place.
+ * Also subscribes to UPDATE events on the `discussions` row for reaction and
+ * metadata sync (lock, archive, title, etc.).
  *
- * The channel is automatically torn down on scope dispose.
+ * The channels are automatically torn down on scope dispose.
  */
-export function useDiscussionRealtime(
+export function useRealtimeDiscussion(
   comments: Ref<RawComment[]>,
   discussion: Ref<{ id: string, slug: string | null } | undefined>,
   model: Ref<'comment' | 'forum'>,
 ) {
   const supabase = useSupabaseClient()
   const discussionCache = useCacheDiscussion()
+  const repliesCache = useCacheDiscussionReplies()
 
   const pendingReplyCount = ref(0)
   const pendingLoading = ref(false)
 
   let replyChannel: RealtimeChannel | null = null
+  let discussionChannel: RealtimeChannel | null = null
   let subscribedDiscussionId: string | null = null
 
   /**
@@ -72,8 +78,10 @@ export function useDiscussionRealtime(
 
       pendingReplyCount.value = 0
 
-      // Invalidate the cache - reply_count has changed server-side.
+      // Invalidate both caches - reply_count has changed server-side and the
+      // replies list is now stale (we just extended it above).
       discussionCache.invalidate(discussion.value.id, discussion.value.slug)
+      repliesCache.set(discussion.value.id, comments.value)
     }
     finally {
       pendingLoading.value = false
@@ -108,6 +116,8 @@ export function useDiscussionRealtime(
           if (alreadyLoaded)
             return
 
+          // Invalidate the replies cache - the list is now stale.
+          repliesCache.invalidate(discussionId)
           pendingReplyCount.value++
         },
       )
@@ -135,6 +145,9 @@ export function useDiscussionRealtime(
           if (updated.is_deleted) {
             comments.value = comments.value.filter(c => c.id !== updated.id)
           }
+
+          // Keep the replies cache in sync with the patched list.
+          repliesCache.set(discussionId, comments.value)
         },
       )
       .on(
@@ -148,6 +161,39 @@ export function useDiscussionRealtime(
         (payload: RealtimePostgresDeletePayload<RawComment>) => {
           const deletedId = payload.old.id
           comments.value = comments.value.filter(c => c.id !== deletedId)
+
+          // Keep the replies cache in sync with the pruned list.
+          repliesCache.set(discussionId, comments.value)
+        },
+      )
+      .subscribe()
+
+    // Subscribe to the discussions table for this discussion - picks up
+    // reactions, title/markdown edits, lock/archive/sticky status changes,
+    // and reply_count bumps from other sessions. Patching the discussion ref
+    // in place keeps the forum/[id].vue Reactions component and toolbar in sync
+    // without a full page reload, and also updates useCacheDiscussion so that
+    // any other component reading the same cache key sees the fresh data.
+    discussionChannel = supabase
+      .channel(`discussion:${discussionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'discussions',
+          filter: `id=eq.${discussionId}`,
+        },
+        (payload: RealtimePostgresUpdatePayload<Tables<'discussions'>>) => {
+          const updated = payload.new
+
+          // Patch the local discussion ref in place.
+          if (discussion.value != null) {
+            discussion.value = { ...discussion.value, ...updated }
+          }
+
+          // Update the discussion cache so back-navigation gets the fresh row.
+          discussionCache.set(updated)
         },
       )
       .subscribe()
@@ -156,15 +202,23 @@ export function useDiscussionRealtime(
   }
 
   async function unsubscribe() {
-    if (replyChannel == null)
-      return
-    try {
-      await supabase.removeChannel(replyChannel)
-    }
-    finally {
+    const channels: Promise<void>[] = []
+
+    if (replyChannel != null) {
+      const ch = replyChannel
       replyChannel = null
-      subscribedDiscussionId = null
+      channels.push(supabase.removeChannel(ch).then(() => undefined))
     }
+
+    if (discussionChannel != null) {
+      const ch = discussionChannel
+      discussionChannel = null
+      channels.push(supabase.removeChannel(ch).then(() => undefined))
+    }
+
+    subscribedDiscussionId = null
+
+    await Promise.allSettled(channels)
   }
 
   onScopeDispose(() => {

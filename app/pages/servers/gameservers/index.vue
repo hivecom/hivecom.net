@@ -3,8 +3,8 @@ import { Button, Tab, Tabs } from '@dolanske/vui'
 import GameLibrary from '@/components/GameServers/GameServerLibrary.vue'
 import GameListing from '@/components/GameServers/GameServerListing.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
-import { useGames } from '@/composables/useGames'
-import { useGameservers } from '@/composables/useGameservers'
+import { useGames } from '@/composables/useDataGames'
+import { useGameservers } from '@/composables/useDataGameservers'
 
 // Tab management
 const activeTab = ref('library')

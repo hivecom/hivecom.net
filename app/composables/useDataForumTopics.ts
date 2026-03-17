@@ -19,7 +19,7 @@ const CACHE_TTL = 30 * 60 * 1000 // 30 minutes - topics almost never change
  * - `invalidate()` should be called after admin writes to discussion_topics
  * - `refresh()` forces a cache-busting re-fetch
  */
-export function useForumTopics() {
+export function useDataForumTopics() {
   const cache = useCache()
   const supabase = useSupabaseClient<Database>()
 

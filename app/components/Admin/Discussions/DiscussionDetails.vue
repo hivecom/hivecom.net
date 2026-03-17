@@ -8,7 +8,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { useForumTopics } from '@/composables/useForumTopics'
+import { useForumTopics } from '@/composables/useDataForumTopics'
 import { formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
 
 type DiscussionRecord = Tables<'discussions'>

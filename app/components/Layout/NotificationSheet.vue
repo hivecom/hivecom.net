@@ -3,7 +3,7 @@ import { Button, Flex, Sheet, Tab, Tabs } from '@dolanske/vui'
 import NotificationTabActive from '@/components/Notifications/NotificationTabActive.vue'
 import NotificationTabPast from '@/components/Notifications/NotificationTabPast.vue'
 import NotificationTabSubscriptions from '@/components/Notifications/NotificationTabSubscriptions.vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useNotifications } from '@/composables/useDataNotifications'
 
 const { badgeText, fetch, reset } = useNotifications()
 const userId = useUserId()

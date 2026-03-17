@@ -18,7 +18,7 @@ import {
 import dayjs from 'dayjs'
 import { computed, ref, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
-import { useMonthlyFunding } from '@/composables/useMonthlyFunding'
+import { useMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
