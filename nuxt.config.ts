@@ -64,7 +64,83 @@ export default defineNuxtConfig({
     serverBundle: 'remote',
     clientBundle: {
       scan: true,
-      sizeLimitKb: 256,
+      sizeLimitKb: 512,
+      // Icons referenced dynamically (via :name binding from JS objects/constants) -
+      // can't be statically scanned from templates, so must be explicitly included.
+      icons: [
+        // constants.json PLATFORMS (index.vue join section)
+        'ph:chats-circle-bold',
+        'ph:play-circle-bold',
+        'mdi:teamspeak',
+
+        // constants.json LINKS (Footer.vue social links)
+        'mdi:discord',
+        'mdi:github',
+        'mdi:code',
+        'mdi:steam',
+        'mdi:twitch',
+
+        // lib/navigation.ts (Navigation.vue mobile menu)
+        'ph:house',
+        'ph:users',
+        'ph:calendar',
+        'ph:chats-circle',
+        'ph:game-controller',
+        'ph:check-square',
+
+        // layouts/admin.vue sidebar menu items
+        'ph:squares-four',
+        'ph:images-square',
+        'ph:flag',
+        'ph:chat-circle',
+        'ph:calendar-blank',
+        'ph:coins',
+        'ph:database',
+        'ph:speaker-simple-high',
+        'ph:computer-tower',
+        'ph:folder',
+        'ph:user-sound',
+        'ph:user',
+
+        // Admin/Alerts.vue
+        'ph:warning-circle',
+        'ph:calendar-x',
+        'ph:warning-octagon',
+
+        // Admin/Complaints (ComplaintCard.vue, ComplaintDetails.vue)
+        'ph:bell',
+        'ph:check-circle',
+        'ph:chat-circle-dots',
+        'ph:question',
+        'ph:chat-circle-text',
+        'ph:chats',
+
+        // Admin/Discussions/DiscussionDetails.vue context links
+        'ph:user-circle',
+
+        // Admin/Network/GameServerTable.vue
+        'ph:cube',
+
+        // Admin/Users/UserTable.vue provider + platform icons
+        'ph:google-logo',
+        'ph:discord-logo',
+        'ph:envelope-simple',
+        'ph:identification-card',
+        'ph:steam-logo',
+        'ph:patreon-logo',
+
+        // Community/FundingHistory.vue growth indicators
+        'ph:minus',
+        'ph:trend-up',
+        'ph:trend-down',
+
+        // pages/servers/gameservers/[id].vue state configs
+        'ph:check-circle-fill',
+        'ph:play-circle-fill',
+        'ph:warning-circle-fill',
+        'ph:x-circle-fill',
+        'ph:question-fill',
+      ],
     },
   },
   css: [

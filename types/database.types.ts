@@ -1178,7 +1178,7 @@ export interface Database {
           modified_by: string | null
           patreon_id: string | null
           public: boolean
-          rich_presence_disabled: boolean
+          rich_presence_enabled: boolean
           steam_id: string | null
           supporter_lifetime: boolean
           supporter_patreon: boolean
@@ -1208,7 +1208,7 @@ export interface Database {
           modified_by?: string | null
           patreon_id?: string | null
           public?: boolean
-          rich_presence_disabled?: boolean
+          rich_presence_enabled?: boolean
           steam_id?: string | null
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
@@ -1238,7 +1238,7 @@ export interface Database {
           modified_by?: string | null
           patreon_id?: string | null
           public?: boolean
-          rich_presence_disabled?: boolean
+          rich_presence_enabled?: boolean
           steam_id?: string | null
           supporter_lifetime?: boolean
           supporter_patreon?: boolean

@@ -36,6 +36,7 @@ const hasTeamspeak = computed(() => {
       :profile-id="props.profile.id"
       :teamspeak-identities="props.profile.teamspeak_identities"
       :is-own-profile="props.isOwnProfile"
+      :rich-presence-enabled="props.profile.rich_presence_enabled"
     />
   </div>
 </template>

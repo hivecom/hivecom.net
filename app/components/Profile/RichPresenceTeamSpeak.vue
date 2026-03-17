@@ -11,7 +11,7 @@ type PresenceRow = Tables<'presences_teamspeak'>
 interface Props {
   profileId: string
   teamspeakIdentities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
-  richPresenceDisabled?: boolean
+  richPresenceEnabled?: boolean
   hideOnlineIndicator?: boolean
   iconSize?: number
   useAccentColor?: boolean
@@ -20,7 +20,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  richPresenceDisabled: false,
+  richPresenceEnabled: false,
   hideOnlineIndicator: false,
   iconSize: 18,
   useAccentColor: false,
@@ -60,7 +60,7 @@ const { data: fetchedPresenceRows } = await useAsyncData(
   () => `teamspeak-presence-${props.profileId}`,
   async () => {
     // Skip fetch if parent already supplied presence data
-    if (props.presences !== null || props.richPresenceDisabled)
+    if (props.presences !== null || !props.richPresenceEnabled)
       return []
 
     const { data, error } = await supabase
@@ -107,7 +107,7 @@ const presenceEntries = computed(() => {
 })
 
 const hasPresence = computed(() => presenceEntries.value.length > 0)
-const showWidget = computed(() => hasIdentities.value || (hasPresence.value && !props.richPresenceDisabled))
+const showWidget = computed(() => hasIdentities.value || (hasPresence.value && props.richPresenceEnabled))
 const isOnline = computed(() => presenceEntries.value.some(entry => entry.online))
 
 const anchorRef = ref<HTMLElement | null>(null)
@@ -165,8 +165,8 @@ function formatLastSeen(lastSeenAt: string | null): string {
             No TeamSpeak identities linked.
           </div>
         </div>
-        <Divider v-if="hasPresence && !props.richPresenceDisabled" class="m-xxs p-xxs" :margin="0" />
-        <div v-if="!props.richPresenceDisabled" class="ts-presence__section">
+        <Divider v-if="hasPresence && props.richPresenceEnabled" class="m-xxs p-xxs" :margin="0" />
+        <div v-if="props.richPresenceEnabled" class="ts-presence__section">
           <div v-if="hasPresence" class="ts-presence__list">
             <div
               v-for="entry in presenceEntries"

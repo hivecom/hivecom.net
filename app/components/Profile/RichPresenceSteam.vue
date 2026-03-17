@@ -10,7 +10,7 @@ type SteamPresence = Omit<Tables<'presences_steam'>, 'details'> & {
 interface Props {
   steamId?: string | null
   presence?: SteamPresence | null
-  richPresenceDisabled?: boolean
+  richPresenceEnabled?: boolean
   hideOnlineIndicator?: boolean
   iconSize?: number
   useAccentColor?: boolean
@@ -18,7 +18,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   presence: null,
-  richPresenceDisabled: false,
+  richPresenceEnabled: false,
   hideOnlineIndicator: false,
   iconSize: 18,
   useAccentColor: false,
@@ -221,9 +221,9 @@ const visible = ref(false)
           </div>
         </div>
 
-        <Divider v-if="hasPresence && !props.richPresenceDisabled" class="m-xxs p-xxs" :margin="0" />
+        <Divider v-if="hasPresence && props.richPresenceEnabled" class="m-xxs p-xxs" :margin="0" />
 
-        <div v-if="hasPresence && !props.richPresenceDisabled" class="steam-presence__section">
+        <div v-if="hasPresence && props.richPresenceEnabled" class="steam-presence__section">
           <a
             v-if="displayedAppId"
             class="steam-presence__row steam-presence__row--link"

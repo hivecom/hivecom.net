@@ -13,11 +13,11 @@ interface Props {
   profileId: string
   teamspeakIdentities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
   isOwnProfile?: boolean
-  richPresenceDisabled?: boolean
+  richPresenceEnabled?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  richPresenceDisabled: false,
+  richPresenceEnabled: false,
 })
 
 const ONLINE_WINDOW_MS = 15 * 60 * 1000
@@ -53,7 +53,7 @@ const hasIdentities = computed(() => normalizedIdentities.value.length > 0)
 // to hit Supabase every time the sheet opens
 const PRESENCE_TTL_MS = 60 * 1000
 
-const presenceEnabled = computed(() => !props.richPresenceDisabled && hasIdentities.value)
+const presenceEnabled = computed(() => props.richPresenceEnabled && hasIdentities.value)
 
 const {
   data: cachedPresence,
@@ -179,7 +179,7 @@ watch(() => props.profileId, () => {
     class="w-100"
     :profile-id="props.profileId"
     :teamspeak-identities="props.teamspeakIdentities"
-    :rich-presence-disabled="props.richPresenceDisabled"
+    :rich-presence-enabled="props.richPresenceEnabled"
     :presences="loading ? null : presenceList"
   >
     <template #trigger>

@@ -52,10 +52,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get the user's profile to check if they have a Steam ID
+    // Get the user's profile to check if they have a Steam ID and rich presence enabled
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("steam_id")
+      .select("steam_id, rich_presence_enabled")
       .eq("id", user.id)
       .single();
 
@@ -67,6 +67,19 @@ Deno.serve(async (req: Request) => {
         }),
         {
           status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    if (!profile.rich_presence_enabled) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "Rich presence is not enabled",
+        }),
+        {
+          status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );

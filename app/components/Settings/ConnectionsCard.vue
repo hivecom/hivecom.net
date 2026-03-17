@@ -25,16 +25,16 @@ const ConnectDiscord = defineAsyncComponent(() => import('@/components/Settings/
 const ConnectSteam = defineAsyncComponent(() => import('@/components/Settings/ConnectSteam.vue'))
 const ConnectTeamspeak = defineAsyncComponent(() => import('@/components/Settings/ConnectTeamSpeak.vue'))
 
-const richPresenceEnabled = ref(!(props.profile?.rich_presence_disabled ?? false))
+const richPresenceEnabled = ref(props.profile?.rich_presence_enabled ?? false)
 const richPresenceLoading = ref(false)
 
 const hasTeamSpeakConnected = computed(() => normalizeTeamSpeakIdentities(props.profile?.teamspeak_identities).length > 0)
 const isProfileLoading = computed(() => props.profile === null)
 
 watch(
-  () => props.profile?.rich_presence_disabled,
-  (disabled) => {
-    richPresenceEnabled.value = !(disabled ?? false)
+  () => props.profile?.rich_presence_enabled,
+  (enabled) => {
+    richPresenceEnabled.value = enabled ?? false
   },
 )
 
@@ -176,7 +176,7 @@ async function updateRichPresence(enabled: boolean) {
 
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ rich_presence_disabled: !enabled })
+      .update({ rich_presence_enabled: enabled })
       .eq('id', user.id)
 
     if (updateError)

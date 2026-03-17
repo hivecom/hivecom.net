@@ -205,7 +205,7 @@ export async function loadTeamSpeakProfileMap(
   while (hasMore) {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, teamspeak_identities, supporter_patreon, supporter_lifetime, banned, rich_presence_disabled")
+      .select("id, teamspeak_identities, supporter_patreon, supporter_lifetime, banned, rich_presence_enabled")
       .range(page * pageSize, (page + 1) * pageSize - 1);
 
     if (error) throw error;
@@ -269,7 +269,7 @@ export async function updatePresenceFromSnapshots(args: {
   for (const snapshot of snapshots) {
     for (const client of snapshot.clients) {
       const profile = profileMap.get(`${snapshot.id}:${client.uniqueId}`);
-      if (!profile || profile.banned || profile.rich_presence_disabled) continue;
+      if (!profile || profile.banned || !profile.rich_presence_enabled) continue;
 
       const { error } = await supabase
         .from("presences_teamspeak")
@@ -505,7 +505,7 @@ async function processServer(args: {
       const channelModerated = channelMeta?.moderated ?? false;
       const channelMuted = Boolean(
         (channelRequiredTalkPower !== null && channelRequiredTalkPower > 100)
-          || (channelRequiredTalkPower !== null && (talkPower ?? 0) < channelRequiredTalkPower),
+        || (channelRequiredTalkPower !== null && (talkPower ?? 0) < channelRequiredTalkPower),
       );
       const country = typeof entry.client_country === "string" ? entry.client_country : null;
       const createdAt = safeNumber(entry.client_created) ?? null;

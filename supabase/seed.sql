@@ -217,12 +217,12 @@ INSERT INTO public.presences_steam(
 )
 VALUES (
   '018d224c-0e49-4b6d-b57a-87299605c2b1',
-  'online',
-  NOW(),
-  730,
-  'Counter-Strike 2',
-  730,
-  'Counter-Strike 2',
+  'away',
+  NOW() - INTERVAL '20 minutes',
+  4000,
+  'Garrys Mod',
+  NULL,
+  NULL,
   NOW(),
   NOW(),
   'public',
@@ -249,13 +249,14 @@ INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypt
 
 -- Keep in mind, we're not going to assign the user a role because most users will not have a role assigned.
 -- Create profile for test user
-INSERT INTO public.profiles(id, steam_id, created_at, username, introduction)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b3', '76561198000000002', NOW(), 'TestUser', 'Example user for testing admin features and role assignments')
+INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, rich_presence_enabled)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b3', '76561198000000002', NOW(), 'TestUser', 'Example user for testing admin features and role assignments', TRUE)
 ON CONFLICT (id)
   DO UPDATE SET
     steam_id = EXCLUDED.steam_id,
     username = EXCLUDED.username,
-    introduction = EXCLUDED.introduction;
+    introduction = EXCLUDED.introduction,
+    rich_presence_enabled = EXCLUDED.rich_presence_enabled;
 
 -- Seed a Steam presence entry for TestUser (not currently playing)
 INSERT INTO public.presences_steam(
@@ -274,15 +275,15 @@ INSERT INTO public.presences_steam(
 )
 VALUES (
   '018d224c-0e49-4b6d-b57a-87299605c2b3',
-  'away',
-  NOW() - INTERVAL '20 minutes',
-  4000,
-  'Garrys Mod',
-  NULL,
-  NULL,
+  'online',
+  NOW(),
+  730,
+  'Counter-Strike 2',
+  730,
+  'Counter-Strike 2',
   NOW(),
   NOW(),
-  'friends_only',
+  'public',
   'TestUser',
   '{}'::jsonb
 )
