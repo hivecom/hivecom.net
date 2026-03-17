@@ -11,13 +11,18 @@
 --
 -- Migration steps:
 --   1. Add is_forum_reply boolean NOT NULL DEFAULT false to discussion_replies.
---   2. Backfill existing rows via a JOIN to discussions.
---   3. Create a trigger function that keeps is_forum_reply in sync when:
+--   2. Update protect_reply_content_from_non_author and
+--      update_discussion_replies_audit_fields to strip is_forum_reply from
+--      their row comparisons (system-managed column, same treatment as
+--      is_offtopic and reactions). Required before the backfill or the UPDATE
+--      is blocked on remote where auth.uid() = NULL during migrations.
+--   3. Backfill existing rows via a JOIN to discussions.
+--   4. Create trigger functions that keep is_forum_reply in sync when:
 --        - A reply is inserted (look up the parent discussion's topic).
 --        - A discussion's discussion_topic_id changes (UPDATE the affected replies).
---   4. Create the triggers on discussion_replies (INSERT) and discussions (UPDATE).
---   5. Recreate the forum_discussion_replies view using the new column.
---   6. Add a partial index on discussion_replies(is_forum_reply) for fast scans.
+--   5. Create the triggers on discussion_replies (INSERT) and discussions (UPDATE).
+--   6. Recreate the forum_discussion_replies view using the new column.
+--   7. Add a partial index on discussion_replies(is_forum_reply) for fast scans.
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 1. New column
@@ -32,7 +37,135 @@ COMMENT ON COLUMN public.discussion_replies.is_forum_reply IS
   'trigger. Eliminates the JOIN to discussions in forum_discussion_replies.';
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 2. Backfill existing rows
+-- 2a. Update protect_reply_content_from_non_author
+--     Strip is_forum_reply from the content snapshot so the trigger ignores
+--     changes to this system column. Without this the backfill UPDATE is
+--     blocked on remote because auth.uid() = NULL during migrations, causing
+--     the trigger to fall through to the content diff check.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.protect_reply_content_from_non_author()
+RETURNS TRIGGER AS $$
+DECLARE
+  actor uuid;
+  old_content jsonb;
+  new_content jsonb;
+BEGIN
+  actor := auth.uid();
+
+  -- Reply author can edit their own content freely
+  IF actor = OLD.created_by THEN
+    RETURN NEW;
+  END IF;
+
+  -- Admins / moderators can edit any reply content
+  IF authorize('discussions.update'::public.app_permission) THEN
+    RETURN NEW;
+  END IF;
+
+  -- Everyone else (e.g. discussion OP) may only change moderation fields.
+  -- Compare the row minus moderation / audit / reaction / system columns.
+  old_content := to_jsonb(OLD)
+    - 'is_offtopic'
+    - 'is_forum_reply'
+    - 'reactions'
+    - 'modified_at'
+    - 'modified_by'
+    - 'created_at'
+    - 'created_by';
+
+  new_content := to_jsonb(NEW)
+    - 'is_offtopic'
+    - 'is_forum_reply'
+    - 'reactions'
+    - 'modified_at'
+    - 'modified_by'
+    - 'created_at'
+    - 'created_by';
+
+  IF old_content IS DISTINCT FROM new_content THEN
+    RAISE EXCEPTION 'You may only change moderation fields on replies you did not author';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 2b. Update update_discussion_replies_audit_fields
+--     Strip is_forum_reply from the audit suppression check so that backfills
+--     and trigger-driven updates to this column don't bump modified_at.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.update_discussion_replies_audit_fields()
+  RETURNS TRIGGER
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO ''
+AS $function$
+DECLARE
+  actor       uuid;
+  new_payload jsonb;
+  old_payload jsonb;
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    -- Strip columns that are allowed to change without touching audit fields:
+    --   reactions      - toggled by any authenticated user via toggle_reaction()
+    --   is_offtopic    - toggled by the OP or moderator as a moderation action
+    --   is_forum_reply - system-managed column, set by trigger on insert/update
+    --   modified_at / modified_by / created_at / created_by - audit fields themselves
+    new_payload := to_jsonb(NEW)
+      - 'reactions'
+      - 'is_offtopic'
+      - 'is_forum_reply'
+      - 'modified_at'
+      - 'modified_by'
+      - 'created_at'
+      - 'created_by';
+
+    old_payload := to_jsonb(OLD)
+      - 'reactions'
+      - 'is_offtopic'
+      - 'is_forum_reply'
+      - 'modified_at'
+      - 'modified_by'
+      - 'created_at'
+      - 'created_by';
+
+    -- If the only columns that changed are reactions / is_offtopic /
+    -- is_forum_reply (and/or the audit fields themselves), preserve all audit
+    -- values from the previous state and return immediately - no audit bump.
+    IF new_payload = old_payload THEN
+      NEW.modified_at = OLD.modified_at;
+      NEW.modified_by = OLD.modified_by;
+      NEW.created_at  = OLD.created_at;
+      NEW.created_by  = OLD.created_by;
+      RETURN NEW;
+    END IF;
+
+    -- A meaningful content change happened - update audit fields normally.
+    actor := auth.uid();
+
+    NEW.modified_at = NOW();
+
+    IF actor IS NOT NULL THEN
+      NEW.modified_by = actor;
+    ELSE
+      -- Preserve the last known human editor when called without a user JWT
+      -- (e.g. service_role from an edge function).
+      NEW.modified_by = OLD.modified_by;
+    END IF;
+
+    NEW.created_at = OLD.created_at;
+    NEW.created_by = OLD.created_by;
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 3. Backfill existing rows
 -- ─────────────────────────────────────────────────────────────────────────────
 
 UPDATE public.discussion_replies dr
@@ -42,8 +175,8 @@ WHERE d.id = dr.discussion_id
   AND d.discussion_topic_id IS NOT NULL;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3a. Trigger function: set is_forum_reply on new replies
---     Fires AFTER INSERT ON discussion_replies.
+-- 4a. Trigger function: set is_forum_reply on new replies
+--     Fires BEFORE INSERT ON discussion_replies.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.set_reply_is_forum_reply()
@@ -73,7 +206,7 @@ COMMENT ON FUNCTION public.set_reply_is_forum_reply() IS
   'when the parent discussion belongs to a forum topic.';
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3b. Trigger function: propagate is_forum_reply when a discussion is
+-- 4b. Trigger function: propagate is_forum_reply when a discussion is
 --     re-parented (discussion_topic_id changes).
 --     Fires AFTER UPDATE OF discussion_topic_id ON discussions.
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -104,7 +237,7 @@ COMMENT ON FUNCTION public.sync_replies_is_forum_reply() IS
   'to stay consistent with the new parent state.';
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 4. Attach triggers
+-- 5. Attach triggers
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- BEFORE INSERT so we can set the column on NEW before it is stored.
@@ -124,7 +257,7 @@ CREATE TRIGGER sync_replies_is_forum_reply_trigger
   EXECUTE FUNCTION public.sync_replies_is_forum_reply();
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 5. Recreate the view - no join, just the partial filter
+-- 6. Recreate the view - no join, just the partial filter
 -- ─────────────────────────────────────────────────────────────────────────────
 
 DROP VIEW IF EXISTS public.forum_discussion_replies;
@@ -146,7 +279,7 @@ GRANT SELECT ON public.forum_discussion_replies TO authenticated;
 GRANT SELECT ON public.forum_discussion_replies TO service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 6. Partial index to make the view's WHERE clause an index-only scan
+-- 7. Partial index to make the view's WHERE clause an index-only scan
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE INDEX IF NOT EXISTS idx_discussion_replies_is_forum_reply
@@ -158,7 +291,7 @@ COMMENT ON INDEX public.idx_discussion_replies_is_forum_reply IS
   'ORDER BY created_at DESC scan without touching non-forum reply rows.';
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 7. Grants
+-- 8. Grants
 -- ─────────────────────────────────────────────────────────────────────────────
 
 GRANT EXECUTE ON FUNCTION public.set_reply_is_forum_reply() TO service_role;

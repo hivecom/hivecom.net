@@ -18,15 +18,18 @@ import { marked } from 'marked'
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
-import { allowedMediaExtensions, allowedMediaTypes } from '@/lib/storage'
+import { useUserSettings } from '@/composables/useUserSettings'
+import { allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, stripImageMetadata } from '@/lib/storage'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorMathModal from './EditorMathModal.vue'
+import EditorVideoModal from './EditorVideoModal.vue'
 import EditorYoutubeModal from './EditorYoutubeModal.vue'
 import { createMentionExtension, hydrateMentionLabels, resolvePlainTextMentions } from './plugins/mentions'
 import { TextColor } from './plugins/textColor'
 import { TextFont } from './plugins/textFont'
 import { TextSize } from './plugins/textSize'
-import RichTextImageMenu from './RichTextImageMenu.vue'
+import { Video } from './plugins/video'
+import RichTextMediaMenu from './RichTextMediaMenu.vue'
 import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 
 const {
@@ -73,7 +76,14 @@ interface Props {
    * Optional storage bucket for uploads (defaults to forums bucket).
    */
   mediaBucketId?: StorageBucketId
+  /**
+   * Strip EXIF and other metadata from images before upload. Defaults to true.
+   * Set to false if the original metadata must be preserved.
+   */
+  stripImageMetadata?: boolean
 }
+
+const { settings } = useUserSettings()
 
 const editorMode = ref <'rich' | 'plain'>('rich')
 const editorIsEmpty = ref(true)
@@ -143,6 +153,9 @@ const mathModalEditPos = ref<number | null>(null)
 
 // YouTube modal state
 const youtubeModalOpen = ref(false)
+
+// Video modal state (insert by URL)
+const videoModalOpen = ref(false)
 
 // A custom marked instance that intercepts inline HTML tokens so that raw tags
 // typed or pasted into the editor are treated as literal text rather than being
@@ -257,6 +270,8 @@ const editor = useEditor({
       height: 360,
       allowFullscreen: true,
     }),
+    // Uploaded video embeds (:::video {src="..."} ::: directive)
+    Video,
   ],
   contentType: 'markdown',
   onCreate: () => {
@@ -282,20 +297,20 @@ const editor = useEditor({
     if (!transaction.docChanged || !props.mediaContext || externalContentUpdate)
       return
 
-    // Collect image srcs present in the document before this transaction
+    // Collect image and video srcs present in the document before this transaction
     const prevSrcs = new Set<string>()
     transaction.before.descendants((node) => {
-      if (node.type.name === 'image' && typeof node.attrs.src === 'string')
+      if ((node.type.name === 'image' || node.type.name === 'video') && typeof node.attrs.src === 'string')
         prevSrcs.add(node.attrs.src)
     })
 
     if (prevSrcs.size === 0)
       return
 
-    // Collect image srcs present in the document after this transaction
+    // Collect image and video srcs present in the document after this transaction
     const nextSrcs = new Set<string>()
     transaction.doc.descendants((node) => {
-      if (node.type.name === 'image' && typeof node.attrs.src === 'string')
+      if ((node.type.name === 'image' || node.type.name === 'video') && typeof node.attrs.src === 'string')
         nextSrcs.add(node.attrs.src)
     })
 
@@ -356,24 +371,75 @@ function getEditorMarkdown(): string {
   return stripped.trim() === '' ? '' : stripped
 }
 
-// Upload file into the bucket and set the editor node URL
+// Upload file into the bucket and set the editor node URL.
+//
+// Strategy: insert a blob URL placeholder immediately so the user sees a
+// preview (image) or spinner (video) while the upload is in-flight.  When the
+// upload completes we swap the blob src for the real Supabase URL in-place
+// using updateAttributes.  On failure we delete the placeholder node.
+//
+// The blob URL is intentionally NOT a Supabase storage URL, so extractStoragePath
+// returns null for it and the onTransaction cleanup handler leaves it alone.
 function handleFileUpload(files: File[] | null, pos?: number) {
   if (!files)
     return
 
-  files.forEach(async (file) => {
+  files.forEach(async (originalFile) => {
     if (!editor.value)
       return
+
+    const isVideo = allowedVideoTypes.includes(originalFile.type)
+    const nodeType = isVideo ? 'video' : 'image'
+
+    // Strip EXIF/metadata from images unless the caller explicitly opts out via
+    // prop, or the user has disabled it in their settings.
+    const shouldStrip = !isVideo
+      && props.stripImageMetadata !== false
+      && settings.value.strip_image_metadata !== false
+    const file = shouldStrip
+      ? await stripImageMetadata(originalFile)
+      : originalFile
+
+    // Create a local object URL so we can insert a placeholder immediately.
+    const blobUrl = URL.createObjectURL(file)
+    const insertPos = pos ?? editor.value.state.selection.anchor
+
+    // Insert the placeholder without selecting it - we don't want the bubble
+    // menu popping up mid-upload, and we don't want the node highlighted.
+    // CSS targets img[src^="blob:"] / video[src^="blob:"] to show a spinner.
+    editor.value
+      .chain()
+      .insertContentAt(insertPos, {
+        type: nodeType,
+        attrs: { src: blobUrl },
+      }, { updateSelection: false })
+      .focus()
+      .run()
 
     const format = file.type.split('/')[1]
     const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
 
-    // Path to the public image upload
     const { error } = await supabase.storage
       .from(resolvedMediaBucketId.value)
       .upload(fileUrl, file, { contentType: file.type })
 
+    // Revoke the object URL now that we're done with it either way.
+    URL.revokeObjectURL(blobUrl)
+
     if (error) {
+      // Remove the placeholder node - find it by its blob src.
+      const editorRef = editor.value
+      if (editorRef) {
+        editorRef.state.doc.descendants((node, nodePos) => {
+          if (node.type.name === nodeType && node.attrs.src === blobUrl) {
+            editorRef
+              .chain()
+              .deleteRange({ from: nodePos, to: nodePos + node.nodeSize })
+              .run()
+            return false
+          }
+        })
+      }
       pushToast('Error uploading media', {
         description: error.message,
       })
@@ -383,14 +449,24 @@ function handleFileUpload(files: File[] | null, pos?: number) {
         .from(resolvedMediaBucketId.value)
         .getPublicUrl(fileUrl)
 
-      editor.value
-        .chain()
-        .insertContentAt(pos ?? editor.value.state.selection.anchor, {
-          type: 'image',
-          attrs: { src: data.publicUrl },
+      // Swap the blob placeholder src for the real public URL in-place.
+      // Walk the doc to find the node by its current blob src since the
+      // position may have shifted due to other edits during the upload.
+      const editorRef = editor.value
+      if (editorRef) {
+        editorRef.state.doc.descendants((node, nodePos) => {
+          if (node.type.name === nodeType && node.attrs.src === blobUrl) {
+            editorRef
+              .chain()
+              .setNodeSelection(nodePos)
+              .updateAttributes(nodeType, { src: data.publicUrl })
+              .setTextSelection(nodePos + node.nodeSize)
+              .focus()
+              .run()
+            return false
+          }
         })
-        .focus()
-        .run()
+      }
     }
   })
 }
@@ -436,6 +512,13 @@ function handleYoutubeConfirm(url: string) {
   if (!editor.value || !url.trim())
     return
   editor.value.commands.setYoutubeVideo({ src: url.trim() })
+}
+
+// Insert a video node by URL (called from EditorVideoModal)
+function handleVideoConfirm(url: string) {
+  if (!editor.value || !url.trim())
+    return
+  editor.value.commands.insertVideo({ src: url.trim() })
 }
 
 // If content is changed externally, make sure mentions are hydrated
@@ -581,8 +664,8 @@ async function handleSubmit() {
       {{ props.hint }}
     </p>
 
-    <!-- Image context menu -->
-    <RichTextImageMenu v-if="editor && props.mediaContext" :editor :bucket-id="resolvedMediaBucketId" :media-context="props.mediaContext" />
+    <!-- Media context menu (image + video) -->
+    <RichTextMediaMenu v-if="editor && props.mediaContext" :editor :bucket-id="resolvedMediaBucketId" :media-context="props.mediaContext" />
 
     <!-- Main editor instance -->
     <div class="relative">
@@ -613,6 +696,12 @@ async function handleSubmit() {
       <EditorYoutubeModal
         v-model:open="youtubeModalOpen"
         @confirm="handleYoutubeConfirm"
+      />
+
+      <!-- Video insert modal -->
+      <EditorVideoModal
+        v-model:open="videoModalOpen"
+        @confirm="handleVideoConfirm"
       />
 
       <!-- Editor content & controls -->
@@ -651,6 +740,14 @@ async function handleSubmit() {
               </Button>
               <template #tooltip>
                 <p>Embed YouTube video</p>
+              </template>
+            </Tooltip>
+            <Tooltip>
+              <Button plain square size="s" @click="videoModalOpen = true">
+                <Icon name="ph:video" />
+              </Button>
+              <template #tooltip>
+                <p>Insert video</p>
               </template>
             </Tooltip>
           </template>
@@ -900,6 +997,41 @@ async function handleSubmit() {
     outline: 2px solid var(--color-text);
   }
 
+  // Uploading placeholder states.
+  // Images show a shimmer over the local preview; videos show a spinner
+  // overlay since the video element itself renders black while loading.
+  // Both states are keyed off blob: URLs - once the real Supabase URL is
+  // swapped in the styles disappear automatically.
+  @keyframes upload-shimmer {
+    0% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.25;
+    }
+    100% {
+      opacity: 0.55;
+    }
+  }
+
+  .ProseMirror img[src^='blob:'] {
+    animation: upload-shimmer 1.4s ease-in-out infinite;
+    border-radius: var(--border-radius-s);
+  }
+
+  .ProseMirror div[data-video-embed]:has(video[src^='blob:']) {
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--border-radius-s);
+      background-color: var(--color-bg-raised);
+      animation: upload-shimmer 1.4s ease-in-out infinite;
+    }
+  }
+
   // Math nodes (rendered by KaTeX via @tiptap/extension-mathematics)
   .tiptap-mathematics-render {
     cursor: pointer;
@@ -931,6 +1063,22 @@ async function handleSubmit() {
     }
 
     &.ProseMirror-selectednode iframe {
+      outline: 2px solid var(--color-accent);
+    }
+  }
+
+  // Video embeds (:::video directive / uploaded videos)
+  .ProseMirror div[data-video-embed] {
+    display: flex;
+    justify-content: center;
+    margin: var(--space-s) 0;
+
+    video {
+      max-width: 100%;
+      border-radius: var(--border-radius-s);
+    }
+
+    &.ProseMirror-selectednode video {
       outline: 2px solid var(--color-accent);
     }
   }

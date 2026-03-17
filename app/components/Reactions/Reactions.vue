@@ -25,7 +25,7 @@ const props = defineProps<{
   reactions?: unknown
 }>()
 
-const { displayReactions, toggleReaction, isLoading } = useReactions({
+const { displayReactions, toggleReaction, isLoading, capped } = useReactions({
   table: props.table,
   rowId: toRef(props, 'rowId'),
   initialReactions: toRef(props, 'reactions'),
@@ -38,6 +38,7 @@ const userId = useUserId()
   <div class="reactions">
     <ReactionsList
       :reactions="displayReactions"
+      :capped="capped"
       :disabled="isLoading || !userId"
       @toggle="(emote, provider) => toggleReaction(emote, provider)"
     />

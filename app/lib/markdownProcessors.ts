@@ -9,6 +9,7 @@ const TIPTAP_ATTR_RE = /(\w+)="([^"]*)"/g
 const YOUTUBE_SHORT_RE = /youtu\.be\/([^?&\s]+)/
 const YOUTUBE_ID_RE = /(?:[?&]v=|\/shorts\/)([\w-]+)/
 const YOUTUBE_DIRECTIVE_RE = /:::youtube(?:\s+\{([^}]*)\})?\s*:::/g
+const VIDEO_DIRECTIVE_RE = /:::video(?:\s+\{([^}]*)\})?\s*:::/g
 const MENTION_BRACED_RE = /@\{([0-9a-f-]{36})\}/gi
 const MENTION_LEGACY_RE = /@([0-9a-f-]{36})/gi
 const COLOR_TAG_RE = /:::color\[([a-z-]+)\]([\s\S]*?):::(?![a-z[])/gi
@@ -17,6 +18,7 @@ const SIZE_TAG_RE = /:::size\[([a-z]+)\]([\s\S]*?):::(?![a-z[])/gi
 const COLON_COMPONENT_RE = /(^|[ \t\n]):([A-Z][A-Z0-9-]*)/gim
 const WORD_ONLY_RE = /^\w+$/
 const STRIP_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/g
+const STRIP_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_BLOCK_MATH_RE = /\$\$[\s\S]*?\$\$/g
 const STRIP_INLINE_MATH_RE = /\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/g
 const STRIP_HTML_TAGS_RE = /<[^>]*>/g
@@ -33,6 +35,7 @@ const STRIP_NEWLINES_RE = /\n+/g
 const DETECT_IMAGE_RE = /!\[.*?\]\(.*?\)/
 const DETECT_LINK_RE = /\[.*?\]\(.*?\)/
 const DETECT_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/
+const DETECT_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_MATH_RE = /\$\$[\s\S]*?\$\$|\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/
 
 // ---------------------------------------------------------------------------
@@ -88,6 +91,31 @@ function youtubeUrlToEmbedUrl(src: string, start?: string): string | null {
   }
 
   return null
+}
+
+/**
+ * Converts TipTap's proprietary `:::video {src="..." ...} :::` directive
+ * syntax into an HTML <video> block. Must run before the markdown is handed
+ * to `<MDC>`.
+ *
+ * TipTap format:
+ *   :::video {src="URL" width="640" height="360"} :::
+ */
+export function processVideoDirectives(markdown: string): string {
+  const DIRECTIVE = VIDEO_DIRECTIVE_RE
+
+  return markdown.replace(DIRECTIVE, (_full, attrString: string = '') => {
+    const attrs = parseTiptapAttrs(attrString)
+    const src = attrs.src ?? ''
+
+    if (!src)
+      return ''
+
+    const width = attrs.width ?? '640'
+    const height = attrs.height ?? '360'
+
+    return `\n<div class="md-video-embed"><video src="${src}" width="${width}" height="${height}" controls></video></div>\n`
+  })
 }
 
 /**
@@ -276,6 +304,9 @@ export function processMarkdown(markdown: string): string {
   // doesn't see the `:::youtube` syntax it cannot parse.
   markdown = processYoutubeDirectives(markdown)
 
+  // Convert TipTap video directives to raw HTML <video> blocks.
+  markdown = processVideoDirectives(markdown)
+
   // Convert :::color[name]text::: directives into inline HTML spans.
   markdown = processColorTags(markdown)
 
@@ -400,6 +431,8 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
   return content
     // 0a. Remove YouTube directives: :::youtube {src="..." ...} :::
     .replace(STRIP_YOUTUBE_RE, '')
+    // 0a2. Remove video directives: :::video {src="..." ...} :::
+    .replace(STRIP_VIDEO_RE, '')
     // 0b. Remove block math: $$...$$
     .replace(STRIP_BLOCK_MATH_RE, '')
     // 0c. Remove inline math: $...$  (avoid matching lone $ signs like currency $5)
@@ -467,6 +500,9 @@ export function formatMarkdownPreview(
 
   if (DETECT_YOUTUBE_RE.test(markdown))
     return '#youtube'
+
+  if (DETECT_VIDEO_RE.test(markdown))
+    return '#video'
 
   if (DETECT_MATH_RE.test(markdown))
     return '#math'

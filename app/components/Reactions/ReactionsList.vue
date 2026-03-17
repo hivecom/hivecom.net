@@ -6,6 +6,7 @@ import UserAvatar from '@/components/Shared/UserAvatar.vue'
 
 const props = defineProps<{
   reactions: DisplayReaction[]
+  capped?: ReadonlySet<string>
   disabled?: boolean
 }>()
 
@@ -18,6 +19,10 @@ const visibleMap = ref(new Map<string, boolean>())
 
 function getKey(reaction: DisplayReaction) {
   return `${reaction.provider}:${reaction.content}`
+}
+
+function isCapped(reaction: DisplayReaction): boolean {
+  return props.capped?.has(getKey(reaction)) ?? false
 }
 
 function setAnchorRef(key: string, el: Element | ComponentPublicInstance | null) {
@@ -53,12 +58,15 @@ function getAnchor(key: string): HTMLElement | null {
     >
       <button
         class="reactions__button"
-        :class="{ 'reactions__button--active': reaction.byMe }"
-        :disabled="props.disabled"
+        :class="{
+          'reactions__button--active': reaction.byMe,
+          'reactions__button--capped': isCapped(reaction) && !reaction.byMe,
+        }"
+        :disabled="props.disabled || (isCapped(reaction) && !reaction.byMe)"
         @click="emit('toggle', reaction.content, reaction.provider)"
       >
         {{ reaction.content }}
-        <span class="reactions__counter">{{ reaction.count }}</span>
+        <span class="reactions__counter">{{ isCapped(reaction) ? 'MAX' : reaction.count }}</span>
       </button>
 
       <Popout

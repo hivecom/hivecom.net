@@ -17,6 +17,7 @@ export function getDefaultUserSettings(): Tables<'settings'>['data'] {
     show_forum_archived: false,
     show_forum_unread_bubbles: true,
     editor_floating: false,
+    strip_image_metadata: true,
   }
 }
 

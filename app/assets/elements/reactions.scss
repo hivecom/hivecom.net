@@ -29,6 +29,16 @@
       background-color: var(--color-button-gray-hover);
     }
 
+    &.reactions__button--capped {
+      opacity: 0.5;
+      cursor: not-allowed;
+
+      .reactions__counter {
+        color: var(--color-text-yellow);
+        font-weight: 600;
+      }
+    }
+
     &.reactions__button--active {
       background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 20%, transparent);
 

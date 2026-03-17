@@ -87,6 +87,7 @@ interface TableColumnOverrides {
       show_forum_archived: boolean
       show_forum_unread_bubbles: boolean
       editor_floating: boolean
+      strip_image_metadata: boolean
     }
   }
   // is_public is not yet in the generated types - added via migration

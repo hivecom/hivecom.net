@@ -15,7 +15,9 @@ export interface UploadResult {
   error?: string
 }
 
-export const allowedMediaTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+export const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+export const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg']
+export const allowedMediaTypes = [...allowedImageTypes, ...allowedVideoTypes]
 export const allowedMediaExtensions = allowedMediaTypes.join(', ')
 
 function isStorageNotFoundError(error: unknown): boolean {
@@ -57,6 +59,55 @@ export function validateImageFile(file: File): { valid: boolean, error?: string 
   }
 
   return { valid: true }
+}
+
+/**
+ * Strips EXIF and other metadata from an image by re-drawing it through a
+ * canvas element. Preserves the original mime type and dimensions.
+ * Falls back to the original file if the browser cannot create a canvas blob
+ * (e.g. SVG or other non-raster formats).
+ */
+export async function stripImageMetadata(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image()
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+
+      const ctx = canvas.getContext('2d')
+      ctx?.drawImage(img, 0, 0)
+
+      // Preserve the original mime type so PNG stays PNG, JPEG stays JPEG, etc.
+      const outputType = file.type === 'image/jpg' ? 'image/jpeg' : file.type
+
+      canvas.toBlob(
+        (blob) => {
+          URL.revokeObjectURL(img.src)
+          if (blob) {
+            resolve(new File([blob], file.name, {
+              type: outputType,
+              lastModified: Date.now(),
+            }))
+          }
+          else {
+            // Canvas couldn't produce a blob - fall back to original
+            resolve(file)
+          }
+        },
+        outputType,
+      )
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src)
+      // Can't load the image - just pass it through unchanged
+      resolve(file)
+    }
+
+    img.src = URL.createObjectURL(file)
+  })
 }
 
 /**

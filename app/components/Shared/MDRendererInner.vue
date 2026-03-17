@@ -67,6 +67,18 @@ onMounted(() => {
   }
 }
 
+/* Video embed produced by processVideoDirectives */
+.md-video-embed {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-s) 0;
+
+  video {
+    max-width: 100%;
+    border-radius: var(--border-radius-s);
+  }
+}
+
 /* KaTeX math produced by rehype-katex */
 .katex-display {
   overflow-x: auto;

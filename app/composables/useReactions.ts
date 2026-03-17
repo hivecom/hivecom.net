@@ -53,6 +53,7 @@ export function useReactions(options: UseReactionsOptions) {
 
   /** Non-null if the last toggle call failed; cleared on next successful toggle. */
   const error = ref<string | null>(null)
+  const capped = ref<Set<string>>(new Set())
 
   // ── Keep in sync when the parent updates initialReactions ──────────────────
 
@@ -112,6 +113,12 @@ export function useReactions(options: UseReactionsOptions) {
 
     error.value = null
 
+    // Don't attempt an add if we know this emote is capped - removals still go through.
+    const isCapped = capped.value.has(`${provider}:${emote}`)
+    const isCurrentlyReacted = hasReacted(emote, provider)
+    if (isCapped && !isCurrentlyReacted)
+      return
+
     // Snapshot for rollback
     const snapshot = { ...rawReactions.value }
 
@@ -133,8 +140,23 @@ export function useReactions(options: UseReactionsOptions) {
     if (rpcResult.error != null) {
       // Roll back optimistic update
       rawReactions.value = snapshot
-      error.value = rpcResult.error.message
+
+      if (rpcResult.error.message.includes('Reaction cap reached')) {
+        // Mark this emote as capped so the UI can reflect it without another round-trip
+        capped.value = new Set(capped.value).add(`${provider}:${emote}`)
+        error.value = null
+      }
+      else {
+        error.value = rpcResult.error.message
+      }
       return
+    }
+
+    // Clear cap flag if the user managed to react (e.g. cap was lifted server-side)
+    if (capped.value.has(`${provider}:${emote}`)) {
+      const next = new Set(capped.value)
+      next.delete(`${provider}:${emote}`)
+      capped.value = next
     }
 
     // Sync with the authoritative value returned by the RPC
@@ -179,6 +201,8 @@ export function useReactions(options: UseReactionsOptions) {
     hasReacted,
     /** Count of reactors for a given emote. */
     reactionCount,
+    /** Set of "provider:emote" keys known to be at the 100-reactor cap. */
+    capped: readonly(capped),
     /** True while any toggle is in flight. */
     isLoading,
     /** Last error message, or null. */

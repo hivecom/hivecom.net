@@ -102,9 +102,16 @@ const selectedTheme = computed({
 
     <Switch v-model="settings.show_forum_updates" class="reversed mb-m" label="Show latest updates" />
     <Switch v-model="settings.show_forum_recently_visited" class="reversed mb-m" label="Show recently visited" />
-    <Switch v-model="settings.show_forum_archived" class="reversed mb-m" label="Show archived topics & discussions" />
+    <Switch v-model="settings.show_forum_archived" class="reversed" label="Show archived topics & discussions" />
 
-    <Switch v-model="settings.editor_floating" class="reversed" label="Floating text editor" hint="If enabled, the text editor will stay at the bottom of the screen while scrolling through large forum posts." />
+    <Divider :size="64" />
+
+    <strong class="text-color-lighter text-s block mb-m">
+      Rich Text Editor
+    </strong>
+
+    <Switch v-model="settings.editor_floating" class="reversed mb-m" label="Floating text editor" hint="If enabled, the text editor will stay at the bottom of the screen while scrolling through large forum posts." />
+    <Switch v-model="settings.strip_image_metadata" class="reversed" label="Strip image metadata on upload" hint="Removes EXIF and other embedded metadata from images before uploading. Disable if you need to preserve location, camera, or other metadata." />
   </Card>
 </template>
 
