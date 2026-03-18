@@ -59,17 +59,33 @@ async function generateDiff() {
       toText,
       undefined,
       undefined,
-      { context: 3 },
+      { context: 0 },
     )
 
     // Don't pass colorScheme - we handle all coloring ourselves to avoid
     // d2h-light-color-scheme / d2h-dark-color-scheme interfering.
-    diffHtml.value = diff2html(patch, {
+    let html = diff2html(patch, {
       outputFormat: 'line-by-line',
       drawFileList: false,
       renderNothingWhenEmpty: false,
       diffStyle: 'word',
     })
+
+    // Strip rows where an added/removed line is empty (blank line additions/removals).
+    // Context empty lines (unchanged) are kept - they preserve visual spacing.
+    html = html.replace(/<tr[^>]*>[\s\S]*?<\/tr>/g, (row) => {
+      // Only consider ins/del rows - skip context and hunk header rows.
+      if (!row.includes('d2h-ins') && !row.includes('d2h-del'))
+        return row
+      // Extract the content span and strip tags to see if there's actual text.
+      const contentMatch = row.match(/class="d2h-code-line-ctn"[^>]*>([\s\S]*?)<\/span>/)
+      if (!contentMatch)
+        return row
+      const innerText = (contentMatch[1] ?? '').replace(/<[^>]+>/g, '').trim()
+      return innerText === '' ? '' : row
+    })
+
+    diffHtml.value = html
   }
   catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to generate diff.'
@@ -300,24 +316,30 @@ watch([() => props.fromPath, () => props.toPath], () => {
 
     // ---------------------------------------------------------------
     // Hunk header rows (@@ -x,y +x,y @@) - td carries d2h-info
+    // Not useful for readers - hide entirely.
     // ---------------------------------------------------------------
-    :deep(td.d2h-info) {
-      background: var(--color-bg-raised) !important;
-      color: var(--color-text-lighter) !important;
-      font-size: var(--font-size-xs);
-      padding: 3px var(--space-s);
-      border-top: 1px solid var(--color-border);
-      border-bottom: 1px solid var(--color-border);
+    :deep(tr:has(td.d2h-info)) {
+      display: none;
     }
 
     // ---------------------------------------------------------------
-    // +/- prefix character
+    // +/- prefix character - grid so text never flows under the glyph
     // ---------------------------------------------------------------
+    :deep(div.d2h-code-line) {
+      display: grid;
+      grid-template-columns: 1.5ch 1fr;
+      align-items: baseline;
+      column-gap: var(--space-xs);
+    }
+
     :deep(.d2h-code-line-prefix) {
       user-select: none;
-      opacity: 0.7;
       font-weight: 600;
-      padding-right: var(--space-xs);
+      line-height: inherit;
+    }
+
+    :deep(.d2h-code-line-ctn) {
+      min-width: 0;
     }
 
     :deep(td.d2h-ins .d2h-code-line-prefix) {
@@ -326,6 +348,11 @@ watch([() => props.fromPath, () => props.toPath], () => {
 
     :deep(td.d2h-del .d2h-code-line-prefix) {
       color: var(--color-text-red);
+    }
+
+    :deep(td.d2h-cntx .d2h-code-line-prefix) {
+      color: var(--color-text-lighter);
+      opacity: 0.5;
     }
   }
 }

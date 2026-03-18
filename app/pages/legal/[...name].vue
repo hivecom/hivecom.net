@@ -152,17 +152,11 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
                 <template v-else>
                   Last updated on {{ formatDateLong(content.date) }}
                 </template>
-                <a
-                  v-if="hasRevisions && !isRevisionPage"
-                  href="#revisions"
-                  aria-label="Jump to revisions section"
-                >
-                  (See revisions below)
-                </a>
+
               </p>
             </div>
 
-            <Flex v-if="changeNote || canDiff" y-center gap="xs">
+            <Flex v-if="changeNote || canDiff || (hasRevisions && !isRevisionPage)" y-center gap="xs">
               <Tooltip v-if="changeNote" placement="top">
                 <Icon name="ph:note" class="legal-page__note-icon" />
                 <template #tooltip>
@@ -171,6 +165,18 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
                   </p>
                 </template>
               </Tooltip>
+              <Button
+                v-if="hasRevisions && !isRevisionPage"
+                size="s"
+                variant="gray"
+                href="#revisions"
+                tag="a"
+              >
+                <template #start>
+                  <Icon name="ph:clock-counter-clockwise" />
+                </template>
+                Revisions
+              </Button>
               <Button
                 v-if="canDiff"
                 size="s"
@@ -181,7 +187,7 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
                 <template #start>
                   <Icon name="ph:git-diff" />
                 </template>
-                Show changes
+                Changes from last Revision
               </Button>
             </Flex>
           </Flex>
@@ -241,7 +247,7 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
 
             <div v-if="pastRevisions.length" class="legal-page__revisions-group">
               <h5 :id="futureRevisions.length ? 'past-revisions' : 'revisions'">
-                Previous Versions
+                Previous Revisions
               </h5>
               <ul>
                 <li v-for="revision in pastRevisions" :key="revision">
