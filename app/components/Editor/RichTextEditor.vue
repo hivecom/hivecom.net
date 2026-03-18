@@ -105,7 +105,7 @@ const content = defineModel<string>()
 const minHeightPlain = computed(() => {
   const cssValue = Number(minHeight.slice(0, -2))
   //                vv The height & margin of the now static menu
-  return `${cssValue - 30}px`
+  return `${cssValue - 28}px`
 })
 
 function encodeHtmlEntities(str: string): string {

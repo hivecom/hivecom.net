@@ -753,10 +753,11 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 
   // Static variant sits flush above the textarea inside the editor container
   &--static {
-    margin-inline: calc(var(--space-s) * -1);
     margin-top: -8px;
-    padding-inline: var(--space-s);
-    padding-bottom: var(--space-xs);
+    padding-inline: 0;
+    // Use custom value since the jump between xxs and xs is too much
+    // and I want to shave as much as possible while visually keeping things clean
+    padding-bottom: 6px;
   }
 }
 
