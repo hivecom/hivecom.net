@@ -2,7 +2,7 @@
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
-import { Button, ButtonGroup, pushToast, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Dropdown, DropdownItem, pushToast, Tooltip } from '@dolanske/vui'
 import { Extension } from '@tiptap/core'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
@@ -37,9 +37,11 @@ const {
   minHeight = '47px',
   ...props
 } = defineProps<Props>()
+
 const emit = defineEmits<{
   (e: 'submit'): void
 }>()
+
 const ENCODE_AMP_RE = /&/g
 const ENCODE_LT_RE = /</g
 const ENCODE_GT_RE = />/g
@@ -99,6 +101,12 @@ const content = defineModel<string>()
 // "<foo>" instead of "&lt;foo&gt;".  Any edits they make are re-escaped before
 // being written back into the content model, preserving the invariant.
 // ---------------------------------------------------------------------------
+
+const minHeightPlain = computed(() => {
+  const cssValue = Number(minHeight.slice(0, -2))
+  //                vv The height & margin of the now static menu
+  return `${cssValue - 30}px`
+})
 
 function encodeHtmlEntities(str: string): string {
   return str.replace(ENCODE_AMP_RE, '&amp;').replace(ENCODE_LT_RE, '&lt;').replace(ENCODE_GT_RE, '&gt;')
@@ -653,8 +661,6 @@ async function handleSubmit() {
 
   emit('submit')
 }
-
-// Media update
 </script>
 
 <template>
@@ -717,6 +723,7 @@ async function handleSubmit() {
           v-else
           ref="plain-textarea"
           class="plain-textarea"
+          :rows="1"
           :value="plainTextContent"
           :placeholder="placeholder"
           @input="handlePlainTextInput(($event.target as HTMLTextAreaElement).value)"
@@ -725,31 +732,40 @@ async function handleSubmit() {
         />
 
         <div class="editor-actions">
-          <template v-if="editorMode === 'rich'">
-            <Tooltip>
-              <Button plain square size="s" @click="() => { mathModalEditPos = null; mathModalType = 'inline'; mathModalLatex = ''; mathModalOpen = true }">
-                <Icon name="ph:sigma" />
-              </Button>
-              <template #tooltip>
-                <p>Insert math</p>
+          <template v-if="props.showAttachmentButton">
+            <Dropdown>
+              <template #trigger="{ toggle }">
+                <Button plain square size="s" @click="toggle">
+                  <Icon name="ph:plus-square" />
+                </Button>
               </template>
-            </Tooltip>
-            <Tooltip>
-              <Button plain square size="s" @click="youtubeModalOpen = true">
-                <Icon name="ph:youtube-logo" />
-              </Button>
-              <template #tooltip>
-                <p>Embed YouTube video</p>
-              </template>
-            </Tooltip>
-            <Tooltip>
-              <Button plain square size="s" @click="videoModalOpen = true">
-                <Icon name="ph:video" />
-              </Button>
-              <template #tooltip>
-                <p>Insert video</p>
-              </template>
-            </Tooltip>
+              <DropdownItem @click="fileInput?.click()">
+                <template #icon>
+                  <Icon :size="18" name="ph:paperclip" />
+                </template>
+                Attach a file
+              </DropdownItem>
+              <DropdownItem @click="youtubeModalOpen = true">
+                <template #icon>
+                  <Icon :size="18" name="ph:youtube-logo" />
+                </template>
+                Embed YouTube video
+              </DropdownItem>
+              <DropdownItem @click="videoModalOpen = true">
+                <template #icon>
+                  <Icon :size="18" name="ph:video" />
+                </template>
+                Insert video
+              </DropdownItem>
+              <DropdownItem @click="mathModalEditPos = null; mathModalType = 'inline'; mathModalLatex = ''; mathModalOpen = true">
+                <template #icon>
+                  <Icon :size="18" name="ph:sigma" />
+                </template>
+                Insert math
+              </DropdownItem>
+            </Dropdown>
+
+            <input ref="file-input" class="visually-hidden" type="file" :accept="allowedMediaExtensions" @input="handleFileInput">
           </template>
 
           <Tooltip>
@@ -760,19 +776,6 @@ async function handleSubmit() {
               <p>{{ editorMode === 'rich' ? 'Switch to plain text' : 'Switch to rich text' }}</p>
             </template>
           </Tooltip>
-
-          <template v-if="props.showAttachmentButton">
-            <Tooltip>
-              <Button plain square size="s" @click="fileInput?.click()">
-                <Icon name="ph:paperclip" />
-              </Button>
-              <template #tooltip>
-                <p>Attach a file</p>
-              </template>
-            </Tooltip>
-
-            <input ref="file-input" class="visually-hidden" type="file" :accept="allowedMediaExtensions" @input="handleFileInput">
-          </template>
 
           <ButtonGroup v-if="props.showSubmitOptions" :gap="2">
             <Tooltip>
@@ -823,7 +826,7 @@ async function handleSubmit() {
   .plain-textarea {
     padding: 0 !important;
     height: v-bind(minHeight);
-    min-height: v-bind(minHeight) !important;
+    min-height: v-bind(minHeight);
     border: none !important;
     border-radius: 0 !important;
     background-color: transparent !important;
@@ -839,6 +842,9 @@ async function handleSubmit() {
     font-family: inherit;
     font-size: var(--font-size-m);
     color: var(--color-text);
+    // Textarea always removes a bit of its min-height so that floating menu does not cause layout shift
+    min-height: v-bind(minHeightPlain) !important;
+    height: unset;
   }
 
   .editor-overlay {

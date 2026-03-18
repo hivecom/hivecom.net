@@ -753,15 +753,10 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 
   // Static variant sits flush above the textarea inside the editor container
   &--static {
-    margin-bottom: var(--space-s);
-    padding: none;
-    // Slightly muted so it's clearly a toolbar, not floating UI
-    // opacity: 0.75;
-    transition: opacity var(--transition-fast);
-
-    &:hover {
-      opacity: 1;
-    }
+    margin-inline: calc(var(--space-s) * -1);
+    margin-top: -8px;
+    padding-inline: var(--space-s);
+    padding-bottom: var(--space-xs);
   }
 }
 
