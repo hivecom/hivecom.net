@@ -22,6 +22,7 @@
       ]
     },
     "Vue.js": {
+      "language_servers": ["emmet-language-server", "..."],
       "formatter": [
         { "code_action": "source.fixAll.eslint" }
       ]
@@ -45,25 +46,35 @@
       ]
     },
     "HTML": {
-      "language_servers": ["eslint", "vscode-html-language-server"],
+      "language_servers": ["emmet-language-server", "eslint", "vscode-html-language-server"],
       "formatter": [
         { "code_action": "source.fixAll.eslint" }
       ]
     },
     "CSS": {
-      "language_servers": ["eslint", "vscode-css-language-server"],
+      "language_servers": ["emmet-language-server", "eslint", "vscode-css-language-server"],
+      "use_on_type_format": true,
       "formatter": [
+        { "language_server": { "name": "vscode-css-language-server" } },
         { "code_action": "source.fixAll.eslint" }
       ]
     },
     "SCSS": {
-      "language_servers": ["eslint", "vscode-css-language-server"],
+      "language_servers": ["emmet-language-server", "eslint", "vscode-css-language-server"],
+      "use_on_type_format": true,
       "formatter": [
+        { "language_server": { "name": "vscode-css-language-server" } },
         { "code_action": "source.fixAll.eslint" }
       ]
     }
   },
   "lsp": {
+    "emmet-language-server": {
+      "binary": {
+        "path": "node_modules/.bin/emmet-language-server",
+        "arguments": ["--stdio"]
+      }
+    },
     "eslint": {
       "settings": {
         "workingDirectory": {
