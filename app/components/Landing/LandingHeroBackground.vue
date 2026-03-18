@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { useGlobePerf } from '@/composables/useGlobePerf'
 import fragSrc from './LandingHeroBackgroundShader.frag.glsl?raw'
 import vertSrc from './LandingHeroBackgroundShader.vert.glsl?raw'
 
@@ -12,7 +13,7 @@ let resolutionUniform: WebGLUniformLocation | null = null
 let rafId: number | null = null
 let start = 0
 let startOffset = 0
-const RES_SCALE = 0.2
+const { params: perfParams } = useGlobePerf()
 
 function createShader(context: WebGLRenderingContext, type: number, source: string) {
   const shader = context.createShader(type)
@@ -53,7 +54,7 @@ function resize() {
   if (!canvasEl.value || !gl)
     return
   const { width, height } = canvasEl.value.getBoundingClientRect()
-  const dpr = (window.devicePixelRatio || 1) * RES_SCALE
+  const dpr = (window.devicePixelRatio || 1) * perfParams.value.bgResScale
   const w = Math.max(1, Math.floor(width * dpr))
   const h = Math.max(1, Math.floor(height * dpr))
   if (canvasEl.value.width !== w || canvasEl.value.height !== h) {
