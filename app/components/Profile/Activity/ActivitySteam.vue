@@ -217,7 +217,6 @@ function stopAutoRefresh() {
 }
 
 // Auto-refresh on mount (only for own profile)
-// Note: initial fetch is handled by useCacheQuery's refetchOnMount
 onMounted(() => {
   if (props.isOwnProfile) {
     void refreshSteamData()

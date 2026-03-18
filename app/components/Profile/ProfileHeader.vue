@@ -388,7 +388,9 @@ const showAvatarLightbox = ref(false)
   </Card>
 </template>
 
-<style>
+<style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .profile__online-indicator {
   position: absolute;
   bottom: 15px;
@@ -405,10 +407,6 @@ const showAvatarLightbox = ref(false)
     background-color: var(--color-text-green);
   }
 }
-</style>
-
-<style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
 
 .avatar-lightbox {
   display: block;

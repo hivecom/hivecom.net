@@ -1,11 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import type { Database } from '@/types/database.types'
 import { Button, Dropdown, DropdownItem, DropdownTitle } from '@dolanske/vui'
 import { useEventTiming } from '@/composables/useEventTiming'
-import { useRsvpBus } from '@/composables/useRsvpBus'
-
-type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
+import { useRSVP } from '@/composables/useRSVP'
 
 interface Props {
   event: Tables<'events'>
@@ -18,16 +15,10 @@ const props = withDefaults(defineProps<Props>(), {
   variant: 'full',
 })
 
-// RSVP functionality
-const supabase = useSupabaseClient()
 const user = useSupabaseUser()
-const userId = useUserId()
-const rsvpStatus = ref<RSVPStatus | null>(null)
-const rsvpLoading = ref(false)
-const rsvpId = ref<number | null>(null)
 
 const { hasEventEnded } = useEventTiming(() => props.event)
-const { dispatch: dispatchRsvpUpdated } = useRsvpBus()
+const { rsvpStatus, rsvpLoading, updateRsvp, removeRsvp } = useRSVP(() => props.event)
 
 // Computed properties
 const canRsvp = computed(() => {
@@ -86,168 +77,21 @@ const rsvpDisabled = computed(() => {
   return hasEventEnded.value
 })
 
-// Functions
-async function checkRsvpStatus() {
-  if (!user.value || !userId.value || !props.event) {
-    rsvpStatus.value = null
-    return
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('events_rsvps')
-      .select('id, rsvp')
-      .eq('user_id', userId.value)
-      .eq('event_id', props.event.id)
-      .single()
-
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-      console.error('Error checking RSVP status:', error)
-      return
-    }
-
-    if (data) {
-      rsvpStatus.value = data.rsvp
-      rsvpId.value = data.id
-    }
-    else {
-      rsvpStatus.value = null
-      rsvpId.value = null
-    }
-  }
-  catch (error) {
-    console.error('Error checking RSVP status:', error)
-  }
-}
-
-async function updateRsvp(newStatus: RSVPStatus) {
-  if (!user.value || !userId.value || !props.event) {
-    return
-  }
-
-  if (hasEventEnded.value) {
-    console.warn('RSVP updates are disabled because the event has ended.')
-    return
-  }
-
-  rsvpLoading.value = true
-
-  try {
-    if (rsvpId.value) {
-      // Update existing RSVP
-      const { data, error } = await supabase
-        .from('events_rsvps')
-        .update({
-          rsvp: newStatus,
-          modified_by: userId.value,
-        })
-        .eq('id', rsvpId.value)
-        .select('id, rsvp')
-        .single()
-
-      if (error)
-        throw error
-
-      rsvpStatus.value = data.rsvp
-    }
-    else {
-      // Create new RSVP
-      const { data, error } = await supabase
-        .from('events_rsvps')
-        .insert({
-          user_id: userId.value,
-          event_id: props.event.id,
-          rsvp: newStatus,
-          created_by: userId.value,
-        })
-        .select('id, rsvp')
-        .single()
-
-      if (error)
-        throw error
-
-      rsvpStatus.value = data.rsvp
-      rsvpId.value = data.id
-    }
-
-    // Emit event to notify other components
-    dispatchRsvpUpdated({ eventId: props.event.id, newStatus })
-  }
-  catch (error) {
-    console.error('Error updating RSVP:', error)
-  }
-  finally {
-    rsvpLoading.value = false
-  }
-}
-
-async function removeRsvp() {
-  if (!rsvpId.value) {
-    return
-  }
-
-  if (hasEventEnded.value) {
-    console.warn('RSVP removals are disabled because the event has ended.')
-    return
-  }
-
-  rsvpLoading.value = true
-
-  try {
-    const { error } = await supabase
-      .from('events_rsvps')
-      .delete()
-      .eq('id', rsvpId.value)
-
-    if (error)
-      throw error
-
-    rsvpStatus.value = null
-    rsvpId.value = null
-
-    // Emit event to notify other components
-    dispatchRsvpUpdated({ eventId: props.event.id, newStatus: null })
-  }
-  catch (error) {
-    console.error('Error removing RSVP:', error)
-  }
-  finally {
-    rsvpLoading.value = false
-  }
-}
-
 // Simple toggle for non-dropdown variant
 function toggleRsvp() {
-  if (hasEventEnded.value) {
-    console.warn('RSVP updates are disabled because the event has ended.')
+  if (hasEventEnded.value)
     return
-  }
 
   if (!rsvpStatus.value) {
-    updateRsvp('yes')
+    void updateRsvp('yes')
   }
   else if (rsvpStatus.value === 'yes') {
-    updateRsvp('no')
+    void updateRsvp('no')
   }
   else {
-    updateRsvp('yes')
+    void updateRsvp('yes')
   }
 }
-
-// Lifecycle
-onMounted(() => {
-  checkRsvpStatus()
-})
-
-// Watch for user changes
-watch(() => user.value?.id, () => {
-  checkRsvpStatus()
-})
-
-// Watch for event changes
-watch(() => props.event?.id, () => {
-  checkRsvpStatus()
-})
 </script>
 
 <template>

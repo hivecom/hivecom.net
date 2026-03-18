@@ -197,7 +197,7 @@ function formatLastSeen(lastSeenAt: string | null): string {
   </div>
 </template>
 
-<style>
+<style scoped>
 .ts-presence {
   display: inline-flex;
 }

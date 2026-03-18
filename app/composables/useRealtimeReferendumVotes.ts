@@ -5,8 +5,8 @@ import type { Tables } from '@/types/database.overrides'
  * Subscribes to Supabase realtime changes on `referendum_votes` for a specific
  * referendum, keeping a local reactive copy of the vote list in sync.
  *
- * Returns the same shape as `useCacheQuery` for the votes so callers can swap
- * it in without restructuring their templates.
+ * Returns a reactive votes array and loading/error state so callers can use it
+ * directly in their templates.
  *
  * The subscription is automatically cleaned up when the calling component
  * is unmounted.

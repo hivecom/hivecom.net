@@ -165,8 +165,6 @@ const statusColor = computed(() => {
   return 'var(--color-text-lighter)'
 })
 
-// Note: initial fetch is handled by useCacheQuery's refetchOnMount
-
 // Watch for profile changes - refetch bypasses cache to get fresh data
 watch(() => props.profileId, () => {
   void refetchPresence()

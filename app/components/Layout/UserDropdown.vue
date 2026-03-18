@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle, Spinner } from '@dolanske/vui'
+import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Spinner } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
@@ -86,7 +86,7 @@ async function signOut() {
         </Button>
       </template>
       <DropdownTitle>
-        <div class="user-dropdown__info">
+        <Flex x-between y-center gap="xs" class="user-dropdown__info">
           <NuxtLink
             to="/profile"
             class="user-dropdown__username"
@@ -95,7 +95,7 @@ async function signOut() {
             {{ userData?.username || user?.email }}
           </NuxtLink>
           <RoleIndicator v-if="isAdminOrMod && userData?.role" :role="userData.role" size="s" />
-        </div>
+        </Flex>
       </DropdownTitle>
 
       <NuxtLink to="/profile">
@@ -137,12 +137,12 @@ async function signOut() {
 
       <Divider size="2" margin="4px 0" />
 
-      <div class="user-dropdown__footer">
+      <Flex x-between y-center gap="xs" class="user-dropdown__footer">
         <SharedThemeToggle no-text />
         <Button square plain aria-label="Sign out" @click="signOut">
           <Icon name="ph:sign-out" />
         </Button>
-      </div>
+      </Flex>
     </Dropdown>
     <ComplaintsManager
       v-model:open="showComplaintModal"
@@ -163,10 +163,6 @@ async function signOut() {
 
   &__info {
     width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
     text-transform: none;
   }
 
@@ -184,10 +180,6 @@ async function signOut() {
   &__footer {
     padding: 4px 8px;
     padding-left: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
   }
 }
 </style>

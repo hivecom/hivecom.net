@@ -217,19 +217,6 @@ onMounted(() => {
   </div>
 </template>
 
-<style>
-.settings-callout__icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: var(--color-bg, #0e1018);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-border);
-}
-</style>
-
 <style lang="scss" scoped>
 .section-eyebrow {
   text-transform: uppercase;

@@ -5,6 +5,9 @@ export default antfu({
   typescript: {
     tsconfigPath: 'tsconfig.json',
   },
+  // Force editor detection off so formatting/autofix rules aren't suppressed
+  // when ZED_ENVIRONMENT is set in the LSP process
+  isInEditor: false,
   // Global rules
   rules: {
     'unicorn/prefer-node-protocol': 'off',

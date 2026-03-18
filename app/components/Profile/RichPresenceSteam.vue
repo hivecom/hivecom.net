@@ -296,7 +296,7 @@ const visible = ref(false)
   </div>
 </template>
 
-<style>
+<style scoped>
 .steam-presence {
   width: 100%;
   display: inline-flex;
