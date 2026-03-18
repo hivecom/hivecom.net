@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { UserFormState } from '@/composables/useUserFormValidation'
 import type { Enums } from '@/types/database.types'
 import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
@@ -9,11 +10,12 @@ import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder
 import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { INTRODUCTION_LIMIT, MARKDOWN_LIMIT, normalizeWebsiteUrl, USERNAME_LIMIT, useUserFormValidation } from '@/composables/useUserFormValidation'
 import { deleteUserAvatar, getUserAvatarUrl } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { formatDateOnly } from '@/lib/utils/date'
-import { stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
+import { stripHtmlTags } from '@/lib/utils/sanitize'
 
 const props = defineProps<{
   user: {
@@ -41,14 +43,6 @@ const props = defineProps<{
 }>()
 // Define emits
 const emit = defineEmits(['save', 'delete'])
-const WORD_ONLY_RE = /^\w+$/
-const WHITESPACE_RE = /\s/
-const DIGITS_ONLY_RE = /^\d+$/
-const DISCORD_ID_RE = /^\d{17,19}$/
-const STEAM_ID_RE = /^\d{17}$/
-const HTTP_PROTOCOL_RE = /^https?:\/\//
-const BIRTHDAY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-
 // Interface for Select options
 interface SelectOption {
   label: string
@@ -59,22 +53,6 @@ interface SelectOption {
 type ProfileBadge = Enums<'profile_badge'>
 
 const BADGE_VALUES = ['builder', 'earlybird', 'founder', 'host'] as const satisfies ReadonlyArray<ProfileBadge>
-
-interface UserFormState {
-  username: string
-  introduction: string
-  markdown: string
-  website: string
-  country: string
-  birthday: string
-  public: boolean
-  supporter_patreon: boolean
-  supporter_lifetime: boolean
-  patreon_id: string
-  discord_id: string
-  steam_id: string
-  badges: ProfileBadge[]
-}
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -111,6 +89,19 @@ function createDefaultUserFormState(): UserFormState {
 }
 
 const userForm = ref<UserFormState>(createDefaultUserFormState())
+
+const {
+  usernameValidation,
+  patreonIdValidation,
+  discordIdValidation,
+  steamIdValidation,
+  markdownValidation,
+  introductionValidation,
+  websiteValidation,
+  countryValidation,
+  birthdayValidation,
+  isValid,
+} = useUserFormValidation(userForm)
 
 // Available roles - "User" means no role in database
 const availableRoles = [
@@ -178,12 +169,6 @@ const selectedRoleComputed = computed({
 const showDeleteConfirm = ref(false)
 const deleteLoading = ref(false)
 
-// Limits (matching database constraints)
-const USERNAME_LIMIT = 32
-const INTRODUCTION_LIMIT = 128
-const MARKDOWN_LIMIT = 8128
-const BIRTHDAY_MIN_VALUE = '1900-01-01' as const
-
 function dedupeBadges(badges?: readonly ProfileBadge[]) {
   return [...new Set(badges ?? [])] as ProfileBadge[]
 }
@@ -198,186 +183,6 @@ function toggleBadge(badge: ProfileBadge) {
   else
     userForm.value.badges = dedupeBadges([...userForm.value.badges, badge])
 }
-
-// Username validation rules based on database constraints
-const usernameValidation = computed(() => {
-  const username = userForm.value.username.trim()
-
-  if (!username) {
-    return { valid: false, error: 'Username is required' }
-  }
-
-  if (username.length > USERNAME_LIMIT) {
-    return { valid: false, error: `Username must be ${USERNAME_LIMIT} characters or less` }
-  }
-
-  if (!WORD_ONLY_RE.test(username)) {
-    return { valid: false, error: 'Username can only contain letters, numbers, and underscores' }
-  }
-
-  if (WHITESPACE_RE.test(username)) {
-    return { valid: false, error: 'Username cannot contain spaces' }
-  }
-
-  return { valid: true, error: null }
-})
-
-// External ID validation functions
-const patreonIdValidation = computed(() => {
-  const id = userForm.value.patreon_id.trim()
-  if (!id)
-    return { valid: true, error: null }
-
-  if (!DIGITS_ONLY_RE.test(id)) {
-    return { valid: false, error: 'Patreon ID must be numeric' }
-  }
-
-  return { valid: true, error: null }
-})
-
-const discordIdValidation = computed(() => {
-  const id = userForm.value.discord_id.trim()
-  if (!id)
-    return { valid: true, error: null }
-
-  if (!DISCORD_ID_RE.test(id)) {
-    return { valid: false, error: 'Discord ID must be 17-19 digits' }
-  }
-
-  return { valid: true, error: null }
-})
-
-const steamIdValidation = computed(() => {
-  const id = userForm.value.steam_id.trim()
-  if (!id)
-    return { valid: true, error: null }
-
-  if (!STEAM_ID_RE.test(id)) {
-    return { valid: false, error: 'Steam ID must be 17 digits' }
-  }
-
-  return { valid: true, error: null }
-})
-
-// Markdown validation
-const markdownValidation = computed(() => {
-  const markdown = userForm.value.markdown.trim()
-
-  if (markdown.length > MARKDOWN_LIMIT) {
-    return { valid: false, error: `Content must be ${MARKDOWN_LIMIT} characters or less` }
-  }
-
-  return validateMarkdownNoHtml(markdown)
-})
-
-// Introduction validation
-const introductionValidation = computed(() => {
-  const introduction = userForm.value.introduction.trim()
-
-  if (introduction.length > INTRODUCTION_LIMIT) {
-    return { valid: false, error: `Introduction must be ${INTRODUCTION_LIMIT} characters or less` }
-  }
-
-  return validateMarkdownNoHtml(introduction)
-})
-
-// Website validation
-const websiteValidation = computed(() => {
-  const website = userForm.value.website.trim()
-
-  if (!website) {
-    return { valid: true, error: null }
-  }
-
-  // Auto-prepend https:// if no protocol is provided for validation
-  let normalizedUrl = website
-  if (!HTTP_PROTOCOL_RE.test(website)) {
-    normalizedUrl = `https://${website}`
-  }
-
-  // Basic URL validation
-  try {
-    const url = new URL(normalizedUrl)
-    if (!['http:', 'https:'].includes(url.protocol)) {
-      return { valid: false, error: 'Website must be a valid HTTP or HTTPS URL' }
-    }
-
-    return { valid: true, error: null }
-  }
-  catch {
-    return { valid: false, error: 'Please enter a valid website URL' }
-  }
-})
-
-const countryValidation = computed(() => {
-  const country = userForm.value.country.trim()
-
-  if (!country)
-    return { valid: true, error: null }
-
-  const normalized = country.toUpperCase()
-  const match = COUNTRY_SELECT_OPTIONS.some(option => option.value === normalized)
-
-  if (!match)
-    return { valid: false, error: 'Please select a valid country' }
-
-  return { valid: true, error: null }
-})
-
-const birthdayValidation = computed(() => {
-  const birthday = userForm.value.birthday.trim()
-
-  if (!birthday)
-    return { valid: true, error: null }
-
-  if (!BIRTHDAY_DATE_RE.test(birthday)) {
-    return { valid: false, error: 'Please enter a valid date (YYYY-MM-DD)' }
-  }
-
-  const parsed = new Date(birthday)
-  if (Number.isNaN(parsed.getTime())) {
-    return { valid: false, error: 'Please enter a valid date' }
-  }
-
-  const today = new Date()
-  if (parsed > today) {
-    return { valid: false, error: 'Birthday cannot be in the future' }
-  }
-
-  if (birthday < BIRTHDAY_MIN_VALUE) {
-    return { valid: false, error: `Birthday cannot be before ${BIRTHDAY_MIN_VALUE}` }
-  }
-
-  return { valid: true, error: null }
-})
-
-// Function to normalize website URL
-function normalizeWebsiteUrl(url: string): string {
-  const trimmed = url.trim()
-  if (!trimmed)
-    return trimmed
-
-  if (!HTTP_PROTOCOL_RE.test(trimmed)) {
-    return `https://${trimmed}`
-  }
-
-  return trimmed
-}
-
-// Form validation
-const validation = computed(() => ({
-  username: usernameValidation.value.valid,
-  patreon_id: patreonIdValidation.value.valid,
-  discord_id: discordIdValidation.value.valid,
-  steam_id: steamIdValidation.value.valid,
-  markdown: markdownValidation.value.valid,
-  introduction: introductionValidation.value.valid,
-  website: websiteValidation.value.valid,
-  country: countryValidation.value.valid,
-  birthday: birthdayValidation.value.valid,
-}))
-
-const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
 const badgeSummaryText = computed(() => {
   if (!userForm.value.badges.length)

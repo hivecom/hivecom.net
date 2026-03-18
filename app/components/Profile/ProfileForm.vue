@@ -4,12 +4,13 @@ import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
+import { normalizeWebsiteUrl, useUserFormValidation } from '@/composables/useUserFormValidation'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { formatDateOnly } from '@/lib/utils/date'
-import { replaceMarkdownH1, stripHtmlTags, validateMarkdownNoHtml } from '@/lib/utils/sanitize'
+import { replaceMarkdownH1, stripHtmlTags } from '@/lib/utils/sanitize'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 
 const props = defineProps<{
@@ -19,16 +20,6 @@ const props = defineProps<{
 }>()
 // Define emits
 const emit = defineEmits(['save', 'close', 'update:isOpen', 'clearError'])
-const WORD_ONLY_RE = /^\w+$/
-const WHITESPACE_RE = /\s/
-const HTTP_PROTOCOL_RE = /^https?:\/\//
-const BIRTHDAY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-
-// Limits (matching database constraints)
-const USERNAME_LIMIT = 32
-const INTRODUCTION_LIMIT = 128
-const MARKDOWN_LIMIT = 8128
-const BIRTHDAY_MIN_VALUE = '1900-01-01' as const
 
 // Form state
 const profileForm = ref({
@@ -43,137 +34,16 @@ const profileForm = ref({
 
 type CountrySelectOption = (typeof COUNTRY_SELECT_OPTIONS)[number]
 
-// Username validation rules based on database constraints
-const usernameValidation = computed(() => {
-  const username = profileForm.value.username.trim()
+const submissionErrorRef = computed(() => props.submissionError)
 
-  if (!username) {
-    return { valid: false, error: 'Username is required' }
-  }
-
-  if (username.length > USERNAME_LIMIT) {
-    return { valid: false, error: `Username must be ${USERNAME_LIMIT} characters or less` }
-  }
-
-  if (!WORD_ONLY_RE.test(username)) {
-    return { valid: false, error: 'Username can only contain letters, numbers, and underscores' }
-  }
-
-  if (WHITESPACE_RE.test(username)) {
-    return { valid: false, error: 'Username cannot contain spaces' }
-  }
-
-  // Show submission error if it exists and is related to username
-  if (props.submissionError && props.submissionError.toLowerCase().includes('username')) {
-    return { valid: false, error: props.submissionError }
-  }
-
-  return { valid: true, error: null }
-})
-
-// Markdown validation
-const markdownValidation = computed(() => {
-  const markdown = profileForm.value.markdown.trim()
-
-  if (markdown.length > MARKDOWN_LIMIT) {
-    return { valid: false, error: `Content must be ${MARKDOWN_LIMIT} characters or less` }
-  }
-
-  return validateMarkdownNoHtml(markdown)
-})
-
-// Website validation
-const websiteValidation = computed(() => {
-  const website = profileForm.value.website.trim()
-
-  if (!website) {
-    return { valid: true, error: null }
-  }
-
-  // Auto-prepend https:// if no protocol is provided for validation
-  let normalizedUrl = website
-  if (!HTTP_PROTOCOL_RE.test(website)) {
-    normalizedUrl = `https://${website}`
-  }
-
-  // Basic URL validation
-  try {
-    const url = new URL(normalizedUrl)
-    if (!['http:', 'https:'].includes(url.protocol)) {
-      return { valid: false, error: 'Website must be a valid HTTP or HTTPS URL' }
-    }
-    return { valid: true, error: null }
-  }
-  catch {
-    return { valid: false, error: 'Please enter a valid website URL' }
-  }
-})
-
-// Country validation (optional)
-const countryValidation = computed(() => {
-  const country = profileForm.value.country.trim()
-
-  if (!country)
-    return { valid: true, error: null }
-
-  const match = COUNTRY_SELECT_OPTIONS.some(option => option.value === country.toUpperCase())
-
-  if (!match)
-    return { valid: false, error: 'Please select a valid country' }
-
-  return { valid: true, error: null }
-})
-
-const birthdayValidation = computed(() => {
-  const birthday = profileForm.value.birthday.trim()
-
-  if (!birthday)
-    return { valid: true, error: null }
-
-  if (!BIRTHDAY_DATE_RE.test(birthday)) {
-    return { valid: false, error: 'Please enter a valid date (YYYY-MM-DD)' }
-  }
-
-  const parsed = new Date(birthday)
-  if (Number.isNaN(parsed.getTime())) {
-    return { valid: false, error: 'Please enter a valid date' }
-  }
-
-  const today = new Date()
-  if (parsed > today) {
-    return { valid: false, error: 'Birthday cannot be in the future' }
-  }
-
-  if (birthday < BIRTHDAY_MIN_VALUE) {
-    return { valid: false, error: `Birthday cannot be before ${BIRTHDAY_MIN_VALUE}` }
-  }
-
-  return { valid: true, error: null }
-})
-
-// Function to normalize website URL
-function normalizeWebsiteUrl(url: string): string {
-  const trimmed = url.trim()
-  if (!trimmed)
-    return trimmed
-
-  if (!HTTP_PROTOCOL_RE.test(trimmed)) {
-    return `https://${trimmed}`
-  }
-
-  return trimmed
-}
-
-// Form validation
-const validation = computed(() => ({
-  username: usernameValidation.value.valid,
-  markdown: markdownValidation.value.valid,
-  website: websiteValidation.value.valid,
-  country: countryValidation.value.valid,
-  birthday: birthdayValidation.value.valid,
-}))
-
-const isValid = computed(() => Object.values(validation.value).every(Boolean))
+const {
+  usernameValidation,
+  markdownValidation,
+  websiteValidation,
+  countryValidation,
+  birthdayValidation,
+  isValid,
+} = useUserFormValidation(profileForm, { submissionError: submissionErrorRef })
 
 // Avatar upload state
 const avatarUploading = ref(false)

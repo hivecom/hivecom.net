@@ -357,16 +357,13 @@ async function handleUserSave(userData: UserFormData) {
   }
 }
 
-// Handle delete from UserForm
+// Handle delete from UserForm - delegates to the edge function so all cleanup runs
 async function handleUserDelete(userId: string) {
   try {
-    const supabase = useSupabaseClient()
-
-    // Note: You might want to implement soft delete or archive instead of hard delete
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', userId)
+    const { error } = await supabase.functions.invoke('admin-user-delete', {
+      method: 'POST',
+      body: { userId },
+    })
 
     if (error)
       throw error
@@ -374,8 +371,6 @@ async function handleUserDelete(userId: string) {
     // Close form and refresh data
     showUserForm.value = false
     refreshSignal.value++
-
-    // User deleted successfully
   }
   catch (error: unknown) {
     console.error('Error deleting user:', (error as Error).message)

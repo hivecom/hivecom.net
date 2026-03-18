@@ -152,7 +152,6 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
                 <template v-else>
                   Last updated on {{ formatDateLong(content.date) }}
                 </template>
-
               </p>
             </div>
 

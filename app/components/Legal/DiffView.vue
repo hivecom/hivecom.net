@@ -15,6 +15,11 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { default: false })
 
+// Module-scoped to avoid re-compilation on every call
+const DIFF_ROW_RE = /<tr[^>]*>[\s\S]*?<\/tr>/g
+const DIFF_CONTENT_RE = /class="d2h-code-line-ctn"[^>]*>([\s\S]*?)<\/span>/
+const DIFF_TAG_RE = /<[^>]+>/g
+
 const loading = ref(false)
 const error = ref<string | null>(null)
 const diffHtml = ref<string | null>(null)
@@ -73,15 +78,16 @@ async function generateDiff() {
 
     // Strip rows where an added/removed line is empty (blank line additions/removals).
     // Context empty lines (unchanged) are kept - they preserve visual spacing.
-    html = html.replace(/<tr[^>]*>[\s\S]*?<\/tr>/g, (row) => {
+    DIFF_ROW_RE.lastIndex = 0
+    html = html.replace(DIFF_ROW_RE, (row) => {
       // Only consider ins/del rows - skip context and hunk header rows.
       if (!row.includes('d2h-ins') && !row.includes('d2h-del'))
         return row
       // Extract the content span and strip tags to see if there's actual text.
-      const contentMatch = row.match(/class="d2h-code-line-ctn"[^>]*>([\s\S]*?)<\/span>/)
+      const contentMatch = row.match(DIFF_CONTENT_RE)
       if (!contentMatch)
         return row
-      const innerText = (contentMatch[1] ?? '').replace(/<[^>]+>/g, '').trim()
+      const innerText = (contentMatch[1] ?? '').replace(DIFF_TAG_RE, '').trim()
       return innerText === '' ? '' : row
     })
 

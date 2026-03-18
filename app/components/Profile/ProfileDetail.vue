@@ -12,6 +12,7 @@ import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useAvatarBus } from '@/composables/useAvatarBus'
 import { useCachedFetch } from '@/composables/useCache'
 import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useFriendship } from '@/composables/useFriendship'
 import Discussion from '../Discussions/Discussion.vue'
 
 interface Props {
@@ -40,11 +41,6 @@ const showComplaintModal = ref(false)
 const showFriendsModal = ref(false)
 const profileSubmissionError = ref<string | null>(null)
 
-// Friend-related state
-const friendshipStatus = ref<'none' | 'mutual' | 'sent_request' | 'received_request' | 'loading'>('none')
-const sentFriendshipId = ref<number | null>(null)
-const receivedFriendshipId = ref<number | null>(null)
-
 // Add refresh functionality for avatar updates
 const refreshTrigger = ref(0)
 
@@ -63,20 +59,21 @@ const isOwnProfile = computed(() => {
   return userId.value === profile.value.id
 })
 
+const profileUserId = computed(() => profile.value?.id ?? null)
+
 // Get current user's data with caching
 const {
   user: currentUserData,
 } = useCacheUserData(
-  userId, // Use the computed user ID
+  userId,
   {
     includeRole: true,
-    includeAvatar: false, // We don't need current user's avatar here
+    includeAvatar: false,
     userTtl: 15 * 60 * 1000, // 15 minutes
   },
 )
 
 // Get profile user's data with caching (once we have the profile ID)
-const profileUserId = computed(() => profile.value?.id || null)
 const {
   user: _profileUserData,
   refetch: refetchProfileUserData,
@@ -93,93 +90,25 @@ const {
 // Computed properties to get cached data
 const currentUserRole = computed(() => currentUserData.value?.role || null)
 
-// Fetch friendships data with caching
-const {
-  data: _friendshipsData,
-  refetch: _refetchFriendships,
-} = useCachedFetch<Array<{ id: number, friender: string, friend: string }>>(
-  () => ({
-    table: 'friends',
-    select: 'id, friender, friend',
-    filters: {
-      // We'll handle the complex OR logic in the computed
-    },
-  }),
-  {
-    enabled: computed(() => !!userId.value && !!profile.value && !isOwnProfile.value),
-    ttl: 2 * 60 * 1000, // 2 minutes for friendship data
-  },
-)
-
 // Computed property to check if the current user is an admin
 const isCurrentUserAdmin = computed(() => {
   return currentUserRole.value === 'admin'
 })
 
-// Computed properties for friends data
-const allFriendships = ref<Array<{ id: number, friender: string, friend: string }>>([])
-const friendsLoading = ref(true)
-
-// Get friends (mutual friendships)
-const friends = computed(() => {
-  if (!profile.value)
-    return []
-
-  const sentByProfile = allFriendships.value.filter(f => f.friender === profile.value!.id)
-  const receivedByProfile = allFriendships.value.filter(f => f.friend === profile.value!.id)
-
-  // Find mutual friends (users who have both sent and received friendship with this profile)
-  const mutualFriends: string[] = []
-
-  sentByProfile.forEach((sent) => {
-    const mutual = receivedByProfile.find(received => received.friender === sent.friend)
-    if (mutual) {
-      mutualFriends.push(sent.friend)
-    }
-  })
-
-  return mutualFriends
-})
-
-// Get sent requests (profile sent but no reciprocation)
-const sentRequests = computed(() => {
-  if (!profile.value)
-    return []
-
-  const sentByProfile = allFriendships.value.filter(f => f.friender === profile.value!.id)
-  const receivedByProfile = allFriendships.value.filter(f => f.friend === profile.value!.id)
-
-  const sentRequests: string[] = []
-
-  sentByProfile.forEach((sent) => {
-    const mutual = receivedByProfile.find(received => received.friender === sent.friend)
-    if (!mutual) {
-      sentRequests.push(sent.friend)
-    }
-  })
-
-  return sentRequests
-})
-
-// Get pending requests (others sent to profile but profile hasn't reciprocated)
-const pendingRequests = computed(() => {
-  if (!profile.value)
-    return []
-
-  const sentByProfile = allFriendships.value.filter(f => f.friender === profile.value!.id)
-  const receivedByProfile = allFriendships.value.filter(f => f.friend === profile.value!.id)
-
-  const pendingRequests: string[] = []
-
-  receivedByProfile.forEach((received) => {
-    const mutual = sentByProfile.find(sent => sent.friend === received.friender)
-    if (!mutual) {
-      pendingRequests.push(received.friender)
-    }
-  })
-
-  return pendingRequests
-})
+const {
+  friendshipStatus,
+  friends,
+  sentRequests,
+  pendingRequests,
+  friendsLoading,
+  checkFriendshipStatus,
+  fetchAllFriendships,
+  sendFriendRequest,
+  acceptFriendRequest,
+  revokeFriendRequest,
+  removeFriend,
+  ignoreFriendRequest,
+} = useFriendship(userId, profileUserId, isOwnProfile, isLoggedIn)
 
 // Fetch profile data with caching based on props (fallback to current user if none provided)
 const profileQuery = computed(() => {
@@ -398,7 +327,6 @@ watch(refreshTrigger, () => {
 // Watch for profile changes to update cached data if needed
 watch(() => profile.value?.id, async (newId, oldId) => {
   if (newId && newId !== oldId) {
-    // Cached data will auto-refresh due to profileUserId computed change
     await checkFriendshipStatus()
     await fetchAllFriendships()
   }
@@ -417,270 +345,8 @@ defineExpose({
   refreshAvatar,
 })
 
-// Friend-related functions
-async function checkFriendshipStatus() {
-  if (!user.value || !profile.value || isOwnProfile.value) {
-    friendshipStatus.value = 'none'
-    return
-  }
-
-  friendshipStatus.value = 'loading'
-
-  try {
-    // Check for friendship requests in both directions
-    const { data: friendships, error } = await supabase
-      .from('friends')
-      .select('id, friender, friend')
-      .or(`and(friender.eq.${userId.value},friend.eq.${profile.value.id}),and(friender.eq.${profile.value.id},friend.eq.${userId.value})`)
-
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-      console.error('Error checking friendship status:', error)
-      friendshipStatus.value = 'none'
-      return
-    }
-
-    if (!friendships || friendships.length === 0) {
-      // No friendship exists
-      friendshipStatus.value = 'none'
-      sentFriendshipId.value = null
-      receivedFriendshipId.value = null
-      return
-    }
-
-    // Check if we have friendships in both directions (mutual)
-    const sentByCurrentUser = friendships.find(f => f.friender === userId.value && f.friend === profile.value!.id)
-    const sentByOtherUser = friendships.find(f => f.friender === profile.value!.id && f.friend === userId.value)
-
-    if (sentByCurrentUser && sentByOtherUser) {
-      // Mutual friendship
-      friendshipStatus.value = 'mutual'
-      sentFriendshipId.value = sentByCurrentUser.id
-      receivedFriendshipId.value = sentByOtherUser.id
-    }
-    else if (sentByCurrentUser) {
-      // Current user sent a request
-      friendshipStatus.value = 'sent_request'
-      sentFriendshipId.value = sentByCurrentUser.id
-      receivedFriendshipId.value = null
-    }
-    else if (sentByOtherUser) {
-      // Current user received a request
-      friendshipStatus.value = 'received_request'
-      sentFriendshipId.value = null
-      receivedFriendshipId.value = sentByOtherUser.id
-    }
-    else {
-      // This shouldn't happen, but fallback to none
-      friendshipStatus.value = 'none'
-      sentFriendshipId.value = null
-      receivedFriendshipId.value = null
-    }
-  }
-  catch (error) {
-    console.error('Error checking friendship status:', error)
-    friendshipStatus.value = 'none'
-  }
-}
-
-async function fetchAllFriendships() {
-  if (!profile.value) {
-    friendsLoading.value = false
-    return
-  }
-
-  friendsLoading.value = true
-
-  try {
-    // Fetch all friendships for this profile
-    const { data: friendships, error } = await supabase
-      .from('friends')
-      .select('id, friender, friend')
-      .or(`friender.eq.${profile.value.id},friend.eq.${profile.value.id}`)
-
-    if (error) {
-      console.error('Error fetching friendships:', error)
-      return
-    }
-
-    allFriendships.value = friendships || []
-  }
-  catch (error) {
-    console.error('Error fetching friendships:', error)
-  }
-  finally {
-    friendsLoading.value = false
-  }
-}
-
 function openFriendsModal() {
   showFriendsModal.value = true
-}
-
-async function sendFriendRequest() {
-  if (!user.value || !profile.value || isOwnProfile.value) {
-    return
-  }
-
-  friendshipStatus.value = 'loading'
-
-  try {
-    const { error } = await supabase
-      .from('friends')
-      .insert({
-        friender: userId.value,
-        friend: profile.value.id,
-      })
-
-    if (error) {
-      console.error('Error sending friend request:', error)
-      friendshipStatus.value = 'none'
-      return
-    }
-
-    // Check if the other user has already sent us a request (making it mutual)
-    await checkFriendshipStatus()
-  }
-  catch (error) {
-    console.error('Error sending friend request:', error)
-    friendshipStatus.value = 'none'
-  }
-}
-
-async function acceptFriendRequest() {
-  if (!user.value || !profile.value || isOwnProfile.value) {
-    return
-  }
-
-  friendshipStatus.value = 'loading'
-
-  try {
-    // Send a friend request back to make it mutual
-    const { error } = await supabase
-      .from('friends')
-      .insert({
-        friender: userId.value,
-        friend: profile.value.id,
-      })
-
-    if (error) {
-      console.error('Error accepting friend request:', error)
-      await checkFriendshipStatus() // Refresh to current state
-      return
-    }
-
-    // Now they should be mutual friends
-    await checkFriendshipStatus()
-  }
-  catch (error) {
-    console.error('Error accepting friend request:', error)
-    await checkFriendshipStatus() // Refresh to current state
-  }
-}
-
-async function revokeFriendRequest() {
-  if (!user.value || !profile.value || !sentFriendshipId.value) {
-    return
-  }
-
-  friendshipStatus.value = 'loading'
-
-  try {
-    const { error } = await supabase
-      .from('friends')
-      .delete()
-      .eq('id', sentFriendshipId.value)
-
-    if (error) {
-      console.error('Error revoking friend request:', error)
-      await checkFriendshipStatus() // Refresh to current state
-      return
-    }
-
-    await checkFriendshipStatus()
-  }
-  catch (error) {
-    console.error('Error revoking friend request:', error)
-    await checkFriendshipStatus() // Refresh to current state
-  }
-}
-
-async function removeFriend() {
-  if (!user.value || !profile.value) {
-    return
-  }
-
-  friendshipStatus.value = 'loading'
-
-  try {
-    // Remove both friendship records to break the mutual friendship
-    const deletePromises = []
-
-    if (sentFriendshipId.value) {
-      deletePromises.push(
-        supabase
-          .from('friends')
-          .delete()
-          .eq('id', sentFriendshipId.value),
-      )
-    }
-
-    if (receivedFriendshipId.value) {
-      deletePromises.push(
-        supabase
-          .from('friends')
-          .delete()
-          .eq('id', receivedFriendshipId.value),
-      )
-    }
-
-    const results = await Promise.all(deletePromises)
-
-    // Check if any deletion failed
-    const hasError = results.some(result => result.error)
-    if (hasError) {
-      console.error('Error removing friendship:', results.find(r => r.error)?.error)
-      await checkFriendshipStatus() // Refresh to current state
-      return
-    }
-
-    friendshipStatus.value = 'none'
-    sentFriendshipId.value = null
-    receivedFriendshipId.value = null
-  }
-  catch (error) {
-    console.error('Error removing friendship:', error)
-    await checkFriendshipStatus() // Refresh to current state
-  }
-}
-
-async function ignoreFriendRequest() {
-  if (!user.value || !profile.value || !receivedFriendshipId.value) {
-    return
-  }
-
-  friendshipStatus.value = 'loading'
-
-  try {
-    // Delete the friend request that was sent to the current user
-    const { error } = await supabase
-      .from('friends')
-      .delete()
-      .eq('id', receivedFriendshipId.value)
-
-    if (error) {
-      console.error('Error ignoring friend request:', error)
-      await checkFriendshipStatus() // Refresh to current state
-      return
-    }
-
-    // Update status to none since the request was ignored/deleted
-    friendshipStatus.value = 'none'
-    receivedFriendshipId.value = null
-  }
-  catch (error) {
-    console.error('Error ignoring friend request:', error)
-    await checkFriendshipStatus() // Refresh to current state
-  }
 }
 </script>
 
