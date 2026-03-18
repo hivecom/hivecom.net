@@ -1,7 +1,7 @@
 <script setup>
 import { Button, Card, Flex, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
-import { navigationLinks } from '@/lib/navigation'
+import { navigationLinks } from '@/config/navigation'
 
 function scrollUp() {
   window.scrollTo({ top: 0, behavior: 'smooth' })

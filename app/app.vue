@@ -5,7 +5,12 @@ import { useLastSeenTracking } from '@/lib/lastSeen'
 
 const route = useRoute()
 const site = useSiteConfig()
-const canonicalUrl = useCanonicalUrl()
+const runtimeConfig = useRuntimeConfig()
+
+const canonicalUrl = computed(() => {
+  const baseUrl = runtimeConfig.public.baseUrl || 'https://hivecom.net'
+  return new URL(route.path, baseUrl).toString()
+})
 
 useHead(() => ({
   title: site.name,
