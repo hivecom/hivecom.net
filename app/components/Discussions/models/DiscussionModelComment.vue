@@ -3,6 +3,7 @@ import type { Comment, DiscussionSettings, ProvidedDiscussion } from '../Discuss
 import { Alert, Button, ButtonGroup, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
@@ -112,9 +113,14 @@ async function submitEdit() {
 
   editLoading.value = true
 
+  // Resolve any plain-text @username mentions that were typed in plain-text
+  // mode - the RichTextEditor's handleSubmit does this automatically, but the
+  // edit modal calls supabase directly and bypasses that path.
+  const resolvedMarkdown = await resolvePlainTextMentions(editedContent.value, supabase)
+
   const res = await supabase
     .from('discussion_replies')
-    .update({ markdown: editedContent.value, is_nsfw: editedIsNsfw.value })
+    .update({ markdown: resolvedMarkdown, is_nsfw: editedIsNsfw.value })
     .eq('id', data.value.id)
     .single()
 
@@ -122,7 +128,7 @@ async function submitEdit() {
     editError.value = [res.error.message]
   }
   else {
-    data.value.markdown = editedContent.value
+    data.value.markdown = resolvedMarkdown
     data.value.is_nsfw = editedIsNsfw.value
     data.value.modified_at = dayjs().toISOString()
     _showNSFWWarning.value = editedIsNsfw.value

@@ -6,6 +6,7 @@ import type { TextSizeName } from './plugins/textSize'
 import type { ShouldShowMenuProps } from '@/types/rich-text-editor'
 import { Button, ButtonGroup, Flex, Popout, Tooltip } from '@dolanske/vui'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
+import { createReusableTemplate } from '@vueuse/core'
 import { capitalize, computed, ref } from 'vue'
 import { TEXT_COLOR_NAMES, textColorValue } from './plugins/textColor'
 import { TEXT_FONT_NAMES, textFontValue } from './plugins/textFont'
@@ -301,58 +302,64 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 
   return state.doc.textBetween(from, to).length > 0
 }
+
+// ---------------------------------------------------------------------------
+// Reusable toolbar template
+// ---------------------------------------------------------------------------
+
+// The button groups are identical between the static (plain text) toolbar and
+// the floating bubble menu. We define them once here and render the same
+// template in both places instead of duplicating ~220 lines of markup.
+const [DefineToolbar, ReuseToolbar] = createReusableTemplate()
 </script>
 
 <template>
-  <!-- FIXME: isnt this just a duplicate of the bubble menu's fix this later via `createReusableTemplate` -->
+  <!-- Shared toolbar button groups - defined once, used in both modes below -->
+  <DefineToolbar>
+    <Flex :gap="4">
+      <ButtonGroup>
+        <!-- Heading -->
+        <Button
+          ref="headingButtonRef"
+          size="s"
+          square
+          :class="{ 'is-active': headingPickerOpen || getActiveHeading() !== null }"
+          @click="headingPickerOpen = !headingPickerOpen"
+        >
+          <Icon :size="18" name="ph:text-h-one" />
+        </Button>
 
-  <!-- In plain text mode render a static toolbar above the textarea instead
-       of a floating bubble menu. Buttons splice markdown syntax directly into
-       the textarea so the content model stays in sync. -->
-  <template v-if="plainText">
-    <div class="rich-text-menu rich-text-menu--static">
-      <Flex :gap="4">
-        <ButtonGroup>
-          <!-- Heading -->
-          <Button
-            ref="headingButtonRef"
-            size="s"
-            square
-            :class="{ 'is-active': headingPickerOpen || getActiveHeading() !== null }"
-            @click="headingPickerOpen = !headingPickerOpen"
-          >
-            <Icon :size="18" name="ph:text-h-one" />
-          </Button>
+        <Popout
+          :anchor="headingButtonRef"
+          :visible="headingPickerOpen"
+          placement="bottom"
+          :offset="6"
+          @click-outside="headingPickerOpen = false"
+        >
+          <div class="list-popout">
+            <button
+              v-for="level in HEADING_LEVELS"
+              :key="level"
+              class="list-item heading-item"
+              :class="{ 'is-active': getActiveHeading() === level }"
+              :style="{ fontSize: `${1.4 - (level - 1) * 0.15}rem`,
+                        fontWeight: 'bold' }"
+              @click="toggleHeading(level)"
+            >
+              {{ HEADING_LABELS[level] }}
+            </button>
 
-          <Popout
-            :anchor="headingButtonRef"
-            :visible="headingPickerOpen"
-            placement="bottom"
-            :offset="6"
-            @click-outside="headingPickerOpen = false"
-          >
-            <div class="list-popout">
-              <button
-                v-for="level in HEADING_LEVELS"
-                :key="level"
-                class="list-item heading-item"
-                :class="{ 'is-active': getActiveHeading() === level }"
-                :style="{ fontSize: `${1.4 - (level - 1) * 0.15}rem`,
-                          fontWeight: 'bold' }"
-                @click="toggleHeading(level)"
-              >
-                {{ HEADING_LABELS[level] }}
+            <div v-if="getActiveHeading()" class="list-clear-row">
+              <button class="list-clear" @click="clearHeading">
+                <Icon :size="10" name="ph:x" />
+                Paragraph
               </button>
-
-              <div v-if="getActiveHeading()" class="list-clear-row">
-                <button class="list-clear" @click="clearHeading">
-                  <Icon :size="10" name="ph:x" />
-                  Paragraph
-                </button>
-              </div>
             </div>
-          </Popout>
+          </div>
+        </Popout>
 
+        <!-- Inline formatting -->
+        <template v-if="plainText">
           <Button size="s" square @click="insertMarkdown('**', '**')">
             <Icon :size="18" name="ph:text-b" />
           </Button>
@@ -368,128 +375,148 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
           <Button size="s" square @click="insertMarkdown('`', '`')">
             <Icon :size="18" name="ph:code" />
           </Button>
-
-          <!-- Color -->
-          <Button
-            ref="bucketButtonRef"
-            size="s"
-            square
-            :class="{ 'is-active': colorPickerOpen }"
-            @click="colorPickerOpen = !colorPickerOpen"
-          >
-            <Icon :size="18" name="ph:paint-bucket" :style="bucketStyle" />
+        </template>
+        <template v-else>
+          <Button size="s" square @click="props.editor.chain().focus().toggleBold().run()">
+            <Icon :size="18" name="ph:text-b" />
           </Button>
-
-          <Popout
-            :anchor="bucketButtonRef"
-            :visible="colorPickerOpen"
-            placement="bottom"
-            :offset="6"
-            @click-outside="colorPickerOpen = false"
-          >
-            <div class="color-popout">
-              <div class="color-grid">
-                <Tooltip
-                  v-for="name in TEXT_COLOR_NAMES"
-                  :key="name"
-                  placement="top"
-                >
-                  <template #tooltip>
-                    <p>{{ capitalize(swatchLabel(name)) }}</p>
-                  </template>
-                  <button
-                    class="color-swatch"
-                    :class="{ 'is-active': getActiveColor() === name }"
-                    :style="{ backgroundColor: textColorValue(name) }"
-                    @click="toggleColor(name)"
-                  />
-                </Tooltip>
-              </div>
-              <div v-if="getActiveColor()" class="color-clear-row">
-                <button class="color-swatch color-swatch--clear" @click="clearColor">
-                  <Icon :size="10" name="ph:x" />
-                </button>
-              </div>
-            </div>
-          </Popout>
-
-          <!-- Font -->
-          <Button
-            ref="fontButtonRef"
-            size="s"
-            square
-            :class="{ 'is-active': fontPickerOpen || getActiveFont() !== null }"
-            @click="fontPickerOpen = !fontPickerOpen"
-          >
-            <Icon :size="18" name="ph:text-aa" />
+          <Button size="s" square @click="props.editor.chain().focus().toggleItalic().run()">
+            <Icon :size="18" name="ph:text-italic" />
           </Button>
+          <Button size="s" square @click="props.editor.chain().focus().toggleUnderline().run()">
+            <Icon :size="18" name="ph:text-underline" />
+          </Button>
+          <Button size="s" square @click="props.editor.chain().focus().toggleStrike().run()">
+            <Icon :size="18" name="ph:text-strikethrough" />
+          </Button>
+          <Button size="s" square @click="props.editor.chain().focus().toggleCode().run()">
+            <Icon :size="18" name="ph:code" />
+          </Button>
+        </template>
 
-          <Popout
-            :anchor="fontButtonRef"
-            :visible="fontPickerOpen"
-            placement="bottom"
-            :offset="6"
-            @click-outside="fontPickerOpen = false"
-          >
-            <div class="list-popout">
-              <button
-                v-for="name in TEXT_FONT_NAMES"
+        <!-- Color -->
+        <Button
+          ref="bucketButtonRef"
+          size="s"
+          square
+          :class="{ 'is-active': colorPickerOpen }"
+          @click="colorPickerOpen = !colorPickerOpen"
+        >
+          <Icon :size="18" name="ph:paint-bucket" :style="bucketStyle" />
+        </Button>
+
+        <Popout
+          :anchor="bucketButtonRef"
+          :visible="colorPickerOpen"
+          placement="bottom"
+          :offset="6"
+          @click-outside="colorPickerOpen = false"
+        >
+          <div class="color-popout">
+            <div class="color-grid">
+              <Tooltip
+                v-for="name in TEXT_COLOR_NAMES"
                 :key="name"
-                class="list-item"
-                :class="{ 'is-active': getActiveFont() === name }"
-                :style="{ fontFamily: textFontValue(name) }"
-                @click="toggleFont(name)"
+                placement="top"
               >
-                {{ FONT_LABELS[name] }}
-              </button>
-              <div v-if="getActiveFont()" class="list-clear-row">
-                <button class="list-clear" @click="clearFont">
-                  <Icon :size="10" name="ph:x" />
-                  Reset font
-                </button>
-              </div>
+                <template #tooltip>
+                  <p>{{ capitalize(swatchLabel(name)) }}</p>
+                </template>
+                <button
+                  class="color-swatch"
+                  :class="{ 'is-active': getActiveColor() === name }"
+                  :style="{ backgroundColor: textColorValue(name) }"
+                  @click="toggleColor(name)"
+                />
+              </Tooltip>
             </div>
-          </Popout>
-
-          <!-- Size -->
-          <Button
-            ref="sizeButtonRef"
-            size="s"
-            square
-            :class="{ 'is-active': sizePickerOpen || getActiveSize() !== null }"
-            @click="sizePickerOpen = !sizePickerOpen"
-          >
-            <Icon :size="18" name="ph:text-t" />
-          </Button>
-
-          <Popout
-            :anchor="sizeButtonRef"
-            :visible="sizePickerOpen"
-            placement="bottom"
-            :offset="6"
-            @click-outside="sizePickerOpen = false"
-          >
-            <div class="list-popout">
-              <button
-                v-for="name in TEXT_SIZE_NAMES"
-                :key="name"
-                class="list-item"
-                :class="{ 'is-active': getActiveSize() === name }"
-                :style="{ fontSize: SIZE_PREVIEW[name] }"
-                @click="toggleSize(name)"
-              >
-                {{ SIZE_LABELS[name] }}
+            <div v-if="getActiveColor()" class="color-clear-row">
+              <button class="color-swatch color-swatch--clear" @click="clearColor">
+                <Icon :size="10" name="ph:x" />
               </button>
-              <div v-if="getActiveSize()" class="list-clear-row">
-                <button class="list-clear" @click="clearSize">
-                  <Icon :size="10" name="ph:x" />
-                  Reset size
-                </button>
-              </div>
             </div>
-          </Popout>
-        </ButtonGroup>
+          </div>
+        </Popout>
 
+        <!-- Font family -->
+        <Button
+          ref="fontButtonRef"
+          size="s"
+          square
+          :class="{ 'is-active': fontPickerOpen || getActiveFont() !== null }"
+          @click="fontPickerOpen = !fontPickerOpen"
+        >
+          <Icon :size="18" name="ph:text-aa" />
+        </Button>
+
+        <Popout
+          :anchor="fontButtonRef"
+          :visible="fontPickerOpen"
+          placement="bottom"
+          :offset="6"
+          @click-outside="fontPickerOpen = false"
+        >
+          <div class="list-popout">
+            <button
+              v-for="name in TEXT_FONT_NAMES"
+              :key="name"
+              class="list-item"
+              :class="{ 'is-active': getActiveFont() === name }"
+              :style="{ fontFamily: textFontValue(name) }"
+              @click="toggleFont(name)"
+            >
+              {{ FONT_LABELS[name] }}
+            </button>
+            <div v-if="getActiveFont()" class="list-clear-row">
+              <button class="list-clear" @click="clearFont">
+                <Icon :size="10" name="ph:x" />
+                Reset font
+              </button>
+            </div>
+          </div>
+        </Popout>
+
+        <!-- Font size -->
+        <Button
+          ref="sizeButtonRef"
+          size="s"
+          square
+          :class="{ 'is-active': sizePickerOpen || getActiveSize() !== null }"
+          @click="sizePickerOpen = !sizePickerOpen"
+        >
+          <Icon :size="18" name="ph:text-t" />
+        </Button>
+
+        <Popout
+          :anchor="sizeButtonRef"
+          :visible="sizePickerOpen"
+          placement="bottom"
+          :offset="6"
+          @click-outside="sizePickerOpen = false"
+        >
+          <div class="list-popout">
+            <button
+              v-for="name in TEXT_SIZE_NAMES"
+              :key="name"
+              class="list-item"
+              :class="{ 'is-active': getActiveSize() === name }"
+              :style="{ fontSize: SIZE_PREVIEW[name] }"
+              @click="toggleSize(name)"
+            >
+              {{ SIZE_LABELS[name] }}
+            </button>
+            <div v-if="getActiveSize()" class="list-clear-row">
+              <button class="list-clear" @click="clearSize">
+                <Icon :size="10" name="ph:x" />
+                Reset size
+              </button>
+            </div>
+          </div>
+        </Popout>
+      </ButtonGroup>
+
+      <!-- Block formatting -->
+      <template v-if="plainText">
         <ButtonGroup>
           <Button size="s" square @click="insertMarkdown('', '', '- ')">
             <Icon :size="18" name="ph:list-bullets" />
@@ -510,206 +537,8 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
             <Icon :size="18" name="ph:quotes" />
           </Button>
         </ButtonGroup>
-      </Flex>
-    </div>
-  </template>
-
-  <!-- Rich text mode: floating bubble menu that appears on selection -->
-  <BubbleMenu
-    v-else
-    :editor="editor"
-    :options="{
-      placement: 'top',
-      offset: 8,
-    }"
-    :should-show="shouldShow"
-  >
-    <div class="rich-text-menu">
-      <Flex :gap="4">
-        <ButtonGroup>
-          <!-- Heading -->
-          <Button
-            ref="headingButtonRef"
-            size="s"
-            square
-            :class="{ 'is-active': headingPickerOpen || getActiveHeading() !== null }"
-            @click="headingPickerOpen = !headingPickerOpen"
-          >
-            <Icon :size="18" name="ph:text-h-one" />
-          </Button>
-
-          <Popout
-            :anchor="headingButtonRef"
-            :visible="headingPickerOpen"
-            placement="bottom"
-            :offset="6"
-            @click-outside="headingPickerOpen = false"
-          >
-            <div class="list-popout">
-              <button
-                v-for="level in HEADING_LEVELS"
-                :key="level"
-                class="list-item heading-item"
-                :class="{ 'is-active': getActiveHeading() === level }"
-                :style="{ fontSize: `${1.4 - (level - 1) * 0.15}rem`,
-                          fontWeight: 'bold' }"
-                @click="toggleHeading(level)"
-              >
-                {{ HEADING_LABELS[level] }}
-              </button>
-
-              <div v-if="getActiveHeading()" class="list-clear-row">
-                <button class="list-clear" @click="clearHeading">
-                  <Icon :size="10" name="ph:x" />
-                  Paragraph
-                </button>
-              </div>
-            </div>
-          </Popout>
-
-          <Button size="s" square @click="props.editor.chain().focus().toggleBold().run()">
-            <Icon :size="18" name="ph:text-b" />
-          </Button>
-          <Button size="s" square @click="props.editor.chain().focus().toggleItalic().run()">
-            <Icon :size="18" name="ph:text-italic" />
-          </Button>
-          <Button size="s" square @click="props.editor.chain().focus().toggleUnderline().run()">
-            <Icon :size="18" name="ph:text-underline" />
-          </Button>
-          <Button size="s" square @click="props.editor.chain().focus().toggleStrike().run()">
-            <Icon :size="18" name="ph:text-strikethrough" />
-          </Button>
-          <Button size="s" square @click="props.editor.chain().focus().toggleCode().run()">
-            <Icon :size="18" name="ph:code" />
-          </Button>
-
-          <!-- Paint bucket - anchor for the color Popout -->
-          <Button
-            ref="bucketButtonRef"
-            size="s"
-            square
-            :class="{ 'is-active': colorPickerOpen }"
-            @click="colorPickerOpen = !colorPickerOpen"
-          >
-            <Icon :size="18" name="ph:paint-bucket" :style="bucketStyle" />
-          </Button>
-
-          <Popout
-            :anchor="bucketButtonRef"
-            :visible="colorPickerOpen"
-            placement="bottom"
-            :offset="6"
-            @click-outside="colorPickerOpen = false"
-          >
-            <div class="color-popout">
-              <div class="color-grid">
-                <Tooltip
-                  v-for="name in TEXT_COLOR_NAMES"
-                  :key="name"
-                  placement="top"
-                >
-                  <template #tooltip>
-                    <p>{{ capitalize(swatchLabel(name)) }}</p>
-                  </template>
-                  <button
-                    class="color-swatch"
-                    :class="{ 'is-active': getActiveColor() === name }"
-                    :style="{ backgroundColor: textColorValue(name) }"
-                    @click="toggleColor(name)"
-                  />
-                </Tooltip>
-              </div>
-
-              <div v-if="getActiveColor()" class="color-clear-row">
-                <button
-                  class="color-swatch color-swatch--clear"
-                  @click="clearColor"
-                >
-                  <Icon :size="10" name="ph:x" />
-                </button>
-              </div>
-            </div>
-          </Popout>
-
-          <!-- Font family - anchor for the font Popout -->
-          <Button
-            ref="fontButtonRef"
-            size="s"
-            square
-            :class="{ 'is-active': fontPickerOpen || getActiveFont() !== null }"
-            @click="fontPickerOpen = !fontPickerOpen"
-          >
-            <Icon :size="18" name="ph:text-aa" />
-          </Button>
-
-          <Popout
-            :anchor="fontButtonRef"
-            :visible="fontPickerOpen"
-            placement="bottom"
-            :offset="6"
-            @click-outside="fontPickerOpen = false"
-          >
-            <div class="list-popout">
-              <button
-                v-for="name in TEXT_FONT_NAMES"
-                :key="name"
-                class="list-item"
-                :class="{ 'is-active': getActiveFont() === name }"
-                :style="{ fontFamily: textFontValue(name) }"
-                @click="toggleFont(name)"
-              >
-                {{ FONT_LABELS[name] }}
-              </button>
-
-              <div v-if="getActiveFont()" class="list-clear-row">
-                <button class="list-clear" @click="clearFont">
-                  <Icon :size="10" name="ph:x" />
-                  Reset font
-                </button>
-              </div>
-            </div>
-          </Popout>
-
-          <!-- Font size - anchor for the size Popout -->
-          <Button
-            ref="sizeButtonRef"
-            size="s"
-            square
-            :class="{ 'is-active': sizePickerOpen || getActiveSize() !== null }"
-            @click="sizePickerOpen = !sizePickerOpen"
-          >
-            <Icon :size="18" name="ph:text-t" />
-          </Button>
-
-          <Popout
-            :anchor="sizeButtonRef"
-            :visible="sizePickerOpen"
-            placement="bottom"
-            :offset="6"
-            @click-outside="sizePickerOpen = false"
-          >
-            <div class="list-popout">
-              <button
-                v-for="name in TEXT_SIZE_NAMES"
-                :key="name"
-                class="list-item"
-                :class="{ 'is-active': getActiveSize() === name }"
-                :style="{ fontSize: SIZE_PREVIEW[name] }"
-                @click="toggleSize(name)"
-              >
-                {{ SIZE_LABELS[name] }}
-              </button>
-
-              <div v-if="getActiveSize()" class="list-clear-row">
-                <button class="list-clear" @click="clearSize">
-                  <Icon :size="10" name="ph:x" />
-                  Reset size
-                </button>
-              </div>
-            </div>
-          </Popout>
-        </ButtonGroup>
-
+      </template>
+      <template v-else>
         <ButtonGroup>
           <Button size="s" square @click="props.editor.chain().focus().toggleBulletList().run()">
             <Icon :size="18" name="ph:list-bullets" />
@@ -730,7 +559,29 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
             <Icon :size="18" name="ph:quotes" />
           </Button>
         </ButtonGroup>
-      </Flex>
+      </template>
+    </Flex>
+  </DefineToolbar>
+
+  <!-- Static toolbar: rendered above the textarea in plain text mode -->
+  <template v-if="plainText">
+    <div class="rich-text-menu rich-text-menu--static">
+      <ReuseToolbar />
+    </div>
+  </template>
+
+  <!-- Rich text mode: floating bubble menu that appears on selection -->
+  <BubbleMenu
+    v-else
+    :editor="editor"
+    :options="{
+      placement: 'top',
+      offset: 8,
+    }"
+    :should-show="shouldShow"
+  >
+    <div class="rich-text-menu">
+      <ReuseToolbar />
     </div>
   </BubbleMenu>
 </template>

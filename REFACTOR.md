@@ -4,13 +4,7 @@ This ticket is a catalogue of remaining improvement points. Each issue can be so
 
 | # | File | Issue | Priority |
 |---|------|--------|----------|
-| 1 | `pages/community/index.vue` | **31 layout CSS rules** - large number of `display:flex`, `flex-direction`, `gap`, `align-items`, `justify-content` blocks that can be replaced with `<Flex>` / `<Grid>` VUI primitives | High |
-| 2 | `components/Layout/Navigation.vue` | **24 layout CSS rules** - flex layouts throughout nav items, dropdowns, and link wrappers are expressible with `<Flex>` props | High |
-| 3 | `components/GameServers/GameServerLibrary.vue` | **22 layout CSS rules** - layout-only CSS throughout; good candidate for `<Flex column>` / `<Grid>` replacement | High |
-| 4 | `components/Discussions/models/DiscussionModelForum.vue` | **23 layout CSS rules** - duplicate `gap` declarations on same selector (lines 459-460), mixed `flex-direction: column-reverse`, layout CSS that can become VUI props | High |
-| 5 | `components/Events/EventsCalendar.vue` | **27 `!important` rules** + 16 layout rules - heavy reliance on `!important` to override VUI internals; needs `:deep()` scoping + Flex props review | High |
-| 6 | `components/Events/Event.vue` | **39 `!important` rules** - most are overriding VUI Flex/Card children (mobile responsive overrides); investigate replacing with `:deep()` or responsive VUI props | High |
-| 7 | `components/Editor/RichTextSelectionMenu.vue` | **889 lines, 15 layout CSS rules, 2 `!important`, 10 inline `style=`** - the selection/bubble menu is nearly as complex as `RichTextEditor.vue` itself. Extract `EditorColorPicker`, `EditorFontSelector`, `EditorSizeSelector` sub-panels; `style=` bindings (dynamic color/font values) may be unavoidable but should be typed | High |
+| 4 | `components/Discussions/models/DiscussionModelForum.vue` | Duplicate `gap` declarations on `__bottom-row` (lines 459-460) - genuine bug to fix. Remaining layout CSS is structural to the grid/flex component system with mobile overrides; not a VUI swap candidate. | Low |
 | 8 | `components/Events/EventsListing.vue` | **16 `!important` rules** + layout CSS - same pattern as `Event.vue` / `EventsCalendar.vue` | Medium |
 | 9 | `components/Admin/Funding/IncomeChart.vue` | **~14 layout CSS rules** - legend/header wrappers are pure flex and map 1:1 to `<Flex y-center gap="s">` etc. | Medium |
 | 10 | `components/Admin/Funding/UserChart.vue` | **~14 layout CSS rules** - nearly identical to `IncomeChart.vue`; same legend/header flex pattern | Medium |
@@ -68,7 +62,6 @@ This ticket is a catalogue of remaining improvement points. Each issue can be so
 | # | File | Size | Issue | Priority |
 |---|------|------|--------|----------|
 | 78 | `components/Admin/Users/UserForm.vue` | **1101 lines** | Admin user form handles avatar upload, badge editing, role assignment, permission verification, birthday picker adapter, and delete confirmation all in one component. Validators extracted to `useUserFormValidation`. Remaining: extract `UserFormBadgeEditor`, `UserFormRoleSelector`, `UserFormAvatarSection` | Medium |
-| 79 | `components/Editor/RichTextSelectionMenu.vue` | **889 lines** | Handles color picker, font picker, size picker, link editing, table insertion, math/YouTube modal triggers, and a plain-text markdown toolbar - all in one component. Extract `EditorColorPanel`, `EditorFontPanel`, `EditorFormatMenu` | High |
 | 81 | `components/Admin/Users/UserTable.vue` | **777 lines** | Data fetching extracted to `useAdminUserTableData`. Remaining: extract `UserTableRow`, move sort/filter state to `useUserTableFilters` composable | Low |
 | 82 | `components/Profile/ProfileDetail.vue` | **643 lines** | Friendship state machine extracted to `useFriendship`. Remaining: extract `ProfileEditSheet` sub-component | Low |
 | 87 | `components/Admin/Users/UserDetails.vue` | **735 lines** | Detail panel for a user with ban status, activity log, friendship list, profile summary, and inline ban form. Extract `UserDetailsBanPanel`, `UserDetailsProfileSummary` | Medium |

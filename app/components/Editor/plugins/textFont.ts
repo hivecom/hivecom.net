@@ -4,7 +4,6 @@ import { Mark, mergeAttributes } from '@tiptap/core'
 const CSS_VAR_FONT_RE = /var\(--text-font-([a-z]+)\)/
 const PREFIX_FONT_RE = /^:::font\[([a-z]+)\]/i
 const OPENING_DIRECTIVE_RE = /^[a-z]+\[/i
-const CLOSING_DIRECTIVE_RE = /^[a-z[]/i
 
 // ---------------------------------------------------------------------------
 // Named font palette
@@ -55,6 +54,11 @@ export const TextFont = Mark.create({
   name: 'textFont',
 
   priority: 900,
+
+  // Do not extend the mark when typing at its boundary. Without this,
+  // typing adjacent to a font-styled word would inherit the font, which is
+  // almost never what the user wants for an explicit font annotation.
+  inclusive: false,
 
   // ---------------------------------------------------------------------------
   // Attributes
@@ -194,9 +198,10 @@ export const TextFont = Mark.create({
             i += 3
             continue
           }
-          // Closing :::  - anything that is NOT followed by a letter or '[' counts,
-          // including being followed by another ':' (which is the next closing :::).
-          if (!CLOSING_DIRECTIVE_RE.test(after)) {
+          // Closing ::: - anything NOT followed by an opening-directive pattern
+          // (letters then '[') counts as a close, including bare ':::' sequences
+          // and text that happens to start with a letter but is not a directive.
+          if (!OPENING_DIRECTIVE_RE.test(after)) {
             depth--
             if (depth === 0) {
               const rawInner = src.slice(contentStart, i)

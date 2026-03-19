@@ -4,7 +4,6 @@ import { Mark, mergeAttributes } from '@tiptap/core'
 const CSS_VAR_SIZE_RE = /var\(--text-size-([a-z]+)\)/
 const PREFIX_SIZE_RE = /^:::size\[([a-z]+)\]/i
 const OPENING_DIRECTIVE_RE = /^[a-z]+\[/i
-const CLOSING_DIRECTIVE_RE = /^[a-z[]/i
 
 // ---------------------------------------------------------------------------
 // Named size palette
@@ -56,6 +55,11 @@ export const TextSize = Mark.create({
   name: 'textSize',
 
   priority: 900,
+
+  // Do not extend the mark when typing at its boundary. Without this,
+  // typing adjacent to a size-styled word would inherit the size, which is
+  // almost never what the user wants for an explicit size annotation.
+  inclusive: false,
 
   // ---------------------------------------------------------------------------
   // Attributes
@@ -195,9 +199,10 @@ export const TextSize = Mark.create({
             i += 3
             continue
           }
-          // Closing ::: - anything NOT followed by a letter or '[' counts,
-          // including being followed by another ':' (which is the next closing :::).
-          if (!CLOSING_DIRECTIVE_RE.test(after)) {
+          // Closing ::: - anything NOT followed by an opening-directive pattern
+          // (letters then '[') counts as a close, including bare ':::' sequences
+          // and text that happens to start with a letter but is not a directive.
+          if (!OPENING_DIRECTIVE_RE.test(after)) {
             depth--
             if (depth === 0) {
               const rawInner = src.slice(contentStart, i)

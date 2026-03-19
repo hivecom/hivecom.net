@@ -81,6 +81,9 @@ export function defineSuggestion(
 
           const el = component.element as HTMLElement
           el.style.position = 'absolute'
+          // Must sit above modal backdrops (--z-modal: 600, --z-overlay: 300).
+          // We match --z-toast (9000) since we can't read CSS vars from JS here.
+          el.style.zIndex = '9000'
           document.body.appendChild(el)
           updatePosition(props.editor, el)
         },

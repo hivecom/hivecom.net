@@ -2,9 +2,12 @@
 import type { ValidationError } from '@dolanske/v-valid'
 import type { Comment, ProvidedDiscussion } from './Discussion.types'
 import { Alert, Button, Flex, Tooltip } from '@dolanske/vui'
+import { computed } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import UserName from '@/components/Shared/UserName.vue'
+import { useBulkUserData } from '@/composables/useCacheUserData'
+import { extractMentionIds } from '@/lib/markdownProcessors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { normalizeErrors } from '@/lib/utils/formatting'
 import { DISCUSSION_KEYS } from './Discussion.keys'
@@ -44,6 +47,17 @@ const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
 
 const editorRef = useTemplateRef<{ focus: () => void }>('editor')
 
+const replyMentionIds = computed(() => extractMentionIds(replyingTo?.markdown ?? ''))
+const { users: replyMentionUsers } = useBulkUserData(replyMentionIds)
+const replyMentionLookup = computed<Record<string, string>>(() => {
+  const lookup: Record<string, string> = {}
+  for (const [id, u] of replyMentionUsers.value.entries()) {
+    if (u?.username)
+      lookup[id] = u.username
+  }
+  return lookup
+})
+
 defineExpose({
   focus: () => editorRef.value?.focus(),
 })
@@ -64,7 +78,7 @@ defineExpose({
             Replying to
             <UserName size="s" :user-id="replyingTo.created_by" />:
           </span>
-          <MarkdownPreview :markdown="replyingTo.markdown" :max-length="240" />
+          <MarkdownPreview :markdown="replyingTo.markdown" :mention-lookup="replyMentionLookup" :max-length="240" />
         </div>
         <Tooltip>
           <Button square size="s" plain @click="emit('update:replyingTo', undefined)">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { JSONContent } from '@tiptap/core'
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
@@ -52,6 +53,8 @@ const INLINE_HTML_TAG_RE = /^<(?:[a-z][a-z0-9-]*(?:\s[^>]*)?\/?|\/[a-z][a-z0-9-]
 const NBSP_TRAILING_RE = /^&nbsp;$/gm
 const NBSP_SINGLE_RE = /&nbsp;$/
 const HTML_ANGLE_RE = /<([^>]*)>/g
+const TRAILING_WS_RE = /(\s+)$/
+const LEADING_WS_RE = /^(\s+)/
 
 // TODO: Code block highlighting & dropdown for seleting language
 
@@ -283,6 +286,192 @@ const editor = useEditor({
   ],
   contentType: 'markdown',
   onCreate: () => {
+    // Patch MarkdownManager.renderNodesWithMarkBoundaries to compare mark attrs,
+    // not just mark types. The library's findMarksToClose / findMarksToCloseAtEnd
+    // only check whether the same mark *type* exists on the next text node. When
+    // two adjacent nodes carry the same mark type with different attrs (e.g.
+    // textColor red → orange), the library never closes the first mark or opens
+    // the second, producing merged output like :::color[red]Testing::: instead of
+    // :::color[red]Test::::::color[orange]ing:::. Patching the instance method is
+    // the least invasive fix since the standalone helper functions called inside
+    // the method can't be swapped individually.
+    if (editor.value?.markdown) {
+      const mgr = editor.value.markdown as unknown as {
+        renderNodesWithMarkBoundaries: (
+          nodes: JSONContent[],
+          parentNode: JSONContent | null,
+          separator?: string,
+          level?: number,
+        ) => string
+        getMarkOpening: (markType: string, mark: { type: string, attrs?: Record<string, unknown> }) => string
+        getMarkClosing: (markType: string, mark: { type: string, attrs?: Record<string, unknown> }) => string
+        renderNodeToMarkdown: (node: JSONContent, parentNode: JSONContent | null, index: number, level: number) => string
+      }
+
+      interface MarkEntry { type: string, attrs?: Record<string, unknown> }
+
+      function marksEqual(a: MarkEntry | undefined, b: MarkEntry | undefined): boolean {
+        if (!a || !b)
+          return a === b
+        return a.type === b.type && JSON.stringify(a.attrs ?? {}) === JSON.stringify(b.attrs ?? {})
+      }
+
+      const originalRender = mgr.renderNodesWithMarkBoundaries.bind(mgr)
+
+      mgr.renderNodesWithMarkBoundaries = (
+        nodes: JSONContent[],
+        parentNode: JSONContent | null,
+        separator = '',
+        level = 0,
+      ): string => {
+        // Check whether any node pair has same-type-different-attrs marks.
+        // If not, skip the patch entirely and use the original (faster) path.
+        let needsPatch = false
+        for (let idx = 0; idx < nodes.length - 1; idx++) {
+          const a = nodes[idx]
+          const b = nodes[idx + 1]
+          if (!a || !b || a.type !== 'text' || b.type !== 'text')
+            continue
+          const aMarks = (a.marks ?? []) as MarkEntry[]
+          const bMarks = (b.marks ?? []) as MarkEntry[]
+          for (const am of aMarks) {
+            const bm = bMarks.find(m => m.type === am.type)
+            if (bm && !marksEqual(am, bm)) {
+              needsPatch = true
+              break
+            }
+          }
+          if (needsPatch)
+            break
+        }
+        if (!needsPatch)
+          return originalRender(nodes, parentNode, separator, level)
+
+        // Attrs-aware rendering: close and reopen marks whenever attrs differ.
+        const result: string[] = []
+        const activeMarks = new Map<string, MarkEntry>()
+
+        nodes.forEach((node, i) => {
+          const nextNode: JSONContent | null = (i < nodes.length - 1 ? nodes[i + 1] : null) ?? null
+
+          if (!node.type)
+            return
+
+          if (node.type === 'text') {
+            let text = node.text ?? ''
+            const currentMarks = new Map(
+              ((node.marks ?? []) as MarkEntry[]).map(m => [m.type, m]),
+            )
+
+            // Determine which active marks need closing: mark absent from
+            // current node OR same type but attrs changed.
+            const toClose: string[] = []
+            for (const [type, activeMark] of activeMarks) {
+              const cur = currentMarks.get(type)
+              if (!cur || !marksEqual(activeMark, cur))
+                toClose.push(type)
+            }
+
+            // Determine which current marks need opening: not active, or
+            // active with different attrs (i.e. was just closed above).
+            const toOpen: Array<{ type: string, mark: MarkEntry }> = []
+            for (const [type, mark] of currentMarks) {
+              const active = activeMarks.get(type)
+              if (!active || !marksEqual(active, mark))
+                toOpen.push({ type, mark })
+            }
+
+            // Close marks (reverse order for proper nesting)
+            let trailingWs = ''
+            if (toClose.length > 0) {
+              const wsMatch = text.match(TRAILING_WS_RE)
+              if (wsMatch) {
+                trailingWs = wsMatch[1] ?? ''
+                text = text.slice(0, -trailingWs.length)
+              }
+            }
+            for (const type of toClose.toReversed()) {
+              const mark = activeMarks.get(type)
+              if (mark) {
+                text += mgr.getMarkClosing(type, mark)
+              }
+              activeMarks.delete(type)
+            }
+
+            // Open marks
+            let leadingWs = ''
+            if (toOpen.length > 0) {
+              const wsMatch = text.match(LEADING_WS_RE)
+              if (wsMatch) {
+                leadingWs = wsMatch[1] ?? ''
+                text = text.slice(leadingWs.length)
+              }
+            }
+            for (const { type, mark } of toOpen) {
+              const open = mgr.getMarkOpening(type, mark)
+              if (open)
+                text = open + text
+              activeMarks.set(type, mark)
+            }
+            text = leadingWs + text
+
+            // Close marks that shouldn't persist to the next node: mark not
+            // on the next node at all, or same type but different attrs.
+            const toCloseAtEnd: string[] = []
+            for (const [type, activeMark] of activeMarks) {
+              const nextMarks = (nextNode?.marks ?? []) as MarkEntry[]
+              const nm = nextMarks.find(m => m.type === type)
+              if (!nm || !marksEqual(activeMark, nm))
+                toCloseAtEnd.push(type)
+            }
+
+            let endTrailingWs = ''
+            if (toCloseAtEnd.length > 0) {
+              const wsMatch = text.match(TRAILING_WS_RE)
+              if (wsMatch) {
+                endTrailingWs = wsMatch[1] ?? ''
+                text = text.slice(0, -endTrailingWs.length)
+              }
+            }
+            for (const type of toCloseAtEnd.toReversed()) {
+              const mark = activeMarks.get(type)
+              if (mark) {
+                text += mgr.getMarkClosing(type, mark)
+              }
+              activeMarks.delete(type)
+            }
+
+            text += endTrailingWs + trailingWs
+            result.push(text)
+          }
+          else {
+            // Non-text node: close all active marks, render the node, reopen.
+            let before = ''
+            for (const [type, mark] of [...activeMarks.entries()].toReversed()) {
+              before += mgr.getMarkClosing(type, mark)
+            }
+            const savedMarks = new Map(activeMarks)
+            activeMarks.clear()
+
+            const content = mgr.renderNodeToMarkdown(node, parentNode, i, level)
+
+            let after = ''
+            if (node.type !== 'hardBreak') {
+              for (const [type, mark] of savedMarks) {
+                const open = mgr.getMarkOpening(type, mark)
+                if (open)
+                  after += open
+                activeMarks.set(type, mark)
+              }
+            }
+            result.push(before + content + after)
+          }
+        })
+
+        return result.join(separator)
+      }
+    }
+
     // Synchronise the Vue-level empty flag once the editor is fully initialised.
     // Using nextTick ensures EditorContent has attached the view to the visible
     // DOM so any subsequent reactive renders see the correct state.

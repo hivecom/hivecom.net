@@ -171,6 +171,11 @@ watch(() => settings.value.discussion_view_mode, (val) => {
   viewMode.value = val ?? 'flat'
 })
 
+function handleViewModeUpdate(val: ViewMode) {
+  viewMode.value = val
+  settings.value.discussion_view_mode = val
+}
+
 const showOfftopic = ref(settings.value.show_offtopic_replies ?? false)
 const showThreadReplies = ref(settings.value.show_thread_replies ?? false)
 
@@ -434,7 +439,7 @@ function isNodeVisible(node: ThreadNode): boolean {
         :has-comments="modelledComments.length > 0"
         :offtopic-count="offtopicCount"
         :show-offtopic="showOfftopic"
-        @update:view-mode="viewMode = $event"
+        @update:view-mode="handleViewModeUpdate"
         @update:show-offtopic="handleShowOfftopicUpdate"
       />
 
@@ -452,7 +457,9 @@ function isNodeVisible(node: ThreadNode): boolean {
       </div>
 
       <!-- Flat view: all comments chronologically with inline reply previews -->
-      <template v-if="viewMode === 'flat' && modelledComments.length > 0">
+      <!-- v-show (not v-if) keeps items mounted across mode switches so MDRenderer -->
+      <!-- never re-suspends and the skeleton/fade-in flash doesn't appear. -->
+      <div v-show="viewMode === 'flat' && modelledComments.length > 0">
         <template v-for="(comment, index) in modelledComments" :key="comment.id">
           <DiscussionItem
             v-if="isCommentVisible(comment)"
@@ -464,10 +471,10 @@ function isNodeVisible(node: ThreadNode): boolean {
             :stagger-index="Math.min(index, 10)"
           />
         </template>
-      </template>
+      </div>
 
       <!-- Threaded view: only roots rendered, children nest recursively -->
-      <template v-else-if="viewMode === 'threaded' && threadRoots.length > 0">
+      <div v-show="viewMode === 'threaded' && threadRoots.length > 0">
         <template v-for="(node, index) in threadRoots" :key="node.comment.id">
           <DiscussionItem
             v-if="isNodeVisible(node)"
@@ -479,7 +486,7 @@ function isNodeVisible(node: ThreadNode): boolean {
             :stagger-index="Math.min(index, 10)"
           />
         </template>
-      </template>
+      </div>
 
       <!-- Pending replies banner - forum model: sits below comments (newest appended at bottom) -->
       <div

@@ -79,14 +79,14 @@ function scrollReply() {
 
 // ── Inline thread-reply preview (flat mode) ───────────────────────────────────
 
-// Source of children differs by mode:
-//   flat     → threadNode.children (resolved from the node map)
-//   threaded → children prop (passed down recursively)
-const sourceChildren = computed((): ThreadNode[] => {
-  if (viewMode.value === 'threaded')
-    return children
-  return threadNode?.children ?? []
-})
+// Always use whichever children source is populated so both the flat inline
+// preview and the threaded recursive subtree stay mounted at all times.
+// This means MDRenderer resolves while hidden and no flash occurs on switch.
+//   threaded list items → children prop is populated, threadNode is undefined
+//   flat list items     → threadNode.children is populated, children is []
+const sourceChildren = computed((): ThreadNode[] =>
+  children.length > 0 ? children : (threadNode?.children ?? []),
+)
 
 // Filter for off-topic visibility
 const visibleChildren = computed((): ThreadNode[] =>
@@ -151,7 +151,7 @@ const PREVIEW_LENGTH = 120
 
     <!-- Flat mode: inline one-liner reply preview with expand toggle -->
     <div
-      v-if="viewMode === 'flat' && hasReplies"
+      v-show="viewMode === 'flat' && hasReplies"
       class="discussion-comment-wrapper__thread"
       :class="model === 'forum' ? 'discussion-comment-wrapper__thread--forum' : 'discussion-comment-wrapper__thread--comment'"
     >
@@ -219,7 +219,9 @@ const PREVIEW_LENGTH = 120
     </div>
 
     <!-- Threaded mode: recursively render children as full DiscussionItems -->
-    <template v-else-if="viewMode === 'threaded' && hasReplies">
+    <!-- v-show keeps nested DiscussionItems mounted across mode switches so -->
+    <!-- MDRenderer never re-suspends and the skeleton/fade-in flash doesn't appear. -->
+    <div v-show="viewMode === 'threaded' && hasReplies">
       <!-- Collapsed summary pill -->
       <Flex
         v-if="threadCollapsed"
@@ -266,7 +268,7 @@ const PREVIEW_LENGTH = 120
           :show-thread-replies
         />
       </div>
-    </template>
+    </div>
   </div>
 </template>
 

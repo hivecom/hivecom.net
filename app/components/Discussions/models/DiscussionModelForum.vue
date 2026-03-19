@@ -3,6 +3,7 @@ import type { Comment, ProvidedDiscussion } from '../Discussion.types'
 import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
@@ -15,7 +16,9 @@ import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import UserRole from '@/components/Shared/UserRole.vue'
 import { useCacheBadgeDiscussionReplyCount } from '@/composables/useCacheBadgeDiscussionReplyCount'
+import { useBulkUserData } from '@/composables/useCacheUserData'
 import { useCacheUserDiscussionCount } from '@/composables/useCacheUserDiscussionCount'
+import { extractMentionIds } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { getCountryInfo } from '@/lib/utils/country'
@@ -63,6 +66,17 @@ const country = computed(() => getCountryInfo(user.value?.country))
 
 const setReplyToComment = inject(DISCUSSION_KEYS.setReplyToComment) as (data: Comment) => void
 const setQuoteOfComment = inject(DISCUSSION_KEYS.setQuoteOfComment) as (data: Comment) => void
+
+const replyMentionIds = computed(() => extractMentionIds(data.value.reply?.markdown ?? ''))
+const { users: replyMentionUsers } = useBulkUserData(replyMentionIds)
+const replyMentionLookup = computed<Record<string, string>>(() => {
+  const lookup: Record<string, string> = {}
+  for (const [id, u] of replyMentionUsers.value.entries()) {
+    if (u?.username)
+      lookup[id] = u.username
+  }
+  return lookup
+})
 
 // ── Off-topic ────────────────────────────────────────────────────────────────
 
@@ -131,9 +145,14 @@ async function submit() {
   if (editedContent.value.length > 0) {
     editLoading.value = true
 
+    // Resolve any plain-text @username mentions that were typed in plain-text
+    // mode - the RichTextEditor's handleSubmit does this automatically, but the
+    // edit modal calls supabase directly and bypasses that path.
+    const resolvedMarkdown = await resolvePlainTextMentions(editedContent.value, supabase)
+
     const res = await supabase
       .from('discussion_replies')
-      .update({ markdown: editedContent.value, is_nsfw: editedIsNsfw.value })
+      .update({ markdown: resolvedMarkdown, is_nsfw: editedIsNsfw.value })
       .eq('id', data.value.id)
       .single()
 
@@ -145,7 +164,7 @@ async function submit() {
       // for now I am updating the value automatically, but preferable the whole
       // comment object should get replaced by `res.data`
 
-      data.value.markdown = editedContent.value
+      data.value.markdown = resolvedMarkdown
       data.value.is_nsfw = editedIsNsfw.value
       data.value.modified_at = dayjs().toISOString()
       // Re-apply the NSFW warning if the user toggled it back on
@@ -227,7 +246,7 @@ const { displayReactions, toggleReaction } = useReactions({
         <p v-else class="discussion-forum__reply-user">
           You wrote:
         </p>
-        <MarkdownPreview class="text-color-light" :markdown="data.reply.markdown" :max-length="164" />
+        <MarkdownPreview class="text-color-light" :markdown="data.reply.markdown" :mention-lookup="replyMentionLookup" :max-length="164" />
       </Alert>
 
       <!-- Content warning -->
@@ -460,7 +479,6 @@ const { displayReactions, toggleReaction } = useReactions({
 
   &__bottom-row {
     margin-top: var(--space-s);
-    gap: var(--space-xs);
     gap: var(--space-xxs);
     min-height: 32px;
   }

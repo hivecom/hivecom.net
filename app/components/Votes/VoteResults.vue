@@ -75,16 +75,14 @@ const isBelowSmall = useBreakpoint('<s')
       :votes="props.votes"
     />
 
-    <Card class="card-bg mt-xl p-l">
-      <h3 class="mb-m">
-        Comments
-      </h3>
-      <Discussion
-        :id="String(props.referendum.id)"
-        type="referendum"
-        hash="general-chat"
-      />
-    </Card>
+    <h3 class="mt-m mb-m">
+      Comments
+    </h3>
+    <Discussion
+      :id="String(props.referendum.id)"
+      type="referendum"
+      hash="general-chat"
+    />
   </section>
 </template>
 
