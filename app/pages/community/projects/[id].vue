@@ -6,7 +6,7 @@ import DetailStates from '@/components/Shared/DetailStates.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
+import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
 import { useDataProjects } from '@/composables/useDataProjects'
 import { getPlaceholderBannerProject } from '@/lib/projectBannerPlaceholders'
 
@@ -19,7 +19,7 @@ const { projects, loading, error: projectsError, getById } = useDataProjects()
 const project = ref<Tables<'projects'> | null>(null)
 const error = ref<string | null>(null)
 
-const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(
+const { bannerUrl: projectBannerUrl } = useDataProjectBanner(
   computed(() => project.value?.id ?? null),
 )
 

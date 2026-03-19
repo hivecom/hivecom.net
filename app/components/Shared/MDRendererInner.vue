@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useBulkUserData } from '@/composables/useCacheUserData'
+import { useBulkDataUser } from '@/composables/useDataUser'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import MDLightbox from './MDLightbox.vue'
 
@@ -18,7 +18,7 @@ const props = defineProps({
 })
 
 const mentionIds = computed(() => extractMentionIds(props.md))
-useBulkUserData(mentionIds)
+useBulkDataUser(mentionIds)
 
 const processedMarkdown = computed(() => processMarkdown(props.md))
 

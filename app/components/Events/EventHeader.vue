@@ -4,7 +4,7 @@ import { Badge, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
 import EventGames from '@/components/Events/EventGames.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 import { useRealtimeRsvp } from '@/composables/useRealtimeRsvp'
 import { useRsvpBus } from '@/composables/useRsvpBus'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -39,7 +39,7 @@ const isBelowSmall = useBreakpoint('<s')
 const user = useSupabaseUser()
 
 // Fetch organizer profile to check public visibility
-const { user: organizer } = useCacheUserData(
+const { user: organizer } = useDataUser(
   computed(() => props.event.created_by ?? null),
   { includeRole: false, includeAvatar: false },
 )

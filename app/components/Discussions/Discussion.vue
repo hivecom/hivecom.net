@@ -4,8 +4,9 @@ import type { Comment, DiscussionSettings, RawComment, ThreadNode } from './Disc
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Skeleton } from '@dolanske/vui'
-import { useBulkUserData } from '@/composables/useCacheUserData'
 import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies'
+import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
 import { normalizeTipTapOutput } from '@/lib/utils/formatting'
@@ -73,7 +74,7 @@ const MAX_COMMENT_CHARS = 8192
 
 const userId = useUserId()
 
-const { user: currentUserData } = useCacheUserData(userId, { includeRole: true })
+const { user: currentUserData } = useDataUser(userId, { includeRole: true })
 const canBypassLock = computed(() => {
   const role = currentUserData.value?.role
   return role === 'admin' || role === 'moderator'
@@ -119,7 +120,7 @@ watchEffect(() => {
   }
 })
 
-useBulkUserData(replyAuthorIds, {
+useBulkDataUser(replyAuthorIds, {
   includeRole: true,
   includeAvatar: true,
   userTtl: 10 * 60 * 1000,
@@ -356,7 +357,7 @@ async function submitReply() {
         // Invalidate the cached discussion row - the DB trigger has incremented
         // reply_count server-side so the cached value is now stale.
         if (discussion.value) {
-          useCacheDiscussion().invalidate(discussion.value.id, discussion.value.slug)
+          useDiscussionCache().invalidate(discussion.value.id, discussion.value.slug)
         }
         // The realtime subscription will fire for our own post too - pre-emptively
         // bump latestCommentTime by ensuring the new reply is in the list before

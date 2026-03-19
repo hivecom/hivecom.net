@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { SubscriptionRow } from '@/composables/useCacheDiscussionSubscriptions'
+import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { Database } from '@/types/database.types'
 import { Flex } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useCacheDiscussionSubscriptions } from '@/composables/useCacheDiscussionSubscriptions'
+import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import NotificationCardEmpty from './NotificationCardEmpty.vue'
 import NotificationCardError from './NotificationCardError.vue'
 import NotificationCardLoading from './NotificationCardLoading.vue'
@@ -13,7 +13,7 @@ const emit = defineEmits<{ (e: 'navigate'): void }>()
 
 const supabase = useSupabaseClient<Database>()
 const userId = useUserId()
-const subscriptionsCache = useCacheDiscussionSubscriptions()
+const subscriptionsCache = useDiscussionSubscriptionsCache()
 
 const loading = ref(false)
 const error = ref<string | null>(null)

@@ -53,7 +53,7 @@ export interface SetDiscussionOptions {
   entityId?: string
 }
 
-export function useCacheDiscussion() {
+export function useDiscussionCache() {
   const cache = useCache({ ttl: CACHE_TTL })
   const supabase = useSupabaseClient<Database>()
 

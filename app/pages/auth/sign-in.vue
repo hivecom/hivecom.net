@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { Alert, Button, Card, Flex, Input, OTP, OTPItem, Select, Tab, Tabs } from '@dolanske/vui'
 import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
-import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
+import { useMfaStatus } from '@/composables/useMfaStatus'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { normalizeInternalRedirect } from '@/lib/utils/common'
 
@@ -50,7 +50,7 @@ const pendingMfa = reactive({
   factorId: '',
   factorLabel: '',
 })
-const mfaCache = useCacheMfaStatus()
+const mfaCache = useMfaStatus()
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
 const requiresMfaChallenge = computed(() => Boolean(pendingMfa.factorId))
 const mfaPromptCopy = 'Finish verification to sign-in.'

@@ -20,7 +20,7 @@ import { computed, onBeforeMount, ref, watchEffect } from 'vue'
 import { Bar, Line } from 'vue-chartjs'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
-import { useBulkUserData } from '@/composables/useCacheUserData'
+import { useBulkDataUser } from '@/composables/useDataUser'
 import { useForumStats } from '@/composables/useForumStats'
 import { getChartGridColor, getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
@@ -59,7 +59,7 @@ const allUserIds = computed(() => {
   return [...ids]
 })
 
-useBulkUserData(allUserIds, {
+useBulkDataUser(allUserIds, {
   includeRole: true,
   includeAvatar: true,
   userTtl: 10 * 60 * 1000,

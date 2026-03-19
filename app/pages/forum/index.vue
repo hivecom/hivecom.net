@@ -14,8 +14,9 @@ import ForumRecentlyVisited from '@/components/Forum/ForumRecentlyVisited.vue'
 import ForumTopicItem from '@/components/Forum/ForumTopicItem.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useCache } from '@/composables/useCache'
-import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
+import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useForumActivityFeed } from '@/composables/useForumActivityFeed'
 import { useForumDraftCount } from '@/composables/useForumDraftCount'
 import { useForumUserActivity } from '@/composables/useForumUserActivity'
@@ -49,7 +50,7 @@ const settingsAnchor = useTemplateRef('settings-anchor')
 const userId = useUserId()
 const isMobile = useBreakpoint('<s')
 
-const { user } = useCacheUserData(userId, { includeRole: true })
+const { user } = useDataUser(userId, { includeRole: true })
 
 // Track which topics/discussions have new content since last visit
 const forumUnread = useDataForumUnread()
@@ -66,7 +67,7 @@ const { settings } = useDataUserSettings()
 const loading = ref(false)
 const supabase = useSupabaseClient()
 const forumCache = useCache()
-const discussionCache = useCacheDiscussion()
+const discussionCache = useDiscussionCache()
 
 watch(contentRulesGateOpen, (open) => {
   if (!open)
@@ -232,14 +233,14 @@ const {
 const { draftCount, fetchDraftCount, handleDraftUpdated } = useForumDraftCount(userId)
 
 // ── Mention lookup for activity feed ──────────────────────────────────────
-const { users: mentionUsers } = useBulkUserData(latestPostMentionIds, {
+const { users: mentionUsers } = useBulkDataUser(latestPostMentionIds, {
   includeAvatar: false,
   includeRole: false,
 })
 
 // Pre-warm the role cache for all post authors so UserDisplay components
 // don't each fire their own user_roles query.
-useBulkUserData(latestPostAuthorIds, {
+useBulkDataUser(latestPostAuthorIds, {
   includeAvatar: true,
   includeRole: true,
 })

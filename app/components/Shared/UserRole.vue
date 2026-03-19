@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 
 interface Props {
   userId?: string | null
@@ -12,7 +12,7 @@ const props = withDefaults(defineProps<Props>(), {
   size: 's',
 })
 
-const { user } = useCacheUserData(
+const { user } = useDataUser(
   computed(() => props.userId ?? null),
   {
     includeRole: true,

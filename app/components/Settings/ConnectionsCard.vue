@@ -206,6 +206,110 @@ function toggleRichPresence() {
     </template>
 
     <div>
+      <!-- Rich presence toggle -->
+      <Flex expand class="account-connection-row">
+        <Flex
+          :row="!isBelowSmall"
+          :column="isBelowSmall"
+          :x-between="!isBelowSmall"
+          :y-center="!isBelowSmall"
+          gap="m"
+          expand
+        >
+          <Flex expand gap="m" y-center>
+            <div class="account-icon presence">
+              <Icon name="ph:activity" size="22" />
+            </div>
+            <Flex column expand gap="xxs">
+              <strong>Rich presence</strong>
+              <p class="text-s text-color-lighter">
+                Allow fetching and displaying information from any connected services
+              </p>
+            </Flex>
+          </Flex>
+
+          <div class="account-status presence-toggle" :style="{ width: isBelowSmall ? '100%' : undefined }">
+            <Button
+              v-if="isBelowSmall"
+              :expand="true"
+              :loading="richPresenceLoading"
+              :disabled="richPresenceLoading"
+              :variant="richPresenceEnabled ? 'success' : 'gray'"
+              @click="toggleRichPresence"
+            >
+              <template #start>
+                <Icon :name="richPresenceEnabled ? 'ph:check' : 'ph:x'" />
+              </template>
+              {{ richPresenceEnabled ? 'Enabled' : 'Disabled' }}
+            </Button>
+
+            <Switch
+              v-else
+              :model-value="richPresenceEnabled"
+              :disabled="richPresenceLoading"
+              @update:model-value="updateRichPresence"
+            />
+          </div>
+        </Flex>
+      </Flex>
+
+      <!-- Discord -->
+      <Flex expand class="account-connection-row">
+        <Flex
+          :row="!isBelowSmall"
+          :column="isBelowSmall"
+          :x-between="!isBelowSmall"
+          :y-center="!isBelowSmall"
+          gap="m"
+          expand
+        >
+          <Flex expand gap="m" y-center>
+            <div class="account-icon discord">
+              <Icon name="ph:discord-logo" size="22" />
+            </div>
+            <Flex column expand gap="xxs">
+              <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
+                <strong>Discord</strong>
+                <TinyBadge v-if="props.profile?.discord_id" variant="success">
+                  <Icon class="text-color-accent" name="ph:check" />
+                  Connected
+                </TinyBadge>
+              </Flex>
+              <p class="text-s text-color-lighter">
+                Sign-in through Discord
+              </p>
+            </Flex>
+          </Flex>
+
+          <div class="account-status" :style="{ width: isBelowSmall ? '100%' : undefined }">
+            <Button
+              v-if="isProfileLoading"
+              :expand="isBelowSmall"
+              variant="fill"
+              :loading="true"
+              disabled
+              aria-disabled="true"
+              size="s"
+            >
+              Loading
+            </Button>
+            <Button
+              v-else-if="props.profile?.discord_id"
+              :expand="isBelowSmall"
+              variant="danger"
+              :loading="disconnectLoading.discord"
+              size="s"
+              @click="disconnectDiscord"
+            >
+              Disconnect
+            </Button>
+            <ClientOnly v-else>
+              <ConnectDiscord :expand="isBelowSmall" @linked="emit('updated')" />
+            </ClientOnly>
+          </div>
+        </Flex>
+      </Flex>
+
       <!-- Patreon -->
       <Flex expand class="account-connection-row">
         <Flex
@@ -320,63 +424,6 @@ function toggleRichPresence() {
         </Flex>
       </Flex>
 
-      <!-- Discord -->
-      <Flex expand class="account-connection-row">
-        <Flex
-          :row="!isBelowSmall"
-          :column="isBelowSmall"
-          :x-between="!isBelowSmall"
-          :y-center="!isBelowSmall"
-          gap="m"
-          expand
-        >
-          <Flex expand gap="m" y-center>
-            <div class="account-icon discord">
-              <Icon name="ph:discord-logo" size="22" />
-            </div>
-            <Flex column expand gap="xxs">
-              <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
-                <strong>Discord</strong>
-                <TinyBadge v-if="props.profile?.discord_id" variant="success">
-                  <Icon class="text-color-accent" name="ph:check" />
-                  Connected
-                </TinyBadge>
-              </Flex>
-              <p class="text-s text-color-lighter">
-                Sign-in through Discord
-              </p>
-            </Flex>
-          </Flex>
-
-          <div class="account-status" :style="{ width: isBelowSmall ? '100%' : undefined }">
-            <Button
-              v-if="isProfileLoading"
-              :expand="isBelowSmall"
-              variant="fill"
-              :loading="true"
-              disabled
-              aria-disabled="true"
-              size="s"
-            >
-              Loading
-            </Button>
-            <Button
-              v-else-if="props.profile?.discord_id"
-              :expand="isBelowSmall"
-              variant="danger"
-              :loading="disconnectLoading.discord"
-              size="s"
-              @click="disconnectDiscord"
-            >
-              Disconnect
-            </Button>
-            <ClientOnly v-else>
-              <ConnectDiscord :expand="isBelowSmall" @linked="emit('updated')" />
-            </ClientOnly>
-          </div>
-        </Flex>
-      </Flex>
-
       <!-- TeamSpeak -->
       <Flex expand class="account-connection-row">
         <Flex
@@ -420,53 +467,6 @@ function toggleRichPresence() {
             <ClientOnly v-else>
               <ConnectTeamspeak :profile="props.profile" @linked="emit('updated')" />
             </ClientOnly>
-          </div>
-        </Flex>
-      </Flex>
-
-      <!-- Rich presence toggle -->
-      <Flex expand class="account-connection-row">
-        <Flex
-          :row="!isBelowSmall"
-          :column="isBelowSmall"
-          :x-between="!isBelowSmall"
-          :y-center="!isBelowSmall"
-          gap="m"
-          expand
-        >
-          <Flex expand gap="m" y-center>
-            <div class="account-icon presence">
-              <Icon name="ph:activity" size="22" />
-            </div>
-            <Flex column expand gap="xxs">
-              <strong>Rich presence</strong>
-              <p class="text-s text-color-lighter">
-                Allow fetching and displaying information from any connected services
-              </p>
-            </Flex>
-          </Flex>
-
-          <div class="account-status presence-toggle" :style="{ width: isBelowSmall ? '100%' : undefined }">
-            <Button
-              v-if="isBelowSmall"
-              :expand="true"
-              :loading="richPresenceLoading"
-              :disabled="richPresenceLoading"
-              :variant="richPresenceEnabled ? 'success' : 'gray'"
-              @click="toggleRichPresence"
-            >
-              <template #start>
-                <Icon :name="richPresenceEnabled ? 'ph:check' : 'ph:x'" />
-              </template>
-              {{ richPresenceEnabled ? 'Enabled' : 'Disabled' }}
-            </Button>
-
-            <Switch
-              v-else
-              :model-value="richPresenceEnabled"
-              :disabled="richPresenceLoading"
-              @update:model-value="updateRichPresence"
-            />
           </div>
         </Flex>
       </Flex>

@@ -8,7 +8,7 @@ import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
+import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
 
 const props = defineProps<{
   project: Tables<'projects'> | null
@@ -20,7 +20,7 @@ const emit = defineEmits(['edit', 'delete'])
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(
+const { bannerUrl: projectBannerUrl } = useDataProjectBanner(
   computed(() => props.project?.id ?? null),
 )
 

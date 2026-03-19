@@ -1,28 +1,27 @@
 precision mediump float;
 uniform vec2 u_resolution;
 uniform float u_time;
+uniform vec3 u_base_color;
+uniform vec3 u_alt_color;
 
 // Tunable parameters
-const float BASE_PULSE = 0.5;          // default blob size
-const float PULSE_JITTER = 0.4;         // how much the size breathes
-const float BASE_RADIUS = 0.5;          // base metaball radius
-const float RADIUS_FALLOFF = 0.13;       // how fast radii shrink per emitter
-const float THRESHOLD = 0.85;            // field threshold for the blob body
-const float SOFTNESS = 0.12;             // edge softness
-const float RIM_EXTRA = 0.4;             // rim offset
-const float FLOW_STRENGTH = 1.0;        // warp intensity for liquid look
-const float FLOW_FREQ = 0.8;             // warp frequency
-const float FLOW_TIME = 0.2;             // warp time speed
-const float GRAIN_FREQ = 20.5;            // color grain frequency
-const float GRAIN_TIME = 3.8;            // color grain time speed
-const float TIME_SCALE = 0.7;            // global time scaler for overall speed
-const float COLOR_TIME = 1.2;            // speed of color wobble
+const float BASE_PULSE = 0.5; // default blob size
+const float PULSE_JITTER = 0.4; // how much the size breathes
+const float BASE_RADIUS = 0.5; // base metaball radius
+const float RADIUS_FALLOFF = 0.13; // how fast radii shrink per emitter
+const float THRESHOLD = 0.85; // field threshold for the blob body
+const float SOFTNESS = 0.12; // edge softness
+const float RIM_EXTRA = 0.4; // rim offset
+const float FLOW_STRENGTH = 1.0; // warp intensity for liquid look
+const float FLOW_FREQ = 0.8; // warp frequency
+const float FLOW_TIME = 0.2; // warp time speed
+const float GRAIN_FREQ = 20.5; // color grain frequency
+const float GRAIN_TIME = 3.8; // color grain time speed
+const float TIME_SCALE = 0.7; // global time scaler for overall speed
+const float COLOR_TIME = 1.2; // speed of color wobble
 
 // Motion speeds
-const float ROT_SPEED = 0.2;             // rotation base speed
-
-const vec3 BASE_COLOR = vec3(0.6549, 0.9882, 0.1843); // a7fc2f
-const vec3 ALT_COLOR = vec3(0.5, 0.92, 0.32);
+const float ROT_SPEED = 0.2; // rotation base speed
 
 mat2 rot(float a) {
   float s = sin(a);
@@ -99,9 +98,9 @@ void main() {
   float grain = fbm(p * GRAIN_FREQ + colorT * GRAIN_TIME);
 
   vec3 col = vec3(0.0);
-  col += blob * radialFade * mix(BASE_COLOR + hueShift * 0.45, ALT_COLOR, grain * 0.55);
-  col += rim * radialFade * mix(BASE_COLOR * 1.3 + hueShift * 0.25, ALT_COLOR * 1.08, grain * 0.45);
-  col += radialFade * 0.08 * mix(BASE_COLOR * 0.4, ALT_COLOR * 0.4, grain * 0.55);
+  col += blob * radialFade * mix(u_base_color + hueShift * 0.45, u_alt_color, grain * 0.55);
+  col += rim * radialFade * mix(u_base_color * 1.3 + hueShift * 0.25, u_alt_color * 1.08, grain * 0.45);
+  col += radialFade * 0.08 * mix(u_base_color * 0.4, u_alt_color * 0.4, grain * 0.55);
 
   float alpha = clamp(blob * radialFade * 1.1 + rim * radialFade * 0.8 + radialFade * 0.08, 0.0, 1.0);
   gl_FragColor = vec4(col, alpha);

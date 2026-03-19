@@ -1,8 +1,8 @@
 import type { RealtimeChannel, RealtimePostgresDeletePayload, RealtimePostgresInsertPayload, RealtimePostgresUpdatePayload } from '@supabase/supabase-js'
 import type { RawComment } from '@/components/Discussions/Discussion.types'
 import type { Tables } from '@/types/database.overrides'
-import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
-import { useCacheDiscussionReplies } from '@/composables/useCacheDiscussionReplies'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
 
 /**
  * Manages the Supabase realtime channel for a discussion's replies and the
@@ -21,8 +21,8 @@ export function useRealtimeDiscussion(
   model: Ref<'comment' | 'forum'>,
 ) {
   const supabase = useSupabaseClient()
-  const discussionCache = useCacheDiscussion()
-  const repliesCache = useCacheDiscussionReplies()
+  const discussionCache = useDiscussionCache()
+  const repliesCache = useDiscussionRepliesCache()
 
   const pendingReplyCount = ref(0)
   const pendingLoading = ref(false)
@@ -172,7 +172,7 @@ export function useRealtimeDiscussion(
     // reactions, title/markdown edits, lock/archive/sticky status changes,
     // and reply_count bumps from other sessions. Patching the discussion ref
     // in place keeps the forum/[id].vue Reactions component and toolbar in sync
-    // without a full page reload, and also updates useCacheDiscussion so that
+    // without a full page reload, and also updates useDiscussionCache so that
     // any other component reading the same cache key sees the fresh data.
     discussionChannel = supabase
       .channel(`discussion:${discussionId}`)

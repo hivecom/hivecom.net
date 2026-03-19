@@ -1,13 +1,13 @@
 /**
  * Cached "Party Animal" RSVP count for a given user.
  *
- * Thin wrapper around the generic `useCacheBadgeCount` factory.
+ * Thin wrapper around the generic `useBadgeCount` factory.
  * Counts all "yes" RSVPs a user has made across all events.
  */
 
 import type { Ref } from 'vue'
 import type { CacheConfig } from './useCache'
-import { useCacheBadgeCount } from './useCacheBadgeCount'
+import { useBadgeCount } from './useBadgeCount'
 
 interface PartyAnimalCountOptions extends Omit<CacheConfig, 'ttl'> {
   enabled?: Ref<boolean> | boolean
@@ -15,7 +15,7 @@ interface PartyAnimalCountOptions extends Omit<CacheConfig, 'ttl'> {
   cacheKeyPrefix?: string
 }
 
-export function useCacheBadgePartyAnimalCount(
+export function useBadgePartyAnimalCount(
   userId: Ref<string | null | undefined> | string | null | undefined,
   options: PartyAnimalCountOptions = {},
 ) {
@@ -24,7 +24,7 @@ export function useCacheBadgePartyAnimalCount(
     ...rest
   } = options
 
-  return useCacheBadgeCount(userId, {
+  return useBadgeCount(userId, {
     cacheKeyPrefix,
     badgeName: 'Party Animal (yes RSVPs)',
     ...rest,

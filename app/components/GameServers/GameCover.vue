@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
+import { useDataGameAssets } from '@/composables/useDataGameAssets'
 
 interface Props {
   game: Tables<'games'>
@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<Props>(), {
   aspectRatio: 'card',
 })
 
-const { getGameCoverUrl } = useCacheGameAssets()
+const { getGameCoverUrl } = useDataGameAssets()
 
 const coverUrl = ref<string | null>(null)
 const isLoading = ref(true)

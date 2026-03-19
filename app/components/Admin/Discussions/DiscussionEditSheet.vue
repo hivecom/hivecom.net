@@ -4,7 +4,7 @@ import { Button, Card, Flex, Input, pushToast, Sheet, Switch, Textarea, Tooltip 
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
-import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { slugify } from '@/lib/utils/formatting'
 
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 const isOpen = defineModel<boolean>('isOpen')
 
 const supabase = useSupabaseClient()
-const discussionCache = useCacheDiscussion()
+const discussionCache = useDiscussionCache()
 const { hasPermission } = useAdminPermissions()
 
 const canDelete = computed(() => hasPermission('discussions.delete'))

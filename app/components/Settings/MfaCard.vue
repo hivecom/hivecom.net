@@ -2,8 +2,8 @@
 import type { Session } from '@supabase/supabase-js'
 import { Alert, Button, Card, CopyClipboard, Flex, Input, Modal, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useCacheMfaStatus } from '@/composables/useCacheMfaStatus'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
+import { useMfaStatus } from '@/composables/useMfaStatus'
 import { useUserId } from '@/composables/useUserId'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import TinyBadge from '../Shared/TinyBadge.vue'
@@ -23,7 +23,7 @@ const userId = useUserId()
 
 const isBelowSmall = useBreakpoint('<s')
 
-const { user: currentUserData } = useCacheUserData(userId, {
+const { user: currentUserData } = useDataUser(userId, {
   includeRole: true,
   includeAvatar: false,
 })
@@ -49,7 +49,7 @@ const totpSetup = reactive({
   enrolling: false,
   verifying: false,
 })
-const mfaCache = useCacheMfaStatus()
+const mfaCache = useMfaStatus()
 
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
 const showMfaSkeleton = computed(() => hasMfaSupport.value && Boolean(user.value) && (mfaLoading.value || !mfaHasFetched.value))

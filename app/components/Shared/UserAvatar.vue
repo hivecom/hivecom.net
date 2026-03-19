@@ -2,7 +2,7 @@
 import { Avatar, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 
 interface Props {
   userId?: string | null
@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
   showPreview: false,
 })
 
-const { user, loading } = useCacheUserData(
+const { user: userData, loading } = useDataUser(
   computed(() => props.userId ?? null),
   {
     includeAvatar: true,
@@ -29,10 +29,10 @@ const { user, loading } = useCacheUserData(
   },
 )
 
-const avatarUrl = computed(() => user.value?.avatarUrl ?? null)
+const avatarUrl = computed(() => userData.value?.avatarUrl ?? null)
 
 const initials = computed(() => {
-  const name = user.value?.username
+  const name = userData.value?.username
   if (!name)
     return ''
 
@@ -48,13 +48,13 @@ const profileLink = computed(() => {
   if (!props.userId)
     return null
 
-  if (user.value?.username_set && user.value?.username)
-    return `/profile/${user.value.username}`
+  if (userData.value?.username_set && userData.value?.username)
+    return `/profile/${userData.value.username}`
   return `/profile/${props.userId}`
 })
 
 const ariaLabel = computed(() => {
-  const name = user.value?.username
+  const name = userData.value?.username
   return name ? `View profile of ${name}` : 'View profile'
 })
 

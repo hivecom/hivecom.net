@@ -2,7 +2,7 @@
 import { Popout } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 
 const props = withDefaults(defineProps<{
   userId?: string | null
@@ -18,9 +18,9 @@ const props = withDefaults(defineProps<{
 
 const anchorRef = ref<HTMLElement | null>(null)
 const visible = ref(false)
-// Only activate the useCacheUserData fetch after first hover - this prevents
-// N individual profile queries racing against the useBulkUserData batch load.
-// Once hovered, the bulk cache is warm and useCacheUserData will hit it instantly.
+// Only activate the useDataUser fetch after first hover - this prevents
+// N individual profile queries racing against the useBulkDataUser batch load.
+// Once hovered, the bulk cache is warm and useDataUser will hit it instantly.
 const everHovered = ref(false)
 
 watch(() => props.userId, (newId) => {
@@ -31,10 +31,10 @@ watch(() => props.userId, (newId) => {
 })
 
 // Supply the ID lazily - resolves to null until the first hover event, at
-// which point useBulkUserData will have already populated the shared cache.
+// which point useBulkDataUser will have already populated the shared cache.
 const lazyUserId = computed(() => everHovered.value ? (props.userId ?? null) : null)
 
-const { user } = useCacheUserData(lazyUserId, {
+const { user } = useDataUser(lazyUserId, {
   includeAvatar: false,
   includeRole: false,
 })

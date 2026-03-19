@@ -182,7 +182,7 @@ export function useForumActivityFeed({
     return [...ids]
   })
 
-  // Stable ref for author IDs - avoids spurious useBulkUserData re-fetches
+  // Stable ref for author IDs - avoids spurious useBulkDataUser re-fetches
   const latestPostAuthorIds = ref<string[]>([])
   let _lastAuthorKey = ''
 

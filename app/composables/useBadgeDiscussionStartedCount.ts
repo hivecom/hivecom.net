@@ -1,14 +1,14 @@
 /**
  * Cached "Forum Regular" discussion-started count for a given user.
  *
- * Thin wrapper around the generic `useCacheBadgeCount` factory.
+ * Thin wrapper around the generic `useBadgeCount` factory.
  * Only counts pure forum threads (discussion_topic_id set, no entity FK
  * attached, not drafts).
  */
 
 import type { Ref } from 'vue'
 import type { CacheConfig } from './useCache'
-import { useCacheBadgeCount } from './useCacheBadgeCount'
+import { useBadgeCount } from './useBadgeCount'
 
 interface DiscussionStartedCountOptions extends Omit<CacheConfig, 'ttl'> {
   enabled?: Ref<boolean> | boolean
@@ -16,7 +16,7 @@ interface DiscussionStartedCountOptions extends Omit<CacheConfig, 'ttl'> {
   cacheKeyPrefix?: string
 }
 
-export function useCacheBadgeDiscussionStartedCount(
+export function useBadgeDiscussionStartedCount(
   userId: Ref<string | null | undefined> | string | null | undefined,
   options: DiscussionStartedCountOptions = {},
 ) {
@@ -25,7 +25,7 @@ export function useCacheBadgeDiscussionStartedCount(
     ...rest
   } = options
 
-  return useCacheBadgeCount(userId, {
+  return useBadgeCount(userId, {
     cacheKeyPrefix,
     badgeName: 'Forum Regular (discussions started)',
     ...rest,

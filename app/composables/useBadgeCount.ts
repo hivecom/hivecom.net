@@ -9,7 +9,7 @@
  *
  * Usage:
  *
- *   const { count, loading, error, refresh, invalidate } = useCacheBadgeCount(userId, {
+ *   const { count, loading, error, refresh, invalidate } = useBadgeCount(userId, {
  *     cacheKeyPrefix: 'user:badge:my_badge',
  *     fetchCount: async (supabase, profileId) => {
  *       const { count, error } = await supabase
@@ -78,7 +78,7 @@ export interface BadgeCountResult {
 
 const DEFAULT_CACHE_TTL = 10 * 60 * 1000 // 10 minutes
 
-export function useCacheBadgeCount(
+export function useBadgeCount(
   userId: Ref<string | null | undefined> | string | null | undefined,
   config: BadgeCountConfig,
 ): BadgeCountResult {

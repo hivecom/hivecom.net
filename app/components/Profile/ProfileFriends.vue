@@ -4,6 +4,7 @@ import type { ProfileFriendshipStatus } from '@/types/profile'
 import { Alert, Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useBulkDataUser } from '@/composables/useDataUser'
 
 interface Props {
   profile: Tables<'profiles'>
@@ -56,7 +57,7 @@ function handleRemoveFriend() {
 
 const pendingRequests = computed(() => props.pendingRequests)
 
-const { users: pendingUsers } = useBulkUserData(pendingRequests)
+const { users: pendingUsers } = useBulkDataUser(pendingRequests)
 </script>
 
 <template>

@@ -2,7 +2,7 @@
 import { Avatar, Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 
 interface Props {
   userId: string | null
@@ -22,7 +22,7 @@ const {
   user,
   loading,
   userInitials,
-} = useCacheUserData(
+} = useDataUser(
   toRef(props, 'userId'),
   {
     includeRole: false, // We only need username for this component

@@ -101,6 +101,10 @@ onMounted(() => {
 
   .hero-overlay__splash {
     background-image: url('/landing/splash-light.jpg');
+
+    &::after {
+      background-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+    }
   }
 
   .hero-overlay__logo {
@@ -153,6 +157,16 @@ onMounted(() => {
   animation: hero-splash-fade 3000ms ease 3000ms forwards;
   will-change: opacity, transform, filter;
   pointer-events: none;
+  isolation: isolate;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+    mix-blend-mode: color;
+    pointer-events: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

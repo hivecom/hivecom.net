@@ -11,7 +11,7 @@ import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useAvatarBus } from '@/composables/useAvatarBus'
 import { useCachedFetch } from '@/composables/useCache'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 import { useFriendship } from '@/composables/useFriendship'
 import Discussion from '../Discussions/Discussion.vue'
 
@@ -64,7 +64,7 @@ const profileUserId = computed(() => profile.value?.id ?? null)
 // Get current user's data with caching
 const {
   user: currentUserData,
-} = useCacheUserData(
+} = useDataUser(
   userId,
   {
     includeRole: true,
@@ -77,7 +77,7 @@ const {
 const {
   user: _profileUserData,
   refetch: refetchProfileUserData,
-} = useCacheUserData(
+} = useDataUser(
   profileUserId,
   {
     includeRole: true,

@@ -2,7 +2,7 @@
 import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Spinner } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -13,7 +13,7 @@ const dropdown = useTemplateRef('dropdown')
 const {
   user: userData,
   userInitials,
-} = useCacheUserData(
+} = useDataUser(
   userId,
   {
     includeRole: true,

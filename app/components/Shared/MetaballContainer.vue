@@ -78,9 +78,9 @@ const containerStyle = computed(() => ({
   position: relative;
   border-radius: 28px;
   background:
-    radial-gradient(ellipse at 28% 22%, rgba(51, 255, 0, 0.25), transparent 46%),
-    radial-gradient(ellipse at 68% 70%, rgba(120, 252, 160, 0.25), transparent 52%),
-    radial-gradient(ellipse at 50% 46%, rgba(255, 255, 255, 0.08), transparent 58%);
+    radial-gradient(ellipse at 28% 22%, color-mix(in srgb, var(--color-accent) 25%, transparent), transparent 46%),
+    radial-gradient(ellipse at 68% 70%, color-mix(in srgb, var(--color-accent) 25%, transparent), transparent 52%),
+    radial-gradient(ellipse at 50% 46%, color-mix(in srgb, var(--color-bg) 8%, transparent), transparent 58%);
   filter: drop-shadow(0 25px 45px rgba(0, 0, 0, 0.35));
   overflow: hidden;
   isolation: isolate;
@@ -114,7 +114,11 @@ const containerStyle = computed(() => ({
   height: 58%;
   left: 8%;
   top: 12%;
-  background: radial-gradient(circle, rgba(144, 255, 39, 0.55), rgba(0, 0, 0, 0.04));
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-accent-raised) 55%, transparent),
+    color-mix(in srgb, var(--color-bg) 4%, transparent)
+  );
   opacity: 0.72;
   animation: drift-a 21.6s ease-in-out infinite;
 }
@@ -124,7 +128,11 @@ const containerStyle = computed(() => ({
   height: 54%;
   right: 6%;
   bottom: 8%;
-  background: radial-gradient(circle, rgba(119, 255, 0, 0.58), rgba(0, 0, 0, 0.05));
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-accent) 58%, transparent),
+    color-mix(in srgb, var(--color-bg) 5%, transparent)
+  );
   animation: drift-b 26.4s ease-in-out infinite;
   opacity: 0.92;
 }
@@ -134,7 +142,11 @@ const containerStyle = computed(() => ({
   height: 42%;
   left: 30%;
   bottom: 18%;
-  background: radial-gradient(circle, rgba(105, 185, 117, 0.65), rgba(0, 0, 0, 0.08));
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-accent-lowered) 50%, transparent),
+    color-mix(in srgb, var(--color-bg) 8%, transparent)
+  );
   animation: drift-c 24s ease-in-out infinite;
   opacity: 0.92;
 }
@@ -144,7 +156,11 @@ const containerStyle = computed(() => ({
   height: 32%;
   right: 18%;
   top: 18%;
-  background: radial-gradient(circle, rgba(120, 252, 160, 0.7), rgba(255, 255, 255, 0.08));
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-accent-raised) 70%, transparent),
+    color-mix(in srgb, var(--color-bg) 8%, transparent)
+  );
   animation: drift-d 28.8s ease-in-out infinite;
   opacity: 0.96;
 }
@@ -154,7 +170,11 @@ const containerStyle = computed(() => ({
   height: 28%;
   left: 18%;
   bottom: 8%;
-  background: radial-gradient(circle, rgba(0, 255, 185, 0.6), rgba(0, 0, 0, 0.06));
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-accent) 45%, transparent),
+    color-mix(in srgb, var(--color-bg) 6%, transparent)
+  );
   animation: drift-e 31.2s ease-in-out infinite;
   opacity: 0.96;
 }
@@ -164,7 +184,11 @@ const containerStyle = computed(() => ({
   height: 34%;
   left: 44%;
   top: 8%;
-  background: radial-gradient(circle, rgba(180, 255, 140, 0.68), rgba(0, 0, 0, 0.05));
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-accent) 60%, transparent),
+    color-mix(in srgb, var(--color-bg) 5%, transparent)
+  );
   animation: drift-f 28.8s ease-in-out infinite;
   opacity: 0.94;
 }

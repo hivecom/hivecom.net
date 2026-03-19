@@ -3,8 +3,8 @@ import { Card, Flex, Skeleton } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
-import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
-import { useBulkUserData } from '@/composables/useCacheUserData'
+import { useBulkDataUser } from '@/composables/useDataUser'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 
 const props = defineProps<Props>()
@@ -27,7 +27,7 @@ interface ReplyWithDiscussion {
 }
 
 const supabase = useSupabaseClient()
-const discussionCache = useCacheDiscussion()
+const discussionCache = useDiscussionCache()
 
 const replies = ref<ReplyWithDiscussion[]>([])
 const loading = ref(true)
@@ -109,7 +109,7 @@ const hasReplies = computed(() => replies.value.length > 0)
 const allMentionIds = computed(() =>
   [...new Set(replies.value.flatMap(r => extractMentionIds(r.markdown)))],
 )
-const { users: mentionUsers } = useBulkUserData(allMentionIds, { includeAvatar: false })
+const { users: mentionUsers } = useBulkDataUser(allMentionIds, { includeAvatar: false })
 const mentionLookup = computed<Record<string, string>>(() => {
   const lookup: Record<string, string> = {}
   for (const [id, u] of mentionUsers.value.entries()) {

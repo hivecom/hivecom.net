@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Button, Divider, DropdownItem, Flex, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
 import { until, useStorage as useLocalStorage, useMediaQuery } from '@vueuse/core'
-import IconLogo from '@/components/Shared/IconLogo.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import LogoIcon from '@/components/Shared/LogoIcon.vue'
+import { useDataUser } from '@/composables/useDataUser'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const router = useRouter()
@@ -19,7 +19,7 @@ const isLoading = ref(true)
 const isAuthorized = ref(false)
 
 // Use cached user data to avoid a raw user_roles query on every admin page mount
-const { user: cachedUserData } = useCacheUserData(resolvedUserId, { includeRole: true, includeAvatar: false })
+const { user: cachedUserData } = useDataUser(resolvedUserId, { includeRole: true, includeAvatar: false })
 const userRole = computed(() => cachedUserData.value?.role ?? null)
 
 defineOgImageComponent('Default', {
@@ -51,7 +51,7 @@ async function getAuthenticatedUserId(): Promise<string | null> {
 }
 
 // Check user role and permissions, redirect if not authorized.
-// Role is read from useCacheUserData (shared with UserDropdown etc.) so no extra query fires.
+// Role is read from useDataUser (shared with UserDropdown etc.) so no extra query fires.
 onMounted(async () => {
   try {
     const targetUserId = await getAuthenticatedUserId()
@@ -61,7 +61,7 @@ onMounted(async () => {
       return
     }
 
-    // Wait for cachedUserData to populate (it fetches on watch inside useCacheUserData)
+    // Wait for cachedUserData to populate (it fetches on watch inside useDataUser)
     // If role is already cached this resolves synchronously via the computed.
     // For a cold cache we poll briefly - role data loads fast (single row).
     await until(cachedUserData).toMatch(d => d !== null, { timeout: 8000 }).catch(() => null)
@@ -275,7 +275,7 @@ watch(() => route.path, () => {
           <Icon name="ph:list" />
         </Button>
 
-        <IconLogo style="margin-left: 2px" />
+        <LogoIcon style="margin-left: 2px" />
 
         <span />
       </Flex>
@@ -289,7 +289,7 @@ watch(() => route.path, () => {
       >
         <template #header>
           <Flex y-center gap="xs">
-            <IconLogo style="margin-left: 2px" />
+            <LogoIcon style="margin-left: 2px" />
             <h5 class="admin-layout__mobile-title">
               Admin
             </h5>
@@ -333,7 +333,7 @@ watch(() => route.path, () => {
           <template #header>
             <Flex y-center class="mb-s">
               <Flex y-center gap="s" expand>
-                <IconLogo style="margin-left: 2px" />
+                <LogoIcon style="margin-left: 2px" />
                 <h5 v-if="!miniSidebar" class="flex-1">
                   Admin
                 </h5>

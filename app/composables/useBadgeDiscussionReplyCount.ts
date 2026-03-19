@@ -1,13 +1,13 @@
 /**
  * Cached "Chatterbox" discussion-reply count for a given user.
  *
- * Thin wrapper around the generic `useCacheBadgeCount` factory.
+ * Thin wrapper around the generic `useBadgeCount` factory.
  * Only counts non-deleted replies a user has made across all discussions.
  */
 
 import type { Ref } from 'vue'
 import type { CacheConfig } from './useCache'
-import { useCacheBadgeCount } from './useCacheBadgeCount'
+import { useBadgeCount } from './useBadgeCount'
 
 interface DiscussionReplyCountOptions extends Omit<CacheConfig, 'ttl'> {
   enabled?: Ref<boolean> | boolean
@@ -15,7 +15,7 @@ interface DiscussionReplyCountOptions extends Omit<CacheConfig, 'ttl'> {
   cacheKeyPrefix?: string
 }
 
-export function useCacheBadgeDiscussionReplyCount(
+export function useBadgeDiscussionReplyCount(
   userId: Ref<string | null | undefined> | string | null | undefined,
   options: DiscussionReplyCountOptions = {},
 ) {
@@ -24,7 +24,7 @@ export function useCacheBadgeDiscussionReplyCount(
     ...rest
   } = options
 
-  return useCacheBadgeCount(userId, {
+  return useBadgeCount(userId, {
     cacheKeyPrefix,
     badgeName: 'Chatterbox (discussion replies)',
     ...rest,

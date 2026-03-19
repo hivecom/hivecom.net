@@ -12,9 +12,9 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
-import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
-import { useCacheDiscussionSubscriptions } from '@/composables/useCacheDiscussionSubscriptions'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDate } from '@/lib/utils/date'
@@ -50,8 +50,8 @@ const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 const isUuid = uuidRegex.test(identifier)
 
 const supabase = useSupabaseClient()
-const discussionCache = useCacheDiscussion()
-const subscriptionsCache = useCacheDiscussionSubscriptions()
+const discussionCache = useDiscussionCache()
+const subscriptionsCache = useDiscussionSubscriptionsCache()
 const userId = useUserId()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
@@ -128,7 +128,7 @@ async function toggleSubscription() {
       // new subscription without a re-fetch the next time it opens
       subscriptionsCache.applySubscribe(
         userId.value,
-        data as unknown as import('@/composables/useCacheDiscussionSubscriptions').SubscriptionRow,
+        data as unknown as import('@/composables/useDiscussionSubscriptionsCache').SubscriptionRow,
       )
     }
     else if (!error) {

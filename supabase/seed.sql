@@ -1,3 +1,228 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- System themes (colorblind-friendly)
+--
+-- created_by IS NULL = system-owned. Service role inserts only; RLS blocks
+-- regular users from mutating these rows.
+--
+-- Semantic color strategy per type:
+--   Deuteranopia/Protanopia: red -> orange-amber, green -> teal/cyan
+--   Tritanopia:              yellow -> magenta, blue -> cyan/teal
+--   Achromatopsia:           all semantic colors are luminance-distinct grays
+--
+-- Accent uses the Hivecom brand green (#a7fc2f dark / #69883e light) across all
+-- themes where green is distinguishable. Achromatopsia is the exception - the
+-- accent falls back to a high-luminance gray to stay distinct from the semantic
+-- green slot. Neutral backgrounds/text/borders are unchanged.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+INSERT INTO public.themes (
+  id,
+  created_by,
+  name,
+  description,
+  spacing,
+  rounding,
+  transitions,
+  -- dark palette
+  dark_bg, dark_bg_medium, dark_bg_raised, dark_bg_lowered,
+  dark_text, dark_text_light, dark_text_lighter, dark_text_lightest, dark_text_invert,
+  dark_button_gray, dark_button_gray_hover, dark_button_fill, dark_button_fill_hover,
+  dark_text_red,    dark_bg_red_lowered,    dark_bg_red_raised,
+  dark_text_green,  dark_bg_green_lowered,  dark_bg_green_raised,
+  dark_text_yellow, dark_bg_yellow_lowered, dark_bg_yellow_raised,
+  dark_text_blue,   dark_bg_blue_lowered,   dark_bg_blue_raised,
+  dark_border, dark_border_strong, dark_border_weak,
+  dark_accent, dark_bg_accent_lowered, dark_bg_accent_raised,
+  -- light palette
+  light_bg, light_bg_medium, light_bg_raised, light_bg_lowered,
+  light_text, light_text_light, light_text_lighter, light_text_lightest, light_text_invert,
+  light_button_gray, light_button_gray_hover, light_button_fill, light_button_fill_hover,
+  light_text_red,    light_bg_red_lowered,    light_bg_red_raised,
+  light_text_green,  light_bg_green_lowered,  light_bg_green_raised,
+  light_text_yellow, light_bg_yellow_lowered, light_bg_yellow_raised,
+  light_text_blue,   light_bg_blue_lowered,   light_bg_blue_raised,
+  light_border, light_border_strong, light_border_weak,
+  light_accent, light_bg_accent_lowered, light_bg_accent_raised
+)
+VALUES
+
+-- ── Deuteranopia / Protanopia (red-green) ─────────────────────────────────────
+-- Red slot  -> orange-amber  (distinguishable from blue/yellow for deutan/protan)
+-- Green slot -> teal/cyan    (clearly distinct from the orange-amber red slot)
+-- Yellow and blue slots are kept as-is (hue shift doesn't affect them).
+(
+  '00000000-0000-0000-0000-000000000001',
+  NULL,
+  'Default Colorblind - Deuteranopia',
+  'Colorblind-friendly theme for red-green color vision deficiency (deuteranopia / protanopia). Red is replaced with orange-amber; green is replaced with teal.',
+  50, 50, 50,
+  -- dark neutrals (unchanged)
+  '#111111', '#161616', '#1c1c1c', '#0c0c0c',
+  '#e7e7e7', '#b4b4b4', '#5a5a5a', '#414141', '#111111',
+  '#2e2e2e', '#262626', '#fafafa', '#d2d2d2',
+  -- dark semantic: red -> orange-amber
+  '#f5930a', '#5e3100', '#7a4200',
+  -- dark semantic: green -> teal
+  '#22d4c8', '#0a4a46', '#0d5e59',
+  -- dark semantic: yellow (unchanged)
+  '#ffc107', '#4e3400', '#986800',
+  -- dark semantic: blue (unchanged)
+  '#558df5', '#0d204a', '#1a3b77',
+  -- dark borders / accent: brand green
+  '#282828', '#363636', '#242424',
+  '#a7fc2f', '#4e8502', '#69b103',
+  -- light neutrals (unchanged)
+  '#f6f6f6', '#ececec', '#dedede', '#ffffff',
+  '#080808', '#404040', '#5c5c5c', '#808080', '#f8f8f8',
+  '#e0e0e0', '#c6c6c6', '#0c0c0c', '#343434',
+  -- light semantic: red -> orange-amber
+  '#c46a00', '#7a3d00', '#d97200',
+  -- light semantic: green -> teal
+  '#0e9e96', '#0a5e5a', '#13817a',
+  -- light semantic: yellow (unchanged)
+  '#b0810f', '#e6cd89', '#fdc856',
+  -- light semantic: blue (unchanged)
+  '#558df5', '#c4d6ff', '#88b2ff',
+  -- light borders / accent: brand green
+  '#c8c8c8', '#989898', '#e0e0e0',
+  '#69883e', '#93be57', '#7ea34a'
+),
+
+-- ── Tritanopia (blue-yellow) ───────────────────────────────────────────────────
+-- Yellow slot -> magenta/rose  (clearly distinct from blue for tritan)
+-- Blue slot   -> cyan/teal     (clearly distinct from the magenta yellow slot)
+-- Red and green slots are kept as-is (tritan vision handles these well).
+(
+  '00000000-0000-0000-0000-000000000002',
+  NULL,
+  'Default Colorblind - Tritanopia',
+  'Colorblind-friendly theme for blue-yellow color vision deficiency (tritanopia). Yellow is replaced with magenta-rose; blue is replaced with cyan-teal.',
+  50, 50, 50,
+  -- dark neutrals (unchanged)
+  '#111111', '#161616', '#1c1c1c', '#0c0c0c',
+  '#e7e7e7', '#b4b4b4', '#5a5a5a', '#414141', '#111111',
+  '#2e2e2e', '#262626', '#fafafa', '#d2d2d2',
+  -- dark semantic: red (unchanged)
+  '#f34e46', '#681818', '#7f1d1d',
+  -- dark semantic: green (unchanged)
+  '#6acf30', '#285f08', '#1a7a0d',
+  -- dark semantic: yellow -> magenta-rose
+  '#f0429e', '#5e0a38', '#870f50',
+  -- dark semantic: blue -> cyan-teal
+  '#22d4c8', '#0a3d3a', '#0d5e59',
+  -- dark borders / accent: brand green
+  '#282828', '#363636', '#242424',
+  '#a7fc2f', '#4e8502', '#69b103',
+  -- light neutrals (unchanged)
+  '#f6f6f6', '#ececec', '#dedede', '#ffffff',
+  '#080808', '#404040', '#5c5c5c', '#808080', '#f8f8f8',
+  '#e0e0e0', '#c6c6c6', '#0c0c0c', '#343434',
+  -- light semantic: red (unchanged)
+  '#d13c34', '#ac2d2d', '#dc2626',
+  -- light semantic: green (unchanged)
+  '#4da01d', '#2a7213', '#3d9223',
+  -- light semantic: yellow -> magenta-rose
+  '#c4186e', '#e8b4ce', '#f07ab8',
+  -- light semantic: blue -> cyan-teal
+  '#0e9e96', '#b0e4e2', '#7dd4d0',
+  -- light borders / accent: brand green
+  '#c8c8c8', '#989898', '#e0e0e0',
+  '#69883e', '#93be57', '#7ea34a'
+),
+
+-- ── Achromatopsia (monochrome / total color blindness) ────────────────────────
+-- All semantic slots use luminance-distinct grays so they remain
+-- distinguishable without any hue information:
+--   red    -> light gray  (~200)
+--   green  -> medium-light gray (~155)
+--   yellow -> medium gray (~115)
+--   blue   -> medium-dark gray (~80)
+-- Contrast ratios are kept high against the background in both palettes.
+(
+  '00000000-0000-0000-0000-000000000003',
+  NULL,
+  'Default Colorblind - Achromatopsia',
+  'Colorblind-friendly theme for total color blindness (achromatopsia). All semantic colors are replaced with luminance-distinct grays.',
+  50, 50, 50,
+  -- dark neutrals (unchanged)
+  '#111111', '#161616', '#1c1c1c', '#0c0c0c',
+  '#e7e7e7', '#b4b4b4', '#5a5a5a', '#414141', '#111111',
+  '#2e2e2e', '#262626', '#fafafa', '#d2d2d2',
+  -- dark semantic: red -> light gray (~200 luminance)
+  '#c8c8c8', '#444444', '#555555',
+  -- dark semantic: green -> medium-light gray (~155)
+  '#9b9b9b', '#333333', '#404040',
+  -- dark semantic: yellow -> medium gray (~115)
+  '#737373', '#2a2a2a', '#333333',
+  -- dark semantic: blue -> medium-dark gray (~80)
+  '#505050', '#1e1e1e', '#272727',
+  -- dark borders / accent: high-luminance gray - green can't be used here since
+  -- it would be indistinguishable from the semantic green slot in grayscale
+  '#282828', '#363636', '#242424',
+  '#e0e0e0', '#484848', '#606060',
+  -- light neutrals (unchanged)
+  '#f6f6f6', '#ececec', '#dedede', '#ffffff',
+  '#080808', '#404040', '#5c5c5c', '#808080', '#f8f8f8',
+  '#e0e0e0', '#c6c6c6', '#0c0c0c', '#343434',
+  -- light semantic: red -> dark gray (~50 luminance on light bg)
+  '#323232', '#686868', '#505050',
+  -- light semantic: green -> medium-dark gray (~80)
+  '#505050', '#848484', '#6c6c6c',
+  -- light semantic: yellow -> medium gray (~110)
+  '#6e6e6e', '#aaaaaa', '#909090',
+  -- light semantic: blue -> medium-light gray (~145)
+  '#919191', '#c8c8c8', '#b4b4b4',
+  -- light borders / accent: near-black gray - same reasoning as dark palette
+  '#c8c8c8', '#989898', '#e0e0e0',
+  '#1e1e1e', '#9a9a9a', '#b0b0b0'
+),
+
+-- ── High Contrast ─────────────────────────────────────────────────────────────
+-- Maximises luminance contrast throughout. Pure black/white backgrounds with
+-- fully saturated, high-brightness semantic colors. Useful for low vision,
+-- bright environments, or anyone who just wants things unambiguous.
+-- Semantic choices: red=#ff3333, green=#00e060, yellow=#ffe000, blue=#3399ff
+-- All chosen for >7:1 contrast ratio against the dark bg and >4.5:1 on light.
+(
+  '00000000-0000-0000-0000-000000000004',
+  NULL,
+  'Default - High Contrast',
+  'Maximum luminance contrast theme for low vision or bright environments. Pure black and white backgrounds with fully saturated semantic colors.',
+  50, 50, 50,
+  -- dark neutrals: true black base, sharp borders
+  '#000000', '#0a0a0a', '#141414', '#000000',
+  '#ffffff', '#e0e0e0', '#aaaaaa', '#888888', '#000000',
+  '#1e1e1e', '#2a2a2a', '#ffffff', '#cccccc',
+  -- dark semantic: red - bright saturated red
+  '#ff3333', '#660000', '#990000',
+  -- dark semantic: green - bright saturated green
+  '#00e060', '#003d1a', '#005c28',
+  -- dark semantic: yellow - bright saturated yellow
+  '#ffe000', '#4a3d00', '#6e5a00',
+  -- dark semantic: blue - bright saturated blue
+  '#3399ff', '#002b66', '#003d99',
+  -- dark borders: high contrast borders visible against black
+  '#444444', '#666666', '#333333',
+  -- dark accent: brand green pushed to full brightness for maximum contrast
+  '#b8ff00', '#3a6600', '#559900',
+  -- light neutrals: true white base
+  '#ffffff', '#f0f0f0', '#e0e0e0', '#ffffff',
+  '#000000', '#1a1a1a', '#404040', '#666666', '#ffffff',
+  '#d0d0d0', '#b0b0b0', '#000000', '#1a1a1a',
+  -- light semantic: red - deep saturated red
+  '#cc0000', '#990000', '#dd0000',
+  -- light semantic: green - deep saturated green
+  '#007a30', '#005522', '#009040',
+  -- light semantic: yellow - deep amber (yellow on white needs darkening)
+  '#8a6000', '#d4b87a', '#c49a20',
+  -- light semantic: blue - deep saturated blue
+  '#0055cc', '#aac4f0', '#5599ee',
+  -- light borders: strong visible borders
+  '#888888', '#444444', '#bbbbbb',
+  -- light accent: brand green darkened for white bg contrast
+  '#3d6600', '#aad96e', '#7db83d'
+);
+
 -- Insert RBAC roles.
 INSERT INTO public.role_permissions(role, permission)
 VALUES

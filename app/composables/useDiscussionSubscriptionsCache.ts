@@ -69,7 +69,7 @@ function statusKey(userId: string, discussionId: string): string {
   return `discussion-subscriptions:status:${userId}:${discussionId}`
 }
 
-export function useCacheDiscussionSubscriptions() {
+export function useDiscussionSubscriptionsCache() {
   const cache = useCache({ ttl: CACHE_TTL })
 
   const loading = ref(false)

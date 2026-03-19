@@ -32,7 +32,7 @@ export function buildProjectBannerPath(projectId: number, extension: string): st
 
 /**
  * Dispatches a typed `project-banner-updated` event via the shared bus so that
- * composables (e.g. `useCacheProjectBanner`) can react without polling.
+ * composables (e.g. `useDataProjectBanner`) can react without polling.
  * No-op in non-browser environments.
  *
  * Delegates to `useProjectBannerBus.dispatchProjectBannerUpdated` which owns

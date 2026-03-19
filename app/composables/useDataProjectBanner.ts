@@ -75,14 +75,14 @@ function writeCache(projectId: number, url: string | null, ttl: number, negative
   }
 }
 
-export function invalidateProjectBannerCache(projectId: number) {
+export function invalidateProjectBannerData(projectId: number) {
   memoryCache.delete(projectId)
   if (canUseBrowserCache()) {
     window.localStorage.removeItem(getCacheKey(projectId))
   }
 }
 
-export function useCacheProjectBanner(
+export function useDataProjectBanner(
   projectId: MaybeRef<number | null | undefined>,
   options: UseProjectBannerOptions = {},
 ) {
@@ -150,7 +150,7 @@ export function useCacheProjectBanner(
     if (id === null || id === undefined || Number.isNaN(id))
       return
 
-    invalidateProjectBannerCache(id)
+    invalidateProjectBannerData(id)
     void fetchBanner(id, true)
   }
 

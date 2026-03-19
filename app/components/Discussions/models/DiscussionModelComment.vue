@@ -41,7 +41,7 @@ const canBypassLock = inject(DISCUSSION_KEYS.canBypassLock, ref(false))
 const userId = useUserId()
 const supabase = useSupabaseClient()
 
-const { user: currentUserData } = useCacheUserData(userId, { includeRole: true })
+const { user: currentUserData } = useDataUser(userId, { includeRole: true })
 
 const modifierId = computed(() => {
   const { modified_at, created_at, modified_by, created_by } = data.value
@@ -49,7 +49,7 @@ const modifierId = computed(() => {
     return null
   return modified_by
 })
-const { user: modifierUser } = useCacheUserData(modifierId, { userTtl: 10 * 60 * 1000 })
+const { user: modifierUser } = useDataUser(modifierId, { userTtl: 10 * 60 * 1000 })
 
 const COMMENT_TRUNCATE = 96
 

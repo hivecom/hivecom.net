@@ -7,83 +7,6 @@ export type Json
     | Json[]
 
 export interface Database {
-  private: {
-    Tables: {
-      kvstore: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          key: string
-          modified_at: string | null
-          modified_by: string | null
-          type: Database['public']['Enums']['kvstore_type']
-          value: Json
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          key: string
-          modified_at?: string | null
-          modified_by?: string | null
-          type?: Database['public']['Enums']['kvstore_type']
-          value: Json
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          key?: string
-          modified_at?: string | null
-          modified_by?: string | null
-          type?: Database['public']['Enums']['kvstore_type']
-          value?: Json
-        }
-        Relationships: []
-      }
-      teamspeak_tokens: {
-        Row: {
-          attempts: number
-          created_at: string
-          expires_at: string
-          server_id: string
-          token_hash: string
-          unique_id: string
-          user_id: string
-        }
-        Insert: {
-          attempts?: number
-          created_at?: string
-          expires_at?: string
-          server_id: string
-          token_hash: string
-          unique_id: string
-          user_id: string
-        }
-        Update: {
-          attempts?: number
-          created_at?: string
-          expires_at?: string
-          server_id?: string
-          token_hash?: string
-          unique_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      queue_dispatch_worker_sync_steam: { Args: never, Returns: undefined }
-      queue_enqueue_worker_sync_steam: { Args: never, Returns: undefined }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       alerts: {
@@ -1183,6 +1106,7 @@ export interface Database {
           supporter_lifetime: boolean
           supporter_patreon: boolean
           teamspeak_identities: Json
+          theme_id: string | null
           username: string
           username_set: boolean
           website: string | null
@@ -1213,6 +1137,7 @@ export interface Database {
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
           teamspeak_identities?: Json
+          theme_id?: string | null
           username: string
           username_set?: boolean
           website?: string | null
@@ -1243,11 +1168,20 @@ export interface Database {
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
           teamspeak_identities?: Json
+          theme_id?: string | null
           username?: string
           username_set?: boolean
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_theme_id_fkey'
+            columns: ['theme_id']
+            isOneToOne: false
+            referencedRelation: 'themes'
+            referencedColumns: ['id']
+          },
+        ]
       }
       projects: {
         Row: {
@@ -1466,6 +1400,222 @@ export interface Database {
           data?: Json
           id?: string
           modified_at?: string | null
+        }
+        Relationships: []
+      }
+      themes: {
+        Row: {
+          created_at: string
+          created_by: string
+          dark_accent: string
+          dark_bg: string
+          dark_bg_accent_lowered: string
+          dark_bg_accent_raised: string
+          dark_bg_blue_lowered: string
+          dark_bg_blue_raised: string
+          dark_bg_green_lowered: string
+          dark_bg_green_raised: string
+          dark_bg_lowered: string
+          dark_bg_medium: string
+          dark_bg_raised: string
+          dark_bg_red_lowered: string
+          dark_bg_red_raised: string
+          dark_bg_yellow_lowered: string
+          dark_bg_yellow_raised: string
+          dark_border: string
+          dark_border_strong: string
+          dark_border_weak: string
+          dark_button_fill: string
+          dark_button_fill_hover: string
+          dark_button_gray: string
+          dark_button_gray_hover: string
+          dark_text: string
+          dark_text_blue: string
+          dark_text_green: string
+          dark_text_invert: string
+          dark_text_light: string
+          dark_text_lighter: string
+          dark_text_lightest: string
+          dark_text_red: string
+          dark_text_yellow: string
+          description: string
+          id: string
+          light_accent: string
+          light_bg: string
+          light_bg_accent_lowered: string
+          light_bg_accent_raised: string
+          light_bg_blue_lowered: string
+          light_bg_blue_raised: string
+          light_bg_green_lowered: string
+          light_bg_green_raised: string
+          light_bg_lowered: string
+          light_bg_medium: string
+          light_bg_raised: string
+          light_bg_red_lowered: string
+          light_bg_red_raised: string
+          light_bg_yellow_lowered: string
+          light_bg_yellow_raised: string
+          light_border: string
+          light_border_strong: string
+          light_border_weak: string
+          light_button_fill: string
+          light_button_fill_hover: string
+          light_button_gray: string
+          light_button_gray_hover: string
+          light_text: string
+          light_text_blue: string
+          light_text_green: string
+          light_text_invert: string
+          light_text_light: string
+          light_text_lighter: string
+          light_text_lightest: string
+          light_text_red: string
+          light_text_yellow: string
+          modified_at: string | null
+          modified_by: string | null
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          dark_accent: string
+          dark_bg: string
+          dark_bg_accent_lowered: string
+          dark_bg_accent_raised: string
+          dark_bg_blue_lowered: string
+          dark_bg_blue_raised: string
+          dark_bg_green_lowered: string
+          dark_bg_green_raised: string
+          dark_bg_lowered: string
+          dark_bg_medium: string
+          dark_bg_raised: string
+          dark_bg_red_lowered: string
+          dark_bg_red_raised: string
+          dark_bg_yellow_lowered: string
+          dark_bg_yellow_raised: string
+          dark_border: string
+          dark_border_strong: string
+          dark_border_weak: string
+          dark_button_fill: string
+          dark_button_fill_hover: string
+          dark_button_gray: string
+          dark_button_gray_hover: string
+          dark_text: string
+          dark_text_blue: string
+          dark_text_green: string
+          dark_text_invert: string
+          dark_text_light: string
+          dark_text_lighter: string
+          dark_text_lightest: string
+          dark_text_red: string
+          dark_text_yellow: string
+          description?: string
+          id?: string
+          light_accent: string
+          light_bg: string
+          light_bg_accent_lowered: string
+          light_bg_accent_raised: string
+          light_bg_blue_lowered: string
+          light_bg_blue_raised: string
+          light_bg_green_lowered: string
+          light_bg_green_raised: string
+          light_bg_lowered: string
+          light_bg_medium: string
+          light_bg_raised: string
+          light_bg_red_lowered: string
+          light_bg_red_raised: string
+          light_bg_yellow_lowered: string
+          light_bg_yellow_raised: string
+          light_border: string
+          light_border_strong: string
+          light_border_weak: string
+          light_button_fill: string
+          light_button_fill_hover: string
+          light_button_gray: string
+          light_button_gray_hover: string
+          light_text: string
+          light_text_blue: string
+          light_text_green: string
+          light_text_invert: string
+          light_text_light: string
+          light_text_lighter: string
+          light_text_lightest: string
+          light_text_red: string
+          light_text_yellow: string
+          modified_at?: string | null
+          modified_by?: string | null
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          dark_accent?: string
+          dark_bg?: string
+          dark_bg_accent_lowered?: string
+          dark_bg_accent_raised?: string
+          dark_bg_blue_lowered?: string
+          dark_bg_blue_raised?: string
+          dark_bg_green_lowered?: string
+          dark_bg_green_raised?: string
+          dark_bg_lowered?: string
+          dark_bg_medium?: string
+          dark_bg_raised?: string
+          dark_bg_red_lowered?: string
+          dark_bg_red_raised?: string
+          dark_bg_yellow_lowered?: string
+          dark_bg_yellow_raised?: string
+          dark_border?: string
+          dark_border_strong?: string
+          dark_border_weak?: string
+          dark_button_fill?: string
+          dark_button_fill_hover?: string
+          dark_button_gray?: string
+          dark_button_gray_hover?: string
+          dark_text?: string
+          dark_text_blue?: string
+          dark_text_green?: string
+          dark_text_invert?: string
+          dark_text_light?: string
+          dark_text_lighter?: string
+          dark_text_lightest?: string
+          dark_text_red?: string
+          dark_text_yellow?: string
+          description?: string
+          id?: string
+          light_accent?: string
+          light_bg?: string
+          light_bg_accent_lowered?: string
+          light_bg_accent_raised?: string
+          light_bg_blue_lowered?: string
+          light_bg_blue_raised?: string
+          light_bg_green_lowered?: string
+          light_bg_green_raised?: string
+          light_bg_lowered?: string
+          light_bg_medium?: string
+          light_bg_raised?: string
+          light_bg_red_lowered?: string
+          light_bg_red_raised?: string
+          light_bg_yellow_lowered?: string
+          light_bg_yellow_raised?: string
+          light_border?: string
+          light_border_strong?: string
+          light_border_weak?: string
+          light_button_fill?: string
+          light_button_fill_hover?: string
+          light_button_gray?: string
+          light_button_gray_hover?: string
+          light_text?: string
+          light_text_blue?: string
+          light_text_green?: string
+          light_text_invert?: string
+          light_text_light?: string
+          light_text_lighter?: string
+          light_text_lightest?: string
+          light_text_red?: string
+          light_text_yellow?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          name?: string
         }
         Relationships: []
       }
@@ -1898,9 +2048,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  private: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_permission: [

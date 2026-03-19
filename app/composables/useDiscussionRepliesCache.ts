@@ -18,7 +18,7 @@
  * - `invalidateAll()` pattern-matches on the `discussion-replies:` prefix,
  *   useful after bulk admin operations.
  *
- * TTL: 3 minutes - mirrors useCacheDiscussion. Short enough that stale data
+ * TTL: 3 minutes - mirrors useDiscussionCache. Short enough that stale data
  * is not a practical concern; long enough to make back-navigation free.
  *
  * Call sites:
@@ -37,7 +37,7 @@ function repliesKey(discussionId: string): string {
   return `discussion-replies:${discussionId}`
 }
 
-export function useCacheDiscussionReplies() {
+export function useDiscussionRepliesCache() {
   const cache = useCache({ ttl: CACHE_TTL })
 
   const loading = ref(false)

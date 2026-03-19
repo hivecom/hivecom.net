@@ -2,7 +2,7 @@
 import { Card, Grid, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
-import { useBulkUserData } from '@/composables/useCacheUserData'
+import { useBulkDataUser } from '@/composables/useDataUser'
 import UserDisplay from './UserDisplay.vue'
 
 interface Props {
@@ -37,7 +37,7 @@ const {
   loading,
   error,
   refetch,
-} = useBulkUserData(userIdsRef, {
+} = useBulkDataUser(userIdsRef, {
   includeRole: props.showRole,
   includeAvatar: true,
   userTtl: 10 * 60 * 1000, // 10 minutes

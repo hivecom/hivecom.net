@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 import { getAnonymousUsername } from '@/lib/anonymousUsernames'
 
 const props = defineProps<{
@@ -12,7 +12,7 @@ const currentUser = useSupabaseUser()
 
 const userIdRef = toRef(props, 'userId')
 
-const { user, loading } = useCacheUserData(userIdRef)
+const { user, loading } = useDataUser(userIdRef)
 
 const displayText = computed(() => {
   if (user.value?.username) {

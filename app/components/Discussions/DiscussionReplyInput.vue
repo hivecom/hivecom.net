@@ -6,7 +6,7 @@ import { computed } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import UserName from '@/components/Shared/UserName.vue'
-import { useBulkUserData } from '@/composables/useCacheUserData'
+import { useBulkDataUser } from '@/composables/useDataUser'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { normalizeErrors } from '@/lib/utils/formatting'
@@ -48,7 +48,7 @@ const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
 const editorRef = useTemplateRef<{ focus: () => void }>('editor')
 
 const replyMentionIds = computed(() => extractMentionIds(replyingTo?.markdown ?? ''))
-const { users: replyMentionUsers } = useBulkUserData(replyMentionIds)
+const { users: replyMentionUsers } = useBulkDataUser(replyMentionIds)
 const replyMentionLookup = computed<Record<string, string>>(() => {
   const lookup: Record<string, string> = {}
   for (const [id, u] of replyMentionUsers.value.entries()) {

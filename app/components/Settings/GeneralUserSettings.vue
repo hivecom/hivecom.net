@@ -2,6 +2,12 @@
 import type { Tables } from '@/types/database.overrides'
 import { Button, ButtonGroup, Card, Divider, Flex, Select, setColorTheme, Switch } from '@dolanske/vui'
 
+// Placeholder theme options for the planned Theme selector
+const themeSelectOptions = [
+  { label: 'Default', value: 'default' },
+]
+const selectedCustomTheme = ref([{ label: 'Default', value: 'default' }])
+
 const { settings, settingsError } = useDataUserSettings()
 
 // Theme options & setting
@@ -45,17 +51,18 @@ const selectedTheme = computed({
     </strong>
 
     <Flex x-between y-center class="mb-s">
-      <p>Color theme</p>
-      <Select v-model="selectedTheme" class="settings-select" :show-clear="false" :options="themeOptions" size="s" />
-    </Flex>
-    <Switch disabled class="reversed">
-      <Flex y-center gap="xxs">
-        <p>High contrast colors</p>
+      <Flex y-center gap="xxs" class="text-color-lightest">
+        <p>Theme</p>
         <SharedTinyBadge>
-          Planned
+          Coming Soon
         </SharedTinyBadge>
       </Flex>
-    </Switch>
+      <Select v-model="selectedCustomTheme" class="settings-select" :show-clear="false" :options="themeSelectOptions" size="s" disabled />
+    </Flex>
+    <Flex x-between y-center class="mb-s">
+      <p>Theme Variant</p>
+      <Select v-model="selectedTheme" class="settings-select" :show-clear="false" :options="themeOptions" size="s" />
+    </Flex>
 
     <Divider :size="64" />
 

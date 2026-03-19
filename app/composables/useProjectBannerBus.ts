@@ -3,7 +3,7 @@
  *
  * Previously dispatched as an untyped CustomEvent from `lib/projectBanner.ts`
  * and listened to with raw `window.addEventListener` + manual `as CustomEvent`
- * cast in `useCacheProjectBanner.ts`.
+ * cast in `useDataProjectBanner.ts`.
  *
  * Usage:
  *   // Dispatching (from lib/projectBanner.ts or any non-composable context):

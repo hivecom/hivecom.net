@@ -1,4 +1,5 @@
 import type { Database } from '@/types/database.types'
+import { useDataUser } from '@/composables/useDataUser'
 
 const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
@@ -45,7 +46,7 @@ function parseBirthdayDate(value: string | null): Date | null {
 export function useDataNotifications() {
   const supabase = useSupabaseClient<Database>()
   const userId = useUserId()
-  const { user: cachedUserData } = useCacheUserData(userId, { includeRole: true, includeAvatar: false })
+  const { user: cachedUserData } = useDataUser(userId, { includeRole: true, includeAvatar: false })
   const userRole = computed(() => (cachedUserData.value?.role ?? null) as Database['public']['Enums']['app_role'] | null)
 
   const birthdayWidget = computed(() => {

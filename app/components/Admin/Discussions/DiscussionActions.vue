@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Button, Flex, pushToast, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 
 type DiscussionRecord = Tables<'discussions'>
 
@@ -19,7 +19,7 @@ const emit = defineEmits<{
 }>()
 
 const supabase = useSupabaseClient()
-const discussionCache = useCacheDiscussion()
+const discussionCache = useDiscussionCache()
 
 const lockLoading = ref(false)
 const pinLoading = ref(false)

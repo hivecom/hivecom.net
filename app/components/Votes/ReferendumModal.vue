@@ -2,7 +2,7 @@
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Badge, Button, Calendar, Checkbox, Flex, Input, Modal, Textarea, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 
 interface Props {
   open: boolean
@@ -26,7 +26,7 @@ const userId = useUserId()
 // already fetched and shared across the page. referendums.update and
 // referendums.delete are granted to admin and moderator only.
 
-const { user: cachedUser } = useCacheUserData(userId, { includeRole: true })
+const { user: cachedUser } = useDataUser(userId, { includeRole: true })
 
 const canMakePublic = computed(() =>
   cachedUser.value?.role === 'admin' || cachedUser.value?.role === 'moderator',

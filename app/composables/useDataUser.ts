@@ -55,7 +55,7 @@ function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is Pr
 }
 
 // ── Global inflight deduplication maps ────────────────────────────────────────
-// These are MODULE-SCOPED so every useCacheUserData instance shares them.
+// These are MODULE-SCOPED so every useDataUser instance shares them.
 // When component A starts fetching profile for user X, component B (mounting
 // in the same tick) attaches to the same promise instead of firing a duplicate
 // request. The promise is removed from the map once it settles.
@@ -82,7 +82,7 @@ export interface useCacheUserDataOptions extends CacheConfig {
 /**
  * Cached user data composable optimized for UserDisplay components
  */
-export function useCacheUserData(userId: string | Ref<string | null | undefined>, options: useCacheUserDataOptions = {}) {
+export function useDataUser(userId: string | Ref<string | null | undefined>, options: useCacheUserDataOptions = {}) {
   const {
     includeRole = false,
     includeAvatar = true,
@@ -392,10 +392,10 @@ export function useCacheUserData(userId: string | Ref<string | null | undefined>
 
 /**
  * Bulk user data loader for efficiency when loading multiple users.
- * Uses the same global cache and inflight maps, so individual useCacheUserData
+ * Uses the same global cache and inflight maps, so individual useDataUser
  * calls that race with a bulk load will attach to the same promises.
  */
-export function useBulkUserData(userIds: Ref<string[]>, options: useCacheUserDataOptions = {}) {
+export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDataOptions = {}) {
   const {
     includeRole = false,
     includeAvatar = true,
@@ -415,7 +415,7 @@ export function useBulkUserData(userIds: Ref<string[]>, options: useCacheUserDat
   /**
    * Fetch multiple users efficiently.
    * Profiles and roles that aren't cached are fetched in bulk IN(...) queries.
-   * The results are written to the same global cache that useCacheUserData reads,
+   * The results are written to the same global cache that useDataUser reads,
    * so individual component mounts will get cache hits.
    */
   async function fetchUsers(force = false): Promise<void> {
@@ -513,7 +513,7 @@ export function useBulkUserData(userIds: Ref<string[]>, options: useCacheUserDat
 
       if (includeAvatar && avatarIdsToFetch.length > 0) {
         await Promise.all(avatarIdsToFetch.map(async (id) => {
-          // Use the global inflight map so individual useCacheUserData calls
+          // Use the global inflight map so individual useDataUser calls
           // that happen to fire for these same IDs will piggyback.
           const cacheKey = `user:avatar:${id}`
           let inflight = _inflightAvatars.get(id)
@@ -582,7 +582,7 @@ export function useBulkUserData(userIds: Ref<string[]>, options: useCacheUserDat
     void fetchUsers()
   }, { immediate: true })
 
-  // Watch for authentication changes - same logic as useCacheUserData:
+  // Watch for authentication changes - same logic as useDataUser:
   // only refetch on actual sign-in transition
   let _wasAuthed = false
   watch(currentUser, (newUser) => {

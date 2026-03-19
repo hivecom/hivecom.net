@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
-import { useCacheGameAssets } from '@/composables/useCacheGameAssets'
+import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -24,7 +24,7 @@ const emit = defineEmits<{
 const isOpen = defineModel<boolean>('open', { default: false })
 
 const { games, getById: getGameById } = useDataGames()
-const { getGameCoverUrl, getGameBackgroundUrl } = useCacheGameAssets()
+const { getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
 
 interface GameDetailsEntry {
   game: Tables<'games'>

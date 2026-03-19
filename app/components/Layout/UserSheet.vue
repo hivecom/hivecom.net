@@ -2,7 +2,7 @@
 import { Avatar, Button, Divider, Flex, Sheet, Spinner } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -10,7 +10,7 @@ const userId = useUserId()
 const {
   user: userData,
   userInitials,
-} = useCacheUserData(
+} = useDataUser(
   userId,
   {
     includeRole: true,

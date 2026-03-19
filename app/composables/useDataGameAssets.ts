@@ -37,7 +37,7 @@ export interface GameAssetOptions {
   ttl?: number
 }
 
-export function useCacheGameAssets(options: GameAssetOptions = {}) {
+export function useDataGameAssets(options: GameAssetOptions = {}) {
   const {
     ttl = 30 * 60 * 1000, // 30 minutes
   } = options

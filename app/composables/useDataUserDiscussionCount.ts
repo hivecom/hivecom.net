@@ -6,8 +6,8 @@
  *
  * | Composable                           | Counts                                              | Used for              |
  * |--------------------------------------|-----------------------------------------------------|-----------------------|
- * | `useCacheUserDiscussionCount`        | ALL non-draft discussions, any context except profile wall | Display counter  |
- * | `useCacheBadgeDiscussionStartedCount`| Pure forum threads only (topic set, no entity FKs, not draft) | Badge threshold |
+ * | `useDataUserDiscussionCount`         | ALL non-draft discussions, any context except profile wall | Display counter  |
+ * | `useBadgeDiscussionStartedCount`     | Pure forum threads only (topic set, no entity FKs, not draft) | Badge threshold |
  *
  * These look similar but query different predicates and serve different consumers.
  * Do NOT merge them - the badge composable is intentionally stricter.
@@ -27,7 +27,7 @@ interface UserDiscussionCountOptions extends Omit<CacheConfig, 'ttl'> {
 
 const DEFAULT_CACHE_TTL = 10 * 60 * 1000 // 10 minutes
 
-export function useCacheUserDiscussionCount(
+export function useDataUserDiscussionCount(
   userId: Ref<string | null | undefined> | string | null | undefined,
   options: UserDiscussionCountOptions = {},
 ) {

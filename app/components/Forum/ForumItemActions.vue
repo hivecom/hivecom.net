@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Divider, Dropdown, DropdownItem, pushToast, Tooltip } from '@dolanske/vui'
-import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
+import { useDataUser } from '@/composables/useDataUser'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
 import ForumModalAddDiscussion from './ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from './ForumModalAddTopic.vue'
@@ -29,8 +30,8 @@ const supabase = useSupabaseClient()
 
 const userId = useUserId()
 
-const { user } = useCacheUserData(userId, { includeRole: true })
-const discussionCache = useCacheDiscussion()
+const { user } = useDataUser(userId, { includeRole: true })
+const discussionCache = useDiscussionCache()
 
 // Locking
 const lockLoading = ref(false)

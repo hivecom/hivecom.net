@@ -6,7 +6,7 @@ import { computed, toRef } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
 import { useCachedFetch } from '@/composables/useCache'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 import { getCountryInfo } from '@/lib/utils/country'
 import ActivitySteam from '../Profile/Activity/ActivitySteam.vue'
 import ActivityTeamspeak from '../Profile/Activity/ActivityTeamspeak.vue'
@@ -34,7 +34,7 @@ const {
   error,
   userInitials,
   refetch,
-} = useCacheUserData(userIdRef, {
+} = useDataUser(userIdRef, {
   includeRole: true,
   includeAvatar: true,
   userTtl: 10 * 60 * 1000,

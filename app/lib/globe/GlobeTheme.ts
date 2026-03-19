@@ -1,22 +1,40 @@
-// Color constants – dark theme
-export const BACKGROUND_COLOR = 'rgba(0,0,0,0)'
-export const GLOBE_COLOR_DARK = '#060606'
-export const ARC_COLOR_DARK = '#a7fc2f'
-export const HEX_HIGHLIGHT_COLOR_DARK = '#d9ff6b'
-export const HEX_COLOR_DARK = '#333333'
-export const RING_COLOR_RGB_DARK = '217,255,107'
-
-// Color constants – light theme
-export const GLOBE_COLOR_LIGHT = '#fff'
-export const ARC_COLOR_LIGHT = '#225500'
-export const HEX_HIGHLIGHT_COLOR_LIGHT = '#225500'
-export const HEX_COLOR_LIGHT = '#DDDDDD'
-export const RING_COLOR_RGB_LIGHT = '88,170,64'
+// GlobeTheme.ts
+// Color getters for the globe that read from CSS custom properties so they
+// automatically track the active theme (dark/light, custom user themes, etc.)
+// All functions are safe to call on every frame - getComputedStyle is fast.
 
 // Shared
+export const BACKGROUND_COLOR = 'rgba(0,0,0,0)'
 export const ATMOSPHERE_COLOR = '#ddffcc'
 
 const HEX_PAIR_RE = /.{1,2}/g
+
+// ---------------------------------------------------------------------------
+// CSS variable helpers
+// ---------------------------------------------------------------------------
+
+function cssVar(name: string): string {
+  if (typeof window === 'undefined')
+    return ''
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+
+/** Parse a CSS hex color string into an [r, g, b] 0-255 tuple. */
+function parseHex(hex: string): [number, number, number] {
+  const parts = hex.replace('#', '').match(HEX_PAIR_RE) ?? ['00', '00', '00']
+  const [r = '00', g = '00', b = '00'] = parts
+  return [Number.parseInt(r, 16), Number.parseInt(g, 16), Number.parseInt(b, 16)]
+}
+
+/** Convert a CSS hex color to an "r,g,b" string suitable for rgba(). */
+function hexToRgbString(hex: string): string {
+  const [r, g, b] = parseHex(hex)
+  return `${r},${g},${b}`
+}
+
+// ---------------------------------------------------------------------------
+// Theme detection
+// ---------------------------------------------------------------------------
 
 export function isLightTheme(): boolean {
   if (typeof window === 'undefined')
@@ -35,41 +53,43 @@ export function isLightTheme(): boolean {
   return Boolean(media?.matches)
 }
 
+// ---------------------------------------------------------------------------
+// Color getters - read live from CSS variables
+// ---------------------------------------------------------------------------
+
+export function getArcColor(): string {
+  return cssVar('--color-accent') || (isLightTheme() ? '#69883e' : '#a7fc2f')
+}
+
+export function getHighlightColor(): string {
+  // Use the raised accent background as the highlight - brighter than accent
+  // in dark mode, a mid-tone in light mode.
+  return cssVar('--color-bg-accent-raised') || (isLightTheme() ? '#7ea34a' : '#69b103')
+}
+
+export function getHexBaseColor(): string {
+  return cssVar('--color-border') || (isLightTheme() ? '#dddddd' : '#333333')
+}
+
+export function getRingRgb(): string {
+  const accent = cssVar('--color-accent') || (isLightTheme() ? '#69883e' : '#a7fc2f')
+  return hexToRgbString(accent)
+}
+
+export function getGlobeColor(): string {
+  return cssVar('--color-bg') || (isLightTheme() ? '#eeeeee' : '#111111')
+}
+
+// ---------------------------------------------------------------------------
+// Utility - kept here as it's tightly coupled to hex color blending
+// ---------------------------------------------------------------------------
+
 export function blendHex(from: string, to: string, t: number): string {
   const clamp = Math.max(0, Math.min(1, t))
-  const parse = (hex: string): [number, number, number] => {
-    const parts = hex.replace('#', '').match(HEX_PAIR_RE) ?? ['00', '00', '00']
-    const [r = '00', g = '00', b = '00'] = parts
-    return [
-      Number.parseInt(r, 16),
-      Number.parseInt(g, 16),
-      Number.parseInt(b, 16),
-    ]
-  }
-  const [r1, g1, b1] = parse(from)
-  const [r2, g2, b2] = parse(to)
+  const [r1, g1, b1] = parseHex(from)
+  const [r2, g2, b2] = parseHex(to)
   const r = Math.round(r1 + (r2 - r1) * clamp).toString(16).padStart(2, '0')
   const g = Math.round(g1 + (g2 - g1) * clamp).toString(16).padStart(2, '0')
   const b = Math.round(b1 + (b2 - b1) * clamp).toString(16).padStart(2, '0')
   return `#${r}${g}${b}`
-}
-
-export function getArcColor(): string {
-  return isLightTheme() ? ARC_COLOR_LIGHT : ARC_COLOR_DARK
-}
-
-export function getHighlightColor(): string {
-  return isLightTheme() ? HEX_HIGHLIGHT_COLOR_LIGHT : HEX_HIGHLIGHT_COLOR_DARK
-}
-
-export function getHexBaseColor(): string {
-  return isLightTheme() ? HEX_COLOR_LIGHT : HEX_COLOR_DARK
-}
-
-export function getRingRgb(): string {
-  return isLightTheme() ? RING_COLOR_RGB_LIGHT : RING_COLOR_RGB_DARK
-}
-
-export function getGlobeColor(): string {
-  return isLightTheme() ? GLOBE_COLOR_LIGHT : GLOBE_COLOR_DARK
 }

@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
 import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Modal, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
@@ -28,7 +28,7 @@ const emit = defineEmits<{
 const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
 const profileUserId = computed(() => props.profile.id)
-const { user } = useCacheUserData(profileUserId, {
+const { user } = useDataUser(profileUserId, {
   includeRole: true,
   includeAvatar: true,
   userTtl: 10 * 60 * 1000,

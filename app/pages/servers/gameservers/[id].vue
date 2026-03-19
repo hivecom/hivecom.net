@@ -123,7 +123,7 @@ watch(gameserversError, (err) => {
 watch(game, async (newGame) => {
   if (newGame) {
     try {
-      const { getGameBackgroundUrl } = useCacheGameAssets()
+      const { getGameBackgroundUrl } = useDataGameAssets()
       gameBackground.value = await getGameBackgroundUrl(newGame)
     }
     catch {

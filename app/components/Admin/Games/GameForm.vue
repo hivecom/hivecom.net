@@ -18,7 +18,7 @@ const emit = defineEmits(['save', 'delete'])
 const isOpen = defineModel<boolean>('isOpen')
 
 // Game assets composable
-const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl, clearGameAssets } = useCacheGameAssets()
+const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl, clearGameAssets } = useDataGameAssets()
 
 // Form state
 const gameForm = ref({

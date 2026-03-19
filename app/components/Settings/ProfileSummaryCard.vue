@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Avatar, Card, Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 
 interface Props {
   profile: Tables<'profiles'> | null
@@ -21,7 +21,7 @@ const {
   user: userData,
   loading: userDataLoading,
   userInitials,
-} = useCacheUserData(userIdRef, {
+} = useDataUser(userIdRef, {
   includeRole: true,
   includeAvatar: true,
 })

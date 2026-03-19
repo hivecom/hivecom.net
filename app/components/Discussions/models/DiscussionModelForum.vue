@@ -15,9 +15,9 @@ import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import UserRole from '@/components/Shared/UserRole.vue'
-import { useCacheBadgeDiscussionReplyCount } from '@/composables/useCacheBadgeDiscussionReplyCount'
-import { useBulkUserData } from '@/composables/useCacheUserData'
-import { useCacheUserDiscussionCount } from '@/composables/useCacheUserDiscussionCount'
+import { useBadgeDiscussionReplyCount } from '@/composables/useBadgeDiscussionReplyCount'
+import { useBulkDataUser } from '@/composables/useDataUser'
+import { useDataUserDiscussionCount } from '@/composables/useDataUserDiscussionCount'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -43,7 +43,7 @@ const userId = useUserId()
 const supabase = useSupabaseClient()
 const currentUser = useSupabaseUser()
 
-const { user: currentUserData } = useCacheUserData(userId, { includeRole: true })
+const { user: currentUserData } = useDataUser(userId, { includeRole: true })
 
 const isMobile = useBreakpoint('<s')
 
@@ -52,10 +52,10 @@ const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
 const canBypassLock = inject(DISCUSSION_KEYS.canBypassLock, ref(false))
 
 const authorId = computed(() => data.value.created_by ?? null)
-const { count: discussionCount } = useCacheUserDiscussionCount(authorId)
-const { count: replyCount } = useCacheBadgeDiscussionReplyCount(authorId)
+const { count: discussionCount } = useDataUserDiscussionCount(authorId)
+const { count: replyCount } = useBadgeDiscussionReplyCount(authorId)
 
-const { user } = useCacheUserData(data.value.created_by!, {
+const { user } = useDataUser(data.value.created_by!, {
   includeRole: true,
   includeAvatar: true,
   userTtl: 10 * 60 * 1000,
@@ -69,7 +69,7 @@ const modifierId = computed(() => {
     return null
   return modified_by
 })
-const { user: modifierUser } = useCacheUserData(modifierId, { userTtl: 10 * 60 * 1000 })
+const { user: modifierUser } = useDataUser(modifierId, { userTtl: 10 * 60 * 1000 })
 
 const country = computed(() => getCountryInfo(user.value?.country))
 
@@ -77,7 +77,7 @@ const setReplyToComment = inject(DISCUSSION_KEYS.setReplyToComment) as (data: Co
 const setQuoteOfComment = inject(DISCUSSION_KEYS.setQuoteOfComment) as (data: Comment) => void
 
 const replyMentionIds = computed(() => extractMentionIds(data.value.reply?.markdown ?? ''))
-const { users: replyMentionUsers } = useBulkUserData(replyMentionIds)
+const { users: replyMentionUsers } = useBulkDataUser(replyMentionIds)
 const replyMentionLookup = computed<Record<string, string>>(() => {
   const lookup: Record<string, string> = {}
   for (const [id, u] of replyMentionUsers.value.entries()) {

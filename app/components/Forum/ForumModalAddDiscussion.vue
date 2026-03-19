@@ -4,8 +4,8 @@ import type { Tables } from '@/types/database.overrides'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
-import { useCacheUserData } from '@/composables/useCacheUserData'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
+import { useDataUser } from '@/composables/useDataUser'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
@@ -38,7 +38,7 @@ const userId = useUserId()
 
 // Use the cached user data composable - role is already fetched and shared
 // with ForumItemActions and the parent page. No extra DB queries needed.
-const { user: cachedUser } = useCacheUserData(userId, { includeRole: true })
+const { user: cachedUser } = useDataUser(userId, { includeRole: true })
 
 // discussions.update is granted to admin and moderator only.
 const canUpdateDiscussions = computed(() =>

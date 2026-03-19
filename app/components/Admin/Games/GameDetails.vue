@@ -38,7 +38,7 @@ const gameserversLoading = ref(false)
 const gameserversError = ref('')
 
 // Game assets composable
-const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl } = useCacheGameAssets()
+const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
 
 interface GameServerWithContainer {
   id: number

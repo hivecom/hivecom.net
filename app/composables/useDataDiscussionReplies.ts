@@ -1,9 +1,9 @@
 import type { Comment, RawComment, ThreadNode } from '@/components/Discussions/Discussion.types'
 import type { Tables } from '@/types/database.overrides'
-import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
-import { useCacheDiscussionReplies } from '@/composables/useCacheDiscussionReplies'
-import { useCacheDiscussionSubscriptions } from '@/composables/useCacheDiscussionSubscriptions'
 import { useDataNotifications } from '@/composables/useDataNotifications'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
+import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 
 /**
  * Manages all comment data for a discussion: fetching, modelling into the
@@ -26,9 +26,9 @@ export function useDataDiscussionReplies(
   onDeleted?: (id: string) => void,
 ) {
   const supabase = useSupabaseClient()
-  const discussionCache = useCacheDiscussion()
-  const repliesCache = useCacheDiscussionReplies()
-  const subscriptionsCache = useCacheDiscussionSubscriptions()
+  const discussionCache = useDiscussionCache()
+  const repliesCache = useDiscussionRepliesCache()
+  const subscriptionsCache = useDiscussionSubscriptionsCache()
   const notifications = useDataNotifications()
 
   const loading = ref(false)

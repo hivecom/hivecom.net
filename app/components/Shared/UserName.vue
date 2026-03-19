@@ -2,7 +2,7 @@
 import { Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
-import { useCacheUserData } from '@/composables/useCacheUserData'
+import { useDataUser } from '@/composables/useDataUser'
 import { getAnonymousUsername } from '@/lib/anonymousUsernames'
 
 interface Props {
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 const {
   user,
   loading,
-} = useCacheUserData(
+} = useDataUser(
   computed(() => props.userId ?? null),
   {
     includeRole: false,

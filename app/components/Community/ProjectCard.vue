@@ -4,7 +4,7 @@ import { Badge, Card, Flex } from '@dolanske/vui'
 import { computed } from 'vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { useCacheProjectBanner } from '@/composables/useCacheProjectBanner'
+import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
 import { getPlaceholderBannerProject } from '@/lib/projectBannerPlaceholders'
 
 interface Props {
@@ -25,7 +25,7 @@ function handleClick() {
   navigateTo(`/community/projects/${props.project.id}`)
 }
 
-const { bannerUrl: projectBannerUrl } = useCacheProjectBanner(computed(() => props.project.id))
+const { bannerUrl: projectBannerUrl } = useDataProjectBanner(computed(() => props.project.id))
 
 const placeholderBanner = computed(() => getPlaceholderBannerProject(props.project.id))
 

@@ -13,9 +13,9 @@ import ProfileBadgeRSVPs from '@/components/Profile/Badges/ProfileBadgeRSVPs.vue
 import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
 import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
 import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
-import { useCacheBadgeDiscussionReplyCount } from '@/composables/useCacheBadgeDiscussionReplyCount'
-import { useCacheBadgeDiscussionStartedCount } from '@/composables/useCacheBadgeDiscussionStartedCount'
-import { useCacheBadgePartyAnimalCount } from '@/composables/useCacheBadgePartyAnimalCount'
+import { useBadgeDiscussionReplyCount } from '@/composables/useBadgeDiscussionReplyCount'
+import { useBadgeDiscussionStartedCount } from '@/composables/useBadgeDiscussionStartedCount'
+import { useBadgePartyAnimalCount } from '@/composables/useBadgePartyAnimalCount'
 import { DISCUSSION_REPLY_MIN_COUNT, DISCUSSION_STARTER_MIN_COUNT, getDiscussionReplyVariant, getDiscussionStarterVariant } from '@/lib/discussionBadge'
 import { getPartyAnimalVariant, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/partyAnimalBadge'
 import ProfileBadgeHost from './Badges/ProfileBadgeHost.vue'
@@ -99,21 +99,21 @@ const yearsBadgeVariant = computed<BadgeVariant | null>(() => {
 })
 
 const profileIdRef = computed(() => props.profile?.id ?? null)
-const { count: PartyAnimalCount } = useCacheBadgePartyAnimalCount(profileIdRef)
+const { count: PartyAnimalCount } = useBadgePartyAnimalCount(profileIdRef)
 const partyAnimalVariant = computed<BadgeVariant | null>(() => {
   const variant = getPartyAnimalVariant(PartyAnimalCount.value)
   return variant ?? null
 })
 const hasPartyAnimalBadge = computed(() => (partyAnimalVariant.value !== null) && PartyAnimalCount.value >= PARTY_ANIMAL_MIN_RSVPS)
 
-const { count: DiscussionStartedCount } = useCacheBadgeDiscussionStartedCount(profileIdRef)
+const { count: DiscussionStartedCount } = useBadgeDiscussionStartedCount(profileIdRef)
 const discussionStarterVariant = computed<BadgeVariant | null>(() => {
   const variant = getDiscussionStarterVariant(DiscussionStartedCount.value)
   return variant ?? null
 })
 const hasDiscussionStarterBadge = computed(() => (discussionStarterVariant.value !== null) && DiscussionStartedCount.value >= DISCUSSION_STARTER_MIN_COUNT)
 
-const { count: DiscussionReplyCount } = useCacheBadgeDiscussionReplyCount(profileIdRef)
+const { count: DiscussionReplyCount } = useBadgeDiscussionReplyCount(profileIdRef)
 const discussionReplyVariant = computed<BadgeVariant | null>(() => {
   const variant = getDiscussionReplyVariant(DiscussionReplyCount.value)
   return variant ?? null
