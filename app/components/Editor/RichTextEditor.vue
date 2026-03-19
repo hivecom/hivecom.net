@@ -5,7 +5,6 @@ import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
 import { Button, ButtonGroup, Dropdown, DropdownItem, pushToast, Tooltip } from '@dolanske/vui'
 import { Extension } from '@tiptap/core'
-import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
 import { Mathematics } from '@tiptap/extension-mathematics'
 import TaskItem from '@tiptap/extension-task-item'
@@ -13,6 +12,7 @@ import TaskList from '@tiptap/extension-task-list'
 import Youtube from '@tiptap/extension-youtube'
 import { CharacterCount } from '@tiptap/extensions'
 import { Markdown } from '@tiptap/markdown'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { marked } from 'marked'
@@ -240,12 +240,64 @@ const editor = useEditor({
     // User mentions
     createMentionExtension(supabase),
 
-    // Media content setting for file uploads
+    // Media content setting for file uploads.
+    // We roll our own plugin instead of using @tiptap/extension-file-handler
+    // because that extension returns false (not consumed) when the clipboard
+    // also contains text/html - which lets ProseMirror's default paste handler
+    // run afterward and insert a raw image link. We need to return true to
+    // fully consume the event whenever we handle the files ourselves.
     ...(props.mediaContext
-      ? [FileHandler.configure({
-          onPaste: (_, files) => handleFileUpload(files),
-          onDrop: (_, files, pos) => handleFileUpload(files, pos),
-          allowedMimeTypes: allowedMediaTypes,
+      ? [Extension.create({
+          name: 'mediaUpload',
+          addProseMirrorPlugins() {
+            return [
+              new Plugin({
+                key: new PluginKey('mediaUpload'),
+                props: {
+                  handlePaste(_view, event) {
+                    const cd = event.clipboardData
+                    if (!cd)
+                      return false
+
+                    // Collect files from both .files and .items (the latter
+                    // catches screenshots and images copied from other apps
+                    // where .files may be empty).
+                    let files: File[] = [...cd.files]
+                    if (files.length === 0) {
+                      files = [...cd.items]
+                        .filter(item => item.kind === 'file')
+                        .map(item => item.getAsFile())
+                        .filter((f): f is File => f !== null)
+                    }
+
+                    const allowed = files.filter(f => allowedMediaTypes.includes(f.type))
+                    if (allowed.length === 0)
+                      return false
+
+                    event.preventDefault()
+                    event.stopPropagation()
+                    handleFileUpload(allowed)
+                    return true
+                  },
+                  handleDrop(_view, event) {
+                    const dt = event.dataTransfer
+                    if (!dt?.files.length)
+                      return false
+
+                    const files = [...dt.files].filter(f => allowedMediaTypes.includes(f.type))
+                    if (files.length === 0)
+                      return false
+
+                    const pos = _view.posAtCoords({ left: event.clientX, top: event.clientY })
+                    event.preventDefault()
+                    event.stopPropagation()
+                    handleFileUpload(files, pos?.pos)
+                    return true
+                  },
+                },
+              }),
+            ]
+          },
         })]
       : []),
     // Character limit

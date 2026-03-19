@@ -43,6 +43,14 @@ const supabase = useSupabaseClient()
 
 const { user: currentUserData } = useCacheUserData(userId, { includeRole: true })
 
+const modifierId = computed(() => {
+  const { modified_at, created_at, modified_by, created_by } = data.value
+  if (modified_at === created_at || !modified_by || modified_by === created_by)
+    return null
+  return modified_by
+})
+const { user: modifierUser } = useCacheUserData(modifierId, { userTtl: 10 * 60 * 1000 })
+
 const COMMENT_TRUNCATE = 96
 
 const setReplyToComment = inject(DISCUSSION_KEYS.setReplyToComment) as (data: Comment) => void
@@ -131,6 +139,7 @@ async function submitEdit() {
     data.value.markdown = resolvedMarkdown
     data.value.is_nsfw = editedIsNsfw.value
     data.value.modified_at = dayjs().toISOString()
+    data.value.modified_by = userId.value ?? data.value.modified_by
     _showNSFWWarning.value = editedIsNsfw.value
     endEditing()
   }
@@ -156,12 +165,20 @@ const { displayReactions, toggleReaction } = useReactions({
 <template>
   <div class="discussion-comment">
     <Flex y-center x-start>
-      <UserAvatar size="s" :user-id="data.created_by" show-preview />
+      <UserAvatar size="s" :user-id="data.created_by" show-preview linked />
       <UserName size="m" show-preview :user-id="data.created_by" />
-      <p v-if="timestamps" class=" discussion-comment__timestamp">
-        {{ dayjs(data.created_at).fromNow() }}
-        <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
-      </p>
+      <Tooltip v-if="timestamps" :delay="500">
+        <p class="discussion-comment__timestamp">
+          {{ dayjs(data.created_at).fromNow() }}
+          <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
+        </p>
+        <template #tooltip>
+          <p>{{ dayjs(data.created_at).format('MMM D, YYYY [at] h:mm A') }}</p>
+          <p v-if="data.modified_at !== data.created_at">
+            Edited {{ dayjs(data.modified_at).format('MMM D, YYYY [at] h:mm A') }}{{ modifierId && modifierUser ? ` by ${modifierUser.username}` : '' }}
+          </p>
+        </template>
+      </Tooltip>
     </Flex>
 
     <Tooltip v-if="data.reply && viewMode !== 'threaded'" :delay="750">
@@ -319,7 +336,7 @@ const { displayReactions, toggleReaction } = useReactions({
         :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"
         :media-bucket-id="FORUMS_BUCKET_ID"
         min-height="128px"
-        show-submit-options
+        show-attachment-button
         placeholder="Edit your comment. Do not leave it empty!"
         class="mb-xs"
       />

@@ -133,7 +133,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="bulk-avatar-display">
+  <Flex expand class="bulk-avatar-display">
     <!-- Loading State -->
     <Flex
       v-if="loading && userIds.length > 0"
@@ -228,7 +228,7 @@ defineExpose({
         </div>
       </div>
     </Flex>
-  </div>
+  </Flex>
 </template>
 
 <style lang="scss" scoped>

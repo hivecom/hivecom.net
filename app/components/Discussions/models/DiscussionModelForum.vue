@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion } from '../Discussion.types'
-import { Alert, Avatar, Button, ButtonGroup, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
@@ -210,9 +210,9 @@ const { displayReactions, toggleReaction } = useReactions({
     <!-- Define a part of UI which can be used multiple times in the same component -->
     <DefineReusableUserInfo>
       <Flex column x-center y-center :gap="isMobile ? 'xs' : 's'">
-        <Avatar :url="user?.avatarUrl || undefined" :size="isMobile ? 'm' : 'l'" />
+        <SharedUserAvatar :user-id="data.created_by" :size="isMobile ? 'm' : 'l'" linked />
         <Flex wrap gap="xxs" y-center x-center>
-          <UserName :user-id="data.created_by" />
+          <UserName :user-id="data.created_by" show-preview />
           <BadgeCircle v-if="data.created_by === discussion?.created_by">
             <span class="text-xxs text-color-light">OP</span>
           </BadgeCircle>

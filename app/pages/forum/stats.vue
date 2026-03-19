@@ -318,7 +318,7 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
           </BreadcrumbItem>
         </Breadcrumbs>
         <h1>Forum Statistics</h1>
-        <p>A peek behind the curtain</p>
+        <p>Yapping olympics</p>
       </section>
 
       <!-- Loading state -->
@@ -458,10 +458,12 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
                     :user-id="activeLeaderboard[position].user_id"
                     size="l"
                     linked
+                    show-preview
                   />
                   <UserName
                     :user-id="activeLeaderboard[position].user_id"
                     size="s"
+                    show-preview
                   />
                 </div>
                 <div
@@ -491,8 +493,8 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
                   {{ index + 1 }}
                 </span>
                 <div class="leaderboard__user">
-                  <UserAvatar :user-id="user.user_id" size="s" linked />
-                  <UserName :user-id="user.user_id" size="s" />
+                  <UserAvatar :user-id="user.user_id" size="s" linked show-preview />
+                  <UserName :user-id="user.user_id" size="s" show-preview />
                 </div>
                 <div class="leaderboard__bar-wrapper">
                   <div

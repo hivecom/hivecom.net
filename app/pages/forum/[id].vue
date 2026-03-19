@@ -495,7 +495,7 @@ function revealNsfw() {
               </p>
             </div>
 
-            <UserAvatar v-if="isMobile" :user-id="post.created_by" />
+            <UserAvatar v-if="isMobile" :user-id="post.created_by" linked />
             <UserDisplay v-else :user-id="post.created_by" show-role />
           </div>
         </section>
