@@ -4,6 +4,8 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import { useCacheDiscussion } from '@/composables/useCacheDiscussion'
+import { useBulkUserData } from '@/composables/useCacheUserData'
+import { extractMentionIds } from '@/lib/markdownProcessors'
 
 const props = defineProps<Props>()
 
@@ -103,6 +105,20 @@ watch(() => props.profileId, () => {
 
 const hasReplies = computed(() => replies.value.length > 0)
 
+// Collect all mention IDs across all replies into a single deduplicated set
+const allMentionIds = computed(() =>
+  [...new Set(replies.value.flatMap(r => extractMentionIds(r.markdown)))],
+)
+const { users: mentionUsers } = useBulkUserData(allMentionIds, { includeAvatar: false })
+const mentionLookup = computed<Record<string, string>>(() => {
+  const lookup: Record<string, string> = {}
+  for (const [id, u] of mentionUsers.value.entries()) {
+    if (u?.username)
+      lookup[id] = u.username
+  }
+  return lookup
+})
+
 const emptyStateText = computed(() => {
   return `${props.username ?? 'This user'} hasn't posted any replies yet.`
 })
@@ -153,7 +169,7 @@ const emptyStateText = computed(() => {
           </Flex>
           <span class="profile-discussions__timestamp">{{ dayjs(reply.created_at).fromNow() }}</span>
         </Flex>
-        <MarkdownPreview :markdown="reply.markdown" :max-length="120" class="profile-discussions__content" />
+        <MarkdownPreview :markdown="reply.markdown" :mention-lookup="mentionLookup" :max-length="120" class="profile-discussions__content" />
       </NuxtLink>
     </Flex>
 

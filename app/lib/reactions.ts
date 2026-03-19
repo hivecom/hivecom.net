@@ -96,6 +96,7 @@ export const HIVECOM_EMOTES = [
   '🌿',
   '🌱',
   '🥀',
+  '🥚',
 ] as const
 
 export type HivecomEmote = typeof HIVECOM_EMOTES[number]

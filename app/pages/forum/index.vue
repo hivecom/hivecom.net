@@ -614,12 +614,16 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
   <div class="page forum">
     <ClientOnly>
       <section class="page-title mb-xl">
-        <h1>
-          Forum
-        </h1>
-        <p>
-          Bringing back the old school internet experience
-        </p>
+        <Flex expand x-between y-center>
+          <div>
+            <h1>
+              Forum
+            </h1>
+            <p>
+              Bringing back the old school internet experience
+            </p>
+          </div>
+        </Flex>
       </section>
 
       <ForumLatestUpdates
@@ -905,6 +909,13 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         placeholder="Find a forum post..."
         @close="searchOpen = false"
       />
+      <Flex expand x-end>
+        <NuxtLink to="/forum/stats">
+          <Button plain size="s" square>
+            <Icon name="ph:ranking" class="text-color-lightest" />
+          </Button>
+        </NuxtLink>
+      </Flex>
     </ClientOnly>
   </div>
 </template>
