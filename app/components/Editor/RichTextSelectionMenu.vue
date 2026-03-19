@@ -2,7 +2,6 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { TextColorName } from './plugins/textColor'
 import type { TextFontName } from './plugins/textFont'
-import type { TextSizeName } from './plugins/textSize'
 import type { ShouldShowMenuProps } from '@/types/rich-text-editor'
 import { Button, ButtonGroup, Flex, Popout, Tooltip } from '@dolanske/vui'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
@@ -10,7 +9,6 @@ import { createReusableTemplate } from '@vueuse/core'
 import { capitalize, computed, ref } from 'vue'
 import { TEXT_COLOR_NAMES, textColorValue } from './plugins/textColor'
 import { TEXT_FONT_NAMES, textFontValue } from './plugins/textFont'
-import { TEXT_SIZE_NAMES } from './plugins/textSize'
 
 const props = defineProps<{
   editor: Editor
@@ -237,54 +235,20 @@ function clearFont() {
 // Size picker
 // ---------------------------------------------------------------------------
 
-const sizePickerOpen = ref(false)
-const sizeButtonRef = ref<HTMLElement | null>(null)
+function toggleTinyText() {
+  const tinySize = 's'
 
-const SIZE_LABELS: Record<TextSizeName, string> = {
-  xs: 'Extra small',
-  s: 'Small',
-  l: 'Large',
-  xl: 'Extra large',
-  xxl: 'Huge',
-}
-
-// Preview font-size values matching the CSS custom properties, so the labels
-// render at the actual size without needing CSS variables in inline styles.
-const SIZE_PREVIEW: Record<TextSizeName, string> = {
-  xs: '0.75rem',
-  s: '0.875rem',
-  l: '1.125rem',
-  xl: '1.375rem',
-  xxl: '1.75rem',
-}
-
-function getActiveSize(): TextSizeName | null {
-  if (props.plainText)
-    return null
-  const attrs = props.editor.getAttributes('textSize')
-  const size = attrs?.size
-  return typeof size === 'string' && size.trim() !== '' ? size as TextSizeName : null
-}
-
-function toggleSize(size: TextSizeName) {
   if (props.plainText) {
-    insertMarkdown(`:::size[${size}]`, ':::')
+    insertMarkdown(`:::size[${tinySize}]`, ':::')
   }
   else {
-    if (getActiveSize() === size) {
+    if (props.editor.getAttributes('textSize').size === tinySize) {
       props.editor.chain().focus().unsetTextSize().run()
     }
     else {
-      props.editor.chain().focus().setTextSize(size).run()
+      props.editor.chain().focus().setTextSize(tinySize).run()
     }
   }
-  sizePickerOpen.value = false
-}
-
-function clearSize() {
-  if (!props.plainText)
-    props.editor.chain().focus().unsetTextSize().run()
-  sizePickerOpen.value = false
 }
 
 // ---------------------------------------------------------------------------
@@ -478,41 +442,12 @@ const [DefineToolbar, ReuseToolbar] = createReusableTemplate()
 
         <!-- Font size -->
         <Button
-          ref="sizeButtonRef"
           size="s"
           square
-          :class="{ 'is-active': sizePickerOpen || getActiveSize() !== null }"
-          @click="sizePickerOpen = !sizePickerOpen"
+          @click="toggleTinyText()"
         >
-          <Icon :size="18" name="ph:text-t" />
+          <Icon :size="18" name="material-symbols-light:lowercase" />
         </Button>
-
-        <Popout
-          :anchor="sizeButtonRef"
-          :visible="sizePickerOpen"
-          placement="bottom"
-          :offset="6"
-          @click-outside="sizePickerOpen = false"
-        >
-          <div class="list-popout">
-            <button
-              v-for="name in TEXT_SIZE_NAMES"
-              :key="name"
-              class="list-item"
-              :class="{ 'is-active': getActiveSize() === name }"
-              :style="{ fontSize: SIZE_PREVIEW[name] }"
-              @click="toggleSize(name)"
-            >
-              {{ SIZE_LABELS[name] }}
-            </button>
-            <div v-if="getActiveSize()" class="list-clear-row">
-              <button class="list-clear" @click="clearSize">
-                <Icon :size="10" name="ph:x" />
-                Reset size
-              </button>
-            </div>
-          </div>
-        </Popout>
       </ButtonGroup>
 
       <!-- Block formatting -->

@@ -564,7 +564,10 @@ function revealNsfw() {
                 @click="toggleSubscription"
               >
                 <Tooltip>
-                  <Icon :name="isSubscribed ? 'ph:bell-ringing-fill' : 'ph:bell'" />
+                  <Icon
+                    :name="isSubscribed ? 'ph:bell-ringing' : 'ph:bell'"
+                    :class="{ 'text-color-accent': isSubscribed }"
+                  />
                   <template #tooltip>
                     <p>{{ isSubscribed ? 'Unsubscribe' : 'Subscribe' }}</p>
                   </template>
