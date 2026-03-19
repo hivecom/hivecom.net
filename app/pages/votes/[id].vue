@@ -373,6 +373,7 @@ function handleChoiceClick(index: number) {
               v-if="isOwnReferendum"
               variant="gray"
               size="s"
+              :disabled="!isActive && !isUpcoming"
               @click="editModalOpen = true"
             >
               <template #start>

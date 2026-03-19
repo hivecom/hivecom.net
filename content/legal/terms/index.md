@@ -2,7 +2,10 @@
 title: Terms of Service
 date: 2026-03-14
 revisions: [2025-05-01]
-note: Added content rules acknowledgment requirement for posting, clarified profile visibility and forum anonymization, added third-party service integrations section covering Steam, Discord, TeamSpeak, and Patreon. Specified Alberta/Canada governing law, added GDPR compliance acknowledgment, and added email notification requirement for material changes.
+notes:
+  - Added content rules acknowledgment requirement for posting, clarified profile visibility and forum anonymization, added third-party service integrations section covering Steam, Discord, TeamSpeak, and Patreon.
+  - Specified Alberta/Canada governing law, added GDPR compliance acknowledgment, and added email notification requirement for material changes.
+  - Added community projects and OAuth access section clarifying that second-party integrations inherit these Terms and associated privacy protections, with Hivecom retaining responsibility for all OAuth clients.
 ---
 
 ## 1. Introduction and Acceptance
@@ -88,6 +91,21 @@ By connecting an external service, you also agree to that service's own terms an
 ### 5.4 Community Voting
 
 Our community referendum mechanism allows users to vote on community matters. We strive to consider the results of community votes when making decisions about our Services.
+
+## 5.5 Community Projects and OAuth Access
+
+Some community projects - whether operated by Hivecom directly or built by affiliated contributors and members - may request access to your Hivecom account data through an OAuth authorization flow. These are considered second-party integrations and are part of the broader Hivecom community ecosystem. Hivecom maintains responsibility for all OAuth clients, including those created on behalf of community-built projects.
+
+By authorizing such a connection, you grant that sub-project access only to the specific data scopes you approve at the time of authorization. You may revoke this access at any time from your account settings.
+
+Any community project that accesses Hivecom account data through OAuth is bound by these Terms of Service and may not circumvent, weaken, or contradict them. Specifically:
+
+- The project inherits all user conduct and content rules defined in Section 4
+- The project may not use Hivecom account data for purposes that would violate these Terms
+- The project must apply the same privacy protections described in our [Privacy Policy](/legal/privacy) to any data obtained through this connection
+- The project may not share, sell, or otherwise distribute Hivecom account data to external parties
+
+Hivecom reserves the right to revoke OAuth access from any project that violates these requirements.
 
 ## 6. Intellectual Property
 

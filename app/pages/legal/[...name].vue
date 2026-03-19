@@ -119,7 +119,7 @@ const canDiff = computed(() => !!diffFromPath.value)
 
 // The note always lives on the "to" document (the newer version being diffed into).
 // On the current page and revision pages alike, that's content.value.
-const changeNote = computed(() => content.value?.note ?? null)
+const changeNote = computed(() => content.value?.notes ?? null)
 
 // True when a DB-level error occurred (e.g. cold-start SQLite race in dev).
 // We don't want to show "Document Not Found" for transient infra failures.
@@ -159,9 +159,11 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
               <Tooltip v-if="changeNote" placement="top">
                 <Icon name="ph:note" class="legal-page__note-icon" />
                 <template #tooltip>
-                  <p class="legal-page__note-tooltip">
-                    {{ changeNote }}
-                  </p>
+                  <ul class="legal-page__note-tooltip">
+                    <li v-for="(note, i) in changeNote" :key="i">
+                      {{ note }}
+                    </li>
+                  </ul>
                 </template>
               </Tooltip>
               <Button
@@ -329,11 +331,22 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
   }
 
   &__note-tooltip {
-    max-width: 28ch;
-    font-size: var(--font-size-xs);
+    max-width: 48ch;
     line-height: 1.5;
     margin: 0;
+    padding-left: var(--space-s);
+    list-style: disc;
     color: var(--color-text);
+
+    li {
+      margin: 0;
+      padding: 0;
+      font-size: var(--font-size-xxs);
+    }
+
+    li + li {
+      margin-top: var(--space-xxs);
+    }
   }
 
   &__diff-btn {

@@ -2,7 +2,10 @@
 title: Privacy Policy
 date: 2026-03-14
 revisions: [2025-05-01]
-note: Added explicit disclosure of third-party service integrations (Steam, Discord, TeamSpeak, Patreon) and what data is collected from each. Clarified profile visibility controls and forum anonymization. Added supporter and funding data section. Strengthened GDPR language and added email notification requirement for material changes.
+notes:
+  - Added explicit disclosure of third-party service integrations (Steam, Discord, TeamSpeak, Patreon) and what data is collected from each. Clarified profile visibility controls and forum anonymization. Added supporter and funding data section.
+  - Strengthened GDPR language and added email notification requirement for material changes.
+  - Added community projects and OAuth data access section clarifying that second-party integrations inherit these privacy protections, with Hivecom retaining responsibility for all OAuth clients.
 ---
 
 ## 1. Introduction
@@ -82,11 +85,25 @@ Rich presence is disabled by default. If you choose to enable it, your activity 
 
 Each of these services has its own privacy policy. By connecting your account, you also agree to how those services handle your data on their end - we have no control over that.
 
-### 2.7 Supporter and Funding Data
+### 2.7 Community Projects and OAuth Data Access
+
+Some community projects - whether operated by Hivecom directly or built by affiliated contributors and members - may request access to your Hivecom account data through an OAuth authorization flow. These are considered second-party integrations and are part of the broader Hivecom community ecosystem. Hivecom maintains responsibility for all OAuth clients, including those created on behalf of community-built projects.
+
+When you authorize such a connection, you grant that sub-project access only to the specific data scopes you approve at the time of authorization. You can revoke this access at any time from your account settings.
+
+Any community sub-project that accesses your data through this mechanism is bound by the same privacy protections described in this policy and may not:
+
+- Use your data for purposes beyond what you authorized
+- Share, sell, or distribute your Hivecom account data to external parties
+- Apply weaker privacy protections than those described here
+
+Hivecom reserves the right to revoke OAuth access from any sub-project that violates these requirements. See our [Terms of Service](/legal/terms) for the full obligations that apply to community projects.
+
+### 2.8 Supporter and Funding Data
 
 If you support Hivecom through Patreon or direct donations, we store your supporter status and aggregate contribution data. This is used to track community funding and recognize supporters. We do not store payment details directly - all payment processing is handled by the respective platform (e.g., Patreon, PayPal).
 
-### 2.8 Cookies and Tracking Technologies
+### 2.9 Cookies and Tracking Technologies
 
 Cookies are small data files stored on your device that help us recognize you and remember your preferences. You can control cookie settings through your browser, but disabling cookies may affect your ability to use certain features of our services.
 

@@ -23,7 +23,7 @@ const DIFF_TAG_RE = /<[^>]+>/g
 const loading = ref(false)
 const error = ref<string | null>(null)
 const diffHtml = ref<string | null>(null)
-const changeNote = ref<string | null>(null)
+const changeNote = ref<string[] | null>(null)
 
 function bodyToText(item: LegalCollectionItem): string {
   try {
@@ -52,7 +52,7 @@ async function generateDiff() {
       return
     }
 
-    changeNote.value = toDoc.note ?? null
+    changeNote.value = toDoc.notes ?? null
 
     const fromText = bodyToText(fromDoc)
     const toText = bodyToText(toDoc)
@@ -128,9 +128,11 @@ watch([() => props.fromPath, () => props.toPath], () => {
           <Icon name="ph:arrow-right" class="diff-view__arrow" />
           <span class="diff-view__to-label">{{ toLabel }}</span>
         </Flex>
-        <p v-if="changeNote" class="diff-view__note">
-          {{ changeNote }}
-        </p>
+        <ul v-if="changeNote" class="diff-view__note">
+          <li v-for="(note, i) in changeNote" :key="i">
+            {{ note }}
+          </li>
+        </ul>
       </Flex>
     </template>
 
@@ -162,11 +164,22 @@ watch([() => props.fromPath, () => props.toPath], () => {
 <style lang="scss" scoped>
 .diff-view {
   &__note {
-    font-size: var(--font-size-s);
     color: var(--color-text-light);
     margin: 0;
+    padding-left: var(--space-s);
     font-style: italic;
-    max-width: 60ch;
+    max-width: 160ch;
+    list-style: disc;
+
+    li {
+      margin: 0;
+      padding: 0;
+      font-size: var(--font-size-s);
+    }
+
+    li + li {
+      margin-top: var(--space-xxs);
+    }
   }
 
   &__from-label {

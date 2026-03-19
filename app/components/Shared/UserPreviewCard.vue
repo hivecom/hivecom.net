@@ -127,7 +127,7 @@ const {
       </Button>
     </Flex>
 
-    <Flex v-else column>
+    <Flex v-else column :gap="0">
       <Flex expand x-between class="user-preview-card__header">
         <Flex>
           <NuxtLink
@@ -162,7 +162,7 @@ const {
       </Flex>
 
       <Flex column gap="xs" class="user-preview-card__identity">
-        <Flex y-center wrap gap="xs">
+        <Flex y-center wrap>
           <NuxtLink
             v-if="profileLink"
             :to="profileLink"
@@ -186,9 +186,9 @@ const {
         </Flex>
       </Flex>
 
-      <Flex v-if="hasCustomIntroduction" column expand>
-        <Divider />
+      <Divider style="height: 8px;" />
 
+      <Flex v-if="hasCustomIntroduction" column expand :gap="0">
         <p class="user-preview-card__intro text-s">
           {{ introductionText }}
         </p>
@@ -220,7 +220,6 @@ const {
   padding: var(--space-m);
   display: flex;
   flex-direction: column;
-  gap: var(--space-m);
 
   &__activity {
     margin-top: var(--space-s);

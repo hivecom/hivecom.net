@@ -9,7 +9,7 @@ export default defineContentConfig({
       schema: z.object({
         date: z.date(),
         revisions: z.array(z.string()).optional(),
-        note: z.string().optional(),
+        notes: z.array(z.string()).optional(),
       }),
     }),
   },

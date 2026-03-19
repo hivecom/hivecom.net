@@ -78,13 +78,13 @@ function goToReferendum() {
   >
     <Flex column gap="m" expand>
       <Flex x-between y-start expand gap="l" class="referendum-card__title">
-        <Flex y-center gap="s">
-          <h2 class="text-xxl">
-            {{ referendum.title }}
-          </h2>
+        <h2 class="text-xxl">
+          {{ referendum.title }}
+        </h2>
+        <Flex y-center gap="s" class="flex-shrink-0">
           <Icon v-if="isPrivate" name="ph:lock-simple" class="referendum-card__lock-icon" />
+          <UserDisplay :user-id="referendum.created_by" size="s" />
         </Flex>
-        <UserDisplay :user-id="referendum.created_by" size="s" />
       </Flex>
 
       <p v-if="referendum.description" class="text-color-light text-m mb-l line-clamp-3">
