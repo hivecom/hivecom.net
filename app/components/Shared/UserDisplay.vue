@@ -48,7 +48,7 @@ withDefaults(defineProps<Props>(), {
           wrap
           class="user-display__name-row"
         >
-          <UserName :user-id="userId" :size="size">
+          <UserName :user-id="userId" :size="size" :show-preview="showProfilePreview">
             <Badge v-if="!userId" size="xs" variant="accent">
               System
             </Badge>

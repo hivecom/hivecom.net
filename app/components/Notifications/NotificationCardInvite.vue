@@ -3,7 +3,6 @@ import { Button, Tooltip } from '@dolanske/vui'
 import { toRefs } from 'vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
-import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import NotificationCard from './NotificationCard.vue'
 
 interface Props {
@@ -33,9 +32,7 @@ function handleIgnore() {
     <template #below>
       <div class="notification-card-invite__user">
         <UserAvatar :user-id="requestId" :size="18" linked show-preview class="notification-avatar" />
-        <UserPreviewHover :user-id="requestId" :enter-delay="300">
-          <UserName :user-id="requestId" size="s" />
-        </UserPreviewHover>
+        <UserName :user-id="requestId" size="s" show-preview />
       </div>
     </template>
 

@@ -157,7 +157,7 @@ const { displayReactions, toggleReaction } = useReactions({
   <div class="discussion-comment">
     <Flex y-center x-start>
       <UserAvatar size="s" :user-id="data.created_by" show-preview />
-      <UserName size="m" :user-id="data.created_by" />
+      <UserName size="m" show-preview :user-id="data.created_by" />
       <p v-if="timestamps" class=" discussion-comment__timestamp">
         {{ dayjs(data.created_at).fromNow() }}
         <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>

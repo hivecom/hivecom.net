@@ -62,6 +62,15 @@ const { user } = useCacheUserData(data.value.created_by!, {
   avatarTtl: 30 * 60 * 1000,
 })
 
+// Only fetch modifier data when the message was edited by someone other than the author
+const modifierId = computed(() => {
+  const { modified_at, created_at, modified_by, created_by } = data.value
+  if (modified_at === created_at || !modified_by || modified_by === created_by)
+    return null
+  return modified_by
+})
+const { user: modifierUser } = useCacheUserData(modifierId, { userTtl: 10 * 60 * 1000 })
+
 const country = computed(() => getCountryInfo(user.value?.country))
 
 const setReplyToComment = inject(DISCUSSION_KEYS.setReplyToComment) as (data: Comment) => void
@@ -167,6 +176,7 @@ async function submit() {
       data.value.markdown = resolvedMarkdown
       data.value.is_nsfw = editedIsNsfw.value
       data.value.modified_at = dayjs().toISOString()
+      data.value.modified_by = currentUser.value?.id ?? null
       // Re-apply the NSFW warning if the user toggled it back on
       _showNSFWWarning.value = editedIsNsfw.value
 
@@ -241,7 +251,7 @@ const { displayReactions, toggleReaction } = useReactions({
       <!-- Reply information -->
       <Alert v-if="data.reply && viewMode !== 'threaded'" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
         <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
-          <UserName size="s" :user-id="data.reply.created_by" /> wrote:
+          <UserName size="s" show-preview :user-id="data.reply.created_by" /> wrote:
         </p>
         <p v-else class="discussion-forum__reply-user">
           You wrote:
@@ -268,8 +278,23 @@ const { displayReactions, toggleReaction } = useReactions({
       <!-- Bottom row with timestamps and reactions -->
       <Flex :key="timestampUpdateKey" wrap y-end x-between class="discussion-forum__bottom-row">
         <p class="discussion-forum__timestamp">
-          <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
-          <span v-if="data.modified_at !== data.created_at">{{ `Edited ${dayjs(data.modified_at).fromNow()}` }}</span>
+          <Tooltip :delay="500">
+            <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
+            <template #tooltip>
+              <p>{{ dayjs(data.created_at).format('MMM D, YYYY [at] h:mm A') }}</p>
+            </template>
+          </Tooltip>
+          <span v-if="data.modified_at !== data.created_at">
+            <Tooltip :delay="500">
+              <span>{{ `Edited ${dayjs(data.modified_at).fromNow()}` }}</span>
+              <template #tooltip>
+                <p>{{ dayjs(data.modified_at).format('MMM D, YYYY [at] h:mm A') }}</p>
+              </template>
+            </Tooltip>
+            <template v-if="modifierId && modifierUser">
+              by <UserName size="s" show-preview :user-id="modifierId" />
+            </template>
+          </span>
         </p>
 
         <Flex v-if="displayReactions.length > 0" y-center x-end gap="xxs">

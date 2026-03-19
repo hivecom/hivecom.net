@@ -150,7 +150,7 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
                   </NuxtLink>
                 </template>
                 <template v-else>
-                  Last updated on {{ formatDateLong(content.date) }}
+                  Effective since {{ formatDateLong(content.date) }}
                 </template>
               </p>
             </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
+import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useCacheUserData } from '@/composables/useCacheUserData'
 import { getAnonymousUsername } from '@/lib/anonymousUsernames'
 
@@ -12,11 +13,16 @@ interface Props {
    * NuxtLink to the user's profile.
    */
   noLink?: boolean
+  /**
+   * When true, hovering the username shows the user profile preview card.
+   */
+  showPreview?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'm',
   noLink: false,
+  showPreview: false,
 })
 
 const {
@@ -86,7 +92,32 @@ const fontClass = computed(() => {
   <!-- Loading -->
   <Skeleton v-if="showSkeleton" width="108px" height="20px" />
 
-  <!-- Resolved username -->
+  <UserPreviewHover v-else-if="showPreview && userId" :user-id="userId">
+    <!-- Resolved username -->
+    <Flex
+      v-if="displayName"
+      gap="xs"
+      y-center
+      wrap
+      class="user-name"
+      :class="fontClass"
+    >
+      <NuxtLink
+        v-if="canLink"
+        :to="profileLink!"
+        class="user-name__link"
+        :aria-label="ariaLabel"
+      >
+        <span class="user-name__text">{{ displayName }}</span>
+      </NuxtLink>
+      <span v-else class="user-name__text">{{ displayName }}</span>
+
+      <!-- Slot for extra inline content (e.g. System badge, role indicator) -->
+      <slot />
+    </Flex>
+  </UserPreviewHover>
+
+  <!-- Resolved username (no preview) -->
   <Flex
     v-else-if="displayName"
     gap="xs"

@@ -76,7 +76,7 @@ defineExpose({
         <div>
           <span class="discussion__add--replying-label">
             Replying to
-            <UserName size="s" :user-id="replyingTo.created_by" />:
+            <UserName size="s" show-preview :user-id="replyingTo.created_by" />:
           </span>
           <MarkdownPreview :markdown="replyingTo.markdown" :mention-lookup="replyMentionLookup" :max-length="240" />
         </div>
