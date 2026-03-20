@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Card, Grid, Skeleton } from '@dolanske/vui'
+import { Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
@@ -111,19 +111,17 @@ defineExpose({
         v-for="user in usersList"
         :key="user.id"
         :to="`/profile/${user.profile?.username || user.id}`"
-        class="bulk-user-display__link"
       >
         <UserPreviewHover :user-id="user.profile?.id || user.id" class="bulk-user-display__hover">
-          <Card
-            :class="itemClass"
-            class="bulk-user-display__item"
-          >
-            <UserDisplay
-              :user-id="user.id"
-              :show-role="showRole"
-              :size="userSize"
-              :show-profile-preview="false"
-            />
+          <Card :class="itemClass" class="bulk-user-display__card">
+            <Flex x-start expand>
+              <UserDisplay
+                :user-id="user.id"
+                :show-role="showRole"
+                :size="userSize"
+                :show-profile-preview="false"
+              />
+            </Flex>
           </Card>
         </UserPreviewHover>
       </NuxtLink>
@@ -134,6 +132,14 @@ defineExpose({
 <style lang="scss" scoped>
 .bulk-user-display {
   width: 100%;
+
+  &__card {
+    background-color: var(--color-bg-card);
+
+    &:hover {
+      background-color: var(--color-bg-raised);
+    }
+  }
 
   &__error {
     padding: var(--space-m);

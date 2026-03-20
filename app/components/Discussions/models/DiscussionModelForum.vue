@@ -512,11 +512,10 @@ const { displayReactions, toggleReaction } = useReactions({
     flex-shrink: 0;
     display: flex;
     gap: var(--space-l);
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
 
-    span {
-      font-size: inherit;
+    * {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-lighter);
     }
   }
 

@@ -143,7 +143,7 @@ function handleClose() {
   <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : undefined" :card="{ footerSeparator: true }" @close="handleClose">
     <template #header>
       <Flex x-start y-center expand gap="m">
-        <h3>Event RSVPs</h3>
+        <h4>Event RSVPs</h4>
         <Badge v-if="!loading && totalCount > 0" variant="neutral">
           {{ totalCount }} {{ totalCount === 1 ? 'response' : 'responses' }}
         </Badge>

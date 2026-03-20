@@ -153,7 +153,7 @@ const fontClass = computed(() => {
   </Flex>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 .user-name {
   display: inline-flex !important;
 

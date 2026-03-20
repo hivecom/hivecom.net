@@ -58,7 +58,7 @@ function handleClose() {
   <Modal :open="isOpen" centered :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
     <template #header>
       <Flex x-between y-center expand>
-        <h3>{{ userName }}'s Friends</h3>
+        <h4>{{ userName }}'s Friends</h4>
         <!-- <Badge variant="neutral">
           {{ friendsCount }} {{ friendsCount === 1 ? 'friend' : 'friends' }}
         </Badge> -->
