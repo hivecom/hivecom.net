@@ -76,6 +76,7 @@
     "eslint-plugin-vue": "^10.8.0",
     "nuxi": "^3.33.1",
     "supabase": "^2.77.1",
-    "vue-tsc": "^3.2.5"
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.2.6"
   }
 }

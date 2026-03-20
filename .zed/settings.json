@@ -7,22 +7,25 @@
   "language_servers": ["!prettier", "..."],
   "languages": {
     "JavaScript": {
+      "language_servers": ["eslint"],
       "formatter": [
         { "code_action": "source.fixAll.eslint" }
       ]
     },
     "TypeScript": {
+      "language_servers": ["eslint", "typescript-language-server"],
       "formatter": [
         { "code_action": "source.fixAll.eslint" }
       ]
     },
     "TSX": {
+      "language_servers": ["eslint", "typescript-language-server"],
       "formatter": [
         { "code_action": "source.fixAll.eslint" }
       ]
     },
     "Vue.js": {
-      "language_servers": ["emmet-language-server", "..."],
+      "language_servers": ["emmet-language-server", "typescript-language-server", "vue-language-server", "..."],
       "formatter": [
         { "code_action": "source.fixAll.eslint" }
       ]
