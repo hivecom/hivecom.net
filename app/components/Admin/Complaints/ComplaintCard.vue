@@ -70,7 +70,7 @@ const truncatedMessage = computed(() => {
 // Derive a single context type label for the card
 const contextType = computed(() => {
   if (props.complaint.context_discussion_reply)
-    return { label: 'Reply', icon: 'ph:chat-circle-text' }
+    return { label: 'Reply', icon: 'ph:flag' }
   if (props.complaint.context_discussion)
     return { label: 'Discussion', icon: 'ph:chats' }
   if (props.complaint.context_user)

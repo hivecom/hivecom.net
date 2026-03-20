@@ -127,7 +127,7 @@ const {
       </Button>
     </Flex>
 
-    <Flex v-else column :gap="0">
+    <Flex v-else column gap="xs">
       <Flex expand x-between class="user-preview-card__header">
         <Flex>
           <NuxtLink

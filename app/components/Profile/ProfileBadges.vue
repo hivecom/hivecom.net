@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { BadgeVariant } from '@/lib/badges'
-import type { Enums, Tables } from '@/types/database.overrides'
-import { Button, Card, Flex } from '@dolanske/vui'
+import type { Enums } from '@/types/database.overrides'
+import { Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
 import ProfileBadgeDiscussionReplies from '@/components/Profile/Badges/ProfileBadgeDiscussionReplies.vue'
@@ -16,12 +16,13 @@ import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue
 import { useBadgeDiscussionReplyCount } from '@/composables/useBadgeDiscussionReplyCount'
 import { useBadgeDiscussionStartedCount } from '@/composables/useBadgeDiscussionStartedCount'
 import { useBadgePartyAnimalCount } from '@/composables/useBadgePartyAnimalCount'
+import { useDataUser } from '@/composables/useDataUser'
 import { DISCUSSION_REPLY_MIN_COUNT, DISCUSSION_STARTER_MIN_COUNT, getDiscussionReplyVariant, getDiscussionStarterVariant } from '@/lib/discussionBadge'
 import { getPartyAnimalVariant, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/partyAnimalBadge'
 import ProfileBadgeHost from './Badges/ProfileBadgeHost.vue'
 
 interface Props {
-  profile: Tables<'profiles'>
+  profileId: string
   isOwnProfile?: boolean
 }
 
@@ -44,6 +45,13 @@ const props = withDefaults(defineProps<Props>(), {
   isOwnProfile: false,
 })
 
+const profileIdRef = computed(() => props.profileId)
+const { user: profileData, loading } = useDataUser(profileIdRef, {
+  includeRole: false,
+  includeAvatar: false,
+  userTtl: 10 * 60 * 1000,
+})
+
 const badgeVariantOrder: BadgeVariant[] = ['shiny', 'gold', 'silver', 'bronze']
 
 type BadgeDefinitionsByVariant = Record<BadgeVariant, BadgeDefinition[]>
@@ -54,8 +62,8 @@ const badgeDefinitionsByVariant: BadgeDefinitionsByVariant = {
     { id: 'founder', slug: 'founder', component: ProfileBadgeFounder },
   ],
   gold: [
-    { id: 'supporter_lifetime', component: ProfileBadgeSupporterLifetime, isVisible: () => props.profile.supporter_lifetime },
-    { id: 'supporter', component: ProfileBadgeSupporter, isVisible: () => props.profile.supporter_patreon },
+    { id: 'supporter_lifetime', component: ProfileBadgeSupporterLifetime, isVisible: () => profileData.value?.supporter_lifetime ?? false },
+    { id: 'supporter', component: ProfileBadgeSupporter, isVisible: () => profileData.value?.supporter_patreon ?? false },
     { id: 'earlybird', slug: 'earlybird', component: ProfileBadgeEarlybird },
   ],
   silver: [
@@ -66,7 +74,7 @@ const badgeDefinitionsByVariant: BadgeDefinitionsByVariant = {
 }
 
 const uniqueProfileBadges = computed<ProfileBadgeSlug[]>(() => {
-  const rawBadges = props.profile.badges ?? []
+  const rawBadges = profileData.value?.badges ?? []
   return [...new Set(rawBadges)] as ProfileBadgeSlug[]
 })
 
@@ -82,7 +90,7 @@ function getDaysSince(dateString: string): number {
   return Math.floor(diffTime / (1000 * 60 * 60 * 24))
 }
 
-const memberDays = computed(() => getDaysSince(props.profile.created_at))
+const memberDays = computed(() => getDaysSince(profileData.value?.created_at ?? ''))
 const memberYears = computed(() => Math.floor(memberDays.value / 365))
 const hasYearsBadge = computed(() => memberYears.value >= 1 && memberDays.value >= YEARS_BADGE_THRESHOLD_DAYS)
 const yearsBadgeVariant = computed<BadgeVariant | null>(() => {
@@ -98,7 +106,6 @@ const yearsBadgeVariant = computed<BadgeVariant | null>(() => {
   return 'bronze'
 })
 
-const profileIdRef = computed(() => props.profile?.id ?? null)
 const { count: PartyAnimalCount } = useBadgePartyAnimalCount(profileIdRef)
 const partyAnimalVariant = computed<BadgeVariant | null>(() => {
   const variant = getPartyAnimalVariant(PartyAnimalCount.value)
@@ -149,7 +156,7 @@ const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
         componentProps: {
           compact: true,
           years: memberYears.value,
-          memberSince: props.profile.created_at,
+          memberSince: profileData.value?.created_at ?? '',
         },
       })
     }
@@ -208,8 +215,7 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
       <Flex x-between y-center>
         <Flex y-center gap="xs">
           <h4>Badges</h4>
-          <!-- TODO: count how many badges -->
-          <span class="counter">{{ profileBadgesToRender.length }}</span>
+          <span v-if="!loading" class="counter">{{ profileBadgesToRender.length }}</span>
         </Flex>
 
         <Button size="s" variant="gray" aria-label="See all community badges" plain @click="goToBadgeDirectory">
@@ -221,7 +227,12 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
       </Flex>
     </template>
 
-    <div v-if="hasBadges" class="badges-stack">
+    <!-- Loading State -->
+    <div v-if="loading" class="badges-skeleton__grid">
+      <Skeleton v-for="i in 4" :key="`badge-skeleton-${i}`" height="150px" width="100%" style="border-radius: var(--border-radius-m);" />
+    </div>
+
+    <div v-else-if="hasBadges" class="badges-stack">
       <Flex
         v-for="badge in profileBadgesToRender"
         :key="`profile-badge-${badge.id}`"
@@ -277,12 +288,12 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
   overflow: hidden;
 }
 
-.badges-stack {
+.badges-stack,
+.badges-skeleton__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-m);
   width: 100%;
-  // padding-block: var(--space-m) 0;
 }
 
 .badges-empty {

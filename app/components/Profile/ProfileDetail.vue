@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, CopyClipboard, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import { Button, CopyClipboard, Flex, Tooltip } from '@dolanske/vui'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import ProfileBadges from '@/components/Profile/ProfileBadges.vue'
 import ProfileBanStatus from '@/components/Profile/ProfileBanStatus.vue'
@@ -352,114 +352,35 @@ function openFriendsModal() {
 
 <template>
   <div class="profile-view">
-    <!-- Loading State -->
-    <template v-if="loading">
-      <!-- Profile Header Skeleton -->
-      <div class="profile-sections">
-        <!-- About Section Skeleton -->
-        <Card separators class="about-section card-bg">
-          <template #header>
-            <Flex column gap="l">
-              <Flex gap="l" y-start expand>
-                <!-- Avatar Skeleton -->
-                <div class="profile-avatar">
-                  <Skeleton width="160px" height="160px" style="border-radius: 50%;" />
-                </div>
-
-                <Flex column gap="m" expand>
-                  <Flex gap="l" y-start x-between expand>
-                    <Flex column gap="m" expand>
-                      <!-- Username and badges -->
-                      <Flex gap="m">
-                        <Skeleton height="1.5rem" width="4rem" style="border-radius: 1rem;" />
-                        <Skeleton height="1.5rem" width="8rem" style="border-radius: 1rem;" />
-                      </Flex>
-                      <Skeleton height="48px" width="20rem" />
-
-                      <!-- Introduction -->
-                      <Skeleton height="1.2rem" width="80%" />
-
-                      <!-- Meta info -->
-                      <Flex gap="l" wrap>
-                        <Skeleton height="1rem" width="8rem" />
-                        <Skeleton height="1rem" width="10rem" />
-                      </Flex>
-                    </Flex>
-
-                    <!-- Action buttons -->
-                    <Flex gap="s">
-                      <Skeleton height="3.5rem" width="7rem" style="border-radius: 0.5rem;" />
-                      <Skeleton height="3.5rem" width="6rem" style="border-radius: 0.5rem;" />
-                    </Flex>
-                  </Flex>
-                </Flex>
-              </Flex>
-            </Flex>
-          </template>
-
-          <Flex column gap="m">
-            <Skeleton height="1rem" width="100%" />
-            <Skeleton height="1rem" width="85%" />
-            <Skeleton height="1rem" width="70%" />
-            <Skeleton height="1rem" width="90%" />
-            <Skeleton height="1rem" width="60%" />
-          </Flex>
-        </Card>
-
-        <Flex column gap="m">
-          <!-- Friends Section Skeleton -->
-          <Card separators class="friends-section-skeleton card-bg">
-            <template #header>
-              <Flex x-between y-center>
-                <Flex gap="xs" y-center>
-                  <Skeleton height="1.5rem" width="6rem" />
-                  <Skeleton height="1.5rem" width="3rem" style="border-radius: 1rem;" />
-                </Flex>
-                <Skeleton height="2rem" width="6rem" style="border-radius: 0.5rem;" />
-              </Flex>
-            </template>
-
-            <Flex gap="s" wrap y-center x-center class="friends-avatars-skeleton">
-              <div
-                v-for="index in 6"
-                :key="`friends-skeleton-avatar-${index}`"
-                class="friends-avatars-skeleton__avatar"
-              >
-                <Skeleton width="100%" height="100%" />
-              </div>
-            </Flex>
-          </Card>
-
-          <!-- Badges Section Skeleton -->
-          <Card separators class="badges-section card-bg">
-            <template #header>
-              <Flex x-between y-center>
-                <Skeleton height="1.5rem" width="8rem" />
-                <Skeleton width="1.5rem" height="1.5rem" />
-              </Flex>
-            </template>
-
-            <Flex gap="s" wrap>
-              <Skeleton height="150px" width="150" style="border-radius: 1rem;" />
-              <Skeleton height="150px" width="150" style="border-radius: 1rem;" />
-            </Flex>
-          </Card>
-        </Flex>
-      </div>
-    </template>
-
     <!-- Error State -->
-    <template v-else-if="errorMessage">
+    <template v-if="errorMessage">
       <ErrorAlert :message="errorMessage" />
     </template>
 
     <!-- No Profile Found -->
-    <template v-else-if="!profile">
+    <template v-else-if="!loading && !profile">
       <ErrorAlert message="No profile found." />
     </template>
 
+    <!-- Loading skeleton layout -->
+    <template v-else-if="loading">
+      <div class="profile-sections">
+        <Flex column gap="l" class="profile-header-col">
+          <ProfileHeader
+            :loading="true"
+            :is-own-profile="false"
+            friendship-status="none"
+          />
+        </Flex>
+
+        <Flex column gap="m" class="profile-sidebar-col">
+          <ProfileFriends :skeleton="true" friendship-status="none" />
+        </Flex>
+      </div>
+    </template>
+
     <!-- Profile Content -->
-    <template v-else>
+    <template v-else-if="profile">
       <!-- Ban Status Callout -->
       <ProfileBanStatus v-if="profile.banned" :profile="profile" />
 
@@ -467,7 +388,6 @@ function openFriendsModal() {
       <div class="profile-sections">
         <!-- About Section (Left) -->
         <Flex column gap="l" class="profile-header-col">
-          <!-- Profile Header -->
           <ProfileHeader
             :profile="profile"
             :is-own-profile="isOwnProfile"
@@ -508,12 +428,11 @@ function openFriendsModal() {
           />
 
           <!-- Badges -->
-          <ProfileBadges :profile="profile" :is-own-profile="isOwnProfile" />
+          <ProfileBadges :profile-id="profile.id" :is-own-profile="isOwnProfile" />
         </Flex>
 
         <!-- Profile comments - full width on mobile, below header on desktop -->
         <Discussion
-          v-if="profile?.id"
           :id="profile.id"
           class="profile-discussion-col"
           type="profile"
@@ -587,22 +506,6 @@ function openFriendsModal() {
   grid-template-rows: auto 1fr auto;
   gap: var(--space-m);
 
-  .badges-section,
-  .friends-section-skeleton {
-    min-height: 256px;
-  }
-
-  .friends-avatars-skeleton {
-    justify-content: center;
-  }
-
-  .friends-avatars-skeleton__avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    overflow: hidden;
-  }
-
   .profile-header-col {
     grid-column: 1;
     grid-row: 1;
@@ -613,6 +516,7 @@ function openFriendsModal() {
     grid-column: 2;
     grid-row: 1 / -1;
     align-self: start;
+    min-width: 0;
   }
 
   .profile-discussion-col {

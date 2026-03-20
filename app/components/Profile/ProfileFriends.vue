@@ -5,18 +5,24 @@ import { Alert, Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
-  profile: Tables<'profiles'>
-  friends: string[]
-  pendingRequests: string[]
-  isOwnProfile: boolean
+  profile?: Tables<'profiles'>
+  friends?: string[]
+  pendingRequests?: string[]
+  isOwnProfile?: boolean
+  skeleton?: boolean
   loading?: boolean
-  friendshipStatus: ProfileFriendshipStatus
+  friendshipStatus?: ProfileFriendshipStatus
   isLoggedIn?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  friends: () => [],
+  pendingRequests: () => [],
+  isOwnProfile: false,
+  skeleton: false,
   loading: false,
   isLoggedIn: false,
 })
@@ -29,6 +35,8 @@ const emit = defineEmits<{
   revokeFriendRequest: []
   removeFriend: []
 }>()
+
+const isMobile = useBreakpoint('<xs')
 
 const showRemoveFriendConfirm = ref(false)
 
@@ -55,7 +63,7 @@ function handleRemoveFriend() {
   showRemoveFriendConfirm.value = false
 }
 
-const pendingRequests = computed(() => props.pendingRequests)
+const pendingRequests = computed(() => props.pendingRequests ?? [])
 
 const { users: pendingUsers } = useBulkDataUser(pendingRequests)
 </script>
@@ -64,31 +72,51 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
   <Card
     separators
     class="friends-section card-bg"
-    :class="{ 'friends-section--loading': loading }"
+    :class="{ 'friends-section--loading': skeleton || loading }"
   >
     <template #header>
       <Flex x-between y-center>
-        <Flex gap="xs" y-center>
-          <h4>Friends</h4>
-          <span v-if="isLoggedIn" class="counter">
-            {{ friends.length }}
-          </span>
-        </Flex>
-        <Button v-if="isLoggedIn" variant="gray" size="s" plain @click="emit('openFriendsModal')">
-          <template #start>
-            <Icon name="ph:users" />
-          </template>
-          View All
-        </Button>
+        <template v-if="skeleton">
+          <Flex gap="xs" y-center>
+            <Skeleton height="1.5rem" width="5rem" />
+            <Skeleton height="1.5rem" width="2.5rem" style="border-radius: 1rem;" />
+          </Flex>
+          <Skeleton height="2rem" width="5.5rem" style="border-radius: var(--border-radius-s);" />
+        </template>
+        <template v-else>
+          <Flex gap="xs" y-center>
+            <h4>Friends</h4>
+            <span v-if="isLoggedIn" class="counter">
+              {{ friends.length }}
+            </span>
+          </Flex>
+          <Button v-if="isLoggedIn" variant="gray" size="s" plain @click="emit('openFriendsModal')">
+            <template #start>
+              <Icon name="ph:users" />
+            </template>
+            View All
+          </Button>
+        </template>
       </Flex>
     </template>
 
+    <!-- Skeleton State -->
+    <Flex v-if="skeleton" gap="s" wrap y-center x-center>
+      <div
+        v-for="i in 6"
+        :key="`friends-skeleton-avatar-${i}`"
+        class="friends-loading__avatar"
+      >
+        <Skeleton width="100%" height="100%" class="friends-loading__avatar-skeleton" />
+      </div>
+    </Flex>
+
     <!-- Unauthenticated State -->
-    <div v-if="!isLoggedIn" class="friends-empty">
+    <div v-else-if="!isLoggedIn" class="friends-empty">
       <Flex column y-center x-center gap="s">
         <Icon name="ph:lock" size="32" class="text-color-light" />
         <p class="text-color-light text-s text-center">
-          Sign in to see {{ profile.username }}'s friends.
+          Sign in to see {{ profile?.username }}'s friends.
         </p>
       </Flex>
     </div>
@@ -97,7 +125,7 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
     <Flex v-else-if="loading" x-center>
       <Flex :gap="8">
         <div
-          v-for="index in 6"
+          v-for="index in (isMobile ? 4 : 6)"
           :key="`friends-loading-avatar-${index}`"
           class="friends-loading__avatar"
         >
@@ -135,7 +163,7 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
             You haven't made any friends yet. Start connecting with other community members!
           </template>
           <template v-else>
-            {{ profile.username }} hasn't made any friends yet. Why not be the first?
+            {{ profile?.username }} hasn't made any friends yet. Why not be the first?
           </template>
         </p>
 
@@ -236,7 +264,7 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
     v-model:open="showRemoveFriendConfirm"
     :confirm="handleRemoveFriend"
     title="Remove Friend"
-    :description="`Are you sure you want to remove ${profile.username} from your friends list? This action cannot be undone.`"
+    :description="`Are you sure you want to remove ${profile?.username} from your friends list? This action cannot be undone.`"
     confirm-text="Remove Friend"
     cancel-text="Cancel"
     :destructive="true"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
-import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Modal, Tooltip } from '@dolanske/vui'
+import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { getUserActivityStatus } from '@/lib/lastSeen'
@@ -10,13 +10,15 @@ import { getCountryInfo } from '@/lib/utils/country'
 import MDRenderer from '../Shared/MDRenderer.vue'
 
 interface Props {
-  profile: Tables<'profiles'>
+  profile?: Tables<'profiles'>
+  loading?: boolean
   isOwnProfile: boolean
   friendshipStatus: ProfileFriendshipStatus
   isLoggedIn?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  loading: false,
   isLoggedIn: false,
 })
 
@@ -27,7 +29,7 @@ const emit = defineEmits<{
 
 const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
-const profileUserId = computed(() => props.profile.id)
+const profileUserId = computed(() => props.profile?.id ?? null)
 const { user } = useDataUser(profileUserId, {
   includeRole: true,
   includeAvatar: true,
@@ -38,7 +40,6 @@ const { user } = useDataUser(profileUserId, {
 const avatarUrl = computed(() => user.value?.avatarUrl ?? null)
 const userRole = computed(() => user.value?.role ?? null)
 
-const isMobile = useBreakpoint('<xs')
 const isTablet = useBreakpoint('<m')
 
 const activityStatus = computed(() => {
@@ -48,7 +49,7 @@ const activityStatus = computed(() => {
   return getUserActivityStatus(props.profile.last_seen)
 })
 
-const countryInfo = computed(() => getCountryInfo(props.profile.country ?? null))
+const countryInfo = computed(() => getCountryInfo(props.profile?.country ?? null))
 // Treat YYYY-MM-DD birthdays as date-only values so timezone offsets do not shift the day
 function parseBirthdayDate(value: string | null): Date | null {
   if (!value)
@@ -136,7 +137,7 @@ const joinedTooltip = computed(() => {
 const profileUrl = computed(() => {
   if (typeof window === 'undefined')
     return ''
-  const identifier = props.profile.username || props.profile.id
+  const identifier = props.profile?.username || props.profile?.id
   return `${window.location.origin}/profile/${identifier}`
 })
 
@@ -196,13 +197,36 @@ const showAvatarLightbox = ref(false)
 </script>
 
 <template>
-  <Card class="profile-header card-bg" :footer-separator="!!(profile.markdown || isOwnProfile)">
-    <Flex column y-center x-center>
-      <Grid gap="xl" expand columns="160px 1fr" class="profile-header-grid">
+  <Card class="profile-header card-bg" :footer-separator="loading || !!(profile?.markdown || isOwnProfile)">
+    <!-- Loading Skeleton -->
+    <template v-if="loading">
+      <Flex gap="xl" expand y-start class="profile-header-skeleton__grid">
+        <div class="profile-header-skeleton__avatar">
+          <Skeleton width="164px" height="164px" style="border-radius: 50%;" />
+        </div>
+
+        <Flex column gap="s" expand>
+          <Flex gap="xs" y-center>
+            <Skeleton height="1.5rem" width="4rem" style="border-radius: 1rem;" />
+            <Skeleton height="1.5rem" width="5.5rem" style="border-radius: 1rem;" />
+          </Flex>
+          <Skeleton height="48px" class="profile-header-skeleton__username" />
+          <Skeleton height="1.4rem" width="70%" />
+          <Flex gap="m" y-center wrap class="profile-header-skeleton__meta">
+            <Skeleton height="1rem" width="6rem" />
+            <Skeleton height="1rem" width="8rem" />
+            <Skeleton height="1rem" width="7rem" />
+          </Flex>
+        </Flex>
+      </Flex>
+    </template>
+
+    <Flex v-else-if="profile" column y-center x-center>
+      <Grid gap="xl" expand columns="auto 1fr" class="profile-header-grid">
         <!-- Avatar -->
         <div class="profile-avatar">
           <div class="avatar-container">
-            <Avatar :size="isMobile ? 96 : 160" :url="avatarUrl || undefined" @click="avatarUrl && (showAvatarLightbox = true)">
+            <Avatar :size="164" :url="avatarUrl || undefined" @click="avatarUrl && (showAvatarLightbox = true)">
               <template v-if="!avatarUrl" #default>
                 {{ getUserInitials(profile.username) }}
               </template>
@@ -277,22 +301,24 @@ const showAvatarLightbox = ref(false)
           <!-- Action Buttons -->
           <Flex gap="xs" class="profile-action-buttons">
             <Tooltip v-if="isOwnProfile">
-              <Button variant="accent" square @click="emit('openEditSheet')">
+              <Button variant="gray" plain square @click="emit('openEditSheet')">
                 <Icon name="ph:pencil" />
               </Button>
               <template #tooltip>
                 <p>Edit profile</p>
               </template>
             </Tooltip>
-            <Button v-else-if="props.isLoggedIn" variant="gray" @click="emit('openComplaintModal')">
-              <template #start>
-                <Icon name="ph:chat-circle-text" />
+            <Tooltip v-else-if="props.isLoggedIn">
+              <Button square plain variant="gray" @click="emit('openComplaintModal')">
+                <Icon name="ph:flag" />
+              </Button>
+              <template #tooltip>
+                <p>Report this profile</p>
               </template>
-              Complaint
-            </Button>
+            </Tooltip>
             <CopyClipboard :text="profileUrl" confirm>
               <Tooltip>
-                <Button variant="gray" square>
+                <Button variant="gray" square plain>
                   <Icon name="ph:link" />
                 </Button>
                 <template #tooltip>
@@ -372,8 +398,17 @@ const showAvatarLightbox = ref(false)
       </Grid>
     </Flex>
 
-    <template v-if="profile.markdown || isOwnProfile" #footer>
-      <div v-if="profile.markdown" class="profile-markdown">
+    <template v-if="loading" #footer>
+      <Flex column gap="m">
+        <Skeleton height="1rem" width="100%" />
+        <Skeleton height="1rem" width="85%" />
+        <Skeleton height="1rem" width="70%" />
+        <Skeleton height="1rem" width="90%" />
+        <Skeleton height="1rem" width="60%" />
+      </Flex>
+    </template>
+    <template v-else-if="profile?.markdown || isOwnProfile" #footer>
+      <div v-if="profile?.markdown" class="profile-markdown">
         <MDRenderer
           skeleton-height="504px"
           :md="profile.markdown"
@@ -435,6 +470,39 @@ const showAvatarLightbox = ref(false)
   }
 }
 
+.profile-header-skeleton {
+  &__grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-xl);
+  }
+
+  &__avatar {
+    flex-shrink: 0;
+  }
+
+  &__meta {
+    margin-top: var(--space-m);
+  }
+
+  &__username {
+    width: min(16rem, 100%);
+  }
+}
+
+@media screen and (max-width: $breakpoint-m) {
+  .profile-header-skeleton__grid {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+    text-align: center;
+
+    .vui-flex {
+      justify-content: center !important;
+      align-items: center !important;
+    }
+  }
+}
+
 .profile-header {
   .vui-badge {
     padding-inline: 8px;
@@ -454,6 +522,10 @@ const showAvatarLightbox = ref(false)
     .avatar-container {
       position: relative;
       display: inline-block;
+
+      .vui-avatar {
+        cursor: pointer;
+      }
     }
   }
 
@@ -461,14 +533,21 @@ const showAvatarLightbox = ref(false)
     margin: 0;
     font-size: var(--font-size-xxxxl);
     color: var(--color-text);
-    // margin-top: var(--space-s);
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .profile-description {
     margin: 0;
     color: var(--color-text-light);
-    line-height: 0;
+    line-height: 1.4;
     font-size: var(--font-size-l);
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .profile-meta {

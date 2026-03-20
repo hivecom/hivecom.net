@@ -118,7 +118,7 @@ async function signOut() {
 
       <DropdownItem @click="openComplaintModal">
         <template #icon>
-          <Icon name="ph:chat-circle-text" />
+          <Icon name="ph:flag" />
         </template>
         Complaints
       </DropdownItem>

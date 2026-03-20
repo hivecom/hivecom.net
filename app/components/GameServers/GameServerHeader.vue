@@ -98,7 +98,7 @@ const dockerControlAccessible = computed(() => {
         <!-- Mobile report issue button -->
         <Button v-if="isMobile" variant="danger" size="s" @click="openComplaintModal">
           <template #start>
-            <Icon name="ph:chat-circle-text" />
+            <Icon name="ph:flag" />
           </template>
           Report Issue
         </Button>
@@ -226,7 +226,7 @@ const dockerControlAccessible = computed(() => {
                 <div class="flex-1" />
                 <Button variant="danger" size="s" @click="openComplaintModal">
                   <template #start>
-                    <Icon name="ph:chat-circle-text" />
+                    <Icon name="ph:flag" />
                   </template>
                   Report Issue
                 </Button>

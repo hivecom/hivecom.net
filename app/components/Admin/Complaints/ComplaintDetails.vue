@@ -301,7 +301,7 @@ function confirmDeleteComplaint() {
                   <Flex gap="m" wrap>
                     <div v-if="complaint.context_discussion_reply && complaint.context_discussion">
                       <Flex gap="xs" y-center>
-                        <Icon name="ph:chat-circle-text" class="text-color-light" />
+                        <Icon name="ph:flag" class="text-color-light" />
                         <span class="text-s text-color-light">Reply in:</span>
                         <NuxtLink
                           class="text-s context-link"

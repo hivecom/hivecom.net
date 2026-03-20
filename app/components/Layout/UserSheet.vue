@@ -114,7 +114,7 @@ async function signOut() {
           </NuxtLink>
 
           <button class="user-sheet__nav-item" @click="openComplaintModal">
-            <Icon name="ph:chat-circle-text" :size="18" />
+            <Icon name="ph:flag" :size="18" />
             Complaints
           </button>
 

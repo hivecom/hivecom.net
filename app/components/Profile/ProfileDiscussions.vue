@@ -163,10 +163,10 @@ const emptyStateText = computed(() => {
         class="profile-discussions__item"
       >
         <Flex x-between y-center expand class="profile-discussions__item-header">
-          <Flex y-center gap="xxs" class="profile-discussions__context">
-            <Icon name="ph:chats-circle" :size="12" />
+          <span class="profile-discussions__context">
+            <Icon name="ph:chats-circle" :size="12" class="profile-discussions__context-icon" />
             Reply in <strong>{{ reply.discussionTitle ?? 'Discussion' }}</strong>
-          </Flex>
+          </span>
           <span class="profile-discussions__timestamp">{{ dayjs(reply.created_at).fromNow() }}</span>
         </Flex>
         <MarkdownPreview :markdown="reply.markdown" :mention-lookup="mentionLookup" :max-length="120" class="profile-discussions__content" />
@@ -187,6 +187,8 @@ const emptyStateText = computed(() => {
 @use '@/assets/mixins.scss' as *;
 
 .profile-discussions {
+  overflow: hidden;
+
   :deep(.vui-card-content) {
     padding: var(--space-xs) !important;
   }
@@ -227,6 +229,7 @@ const emptyStateText = computed(() => {
   }
 
   &__context {
+    display: block;
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
     white-space: nowrap;
@@ -238,11 +241,12 @@ const emptyStateText = computed(() => {
     strong {
       font-size: var(--font-size-xs);
       font-weight: var(--font-weight-semibold);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      color: inherit;
     }
+  }
+
+  &__context-icon {
+    vertical-align: -1px;
+    margin-right: var(--space-xxs);
   }
 
   &__timestamp {
