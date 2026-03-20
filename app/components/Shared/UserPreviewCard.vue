@@ -15,6 +15,7 @@ interface Props {
   userId: string | null | undefined
   showBadges?: boolean
   showActivity?: boolean
+  showDescription?: boolean
   maxBadges?: number
   avatarSize?: 's' | 'm' | 'l' | number
 }
@@ -22,6 +23,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   showBadges: true,
   showActivity: true,
+  showDescription: true,
   maxBadges: 4,
   avatarSize: 88,
 })
@@ -186,16 +188,18 @@ const {
         </Flex>
       </Flex>
 
-      <Divider style="height: 8px;" />
+      <template v-if="props.showDescription">
+        <Divider style="height: 8px;" />
 
-      <Flex v-if="hasCustomIntroduction" column expand :gap="0">
-        <p class="user-preview-card__intro text-s">
-          {{ introductionText }}
-        </p>
-      </Flex>
+        <Flex v-if="hasCustomIntroduction" column expand :gap="0">
+          <p class="user-preview-card__intro text-s">
+            {{ introductionText }}
+          </p>
+        </Flex>
+      </template>
     </Flex>
 
-    <Flex v-if="activity && props.showActivity && user" column gap="xxs" expand class="user-preview-card__activity">
+    <Flex v-if="activity && props.showActivity && props.showDescription && user" column gap="xxs" expand class="user-preview-card__activity">
       <ActivitySteam
         v-if="activity.steam_id"
         :profile-id="user.id"

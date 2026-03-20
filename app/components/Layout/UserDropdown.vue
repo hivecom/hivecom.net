@@ -139,9 +139,16 @@ async function signOut() {
 
       <Flex x-between y-center gap="xs" class="user-dropdown__footer">
         <SharedThemeToggle no-text />
-        <Button square plain aria-label="Sign out" @click="signOut">
-          <Icon name="ph:sign-out" />
-        </Button>
+        <Tooltip>
+          <template #tooltip>
+            <p>
+              Sign out
+            </p>
+          </template>
+          <Button square plain aria-label="Sign out" @click="signOut">
+            <Icon name="ph:sign-out" />
+          </Button>
+        </Tooltip>
       </Flex>
     </Dropdown>
     <ComplaintsManager

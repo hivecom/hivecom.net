@@ -2,7 +2,7 @@
 import type { ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
 import type { ForumUserStat } from '@/composables/useForumStats'
-import { Badge, BreadcrumbItem, Breadcrumbs, Card, Divider, Flex, Select, Skeleton, theme } from '@dolanske/vui'
+import { Badge, BreadcrumbItem, Breadcrumbs, Card, Divider, Flex, Grid, Select, Skeleton, theme } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import {
   BarElement,
@@ -18,11 +18,16 @@ import {
 } from 'chart.js'
 import { computed, onBeforeMount, ref, watchEffect } from 'vue'
 import { Bar, Line } from 'vue-chartjs'
+import { useRouter } from 'vue-router'
+import LightRays from '@/components/Shared/LightRays.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
+import { useCache } from '@/composables/useCache'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useForumStats } from '@/composables/useForumStats'
+import { useUserId } from '@/composables/useUserId'
 import { getChartGridColor, getLineChartDefaults } from '@/lib/charts'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
 ChartJS.register(
@@ -58,6 +63,19 @@ const allUserIds = computed(() => {
   for (const u of stats.value.topStarters) ids.add(u.user_id)
   return [...ids]
 })
+
+const currentUserId = useUserId()
+const router = useRouter()
+const isMobile = useBreakpoint('<xs')
+const cache = useCache()
+
+function navigateToProfile(userId: string) {
+  const profile = cache.get<{ username: string, username_set: boolean }>(`user:profile:${userId}`)
+  const path = profile?.username_set && profile?.username
+    ? `/profile/${profile.username}`
+    : `/profile/${userId}`
+  router.push(path)
+}
 
 useBulkDataUser(allUserIds, {
   includeRole: true,
@@ -303,6 +321,40 @@ const leaderboardLabel = computed(() => {
 // ── Podium helpers ───────────────────────────────────────────────────────────
 const podiumMedals: [string, string, string] = ['ph:trophy-fill', 'ph:medal-fill', 'ph:medal-fill']
 const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
+
+// ── Current user rank outside top 10 ────────────────────────────────────────
+interface CurrentUserRank {
+  user_id: string
+  count: number
+  rank: number
+}
+
+const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
+  if (stats.value == null || currentUserId.value == null)
+    return null
+
+  const uid = currentUserId.value
+  const inTop = activeLeaderboard.value.some(u => u.user_id === uid)
+  if (inTop)
+    return null
+
+  let fullList: ForumUserStat[]
+  switch (leaderboardMode.value) {
+    case 'discussions':
+      fullList = stats.value.allStarters
+      break
+    case 'replies':
+      fullList = stats.value.allRepliers
+      break
+    default: fullList = stats.value.allCombined
+  }
+
+  const idx = fullList.findIndex(u => u.user_id === uid)
+  if (idx === -1)
+    return null
+
+  return { user_id: uid, count: fullList[idx]!.count, rank: idx + 1 }
+})
 </script>
 
 <template>
@@ -377,10 +429,10 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
             <Divider />
 
             <!-- Leaderboard rows -->
-            <div v-for="i in 10" :key="i" class="leaderboard__row">
+            <div v-for="i in 10" :key="i" class="leaderboard__row leaderboard__row--skeleton">
               <Flex gap="m" y-center expand>
                 <Skeleton :width="20" :height="14" :radius="3" />
-                <Skeleton :width="28" :height="28" :radius="14" />
+                <Skeleton :width="36" :height="36" :radius="18" />
                 <Skeleton :width="90" :height="14" :radius="4" />
                 <div class="leaderboard__bar-wrapper">
                   <Skeleton :height="6" :width="Math.max(20, 100 - i * 8)" :radius="3" />
@@ -391,7 +443,7 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
           </Card>
 
           <!-- Counter grid skeleton -->
-          <div class="stats-counters">
+          <Grid :columns="5" gap="m" y-stretch expand>
             <Card v-for="i in 5" :key="i" class="stats-counter-card">
               <div class="stats-counter">
                 <Skeleton :width="24" :height="24" :radius="4" />
@@ -399,7 +451,7 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
                 <Skeleton :width="100" :height="12" :radius="4" />
               </div>
             </Card>
-          </div>
+          </Grid>
 
           <!-- Chart card skeletons -->
           <Card v-for="i in 2" :key="i">
@@ -426,13 +478,14 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
         <!-- Unified podium + leaderboard card -->
         <Card class="mb-xl stats-podium-card">
           <template #header>
-            <Flex expand x-between y-center>
+            <Flex expand :x-between="!isMobile" :x-center="isMobile" y-center wrap>
               <Flex gap="xs" y-center>
                 <Icon :name="leaderboardLabel.icon" size="20" />
                 <strong>{{ leaderboardLabel.header }}</strong>
               </Flex>
               <Select
                 v-model="selectedLeaderboardOption"
+                :expand="isMobile"
                 :options="leaderboardOptions"
                 :show-clear="false"
                 size="m"
@@ -446,9 +499,10 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
               <div
                 v-if="activeLeaderboard[position]"
                 class="podium__slot"
-                :class="`podium__slot--${position + 1}`"
+                :class="[`podium__slot--${position + 1}`, { 'podium__slot--first': position === 0 }]"
               >
-                <div class="podium__user">
+                <LightRays v-if="position === 0" :rays-a="5" :size="164" />
+                <div class="podium__user" :class="{ 'podium__user--first': position === 0 }">
                   <Icon
                     :name="podiumMedals[position]!"
                     size="28"
@@ -479,36 +533,78 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
             </template>
           </Flex>
 
-          <Divider />
-
           <!-- Leaderboard: Top 10 -->
-          <div class="leaderboard">
-            <div
-              v-for="(user, index) in activeLeaderboard"
-              :key="`${leaderboardMode}-${user.user_id}`"
-              class="leaderboard__row"
-            >
-              <Flex gap="m" y-center expand>
-                <span class="leaderboard__rank" :class="{ 'leaderboard__rank--top': index < 3 }">
-                  {{ index + 1 }}
-                </span>
-                <div class="leaderboard__user">
-                  <UserAvatar :user-id="user.user_id" size="s" linked show-preview />
-                  <UserName :user-id="user.user_id" size="s" show-preview />
-                </div>
-                <div class="leaderboard__bar-wrapper">
-                  <div
-                    class="leaderboard__bar"
-                    :class="leaderboardLabel.barClass"
-                    :style="{ width: `${(user.count / (activeLeaderboard[0]?.count ?? 1)) * 100}%` }"
-                  />
-                </div>
-                <Badge variant="neutral" size="s">
-                  {{ user.count.toLocaleString() }}
-                </Badge>
-              </Flex>
-            </div>
-          </div>
+          <table class="leaderboard">
+            <tbody>
+              <tr
+                v-for="(user, index) in activeLeaderboard"
+                :key="`${leaderboardMode}-${user.user_id}`"
+                class="leaderboard__row leaderboard__row--clickable"
+                :class="{ 'leaderboard__row--me': user.user_id === currentUserId }"
+                @click="navigateToProfile(user.user_id)"
+              >
+                <td class="leaderboard__td leaderboard__td--rank">
+                  <span class="leaderboard__rank" :class="{ 'leaderboard__rank--top': index < 3 }">
+                    {{ index + 1 }}
+                  </span>
+                </td>
+                <td class="leaderboard__td leaderboard__td--user">
+                  <div class="leaderboard__user">
+                    <UserAvatar :user-id="user.user_id" size="s" linked show-preview />
+                    <UserName :user-id="user.user_id" size="s" show-preview />
+                  </div>
+                </td>
+                <td class="leaderboard__td leaderboard__td--bar">
+                  <div class="leaderboard__bar-wrapper">
+                    <div
+                      class="leaderboard__bar"
+                      :class="leaderboardLabel.barClass"
+                      :style="{ width: `${(user.count / (activeLeaderboard[0]?.count ?? 1)) * 100}%` }"
+                    />
+                  </div>
+                </td>
+                <td class="leaderboard__td leaderboard__td--count">
+                  <Badge variant="neutral" size="s">
+                    {{ user.count.toLocaleString() }}
+                  </Badge>
+                </td>
+              </tr>
+
+              <!-- Current user pinned row (outside top 10) -->
+              <template v-if="currentUserOutsideTop">
+                <tr class="leaderboard__row leaderboard__row--gap">
+                  <td :colspan="isMobile ? 2 : 4" class="leaderboard__gap-cell">
+                    <span class="leaderboard__gap-dots">···</span>
+                  </td>
+                </tr>
+                <tr class="leaderboard__row leaderboard__row--clickable leaderboard__row--me" @click="navigateToProfile(currentUserOutsideTop.user_id)">
+                  <td class="leaderboard__td leaderboard__td--rank">
+                    <span class="leaderboard__rank">{{ currentUserOutsideTop.rank }}</span>
+                  </td>
+                  <td class="leaderboard__td leaderboard__td--user">
+                    <div class="leaderboard__user">
+                      <UserAvatar :user-id="currentUserOutsideTop.user_id" size="s" linked show-preview />
+                      <UserName :user-id="currentUserOutsideTop.user_id" size="s" show-preview />
+                    </div>
+                  </td>
+                  <td class="leaderboard__td leaderboard__td--bar">
+                    <div class="leaderboard__bar-wrapper">
+                      <div
+                        class="leaderboard__bar"
+                        :class="leaderboardLabel.barClass"
+                        :style="{ width: `${(currentUserOutsideTop.count / (activeLeaderboard[0]?.count ?? 1)) * 100}%` }"
+                      />
+                    </div>
+                  </td>
+                  <td class="leaderboard__td leaderboard__td--count">
+                    <Badge variant="neutral" size="s">
+                      {{ currentUserOutsideTop.count.toLocaleString() }}
+                    </Badge>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
         </Card>
 
         <!-- Summary counters -->
@@ -600,6 +696,11 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
 
 .stats-counter-card {
   min-width: 0;
+  height: 100%;
+
+  :deep(.card) {
+    height: 100%;
+  }
 }
 
 .stats-counter {
@@ -661,11 +762,20 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
     flex-direction: column;
     align-items: center;
     flex: 1;
+    min-width: 0;
     max-width: 160px;
+    position: relative;
 
     &--empty {
       visibility: hidden;
     }
+  }
+
+  // Light rays positioning within the slot
+  :deep(.light-rays) {
+    top: 58px;
+    left: 50%;
+    z-index: 0;
   }
 
   &__user {
@@ -676,6 +786,21 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
     margin-bottom: var(--space-s);
     min-height: 80px;
     justify-content: flex-end;
+    position: relative;
+    z-index: 2;
+    width: 100%;
+
+    :deep(> *:last-child) {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &--first {
+      // Soft gold halo behind the avatar
+      filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.45));
+    }
   }
 
   &__pillar {
@@ -687,6 +812,8 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
     gap: var(--space-xxs);
     border-radius: var(--border-radius-m) var(--border-radius-m) 0 0;
     padding: var(--space-s) var(--space-xs);
+    position: relative;
+    z-index: 1;
 
     &--1 {
       height: 140px;
@@ -731,24 +858,96 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
 
 // ── Leaderboard ──────────────────────────────────────────────────────────────
 .leaderboard {
-  &__row {
-    padding: var(--space-xs) var(--space-s);
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+
+  tbody {
+    border: none;
+  }
+
+  &__td {
+    border: none;
     transition: background-color var(--transition);
 
-    &:not(:last-child) {
-      border-bottom: 1px solid var(--color-border-weak);
+    &:first-child {
+      border-radius: var(--border-radius-s) 0 0 var(--border-radius-s);
     }
 
-    &:hover {
+    &:last-child {
+      border-radius: 0 var(--border-radius-s) var(--border-radius-s) 0;
+    }
+  }
+
+  &__row {
+    &--skeleton {
+      padding: var(--space-xs) var(--space-s);
+    }
+
+    &--clickable {
+      cursor: pointer;
+    }
+
+    &:hover td {
       background-color: var(--color-bg-medium);
     }
+
+    &--me td {
+      background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
+    }
+
+    &--me:hover td {
+      background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    }
+
+    &--gap:hover td {
+      background-color: transparent;
+    }
+  }
+
+  &__td {
+    padding: var(--space-xs) var(--space-s);
+    vertical-align: middle;
+
+    &--rank {
+      width: 36px;
+      text-align: center;
+    }
+
+    &--user {
+      white-space: nowrap;
+    }
+
+    &--bar {
+      width: 100%;
+      padding-left: var(--space-s);
+      padding-right: var(--space-s);
+    }
+
+    &--count {
+      text-align: right;
+      padding-right: var(--space-m);
+      white-space: nowrap;
+    }
+  }
+
+  &__gap-cell {
+    padding: var(--space-xxs) var(--space-s);
+    text-align: center;
+  }
+
+  &__gap-dots {
+    font-size: var(--font-size-l);
+    color: var(--color-text-lighter);
+    letter-spacing: 4px;
   }
 
   &__rank {
     font-size: var(--font-size-s);
     font-weight: 700;
     color: var(--color-text-lighter);
-    min-width: 24px;
+    display: inline-block;
+    min-width: 20px;
     text-align: center;
 
     &--top {
@@ -757,20 +956,39 @@ const podiumColors: [string, string, string] = ['#FFD700', '#C0C0C0', '#CD7F32']
   }
 
   &__user {
-    flex-shrink: 0;
-    min-width: 140px;
     display: flex;
     align-items: center;
     gap: var(--space-s);
+    overflow: hidden;
   }
 
   &__bar-wrapper {
-    flex: 1;
+    width: 100%;
     height: 6px;
     border-radius: 3px;
     background-color: var(--color-bg-lowered);
     overflow: hidden;
     min-width: 40px;
+  }
+
+  @media screen and (max-width: $breakpoint-xs) {
+    &__td--bar,
+    &__td--rank {
+      display: none;
+    }
+
+    &__td--user {
+      white-space: normal;
+      max-width: 120px;
+    }
+
+    &__user {
+      :deep(> *:last-child) {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
   }
 
   &__bar {

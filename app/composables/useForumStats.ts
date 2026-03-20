@@ -10,6 +10,11 @@ export interface ForumUserStat {
   count: number
 }
 
+export interface ForumUserRank {
+  rank: number
+  count: number
+}
+
 export interface ForumActivityPoint {
   date: string
   discussions: number
@@ -27,6 +32,10 @@ export interface ForumStats {
   topCombined: ForumUserStat[]
   topRepliers: ForumUserStat[]
   topStarters: ForumUserStat[]
+  // Full sorted lists (not sliced) - used for out-of-top-10 rank lookups
+  allCombined: ForumUserStat[]
+  allRepliers: ForumUserStat[]
+  allStarters: ForumUserStat[]
   activityOverTime: ForumActivityPoint[]
   topicBreakdown: ForumTopicStat[]
   totalDiscussions: number
@@ -103,9 +112,9 @@ export function useForumStats() {
         }
       }
 
-      const topRepliers: ForumUserStat[] = Array.from(replierCounts.entries(), ([user_id, count]) => ({ user_id, count }))
+      const allRepliers: ForumUserStat[] = Array.from(replierCounts.entries(), ([user_id, count]) => ({ user_id, count }))
         .toSorted((a, b) => b.count - a.count)
-        .slice(0, 10)
+      const topRepliers = allRepliers.slice(0, 10)
 
       // ── Top discussion starters ───────────────────────────────────────────
       const starterCounts = new Map<string, number>()
@@ -115,9 +124,9 @@ export function useForumStats() {
         }
       }
 
-      const topStarters: ForumUserStat[] = Array.from(starterCounts.entries(), ([user_id, count]) => ({ user_id, count }))
+      const allStarters: ForumUserStat[] = Array.from(starterCounts.entries(), ([user_id, count]) => ({ user_id, count }))
         .toSorted((a, b) => b.count - a.count)
-        .slice(0, 10)
+      const topStarters = allStarters.slice(0, 10)
 
       // ── Combined (discussions + replies) ──────────────────────────────────
       const combinedCounts = new Map<string, number>()
@@ -128,9 +137,9 @@ export function useForumStats() {
         combinedCounts.set(id, (combinedCounts.get(id) ?? 0) + count)
       }
 
-      const topCombined: ForumUserStat[] = Array.from(combinedCounts.entries(), ([user_id, count]) => ({ user_id, count }))
+      const allCombined: ForumUserStat[] = Array.from(combinedCounts.entries(), ([user_id, count]) => ({ user_id, count }))
         .toSorted((a, b) => b.count - a.count)
-        .slice(0, 10)
+      const topCombined = allCombined.slice(0, 10)
 
       // ── Activity over time (weekly buckets) ───────────────────────────────
       const weeklyActivity = new Map<string, { discussions: number, replies: number }>()
@@ -220,6 +229,9 @@ export function useForumStats() {
         topCombined,
         topRepliers,
         topStarters,
+        allCombined,
+        allRepliers,
+        allStarters,
         activityOverTime,
         topicBreakdown,
         totalDiscussions,

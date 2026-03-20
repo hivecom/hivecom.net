@@ -6,6 +6,7 @@ import { useDataUser } from '@/composables/useDataUser'
 
 const user = useSupabaseUser()
 const userId = useUserId()
+const route = useRoute()
 
 const {
   user: userData,
@@ -22,13 +23,13 @@ const {
 
 const open = ref(false)
 
+watch(() => route.fullPath, () => {
+  open.value = false
+})
+
 const isAdminOrMod = computed(() => {
   return userData.value?.role === 'admin' || userData.value?.role === 'moderator'
 })
-
-function handleNavigate() {
-  open.value = false
-}
 
 // Complaint modal state
 const showComplaintModal = ref(false)
@@ -89,13 +90,14 @@ async function signOut() {
         </Flex>
       </template>
 
-      <Flex column expand class="user-sheet__body">
+      <Flex column expand class="user-sheet__body" :gap="0">
         <!-- Preview card for the current user -->
         <div class="user-sheet__preview">
           <UserPreviewCard
             :user-id="userId"
             :show-badges="true"
-            :show-activity="true"
+            :show-activity="false"
+            :show-description="false"
           />
         </div>
 
@@ -103,12 +105,12 @@ async function signOut() {
 
         <!-- Navigation items -->
         <Flex column expand gap="xxs" class="user-sheet__nav">
-          <NuxtLink to="/profile" class="user-sheet__nav-item" @click="handleNavigate">
+          <NuxtLink to="/profile" class="user-sheet__nav-item">
             <Icon name="ph:user" :size="18" />
             Profile
           </NuxtLink>
 
-          <NuxtLink to="/profile/settings" class="user-sheet__nav-item" @click="handleNavigate">
+          <NuxtLink to="/profile/settings" class="user-sheet__nav-item">
             <Icon name="ph:gear-six" :size="18" />
             Settings
           </NuxtLink>
@@ -120,7 +122,7 @@ async function signOut() {
 
           <template v-if="isAdminOrMod">
             <Divider margin="4px 0" />
-            <NuxtLink to="/admin" class="user-sheet__nav-item" @click="handleNavigate">
+            <NuxtLink to="/admin" class="user-sheet__nav-item">
               <Icon name="ph:faders" :size="18" />
               Admin Panel
             </NuxtLink>
@@ -131,7 +133,7 @@ async function signOut() {
       <template #footer>
         <Flex x-between y-center expand>
           <SharedThemeToggle no-text />
-          <Button variant="danger" size="s" icon @click="signOut">
+          <Button icon @click="signOut">
             <template #start>
               <Icon name="ph:sign-out" />
             </template>
