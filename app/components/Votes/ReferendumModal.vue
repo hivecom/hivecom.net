@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Badge, Button, Calendar, Checkbox, Flex, Input, Modal, Textarea, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Calendar, Checkbox, Flex, Grid, Input, Modal, Textarea, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
   open: boolean
@@ -261,6 +262,8 @@ async function confirmDelete() {
 function handleClose() {
   emit('close')
 }
+
+const isMobile = useBreakpoint('<s')
 </script>
 
 <template>
@@ -271,7 +274,7 @@ function handleClose() {
     @close="handleClose"
   >
     <template #header>
-      <h3>{{ isEditing ? 'Edit vote' : 'New vote' }}</h3>
+      <h4>{{ isEditing ? 'Edit vote' : 'New vote' }}</h4>
     </template>
 
     <p class="mb-l text-color-light">
@@ -302,10 +305,10 @@ function handleClose() {
       />
 
       <!-- Dates -->
-      <Flex gap="m" :column="false" wrap expand>
+      <Grid :columns="isMobile ? 1 : 2" expand gap="m">
         <Flex column expand :gap="0">
-          <label class="form-label">
-            Start Date <span class="form-required">*</span>
+          <label class="vui-label required">
+            Start Date
           </label>
           <Calendar
             v-model="form.date_start"
@@ -319,6 +322,7 @@ function handleClose() {
             <template #trigger>
               <Button
                 expand
+                outline
                 :class="{ error: form.date_start == null }"
               >
                 {{ form.date_start ? form.date_start.toLocaleString('en-US', {
@@ -338,8 +342,8 @@ function handleClose() {
         </Flex>
 
         <Flex column expand :gap="0">
-          <label class="form-label">
-            End Date <span class="form-required">*</span>
+          <label class="vui-label required">
+            End Date
           </label>
           <Calendar
             v-model="form.date_end"
@@ -353,6 +357,7 @@ function handleClose() {
             <template #trigger>
               <Button
                 expand
+                outline
                 :class="{ error: form.date_end == null || !validation.dateRange || !validation.startBeforeEnd }"
               >
                 {{ form.date_end ? form.date_end.toLocaleString('en-US', {
@@ -376,36 +381,37 @@ function handleClose() {
             End date must be in the future
           </span>
         </Flex>
-      </Flex>
+      </Grid>
 
       <!-- Options -->
-      <Flex gap="l" y-center expand>
+      <Checkbox
+        v-model="form.multiple_choice"
+        name="multiple_choice"
+        label="Allow multiple choice"
+      />
+
+      <Flex v-if="canMakePublic" gap="xs" y-center>
         <Checkbox
-          v-model="form.multiple_choice"
-          name="multiple_choice"
-          label="Allow multiple choice"
+          v-model="form.is_public"
+          name="is_public"
+          label="Show on public votes page"
         />
-        <Flex v-if="canMakePublic" gap="xs" y-center>
-          <Checkbox
-            v-model="form.is_public"
-            name="is_public"
-            label="Show on public votes page"
-          />
-          <Tooltip>
-            <Icon name="ph:info" class="text-color-lighter" />
-            <template #tooltip>
-              <p>Public votes appear in the votes listing for all users.</p>
-            </template>
-          </Tooltip>
-        </Flex>
+        <Tooltip>
+          <Icon name="ph:info" class="text-color-lighter" />
+          <template #tooltip>
+            <p>Public votes appear in the votes listing for all users.</p>
+          </template>
+        </Tooltip>
       </Flex>
 
       <!-- Choices -->
-      <Flex column :gap="0" expand>
-        <label class="form-label">
-          Voting choices <span class="form-required">*</span>
-          <span class="form-label-hint">(minimum 2)</span>
+      <Flex column :gap="0" expand class="mt-s">
+        <label class="vui-label required">
+          Voting choices
         </label>
+        <p class="vui-hint">
+          (minimum 2)
+        </p>
 
         <!-- Warning when removing choices in edit mode -->
         <Flex v-if="isRemovingChoices" gap="xs" y-center class="choices-warning mb-s">
@@ -424,7 +430,7 @@ function handleClose() {
             @keydown="handleChoiceKeydown"
           />
           <Button
-            variant="accent"
+            variant="fill"
             square
             :disabled="!newChoiceInput.trim()"
             @click="addChoice"
@@ -502,20 +508,6 @@ function handleClose() {
 </template>
 
 <style scoped lang="scss">
-.form-label {
-  font-size: var(--font-size-s);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-  margin-bottom: var(--space-xs);
-  display: block;
-}
-
-.form-label-hint {
-  font-weight: var(--font-weight-normal);
-  color: var(--color-text-lighter);
-  margin-left: var(--space-xs);
-}
-
 .form-required {
   color: var(--color-text-red);
 }

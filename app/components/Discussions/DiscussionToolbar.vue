@@ -23,7 +23,6 @@ const emit = defineEmits<{
       <Button
         square
         size="s"
-        :variant="viewMode === 'flat' ? 'fill' : 'gray'"
         :outline="viewMode !== 'flat'"
         @click="emit('update:viewMode', 'flat')"
       >
@@ -37,7 +36,6 @@ const emit = defineEmits<{
       <Button
         square
         size="s"
-        :variant="viewMode === 'threaded' ? 'fill' : 'gray'"
         :outline="viewMode !== 'threaded'"
         @click="emit('update:viewMode', 'threaded')"
       >

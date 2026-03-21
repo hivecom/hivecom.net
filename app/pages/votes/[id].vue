@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import type { Tables } from '@/types/database.overrides'
-import { Button, Flex } from '@dolanske/vui'
+import { Button, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -369,19 +369,22 @@ function handleChoiceClick(index: number) {
             Back to Votes
           </Button>
           <Flex gap="s" y-center>
-            <Button
-              v-if="isOwnReferendum"
-              variant="gray"
-              size="s"
-              :disabled="!isActive && !isUpcoming"
-              @click="editModalOpen = true"
-            >
-              <template #start>
-                <Icon name="ph:pencil-simple" />
-              </template>
-              Edit
-            </Button>
             <UserDisplay :user-id="referendum.created_by" />
+
+            <Tooltip>
+              <Button
+                v-if="isOwnReferendum"
+                variant="gray"
+                size="s"
+                square
+                @click="editModalOpen = true"
+              >
+                <Icon name="ph:pencil-simple" />
+              </Button>
+              <template #tooltip>
+                <p>Edit vote details</p>
+              </template>
+            </Tooltip>
           </Flex>
         </Flex>
 

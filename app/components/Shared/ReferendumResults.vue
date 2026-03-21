@@ -88,7 +88,7 @@ const isBelowSmall = useBreakpoint('<s')
 </script>
 
 <template>
-  <Card class="card-bg" :class="{ 'p-l': !isBelowSmall }">
+  <Card class="card-bg" :class="{ 'p-m': !isBelowSmall }">
     <Flex x-between y-center class="mb-l">
       <h3>
         Results
@@ -110,7 +110,7 @@ const isBelowSmall = useBreakpoint('<s')
     </Flex>
 
     <!-- No votes yet -->
-    <div v-if="totalVoters === 0" class="text-center p-l">
+    <div v-if="totalVoters === 0" class="text-center p-m">
       <Icon name="ph:chart-bar" size="2rem" class="text-color-light mb-s" />
       <p class="text-color-light">
         No votes yet
@@ -139,6 +139,7 @@ const isBelowSmall = useBreakpoint('<s')
                 :avatar-size="24"
                 :random="true"
                 :gap="4"
+                :expand="false"
                 no-empty-state
               />
               <span v-if="result.count === 0" class="result-item__count">{{ result.count }} votes</span>
@@ -160,7 +161,6 @@ const isBelowSmall = useBreakpoint('<s')
             :id="String(props.referendum.id)"
             type="referendum"
             :hash="md5(result.choice)"
-            :input-rows="2"
           />
         </div>
       </Accordion>
@@ -204,7 +204,6 @@ const isBelowSmall = useBreakpoint('<s')
   height: 56px;
   z-index: 1;
   width: 100%;
-  transition: var(--transition-fast);
   border-radius: var(--border-radius-m);
   cursor: default;
 
@@ -289,7 +288,7 @@ const isBelowSmall = useBreakpoint('<s')
   }
 
   :deep(.discussion-comment) {
-    margin-top: -16px;
+    margin-top: -8px;
   }
 }
 </style>

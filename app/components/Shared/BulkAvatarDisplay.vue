@@ -16,6 +16,7 @@ interface Props {
   hideGenericUsers?: boolean
   supporterHighlight?: boolean
   noEmptyState?: boolean
+  expand?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -26,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
   gap: 0,
   hideGenericUsers: true,
   supporterHighlight: false,
+  expand: true,
 })
 
 const GENERIC_USERNAME_REGEX = /^user\d+$/i
@@ -133,7 +135,7 @@ defineExpose({
 </script>
 
 <template>
-  <Flex expand class="bulk-avatar-display">
+  <Flex :expand="props.expand" class="bulk-avatar-display">
     <!-- Loading State -->
     <Flex
       v-if="loading && userIds.length > 0"

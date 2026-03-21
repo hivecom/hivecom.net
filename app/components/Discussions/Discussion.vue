@@ -46,10 +46,6 @@ interface Props extends Partial<DiscussionSettings> {
    */
   hash?: string
   /**
-   * Specify how many rows should the input textarea render
-   */
-  inputRows?: number
-  /**
    * Hides the discussion input
    */
   hideInput?: boolean
@@ -62,7 +58,6 @@ interface Props extends Partial<DiscussionSettings> {
 const props = withDefaults(defineProps<Props>(), {
   model: 'comment',
   timestamps: true,
-  inputRows: 3,
   placeholder: 'Leave your comment...',
 })
 
