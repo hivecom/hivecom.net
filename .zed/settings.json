@@ -63,7 +63,7 @@
       ]
     },
     "SCSS": {
-      "language_servers": ["emmet-language-server", "eslint", "vscode-css-language-server"],
+      "language_servers": ["emmet-language-server", "eslint", "vscode-css-language-server", "some-sass-lsp", "!scss-lsp"],
       "use_on_type_format": true,
       "formatter": [
         { "language_server": { "name": "vscode-css-language-server" } },
@@ -76,6 +76,57 @@
       "binary": {
         "path": "node_modules/.bin/emmet-language-server",
         "arguments": ["--stdio"]
+      }
+    },
+    "some-sass-lsp": {
+      "settings": {
+        "somesass": {
+          "diagnostics": {
+            "enabled": false
+          }
+        }
+      }
+    },
+    "vscode-css-language-server": {
+      "binary": {
+        "path": "node_modules/.bin/vscode-css-language-server",
+        "arguments": ["--stdio"]
+      },
+      "settings": {
+        "css": {
+          "lint": {
+            "compatibleVendorPrefixes": "warning",
+            "duplicateProperties": "warning",
+            "emptyRules": "warning",
+            "importStatement": "warning",
+            "unknownProperties": "warning",
+            "unknownVendorSpecificProperties": "warning",
+            "propertyIgnoredDueToDisplay": "warning",
+            "ieHack": "warning",
+            "zeroUnits": "warning",
+            "fontFaceProperties": "warning",
+            "hexColorLength": "warning",
+            "unknownAtRules": "warning"
+          },
+          "validate": true
+        },
+        "scss": {
+          "lint": {
+            "compatibleVendorPrefixes": "warning",
+            "duplicateProperties": "warning",
+            "emptyRules": "warning",
+            "importStatement": "warning",
+            "unknownProperties": "warning",
+            "unknownVendorSpecificProperties": "warning",
+            "propertyIgnoredDueToDisplay": "warning",
+            "ieHack": "warning",
+            "zeroUnits": "warning",
+            "fontFaceProperties": "warning",
+            "hexColorLength": "warning",
+            "unknownAtRules": "warning"
+          },
+          "validate": true
+        }
       }
     },
     "eslint": {
