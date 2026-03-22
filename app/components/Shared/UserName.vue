@@ -17,6 +17,11 @@ interface Props {
    * When true, hovering the username shows the user profile preview card.
    */
   showPreview?: boolean
+  /**
+   * When true, font size, line height and color are all inherited from the
+   * parent component instead of using the component's own defaults.
+   */
+  inherit?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -80,6 +85,8 @@ const ariaLabel = computed(() => {
 })
 
 const fontClass = computed(() => {
+  if (props.inherit)
+    return 'user-name--inherit'
   switch (props.size) {
     case 's': return 'user-name--s'
     case 'l': return 'user-name--l'
@@ -163,6 +170,14 @@ const fontClass = computed(() => {
 
   &--l * {
     font-size: var(--font-size-l);
+  }
+
+  &--inherit &__text,
+  &--inherit &__link {
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+    font-weight: inherit;
   }
 
   &__text {

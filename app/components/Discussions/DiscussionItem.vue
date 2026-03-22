@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Comment, ThreadNode } from './Discussion.types'
-import { Button, Flex, pushToast } from '@dolanske/vui'
-import { stripMarkdown } from '@/lib/markdownProcessors'
+import { Button, Flex, pushToast, Sheet } from '@dolanske/vui'
 import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'
+import UserAvatar from '../Shared/UserAvatar.vue'
+import UserName from '../Shared/UserName.vue'
 import { DISCUSSION_KEYS } from './Discussion.keys'
 import DiscussionModelComment from './models/DiscussionModelComment.vue'
 import DiscussionModelForum from './models/DiscussionModelForum.vue'
@@ -106,10 +107,6 @@ watch(
   (val) => { repliesExpanded.value = val },
 )
 
-function toggleReplies() {
-  repliesExpanded.value = !repliesExpanded.value
-}
-
 // Threaded mode: whether this node's sub-tree is folded closed
 const threadCollapsed = ref(false)
 
@@ -117,12 +114,14 @@ function toggleThreadCollapsed() {
   threadCollapsed.value = !threadCollapsed.value
 }
 
-function scrollToReply(childComment: Comment) {
-  router.replace({ query: { comment: childComment.id } })
-  scrollToId(`#comment-${childComment.id}`, 'start')
-}
+// ── Showing replies in a sheet ───────────────────────────────────
 
-const PREVIEW_LENGTH = 120
+function stripReplyData(entry: Comment) {
+  return {
+    ...entry,
+    reply: null,
+  }
+}
 </script>
 
 <template>
@@ -150,73 +149,43 @@ const PREVIEW_LENGTH = 120
     />
 
     <!-- Flat mode: inline one-liner reply preview with expand toggle -->
-    <div
+    <!-- TODO: check this on normal comments too -->
+    <Flex
       v-show="viewMode === 'flat' && hasReplies"
+      x-end
       class="discussion-comment-wrapper__thread"
       :class="model === 'forum' ? 'discussion-comment-wrapper__thread--forum' : 'discussion-comment-wrapper__thread--comment'"
     >
-      <!-- Toggle button -->
-      <Flex x-center class="discussion-comment-wrapper__thread-toggle">
-        <Button
-          plain
-          size="s"
-          @click="toggleReplies"
-        >
-          {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
-          <template #end>
-            <Icon
-              :name="repliesExpanded ? 'ph:caret-up' : 'ph:caret-down'"
-              :size="12"
-              class="discussion-comment-wrapper__thread-caret"
-            />
-          </template>
-        </Button>
-      </Flex>
+      <Button size="s" outline @click="repliesExpanded = true">
+        {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
+      </Button>
 
-      <!-- Compact one-liner previews -->
-      <Transition name="thread-expand">
-        <Flex
-          v-if="repliesExpanded"
-          column
-          :gap="1"
-          class="discussion-comment-wrapper__thread-list"
-        >
-          <Button
-            v-for="child in visibleChildren"
-            :key="child.comment.id"
-            plain
-            class="discussion-comment-wrapper__thread-row"
-            :class="child.comment.is_offtopic && 'discussion-comment-wrapper__thread-row--offtopic'"
-            @click="scrollToReply(child.comment)"
-          >
-            <Flex y-center :gap="8" expand class="discussion-comment-wrapper__thread-row-inner">
-              <SharedUserAvatar
-                :user-id="child.comment.created_by"
-                size="s"
-                class="discussion-comment-wrapper__thread-avatar"
-              />
-
-              <SharedUserName
-                :user-id="child.comment.created_by"
-                size="s"
-                class="discussion-comment-wrapper__thread-author"
-              />
-
-              <span class="discussion-comment-wrapper__thread-preview">
-                {{ stripMarkdown(child.comment.markdown, PREVIEW_LENGTH) }}
-              </span>
-
-              <Icon
-                v-if="child.children.length > 0"
-                name="ph:git-branch"
-                class="discussion-comment-wrapper__thread-nested-icon"
-                :size="12"
-              />
+      <Sheet :open="repliesExpanded" :size="756" separators @close="repliesExpanded = false">
+        <template #header>
+          <Flex gap="m">
+            <UserAvatar size="l" :user-id="data.created_by" />
+            <Flex column gap="xxs">
+              <h4>
+                <UserName inherit :user-id="data.created_by" />'s thread
+              </h4>
+              <p class="text-color-lighter">
+                {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
+              </p>
             </Flex>
-          </Button>
+          </Flex>
+        </template>
+
+        <Flex column gap="s" expand>
+          <DiscussionModelForum
+            v-for="item in visibleChildren"
+            :key="item.comment.id"
+            ref="self"
+            :data="stripReplyData(item.comment)"
+            @interact="repliesExpanded = false"
+          />
         </Flex>
-      </Transition>
-    </div>
+      </Sheet>
+    </Flex>
 
     <!-- Threaded mode: recursively render children as full DiscussionItems -->
     <!-- v-show keeps nested DiscussionItems mounted across mode switches so -->
@@ -378,68 +347,5 @@ const PREVIEW_LENGTH = 120
       z-index: 3;
     }
   }
-
-  &__thread-icon {
-    color: var(--color-text-lighter);
-    flex-shrink: 0;
-  }
-
-  &__thread-caret {
-    color: var(--color-text-lighter);
-    flex-shrink: 0;
-    margin-left: 2px;
-  }
-
-  &__thread-row {
-    --button-padding: 0 !important;
-
-    &--offtopic {
-      opacity: 0.5;
-    }
-  }
-
-  &__thread-avatar {
-    flex-shrink: 0;
-    // Override the default avatar size to be a touch smaller inline
-    :deep(.vui-avatar) {
-      width: 18px;
-      height: 18px;
-    }
-  }
-
-  &__thread-author {
-    flex-shrink: 0;
-  }
-
-  &__thread-preview {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__thread-nested-icon {
-    flex-shrink: 0;
-    color: var(--color-text-lighter);
-    margin-left: auto;
-  }
-}
-
-// Smooth expand/collapse animation
-.thread-expand-enter-active,
-.thread-expand-leave-active {
-  transition:
-    opacity var(--transition),
-    transform var(--transition);
-  transform-origin: top;
-}
-
-.thread-expand-enter-from,
-.thread-expand-leave-to {
-  opacity: 0;
-  transform: scaleY(0.92) translateY(-4px);
 }
 </style>

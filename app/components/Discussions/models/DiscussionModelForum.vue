@@ -29,6 +29,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   copyLink: []
   scrollReply: []
+  interact: []
 }>()
 
 dayjs.extend(relativeTime)
@@ -107,6 +108,9 @@ const showDeleteModal = ref(false)
 function handleDeletion() {
   loadingDeletion.value = true
   deleteComment(data.value.id)
+    .then(() => {
+      emit('interact')
+    })
     .finally(() => {
       loadingDeletion.value = false
     })
@@ -320,7 +324,7 @@ const { displayReactions, toggleReaction } = useReactions({
 
         <ButtonGroup v-if="currentUserData">
           <template v-if="(!discussion?.is_locked || canBypassLock) && !discussion?.is_archived">
-            <Button square size="s" @click="setReplyToComment(data)">
+            <Button square size="s" @click="setReplyToComment(data); emit('interact')">
               <Tooltip>
                 <Icon name="ph:arrow-elbow-up-left-bold" />
                 <template #tooltip>
@@ -328,7 +332,7 @@ const { displayReactions, toggleReaction } = useReactions({
                 </template>
               </Tooltip>
             </Button>
-            <Button square size="s" @click="setQuoteOfComment(data)">
+            <Button square size="s" @click="setQuoteOfComment(data); emit('interact')">
               <Tooltip>
                 <Icon name="ph:quotes-bold" />
                 <template #tooltip>
@@ -337,7 +341,7 @@ const { displayReactions, toggleReaction } = useReactions({
               </Tooltip>
             </Button>
           </template>
-          <Button size="s" square @click="emit('copyLink')">
+          <Button size="s" square @click="emit('copyLink'); emit('interact')">
             <Tooltip>
               <Icon name="ph:link-bold" />
               <template #tooltip>
@@ -468,6 +472,7 @@ const { displayReactions, toggleReaction } = useReactions({
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
   position: relative;
+  width: 100%;
 
   &:has(.reactions-anchor-active),
   &:hover {

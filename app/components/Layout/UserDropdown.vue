@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Spinner } from '@dolanske/vui'
+import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Spinner, Tooltip } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import { useDataUser } from '@/composables/useDataUser'
