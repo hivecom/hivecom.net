@@ -7,6 +7,83 @@ export type Json
     | Json[]
 
 export interface Database {
+  private: {
+    Tables: {
+      kvstore: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          key: string
+          modified_at: string | null
+          modified_by: string | null
+          type: Database['public']['Enums']['kvstore_type']
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          key: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database['public']['Enums']['kvstore_type']
+          value: Json
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          key?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database['public']['Enums']['kvstore_type']
+          value?: Json
+        }
+        Relationships: []
+      }
+      teamspeak_tokens: {
+        Row: {
+          attempts: number
+          created_at: string
+          expires_at: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id?: string
+          token_hash?: string
+          unique_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      queue_dispatch_worker_sync_steam: { Args: never, Returns: undefined }
+      queue_enqueue_worker_sync_steam: { Args: never, Returns: undefined }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       alerts: {
@@ -1406,7 +1483,7 @@ export interface Database {
       themes: {
         Row: {
           created_at: string
-          created_by: string
+          created_by: string | null
           dark_accent: string
           dark_bg: string
           dark_bg_accent_lowered: string
@@ -1474,10 +1551,13 @@ export interface Database {
           modified_at: string | null
           modified_by: string | null
           name: string
+          rounding: number
+          spacing: number
+          transitions: number
         }
         Insert: {
           created_at?: string
-          created_by: string
+          created_by?: string | null
           dark_accent: string
           dark_bg: string
           dark_bg_accent_lowered: string
@@ -1545,10 +1625,13 @@ export interface Database {
           modified_at?: string | null
           modified_by?: string | null
           name: string
+          rounding?: number
+          spacing?: number
+          transitions?: number
         }
         Update: {
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           dark_accent?: string
           dark_bg?: string
           dark_bg_accent_lowered?: string
@@ -1616,6 +1699,9 @@ export interface Database {
           modified_at?: string | null
           modified_by?: string | null
           name?: string
+          rounding?: number
+          spacing?: number
+          transitions?: number
         }
         Relationships: []
       }
@@ -2048,6 +2134,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  private: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_permission: [
