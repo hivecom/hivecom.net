@@ -3,35 +3,9 @@ import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Flex, Select, theme, Tooltip } from '@dolanske/vui'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useDataThemes } from '@/composables/useDataThemes'
-import { VUI_COLOR_KEYS } from '@/lib/theme'
+import { getCssVarAsHex, VUI_COLOR_KEYS } from '@/lib/theme'
 
-const RGB_RE = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/
 const HYPHEN_RE = /-/g
-
-/**
- * Read the current computed value of a CSS variable from :root and convert
- * it to a hex string suitable for <input type="color">.
- */
-function getCssVarAsHex(varName: string): string {
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
-  if (!raw)
-    return '#000000'
-
-  // Parse rgb(...) / rgba(...)
-  const match = raw.match(RGB_RE)
-  if (match) {
-    const r = Number(match[1])
-    const g = Number(match[2])
-    const b = Number(match[3])
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
-  }
-
-  // If it's already hex-ish, return as-is
-  if (raw.startsWith('#'))
-    return raw
-
-  return '#000000'
-}
 
 // Track active palette via VUI's reactive theme ref
 const activePrefix = computed(() => theme.value === 'dark' ? 'dark' : 'light')
@@ -63,17 +37,6 @@ const selectedThemeId = ref<string | null>(null)
 
 const themeOptions = computed(() => themes.value.map(t => ({ label: t.name, value: t.id })))
 
-function loadThemeIntoPalettes(t: Tables<'themes'>) {
-  for (const key of VUI_COLOR_KEYS) {
-    const darkCol = `dark_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
-    const lightCol = `light_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
-    darkColors[key] = (t[darkCol] as string) ?? darkColors[key]
-    lightColors[key] = (t[lightCol] as string) ?? lightColors[key]
-  }
-  applyPalette('dark', darkColors)
-  applyPalette('light', lightColors)
-}
-
 function onThemeSelect(selected: { value: unknown, label: string }[] | undefined) {
   const id = (selected?.[0]?.value as string | null) ?? null
   if (id == null) {
@@ -84,7 +47,16 @@ function onThemeSelect(selected: { value: unknown, label: string }[] | undefined
   const t = themes.value.find(th => th.id === id)
   if (t == null)
     return
-  loadThemeIntoPalettes(t)
+
+  for (const key of VUI_COLOR_KEYS) {
+    const darkCol = `dark_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
+    const lightCol = `light_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
+    darkColors[key] = (t[darkCol] as string) ?? darkColors[key]
+    lightColors[key] = (t[lightCol] as string) ?? lightColors[key]
+  }
+
+  applyPalette('dark', darkColors)
+  applyPalette('light', lightColors)
 }
 
 // The colors object the template binds to - points at the active palette

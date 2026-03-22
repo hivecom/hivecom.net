@@ -132,3 +132,30 @@ export function applyTheme(theme: Theme | null, target: HTMLElement = document.d
     target.style.setProperty(prop, value)
   }
 }
+
+const RGB_RE = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/
+
+/**
+ * Read the current computed value of a CSS variable from :root and convert
+ * it to a hex string suitable for <input type="color">.
+ */
+export function getCssVarAsHex(varName: string): string {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+  if (!raw)
+    return '#000000'
+
+  // Parse rgb(...) / rgba(...)
+  const match = raw.match(RGB_RE)
+  if (match) {
+    const r = Number(match[1])
+    const g = Number(match[2])
+    const b = Number(match[3])
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  }
+
+  // If it's already hex-ish, return as-is
+  if (raw.startsWith('#'))
+    return raw
+
+  return '#000000'
+}
