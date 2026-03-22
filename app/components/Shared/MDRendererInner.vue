@@ -17,6 +17,8 @@ const props = defineProps({
   },
 })
 
+const container = useTemplateRef('container')
+
 const mentionIds = computed(() => extractMentionIds(props.md))
 useBulkDataUser(mentionIds)
 
@@ -31,16 +33,10 @@ watch(processedMarkdown, async (val) => {
   parsed.body = result.body
   parsed.data = result.data
 })
-
-const lightbox = useTemplateRef('lightbox')
-
-onMounted(() => {
-  nextTick(() => lightbox.value?.register())
-})
 </script>
 
 <template>
-  <div>
+  <div ref="container">
     <MDCRenderer
       v-if="parsed.body"
       :body="parsed.body"
@@ -48,7 +44,7 @@ onMounted(() => {
       :tag="props.tag"
       :class="`typeset ${props.extraClass}`"
     />
-    <MDLightbox v-if="props.md" ref="lightbox" :markdown="props.md" />
+    <MDLightbox v-if="props.md" :markdown="props.md" :container="container" />
   </div>
 </template>
 

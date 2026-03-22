@@ -7,6 +7,7 @@ const IMAGE_URL_SOURCE = String.raw`!\[.*?\]\((.*?\.(?:jpe?g|png|webp)(?:\?[^)]*
 
 interface Props {
   markdown: string
+  container: HTMLElement | null
 }
 
 // Extract image URLs from the markdown content
@@ -42,22 +43,24 @@ function next() {
   }
 }
 
-// Register click events to all <img> elements in the rendered markdown content.
-// This method is called once the MDrenderer finishes rendering
-function register() {
-  useEventListener('click', (event) => {
-    const target = event.target as HTMLElement
+// Listen for clicks on any <img> inside this instance's own container only.
+// Scoping by container ref ensures that when many MDLightbox instances are on
+// the same page, only the one that owns the clicked image responds.
+useEventListener('click', (event) => {
+  const target = event.target as HTMLElement
 
-    if (target.tagName === 'IMG' && target.closest('.typeset')?.contains(target)) {
-      const src = target.getAttribute('src')
-      const index = imageUrls.value.indexOf(src ?? '')
+  if (!props.container?.contains(target))
+    return
 
-      if (index !== -1) {
-        open(index)
-      }
+  if (target.tagName === 'IMG' && !target.classList.contains('ignored')) {
+    const src = target.getAttribute('src')
+    const index = imageUrls.value.indexOf(src ?? '')
+
+    if (index !== -1) {
+      open(index)
     }
-  })
-}
+  }
+})
 
 useEventListener('keydown', (event) => {
   if (!isOpen.value)
@@ -73,14 +76,12 @@ useEventListener('keydown', (event) => {
     next()
   }
 })
-
-defineExpose({ register })
 </script>
 
 <template>
   <Modal class="md-lightbox" size="screen" :open="isOpen" centered @close="close">
     <div class="md-lightbox__img-wrap">
-      <img v-if="activeUrl" :src="activeUrl" @click="close">
+      <img v-if="activeUrl" class="ignored" :src="activeUrl" @click="close">
     </div>
 
     <Flex v-if="imageUrls.length > 1" x-center gap="l" class="md-lightbox-nav" y-center>
