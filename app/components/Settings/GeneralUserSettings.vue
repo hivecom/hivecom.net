@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, ButtonGroup, Card, Divider, Flex, Select, setColorTheme, Switch } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Divider, Flex, Select, setColorTheme, Switch, Tooltip } from '@dolanske/vui'
+import ThemeEditor from './ThemeEditor.vue'
 
 // Placeholder theme options for the planned Theme selector
 const themeSelectOptions = [
@@ -36,6 +37,8 @@ const selectedTheme = computed({
     }
   },
 })
+
+const themeEditorOpen = ref(false)
 </script>
 
 <template>
@@ -50,17 +53,23 @@ const selectedTheme = computed({
       Appearance
     </strong>
 
-    <Flex x-between y-center class="mb-s">
-      <Flex y-center gap="xxs" class="text-color-lightest">
-        <p>Theme</p>
-        <SharedTinyBadge>
-          Coming Soon
-        </SharedTinyBadge>
-      </Flex>
-      <Select v-model="selectedCustomTheme" class="settings-select" :show-clear="false" :options="themeSelectOptions" size="s" disabled />
+    <ThemeEditor :open="themeEditorOpen" @close="themeEditorOpen = false" />
+
+    <Flex x-between y-center class="mb-s" gap="xxs">
+      <p>Theme</p>
+      <div class="flex-1" />
+      <Tooltip>
+        <Button size="s" square outline @click="themeEditorOpen = true">
+          <Icon name="solar:gallery-edit-linear" />
+        </Button>
+        <template #tooltip>
+          <p>Create a new theme</p>
+        </template>
+      </Tooltip>
+      <Select v-model="selectedCustomTheme" class="settings-select" :show-clear="false" :options="themeSelectOptions" size="s" />
     </Flex>
     <Flex x-between y-center class="mb-s">
-      <p>Theme Variant</p>
+      <p>Theme variant</p>
       <Select v-model="selectedTheme" class="settings-select" :show-clear="false" :options="themeOptions" size="s" />
     </Flex>
 
