@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Grid } from '@dolanske/vui'
+import CommunityBirthdays from '@/components/Community/CommunityBirthdays.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
 import { useDataProjects } from '@/composables/useDataProjects'
 import { isBanActive } from '@/lib/banStatus'
+import { getBirthdayPatterns } from '@/lib/utils/date'
 import { shuffleArray } from '@/lib/utils/random'
 
 // Get current user for authentication checks
@@ -32,6 +34,7 @@ useSeoMeta({
 // State for community members
 const randomUsers = ref<string[]>([])
 const supporters = ref<string[]>([])
+const birthdayUserIds = ref<string[]>([])
 const loading = ref(true)
 const error = ref('')
 
@@ -108,8 +111,11 @@ async function fetchCommunityData() {
       const nowIso = new Date().toISOString()
       const activeProfilesFilter = buildActiveProfileFilter(nowIso)
 
-      // Fetch supporters, random users, and recent projects in parallel for authenticated users
-      const [supportersResult, randomUserIds] = await Promise.all([
+      // Compute MM-DD patterns covering +/-12h of now (handles all timezones)
+      const birthdayPatterns = getBirthdayPatterns()
+
+      // Fetch supporters, random users, and birthday users in parallel for authenticated users
+      const [supportersResult, randomUserIds, birthdayResult] = await Promise.all([
         // Fetch supporters (lifetime and patreon)
         supabase
           .from('profiles')
@@ -120,6 +126,12 @@ async function fetchCommunityData() {
         // Fetch random selection of users
         fetchRandomActiveCommunityMembers(activeProfilesFilter),
 
+        // Fetch all profiles with a birthday set - we filter MM-DD client-side because
+        // the birthday column is a date type and PostgREST cannot apply LIKE to it directly.
+        supabase
+          .from('profiles')
+          .select('id, birthday, banned, ban_end')
+          .not('birthday', 'is', null),
       ])
 
       if (supportersResult.error) {
@@ -132,7 +144,19 @@ async function fetchCommunityData() {
           .map(profile => profile.id)
       }
 
-      randomUsers.value = randomUserIds
+      if (birthdayResult.error) {
+        console.warn('Error fetching birthday users:', birthdayResult.error)
+      }
+      else if (birthdayResult.data) {
+        // Supabase returns date columns as 'YYYY-MM-DD' strings, so slice(5) gives 'MM-DD'
+        const birthdayRows = birthdayResult.data as Array<{ id: string, birthday: string | null, banned: boolean | null, ban_end: string | null }>
+        birthdayUserIds.value = birthdayRows
+          .filter(p => !isBanActive(p.banned, p.ban_end) && p.birthday != null && birthdayPatterns.includes(p.birthday.slice(5)))
+          .map(p => p.id)
+      }
+
+      // Exclude birthday celebrants from the random members cluster so they don't appear twice
+      randomUsers.value = randomUserIds.filter(id => !birthdayUserIds.value.includes(id))
     }
 
     // Pick 3 random projects from the cached list (works for both auth states)
@@ -161,25 +185,31 @@ watch(user, () => {
       <p>Friends building things together</p>
     </section>
 
-    <!-- Community Members -->
-    <Card v-if="user && randomUsers.length > 0" class="pb-l mt-l community-card">
+    <!-- Community Members (includes birthday sub-section when applicable) -->
+    <Card v-if="user && (randomUsers.length > 0 || birthdayUserIds.length > 0)" class="pb-l mt-l community-card">
       <Flex column gap="m" x-center y-center>
         <Flex y-center gap="m" x-center expand>
           <Flex column :gap="0" x-center class="text-center" y-center>
             <h2 class="text-bold text-xxl">
-              Community Members
+              One of Many
             </h2>
             <p class="text-color-light">
-              Meet some of our amazing community members from around the world
+              A slice of our community from around the world
             </p>
           </Flex>
         </Flex>
         <BulkAvatarDisplayCluster
+          v-if="randomUsers.length > 0"
           :user-ids="randomUsers"
           :max-users="48"
           :avatar-size="64"
           :gap="12"
           :supporter-highlight="true"
+        />
+        <CommunityBirthdays
+          v-if="birthdayUserIds.length > 0"
+          :user-ids="birthdayUserIds"
+          :show-divider="randomUsers.length > 0"
         />
       </Flex>
     </Card>

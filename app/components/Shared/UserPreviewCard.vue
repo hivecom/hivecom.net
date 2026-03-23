@@ -188,9 +188,9 @@ const {
         </Flex>
       </Flex>
 
-      <template v-if="props.showDescription">
-        <Divider style="height: 8px;" />
+      <Divider v-if="(props.showDescription && hasCustomIntroduction) || (activity && props.showActivity && (activity.steam_id || (activity.teamspeak_identities && activity.teamspeak_identities.length > 0)))" style="height: 8px;" />
 
+      <template v-if="props.showDescription && hasCustomIntroduction">
         <Flex v-if="hasCustomIntroduction" column expand :gap="0">
           <p class="user-preview-card__intro text-s">
             {{ introductionText }}

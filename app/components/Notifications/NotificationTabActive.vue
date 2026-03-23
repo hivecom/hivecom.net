@@ -223,11 +223,19 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
       <template v-if="hasPinned">
         <span class="text-s text-color-lighter block">Actions</span>
 
+        <NotificationCardBirthday
+          v-if="(isDev && devFixturesActive) || birthdayWidget"
+          :title="(isDev && devFixturesActive) ? DEV_FIXTURE_BIRTHDAY.title : birthdayWidget!.title"
+          :description="(isDev && devFixturesActive) ? DEV_FIXTURE_BIRTHDAY.description : birthdayWidget!.description"
+          to="/profile"
+        />
+
         <NotificationCardInvite
           v-if="isDev && devFixturesActive"
           :request-id="devFixtureInviteId"
           :loading="false"
         />
+
         <NotificationCardInvite
           v-for="requestId in pendingRequestIds"
           :key="`invite-${requestId}`"
@@ -235,13 +243,6 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
           :loading="isInviteLoading(requestId)"
           @accept="handleInviteAction(requestId, 'accept')"
           @ignore="handleInviteAction(requestId, 'ignore')"
-        />
-
-        <NotificationCardBirthday
-          v-if="(isDev && devFixturesActive) || birthdayWidget"
-          :title="(isDev && devFixturesActive) ? DEV_FIXTURE_BIRTHDAY.title : birthdayWidget!.title"
-          :description="(isDev && devFixturesActive) ? DEV_FIXTURE_BIRTHDAY.description : birthdayWidget!.description"
-          to="/profile"
         />
 
         <NotificationCardPendingComplaints
