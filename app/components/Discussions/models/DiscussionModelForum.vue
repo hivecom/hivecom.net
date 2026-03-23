@@ -30,12 +30,14 @@ const emit = defineEmits<{
   copyLink: []
   scrollReply: []
   interact: []
+  openReplies: []
 }>()
 
 dayjs.extend(relativeTime)
 
 interface Props {
   data: Comment
+  threadReplyCount?: number
 }
 
 const data = toRef(props, 'data')
@@ -299,6 +301,9 @@ const { displayReactions, toggleReaction } = useReactions({
               by <UserName size="s" show-preview :user-id="modifierId" />
             </template>
           </span>
+          <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
+            {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+          </button>
         </p>
 
         <Flex v-if="displayReactions.length > 0" y-center x-end gap="xxs">
@@ -521,6 +526,20 @@ const { displayReactions, toggleReaction } = useReactions({
     * {
       font-size: var(--font-size-xs);
       color: var(--color-text-lighter);
+    }
+  }
+
+  &__reply-count {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    transition: color var(--transition-fast);
+
+    &:hover {
+      color: var(--color-text);
     }
   }
 

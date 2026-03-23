@@ -22,12 +22,14 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   copyLink: []
   scrollReply: []
+  openReplies: []
 }>()
 
 dayjs.extend(relativeTime)
 
 interface Props {
   data: Comment
+  threadReplyCount?: number
 }
 
 const data = toRef(props, 'data')
@@ -179,6 +181,9 @@ const { displayReactions, toggleReaction } = useReactions({
           </p>
         </template>
       </Tooltip>
+      <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-comment__reply-count" @click.stop="emit('openReplies')">
+        {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+      </button>
     </Flex>
 
     <Tooltip v-if="data.reply && viewMode !== 'threaded'" :delay="750">
@@ -436,6 +441,20 @@ const { displayReactions, toggleReaction } = useReactions({
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
     flex-shrink: 0;
+  }
+
+  &__reply-count {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    transition: color var(--transition-fast);
+
+    &:hover {
+      color: var(--color-text);
+    }
   }
 
   &__edited {
