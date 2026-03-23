@@ -12,7 +12,9 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import UserName from '@/components/Shared/UserName.vue'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
+import { useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBulkTopicIcons } from '@/composables/useTopicIcon'
@@ -375,6 +377,18 @@ useHead({
 // This updates every 10 seconds and forces a re-render on the timestamps. This
 // way if the post is open for a longer period of time, it won't show "posted 1
 // minute ago" for 10 minutes until you refresh or interact with the page.
+// Only show "Edited" when modified_at differs from created_at AND modified_by
+// is set - same guard as DiscussionModelForum uses for replies.
+const postModifierId = computed(() => {
+  if (!post.value)
+    return null
+  const { modified_at, created_at, modified_by, created_by } = post.value
+  if (modified_at === created_at || !modified_by || modified_by === created_by)
+    return null
+  return modified_by
+})
+const { user: postModifierUser } = useDataUser(postModifierId, { userTtl: 10 * 60 * 1000 })
+
 const timestampUpdateKey = useInterval(60000)
 
 // Publish post
@@ -676,21 +690,27 @@ function revealNsfw() {
         />
 
         <!-- Post author & metadata row -->
-        <Flex x-between y-center wrap gap="m" :class="{ 'mb-l': contextInfo || !!post.markdown }">
-          <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
-          <Flex :key="timestampUpdateKey" y-center>
-            <Tooltip>
+        <Flex :column="isMobile" :x-between="!isMobile" :y-center="!isMobile" wrap gap="s" :class="{ 'mb-l': contextInfo || !!post.markdown }">
+          <UserDisplay :user-id="post.created_by" show-role />
+          <Flex :key="timestampUpdateKey" y-center wrap :gap="4" class="forum-post__timestamps">
+            <Tooltip :delay="500">
               <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
               <template #tooltip>
                 Posted on {{ formatDate(post.created_at) }}
               </template>
             </Tooltip>
-            <Tooltip>
-              <span>Last Activity {{ dayjs(post.modified_at).fromNow() }}</span>
-              <template #tooltip>
-                Last active on {{ formatDate(post.modified_at) }}
+            <template v-if="post.modified_at !== post.created_at">
+              <span aria-hidden="true">·</span>
+              <Tooltip :delay="500">
+                <span>Edited {{ dayjs(post.modified_at).fromNow() }}</span>
+                <template #tooltip>
+                  Edited on {{ formatDate(post.modified_at) }}
+                </template>
+              </Tooltip>
+              <template v-if="postModifierId && postModifierUser">
+                <span class="text-s">by</span> <UserName size="s" show-preview :user-id="postModifierId" />
               </template>
-            </Tooltip>
+            </template>
           </Flex>
         </Flex>
 
@@ -929,6 +949,11 @@ function revealNsfw() {
 }
 
 @media screen and (max-width: $breakpoint-s) {
+  .forum-post__timestamps {
+    color: var(--color-text-light);
+    font-size: var(--font-size-s);
+  }
+
   .page-title {
     h1 {
       font-size: var(--font-size-xxxl);

@@ -402,9 +402,10 @@ function openFriendsModal() {
         <Flex column gap="m" class="profile-sidebar-col">
           <!-- Activity section -->
           <ProfileActivity
-            v-if="profile.rich_presence_enabled && (profile.steam_id !== null || /*profile.discord_id !== null || */ profile.teamspeak_identities?.toString() !== '')"
+            v-if="profile.steam_id !== null || profile.teamspeak_identities?.toString() !== ''"
             :profile="profile"
             :is-own-profile="isOwnProfile"
+            :is-logged-in="isLoggedIn"
           />
 
           <!-- Recent Discussions -->
