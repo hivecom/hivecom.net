@@ -559,7 +559,7 @@ function getUserInitials(username: string): string {
         <!-- User Profile Markdown -->
         <Card v-if="user.markdown" separators class="card-bg">
           <template #header>
-            <h6>Profile Content</h6>
+            <h6>Content</h6>
           </template>
           <div class="profile-markdown">
             <MDRenderer :md="user.markdown" />

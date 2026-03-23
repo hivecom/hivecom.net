@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import type { RefreshTopicIconFn } from '@/components/Forum/Forum.keys'
 import type { TopicWithDiscussions } from '@/pages/forum/index.vue'
 import type { Tables } from '@/types/database.overrides'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, Card, Dropdown, DropdownTitle, Flex, Input, Modal, pushToast, searchString, Switch } from '@dolanske/vui'
+import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
+import FileUpload from '@/components/Shared/FileUpload.vue'
+import { invalidateTopicIconMemoryCache } from '@/composables/useTopicIcon'
+import { deleteTopicIcon, getTopicIconUrl, invalidateTopicIconCache, uploadTopicIcon } from '@/lib/storage'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 
@@ -23,17 +28,38 @@ const search = ref('')
 const isEditing = computed(() => !!props.editedItem)
 
 // Inject provided values from parent
-const topics = inject<() => Ref<Tables<'discussion_topics'>[]>>('forumTopics', () => ref([]))()
-const activeTopicId = inject<() => Ref<string | null>>('forumActiveTopicId', () => ref(null))()
+const topics = inject(FORUM_KEYS.forumTopics, () => ref([]))()
+const activeTopicId = inject(FORUM_KEYS.forumActiveTopicId, () => ref(null))()
+const refreshTopicIcon = inject<RefreshTopicIconFn>(FORUM_KEYS.forumRefreshTopicIcon)
+
+// Collect all descendant IDs of a topic (including itself) so they can be
+// excluded from the location dropdown - a topic can't be placed inside itself
+// or any of its own children.
+function getDescendantIds(rootId: string, allTopics: typeof topics.value): Set<string> {
+  const ids = new Set<string>()
+  const queue = [rootId]
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    ids.add(current)
+    for (const t of allTopics) {
+      if (t.parent_id === current)
+        queue.push(t.id)
+    }
+  }
+  return ids
+}
 
 // Options to optionally select a parent topic. A 1-level deep list which
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
+  const excludedIds = isEditing.value && props.editedItem
+    ? getDescendantIds(props.editedItem.id, topics.value)
+    : new Set<string>()
+
   return [
     { id: '-', label: 'Top-level', parent_id: null, path: '/', priority: 0 },
     ...topics.value
-      // NOTE: this could instead be shown in the UI as a disabled option with badge?
-      .filter(item => !item.is_archived && (!isEditing.value || item.id !== props.editedItem?.id))
+      .filter(item => !item.is_archived && !excludedIds.has(item.id))
       .map(topic => ({
         id: topic.id,
         label: topic.name,
@@ -56,6 +82,94 @@ const form = reactive({
 
 const slugTouched = ref(false)
 const isAutoUpdatingSlug = ref(false)
+
+// ── Topic icon state ──────────────────────────────────────────────────────────
+const iconUrl = ref<string | null>(null)
+const iconUploading = ref(false)
+const iconDeleting = ref(false)
+const iconError = ref<string | null>(null)
+
+// When editing, fetch the existing topic icon
+watch(() => props.editedItem, async (item) => {
+  iconUrl.value = null
+  iconError.value = null
+
+  if (!item)
+    return
+
+  try {
+    iconUrl.value = await getTopicIconUrl(supabase, item.id)
+  }
+  catch {
+    // No icon or fetch failed - that's fine
+  }
+}, { immediate: true })
+
+async function handleIconUpload(file: File) {
+  if (!isEditing.value || !props.editedItem) {
+    pushToast('Save the topic first, then add an icon')
+    return
+  }
+
+  iconUploading.value = true
+  iconError.value = null
+
+  try {
+    const result = await uploadTopicIcon(supabase, props.editedItem.id, file)
+
+    if (result.success && result.url) {
+      iconUrl.value = result.url
+      // Bust both caches and refresh the forum list's bulk icon map
+      invalidateTopicIconCache(props.editedItem.id)
+      invalidateTopicIconMemoryCache(props.editedItem.id)
+      void refreshTopicIcon?.(props.editedItem.id)
+      pushToast('Topic icon uploaded')
+    }
+    else {
+      iconError.value = result.error ?? 'Failed to upload icon'
+    }
+  }
+  catch {
+    iconError.value = 'An unexpected error occurred'
+  }
+  finally {
+    iconUploading.value = false
+  }
+}
+
+function handleIconRemove() {
+  iconUrl.value = null
+  iconError.value = null
+}
+
+async function handleIconDelete() {
+  if (!props.editedItem)
+    return
+
+  iconDeleting.value = true
+  iconError.value = null
+
+  try {
+    const result = await deleteTopicIcon(supabase, props.editedItem.id)
+
+    if (result.success) {
+      iconUrl.value = null
+      invalidateTopicIconCache(props.editedItem.id)
+      invalidateTopicIconMemoryCache(props.editedItem.id)
+      void refreshTopicIcon?.(props.editedItem.id)
+      pushToast('Topic icon deleted')
+    }
+    else {
+      iconError.value = result.error ?? 'Failed to delete icon'
+    }
+  }
+  catch {
+    iconError.value = 'An unexpected error occurred'
+  }
+  finally {
+    iconDeleting.value = false
+  }
+}
 
 // When we're editing, make sure the form and edited data are in sync
 watch(() => props.editedItem, (item) => {
@@ -224,6 +338,32 @@ async function submitForm() {
         </Dropdown>
       </div>
 
+      <!-- Topic icon upload - only available when editing an existing topic -->
+      <Flex v-if="isEditing" y-start :gap="0" x-between expand>
+        <Flex column :gap="0">
+          <label class="vui-label">Topic Icon</label>
+          <p class="form-add-topic__icon-hint">
+            Shown as a background on the topic.
+          </p>
+        </Flex>
+        <FileUpload
+          label="Topic Icon"
+          variant="icon"
+          :max-height="42"
+          :preview-url="iconUrl"
+          :loading="iconUploading"
+          :error="iconError"
+          :show-delete="!!iconUrl"
+          :deleting="iconDeleting"
+          @upload="handleIconUpload"
+          @remove="handleIconRemove"
+          @delete="handleIconDelete"
+        />
+      </Flex>
+      <p v-else class="form-add-topic__icon-note">
+        You can add a topic icon after creating the topic.
+      </p>
+
       <Card class="card-bg">
         <Switch v-model="form.is_locked" label="Locked" />
       </Card>
@@ -239,7 +379,7 @@ async function submitForm() {
         </Button>
       </Flex>
     </template>
-  </modal>
+  </Modal>
 </template>
 
 <style scoped lang="scss">
@@ -250,7 +390,7 @@ async function submitForm() {
   width: 100%;
   padding: var(--space-xs) var(--space-xs);
   align-items: flex-start;
-  justify-content: flex-strat;
+  justify-content: flex-start;
   border-radius: var(--border-radius-m);
 
   p {
@@ -261,6 +401,18 @@ async function submitForm() {
   &:hover {
     background-color: var(--color-button-gray-hover);
   }
+}
+
+.form-add-topic__icon-hint {
+  font-size: var(--font-size-s);
+  color: var(--color-text-lighter);
+  margin-bottom: var(--space-s);
+}
+
+.form-add-topic__icon-note {
+  font-size: var(--font-size-s);
+  color: var(--color-text-lighter);
+  font-style: italic;
 }
 
 :deep(.vui-dropdown-trigger-wrap) {

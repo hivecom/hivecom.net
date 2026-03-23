@@ -604,7 +604,7 @@ function clearBirthday() {
           </div>
 
           <Flex v-else class="roles-section" column expand>
-            <Flex class="role-dropdown" expand y-center>
+            <Flex class="role-dropdown" expand y-center :gap="0">
               <Select
                 v-model="selectedRoleComputed"
                 label="User Role"
@@ -613,22 +613,22 @@ function clearBirthday() {
                 :disabled="!canEditRoles"
                 expand
               />
-              <Flex v-if="!canEditRoles" class="help-text help-text-input mt-m">
-                <Icon name="ph:lock" />
-                <span v-if="currentUser && props.user && currentUser.id === props.user.id">
-                  You cannot modify your own role
-                </span>
-                <span v-else-if="!canUpdateRoles">
-                  Requires 'roles.update' permission to modify user roles
-                </span>
-                <span v-else-if="!permissionVerified">
-                  <span v-if="permissionVerifying">Verifying permissions...</span>
-                  <span v-else>Role modification permissions not verified</span>
-                </span>
-                <span v-else>
-                  Role modification not permitted
-                </span>
-              </Flex>
+            </Flex>
+            <Flex v-if="!canEditRoles" class="help-text help-text-input">
+              <Icon name="ph:lock" />
+              <span v-if="currentUser && props.user && currentUser.id === props.user.id">
+                You cannot modify your own role
+              </span>
+              <span v-else-if="!canUpdateRoles">
+                Requires 'roles.update' permission to modify user roles
+              </span>
+              <span v-else-if="!permissionVerified">
+                <span v-if="permissionVerifying">Verifying permissions...</span>
+                <span v-else>Role modification permissions not verified</span>
+              </span>
+              <span v-else>
+                Role modification not permitted
+              </span>
             </Flex>
           </Flex>
         </Flex>
@@ -984,10 +984,6 @@ function clearBirthday() {
   margin-top: var(--space-xs);
   font-size: var(--font-size-s);
   color: var(--color-text-lightest);
-
-  &-input {
-    margin-top: var(--space-l);
-  }
 
   &.error {
     color: var(--color-text-red);

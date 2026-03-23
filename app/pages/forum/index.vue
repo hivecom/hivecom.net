@@ -20,6 +20,7 @@ import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useForumActivityFeed } from '@/composables/useForumActivityFeed'
 import { useForumDraftCount } from '@/composables/useForumDraftCount'
 import { useForumUserActivity } from '@/composables/useForumUserActivity'
+import { useBulkTopicIcons } from '@/composables/useTopicIcon'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
@@ -111,6 +112,10 @@ function handleContentRulesCanceled() {
 const topicsError = ref<string | null>(null)
 const topics = ref<TopicWithDiscussions[]>([])
 
+// Bulk-fetch topic icons for all topics so we can show them inline next to titles
+const allTopicIds = computed(() => topics.value.map(t => t.id))
+const { icons: topicIcons, refresh: refreshTopicIcon } = useBulkTopicIcons(allTopicIds)
+
 // Pathing and topic nesting
 const route = useRoute()
 const router = useRouter()
@@ -168,6 +173,7 @@ function _setQuery(slug: string | null, uuid: string | null, push: boolean) {
 // Provide topics and activeTopicId to child modals
 provide(FORUM_KEYS.forumTopics, () => topics)
 provide(FORUM_KEYS.forumActiveTopicId, () => activeTopicId)
+provide(FORUM_KEYS.forumRefreshTopicIcon, refreshTopicIcon)
 
 // ── Derived visibility sets used by activity feed ──────────────────────────
 const visibleDiscussionIds = computed(() => {
@@ -833,6 +839,12 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
                 :to="`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`"
                 @click.prevent="setActiveTopicFromTopic(topic)"
               >
+                <img
+                  v-if="topicIcons.get(topic.id)"
+                  :src="topicIcons.get(topic.id)!"
+                  :alt="`${topic.name} icon`"
+                  class="forum__category-title-icon"
+                >
                 {{ topic.name }}
               </NuxtLink>
               <Badge v-if="topic.is_locked">
@@ -1144,6 +1156,16 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
     .vui-card-content {
       padding: 0 !important;
     }
+  }
+
+  &__category-title-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--border-radius-s);
+    object-fit: cover;
+    flex-shrink: 0;
+    vertical-align: middle;
+    margin-right: var(--space-xs);
   }
 
   &__category-title,

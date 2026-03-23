@@ -323,6 +323,216 @@ export function invalidateAvatarCache(userId: string): void {
   }
 }
 
+// ── Topic Icon Storage ────────────────────────────────────────────────────────
+
+const TOPIC_ICON_BUCKET = 'hivecom-content-forums'
+
+/**
+ * Uploads a topic icon to the forums storage bucket.
+ * Stored at `topics/<topicId>/icon.webp`.
+ * Automatically converts images to WebP format.
+ */
+export async function uploadTopicIcon(
+  supabaseClient: SupabaseClient<Database>,
+  topicId: string,
+  file: File,
+): Promise<UploadResult> {
+  try {
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      return { success: false, error: validation.error }
+    }
+
+    let processedFile: File = file
+    try {
+      processedFile = await convertImageToWebP(file)
+    }
+    catch (conversionError) {
+      console.warn('Failed to convert topic icon to WebP, using original file:', conversionError)
+      processedFile = file
+    }
+
+    const fileExtension = processedFile.type === 'image/webp' ? 'webp' : 'png'
+    const filePath = `topics/${topicId}/icon.${fileExtension}`
+
+    const { error } = await supabaseClient.storage
+      .from(TOPIC_ICON_BUCKET)
+      .upload(filePath, processedFile, {
+        upsert: true,
+        contentType: processedFile.type,
+      })
+
+    if (error) {
+      console.error('Error uploading topic icon:', error)
+      return { success: false, error: error.message }
+    }
+
+    const { data: urlData } = supabaseClient.storage
+      .from(TOPIC_ICON_BUCKET)
+      .getPublicUrl(filePath)
+
+    invalidateTopicIconCache(topicId)
+
+    return {
+      success: true,
+      url: urlData.publicUrl,
+    }
+  }
+  catch (error) {
+    console.error('Error uploading topic icon:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    }
+  }
+}
+
+/**
+ * Gets the public URL for a topic's icon.
+ * Tries multiple extensions, prioritizing WebP.
+ * Results are cached in localStorage to avoid repeated storage API calls.
+ */
+export async function getTopicIconUrl(
+  supabaseClient: SupabaseClient<Database>,
+  topicId: string,
+): Promise<string | null> {
+  const cacheKey = `topic-icon:${topicId}`
+  const cacheTTL = 60 * 60 * 1000 // 1 hour
+
+  if (typeof window !== 'undefined') {
+    const cached = window.localStorage.getItem(cacheKey)
+    if (cached !== null && cached.length > 0) {
+      try {
+        const parsed = JSON.parse(cached) as { url: string | null, timestamp: number }
+        const { url, timestamp } = parsed
+        const isExpired = Date.now() - timestamp > cacheTTL
+
+        if (!isExpired) {
+          return url
+        }
+      }
+      catch {
+        window.localStorage.removeItem(cacheKey)
+      }
+    }
+  }
+
+  try {
+    const extensions = ['webp', 'png', 'jpg', 'jpeg']
+    const folder = `topics/${topicId}`
+
+    for (const extension of extensions) {
+      const { data, error } = await supabaseClient.storage
+        .from(TOPIC_ICON_BUCKET)
+        .list(folder, {
+          search: `icon.${extension}`,
+        })
+
+      if (error === null && data !== null && data.length > 0) {
+        const filePath = `${folder}/icon.${extension}`
+        const { data: urlData } = supabaseClient.storage
+          .from(TOPIC_ICON_BUCKET)
+          .getPublicUrl(filePath)
+
+        const iconUrl = urlData.publicUrl
+
+        if (typeof window !== 'undefined') {
+          try {
+            window.localStorage.setItem(cacheKey, JSON.stringify({
+              url: iconUrl,
+              timestamp: Date.now(),
+            }))
+          }
+          catch {
+            // localStorage might be full
+          }
+        }
+
+        return iconUrl
+      }
+    }
+
+    // No icon found - cache the miss
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(cacheKey, JSON.stringify({
+          url: null,
+          timestamp: Date.now(),
+        }))
+      }
+      catch {
+        // localStorage might be full
+      }
+    }
+
+    return null
+  }
+  catch (error) {
+    console.error('Error getting topic icon URL:', error)
+    return null
+  }
+}
+
+/**
+ * Invalidates the cached topic icon URL.
+ * Should be called when a topic icon is uploaded or deleted.
+ */
+export function invalidateTopicIconCache(topicId: string): void {
+  if (typeof window !== 'undefined') {
+    const cacheKey = `topic-icon:${topicId}`
+    window.localStorage.removeItem(cacheKey)
+  }
+}
+
+/**
+ * Deletes a topic's icon from storage.
+ * Tries all common extensions to find and remove the file.
+ */
+export async function deleteTopicIcon(
+  supabaseClient: SupabaseClient<Database>,
+  topicId: string,
+): Promise<{ success: boolean, error?: string }> {
+  try {
+    const extensions = ['webp', 'png', 'jpg', 'jpeg']
+    const folder = `topics/${topicId}`
+
+    for (const extension of extensions) {
+      const filePath = `${folder}/icon.${extension}`
+
+      const { data, error: listError } = await supabaseClient.storage
+        .from(TOPIC_ICON_BUCKET)
+        .list(folder, {
+          search: `icon.${extension}`,
+        })
+
+      if (listError !== null || data === null || data.length === 0)
+        continue
+
+      const { error } = await supabaseClient.storage
+        .from(TOPIC_ICON_BUCKET)
+        .remove([filePath])
+
+      if (error) {
+        console.error('Error deleting topic icon:', error)
+        return { success: false, error: error.message }
+      }
+
+      invalidateTopicIconCache(topicId)
+      return { success: true }
+    }
+
+    // No icon found - nothing to delete
+    return { success: true }
+  }
+  catch (error) {
+    console.error('Error deleting topic icon:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    }
+  }
+}
+
 /**
  * Uploads a game asset (icon, cover, or background)
  * Automatically converts images to WebP format for consistency and optimization

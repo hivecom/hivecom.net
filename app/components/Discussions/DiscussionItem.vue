@@ -47,7 +47,10 @@ onMounted(async () => {
     // waitForLayoutStability() polls scrollHeight each animation frame,
     // catching late-rendered markdown, portrait images, avatars, etc.
     await waitForLayoutStability()
-    self.value?.$el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+    const el = Array.isArray(self.value) ? self.value[0]?.$el : self.value?.$el
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
     // Clear the comment query param now that we've scrolled it into view.
     // The highlight stays on until the page is reloaded.
     const query = { ...route.query }
