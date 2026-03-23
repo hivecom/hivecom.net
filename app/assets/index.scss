@@ -391,6 +391,10 @@ code {
   outline: none !important;
 }
 
+.vui-dropdown-item {
+  gap: var(--space-m) !important;
+}
+
 @include meta.load-css('./utilities.scss');
 @include meta.load-css('./pages/login.scss');
 @include meta.load-css('./elements/auth.scss');

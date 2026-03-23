@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion } from './Discussion.types'
-import { Button, ButtonGroup, Flex, Sheet, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Divider, Drawer, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { DISCUSSION_KEYS } from './Discussion.keys'
 
@@ -108,90 +108,91 @@ function handleReport() {
   <!-- Mobile: three-dots button that opens a Sheet -->
   <template v-if="isMobile">
     <Button size="s" square plain class="discussion-toolbar__trigger" @click="sheetOpen = true">
-      <Icon name="ph:dots-three-bold" />
+      <Icon name="ph:dots-three-bold" :size="18" />
     </Button>
 
-    <Sheet :open="sheetOpen" position="bottom" @close="sheetOpen = false">
-      <template #header>
-        <Flex column :gap="0">
-          <h4>Post actions</h4>
-          <p v-if="postedAt" class="text-xs text-color-light">
-            Posted {{ postedAt }}
-            <template v-if="editedAt">
-              &middot; Edited {{ editedAt }}
-            </template>
-          </p>
-        </Flex>
-      </template>
+    <Drawer :open="sheetOpen" @close="sheetOpen = false">
+      <!-- <template #header> -->
+      <h4>Post actions</h4>
+      <p v-if="postedAt" class="text-xs text-color-light">
+        Posted {{ postedAt }}
+        <template v-if="editedAt">
+          &middot; Edited {{ editedAt }}
+        </template>
+      </p>
+
+      <Divider :size="40" />
 
       <Flex column gap="xs" class="discussion-toolbar__sheet-actions">
         <!-- Interaction actions -->
         <template v-if="currentUserData && canInteract">
-          <Flex gap="xs" expand>
-            <Button expand variant="gray" @click="handleReply">
-              <template #start>
-                <Icon name="ph:arrow-elbow-up-left-bold" />
-              </template>
-              Reply
-            </Button>
-            <Button expand variant="gray" @click="handleQuote">
-              <template #start>
-                <Icon name="ph:quotes-bold" />
-              </template>
-              Quote
-            </Button>
-          </Flex>
+          <DropdownItem @click="handleReply">
+            <template #icon>
+              <Icon name="ph:arrow-elbow-up-left-bold" />
+            </template>
+            Reply
+          </DropdownItem>
+          <DropdownItem @click="handleQuote">
+            <template #icon>
+              <Icon name="ph:quotes-bold" />
+            </template>
+            Quote
+          </DropdownItem>
         </template>
 
-        <Button expand variant="gray" @click="handleCopyLink">
-          <template #start>
+        <DropdownItem @click="handleCopyLink">
+          <template #icon>
             <Icon name="ph:link-bold" />
           </template>
           Copy link
-        </Button>
+        </DropdownItem>
 
         <!-- Edit / delete (own post or mod) -->
         <template v-if="canEditOrDelete">
-          <Button expand variant="gray" :inert="loadingDeletion" @click="handleStartEditing">
-            <template #start>
+          <DropdownItem :inert="loadingDeletion" @click="handleStartEditing">
+            <template #icon>
               <Icon name="ph:pen-bold" />
             </template>
             Edit post
-          </Button>
-          <Button expand variant="danger" :inert="loadingDeletion" :loading="loadingDeletion" @click="handleDelete">
-            <template #start>
-              <Icon name="ph:trash-bold" />
+          </DropdownItem>
+          <DropdownItem expand variant="danger" :inert="loadingDeletion" :loading="loadingDeletion" @click="handleDelete">
+            <template #icon>
+              <Icon name="ph:trash-bold" class="text-color-red" />
             </template>
             Delete post
-          </Button>
+          </DropdownItem>
         </template>
+
+        <Divider :size="32" />
 
         <!-- Off-topic + report -->
         <template v-if="showModGroup">
-          <Flex gap="xs" expand>
-            <Button
+          <DropdownItem
+            v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by)"
 
-              v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by)"
-              expand
-              variant="danger"
-              :loading="offtopicLoading"
-              @click="handleToggleOfftopic"
-            >
-              <template #start>
-                <Icon :name="data.is_offtopic ? 'ph:warning-circle-fill' : 'ph:warning-circle'" />
-              </template>
+            outline
+            expand
+            variant="danger"
+            :loading="offtopicLoading"
+            @click="handleToggleOfftopic"
+          >
+            <template #icon>
+              <Icon class="text-color-red" :name="data.is_offtopic ? 'ph:warning-circle-fill' : 'ph:warning-circle'" />
+            </template>
+            <span class="text-color-red">
               {{ data.is_offtopic ? 'Remove off-topic flag' : 'Mark as off-topic' }}
-            </Button>
-            <Button v-if="canReport" expand variant="danger" @click="handleReport">
-              <template #start>
-                <Icon name="ph:flag-bold" />
-              </template>
-              Report post
-            </Button>
-          </Flex>
+            </span>
+          </DropdownItem>
+          <DropdownItem v-if="canReport" outline expand variant="danger" @click="handleReport">
+            <template #icon>
+              <Icon class="text-color-red" name="ph:flag-bold" />
+            </template>
+
+            <span class="text-color-red">Report post</span>
+          </DropdownItem>
         </template>
       </Flex>
-    </Sheet>
+    </Drawer>
   </template>
 
   <!-- Desktop: floating button group, shown on hover via CSS -->
@@ -285,7 +286,12 @@ function handleReport() {
   }
 
   &__sheet-actions {
-    padding-bottom: var(--space-s);
+    display: block;
+    padding-bottom: var(--space-m);
+
+    hr:first-of-type {
+      margin-bottom: -8px;
+    }
   }
 
   &__desktop {
