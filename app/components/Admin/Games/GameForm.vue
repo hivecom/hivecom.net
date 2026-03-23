@@ -352,6 +352,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
               <Flex column gap="xs" expand>
                 <label class="asset-label">Game Icon</label>
                 <FileUpload
+                  expand
                   :preview-url="assetsUrl.icon"
                   label="Upload Icon"
                   :loading="assetsUploading.icon"
@@ -368,6 +369,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
               <Flex column gap="xs" expand>
                 <label class="asset-label">Game Cover</label>
                 <FileUpload
+                  expand
                   :preview-url="assetsUrl.cover"
                   label="Upload Cover"
                   :loading="assetsUploading.cover"
@@ -384,6 +386,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
             <Flex column gap="xs" expand>
               <label class="asset-label">Game Background</label>
               <FileUpload
+                expand
                 :preview-url="assetsUrl.background"
                 label="Upload Background"
                 :loading="assetsUploading.background"

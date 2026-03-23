@@ -335,6 +335,7 @@ function handleTagInputEnter() {
         <Flex expand column gap="s">
           <label class="input-label">Banner Image</label>
           <FileUpload
+            expand
             label="Upload banner"
             :preview-url="bannerUrl"
             :loading="bannerUploading"

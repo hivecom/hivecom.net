@@ -20,6 +20,7 @@ import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useForumActivityFeed } from '@/composables/useForumActivityFeed'
 import { useForumDraftCount } from '@/composables/useForumDraftCount'
 import { useForumUserActivity } from '@/composables/useForumUserActivity'
+import { useBulkTopicIcons } from '@/composables/useTopicIcon'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composedPathToString, composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
@@ -111,6 +112,10 @@ function handleContentRulesCanceled() {
 const topicsError = ref<string | null>(null)
 const topics = ref<TopicWithDiscussions[]>([])
 
+// Bulk-fetch topic icons for all topics so we can show them inline next to titles
+const allTopicIds = computed(() => topics.value.map(t => t.id))
+const { icons: topicIcons, refresh: refreshTopicIcon } = useBulkTopicIcons(allTopicIds)
+
 // Pathing and topic nesting
 const route = useRoute()
 const router = useRouter()
@@ -168,6 +173,7 @@ function _setQuery(slug: string | null, uuid: string | null, push: boolean) {
 // Provide topics and activeTopicId to child modals
 provide(FORUM_KEYS.forumTopics, () => topics)
 provide(FORUM_KEYS.forumActiveTopicId, () => activeTopicId)
+provide(FORUM_KEYS.forumRefreshTopicIcon, refreshTopicIcon)
 
 // ── Derived visibility sets used by activity feed ──────────────────────────
 const visibleDiscussionIds = computed(() => {
@@ -500,25 +506,27 @@ const modelledTopics = computed(() => {
 
   // Sort topics to prioritize `sort_order` and the rest is sorted
   // alphabetically below. Only manually-created topics should have a sort_order
-  return filtered.toSorted((a, b) => {
-    const aHasOrder = a.priority !== 0
-    const bHasOrder = b.priority !== 0
-
-    if (aHasOrder && bHasOrder) {
-      if (a.priority === b.priority) {
-        return a.name.localeCompare(b.name)
-      }
-      return b.priority - a.priority
-    }
-
-    if (aHasOrder && !bHasOrder)
-      return -1
-    if (!aHasOrder && bHasOrder)
-      return 1
-
-    return a.name.localeCompare(b.name)
-  })
+  return filtered.toSorted(sortTopicsByPriority)
 })
+
+function sortTopicsByPriority(a: { priority: number, name: string }, b: { priority: number, name: string }) {
+  const aHasOrder = a.priority !== 0
+  const bHasOrder = b.priority !== 0
+
+  if (aHasOrder && bHasOrder) {
+    if (a.priority === b.priority) {
+      return a.name.localeCompare(b.name)
+    }
+    return b.priority - a.priority
+  }
+
+  if (aHasOrder && !bHasOrder)
+    return -1
+  if (!aHasOrder && bHasOrder)
+    return 1
+
+  return a.name.localeCompare(b.name)
+}
 
 // Return all topics which have the given parent id. Used to list nested topics
 function getTopicsByParentId(parentId: string | null) {
@@ -529,7 +537,7 @@ function getTopicsByParentId(parentId: string | null) {
     filtered = filtered.filter(item => !item.is_archived)
   }
 
-  return filtered
+  return filtered.toSorted(sortTopicsByPriority)
 }
 
 // When discussion is created, append it to the selected parent topic
@@ -811,11 +819,10 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
             <div class="forum__category-post--item">
               <Skeleton width="40px" height="40px" />
 
-              <div class="forum__category-post--name">
-                <Skeleton width="128px" height="20px" class="mb-xs" />
-                <Skeleton width="242px" height="18px" />
-              </div>
-
+              <Flex column :gap="0" class="forum__category-post--name">
+                <Skeleton width="128px" height="16px" class="mb-xs" />
+                <Skeleton width="192px" height="16px" />
+              </Flex>
               <div v-for="skel of 3" :key="skel" class="forum__category-post--meta">
                 <Skeleton width="32px" height="16px" />
               </div>
@@ -833,6 +840,12 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
                 :to="`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`"
                 @click.prevent="setActiveTopicFromTopic(topic)"
               >
+                <img
+                  v-if="topicIcons.get(topic.id)"
+                  :src="topicIcons.get(topic.id)!"
+                  :alt="`${topic.name} icon`"
+                  class="forum__category-title-icon"
+                >
                 {{ topic.name }}
               </NuxtLink>
               <Badge v-if="topic.is_locked">
@@ -1146,6 +1159,16 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
     }
   }
 
+  &__category-title-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--border-radius-s);
+    object-fit: cover;
+    flex-shrink: 0;
+    vertical-align: middle;
+    margin-right: var(--space-xs);
+  }
+
   &__category-title,
   &__category-post .forum__category-post--item {
     display: grid;
@@ -1318,6 +1341,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
   .forum__category-title,
   .forum__category-post .forum__category-post--item {
     grid-template-columns: 32px 5fr 1fr 24px;
+    gap: var(--space-m);
   }
 
   .forum__category-post--icon {

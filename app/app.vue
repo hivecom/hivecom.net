@@ -70,11 +70,13 @@ useLastSeenTracking()
 </script>
 
 <template>
-  <NuxtLoadingIndicator color="#88ff22" />
+  <NuxtLoadingIndicator color="var(--color-accent)" />
 
-  <NuxtLayout :name="layoutName">
-    <NuxtPage />
-  </NuxtLayout>
+  <div vaul-drawer-wrapper>
+    <NuxtLayout :name="layoutName">
+      <NuxtPage />
+    </NuxtLayout>
+  </div>
 
   <Toasts />
   <LayoutLoading />

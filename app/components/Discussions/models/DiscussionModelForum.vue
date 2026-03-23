@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion } from '../Discussion.types'
-import { Alert, Button, ButtonGroup, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
@@ -11,7 +12,7 @@ import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MDRenderer from '@/components/Shared/MDRenderer.vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import UserRole from '@/components/Shared/UserRole.vue'
@@ -30,12 +31,14 @@ const emit = defineEmits<{
   copyLink: []
   scrollReply: []
   interact: []
+  openReplies: []
 }>()
 
 dayjs.extend(relativeTime)
 
 interface Props {
   data: Comment
+  threadReplyCount?: number
 }
 
 const data = toRef(props, 'data')
@@ -62,6 +65,27 @@ const { user } = useDataUser(data.value.created_by!, {
   userTtl: 10 * 60 * 1000,
   avatarTtl: 30 * 60 * 1000,
 })
+
+// Role variant for TinyBadge on mobile
+const ROLE_SEPARATOR_RE = /[-_]/g
+const roleVariant = computed(() => {
+  switch (user.value?.role) {
+    case 'admin': return 'danger'
+    case 'moderator': return 'info'
+    case 'music-bot': return 'warning'
+    default: return 'success'
+  }
+})
+const roleDisplay = computed(() => {
+  const role = user.value?.role ?? 'user'
+  return role
+    .replace(ROLE_SEPARATOR_RE, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+})
+const shouldDisplayRole = computed(() => user.value?.role && user.value.role !== 'user')
 
 // Only fetch modifier data when the message was edited by someone other than the author
 const modifierId = computed(() => {
@@ -207,14 +231,22 @@ const { displayReactions, toggleReaction } = useReactions({
   rowId: data.value.id,
   initialReactions: data.value.reactions,
 })
+
+// Formatted timestamps for the toolbar sheet
+const postedAtFormatted = computed(() => dayjs(data.value.created_at).fromNow())
+const editedAtFormatted = computed(() => {
+  if (data.value.modified_at === data.value.created_at)
+    return null
+  return dayjs(data.value.modified_at).fromNow()
+})
 </script>
 
 <template>
-  <div class="discussion-forum">
-    <!-- Define a part of UI which can be used multiple times in the same component -->
+  <div class="discussion-forum" :class="{ 'discussion-forum--highlight': data.is_offtopic }">
+    <!-- Reusable desktop author block (avatar + name stacked) -->
     <DefineReusableUserInfo>
-      <Flex column x-center y-center :gap="isMobile ? 'xs' : 's'">
-        <SharedUserAvatar :user-id="data.created_by" :size="isMobile ? 'm' : 'l'" linked />
+      <Flex column x-center y-center gap="s">
+        <SharedUserAvatar :user-id="data.created_by" size="l" linked />
         <Flex wrap gap="xxs" y-center x-center>
           <UserName :user-id="data.created_by" show-preview />
           <BadgeCircle v-if="data.created_by === discussion?.created_by">
@@ -225,8 +257,8 @@ const { displayReactions, toggleReaction } = useReactions({
       </Flex>
     </DefineReusableUserInfo>
 
-    <!-- Author information -->
-    <div class="discussion-forum__author">
+    <!-- Desktop: left column author panel -->
+    <div v-if="!isMobile" class="discussion-forum__author">
       <UserPreviewHover v-if="currentUser || user" :user-id="data.created_by">
         <UserInfo />
       </UserPreviewHover>
@@ -250,174 +282,190 @@ const { displayReactions, toggleReaction } = useReactions({
       </p>
     </div>
 
-    <!-- Content -->
+    <!-- Content column: single div always mounted, chrome switches via v-if -->
     <div class="discussion-forum__content">
-      <!-- Reply information -->
-      <Alert v-if="data.reply && viewMode !== 'threaded'" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
-        <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
-          <UserName size="s" show-preview :user-id="data.reply.created_by" /> wrote:
-        </p>
-        <p v-else class="discussion-forum__reply-user">
-          You wrote:
-        </p>
-        <MarkdownPreview class="text-color-light" :markdown="data.reply.markdown" :mention-lookup="replyMentionLookup" :max-length="164" />
-      </Alert>
-
-      <!-- Content warning -->
-      <button v-if="showNSFWWarning" class="discussion-forum__nsfw" @click="showNSFWWarning = false">
-        <Icon class="text-color-accent" name="ph:caret-down" />
-        <p>Click to reveal potentially sensitive content</p>
-        <Icon class="text-color-accent" name="ph:caret-up" />
-      </button>
-
-      <!-- Content markdown -->
-      <MDRenderer
-        v-else
-        :md="data.markdown"
-        :skeleton-height="128"
-      />
-
-      <div class="flex-1" />
-
-      <!-- Bottom row with timestamps and reactions -->
-      <Flex :key="timestampUpdateKey" wrap y-end x-between class="discussion-forum__bottom-row">
-        <p class="discussion-forum__timestamp">
-          <Tooltip :delay="500">
-            <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
-            <template #tooltip>
-              <p>{{ dayjs(data.created_at).format('MMM D, YYYY [at] h:mm A') }}</p>
-            </template>
-          </Tooltip>
-          <span v-if="data.modified_at !== data.created_at">
-            <Tooltip :delay="500">
-              <span>{{ `Edited ${dayjs(data.modified_at).fromNow()}` }}</span>
-              <template #tooltip>
-                <p>{{ dayjs(data.modified_at).format('MMM D, YYYY [at] h:mm A') }}</p>
-              </template>
-            </Tooltip>
-            <template v-if="modifierId && modifierUser">
-              by <UserName size="s" show-preview :user-id="modifierId" />
-            </template>
-          </span>
-        </p>
-
-        <Flex v-if="displayReactions.length > 0" y-center x-end gap="xxs">
-          <ReactionsList :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
-          <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)" />
+      <!-- Mobile header: author + toolbar (only rendered on mobile) -->
+      <div v-if="isMobile" class="discussion-forum__mobile-header">
+        <UserPreviewHover v-if="currentUser || user" :user-id="data.created_by">
+          <Flex gap="xs" y-center>
+            <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
+            <Flex wrap gap="xxs" y-center>
+              <UserName :user-id="data.created_by" size="s" show-preview />
+              <BadgeCircle v-if="data.created_by === discussion?.created_by">
+                <span class="text-xxs text-color-light">OP</span>
+              </BadgeCircle>
+              <TinyBadge v-if="shouldDisplayRole" :variant="roleVariant">
+                {{ roleDisplay }}
+              </TinyBadge>
+            </Flex>
+          </Flex>
+        </UserPreviewHover>
+        <Flex v-else gap="xs" y-center>
+          <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
+          <Flex wrap gap="xxs" y-center>
+            <UserName :user-id="data.created_by" size="s" show-preview />
+            <BadgeCircle v-if="data.created_by === discussion?.created_by">
+              <span class="text-xxs text-color-light">OP</span>
+            </BadgeCircle>
+            <TinyBadge v-if="shouldDisplayRole" :variant="roleVariant">
+              {{ roleDisplay }}
+            </TinyBadge>
+          </Flex>
         </Flex>
-      </Flex>
 
-      <!-- Floating actions -->
-      <div v-if="!showNSFWWarning" class="discussion-forum__actions">
-        <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
-          <template #default="{ toggle }">
-            <Button size="s" square @click="toggle">
-              <Tooltip>
-                <Icon name="ph:smiley-bold" />
+        <DiscussionActionsToolbar
+          :data="data"
+          :user-id="userId"
+          :current-user-data="currentUserData"
+          :can-bypass-lock="canBypassLock"
+          :can-mark-offtopic="canMarkOfftopic"
+          :offtopic-loading="offtopicLoading"
+          :loading-deletion="loadingDeletion"
+          :show-n-s-f-w-warning="showNSFWWarning"
+          :posted-at="postedAtFormatted"
+          :edited-at="editedAtFormatted"
+          :modifier-id="modifierId"
+          @reply="setReplyToComment(data); emit('interact')"
+          @quote="setQuoteOfComment(data); emit('interact')"
+          @copy-link="emit('copyLink'); emit('interact')"
+          @start-editing="startEditing"
+          @delete="showDeleteModal = true"
+          @toggle-offtopic="handleToggleOfftopic"
+          @report="showReportModal = true"
+        />
+      </div>
+
+      <!-- Shared body: reply quote + markdown (mounted once, always) -->
+      <div class="discussion-forum__body">
+        <!-- Reply information -->
+        <Alert v-if="data.reply && viewMode !== 'threaded'" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
+          <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
+            <UserName size="s" show-preview :user-id="data.reply.created_by" /> wrote:
+          </p>
+          <p v-else class="discussion-forum__reply-user">
+            You wrote:
+          </p>
+          <MarkdownPreview class="text-color-light" :markdown="data.reply.markdown" :mention-lookup="replyMentionLookup" :max-length="164" />
+        </Alert>
+
+        <!-- Content warning -->
+        <button v-if="showNSFWWarning" class="discussion-forum__nsfw" @click="showNSFWWarning = false">
+          <Icon class="text-color-accent" name="ph:caret-down" />
+          <p>Click to reveal potentially sensitive content</p>
+          <Icon class="text-color-accent" name="ph:caret-up" />
+        </button>
+
+        <!-- Content markdown - rendered once regardless of layout -->
+        <MDRenderer
+          v-else
+          :md="data.markdown"
+          :skeleton-height="128"
+        />
+      </div>
+
+      <!-- Desktop bottom row: timestamps + reactions (only rendered on desktop) -->
+      <template v-if="!isMobile">
+        <div class="flex-1" />
+
+        <Flex :key="timestampUpdateKey" wrap y-end x-between class="discussion-forum__bottom-row">
+          <p class="discussion-forum__timestamp">
+            <Tooltip :delay="500">
+              <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
+              <template #tooltip>
+                <p>{{ dayjs(data.created_at).format('MMM D, YYYY [at] h:mm A') }}</p>
+              </template>
+            </Tooltip>
+            <span v-if="data.modified_at !== data.created_at">
+              <Tooltip :delay="500">
+                <span>{{ `Edited ${dayjs(data.modified_at).fromNow()}` }}</span>
                 <template #tooltip>
-                  <p>Add reactions</p>
+                  <p>{{ dayjs(data.modified_at).format('MMM D, YYYY [at] h:mm A') }}</p>
                 </template>
               </Tooltip>
-            </Button>
-          </template>
-        </ReactionsSelect>
+              <template v-if="modifierId && modifierUser">
+                by <UserName size="s" show-preview :user-id="modifierId" />
+              </template>
+            </span>
+            <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
+              {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+            </button>
+          </p>
 
-        <ButtonGroup v-if="currentUserData">
-          <template v-if="(!discussion?.is_locked || canBypassLock) && !discussion?.is_archived">
-            <Button square size="s" @click="setReplyToComment(data); emit('interact')">
-              <Tooltip>
-                <Icon name="ph:arrow-elbow-up-left-bold" />
-                <template #tooltip>
-                  <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
-                </template>
-              </Tooltip>
-            </Button>
-            <Button square size="s" @click="setQuoteOfComment(data); emit('interact')">
-              <Tooltip>
-                <Icon name="ph:quotes-bold" />
-                <template #tooltip>
-                  <p>Quote <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
-                </template>
-              </Tooltip>
-            </Button>
-          </template>
-          <Button size="s" square @click="emit('copyLink'); emit('interact')">
-            <Tooltip>
-              <Icon name="ph:link-bold" />
-              <template #tooltip>
-                <p>Copy link to post</p>
-              </template>
-            </Tooltip>
-          </Button>
-        </ButtonGroup>
+          <div class="discussion-forum__reactions">
+            <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
+            <ReactionsSelect v-if="userId && !showNSFWWarning && displayReactions.length > 0" @reaction="(emote) => toggleReaction(emote)" />
+          </div>
+        </Flex>
 
-        <ButtonGroup v-if="currentUserData && (currentUserData.id === data.created_by || currentUserData.role === 'admin' || currentUserData.role === 'moderator') && !discussion?.is_locked && !discussion?.is_archived">
-          <Button size="s" square :inert="loadingDeletion" @click="startEditing">
-            <Tooltip>
-              <Icon name="ph:pen-bold" />
-              <template #tooltip>
-                <p>Edit post</p>
-              </template>
-            </Tooltip>
-          </Button>
-          <!-- Delete comment option if the comment belongs to me -->
-          <Button size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
-            <Tooltip>
-              <Icon name="ph:trash-bold" />
-              <template #tooltip>
-                <p>Delete post</p>
-              </template>
-            </Tooltip>
-          </Button>
+        <!-- Desktop floating actions (hover-revealed) -->
+        <div v-if="!showNSFWWarning" class="discussion-forum__actions">
+          <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
+            <template #default="{ toggle }">
+              <Button size="s" square @click="toggle">
+                <Tooltip>
+                  <Icon name="ph:smiley-bold" />
+                  <template #tooltip>
+                    <p>Add reactions</p>
+                  </template>
+                </Tooltip>
+              </Button>
+            </template>
+          </ReactionsSelect>
 
-          <ConfirmModal
-            :open="showDeleteModal"
-            :confirm-loading="loadingDeletion"
-            title="Delete comment"
-            description="Please confirm the deletion. This action cannot be undone"
-            @close="showDeleteModal = false"
-            @confirm="handleDeletion"
-          >
-            <Card
-              class="card-bg" :style="{ maxHeight: 512,
-                                        overflowY: 'auto' }"
-            >
-              <MDRenderer :md="data.markdown" skeleton-height="48px" />
-            </Card>
-          </ConfirmModal>
-        </ButtonGroup>
+          <DiscussionActionsToolbar
+            :data="data"
+            :user-id="userId"
+            :current-user-data="currentUserData"
+            :can-bypass-lock="canBypassLock"
+            :can-mark-offtopic="canMarkOfftopic"
+            :offtopic-loading="offtopicLoading"
+            :loading-deletion="loadingDeletion"
+            :show-n-s-f-w-warning="showNSFWWarning"
+            :posted-at="postedAtFormatted"
+            :edited-at="editedAtFormatted"
+            :modifier-id="modifierId"
+            @reply="setReplyToComment(data); emit('interact')"
+            @quote="setQuoteOfComment(data); emit('interact')"
+            @copy-link="emit('copyLink'); emit('interact')"
+            @start-editing="startEditing"
+            @delete="showDeleteModal = true"
+            @toggle-offtopic="handleToggleOfftopic"
+            @report="showReportModal = true"
+          />
+        </div>
+      </template>
 
-        <!-- Off-topic toggle + report grouped on the right -->
-        <!-- Admins/mods can flag any reply including their own; plain OPs cannot flag themselves -->
-        <ButtonGroup v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by) || (currentUserData && data.created_by !== currentUserData.id)">
-          <Button
-            v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by)"
-            size="s"
-            square
-            :loading="offtopicLoading"
-            :variant="data.is_offtopic ? 'danger' : 'gray'"
-            @click="handleToggleOfftopic"
-          >
-            <Tooltip>
-              <Icon :name="data.is_offtopic ? 'ph:warning-circle-fill' : 'ph:warning-circle'" />
-              <template #tooltip>
-                <p>{{ data.is_offtopic ? 'Remove off-topic flag' : 'Mark as off-topic' }}</p>
-              </template>
-            </Tooltip>
-          </Button>
-          <Button v-if="currentUserData && data.created_by !== currentUserData.id" size="s" square @click="showReportModal = true">
-            <Tooltip>
-              <Icon name="ph:flag-bold" />
-              <template #tooltip>
-                <p>Report post</p>
-              </template>
-            </Tooltip>
-          </Button>
-        </ButtonGroup>
+      <!-- Mobile footer: reply count + reactions (only rendered on mobile) -->
+      <div v-if="isMobile" class="discussion-forum__mobile-footer">
+        <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
+          {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+        </button>
+        <span v-else />
+        <div class="discussion-forum__reactions">
+          <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
+          <ReactionsSelect v-if="userId && !showNSFWWarning" @reaction="(emote) => toggleReaction(emote)" />
+        </div>
       </div>
     </div>
 
-    <!-- Edit Modal and Report Modal -->
+    <!-- Delete confirmation modal -->
+    <ConfirmModal
+      :open="showDeleteModal"
+      :confirm-loading="loadingDeletion"
+      title="Delete comment"
+      description="Please confirm the deletion. This action cannot be undone"
+      @close="showDeleteModal = false"
+      @confirm="handleDeletion"
+    >
+      <Card
+        class="card-bg" :style="{ maxHeight: 512,
+                                  overflowY: 'auto' }"
+      >
+        <MDRenderer :md="data.markdown" skeleton-height="48px" />
+      </Card>
+    </ConfirmModal>
+
+    <!-- Edit Modal -->
     <Modal :open="editing" centered scrollable size="l" @close="editing = false">
       <template #header>
         <h3>Edit post</h3>
@@ -511,6 +559,51 @@ const { displayReactions, toggleReaction } = useReactions({
     margin-top: var(--space-s);
     gap: var(--space-xxs);
     min-height: 32px;
+    align-items: flex-end;
+  }
+
+  &__mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-s) var(--space-m);
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-bg);
+    border-top-left-radius: var(--border-radius-m);
+    border-top-right-radius: var(--border-radius-m);
+  }
+
+  &__mobile-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-xxs);
+    padding: var(--space-s) var(--space-m);
+    border-top: 1px solid var(--color-border);
+    background-color: var(--color-bg);
+    border-bottom-left-radius: var(--border-radius-m);
+    border-bottom-right-radius: var(--border-radius-m);
+  }
+
+  &__body {
+    flex: 1;
+  }
+
+  &__reactions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-xxs);
+    max-width: 100%;
+
+    :deep(.reactions) {
+      margin-left: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: 100%;
+    }
   }
 
   &__timestamp {
@@ -521,6 +614,20 @@ const { displayReactions, toggleReaction } = useReactions({
     * {
       font-size: var(--font-size-xs);
       color: var(--color-text-lighter);
+    }
+  }
+
+  &__reply-count {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    transition: color var(--transition-fast);
+
+    &:hover {
+      color: var(--color-text);
     }
   }
 
@@ -552,6 +659,14 @@ const { displayReactions, toggleReaction } = useReactions({
     .author-meta {
       font-size: var(--font-size-xs);
       color: var(--color-text-lighter);
+    }
+  }
+
+  &__mobile-avatar {
+    flex-shrink: 0;
+
+    :deep(.vui-avatar) {
+      --avatar-size: 20px !important;
     }
   }
 
@@ -588,34 +703,20 @@ const { displayReactions, toggleReaction } = useReactions({
 @media screen and (max-width: $breakpoint-s) {
   .discussion-forum {
     display: flex;
-    flex-direction: column-reverse;
-
-    &__author {
-      width: 100%;
-      padding: var(--space-xs);
-      border-right: none;
-      border-bottom-right-radius: var(--border-radius-m);
-    }
+    flex-direction: column;
+    border-radius: var(--border-radius-m);
 
     &__content {
       width: 100%;
-      border-top-left-radius: var(--border-radius-m);
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
+      border-top-right-radius: var(--border-radius-m);
+      border-bottom-right-radius: var(--border-radius-m);
+      // Reset desktop padding - mobile header/footer handle their own
+      padding: 0;
+      background-color: var(--color-bg-medium);
     }
 
-    &__actions {
-      position: static;
-      opacity: 1;
-      z-index: auto;
-      visibility: visible;
-      order: -1;
-      align-self: flex-end;
-      margin-bottom: var(--space-xs);
-    }
-
-    &__timestamp {
-      margin-top: var(--space-m);
+    &__body {
+      padding: var(--space-m);
     }
   }
 }

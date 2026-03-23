@@ -17,6 +17,8 @@
 import type { InjectionKey, Ref } from 'vue'
 import type { Tables } from '@/types/database.overrides'
 
+export type RefreshTopicIconFn = (id: string) => Promise<void>
+
 export const FORUM_KEYS = {
   /**
    * Factory returning the forum topics list ref.
@@ -29,4 +31,10 @@ export const FORUM_KEYS = {
    * Provided as a function for the same reason as forumTopics.
    */
   forumActiveTopicId: Symbol('forumActiveTopicId') as InjectionKey<() => Ref<string | null>>,
+
+  /**
+   * Refreshes the cached icon for a single topic in the bulk icon map.
+   * Call after uploading or deleting a topic icon so the forum list updates immediately.
+   */
+  forumRefreshTopicIcon: Symbol('forumRefreshTopicIcon') as InjectionKey<RefreshTopicIconFn>,
 } as const

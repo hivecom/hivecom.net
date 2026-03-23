@@ -108,6 +108,37 @@ export function formatDateWithTime(dateString: string | null | undefined): strin
 }
 
 /**
+ * Compute the set of MM-DD patterns that cover "today" across all timezones.
+ * We offset the current UTC time by -12h and +12h, then collect the unique
+ * month-day strings so a birthday filter catches every user whose local date
+ * is "today".
+ */
+export function getBirthdayPatterns(): string[] {
+  const now = Date.now()
+  const minus12h = new Date(now - 12 * 60 * 60 * 1000)
+  const plus12h = new Date(now + 12 * 60 * 60 * 1000)
+
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const toMD = (d: Date) => `${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
+
+  const patterns = new Set([toMD(minus12h), toMD(new Date(now)), toMD(plus12h)])
+  return [...patterns]
+}
+
+/**
+ * Checks whether a birthday date string (YYYY-MM-DD) falls on "today",
+ * accounting for timezone drift (±12 h around UTC).
+ *
+ * Returns `false` for null/undefined/empty values.
+ */
+export function isBirthdayDateToday(birthday: string | null | undefined): boolean {
+  if (birthday == null || birthday === '')
+    return false
+  const mmdd = birthday.slice(5) // "YYYY-MM-DD" → "MM-DD"
+  return getBirthdayPatterns().includes(mmdd)
+}
+
+/**
  * Returns a human-readable relative time string, e.g. "3 minutes ago", "2 days ago".
  * Returns an empty string when the value is falsy or not a valid date.
  */

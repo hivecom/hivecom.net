@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Popout } from '@dolanske/vui'
+import { Drawer, Popout } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = withDefaults(defineProps<{
   userId?: string | null
@@ -43,10 +44,40 @@ const { user } = useDataUser(lazyUserId, {
 // This prevents an empty card from appearing for non-public profiles
 // when the visitor is unauthenticated (RLS returns nothing for them).
 const canShowPopout = computed(() => !!(visible.value && props.userId && user.value))
+
+const isMobile = useBreakpoint('<s')
+const currentUser = useSupabaseUser()
+
+function handleMobileClick(e: Event) {
+  if (!currentUser.value)
+    return
+
+  e.stopImmediatePropagation()
+  visible.value = !visible.value
+}
 </script>
 
 <template>
   <div
+    v-if="isMobile"
+    role="button"
+    class="user-preview-mobile"
+    @click="handleMobileClick"
+  >
+    <slot />
+
+    <Drawer :open="visible" @close="visible = false">
+      <div class="user-preview-mobile__wrapper">
+        <UserPreviewCard
+          :user-id="props.userId"
+          :max-badges="props.maxBadges"
+        />
+      </div>
+    </Drawer>
+  </div>
+
+  <div
+    v-else
     ref="anchorRef"
     class="user-preview-hover"
     @mouseenter="everHovered = true; visible = true"
@@ -70,6 +101,26 @@ const canShowPopout = computed(() => !!(visible.value && props.userId && user.va
 
 <style lang="scss">
 .user-preview-hover {
-  display: inline-block;
+  display: inline-flex;
+}
+
+.user-preview-mobile {
+  // Nested slot content links should not work on mobile and open drawer.
+  // Here we select the very first link or the links inside the very first element (slot)
+  & > * > a,
+  & > a {
+    pointer-events: none;
+    user-select: none;
+  }
+
+  &__wrapper {
+    min-height: 292px;
+    display: block;
+    width: 100%;
+
+    .user-preview-card {
+      width: 100%;
+    }
+  }
 }
 </style>

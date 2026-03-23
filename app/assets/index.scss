@@ -206,18 +206,6 @@ table td {
   }
 }
 
-// Used for dropdowns to match input/textarea styling
-.vui-calendar > div > .vui-button,
-.vui-button-select.vui-button-variant-gray {
-  background-color: var(--color-bg-medium);
-}
-
-:root.light {
-  .vui-button-select.vui-button-variant-gray {
-    background-color: var(--color-bg-lowered) !important;
-  }
-}
-
 .vui-breadcrumbs li {
   color: var(--color-text-light);
 
@@ -365,11 +353,20 @@ code {
   }
 }
 
-// .vui-dropdown-trigger-wrap,
-.vui-select,
-.vui-input-container .vui-input .vui-input-style,
-.vui-input-container .vui-input textarea {
+// Make sure all input elements use the same elevated background
+.vui-input-container .vui-input .vui-input-style:has(input),
+.vui-input-container .vui-input .vui-select-trigger-container,
+.vui-input-container .vui-input textarea,
+.vui-input-container .vui-input input,
+.vui-calendar > div > .vui-button,
+.vui-button-select.vui-button-variant-gray {
   background-color: var(--color-bg-card);
+}
+
+:root.light {
+  .vui-button-select.vui-button-variant-gray {
+    background-color: var(--color-bg-lowered) !important;
+  }
 }
 
 .vui-table-container {
@@ -388,6 +385,14 @@ code {
       background-color: var(--color-bg-lowered) !important;
     }
   }
+}
+
+.vui-drawer-content {
+  outline: none !important;
+}
+
+.vui-dropdown-item {
+  gap: var(--space-m) !important;
 }
 
 @include meta.load-css('./utilities.scss');

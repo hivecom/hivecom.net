@@ -15,6 +15,7 @@ import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
+import { useBulkTopicIcons } from '@/composables/useTopicIcon'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDate } from '@/lib/utils/date'
@@ -57,6 +58,10 @@ const loading = ref(false)
 const errorMessage = ref<string | null>(null)
 const post = ref<DiscussionWithContext | null>(null)
 const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
+
+// Bulk-fetch icons for all breadcrumb topics
+const breadcrumbTopicIds = computed(() => topicBreadcrumbs.value.map(t => t.id))
+const { icons: breadcrumbTopicIcons } = useBulkTopicIcons(breadcrumbTopicIds)
 const publishConfirmOpen = ref(false)
 const showNSFWWarning = ref(false)
 const nsfwRevealed = ref(false)
@@ -525,7 +530,15 @@ function revealNsfw() {
                   :key="topic.id"
                   @click="router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`)"
                 >
-                  {{ topic.name }}
+                  <Flex y-center gap="xs" :style="{ display: 'inline-flex' }">
+                    <img
+                      v-if="breadcrumbTopicIcons.get(topic.id)"
+                      :src="breadcrumbTopicIcons.get(topic.id)!"
+                      :alt="`${topic.name} icon`"
+                      class="breadcrumb-topic-icon"
+                    >
+                    {{ topic.name }}
+                  </Flex>
                 </BreadcrumbItem>
               </Breadcrumbs>
             </template>
@@ -796,6 +809,14 @@ function revealNsfw() {
   color: var(--color-text-red);
 }
 
+.breadcrumb-topic-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--border-radius-xs);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .back-button {
   position: absolute;
   right: calc(100% + 12px);
@@ -843,7 +864,7 @@ function revealNsfw() {
   border-bottom: 1px solid var(--color-border);
   z-index: var(--z-nav);
 
-  .container {
+  > div {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -883,6 +904,11 @@ function revealNsfw() {
 }
 
 @media screen and (max-width: $breakpoint-m) {
+  .page.forum.container {
+    max-width: 100%;
+    padding-inline: 0;
+  }
+
   // Scrolling is easier on phone so this isn't really needed
   .forum-post__fast-travel {
     display: none;

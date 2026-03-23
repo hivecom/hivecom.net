@@ -577,10 +577,18 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
     }
   }
 
-  // Watch for userIds changes
-  watch(userIds, () => {
-    void fetchUsers()
-  }, { immediate: true })
+  // Watch for userIds changes - compare by serialised content, not by array
+  // reference, so a new array with the same IDs (e.g. produced by .map() in
+  // the parent on every render) doesn't trigger an unnecessary fetchUsers /
+  // userMap rebuild.  Cache hits make the rebuild cheap, but avoiding it
+  // entirely is cleaner.
+  watch(
+    () => unref(userIds).join(','),
+    () => {
+      void fetchUsers()
+    },
+    { immediate: true },
+  )
 
   // Watch for authentication changes - same logic as useDataUser:
   // only refetch on actual sign-in transition

@@ -333,8 +333,8 @@ const isMobile = useBreakpoint('<s')
                   minute: '2-digit',
                   hour12: false,
                 }) : 'Choose start date' }}
-                <template #end>
-                  <Icon name="ph:calendar" />
+                <template #start>
+                  <Icon name="ph:calendar" :size="18" />
                 </template>
               </Button>
             </template>
@@ -368,8 +368,8 @@ const isMobile = useBreakpoint('<s')
                   minute: '2-digit',
                   hour12: false,
                 }) : 'Choose end date' }}
-                <template #end>
-                  <Icon name="ph:calendar" />
+                <template #start>
+                  <Icon name="ph:calendar" :size="18" />
                 </template>
               </Button>
             </template>

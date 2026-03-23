@@ -368,14 +368,14 @@ INSERT INTO public.user_roles(role, user_id)
   VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Create or update a profile for our admin user
-INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, markdown)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', '76561198000000001', NOW(), 'Hivecom', 'Local develop and test user', 'true', '# whoami
+INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, badges, markdown)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', '76561198000000001', '2013-01-01 00:00:00+00', 'Hivecom', 'Local develop and test user', 'true', ARRAY['founder']::public.profile_badge[], '# whoami
 
 ```javascript
 console.log("Hello, Hivecom!");
 ```
 
-Hey there! I''m @Hivecom, the developer test account. Let''s do some Markdown testing here.
+Hey there! I''m @{018d224c-0e49-4b6d-b57a-87299605c2b1}, the developer test account. Let''s do some Markdown testing here.
 
 **Bold Text** and *Italic Text* are working fine.
 
@@ -423,7 +423,15 @@ ON CONFLICT (id)
     steam_id = EXCLUDED.steam_id,
     username = EXCLUDED.username,
     introduction = EXCLUDED.introduction,
+    badges = EXCLUDED.badges,
     markdown = EXCLUDED.markdown;
+
+-- The audit trigger (update_profiles_audit_fields) always resets created_at = OLD.created_at on
+-- any UPDATE, so ON CONFLICT DO UPDATE cannot change it. Bypass the trigger temporarily to force
+-- the 2013 member-since date for the Hivecom seed account.
+ALTER TABLE public.profiles DISABLE TRIGGER update_profiles_audit_fields;
+UPDATE public.profiles SET created_at = '2013-01-01 00:00:00+00' WHERE id = '018d224c-0e49-4b6d-b57a-87299605c2b1';
+ALTER TABLE public.profiles ENABLE TRIGGER update_profiles_audit_fields;
 
 -- Seed a Steam presence entry for Hivecom (current game + last app)
 INSERT INTO public.presences_steam(
@@ -474,14 +482,15 @@ INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypt
 
 -- Keep in mind, we're not going to assign the user a role because most users will not have a role assigned.
 -- Create profile for test user
-INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, rich_presence_enabled)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b3', '76561198000000002', NOW(), 'TestUser', 'Example user for testing admin features and role assignments', TRUE)
+INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, rich_presence_enabled, supporter_patreon)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b3', '76561198000000002', NOW(), 'TestUser', 'Example user for testing admin features and role assignments', TRUE, TRUE)
 ON CONFLICT (id)
   DO UPDATE SET
     steam_id = EXCLUDED.steam_id,
     username = EXCLUDED.username,
     introduction = EXCLUDED.introduction,
-    rich_presence_enabled = EXCLUDED.rich_presence_enabled;
+    rich_presence_enabled = EXCLUDED.rich_presence_enabled,
+    supporter_patreon = EXCLUDED.supporter_patreon;
 
 -- Seed a Steam presence entry for TestUser (not currently playing)
 INSERT INTO public.presences_steam(
@@ -525,6 +534,19 @@ ON CONFLICT (profile_id)
     visibility = EXCLUDED.visibility,
     steam_name = EXCLUDED.steam_name,
     details = EXCLUDED.details;
+
+-- Insert BirthdayUser - a test account whose birthday is set to today.
+INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous")
+  VALUES ('00000000-0000-0000-0000-000000000000', '018d224c-0e49-4b6d-b57a-87299605c2b4', 'authenticated', 'authenticated', 'birthdayuser@example.com', '$2a$10$Q6EF4VpHdLQlgwHxpUyPrewgFHmqwaw/ZTaKwuD3X8k0v4DVoMf7a', '2025-01-01 12:00:00.000000+00', NULL, '', NULL, '', NULL, '', '', NULL, NULL, '{"provider": "email", "providers": ["email"]}', '{"email_verified": true}', NULL, NOW(), NOW(), NULL, NULL, '', '', NULL, '', '0', NULL, '', NULL, 'false', NULL, 'false');
+
+-- Create profile for BirthdayUser with birthday set to today
+INSERT INTO public.profiles(id, created_at, username, introduction, birthday)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b4', NOW(), 'BirthdayUser', 'Test account whose birthday is always today.', CURRENT_DATE)
+ON CONFLICT (id)
+  DO UPDATE SET
+    username = EXCLUDED.username,
+    introduction = EXCLUDED.introduction,
+    birthday = EXCLUDED.birthday;
 
 -- Create friend relationship between admin and test user
 INSERT INTO public.friends(created_at, friender, friend)

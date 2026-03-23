@@ -3,6 +3,7 @@ import { Button, Flex } from '@dolanske/vui'
 import { computed, onUnmounted, ref, watch } from 'vue'
 
 interface Props {
+  expand?: boolean
   label?: string
   accept?: string
   maxSizeMB?: number
@@ -10,12 +11,13 @@ interface Props {
   loading?: boolean
   error?: string | null
   disabled?: boolean
-  variant?: 'avatar' | 'asset'
+  variant?: 'avatar' | 'asset' | 'icon'
   showDelete?: boolean
   deleting?: boolean
   aspectRatio?: number // Width/height ratio (e.g., 16/9 = 1.778, 9/16 = 0.5625)
   minHeight?: number // Minimum height in pixels
   maxHeight?: number // Maximum height in pixels
+  iconSize?: number // Size of the icon square in pixels (icon variant only, default 64)
   multiple?: boolean
   persistentDropzone?: boolean
 }
@@ -28,6 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
   showDelete: false,
   deleting: false,
   minHeight: 160,
+  iconSize: 64,
   multiple: false,
   persistentDropzone: false,
 })
@@ -49,12 +52,13 @@ const maxSizeBytes = computed(() => props.maxSizeMB * 1024 * 1024)
 const currentPreviewUrl = computed(() => localPreviewUrl.value || props.previewUrl)
 const hasPreview = computed(() => !!currentPreviewUrl.value && imageExists.value)
 const isAvatarVariant = computed(() => props.variant === 'avatar')
+const isIconVariant = computed(() => props.variant === 'icon')
 const allowedTypes = computed(() => props.accept.split(',').map(type => type.trim()).filter(Boolean))
 const shouldShowPreview = computed(() => hasPreview.value && !props.persistentDropzone)
 
-// Computed style for aspect ratio
+// Computed style for aspect ratio (asset/avatar variants)
 const aspectRatioStyle = computed(() => {
-  if (isAvatarVariant.value || !props.aspectRatio) {
+  if (isAvatarVariant.value || isIconVariant.value || !props.aspectRatio) {
     return {}
   }
 
@@ -62,22 +66,29 @@ const aspectRatioStyle = computed(() => {
     aspectRatio: props.aspectRatio.toString(),
   }
 
-  // Only apply min-height if no maxHeight is set, or if maxHeight allows it
   if (props.maxHeight) {
     style.maxHeight = `${props.maxHeight}px`
-    // Calculate max width based on aspect ratio and max height
     const maxWidth = props.maxHeight * props.aspectRatio
     style.maxWidth = `${maxWidth}px`
   }
 
-  if (props.minHeight && (!props.maxHeight || props.minHeight <= props.maxHeight)) {
+  // Only apply minHeight when there's no aspectRatio - with aspectRatio set,
+  // width:100% + aspect-ratio drives the height naturally. Forcing a minHeight
+  // alongside aspect-ratio causes the box to not respect its container width.
+  if (!props.aspectRatio && props.minHeight && (!props.maxHeight || props.minHeight <= props.maxHeight)) {
     style.minHeight = `${props.minHeight}px`
-    // Calculate min width based on aspect ratio and min height
-    const minWidth = props.minHeight * props.aspectRatio
-    style.minWidth = `${minWidth}px`
   }
 
   return style
+})
+
+// Fixed square size for the icon variant - maxHeight takes priority over iconSize
+const iconSquareStyle = computed(() => {
+  const size = props.maxHeight ?? props.iconSize
+  return {
+    width: `${size}px`,
+    height: `${size}px`,
+  }
 })
 
 // Handle file selection
@@ -163,7 +174,6 @@ function removeFile() {
   if (fileInput.value) {
     fileInput.value.value = ''
   }
-  // Clean up local preview URL
   if (localPreviewUrl.value) {
     URL.revokeObjectURL(localPreviewUrl.value)
     localPreviewUrl.value = null
@@ -221,7 +231,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Flex expand column :gap="0" class="file-upload" :class="{ 'file-upload--avatar': isAvatarVariant }">
+  <Flex column :gap="0" class="file-upload" :class="{ 'file-upload--avatar': isAvatarVariant }" :expand="expand">
     <!-- Hidden file input -->
     <input
       ref="fileInput"
@@ -233,90 +243,142 @@ onUnmounted(() => {
       @change="handleFileSelect"
     >
 
-    <!-- Preview Image (if exists) -->
-    <div
-      v-if="shouldShowPreview"
-      class="file-upload__preview"
-      :class="{ 'file-upload__preview--avatar': isAvatarVariant }"
-      :style="aspectRatioStyle"
-    >
-      <img :src="currentPreviewUrl!" :alt="label" class="file-upload__image">
-      <div class="file-upload__overlay">
-        <Flex gap="xs" class="file-upload__actions" wrap x-center>
-          <Button
-            size="s"
-            variant="accent"
-            :loading="loading"
-            :disabled="disabled"
-            @click="openFileDialog"
+    <!-- ── Icon variant ──────────────────────────────────────────────────────── -->
+    <template v-if="isIconVariant">
+      <Flex y-center gap="xs">
+        <!-- Square drop target, always visible -->
+        <div
+          class="file-upload__icon-square"
+          :class="{
+            'file-upload__icon-square--drag-over': dragOver,
+            'file-upload__icon-square--disabled': disabled,
+          }"
+          :style="iconSquareStyle"
+          @click="openFileDialog"
+          @drop="handleDrop"
+          @dragover="handleDragOver"
+          @dragleave="handleDragLeave"
+        >
+          <img
+            v-if="shouldShowPreview"
+            :src="currentPreviewUrl!"
+            :alt="label"
+            class="file-upload__icon-square-image"
           >
-            <template #start>
-              <Icon name="ph:upload" />
-            </template>
-            Replace
-          </Button>
-          <Button
-            v-if="showDelete"
-            size="s"
-            variant="danger"
-            :disabled="disabled || loading || deleting"
-            :loading="deleting"
-            @click="deleteFile"
-          >
-            <template #start>
-              <Icon name="ph:trash" />
-            </template>
-            Delete
-          </Button>
-          <Button
+          <Icon
             v-else
-            size="s"
-            variant="danger"
-            :disabled="disabled || loading"
-            @click="removeFile"
-          >
-            <template #start>
-              <Icon name="ph:trash" />
-            </template>
-            Remove
-          </Button>
-        </Flex>
-      </div>
-    </div>
-
-    <!-- Upload Area (if no preview) -->
-    <div
-      v-else
-      class="file-upload__drop-zone"
-      :class="{
-        'file-upload__drop-zone--drag-over': dragOver,
-        'file-upload__drop-zone--disabled': disabled,
-        'file-upload__drop-zone--avatar': isAvatarVariant,
-      }"
-      :style="aspectRatioStyle"
-      @click="openFileDialog"
-      @drop="handleDrop"
-      @dragover="handleDragOver"
-      @dragleave="handleDragLeave"
-    >
-      <Flex column gap="m" y-center x-center class="file-upload__content">
-        <div class="file-upload__icon">
-          <Icon :name="loading ? 'ph:spinner' : 'ph:upload'" :spin="loading" />
+            :name="loading ? 'ph:spinner' : 'ph:image'"
+            :size="24"
+            :spin="loading"
+            class="file-upload__icon-square-placeholder"
+          />
+          <div v-if="shouldShowPreview" class="file-upload__icon-square-overlay">
+            <Icon name="ph:pencil-simple" :size="16" />
+          </div>
         </div>
 
-        <Flex column gap="xs" x-center y-center>
-          <p class="file-upload__label">
-            {{ loading ? 'Uploading...' : label }}
-          </p>
-          <p class="file-upload__hint">
-            {{ isAvatarVariant ? 'Click or drag to upload your avatar' : 'Click or drag to upload an image' }}
-          </p>
-          <p class="file-upload__size-hint">
-            Max size: {{ formatFileSize(maxSizeBytes) }}
-          </p>
-        </Flex>
+        <!-- X button only appears once an image is loaded -->
+        <Button
+          v-if="shouldShowPreview"
+          size="s"
+          square
+          variant="danger"
+          :loading="showDelete ? deleting : loading"
+          :disabled="disabled || loading || deleting"
+          @click="showDelete ? deleteFile() : removeFile()"
+        >
+          <Icon name="ph:x" :size="14" />
+        </Button>
       </Flex>
-    </div>
+    </template>
+
+    <!-- ── Avatar / Asset variants ─────────────────────────────────────────── -->
+    <template v-else>
+      <!-- Preview Image (if exists) -->
+      <div
+        v-if="shouldShowPreview"
+        class="file-upload__preview"
+        :class="{ 'file-upload__preview--avatar': isAvatarVariant }"
+        :style="aspectRatioStyle"
+      >
+        <img :src="currentPreviewUrl!" :alt="label" class="file-upload__image">
+        <div class="file-upload__overlay">
+          <Flex gap="xs" class="file-upload__actions" wrap x-center>
+            <Button
+              size="s"
+              variant="accent"
+              :loading="loading"
+              :disabled="disabled"
+              @click="openFileDialog"
+            >
+              <template #start>
+                <Icon name="ph:upload" />
+              </template>
+              Replace
+            </Button>
+            <Button
+              v-if="showDelete"
+              size="s"
+              variant="danger"
+              :disabled="disabled || loading || deleting"
+              :loading="deleting"
+              @click="deleteFile"
+            >
+              <template #start>
+                <Icon name="ph:trash" />
+              </template>
+              Delete
+            </Button>
+            <Button
+              v-else
+              size="s"
+              variant="danger"
+              :disabled="disabled || loading"
+              @click="removeFile"
+            >
+              <template #start>
+                <Icon name="ph:trash" />
+              </template>
+              Remove
+            </Button>
+          </Flex>
+        </div>
+      </div>
+
+      <!-- Upload Area (if no preview) -->
+      <div
+        v-else
+        class="file-upload__drop-zone"
+        :class="{
+          'file-upload__drop-zone--drag-over': dragOver,
+          'file-upload__drop-zone--disabled': disabled,
+          'file-upload__drop-zone--avatar': isAvatarVariant,
+        }"
+        :style="aspectRatioStyle"
+        @click="openFileDialog"
+        @drop="handleDrop"
+        @dragover="handleDragOver"
+        @dragleave="handleDragLeave"
+      >
+        <Flex column gap="m" y-center x-center class="file-upload__content">
+          <div class="file-upload__std-icon">
+            <Icon :name="loading ? 'ph:spinner' : 'ph:upload'" :spin="loading" />
+          </div>
+
+          <Flex column gap="xs" x-center y-center>
+            <p class="file-upload__label">
+              {{ loading ? 'Uploading...' : label }}
+            </p>
+            <p class="file-upload__hint">
+              Click or drag to upload
+            </p>
+            <p class="file-upload__size-hint">
+              Max size: {{ formatFileSize(maxSizeBytes) }}
+            </p>
+          </Flex>
+        </Flex>
+      </div>
+    </template>
 
     <!-- Error Message -->
     <div v-if="error" class="file-upload__error">
@@ -328,10 +390,78 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .file-upload {
   position: relative;
+  min-width: 0;
 
   &--avatar {
     max-width: 256px;
   }
+
+  // ── Icon variant ────────────────────────────────────────────────────────
+
+  &__icon-square {
+    position: relative;
+    flex-shrink: 0;
+    border-radius: var(--border-radius-m);
+    border: 2px dashed var(--color-border);
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-lowered);
+    transition: border-color var(--transition);
+
+    // Solid border once an image is loaded - handled via the overlay presence
+    &:has(.file-upload__icon-square-image) {
+      border-style: solid;
+    }
+
+    &:hover:not(&--disabled) {
+      border-color: var(--color-accent);
+
+      .file-upload__icon-square-overlay {
+        opacity: 1;
+      }
+    }
+
+    &--drag-over {
+      border-color: var(--color-accent);
+      background: var(--color-bg-raised);
+    }
+
+    &--disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__icon-square-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &__icon-square-placeholder {
+    color: var(--color-text-lighter);
+  }
+
+  &__icon-square-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    transition: opacity var(--transition);
+
+    .iconify {
+      color: var(--color-text-invert);
+    }
+  }
+
+  // ── Avatar / Asset variants ─────────────────────────────────────────────
 
   &__preview {
     position: relative;
@@ -384,17 +514,18 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 
-    /* When aspect ratio is set, let the computed style handle all constraints */
+    /* When aspect ratio is set, width:100% + aspect-ratio drives the height */
     &[style*='aspect-ratio'] {
-      min-height: unset;
       width: 100%;
       max-width: 100%;
+      padding: var(--space-s);
     }
 
     &--avatar {
-      width: 240px;
-      height: 240px;
+      width: 212px;
+      height: 212px;
       border-radius: 50%;
       padding: var(--space-m);
       min-height: auto;
@@ -420,9 +551,11 @@ onUnmounted(() => {
     text-align: center;
     pointer-events: none;
     width: 100%;
+    min-width: 0;
+    overflow: hidden;
   }
 
-  &__icon {
+  &__std-icon {
     font-size: 2rem;
     color: var(--color-text-light);
   }
@@ -431,12 +564,20 @@ onUnmounted(() => {
     font-weight: var(--font-weight-medium);
     color: var(--color-text);
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
   }
 
   &__hint {
     font-size: var(--font-size-s);
     color: var(--color-text-light);
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
   }
 
   &__size-hint {

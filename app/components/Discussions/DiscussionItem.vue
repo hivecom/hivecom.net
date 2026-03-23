@@ -47,7 +47,10 @@ onMounted(async () => {
     // waitForLayoutStability() polls scrollHeight each animation frame,
     // catching late-rendered markdown, portrait images, avatars, etc.
     await waitForLayoutStability()
-    self.value?.$el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+    const el = Array.isArray(self.value) ? self.value[0]?.$el : self.value?.$el
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
     // Clear the comment query param now that we've scrolled it into view.
     // The highlight stays on until the page is reloaded.
     const query = { ...route.query }
@@ -135,57 +138,49 @@ function stripReplyData(entry: Comment) {
       v-if="model === 'comment'"
       ref="self"
       :data
+      :thread-reply-count="viewMode === 'flat' ? visibleChildren.length : undefined"
       :class="{ 'discussion-comment--highlight': isActive }"
       @copy-link="copyLink"
       @scroll-reply="scrollReply"
+      @open-replies="repliesExpanded = true"
     />
     <DiscussionModelForum
       v-else
       ref="self"
       :data
+      :thread-reply-count="viewMode === 'flat' ? visibleChildren.length : undefined"
       :class="{ 'discussion-forum--highlight': isActive }"
       @copy-link="copyLink"
       @scroll-reply="scrollReply"
+      @open-replies="repliesExpanded = true"
     />
 
-    <!-- Flat mode: inline one-liner reply preview with expand toggle -->
-    <!-- TODO: check this on normal comments too -->
-    <Flex
-      v-show="viewMode === 'flat' && hasReplies"
-      x-end
-      class="discussion-comment-wrapper__thread"
-      :class="model === 'forum' ? 'discussion-comment-wrapper__thread--forum' : 'discussion-comment-wrapper__thread--comment'"
-    >
-      <Button size="s" outline @click="repliesExpanded = true">
-        {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
-      </Button>
-
-      <Sheet :open="repliesExpanded" :size="756" separators @close="repliesExpanded = false">
-        <template #header>
-          <Flex gap="m">
-            <UserAvatar size="l" :user-id="data.created_by" />
-            <Flex column gap="xxs">
-              <h4>
-                <UserName inherit :user-id="data.created_by" />'s thread
-              </h4>
-              <p class="text-color-lighter">
-                {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
-              </p>
-            </Flex>
+    <!-- Flat mode: sheet for thread replies (triggered from within the model components) -->
+    <Sheet :open="repliesExpanded" :size="756" separators @close="repliesExpanded = false">
+      <template #header>
+        <Flex gap="m">
+          <UserAvatar size="l" :user-id="data.created_by" />
+          <Flex column gap="xxs">
+            <h4>
+              <UserName inherit :user-id="data.created_by" />'s thread
+            </h4>
+            <p class="text-color-lighter">
+              {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
+            </p>
           </Flex>
-        </template>
-
-        <Flex column gap="s" expand>
-          <DiscussionModelForum
-            v-for="item in visibleChildren"
-            :key="item.comment.id"
-            ref="self"
-            :data="stripReplyData(item.comment)"
-            @interact="repliesExpanded = false"
-          />
         </Flex>
-      </Sheet>
-    </Flex>
+      </template>
+
+      <Flex column gap="s" expand>
+        <DiscussionModelForum
+          v-for="item in visibleChildren"
+          :key="item.comment.id"
+          ref="self"
+          :data="stripReplyData(item.comment)"
+          @interact="repliesExpanded = false"
+        />
+      </Flex>
+    </Sheet>
 
     <!-- Threaded mode: recursively render children as full DiscussionItems -->
     <!-- v-show keeps nested DiscussionItems mounted across mode switches so -->
@@ -268,7 +263,8 @@ function stripReplyData(entry: Comment) {
     // Forum model: full-width, sits below the card with a small top gap
     &--forum {
       margin-left: 0;
-      margin-top: var(--space-xs);
+      margin-top: -12px;
+      margin-bottom: 4px;
     }
   }
 

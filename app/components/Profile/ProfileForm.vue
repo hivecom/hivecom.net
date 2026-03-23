@@ -3,7 +3,6 @@ import type { Tables } from '@/types/database.overrides'
 import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import FileUpload from '@/components/Shared/FileUpload.vue'
 import { normalizeWebsiteUrl, useUserFormValidation } from '@/composables/useUserFormValidation'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
@@ -12,6 +11,7 @@ import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { formatDateOnly } from '@/lib/utils/date'
 import { replaceMarkdownH1, stripHtmlTags } from '@/lib/utils/sanitize'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
+import FileUpload from '../Shared/FileUpload.vue'
 
 const props = defineProps<{
   profile: Tables<'profiles'> | null
@@ -285,23 +285,42 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
     </template>
 
     <Flex column gap="l" class="profile-edit-form" expand>
-      <!-- Avatar Section -->
-      <Flex gap="m" expand :column="isMobile">
+      <Flex gap="l" expand :column="isMobile">
+        <!-- Avatar -->
+        <Flex column gap="m" class="profile-edit-form__avatar-section" :expand="isMobile">
+          <h4>Avatar</h4>
+          <FileUpload
+            expand
+            variant="avatar"
+            label="Upload Avatar"
+            :preview-url="avatarUrl"
+            :loading="avatarUploading"
+            :deleting="avatarDeleting"
+            :error="avatarError"
+            :show-delete="!!avatarUrl"
+            @upload="handleAvatarUpload"
+            @remove="handleAvatarRemove"
+            @delete="handleAvatarDeleteConfirm"
+          />
+        </Flex>
+
         <!-- Basic Information -->
         <Flex column gap="m" expand>
           <h4>Basic Information</h4>
 
-          <Flex y-center gap="xs">
-            <Switch
-              v-model="profileForm.public"
-              label="Public profile"
-            />
-            <Tooltip placement="top">
-              <Icon name="ph:info" class="public-profile-info-icon" />
-              <template #tooltip>
-                <p>When enabled, anyone - including visitors who are not logged in - can view your full profile page, including your introduction, content, and other public details.</p>
-              </template>
-            </Tooltip>
+          <Flex>
+            <Flex y-center gap="xs">
+              <Switch
+                v-model="profileForm.public"
+                label="Public profile"
+              />
+              <Tooltip placement="top">
+                <Icon name="ph:info" class="public-profile-info-icon" />
+                <template #tooltip>
+                  <p>When enabled, anyone - including visitors who are not logged in - can view your full profile page, including your introduction, content, and other public details.</p>
+                </template>
+              </Tooltip>
+            </Flex>
           </Flex>
 
           <Flex expand class="profile-edit-form__username-container">
@@ -335,26 +354,6 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
               </template>
             </Input>
           </Flex>
-          <Flex expand class="profile-edit-form__introduction-container">
-            <Textarea
-              v-model="profileForm.introduction"
-              expand
-              name="introduction"
-              label="Introduction"
-              placeholder="A brief introduction about yourself (optional)"
-              :rows="3"
-              :maxlength="INTRODUCTION_LIMIT"
-            >
-          <template #after>
-            <div class="character-count">
-              <span :class="{ 'over-limit': introductionCharCount > INTRODUCTION_LIMIT }">
-                {{ introductionCharCount }}/{{ INTRODUCTION_LIMIT }}
-              </span>
-            </div>
-          </template>
-        </textarea>
-          </Flex>
-
           <Flex expand class="profile-edit-form__website-container">
             <Input
               v-model="profileForm.website"
@@ -366,77 +365,62 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
               :error="websiteValidation.error"
             />
           </Flex>
-          <Flex column gap="xxs" expand class="profile-edit-form__birthday-container">
-            <label class="text-s text-color-lighter">Birthday</label>
-            <Flex expand gap="xs" y-center>
-              <Calendar
-                v-model="birthdayDateModel"
-                expand
-                format="yyyy-MM-dd"
-                :class="{ invalid: !birthdayValidation.valid && hasBirthday }"
-              >
-                <template #trigger>
-                  <Button
-                    class="profile-edit-form__date-picker-button"
-                    expand
-                    :class="{ error: !birthdayValidation.valid && hasBirthday }"
-                  >
-                    {{ birthdayButtonLabel }}
-                    <template #end>
-                      <Icon name="ph:calendar" />
-                    </template>
-                  </Button>
-                </template>
-              </Calendar>
-              <Tooltip v-if="hasBirthday">
-                <Button
-                  square
-                  outline
-                  @click="clearBirthday"
-                >
-                  <Icon name="ph:x" />
-                </Button>
-                <template #tooltip>
-                  <p>Clear birthday</p>
-                </template>
-              </Tooltip>
-            </Flex>
-            <span v-if="!birthdayValidation.valid && hasBirthday" class="text-xs text-color-red">
-              {{ birthdayValidation.error }}
-            </span>
-            <div v-else class="help-text">
-              <Icon name="ph:info" />
-              Optional; not shown publicly if left blank.
-            </div>
-          </Flex>
-          <Flex expand class="profile-edit-form__country-container">
-            <Select
-              v-model="countrySelectModel"
-              expand
-              name="country"
-              label="Country"
-              placeholder="Select your country (optional)"
-              single
-              search
-              show-clear
-              :options="COUNTRY_SELECT_OPTIONS"
-              :errors="countryValidation.valid ? undefined : [countryValidation.error ?? 'Please select a valid country']"
-            />
-          </Flex>
         </Flex>
-        <Flex column gap="m" :style="isMobile ? { order: -1 } : {}">
-          <h4>Avatar</h4>
-          <FileUpload
-            variant="avatar"
-            label="Upload Avatar"
-            :preview-url="avatarUrl"
-            :loading="avatarUploading"
-            :deleting="avatarDeleting"
-            :error="avatarError"
-            :show-delete="!!avatarUrl"
-            @upload="handleAvatarUpload"
-            @remove="handleAvatarRemove"
-            @delete="handleAvatarDeleteConfirm"
+      </Flex>
+
+      <!-- Birthday & Country -->
+      <Flex gap="m" expand :column="isMobile">
+        <Flex column :gap="0" expand class="profile-edit-form__birthday-container">
+          <label class="vui-label">Birthday</label>
+          <Flex expand gap="xs" y-center>
+            <Calendar
+              v-model="birthdayDateModel"
+              expand
+              format="yyyy-MM-dd"
+              :class="{ invalid: !birthdayValidation.valid && hasBirthday }"
+            >
+              <template #trigger>
+                <Button
+                  expand
+                  outline
+                  :class="{ error: !birthdayValidation.valid && hasBirthday }"
+                >
+                  <template #start>
+                    <Icon name="ph:calendar" :size="18" />
+                  </template>
+                  {{ birthdayButtonLabel }}
+                </Button>
+              </template>
+            </Calendar>
+            <Tooltip v-if="hasBirthday">
+              <Button
+                square
+                outline
+                @click="clearBirthday"
+              >
+                <Icon name="ph:x" />
+              </Button>
+              <template #tooltip>
+                <p>Clear birthday</p>
+              </template>
+            </Tooltip>
+          </Flex>
+          <span v-if="!birthdayValidation.valid && hasBirthday" class="vui-error">
+            {{ birthdayValidation.error }}
+          </span>
+        </Flex>
+        <Flex expand class="profile-edit-form__country-container">
+          <Select
+            v-model="countrySelectModel"
+            expand
+            name="country"
+            label="Country"
+            placeholder="Select your country (optional)"
+            single
+            search
+            show-clear
+            :options="COUNTRY_SELECT_OPTIONS"
+            :errors="countryValidation.valid ? undefined : [countryValidation.error ?? 'Please select a valid country']"
           />
         </Flex>
       </Flex>
@@ -445,12 +429,32 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
       <Flex column gap="m" expand>
         <h4>About</h4>
 
+        <Flex expand class="profile-edit-form__introduction-container">
+          <Textarea
+            v-model="profileForm.introduction"
+            expand
+            name="introduction"
+            label="Introduction"
+            placeholder="A brief introduction about yourself (optional)"
+            :rows="3"
+            :maxlength="INTRODUCTION_LIMIT"
+          >
+            <template #after>
+              <div class="character-count">
+                <span :class="{ 'over-limit': introductionCharCount > INTRODUCTION_LIMIT }">
+                  {{ introductionCharCount }}/{{ INTRODUCTION_LIMIT }}
+                </span>
+              </div>
+            </template>
+          </Textarea>
+        </Flex>
+
         <RichTextEditor
           v-model="profileForm.markdown"
           :media-context="props.profile?.id ? `${props.profile.id}/markdown/media` : undefined"
           :media-bucket-id="USERS_BUCKET_ID"
           placeholder="Tell others about yourself!"
-          label="Profile content"
+          label="Content"
           :limit="MARKDOWN_LIMIT"
           :errors="markdownValidation.error ? [markdownValidation.error] : undefined"
           :show-attachment-button="!!props.profile?.id"
@@ -512,6 +516,23 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
 <style scoped lang="scss">
 .profile-edit-form {
   padding-bottom: var(--space-m);
+
+  &__avatar-section {
+    @media (max-width: 768px) {
+      width: 100%;
+
+      :deep(.file-upload) {
+        width: 100%;
+        max-width: 100%;
+      }
+
+      :deep(.file-upload__drop-zone--avatar) {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1/1;
+      }
+    }
+  }
 
   &__avatar-container {
     .avatar-preview {

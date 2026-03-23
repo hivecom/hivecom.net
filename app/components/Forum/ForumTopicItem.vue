@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { useTopicIcon } from '@/composables/useTopicIcon'
 import BadgeCircle from '../Shared/BadgeCircle.vue'
 import ForumItemActions from './ForumItemActions.vue'
 
@@ -33,6 +34,9 @@ const emit = defineEmits<{
 }>()
 
 dayjs.extend(relativeTime)
+
+const topicId = computed(() => data.id)
+const { iconUrl } = useTopicIcon(topicId)
 </script>
 
 <template>
@@ -48,8 +52,20 @@ dayjs.extend(relativeTime)
       :to="href ?? '#'"
       @click.exact.prevent="emit('click')"
     >
-      <div class="forum__category-post--icon" :class="{ 'has-new': hasNew }">
-        <Icon name="ph:folder-open" :size="20" />
+      <div
+        class="forum__category-post--icon"
+        :class="{
+          'has-new': hasNew,
+          'has-topic-icon': !!iconUrl,
+        }"
+      >
+        <img
+          v-if="iconUrl"
+          :src="iconUrl"
+          :alt="`${data.name} icon`"
+          class="topic-icon__image"
+        >
+        <Icon name="ph:folder-open" :size="20" class="topic-icon__folder" />
       </div>
       <div class="forum__category-post--name">
         <strong>
@@ -92,8 +108,47 @@ dayjs.extend(relativeTime)
 
 <style scoped lang="scss">
 .forum__category-post--icon {
+  position: relative;
+
   .iconify {
     color: var(--color-text);
+  }
+
+  // When the topic has a custom icon, layer the image behind the folder icon
+  // and animate on hover
+  &.has-topic-icon {
+    .topic-icon__image {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: inherit;
+      overflow: hidden;
+      filter: grayscale(1);
+      opacity: 0.25;
+      transition:
+        filter var(--transition-slow),
+        opacity var(--transition-slow);
+      z-index: 0;
+    }
+
+    .topic-icon__folder {
+      position: relative;
+      z-index: 1;
+      transition: opacity var(--transition-slow);
+    }
+  }
+}
+
+.forum__category-post--item:hover .forum__category-post--icon.has-topic-icon {
+  .topic-icon__image {
+    filter: grayscale(0);
+    opacity: 1;
+  }
+
+  .topic-icon__folder {
+    opacity: 0;
   }
 }
 </style>
