@@ -109,7 +109,6 @@ const { iconUrl } = useTopicIcon(topicId)
 <style scoped lang="scss">
 .forum__category-post--icon {
   position: relative;
-  overflow: hidden;
 
   .iconify {
     color: var(--color-text);
