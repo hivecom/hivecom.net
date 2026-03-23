@@ -370,8 +370,8 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
 
       <!-- Birthday & Country -->
       <Flex gap="m" expand :column="isMobile">
-        <Flex column gap="xxs" expand class="profile-edit-form__birthday-container">
-          <label class="text-s text-color-lighter">Birthday</label>
+        <Flex column :gap="0" expand class="profile-edit-form__birthday-container">
+          <label class="vui-label">Birthday</label>
           <Flex expand gap="xs" y-center>
             <Calendar
               v-model="birthdayDateModel"
@@ -381,14 +381,14 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
             >
               <template #trigger>
                 <Button
-                  class="profile-edit-form__date-picker-button"
                   expand
+                  outline
                   :class="{ error: !birthdayValidation.valid && hasBirthday }"
                 >
-                  {{ birthdayButtonLabel }}
-                  <template #end>
-                    <Icon name="ph:calendar" />
+                  <template #start>
+                    <Icon name="ph:calendar" :size="18" />
                   </template>
+                  {{ birthdayButtonLabel }}
                 </Button>
               </template>
             </Calendar>
@@ -405,7 +405,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
               </template>
             </Tooltip>
           </Flex>
-          <span v-if="!birthdayValidation.valid && hasBirthday" class="text-xs text-color-red">
+          <span v-if="!birthdayValidation.valid && hasBirthday" class="vui-error">
             {{ birthdayValidation.error }}
           </span>
         </Flex>

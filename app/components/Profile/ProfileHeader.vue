@@ -519,7 +519,7 @@ onUnmounted(() => stopConfetti())
             <!-- Action Buttons -->
             <Flex gap="xs" class="profile-action-buttons">
               <Tooltip v-if="isOwnProfile">
-                <Button variant="gray" plain square @click="emit('openEditSheet')">
+                <Button size="s" variant="gray" square @click="emit('openEditSheet')">
                   <Icon name="ph:pencil" />
                 </Button>
                 <template #tooltip>
@@ -527,7 +527,7 @@ onUnmounted(() => stopConfetti())
                 </template>
               </Tooltip>
               <Tooltip v-else-if="props.isLoggedIn">
-                <Button square plain variant="gray" @click="emit('openComplaintModal')">
+                <Button size="s" square variant="gray" @click="emit('openComplaintModal')">
                   <Icon name="ph:flag" />
                 </Button>
                 <template #tooltip>
@@ -536,7 +536,7 @@ onUnmounted(() => stopConfetti())
               </Tooltip>
               <CopyClipboard :text="profileUrl" confirm>
                 <Tooltip>
-                  <Button variant="gray" square plain>
+                  <Button size="s" variant="gray" square>
                     <Icon name="ph:link" />
                   </Button>
                   <template #tooltip>
