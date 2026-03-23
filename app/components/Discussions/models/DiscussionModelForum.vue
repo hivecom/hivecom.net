@@ -284,6 +284,45 @@ const editedAtFormatted = computed(() => {
 
     <!-- Content column: single div always mounted, chrome switches via v-if -->
     <div class="discussion-forum__content">
+      <!-- Desktop floating actions (hover-revealed) - must be first child for sticky to work from top -->
+      <div v-if="!isMobile && !showNSFWWarning" class="discussion-forum__actions-anchor">
+        <div class="discussion-forum__actions">
+          <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
+            <template #default="{ toggle }">
+              <Button size="s" square @click="toggle">
+                <Tooltip>
+                  <Icon name="ph:smiley-bold" />
+                  <template #tooltip>
+                    <p>Add reactions</p>
+                  </template>
+                </Tooltip>
+              </Button>
+            </template>
+          </ReactionsSelect>
+
+          <DiscussionActionsToolbar
+            :data="data"
+            :user-id="userId"
+            :current-user-data="currentUserData"
+            :can-bypass-lock="canBypassLock"
+            :can-mark-offtopic="canMarkOfftopic"
+            :offtopic-loading="offtopicLoading"
+            :loading-deletion="loadingDeletion"
+            :show-n-s-f-w-warning="showNSFWWarning"
+            :posted-at="postedAtFormatted"
+            :edited-at="editedAtFormatted"
+            :modifier-id="modifierId"
+            @reply="setReplyToComment(data); emit('interact')"
+            @quote="setQuoteOfComment(data); emit('interact')"
+            @copy-link="emit('copyLink'); emit('interact')"
+            @start-editing="startEditing"
+            @delete="showDeleteModal = true"
+            @toggle-offtopic="handleToggleOfftopic"
+            @report="showReportModal = true"
+          />
+        </div>
+      </div>
+
       <!-- Mobile header: author + toolbar (only rendered on mobile) -->
       <div v-if="isMobile" class="discussion-forum__mobile-header">
         <UserPreviewHover v-if="currentUser || user" :user-id="data.created_by">
@@ -396,43 +435,6 @@ const editedAtFormatted = computed(() => {
             <ReactionsSelect v-if="userId && !showNSFWWarning && displayReactions.length > 0" @reaction="(emote) => toggleReaction(emote)" />
           </div>
         </Flex>
-
-        <!-- Desktop floating actions (hover-revealed) -->
-        <div v-if="!showNSFWWarning" class="discussion-forum__actions">
-          <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
-            <template #default="{ toggle }">
-              <Button size="s" square @click="toggle">
-                <Tooltip>
-                  <Icon name="ph:smiley-bold" />
-                  <template #tooltip>
-                    <p>Add reactions</p>
-                  </template>
-                </Tooltip>
-              </Button>
-            </template>
-          </ReactionsSelect>
-
-          <DiscussionActionsToolbar
-            :data="data"
-            :user-id="userId"
-            :current-user-data="currentUserData"
-            :can-bypass-lock="canBypassLock"
-            :can-mark-offtopic="canMarkOfftopic"
-            :offtopic-loading="offtopicLoading"
-            :loading-deletion="loadingDeletion"
-            :show-n-s-f-w-warning="showNSFWWarning"
-            :posted-at="postedAtFormatted"
-            :edited-at="editedAtFormatted"
-            :modifier-id="modifierId"
-            @reply="setReplyToComment(data); emit('interact')"
-            @quote="setQuoteOfComment(data); emit('interact')"
-            @copy-link="emit('copyLink'); emit('interact')"
-            @start-editing="startEditing"
-            @delete="showDeleteModal = true"
-            @toggle-offtopic="handleToggleOfftopic"
-            @report="showReportModal = true"
-          />
-        </div>
       </template>
 
       <!-- Mobile footer: reply count + reactions (only rendered on mobile) -->
@@ -528,6 +530,10 @@ const editedAtFormatted = computed(() => {
       opacity: 1;
       z-index: 10;
       visibility: visible;
+    }
+
+    .discussion-forum__actions-anchor {
+      z-index: var(--z-active);
     }
   }
 
@@ -692,12 +698,21 @@ const editedAtFormatted = computed(() => {
     height: 36px;
   }
 
+  &__actions-anchor {
+    position: sticky;
+    top: 154px;
+    min-height: 0;
+    max-height: 0;
+    overflow: visible;
+    z-index: 10;
+  }
+
   &__actions {
     display: flex;
     gap: 3px;
     position: absolute;
-    right: 12px;
-    top: 12px;
+    right: 0;
+    top: 0;
     opacity: 0;
     z-index: -1;
     visibility: hidden;

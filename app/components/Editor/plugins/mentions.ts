@@ -310,6 +310,14 @@ export async function hydrateMentionLabels(
       .map(profile => [profile.id.toLowerCase(), profile.username]),
   )
 
+  // Guard against the component unmounting while the async fetch was in flight.
+  // Tiptap sets isDestroyed when the editor is torn down; dispatching a command
+  // on a destroyed editor causes ProseMirror to walk a detached DOM and throws
+  // "can't access property nextSibling, e is null".
+  if (currentEditor.isDestroyed) {
+    return
+  }
+
   currentEditor.commands.command(({ tr, state }) => {
     let modified = false
 

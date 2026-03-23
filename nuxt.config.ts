@@ -129,6 +129,23 @@ export default defineNuxtConfig({
         'ph:steam-logo',
         'ph:patreon-logo',
 
+        // Editor/RichTextSelectionMenu.vue
+        // (static string names in <Icon> - included explicitly to guarantee bundle inclusion)
+        'ph:text-h-one',
+        'ph:x',
+        'ph:text-b',
+        'ph:text-italic',
+        'ph:text-underline',
+        'ph:text-strikethrough',
+        'ph:code',
+        'ph:paint-bucket',
+        'ph:text-aa',
+        'ph:list-bullets',
+        'ph:list-numbers',
+        'ph:code-block',
+        'ph:quotes',
+        'material-symbols-light:lowercase',
+
         // Community/FundingHistory.vue growth indicators
         'ph:minus',
         'ph:trend-up',

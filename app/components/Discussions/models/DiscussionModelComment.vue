@@ -181,6 +181,44 @@ const { displayReactions, toggleReaction } = useReactions({
 
 <template>
   <div class="discussion-comment">
+    <!-- Desktop floating actions (hover-revealed) - first child so sticky works from top -->
+    <div v-if="!isMobile" class="discussion-forum__actions-anchor discussion-comment__actions-anchor">
+      <div class="discussion-comment__actions">
+        <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
+          <template #default="{ toggle }">
+            <Button size="s" square @click="toggle">
+              <Tooltip>
+                <Icon name="ph:smiley-bold" />
+                <template #tooltip>
+                  <p>Add reactions</p>
+                </template>
+              </Tooltip>
+            </Button>
+          </template>
+        </ReactionsSelect>
+
+        <DiscussionActionsToolbar
+          :data="data"
+          :user-id="userId"
+          :current-user-data="currentUserData"
+          :can-bypass-lock="canBypassLock"
+          :can-mark-offtopic="canMarkOfftopic"
+          :offtopic-loading="offtopicLoading"
+          :loading-deletion="loadingDeletion"
+          :show-n-s-f-w-warning="showNSFWWarning"
+          :posted-at="postedAtFormatted"
+          :edited-at="editedAtFormatted"
+          :modifier-id="modifierId"
+          @reply="setReplyToComment(data)"
+          @copy-link="emit('copyLink')"
+          @start-editing="startEditing"
+          @delete="showDeleteModal = true"
+          @toggle-offtopic="handleToggleOfftopic"
+          @report="showReportModal = true"
+        />
+      </div>
+    </div>
+
     <Flex y-center x-between>
       <Flex y-center x-start>
         <UserAvatar size="s" :user-id="data.created_by" show-preview linked />
@@ -271,43 +309,6 @@ const { displayReactions, toggleReaction } = useReactions({
       <ReactionsList :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
       <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)" />
     </Flex>
-
-    <div class="discussion-comment__actions">
-      <ReactionsSelect v-if="userId && !isMobile" @reaction="(emote) => toggleReaction(emote)">
-        <template #default="{ toggle }">
-          <Button size="s" square @click="toggle">
-            <Tooltip>
-              <Icon name="ph:smiley-bold" />
-              <template #tooltip>
-                <p>Add reactions</p>
-              </template>
-            </Tooltip>
-          </Button>
-        </template>
-      </ReactionsSelect>
-
-      <!-- Desktop floating actions (hidden on mobile - toolbar is in the header row instead) -->
-      <DiscussionActionsToolbar
-        v-if="!isMobile"
-        :data="data"
-        :user-id="userId"
-        :current-user-data="currentUserData"
-        :can-bypass-lock="canBypassLock"
-        :can-mark-offtopic="canMarkOfftopic"
-        :offtopic-loading="offtopicLoading"
-        :loading-deletion="loadingDeletion"
-        :show-n-s-f-w-warning="showNSFWWarning"
-        :posted-at="postedAtFormatted"
-        :edited-at="editedAtFormatted"
-        :modifier-id="modifierId"
-        @reply="setReplyToComment(data)"
-        @copy-link="emit('copyLink')"
-        @start-editing="startEditing"
-        @delete="showDeleteModal = true"
-        @toggle-offtopic="handleToggleOfftopic"
-        @report="showReportModal = true"
-      />
-    </div>
 
     <ConfirmModal
       :open="showDeleteModal"
@@ -407,6 +408,10 @@ const { displayReactions, toggleReaction } = useReactions({
       opacity: 1;
       z-index: 10;
       visibility: visible;
+    }
+
+    .discussion-comment__actions-anchor {
+      z-index: var(--z-active);
     }
   }
 
@@ -520,12 +525,21 @@ const { displayReactions, toggleReaction } = useReactions({
     }
   }
 
+  &__actions-anchor {
+    position: sticky;
+    top: var(--space-s);
+    min-height: 0;
+    max-height: 0;
+    overflow: visible;
+    z-index: 10;
+  }
+
   &__actions {
     display: flex;
     gap: 3px;
     position: absolute;
-    right: 4px;
-    top: var(--space-s);
+    right: 0;
+    top: 0;
     opacity: 0;
     z-index: -1;
     visibility: hidden;

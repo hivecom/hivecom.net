@@ -54,7 +54,7 @@ const supabase = useSupabaseClient()
 const discussionCache = useDiscussionCache()
 const subscriptionsCache = useDiscussionSubscriptionsCache()
 const userId = useUserId()
-const loading = ref(false)
+const loading = ref(true)
 const errorMessage = ref<string | null>(null)
 const post = ref<DiscussionWithContext | null>(null)
 const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
@@ -66,7 +66,7 @@ const publishConfirmOpen = ref(false)
 const showNSFWWarning = ref(false)
 const nsfwRevealed = ref(false)
 
-const isMobile = useBreakpoint('<m')
+const isMobile = useBreakpoint('<s')
 
 // Reporting
 const showReportModal = ref(false)
@@ -647,9 +647,10 @@ function revealNsfw() {
           />
         </Flex>
 
-        <Flex v-if="post.description" y-center x-between gap="m" class="mb-m">
+        <Flex v-if="post.description" :column="isMobile" :y-center="!isMobile" x-between gap="m" class="mb-m">
           <p>{{ post.description }}</p>
           <Reactions
+            :class="isMobile ? 'reactions--mobile' : ''"
             table="discussions"
             :row-id="post.id"
             :reactions="post.reactions"
@@ -827,6 +828,13 @@ function revealNsfw() {
   right: calc(100% + 12px);
   top: 50%;
   transform: translateY(-50%);
+}
+
+:deep(.reactions--mobile) {
+  flex-direction: row-reverse !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-start !important;
+  margin-left: 0 !important;
 }
 
 :deep(.forum__item-actions) {
