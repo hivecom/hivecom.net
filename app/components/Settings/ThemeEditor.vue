@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, ButtonGroup, Dropdown, DropdownItem, Flex, Input, Modal, setColorTheme, theme, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Divider, Dropdown, DropdownItem, Flex, Input, Modal, setColorTheme, theme, Tooltip } from '@dolanske/vui'
 import { getCssVarAsHex, VUI_COLOR_KEYS } from '@/lib/theme'
 import ThemeSampleUI from './ThemeSampleUI.vue'
 
@@ -18,7 +18,7 @@ const emit = defineEmits<{
 }>()
 
 // Themes dropdown
-const { themes, loading, refresh } = useDataThemes()
+const { themes, loading } = useDataThemes()
 
 const activeType = computed<ThemeType>(() => theme.value === 'light' ? 'light' : 'dark')
 
@@ -81,6 +81,11 @@ const COLOR_GROUPS: Record<string, typeof VUI_COLOR_KEYS[number][]> = {
   Border: ['border', 'border-strong', 'border-weak'],
   Accent: ['accent', 'bg-accent-lowered', 'bg-accent-raised'],
 }
+
+// Ranges
+const spacingRawRange = ref()
+const roundingRawRange = ref()
+const transitionRawRange = ref()
 
 // Reset the theme on unmount
 onBeforeUnmount(() => {
@@ -202,12 +207,39 @@ function submitTheme() {
 
         <div class="theme-editor__groups--outer">
           <div class="theme-editor__groups--inner">
+            <div class="theme-editor__group">
+              <span class="theme-editor__group-label">Spacing</span>
+              <Flex x-between gap="l">
+                <input v-model="spacingRawRange" type="range">
+                <span />
+              </Flex>
+            </div>
+
+            <div class="theme-editor__group">
+              <span class="theme-editor__group-label">Rounding</span>
+              <Flex x-between gap="l">
+                <input v-model="roundingRawRange" type="range">
+                <span />
+              </Flex>
+            </div>
+
+            <div class="theme-editor__group">
+              <span class="theme-editor__group-label">Transitions</span>
+              <Flex x-between gap="l">
+                <input v-model="transitionRawRange" type="range">
+                <span />
+              </Flex>
+            </div>
+
+            <Divider :size="0" />
+
             <div
               v-for="(colors, groupName) in COLOR_GROUPS"
               :key="groupName"
               class="theme-editor__group"
             >
-              <span class="text-xs text-color-lighter mb-xs block">{{ groupName }}</span>
+              <span class="theme-editor__group-label">{{ groupName }}</span>
+              <!-- <span class="text-xs text-color-lighter mb-xs block">{{ groupName }}</span> -->
               <Flex column gap="xxs">
                 <label
                   v-for="colorKey in colors"
@@ -281,6 +313,18 @@ function submitTheme() {
     padding: var(--space-m);
   }
 
+  &__group-label {
+    display: block;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    margin-bottom: var(--space-xs);
+    padding-left: 4px;
+  }
+
+  input[type='range'] {
+    width: 60%;
+  }
+
   &__input {
     display: flex;
     align-items: center;
@@ -288,7 +332,6 @@ function submitTheme() {
     width: 100%;
     cursor: pointer;
     padding: var(--space-xxs);
-    /* border-radius: var(--border-radius-s); */
 
     &:hover {
       background-color: var(--color-bg-raised);

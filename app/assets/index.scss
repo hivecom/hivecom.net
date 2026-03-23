@@ -395,6 +395,46 @@ code {
   gap: var(--space-m) !important;
 }
 
+input[type='range'] {
+  appearance: none;
+  display: block;
+  /* width: 100%; */
+  height: 20px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background-color: transparent;
+
+  // Track - WebKit uses linear-gradient to fake progress fill via --range-progress custom property
+  &::-webkit-slider-runnable-track {
+    background: linear-gradient(
+      to right,
+      var(--color-accent) 0%,
+      var(--color-accent) var(--range-progress, 0%),
+      var(--color-border-strong) var(--range-progress, 0%),
+      var(--color-border-strong) 100%
+    );
+    border-radius: 100px;
+  }
+  &::-moz-range-track {
+    background-color: var(--color-border-strong);
+    border-radius: 100px;
+  }
+
+  // Thumb
+  &::-webkit-slider-thumb,
+  &::-moz-range-thumb {
+    -webkit-appearance: none;
+    border: none;
+    background-color: var(--color-text-light);
+  }
+
+  // Progress fill (Firefox only; use linear-gradient on track for Chrome/Safari)
+  &::-moz-range-progress {
+    background-color: var(--color-accent);
+    border-radius: 100px;
+  }
+}
+
 @include meta.load-css('./utilities.scss');
 @include meta.load-css('./pages/login.scss');
 @include meta.load-css('./elements/auth.scss');
@@ -402,3 +442,13 @@ code {
 @include meta.load-css('./elements/page.scss');
 @include meta.load-css('./elements/activity.scss');
 @include meta.load-css('./elements/reactions.scss');
+
+/* Understand how theming works in the project. How values are loaded and parsed into a theme and then saved.
+
+Implement spacing, rounding and transition rantges. I have prepared the UI and the variable definitions.
+
+The the DB only allows saving between 0 - 100 so we must map the 0-100 to proper steps when writing & setting the variables
+
+I want spacing to be 0 to 300%. Rounding 0 to 250% and transitions to be between 0 to 200%. If any of this implementation makes snese in the lib/theme move it there
+
+There is a space next to the input, where the stepped value should be displayed. Make sure input also has a `--range-progress` style added to it so that the slider progress is properlty rendered */
