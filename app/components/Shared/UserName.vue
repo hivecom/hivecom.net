@@ -74,10 +74,6 @@ const canLink = computed(() => {
   return true
 })
 
-const showSkeleton = computed(() => {
-  return !!props.userId && loading.value
-})
-
 const ariaLabel = computed(() => {
   return displayName.value
     ? `View profile of ${displayName.value}`
@@ -97,7 +93,7 @@ const fontClass = computed(() => {
 
 <template>
   <!-- Loading -->
-  <Skeleton v-if="showSkeleton" width="108px" height="20px" />
+  <Skeleton v-if="!!props.userId && loading" width="108px" height="20px" />
 
   <UserPreviewHover v-else-if="showPreview && userId" :user-id="userId">
     <!-- Resolved username -->
