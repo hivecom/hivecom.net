@@ -413,7 +413,12 @@ function handleReplySubmitted(newReplyCount: number, discussionId: string) {
 }
 
 const pageTitle = useTemplateRef('page-title')
+const scrollHeaderReady = ref(false)
 const isPageTitleVisible = useElementVisibility(pageTitle)
+
+watch(isPageTitleVisible, () => {
+  scrollHeaderReady.value = true
+}, { once: true })
 
 // Track if user is at the bottom of the page with about half a screen size of leeway
 const { y } = useWindowScroll()
@@ -478,7 +483,7 @@ function revealNsfw() {
     <template v-else-if="post">
       <!-- Floating header when scrolling down -->
       <Transition name="fade">
-        <section v-if="!isPageTitleVisible" class="forum-post__scroll">
+        <section v-if="scrollHeaderReady && !isPageTitleVisible" class="forum-post__scroll">
           <div class="container container-m">
             <div>
               <strong class="forum-post__scroll-title">

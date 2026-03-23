@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Drawer, Popout } from '@dolanske/vui'
+import { Button, Drawer, Popout } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { useDataUser } from '@/composables/useDataUser'
@@ -72,6 +72,14 @@ function handleMobileClick(e: Event) {
           :user-id="props.userId"
           :max-badges="props.maxBadges"
         />
+
+        <div class="px-m">
+          <NuxtLink :to="`/profile/${user?.username ?? props.userId}`">
+            <Button expand outline>
+              View profile
+            </Button>
+          </NuxtLink>
+        </div>
       </div>
     </Drawer>
   </div>

@@ -1,3 +1,5 @@
+@use '../breakpoints.scss' as *;
+
 .reactions {
   display: flex;
   flex-wrap: wrap;
@@ -94,5 +96,12 @@
     display: flex;
     flex-wrap: wrap;
     gap: 2px;
+  }
+}
+
+@media screen and (max-width: $breakpoint-s) {
+  .reactions__picker {
+    width: auto;
+    gap: var(--space-l);
   }
 }

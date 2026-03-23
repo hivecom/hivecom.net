@@ -581,7 +581,7 @@ const editedAtFormatted = computed(() => {
     gap: var(--space-xxs);
     padding: var(--space-s) var(--space-m);
     border-top: 1px solid var(--color-border);
-    background-color: var(--color-bg);
+    background-color: var(--color-bg-medium);
     border-bottom-left-radius: var(--border-radius-m);
     border-bottom-right-radius: var(--border-radius-m);
   }
@@ -681,6 +681,10 @@ const editedAtFormatted = computed(() => {
     border-top-right-radius: var(--border-radius-m);
     position: relative;
     height: 100%;
+
+    &:has(.discussion-forum__mobile-header) {
+      background-color: transparent;
+    }
   }
 
   &__badges {
@@ -717,6 +721,7 @@ const editedAtFormatted = computed(() => {
 
     &__body {
       padding: var(--space-m);
+      background-color: var(--color-bg-medium);
     }
   }
 }
