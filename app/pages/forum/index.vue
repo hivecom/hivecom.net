@@ -819,11 +819,10 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
             <div class="forum__category-post--item">
               <Skeleton width="40px" height="40px" />
 
-              <div class="forum__category-post--name">
-                <Skeleton width="128px" height="20px" class="mb-xs" />
-                <Skeleton width="242px" height="18px" />
-              </div>
-
+              <Flex column :gap="0" class="forum__category-post--name">
+                <Skeleton width="128px" height="16px" class="mb-xs" />
+                <Skeleton width="192px" height="16px" />
+              </Flex>
               <div v-for="skel of 3" :key="skel" class="forum__category-post--meta">
                 <Skeleton width="32px" height="16px" />
               </div>
@@ -1342,6 +1341,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
   .forum__category-title,
   .forum__category-post .forum__category-post--item {
     grid-template-columns: 32px 5fr 1fr 24px;
+    gap: var(--space-m);
   }
 
   .forum__category-post--icon {

@@ -185,7 +185,7 @@ const { displayReactions, toggleReaction } = useReactions({
       <Flex y-center x-start>
         <UserAvatar size="s" :user-id="data.created_by" show-preview linked />
         <UserName size="m" show-preview :user-id="data.created_by" />
-        <Tooltip v-if="timestamps && !isMobile" :delay="500">
+        <Tooltip v-if="timestamps" :delay="500">
           <p class="discussion-comment__timestamp">
             {{ dayjs(data.created_at).fromNow() }}
             <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
@@ -197,7 +197,7 @@ const { displayReactions, toggleReaction } = useReactions({
             </p>
           </template>
         </Tooltip>
-        <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-comment__reply-count" @click.stop="emit('openReplies')">
+        <button v-if="threadReplyCount && threadReplyCount > 0 && !isMobile" class="discussion-comment__reply-count" @click.stop="emit('openReplies')">
           {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
         </button>
       </Flex>
