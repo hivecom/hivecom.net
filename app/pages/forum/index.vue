@@ -506,25 +506,27 @@ const modelledTopics = computed(() => {
 
   // Sort topics to prioritize `sort_order` and the rest is sorted
   // alphabetically below. Only manually-created topics should have a sort_order
-  return filtered.toSorted((a, b) => {
-    const aHasOrder = a.priority !== 0
-    const bHasOrder = b.priority !== 0
-
-    if (aHasOrder && bHasOrder) {
-      if (a.priority === b.priority) {
-        return a.name.localeCompare(b.name)
-      }
-      return b.priority - a.priority
-    }
-
-    if (aHasOrder && !bHasOrder)
-      return -1
-    if (!aHasOrder && bHasOrder)
-      return 1
-
-    return a.name.localeCompare(b.name)
-  })
+  return filtered.toSorted(sortTopicsByPriority)
 })
+
+function sortTopicsByPriority(a: { priority: number, name: string }, b: { priority: number, name: string }) {
+  const aHasOrder = a.priority !== 0
+  const bHasOrder = b.priority !== 0
+
+  if (aHasOrder && bHasOrder) {
+    if (a.priority === b.priority) {
+      return a.name.localeCompare(b.name)
+    }
+    return b.priority - a.priority
+  }
+
+  if (aHasOrder && !bHasOrder)
+    return -1
+  if (!aHasOrder && bHasOrder)
+    return 1
+
+  return a.name.localeCompare(b.name)
+}
 
 // Return all topics which have the given parent id. Used to list nested topics
 function getTopicsByParentId(parentId: string | null) {
@@ -535,7 +537,7 @@ function getTopicsByParentId(parentId: string | null) {
     filtered = filtered.filter(item => !item.is_archived)
   }
 
-  return filtered
+  return filtered.toSorted(sortTopicsByPriority)
 }
 
 // When discussion is created, append it to the selected parent topic
