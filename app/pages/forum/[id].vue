@@ -864,7 +864,7 @@ function revealNsfw() {
   border-bottom: 1px solid var(--color-border);
   z-index: var(--z-nav);
 
-  .container {
+  > div {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -904,6 +904,11 @@ function revealNsfw() {
 }
 
 @media screen and (max-width: $breakpoint-m) {
+  .page.forum.container {
+    max-width: 100%;
+    padding-inline: 0;
+  }
+
   // Scrolling is easier on phone so this isn't really needed
   .forum-post__fast-travel {
     display: none;

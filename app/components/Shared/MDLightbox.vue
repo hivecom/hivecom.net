@@ -3,7 +3,7 @@ import { Button, Flex, Modal } from '@dolanske/vui'
 
 const props = defineProps<Props>()
 
-const IMAGE_URL_SOURCE = String.raw`!\[.*?\]\((.*?\.(?:jpe?g|png|webp)(?:\?[^)]*)?)\)`
+const IMAGE_URL_SOURCE = String.raw`!\[.*?\]\((.*?\.(?:jpe?g|png|webp|gif)(?:\?[^)]*)?)\)`
 
 interface Props {
   markdown: string

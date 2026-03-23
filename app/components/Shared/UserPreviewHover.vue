@@ -70,6 +70,6 @@ const canShowPopout = computed(() => !!(visible.value && props.userId && user.va
 
 <style lang="scss">
 .user-preview-hover {
-  display: inline-block;
+  display: inline-flex;
 }
 </style>

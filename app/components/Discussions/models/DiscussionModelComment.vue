@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Comment, DiscussionSettings, ProvidedDiscussion } from '../Discussion.types'
-import { Alert, Button, ButtonGroup, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
@@ -14,6 +15,7 @@ import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import { stripMarkdown } from '@/lib/markdownProcessors'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { DISCUSSION_KEYS } from '../Discussion.keys'
 
@@ -155,6 +157,19 @@ watch(editedContent, () => editError.value = [])
 
 const showReportModal = ref(false)
 
+// ── Toolbar timestamps ────────────────────────────────────────────────────────
+
+const postedAtFormatted = computed(() => dayjs(data.value.created_at).fromNow())
+const editedAtFormatted = computed(() => {
+  if (data.value.modified_at === data.value.created_at)
+    return null
+  return dayjs(data.value.modified_at).fromNow()
+})
+
+// ── Breakpoint ────────────────────────────────────────────────────────────────
+
+const isMobile = useBreakpoint('<s')
+
 // ── Reactions ─────────────────────────────────────────────────────────────────
 
 const { displayReactions, toggleReaction } = useReactions({
@@ -166,24 +181,56 @@ const { displayReactions, toggleReaction } = useReactions({
 
 <template>
   <div class="discussion-comment">
-    <Flex y-center x-start>
-      <UserAvatar size="s" :user-id="data.created_by" show-preview linked />
-      <UserName size="m" show-preview :user-id="data.created_by" />
-      <Tooltip v-if="timestamps" :delay="500">
-        <p class="discussion-comment__timestamp">
-          {{ dayjs(data.created_at).fromNow() }}
-          <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
-        </p>
-        <template #tooltip>
-          <p>{{ dayjs(data.created_at).format('MMM D, YYYY [at] h:mm A') }}</p>
-          <p v-if="data.modified_at !== data.created_at">
-            Edited {{ dayjs(data.modified_at).format('MMM D, YYYY [at] h:mm A') }}{{ modifierId && modifierUser ? ` by ${modifierUser.username}` : '' }}
+    <Flex y-center x-between>
+      <Flex y-center x-start>
+        <UserAvatar size="s" :user-id="data.created_by" show-preview linked />
+        <UserName size="m" show-preview :user-id="data.created_by" />
+        <Tooltip v-if="timestamps && !isMobile" :delay="500">
+          <p class="discussion-comment__timestamp">
+            {{ dayjs(data.created_at).fromNow() }}
+            <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
           </p>
-        </template>
-      </Tooltip>
-      <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-comment__reply-count" @click.stop="emit('openReplies')">
-        {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
-      </button>
+          <template #tooltip>
+            <p>{{ dayjs(data.created_at).format('MMM D, YYYY [at] h:mm A') }}</p>
+            <p v-if="data.modified_at !== data.created_at">
+              Edited {{ dayjs(data.modified_at).format('MMM D, YYYY [at] h:mm A') }}{{ modifierId && modifierUser ? ` by ${modifierUser.username}` : '' }}
+            </p>
+          </template>
+        </Tooltip>
+        <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-comment__reply-count" @click.stop="emit('openReplies')">
+          {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+        </button>
+      </Flex>
+
+      <!-- Mobile: reaction button (only when no reactions exist) + three-dot trigger -->
+      <Flex v-if="isMobile" y-center gap="xxs">
+        <ReactionsSelect v-if="userId && displayReactions.length === 0" @reaction="(emote) => toggleReaction(emote)">
+          <template #default="{ toggle }">
+            <Button size="s" square plain @click="toggle">
+              <Icon name="ph:smiley-bold" />
+            </Button>
+          </template>
+        </ReactionsSelect>
+        <DiscussionActionsToolbar
+          :data="data"
+          :user-id="userId"
+          :current-user-data="currentUserData"
+          :can-bypass-lock="canBypassLock"
+          :can-mark-offtopic="canMarkOfftopic"
+          :offtopic-loading="offtopicLoading"
+          :loading-deletion="loadingDeletion"
+          :show-n-s-f-w-warning="showNSFWWarning"
+          :posted-at="postedAtFormatted"
+          :edited-at="editedAtFormatted"
+          :modifier-id="modifierId"
+          @reply="setReplyToComment(data)"
+          @copy-link="emit('copyLink')"
+          @start-editing="startEditing"
+          @delete="showDeleteModal = true"
+          @toggle-offtopic="handleToggleOfftopic"
+          @report="showReportModal = true"
+        />
+      </Flex>
     </Flex>
 
     <Tooltip v-if="data.reply && viewMode !== 'threaded'" :delay="750">
@@ -226,7 +273,7 @@ const { displayReactions, toggleReaction } = useReactions({
     </Flex>
 
     <div class="discussion-comment__actions">
-      <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
+      <ReactionsSelect v-if="userId && !isMobile" @reaction="(emote) => toggleReaction(emote)">
         <template #default="{ toggle }">
           <Button size="s" square @click="toggle">
             <Tooltip>
@@ -239,91 +286,44 @@ const { displayReactions, toggleReaction } = useReactions({
         </template>
       </ReactionsSelect>
 
-      <ButtonGroup>
-        <!-- Reply -->
-        <Button v-if="currentUserData && (!discussion?.is_locked || canBypassLock) && !discussion?.is_archived" square size="s" @click="setReplyToComment(data)">
-          <Tooltip>
-            <Icon name="ph:arrow-elbow-up-left-bold" />
-            <template #tooltip>
-              <p>Reply to <UserDisplay class="inline-block" size="s" :user-id="data.created_by" hide-avatar /></p>
-            </template>
-          </Tooltip>
-        </Button>
-        <!-- Copy link -->
-        <Button size="s" square @click="emit('copyLink')">
-          <Tooltip>
-            <Icon name="ph:link-bold" />
-            <template #tooltip>
-              <p>Copy link to comment</p>
-            </template>
-          </Tooltip>
-        </Button>
-      </ButtonGroup>
-
-      <!-- Edit & delete - own comments, or any comment for admins/mods -->
-      <ButtonGroup v-if="currentUserData && (currentUserData.id === data.created_by || currentUserData.role === 'admin' || currentUserData.role === 'moderator') && !discussion?.is_locked && !discussion?.is_archived">
-        <Button size="s" square :inert="loadingDeletion" @click="startEditing">
-          <Tooltip>
-            <Icon name="ph:pen-bold" />
-            <template #tooltip>
-              <p>Edit comment</p>
-            </template>
-          </Tooltip>
-        </Button>
-        <Button size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="showDeleteModal = true">
-          <Tooltip>
-            <Icon name="ph:trash-bold" />
-            <template #tooltip>
-              <p>Delete comment</p>
-            </template>
-          </Tooltip>
-        </Button>
-      </ButtonGroup>
-
-      <!-- Off-topic toggle + report grouped on the right -->
-      <!-- Admins/mods can flag any reply including their own; plain OPs cannot flag themselves -->
-      <ButtonGroup v-if="(canMarkOfftopic && (canBypassLock || userId !== data.created_by)) || (currentUserData && data.created_by !== currentUserData.id)">
-        <Button
-          v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by)"
-          size="s"
-          square
-          :loading="offtopicLoading"
-          :variant="data.is_offtopic ? 'danger' : 'gray'"
-          @click="handleToggleOfftopic"
-        >
-          <Tooltip>
-            <Icon :name="data.is_offtopic ? 'ph:warning-circle-fill' : 'ph:warning-circle'" />
-            <template #tooltip>
-              <p>{{ data.is_offtopic ? 'Remove off-topic flag' : 'Mark as off-topic' }}</p>
-            </template>
-          </Tooltip>
-        </Button>
-        <Button v-if="currentUserData && data.created_by !== currentUserData.id" size="s" square @click="showReportModal = true">
-          <Tooltip>
-            <Icon name="ph:flag-bold" />
-            <template #tooltip>
-              <p>Report comment</p>
-            </template>
-          </Tooltip>
-        </Button>
-      </ButtonGroup>
-
-      <ConfirmModal
-        :open="showDeleteModal"
-        :confirm-loading="loadingDeletion"
-        title="Delete comment"
-        description="Please confirm the deletion. This action cannot be undone."
-        @close="showDeleteModal = false"
-        @confirm="handleDeletion"
-      >
-        <Card
-          class="card-bg" :style="{ maxHeight: 512,
-                                    overflowY: 'auto' }"
-        >
-          <MDRenderer :md="data.markdown" skeleton-height="0px" />
-        </Card>
-      </ConfirmModal>
+      <!-- Desktop floating actions (hidden on mobile - toolbar is in the header row instead) -->
+      <DiscussionActionsToolbar
+        v-if="!isMobile"
+        :data="data"
+        :user-id="userId"
+        :current-user-data="currentUserData"
+        :can-bypass-lock="canBypassLock"
+        :can-mark-offtopic="canMarkOfftopic"
+        :offtopic-loading="offtopicLoading"
+        :loading-deletion="loadingDeletion"
+        :show-n-s-f-w-warning="showNSFWWarning"
+        :posted-at="postedAtFormatted"
+        :edited-at="editedAtFormatted"
+        :modifier-id="modifierId"
+        @reply="setReplyToComment(data)"
+        @copy-link="emit('copyLink')"
+        @start-editing="startEditing"
+        @delete="showDeleteModal = true"
+        @toggle-offtopic="handleToggleOfftopic"
+        @report="showReportModal = true"
+      />
     </div>
+
+    <ConfirmModal
+      :open="showDeleteModal"
+      :confirm-loading="loadingDeletion"
+      title="Delete comment"
+      description="Please confirm the deletion. This action cannot be undone."
+      @close="showDeleteModal = false"
+      @confirm="handleDeletion"
+    >
+      <Card
+        class="card-bg" :style="{ maxHeight: 512,
+                                  overflowY: 'auto' }"
+      >
+        <MDRenderer :md="data.markdown" skeleton-height="0px" />
+      </Card>
+    </ConfirmModal>
 
     <!-- Edit modal -->
     <Modal :open="editing" centered scrollable size="m" @close="endEditing">
