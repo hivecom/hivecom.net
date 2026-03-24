@@ -43,7 +43,7 @@ const selectedYearOption = computed({
 // Get available years from data
 const availableYears = computed(() => {
   const years = new Set(
-    props.monthlyFunding.map(funding => new Date(`${funding.month}T00:00:00Z`).getFullYear()),
+    props.monthlyFunding.map(funding => new Date(`${funding.month}T00:00:00`).getFullYear()),
   )
   return [...years].toSorted((a, b) => b - a) // Most recent first
 })
@@ -58,12 +58,12 @@ const isCurrentYear = computed(() => selectedYear.value === new Date().getFullYe
 const historicalData = computed(() => {
   // Filter by year if selected
   const filteredData = props.monthlyFunding.filter((funding) => {
-    const year = new Date(`${funding.month}T00:00:00Z`).getFullYear()
+    const year = new Date(`${funding.month}T00:00:00`).getFullYear()
     return year === selectedYear.value
   })
 
   return filteredData.map((funding) => {
-    const month = new Date(`${funding.month}T00:00:00Z`)
+    const month = new Date(`${funding.month}T00:00:00`)
     const totalMonthly = (funding.patreon_month_amount_cents || 0) + (funding.donation_month_amount_cents || 0)
     const totalLifetime = (funding.patreon_lifetime_amount_cents || 0) + (funding.donation_lifetime_amount_cents || 0)
 
