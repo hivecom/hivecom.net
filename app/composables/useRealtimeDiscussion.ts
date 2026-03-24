@@ -81,7 +81,7 @@ export function useRealtimeDiscussion(
       // Invalidate both caches - reply_count has changed server-side and the
       // replies list is now stale (we just extended it above).
       discussionCache.invalidate(discussion.value.id, discussion.value.slug)
-      repliesCache.set(discussion.value.id, comments.value)
+      repliesCache.set(discussion.value.id, comments.value, model.value !== 'comment')
     }
     finally {
       pendingLoading.value = false
@@ -147,7 +147,7 @@ export function useRealtimeDiscussion(
           }
 
           // Keep the replies cache in sync with the patched list.
-          repliesCache.set(discussionId, comments.value)
+          repliesCache.set(discussionId, comments.value, model.value !== 'comment')
         },
       )
       .on(
@@ -163,7 +163,7 @@ export function useRealtimeDiscussion(
           comments.value = comments.value.filter(c => c.id !== deletedId)
 
           // Keep the replies cache in sync with the pruned list.
-          repliesCache.set(discussionId, comments.value)
+          repliesCache.set(discussionId, comments.value, model.value !== 'comment')
         },
       )
       .subscribe()
