@@ -482,6 +482,7 @@ const editedAtFormatted = computed(() => {
         :errors="editError"
         :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"
         :media-bucket-id="FORUMS_BUCKET_ID"
+        show-attachment-button
         min-height="196px"
         class="mb-xs"
         placeholder="Edit your message. Do not leave it empty!"

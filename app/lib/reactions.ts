@@ -41,65 +41,35 @@ export const HIVECOM_PROVIDER = 'hivecom' as const
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * The set of emotes the hivecom front-end knows how to group and display in
- * its reaction picker. This is a **display-layer constant**, not a validation
- * list - the DB accepts any emoji.
+ * Grouped emote manifest for the hivecom reaction picker.
+ * This is the single source of truth - the flat list and picker UI are both
+ * derived from this. Add emotes here only; ReactionsSelect.vue reads this directly.
  *
- * If you add emotes here, consider also updating the groups in
- * `ReactionsSelect.vue` so users can pick them from the UI.
+ * This is a **display-layer constant**, not a validation list - the DB accepts any emoji.
  */
-export const HIVECOM_EMOTES = [
-  // ── Reactions ─────────────────────────────────────────────────────────────
-  '👍',
-  '👎',
-  '🙌',
-  '❤️',
-  '🔥',
-  '🎉',
-  '👀',
-  '💯',
-  '💀',
-  '⭐',
-  '🏆',
-  // ── Emoticons ─────────────────────────────────────────────────────────────
-  '😂',
-  '😢',
-  '😭',
-  '😳',
-  '🤯',
-  '😍',
-  '😡',
-  '🤔',
-  '😴',
-  '🫠',
-  // ── Symbols ───────────────────────────────────────────────────────────────
-  '✅',
-  '❎',
-  '🅰️',
-  '🅱️',
-  '🆒',
-  '🆗',
-  '⚠️',
-  // ── Other ─────────────────────────────────────────────────────────────────
-  '💅',
-  '🚀',
-  '🏳️‍🌈',
-  '🗿',
-  '🍆',
-  '🍑',
-  '💦',
-  '🌡️',
-  '☀️',
-  '🌧️',
-  '🌞',
-  '🌚',
-  '🌿',
-  '🌱',
-  '🥀',
-  '🥚',
-] as const
+export const HIVECOM_EMOTE_GROUPS: { label: string, emotes: string[] }[] = [
+  {
+    label: 'Reactions',
+    emotes: ['👍', '👎', '🙌', '❤️', '🔥', '🎉', '👀', '💯', '💀', '⭐', '🏆'],
+  },
+  {
+    label: 'Emoticons',
+    emotes: ['😂', '😢', '😭', '😳', '🤯', '😍', '😡', '🤔', '😴', '🫠', '😎'],
+  },
+  {
+    label: 'Symbols',
+    emotes: ['✅', '❎', '🅰️', '🅱️', '🆒', '🆗', '⚠️'],
+  },
+  {
+    label: 'Other',
+    emotes: ['💅', '🚀', '🏳️‍🌈', '🗿', '🍆', '🍑', '💦', '🌡️', '☀️', '🌧️', '🌞', '🌚', '🌿', '🌱', '🥀', '🐺', '🥚'],
+  },
+]
 
-export type HivecomEmote = typeof HIVECOM_EMOTES[number]
+/** Flat list of all known hivecom emotes, derived from HIVECOM_EMOTE_GROUPS. */
+export const HIVECOM_EMOTES = HIVECOM_EMOTE_GROUPS.flatMap(g => g.emotes)
+
+export type HivecomEmote = string
 
 /** Fast O(1) membership check for display-layer filtering. */
 const HIVECOM_EMOTE_SET = new Set<string>(HIVECOM_EMOTES)
@@ -181,6 +151,12 @@ export function buildDisplayReactions(
 
     for (const [emote, reactors] of Object.entries(emotes)) {
       if (!Array.isArray(reactors) || reactors.length === 0)
+        continue
+
+      // For the hivecom provider, skip emotes not in the display manifest.
+      // External providers (e.g. "xdd") have their own emote namespaces so
+      // we leave those unfiltered.
+      if (provider === HIVECOM_PROVIDER && !isHivecomEmote(emote))
         continue
 
       result.push({

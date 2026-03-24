@@ -2,29 +2,11 @@
 import { Drawer, Popout } from '@dolanske/vui'
 import { createReusableTemplate } from '@vueuse/core'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { HIVECOM_EMOTE_GROUPS } from '@/lib/reactions'
 
 const emit = defineEmits<{
   (e: 'reaction', reaction: string): void
 }>()
-
-const EMOTE_GROUPS: { label: string, emotes: string[] }[] = [
-  {
-    label: 'Reactions',
-    emotes: ['👍', '👎', '🙌', '❤️', '🔥', '🎉', '👀', '💯', '💀', '⭐', '🏆'],
-  },
-  {
-    label: 'Emoticons',
-    emotes: ['😂', '😢', '😭', '😳', '🤯', '😍', '😡', '🤔', '😴', '🫠'],
-  },
-  {
-    label: 'Symbols',
-    emotes: ['✅', '❎', '🅰️', '🅱️', '🆒', '🆗', '⚠️'],
-  },
-  {
-    label: 'Other',
-    emotes: ['💅', '🚀', '🏳️‍🌈', '🗿', '🍆', '🍑', '💦', '🌡️', '☀️', '🌧️', '🌞', '🌚', '🌿', '🌱', '🥀', '🐺', '🥚'],
-  },
-]
 
 const anchor = useTemplateRef('anchor')
 const open = ref(false)
@@ -45,7 +27,7 @@ function selectEmote(emote: string) {
 <template>
   <DefinePickerContent>
     <div class="reactions__picker">
-      <div v-for="group in EMOTE_GROUPS" :key="group.label" class="reactions__group">
+      <div v-for="group in HIVECOM_EMOTE_GROUPS" :key="group.label" class="reactions__group">
         <p class="reactions__group-label">
           {{ group.label }}
         </p>

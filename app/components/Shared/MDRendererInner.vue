@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useBulkDataUser } from '@/composables/useDataUser'
+import { groupImages } from '@/lib/imageGrouping'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import MDLightbox from './MDLightbox.vue'
 
@@ -17,6 +18,16 @@ const props = defineProps({
   },
 })
 
+// Wraps runs of solo-image <p> elements in .md-image-group divs.
+// groupImages() operates on a direct container element - pass the .typeset node.
+function runGroupImages(root: HTMLElement | null) {
+  if (!root)
+    return
+  const typeset = root.querySelector('.typeset')
+  if (typeset instanceof HTMLElement)
+    groupImages(typeset)
+}
+
 const container = useTemplateRef('container')
 
 const mentionIds = computed(() => extractMentionIds(props.md))
@@ -32,11 +43,40 @@ watch(processedMarkdown, async (val) => {
   const result = await parseMarkdown(val, { toc: false, contentHeading: false })
   parsed.body = result.body
   parsed.data = result.data
+  await nextTick()
+  runGroupImages(container.value)
+})
+
+// MutationObserver is more reliable than onMounted+nextTick here because
+// MDCRenderer (a nuxt-mdc child) does its own async rendering - by the time
+// onMounted fires, the .typeset children may not exist yet. The observer
+// fires once the subtree actually settles with content.
+let observer: MutationObserver | null = null
+
+onMounted(() => {
+  const root = container.value
+  if (!root)
+    return
+
+  // Disconnect before grouping - our own DOM mutations would re-trigger the
+  // observer otherwise. The watch on processedMarkdown handles content updates.
+  observer = new MutationObserver(() => {
+    observer?.disconnect()
+    observer = null
+    runGroupImages(root)
+  })
+
+  observer.observe(root, { childList: true, subtree: true })
+})
+
+onUnmounted(() => {
+  observer?.disconnect()
+  observer = null
 })
 </script>
 
 <template>
-  <div ref="container">
+  <div ref="container" class="md-renderer-inner">
     <MDCRenderer
       v-if="parsed.body"
       :body="parsed.body"
@@ -49,6 +89,31 @@ watch(processedMarkdown, async (val) => {
 </template>
 
 <style lang="scss">
+/* Consecutive solo-image paragraphs grouped into a flex row */
+.md-image-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin: var(--space-xs) 0;
+
+  > p,
+  > img {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+  }
+
+  > p > img,
+  > img {
+    width: 100%;
+    max-height: 240px;
+    max-width: none;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: var(--border-radius-s);
+  }
+}
+
 /* YouTube embed produced by processYoutubeDirectives */
 .md-youtube-embed {
   display: flex;

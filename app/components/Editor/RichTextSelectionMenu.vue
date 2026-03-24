@@ -494,6 +494,12 @@ const [DefineToolbar, ReuseToolbar] = createReusableTemplate()
             <Icon :size="18" name="ph:quotes" />
           </Button>
         </ButtonGroup>
+
+        <ButtonGroup>
+          <Button size="s" square @click="props.editor.chain().focus().setDetails().insertContent('Spoiler').run()">
+            <Icon :size="18" name="ph:eye-slash" />
+          </Button>
+        </ButtonGroup>
       </template>
     </Flex>
   </DefineToolbar>

@@ -17,8 +17,12 @@ const FONT_TAG_RE = /:::font\[([a-z]+)\]([\s\S]*?):::(?![a-z-]+\[)/gi
 const SIZE_TAG_RE = /:::size\[([a-z]+)\]([\s\S]*?):::(?![a-z-]+\[)/gi
 const COLON_COMPONENT_RE = /(^|[ \t\n]):([A-Z][A-Z0-9-]*)/gim
 const WORD_ONLY_RE = /^\w+$/
+const DETAILS_WORD_AFTER_RE = /^(\w*)/
 const STRIP_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/g
+
+const DETAILS_SUMMARY_RE = /:::detailsSummary([\s\S]*?):::/
+const DETAILS_CONTENT_RE = /:::detailsContent([\s\S]*?):::/
 const STRIP_BLOCK_MATH_RE = /\$\$[\s\S]*?\$\$/g
 const STRIP_INLINE_MATH_RE = /\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/g
 const STRIP_HTML_TAGS_RE = /<[^>]*>/g
@@ -91,6 +95,104 @@ function youtubeUrlToEmbedUrl(src: string, start?: string): string | null {
   }
 
   return null
+}
+
+/**
+ * Converts TipTap's `:::details` / `:::detailsSummary` / `:::detailsContent`
+ * nested block directives into native HTML `<details>/<summary>` elements so
+ * that remark-mdc passes them through as raw HTML instead of trying to resolve
+ * unknown block components.
+ *
+ * Serialized format (from @tiptap/markdown createBlockMarkdownSpec):
+ *
+ *   :::details
+ *
+ *   :::detailsSummary
+ *
+ *   Title text
+ *
+ *   :::
+ *
+ *   :::detailsContent
+ *
+ *   Body content
+ *
+ *   :::
+ *
+ *   :::
+ */
+export function processDetailsDirectives(markdown: string): string {
+  // Regex-based approaches fail because the outer :::details block contains
+  // nested :::detailsSummary and :::detailsContent blocks, each with their own
+  // closing :::. We use a depth-counting scan instead: find :::details openings,
+  // track nesting depth by counting all ::: openers/closers, and extract the
+  // full outer block before converting it to native HTML.
+  const result: string[] = []
+  let i = 0
+
+  while (i < markdown.length) {
+    const openIdx = markdown.indexOf(':::details', i)
+    if (openIdx === -1) {
+      result.push(markdown.slice(i))
+      break
+    }
+
+    // Push everything before this :::details block unchanged
+    result.push(markdown.slice(i, openIdx))
+
+    // Find the matching outer closing ::: by tracking nesting depth.
+    // Every ::: followed by word characters opens a new block (depth++).
+    // Every bare ::: (no word chars immediately after) closes one (depth--).
+    let depth = 1
+    let pos = openIdx + ':::details'.length
+
+    // Advance past the rest of the opening line
+    const nlAfterOpen = markdown.indexOf('\n', pos)
+    if (nlAfterOpen === -1) {
+      result.push(markdown.slice(openIdx))
+      break
+    }
+    pos = nlAfterOpen + 1
+
+    let closePos = -1
+    while (pos < markdown.length && depth > 0) {
+      const nextTriple = markdown.indexOf(':::', pos)
+      if (nextTriple === -1)
+        break
+
+      // Determine whether this ::: opens (has word chars) or closes (bare)
+      const afterTriple = markdown.slice(nextTriple + 3).match(DETAILS_WORD_AFTER_RE)
+      const wordAfter = afterTriple?.[1] ?? ''
+      if (wordAfter.length > 0) {
+        depth++
+      }
+      else {
+        depth--
+        if (depth === 0)
+          closePos = nextTriple
+      }
+      pos = nextTriple + 3 + wordAfter.length + 1
+    }
+
+    if (closePos === -1) {
+      // Unmatched block - pass through as-is
+      result.push(markdown.slice(openIdx))
+      break
+    }
+
+    const inner = markdown.slice(openIdx + ':::details'.length, closePos)
+
+    const summaryMatch = inner.match(DETAILS_SUMMARY_RE)
+    const summaryText = summaryMatch?.[1]?.trim() ?? 'Details'
+
+    const contentMatch = inner.match(DETAILS_CONTENT_RE)
+    const bodyText = contentMatch?.[1]?.trim() ?? ''
+
+    result.push(`\n<details>\n<summary>${summaryText}</summary>\n\n${bodyText}\n\n</details>\n`)
+    i = closePos + 3
+  }
+
+  return result.join('')
 }
 
 /**
@@ -300,6 +402,10 @@ export function processMarkdown(markdown: string): string {
   if (!markdown)
     return ''
 
+  // Convert TipTap details/spoiler directives to native <details> HTML first
+  // so that MDC doesn't try to resolve them as unknown block components.
+  markdown = processDetailsDirectives(markdown)
+
   // Convert TipTap YouTube directives to raw HTML iframes first so that MDC
   // doesn't see the `:::youtube` syntax it cannot parse.
   markdown = processYoutubeDirectives(markdown)
@@ -424,6 +530,10 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
     content = truncate(content, truncateAmount)
   }
 
+  // Convert :::details blocks to HTML so the summary label and body text
+  // survive as plain text; STRIP_HTML_TAGS_RE below then removes the tags.
+  content = processDetailsDirectives(content)
+
   // 0b-pre. Remove inline directives: :::color/font/size[name]text::: → keep inner text
   // Must run before the chain since it needs iterative application for nested directives.
   content = stripInlineDirectives(content)
@@ -431,7 +541,7 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
   return content
     // 0a. Remove YouTube directives: :::youtube {src="..." ...} :::
     .replace(STRIP_YOUTUBE_RE, '')
-    // 0a2. Remove video directives: :::video {src="..." ...} :::
+    // 0b2. Remove video directives: :::video {src="..." ...} :::
     .replace(STRIP_VIDEO_RE, '')
     // 0b. Remove block math: $$...$$
     .replace(STRIP_BLOCK_MATH_RE, '')

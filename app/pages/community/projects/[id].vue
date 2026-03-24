@@ -119,7 +119,7 @@ useHead({
         </div>
 
         <div class="project-header__body">
-          <Flex column gap="m" expand>
+          <Flex column gap="m" expand :y-center="isMobile">
             <h1 class="project-header__title">
               {{ project.title }}
             </h1>

@@ -285,6 +285,9 @@ onBeforeMount(async () => {
       nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
       void loadTopicBreadcrumbs(data.discussion_topic_id)
       void fetchSubscription(data.id)
+      // Mark the discussion seen in localStorage so the unread dot clears
+      // even when navigating here by direct URL rather than from the forum index.
+      forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
     }
 
     loading.value = false
@@ -345,6 +348,8 @@ onBeforeMount(async () => {
         nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
         void loadTopicBreadcrumbs(data.discussion_topic_id)
         void fetchSubscription(data.id)
+        // Mark seen in localStorage so the unread dot clears on direct URL visits.
+        forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
       }
 
       loading.value = false
@@ -424,6 +429,11 @@ function publish() {
  */
 function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)
+  // Also bump the parent topic's stored reply count so the topic-level unread
+  // dot doesn't fire for activity the current user just created.
+  if (post.value?.discussion_topic_id != null) {
+    forumUnread.bumpTopicReplySeen(post.value.discussion_topic_id)
+  }
 }
 
 const pageTitle = useTemplateRef('page-title')
@@ -526,7 +536,7 @@ function revealNsfw() {
       </Transition>
 
       <section ref="page-title" class="page-title" :class="isMobile ? 'mb-l' : 'mb-xl'">
-        <Flex x-between y-center>
+        <Flex wrap x-between y-center>
           <div class="relative">
             <template v-if="topicBreadcrumbs.length && !isMobile">
               <Button
@@ -541,13 +551,17 @@ function revealNsfw() {
                 <Icon class="text-color" name="ph:arrow-left" :size="16" />
               </Button>
               <Breadcrumbs>
-                <BreadcrumbItem @click="router.push('/forum')">
+                <BreadcrumbItem
+                  href="/forum"
+                  @click.prevent="router.push('/forum')"
+                >
                   Forum
                 </BreadcrumbItem>
                 <BreadcrumbItem
                   v-for="topic in topicBreadcrumbs"
                   :key="topic.id"
-                  @click="router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`)"
+                  :href="`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`"
+                  @click.prevent="router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`)"
                 >
                   <Flex y-center gap="xs" :style="{ display: 'inline-flex' }">
                     <img
@@ -560,6 +574,24 @@ function revealNsfw() {
                   </Flex>
                 </BreadcrumbItem>
               </Breadcrumbs>
+            </template>
+            <template v-else-if="isMobile">
+              <!-- Back Button -->
+              <Flex x-between>
+                <Button
+                  expand
+                  variant="gray"
+                  size="s"
+                  plain
+                  aria-label="Go back to Forum"
+                  @click="$router.push('/forum')"
+                >
+                  <template #start>
+                    <Icon name="ph:arrow-left" />
+                  </template>
+                  Forum
+                </Button>
+              </Flex>
             </template>
           </div>
 
