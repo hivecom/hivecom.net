@@ -17,7 +17,7 @@ defineProps<Props>()
 <template>
   <Accordion class="metadata-card" card>
     <template #header>
-      <Flex expand x-between y-center class="metadata-card__header pr-m">
+      <Flex expand x-between y-center wrap class="metadata-card__header pr-m">
         <h3 class="metadata-card__title">
           <Icon name="ph:info" />
           Metadata
@@ -73,5 +73,6 @@ defineProps<Props>()
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
+  justify-content: flex-end;
 }
 </style>

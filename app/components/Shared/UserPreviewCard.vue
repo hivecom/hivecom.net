@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
-import { Avatar, Button, Divider, Flex } from '@dolanske/vui'
+import { Avatar, Button, Divider, Flex, Skeleton } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
@@ -115,105 +115,144 @@ const {
 </script>
 
 <template>
-  <div v-if="!loading" class="user-preview-card">
-    <div v-if="!props.userId" class="user-preview-card__state text-center text-color-light">
-      <p>Select a user to preview.</p>
-    </div>
+  <div class="user-preview-card">
+    <!-- Skeleton state -->
+    <template v-if="loading">
+      <Flex class="user-preview-card__header" expand x-between>
+        <Skeleton :width="88" :height="88" :radius="44" />
+        <Flex gap="xxs" class="user-preview-card__badges-skeleton">
+          <Skeleton v-for="i in 3" :key="i" :width="28" :height="28" :radius="14" />
+        </Flex>
+      </Flex>
 
+      <Flex column gap="xs" class="user-preview-card__identity">
+        <Flex y-center gap="xs">
+          <Skeleton :width="120" :height="22" :radius="4" />
+          <Skeleton :width="48" :height="18" :radius="9" />
+        </Flex>
+        <Flex expand x-between>
+          <Skeleton :width="140" :height="14" :radius="4" />
+          <Skeleton :width="80" :height="14" :radius="4" />
+        </Flex>
+      </Flex>
+
+      <Divider style="height: 8px;" />
+
+      <Flex column gap="xs">
+        <Skeleton :height="14" width="100%" :radius="4" />
+        <Skeleton :height="14" width="85%" :radius="4" />
+        <Skeleton :height="14" width="60%" :radius="4" />
+      </Flex>
+    </template>
+
+    <!-- Empty / no userId -->
+    <template v-else-if="!props.userId">
+      <div class="user-preview-card__state text-center text-color-light">
+        <p>Select a user to preview.</p>
+      </div>
+    </template>
+
+    <!-- Unauthenticated and profile not visible - render nothing -->
     <template v-else-if="isExpectedEmpty" />
 
-    <Flex v-else-if="error || !user" column y-center gap="s" class="user-preview-card__state text-center text-color-light">
-      <p>{{ error ?? 'We could not load this profile right now.' }}</p>
-      <Button size="s" variant="gray" @click="handleRetry">
-        Retry
-      </Button>
-    </Flex>
+    <!-- Error state -->
+    <template v-else-if="error || !user">
+      <Flex column y-center gap="s" class="user-preview-card__state text-center text-color-light">
+        <p>{{ error ?? 'We could not load this profile right now.' }}</p>
+        <Button size="s" variant="gray" @click="handleRetry">
+          Retry
+        </Button>
+      </Flex>
+    </template>
 
-    <Flex v-else column gap="xs">
-      <Flex expand x-between class="user-preview-card__header">
-        <Flex>
-          <NuxtLink
-            v-if="profileLink"
-            :to="profileLink"
-            class="user-preview-card__avatar-link"
-            :aria-label="`View profile of ${user.username}`"
-          >
-            <Avatar class="user-preview-card__avatar" :size="props.avatarSize" :url="user.avatarUrl || undefined">
+    <!-- Loaded state -->
+    <template v-else>
+      <Flex column gap="xs">
+        <Flex expand x-between class="user-preview-card__header">
+          <Flex>
+            <NuxtLink
+              v-if="profileLink"
+              :to="profileLink"
+              class="user-preview-card__avatar-link"
+              :aria-label="`View profile of ${user.username}`"
+            >
+              <Avatar class="user-preview-card__avatar" :size="props.avatarSize" :url="user.avatarUrl || undefined">
+                <template v-if="!user.avatarUrl" #default>
+                  {{ userInitials }}
+                </template>
+              </Avatar>
+            </NuxtLink>
+            <Avatar
+              v-else
+              :size="props.avatarSize"
+              :url="user.avatarUrl || undefined"
+            >
               <template v-if="!user.avatarUrl" #default>
                 {{ userInitials }}
               </template>
             </Avatar>
-          </NuxtLink>
-          <Avatar
-            v-else
-            :size="props.avatarSize"
-            :url="user.avatarUrl || undefined"
-          >
-            <template v-if="!user.avatarUrl" #default>
-              {{ userInitials }}
-            </template>
-          </Avatar>
+          </Flex>
+
+          <UserPreviewCardBadges
+            v-if="props.showBadges"
+            class="user-preview-card__badges"
+            :user="user"
+            :max-badges="3"
+          />
         </Flex>
 
-        <UserPreviewCardBadges
-          v-if="props.showBadges"
-          class="user-preview-card__badges"
-          :user="user"
-          :max-badges="3"
+        <Flex column gap="xs" class="user-preview-card__identity">
+          <Flex y-center wrap>
+            <NuxtLink
+              v-if="profileLink"
+              :to="profileLink"
+              class="user-preview-card__name"
+            >
+              {{ user.username }}
+            </NuxtLink>
+            <span v-else class="user-preview-card__name">
+              {{ user.username }}
+            </span>
+            <RoleIndicator v-if="user.role" :role="user.role" size="s" />
+          </Flex>
+
+          <Flex expand x-between>
+            <p v-if="memberSince" class="user-preview-card__meta text-xs">
+              Member since {{ memberSince }}
+            </p>
+            <p v-if="countryInfo" class="user-preview-card__meta text-xs">
+              {{ countryInfo.name }} {{ countryInfo.emoji }}
+            </p>
+          </Flex>
+        </Flex>
+
+        <Divider v-if="(props.showDescription && hasCustomIntroduction) || (activity && props.showActivity && (activity.steam_id || (activity.teamspeak_identities && activity.teamspeak_identities.length > 0)))" style="height: 8px;" />
+
+        <template v-if="props.showDescription && hasCustomIntroduction">
+          <Flex v-if="hasCustomIntroduction" column expand :gap="0">
+            <p class="user-preview-card__intro text-s">
+              {{ introductionText }}
+            </p>
+          </Flex>
+        </template>
+      </Flex>
+
+      <Flex v-if="activity && props.showActivity && props.showDescription && user" column gap="xxs" expand class="user-preview-card__activity">
+        <ActivitySteam
+          v-if="activity.steam_id"
+          :profile-id="user.id"
+          :steam-id="activity.steam_id"
+          :is-own-profile="false"
+        />
+
+        <ActivityTeamspeak
+          v-if="activity.teamspeak_identities && activity.teamspeak_identities.length > 0"
+          :profile-id="user.id"
+          :teamspeak-identities="activity.teamspeak_identities"
+          :is-own-profile="false"
         />
       </Flex>
-
-      <Flex column gap="xs" class="user-preview-card__identity">
-        <Flex y-center wrap>
-          <NuxtLink
-            v-if="profileLink"
-            :to="profileLink"
-            class="user-preview-card__name"
-          >
-            {{ user.username }}
-          </NuxtLink>
-          <span v-else class="user-preview-card__name">
-            {{ user.username }}
-          </span>
-          <RoleIndicator v-if="user.role" :role="user.role" size="s" />
-        </Flex>
-
-        <Flex expand x-between>
-          <p v-if="memberSince" class="user-preview-card__meta text-xs">
-            Member since {{ memberSince }}
-          </p>
-          <p v-if="countryInfo" class="user-preview-card__meta text-xs">
-            {{ countryInfo.name }} {{ countryInfo.emoji }}
-          </p>
-        </Flex>
-      </Flex>
-
-      <Divider v-if="(props.showDescription && hasCustomIntroduction) || (activity && props.showActivity && (activity.steam_id || (activity.teamspeak_identities && activity.teamspeak_identities.length > 0)))" style="height: 8px;" />
-
-      <template v-if="props.showDescription && hasCustomIntroduction">
-        <Flex v-if="hasCustomIntroduction" column expand :gap="0">
-          <p class="user-preview-card__intro text-s">
-            {{ introductionText }}
-          </p>
-        </Flex>
-      </template>
-    </Flex>
-
-    <Flex v-if="activity && props.showActivity && props.showDescription && user" column gap="xxs" expand class="user-preview-card__activity">
-      <ActivitySteam
-        v-if="activity.steam_id"
-        :profile-id="user.id"
-        :steam-id="activity.steam_id"
-        :is-own-profile="false"
-      />
-
-      <ActivityTeamspeak
-        v-if="activity.teamspeak_identities && activity.teamspeak_identities.length > 0"
-        :profile-id="user.id"
-        :teamspeak-identities="activity.teamspeak_identities"
-        :is-own-profile="false"
-      />
-    </Flex>
+    </template>
   </div>
 </template>
 
@@ -239,6 +278,10 @@ const {
 
 .user-preview-card__header {
   margin-bottom: var(--space-m);
+}
+
+.user-preview-card__badges-skeleton {
+  padding-top: 12px;
 }
 
 .user-preview-card__avatar-link {
