@@ -3,6 +3,9 @@ import { fileURLToPath } from 'node:url'
 import process from 'process'
 import fetchRoutes from './nitro/fetch-routes'
 
+// Only fetch routes when actually building/generating — not during `nuxi prepare`, type-gen, etc.
+const isBuildCommand = process.argv.some(arg => ['build', 'generate'].includes(arg))
+
 // Cache the fetch result so it's only called once across hooks
 let fetchRoutesCache: Promise<{ routes: string[], sitemapUrls: SitemapUrl[] }> | null = null
 async function getCachedRoutes() {
@@ -210,7 +213,7 @@ export default defineNuxtConfig({
     zeroRuntime: true,
     exclude: ['/admin/**', '/auth/**', '/playground/**', '/votes/**'],
     urls: async () => {
-      if (process.env.NODE_ENV !== 'production') {
+      if (!isBuildCommand) {
         return []
       }
       const { sitemapUrls } = await getCachedRoutes()
@@ -219,7 +222,7 @@ export default defineNuxtConfig({
   },
   hooks: {
     'nitro:config': async (nitroConfig) => {
-      if (process.env.NODE_ENV !== 'production') {
+      if (!isBuildCommand) {
         return
       }
 

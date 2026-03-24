@@ -113,6 +113,7 @@ function handleMobileClick(e: Event) {
 }
 
 .user-preview-mobile {
+  display: inline-flex;
   // Nested slot content links should not work on mobile and open drawer.
   // Here we select the very first link or the links inside the very first element (slot)
   & > * > a,
