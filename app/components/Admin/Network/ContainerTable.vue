@@ -438,14 +438,20 @@ async function handlePrune(container: ContainerWithServer) {
       throw new Error('Only stale containers can be pruned')
     }
 
-    // Delete the container from the database
-    const { error } = await supabase
+    // Delete the container from the database.
+    // Use count: 'exact' so we can detect a silent RLS block - PostgREST
+    // returns 204 with no error even when 0 rows are deleted.
+    const { error, count } = await supabase
       .from('containers')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('name', container.name)
 
     if (error) {
       throw error
+    }
+
+    if (count === 0) {
+      throw new Error('Container could not be deleted - you may not have permission, or it no longer exists.')
     }
 
     // Close the detail view since the container no longer exists
