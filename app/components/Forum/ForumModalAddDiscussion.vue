@@ -391,7 +391,7 @@ function confirmPublish() {
 </script>
 
 <template>
-  <Modal v-bind="props" size="l" :card="{ footerSeparator: true }" @close="emit('close')">
+  <Modal v-bind="props" size="l" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')">
     <template #header>
       <h3>{{ isEditing ? 'Edit' : 'New' }}  discussion</h3>
     </template>

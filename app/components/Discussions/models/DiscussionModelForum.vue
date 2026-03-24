@@ -469,7 +469,7 @@ const editedAtFormatted = computed(() => {
     </ConfirmModal>
 
     <!-- Edit Modal -->
-    <Modal :open="editing" centered scrollable size="l" @close="editing = false">
+    <Modal :open="editing" centered scrollable size="l" :can-dismiss="false" @close="editing = false">
       <template #header>
         <h3>Edit post</h3>
         <p class="text-color-light">

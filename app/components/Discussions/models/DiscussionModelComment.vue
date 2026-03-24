@@ -327,7 +327,7 @@ const { displayReactions, toggleReaction } = useReactions({
     </ConfirmModal>
 
     <!-- Edit modal -->
-    <Modal :open="editing" centered scrollable size="m" @close="endEditing">
+    <Modal :open="editing" centered scrollable size="m" :can-dismiss="false" @close="endEditing">
       <template #header>
         <h3>Edit comment</h3>
       </template>
