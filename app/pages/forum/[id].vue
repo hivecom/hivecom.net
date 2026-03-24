@@ -915,11 +915,11 @@ function revealNsfw() {
   display: block;
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-black);
-  margin-bottom: var(--space-xs);
   position: relative;
 
   & + p {
     color: var(--color-text-lighter);
+    margin-top: var(--space-xs);
   }
 }
 

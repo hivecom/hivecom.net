@@ -199,13 +199,16 @@ const isBelowSmall = useBreakpoint('<s')
 }
 
 .result-item {
-  padding: 0 var(--space-m);
+  padding: var(--space-m);
   position: relative;
-  height: 56px;
   z-index: 1;
   width: 100%;
   border-radius: var(--border-radius-m);
   cursor: default;
+
+  @media (max-width: $breakpoint-s) {
+    padding: var(--space-s);
+  }
 
   &--comments {
     cursor: pointer;

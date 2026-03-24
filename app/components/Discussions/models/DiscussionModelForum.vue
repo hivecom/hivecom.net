@@ -437,12 +437,13 @@ const editedAtFormatted = computed(() => {
         </Flex>
       </template>
 
-      <!-- Mobile footer: reply count + reactions (only rendered on mobile) -->
-      <div v-if="isMobile" class="discussion-forum__mobile-footer">
+      <!-- Mobile footer: reply count + reactions (only rendered on mobile when there's content) -->
+      <div v-if="isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
         <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
           {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
         </button>
-        <span v-else />
+        <!-- Empty div makes sure reactions are forced to flex end -->
+        <div v-else />
         <div class="discussion-forum__reactions">
           <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
           <ReactionsSelect v-if="userId && !showNSFWWarning" @reaction="(emote) => toggleReaction(emote)" />
