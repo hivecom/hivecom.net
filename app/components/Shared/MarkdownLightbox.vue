@@ -76,20 +76,33 @@ useEventListener('keydown', (event) => {
     next()
   }
 })
+
+// Listen for swipe events
+const imageWrap = useTemplateRef('imageWrap')
+const { isSwiping, direction } = useSwipe(imageWrap)
+
+whenever(isSwiping, () => {
+  if (direction.value === 'left') {
+    prev()
+  }
+  else if (direction.value === 'right') {
+    next()
+  }
+})
 </script>
 
 <template>
   <Modal class="md-lightbox" size="screen" :open="isOpen" centered @close="close">
-    <div class="md-lightbox__img-wrap">
+    <div ref="imageWrap" class="md-lightbox__img-wrap">
       <img v-if="activeUrl" class="ignored" :src="activeUrl" @click="close">
     </div>
 
     <Flex v-if="imageUrls.length > 1" x-center gap="l" class="md-lightbox-nav" y-center>
-      <Button size="s" square :disabled="!hasPrev" @click="prev">
+      <Button size="s" square :disabled="!hasPrev" :variant="hasPrev ? 'fill' : 'gray'" @click="prev">
         <Icon name="ph:arrow-left" />
       </Button>
       <span>{{ activeIndex + 1 }} / {{ imageUrls.length }}</span>
-      <Button size="s" square :disabled="!hasNext" @click="next">
+      <Button size="s" square :disabled="!hasNext" :variant="hasNext ? 'fill' : 'gray'" @click="next">
         <Icon name="ph:arrow-right" />
       </Button>
     </Flex>
@@ -109,6 +122,7 @@ useEventListener('keydown', (event) => {
     align-items: center;
     height: var(--height);
     width: var(--width);
+    position: relative;
 
     img {
       border-radius: var(--border-radius-m);

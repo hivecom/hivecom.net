@@ -39,11 +39,7 @@ export default defineNuxtConfig({
     // },
   },
   devtools: {
-    enabled: true,
-
-    timeline: {
-      enabled: true,
-    },
+    enabled: false,
   },
   compatibilityDate: '2024-09-25',
   typescript: {
