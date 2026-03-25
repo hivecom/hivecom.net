@@ -146,4 +146,43 @@ onUnmounted(() => {
   overflow-y: hidden;
   padding: var(--space-xs) 0;
 }
+
+/* Data file attachment card produced by processDataFileDirectives */
+.md-datafile-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-s);
+  background-color: var(--color-bg-raised);
+  padding: var(--space-xs) var(--space-s);
+  margin: var(--space-xs) 0;
+
+  .md-datafile-card__icon {
+    font-family: monospace;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    flex-shrink: 0;
+  }
+
+  .md-datafile-card__name {
+    font-size: var(--font-size-xs);
+    color: var(--color-text);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .md-datafile-card__link {
+    font-size: var(--font-size-xs);
+    color: var(--color-accent);
+    text-decoration: none;
+    flex-shrink: 0;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
 </style>

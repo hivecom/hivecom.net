@@ -20,6 +20,9 @@ export const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg']
 export const allowedMediaTypes = [...allowedImageTypes, ...allowedVideoTypes]
 export const allowedMediaExtensions = allowedMediaTypes.join(', ')
 
+export const allowedDataTypes = ['text/csv', 'application/json', 'text/plain']
+export const allowedDataExtensions = '.csv,.json'
+
 function isStorageNotFoundError(error: unknown): boolean {
   if (error == null || typeof error !== 'object')
     return false

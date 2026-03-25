@@ -18,8 +18,10 @@ const SIZE_TAG_RE = /:::size\[([a-z]+)\]([\s\S]*?):::(?![a-z-]+\[)/gi
 const COLON_COMPONENT_RE = /(^|[ \t\n]):([A-Z][A-Z0-9-]*)/gim
 const WORD_ONLY_RE = /^\w+$/
 const DETAILS_WORD_AFTER_RE = /^(\w*)/
+const DATAFILE_DIRECTIVE_RE = /:::dataFile(?:\s+\{([^}]*)\})?\s*:::/g
 const STRIP_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/g
+const STRIP_DATAFILE_RE = /:::dataFile(?:\s+\{[^}]*\})?\s*:::/g
 
 const DETAILS_SUMMARY_RE = /:::detailsSummary([\s\S]*?):::/
 const DETAILS_CONTENT_RE = /:::detailsContent([\s\S]*?):::/
@@ -40,6 +42,7 @@ const DETECT_IMAGE_RE = /!\[.*?\]\(.*?\)/
 const DETECT_LINK_RE = /\[.*?\]\(.*?\)/
 const DETECT_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/
+const DETECT_DATAFILE_RE = /:::dataFile(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_MATH_RE = /\$\$[\s\S]*?\$\$|\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/
 
 // ---------------------------------------------------------------------------
@@ -217,6 +220,26 @@ export function processVideoDirectives(markdown: string): string {
     const height = attrs.height ?? '360'
 
     return `\n<div class="md-video-embed"><video src="${src}" width="${width}" height="${height}" controls></video></div>\n`
+  })
+}
+
+/**
+ * Converts TipTap's `:::dataFile {src="..." name="..." type="csv"} :::` directive
+ * into an HTML attachment card block that MDC passes through as raw HTML.
+ * Must run before the markdown is handed to `<MDC>`.
+ */
+export function processDataFileDirectives(markdown: string): string {
+  return markdown.replace(DATAFILE_DIRECTIVE_RE, (_full, attrString: string = '') => {
+    const attrs = parseTiptapAttrs(attrString)
+    const src = attrs.src ?? ''
+    const name = attrs.name ?? (attrs.type === 'json' ? 'data.json' : 'data.csv')
+    const type = attrs.type === 'json' ? 'json' : 'csv'
+    const icon = type === 'json' ? '{ }' : '⊞'
+
+    if (!src)
+      return ''
+
+    return `\n<div class="md-datafile-card" data-type="${type}"><span class="md-datafile-card__icon">${icon}</span><span class="md-datafile-card__name">${name}</span><a class="md-datafile-card__link" href="${src}" target="_blank" rel="noopener noreferrer">Download</a></div>\n`
   })
 }
 
@@ -413,6 +436,9 @@ export function processMarkdown(markdown: string): string {
   // Convert TipTap video directives to raw HTML <video> blocks.
   markdown = processVideoDirectives(markdown)
 
+  // Convert TipTap dataFile directives to raw HTML attachment cards.
+  markdown = processDataFileDirectives(markdown)
+
   // Convert :::color[name]text::: directives into inline HTML spans.
   markdown = processColorTags(markdown)
 
@@ -543,6 +569,8 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
     .replace(STRIP_YOUTUBE_RE, '')
     // 0b2. Remove video directives: :::video {src="..." ...} :::
     .replace(STRIP_VIDEO_RE, '')
+    // 0b3. Remove data file directives: :::dataFile {src="..." ...} :::
+    .replace(STRIP_DATAFILE_RE, '')
     // 0b. Remove block math: $$...$$
     .replace(STRIP_BLOCK_MATH_RE, '')
     // 0c. Remove inline math: $...$  (avoid matching lone $ signs like currency $5)
@@ -613,6 +641,9 @@ export function formatMarkdownPreview(
 
   if (DETECT_VIDEO_RE.test(markdown))
     return '#video'
+
+  if (DETECT_DATAFILE_RE.test(markdown))
+    return '#file'
 
   if (DETECT_MATH_RE.test(markdown))
     return '#math'

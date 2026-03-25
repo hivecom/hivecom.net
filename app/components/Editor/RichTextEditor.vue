@@ -25,12 +25,13 @@ import { computed, nextTick, ref, useId, watch } from 'vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
-import { allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, stripImageMetadata } from '@/lib/storage'
+import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, stripImageMetadata } from '@/lib/storage'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorMathModal from './EditorMathModal.vue'
 import EditorTableMenu from './EditorTableMenu.vue'
 import EditorVideoModal from './EditorVideoModal.vue'
 import EditorYoutubeModal from './EditorYoutubeModal.vue'
+import { DataFile } from './plugins/dataFile'
 import { ImageGroup } from './plugins/imageGroup'
 import { createMentionExtension, hydrateMentionLabels, resolvePlainTextMentions } from './plugins/mentions'
 import { TextColor } from './plugins/textColor'
@@ -348,6 +349,8 @@ const editor = useEditor({
     }),
     // Uploaded video embeds (:::video {src="..."} ::: directive)
     Video,
+    // Uploaded CSV/JSON data file attachments (:::dataFile directive)
+    DataFile,
     // Spoiler / collapsible blocks via the HTML <details> element
     Details.configure({ persist: true }),
     DetailsSummary,
@@ -662,6 +665,11 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     const isVideo = allowedVideoTypes.includes(originalFile.type)
     const nodeType = isVideo ? 'video' : 'image'
 
+    // Capture the insert position synchronously before any awaits so that
+    // concurrent uploads (e.g. a data file upload that calls .focus()) cannot
+    // shift the cursor between now and when we actually insert the placeholder.
+    const insertPos = pos ?? editor.value.state.selection.anchor
+
     // Strip EXIF/metadata from images unless the caller explicitly opts out via
     // prop, or the user has disabled it in their settings.
     const shouldStrip = !isVideo
@@ -673,7 +681,6 @@ function handleFileUpload(files: File[] | null, pos?: number) {
 
     // Create a local object URL so we can insert a placeholder immediately.
     const blobUrl = URL.createObjectURL(file)
-    const insertPos = pos ?? editor.value.state.selection.anchor
 
     // Insert the placeholder without selecting it - we don't want the bubble
     // menu popping up mid-upload, and we don't want the node highlighted.
@@ -746,11 +753,67 @@ function handleFileUpload(files: File[] | null, pos?: number) {
 
 const fileInput = useTemplateRef('file-input')
 const plainTextarea = useTemplateRef<HTMLTextAreaElement>('plain-textarea')
-function handleFileInput(event: Event) {
-  const files = (event.target as HTMLInputElement).files
-  if (!files)
+
+const DATA_FILE_EXT_RE = /\.(?:csv|json)$/i
+
+// Upload a CSV or JSON file and insert a dataFile node once the URL is known.
+// Unlike images/videos there is no blob placeholder - the upload is fast and
+// these files have no visual preview until the node is rendered.
+async function handleDataFileUpload(file: File) {
+  if (!editor.value || !props.mediaContext)
     return
-  handleFileUpload([...files])
+
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'csv'
+  const type: 'csv' | 'json' = ext === 'json' ? 'json' : 'csv'
+  const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${ext}`
+
+  const { error } = await supabase.storage
+    .from(resolvedMediaBucketId.value)
+    .upload(fileUrl, file, { contentType: file.type })
+
+  if (error) {
+    pushToast('Error uploading file', { description: error.message })
+    return
+  }
+
+  const { data } = supabase.storage.from(resolvedMediaBucketId.value).getPublicUrl(fileUrl)
+
+  editor.value
+    .chain()
+    .insertContent({
+      type: 'dataFile',
+      attrs: { src: data.publicUrl, name: file.name, type },
+    }, { updateSelection: false })
+    .focus()
+    .run()
+}
+
+// Single handler for the combined file input. Routes each file to either the
+// media upload flow (images/videos) or the data file upload flow (CSV/JSON).
+function handleCombinedFileInput(event: Event) {
+  const files = (event.target as HTMLInputElement).files
+  if (files == null || files.length === 0)
+    return
+
+  const mediaFiles: File[] = []
+
+  for (const file of files) {
+    if (allowedMediaTypes.includes(file.type)) {
+      mediaFiles.push(file)
+    }
+    else if (allowedDataTypes.includes(file.type) || DATA_FILE_EXT_RE.test(file.name)) {
+      void handleDataFileUpload(file)
+    }
+    else {
+      pushToast('Unsupported file type', { description: `${file.name} is not a supported file type.` })
+    }
+  }
+
+  if (mediaFiles.length > 0)
+    handleFileUpload(mediaFiles)
+
+  // Reset so the same files can be re-selected
+  ;(event.target as HTMLInputElement).value = ''
 }
 
 // Insert or update a math node (called from EditorMathModal)
@@ -1020,7 +1083,7 @@ async function handleSubmit() {
                 <template #icon>
                   <Icon :size="18" name="ph:paperclip" />
                 </template>
-                Attach a file
+                Attach files
               </DropdownItem>
               <DropdownItem @click="youtubeModalOpen = true">
                 <template #icon>
@@ -1048,7 +1111,7 @@ async function handleSubmit() {
               </DropdownItem>
             </Dropdown>
 
-            <input ref="file-input" class="visually-hidden" type="file" :accept="allowedMediaExtensions" @input="handleFileInput">
+            <input ref="file-input" class="visually-hidden" type="file" multiple :accept="`${allowedMediaExtensions},${allowedDataExtensions}`" @input="handleCombinedFileInput">
           </template>
 
           <Tooltip>
@@ -1584,5 +1647,50 @@ async function handleSubmit() {
   border-radius: var(--border-radius-m);
   border: 1px solid var(--color-border);
   z-index: var(--z-popout);
+}
+
+.datafile-node {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-s);
+  background-color: var(--color-bg-raised);
+  margin: var(--space-xs) 0;
+  padding: var(--space-xs) var(--space-s);
+
+  &.ProseMirror-selectednode {
+    outline: 2px solid var(--color-accent);
+  }
+
+  .datafile-node__inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+  }
+
+  .datafile-node__icon {
+    font-family: monospace;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    flex-shrink: 0;
+  }
+
+  .datafile-node__name {
+    font-size: var(--font-size-xs);
+    color: var(--color-text);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .datafile-node__link {
+    font-size: var(--font-size-xs);
+    color: var(--color-accent);
+    text-decoration: none;
+    flex-shrink: 0;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 </style>
