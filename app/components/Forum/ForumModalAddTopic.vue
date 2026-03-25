@@ -293,7 +293,7 @@ async function submitForm() {
 </script>
 
 <template>
-  <Modal v-bind="props" size="s" :card="{ footerSeparator: true }" @close="emit('close')">
+  <Modal v-bind="props" size="s" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')">
     <template #header>
       <h3>{{ isEditing ? 'Edit' : 'Create' }} topic</h3>
     </template>

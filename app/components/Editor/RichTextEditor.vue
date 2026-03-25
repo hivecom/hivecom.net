@@ -5,8 +5,13 @@ import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
 import { Button, ButtonGroup, Dropdown, DropdownItem, pushToast, Tooltip } from '@dolanske/vui'
 import { Extension } from '@tiptap/core'
+import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import Image from '@tiptap/extension-image'
 import { Mathematics } from '@tiptap/extension-mathematics'
+import { TableCell } from '@tiptap/extension-table/cell'
+import { TableHeader } from '@tiptap/extension-table/header'
+import { TableRow } from '@tiptap/extension-table/row'
+import { Table } from '@tiptap/extension-table/table'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
 import Youtube from '@tiptap/extension-youtube'
@@ -20,11 +25,14 @@ import { computed, nextTick, ref, useId, watch } from 'vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
-import { allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, stripImageMetadata } from '@/lib/storage'
+import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, stripImageMetadata } from '@/lib/storage'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorMathModal from './EditorMathModal.vue'
+import EditorTableMenu from './EditorTableMenu.vue'
 import EditorVideoModal from './EditorVideoModal.vue'
 import EditorYoutubeModal from './EditorYoutubeModal.vue'
+import { DataFile } from './plugins/dataFile'
+import { ImageGroup } from './plugins/imageGroup'
 import { createMentionExtension, hydrateMentionLabels, resolvePlainTextMentions } from './plugins/mentions'
 import { TextColor } from './plugins/textColor'
 import { TextFont } from './plugins/textFont'
@@ -36,6 +44,7 @@ import RichTextSelectionMenu from './RichTextSelectionMenu.vue'
 const {
   errors = [],
   minHeight = '47px',
+  maxHeight = '66.67vh',
   ...props
 } = defineProps<Props>()
 
@@ -68,6 +77,7 @@ interface Props {
   errors?: string[]
   placeholder?: string
   minHeight?: string
+  maxHeight?: string
   limit?: number
   showAttachmentButton?: boolean
   showSubmitOptions?: boolean
@@ -110,6 +120,9 @@ const minHeightPlain = computed(() => {
   //                vv The height & margin of the now static menu
   return `${cssValue - 28}px`
 })
+
+// When switching to plain mode, the textarea starts at 2x the rich editor height.
+const plainTextStartHeight = ref<string | null>(null)
 
 function encodeHtmlEntities(str: string): string {
   return str.replace(ENCODE_AMP_RE, '&amp;').replace(ENCODE_LT_RE, '&lt;').replace(ENCODE_GT_RE, '&gt;')
@@ -216,6 +229,7 @@ const editor = useEditor({
     StarterKit,
     Markdown.configure({ marked: noHtmlMarked }),
     Image,
+    ImageGroup,
     // Ctrl+Enter to submit
     Extension.create({
       name: 'submitShortcut',
@@ -335,6 +349,17 @@ const editor = useEditor({
     }),
     // Uploaded video embeds (:::video {src="..."} ::: directive)
     Video,
+    // Uploaded CSV/JSON data file attachments (:::dataFile directive)
+    DataFile,
+    // Spoiler / collapsible blocks via the HTML <details> element
+    Details.configure({ persist: true }),
+    DetailsSummary,
+    DetailsContent,
+    // Tables
+    Table.configure({ resizable: false }),
+    TableRow,
+    TableHeader,
+    TableCell,
   ],
   contentType: 'markdown',
   onCreate: () => {
@@ -640,6 +665,11 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     const isVideo = allowedVideoTypes.includes(originalFile.type)
     const nodeType = isVideo ? 'video' : 'image'
 
+    // Capture the insert position synchronously before any awaits so that
+    // concurrent uploads (e.g. a data file upload that calls .focus()) cannot
+    // shift the cursor between now and when we actually insert the placeholder.
+    const insertPos = pos ?? editor.value.state.selection.anchor
+
     // Strip EXIF/metadata from images unless the caller explicitly opts out via
     // prop, or the user has disabled it in their settings.
     const shouldStrip = !isVideo
@@ -651,7 +681,6 @@ function handleFileUpload(files: File[] | null, pos?: number) {
 
     // Create a local object URL so we can insert a placeholder immediately.
     const blobUrl = URL.createObjectURL(file)
-    const insertPos = pos ?? editor.value.state.selection.anchor
 
     // Insert the placeholder without selecting it - we don't want the bubble
     // menu popping up mid-upload, and we don't want the node highlighted.
@@ -724,11 +753,76 @@ function handleFileUpload(files: File[] | null, pos?: number) {
 
 const fileInput = useTemplateRef('file-input')
 const plainTextarea = useTemplateRef<HTMLTextAreaElement>('plain-textarea')
-function handleFileInput(event: Event) {
-  const files = (event.target as HTMLInputElement).files
-  if (!files)
+
+const DATA_FILE_EXT_RE = /\.(?:csv|json)$/i
+
+// (removed insertSpoilerBlock function)
+
+// Upload a CSV or JSON file and insert a dataFile node once the URL is known.
+// Unlike images/videos there is no blob placeholder - the upload is fast and
+// these files have no visual preview until the node is rendered.
+async function handleDataFileUpload(file: File) {
+  if (!editor.value || !props.mediaContext)
     return
-  handleFileUpload([...files])
+
+  // Capture the insert position synchronously before any awaits so that a
+  // concurrently-inserted image placeholder (which uses updateSelection:false)
+  // cannot leave the selection as a NodeSelection on that image. If we later
+  // called insertContent() against such a NodeSelection it would silently
+  // replace the image node with the dataFile node.
+  const insertPos = editor.value.state.selection.anchor
+
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'csv'
+  const type: 'csv' | 'json' = ext === 'json' ? 'json' : 'csv'
+  const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${ext}`
+
+  const { error } = await supabase.storage
+    .from(resolvedMediaBucketId.value)
+    .upload(fileUrl, file, { contentType: file.type })
+
+  if (error) {
+    pushToast('Error uploading file', { description: error.message })
+    return
+  }
+
+  const { data } = supabase.storage.from(resolvedMediaBucketId.value).getPublicUrl(fileUrl)
+
+  editor.value
+    .chain()
+    .insertContentAt(insertPos, {
+      type: 'dataFile',
+      attrs: { src: data.publicUrl, name: file.name, type },
+    }, { updateSelection: false })
+    .focus()
+    .run()
+}
+
+// Single handler for the combined file input. Routes each file to either the
+// media upload flow (images/videos) or the data file upload flow (CSV/JSON).
+function handleCombinedFileInput(event: Event) {
+  const files = (event.target as HTMLInputElement).files
+  if (files == null || files.length === 0)
+    return
+
+  const mediaFiles: File[] = []
+
+  for (const file of files) {
+    if (allowedMediaTypes.includes(file.type)) {
+      mediaFiles.push(file)
+    }
+    else if (allowedDataTypes.includes(file.type) || DATA_FILE_EXT_RE.test(file.name)) {
+      void handleDataFileUpload(file)
+    }
+    else {
+      pushToast('Unsupported file type', { description: `${file.name} is not a supported file type.` })
+    }
+  }
+
+  if (mediaFiles.length > 0)
+    handleFileUpload(mediaFiles)
+
+  // Reset so the same files can be re-selected
+  ;(event.target as HTMLInputElement).value = ''
 }
 
 // Insert or update a math node (called from EditorMathModal)
@@ -761,6 +855,11 @@ function handleYoutubeConfirm(url: string) {
   if (!editor.value || !url.trim())
     return
   editor.value.commands.setYoutubeVideo({ src: url.trim() })
+}
+
+// Insert a 3x3 table with a header row
+function handleInsertTable() {
+  editor.value?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
 }
 
 // Insert a video node by URL (called from EditorVideoModal)
@@ -842,8 +941,13 @@ async function handleEditorModeSwitch() {
     // Decode stored entities so the textarea shows readable "<foo>" rather than
     // the "&lt;foo&gt;" that the content model carries internally.
     plainTextContent.value = decodeHtmlEntities(content.value ?? '')
+    // Start the textarea at 2x the configured minHeight so the mode switch
+    // feels intentional rather than claustrophobic.
+    const cssValue = Number(minHeight.slice(0, -2))
+    plainTextStartHeight.value = `${cssValue * 2}px`
   }
   else if (newMode === 'rich') {
+    plainTextStartHeight.value = null
     // The model always stores the escaped form (&lt;/&gt;) for the DB/renderer.
     // Tiptap receives the decoded form (raw angle brackets) - the noHtmlMarked
     // inline interceptor converts them to plain text tokens so they are never
@@ -914,6 +1018,9 @@ async function handleSubmit() {
     <!-- Media context menu (image + video) -->
     <RichTextMediaMenu v-if="editor && props.mediaContext" :editor :bucket-id="resolvedMediaBucketId" :media-context="props.mediaContext" />
 
+    <!-- Table context menu (add/remove rows & columns) -->
+    <EditorTableMenu v-if="editor && editorMode === 'rich'" :editor />
+
     <!-- Main editor instance -->
     <div class="relative">
       <!-- Content agreement -->
@@ -965,6 +1072,7 @@ async function handleSubmit() {
           ref="plain-textarea"
           class="plain-textarea"
           :rows="1"
+          :style="plainTextStartHeight ? { height: plainTextStartHeight } : undefined"
           :value="plainTextContent"
           :placeholder="placeholder"
           @input="handlePlainTextInput(($event.target as HTMLTextAreaElement).value)"
@@ -984,7 +1092,7 @@ async function handleSubmit() {
                 <template #icon>
                   <Icon :size="18" name="ph:paperclip" />
                 </template>
-                Attach a file
+                Attach files
               </DropdownItem>
               <DropdownItem @click="youtubeModalOpen = true">
                 <template #icon>
@@ -1004,10 +1112,18 @@ async function handleSubmit() {
                 </template>
                 Insert math
               </DropdownItem>
+              <DropdownItem v-if="editorMode === 'rich'" @click="handleInsertTable">
+                <template #icon>
+                  <Icon :size="18" name="ph:table" />
+                </template>
+                Insert table
+              </DropdownItem>
             </Dropdown>
 
-            <input ref="file-input" class="visually-hidden" type="file" :accept="allowedMediaExtensions" @input="handleFileInput">
+            <input ref="file-input" class="visually-hidden" type="file" multiple :accept="`${allowedMediaExtensions},${allowedDataExtensions}`" @input="handleCombinedFileInput">
           </template>
+
+          <!-- (removed plain text spoiler button) -->
 
           <Tooltip>
             <Button plain square size="s" @click="handleEditorModeSwitch">
@@ -1107,6 +1223,9 @@ async function handleSubmit() {
     border-radius: var(--border-radius-m);
     padding: var(--space-s);
     z-index: 1;
+    display: flex;
+    flex-direction: column;
+    max-height: v-bind(maxHeight);
 
     &:has(.ProseMirror-focused) {
       border-color: var(--color-border-strong);
@@ -1208,6 +1327,67 @@ async function handleSubmit() {
       }
     }
 
+    // Image grouping for consecutive images in the editor.
+    // The ImageGroup ProseMirror plugin decorates each image in a run with
+    // data-img-run-index (0-based position) and data-img-run-total (row size).
+    // CSS uses those attributes to lay images out as inline-block rows.
+    // Gap between items is 8px. Width calc subtracts the gap share per item.
+
+    // Base styles for any grouped image.
+    .ProseMirror > img[data-img-run-total] {
+      display: inline-block;
+      vertical-align: top;
+      max-height: 240px;
+      max-width: none;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      border-radius: var(--border-radius-s);
+      margin-bottom: var(--space-xs);
+    }
+
+    // Run of 2
+    // Run of 2: each image gets ~50% minus half the gap.
+    .ProseMirror > img[data-img-run-total='2'] {
+      width: calc(50% - 4px);
+    }
+
+    .ProseMirror > img[data-img-run-total='2'][data-img-run-index='0'] {
+      margin-right: 8px;
+    }
+
+    // Run of 3: each image gets ~33% minus a third of the total gap.
+    .ProseMirror > img[data-img-run-total='3'] {
+      width: calc(33.333% - 6px);
+    }
+
+    .ProseMirror > img[data-img-run-total='3'][data-img-run-index='0'],
+    .ProseMirror > img[data-img-run-total='3'][data-img-run-index='1'] {
+      margin-right: 8px;
+    }
+
+    // On mobile, collapse grouped images to full-width single images and cap height.
+    @media (max-width: 600px) {
+      // Solo images: fill width, natural height, no cropping.
+      .ProseMirror > img:not([data-img-run-total]) {
+        width: 100%;
+        height: auto;
+        max-height: none;
+        aspect-ratio: unset;
+        object-fit: unset;
+      }
+
+      // Grouped images: stack vertically, cap height to keep them compact.
+      .ProseMirror > img[data-img-run-total] {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        max-height: 40vh;
+        margin-right: 0;
+        aspect-ratio: unset;
+        object-fit: cover;
+      }
+    }
+
     .editor-actions {
       display: flex;
       justify-content: flex-end;
@@ -1219,6 +1399,9 @@ async function handleSubmit() {
   // which suffers from a timing issue on initial mount where
   // `this.editor.isEmpty` can resolve incorrectly before the view is wired up).
   .editor-rich-wrapper {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
     position: relative;
   }
 
@@ -1337,6 +1520,160 @@ async function handleSubmit() {
     color: var(--color-accent);
     padding: 0.4rem;
   }
+
+  // Spoiler / collapsible blocks
+  // The Details extension uses a custom node view - NOT a real <details> element.
+  // Structure:
+  //   div[data-type="details"](.is-open?)
+  //     button          <- toggle (not in contentDOM)
+  //     div             <- contentDOM wrapper
+  //       summary       <- DetailsSummary editable title
+  //       div[data-type="detailsContent"][hidden?]  <- body
+  .ProseMirror div[data-type='details'] {
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-s);
+    margin: var(--space-xs) 0;
+    overflow: hidden;
+
+    // Row: toggle button + summary side-by-side
+    display: grid;
+    grid-template-columns: 28px 1fr;
+
+    // The toggle button rendered by the node view
+    > button {
+      grid-column: 1;
+      grid-row: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--color-text-lighter);
+      cursor: pointer;
+      padding: var(--space-xs) 0;
+      transition: color var(--transition-fast);
+      align-self: start;
+      padding-top: calc(var(--space-xs) + 2px);
+
+      &::before {
+        content: '';
+        display: inline-block;
+        width: 0;
+        height: 0;
+        border-top: 4px solid transparent;
+        border-bottom: 4px solid transparent;
+        border-left: 6px solid currentColor;
+        transition: transform var(--transition-fast);
+      }
+
+      &:hover {
+        color: var(--color-text);
+      }
+    }
+
+    &.is-open > button::before {
+      transform: rotate(90deg);
+    }
+
+    // The contentDOM wrapper div (holds summary + detailsContent)
+    > div {
+      grid-column: 2;
+      grid-row: 1;
+      min-width: 0;
+    }
+
+    summary {
+      display: block;
+      font-weight: 600;
+      color: var(--color-text);
+      padding: var(--space-xs) var(--space-s) var(--space-xs) 0;
+      outline: none;
+      cursor: text;
+
+      // Hide the default browser disclosure triangle
+      list-style: none;
+      &::-webkit-details-marker {
+        display: none;
+      }
+    }
+
+    // The hidden/shown content body
+    div[data-type='detailsContent'] {
+      padding: var(--space-xs) var(--space-s) var(--space-s) 0;
+      border-top: 1px solid var(--color-border-weak);
+
+      > * {
+        &:first-child {
+          margin-top: 0;
+        }
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      // Always show content while editing so users can click into it
+      &[hidden] {
+        display: block !important;
+        opacity: 0.35;
+      }
+    }
+  }
+
+  // Tables
+  .ProseMirror table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: var(--space-s) 0;
+    table-layout: fixed;
+    overflow: hidden;
+
+    td,
+    th {
+      border: 1px solid var(--color-border);
+      padding: var(--space-xs) var(--space-s);
+      vertical-align: top;
+      min-width: 40px;
+      position: relative;
+
+      > * {
+        margin: 0;
+      }
+
+      p {
+        margin: 0;
+      }
+    }
+
+    th {
+      background-color: var(--color-bg-raised);
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .selectedCell::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+      pointer-events: none;
+    }
+
+    .column-resize-handle {
+      position: absolute;
+      right: -2px;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: var(--color-accent);
+      cursor: col-resize;
+      pointer-events: all;
+    }
+  }
+
+  .tableWrapper {
+    overflow-x: auto;
+    margin: var(--space-s) 0;
+  }
 }
 
 .rich-text-floating-menu {
@@ -1345,5 +1682,50 @@ async function handleSubmit() {
   border-radius: var(--border-radius-m);
   border: 1px solid var(--color-border);
   z-index: var(--z-popout);
+}
+
+.datafile-node {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-s);
+  background-color: var(--color-bg-raised);
+  margin: var(--space-xs) 0;
+  padding: var(--space-xs) var(--space-s);
+
+  &.ProseMirror-selectednode {
+    outline: 2px solid var(--color-accent);
+  }
+
+  .datafile-node__inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+  }
+
+  .datafile-node__icon {
+    font-family: monospace;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    flex-shrink: 0;
+  }
+
+  .datafile-node__name {
+    font-size: var(--font-size-xs);
+    color: var(--color-text);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .datafile-node__link {
+    font-size: var(--font-size-xs);
+    color: var(--color-accent);
+    text-decoration: none;
+    flex-shrink: 0;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 </style>

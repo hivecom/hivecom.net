@@ -74,7 +74,7 @@ export function useDataDiscussionReplies(
       // whenever any realtime event fires, so stale data is not a concern while
       // the user has the discussion open.
       const ascending = props.model !== 'comment'
-      const cachedReplies = repliesCache.get(fetchedDiscussion.id)
+      const cachedReplies = repliesCache.get(fetchedDiscussion.id, ascending)
 
       if (cachedReplies !== null) {
         comments.value = cachedReplies

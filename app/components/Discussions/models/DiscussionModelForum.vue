@@ -11,7 +11,7 @@ import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
@@ -284,6 +284,45 @@ const editedAtFormatted = computed(() => {
 
     <!-- Content column: single div always mounted, chrome switches via v-if -->
     <div class="discussion-forum__content">
+      <!-- Desktop floating actions (hover-revealed) - must be first child for sticky to work from top -->
+      <div v-if="!isMobile && !showNSFWWarning" class="discussion-forum__actions-anchor">
+        <div class="discussion-forum__actions">
+          <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
+            <template #default="{ toggle }">
+              <Button size="s" square @click="toggle">
+                <Tooltip>
+                  <Icon name="ph:smiley-bold" />
+                  <template #tooltip>
+                    <p>Add reactions</p>
+                  </template>
+                </Tooltip>
+              </Button>
+            </template>
+          </ReactionsSelect>
+
+          <DiscussionActionsToolbar
+            :data="data"
+            :user-id="userId"
+            :current-user-data="currentUserData"
+            :can-bypass-lock="canBypassLock"
+            :can-mark-offtopic="canMarkOfftopic"
+            :offtopic-loading="offtopicLoading"
+            :loading-deletion="loadingDeletion"
+            :show-n-s-f-w-warning="showNSFWWarning"
+            :posted-at="postedAtFormatted"
+            :edited-at="editedAtFormatted"
+            :modifier-id="modifierId"
+            @reply="setReplyToComment(data); emit('interact')"
+            @quote="setQuoteOfComment(data); emit('interact')"
+            @copy-link="emit('copyLink'); emit('interact')"
+            @start-editing="startEditing"
+            @delete="showDeleteModal = true"
+            @toggle-offtopic="handleToggleOfftopic"
+            @report="showReportModal = true"
+          />
+        </div>
+      </div>
+
       <!-- Mobile header: author + toolbar (only rendered on mobile) -->
       <div v-if="isMobile" class="discussion-forum__mobile-header">
         <UserPreviewHover v-if="currentUser || user" :user-id="data.created_by">
@@ -356,7 +395,7 @@ const editedAtFormatted = computed(() => {
         </button>
 
         <!-- Content markdown - rendered once regardless of layout -->
-        <MDRenderer
+        <MarkdownRenderer
           v-else
           :md="data.markdown"
           :skeleton-height="128"
@@ -396,51 +435,15 @@ const editedAtFormatted = computed(() => {
             <ReactionsSelect v-if="userId && !showNSFWWarning && displayReactions.length > 0" @reaction="(emote) => toggleReaction(emote)" />
           </div>
         </Flex>
-
-        <!-- Desktop floating actions (hover-revealed) -->
-        <div v-if="!showNSFWWarning" class="discussion-forum__actions">
-          <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
-            <template #default="{ toggle }">
-              <Button size="s" square @click="toggle">
-                <Tooltip>
-                  <Icon name="ph:smiley-bold" />
-                  <template #tooltip>
-                    <p>Add reactions</p>
-                  </template>
-                </Tooltip>
-              </Button>
-            </template>
-          </ReactionsSelect>
-
-          <DiscussionActionsToolbar
-            :data="data"
-            :user-id="userId"
-            :current-user-data="currentUserData"
-            :can-bypass-lock="canBypassLock"
-            :can-mark-offtopic="canMarkOfftopic"
-            :offtopic-loading="offtopicLoading"
-            :loading-deletion="loadingDeletion"
-            :show-n-s-f-w-warning="showNSFWWarning"
-            :posted-at="postedAtFormatted"
-            :edited-at="editedAtFormatted"
-            :modifier-id="modifierId"
-            @reply="setReplyToComment(data); emit('interact')"
-            @quote="setQuoteOfComment(data); emit('interact')"
-            @copy-link="emit('copyLink'); emit('interact')"
-            @start-editing="startEditing"
-            @delete="showDeleteModal = true"
-            @toggle-offtopic="handleToggleOfftopic"
-            @report="showReportModal = true"
-          />
-        </div>
       </template>
 
-      <!-- Mobile footer: reply count + reactions (only rendered on mobile) -->
-      <div v-if="isMobile" class="discussion-forum__mobile-footer">
+      <!-- Mobile footer: reply count + reactions (only rendered on mobile when there's content) -->
+      <div v-if="isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
         <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
           {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
         </button>
-        <span v-else />
+        <!-- Empty div makes sure reactions are forced to flex end -->
+        <div v-else />
         <div class="discussion-forum__reactions">
           <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
           <ReactionsSelect v-if="userId && !showNSFWWarning" @reaction="(emote) => toggleReaction(emote)" />
@@ -461,12 +464,12 @@ const editedAtFormatted = computed(() => {
         class="card-bg" :style="{ maxHeight: 512,
                                   overflowY: 'auto' }"
       >
-        <MDRenderer :md="data.markdown" skeleton-height="48px" />
+        <MarkdownRenderer :md="data.markdown" skeleton-height="48px" />
       </Card>
     </ConfirmModal>
 
     <!-- Edit Modal -->
-    <Modal :open="editing" centered scrollable size="l" @close="editing = false">
+    <Modal :open="editing" centered scrollable size="l" :can-dismiss="false" @close="editing = false">
       <template #header>
         <h3>Edit post</h3>
         <p class="text-color-light">
@@ -479,6 +482,7 @@ const editedAtFormatted = computed(() => {
         :errors="editError"
         :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"
         :media-bucket-id="FORUMS_BUCKET_ID"
+        show-attachment-button
         min-height="196px"
         class="mb-xs"
         placeholder="Edit your message. Do not leave it empty!"
@@ -528,6 +532,10 @@ const editedAtFormatted = computed(() => {
       opacity: 1;
       z-index: 10;
       visibility: visible;
+    }
+
+    .discussion-forum__actions-anchor {
+      z-index: var(--z-active);
     }
   }
 
@@ -581,7 +589,7 @@ const editedAtFormatted = computed(() => {
     gap: var(--space-xxs);
     padding: var(--space-s) var(--space-m);
     border-top: 1px solid var(--color-border);
-    background-color: var(--color-bg);
+    background-color: var(--color-bg-medium);
     border-bottom-left-radius: var(--border-radius-m);
     border-bottom-right-radius: var(--border-radius-m);
   }
@@ -681,6 +689,11 @@ const editedAtFormatted = computed(() => {
     border-top-right-radius: var(--border-radius-m);
     position: relative;
     height: 100%;
+    max-width: 100vw;
+
+    &:has(.discussion-forum__mobile-header) {
+      background-color: transparent;
+    }
   }
 
   &__badges {
@@ -688,12 +701,21 @@ const editedAtFormatted = computed(() => {
     height: 36px;
   }
 
+  &__actions-anchor {
+    position: sticky;
+    top: 154px;
+    min-height: 0;
+    max-height: 0;
+    overflow: visible;
+    z-index: 10;
+  }
+
   &__actions {
     display: flex;
     gap: 3px;
     position: absolute;
-    right: 12px;
-    top: 12px;
+    right: 0;
+    top: 0;
     opacity: 0;
     z-index: -1;
     visibility: hidden;
@@ -717,6 +739,7 @@ const editedAtFormatted = computed(() => {
 
     &__body {
       padding: var(--space-m);
+      background-color: var(--color-bg-medium);
     }
   }
 }

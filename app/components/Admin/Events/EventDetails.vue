@@ -6,7 +6,7 @@ import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import EventRSVPCount from '@/components/Events/EventRSVPCount.vue'
 import EventRSVPModal from '@/components/Events/EventRSVPModal.vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataGames } from '@/composables/useDataGames'
@@ -207,7 +207,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
             <h6>Markdown</h6>
           </template>
 
-          <MDRenderer :md="props.event.markdown" class="event-markdown-content" />
+          <MarkdownRenderer :md="props.event.markdown" class="event-markdown-content" />
         </Card>
 
         <!-- Metadata -->

@@ -290,7 +290,7 @@ onBeforeMount(async () => {
   else {
     await supabase
       .from('discussion_topics')
-      .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, discussion_topic_id)')
+      .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id)')
       .neq('discussions.is_draft', true)
       .then(({ data, error }) => {
         if (error) {

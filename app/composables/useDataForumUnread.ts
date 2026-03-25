@@ -83,6 +83,27 @@ export function useDataForumUnread() {
     }
   }
 
+  /**
+   * Bump the stored reply count for a topic by 1. Call this after the current
+   * user posts a reply so the topic-level unread dot doesn't fire for their
+   * own activity when they return to the forum index.
+   */
+  function bumpTopicReplySeen(topicId: string) {
+    const seen = storage.value.topics[topicId]
+    if (!seen)
+      return
+    storage.value = {
+      ...storage.value,
+      topics: {
+        ...storage.value.topics,
+        [topicId]: {
+          ...seen,
+          replyCount: seen.replyCount + 1,
+        },
+      },
+    }
+  }
+
   /** Record the current reply count for a discussion as "seen". */
   function markDiscussionSeen(discussionId: string, currentReplyCount: number) {
     storage.value = {
@@ -141,6 +162,7 @@ export function useDataForumUnread() {
     isDiscussionNew,
     markTopicSeen,
     markDiscussionSeen,
+    bumpTopicReplySeen,
     initializeTopics,
   }
 }

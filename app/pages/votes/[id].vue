@@ -13,7 +13,10 @@ import VoteResults from '@/components/Votes/VoteResults.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { useRealtimeReferendumVotes } from '@/composables/useRealtimeReferendumVotes'
 
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDuration } from '@/lib/utils/duration'
+
+const isMobile = useBreakpoint('<s')
 
 const route = useRoute()
 const router = useRouter()
@@ -333,7 +336,7 @@ function handleChoiceClick(index: number) {
 
 <template>
   <div class="page">
-    <div class="container container-s">
+    <div :class="!isMobile && 'container container-s'">
       <!-- Loading state -->
       <VoteLoadingSkeleton v-if="loadingReferendum" />
 

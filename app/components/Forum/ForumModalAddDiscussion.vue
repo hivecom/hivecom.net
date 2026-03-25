@@ -391,7 +391,7 @@ function confirmPublish() {
 </script>
 
 <template>
-  <Modal v-bind="props" size="l" :card="{ footerSeparator: true }" @close="emit('close')">
+  <Modal v-bind="props" size="l" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')">
     <template #header>
       <h3>{{ isEditing ? 'Edit' : 'New' }}  discussion</h3>
     </template>
@@ -412,7 +412,7 @@ function confirmPublish() {
     </Tabs>
 
     <Flex v-if="activeTab === 'create' || !showTabs" column gap="m">
-      <div class="w-100">
+      <div class="w-100 topic-dropdown">
         <label class="vui-label required">Topic</label>
         <Dropdown expand>
           <template #trigger="{ toggle, isOpen }">
@@ -458,9 +458,11 @@ function confirmPublish() {
         :media-context="editedDiscussion && userId ? `${editedDiscussion.id}/${userId}` : 'staging'"
         :media-bucket-id="FORUMS_BUCKET_ID"
         min-height="196px"
+        max-height="33vh"
         hint="You can use markdown and added media through drag-and-drop"
         label="Content"
         placeholder="Add more context to the discussion"
+        show-attachment-button
       />
 
       <Card class="card-bg">
@@ -557,7 +559,7 @@ function confirmPublish() {
   }
 }
 
-:deep(.vui-dropdown-trigger-wrap) {
+.topic-dropdown :deep(.vui-dropdown-trigger-wrap) {
   display: block;
   width: 100%;
 }

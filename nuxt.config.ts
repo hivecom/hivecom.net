@@ -3,6 +3,9 @@ import { fileURLToPath } from 'node:url'
 import process from 'process'
 import fetchRoutes from './nitro/fetch-routes'
 
+// Only fetch routes when actually building/generating — not during `nuxi prepare`, type-gen, etc.
+const isBuildCommand = process.argv.some(arg => ['build', 'generate'].includes(arg))
+
 // Cache the fetch result so it's only called once across hooks
 let fetchRoutesCache: Promise<{ routes: string[], sitemapUrls: SitemapUrl[] }> | null = null
 async function getCachedRoutes() {
@@ -36,11 +39,7 @@ export default defineNuxtConfig({
     // },
   },
   devtools: {
-    enabled: true,
-
-    timeline: {
-      enabled: true,
-    },
+    enabled: false,
   },
   compatibilityDate: '2024-09-25',
   typescript: {
@@ -129,6 +128,23 @@ export default defineNuxtConfig({
         'ph:steam-logo',
         'ph:patreon-logo',
 
+        // Editor/RichTextSelectionMenu.vue
+        // (static string names in <Icon> - included explicitly to guarantee bundle inclusion)
+        'ph:text-h-one',
+        'ph:x',
+        'ph:text-b',
+        'ph:text-italic',
+        'ph:text-underline',
+        'ph:text-strikethrough',
+        'ph:code',
+        'ph:paint-bucket',
+        'ph:text-aa',
+        'ph:list-bullets',
+        'ph:list-numbers',
+        'ph:code-block',
+        'ph:quotes',
+        'material-symbols-light:lowercase',
+
         // Community/FundingHistory.vue growth indicators
         'ph:minus',
         'ph:trend-up',
@@ -140,6 +156,9 @@ export default defineNuxtConfig({
         'ph:warning-circle-fill',
         'ph:x-circle-fill',
         'ph:question-fill',
+
+        // events
+        'ph:arrows-vertical',
       ],
     },
   },
@@ -193,7 +212,7 @@ export default defineNuxtConfig({
     zeroRuntime: true,
     exclude: ['/admin/**', '/auth/**', '/playground/**', '/votes/**'],
     urls: async () => {
-      if (process.env.NODE_ENV !== 'production') {
+      if (!isBuildCommand) {
         return []
       }
       const { sitemapUrls } = await getCachedRoutes()
@@ -202,7 +221,7 @@ export default defineNuxtConfig({
   },
   hooks: {
     'nitro:config': async (nitroConfig) => {
-      if (process.env.NODE_ENV !== 'production') {
+      if (!isBuildCommand) {
         return
       }
 

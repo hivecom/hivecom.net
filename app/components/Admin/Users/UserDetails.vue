@@ -9,7 +9,7 @@ import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarly
 import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
 import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -562,7 +562,7 @@ function getUserInitials(username: string): string {
             <h6>Content</h6>
           </template>
           <div class="profile-markdown">
-            <MDRenderer :md="user.markdown" />
+            <MarkdownRenderer :md="user.markdown" />
           </div>
         </Card>
 

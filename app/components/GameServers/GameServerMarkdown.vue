@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Card, Flex } from '@dolanske/vui'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import MetadataCard from '../Shared/MetadataCard.vue'
 
 interface Props {
@@ -19,7 +19,7 @@ defineProps<Props>()
         <Icon name="ph:article" />
         Server Details
       </strong>
-      <MDRenderer :md="gameserver.markdown" class="gameserver-markdown__content" />
+      <MarkdownRenderer :md="gameserver.markdown" class="gameserver-markdown__content" />
     </Flex>
 
     <!-- Server Metadata -->

@@ -10,8 +10,9 @@ const route = useRoute()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
-const sessionUserId = ref<string | null>(null)
-const resolvedUserId = computed(() => userId.value ?? sessionUserId.value)
+// resolvedUserId is just userId — we wait for useSupabaseUser() to populate
+// before running the auth check, so no sessionUserId fallback is needed.
+const resolvedUserId = userId
 
 // Initialize user role and permissions from database
 const userPermissions = ref<string[]>([])
@@ -29,41 +30,30 @@ defineOgImageComponent('Default', {
 
 const isBelowExtraLarge = useBreakpoint('<xl')
 
-async function getAuthenticatedUserId(): Promise<string | null> {
-  if (resolvedUserId.value)
-    return resolvedUserId.value
-
-  try {
-    const { data, error } = await supabase.auth.getSession()
-
-    if (error) {
-      console.error('Error fetching auth session:', error)
-      return null
-    }
-
-    sessionUserId.value = data.session?.user?.id ?? null
-    return resolvedUserId.value
-  }
-  catch (sessionError) {
-    console.error('Error resolving auth session:', sessionError)
-    return null
-  }
-}
-
 // Check user role and permissions, redirect if not authorized.
 // Role is read from useDataUser (shared with UserDropdown etc.) so no extra query fires.
 onMounted(async () => {
   try {
-    const targetUserId = await getAuthenticatedUserId()
+    // On a cold SPA load, useSupabaseUser() starts null and is only populated once
+    // the INITIAL_SESSION auth state event fires. We must wait for it before
+    // proceeding - if we trigger useDataUser's fetch while currentUser is still null,
+    // fetchRole() will bail out early to avoid caching a null role for unauthenticated
+    // requests. That causes role to come back null and the layout to incorrectly
+    // redirect an authenticated admin to home.
+    if (!user.value) {
+      await until(user).toMatch(u => u !== null, { timeout: 5000 }).catch(() => null)
+    }
+
+    const targetUserId = userId.value
 
     if (!targetUserId) {
       await router.push('/')
       return
     }
 
-    // Wait for cachedUserData to populate (it fetches on watch inside useDataUser)
-    // If role is already cached this resolves synchronously via the computed.
-    // For a cold cache we poll briefly - role data loads fast (single row).
+    // Wait for cachedUserData to populate. Now that useSupabaseUser() is set,
+    // fetchRole() will actually query the database instead of short-circuiting.
+    // If the role is already cached this resolves synchronously via the computed.
     await until(cachedUserData).toMatch(d => d !== null, { timeout: 8000 }).catch(() => null)
 
     const role = userRole.value
@@ -101,7 +91,6 @@ onMounted(async () => {
 // Watch for user changes (login/logout)
 watch(user, async (newUser) => {
   if (!newUser) {
-    sessionUserId.value = null
     // User logged out, redirect to landing page
     isAuthorized.value = false
     await router.push('/')

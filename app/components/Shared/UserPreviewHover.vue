@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Drawer, Popout } from '@dolanske/vui'
+import { Button, Drawer, Popout } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { useDataUser } from '@/composables/useDataUser'
@@ -35,15 +35,17 @@ watch(() => props.userId, (newId) => {
 // which point useBulkDataUser will have already populated the shared cache.
 const lazyUserId = computed(() => everHovered.value ? (props.userId ?? null) : null)
 
-const { user } = useDataUser(lazyUserId, {
+const { user, loading } = useDataUser(lazyUserId, {
   includeAvatar: false,
   includeRole: false,
 })
 
-// Only open the popout when we actually have profile data to show.
-// This prevents an empty card from appearing for non-public profiles
-// when the visitor is unauthenticated (RLS returns nothing for them).
-const canShowPopout = computed(() => !!(visible.value && props.userId && user.value))
+// Show the popout while loading (so the skeleton is visible) or once we have
+// profile data. We suppress it only when the fetch is done and returned nothing
+// - that's the unauthenticated / RLS-hidden case.
+const canShowPopout = computed(() =>
+  !!(visible.value && props.userId && (loading.value || user.value)),
+)
 
 const isMobile = useBreakpoint('<s')
 const currentUser = useSupabaseUser()
@@ -72,6 +74,14 @@ function handleMobileClick(e: Event) {
           :user-id="props.userId"
           :max-badges="props.maxBadges"
         />
+
+        <div class="px-m">
+          <NuxtLink :to="`/profile/${user?.username ?? props.userId}`">
+            <Button expand outline>
+              View profile
+            </Button>
+          </NuxtLink>
+        </div>
       </div>
     </Drawer>
   </div>
@@ -105,6 +115,7 @@ function handleMobileClick(e: Event) {
 }
 
 .user-preview-mobile {
+  display: inline-flex;
   // Nested slot content links should not work on mobile and open drawer.
   // Here we select the very first link or the links inside the very first element (slot)
   & > * > a,

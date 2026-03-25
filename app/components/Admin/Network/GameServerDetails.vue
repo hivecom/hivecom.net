@@ -4,7 +4,7 @@ import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
@@ -188,7 +188,7 @@ function confirmDelete() {
             <h6>Markdown</h6>
           </template>
 
-          <MDRenderer :md="props.gameserver.markdown" class="gameserver-details__markdown-content" />
+          <MarkdownRenderer :md="props.gameserver.markdown" class="gameserver-details__markdown-content" />
         </Card>
 
         <!-- Network Details -->

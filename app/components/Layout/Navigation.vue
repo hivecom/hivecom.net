@@ -66,7 +66,7 @@ function updateHoveredElement(event: MouseEvent) {
           <Icon name="ph:list" size="2rem" />
         </Button>
 
-        <SharedLogo class="navigation__logo" :compact="isMobile" />
+        <SharedLogo class="navigation__logo" />
 
         <ul ref="navbarLinksRef" class="navigation__links" @mouseleave="hoveredElement = null">
           <template v-for="link in navigationLinks" :key="link.path">

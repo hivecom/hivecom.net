@@ -80,6 +80,55 @@ function insertMarkdown(
   el.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
+// Insert a spoiler block in plain text mode, wrapping selected text if any
+function insertSpoilerMarkdown() {
+  const el = props.textareaEl
+  if (!el)
+    return
+
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  const value = el.value
+  const selected = value.slice(start, end)
+  const hasSelection = start !== end
+
+  const spoilerBlock = `:::details
+:::detailsSummary
+Spoiler
+:::
+
+:::detailsContent
+
+${hasSelection ? selected : '[content]'}
+
+:::
+
+:::
+`
+
+  // Insert at cursor, or replace selection
+  const newValue = value.slice(0, start) + spoilerBlock + value.slice(end)
+  el.value = newValue
+
+  // Move cursor to [content] for convenience if nothing was selected
+  if (!hasSelection) {
+    const contentPos = newValue.indexOf('[content]')
+    if (contentPos !== -1) {
+      el.setSelectionRange(contentPos, contentPos + '[content]'.length)
+      el.focus()
+    }
+  }
+  else {
+    // Place cursor after the inserted block
+    const afterBlock = value.slice(0, start).length + spoilerBlock.length
+    el.setSelectionRange(afterBlock, afterBlock)
+    el.focus()
+  }
+
+  // Notify the parent so content / plainTextContent stay in sync.
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
 // ---------------------------------------------------------------------------
 // Heading picker
 // ---------------------------------------------------------------------------
@@ -495,6 +544,16 @@ const [DefineToolbar, ReuseToolbar] = createReusableTemplate()
           </Button>
         </ButtonGroup>
       </template>
+      <ButtonGroup v-if="!plainText">
+        <Button size="s" square @click="props.editor.chain().focus().setDetails().insertContent('Spoiler').run()">
+          <Icon :size="18" name="ph:eye-slash" />
+        </Button>
+      </ButtonGroup>
+      <ButtonGroup v-else>
+        <Button size="s" square @click="insertSpoilerMarkdown">
+          <Icon :size="18" name="ph:eye-slash" />
+        </Button>
+      </ButtonGroup>
     </Flex>
   </DefineToolbar>
 

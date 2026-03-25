@@ -1,34 +1,13 @@
 <script lang="ts" setup>
-const props = defineProps<{ compact?: boolean }>()
+// No props needed - compact/full switching is handled via CSS
+// to avoid SSR hydration mismatch from useMediaQuery initial false value
 </script>
 
 <template>
   <NuxtLink to="/" aria-label="Go to homepage" class="logo-link">
-    <!-- Compact: icon only -->
+    <!-- Full: icon + logotype (hidden on mobile via CSS) -->
     <svg
-      v-if="props.compact"
-      class="logo compact"
-      viewBox="0 0 2048 2048"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <g transform="matrix(64,0,0,64,0,0)">
-        <path
-          d="M0,6C0,2.686 2.686,0 6,0L26,0C29.314,0 32,2.686 32,6L32,26C32,29.314 29.314,32 26,32L6,32C2.686,32 0,29.314 0,26L0,6Z"
-          fill="currentColor"
-        />
-      </g>
-      <g transform="matrix(64,0,0,64,0,0)">
-        <path
-          d="M21,10L23.88,10L23.88,21.2L21,21.2L21,16.816L11.88,16.816L11.88,21.2L9,21.2L9,10L11.88,10L11.88,14.384L21,14.384L21,10Z"
-          class="logo-letter"
-        />
-      </g>
-    </svg>
-
-    <!-- Full: icon + logotype -->
-    <svg
-      v-else
-      class="logo"
+      class="logo logo--full"
       viewBox="0 0 137 32"
       xmlns="http://www.w3.org/2000/svg"
     >
@@ -52,6 +31,26 @@ const props = defineProps<{ compact?: boolean }>()
         class="logo-letter"
       />
     </svg>
+
+    <!-- Compact: icon only (shown on mobile via CSS) -->
+    <svg
+      class="logo logo--compact"
+      viewBox="0 0 2048 2048"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <g transform="matrix(64,0,0,64,0,0)">
+        <path
+          d="M0,6C0,2.686 2.686,0 6,0L26,0C29.314,0 32,2.686 32,6L32,26C32,29.314 29.314,32 26,32L6,32C2.686,32 0,29.314 0,26L0,6Z"
+          fill="currentColor"
+        />
+      </g>
+      <g transform="matrix(64,0,0,64,0,0)">
+        <path
+          d="M21,10L23.88,10L23.88,21.2L21,21.2L21,16.816L11.88,16.816L11.88,21.2L9,21.2L9,10L11.88,10L11.88,14.384L21,14.384L21,10Z"
+          class="logo-letter"
+        />
+      </g>
+    </svg>
   </NuxtLink>
 </template>
 
@@ -63,16 +62,29 @@ const props = defineProps<{ compact?: boolean }>()
 }
 
 .logo {
-  width: 152px;
-  margin-bottom: -3px; // The logo has a pixel gap at the bottom, this fixes it
+  &--full {
+    width: 152px;
+    margin-bottom: -3px; // The logo has a pixel gap at the bottom, this fixes it
+  }
 
-  &.compact {
-    margin-bottom: 0;
+  &--compact {
+    display: none;
     width: 40px;
   }
 }
 
 .logo-letter {
   fill: var(--color-bg);
+}
+
+/* Match the nav's existing mobile breakpoint exactly */
+@media (max-width: 920px) {
+  .logo--full {
+    display: none;
+  }
+
+  .logo--compact {
+    display: block;
+  }
 }
 </style>

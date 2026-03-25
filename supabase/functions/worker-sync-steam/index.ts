@@ -80,42 +80,22 @@ async function getWorkerConfig(
   supabase: ReturnType<typeof createServiceClient>,
 ): Promise<WorkerConfig> {
   try {
-    // Use raw SQL query since get_private_config is not in the generated types
-    const { data, error } = await supabase
-      .from("kvstore" as never)
-      .select("value")
-      .eq("key" as never, "worker_sync_steam" as never)
-      .single();
+    // worker_sync_steam lives in private.kvstore, which is intentionally hidden
+    // from PostgREST. Use the get_private_config RPC (service-role only) to read it.
+    const { data: rpcData, error: rpcError } = await supabase.rpc(
+      "get_private_config" as never,
+      { config_key: "worker_sync_steam" } as never,
+    );
 
-    // Fallback: try the private config function via raw RPC
-    if (error || !data) {
-      // Try direct RPC call
-      const { data: rpcData, error: rpcError } = await supabase.rpc(
-        "get_private_config" as never,
-        { config_key: "worker_sync_steam" } as never,
+    if (rpcError || !rpcData) {
+      console.warn(
+        "Failed to fetch config, using defaults:",
+        rpcError?.message,
       );
-
-      if (rpcError || !rpcData) {
-        console.warn(
-          "Failed to fetch config, using defaults:",
-          rpcError?.message ?? error?.message,
-        );
-        return DEFAULT_CONFIG as WorkerConfig;
-      }
-
-      const configData = rpcData as unknown as Record<string, unknown>;
-      return {
-        max_wall_clock_ms: (configData.max_wall_clock_ms as number) ??
-          DEFAULT_CONFIG.max_wall_clock_ms,
-        batch_size: (configData.batch_size as number) ??
-          DEFAULT_CONFIG.batch_size,
-        visibility_timeout_sec: (configData.visibility_timeout_sec as number) ??
-          DEFAULT_CONFIG.visibility_timeout_sec,
-        max_concurrency: (configData.max_concurrency as number) ?? 5,
-      };
+      return DEFAULT_CONFIG as WorkerConfig;
     }
 
-    const configData = (data as { value: Record<string, unknown> }).value;
+    const configData = rpcData as unknown as Record<string, unknown>;
     return {
       max_wall_clock_ms: (configData.max_wall_clock_ms as number) ??
         DEFAULT_CONFIG.max_wall_clock_ms,

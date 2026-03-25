@@ -137,6 +137,14 @@ body {
   scrollbar-width: thin;
 }
 
+// VUI's reset rule `span { font-size: var(--font-size-m) }` fires on any span,
+// including spans nested inside a [data-text-size] size mark. This means the
+// font-size set by the outer size span never reaches inner color/font spans.
+// Force all spans inside a size mark to inherit so the size propagates correctly.
+[data-text-size] span {
+  font-size: inherit;
+}
+
 a {
   color: var(--color-text);
   text-decoration: none;
@@ -291,13 +299,66 @@ code {
     margin-block: var(--space-s);
   }
 
+  details {
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-s);
+    margin: var(--space-xs) 0;
+    overflow: hidden;
+
+    summary {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-s);
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+
+      &::-webkit-details-marker {
+        display: none;
+      }
+
+      &::before {
+        content: '';
+        display: inline-block;
+        width: 0;
+        height: 0;
+        border-top: 4px solid transparent;
+        border-bottom: 4px solid transparent;
+        border-left: 6px solid var(--color-text-lighter);
+        transition: transform var(--transition-fast);
+        flex-shrink: 0;
+      }
+    }
+
+    &[open] > summary::before {
+      transform: rotate(90deg);
+    }
+
+    // Content inside the details body
+    > :not(summary) {
+      padding: var(--space-xs) var(--space-s) var(--space-s);
+      border-top: 1px solid var(--color-border-weak);
+
+      > *:first-child {
+        margin-top: 0;
+      }
+
+      > *:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+
   img {
     display: block;
     max-width: 100%;
-    max-height: 692px;
+    max-height: 480px;
     // Show a neutral placeholder while the image is in-flight so the page
     // layout is less likely to shift dramatically before images load.
     background-color: var(--color-bg-raised);
+    cursor: pointer;
 
     &:before {
       display: block;
@@ -346,10 +407,9 @@ code {
 // once it has loaded, and falls back to 16:9 while it is still in-flight.
 .forum-post__content {
   img {
-    // Note (@dolanske) rendered images had the colorted backghround added above in the .typeset on some edges. Removing width: 100% seems to have fixed it.
-    // width: 100%;
-    aspect-ratio: auto 16 / 9;
-    object-fit: contain;
+    max-width: 100%;
+    cursor: pointer;
+    border-radius: var(--border-radius-s);
   }
 }
 

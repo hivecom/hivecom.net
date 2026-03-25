@@ -55,7 +55,7 @@ const canEditOrDelete = computed(() =>
     || props.currentUserData.role === 'admin'
     || props.currentUserData.role === 'moderator'
   )
-  && !discussion?.value?.is_locked
+  && (!discussion?.value?.is_locked || props.canBypassLock)
   && !discussion?.value?.is_archived,
 )
 

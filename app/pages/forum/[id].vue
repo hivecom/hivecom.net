@@ -9,10 +9,12 @@ import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import UserName from '@/components/Shared/UserName.vue'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
+import { useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBulkTopicIcons } from '@/composables/useTopicIcon'
@@ -54,7 +56,7 @@ const supabase = useSupabaseClient()
 const discussionCache = useDiscussionCache()
 const subscriptionsCache = useDiscussionSubscriptionsCache()
 const userId = useUserId()
-const loading = ref(false)
+const loading = ref(true)
 const errorMessage = ref<string | null>(null)
 const post = ref<DiscussionWithContext | null>(null)
 const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
@@ -66,7 +68,7 @@ const publishConfirmOpen = ref(false)
 const showNSFWWarning = ref(false)
 const nsfwRevealed = ref(false)
 
-const isMobile = useBreakpoint('<m')
+const isMobile = useBreakpoint('<s')
 
 // Reporting
 const showReportModal = ref(false)
@@ -283,6 +285,9 @@ onBeforeMount(async () => {
       nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
       void loadTopicBreadcrumbs(data.discussion_topic_id)
       void fetchSubscription(data.id)
+      // Mark the discussion seen in localStorage so the unread dot clears
+      // even when navigating here by direct URL rather than from the forum index.
+      forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
     }
 
     loading.value = false
@@ -343,6 +348,8 @@ onBeforeMount(async () => {
         nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
         void loadTopicBreadcrumbs(data.discussion_topic_id)
         void fetchSubscription(data.id)
+        // Mark seen in localStorage so the unread dot clears on direct URL visits.
+        forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
       }
 
       loading.value = false
@@ -375,6 +382,18 @@ useHead({
 // This updates every 10 seconds and forces a re-render on the timestamps. This
 // way if the post is open for a longer period of time, it won't show "posted 1
 // minute ago" for 10 minutes until you refresh or interact with the page.
+// Only show "Edited" when modified_at differs from created_at AND modified_by
+// is set - same guard as DiscussionModelForum uses for replies.
+const postModifierId = computed(() => {
+  if (!post.value)
+    return null
+  const { modified_at, created_at, modified_by, created_by } = post.value
+  if (modified_at === created_at || !modified_by || modified_by === created_by)
+    return null
+  return modified_by
+})
+const { user: postModifierUser } = useDataUser(postModifierId, { userTtl: 10 * 60 * 1000 })
+
 const timestampUpdateKey = useInterval(60000)
 
 // Publish post
@@ -410,10 +429,20 @@ function publish() {
  */
 function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)
+  // Also bump the parent topic's stored reply count so the topic-level unread
+  // dot doesn't fire for activity the current user just created.
+  if (post.value?.discussion_topic_id != null) {
+    forumUnread.bumpTopicReplySeen(post.value.discussion_topic_id)
+  }
 }
 
 const pageTitle = useTemplateRef('page-title')
+const scrollHeaderReady = ref(false)
 const isPageTitleVisible = useElementVisibility(pageTitle)
+
+watch(isPageTitleVisible, () => {
+  scrollHeaderReady.value = true
+}, { once: true })
 
 // Track if user is at the bottom of the page with about half a screen size of leeway
 const { y } = useWindowScroll()
@@ -478,7 +507,7 @@ function revealNsfw() {
     <template v-else-if="post">
       <!-- Floating header when scrolling down -->
       <Transition name="fade">
-        <section v-if="!isPageTitleVisible" class="forum-post__scroll">
+        <section v-if="scrollHeaderReady && !isPageTitleVisible" class="forum-post__scroll">
           <div class="container container-m">
             <div>
               <strong class="forum-post__scroll-title">
@@ -507,7 +536,7 @@ function revealNsfw() {
       </Transition>
 
       <section ref="page-title" class="page-title" :class="isMobile ? 'mb-l' : 'mb-xl'">
-        <Flex x-between y-center>
+        <Flex wrap x-between y-center>
           <div class="relative">
             <template v-if="topicBreadcrumbs.length && !isMobile">
               <Button
@@ -522,13 +551,17 @@ function revealNsfw() {
                 <Icon class="text-color" name="ph:arrow-left" :size="16" />
               </Button>
               <Breadcrumbs>
-                <BreadcrumbItem @click="router.push('/forum')">
+                <BreadcrumbItem
+                  href="/forum"
+                  @click.prevent="router.push('/forum')"
+                >
                   Forum
                 </BreadcrumbItem>
                 <BreadcrumbItem
                   v-for="topic in topicBreadcrumbs"
                   :key="topic.id"
-                  @click="router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`)"
+                  :href="`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`"
+                  @click.prevent="router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`)"
                 >
                   <Flex y-center gap="xs" :style="{ display: 'inline-flex' }">
                     <img
@@ -541,6 +574,24 @@ function revealNsfw() {
                   </Flex>
                 </BreadcrumbItem>
               </Breadcrumbs>
+            </template>
+            <template v-else-if="isMobile">
+              <!-- Back Button -->
+              <Flex x-between>
+                <Button
+                  expand
+                  variant="gray"
+                  size="s"
+                  plain
+                  aria-label="Go back to Forum"
+                  @click="$router.push('/forum')"
+                >
+                  <template #start>
+                    <Icon name="ph:arrow-left" />
+                  </template>
+                  Forum
+                </Button>
+              </Flex>
             </template>
           </div>
 
@@ -642,9 +693,10 @@ function revealNsfw() {
           />
         </Flex>
 
-        <Flex v-if="post.description" y-center x-between gap="m" class="mb-m">
+        <Flex v-if="post.description" :column="isMobile" :y-center="!isMobile" x-between gap="m" class="mb-m">
           <p>{{ post.description }}</p>
           <Reactions
+            :class="isMobile ? 'reactions--mobile' : ''"
             table="discussions"
             :row-id="post.id"
             :reactions="post.reactions"
@@ -670,21 +722,27 @@ function revealNsfw() {
         />
 
         <!-- Post author & metadata row -->
-        <Flex x-between y-center wrap gap="m" :class="{ 'mb-l': contextInfo || !!post.markdown }">
-          <UserDisplay :user-id="post.created_by" show-role class="mr-m" />
-          <Flex :key="timestampUpdateKey" y-center>
-            <Tooltip>
+        <Flex :column="isMobile" :x-between="!isMobile" :y-center="!isMobile" wrap gap="s" :class="{ 'mb-l': contextInfo || !!post.markdown }">
+          <UserDisplay :user-id="post.created_by" show-role />
+          <Flex :key="timestampUpdateKey" y-center wrap :gap="4" class="forum-post__timestamps">
+            <Tooltip :delay="500">
               <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
               <template #tooltip>
                 Posted on {{ formatDate(post.created_at) }}
               </template>
             </Tooltip>
-            <Tooltip>
-              <span>Last Activity {{ dayjs(post.modified_at).fromNow() }}</span>
-              <template #tooltip>
-                Last active on {{ formatDate(post.modified_at) }}
+            <template v-if="post.modified_at !== post.created_at">
+              <span aria-hidden="true">·</span>
+              <Tooltip :delay="500">
+                <span>Edited {{ dayjs(post.modified_at).fromNow() }}</span>
+                <template #tooltip>
+                  Edited on {{ formatDate(post.modified_at) }}
+                </template>
+              </Tooltip>
+              <template v-if="postModifierId && postModifierUser">
+                <span class="text-s">by</span> <UserName size="s" show-preview :user-id="postModifierId" />
               </template>
-            </Tooltip>
+            </template>
           </Flex>
         </Flex>
 
@@ -708,7 +766,7 @@ function revealNsfw() {
         <!-- Content -->
         <template v-if="post.markdown">
           <hr v-if="!contextInfo" class="mb-l">
-          <MDRenderer class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
+          <MarkdownRenderer class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
         </template>
       </section>
 
@@ -824,6 +882,13 @@ function revealNsfw() {
   transform: translateY(-50%);
 }
 
+:deep(.reactions--mobile) {
+  flex-direction: row-reverse !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-start !important;
+  margin-left: 0 !important;
+}
+
 :deep(.forum__item-actions) {
   display: block;
 }
@@ -882,11 +947,11 @@ function revealNsfw() {
   display: block;
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-black);
-  margin-bottom: var(--space-xs);
   position: relative;
 
   & + p {
     color: var(--color-text-lighter);
+    margin-top: var(--space-xs);
   }
 }
 
@@ -916,6 +981,11 @@ function revealNsfw() {
 }
 
 @media screen and (max-width: $breakpoint-s) {
+  .forum-post__timestamps {
+    color: var(--color-text-light);
+    font-size: var(--font-size-s);
+  }
+
   .page-title {
     h1 {
       font-size: var(--font-size-xxxl);

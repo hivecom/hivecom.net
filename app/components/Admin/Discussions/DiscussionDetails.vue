@@ -4,7 +4,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, Card, CopyClipboard, Divider, Dropdown, DropdownTitle, Flex, Grid, pushToast, searchString, Sheet, Tooltip } from '@dolanske/vui'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import DiscussionEditSheet from '@/components/Admin/Discussions/DiscussionEditSheet.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
@@ -447,7 +447,7 @@ async function reassignToTopic(topicId: string) {
           <h5 class="text-bold">
             Content
           </h5>
-          <MDRenderer v-if="discussionMarkdown" :md="discussionMarkdown" />
+          <MarkdownRenderer v-if="discussionMarkdown" :md="discussionMarkdown" />
           <p v-else-if="contentLoading" class="text-color-lighter text-s">
             Loading content...
           </p>
@@ -478,7 +478,7 @@ async function reassignToTopic(topicId: string) {
             <span v-if="lastReplyLoading" class="text-color-lighter text-xs">
               Loading last reply...
             </span>
-            <MDRenderer v-else-if="lastReply?.markdown" :md="lastReply.markdown" />
+            <MarkdownRenderer v-else-if="lastReply?.markdown" :md="lastReply.markdown" />
             <span v-else class="text-color-lighter text-xs">
               No replies yet
             </span>

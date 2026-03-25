@@ -3,12 +3,15 @@ import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
-import UserLink from '@/components/Shared/UserLink.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
 import { useDataProjects } from '@/composables/useDataProjects'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { getPlaceholderBannerProject } from '@/lib/projectBannerPlaceholders'
+
+const isMobile = useBreakpoint('<s')
 
 // Get route parameter
 const route = useRoute()
@@ -94,7 +97,6 @@ useHead({
           size="s"
           plain
           aria-label="Go back to Projects page"
-          class="event-detail__back-link"
           @click="$router.push('/community/projects')"
         >
           <template #start>
@@ -103,6 +105,7 @@ useHead({
           Back to Projects
         </Button>
       </Flex>
+
       <!-- Header -->
       <Card class="project-header card-bg" expand>
         <div class="project-header__banner">
@@ -116,57 +119,48 @@ useHead({
         </div>
 
         <div class="project-header__body">
-          <Flex column gap="m" expand>
-            <!-- Title and created date -->
-            <Flex gap="m" y-center x-between expand>
-              <div class="project-header__title-group">
-                <h1 class="project-header__title">
-                  {{ project.title }}
-                </h1>
-              </div>
-            </Flex>
+          <Flex column gap="m" expand :y-center="isMobile">
+            <h1 class="project-header__title">
+              {{ project.title }}
+            </h1>
 
-            <!-- Description -->
             <p v-if="project.description" class="project-header__description">
               {{ project.description }}
             </p>
 
             <!-- Meta information -->
-            <Flex gap="l" x-between y-center class="project-header__meta" expand>
-              <div v-if="project.owner" class="text-s">
-                Project by <UserLink :user-id="project.owner" show-role />
-              </div>
-              <Flex gap="s" y-center>
-                <NuxtLink
+            <Flex :column="isMobile" :gap="isMobile ? 's' : 'l'" :x-between="!isMobile" :x-center="isMobile" y-center wrap expand>
+              <Flex v-if="project.owner" y-center gap="xs">
+                <span class="text-s text-color-light">Project by</span>
+                <UserDisplay :user-id="project.owner" size="s" :show-profile-preview="true" :hide-avatar="false" />
+              </Flex>
+              <Flex gap="s" :column="isMobile" :expand="isMobile" class="project-header__actions">
+                <Button
                   v-if="project.link"
+                  class="project-header__action"
+                  :size="isMobile ? 'l' : 's'"
                   :href="project.link"
-                  external
                   target="_blank"
+                  expand
                 >
-                  <Button
-                    size="s"
-                  >
-                    <template #start>
-                      <Icon name="ph:arrow-square-out" />
-                    </template>
-                    Open Link
-                  </Button>
-                </NuxtLink>
-                <NuxtLink
+                  <template #start>
+                    <Icon name="ph:arrow-square-out" />
+                  </template>
+                  Open Link
+                </Button>
+                <Button
                   v-if="project.github"
+                  class="project-header__action"
+                  :size="isMobile ? 'l' : 's'"
                   :href="`https://github.com/${project.github}`"
-                  external
                   target="_blank"
+                  expand
                 >
-                  <Button
-                    size="s"
-                  >
-                    <template #start>
-                      <Icon name="ph:github-logo" />
-                    </template>
-                    View on GitHub
-                  </Button>
-                </NuxtLink>
+                  <template #start>
+                    <Icon name="ph:github-logo" />
+                  </template>
+                  View on GitHub
+                </Button>
               </Flex>
             </Flex>
           </Flex>
@@ -176,7 +170,7 @@ useHead({
       <!-- Project Content (Markdown) -->
       <Card class="project-content card-bg">
         <div class="project-content__markdown">
-          <MDRenderer :md="project.markdown" />
+          <MarkdownRenderer :md="project.markdown" />
         </div>
 
         <!-- Project Metadata -->
@@ -237,16 +231,6 @@ useHead({
 
 .project-header__body {
   padding: var(--space-l);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-l);
-}
-
-.project-header__title-group {
-  display: flex;
-  align-items: center;
-  gap: var(--space-m);
-  flex-wrap: wrap;
 }
 
 .project-header__title {
@@ -257,24 +241,6 @@ useHead({
   line-height: 1.2;
 }
 
-.project-header__tags {
-  opacity: 0.9;
-  color: var(--color-text-light);
-}
-
-.project-header__owner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-}
-
-.project-header__label {
-  font-size: var(--font-size-s);
-  color: var(--color-text-light);
-  font-weight: var(--font-weight-medium);
-  min-width: 80px;
-}
-
 .project-header__description {
   font-size: var(--font-size-l);
   color: var(--color-text-light);
@@ -282,48 +248,33 @@ useHead({
   line-height: 1.6;
 }
 
+.project-header__action {
+  white-space: nowrap;
+}
+
 .project-content {
   &__markdown {
     padding: var(--space-m);
-    /* max-width: 728px; */
     margin-bottom: var(--space-xl);
   }
 }
 
-/* .project-discussion {
-  max-width: 728px;
-} */
-
 @media (max-width: 768px) {
-  .project-header__title {
-    font-size: var(--font-size-xxl);
-  }
-
-  .project-header__title-group {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .project-header {
-    padding: 0;
-
-    .project-header__banner {
-      height: 180px;
-    }
-
-    .project-header__title-group {
-      width: 100%;
-    }
-  }
-
-  .project-header__meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-m);
+  .project-header__banner {
+    height: 180px;
   }
 
   .project-header__body {
     padding: var(--space-m);
+  }
+
+  .project-header__title {
+    font-size: var(--font-size-xxl);
+    text-align: center;
+  }
+
+  .project-header__description {
+    text-align: center;
   }
 }
 </style>

@@ -453,7 +453,7 @@ function isNodeVisible(node: ThreadNode): boolean {
       </div>
 
       <!-- Flat view: all comments chronologically with inline reply previews -->
-      <!-- v-show (not v-if) keeps items mounted across mode switches so MDRenderer -->
+      <!-- v-show (not v-if) keeps items mounted across mode switches so MarkdownRenderer -->
       <!-- never re-suspends and the skeleton/fade-in flash doesn't appear. -->
       <div v-show="viewMode === 'flat' && modelledComments.length > 0">
         <template v-for="(comment, index) in modelledComments" :key="comment.id">

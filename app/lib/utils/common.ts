@@ -150,7 +150,7 @@ export async function waitForImages(timeoutMs = 4000): Promise<void> {
  * hard `timeoutMs` deadline is reached.
  *
  * This is more robust than `waitForImages` for scroll-to-comment use-cases
- * because it catches late-rendered content (e.g. MDRenderer behind a
+ * because it catches late-rendered content (e.g. MarkdownRenderer behind a
  * <Suspense> boundary whose images aren't in the DOM yet at mount time) and
  * images with non-16:9 aspect ratios that shift the layout more than the CSS
  * placeholder pre-allocated.

@@ -85,7 +85,7 @@ function scrollReply() {
 
 // Always use whichever children source is populated so both the flat inline
 // preview and the threaded recursive subtree stay mounted at all times.
-// This means MDRenderer resolves while hidden and no flash occurs on switch.
+// This means MarkdownRenderer resolves while hidden and no flash occurs on switch.
 //   threaded list items → children prop is populated, threadNode is undefined
 //   flat list items     → threadNode.children is populated, children is []
 const sourceChildren = computed((): ThreadNode[] =>
@@ -184,7 +184,7 @@ function stripReplyData(entry: Comment) {
 
     <!-- Threaded mode: recursively render children as full DiscussionItems -->
     <!-- v-show keeps nested DiscussionItems mounted across mode switches so -->
-    <!-- MDRenderer never re-suspends and the skeleton/fade-in flash doesn't appear. -->
+    <!-- MarkdownRenderer never re-suspends and the skeleton/fade-in flash doesn't appear. -->
     <div v-show="viewMode === 'threaded' && hasReplies">
       <!-- Collapsed summary pill -->
       <Flex

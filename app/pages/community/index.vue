@@ -7,8 +7,11 @@ import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
 import { useDataProjects } from '@/composables/useDataProjects'
 import { isBanActive } from '@/lib/banStatus'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { getBirthdayPatterns } from '@/lib/utils/date'
 import { shuffleArray } from '@/lib/utils/random'
+
+const isMobile = useBreakpoint('<xs')
 
 // Get current user for authentication checks
 const user = useSupabaseUser()
@@ -266,7 +269,7 @@ watch(user, () => {
                     What We Do
                   </h4>
                 </Flex>
-                <Grid columns="2" class="activities-grid" expand>
+                <Grid :columns="isMobile ? 1 : 2" class="activities-grid" expand>
                   <div class="activity-item">
                     <Icon name="ph:game-controller" size="1rem" class="activity-icon" />
                     <span>Host dedicated game servers</span>
@@ -406,7 +409,7 @@ watch(user, () => {
     <!-- Recent Projects -->
     <section v-if="recentProjects.length > 0" class="mt-xl">
       <Flex column gap="l">
-        <Flex y-end x-between expand>
+        <Flex :y-end="!isMobile" :x-between="!isMobile" :column="isMobile" expand>
           <Flex gap="xxs" column>
             <h2 class="text-bold text-xxl">
               Featured Projects
@@ -415,8 +418,8 @@ watch(user, () => {
               Discover what our community has been building
             </p>
           </Flex>
-          <NuxtLink to="/community/projects">
-            <Button>
+          <NuxtLink to="/community/projects" :class="isMobile ? 'w-100' : ''">
+            <Button :expand="isMobile">
               <template #end>
                 <Icon name="ph:arrow-right" />
               </template>
@@ -546,7 +549,6 @@ watch(user, () => {
 
 .activities-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: var(--space-s);
   margin-top: var(--space-s);
 }

@@ -33,8 +33,8 @@ import { useCache } from './useCache'
 
 const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
 
-function repliesKey(discussionId: string): string {
-  return `discussion-replies:${discussionId}`
+function repliesKey(discussionId: string, ascending: boolean): string {
+  return `discussion-replies:${discussionId}:${ascending ? 'asc' : 'desc'}`
 }
 
 export function useDiscussionRepliesCache() {
@@ -50,8 +50,8 @@ export function useDiscussionRepliesCache() {
   /**
    * Read the cached reply list for a discussion. Returns null if cold or expired.
    */
-  function get(discussionId: string): RawComment[] | null {
-    return cache.get<RawComment[]>(repliesKey(discussionId))
+  function get(discussionId: string, ascending: boolean): RawComment[] | null {
+    return cache.get<RawComment[]>(repliesKey(discussionId, ascending))
   }
 
   /**
@@ -60,8 +60,8 @@ export function useDiscussionRepliesCache() {
    * Call this as a side effect after fetching replies from Supabase so that
    * subsequent mounts of the same discussion don't re-fetch within the TTL.
    */
-  function set(discussionId: string, replies: RawComment[]): void {
-    cache.set(repliesKey(discussionId), replies, CACHE_TTL)
+  function set(discussionId: string, replies: RawComment[], ascending: boolean): void {
+    cache.set(repliesKey(discussionId, ascending), replies, CACHE_TTL)
   }
 
   /**
@@ -71,7 +71,9 @@ export function useDiscussionRepliesCache() {
    * changed (INSERT, UPDATE, DELETE) so the next load is authoritative.
    */
   function invalidate(discussionId: string): void {
-    cache.delete(repliesKey(discussionId))
+    // Invalidate both orderings so neither stale variant survives
+    cache.delete(repliesKey(discussionId, true))
+    cache.delete(repliesKey(discussionId, false))
   }
 
   /**
@@ -105,7 +107,7 @@ export function useDiscussionRepliesCache() {
   ): Promise<RawComment[] | null> {
     const supabase = useSupabaseClient<Database>()
     if (!force) {
-      const cached = get(discussionId)
+      const cached = get(discussionId, options.ascending ?? false)
       if (cached !== null)
         return cached
     }
@@ -134,7 +136,7 @@ export function useDiscussionRepliesCache() {
         return null
 
       const rows = data as RawComment[]
-      set(discussionId, rows)
+      set(discussionId, rows, options.ascending ?? false)
       return rows
     }
     catch (err) {
