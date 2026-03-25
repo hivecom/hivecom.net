@@ -763,6 +763,13 @@ async function handleDataFileUpload(file: File) {
   if (!editor.value || !props.mediaContext)
     return
 
+  // Capture the insert position synchronously before any awaits so that a
+  // concurrently-inserted image placeholder (which uses updateSelection:false)
+  // cannot leave the selection as a NodeSelection on that image. If we later
+  // called insertContent() against such a NodeSelection it would silently
+  // replace the image node with the dataFile node.
+  const insertPos = editor.value.state.selection.anchor
+
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'csv'
   const type: 'csv' | 'json' = ext === 'json' ? 'json' : 'csv'
   const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${ext}`
@@ -780,7 +787,7 @@ async function handleDataFileUpload(file: File) {
 
   editor.value
     .chain()
-    .insertContent({
+    .insertContentAt(insertPos, {
       type: 'dataFile',
       attrs: { src: data.publicUrl, name: file.name, type },
     }, { updateSelection: false })
@@ -1334,6 +1341,7 @@ async function handleSubmit() {
       margin-bottom: var(--space-xs);
     }
 
+    // Run of 2
     // Run of 2: each image gets ~50% minus half the gap.
     .ProseMirror > img[data-img-run-total='2'] {
       width: calc(50% - 4px);
@@ -1351,6 +1359,29 @@ async function handleSubmit() {
     .ProseMirror > img[data-img-run-total='3'][data-img-run-index='0'],
     .ProseMirror > img[data-img-run-total='3'][data-img-run-index='1'] {
       margin-right: 8px;
+    }
+
+    // On mobile, collapse grouped images to full-width single images and cap height.
+    @media (max-width: 600px) {
+      // Solo images: fill width, natural height, no cropping.
+      .ProseMirror > img:not([data-img-run-total]) {
+        width: 100%;
+        height: auto;
+        max-height: none;
+        aspect-ratio: unset;
+        object-fit: unset;
+      }
+
+      // Grouped images: stack vertically, cap height to keep them compact.
+      .ProseMirror > img[data-img-run-total] {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        max-height: 40vh;
+        margin-right: 0;
+        aspect-ratio: unset;
+        object-fit: cover;
+      }
     }
 
     .editor-actions {

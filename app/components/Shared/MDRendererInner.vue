@@ -112,6 +112,36 @@ onUnmounted(() => {
     object-fit: cover;
     border-radius: var(--border-radius-s);
   }
+
+  @media (max-width: 600px) {
+    display: block;
+    gap: 0;
+
+    > p,
+    > img {
+      flex: none;
+      width: 100%;
+    }
+
+    > p > img,
+    > img {
+      max-height: 40vh;
+      width: 100%;
+      aspect-ratio: unset;
+      object-fit: cover;
+    }
+  }
+}
+
+/* Non-grouped images: fill width, natural height, no cropping on mobile */
+@media (max-width: 600px) {
+  .typeset img:not(.md-image-group img) {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    aspect-ratio: unset;
+    object-fit: unset;
+  }
 }
 
 /* YouTube embed produced by processYoutubeDirectives */
