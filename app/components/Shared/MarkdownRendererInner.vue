@@ -226,6 +226,40 @@ onUnmounted(() => {
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+
+  table {
+    table-layout: fixed;
+    width: 100%;
+    position: relative;
+  }
+
+  .contains-task-list {
+    .task-list-item {
+      padding-left: 0px;
+
+      input[type='checkbox'] {
+        width: 16px;
+        height: 16px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        border: 1px solid var(--color-border-strong);
+        background-color: var(--color-bg-raised);
+        margin-bottom: -2px;
+        border-radius: 4px;
+        cursor: default;
+
+        &:checked {
+          background-color: var(--color-accent);
+          border-color: var(--color-accent);
+        }
+      }
+
+      &::before {
+        display: none;
+      }
+    }
+  }
 }
 
 /* Tables with horizontal scrolling */

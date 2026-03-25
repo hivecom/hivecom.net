@@ -690,7 +690,6 @@ const editedAtFormatted = computed(() => {
     position: relative;
     height: 100%;
     max-width: 100vw;
-    overflow-x: auto;
 
     &:has(.discussion-forum__mobile-header) {
       background-color: transparent;

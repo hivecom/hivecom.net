@@ -756,6 +756,8 @@ const plainTextarea = useTemplateRef<HTMLTextAreaElement>('plain-textarea')
 
 const DATA_FILE_EXT_RE = /\.(?:csv|json)$/i
 
+// (removed insertSpoilerBlock function)
+
 // Upload a CSV or JSON file and insert a dataFile node once the URL is known.
 // Unlike images/videos there is no blob placeholder - the upload is fast and
 // these files have no visual preview until the node is rendered.
@@ -1120,6 +1122,8 @@ async function handleSubmit() {
 
             <input ref="file-input" class="visually-hidden" type="file" multiple :accept="`${allowedMediaExtensions},${allowedDataExtensions}`" @input="handleCombinedFileInput">
           </template>
+
+          <!-- (removed plain text spoiler button) -->
 
           <Tooltip>
             <Button plain square size="s" @click="handleEditorModeSwitch">
