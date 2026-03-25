@@ -114,8 +114,7 @@ onUnmounted(() => {
   }
 
   @media (max-width: 600px) {
-    display: block;
-    gap: 0;
+    gap: var(--space-s);
 
     > p,
     > img {
