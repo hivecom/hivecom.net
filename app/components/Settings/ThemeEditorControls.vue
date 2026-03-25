@@ -2,7 +2,8 @@
 import type { ThemeScaleKey } from '@/lib/theme'
 import type { Tables } from '@/types/database.overrides'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, Button, ButtonGroup, Card, Divider, Flex, Input, Modal, pushToast, setColorTheme, Switch, Textarea, theme, Tooltip } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Textarea, theme, Tooltip } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { applyScale, applyTheme, dbToPercent, getCssVarAsHex, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
 import { normalizeErrors } from '@/lib/utils/formatting'
 
@@ -223,203 +224,229 @@ async function submitForm() {
     emit('close')
   }
 }
+
+// Reusable template so the content can be moved to a Drawer on phone
+const [DefineControls, ThemeEditorControls] = createReusableTemplate()
+const isMobile = useBreakpoint('<s')
 </script>
 
 <template>
   <div class="theme-editor__controls">
-    <Flex y-center x-between gap="xs" class="theme-editor__header">
-      <h4 class="mr-m">
-        Editor
-      </h4>
+    <DefineControls>
+      <Flex y-center x-between gap="xs" class="theme-editor__header">
+        <h4 class="mr-m">
+          Editor
+        </h4>
 
-      <ButtonGroup>
+        <ButtonGroup>
+          <Tooltip>
+            <Button square size="s" :outline="activeType === 'light'" @click="setColorTheme('dark')">
+              <Icon name="ph:moon" />
+            </Button>
+            <template #tooltip>
+              <p>Dark variant</p>
+            </template>
+          </Tooltip>
+          <Tooltip>
+            <Button square size="s" :outline="activeType === 'dark'" @click="setColorTheme('light')">
+              <Icon name="ph:sun" />
+            </Button>
+            <template #tooltip>
+              <p>Light variant</p>
+            </template>
+          </Tooltip>
+        </ButtonGroup>
+
         <Tooltip>
-          <Button square size="s" :outline="activeType === 'light'" @click="setColorTheme('dark')">
-            <Icon name="ph:moon" />
+          <Button size="s" square @click="reset">
+            <Icon name="ph:arrow-clockwise" />
           </Button>
           <template #tooltip>
-            <p>Dark variant</p>
+            <p>Reset</p>
           </template>
         </Tooltip>
+
         <Tooltip>
-          <Button square size="s" :outline="activeType === 'dark'" @click="setColorTheme('light')">
-            <Icon name="ph:sun" />
+          <Button size="s" square @click="reset">
+            <Icon name="ph:arrow-square-out" />
           </Button>
           <template #tooltip>
-            <p>Light variant</p>
+            <p style="max-width: 256px">
+              Popout editor. Browse the website while editing your theme
+            </p>
           </template>
         </Tooltip>
-      </ButtonGroup>
 
-      <Tooltip>
-        <Button size="s" square @click="reset">
-          <Icon name="ph:arrow-clockwise" />
-        </Button>
-        <template #tooltip>
-          <p>Reset</p>
-        </template>
-      </Tooltip>
+        <div class="flex-1" />
 
-      <Tooltip>
-        <Button size="s" square @click="reset">
-          <Icon name="ph:arrow-square-out" />
-        </Button>
-        <template #tooltip>
-          <p style="max-width: 256px">
-            Popout editor. Browse the website while editing your theme
-          </p>
-        </template>
-      </Tooltip>
-
-      <div class="flex-1" />
-
-      <Button square size="s" plain @click="close">
-        <Icon name="ph:x" />
-      </Button>
-    </Flex>
-
-    <!-- Scrollable color + scale list -->
-    <div class="theme-editor__groups--outer">
-      <div class="theme-editor__groups--inner">
-        <div class="theme-editor__group">
-          <span class="theme-editor__group-label">Spacing</span>
-          <Flex y-center gap="l">
-            <input
-              type="range" min="0" max="100"
-              :value="scaleValues.spacing"
-              :style="rangeProgressStyle('spacing')"
-              @input="onScaleChange('spacing', Number(($event.target as HTMLInputElement).value))"
-            >
-            <span class="theme-editor__range-value">{{ scaleDisplay('spacing') }}</span>
-          </Flex>
-        </div>
-
-        <div class="theme-editor__group">
-          <span class="theme-editor__group-label">Rounding</span>
-          <Flex y-center gap="l">
-            <input
-              type="range" min="0" max="100"
-              :value="scaleValues.rounding"
-              :style="rangeProgressStyle('rounding')"
-              @input="onScaleChange('rounding', Number(($event.target as HTMLInputElement).value))"
-            >
-            <span class="theme-editor__range-value">{{ scaleDisplay('rounding') }}</span>
-          </Flex>
-        </div>
-
-        <div class="theme-editor__group">
-          <span class="theme-editor__group-label">Transitions</span>
-          <Flex y-center gap="l">
-            <input
-              type="range" min="0" max="100"
-              :value="scaleValues.transitions"
-              :style="rangeProgressStyle('transitions')"
-              @input="onScaleChange('transitions', Number(($event.target as HTMLInputElement).value))"
-            >
-            <span class="theme-editor__range-value">{{ scaleDisplay('transitions') }}</span>
-          </Flex>
-        </div>
-
-        <div class="theme-editor__group">
-          <span class="theme-editor__group-label">Widening</span>
-          <Flex y-center gap="l">
-            <input
-              type="range" min="0" max="100"
-              :value="scaleValues.widening"
-              :style="rangeProgressStyle('widening')"
-              @input="onScaleChange('widening', Number(($event.target as HTMLInputElement).value))"
-            >
-            <span class="theme-editor__range-value">{{ scaleDisplay('widening') }}</span>
-          </Flex>
-        </div>
-
-        <Divider :size="0" />
-
-        <div
-          v-for="(colors, groupName) in COLOR_GROUPS"
-          :key="groupName"
-          class="theme-editor__group"
-        >
-          <span class="theme-editor__group-label">{{ groupName }}</span>
-          <Flex column gap="xxs">
-            <label
-              v-for="colorKey in colors"
-              :key="colorKey"
-              class="theme-editor__input"
-            >
-              <input
-                type="color"
-                :value="themeForm[activeType][colorKey]"
-                @input="onColorChange(colorKey, ($event.target as HTMLInputElement).value)"
-              >
-              <span>{{ colorKey }}</span>
-            </label>
-          </Flex>
-        </div>
-      </div>
-    </div>
-
-    <Flex x-end class="theme-editor__footer">
-      <Button variant="accent" @click="openSubmitModal">
-        Finalize
-        <template #end>
-          <Icon name="ph:arrow-right" :size="18" />
-        </template>
-      </Button>
-    </Flex>
-  </div>
-
-  <!-- Submit / details modal -->
-  <Modal :open="showSubmitModal" size="s" :card="{ separators: true }" @close="showSubmitModal = false">
-    <template #header>
-      <h4>Details</h4>
-      <p class="text-color-lighter">
-        Describe your theme
-      </p>
-    </template>
-
-    <Alert v-if="submitError" variant="danger">
-      {{ submitError }}
-    </Alert>
-
-    <Input
-      v-model="form.name"
-      placeholder="My Cool Theme"
-      class="mb-m"
-      expand
-      label="Name"
-      :errors="normalizeErrors(errors.name)"
-      required
-    />
-    <Textarea
-      v-model="form.description"
-      class="mb-m"
-      placeholder="Briefly describe your theme and its features"
-      :rows="5"
-      :resize="false"
-      expand
-      label="Description"
-      :errors="normalizeErrors(errors.description)"
-    />
-
-    <Card>
-      <Switch v-model="form.useAsCurrent" label="Set as current theme" />
-    </Card>
-
-    <template #footer>
-      <Flex x-end>
-        <Button plain @click="showSubmitModal = false">
-          Close
-        </Button>
-        <Button variant="accent" :loading="submitLoading" @click="submitForm">
-          {{ editing ? 'Save' : 'Publish' }}
+        <Button square size="s" plain @click="close">
+          <Icon name="ph:x" />
         </Button>
       </Flex>
+
+      <!-- Scrollable color + scale list -->
+      <div class="theme-editor__groups--outer">
+        <div class="theme-editor__groups--inner">
+          <div class="theme-editor__group">
+            <span class="theme-editor__group-label">Spacing</span>
+            <Flex y-center gap="l">
+              <input
+                type="range" min="0" max="100"
+                :value="scaleValues.spacing"
+                :style="rangeProgressStyle('spacing')"
+                @input="onScaleChange('spacing', Number(($event.target as HTMLInputElement).value))"
+              >
+              <span class="theme-editor__range-value">{{ scaleDisplay('spacing') }}</span>
+            </Flex>
+          </div>
+
+          <div class="theme-editor__group">
+            <span class="theme-editor__group-label">Rounding</span>
+            <Flex y-center gap="l">
+              <input
+                type="range" min="0" max="100"
+                :value="scaleValues.rounding"
+                :style="rangeProgressStyle('rounding')"
+                @input="onScaleChange('rounding', Number(($event.target as HTMLInputElement).value))"
+              >
+              <span class="theme-editor__range-value">{{ scaleDisplay('rounding') }}</span>
+            </Flex>
+          </div>
+
+          <div class="theme-editor__group">
+            <span class="theme-editor__group-label">Transitions</span>
+            <Flex y-center gap="l">
+              <input
+                type="range" min="0" max="100"
+                :value="scaleValues.transitions"
+                :style="rangeProgressStyle('transitions')"
+                @input="onScaleChange('transitions', Number(($event.target as HTMLInputElement).value))"
+              >
+              <span class="theme-editor__range-value">{{ scaleDisplay('transitions') }}</span>
+            </Flex>
+          </div>
+
+          <div class="theme-editor__group">
+            <span class="theme-editor__group-label">Widening</span>
+            <Flex y-center gap="l">
+              <input
+                type="range" min="0" max="100"
+                :value="scaleValues.widening"
+                :style="rangeProgressStyle('widening')"
+                @input="onScaleChange('widening', Number(($event.target as HTMLInputElement).value))"
+              >
+              <span class="theme-editor__range-value">{{ scaleDisplay('widening') }}</span>
+            </Flex>
+          </div>
+
+          <Divider :size="0" />
+
+          <div
+            v-for="(colors, groupName) in COLOR_GROUPS"
+            :key="groupName"
+            class="theme-editor__group"
+          >
+            <span class="theme-editor__group-label">{{ groupName }}</span>
+            <Flex column gap="xxs">
+              <label
+                v-for="colorKey in colors"
+                :key="colorKey"
+                class="theme-editor__input"
+              >
+                <input
+                  type="color"
+                  :value="themeForm[activeType][colorKey]"
+                  @input="onColorChange(colorKey, ($event.target as HTMLInputElement).value)"
+                >
+                <span>{{ colorKey }}</span>
+              </label>
+            </Flex>
+          </div>
+        </div>
+      </div>
+
+      <Flex x-end class="theme-editor__footer">
+        <Button variant="accent" @click="openSubmitModal">
+          Finalize
+          <template #end>
+            <Icon name="ph:arrow-right" :size="18" />
+          </template>
+        </Button>
+      </Flex>
+    </DefineControls>
+
+    <!-- Mobile -->
+    <template v-if="isMobile">
+      <Drawer
+        open :root-props="{ dismissible: false,
+                            modal: false,
+                            activeSnapPoint: 0.5,
+                            snapPoints: [0.4, 0.5, 0.6, 0.7, 0.8],
+        }"
+      >
+        <ThemeEditorControls />
+      </Drawer>
     </template>
-  </Modal>
+
+    <!-- Desktop -->
+    <template v-else>
+      <ThemeEditorControls />
+    </template>
+
+    <!-- Submit / details modal -->
+    <Modal :open="showSubmitModal" size="s" :card="{ separators: true }" @close="showSubmitModal = false">
+      <template #header>
+        <h4>Details</h4>
+        <p class="text-color-lighter">
+          Describe your theme
+        </p>
+      </template>
+
+      <Alert v-if="submitError" variant="danger">
+        {{ submitError }}
+      </Alert>
+
+      <Input
+        v-model="form.name"
+        placeholder="My Cool Theme"
+        class="mb-m"
+        expand
+        label="Name"
+        :errors="normalizeErrors(errors.name)"
+        required
+      />
+      <Textarea
+        v-model="form.description"
+        class="mb-m"
+        placeholder="Briefly describe your theme and its features"
+        :rows="5"
+        :resize="false"
+        expand
+        label="Description"
+        :errors="normalizeErrors(errors.description)"
+      />
+
+      <Card>
+        <Switch v-model="form.useAsCurrent" label="Set as current theme" />
+      </Card>
+
+      <template #footer>
+        <Flex x-end>
+          <Button plain @click="showSubmitModal = false">
+            Close
+          </Button>
+          <Button variant="accent" :loading="submitLoading" @click="submitForm">
+            {{ editing ? 'Save' : 'Publish' }}
+          </Button>
+        </Flex>
+      </template>
+    </Modal>
+  </div>
 </template>
 
 <style lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 .theme-editor {
   &__controls {
     display: flex;
@@ -517,6 +544,45 @@ async function submitForm() {
   &__footer {
     padding: var(--space-m);
     border-top: 1px solid var(--color-border);
+  }
+}
+
+@media screen and (max-width: $breakpoint-s) {
+  .theme-editor {
+    input[type='range'] {
+      width: 100% !important;
+    }
+
+    &__controls {
+      border: none;
+      height: auto;
+    }
+
+    &__header,
+    &__footer {
+      position: sticky;
+      top: 0;
+      background-color: var(--color-bg-medium);
+      z-index: 5;
+    }
+
+    &__footer {
+      top: unset;
+      bottom: -20px;
+    }
+
+    &__groups {
+      &--outer {
+        // height: 100%;
+        position: static;
+      }
+
+      &--inner {
+        position: static;
+        overflow: unset;
+        inset: usnet;
+      }
+    }
   }
 }
 </style>

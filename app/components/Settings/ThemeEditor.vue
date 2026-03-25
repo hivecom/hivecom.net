@@ -34,6 +34,8 @@ const emit = defineEmits<{
 </template>
 
 <style lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 .theme-editor {
   &__layout {
     display: grid;
@@ -80,6 +82,14 @@ const emit = defineEmits<{
 
     &.medium {
       background-color: var(--color-bg-medium);
+    }
+  }
+}
+
+@media screen and (max-width: $breakpoint-s) {
+  .theme-editor {
+    &__layout {
+      display: block;
     }
   }
 }
