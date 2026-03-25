@@ -9,7 +9,7 @@ import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
@@ -766,7 +766,7 @@ function revealNsfw() {
         <!-- Content -->
         <template v-if="post.markdown">
           <hr v-if="!contextInfo" class="mb-l">
-          <MDRenderer class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
+          <MarkdownRenderer class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
         </template>
       </section>
 

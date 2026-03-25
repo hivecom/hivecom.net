@@ -40,6 +40,14 @@ const preview = computed(() =>
       <Icon name="ph:math-operations" :size="18" />
       Posted math
     </i>
+    <i v-else-if="preview === '#spoiler'">
+      <Icon name="ph:eye-slash" :size="18" />
+      Posted a spoiler
+    </i>
+    <i v-else-if="preview === '#table'">
+      <Icon name="ph:table" :size="18" />
+      Posted a table
+    </i>
     <template v-else>
       {{ preview }}
     </template>

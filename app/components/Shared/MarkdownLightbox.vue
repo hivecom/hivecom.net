@@ -44,7 +44,7 @@ function next() {
 }
 
 // Listen for clicks on any <img> inside this instance's own container only.
-// Scoping by container ref ensures that when many MDLightbox instances are on
+// Scoping by container ref ensures that when many MarkdownLightbox instances are on
 // the same page, only the one that owns the clicked image responds.
 useEventListener('click', (event) => {
   const target = event.target as HTMLElement

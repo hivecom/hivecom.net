@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Skeleton } from '@dolanske/vui'
 import { computed, nextTick, ref } from 'vue'
-import MDRendererInner from './MDRendererInner.vue'
+import MarkdownRendererInner from './MarkdownRendererInner.vue'
 
 const props = defineProps({
   tag: {
@@ -53,7 +53,7 @@ function onSuspenseResolve() {
         <span />
       </template>
       <Transition name="md-content">
-        <MDRendererInner
+        <MarkdownRendererInner
           v-if="resolved || !showSkeleton"
           :extra-class="props.class"
           :md="props.md"

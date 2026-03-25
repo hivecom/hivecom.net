@@ -44,6 +44,8 @@ const DETECT_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_DATAFILE_RE = /:::dataFile(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_MATH_RE = /\$\$[\s\S]*?\$\$|\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/
+const DETECT_TABLE_RE = /^\s*\|(?:[^\n|]+\|)+\s*$/m
+const DETECT_DETAILS_RE = /:::details\b/
 
 // ---------------------------------------------------------------------------
 // YouTube directive pre-processor
@@ -623,6 +625,15 @@ export function formatMarkdownPreview(
     return '#empty'
 
   const processed = processMentionsToText(markdown, mentionLookup)
+
+  // Prioritize details/spoiler detection: if present, always show spoiler preview
+  if (DETECT_DETAILS_RE.test(markdown))
+    return '#spoiler'
+
+  // Prioritize table detection: if a table is present, always show table preview
+  if (DETECT_TABLE_RE.test(markdown))
+    return '#table'
+
   const stripped = stripMarkdown(processed)
 
   if (stripped) {

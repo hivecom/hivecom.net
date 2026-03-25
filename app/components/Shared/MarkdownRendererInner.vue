@@ -2,7 +2,7 @@
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { groupImages } from '@/lib/imageGrouping'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
-import MDLightbox from './MDLightbox.vue'
+import MarkdownLightbox from './MarkdownLightbox.vue'
 
 const props = defineProps({
   tag: {
@@ -84,7 +84,7 @@ onUnmounted(() => {
       :tag="props.tag"
       :class="`typeset ${props.extraClass}`"
     />
-    <MDLightbox v-if="props.md" :markdown="props.md" :container="container" />
+    <MarkdownLightbox v-if="props.md" :markdown="props.md" :container="container" />
   </div>
 </template>
 
@@ -213,5 +213,41 @@ onUnmounted(() => {
       text-decoration: underline;
     }
   }
+}
+
+/* Make renderer container scrollable for tables */
+.md-renderer-inner {
+  display: block;
+}
+
+/* Typeset scrolls horizontally for wide tables */
+.typeset {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Tables with horizontal scrolling */
+table {
+  display: table;
+  border-collapse: collapse;
+  margin: var(--space-xs) 0;
+  width: fit-content;
+  min-width: 100%;
+}
+
+table th,
+table td {
+  padding: var(--space-xs) var(--space-s);
+  border: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+table th {
+  background-color: var(--color-bg-raised);
+  font-weight: 600;
 }
 </style>

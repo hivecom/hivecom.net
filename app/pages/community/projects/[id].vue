@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
@@ -170,7 +170,7 @@ useHead({
       <!-- Project Content (Markdown) -->
       <Card class="project-content card-bg">
         <div class="project-content__markdown">
-          <MDRenderer :md="project.markdown" />
+          <MarkdownRenderer :md="project.markdown" />
         </div>
 
         <!-- Project Metadata -->

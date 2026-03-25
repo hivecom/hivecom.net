@@ -8,7 +8,7 @@ import { getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import { isBirthdayDateToday } from '@/lib/utils/date'
-import MDRenderer from '../Shared/MDRenderer.vue'
+import MarkdownRenderer from '../Shared/MarkdownRenderer.vue'
 
 interface Props {
   profile?: Tables<'profiles'>
@@ -627,7 +627,7 @@ onUnmounted(() => stopConfetti())
       </template>
       <template v-else-if="profile?.markdown || isOwnProfile" #footer>
         <div v-if="profile?.markdown" class="profile-markdown">
-          <MDRenderer
+          <MarkdownRenderer
             skeleton-height="504px"
             :md="profile.markdown"
           />

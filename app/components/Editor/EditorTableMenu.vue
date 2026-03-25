@@ -189,7 +189,7 @@ function toggleHeaderRow() {
 <style scoped lang="scss">
 .editor-table-menu {
   position: fixed;
-  z-index: var(--z-popout);
+  z-index: var(--z-toast);
   background-color: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);

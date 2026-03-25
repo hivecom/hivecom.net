@@ -11,7 +11,7 @@ import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
@@ -395,7 +395,7 @@ const editedAtFormatted = computed(() => {
         </button>
 
         <!-- Content markdown - rendered once regardless of layout -->
-        <MDRenderer
+        <MarkdownRenderer
           v-else
           :md="data.markdown"
           :skeleton-height="128"
@@ -464,7 +464,7 @@ const editedAtFormatted = computed(() => {
         class="card-bg" :style="{ maxHeight: 512,
                                   overflowY: 'auto' }"
       >
-        <MDRenderer :md="data.markdown" skeleton-height="48px" />
+        <MarkdownRenderer :md="data.markdown" skeleton-height="48px" />
       </Card>
     </ConfirmModal>
 
@@ -689,6 +689,8 @@ const editedAtFormatted = computed(() => {
     border-top-right-radius: var(--border-radius-m);
     position: relative;
     height: 100%;
+    max-width: 100vw;
+    overflow-x: auto;
 
     &:has(.discussion-forum__mobile-header) {
       background-color: transparent;

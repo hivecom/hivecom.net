@@ -10,7 +10,7 @@ import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
@@ -288,7 +288,7 @@ const { displayReactions, toggleReaction } = useReactions({
         <p>
           <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" />
         </p>
-        <MDRenderer
+        <MarkdownRenderer
           v-if="data.reply.markdown.length > COMMENT_TRUNCATE"
           style="max-width: 256px"
           :md="data.reply.markdown"
@@ -303,7 +303,7 @@ const { displayReactions, toggleReaction } = useReactions({
       <p>Potentially sensitive content - click to reveal</p>
     </button>
 
-    <MDRenderer v-else :md="data.markdown" skeleton-height="24px" />
+    <MarkdownRenderer v-else :md="data.markdown" skeleton-height="24px" />
 
     <Flex v-if="displayReactions.length > 0" y-center x-start gap="xxs" class="discussion-comment__reactions">
       <ReactionsList :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
@@ -322,7 +322,7 @@ const { displayReactions, toggleReaction } = useReactions({
         class="card-bg" :style="{ maxHeight: 512,
                                   overflowY: 'auto' }"
       >
-        <MDRenderer :md="data.markdown" skeleton-height="0px" />
+        <MarkdownRenderer :md="data.markdown" skeleton-height="0px" />
       </Card>
     </ConfirmModal>
 

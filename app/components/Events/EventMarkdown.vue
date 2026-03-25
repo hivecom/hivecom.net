@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Card, Flex } from '@dolanske/vui'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import MetadataCard from '../Shared/MetadataCard.vue'
 
 interface Props {
@@ -15,7 +15,7 @@ const props = defineProps<Props>()
   <!-- Event Details -->
   <Card v-if="props.event.markdown" class="event-markdown card-bg">
     <Flex column gap="l" class="event-markdown__content">
-      <MDRenderer :md="props.event.markdown" />
+      <MarkdownRenderer :md="props.event.markdown" />
     </Flex>
     <MetadataCard
       :created-at="event.created_at"

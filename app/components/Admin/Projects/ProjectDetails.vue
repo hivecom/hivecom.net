@@ -4,7 +4,7 @@ import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import { computed } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
-import MDRenderer from '@/components/Shared/MDRenderer.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
@@ -156,7 +156,7 @@ function handleDelete(project: Tables<'projects'>) {
             <h6>Content</h6>
           </template>
 
-          <MDRenderer :md="props.project.markdown" class="project-details__markdown-content" />
+          <MarkdownRenderer :md="props.project.markdown" class="project-details__markdown-content" />
         </Card>
 
         <!-- Metadata -->
