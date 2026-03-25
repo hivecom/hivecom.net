@@ -133,7 +133,7 @@ const pastEvents = computed(() => {
         <Button size="s" @click="expandPastList = !expandPastList">
           {{ expandPastList ? 'Collapse' : 'Unroll' }}
           <template #end>
-            <Icon name="bx:expand-vertical" />
+            <Icon name="ph:arrows-vertical" />
           </template>
         </Button>
       </Flex>

@@ -21,7 +21,7 @@ function scrollToPlatforms() {
   </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss">
 @use '@/assets/breakpoints.scss' as *;
 
 .hero-section__actions {
@@ -32,12 +32,18 @@ function scrollToPlatforms() {
   flex-wrap: wrap;
   padding-bottom: var(--space-xxl);
 
-  .vui-button {
-    width: 192px;
+  button.vui-button > .vui-button-slot > .vui-button-slot-default {
+    width: 200px !important;
   }
 
   @media screen and (max-width: $breakpoint-l) {
     justify-content: center;
+  }
+
+  @media screen and (max-width: $breakpoint-s) {
+    button.vui-button > .vui-button-slot > .vui-button-slot-default {
+      width: 80vw !important;
+    }
   }
 }
 </style>

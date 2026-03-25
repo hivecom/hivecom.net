@@ -160,6 +160,9 @@ export default defineNuxtConfig({
         'ph:warning-circle-fill',
         'ph:x-circle-fill',
         'ph:question-fill',
+
+        // events
+        'ph:arrows-vertical',
       ],
     },
   },
