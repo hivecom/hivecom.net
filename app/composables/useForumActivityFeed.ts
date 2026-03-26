@@ -71,6 +71,7 @@ export function useForumActivityFeed({
     await supabase
       .from('forum_discussion_replies')
       .select('*')
+      .eq('is_offtopic', false)
       .limit(20)
       .order('created_at', { ascending: false })
       .then(({ data }) => {

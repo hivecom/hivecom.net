@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { DISCUSSION_KEYS } from '@/components/Discussions/Discussion.keys'
 import Discussion from '@/components/Discussions/Discussion.vue'
+import ForumBreadcrumbs from '@/components/Forum/ForumBreadcrumbs.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
@@ -64,6 +65,15 @@ const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
 // Bulk-fetch icons for all breadcrumb topics
 const breadcrumbTopicIds = computed(() => topicBreadcrumbs.value.map(t => t.id))
 const { icons: breadcrumbTopicIcons } = useBulkTopicIcons(breadcrumbTopicIds)
+
+const breadcrumbItems = computed(() =>
+  topicBreadcrumbs.value.map(topic => ({
+    id: topic.id,
+    label: topic.name,
+    href: `/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`,
+    onClick: () => router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`),
+  })),
+)
 const publishConfirmOpen = ref(false)
 const showNSFWWarning = ref(false)
 const nsfwRevealed = ref(false)
@@ -550,30 +560,12 @@ function revealNsfw() {
               >
                 <Icon class="text-color" name="ph:arrow-left" :size="16" />
               </Button>
-              <Breadcrumbs>
-                <BreadcrumbItem
-                  href="/forum"
-                  @click.prevent="router.push('/forum')"
-                >
-                  Forum
-                </BreadcrumbItem>
-                <BreadcrumbItem
-                  v-for="topic in topicBreadcrumbs"
-                  :key="topic.id"
-                  :href="`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`"
-                  @click.prevent="router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`)"
-                >
-                  <Flex y-center gap="xs" :style="{ display: 'inline-flex' }">
-                    <img
-                      v-if="breadcrumbTopicIcons.get(topic.id)"
-                      :src="breadcrumbTopicIcons.get(topic.id)!"
-                      :alt="`${topic.name} icon`"
-                      class="breadcrumb-topic-icon"
-                    >
-                    {{ topic.name }}
-                  </Flex>
-                </BreadcrumbItem>
-              </Breadcrumbs>
+              <ForumBreadcrumbs
+                :items="breadcrumbItems"
+                :icons="breadcrumbTopicIcons"
+                root-href="/forum"
+                :on-root-click="() => router.push('/forum')"
+              />
             </template>
             <template v-else-if="isMobile">
               <!-- Back Button -->
@@ -662,7 +654,7 @@ function revealNsfw() {
                 @update="handlePostUpdate"
               >
                 <template #default="{ toggle }">
-                  <Button variant="accent" size="s" @click="toggle">
+                  <Button variant="gray" size="s" @click="toggle">
                     Manage
                   </Button>
                 </template>
@@ -865,14 +857,6 @@ function revealNsfw() {
 .forum-post__nsfw-overlay-icon {
   font-size: 48px;
   color: var(--color-text-red);
-}
-
-.breadcrumb-topic-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: var(--border-radius-xs);
-  object-fit: cover;
-  flex-shrink: 0;
 }
 
 .back-button {

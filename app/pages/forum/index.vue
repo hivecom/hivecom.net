@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.overrides'
-import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, Commands, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
+import ForumBreadcrumbs from '@/components/Forum/ForumBreadcrumbs.vue'
 import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumLatestUpdates from '@/components/Forum/ForumLatestUpdates.vue'
@@ -343,6 +344,19 @@ onBeforeMount(async () => {
 
 const activeTopicPath = computed(() => composePathToTopic(activeTopicId.value, topics.value))
 
+const breadcrumbItems = computed(() =>
+  activeTopicPath.value.map((item, index) => ({
+    id: item.parent_id,
+    label: item.title,
+    onClick: index !== activeTopicPath.value.length - 1
+      ? () => setActiveTopicById(item.parent_id)
+      : undefined,
+    onMiddleClick: index !== activeTopicPath.value.length - 1
+      ? () => handleBreadcrumbMiddleClick(`/forum?activeTopicId=${item.parent_id}`)
+      : undefined,
+  })),
+)
+
 /**
  * Navigate to a topic by its ID. Used by the breadcrumb back-navigation where
  * going "up" the tree should push a history entry so the user can go forward
@@ -657,32 +671,16 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
           </template>
           <Icon v-if="!isMobile" :name="!activeTopicId ? 'ph:house' : 'ph:arrow-left'" />
           <template v-if="isMobile">
-            {{ !activeTopicId ? 'Frontpage' : "Back" }}
+            {{ !activeTopicId ? 'Forum' : "Back" }}
           </template>
         </Button>
-        <Breadcrumbs v-if="!isMobile">
-          <BreadcrumbItem
-            @click="setActiveTopicById(null)"
-            @mousedown.middle="handleBreadcrumbMiddleClick"
-          >
-            Frontpage
-          </BreadcrumbItem>
-          <BreadcrumbItem
-            v-for="(item, index) in activeTopicPath"
-            :key="item.parent_id"
-            v-bind="index !== activeTopicPath.length - 1 ? {
-              onClick: () => setActiveTopicById(item.parent_id),
-              onMousedown: (event: MouseEvent) => {
-                if (event.button === 1) {
-                  event.preventDefault()
-                  handleBreadcrumbMiddleClick(`/forum?activeTopicId=${item.parent_id}`)
-                }
-              },
-            } : {}"
-          >
-            {{ item.title }}
-          </BreadcrumbItem>
-        </Breadcrumbs>
+        <ForumBreadcrumbs
+          v-if="!isMobile"
+          :items="breadcrumbItems"
+          :icons="topicIcons"
+          :on-root-click="() => setActiveTopicById(null)"
+          :on-root-middle-click="() => handleBreadcrumbMiddleClick()"
+        />
 
         <div class="flex-1" />
 

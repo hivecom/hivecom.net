@@ -39,7 +39,7 @@ const route = useRoute()
 const router = useRouter()
 
 // Scroll to itself when mounted and the query id matches
-const isActive = ref(data.id === route.query.comment)
+const isActive = computed(() => data.id === route.query.comment)
 
 onMounted(async () => {
   if (isActive.value) {
@@ -50,14 +50,18 @@ onMounted(async () => {
 
     const el = Array.isArray(self.value) ? self.value[0]?.$el : self.value?.$el
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-
-    // Clear the comment query param now that we've scrolled it into view.
-    // The highlight stays on until the page is reloaded.
-    const query = { ...route.query }
-    delete query.comment
-    router.replace({ query })
   }
 })
+
+// Scroll into view whenever another comment's scrollReply() sets ?comment=<this id> in the URL.
+// nextTick is sufficient here because the page is already fully rendered at this point.
+watch(isActive, async (active) => {
+  if (!active)
+    return
+  await nextTick()
+  const el = Array.isArray(self.value) ? self.value[0]?.$el : self.value?.$el
+  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}, { immediate: false })
 
 // Copy link to item
 const { copy } = useClipboard()

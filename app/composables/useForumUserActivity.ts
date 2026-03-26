@@ -11,6 +11,7 @@ interface ReplyJoinedDiscussion {
   title: string | null
   slug: string | null
   discussion_topic_id: string | null
+  is_archived: boolean | null
 }
 
 dayjs.extend(relativeTime)
@@ -30,13 +31,14 @@ export interface UserActivityItem {
   discussionHref: string
   timestampRaw: string
   timestamp: string
+  isArchived: boolean
 }
 
 export interface UseForumUserActivityOptions {
   /** Reactive ref of the logged-in user's ID */
   userId: Ref<string | null | undefined>
-  /** Reactive settings object - used to filter NSFW content */
-  settings: Ref<{ show_nsfw_content: boolean }>
+  /** Reactive settings object - used to filter NSFW and archived content */
+  settings: Ref<{ show_nsfw_content: boolean, show_forum_archived: boolean }>
   /** Lookup map from discussion id → discussion row, used for NSFW filtering */
   discussionLookup: ComputedRef<Map<string, Tables<'discussions'>>>
 }
@@ -73,7 +75,7 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
       // avoiding the unreliable embedded-filter workaround on the raw table.
       supabase
         .from('forum_discussion_replies')
-        .select('id, created_at, discussion_id, discussions!discussion_replies_discussion_id_fkey(id, title, slug, discussion_topic_id)')
+        .select('id, created_at, discussion_id, discussions!discussion_replies_discussion_id_fkey(id, title, slug, discussion_topic_id, is_archived)')
         .eq('created_by', uid)
         .eq('is_deleted', false)
         .limit(20)
@@ -82,7 +84,7 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
       // where the user has no reply yet (brand-new threads with 0 replies from them).
       supabase
         .from('discussions')
-        .select('id, title, slug, last_activity_at, discussion_topic_id')
+        .select('id, title, slug, last_activity_at, discussion_topic_id, is_archived')
         .eq('created_by', uid)
         .eq('is_draft', false)
         .not('discussion_topic_id', 'is', null)
@@ -105,6 +107,7 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
         discussionHref: `/forum/${slug}?comment=${item.id}`,
         timestampRaw: item.created_at!,
         timestamp: dayjs(item.created_at).fromNow(),
+        isArchived: !!discussion?.is_archived,
       }
     })
 
@@ -125,6 +128,7 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
         discussionHref: `/forum/${item.slug ?? item.id}`,
         timestampRaw: item.last_activity_at,
         timestamp: dayjs(item.last_activity_at).fromNow(),
+        isArchived: !!item.is_archived,
       }))
 
     // Merge, sort by most recent user action, deduplicate by discussion, take top 6
@@ -137,7 +141,7 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
         seenDiscussionIds.add(item.discussionId)
         return true
       })
-      .slice(0, 6)
+      .slice(0, 12)
 
     forumCache.set(cacheKey, userActivity.value, FORUM_USER_ACTIVITY_TTL)
     userActivityLoading.value = false
@@ -145,15 +149,30 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
 
   // Filters the raw userActivity list reactively so toggling show_nsfw_content
   // immediately hides NSFW discussions from the "Recently visited" section.
-  // discussionLookup already contains is_nsfw from the topics fetch.
+  // Archived discussions are always excluded regardless of user settings.
   const visibleUserActivity = computed(() => {
-    if (settings.value.show_nsfw_content)
-      return userActivity.value
-
     return userActivity.value.filter((item) => {
       const discussion = discussionLookup.value.get(item.discussionId)
-      return !discussion?.is_nsfw
+
+      // If the user has opted in to seeing archived content, don't filter them out here
+      if (!settings.value.show_forum_archived) {
+        // Never show archived discussions in recently visited
+        if (item.isArchived)
+          return false
+
+        // Also cross-check the live lookup in case the topic-level data has updated
+        if (discussion?.is_archived)
+          return false
+      }
+
+      if (!settings.value.show_nsfw_content) {
+        if (discussion?.is_nsfw)
+          return false
+      }
+
+      return true
     })
+      .slice(0, 6)
   })
 
   // Re-fetch when the logged-in user changes.
