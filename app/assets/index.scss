@@ -246,6 +246,32 @@ blockquote {
   box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.5);
 }
 
+// Popouts (e.g. UserPreviewHover inside a toast body) must render above toasts.
+// VUI's --z-toast is 9000 and is applied as an inline style on the toast wrapper,
+// so the popout (teleported to body as a sibling) needs a direct z-index override.
+.vui-popout {
+  z-index: 10000 !important;
+}
+
+// When using custom body components the toast title is an empty string, which
+// still renders as a <strong> with margin-bottom: var(--space-xs) causing a
+// visible gap above the card. Strip padding from the item and zero the margin
+// on the strong directly - it's 358x0 so has no height, only the margin leaks.
+.vui-toast-item:has(.vui-toast-item-content > strong + *) {
+  padding: 0;
+
+  // Clip the card to the toast border-radius without hiding the action button.
+  .vui-toast-item-content {
+    overflow: hidden;
+    border-radius: var(--border-radius-m);
+    flex: 1;
+  }
+}
+
+.vui-toast-item-content strong {
+  margin-bottom: 0 !important;
+}
+
 :root.light {
   .vui-popout {
     box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.125);

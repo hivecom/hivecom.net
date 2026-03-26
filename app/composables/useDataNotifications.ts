@@ -1,4 +1,9 @@
+import type { RealtimeChannel, RealtimePostgresInsertPayload } from '@supabase/supabase-js'
+import type { Component } from 'vue'
 import type { Database } from '@/types/database.types'
+import { pushToast, removeToast } from '@dolanske/vui'
+import ToastBodyFriendRequest from '@/components/Toast/ToastBodyFriendRequest.vue'
+import ToastBodyNotification from '@/components/Toast/ToastBodyNotification.vue'
 import { useDataUser } from '@/composables/useDataUser'
 
 const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -28,6 +33,11 @@ const profileMeta = ref<{ birthday: string | null, username: string } | null>(nu
 const inviteActionLoading = ref<Record<string, boolean>>({})
 const pendingComplaintCount = ref(0)
 
+// Realtime - single channels shared across all composable instances.
+let notificationChannel: RealtimeChannel | null = null
+let friendChannel: RealtimeChannel | null = null
+let subscribedUserId: string | null = null
+
 function parseBirthdayDate(value: string | null): Date | null {
   if (value == null || value === '')
     return null
@@ -41,6 +51,26 @@ function parseBirthdayDate(value: string | null): Date | null {
 
   const parsed = new Date(value)
   return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function sourceIcon(source: string | null): string {
+  switch (source) {
+    case 'discussion_reply': return 'ph:chat-circle-dots'
+    case 'discussion_reply_reply': return 'ph:chat-circle'
+    case 'mention': return 'ph:at'
+    case null: return 'ph:bell'
+    default: return 'ph:bell'
+  }
+}
+
+function sourceLabel(source: string | null): string {
+  switch (source) {
+    case 'discussion_reply': return 'New discussion reply'
+    case 'discussion_reply_reply': return 'New reply to your comment'
+    case 'mention': return 'You were mentioned'
+    case null: return 'New notification'
+    default: return 'New notification'
+  }
 }
 
 export function useDataNotifications() {
@@ -252,6 +282,128 @@ export function useDataNotifications() {
       await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id)
     }
   }
+
+  function subscribeRealtime(uid: string) {
+    if (notificationChannel != null && subscribedUserId === uid)
+      return
+
+    void unsubscribeRealtime()
+
+    notificationChannel = supabase
+      .channel(`notifications:${uid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${uid}`,
+        },
+        (payload: RealtimePostgresInsertPayload<NotificationRow>) => {
+          const incoming = payload.new
+          // Avoid duplicates if the row somehow arrives twice.
+          if (unreadNotifications.value.some(n => n.id === incoming.id))
+            return
+
+          unreadNotifications.value = [incoming, ...unreadNotifications.value]
+
+          pushToast('', {
+            body: ToastBodyNotification as Component,
+            bodyProps: {
+              icon: sourceIcon(incoming.source),
+              title: sourceLabel(incoming.source),
+              description: incoming.title,
+              href: incoming.href,
+              source: incoming.source,
+              sourceId: incoming.source_id,
+              notificationId: incoming.id,
+              onNavigate: (notificationId: string) => {
+                markRead(notificationId)
+                void supabase.from('notifications').update({ is_read: true }).eq('id', notificationId)
+              },
+            },
+          })
+        },
+      )
+      .subscribe()
+
+    friendChannel = supabase
+      .channel(`friend-requests:${uid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'friends',
+          filter: `friend=eq.${uid}`,
+        },
+        (payload: RealtimePostgresInsertPayload<{ id: number, friender: string, friend: string }>) => {
+          const requesterId = payload.new.friender
+
+          // Only show if we don't already have this friendship row (e.g. mutual request already accepted).
+          const alreadyKnown = friendships.value.some(f => f.friender === requesterId && f.friend === uid)
+          if (alreadyKnown)
+            return
+
+          // Optimistically add to local friendships so the badge and invite card update immediately.
+          friendships.value = [...friendships.value, payload.new]
+
+          pushToast('', {
+            persist: true,
+            body: ToastBodyFriendRequest as Component,
+            bodyProps: {
+              requesterId,
+              onAccept: (toastId: number) => {
+                removeToast(toastId)
+                void handleInviteAction(requesterId, 'accept')
+              },
+              onDecline: (toastId: number) => {
+                removeToast(toastId)
+                void handleInviteAction(requesterId, 'ignore')
+              },
+            },
+          })
+        },
+      )
+      .subscribe()
+
+    subscribedUserId = uid
+  }
+
+  async function unsubscribeRealtime() {
+    const channels: Promise<unknown>[] = []
+
+    if (notificationChannel != null) {
+      const ch = notificationChannel
+      notificationChannel = null
+      channels.push(supabase.removeChannel(ch))
+    }
+
+    if (friendChannel != null) {
+      const ch = friendChannel
+      friendChannel = null
+      channels.push(supabase.removeChannel(ch))
+    }
+
+    subscribedUserId = null
+    await Promise.allSettled(channels)
+  }
+
+  // Wire realtime to userId lifecycle - subscribe when logged in, tear down on logout.
+  watch(
+    userId,
+    (uid) => {
+      if (uid != null)
+        subscribeRealtime(uid)
+      else
+        void unsubscribeRealtime()
+    },
+    { immediate: true },
+  )
+
+  onScopeDispose(() => {
+    void unsubscribeRealtime()
+  })
 
   function reset() {
     friendships.value = []
