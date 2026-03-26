@@ -104,14 +104,10 @@ export function useUserTheme() {
       .eq('id', id)
   }
 
-  // Always attempt to fetch and apply on client mount - SSR cannot apply DOM
-  // styles, so we must run this unconditionally on the client side regardless
-  // of hasFetched to ensure the theme is visible after a page refresh.
-  onMounted(() => {
-    if (userId.value != null)
-      void fetchAndApply()
-  })
-
+  // Re-fetch and apply when the user changes (login/logout).
+  // The initial fetch on page load is handled by useInitialUserPreferences
+  // inside Loading.vue, which blocks the fade-out until both settings and
+  // the custom theme are ready.
   watch(userId, (newId, oldId) => {
     if (newId == null) {
       // Logged out - revert to defaults

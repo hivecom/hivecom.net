@@ -4,18 +4,15 @@ import { Button, ButtonGroup, Card, Divider, Dropdown, Flex, Select, setColorThe
 import ThemeDropdownItem from './ThemeDropdownItem.vue'
 import ThemeEditor from './ThemeEditor.vue'
 
-// TODO (theming v1)
-// 1. Not applied when app starts
-// 2. Default mapping of values is off (spacing is at 99% for some reason, that might be the issue)
-// 3. Double check everything works
-// 4. Option to delete theme (?)
-// 5. Theme editing
+// TODO THEMES
+// 1. Theme editing
+// 2. Theme deleting
+// 3. ADd default
+// 4. Editor should start with the current theme (colors in sidebar dont work like that)
 
 // Placeholder theme options for the planned Theme selector
 const { themes, loading: themesLoading } = useDataThemes()
 const { activeTheme, setActiveTheme } = useUserTheme()
-
-// const selectedCustomTheme = ref([{ label: 'Default', value: 'default' }])
 
 const { settings, settingsError } = useDataUserSettings()
 

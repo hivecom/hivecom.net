@@ -1,12 +1,21 @@
 <script setup lang="ts">
+import { useInitialUserPreferences } from '@/composables/useInitialUserPreferences'
+
 // Add loading state to prevent FOUC (Flash of Unstyled Content)
 const isLoading = ref(true)
 const isFadingOut = ref(false)
 const isContentReady = ref(false)
 
+const { applyUserPreferences } = useInitialUserPreferences()
+
 // Load content and then fade out loading screen
-onMounted(() => {
+onMounted(async () => {
   if (import.meta.client) {
+    // Block on user preferences so the correct theme and light/dark mode are
+    // already applied before the loading screen lifts. This is a no-op for
+    // guests - the composable guards against a null user internally.
+    await applyUserPreferences()
+
     // Mark content as ready first (render behind loading screen)
     setTimeout(() => {
       isContentReady.value = true
