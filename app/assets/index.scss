@@ -331,7 +331,7 @@ code {
     margin: var(--space-xs) 0;
     overflow: hidden;
 
-    &[open] summary {
+    &[open] > summary {
       background-color: var(--color-bg-raised);
 
       &::before {
@@ -371,25 +371,36 @@ code {
       }
     }
 
-    &:nth-child(2) {
-      margin-top: 0 !important;
-    }
-
-    // Content inside the details body
-    > :not(summary) {
+    // Content inside the details body.
+    > :not(summary):not(details) {
       padding: var(--space-xs) var(--space-s) var(--space-s);
       border-top: 1px solid var(--color-border);
 
+      // 2nd child is always the first non-summary item; reset its top margin so
+      // the border-top acts as the sole separator.
       &:nth-child(2) {
         margin-top: 0 !important;
       }
 
-      /* > *:nth-child(1) {
-        margin-top: 0 !important;
-      } */
+      &:last-child {
+        margin-bottom: 0 !important;
+      }
+    }
 
-      > *:last-child {
-        margin-bottom: 0;
+    // Nested <details>: inset with horizontal margin so they sit visually
+    // inside the parent content area, separated by the parent's border-top.
+    > details {
+      margin: var(--space-xs) var(--space-s);
+
+      // When a nested details is the very first content child (n=2 in the DOM
+      // because summary is child 1), draw the separator line on it directly.
+      &:nth-child(2) {
+        border-top: 1px solid var(--color-border);
+        padding-top: var(--space-xs);
+      }
+
+      &:last-child {
+        margin-bottom: var(--space-xs);
       }
     }
   }
