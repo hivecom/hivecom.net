@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Flex, Skeleton } from '@dolanske/vui'
+import { Flex, Skeleton } from '@dolanske/vui'
+import Carousel from '../Shared/Carousel.vue'
 import Event from './Event.vue'
 import EventPast from './EventPast.vue'
 
@@ -11,8 +12,6 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
-const expandPastList = ref(false)
 
 // Split events into upcoming, ongoing, and past
 const upcomingEvents = computed(() => {
@@ -116,28 +115,18 @@ const pastEvents = computed(() => {
     </div>
 
     <!-- Past Events Section -->
-    <div v-if="pastEvents.length > 0" class="events-section events-section--past">
-      <h2 class="events-section__title">
-        Past Events
-      </h2>
-
-      <div class="events-section__past-list" :class="{ 'events-section__past-list--expanded': !!expandPastList }">
-        <EventPast
-          v-for="event in pastEvents"
-          :key="event.id"
-          :data="event"
-        />
-      </div>
-
-      <Flex x-end :class="{ 'mt-l': !!expandPastList }">
-        <Button size="s" @click="expandPastList = !expandPastList">
-          {{ expandPastList ? 'Collapse' : 'Unroll' }}
-          <template #end>
-            <Icon name="ph:arrows-vertical" />
-          </template>
-        </Button>
-      </Flex>
-    </div>
+    <Carousel class="events-section--past">
+      <template #header>
+        <h2 class="events-section__title">
+          Past Events
+        </h2>
+      </template>
+      <EventPast
+        v-for="event in pastEvents"
+        :key="event.id"
+        :data="event"
+      />
+    </Carousel>
 
     <!-- No Events Message -->
     <div v-if="upcomingEvents.length === 0 && pastEvents.length === 0 && ongoingEvents.length === 0" class="events-section__no-events">
@@ -175,28 +164,6 @@ const pastEvents = computed(() => {
     }
   }
 
-  &__past-list {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    max-width: 100%;
-    gap: var(--space-m);
-
-    // Scrollbar gutter padding
-    padding-bottom: 16px;
-
-    &--expanded {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      overflow-x: unset;
-
-      .event-past {
-        width: auto !important;
-        min-width: auto !important;
-      }
-    }
-  }
-
   &__no-events {
     text-align: center;
     padding: 3rem 0;
@@ -208,15 +175,13 @@ const pastEvents = computed(() => {
       color: var(--color-text-light);
     }
 
-    &:hover {
-      .events-section__past-list {
-        opacity: 1;
-      }
+    &:hover a {
+      opacity: 1;
     }
 
-    .events-section__past-list {
+    a {
       opacity: 0.7;
-      transition: var(--transition-slow);
+      transition: var(--transition);
     }
   }
 

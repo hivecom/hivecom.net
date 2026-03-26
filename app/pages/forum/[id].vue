@@ -732,7 +732,7 @@ function revealNsfw() {
                 </template>
               </Tooltip>
               <template v-if="postModifierId && postModifierUser">
-                <span class="text-s">by</span> <UserName size="s" show-preview :user-id="postModifierId" />
+                <span class="text-s">by <UserName size="s" show-preview :user-id="postModifierId" inherit /></span>
               </template>
             </template>
           </Flex>
