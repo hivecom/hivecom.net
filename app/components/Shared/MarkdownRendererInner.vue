@@ -248,10 +248,22 @@ onUnmounted(() => {
         margin-bottom: -2px;
         border-radius: 4px;
         cursor: default;
+        position: relative;
 
         &:checked {
           background-color: var(--color-accent);
           border-color: var(--color-accent);
+
+          &:before {
+            content: '✓';
+            color: var(--color-text-invert);
+            font-size: var(--font-size-s);
+            position: absolute;
+            font-weight: 800;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+          }
         }
       }
 

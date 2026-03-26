@@ -339,7 +339,7 @@ async function submitForm() {
             <DropdownTitle>
               <Input v-model="search" placeholder="Search topics..." expand focus />
             </DropdownTitle>
-            <Flex column gap="xxs">
+            <Flex column :gap="0">
               <button v-for="option in topicOptions" :key="option.id" :label="option.label" expand class="form-add-topic__button" :style="option.depth > 0 ? { paddingLeft: `calc(var(--space-xs) + ${option.depth * 16}px)` } : undefined" @click="form.parent_id = option.parent_id, close()">
                 <span>{{ option.label }}</span>
                 <p v-if="option.path" class="font-size-xs">

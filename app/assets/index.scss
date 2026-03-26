@@ -331,15 +331,28 @@ code {
     margin: var(--space-xs) 0;
     overflow: hidden;
 
+    &[open] summary {
+      background-color: var(--color-bg-raised);
+
+      &::before {
+        transform: rotate(90deg);
+      }
+    }
+
     summary {
       display: flex;
       align-items: center;
       gap: var(--space-xs);
-      padding: var(--space-xs) var(--space-s);
-      font-weight: 600;
+      padding: var(--space-s);
+      font-weight: var(--font-weight-medium);
+      font-size: var(--font-size-m);
       cursor: pointer;
       user-select: none;
       list-style: none;
+
+      &:hover {
+        background-color: var(--color-bg-raised);
+      }
 
       &::-webkit-details-marker {
         display: none;
@@ -358,18 +371,22 @@ code {
       }
     }
 
-    &[open] > summary::before {
-      transform: rotate(90deg);
+    &:nth-child(2) {
+      margin-top: 0 !important;
     }
 
     // Content inside the details body
     > :not(summary) {
       padding: var(--space-xs) var(--space-s) var(--space-s);
-      border-top: 1px solid var(--color-border-weak);
+      border-top: 1px solid var(--color-border);
 
-      > *:first-child {
-        margin-top: 0;
+      &:nth-child(2) {
+        margin-top: 0 !important;
       }
+
+      /* > *:nth-child(1) {
+        margin-top: 0 !important;
+      } */
 
       > *:last-child {
         margin-bottom: 0;

@@ -324,6 +324,8 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 // the floating bubble menu. We define them once here and render the same
 // template in both places instead of duplicating ~220 lines of markup.
 const [DefineToolbar, ReuseToolbar] = createReusableTemplate()
+
+const bodyEl = document.body
 </script>
 
 <template>
@@ -573,6 +575,7 @@ const [DefineToolbar, ReuseToolbar] = createReusableTemplate()
       offset: 8,
     }"
     :should-show="shouldShow"
+    :append-to="bodyEl"
   >
     <div class="rich-text-menu">
       <ReuseToolbar />
