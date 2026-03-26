@@ -562,7 +562,7 @@ onBeforeUnmount(() => {
           <Flex x-center y-center column gap="l" class="py-l">
             <Flex x-center y-center column gap="s" expand>
               <Button variant="gray" :loading="discordLoading" expand @click="signInWithDiscord">
-                <Flex y-center gap="s">
+                <Flex y-center gap="s" expand>
                   <Icon name="ph:discord-logo" />
                   Continue with Discord
                 </Flex>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Comment, ThreadNode } from './Discussion.types'
+import type { Comment, ProvidedDiscussion, ThreadNode } from './Discussion.types'
 import { Button, Flex, pushToast, Sheet } from '@dolanske/vui'
 import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'
 import UserAvatar from '../Shared/UserAvatar.vue'
@@ -33,6 +33,8 @@ const {
 } = defineProps<Props>()
 
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
+const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
+const isPinned = computed(() => discussion?.value?.pinned_reply_id === data.id)
 
 const self = useTemplateRef('self')
 const route = useRoute()
@@ -143,7 +145,8 @@ function stripReplyData(entry: Comment) {
       ref="self"
       :data
       :thread-reply-count="viewMode === 'flat' ? visibleChildren.length : undefined"
-      :class="{ 'discussion-comment--highlight': isActive }"
+      :class="{ 'discussion-comment--highlight': isActive,
+                'discussion-comment--pinned': isPinned }"
       @copy-link="copyLink"
       @scroll-reply="scrollReply"
       @open-replies="repliesExpanded = true"
@@ -153,7 +156,8 @@ function stripReplyData(entry: Comment) {
       ref="self"
       :data
       :thread-reply-count="viewMode === 'flat' ? visibleChildren.length : undefined"
-      :class="{ 'discussion-forum--highlight': isActive }"
+      :class="{ 'discussion-forum--highlight': isActive,
+                'discussion-forum--pinned': isPinned }"
       @copy-link="copyLink"
       @scroll-reply="scrollReply"
       @open-replies="repliesExpanded = true"

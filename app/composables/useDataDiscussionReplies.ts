@@ -262,14 +262,32 @@ export function useDataDiscussionReplies(
   async function deleteComment(id: string): Promise<void> {
     const res = await supabase
       .from('discussion_replies')
-      .delete()
+      .update({ is_deleted: true, markdown: '' })
       .eq('id', id)
 
     if (res.error) {
       throw new Error(res.error.message)
     }
 
-    comments.value = comments.value.filter(c => c.id !== id)
+    // Update in-place so the row stays in the list and reply_to_id references
+    // on child replies continue to resolve correctly.
+    const comment = comments.value.find(c => c.id === id)
+    if (comment) {
+      comment.is_deleted = true
+      comment.markdown = ''
+    }
+
+    if (discussion.value?.pinned_reply_id === id) {
+      const { error: pinError } = await supabase
+        .from('discussions')
+        .update({ pinned_reply_id: null })
+        .eq('id', discussion.value.id)
+
+      if (!pinError) {
+        discussion.value.pinned_reply_id = null
+      }
+    }
+
     onDeleted?.(id)
   }
 

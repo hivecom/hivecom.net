@@ -67,6 +67,7 @@ export type ReactionData = Record<string, Record<string, string[]>>
 interface TableColumnOverrides {
   discussions: {
     reactions: ReactionData
+    pinned_reply_id: string | null
   }
   discussion_replies: {
     reactions: ReactionData

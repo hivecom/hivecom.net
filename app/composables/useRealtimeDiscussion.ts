@@ -140,12 +140,6 @@ export function useRealtimeDiscussion(
           // and offtopic toggles (is_offtopic, and cascaded descendants).
           comments.value[idx] = updated
 
-          // If the reply was soft-deleted via UPDATE, strip it from the list
-          // so the UI stays consistent with what deleteComment does locally.
-          if (updated.is_deleted) {
-            comments.value = comments.value.filter(c => c.id !== updated.id)
-          }
-
           // Keep the replies cache in sync with the patched list.
           repliesCache.set(discussionId, comments.value, model.value !== 'comment')
         },

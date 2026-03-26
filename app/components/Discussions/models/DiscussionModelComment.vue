@@ -58,6 +58,7 @@ const { user: modifierUser } = useDataUser(modifierId, { userTtl: 10 * 60 * 1000
 const COMMENT_TRUNCATE = 96
 
 const setReplyToComment = inject(DISCUSSION_KEYS.setReplyToComment) as (data: Comment) => void
+const setQuoteOfComment = inject(DISCUSSION_KEYS.setQuoteOfComment) as (data: Comment) => void
 
 // ── Off-topic ─────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,30 @@ async function handleToggleOfftopic() {
   offtopicLoading.value = true
   await toggleOfftopic(data.value)
   offtopicLoading.value = false
+}
+
+const isPinned = computed(() => discussion?.value?.pinned_reply_id === data.value.id)
+const pinnedLoading = ref(false)
+
+async function handleTogglePin() {
+  if (!discussion?.value || pinnedLoading.value)
+    return
+
+  pinnedLoading.value = true
+
+  const nextValue = isPinned.value ? null : data.value.id
+  const res = await supabase
+    .from('discussions')
+    .update({ pinned_reply_id: nextValue })
+    .eq('id', discussion.value.id)
+    .select('pinned_reply_id')
+    .single()
+
+  if (!res.error && discussion.value) {
+    discussion.value.pinned_reply_id = res.data.pinned_reply_id
+  }
+
+  pinnedLoading.value = false
 }
 
 // ── NSFW ──────────────────────────────────────────────────────────────────────
@@ -205,15 +230,18 @@ const { displayReactions, toggleReaction } = useReactions({
           :can-mark-offtopic="canMarkOfftopic"
           :offtopic-loading="offtopicLoading"
           :loading-deletion="loadingDeletion"
+          :pinned-loading="pinnedLoading"
           :show-n-s-f-w-warning="showNSFWWarning"
           :posted-at="postedAtFormatted"
           :edited-at="editedAtFormatted"
           :modifier-id="modifierId"
           @reply="setReplyToComment(data)"
+          @quote="setQuoteOfComment(data)"
           @copy-link="emit('copyLink')"
           @start-editing="startEditing"
           @delete="showDeleteModal = true"
           @toggle-offtopic="handleToggleOfftopic"
+          @toggle-pin="handleTogglePin"
           @report="showReportModal = true"
         />
       </div>
@@ -221,8 +249,13 @@ const { displayReactions, toggleReaction } = useReactions({
 
     <Flex y-center x-between>
       <Flex y-center x-start>
-        <UserAvatar size="s" :user-id="data.created_by" show-preview linked />
-        <UserName size="m" show-preview :user-id="data.created_by" />
+        <template v-if="data.is_deleted">
+          <UserAvatar size="s" class="discussion-comment__deleted-avatar" />
+        </template>
+        <template v-else>
+          <UserAvatar size="s" :user-id="data.created_by" show-preview linked />
+          <UserName size="m" show-preview :user-id="data.created_by" />
+        </template>
         <Tooltip v-if="timestamps" :delay="500">
           <p class="discussion-comment__timestamp">
             {{ dayjs(data.created_at).fromNow() }}
@@ -257,53 +290,72 @@ const { displayReactions, toggleReaction } = useReactions({
           :can-mark-offtopic="canMarkOfftopic"
           :offtopic-loading="offtopicLoading"
           :loading-deletion="loadingDeletion"
+          :pinned-loading="pinnedLoading"
           :show-n-s-f-w-warning="showNSFWWarning"
           :posted-at="postedAtFormatted"
           :edited-at="editedAtFormatted"
           :modifier-id="modifierId"
           @reply="setReplyToComment(data)"
+          @quote="setQuoteOfComment(data)"
           @copy-link="emit('copyLink')"
           @start-editing="startEditing"
           @delete="showDeleteModal = true"
           @toggle-offtopic="handleToggleOfftopic"
+          @toggle-pin="handleTogglePin"
           @report="showReportModal = true"
         />
       </Flex>
     </Flex>
 
-    <Tooltip v-if="data.reply && viewMode !== 'threaded'" :delay="750">
-      <button class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === currentUserData?.id }" @click="emit('scrollReply')">
-        <Icon name="ph:arrow-elbow-up-right" />
-        <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-comment__reply-user">
-          <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" hide-avatar />:
+    <template v-if="data.reply && viewMode !== 'threaded'">
+      <Tooltip v-if="!data.reply.is_deleted" :delay="750">
+        <button class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === currentUserData?.id }" @click="emit('scrollReply')">
+          <Icon name="ph:arrow-elbow-up-right" />
+          <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-comment__reply-user">
+            <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" hide-avatar />:
+          </p>
+          <p v-else class="discussion-comment__reply-user">
+            You:
+          </p>
+          <p class="text-overflow-1">
+            {{ stripMarkdown(data.reply.markdown, 512) }}
+          </p>
+        </button>
+        <template #tooltip>
+          <p>
+            <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" />
+          </p>
+          <MarkdownRenderer
+            v-if="data.reply.markdown.length > COMMENT_TRUNCATE"
+            style="max-width: 256px"
+            :md="data.reply.markdown"
+            skeleton-height="0px"
+          />
+        </template>
+      </Tooltip>
+      <div v-else class="discussion-comment__reply discussion-comment__reply--deleted">
+        <Icon name="ph:trash" />
+        <p class="discussion-comment__reply-user">
+          Original reply was deleted
         </p>
-        <p v-else class="discussion-comment__reply-user">
-          You:
-        </p>
-        <p class="text-overflow-1">
-          {{ stripMarkdown(data.reply.markdown, 512) }}
-        </p>
+      </div>
+    </template>
+
+    <!-- Tombstone: soft-deleted reply -->
+    <p v-if="data.is_deleted" class="discussion-comment__deleted">
+      <Icon name="ph:trash" />
+      This reply was deleted.
+    </p>
+
+    <template v-else>
+      <!-- NSFW gate -->
+      <button v-if="showNSFWWarning" class="discussion-comment__nsfw" @click="showNSFWWarning = false">
+        <Icon class="text-color-accent" name="ph:warning" />
+        <p>Potentially sensitive content - click to reveal</p>
       </button>
-      <template #tooltip>
-        <p>
-          <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" />
-        </p>
-        <MarkdownRenderer
-          v-if="data.reply.markdown.length > COMMENT_TRUNCATE"
-          style="max-width: 256px"
-          :md="data.reply.markdown"
-          skeleton-height="0px"
-        />
-      </template>
-    </Tooltip>
 
-    <!-- NSFW gate -->
-    <button v-if="showNSFWWarning" class="discussion-comment__nsfw" @click="showNSFWWarning = false">
-      <Icon class="text-color-accent" name="ph:warning" />
-      <p>Potentially sensitive content - click to reveal</p>
-    </button>
-
-    <MarkdownRenderer v-else :md="data.markdown" skeleton-height="24px" />
+      <MarkdownRenderer v-else :md="data.markdown" skeleton-height="24px" />
+    </template>
 
     <Flex v-if="displayReactions.length > 0" y-center x-start gap="xxs" class="discussion-comment__reactions">
       <ReactionsList :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
@@ -402,6 +454,17 @@ const { displayReactions, toggleReaction } = useReactions({
     opacity: 1;
   }
 
+  &--pinned:after {
+    content: '';
+    position: absolute;
+    inset: 6px 0;
+    left: 34px;
+    border: 1px solid var(--color-accent);
+    border-radius: var(--border-radius-m);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
   &:has(.reactions-anchor-active),
   &:hover {
     .discussion-comment__actions {
@@ -467,6 +530,26 @@ const { displayReactions, toggleReaction } = useReactions({
     color: var(--color-text-lighter);
   }
 
+  &__deleted {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-left: 40px;
+    color: var(--color-text-lighter);
+    font-size: var(--font-size-s);
+    font-style: italic;
+    padding: var(--space-xxs) 0 var(--space-xs);
+
+    .iconify {
+      opacity: 0.5;
+    }
+  }
+
+  &__deleted-avatar {
+    opacity: 0.25;
+    filter: grayscale(1);
+  }
+
   &__reply {
     display: flex;
     align-items: center;
@@ -498,6 +581,18 @@ const { displayReactions, toggleReaction } = useReactions({
 
     &:hover {
       background-color: var(--color-button-gray-hover) !important;
+    }
+
+    &--deleted {
+      border-radius: 99px;
+      cursor: default;
+      pointer-events: none;
+
+      :deep(.user-display__link .user-display__username),
+      p,
+      .iconify {
+        color: var(--color-text-lighter) !important;
+      }
     }
   }
 

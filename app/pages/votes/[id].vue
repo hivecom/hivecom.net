@@ -337,8 +337,8 @@ function handleChoiceClick(index: number) {
 <template>
   <div class="page">
     <div :class="!isMobile && 'container container-s'">
-      <!-- Loading state -->
-      <VoteLoadingSkeleton v-if="loadingReferendum" />
+      <!-- Loading state: show skeleton while auth is unresolved OR data is loading -->
+      <VoteLoadingSkeleton v-if="loadingReferendum || !user" />
 
       <!-- Referendum not found -->
       <Flex v-else-if="!referendum" column class="text-center p-xl" x-center y-center>

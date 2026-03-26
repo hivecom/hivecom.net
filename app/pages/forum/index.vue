@@ -578,13 +578,26 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
     topics.value = topics.value.toSpliced(index, 1, { ...oldTopic, ...data } as TopicWithDiscussions)
   }
   else {
+    const updatedDiscussion = data as Tables<'discussions'>
     const parentTopic = topics.value.find(topic =>
       topic.discussions.some(discussion => discussion.id === data.id),
     )
     if (parentTopic) {
       const discussionIndex = parentTopic.discussions.findIndex(({ id }) => id === data.id)
       const oldDiscussion = parentTopic.discussions[discussionIndex]
-      parentTopic.discussions[discussionIndex] = { ...oldDiscussion, ...data } as ForumDiscussion
+      const merged = { ...oldDiscussion, ...updatedDiscussion } as ForumDiscussion
+
+      if (updatedDiscussion.discussion_topic_id !== parentTopic.id) {
+        // Discussion was moved to a different topic - remove from old, add to new
+        parentTopic.discussions.splice(discussionIndex, 1)
+        const newParentTopic = topics.value.find(topic => topic.id === updatedDiscussion.discussion_topic_id)
+        if (newParentTopic) {
+          newParentTopic.discussions.push(merged)
+        }
+      }
+      else {
+        parentTopic.discussions[discussionIndex] = merged
+      }
     }
   }
   // Bust cache so remounts reflect the mutation.

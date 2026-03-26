@@ -603,6 +603,63 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
 }
 
 /**
+ * Removes all :::details blocks (and their nested :::detailsSummary /
+ * :::detailsContent sub-blocks) from a markdown string so that only the text
+ * outside* any spoiler blocks remains. Uses depth-counting to handle nesting,
+ * mirroring the approach in processDetailsDirectives.
+ */
+function stripDetailsBlocks(markdown: string): string {
+  const result: string[] = []
+  let i = 0
+
+  while (i < markdown.length) {
+    const openIdx = markdown.indexOf(':::details', i)
+    if (openIdx === -1) {
+      result.push(markdown.slice(i))
+      break
+    }
+
+    // Keep everything before this :::details block
+    result.push(markdown.slice(i, openIdx))
+
+    // Walk past the opening line
+    const nlAfterOpen = markdown.indexOf('\n', openIdx + ':::details'.length)
+    if (nlAfterOpen === -1)
+      break
+
+    let pos = nlAfterOpen + 1
+    let depth = 1
+    let closePos = -1
+
+    while (pos < markdown.length && depth > 0) {
+      const nextTriple = markdown.indexOf(':::', pos)
+      if (nextTriple === -1)
+        break
+
+      const afterTriple = markdown.slice(nextTriple + 3).match(DETAILS_WORD_AFTER_RE)
+      const wordAfter = afterTriple?.[1] ?? ''
+      if (wordAfter.length > 0) {
+        depth++
+      }
+      else {
+        depth--
+        if (depth === 0)
+          closePos = nextTriple
+      }
+      pos = nextTriple + 3 + wordAfter.length + 1
+    }
+
+    if (closePos === -1)
+      break
+
+    // Skip past the closing :::
+    i = closePos + 3
+  }
+
+  return result.join('')
+}
+
+/**
  * Formats a markdown string into a plain-text preview suitable for display in
  * compact UI elements (activity feeds, profile sections, etc.).
  *
@@ -626,9 +683,16 @@ export function formatMarkdownPreview(
 
   const processed = processMentionsToText(markdown, mentionLookup)
 
-  // Prioritize details/spoiler detection: if present, always show spoiler preview
-  if (DETECT_DETAILS_RE.test(markdown))
-    return '#spoiler'
+  // If a spoiler block is present, only show the spoiler label when there is no
+  // meaningful plain text *outside* the spoiler block. If there is text outside,
+  // strip the spoiler blocks and let the normal preview logic handle the rest.
+  if (DETECT_DETAILS_RE.test(markdown)) {
+    const outsideSpoiler = stripDetailsBlocks(markdown).trim()
+    if (!outsideSpoiler || !stripMarkdown(processMentionsToText(outsideSpoiler, mentionLookup)))
+      return '#spoiler'
+    // There is real text outside the spoiler - continue with that content only
+    return formatMarkdownPreview(outsideSpoiler, mentionLookup, maxLength)
+  }
 
   // Prioritize table detection: if a table is present, always show table preview
   if (DETECT_TABLE_RE.test(markdown))

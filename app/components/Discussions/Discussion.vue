@@ -9,6 +9,7 @@ import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
+import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'
 import { normalizeTipTapOutput } from '@/lib/utils/formatting'
 import { DISCUSSION_KEYS } from './Discussion.keys'
 import DiscussionItem from './DiscussionItem.vue'
@@ -94,6 +95,9 @@ const modelRef = computed(() => props.model)
 const comments = ref<RawComment[]>([])
 const discussion = ref<Tables<'discussions'>>()
 
+const route = useRoute()
+const router = useRouter()
+
 // Pre-warm user cache for all reply authors so each DiscussionModelForum
 // instance gets a cache hit instead of firing its own user_roles + profiles
 // queries. Same pattern as forum/index.vue does for post authors.
@@ -174,6 +178,29 @@ function handleViewModeUpdate(val: ViewMode) {
 
 const showOfftopic = ref(settings.value.show_offtopic_replies ?? false)
 const showThreadReplies = ref(settings.value.show_thread_replies ?? false)
+
+const pinnedReply = computed(() => {
+  const pinnedId = discussion.value?.pinned_reply_id
+  if (!pinnedId)
+    return null
+  return comments.value.find(comment => comment.id === pinnedId) ?? null
+})
+
+const pinnedReplyId = computed(() => pinnedReply.value?.id ?? null)
+
+async function handleGoToPinnedReply() {
+  const pinned = pinnedReply.value
+  if (!pinned)
+    return
+
+  if (pinned.is_offtopic && !showOfftopic.value)
+    showOfftopic.value = true
+
+  router.replace({ query: { ...route.query, comment: pinned.id } })
+  await nextTick()
+  await waitForLayoutStability()
+  scrollToId(`#comment-${pinned.id}`, 'center')
+}
 
 // Keep in sync if the global setting changes (e.g. user visits settings page
 // in another tab) but do not overwrite a manual per-session choice made after
@@ -435,8 +462,10 @@ function isNodeVisible(node: ThreadNode): boolean {
         :has-comments="modelledComments.length > 0"
         :offtopic-count="offtopicCount"
         :show-offtopic="showOfftopic"
+        :pinned-reply-id="pinnedReplyId"
         @update:view-mode="handleViewModeUpdate"
         @update:show-offtopic="handleShowOfftopicUpdate"
+        @go-to-pinned="handleGoToPinnedReply"
       />
 
       <!-- Pending banner for comment model: sits between toolbar and comments -->
