@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Flex, Select, theme, Tooltip } from '@dolanske/vui'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useDataThemes } from '@/composables/useDataThemes'
-import { getCssVarAsHex, VUI_COLOR_KEYS } from '@/lib/theme'
+import { applyScale, applyTheme, getCssVarAsHex, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
 
 const HYPHEN_RE = /-/g
 
@@ -57,6 +57,11 @@ function onThemeSelect(selected: { value: unknown, label: string }[] | undefined
 
   applyPalette('dark', darkColors)
   applyPalette('light', lightColors)
+
+  // Apply scale overrides
+  for (const key of THEME_SCALE_KEYS) {
+    applyScale(key, t[key] ?? SCALE_CONFIGS[key].defaultDb)
+  }
 }
 
 // The colors object the template binds to - points at the active palette
@@ -102,11 +107,7 @@ function onColorChange(key: string, value: string) {
 
 function resetAll() {
   selectedThemeId.value = null
-  for (const key of VUI_COLOR_KEYS) {
-    for (const prefix of ['dark', 'light'] as const) {
-      document.documentElement.style.removeProperty(`--${prefix}-color-${key}`)
-    }
-  }
+  applyTheme(null)
   seedPalette('dark', darkColors)
   seedPalette('light', lightColors)
   applyPalette('dark', darkColors)
@@ -115,11 +116,7 @@ function resetAll() {
 
 // Clean up overrides when leaving the page
 onBeforeUnmount(() => {
-  for (const key of VUI_COLOR_KEYS) {
-    for (const prefix of ['dark', 'light'] as const) {
-      document.documentElement.style.removeProperty(`--${prefix}-color-${key}`)
-    }
-  }
+  applyTheme(null)
 })
 </script>
 

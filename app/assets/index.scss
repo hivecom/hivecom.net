@@ -45,23 +45,23 @@
   --text-size-xxl: 1.75rem;
 
   // Dark (default) theme colors
-  --dark-color-bg: #111;
+  --dark-color-bg: #111111;
   --dark-color-fg: #0a0a0a;
   --dark-color-accent: #a7fc2f;
   --dark-color-bg-accent-raised: #69b103;
   --dark-color-bg-accent-lowered: #4e8502;
 
-  --dark-color-text: #fff;
+  --dark-color-text: #ffffff;
   --dark-color-text-lighter: rgb(110, 110, 110);
   --dark-color-border-weak: #181818;
 
   // Light theme colors
-  --light-color-bg: #eee;
-  --light-color-fg: #ddd;
+  --light-color-bg: #eeeeee;
+  --light-color-fg: #dddddd;
   --light-color-accent: #69883e;
   --light-color-bg-accent-raised: #7ea34a;
   --light-color-bg-accent-lowered: #93be57;
-  --light-color-text: #000;
+  --light-color-text: #000000;
   --light-color-bg-medium: rgb(231, 231, 231);
 
   --navbar-offset: 64px;
@@ -495,6 +495,12 @@ input[type='range'] {
   }
 }
 
+.vui-dropdown-item {
+  height: auto !important;
+  min-height: var(--interactive-el-height);
+  padding-block: var(--space-xs);
+}
+
 @include meta.load-css('./utilities.scss');
 @include meta.load-css('./pages/login.scss');
 @include meta.load-css('./elements/auth.scss');
@@ -502,13 +508,3 @@ input[type='range'] {
 @include meta.load-css('./elements/page.scss');
 @include meta.load-css('./elements/activity.scss');
 @include meta.load-css('./elements/reactions.scss');
-
-/* Understand how theming works in the project. How values are loaded and parsed into a theme and then saved.
-
-Implement spacing, rounding and transition rantges. I have prepared the UI and the variable definitions.
-
-The the DB only allows saving between 0 - 100 so we must map the 0-100 to proper steps when writing & setting the variables
-
-I want spacing to be 0 to 300%. Rounding 0 to 250% and transitions to be between 0 to 200%. If any of this implementation makes snese in the lib/theme move it there
-
-There is a space next to the input, where the stepped value should be displayed. Make sure input also has a `--range-progress` style added to it so that the slider progress is properlty rendered */

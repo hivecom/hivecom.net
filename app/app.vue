@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Toasts } from '@dolanske/vui'
 import { computed } from 'vue'
+import { useUserTheme } from '@/composables/useUserTheme'
 import { useLastSeenTracking } from '@/lib/lastSeen'
 
 const route = useRoute()
@@ -67,6 +68,9 @@ const layoutName = computed(() => {
 
 // Initialize last seen tracking for authenticated users
 useLastSeenTracking()
+
+// Load and apply the user's custom theme (if any) from their profile
+useUserTheme()
 </script>
 
 <template>

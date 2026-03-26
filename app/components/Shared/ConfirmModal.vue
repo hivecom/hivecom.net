@@ -29,7 +29,7 @@ const isBelowSmall = useBreakpoint('<xs')
     :card="{ footerSeparator: true }"
     :can-dismiss="false"
     :size="isBelowSmall ? 'screen' : 's'"
-    @close="open = false"
+    @close="open = false; emit('cancel')"
   >
     <template #header>
       <Flex column gap="s">
