@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
-import { Badge, Flex, Skeleton } from '@dolanske/vui'
-import Carousel from '@/components/Shared/Carousel.vue'
+import { Badge, Carousel, Flex, Skeleton } from '@dolanske/vui'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 

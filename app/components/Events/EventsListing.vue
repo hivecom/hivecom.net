@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Flex, Skeleton } from '@dolanske/vui'
-import Carousel from '../Shared/Carousel.vue'
+import { Carousel, Flex, Skeleton } from '@dolanske/vui'
 import Event from './Event.vue'
 import EventPast from './EventPast.vue'
 
