@@ -7,8 +7,9 @@ import ThemeEditor from './ThemeEditor.vue'
 // TODO THEMES
 // 1. Theme editing
 // 2. Theme deleting
-// 3. ADd default
+// 3. Add default
 // 4. Editor should start with the current theme (colors in sidebar dont work like that)
+// 5. Change theme dropdown to Sheet instead. List all thems better - 2nd tab will
 
 // Placeholder theme options for the planned Theme selector
 const { themes, loading: themesLoading } = useDataThemes()
