@@ -161,6 +161,8 @@ const {
   },
 )
 
+const pinnedComment = computed(() => modelledComments.value.find((comment, index) => comment.id === discussion.value?.pinned_reply_id && index > 0))
+
 // ── View settings ─────────────────────────────────────────────────────────────
 
 const { settings } = useDataUserSettings()
@@ -185,8 +187,6 @@ const pinnedReply = computed(() => {
     return null
   return comments.value.find(comment => comment.id === pinnedId) ?? null
 })
-
-const pinnedReplyId = computed(() => pinnedReply.value?.id ?? null)
 
 async function handleGoToPinnedReply() {
   const pinned = pinnedReply.value
@@ -462,7 +462,6 @@ function isNodeVisible(node: ThreadNode): boolean {
         :has-comments="modelledComments.length > 0"
         :offtopic-count="offtopicCount"
         :show-offtopic="showOfftopic"
-        :pinned-reply-id="pinnedReplyId"
         @update:view-mode="handleViewModeUpdate"
         @update:show-offtopic="handleShowOfftopicUpdate"
         @go-to-pinned="handleGoToPinnedReply"
@@ -480,6 +479,14 @@ function isNodeVisible(node: ThreadNode): boolean {
           <Icon name="ph:arrow-up" :size="12" />
         </button>
       </div>
+
+      <!-- Pinned - if a comment is set as pinned, it's duplicated and listed up above everything else -->
+      <DiscussionItem
+        v-if="pinnedComment"
+        :class="props.model === 'forum' ? 'my-xl' : 'my-s'"
+        :data="pinnedComment"
+        :model="props.model"
+      />
 
       <!-- Flat view: all comments chronologically with inline reply previews -->
       <!-- v-show (not v-if) keeps items mounted across mode switches so MarkdownRenderer -->

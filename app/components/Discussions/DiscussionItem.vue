@@ -164,7 +164,7 @@ function stripReplyData(entry: Comment) {
     />
 
     <!-- Flat mode: sheet for thread replies (triggered from within the model components) -->
-    <Sheet :open="repliesExpanded" :size="756" separators @close="repliesExpanded = false">
+    <Sheet :open="repliesExpanded" :size="model === 'forum' ? 756 : 512" separators @close="repliesExpanded = false">
       <template #header>
         <Flex gap="m">
           <UserAvatar size="l" :user-id="data.created_by" />
@@ -180,13 +180,25 @@ function stripReplyData(entry: Comment) {
       </template>
 
       <Flex column gap="s" expand>
-        <DiscussionModelForum
-          v-for="item in visibleChildren"
-          :key="item.comment.id"
-          ref="self"
-          :data="stripReplyData(item.comment)"
-          @interact="repliesExpanded = false"
-        />
+        <template v-if="model === 'forum'">
+          <DiscussionModelForum
+            v-for="item in visibleChildren"
+            :key="item.comment.id"
+            ref="self"
+            :data="stripReplyData(item.comment)"
+            @interact="repliesExpanded = false"
+          />
+        </template>
+        <template v-else>
+          <DiscussionModelComment
+            v-for="item in visibleChildren"
+            :key="item.comment.id"
+            ref="self"
+            class="w-100"
+            :data="stripReplyData(item.comment)"
+            @interact="repliesExpanded = false"
+          />
+        </template>
       </Flex>
     </Sheet>
 
@@ -248,6 +260,10 @@ function stripReplyData(entry: Comment) {
 .discussion-comment-wrapper {
   display: block;
   scroll-margin-top: 148px;
+
+  /* &--pinned-first {
+    margin-block: var(--space-l);
+  } */
 
   &--offtopic {
     transition: opacity var(--transition-slow);

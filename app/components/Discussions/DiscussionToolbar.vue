@@ -6,7 +6,6 @@ interface Props {
   hasComments: boolean
   offtopicCount: number
   showOfftopic: boolean
-  pinnedReplyId?: string | null
 }
 
 defineProps<Props>()
@@ -68,18 +67,5 @@ const emit = defineEmits<{
         <p>{{ showOfftopic ? 'Hide off-topic replies' : 'Show off-topic replies' }}</p>
       </template>
     </Tooltip>
-
-    <Button
-      v-if="pinnedReplyId"
-      size="s"
-      variant="accent"
-      outline
-      @click="emit('goToPinned')"
-    >
-      <template #start>
-        <Icon :size="18" name="ph:push-pin-bold" />
-      </template>
-      Pinned reply
-    </Button>
   </Flex>
 </template>

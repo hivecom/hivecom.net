@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion } from '../Discussion.types'
-import { Alert, Avatar, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
+import { Alert, Avatar, Badge, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
@@ -400,6 +400,12 @@ const editedAtFormatted = computed(() => {
               </TinyBadge>
             </Flex>
           </Flex>
+
+          <TinyBadge v-if="isPinned" variant="accent" filled>
+            <Icon name="ph:push-pin" class="text-color-invert" />
+          </TinyBadge>
+
+          <div class="flex-1" />
         </template>
 
         <DiscussionActionsToolbar
@@ -438,6 +444,11 @@ const editedAtFormatted = computed(() => {
         </template>
 
         <template v-else>
+          <Badge v-if="isPinned && !isMobile" variant="accent" filled class="mb-s">
+            <Icon name="ph:push-pin" class="text-color-invert" />
+            Pinned
+          </Badge>
+
           <!-- Reply information -->
           <template v-if="data.reply && viewMode !== 'threaded'">
             <Alert v-if="!data.reply.is_deleted" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
@@ -615,8 +626,8 @@ const editedAtFormatted = computed(() => {
   }
 
   &--pinned {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 35%, transparent);
+    border-color: var(--color-border-strong);
+    box-shadow: 0 0 16px 1px color-mix(in srgb, var(--color-accent) 25%, transparent);
   }
 
   &__nsfw {
@@ -648,6 +659,7 @@ const editedAtFormatted = computed(() => {
 
   &__mobile-header {
     display: flex;
+    gap: var(--space-s);
     align-items: center;
     justify-content: space-between;
     padding: var(--space-s) var(--space-m);

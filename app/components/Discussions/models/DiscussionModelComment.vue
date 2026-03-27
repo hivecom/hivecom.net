@@ -11,6 +11,7 @@ import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
+import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
@@ -248,7 +249,7 @@ const { displayReactions, toggleReaction } = useReactions({
     </div>
 
     <Flex y-center x-between>
-      <Flex y-center x-start>
+      <Flex y-center x-start expand>
         <template v-if="data.is_deleted">
           <UserAvatar size="s" class="discussion-comment__deleted-avatar" />
         </template>
@@ -271,6 +272,13 @@ const { displayReactions, toggleReaction } = useReactions({
         <button v-if="threadReplyCount && threadReplyCount > 0 && !isMobile" class="discussion-comment__reply-count" @click.stop="emit('openReplies')">
           {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
         </button>
+
+        <TinyBadge v-if="isPinned" variant="accent" style="margin-right:2px" filled>
+          <Icon name="ph:push-pin" class="text-color-invert" />
+          <template v-if="!isMobile">
+            Pinned
+          </template>
+        </TinyBadge>
       </Flex>
 
       <!-- Mobile: reaction button (only when no reactions exist) + three-dot trigger -->
@@ -308,7 +316,7 @@ const { displayReactions, toggleReaction } = useReactions({
     </Flex>
 
     <template v-if="data.reply && viewMode !== 'threaded'">
-      <Tooltip v-if="!data.reply.is_deleted" :delay="750">
+      <Tooltip v-if="!data.reply.is_deleted" :delay="750" :disabled="data.reply.markdown.length <= COMMENT_TRUNCATE">
         <button class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === currentUserData?.id }" @click="emit('scrollReply')">
           <Icon name="ph:arrow-elbow-up-right" />
           <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-comment__reply-user">
@@ -322,11 +330,7 @@ const { displayReactions, toggleReaction } = useReactions({
           </p>
         </button>
         <template #tooltip>
-          <p>
-            <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" />
-          </p>
           <MarkdownRenderer
-            v-if="data.reply.markdown.length > COMMENT_TRUNCATE"
             style="max-width: 256px"
             :md="data.reply.markdown"
             skeleton-height="0px"
@@ -441,8 +445,11 @@ const { displayReactions, toggleReaction } = useReactions({
     content: '';
     display: block;
     position: absolute;
-    inset: 8px 0;
     left: 34px;
+    top: 4px;
+    bottom: 0px;
+    right: 0;
+
     z-index: -1;
     border-radius: var(--border-radius-m);
     background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
@@ -452,17 +459,6 @@ const { displayReactions, toggleReaction } = useReactions({
 
   &--highlight:before {
     opacity: 1;
-  }
-
-  &--pinned:after {
-    content: '';
-    position: absolute;
-    inset: 6px 0;
-    left: 34px;
-    border: 1px solid var(--color-accent);
-    border-radius: var(--border-radius-m);
-    opacity: 0.6;
-    pointer-events: none;
   }
 
   &:has(.reactions-anchor-active),
