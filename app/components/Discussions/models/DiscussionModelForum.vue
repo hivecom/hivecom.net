@@ -292,7 +292,7 @@ const editedAtFormatted = computed(() => {
       <!-- Deleted reply: muted placeholder instead of real profile -->
       <template v-if="data.is_deleted">
         <Flex column x-center y-center gap="s">
-          <Avatar size="l" class="discussion-forum__deleted-avatar" />
+          <Avatar size="m" class="discussion-forum__deleted-avatar" />
         </Flex>
       </template>
 
@@ -755,7 +755,7 @@ const editedAtFormatted = computed(() => {
     gap: var(--space-xs);
     color: var(--color-text-lighter);
     font-size: var(--font-size-s);
-    padding: var(--space-s) 0;
+    padding-block: 5px;
 
     .iconify {
       opacity: 0.5;
@@ -782,6 +782,10 @@ const editedAtFormatted = computed(() => {
     .author-meta {
       font-size: var(--font-size-xs);
       color: var(--color-text-lighter);
+    }
+
+    &--deleted {
+      padding: var(--space-s);
     }
   }
 
