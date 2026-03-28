@@ -1,0 +1,105 @@
+.rp-widget {
+  display: inline-flex;
+}
+
+.rp-trigger {
+  cursor: pointer;
+  color: var(--color-text);
+  position: relative;
+
+  &--accent {
+    color: var(--color-accent);
+  }
+}
+
+.rp-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  display: block;
+  border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-bg);
+}
+
+.rp-tooltip {
+  width: 328px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-m);
+  user-select: text;
+}
+
+.rp-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.rp-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.rp-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-s);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-m);
+  background: var(--color-bg-raised);
+
+  &--inline {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &--link {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+  }
+}
+
+.rp-label {
+  text-transform: uppercase;
+  font-size: var(--font-size-xxs);
+  /* letter-spacing: 0.02em; */
+  color: var(--color-text-light);
+}
+
+.rp-value {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono, monospace);
+}
+
+.rp-meta {
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-lighter);
+}
+
+.rp-empty {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-light);
+}
+
+.rp-game-icon {
+  border-radius: var(--border-radius-s);
+  object-fit: cover;
+}
+
+.rp-game-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.rp-game-title {
+  font-size: var(--font-size-s);
+  font-weight: 600;
+}

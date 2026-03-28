@@ -271,7 +271,7 @@ const {
       width: 100%;
       border-radius: var(--border-radius-m);
       background-color: var(--color-bg-raised);
-      box-shadow: var(--box-shadow);
+      border: 1px solid var(--color-border);
     }
   }
 }
