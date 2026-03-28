@@ -288,9 +288,10 @@ const bannerSurfaceStyle = computed(() => {
   position: absolute;
   top: 12px;
   left: 12px;
-  background: rgba(0, 0, 0, 0.8);
+  background-color: var(--color-bg-lowered);
+  border: 1px solid var(--color-border-weak);
   color: white;
-  padding: 4px 8px;
+  padding: 5px 8px;
   border-radius: 999px;
   font-size: var(--font-size-xxs);
   text-transform: uppercase;

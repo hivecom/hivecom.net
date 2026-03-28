@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Alert, Button, Divider, Flex, Grid, Input, Select, Skeleton } from '@dolanske/vui'
+import { Alert, Button, Flex, Grid, Input, Select, Skeleton } from '@dolanske/vui'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useDataProjects } from '@/composables/useDataProjects'
@@ -78,14 +78,12 @@ useSeoMeta({
 
 <template>
   <div class="page">
-    <section>
+    <section class="page-title">
       <h1>Projects</h1>
       <p>
         Explore projects and initiatives from our community
       </p>
     </section>
-
-    <Divider />
 
     <Flex column gap="l" class="projects">
       <!-- Error message -->

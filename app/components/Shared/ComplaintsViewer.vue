@@ -200,7 +200,7 @@ onMounted(() => {
         <Card
           v-for="complaint in complaints"
           :key="complaint.id"
-          class="complaint-card"
+          class="card-bg"
           :class="{ 'complaint-card--deleting': isDeleting(complaint.id) }"
         >
           <Flex column gap="s" expand>

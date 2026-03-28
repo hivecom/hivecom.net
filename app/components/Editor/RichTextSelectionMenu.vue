@@ -3,10 +3,10 @@ import type { Editor } from '@tiptap/vue-3'
 import type { TextColorName } from './plugins/textColor'
 import type { TextFontName } from './plugins/textFont'
 import type { ShouldShowMenuProps } from '@/types/rich-text-editor'
-import { Button, ButtonGroup, Flex, Input, Popout, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Flex, Input, Popout } from '@dolanske/vui'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import { createReusableTemplate, useEventListener } from '@vueuse/core'
-import { capitalize, computed, nextTick, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { TEXT_COLOR_NAMES, textColorValue } from './plugins/textColor'
 import { TEXT_FONT_NAMES, textFontValue } from './plugins/textFont'
 
@@ -577,21 +577,14 @@ useEventListener(document, 'mousedown', (e) => {
         >
           <div class="color-popout" data-editor-picker>
             <div class="color-grid">
-              <Tooltip
+              <button
                 v-for="name in TEXT_COLOR_NAMES"
                 :key="name"
-                placement="top"
-              >
-                <template #tooltip>
-                  <p>{{ capitalize(swatchLabel(name)) }}</p>
-                </template>
-                <button
-                  class="color-swatch"
-                  :class="{ 'is-active': getActiveColor() === name }"
-                  :style="{ backgroundColor: textColorValue(name) }"
-                  @click="toggleColor(name)"
-                />
-              </Tooltip>
+                class="color-swatch"
+                :class="{ 'is-active': getActiveColor() === name }"
+                :style="{ backgroundColor: textColorValue(name) }"
+                @click="toggleColor(name)"
+              />
             </div>
             <div v-if="getActiveColor()" class="color-clear-row">
               <button class="color-swatch color-swatch--clear" @click="clearColor">

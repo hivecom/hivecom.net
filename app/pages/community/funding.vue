@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Card, Checkbox, Divider, Flex, Grid, Skeleton } from '@dolanske/vui'
+import { Alert, Card, Checkbox, Flex, Grid, Skeleton } from '@dolanske/vui'
 import ExpenseCard from '@/components/Community/ExpenseCard.vue'
 import FundingHistory from '@/components/Community/FundingHistory.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
@@ -92,12 +92,10 @@ const combinedError = computed(() => errorMessage.value || expensesError.value |
 <template>
   <div class="page">
     <!-- Hero section -->
-    <section>
+    <section class="page-title">
       <h1>Funding</h1>
       <p>Discover how we are funded, how you can support us and where your contributions go.</p>
     </section>
-
-    <Divider />
 
     <!-- Loading state -->
     <section v-if="isLoading" class="mt-xl">
