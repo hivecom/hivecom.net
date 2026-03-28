@@ -27,8 +27,11 @@ const isMobile = useBreakpoint('<s')
       </Badge>
 
       <div class="flex-1" />
-      <Button size="s" @click="sheetOpen = !sheetOpen">
-        View all
+      <Button size="s" outline @click="sheetOpen = !sheetOpen">
+        See more
+        <template #end>
+          <Icon name="ph:caret-up-down" />
+        </template>
       </Button>
     </Flex>
 
@@ -52,7 +55,7 @@ const isMobile = useBreakpoint('<s')
 
       <template v-else>
         <ForumLatestItem
-          v-for="post in props.latestPosts.slice(0, 20)"
+          v-for="post in props.latestPosts.slice(0, 16)"
           :key="post.id"
           :post="post"
           :mention-lookup="props.mentionLookup"
@@ -69,7 +72,7 @@ const isMobile = useBreakpoint('<s')
 
       <Flex column gap="m">
         <ForumLatestItem
-          v-for="post in props.latestPosts.slice(0, 75)"
+          v-for="post in props.latestPosts.slice(0, 65)"
           :key="post.id"
           :post="post"
           :mention-lookup="props.mentionLookup"
