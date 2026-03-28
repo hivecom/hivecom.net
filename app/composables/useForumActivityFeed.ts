@@ -175,7 +175,7 @@ export function useForumActivityFeed({
         const tb = new Date(b.timestampRaw).getTime()
         return ta > tb ? -1 : ta < tb ? 1 : 0
       })
-      .slice(0, 20)
+      // .slice(0, 20)
   })
 
   // IDs of all users mentioned in latest post descriptions/titles

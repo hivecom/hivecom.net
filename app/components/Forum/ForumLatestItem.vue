@@ -1,0 +1,160 @@
+<script setup lang="ts">
+import type { ActivityItem } from '@/composables/useForumActivityFeed'
+import { Flex } from '@dolanske/vui'
+import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
+
+const props = defineProps<{
+  post: ActivityItem
+  mentionLookup: Record<string, string>
+  expand?: boolean
+}>()
+
+function handleClick(event: MouseEvent) {
+  if (props.post.onClick) {
+    event.preventDefault()
+    props.post.onClick()
+  }
+}
+</script>
+
+<template>
+  <NuxtLink
+    class="forum__latest-item"
+    :class="{ 'forum__latest-item--expand': props.expand }"
+    :href="post.href"
+    :draggable="false"
+    @click="handleClick"
+  >
+    <Flex x-between y-center expand>
+      <Flex :gap="4" y-center>
+        <Icon :name="post.icon" :size="13" />
+        <span class="forum__latest-type">
+          <template v-if="post.type === 'Reply'">
+            {{ post.typeLabel }} <strong>{{ post.typeContext }}</strong>
+          </template>
+          <template v-else>
+            {{ post.typeLabel ?? post.type }}
+          </template>
+        </span>
+      </Flex>
+      <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
+    </Flex>
+    <strong class="forum__latest-title">
+      <MarkdownPreview v-if="post.type === 'Reply'" :markdown="post.title" :mention-lookup="props.mentionLookup" />
+      <template v-else>{{ post.title }}</template>
+    </strong>
+    <Flex y-center x-between expand class="forum__latest-footer">
+      <UserDisplay
+        :user-id="post.user"
+        size="s"
+        show-role
+      />
+    </Flex>
+  </NuxtLink>
+</template>
+
+<style lang="scss" scoped>
+@use '@/assets/mixins.scss' as *;
+@use '@/assets/breakpoints.scss' as *;
+
+.forum__latest-item {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  padding: var(--space-s);
+  border-radius: var(--border-radius-m);
+  border: 1px solid var(--color-border);
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  overflow: hidden;
+  cursor: pointer;
+  text-decoration: none;
+  align-self: stretch;
+  background-color: var(--color-bg-medium);
+
+  &--expand {
+    width: 100%;
+    min-width: unset;
+    max-width: unset;
+
+    .forum__latest-title {
+      @include line-clamp(2);
+
+      p {
+        @include line-clamp(2);
+      }
+    }
+  }
+
+  &:hover {
+    background-color: var(--color-bg-raised);
+  }
+
+  & > :deep(.vui-flex) {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  & > :deep(.vui-flex > .vui-flex) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  span {
+    white-space: nowrap;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+  }
+}
+
+.forum__latest-type {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  strong {
+    font-size: var(--font-size-s);
+    font-weight: var(--font-weight-bold);
+  }
+}
+
+.forum__latest-title {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  text-align: left;
+  font-size: var(--font-size-m);
+  color: var(--color-text);
+  @include line-clamp(1);
+
+  p {
+    @include line-clamp(1);
+  }
+}
+
+.forum__latest-footer {
+  width: 100%;
+  margin-top: auto;
+}
+
+.forum__latest-timestamp {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-lighter);
+}
+
+@media screen and (max-width: $breakpoint-s) {
+  .forum__latest-item {
+    min-width: 256px;
+  }
+}
+</style>

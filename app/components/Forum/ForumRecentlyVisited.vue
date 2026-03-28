@@ -15,21 +15,19 @@ const props = defineProps<{
       Recently viewed
     </h5>
 
-    <!-- <Card> -->
     <ul v-if="props.loading" class="forum__continue-list">
       <li v-for="item in 6" :key="item">
         <Skeleton :height="40" width="100%" />
       </li>
     </ul>
 
-    <Carousel v-else-if="props.items.length > 0" gap="xs">
-      <NuxtLink v-for="item in props.items" :key="item.id" :to="item.discussionHref" class="forum__continue--item">
+    <Carousel v-else-if="props.items.length > 0" gap="xs" hide-scrollbar>
+      <NuxtLink v-for="item in props.items" :key="item.id" :to="item.discussionHref" class="forum__continue--item" :draggable="false">
         <Badge variant="neutral" class="ws-nowrap">
           {{ item.discussionTitle }}
         </Badge>
       </NuxtLink>
     </Carousel>
-    <!-- </Card> -->
   </section>
 </template>
 
