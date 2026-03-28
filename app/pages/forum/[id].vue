@@ -366,18 +366,44 @@ onBeforeMount(async () => {
     })
 })
 
+// Fetch minimal discussion data at SSR/prerender time so meta tags are populated.
+// The full interactive fetch still happens in onBeforeMount (client-only), but
+// during prerendering onBeforeMount never runs, leaving post.value null and
+// producing "Forum Post" / "Forum post details" for every page.
+const { data: seoPost } = await useAsyncData(`discussion-seo-${identifier}`, async () => {
+  let query = supabase
+    .from('discussions')
+    .select('title, description, markdown')
+
+  if (isUuid) {
+    query = query.or(`id.eq.${identifier},slug.eq.${identifier}`)
+  }
+  else {
+    query = query.eq('slug', identifier)
+  }
+
+  const { data } = await query.maybeSingle()
+  return data
+})
+
 const seoDescription = computed(() => {
-  if (!post.value)
-    return 'Forum post details'
-  return post.value.description
-    || stripMarkdown(post.value.markdown, 160)
+  const source = post.value ?? seoPost.value
+  if (!source)
+    return 'A forum post on Hivecom'
+  return source.description
+    || stripMarkdown(source.markdown, 160)
     || 'A forum post on Hivecom'
 })
 
+const seoTitle = computed(() => {
+  const source = post.value ?? seoPost.value
+  return source?.title ? `${source.title} | Forum` : 'Forum Post'
+})
+
 useSeoMeta({
-  title: computed(() => post.value ? `${post.value.title} | Forum` : 'Forum Post'),
+  title: seoTitle,
   description: seoDescription,
-  ogTitle: computed(() => post.value ? `${post.value.title} | Forum` : 'Forum Post'),
+  ogTitle: seoTitle,
   ogDescription: seoDescription,
 })
 
@@ -386,7 +412,7 @@ defineOgImageComponent('Discussion', {
 })
 
 useHead({
-  title: computed(() => post.value ? post.value.title ?? 'Forum Post' : 'Forum Post'),
+  title: computed(() => (post.value ?? seoPost.value)?.title ?? 'Forum Post'),
 })
 
 // This updates every 10 seconds and forces a re-render on the timestamps. This

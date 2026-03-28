@@ -3,10 +3,10 @@ import type { Editor } from '@tiptap/vue-3'
 import type { TextColorName } from './plugins/textColor'
 import type { TextFontName } from './plugins/textFont'
 import type { ShouldShowMenuProps } from '@/types/rich-text-editor'
-import { Button, ButtonGroup, Flex, Popout, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Flex, Input, Popout, Tooltip } from '@dolanske/vui'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
-import { createReusableTemplate } from '@vueuse/core'
-import { capitalize, computed, ref } from 'vue'
+import { createReusableTemplate, useEventListener } from '@vueuse/core'
+import { capitalize, computed, nextTick, ref, useTemplateRef } from 'vue'
 import { TEXT_COLOR_NAMES, textColorValue } from './plugins/textColor'
 import { TEXT_FONT_NAMES, textFontValue } from './plugins/textFont'
 
@@ -127,6 +127,75 @@ ${hasSelection ? selected : '[content]'}
 
   // Notify the parent so content / plainTextContent stay in sync.
   el.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+// ---------------------------------------------------------------------------
+// Link picker
+// ---------------------------------------------------------------------------
+
+const linkPickerOpen = ref(false)
+const linkButtonRef = ref<HTMLElement | null>(null)
+const linkInputRef = ref<{ focus: () => void } | null>(null)
+const linkUrl = ref('')
+
+function isLinkActive(): boolean {
+  if (props.plainText)
+    return false
+  return props.editor.isActive('link')
+}
+
+function getActiveLinkHref(): string {
+  if (props.plainText)
+    return ''
+  const attrs = props.editor.getAttributes('link')
+  return typeof attrs?.href === 'string' ? attrs.href : ''
+}
+
+function openLinkPicker() {
+  linkUrl.value = getActiveLinkHref()
+  linkPickerOpen.value = !linkPickerOpen.value
+  if (linkPickerOpen.value) {
+    nextTick(() => {
+      linkInputRef.value?.focus()
+    })
+  }
+}
+
+function applyLink() {
+  const url = linkUrl.value.trim()
+  if (!url) {
+    removeLink()
+    return
+  }
+  props.editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+  linkPickerOpen.value = false
+  linkUrl.value = ''
+}
+
+function removeLink() {
+  props.editor.chain().focus().extendMarkRange('link').unsetLink().run()
+  linkPickerOpen.value = false
+  linkUrl.value = ''
+}
+
+function insertLinkMarkdown() {
+  const el = props.textareaEl
+  if (!el)
+    return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  const selected = el.value.slice(start, end)
+  const url = linkUrl.value.trim()
+  if (!url)
+    return
+  const inserted = `[${selected}](${url})`
+  el.value = el.value.slice(0, start) + inserted + el.value.slice(end)
+  el.selectionStart = start + 1
+  el.selectionEnd = start + 1 + selected.length
+  el.focus()
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+  linkPickerOpen.value = false
+  linkUrl.value = ''
 }
 
 // ---------------------------------------------------------------------------
@@ -325,7 +394,38 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 // template in both places instead of duplicating ~220 lines of markup.
 const [DefineToolbar, ReuseToolbar] = createReusableTemplate()
 
-const bodyEl = document.body
+// ---------------------------------------------------------------------------
+// Global close-all-pickers on outside click
+// ---------------------------------------------------------------------------
+
+const toolbarEl = useTemplateRef<HTMLElement>('toolbar-root')
+
+function closeAllPickers() {
+  headingPickerOpen.value = false
+  colorPickerOpen.value = false
+  fontPickerOpen.value = false
+  linkPickerOpen.value = false
+}
+
+// Capture phase so we run before any stopPropagation calls elsewhere on the page.
+// Called at setup() level so VueUse registers the cleanup on unmount automatically.
+useEventListener(document, 'mousedown', (e) => {
+  if (!headingPickerOpen.value && !colorPickerOpen.value && !fontPickerOpen.value && !linkPickerOpen.value)
+    return
+  const target = e.target as Node | null
+  if (target == null)
+    return
+  // Keep pickers open when clicking inside the toolbar (static or floating).
+  if (toolbarEl.value?.contains(target))
+    return
+  // Our picker popouts teleport to body - check if click landed inside one.
+  // We use a data attribute on the inner content div rather than .vui-popout
+  // so we don't accidentally match other dropdowns on the page (e.g. the + menu).
+  const openPickerPopouts = document.querySelectorAll('[data-editor-picker]')
+  if ([...openPickerPopouts].some(el => el.contains(target)))
+    return
+  closeAllPickers()
+}, { capture: true })
 </script>
 
 <template>
@@ -351,7 +451,7 @@ const bodyEl = document.body
           :offset="6"
           @click-outside="headingPickerOpen = false"
         >
-          <div class="list-popout">
+          <div class="list-popout" data-editor-picker>
             <button
               v-for="level in HEADING_LEVELS"
               :key="level"
@@ -409,6 +509,54 @@ const bodyEl = document.body
           </Button>
         </template>
 
+        <!-- Link -->
+        <Button
+          ref="linkButtonRef"
+          size="s"
+          square
+          :class="{ 'is-active': linkPickerOpen || isLinkActive() }"
+          @click="plainText ? (linkPickerOpen = !linkPickerOpen) : openLinkPicker()"
+        >
+          <Icon :size="18" name="ph:link" />
+        </Button>
+
+        <Popout
+          :anchor="linkButtonRef"
+          :visible="linkPickerOpen"
+          placement="bottom"
+          :offset="6"
+          @click-outside="linkPickerOpen = false"
+        >
+          <div class="link-popout" data-editor-picker>
+            <Input
+              ref="linkInputRef"
+              v-model="linkUrl"
+              size="s"
+              placeholder="https://..."
+              @keydown.enter="plainText ? insertLinkMarkdown() : applyLink()"
+              @keydown.escape="linkPickerOpen = false"
+            />
+            <Flex gap="xxs" x-end style="margin-top: var(--space-xxs)">
+              <Button
+                v-if="!plainText && isLinkActive()"
+                size="s"
+                variant="danger"
+                plain
+                @click="removeLink"
+              >
+                Remove
+              </Button>
+              <Button
+                size="s"
+                variant="accent"
+                @click="plainText ? insertLinkMarkdown() : applyLink()"
+              >
+                Apply
+              </Button>
+            </Flex>
+          </div>
+        </Popout>
+
         <!-- Color -->
         <Button
           ref="bucketButtonRef"
@@ -427,7 +575,7 @@ const bodyEl = document.body
           :offset="6"
           @click-outside="colorPickerOpen = false"
         >
-          <div class="color-popout">
+          <div class="color-popout" data-editor-picker>
             <div class="color-grid">
               <Tooltip
                 v-for="name in TEXT_COLOR_NAMES"
@@ -471,7 +619,7 @@ const bodyEl = document.body
           :offset="6"
           @click-outside="fontPickerOpen = false"
         >
-          <div class="list-popout">
+          <div class="list-popout" data-editor-picker>
             <button
               v-for="name in TEXT_FONT_NAMES"
               :key="name"
@@ -561,7 +709,7 @@ const bodyEl = document.body
 
   <!-- Static toolbar: rendered above the textarea in plain text mode -->
   <template v-if="plainText">
-    <div class="rich-text-menu rich-text-menu--static">
+    <div ref="toolbar-root" class="rich-text-menu rich-text-menu--static">
       <ReuseToolbar />
     </div>
   </template>
@@ -573,11 +721,11 @@ const bodyEl = document.body
     :options="{
       placement: 'top',
       offset: 8,
+      flip: false,
     }"
     :should-show="shouldShow"
-    :append-to="bodyEl"
   >
-    <div class="rich-text-menu">
+    <div class="rich-text-menu rich-text-menu--floating">
       <ReuseToolbar />
     </div>
   </BubbleMenu>
@@ -606,6 +754,12 @@ const bodyEl = document.body
     // Use custom value since the jump between xxs and xs is too much
     // and I want to shave as much as possible while visually keeping things clean
     padding-bottom: 6px;
+  }
+
+  // Floating variant teleports to body - must sit above modals
+  &--floating {
+    z-index: 1000;
+    position: relative;
   }
 }
 
@@ -672,6 +826,11 @@ const bodyEl = document.body
 // ---------------------------------------------------------------------------
 // Font, size & heading picker popouts (shared list style)
 // ---------------------------------------------------------------------------
+
+.link-popout {
+  padding: var(--space-xs);
+  min-width: 220px;
+}
 
 .list-popout {
   display: flex;

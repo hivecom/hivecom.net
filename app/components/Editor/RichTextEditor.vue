@@ -1399,7 +1399,7 @@ async function handleSubmit() {
   // which suffers from a timing issue on initial mount where
   // `this.editor.isEmpty` can resolve incorrectly before the view is wired up).
   .editor-rich-wrapper {
-    overflow-y: auto;
+    overflow: visible;
     flex: 1 1 auto;
     min-height: 0;
     position: relative;

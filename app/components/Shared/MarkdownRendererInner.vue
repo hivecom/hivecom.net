@@ -91,14 +91,13 @@ onUnmounted(() => {
 <style lang="scss">
 /* Consecutive solo-image paragraphs grouped into a flex row */
 .md-image-group {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-xs);
   margin: var(--space-xs) 0;
 
   > p,
   > img {
-    flex: 1 1 0;
     min-width: 0;
     margin: 0;
   }
@@ -113,21 +112,41 @@ onUnmounted(() => {
     border-radius: var(--border-radius-s);
   }
 
-  @media (max-width: 600px) {
-    gap: var(--space-s);
+  // 2-image group: switch to 2 equal columns so they fill the row.
+  &[data-count='2'] {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-    > p,
-    > img {
-      flex: none;
-      width: 100%;
-    }
+  // 1 image left over in the last row (count % 3 == 1): span it full width.
+  // :last-child:nth-child(3n+1) matches exactly that case.
+  // We do NOT span the 2-leftover case (3n+2) - those two share the row fine.
+  > :last-child:nth-child(3n + 1) {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: repeat(2, 1fr);
 
     > p > img,
     > img {
       max-height: 40vh;
-      width: 100%;
-      aspect-ratio: unset;
-      object-fit: cover;
+      aspect-ratio: 4 / 3;
+    }
+
+    // Odd last child on mobile: span both columns.
+    > :last-child:nth-child(2n + 1) {
+      grid-column: 1 / -1;
+
+      > img,
+      img {
+        aspect-ratio: 16 / 9;
+        max-height: 30vh;
+      }
+    }
+
+    // Even last child fits perfectly - no spanning.
+    > :last-child:nth-child(2n) {
+      grid-column: unset;
     }
   }
 }
