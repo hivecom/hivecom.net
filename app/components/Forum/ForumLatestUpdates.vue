@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
-import { Badge, Carousel, Flex, Skeleton } from '@dolanske/vui'
+import { Badge, Button, Carousel, Flex, Skeleton } from '@dolanske/vui'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
@@ -22,7 +22,7 @@ function handlePostClick(event: MouseEvent, post: ActivityItem) {
 <template>
   <section class="forum__latest">
     <Carousel gap="s" :sheet-width="512" auto-adjust>
-      <template #header>
+      <template #header="{ toggle }">
         <Flex y-center x-start expand class="mb-s">
           <h5>
             Latest updates
@@ -31,10 +31,10 @@ function handlePostClick(event: MouseEvent, post: ActivityItem) {
             {{ props.postSinceYesterday }} today
           </Badge>
 
-          <!-- <div class="flex-1" />
+          <div class="flex-1" />
           <Button size="s" @click="toggle">
             View all
-          </Button> -->
+          </Button>
         </Flex>
       </template>
       <template v-if="props.loading">
