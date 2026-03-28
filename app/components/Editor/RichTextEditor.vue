@@ -1063,12 +1063,12 @@ async function handleSubmit() {
         <!-- Toolbar: floating bubble in rich mode, static bar in plain mode -->
         <RichTextSelectionMenu v-if="editor" :editor :plain-text="editorMode === 'plain'" :textarea-el="editorMode === 'plain' ? plainTextarea ?? null : null" />
 
-        <div v-if="editorMode === 'rich'" class="editor-rich-wrapper">
+        <div v-show="editorMode === 'rich'" class="editor-rich-wrapper">
           <span v-if="editorIsEmpty && props.placeholder" class="editor-placeholder">{{ props.placeholder }}</span>
           <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
         </div>
         <textarea
-          v-else
+          v-show="editorMode === 'plain'"
           ref="plain-textarea"
           class="plain-textarea"
           :rows="1"
