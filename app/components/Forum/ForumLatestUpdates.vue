@@ -101,7 +101,7 @@ function handlePostClick(event: MouseEvent, post: ActivityItem) {
 @use '@/assets/mixins.scss' as *;
 
 .forum__latest {
-  margin-bottom: var(--space-s);
+  margin-bottom: var(--space-xl);
 }
 
 .forum__latest-item {
@@ -119,13 +119,10 @@ function handlePostClick(event: MouseEvent, post: ActivityItem) {
   cursor: pointer;
   text-decoration: none;
   align-self: stretch;
+  background-color: var(--color-bg-medium);
 
-  &:first-child {
-    background-color: var(--color-bg-medium);
-
-    &:hover {
-      background-color: var(--color-bg-raised);
-    }
+  &:hover {
+    background-color: var(--color-bg-raised);
   }
 
   &:hover {

@@ -141,7 +141,7 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
         seenDiscussionIds.add(item.discussionId)
         return true
       })
-      .slice(0, 12)
+      .slice(0, 20)
 
     forumCache.set(cacheKey, userActivity.value, FORUM_USER_ACTIVITY_TTL)
     userActivityLoading.value = false
@@ -172,7 +172,6 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
 
       return true
     })
-      .slice(0, 6)
   })
 
   // Re-fetch when the logged-in user changes.

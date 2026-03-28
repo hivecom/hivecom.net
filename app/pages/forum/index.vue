@@ -649,7 +649,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 <template>
   <div class="page forum">
     <ClientOnly>
-      <section class="page-title mb-xl">
+      <section class="page-title mb-m">
         <Flex expand x-between y-center>
           <div>
             <h1>
@@ -662,19 +662,19 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         </Flex>
       </section>
 
+      <ForumRecentlyVisited
+        v-if="settings.show_forum_recently_visited && userId && (userActivityLoading || visibleUserActivity.length > 0)"
+        :loading="userActivityLoading"
+        :items="visibleUserActivity"
+        :topic-lookup="topicLookup"
+      />
+
       <ForumLatestUpdates
         v-if="settings.show_forum_updates"
         :loading="loading"
         :latest-posts="latestPosts"
         :post-since-yesterday="postSinceYesterday"
         :mention-lookup="mentionLookup"
-      />
-
-      <ForumRecentlyVisited
-        v-if="settings.show_forum_recently_visited && userId && (userActivityLoading || visibleUserActivity.length > 0)"
-        :loading="userActivityLoading"
-        :items="visibleUserActivity"
-        :topic-lookup="topicLookup"
       />
 
       <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xxs' : 'xs'">
@@ -953,68 +953,12 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
   background-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
 }
 
+h5 {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-light);
+}
+
 .forum {
-  &__continue {
-    margin-bottom: var(--space-xl);
-    // background-color: var(--card-bg);
-
-    .vui-card .vui-card-content {
-      padding: var(--space-xs);
-    }
-  }
-
-  &__continue-loading {
-    font-size: var(--font-size-s);
-    color: var(--color-text-lighter);
-
-    .spinning {
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      from {
-        transform: rotate(0deg);
-      }
-      to {
-        transform: rotate(360deg);
-      }
-    }
-  }
-
-  &__continue-list {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-xs);
-    column-gap: var(--space-m);
-    list-style: none;
-  }
-
-  &__continue-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-xs);
-    border-radius: var(--border-radius-m);
-    text-decoration: none;
-
-    &:hover {
-      background-color: var(--color-bg-medium);
-    }
-  }
-
-  &__continue-title {
-    font-size: var(--font-size-s);
-    color: var(--color-text);
-    @include line-clamp(1);
-    flex: 1;
-  }
-
-  &__continue-time {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-    white-space: nowrap;
-  }
-
   &__category {
     background-color: var(--color-bg-medium);
 
@@ -1187,10 +1131,6 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 }
 
 @media screen and (max-width: $breakpoint-m) {
-  .forum__continue-list {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .forum__category-title,
   .forum__category-post .forum__category-post--item {
     grid-template-columns: 40px 5fr 1fr 24px;
@@ -1252,10 +1192,6 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 
   .forum__category-post .forum__category-post--item .forum__category-post--meta span {
     font-size: var(--font-size-xxs);
-  }
-
-  .forum__continue-list {
-    grid-template-columns: 1fr;
   }
 }
 </style>

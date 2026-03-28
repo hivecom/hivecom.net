@@ -283,22 +283,6 @@ function clearColor() {
   colorPickerOpen.value = false
 }
 
-// Returns a human-readable label for a palette color name.
-// --text-color-white aliases --color-text-invert and --text-color-black aliases
-// --color-text. In dark mode those tokens resolve inversely to their names
-// (text-invert = near-black, text = near-white), so we swap the labels.
-// Friendly display labels for the semantic palette entries.
-const SWATCH_LABELS: Partial<Record<TextColorName, string>> = {
-  'text-invert': 'text invert',
-  'text-lighter': 'text lighter',
-  'text-lightest': 'text lightest',
-  'text': 'text',
-}
-
-function swatchLabel(name: TextColorName): string {
-  return SWATCH_LABELS[name] ?? name
-}
-
 // Tints the paint bucket icon with the active color, visible at a glance
 const bucketStyle = computed(() => {
   const color = getActiveColor()
