@@ -483,7 +483,7 @@ function isNodeVisible(node: ThreadNode): boolean {
       <!-- Pinned - if a comment is set as pinned, it's duplicated and listed up above everything else -->
       <DiscussionItem
         v-if="pinnedComment"
-        :class="props.model === 'forum' ? 'my-xl' : 'my-s'"
+        :class="props.model === 'forum' ? 'mb-xl' : 'mb-m'"
         :data="pinnedComment"
         :model="props.model"
       />
