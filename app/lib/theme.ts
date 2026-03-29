@@ -20,6 +20,9 @@ import type { Theme } from '@/types/theme'
 /** Pre-compiled regex for underscore-to-hyphen conversion. */
 const UNDERSCORE_RE = /_/g
 
+/** Pre-compiled regex for hyphen-to-underscore conversion. */
+const HYPHEN_RE = /-/g
+
 /** Metadata fields on the themes table that are NOT color columns. */
 const THEME_META_KEYS = new Set([
   'id',
@@ -238,6 +241,34 @@ export function themeToCustomProperties(theme: Theme): Record<string, string> {
     if (THEME_META_KEYS.has(key))
       continue
     vars[columnToCssVar(key)] = value as string
+  }
+
+  return vars
+}
+
+/**
+ * Convert a theme row into a `Record<css-variable-name, color-value>` map
+ * that resolves the correct palette and emits direct `--color-*` overrides.
+ *
+ * VUI maps `--color-bg` -> `var(--dark-color-bg)` only at `:root`, so setting
+ * `--dark-color-*` on a scoped child element does not propagate - the `var()`
+ * reference is still resolved at `:root`. This helper bypasses that by reading
+ * the active palette (`dark` or `light`) and emitting `--color-{key}` directly
+ * with the theme's stored value, making it safe to bind to a preview element
+ * via `:style`.
+ *
+ * Pass `palette` explicitly (e.g. from VUI's `theme` ref) to match the current
+ * user-facing color scheme.
+ */
+export function themeToScopedProperties(t: Theme, palette: 'dark' | 'light'): Record<string, string> {
+  const vars: Record<string, string> = {}
+
+  for (const key of VUI_COLOR_KEYS) {
+    // DB column: `dark_bg_raised` / `light_bg_raised` (hyphens -> underscores)
+    const col = `${palette}_${key.replace(HYPHEN_RE, '_')}` as keyof Theme
+    const value = t[col]
+    if (value != null)
+      vars[`--color-${key}`] = value as string
   }
 
   return vars

@@ -5,6 +5,8 @@ import NotificationTabPast from '@/components/Notifications/NotificationTabPast.
 import NotificationTabSubscriptions from '@/components/Notifications/NotificationTabSubscriptions.vue'
 import { useDataNotifications } from '@/composables/useDataNotifications'
 
+// FIXME: on mobile, the tabs are offset and show two horizontal lines - change minus margin to fix it
+
 const { badgeText, fetch, reset } = useDataNotifications()
 const userId = useUserId()
 const hasUser = computed(() => Boolean(userId.value))
