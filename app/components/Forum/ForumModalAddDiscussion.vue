@@ -8,7 +8,7 @@ import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useDataUser } from '@/composables/useDataUser'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
-import { composedPathToString, composePathToTopic } from '@/lib/topics'
+import { flattenTopicsTree } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
@@ -28,6 +28,7 @@ interface Props {
   editedItem?: Tables<'discussions'>
   drafts?: Tables<'discussions'>[]
   hideTabs?: boolean
+  defaultTopicId?: string | null
 }
 
 const isMobile = useBreakpoint('<s')
@@ -77,16 +78,23 @@ const resolvedTopics = computed(() =>
 // Options to optionally select a parent topic. A 1-level deep list which
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
-  return resolvedTopics.value
-    .filter(item => item.id === editedDiscussion.value?.discussion_topic_id || (!item.is_archived && (canUpdateDiscussions.value || !item.is_locked)))
-    .map(topic => ({
+  // Topics that are always included regardless of lock/archive (e.g. the one
+  // already assigned to the discussion being edited).
+  const pinnedId = editedDiscussion.value?.discussion_topic_id
+
+  return flattenTopicsTree(
+    resolvedTopics.value.filter(item =>
+      item.id === pinnedId || (!item.is_archived && (canUpdateDiscussions.value || !item.is_locked)),
+    ),
+  )
+    .filter(({ topic, path }) => search.value ? searchString([topic.name, path], search.value) : true)
+    .map(({ topic, depth, path }) => ({
       id: topic.id,
       label: topic.name,
       parent_id: topic.id,
-      path: composedPathToString(composePathToTopic(topic.id, resolvedTopics.value)),
+      path,
+      depth,
     }))
-    .sort((a, b) => a.label.localeCompare(b.label))
-    .filter(topic => search.value ? searchString([topic.label, topic.path], search.value) : true)
 })
 
 const form = reactive<{
@@ -280,6 +288,10 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
       }
       emit('created', data[0])
       emit('close')
+      // Navigate to the newly published discussion (skip when editing an existing post)
+      if (!isEditing.value) {
+        router.push(`/forum/${data[0].slug ?? data[0].id}`)
+      }
     }
   }
   catch {
@@ -291,6 +303,13 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
 // ForumModalAddDiscussion is always mounted on the forum page (no v-if), so
 // onBeforeMount would fire on every page render. Deferring to first open
 // eliminates the spurious draft fetch for users who never open the modal.
+// Pre-select topic when opened from a topic's action menu
+watch(() => props.open, (open) => {
+  if (open && !isEditing.value && props.defaultTopicId) {
+    form.discussion_topic_id = props.defaultTopicId
+  }
+}, { immediate: true })
+
 const draftsLoaded = ref(false)
 
 watch(() => props.open, (isOpen) => {
@@ -391,7 +410,7 @@ function confirmPublish() {
 </script>
 
 <template>
-  <Modal v-bind="props" size="l" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')">
+  <Modal v-bind="props" size="l" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')" @keydown.ctrl.enter.prevent="submitForm()" @keydown.meta.enter.prevent="submitForm()">
     <template #header>
       <h3>{{ isEditing ? 'Edit' : 'New' }}  discussion</h3>
     </template>
@@ -432,7 +451,15 @@ function confirmPublish() {
               <Input v-model="search" placeholder="Search topics..." expand focus />
             </DropdownTitle>
             <Flex column gap="xxs">
-              <button v-for="option in topicOptions" :key="option.id" :label="option.label" expand class="form-add-discussion__button" @click="form.discussion_topic_id = option.id, close()">
+              <button
+                v-for="option in topicOptions"
+                :key="option.id"
+                :label="option.label"
+                expand
+                class="form-add-discussion__button"
+                :style="option.depth > 0 ? { paddingLeft: `calc(var(--space-xs) + ${option.depth * 16}px)` } : undefined"
+                @click="form.discussion_topic_id = option.parent_id, close()"
+              >
                 <span>{{ option.label }}</span>
                 <p v-if="option.path" class="font-size-xs">
                   {{ option.path }}

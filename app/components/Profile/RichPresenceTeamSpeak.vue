@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
-import { Badge, Button, Divider, Flex, Popout } from '@dolanske/vui'
+import { Badge, Button, Flex, Popout } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
@@ -127,16 +127,16 @@ function formatLastSeen(lastSeenAt: string | null): string {
   <div
     v-if="showWidget"
     ref="anchorRef"
-    class="ts-presence"
+    class="rp-widget ts-presence"
     @mouseenter="visible = true"
     @mouseleave="visible = false"
     @focusin="visible = true"
     @focusout="visible = false"
   >
     <slot name="trigger">
-      <Flex class="ts-presence__trigger" y-center gap="xs">
+      <Flex class="rp-trigger" y-center gap="xs">
         <Icon class="activity-item__icon" name="mdi:teamspeak" :width="props.iconSize" :height="props.iconSize" />
-        <span v-if="isOnline && !props.hideOnlineIndicator" class="ts-presence__badge" />
+        <span v-if="isOnline && !props.hideOnlineIndicator" class="rp-badge" />
       </Flex>
     </slot>
 
@@ -150,28 +150,27 @@ function formatLastSeen(lastSeenAt: string | null): string {
       @mouseenter="visible = true"
       @mouseleave="visible = false"
     >
-      <div class="ts-presence__tooltip">
+      <div class="rp-tooltip">
         <strong class="text-l text-bold mb-s">
           TeamSpeak
         </strong>
-        <div class="ts-presence__section">
-          <div v-if="hasIdentities" class="ts-presence__list">
-            <div v-for="identity in normalizedIdentities" :key="identity.uniqueId" class="ts-presence__row">
-              <span class="ts-presence__identity-label">Identity</span>
-              <span class="ts-presence__value">{{ identity.uniqueId }}</span>
+        <div class="rp-section">
+          <div v-if="hasIdentities" class="rp-list">
+            <div v-for="identity in normalizedIdentities" :key="identity.uniqueId" class="rp-row">
+              <span class="rp-label">Identity</span>
+              <span class="rp-value">{{ identity.uniqueId }}</span>
             </div>
           </div>
-          <div v-else class="ts-presence__empty">
+          <div v-else class="rp-empty">
             No TeamSpeak identities linked.
           </div>
         </div>
-        <Divider v-if="hasPresence && props.richPresenceEnabled" class="m-xxs p-xxs" :margin="0" />
-        <div v-if="props.richPresenceEnabled" class="ts-presence__section">
-          <div v-if="hasPresence" class="ts-presence__list">
+        <div v-if="props.richPresenceEnabled" class="rp-section mt-xs">
+          <div v-if="hasPresence" class="rp-list">
             <div
               v-for="entry in presenceEntries"
               :key="entry.id"
-              class="ts-presence__row"
+              class="rp-row"
             >
               <Flex x-between expand y-center gap="s" wrap>
                 <Flex gap="xs" expand x-between y-center wrap>
@@ -180,10 +179,9 @@ function formatLastSeen(lastSeenAt: string | null): string {
                     {{ entry.online ? 'Online' : 'Offline' }}
                   </Badge>
                 </Flex>
-                <span v-if="entry.online" class="ts-presence__channel">{{ entry.channelPath }}</span>
+                <span v-if="entry.online" class="text-semibold">{{ entry.channelPath }}</span>
               </Flex>
-              <span class="ts-presence__meta">Last seen {{ formatLastSeen(entry.lastSeenAt) }}</span>
-
+              <span class="rp-meta">Last seen {{ formatLastSeen(entry.lastSeenAt) }}</span>
               <Flex v-if="entry.online" x-start class="mt-xs">
                 <Button size="s" :href="`/servers/voiceservers#${entry.channelId}`">
                   Show TS viewer
@@ -196,81 +194,3 @@ function formatLastSeen(lastSeenAt: string | null): string {
     </Popout>
   </div>
 </template>
-
-<style scoped>
-.ts-presence {
-  display: inline-flex;
-}
-
-.ts-presence__trigger {
-  cursor: pointer;
-  color: var(--color-text);
-  position: relative;
-}
-
-.ts-presence__trigger--accent {
-  color: var(--color-accent);
-}
-
-.ts-presence__badge {
-  position: absolute;
-  top: -2px;
-  right: -4px;
-  width: 8px;
-  height: 8px;
-  display: block;
-  border-radius: 999px;
-  background: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-bg);
-}
-
-.ts-presence__tooltip {
-  width: 328px;
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-m);
-  user-select: text;
-}
-
-.ts-presence__list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ts-presence__row {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--color-border);
-  gap: 6px;
-  padding: 10px;
-  border-radius: 10px;
-  background: var(--color-bg-raised);
-}
-
-.ts-presence__value {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono, monospace);
-}
-
-.ts-presence__identity-label {
-  text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  color: var(--color-text-light);
-}
-
-.ts-presence__channel {
-  font-weight: 600;
-}
-
-.ts-presence__meta {
-  font-size: 11px;
-  color: var(--color-text-lighter);
-}
-
-.ts-presence__empty {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-light);
-}
-</style>

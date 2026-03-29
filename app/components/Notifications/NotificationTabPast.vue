@@ -162,8 +162,17 @@ async function clearAll() {
 
 function onNotificationClick(notification: NotificationRow) {
   emit('navigate')
-  if (notification.href)
-    void navigateTo(notification.href)
+  if (notification.href) {
+    const needsCommentAnchor
+      = (notification.source === 'discussion_reply_reply' || notification.source === 'mention')
+        && notification.source_id
+
+    const target = needsCommentAnchor
+      ? `${notification.href}?comment=${notification.source_id}`
+      : notification.href
+
+    void navigateTo(target)
+  }
 }
 
 defineExpose({ load, reset, clearAll, clearAllLoading, hasNotifications })

@@ -186,7 +186,34 @@ export default defineNuxtConfig({
   },
   vite: {
     optimizeDeps: {
-      include: ['debug'],
+      include: [
+        'debug', // CJS
+        '@dolanske/vui',
+        'dayjs', // CJS
+        'dayjs/plugin/relativeTime', // CJS
+        '@dolanske/v-valid',
+        '@tiptap/core',
+        '@tiptap/extension-details',
+        '@tiptap/extension-image',
+        '@tiptap/extension-mathematics',
+        '@tiptap/extension-table/cell',
+        '@tiptap/extension-table/header',
+        '@tiptap/extension-table/row',
+        '@tiptap/extension-table/table',
+        '@tiptap/extension-task-item',
+        '@tiptap/extension-task-list',
+        '@tiptap/extension-youtube',
+        '@tiptap/extensions',
+        '@tiptap/markdown',
+        '@tiptap/pm/state',
+        '@tiptap/starter-kit',
+        '@tiptap/vue-3',
+        'marked',
+        '@tiptap/vue-3/menus',
+        '@tiptap/pm/view',
+        '@tiptap/extension-mention',
+        '@floating-ui/dom',
+      ],
     },
   },
   runtimeConfig: {

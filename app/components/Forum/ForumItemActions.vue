@@ -160,6 +160,8 @@ function handleStick(mode: 'stick' | 'unstick') {
 
 // Editing
 const showEditModal = ref(false)
+const showCreateSubTopicModal = ref(false)
+const showCreateDiscussionModal = ref(false)
 // function handleEdit() {}
 
 const linkedDiscussionReason = computed(() => {
@@ -254,6 +256,22 @@ function handleDelete() {
       <DropdownItem @click="showEditModal = true">
         Edit
       </DropdownItem>
+      <!-- Topic-only: create sub-topic and create discussion shortcuts -->
+      <template v-if="props.table === 'discussion_topics'">
+        <Divider :size="0" margin="8px 0" />
+        <DropdownItem
+          v-if="!props.data.is_locked || user?.role === 'admin' || user?.role === 'moderator'"
+          @click="showCreateSubTopicModal = true; dropdownRef?.close()"
+        >
+          Create sub-topic
+        </DropdownItem>
+        <DropdownItem
+          v-if="!props.data.is_locked || user?.role === 'admin' || user?.role === 'moderator'"
+          @click="showCreateDiscussionModal = true; dropdownRef?.close()"
+        >
+          Create discussion
+        </DropdownItem>
+      </template>
       <template v-if="props.table === 'discussions' && linkedDiscussionReason">
         <Tooltip placement="left">
           <template #tooltip>
@@ -319,6 +337,25 @@ function handleDelete() {
       :edited-item="props.data"
       :hide-tabs="props.hideDiscussionTabs ?? false"
       @close="showEditModal = false"
+      @created="emit('update', $event)"
+    />
+
+    <!-- Create sub-topic modal (only for topics) -->
+    <ForumModalAddTopic
+      v-if="props.table === 'discussion_topics'"
+      :open="showCreateSubTopicModal"
+      :default-parent-id="props.data.id"
+      @close="showCreateSubTopicModal = false"
+      @created="emit('update', $event)"
+    />
+
+    <!-- Create discussion modal (only for topics) -->
+    <ForumModalAddDiscussion
+      v-if="props.table === 'discussion_topics'"
+      :open="showCreateDiscussionModal"
+      :default-topic-id="props.data.id"
+      hide-tabs
+      @close="showCreateDiscussionModal = false"
       @created="emit('update', $event)"
     />
   </div>

@@ -13,6 +13,7 @@ defineProps<Props>()
 const emit = defineEmits<{
   'update:viewMode': [value: 'flat' | 'threaded']
   'update:showOfftopic': [value: boolean]
+  'goToPinned': []
 }>()
 </script>
 

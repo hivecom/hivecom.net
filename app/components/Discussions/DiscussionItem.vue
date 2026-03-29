@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Comment, ThreadNode } from './Discussion.types'
+import type { Comment, ProvidedDiscussion, ThreadNode } from './Discussion.types'
 import { Button, Flex, pushToast, Sheet } from '@dolanske/vui'
 import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'
 import UserAvatar from '../Shared/UserAvatar.vue'
@@ -33,13 +33,15 @@ const {
 } = defineProps<Props>()
 
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
+const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
+const isPinned = computed(() => discussion?.value?.pinned_reply_id === data.id)
 
 const self = useTemplateRef('self')
 const route = useRoute()
 const router = useRouter()
 
 // Scroll to itself when mounted and the query id matches
-const isActive = ref(data.id === route.query.comment)
+const isActive = computed(() => data.id === route.query.comment)
 
 onMounted(async () => {
   if (isActive.value) {
@@ -50,14 +52,18 @@ onMounted(async () => {
 
     const el = Array.isArray(self.value) ? self.value[0]?.$el : self.value?.$el
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-
-    // Clear the comment query param now that we've scrolled it into view.
-    // The highlight stays on until the page is reloaded.
-    const query = { ...route.query }
-    delete query.comment
-    router.replace({ query })
   }
 })
+
+// Scroll into view whenever another comment's scrollReply() sets ?comment=<this id> in the URL.
+// nextTick is sufficient here because the page is already fully rendered at this point.
+watch(isActive, async (active) => {
+  if (!active)
+    return
+  await nextTick()
+  const el = Array.isArray(self.value) ? self.value[0]?.$el : self.value?.$el
+  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}, { immediate: false })
 
 // Copy link to item
 const { copy } = useClipboard()
@@ -139,7 +145,8 @@ function stripReplyData(entry: Comment) {
       ref="self"
       :data
       :thread-reply-count="viewMode === 'flat' ? visibleChildren.length : undefined"
-      :class="{ 'discussion-comment--highlight': isActive }"
+      :class="{ 'discussion-comment--highlight': isActive,
+                'discussion-comment--pinned': isPinned }"
       @copy-link="copyLink"
       @scroll-reply="scrollReply"
       @open-replies="repliesExpanded = true"
@@ -149,14 +156,15 @@ function stripReplyData(entry: Comment) {
       ref="self"
       :data
       :thread-reply-count="viewMode === 'flat' ? visibleChildren.length : undefined"
-      :class="{ 'discussion-forum--highlight': isActive }"
+      :class="{ 'discussion-forum--highlight': isActive,
+                'discussion-forum--pinned': isPinned }"
       @copy-link="copyLink"
       @scroll-reply="scrollReply"
       @open-replies="repliesExpanded = true"
     />
 
     <!-- Flat mode: sheet for thread replies (triggered from within the model components) -->
-    <Sheet :open="repliesExpanded" :size="756" separators @close="repliesExpanded = false">
+    <Sheet :open="repliesExpanded" :size="model === 'forum' ? 756 : 512" separators @close="repliesExpanded = false">
       <template #header>
         <Flex gap="m">
           <UserAvatar size="l" :user-id="data.created_by" />
@@ -172,13 +180,25 @@ function stripReplyData(entry: Comment) {
       </template>
 
       <Flex column gap="s" expand>
-        <DiscussionModelForum
-          v-for="item in visibleChildren"
-          :key="item.comment.id"
-          ref="self"
-          :data="stripReplyData(item.comment)"
-          @interact="repliesExpanded = false"
-        />
+        <template v-if="model === 'forum'">
+          <DiscussionModelForum
+            v-for="item in visibleChildren"
+            :key="item.comment.id"
+            ref="self"
+            :data="stripReplyData(item.comment)"
+            @interact="repliesExpanded = false"
+          />
+        </template>
+        <template v-else>
+          <DiscussionModelComment
+            v-for="item in visibleChildren"
+            :key="item.comment.id"
+            ref="self"
+            class="w-100"
+            :data="stripReplyData(item.comment)"
+            @interact="repliesExpanded = false"
+          />
+        </template>
       </Flex>
     </Sheet>
 
@@ -240,6 +260,10 @@ function stripReplyData(entry: Comment) {
 .discussion-comment-wrapper {
   display: block;
   scroll-margin-top: 148px;
+
+  /* &--pinned-first {
+    margin-block: var(--space-l);
+  } */
 
   &--offtopic {
     transition: opacity var(--transition-slow);

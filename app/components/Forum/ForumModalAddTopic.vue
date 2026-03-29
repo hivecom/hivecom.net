@@ -8,12 +8,13 @@ import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { invalidateTopicIconMemoryCache } from '@/composables/useTopicIcon'
 import { deleteTopicIcon, getTopicIconUrl, invalidateTopicIconCache, uploadTopicIcon } from '@/lib/storage'
-import { composedPathToString, composePathToTopic } from '@/lib/topics'
+import { flattenTopicsTree } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 
 interface Props {
   open: boolean
   editedItem?: Tables<'discussion_topics'>
+  defaultParentId?: string | null
 }
 
 const props = defineProps<Props>()
@@ -56,17 +57,22 @@ const topicOptions = computed(() => {
     ? getDescendantIds(props.editedItem.id, topics.value)
     : new Set<string>()
 
+  const filtered = flattenTopicsTree(
+    topics.value.filter(item => !item.is_archived),
+    excludedIds,
+  )
+    .filter(({ topic, path }) => search.value ? searchString([topic.name, path], search.value) : true)
+    .map(({ topic, depth, path }) => ({
+      id: topic.id,
+      label: topic.name,
+      parent_id: topic.id,
+      path,
+      depth,
+    }))
+
   return [
-    { id: '-', label: 'Top-level', parent_id: null, path: '/', priority: 0 },
-    ...topics.value
-      .filter(item => !item.is_archived && !excludedIds.has(item.id))
-      .map(topic => ({
-        id: topic.id,
-        label: topic.name,
-        parent_id: topic.id,
-        path: composedPathToString(composePathToTopic(topic.id, topics.value)),
-      }))
-      .filter(topic => search.value ? searchString([topic.label, topic.path], search.value) : true),
+    { id: '-', label: 'Top-level', parent_id: null, path: '/', depth: 0 },
+    ...filtered,
   ]
 })
 
@@ -214,6 +220,13 @@ watch(activeTopicId, (newVal) => {
   }
 }, { immediate: true })
 
+// Pre-select parent when opened as "create sub-topic" from a topic's action menu
+watch(() => props.open, (open) => {
+  if (open && !isEditing.value && props.defaultParentId) {
+    form.parent_id = props.defaultParentId
+  }
+}, { immediate: true })
+
 const rules = defineRules<typeof form>({
   name: [required, minLenNoSpace(1), maxLength(128)],
   priority: [required],
@@ -293,7 +306,7 @@ async function submitForm() {
 </script>
 
 <template>
-  <Modal v-bind="props" size="s" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')">
+  <Modal v-bind="props" size="s" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')" @keydown.ctrl.enter.prevent="submitForm" @keydown.meta.enter.prevent="submitForm">
     <template #header>
       <h3>{{ isEditing ? 'Edit' : 'Create' }} topic</h3>
     </template>
@@ -326,8 +339,8 @@ async function submitForm() {
             <DropdownTitle>
               <Input v-model="search" placeholder="Search topics..." expand focus />
             </DropdownTitle>
-            <Flex column gap="xxs">
-              <button v-for="option in topicOptions" :key="option.id" :label="option.label" expand class="form-add-topic__button" @click="form.parent_id = option.parent_id, close()">
+            <Flex column :gap="0">
+              <button v-for="option in topicOptions" :key="option.id" :label="option.label" expand class="form-add-topic__button" :style="option.depth > 0 ? { paddingLeft: `calc(var(--space-xs) + ${option.depth * 16}px)` } : undefined" @click="form.parent_id = option.parent_id, close()">
                 <span>{{ option.label }}</span>
                 <p v-if="option.path" class="font-size-xs">
                   {{ option.path }}

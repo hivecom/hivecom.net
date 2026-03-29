@@ -27,6 +27,37 @@ if (queryTab.value === 'voice') {
   await navigateTo('/servers/voiceservers', { redirectCode: 301 })
 }
 
+const communityLinks = [
+  {
+    to: '/events',
+    ariaLabel: 'View upcoming community events and activities',
+    icon: 'ph:calendar',
+    title: 'Community Events',
+    subtitle: 'Join our community events and online gatherings',
+  },
+  {
+    to: '/community/projects',
+    ariaLabel: 'Explore community projects and initiatives',
+    icon: 'ph:folder',
+    title: 'Community Projects',
+    subtitle: 'Explore projects and initiatives from our community',
+  },
+  {
+    to: '/community/funding',
+    ariaLabel: 'View our funding transparency and financial information',
+    icon: 'ph:chart-bar',
+    title: 'Funding & Transparency',
+    subtitle: 'See how we\'re funded and where contributions go',
+  },
+  {
+    to: '/servers/gameservers',
+    ariaLabel: 'Explore our game servers and gaming community',
+    icon: 'ph:game-controller',
+    title: 'Game Servers',
+    subtitle: 'Connect to our hosted game servers',
+  },
+]
+
 useSeoMeta({
   title: 'Community',
   description: 'Learn about Hivecom, explore community projects, and connect with members.',
@@ -190,7 +221,7 @@ watch(user, () => {
 
     <!-- Community Members (includes birthday sub-section when applicable) -->
     <Card v-if="user && (randomUsers.length > 0 || birthdayUserIds.length > 0)" class="pb-l mt-l community-card">
-      <Flex column gap="m" x-center y-center>
+      <Flex column gap="l" x-center y-center>
         <Flex y-center gap="m" x-center expand>
           <Flex column :gap="0" x-center class="text-center" y-center>
             <h2 class="text-bold text-xxl">
@@ -246,162 +277,87 @@ watch(user, () => {
     <section class="mt-xl">
       <Grid :columns="2" gap="l" class="community-grid">
         <!-- About Our Community -->
-        <Card class="about-card">
-          <div class="about-card__content">
-            <Flex column gap="m" expand>
-              <Flex y-center gap="m" class="about-header">
-                <div class="about-icon">
-                  <Icon name="ph:users-three" size="2rem" />
-                </div>
-                <h3 class="text-bold text-xl">
-                  About Our Community
-                </h3>
-              </Flex>
-
-              <p class="about-description">
-                Hivecom is a passionate community of developers, gamers, and friends who love building and sharing projects together. We host game servers, develop open-source tools, and create a welcoming space for collaboration.
-              </p>
-
-              <Flex expand column gap="xxs">
-                <Flex y-center gap="s" class="mb-s">
-                  <Icon name="ph:rocket-launch" size="1.2rem" class="color-accent" />
-                  <h4 class="text-bold">
-                    What We Do
-                  </h4>
-                </Flex>
-                <Grid :columns="isMobile ? 1 : 2" class="activities-grid" expand>
-                  <div class="activity-item">
-                    <Icon name="ph:game-controller" size="1rem" class="activity-icon" />
-                    <span>Host dedicated game servers</span>
-                  </div>
-                  <div class="activity-item">
-                    <Icon name="ph:code" size="1rem" class="activity-icon" />
-                    <span>Develop open-source projects</span>
-                  </div>
-                  <div class="activity-item">
-                    <Icon name="ph:chat-circle" size="1rem" class="activity-icon" />
-                    <span>Provide community platforms</span>
-                  </div>
-                  <div class="activity-item">
-                    <Icon name="ph:share-network" size="1rem" class="activity-icon" />
-                    <span>Share knowledge & resources</span>
-                  </div>
-                </Grid>
-              </Flex>
+        <Card class="community-info-card card-bg">
+          <Flex column gap="m" expand>
+            <Flex y-center gap="m">
+              <div class="community-info-card__icon">
+                <Icon name="ph:users-three" size="2rem" />
+              </div>
+              <h3>
+                Our Community
+              </h3>
             </Flex>
-          </div>
-          <div class="about-card__decoration" />
+
+            <p class="about-description">
+              Hivecom is a passionate community of developers, gamers, and friends who love building and sharing projects together. We host game servers, develop open-source tools, and create a welcoming space for collaboration.
+            </p>
+
+            <Flex expand column gap="xxs">
+              <h4>
+                What We Do
+              </h4>
+              <Grid :columns="isMobile ? 1 : 2" class="activities-grid" expand>
+                <div class="activity-item">
+                  <Icon name="ph:game-controller" :size="18" class="activity-icon" />
+                  <span>Host dedicated game servers</span>
+                </div>
+                <div class="activity-item">
+                  <Icon name="ph:code" :size="18" class="activity-icon" />
+                  <span>Develop open-source projects</span>
+                </div>
+                <div class="activity-item">
+                  <Icon name="ph:chat-circle" :size="18" class="activity-icon" />
+                  <span>Provide community platforms</span>
+                </div>
+                <div class="activity-item">
+                  <Icon name="ph:share-network" :size="18" class="activity-icon" />
+                  <span>Share knowledge & resources</span>
+                </div>
+              </Grid>
+            </Flex>
+          </Flex>
         </Card>
 
         <!-- Community Links -->
-        <Card class="links-card">
-          <div class="links-card__content">
-            <Flex column gap="m" expand>
-              <Flex y-center gap="m" class="links-header">
-                <div class="links-icon">
-                  <Icon name="ph:compass" size="2rem" />
-                </div>
-                <h3 class="text-bold text-xl">
-                  Explore More
-                </h3>
-              </Flex>
-
-              <Flex column gap="s" expand>
-                <NuxtLink
-                  to="/events"
-                  class="community-link community-link--events"
-                  aria-label="View upcoming community events and activities"
-                >
-                  <div class="community-link__content">
-                    <div class="community-link__icon">
-                      <Icon name="ph:calendar" size="1.4rem" />
-                    </div>
-                    <div class="community-link__text">
-                      <div class="community-link__title">
-                        Community Events
-                      </div>
-                      <div class="community-link__subtitle">
-                        Join our community events and online gatherings
-                      </div>
-                    </div>
-                    <div class="community-link__arrow">
-                      <Icon name="ph:arrow-right" size="1.2rem" />
-                    </div>
-                  </div>
-                </NuxtLink>
-
-                <NuxtLink
-                  to="/community/projects"
-                  class="community-link community-link--projects"
-                  aria-label="Explore community projects and initiatives"
-                >
-                  <div class="community-link__content">
-                    <div class="community-link__icon">
-                      <Icon name="ph:folder" size="1.4rem" />
-                    </div>
-                    <div class="community-link__text">
-                      <div class="community-link__title">
-                        Community Projects
-                      </div>
-                      <div class="community-link__subtitle">
-                        Explore projects and initiatives from our community
-                      </div>
-                    </div>
-                    <div class="community-link__arrow">
-                      <Icon name="ph:arrow-right" size="1.2rem" />
-                    </div>
-                  </div>
-                </NuxtLink>
-
-                <NuxtLink
-                  to="/community/funding"
-                  class="community-link community-link--funding"
-                  aria-label="View our funding transparency and financial information"
-                >
-                  <div class="community-link__content">
-                    <div class="community-link__icon">
-                      <Icon name="ph:chart-bar" size="1.4rem" />
-                    </div>
-                    <div class="community-link__text">
-                      <div class="community-link__title">
-                        Funding & Transparency
-                      </div>
-                      <div class="community-link__subtitle">
-                        See how we're funded and where contributions go
-                      </div>
-                    </div>
-                    <div class="community-link__arrow">
-                      <Icon name="ph:arrow-right" size="1.2rem" />
-                    </div>
-                  </div>
-                </NuxtLink>
-
-                <NuxtLink
-                  to="/servers/gameservers"
-                  class="community-link community-link--gameservers"
-                  aria-label="Explore our game servers and gaming community"
-                >
-                  <div class="community-link__content">
-                    <div class="community-link__icon">
-                      <Icon name="ph:game-controller" size="1.4rem" />
-                    </div>
-                    <div class="community-link__text">
-                      <div class="community-link__title">
-                        Game Servers
-                      </div>
-                      <div class="community-link__subtitle">
-                        Connect to our hosted game servers
-                      </div>
-                    </div>
-                    <div class="community-link__arrow">
-                      <Icon name="ph:arrow-right" size="1.2rem" />
-                    </div>
-                  </div>
-                </NuxtLink>
-              </Flex>
+        <Card class="community-info-card card-bg">
+          <Flex column gap="m" expand>
+            <Flex y-center gap="m">
+              <div class="community-info-card__icon">
+                <Icon name="ph:compass" size="2rem" />
+              </div>
+              <h3>
+                Explore
+              </h3>
             </Flex>
-          </div>
-          <div class="links-card__decoration" />
+
+            <Flex column gap="s" expand>
+              <NuxtLink
+                v-for="link in communityLinks"
+                :key="link.to"
+                :to="link.to"
+                :aria-label="link.ariaLabel"
+                class="community-link"
+              >
+                <div class="community-link__content">
+                  <div class="community-link__icon">
+                    <Icon :name="link.icon" :size="20" />
+                  </div>
+
+                  <div class="community-link__text">
+                    <strong class="community-link__title">
+                      {{ link.title }}
+                    </strong>
+                    <p class="community-link__subtitle">
+                      {{ link.subtitle }}
+                    </p>
+                  </div>
+                  <div class="community-link__arrow">
+                    <Icon name="ph:arrow-right" :size="18" />
+                  </div>
+                </div>
+              </NuxtLink>
+            </Flex>
+          </Flex>
         </Card>
       </Grid>
     </section>
@@ -487,181 +443,70 @@ watch(user, () => {
   }
 }
 
-// About Card Styling
-.about-card {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
-  border: 1px solid var(--color-border);
-  transition: all 0.3s ease;
-  height: 100%; // Fill the grid item height
-  display: flex;
-  flex-direction: column;
+.community-info-card {
+  height: 100%;
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px -8px var(--color-shadow);
-    border-color: var(--color-border-strong);
+  p {
+    color: var(--color-text-light);
+    line-height: 1.6em;
+    font-size: var(--font-size-m);
+    margin-bottom: var(--space-s);
   }
 
-  &__content {
-    position: relative;
-    z-index: 2;
-    flex: 1; // Fill remaining space
+  &__icon {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-m);
+    background: linear-gradient(135deg, var(--color-bg-accent-lowered) 0%, var(--color-bg-accent-raised) 100%);
+
+    .iconify {
+      color: #fff;
+    }
   }
-
-  &__decoration {
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 200px;
-    height: 200px;
-    background: radial-gradient(circle, var(--color-accent-alpha) 0%, transparent 70%);
-    border-radius: 50%;
-    opacity: 0.1;
-    pointer-events: none;
-  }
-}
-
-.about-header {
-  margin-bottom: var(--space-xs);
-}
-
-.about-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--border-radius-m);
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-bg-accent-raised) 100%);
-  color: white;
-  flex-shrink: 0;
-}
-
-.about-description {
-  color: var(--color-text-light);
-  line-height: 1.6;
-  font-size: var(--font-size-s);
 }
 
 .activities-grid {
   display: grid;
   gap: var(--space-s);
   margin-top: var(--space-s);
-}
 
-.activity-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs);
-  border-radius: var(--border-radius-s);
-  background: var(--color-bg-raised);
-  border: 1px solid var(--color-border-weak);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-light);
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: var(--color-bg-medium);
-    border-color: var(--color-border);
-  }
-}
-
-.activity-icon {
-  color: var(--color-accent);
-  flex-shrink: 0;
-}
-
-// Links Card Styling
-.links-card {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
-  border: 1px solid var(--color-border);
-  transition: all 0.3s ease;
-  height: 100%; // Fill the grid item height
-  display: flex;
-  flex-direction: column;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px -8px var(--color-shadow);
-    border-color: var(--color-border-strong);
-  }
-
-  &__content {
-    position: relative;
-    z-index: 2;
-    flex: 1; // Fill remaining space
+  .activity-item {
     display: flex;
-    flex-direction: column;
-  }
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-s);
+    border-radius: var(--border-radius-m);
+    background: var(--color-bg-raised);
+    border: 1px solid var(--color-border-weak);
+    font-size: var(--font-size-xs);
+    color: var(--color-text);
+    transition: all 0.2s ease;
 
-  &__decoration {
-    position: absolute;
-    bottom: -50%;
-    left: -20%;
-    width: 200px;
-    height: 200px;
-    background: radial-gradient(circle, var(--color-accent-alpha) 0%, transparent 70%);
-    border-radius: 50%;
-    opacity: 0.1;
-    pointer-events: none;
-  }
-}
-
-.links-header {
-  margin-bottom: var(--space-xs);
-}
-
-.links-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--border-radius-m);
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-bg-accent-raised) 100%);
-  color: white;
-  flex-shrink: 0;
-}
-
-.links-icon,
-.about-icon {
-  .iconify {
-    color: white;
+    .iconify {
+      color: var(--color-accent);
+    }
   }
 }
 
-// Community Links Styling
 .community-link {
   display: block;
   width: 100%;
-  text-decoration: none;
   border-radius: var(--border-radius-m);
   border: 1px solid var(--color-border-weak);
-  background: var(--color-bg-raised);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  background-color: var(--color-bg-raised);
 
   &:hover {
-    border-color: var(--color-border);
-    background: var(--color-bg-medium);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 15px -4px var(--color-shadow);
-
-    .community-link__icon {
-      transform: scale(1.1);
-    }
+    background: var(--color-button-gray-hover);
 
     .community-link__arrow {
       transform: translateX(4px);
-      opacity: 1;
+
+      .iconify {
+        color: var(--color-text-light);
+      }
     }
   }
 
@@ -674,40 +519,37 @@ watch(user, () => {
     z-index: 2;
   }
 
-  &__icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: var(--border-radius-s);
-    color: var(--color-accent);
-    background: var(--color-bg-accent-weak);
-    flex-shrink: 0;
-    transition: all 0.3s ease;
-  }
-
   &__text {
     flex: 1;
-  }
 
-  &__title {
-    font-weight: var(--font-weight-bold);
-    color: var(--color-text);
-    margin-bottom: 2px;
-  }
+    .community-link__title {
+      display: block;
+      margin-bottom: var(--space-xs);
+      font-size: var(--font-size-l);
+      color: var(--color-text);
+      font-weight: var(--font-weight-semibold);
+      margin-bottom: 2px;
+    }
 
-  &__subtitle {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-light);
-    line-height: 1.4;
+    .community-link__subtitle {
+      font-size: var(--font-size-s);
+      color: var(--color-text-lighter);
+      margin: 0 !important;
+    }
   }
 
   &__arrow {
-    color: var(--color-text-light);
-    opacity: 0.6;
-    transition: all 0.3s ease;
-    flex-shrink: 0;
+    transition: var(--transition);
+
+    .iconify {
+      color: var(--color-text-lighter);
+    }
+  }
+
+  &__icon {
+    display: flex;
+    justify-content: center;
+    width: 32px;
   }
 }
 

@@ -1063,12 +1063,12 @@ async function handleSubmit() {
         <!-- Toolbar: floating bubble in rich mode, static bar in plain mode -->
         <RichTextSelectionMenu v-if="editor" :editor :plain-text="editorMode === 'plain'" :textarea-el="editorMode === 'plain' ? plainTextarea ?? null : null" />
 
-        <div v-if="editorMode === 'rich'" class="editor-rich-wrapper">
+        <div v-show="editorMode === 'rich'" class="editor-rich-wrapper">
           <span v-if="editorIsEmpty && props.placeholder" class="editor-placeholder">{{ props.placeholder }}</span>
           <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
         </div>
         <textarea
-          v-else
+          v-show="editorMode === 'plain'"
           ref="plain-textarea"
           class="plain-textarea"
           :rows="1"
@@ -1399,7 +1399,7 @@ async function handleSubmit() {
   // which suffers from a timing issue on initial mount where
   // `this.editor.isEmpty` can resolve incorrectly before the view is wired up).
   .editor-rich-wrapper {
-    overflow-y: auto;
+    overflow: visible;
     flex: 1 1 auto;
     min-height: 0;
     position: relative;

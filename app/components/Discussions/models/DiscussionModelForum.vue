@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion } from '../Discussion.types'
-import { Alert, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
+import { Alert, Avatar, Badge, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
@@ -124,6 +124,30 @@ async function handleToggleOfftopic() {
   offtopicLoading.value = false
 }
 
+const isPinned = computed(() => discussion?.value?.pinned_reply_id === data.value.id)
+const pinnedLoading = ref(false)
+
+async function handleTogglePin() {
+  if (!discussion?.value || pinnedLoading.value)
+    return
+
+  pinnedLoading.value = true
+
+  const nextValue = isPinned.value ? null : data.value.id
+  const res = await supabase
+    .from('discussions')
+    .update({ pinned_reply_id: nextValue })
+    .eq('id', discussion.value.id)
+    .select('pinned_reply_id')
+    .single()
+
+  if (!res.error && discussion.value) {
+    discussion.value.pinned_reply_id = res.data.pinned_reply_id
+  }
+
+  pinnedLoading.value = false
+}
+
 // Comment deletion
 const deleteComment = inject(DISCUSSION_KEYS.deleteComment) as (id: string) => Promise<void>
 const loadingDeletion = ref(false)
@@ -242,7 +266,13 @@ const editedAtFormatted = computed(() => {
 </script>
 
 <template>
-  <div class="discussion-forum" :class="{ 'discussion-forum--highlight': data.is_offtopic }">
+  <div
+    class="discussion-forum"
+    :class="{
+      'discussion-forum--highlight': data.is_offtopic,
+      'discussion-forum--pinned': isPinned,
+    }"
+  >
     <!-- Reusable desktop author block (avatar + name stacked) -->
     <DefineReusableUserInfo>
       <Flex column x-center y-center gap="s">
@@ -258,34 +288,43 @@ const editedAtFormatted = computed(() => {
     </DefineReusableUserInfo>
 
     <!-- Desktop: left column author panel -->
-    <div v-if="!isMobile" class="discussion-forum__author">
-      <UserPreviewHover v-if="currentUser || user" :user-id="data.created_by">
-        <UserInfo />
-      </UserPreviewHover>
+    <div v-if="!isMobile" class="discussion-forum__author" :class="{ 'discussion-forum__author--deleted': data.is_deleted }">
+      <!-- Deleted reply: muted placeholder instead of real profile -->
+      <template v-if="data.is_deleted">
+        <Flex column x-center y-center gap="s">
+          <Avatar size="m" class="discussion-forum__deleted-avatar" />
+        </Flex>
+      </template>
 
-      <UserInfo v-else />
+      <template v-else>
+        <UserPreviewHover v-if="currentUser || user" :user-id="data.created_by">
+          <UserInfo />
+        </UserPreviewHover>
 
-      <Flex v-if="user?.created_at || country" expand x-center gap="xs" class="mt-s">
-        <p v-if="country" class="author-meta">
-          {{ country.emoji }}
+        <UserInfo v-else />
+
+        <Flex v-if="user?.created_at || country" expand x-center gap="xs" class="mt-s">
+          <p v-if="country" class="author-meta">
+            {{ country.emoji }}
+          </p>
+          <p v-if="user?.created_at" class="author-meta">
+            Joined {{ dayjs(user.created_at).format('MMMM YYYY') }}
+          </p>
+        </Flex>
+        <p class="author-meta mt-xs text-color-lightest">
+          {{ discussionCount }} {{ discussionCount === 1 ? 'discussion' : 'discussions' }} / {{ replyCount }} {{ replyCount === 1 ? 'reply' : 'replies' }}
         </p>
-        <p v-if="user?.created_at" class="author-meta">
-          Joined {{ dayjs(user.created_at).format('MMMM YYYY') }}
+        <Divider v-if="user?.introduction || user?.created_at || country" />
+        <p v-if="user?.introduction" class="text-s text-center">
+          {{ user.introduction }}
         </p>
-      </Flex>
-      <p class="author-meta mt-xs text-color-lightest">
-        {{ discussionCount }} {{ discussionCount === 1 ? 'discussion' : 'discussions' }} / {{ replyCount }} {{ replyCount === 1 ? 'reply' : 'replies' }}
-      </p>
-      <Divider v-if="user?.introduction || user?.created_at || country" />
-      <p v-if="user?.introduction" class="text-s text-center">
-        {{ user.introduction }}
-      </p>
+      </template>
     </div>
 
     <!-- Content column: single div always mounted, chrome switches via v-if -->
     <div class="discussion-forum__content">
       <!-- Desktop floating actions (hover-revealed) - must be first child for sticky to work from top -->
-      <div v-if="!isMobile && !showNSFWWarning" class="discussion-forum__actions-anchor">
+      <div v-if="!isMobile && !showNSFWWarning && !data.is_deleted" class="discussion-forum__actions-anchor">
         <div class="discussion-forum__actions">
           <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
             <template #default="{ toggle }">
@@ -308,6 +347,7 @@ const editedAtFormatted = computed(() => {
             :can-mark-offtopic="canMarkOfftopic"
             :offtopic-loading="offtopicLoading"
             :loading-deletion="loadingDeletion"
+            :pinned-loading="pinnedLoading"
             :show-n-s-f-w-warning="showNSFWWarning"
             :posted-at="postedAtFormatted"
             :edited-at="editedAtFormatted"
@@ -318,6 +358,7 @@ const editedAtFormatted = computed(() => {
             @start-editing="startEditing"
             @delete="showDeleteModal = true"
             @toggle-offtopic="handleToggleOfftopic"
+            @toggle-pin="handleTogglePin"
             @report="showReportModal = true"
           />
         </div>
@@ -325,8 +366,29 @@ const editedAtFormatted = computed(() => {
 
       <!-- Mobile header: author + toolbar (only rendered on mobile) -->
       <div v-if="isMobile" class="discussion-forum__mobile-header">
-        <UserPreviewHover v-if="currentUser || user" :user-id="data.created_by">
+        <!-- Deleted reply: muted placeholder -->
+        <template v-if="data.is_deleted">
           <Flex gap="xs" y-center>
+            <Avatar size="s" class="discussion-forum__deleted-avatar" />
+          </Flex>
+        </template>
+
+        <template v-else>
+          <UserPreviewHover v-if="currentUser || user" :user-id="data.created_by">
+            <Flex gap="xs" y-center>
+              <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
+              <Flex wrap gap="xxs" y-center>
+                <UserName :user-id="data.created_by" size="s" show-preview />
+                <BadgeCircle v-if="data.created_by === discussion?.created_by">
+                  <span class="text-xxs text-color-light">OP</span>
+                </BadgeCircle>
+                <TinyBadge v-if="shouldDisplayRole" :variant="roleVariant">
+                  {{ roleDisplay }}
+                </TinyBadge>
+              </Flex>
+            </Flex>
+          </UserPreviewHover>
+          <Flex v-else gap="xs" y-center>
             <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
             <Flex wrap gap="xxs" y-center>
               <UserName :user-id="data.created_by" size="s" show-preview />
@@ -338,21 +400,16 @@ const editedAtFormatted = computed(() => {
               </TinyBadge>
             </Flex>
           </Flex>
-        </UserPreviewHover>
-        <Flex v-else gap="xs" y-center>
-          <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
-          <Flex wrap gap="xxs" y-center>
-            <UserName :user-id="data.created_by" size="s" show-preview />
-            <BadgeCircle v-if="data.created_by === discussion?.created_by">
-              <span class="text-xxs text-color-light">OP</span>
-            </BadgeCircle>
-            <TinyBadge v-if="shouldDisplayRole" :variant="roleVariant">
-              {{ roleDisplay }}
-            </TinyBadge>
-          </Flex>
-        </Flex>
+
+          <TinyBadge v-if="isPinned" variant="accent" filled>
+            <Icon name="ph:push-pin" class="text-color-invert" />
+          </TinyBadge>
+
+          <div class="flex-1" />
+        </template>
 
         <DiscussionActionsToolbar
+          v-if="!data.is_deleted"
           :data="data"
           :user-id="userId"
           :current-user-data="currentUserData"
@@ -360,6 +417,7 @@ const editedAtFormatted = computed(() => {
           :can-mark-offtopic="canMarkOfftopic"
           :offtopic-loading="offtopicLoading"
           :loading-deletion="loadingDeletion"
+          :pinned-loading="pinnedLoading"
           :show-n-s-f-w-warning="showNSFWWarning"
           :posted-at="postedAtFormatted"
           :edited-at="editedAtFormatted"
@@ -370,40 +428,64 @@ const editedAtFormatted = computed(() => {
           @start-editing="startEditing"
           @delete="showDeleteModal = true"
           @toggle-offtopic="handleToggleOfftopic"
+          @toggle-pin="handleTogglePin"
           @report="showReportModal = true"
         />
       </div>
 
       <!-- Shared body: reply quote + markdown (mounted once, always) -->
       <div class="discussion-forum__body">
-        <!-- Reply information -->
-        <Alert v-if="data.reply && viewMode !== 'threaded'" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
-          <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
-            <UserName size="s" show-preview :user-id="data.reply.created_by" /> wrote:
+        <!-- Tombstone: soft-deleted reply -->
+        <template v-if="data.is_deleted">
+          <p class="discussion-forum__deleted">
+            <Icon name="ph:trash" />
+            This reply was deleted.
           </p>
-          <p v-else class="discussion-forum__reply-user">
-            You wrote:
-          </p>
-          <MarkdownPreview class="text-color-light" :markdown="data.reply.markdown" :mention-lookup="replyMentionLookup" :max-length="164" />
-        </Alert>
+        </template>
 
-        <!-- Content warning -->
-        <button v-if="showNSFWWarning" class="discussion-forum__nsfw" @click="showNSFWWarning = false">
-          <Icon class="text-color-accent" name="ph:caret-down" />
-          <p>Click to reveal potentially sensitive content</p>
-          <Icon class="text-color-accent" name="ph:caret-up" />
-        </button>
+        <template v-else>
+          <Badge v-if="isPinned && !isMobile" variant="accent" filled class="mb-s">
+            <Icon name="ph:push-pin" class="text-color-invert" />
+            Pinned
+          </Badge>
 
-        <!-- Content markdown - rendered once regardless of layout -->
-        <MarkdownRenderer
-          v-else
-          :md="data.markdown"
-          :skeleton-height="128"
-        />
+          <!-- Reply information -->
+          <template v-if="data.reply && viewMode !== 'threaded'">
+            <Alert v-if="!data.reply.is_deleted" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
+              <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
+                <UserName size="s" show-preview :user-id="data.reply.created_by" /> wrote:
+              </p>
+              <p v-else class="discussion-forum__reply-user">
+                You wrote:
+              </p>
+              <MarkdownPreview class="text-color-light" :markdown="data.reply.markdown" :mention-lookup="replyMentionLookup" :max-length="164" />
+            </Alert>
+            <div v-else class="discussion-forum__reply discussion-forum__reply--deleted">
+              <Icon name="ph:trash" />
+              <p class="discussion-forum__reply-user">
+                Original reply was deleted
+              </p>
+            </div>
+          </template>
+
+          <!-- Content warning -->
+          <button v-if="showNSFWWarning" class="discussion-forum__nsfw" @click="showNSFWWarning = false">
+            <Icon class="text-color-accent" name="ph:caret-down" />
+            <p>Click to reveal potentially sensitive content</p>
+            <Icon class="text-color-accent" name="ph:caret-up" />
+          </button>
+
+          <!-- Content markdown - rendered once regardless of layout -->
+          <MarkdownRenderer
+            v-else
+            :md="data.markdown"
+            :skeleton-height="128"
+          />
+        </template>
       </div>
 
-      <!-- Desktop bottom row: timestamps + reactions (only rendered on desktop) -->
-      <template v-if="!isMobile">
+      <!-- Desktop bottom row: timestamps + reactions (only rendered on desktop, hidden when deleted) -->
+      <template v-if="!isMobile && !data.is_deleted">
         <div class="flex-1" />
 
         <Flex :key="timestampUpdateKey" wrap y-end x-between class="discussion-forum__bottom-row">
@@ -438,7 +520,7 @@ const editedAtFormatted = computed(() => {
       </template>
 
       <!-- Mobile footer: reply count + reactions (only rendered on mobile when there's content) -->
-      <div v-if="isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
+      <div v-if="!data.is_deleted && isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
         <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
           {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
         </button>
@@ -469,7 +551,7 @@ const editedAtFormatted = computed(() => {
     </ConfirmModal>
 
     <!-- Edit Modal -->
-    <Modal :open="editing" centered scrollable size="l" :can-dismiss="false" @close="editing = false">
+    <Modal :open="editing" centered scrollable size="l" :can-dismiss="false" @close="editing = false" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit">
       <template #header>
         <h3>Edit post</h3>
         <p class="text-color-light">
@@ -543,6 +625,11 @@ const editedAtFormatted = computed(() => {
     background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
   }
 
+  &--pinned {
+    border-color: var(--color-border-strong);
+    box-shadow: 0 0 16px 1px color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+
   &__nsfw {
     display: flex;
     flex-direction: column;
@@ -572,6 +659,7 @@ const editedAtFormatted = computed(() => {
 
   &__mobile-header {
     display: flex;
+    gap: var(--space-s);
     align-items: center;
     justify-content: space-between;
     padding: var(--space-s) var(--space-m);
@@ -646,10 +734,49 @@ const editedAtFormatted = computed(() => {
     &:hover {
       background-color: var(--color-bg-raised);
     }
+
+    &--deleted {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-s);
+      border-radius: var(--border-radius-s);
+      background-color: var(--color-bg-raised);
+      color: var(--color-text-lighter);
+      cursor: default;
+      font-size: var(--font-size-s);
+      margin-bottom: var(--space-m);
+
+      &:hover {
+        background-color: var(--color-bg-raised);
+      }
+
+      .iconify {
+        opacity: 0.6;
+      }
+    }
   }
 
   &__reply-user {
     font-size: var(--font-size-s);
+  }
+
+  &__deleted {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    color: var(--color-text-lighter);
+    font-size: var(--font-size-s);
+    padding-block: 5px;
+
+    .iconify {
+      opacity: 0.5;
+    }
+  }
+
+  &__deleted-avatar {
+    opacity: 0.25;
+    filter: grayscale(1);
   }
 
   &__author {
@@ -667,6 +794,10 @@ const editedAtFormatted = computed(() => {
     .author-meta {
       font-size: var(--font-size-xs);
       color: var(--color-text-lighter);
+    }
+
+    &--deleted {
+      padding: var(--space-s);
     }
   }
 

@@ -12,6 +12,7 @@ interface Props {
   canMarkOfftopic?: boolean
   offtopicLoading?: boolean
   loadingDeletion?: boolean
+  pinnedLoading?: boolean
   showNSFWWarning?: boolean
   postedAt?: string
   editedAt?: string | null
@@ -23,6 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
   canMarkOfftopic: false,
   offtopicLoading: false,
   loadingDeletion: false,
+  pinnedLoading: false,
   showNSFWWarning: false,
   editedAt: null,
   modifierId: null,
@@ -37,6 +39,7 @@ const emit = defineEmits<{
   toggleOfftopic: []
   report: []
   openReplies: []
+  togglePin: []
 }>()
 
 const isMobile = useBreakpoint('<s')
@@ -63,6 +66,21 @@ const canReport = computed(() =>
   !!props.currentUserData && props.data.created_by !== props.currentUserData.id,
 )
 
+const isPinned = computed(() =>
+  discussion?.value?.pinned_reply_id === props.data.id,
+)
+
+const canPin = computed(() =>
+  !!props.currentUserData
+  && !!discussion?.value
+  && !discussion.value.is_archived
+  && (
+    props.currentUserData.role === 'admin'
+    || props.currentUserData.role === 'moderator'
+    || props.currentUserData.id === discussion.value.created_by
+  ),
+)
+
 const showModGroup = computed(() =>
   (props.canMarkOfftopic && (props.canBypassLock || props.userId !== props.data.created_by))
   || canReport.value,
@@ -80,6 +98,11 @@ function handleQuote() {
 
 function handleCopyLink() {
   emit('copyLink')
+  sheetOpen.value = false
+}
+
+function handleTogglePin() {
+  emit('togglePin')
   sheetOpen.value = false
 }
 
@@ -166,7 +189,13 @@ function handleReport() {
         <Divider :size="32" />
 
         <!-- Off-topic + report -->
-        <template v-if="showModGroup">
+        <template v-if="showModGroup || canPin">
+          <DropdownItem v-if="canPin" :inert="pinnedLoading" :loading="pinnedLoading" @click="handleTogglePin">
+            <template #icon>
+              <Icon :name="isPinned ? 'ph:push-pin-fill' : 'ph:push-pin-bold'" />
+            </template>
+            {{ isPinned ? 'Unpin reply' : 'Pin reply' }}
+          </DropdownItem>
           <DropdownItem
             v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by)"
 
@@ -250,7 +279,22 @@ function handleReport() {
         </Button>
       </ButtonGroup>
 
-      <ButtonGroup v-if="showModGroup">
+      <ButtonGroup v-if="showModGroup || canPin">
+        <Button
+          v-if="canPin"
+          size="s"
+          square
+          :loading="pinnedLoading"
+          :variant="isPinned ? 'accent' : 'gray'"
+          @click="emit('togglePin')"
+        >
+          <Tooltip>
+            <Icon :name="isPinned ? 'ph:push-pin-fill' : 'ph:push-pin-bold'" />
+            <template #tooltip>
+              <p>{{ isPinned ? 'Unpin reply' : 'Pin reply' }}</p>
+            </template>
+          </Tooltip>
+        </Button>
         <Button
           v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by)"
           size="s"

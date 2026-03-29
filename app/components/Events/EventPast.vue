@@ -17,7 +17,7 @@ const count = computed(() => countEl.value?.count ?? 0)
 </script>
 
 <template>
-  <NuxtLink :to="`/events/${props.data.id}`">
+  <NuxtLink :to="`/events/${props.data.id}`" :draggable="false">
     <Card class="event-past">
       <Flex column gap="xs" expand class="event-past__wrapper">
         <strong class="event-past__title">

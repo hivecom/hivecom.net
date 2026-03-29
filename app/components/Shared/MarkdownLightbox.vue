@@ -93,8 +93,8 @@ whenever(isSwiping, () => {
 
 <template>
   <Modal class="md-lightbox" size="screen" :open="isOpen" centered @close="close">
-    <div ref="imageWrap" class="md-lightbox__img-wrap">
-      <img v-if="activeUrl" class="ignored" :src="activeUrl" @click="close">
+    <div ref="imageWrap" class="md-lightbox__img-wrap" @click.self="close">
+      <img v-if="activeUrl" class="ignored" :src="activeUrl">
     </div>
 
     <Flex v-if="imageUrls.length > 1" x-center gap="l" class="md-lightbox-nav" y-center>

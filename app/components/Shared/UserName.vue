@@ -170,10 +170,10 @@ const fontClass = computed(() => {
 
   &--inherit &__text,
   &--inherit &__link {
-    font-size: inherit;
-    line-height: inherit;
-    color: inherit;
-    font-weight: inherit;
+    font-size: inherit !important;
+    line-height: inherit !important;
+    color: inherit !important;
+    font-weight: inherit !important;
   }
 
   &__text {

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { DISCUSSION_KEYS } from '@/components/Discussions/Discussion.keys'
 import Discussion from '@/components/Discussions/Discussion.vue'
+import ForumBreadcrumbs from '@/components/Forum/ForumBreadcrumbs.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
@@ -64,6 +65,15 @@ const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
 // Bulk-fetch icons for all breadcrumb topics
 const breadcrumbTopicIds = computed(() => topicBreadcrumbs.value.map(t => t.id))
 const { icons: breadcrumbTopicIcons } = useBulkTopicIcons(breadcrumbTopicIds)
+
+const breadcrumbItems = computed(() =>
+  topicBreadcrumbs.value.map(topic => ({
+    id: topic.id,
+    label: topic.name,
+    href: `/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`,
+    onClick: () => router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`),
+  })),
+)
 const publishConfirmOpen = ref(false)
 const showNSFWWarning = ref(false)
 const nsfwRevealed = ref(false)
@@ -356,18 +366,44 @@ onBeforeMount(async () => {
     })
 })
 
+// Fetch minimal discussion data at SSR/prerender time so meta tags are populated.
+// The full interactive fetch still happens in onBeforeMount (client-only), but
+// during prerendering onBeforeMount never runs, leaving post.value null and
+// producing "Forum Post" / "Forum post details" for every page.
+const { data: seoPost } = await useAsyncData(`discussion-seo-${identifier}`, async () => {
+  let query = supabase
+    .from('discussions')
+    .select('title, description, markdown')
+
+  if (isUuid) {
+    query = query.or(`id.eq.${identifier},slug.eq.${identifier}`)
+  }
+  else {
+    query = query.eq('slug', identifier)
+  }
+
+  const { data } = await query.maybeSingle()
+  return data
+})
+
 const seoDescription = computed(() => {
-  if (!post.value)
-    return 'Forum post details'
-  return post.value.description
-    || stripMarkdown(post.value.markdown, 160)
+  const source = post.value ?? seoPost.value
+  if (!source)
+    return 'A forum post on Hivecom'
+  return source.description
+    || stripMarkdown(source.markdown, 160)
     || 'A forum post on Hivecom'
 })
 
+const seoTitle = computed(() => {
+  const source = post.value ?? seoPost.value
+  return source?.title ? `${source.title} | Forum` : 'Forum Post'
+})
+
 useSeoMeta({
-  title: computed(() => post.value ? `${post.value.title} | Forum` : 'Forum Post'),
+  title: seoTitle,
   description: seoDescription,
-  ogTitle: computed(() => post.value ? `${post.value.title} | Forum` : 'Forum Post'),
+  ogTitle: seoTitle,
   ogDescription: seoDescription,
 })
 
@@ -376,7 +412,7 @@ defineOgImageComponent('Discussion', {
 })
 
 useHead({
-  title: computed(() => post.value ? post.value.title ?? 'Forum Post' : 'Forum Post'),
+  title: computed(() => (post.value ?? seoPost.value)?.title ?? 'Forum Post'),
 })
 
 // This updates every 10 seconds and forces a re-render on the timestamps. This
@@ -550,30 +586,12 @@ function revealNsfw() {
               >
                 <Icon class="text-color" name="ph:arrow-left" :size="16" />
               </Button>
-              <Breadcrumbs>
-                <BreadcrumbItem
-                  href="/forum"
-                  @click.prevent="router.push('/forum')"
-                >
-                  Forum
-                </BreadcrumbItem>
-                <BreadcrumbItem
-                  v-for="topic in topicBreadcrumbs"
-                  :key="topic.id"
-                  :href="`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`"
-                  @click.prevent="router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`)"
-                >
-                  <Flex y-center gap="xs" :style="{ display: 'inline-flex' }">
-                    <img
-                      v-if="breadcrumbTopicIcons.get(topic.id)"
-                      :src="breadcrumbTopicIcons.get(topic.id)!"
-                      :alt="`${topic.name} icon`"
-                      class="breadcrumb-topic-icon"
-                    >
-                    {{ topic.name }}
-                  </Flex>
-                </BreadcrumbItem>
-              </Breadcrumbs>
+              <ForumBreadcrumbs
+                :items="breadcrumbItems"
+                :icons="breadcrumbTopicIcons"
+                root-href="/forum"
+                :on-root-click="() => router.push('/forum')"
+              />
             </template>
             <template v-else-if="isMobile">
               <!-- Back Button -->
@@ -662,7 +680,7 @@ function revealNsfw() {
                 @update="handlePostUpdate"
               >
                 <template #default="{ toggle }">
-                  <Button variant="accent" size="s" @click="toggle">
+                  <Button variant="gray" size="s" @click="toggle">
                     Manage
                   </Button>
                 </template>
@@ -740,7 +758,7 @@ function revealNsfw() {
                 </template>
               </Tooltip>
               <template v-if="postModifierId && postModifierUser">
-                <span class="text-s">by</span> <UserName size="s" show-preview :user-id="postModifierId" />
+                <span class="text-s">by <UserName size="s" show-preview :user-id="postModifierId" inherit /></span>
               </template>
             </template>
           </Flex>
@@ -866,14 +884,6 @@ function revealNsfw() {
 .forum-post__nsfw-overlay-icon {
   font-size: 48px;
   color: var(--color-text-red);
-}
-
-.breadcrumb-topic-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: var(--border-radius-xs);
-  object-fit: cover;
-  flex-shrink: 0;
 }
 
 .back-button {

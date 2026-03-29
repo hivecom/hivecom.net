@@ -9,7 +9,7 @@ import { extractMentionIds } from '@/lib/markdownProcessors'
 
 dayjs.extend(relativeTime)
 
-const FORUM_REPLIES_CACHE_KEY = 'forum:latest-replies'
+const FORUM_REPLIES_CACHE_KEY = 'forum:latest-replies:v2'
 const FORUM_REPLIES_TTL = 2 * 60 * 1000 // 2 minutes
 
 export interface ActivityItem {
@@ -27,6 +27,7 @@ export interface ActivityItem {
   onClick?: () => void
   isArchived?: boolean
   isNsfw?: boolean
+  isOfftopic?: boolean
   icon: string
 }
 
@@ -71,7 +72,8 @@ export function useForumActivityFeed({
     await supabase
       .from('forum_discussion_replies')
       .select('*')
-      .limit(20)
+      .eq('is_offtopic', false)
+      .limit(30)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data) {
@@ -87,6 +89,7 @@ export function useForumActivityFeed({
             discussionId: item.discussion_id,
             href: `/forum/${item.discussion_id}?comment=${item.id}`,
             isNsfw: !!item.is_nsfw,
+            isOfftopic: !!item.is_offtopic,
           } as ActivityItem))
 
           latestReplies.value = mapped
@@ -100,6 +103,9 @@ export function useForumActivityFeed({
     return latestReplies.value
       .filter((reply) => {
         if (reply.discussionId == null)
+          return false
+
+        if (reply.isOfftopic)
           return false
 
         if (!settings.value.show_nsfw_content) {
@@ -169,7 +175,7 @@ export function useForumActivityFeed({
         const tb = new Date(b.timestampRaw).getTime()
         return ta > tb ? -1 : ta < tb ? 1 : 0
       })
-      .slice(0, 20)
+      // .slice(0, 20)
   })
 
   // IDs of all users mentioned in latest post descriptions/titles

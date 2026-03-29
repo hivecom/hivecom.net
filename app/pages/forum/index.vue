@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.overrides'
-import { Badge, BreadcrumbItem, Breadcrumbs, Button, Card, Commands, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, Commands, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
+import ForumBreadcrumbs from '@/components/Forum/ForumBreadcrumbs.vue'
 import ForumDiscussionItem from '@/components/Forum/ForumDiscussionItem.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import ForumLatestUpdates from '@/components/Forum/ForumLatestUpdates.vue'
@@ -290,7 +291,7 @@ onBeforeMount(async () => {
   else {
     await supabase
       .from('discussion_topics')
-      .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id)')
+      .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id)')
       .neq('discussions.is_draft', true)
       .then(({ data, error }) => {
         if (error) {
@@ -342,6 +343,19 @@ onBeforeMount(async () => {
 })
 
 const activeTopicPath = computed(() => composePathToTopic(activeTopicId.value, topics.value))
+
+const breadcrumbItems = computed(() =>
+  activeTopicPath.value.map((item, index) => ({
+    id: item.parent_id,
+    label: item.title,
+    onClick: index !== activeTopicPath.value.length - 1
+      ? () => setActiveTopicById(item.parent_id)
+      : undefined,
+    onMiddleClick: index !== activeTopicPath.value.length - 1
+      ? () => handleBreadcrumbMiddleClick(`/forum?activeTopicId=${item.parent_id}`)
+      : undefined,
+  })),
+)
 
 /**
  * Navigate to a topic by its ID. Used by the breadcrumb back-navigation where
@@ -564,13 +578,26 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
     topics.value = topics.value.toSpliced(index, 1, { ...oldTopic, ...data } as TopicWithDiscussions)
   }
   else {
+    const updatedDiscussion = data as Tables<'discussions'>
     const parentTopic = topics.value.find(topic =>
       topic.discussions.some(discussion => discussion.id === data.id),
     )
     if (parentTopic) {
       const discussionIndex = parentTopic.discussions.findIndex(({ id }) => id === data.id)
       const oldDiscussion = parentTopic.discussions[discussionIndex]
-      parentTopic.discussions[discussionIndex] = { ...oldDiscussion, ...data } as ForumDiscussion
+      const merged = { ...oldDiscussion, ...updatedDiscussion } as ForumDiscussion
+
+      if (updatedDiscussion.discussion_topic_id !== parentTopic.id) {
+        // Discussion was moved to a different topic - remove from old, add to new
+        parentTopic.discussions.splice(discussionIndex, 1)
+        const newParentTopic = topics.value.find(topic => topic.id === updatedDiscussion.discussion_topic_id)
+        if (newParentTopic) {
+          newParentTopic.discussions.push(merged)
+        }
+      }
+      else {
+        parentTopic.discussions[discussionIndex] = merged
+      }
     }
   }
   // Bust cache so remounts reflect the mutation.
@@ -622,7 +649,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 <template>
   <div class="page forum">
     <ClientOnly>
-      <section class="page-title mb-xl">
+      <section class="page-title mb-m">
         <Flex expand x-between y-center>
           <div>
             <h1>
@@ -635,19 +662,19 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         </Flex>
       </section>
 
+      <ForumRecentlyVisited
+        v-if="settings.show_forum_recently_visited && userId && (userActivityLoading || visibleUserActivity.length > 0)"
+        :loading="userActivityLoading"
+        :items="visibleUserActivity"
+        :topic-lookup="topicLookup"
+      />
+
       <ForumLatestUpdates
         v-if="settings.show_forum_updates"
         :loading="loading"
         :latest-posts="latestPosts"
         :post-since-yesterday="postSinceYesterday"
         :mention-lookup="mentionLookup"
-      />
-
-      <ForumRecentlyVisited
-        v-if="settings.show_forum_recently_visited && userId && (userActivityLoading || visibleUserActivity.length > 0)"
-        :loading="userActivityLoading"
-        :items="visibleUserActivity"
-        :topic-lookup="topicLookup"
       />
 
       <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xxs' : 'xs'">
@@ -657,32 +684,16 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
           </template>
           <Icon v-if="!isMobile" :name="!activeTopicId ? 'ph:house' : 'ph:arrow-left'" />
           <template v-if="isMobile">
-            {{ !activeTopicId ? 'Frontpage' : "Back" }}
+            {{ !activeTopicId ? 'Forum' : "Back" }}
           </template>
         </Button>
-        <Breadcrumbs v-if="!isMobile">
-          <BreadcrumbItem
-            @click="setActiveTopicById(null)"
-            @mousedown.middle="handleBreadcrumbMiddleClick"
-          >
-            Frontpage
-          </BreadcrumbItem>
-          <BreadcrumbItem
-            v-for="(item, index) in activeTopicPath"
-            :key="item.parent_id"
-            v-bind="index !== activeTopicPath.length - 1 ? {
-              onClick: () => setActiveTopicById(item.parent_id),
-              onMousedown: (event: MouseEvent) => {
-                if (event.button === 1) {
-                  event.preventDefault()
-                  handleBreadcrumbMiddleClick(`/forum?activeTopicId=${item.parent_id}`)
-                }
-              },
-            } : {}"
-          >
-            {{ item.title }}
-          </BreadcrumbItem>
-        </Breadcrumbs>
+        <ForumBreadcrumbs
+          v-if="!isMobile"
+          :items="breadcrumbItems"
+          :icons="topicIcons"
+          :on-root-click="() => setActiveTopicById(null)"
+          :on-root-middle-click="() => handleBreadcrumbMiddleClick()"
+        />
 
         <div class="flex-1" />
 
@@ -942,192 +953,12 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
   background-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
 }
 
+h5 {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-light);
+}
+
 .forum {
-  &__continue {
-    margin-bottom: var(--space-xl);
-    // background-color: var(--card-bg);
-
-    .vui-card .vui-card-content {
-      padding: var(--space-xs);
-    }
-  }
-
-  &__continue-loading {
-    font-size: var(--font-size-s);
-    color: var(--color-text-lighter);
-
-    .spinning {
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      from {
-        transform: rotate(0deg);
-      }
-      to {
-        transform: rotate(360deg);
-      }
-    }
-  }
-
-  &__continue-list {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-xs);
-    column-gap: var(--space-m);
-    list-style: none;
-  }
-
-  &__continue-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-xs);
-    border-radius: var(--border-radius-m);
-    text-decoration: none;
-
-    &:hover {
-      background-color: var(--color-bg-medium);
-    }
-  }
-
-  &__continue-title {
-    font-size: var(--font-size-s);
-    color: var(--color-text);
-    @include line-clamp(1);
-    flex: 1;
-  }
-
-  &__continue-time {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-    white-space: nowrap;
-  }
-
-  &__latest {
-    margin-bottom: var(--space-s);
-
-    & > strong {
-      font-size: var(--text-size-s);
-      font-weight: var(--font-weight-bold);
-    }
-  }
-
-  &__latest-list {
-    display: flex;
-    gap: var(--space-s);
-    overflow-x: auto;
-    padding-bottom: 16px;
-    scrollbar-width: thin;
-    margin-bottom: var(--space-l);
-
-    .forum__latest-item {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: var(--space-xs);
-      padding: var(--space-s);
-      border-radius: var(--border-radius-m);
-      border: 1px solid var(--color-border);
-      min-width: 0;
-      overflow: hidden;
-      cursor: pointer;
-
-      &:first-child {
-        background-color: var(--color-bg-medium);
-
-        &:hover {
-          background-color: var(--color-bg-raised);
-        }
-      }
-
-      &:hover {
-        background-color: var(--color-bg-medium);
-      }
-
-      & > .vui-flex {
-        width: 100%;
-        max-width: 100%;
-        min-width: 0;
-        overflow: hidden;
-      }
-
-      & > .vui-flex > .vui-flex {
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-      }
-
-      span {
-        white-space: nowrap;
-        font-size: var(--font-size-xs);
-        color: var(--color-text-lighter);
-        line-height: 1.2;
-      }
-
-      .forum__latest-type {
-        flex: 1;
-        min-width: 0;
-        display: block;
-        max-width: 100%;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-
-        strong {
-          font-size: var(--font-size-s);
-          font-weight: var(--font-weight-bold);
-        }
-      }
-
-      .forum__latest-title {
-        display: block;
-        width: 100%;
-        max-width: 100%;
-        text-align: left;
-        font-size: var(--font-size-m);
-        color: var(--color-text);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-top: 2px;
-        line-height: 1.2;
-
-        p {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-      }
-
-      .forum__latest-description {
-        @include line-clamp(1);
-        text-align: left;
-        font-size: var(--font-size-s);
-        color: var(--color-text-lighter);
-        margin-top: 2px;
-        margin-bottom: var(--space-s);
-        line-height: 1.3;
-      }
-
-      .forum__latest-footer {
-        width: 100%;
-        margin-top: auto;
-      }
-
-      .forum__latest-timestamp {
-        font-size: var(--font-size-xs);
-        color: var(--color-text-lighter);
-      }
-    }
-  }
-
-  .forum__latest-list .forum__latest-item {
-    width: 320px;
-    min-width: 320px;
-    max-width: 320px;
-  }
-
   &__category {
     background-color: var(--color-bg-medium);
 
@@ -1300,10 +1131,6 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 }
 
 @media screen and (max-width: $breakpoint-m) {
-  .forum__continue-list {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .forum__category-title,
   .forum__category-post .forum__category-post--item {
     grid-template-columns: 40px 5fr 1fr 24px;
@@ -1365,14 +1192,6 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 
   .forum__category-post .forum__category-post--item .forum__category-post--meta span {
     font-size: var(--font-size-xxs);
-  }
-
-  .forum__latest-list .forum__latest-item > .vui-flex {
-    min-width: 256px;
-  }
-
-  .forum__continue-list {
-    grid-template-columns: 1fr;
   }
 }
 </style>

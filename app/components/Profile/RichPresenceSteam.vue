@@ -152,7 +152,7 @@ const visible = ref(false)
   <div
     v-if="showWidget"
     ref="anchorRef"
-    class="steam-presence"
+    class="rp-widget"
     @mouseenter="visible = true"
     @mouseleave="visible = false"
     @focusin="visible = true"
@@ -166,14 +166,14 @@ const visible = ref(false)
         rel="noopener noreferrer"
         class="steam-presence__link"
       >
-        <Flex class="steam-presence__trigger" y-center gap="xs">
+        <Flex class="rp-trigger" y-center gap="xs">
           <Icon v-if="isPlaying" class="activity-item__icon" name="mdi:steam" :width="props.iconSize" :height="props.iconSize" />
-          <span v-if="isOnline && !props.hideOnlineIndicator" class="steam-presence__badge" />
+          <span v-if="isOnline && !props.hideOnlineIndicator" class="rp-badge" />
         </Flex>
       </a>
-      <Flex v-else class="steam-presence__trigger" y-center gap="xs">
+      <Flex v-else class="rp-trigger" y-center gap="xs">
         <Icon v-if="isPlaying" class="activity-item__icon" name="mdi:steam" :width="props.iconSize" :height="props.iconSize" />
-        <span v-if="isOnline && !props.hideOnlineIndicator" class="steam-presence__badge" />
+        <span v-if="isOnline && !props.hideOnlineIndicator" class="rp-badge" />
       </Flex>
     </slot>
 
@@ -187,7 +187,7 @@ const visible = ref(false)
       @mouseenter="visible = true"
       @mouseleave="visible = false"
     >
-      <div class="steam-presence__tooltip">
+      <div class="rp-tooltip">
         <Flex x-between y-center class="mb-s">
           <strong class="text-l text-bold">
             Steam
@@ -204,17 +204,17 @@ const visible = ref(false)
           </Button>
         </Flex>
 
-        <div class="steam-presence__section">
-          <div class="steam-presence__row">
-            <span class="steam-presence__label">Steam ID</span>
-            <span class="steam-presence__value">{{ props.steamId || 'Unknown' }}</span>
+        <div class="rp-section">
+          <div class="rp-row">
+            <span class="rp-label">Steam ID</span>
+            <span class="rp-value">{{ props.steamId || 'Unknown' }}</span>
           </div>
-          <div v-if="presenceRow?.steam_name" class="steam-presence__row">
-            <span class="steam-presence__label">Name</span>
-            <span class="steam-presence__value">{{ presenceRow.steam_name }}</span>
+          <div v-if="presenceRow?.steam_name" class="rp-row">
+            <span class="rp-label">Name</span>
+            <span class="rp-value">{{ presenceRow.steam_name }}</span>
           </div>
-          <div v-if="presenceRow?.status" class="steam-presence__row steam-presence__row--inline">
-            <span class="steam-presence__label">Status</span>
+          <div v-if="presenceRow?.status" class="rp-row rp-row--inline">
+            <span class="rp-label">Status</span>
             <Badge :variant="statusBadgeVariant" size="s">
               {{ statusLabel }}
             </Badge>
@@ -223,10 +223,10 @@ const visible = ref(false)
 
         <Divider v-if="hasPresence && props.richPresenceEnabled" class="m-xxs p-xxs" :margin="0" />
 
-        <div v-if="hasPresence && props.richPresenceEnabled" class="steam-presence__section">
+        <div v-if="hasPresence && props.richPresenceEnabled" class="rp-section">
           <a
             v-if="displayedAppId"
-            class="steam-presence__row steam-presence__row--link"
+            class="rp-row rp-row--link"
             :href="`https://store.steampowered.com/app/${displayedAppId}`"
             target="_blank"
             rel="noopener noreferrer"
@@ -239,11 +239,11 @@ const visible = ref(false)
                 :alt="displayedAppName ? `${displayedAppName} icon` : 'Steam app icon'"
                 width="40"
                 height="40"
-                class="steam-presence__game-icon"
+                class="rp-game-icon"
                 @error="onGameIconError"
               >
-              <div class="steam-presence__game-text">
-                <div class="steam-presence__game-title">
+              <div class="rp-game-text">
+                <div class="rp-game-title">
                   <template v-if="isPlaying && displayedAppName">
                     Playing {{ displayedAppName }}
                   </template>
@@ -254,13 +254,13 @@ const visible = ref(false)
                     No recent game
                   </template>
                 </div>
-                <div v-if="lastOnlineFormatted" class="steam-presence__meta">
+                <div v-if="lastOnlineFormatted" class="rp-meta">
                   Last online {{ lastOnlineFormatted }}
                 </div>
               </div>
             </Flex>
           </a>
-          <div v-else class="steam-presence__row">
+          <div v-else class="rp-row">
             <Flex y-center gap="s">
               <img
                 v-if="gameIconUrl"
@@ -269,11 +269,11 @@ const visible = ref(false)
                 :alt="displayedAppName ? `${displayedAppName} icon` : 'Steam app icon'"
                 width="40"
                 height="40"
-                class="steam-presence__game-icon"
+                class="rp-game-icon"
                 @error="onGameIconError"
               >
-              <div class="steam-presence__game-text">
-                <div class="steam-presence__game-title">
+              <div class="rp-game-text">
+                <div class="rp-game-title">
                   <template v-if="isPlaying && displayedAppName">
                     Playing {{ displayedAppName }}
                   </template>
@@ -284,7 +284,7 @@ const visible = ref(false)
                     No recent game
                   </template>
                 </div>
-                <div v-if="lastOnlineFormatted" class="steam-presence__meta">
+                <div v-if="lastOnlineFormatted" class="rp-meta">
                   Last online {{ lastOnlineFormatted }}
                 </div>
               </div>
@@ -297,105 +297,11 @@ const visible = ref(false)
 </template>
 
 <style scoped>
-.steam-presence {
-  width: 100%;
-  display: inline-flex;
-}
+/* Steam-specific overrides and unique elements */
 
 .steam-presence__link {
   display: inline-flex;
   color: inherit;
   text-decoration: none;
-}
-
-.steam-presence__trigger {
-  cursor: pointer;
-  color: var(--color-text);
-  position: relative;
-}
-
-.steam-presence__trigger--accent {
-  color: var(--color-accent);
-}
-
-.steam-presence__badge {
-  position: absolute;
-  top: -2px;
-  right: -4px;
-  width: 8px;
-  height: 8px;
-  display: block;
-  border-radius: 999px;
-  background: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-bg);
-}
-
-.steam-presence__tooltip {
-  width: 328px;
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-m);
-  user-select: text;
-}
-
-.steam-presence__section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.steam-presence__row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-bg-raised);
-}
-
-.steam-presence__row--link {
-  color: inherit;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.steam-presence__row--inline {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.steam-presence__label {
-  text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  color: var(--color-text-light);
-}
-
-.steam-presence__value {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono, monospace);
-}
-
-.steam-presence__game-icon {
-  border-radius: var(--border-radius-s);
-  object-fit: cover;
-}
-
-.steam-presence__game-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.steam-presence__game-title {
-  font-size: var(--font-size-s);
-  font-weight: 600;
-}
-
-.steam-presence__meta {
-  font-size: 11px;
-  color: var(--color-text-lighter);
 }
 </style>
