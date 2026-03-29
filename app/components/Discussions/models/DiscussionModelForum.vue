@@ -6,6 +6,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import BannerDisplay from '@/components/Profile/Banner/BannerDisplay.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
@@ -483,6 +484,9 @@ const editedAtFormatted = computed(() => {
           />
         </template>
       </div>
+
+      <!-- User signature / banner — shown below the post body when not deleted and not NSFW-hidden -->
+      <BannerDisplay v-if="!data.is_deleted && !showNSFWWarning" :user="user ?? null" />
 
       <!-- Desktop bottom row: timestamps + reactions (only rendered on desktop, hidden when deleted) -->
       <template v-if="!isMobile && !data.is_deleted">
