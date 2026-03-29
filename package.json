@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@dolanske/v-valid": "^2.1.1",
+    "@dolanske/vui": "^1.8.8",
     "@dolanske/vui": "^1.10.0",
     "@iconify-json/material-symbols-light": "^1.2.63",
     "@iconify-json/mdi": "^1.2.3",

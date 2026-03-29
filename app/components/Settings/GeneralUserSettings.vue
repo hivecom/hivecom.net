@@ -1,28 +1,34 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, ButtonGroup, Card, Divider, Flex, Select, setColorTheme, Switch } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Divider, Dropdown, Flex, Select, setColorTheme, Switch, Tooltip } from '@dolanske/vui'
+import ThemeDropdownItem from './ThemeDropdownItem.vue'
+import ThemeEditor from './ThemeEditor.vue'
+
+// TODO THEMES
+// 1. Theme editing
+// 2. Theme deleting
+// 3. Add default
+// 4. Editor should start with the current theme (colors in sidebar dont work like that)
+// 5. Change theme dropdown to Sheet instead. List all thems better - 2nd tab will
 
 // Placeholder theme options for the planned Theme selector
-const themeSelectOptions = [
-  { label: 'Default', value: 'default' },
-]
-const selectedCustomTheme = ref([{ label: 'Default', value: 'default' }])
+const { themes, loading: themesLoading } = useDataThemes()
+const { activeTheme, setActiveTheme } = useUserTheme()
 
 const { settings, settingsError } = useDataUserSettings()
 
 // Theme options & setting
-const themeOptions = [
-  // I spent _so_ damn long on this and I couldn't get the system theme working
+const variantOptions = [
+  // I spent _so_ damn long on the system theme and I couldn't get it working
   // properly. It just wouldn't update if system theme changed
-
   // { label: 'System', value: 'system' },
   { label: 'Light', value: 'light' },
   { label: 'Dark', value: 'dark' },
 ]
 
-const selectedTheme = computed({
+const selectedVariant = computed({
   get() {
-    const option = themeOptions.find(option => option.value === settings.value.theme)
+    const option = variantOptions.find(option => option.value === settings.value.theme)
     if (!option) {
       return []
     }
@@ -36,6 +42,13 @@ const selectedTheme = computed({
     }
   },
 })
+
+const themeOptions = computed(() => [
+  { name: 'Default theme', created_by: 'Hivecom', id: null },
+  ...themes.value,
+])
+
+const themeEditorOpen = ref(false)
 </script>
 
 <template>
@@ -50,18 +63,34 @@ const selectedTheme = computed({
       Appearance
     </strong>
 
-    <Flex x-between y-center class="mb-s">
-      <Flex y-center gap="xxs" class="text-color-lightest">
-        <p>Theme</p>
-        <SharedTinyBadge>
-          Coming Soon
-        </SharedTinyBadge>
-      </Flex>
-      <Select v-model="selectedCustomTheme" class="settings-select" :show-clear="false" :options="themeSelectOptions" size="s" disabled />
+    <ThemeEditor :open="themeEditorOpen" @close="themeEditorOpen = false" />
+
+    <Flex x-between y-center class="mb-s" gap="xxs">
+      <p>Theme</p>
+      <div class="flex-1" />
+      <Tooltip>
+        <Button size="s" square outline @click="themeEditorOpen = true">
+          <Icon name="solar:gallery-edit-linear" />
+        </Button>
+        <template #tooltip>
+          <p>Create a new theme</p>
+        </template>
+      </Tooltip>
+      <Dropdown>
+        <template #trigger="{ toggle }">
+          <Button outline size="s" :loading="themesLoading" @click="toggle">
+            {{ activeTheme === null ? 'Default theme' : activeTheme.name }}
+            <template #end>
+              <Icon name="ph:caret-down" />
+            </template>
+          </Button>
+        </template>
+        <ThemeDropdownItem v-for="item in themeOptions" :key="item.id ?? item.name" :data="item" :is-active="item.id === activeTheme?.id" @click="setActiveTheme(item.id)" />
+      </Dropdown>
     </Flex>
     <Flex x-between y-center class="mb-s">
-      <p>Theme Variant</p>
-      <Select v-model="selectedTheme" class="settings-select" :show-clear="false" :options="themeOptions" size="s" />
+      <p>Theme variant</p>
+      <Select v-model="selectedVariant" :show-clear="false" :options="variantOptions" size="s" />
     </Flex>
 
     <Divider :size="64" />

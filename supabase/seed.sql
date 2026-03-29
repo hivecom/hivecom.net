@@ -55,7 +55,7 @@ VALUES
   NULL,
   'Default Colorblind - Deuteranopia',
   'Colorblind-friendly theme for red-green color vision deficiency (deuteranopia / protanopia). Red is replaced with orange-amber; green is replaced with teal.',
-  50, 50, 50,
+  33, 20, 25,
   -- dark neutrals (unchanged)
   '#111111', '#161616', '#1c1c1c', '#0c0c0c',
   '#e7e7e7', '#b4b4b4', '#5a5a5a', '#414141', '#111111',
@@ -97,7 +97,7 @@ VALUES
   NULL,
   'Default Colorblind - Tritanopia',
   'Colorblind-friendly theme for blue-yellow color vision deficiency (tritanopia). Yellow is replaced with magenta-rose; blue is replaced with cyan-teal.',
-  50, 50, 50,
+  33, 20, 25,
   -- dark neutrals (unchanged)
   '#111111', '#161616', '#1c1c1c', '#0c0c0c',
   '#e7e7e7', '#b4b4b4', '#5a5a5a', '#414141', '#111111',
@@ -143,7 +143,7 @@ VALUES
   NULL,
   'Default Colorblind - Achromatopsia',
   'Colorblind-friendly theme for total color blindness (achromatopsia). All semantic colors are replaced with luminance-distinct grays.',
-  50, 50, 50,
+  33, 20, 25,
   -- dark neutrals (unchanged)
   '#111111', '#161616', '#1c1c1c', '#0c0c0c',
   '#e7e7e7', '#b4b4b4', '#5a5a5a', '#414141', '#111111',
@@ -188,7 +188,7 @@ VALUES
   NULL,
   'Default - High Contrast',
   'Maximum luminance contrast theme for low vision or bright environments. Pure black and white backgrounds with fully saturated semantic colors.',
-  50, 50, 50,
+  33, 20, 25,
   -- dark neutrals: true black base, sharp borders
   '#000000', '#0a0a0a', '#141414', '#000000',
   '#ffffff', '#e0e0e0', '#aaaaaa', '#888888', '#000000',
