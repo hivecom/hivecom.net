@@ -12,7 +12,7 @@ const props = defineProps<{
 <template>
   <section class="forum__continue">
     <h5 class="mb-s">
-      Recently viewed
+      Pick up where you left off
     </h5>
 
     <ul v-if="props.loading" class="forum__continue-list">

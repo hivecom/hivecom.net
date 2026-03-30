@@ -30,6 +30,7 @@ export interface UserDisplayData {
   country: string | null
   created_at: string | null
   isPublic: boolean
+  has_banner: boolean
 }
 
 interface ProfileCacheEntry {
@@ -43,6 +44,7 @@ interface ProfileCacheEntry {
   country?: string | null
   created_at?: string | null
   isPublic?: boolean
+  has_banner?: boolean
 }
 
 function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is ProfileCacheEntry {
@@ -122,7 +124,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
       inflight = Promise.resolve(
         supabase
           .from('profiles')
-          .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public')
+          .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner')
           .eq('id', id)
           .single(),
       ).then(({ data, error: profileError }) => {
@@ -140,6 +142,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
           country: data.country ?? null,
           created_at: data.created_at ?? null,
           isPublic: data.public ?? false,
+          has_banner: data.has_banner ?? false,
         }
 
         cache.set(cacheKey, result, userTtl)
@@ -290,6 +293,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
             country: profile.country ?? null,
             created_at: profile.created_at ?? null,
             isPublic: profile.isPublic ?? false,
+            has_banner: profile.has_banner ?? false,
           }
         : null
     }
@@ -467,7 +471,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
         profileIdsToFetch.length > 0
           ? supabase
               .from('profiles')
-              .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public')
+              .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner')
               .in('id', profileIdsToFetch)
           : Promise.resolve({ data: [], error: null }),
         includeRole && roleIdsToFetch.length > 0
@@ -501,6 +505,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
           country: profile.country ?? null,
           created_at: profile.created_at ?? null,
           isPublic: profile.public ?? false,
+          has_banner: profile.has_banner ?? false,
         }, userTtl)
       })
 
@@ -562,6 +567,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
             country: profile.country ?? null,
             created_at: profile.created_at ?? null,
             isPublic: profile.isPublic ?? false,
+            has_banner: profile.has_banner ?? false,
           })
         }
       }

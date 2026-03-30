@@ -376,7 +376,6 @@ export interface Database {
           discussion_topic_id: string | null
           event_id: number | null
           gameserver_id: number | null
-          highlighted_reply_id: string | null
           id: string
           is_archived: boolean
           is_draft: boolean
@@ -387,6 +386,7 @@ export interface Database {
           markdown: string | null
           modified_at: string
           modified_by: string | null
+          pinned_reply_id: string | null
           profile_id: string | null
           project_id: number | null
           reactions: Json
@@ -404,7 +404,6 @@ export interface Database {
           discussion_topic_id?: string | null
           event_id?: number | null
           gameserver_id?: number | null
-          highlighted_reply_id?: string | null
           id?: string
           is_archived?: boolean
           is_draft?: boolean
@@ -415,6 +414,7 @@ export interface Database {
           markdown?: string | null
           modified_at?: string
           modified_by?: string | null
+          pinned_reply_id?: string | null
           profile_id?: string | null
           project_id?: number | null
           reactions?: Json
@@ -432,7 +432,6 @@ export interface Database {
           discussion_topic_id?: string | null
           event_id?: number | null
           gameserver_id?: number | null
-          highlighted_reply_id?: string | null
           id?: string
           is_archived?: boolean
           is_draft?: boolean
@@ -443,6 +442,7 @@ export interface Database {
           markdown?: string | null
           modified_at?: string
           modified_by?: string | null
+          pinned_reply_id?: string | null
           profile_id?: string | null
           project_id?: number | null
           reactions?: Json
@@ -496,24 +496,24 @@ export interface Database {
             referencedColumns: ['id']
           },
           {
-            foreignKeyName: 'discussions_highlighted_reply_id_fkey'
-            columns: ['highlighted_reply_id']
+            foreignKeyName: 'discussions_modified_by_fkey'
+            columns: ['modified_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'discussions_pinned_reply_id_fkey'
+            columns: ['pinned_reply_id']
             isOneToOne: false
             referencedRelation: 'discussion_replies'
             referencedColumns: ['id']
           },
           {
-            foreignKeyName: 'discussions_highlighted_reply_id_fkey'
-            columns: ['highlighted_reply_id']
+            foreignKeyName: 'discussions_pinned_reply_id_fkey'
+            columns: ['pinned_reply_id']
             isOneToOne: false
             referencedRelation: 'forum_discussion_replies'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'discussions_modified_by_fkey'
-            columns: ['modified_by']
-            isOneToOne: false
-            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -1110,6 +1110,7 @@ export interface Database {
           discord_id: string | null
           email_notifications_bounced: boolean
           email_notifications_disabled: boolean
+          has_banner: boolean
           id: string
           introduction: string | null
           last_seen: string
@@ -1141,6 +1142,7 @@ export interface Database {
           discord_id?: string | null
           email_notifications_bounced?: boolean
           email_notifications_disabled?: boolean
+          has_banner?: boolean
           id: string
           introduction?: string | null
           last_seen?: string
@@ -1172,6 +1174,7 @@ export interface Database {
           discord_id?: string | null
           email_notifications_bounced?: boolean
           email_notifications_disabled?: boolean
+          has_banner?: boolean
           id?: string
           introduction?: string | null
           last_seen?: string
@@ -1494,6 +1497,7 @@ export interface Database {
           rounding: number
           spacing: number
           transitions: number
+          widening: number
         }
         Insert: {
           created_at?: string
@@ -1568,6 +1572,7 @@ export interface Database {
           rounding?: number
           spacing?: number
           transitions?: number
+          widening?: number
         }
         Update: {
           created_at?: string
@@ -1642,6 +1647,7 @@ export interface Database {
           rounding?: number
           spacing?: number
           transitions?: number
+          widening?: number
         }
         Relationships: []
       }
