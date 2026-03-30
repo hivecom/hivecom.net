@@ -26,7 +26,7 @@
     "@nuxt/content": "^3.12.0",
     "@nuxt/icon": "^2.2.1",
     "@nuxt/image": "^2.0.0",
-    "@nuxtjs/mdc": "^0.20.2",
+    "@nuxtjs/mdc": "^0.21.0",
     "@nuxtjs/robots": "^5.7.1",
     "@nuxtjs/seo": "^3.4.0",
     "@nuxtjs/sitemap": "^7.6.0",
