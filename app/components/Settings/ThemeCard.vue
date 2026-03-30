@@ -58,13 +58,17 @@ const emit = defineEmits<{
         {{ props.item.description }}
       </p>
       <div class="flex-1" />
-      <Flex x-between class="mt-m">
+      <Flex start class="mt-m" gap="xs">
         <UserDisplay :user-id="props.item.created_by" size="s" :show-role="false" />
+        <div class="flex-1" />
         <Button size="s" outline @click="emit('apply', props.item.id)">
           <template #start>
             <Icon name="ph:paint-brush-fill" :size="16" />
           </template>
           Apply
+        </Button>
+        <Button size="s" square>
+          <Icon name="ph:dots-three-bold" :size="18" />
         </Button>
       </Flex>
     </div>
@@ -98,7 +102,7 @@ const emit = defineEmits<{
   &:hover {
     .theme-menu__card--preview {
       :deep(.vui-card) {
-        top: 24px;
+        top: 32px;
       }
     }
 
@@ -111,7 +115,7 @@ const emit = defineEmits<{
 
   &--preview {
     display: block;
-    height: 140px;
+    height: 120px;
     overflow: hidden;
     position: relative;
     border-bottom: 1px solid var(--color-border);
@@ -128,7 +132,7 @@ const emit = defineEmits<{
       top: unset;
       height: 16px;
       z-index: 2;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
+      background: linear-gradient(to top, rgba(8, 8, 8, 0.4), transparent);
     }
 
     :deep(.vui-card) {
@@ -171,5 +175,9 @@ const emit = defineEmits<{
       margin-top: var(--space-s);
     }
   }
+}
+
+:root.light .theme-menu__card--preview::before {
+  background: linear-gradient(to top, rgba(8, 8, 8, 0.1), transparent);
 }
 </style>

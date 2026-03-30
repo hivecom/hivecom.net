@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, Flex, Grid, Select, setColorTheme } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Flex, Grid, Select, setColorTheme, Tooltip } from '@dolanske/vui'
 import ThemeEditor from '@/components/Settings/ThemeEditor.vue'
 import ThemeGallery from '@/components/Settings/ThemeGallery.vue'
 
@@ -42,11 +42,6 @@ const selectedVariant = computed({
   },
 })
 
-// const themeOptions = computed(() => [
-//   { name: 'Default theme', created_by: 'Hivecom', id: null },
-//   ...themes.value,
-// ])
-
 const themeEditorOpen = ref(false)
 </script>
 
@@ -54,43 +49,57 @@ const themeEditorOpen = ref(false)
   <div class="page">
     <section class="page-title">
       <h1>
-        Themes
+        Theming
       </h1>
       <p>
-        Discover community-made themes for Hivecom apps, or create your own
+        Discover community-made themes for Hivecom apps, or create your own!
       </p>
     </section>
 
     <!-- Theme settings -->
-    <section class="mb-xl">
-      <Card class="theme-settings-card">
-        <!-- <strong class="text-color-lighter text-s block mb-m">
+    <Card class="theme-settings-card">
+      <!-- <strong class="text-color-lighter text-s block mb-m">
           Appearance
         </strong> -->
-        <Grid columns="1fr 2px 1fr">
-          <Flex x-between y-center gap="xxs" expand>
-            <p>Theme</p>
-            <div class="flex-1" />
-            <strong class="text-semibold text-color-accent mr-xs">{{ activeTheme?.name ?? 'Default' }}</strong>
-            <Button size="s" @click="themeEditorOpen = true">
-              <template #start>
-                <Icon name="ph:pen" />
+      <Grid columns="1fr 2px 1fr">
+        <Flex class="p-m" x-between y-center gap="xxs" expand>
+          <strong class="text-l">
+            Current theme:
+          </strong>
+          <div class="flex-1" />
+          <strong class="text-semibold text-color-accent mr-xs">{{ activeTheme?.name ?? 'Default' }}</strong>
+          <ButtonGroup :gap="2">
+            <Tooltip>
+              <Button size="s" @click="themeEditorOpen = true">
+                <template #start>
+                  <Icon name="ph:pen" />
+                </template>
+                Personalize
+              </Button>
+              <template #tooltip>
+                <p>Create a new theme based on the current one</p>
               </template>
-              Edit
-            </Button>
-            <Button size="s" @click="setActiveTheme(null)">
-              Reset
-            </Button>
-          </Flex>
-          <div class="divider" />
+            </Tooltip>
+            <Tooltip>
+              <Button size="s" square @click="setActiveTheme(null)">
+                <Icon name="ph:arrow-clockwise" />
+              </Button>
+              <template #tooltip>
+                <p>Switch back to default theme</p>
+              </template>
+            </Tooltip>
+          </ButtonGroup>
+        </Flex>
+        <div class="divider" />
 
-          <Flex x-between y-center expand>
-            <p>Variant</p>
-            <Select v-model="selectedVariant" :show-clear="false" :options="variantOptions" size="s" />
-          </Flex>
-        </Grid>
-      </Card>
-    </section>
+        <Flex class="p-m" x-between y-center expand>
+          <strong class="text-l">
+            Variant:
+          </strong>
+          <Select v-model="selectedVariant" :show-clear="false" :options="variantOptions" size="s" />
+        </Flex>
+      </Grid>
+    </Card>
 
     <ThemeGallery @create="themeEditorOpen = true" />
   </div>
@@ -101,13 +110,10 @@ const themeEditorOpen = ref(false)
 <style lang="scss" scoped>
 .theme-settings-card {
   background-color: var(--color-bg-card);
+  margin-bottom: var(--space-xxl);
 
   :deep(.vui-card-content) {
     padding: 0;
-  }
-
-  :deep(.vui-flex) {
-    padding: var(--space-m);
   }
 }
 

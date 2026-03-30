@@ -11,13 +11,23 @@ const userId = useUserId()
 const { activeTheme, setActiveTheme } = useUserTheme()
 const { themes } = useDataThemes()
 
-const activeTab = ref<'gallery' | 'created'>('gallery')
+const activeTab = ref <'gallery' | 'stock' | 'created'>('gallery')
 const search = ref('')
 
-const sortedThemes = computed(() =>
-  themes.value
-    // Filter based on view so we can omit changes in UI
-    .filter(item => activeTab.value === 'gallery' ? true : item.created_by === userId.value)
+const sortedThemes = computed(() => {
+  const filtered = (() => {
+    switch (activeTab.value) {
+      case 'gallery':
+        return themes.value.filter(item => item.created_by !== null)
+      case 'stock':
+        // Hivecom is the 02 user
+        return themes.value.filter(item => item.created_by === null)
+      case 'created':
+        return themes.value.filter(item => item.created_by === userId.value)
+    }
+  })()
+
+  return filtered
     // Search thems via name & description (NOTE: author would have been nice, but I only got the UUIDs)
     .filter(item => searchString([item.name, item.description], search.value))
     // Sorted active first, rest by date
@@ -27,7 +37,8 @@ const sortedThemes = computed(() =>
       if (aIsActive !== bIsActive)
         return aIsActive ? -1 : 1
       return a.created_at.localeCompare(b.created_at)
-    }))
+    })
+})
 </script>
 
 <template>
@@ -35,6 +46,9 @@ const sortedThemes = computed(() =>
     <Tabs v-model="activeTab" class="mb-m">
       <Tab value="gallery">
         Gallery
+      </Tab>
+      <Tab value="stock">
+        Stock
       </Tab>
       <Tab v-if="userId" value="created">
         Your themes
@@ -53,6 +67,19 @@ const sortedThemes = computed(() =>
     </Flex>
 
     <Grid column gap="l" expand :columns="2">
+      <!-- Fake theme card which resets theme to default. Shows up in stock or if it's active -->
+      <ThemeCard
+        v-if="activeTab === 'stock'"
+        :item="{
+          id: '$$$$default',
+          created_by: null,
+          name: 'Default theme',
+          description: 'The default Hivecom theme',
+        } as any"
+        :active-theme-id="activeTheme ? '' : '$$$$default'"
+        @apply="setActiveTheme(null)"
+      />
+
       <ThemeCard
         v-for="item in sortedThemes"
         :key="item.id"

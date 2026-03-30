@@ -2,10 +2,9 @@
 import type { ThemeScaleKey } from '@/lib/theme'
 import type { Tables } from '@/types/database.overrides'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, Button, ButtonGroup, Card, Divider, Dropdown, Flex, Input, Modal, pushToast, setColorTheme, Switch, Textarea, theme, Tooltip } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Divider, Flex, Input, Modal, pushToast, setColorTheme, Switch, Textarea, theme, Tooltip } from '@dolanske/vui'
 import { applyScale, applyTheme, dbToPercent, getCssVarAsHex, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
 import { normalizeErrors } from '@/lib/utils/formatting'
-import ThemeDropdownItem from './ThemeDropdownItem.vue'
 import ThemeSampleUI from './ThemeSampleUI.vue'
 
 const {
@@ -254,37 +253,15 @@ async function submitForm() {
             </Tooltip>
           </ButtonGroup>
 
-          <ButtonGroup :gap="2">
-            <Dropdown>
-              <template #trigger="{ toggle }">
-                <Button size="s" @click="toggle">
-                  Load
-                  <template #end>
-                    <Icon name="ph:caret-down" />
-                  </template>
-                </Button>
-              </template>
+          <Tooltip>
+            <Button size="s" square @click="reset">
+              <Icon name="ph:arrow-clockwise" />
+            </Button>
 
-              <ThemeDropdownItem v-for="item in themes" :key="item.id" :data="item" @click="loadTheme(item)" />
-
-              <p v-if="loading">
-                Loading themes...
-              </p>
-
-              <p v-else-if="themes.length === 0">
-                No themes available
-              </p>
-            </Dropdown>
-            <Tooltip>
-              <Button size="s" square @click="reset">
-                <Icon name="ph:arrow-clockwise" />
-              </Button>
-
-              <template #tooltip>
-                Reset to default theme
-              </template>
-            </Tooltip>
-          </ButtonGroup>
+            <template #tooltip>
+              Reset
+            </template>
+          </Tooltip>
 
           <div class="flex-1" />
 
