@@ -6,6 +6,13 @@ import { useCache } from './useCache'
 const CACHE_KEY = 'themes:all'
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
+// Module-level refs so all composable instances share the same reactive state.
+// Updating via refresh() in any instance (e.g. ThemeEditor) is immediately
+// reflected in every other consumer (e.g. ThemeGallery) without re-fetching.
+const themes = ref<Tables<'themes'>[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
+
 /**
  * Shared cached themes composable.
  *
@@ -19,10 +26,6 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 export function useDataThemes() {
   const cache = useCache()
   const supabase = useSupabaseClient<Database>()
-
-  const themes = ref<Tables<'themes'>[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
 
   async function fetch(force = false): Promise<void> {
     if (!force) {

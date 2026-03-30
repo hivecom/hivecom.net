@@ -9,6 +9,7 @@ import ThemeSampleUI from './ThemeSampleUI.vue'
 
 const {
   open,
+  editing,
 } = defineProps<Props>()
 
 const emit = defineEmits<{
@@ -19,19 +20,23 @@ const HYPHEN_RE = /-/g
 
 interface Props {
   open: boolean
+  editing?: Tables<'themes'> | null
 }
 
 type ThemeType = 'dark' | 'light'
 
 // Themes dropdown
-const { themes, loading, refresh } = useDataThemes()
+const { refresh } = useDataThemes()
+
+// Current active theme (if any) - used to seed editor state
+const { activeTheme } = useUserTheme()
 
 // Theme name when creating/editing
 const form = reactive({ name: '', description: '', useAsCurrent: true })
 
 const activeType = computed<ThemeType>(() => theme.value === 'light' ? 'light' : 'dark')
 
-const editedTheme = reactive<Record<ThemeType, Record<string, string>>>({
+const themeForm = reactive<Record<ThemeType, Record<string, string>>>({
   light: {},
   dark: {},
 })
@@ -53,17 +58,12 @@ function applyPalette(prefix: 'dark' | 'light', source: Record<string, string>) 
   }
 }
 
-onMounted(() => {
-  seedPalette('dark', editedTheme.dark)
-  seedPalette('light', editedTheme.light)
-})
-
 // When the user toggles dark/light, re-seed the newly active palette from
 // computed styles (so we pick up VUI defaults for keys we haven't touched),
 // then re-apply any overrides we had stored for that palette.
 watch(activeType, (prefix) => {
   nextTick(() => {
-    const target = editedTheme[prefix]
+    const target = themeForm[prefix]
     seedPalette(prefix, target)
     applyPalette(prefix, target)
   })
@@ -71,7 +71,7 @@ watch(activeType, (prefix) => {
 
 // Immediately update CSS definitions on the body to reflect change
 function onColorChange(key: string, value: string) {
-  editedTheme[activeType.value][key] = value
+  themeForm[activeType.value][key] = value
   const cssVar = `--${activeType.value}-color-${key}`
   document.documentElement.style.setProperty(cssVar, value)
 }
@@ -89,12 +89,57 @@ const COLOR_GROUPS: Record<string, typeof VUI_COLOR_KEYS[number][]> = {
   Accent: ['accent', 'bg-accent-lowered', 'bg-accent-raised'],
 }
 
-// Ranges - stored as DB values (0-100), default to VUI defaults
+// Ranges - stored as DB values (0-100), seeded from active theme in seedFromActiveTheme()
 const scaleValues = reactive<Record<ThemeScaleKey, number>>({
   spacing: SCALE_CONFIGS.spacing.defaultDb,
   rounding: SCALE_CONFIGS.rounding.defaultDb,
   transitions: SCALE_CONFIGS.transitions.defaultDb,
+  widening: SCALE_CONFIGS.widening.defaultDb,
 })
+
+/** Seed all editor state (colors + scales) from the provided or active theme */
+function seedFromActiveTheme() {
+  // Prefer an explicitly passed theme, fall back to the user's active theme
+  const t = editing ?? activeTheme.value
+
+  if (t) {
+    // Seed colors from the theme row directly rather than from computed CSS
+    for (const key of VUI_COLOR_KEYS) {
+      const darkCol = `dark_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
+      const lightCol = `light_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
+      if (t[darkCol] != null)
+        themeForm.dark[key] = t[darkCol] as string
+      if (t[lightCol] != null)
+        themeForm.light[key] = t[lightCol] as string
+    }
+    applyPalette('dark', themeForm.dark)
+    applyPalette('light', themeForm.light)
+  }
+  else {
+    // No theme - seed from current computed CSS (VUI defaults already applied)
+    seedPalette('dark', themeForm.dark)
+    seedPalette('light', themeForm.light)
+  }
+
+  // Seed scale sliders; fall back to VUI defaults
+  for (const key of THEME_SCALE_KEYS) {
+    scaleValues[key] = t?.[key] ?? SCALE_CONFIGS[key].defaultDb
+  }
+
+  // Pre-fill the name/description when editing an existing theme
+  form.name = t?.name ?? ''
+  form.description = t?.description ?? ''
+}
+
+// Seed on first render (immediate) and re-seed every time the editor is opened
+watch(() => open, (isOpen) => {
+  if (isOpen) {
+    // Wait for the transition to modal to end
+    setTimeout(() => {
+      seedFromActiveTheme()
+    }, 50)
+  }
+}, { immediate: true })
 
 /** Formatted display percentage for a given scale key */
 function scaleDisplay(key: ThemeScaleKey): string {
@@ -112,30 +157,6 @@ function onScaleChange(key: ThemeScaleKey, value: number) {
   applyScale(key, value)
 }
 
-/** Load a theme preset from the dropdown into the editor */
-function loadTheme(t: Tables<'themes'>) {
-  // Apply colors to both palettes
-  for (const key of VUI_COLOR_KEYS) {
-    const darkCol = `dark_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
-    const lightCol = `light_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
-    editedTheme.dark[key] = (t[darkCol] as string) ?? editedTheme.dark[key]
-    editedTheme.light[key] = (t[lightCol] as string) ?? editedTheme.light[key]
-  }
-
-  applyPalette('dark', editedTheme.dark)
-  applyPalette('light', editedTheme.light)
-
-  // Apply scale values
-  for (const key of THEME_SCALE_KEYS) {
-    const dbValue = t[key] ?? SCALE_CONFIGS[key].defaultDb
-    scaleValues[key] = dbValue
-    applyScale(key, dbValue)
-  }
-
-  // Pre-fill theme name
-  form.name = t.name
-}
-
 function reset() {
   applyTheme(null)
 
@@ -143,14 +164,16 @@ function reset() {
     scaleValues[key] = SCALE_CONFIGS[key].defaultDb
   }
 
-  seedPalette('dark', editedTheme.dark)
-  seedPalette('light', editedTheme.light)
-  applyPalette('dark', editedTheme.dark)
-  applyPalette('light', editedTheme.light)
+  seedPalette('dark', themeForm.dark)
+  seedPalette('light', themeForm.light)
+  applyPalette('dark', themeForm.dark)
+  applyPalette('light', themeForm.light)
 }
 
 function resetAndClose() {
-  reset()
+  // Re-apply the user's active theme (or VUI defaults if none) so the DOM
+  // returns to the state it was in before the editor was opened.
+  applyTheme(activeTheme.value ?? null)
   emit('close')
 }
 
@@ -182,18 +205,21 @@ async function submitForm() {
   submitLoading.value = true
 
   const payload: Record<string, string | number> = {
+    ...(editing && { id: editing.id }),
     // TODO: remove later when row policy is updated
-    created_by: userId.value!,
+    // created_by: userId.value!,
     name: form.name,
+    description: form.description,
     spacing: scaleValues.spacing,
     rounding: scaleValues.rounding,
     transitions: scaleValues.transitions,
+    widening: scaleValues.widening,
   }
 
   for (const key of VUI_COLOR_KEYS) {
     const col = key.replace(HYPHEN_RE, '_')
-    payload[`dark_${col}`] = editedTheme.dark[key] ?? ''
-    payload[`light_${col}`] = editedTheme.light[key] ?? ''
+    payload[`dark_${col}`] = themeForm.dark[key] ?? ''
+    payload[`light_${col}`] = themeForm.light[key] ?? ''
   }
 
   const { error } = await supabase
@@ -211,8 +237,8 @@ async function submitForm() {
     refresh()
 
     if (form.useAsCurrent) {
-      applyPalette('dark', editedTheme.dark)
-      applyPalette('light', editedTheme.light)
+      applyPalette('dark', themeForm.dark)
+      applyPalette('light', themeForm.light)
     }
 
     showSubmitModal.value = false
@@ -312,6 +338,19 @@ async function submitForm() {
               </Flex>
             </div>
 
+            <div class="theme-editor__group">
+              <span class="theme-editor__group-label">Widening</span>
+              <Flex y-center gap="l">
+                <input
+                  type="range" min="0" max="100"
+                  :value="scaleValues.widening"
+                  :style="rangeProgressStyle('widening')"
+                  @input="onScaleChange('widening', Number(($event.target as HTMLInputElement).value))"
+                >
+                <span class="theme-editor__range-value">{{ scaleDisplay('widening') }}</span>
+              </Flex>
+            </div>
+
             <Divider :size="0" />
 
             <div
@@ -328,7 +367,7 @@ async function submitForm() {
                 >
                   <input
                     type="color"
-                    :value="editedTheme[activeType][colorKey]"
+                    :value="themeForm[activeType][colorKey]"
                     @input="onColorChange(colorKey, ($event.target as HTMLInputElement).value)"
                   >
                   <span>{{ colorKey }}</span>
@@ -353,6 +392,9 @@ async function submitForm() {
   <Modal :open="showSubmitModal" size="s" :card="{ separators: true }" @close="showSubmitModal = false">
     <template #header>
       <h4>Details</h4>
+      <p class="text-color-lighter">
+        Describe your theme
+      </p>
     </template>
 
     <Alert v-if="submitError" variant="danger">
@@ -360,7 +402,7 @@ async function submitForm() {
     </Alert>
 
     <Input v-model="form.name" placeholder="My Cool Theme" class="mb-m" expand label="Name" :errors="normalizeErrors(errors.name)" required />
-    <Textarea v-model="form.description" class="mb-m" placeholder="Describe your theme in a sentence or two" :rows="3" :resize="false" expand label="Description" :errors="normalizeErrors(errors.description)" />
+    <Textarea v-model="form.description" class="mb-m" placeholder="Briefly describe your theme and its features" :rows="5" :resize="false" expand label="Description" :errors="normalizeErrors(errors.description)" />
 
     <Card>
       <Switch v-model="form.useAsCurrent" label="Set as current theme" />
@@ -372,7 +414,7 @@ async function submitForm() {
           Close
         </Button>
         <Button variant="accent" :loading="submitLoading" @click="submitForm">
-          Publish
+          {{ editing ? 'Save' : 'Publish' }}
         </Button>
       </Flex>
     </template>

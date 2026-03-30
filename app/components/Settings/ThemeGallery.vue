@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Flex, Grid, Input, searchString, Tab, Tabs } from '@dolanske/vui'
 import ThemeCard from './ThemeCard.vue'
 
 const emit = defineEmits<{
   create: []
+  edit: [theme: Tables<'themes'>]
 }>()
 
 const userId = useUserId()
@@ -39,6 +41,13 @@ const sortedThemes = computed(() => {
       return a.created_at.localeCompare(b.created_at)
     })
 })
+
+// TODO: decide if we are even doing deleting
+// function deleteTheme(id: string) {
+//   if (activeTheme.value?.id === id) {
+//     setActiveTheme(null)
+//   }
+// }
 </script>
 
 <template>
@@ -51,7 +60,7 @@ const sortedThemes = computed(() => {
         Stock
       </Tab>
       <Tab v-if="userId" value="created">
-        Your themes
+        My themes
       </Tab>
     </Tabs>
 
@@ -85,7 +94,8 @@ const sortedThemes = computed(() => {
         :key="item.id"
         :item="item"
         :active-theme-id="activeTheme?.id"
-        @apply="setActiveTheme"
+        @apply="setActiveTheme(item.id)"
+        @edit="emit('edit', item)"
       />
     </Grid>
 

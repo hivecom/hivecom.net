@@ -35,13 +35,14 @@ const THEME_META_KEYS = new Set([
   'spacing',
   'rounding',
   'transitions',
+  'widening',
 ])
 
 /**
  * The palette-independent 0-100 scale columns.
  * These are stored separately from colors and are not mapped to CSS color vars.
  */
-export const THEME_SCALE_KEYS = ['spacing', 'rounding', 'transitions'] as const
+export const THEME_SCALE_KEYS = ['spacing', 'rounding', 'transitions', 'widening'] as const
 export type ThemeScaleKey = (typeof THEME_SCALE_KEYS)[number]
 
 /**
@@ -224,6 +225,15 @@ const TRANSITION_TOKENS: ScaleConfig['tokens'] = [
   { varName: '--transition-slow', defaultValue: 0.25 },
 ]
 
+const CONTAINER_TOKENS: ScaleConfig['tokens'] = [
+  { varName: '--container-xs', defaultValue: 360 },
+  { varName: '--container-s', defaultValue: 728 },
+  { varName: '--container-m', defaultValue: 968 },
+  { varName: '--container-l', defaultValue: 1280 },
+  { varName: '--container-xl', defaultValue: 1540 },
+  { varName: '--container-xxl', defaultValue: 1920 },
+]
+
 export const SCALE_CONFIGS: Record<ThemeScaleKey, ScaleConfig> = {
   spacing: {
     minPercent: 25,
@@ -246,6 +256,14 @@ export const SCALE_CONFIGS: Record<ThemeScaleKey, ScaleConfig> = {
     defaultDb: (100 - 0) / (400 - 0) * 100, // 25
     tokens: TRANSITION_TOKENS,
     unit: 's',
+  },
+  widening: {
+    minPercent: 100,
+    maxPercent: 300,
+    // DB 0 = 100% (default container widths), DB 100 = 300% (full width)
+    defaultDb: 0,
+    tokens: CONTAINER_TOKENS,
+    unit: 'px',
   },
 }
 

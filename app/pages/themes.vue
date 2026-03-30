@@ -5,11 +5,7 @@ import ThemeEditor from '@/components/Settings/ThemeEditor.vue'
 import ThemeGallery from '@/components/Settings/ThemeGallery.vue'
 
 // TODO THEMES
-// 1. Theme editing
-// 2. Theme deleting
-// 3. Add default
-// 4. Editor should start with the current theme (colors in sidebar dont work like that)
-// 5. Change theme dropdown to Sheet instead. List all thems better - 2nd tab will
+// 2. Theme deleting (?)
 
 // Placeholder theme options for the planned Theme selector
 // const { themes, loading: themesLoading } = useDataThemes()
@@ -42,7 +38,13 @@ const selectedVariant = computed({
   },
 })
 
+const editedTheme = ref<Tables<'themes'> | null>(null)
 const themeEditorOpen = ref(false)
+
+function onEditTheme(themeToEdit: Tables<'themes'>) {
+  editedTheme.value = themeToEdit
+  themeEditorOpen.value = true
+}
 </script>
 
 <template>
@@ -58,9 +60,6 @@ const themeEditorOpen = ref(false)
 
     <!-- Theme settings -->
     <Card class="theme-settings-card">
-      <!-- <strong class="text-color-lighter text-s block mb-m">
-          Appearance
-        </strong> -->
       <Grid columns="1fr 2px 1fr">
         <Flex class="p-m" x-between y-center gap="xxs" expand>
           <strong class="text-l">
@@ -91,7 +90,6 @@ const themeEditorOpen = ref(false)
           </ButtonGroup>
         </Flex>
         <div class="divider" />
-
         <Flex class="p-m" x-between y-center expand>
           <strong class="text-l">
             Variant:
@@ -101,10 +99,17 @@ const themeEditorOpen = ref(false)
       </Grid>
     </Card>
 
-    <ThemeGallery @create="themeEditorOpen = true" />
+    <ThemeGallery
+      @create="themeEditorOpen = true"
+      @edit="onEditTheme"
+    />
   </div>
 
-  <ThemeEditor :open="themeEditorOpen" @close="themeEditorOpen = false" />
+  <ThemeEditor
+    :open="themeEditorOpen"
+    :editing="editedTheme"
+    @close="themeEditorOpen = false; editedTheme = null;"
+  />
 </template>
 
 <style lang="scss" scoped>
@@ -122,6 +127,5 @@ const themeEditorOpen = ref(false)
   height: 100%;
   background-color: var(--color-border);
   width: 1px;
-  /* margin-block: calc(var(--space-l) * -1); */
 }
 </style>

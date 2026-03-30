@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Card, Flex, theme } from '@dolanske/vui'
+import { Alert, Button, Card, Dropdown, DropdownItem, Flex, theme } from '@dolanske/vui'
+import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
 import { truncate } from '@/lib/utils/formatting'
 import TinyBadge from '../Shared/TinyBadge.vue'
@@ -12,8 +13,13 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  apply: [id: string]
+  apply: []
+  // TODO: delete if we're not doing deletion
+  delete: []
+  edit: []
 }>()
+
+const userId = useUserId()
 </script>
 
 <template>
@@ -61,15 +67,26 @@ const emit = defineEmits<{
       <Flex start class="mt-m" gap="xs">
         <UserDisplay :user-id="props.item.created_by" size="s" :show-role="false" />
         <div class="flex-1" />
-        <Button size="s" outline @click="emit('apply', props.item.id)">
+        <Button size="s" outline @click="emit('apply')">
           <template #start>
             <Icon name="ph:paint-brush-fill" :size="16" />
           </template>
           Apply
         </Button>
-        <Button size="s" square>
-          <Icon name="ph:dots-three-bold" :size="18" />
-        </Button>
+        <Dropdown v-if="userId && props.item.created_by === userId">
+          <template #trigger="{ toggle, isOpen }">
+            <Button size="s" square :class="{ active: isOpen }" @click="toggle">
+              <Icon name="ph:dots-three-bold" :size="18" />
+            </Button>
+          </template>
+
+          <DropdownItem @click="emit('edit')">
+            Edit
+          </DropdownItem>
+          <!-- <DropdownItem @click="emit('delete')">
+            Delete
+          </DropdownItem> -->
+        </Dropdown>
       </Flex>
     </div>
   </div>
@@ -99,6 +116,7 @@ const emit = defineEmits<{
     border-color: var(--color-bg-accent-lowered);
   }
 
+  &:has(.vui-button.active),
   &:hover {
     .theme-menu__card--preview {
       :deep(.vui-card) {
@@ -166,7 +184,8 @@ const emit = defineEmits<{
 
     strong {
       display: block;
-      font-size: var(--font-size-l);
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-extrabold);
     }
 
     p {
