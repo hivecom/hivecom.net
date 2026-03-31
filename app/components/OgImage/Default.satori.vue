@@ -20,7 +20,7 @@ withDefaults(defineProps<{
     >
 
     <!-- Content container -->
-    <div class="z-10 flex flex-col max-w-[1000px]">
+    <div class="flex flex-col max-w-[1000px]">
       <!-- Logo -->
       <img
         src="/logo.svg"

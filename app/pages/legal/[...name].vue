@@ -23,6 +23,11 @@ useSeoMeta({
   ogDescription: seoDescription,
 })
 
+defineOgImageComponent('Default', {
+  title: computed(() => seoTitle.value),
+  description: computed(() => seoDescription.value),
+})
+
 const today = new Date()
 today.setHours(0, 0, 0, 0)
 

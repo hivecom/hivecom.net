@@ -47,6 +47,11 @@ useSeoMeta({
   ogTitle: 'Forum Statistics',
 })
 
+defineOgImageComponent('Default', {
+  title: 'Forum Statistics',
+  description: 'View statistics and activity metrics for the Hivecom community forum.',
+})
+
 const { stats, loading, error, fetchStats } = useForumStats()
 
 onBeforeMount(async () => {
