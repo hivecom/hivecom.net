@@ -17,7 +17,9 @@ const activeTab = ref <'gallery' | 'stock' | 'created'>('gallery')
 const search = ref('')
 
 const sortedThemes = computed(() => {
-  const filtered = (() => {
+  const activeThemeId = activeTheme.value?.id
+
+  const categorized = (() => {
     switch (activeTab.value) {
       case 'gallery':
         return themes.value.filter(item => item.created_by !== null)
@@ -29,7 +31,9 @@ const sortedThemes = computed(() => {
     }
   })()
 
-  return filtered
+  return categorized
+    // Hide unmaintained themes unless the current user still has it active
+    .filter(item => !item.is_unmaintained || item.id === activeThemeId)
     // Search thems via name & description (NOTE: author would have been nice, but I only got the UUIDs)
     .filter(item => searchString([item.name, item.description], search.value))
     // Sorted active first, rest by date
@@ -42,12 +46,11 @@ const sortedThemes = computed(() => {
     })
 })
 
-// TODO: decide if we are even doing deleting
-// function deleteTheme(id: string) {
-//   if (activeTheme.value?.id === id) {
-//     setActiveTheme(null)
-//   }
-// }
+function deleteTheme(id: string) {
+  if (activeTheme.value?.id === id) {
+    setActiveTheme(null)
+  }
+}
 </script>
 
 <template>
@@ -96,6 +99,7 @@ const sortedThemes = computed(() => {
         :active-theme-id="activeTheme?.id"
         @apply="setActiveTheme(item.id)"
         @edit="emit('edit', item)"
+        @delete="deleteTheme(item.id)"
       />
     </Grid>
 

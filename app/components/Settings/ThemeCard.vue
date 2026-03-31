@@ -4,6 +4,7 @@ import { Alert, Button, Card, Dropdown, DropdownItem, Flex, theme } from '@dolan
 import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
 import { truncate } from '@/lib/utils/formatting'
+import ConfirmModal from '../Shared/ConfirmModal.vue'
 import TinyBadge from '../Shared/TinyBadge.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
 
@@ -14,12 +15,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   apply: []
-  // TODO: delete if we're not doing deletion
   delete: []
   edit: []
 }>()
 
 const userId = useUserId()
+const user = useSupabaseUser()
+
+const confirmDelete = ref(false)
 </script>
 
 <template>
@@ -83,13 +86,23 @@ const userId = useUserId()
           <DropdownItem @click="emit('edit')">
             Edit
           </DropdownItem>
-          <!-- <DropdownItem @click="emit('delete')">
+          <DropdownItem v-if="userId === props.item.created_by || user?.role === 'moderator' || user?.role === 'admin'" @click="confirmDelete = true">
             Delete
-          </DropdownItem> -->
+          </DropdownItem>
         </Dropdown>
       </Flex>
     </div>
   </div>
+
+  <ConfirmModal
+    :open="confirmDelete"
+    title="Delete theme?"
+    description="This action cannot be undone. Users who are currently using the theme will still be able to keep it, but it won't be visible in any theme listings."
+    confirm-text="Delete"
+    variant="danger"
+    @confirm="emit('delete')"
+    @cancel="confirmDelete = false"
+  />
 </template>
 
 <style lang="scss" scoped>

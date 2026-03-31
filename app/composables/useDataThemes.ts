@@ -22,6 +22,7 @@ const error = ref<string | null>(null)
  * - TTL: 5 minutes
  * - `invalidate()` should be called after theme writes
  * - `refresh()` forces a cache-busting re-fetch
+ * - `softDelete(id)` marks a theme as unmaintained without removing it
  */
 export function useDataThemes() {
   const cache = useCache()
@@ -72,6 +73,36 @@ export function useDataThemes() {
     await fetch(true)
   }
 
+  /**
+   * Soft-delete a theme by setting `is_unmaintained = true`.
+   * Updates the local ref immediately for instant UI feedback, then
+   * invalidates the cache so the next fetch picks up the DB state.
+   * Returns an error string on failure, or null on success.
+   */
+  async function softDelete(id: string): Promise<string | null> {
+    const { error: updateError } = await supabase
+      .from('themes')
+      .update({ is_unmaintained: true })
+      .eq('id', id)
+
+    if (updateError)
+      return updateError.message
+
+    // Optimistically update the local ref so all consumers react immediately
+    const idx = themes.value.findIndex(t => t.id === id)
+
+    if (idx !== -1) {
+      themes.value[idx] = {
+        ...themes.value[idx],
+        is_unmaintained: true,
+      } as Tables<'themes'>
+    }
+
+    invalidate()
+
+    return null
+  }
+
   onMounted(() => {
     void fetch()
   })
@@ -83,5 +114,6 @@ export function useDataThemes() {
     getById,
     refresh,
     invalidate,
+    softDelete,
   }
 }
