@@ -74,6 +74,11 @@ useSeoMeta({
   ogTitle: 'Community Projects',
   ogDescription: 'Explore community projects and initiatives from the Hivecom community.',
 })
+
+defineOgImageComponent('Default', {
+  title: 'Community Projects',
+  description: 'Explore community projects and initiatives from the Hivecom community.',
+})
 </script>
 
 <template>

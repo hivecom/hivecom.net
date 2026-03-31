@@ -15,6 +15,13 @@ async function getCachedRoutes() {
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  routeRules: {
+    '/admin/**': { ogImage: false },
+    '/auth/**': { ogImage: false },
+    '/profile/**': { ogImage: false },
+    '/playground/**': { ogImage: false },
+    '/votes/**': { ogImage: false },
+  },
   alias: {
     '@': fileURLToPath(new URL('./app', import.meta.url)),
     '~': fileURLToPath(new URL('.', import.meta.url)),
@@ -185,6 +192,24 @@ export default defineNuxtConfig({
     },
   },
   vite: {
+    build: {
+      rollupOptions: {
+        // consola imports node:tty for its terminal reporter; it's safely
+        // externalized by Vite and has no effect in the browser. Suppress
+        // the spurious warning so build output stays readable.
+        onwarn(warning, warn) {
+          if (warning.code === 'MODULE_LEVEL_DIRECTIVE')
+            return
+          if (
+            warning.code === 'PLUGIN_WARNING'
+            && warning.message.includes('node:tty')
+          ) {
+            return
+          }
+          warn(warning)
+        },
+      },
+    },
     optimizeDeps: {
       include: [
         'debug', // CJS
@@ -258,7 +283,17 @@ export default defineNuxtConfig({
       }
     },
   },
+  ogImage: {
+    // This is a fully prerendered static site (github-pages), so all OG images
+    // are generated at build time. Zero runtime mode removes all renderer code
+    // from the Nitro output and eliminates the "Unknown Nitro preset" warning.
+    zeroRuntime: true,
+  },
   nitro: {
+    // Explicitly set static: true so nuxt-og-image's resolveOgImagePreset()
+    // sees nuxt.options.nitro.static and returns "nitro-prerender" instead of
+    // falling through to resolveNitroPreset() with an unknown preset name.
+    static: true,
     prerender: {
       failOnError: false,
       crawlLinks: true,

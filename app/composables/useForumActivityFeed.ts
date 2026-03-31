@@ -149,8 +149,8 @@ export function useForumActivityFeed({
       .map((item) => {
         const isTopic = !('discussion_topic_id' in item)
         const id = item.id
-        // eslint-disable-next-line ts/no-unnecessary-type-assertion
-        const title = (isTopic ? (item as Tables<'discussion_topics'>).name : (item as Tables<'discussions'>).title) ?? (isTopic ? 'Topic' : 'Discussion')
+
+        const title = (isTopic ? (item as Tables<'discussion_topics'>).name : (item).title) ?? (isTopic ? 'Topic' : 'Discussion')
 
         return {
           id,
@@ -164,8 +164,8 @@ export function useForumActivityFeed({
           isArchived: item.is_archived,
           ...(isTopic
             ? { onClick: () => onTopicClick(id) }
-            // eslint-disable-next-line ts/no-unnecessary-type-assertion
-            : { href: `/forum/${(item as Tables<'discussions'>).slug ?? id}` }),
+
+            : { href: `/forum/${(item).slug ?? id}` }),
         } as ActivityItem
       })
 

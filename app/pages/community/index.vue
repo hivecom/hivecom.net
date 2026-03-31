@@ -65,6 +65,11 @@ useSeoMeta({
   ogDescription: 'Learn about Hivecom, explore community projects, and connect with members.',
 })
 
+defineOgImageComponent('Default', {
+  title: 'Community',
+  description: 'Learn about Hivecom, explore community projects, and connect with members.',
+})
+
 // State for community members
 const randomUsers = ref<string[]>([])
 const supporters = ref<string[]>([])

@@ -60,6 +60,11 @@ useSeoMeta({
   ogDescription: 'Browse the Hivecom game server library and live server listings.',
 })
 
+defineOgImageComponent('Default', {
+  title: 'Game Servers',
+  description: 'Browse the Hivecom game server library and live server listings.',
+})
+
 const search = ref('')
 const selectedGames = ref<{ label: string, value: number }[]>()
 const selectedRegions = ref<{ label: string, value: string }[]>()
