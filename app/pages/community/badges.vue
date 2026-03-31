@@ -28,6 +28,11 @@ useSeoMeta({
   ogTitle: 'Badges',
   ogDescription: 'Explore the badges available in the Hivecom community.',
 })
+
+defineOgImageComponent('Default', {
+  title: 'Badges',
+  description: 'Explore the badges available in the Hivecom community.',
+})
 </script>
 
 <template>

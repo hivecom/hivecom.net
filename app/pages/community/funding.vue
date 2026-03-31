@@ -32,6 +32,11 @@ useSeoMeta({
   ogDescription: 'See Hivecom community funding, expenses, and how to support the project.',
 })
 
+defineOgImageComponent('Default', {
+  title: 'Funding',
+  description: 'See Hivecom community funding, expenses, and how to support the project.',
+})
+
 // Fetch data on mount
 onMounted(async () => {
   loading.value = true

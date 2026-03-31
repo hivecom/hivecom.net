@@ -1460,6 +1460,8 @@ export interface Database {
           dark_text_yellow: string
           description: string
           id: string
+          is_official: boolean
+          is_unmaintained: boolean
           light_accent: string
           light_bg: string
           light_bg_accent_lowered: string
@@ -1535,6 +1537,8 @@ export interface Database {
           dark_text_yellow: string
           description?: string
           id?: string
+          is_official?: boolean
+          is_unmaintained?: boolean
           light_accent: string
           light_bg: string
           light_bg_accent_lowered: string
@@ -1610,6 +1614,8 @@ export interface Database {
           dark_text_yellow?: string
           description?: string
           id?: string
+          is_official?: boolean
+          is_unmaintained?: boolean
           light_accent?: string
           light_bg?: string
           light_bg_accent_lowered?: string
@@ -1754,6 +1760,21 @@ export interface Database {
             columns: ['reply_to_id']
             isOneToOne: false
             referencedRelation: 'forum_discussion_replies'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      theme_usage: {
+        Row: {
+          theme_id: string | null
+          user_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_theme_id_fkey'
+            columns: ['theme_id']
+            isOneToOne: false
+            referencedRelation: 'themes'
             referencedColumns: ['id']
           },
         ]
@@ -1942,6 +1963,10 @@ export interface Database {
         | 'users.read'
         | 'users.update'
         | 'alerts.read'
+        | 'themes.create'
+        | 'themes.read'
+        | 'themes.update'
+        | 'themes.delete'
       app_role: 'admin' | 'moderator'
       events_rsvp_status: 'yes' | 'no' | 'tentative'
       kvstore_type: 'NUMBER' | 'BOOLEAN' | 'STRING' | 'JSON'
@@ -2155,6 +2180,10 @@ export const Constants = {
         'users.read',
         'users.update',
         'alerts.read',
+        'themes.create',
+        'themes.read',
+        'themes.update',
+        'themes.delete',
       ],
       app_role: ['admin', 'moderator'],
       events_rsvp_status: ['yes', 'no', 'tentative'],

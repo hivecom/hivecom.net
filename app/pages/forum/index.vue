@@ -38,6 +38,11 @@ useSeoMeta({
   ogDescription: 'Browse and participate in discussions across the Hivecom community forum.',
 })
 
+defineOgImageComponent('Default', {
+  title: 'Forum',
+  description: 'Browse and participate in discussions across the Hivecom community forum.',
+})
+
 type ForumDiscussion = Tables<'discussions'>
 
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
