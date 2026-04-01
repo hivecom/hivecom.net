@@ -119,13 +119,50 @@ onUnmounted(() => {
 
   // 1 image left over in the last row (count % 3 == 1): span it full width.
   // :last-child:nth-child(3n+1) matches exactly that case.
-  // We do NOT span the 2-leftover case (3n+2) - those two share the row fine.
   > :last-child:nth-child(3n + 1) {
     grid-column: 1 / -1;
   }
 
+  // 2 images left over in the last row (count % 3 == 2, e.g. 5, 8, 11...):
+  // A 3-col grid gives each orphan 1/3 width with the last third empty - looks bad.
+  // Fix: switch to a 6-col grid where each item spans 2 cols (still 3 per row),
+  // and the last two orphans each span 3 cols (equal halves of the row).
+  &[data-count='5'],
+  &[data-count='8'],
+  &[data-count='11'],
+  &[data-count='14'] {
+    grid-template-columns: repeat(6, 1fr);
+
+    > p,
+    > img {
+      grid-column: span 2;
+    }
+
+    > :nth-last-child(-n + 2) {
+      grid-column: span 3;
+    }
+  }
+
   @media (max-width: 600px) {
     grid-template-columns: repeat(2, 1fr);
+
+    // Reset the 6-col span overrides applied for 3n+2 counts - on mobile
+    // we use a plain 2-col grid so items must auto-place without forced spans.
+    &[data-count='5'],
+    &[data-count='8'],
+    &[data-count='11'],
+    &[data-count='14'] {
+      grid-template-columns: repeat(2, 1fr);
+
+      > p,
+      > img {
+        grid-column: unset;
+      }
+
+      > :nth-last-child(-n + 2) {
+        grid-column: unset;
+      }
+    }
 
     > p > img,
     > img {
@@ -245,6 +282,8 @@ onUnmounted(() => {
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  overflow-wrap: break-word;
+  word-break: break-word; // Safari fallback - break-word is non-standard but widely supported
 
   table {
     table-layout: fixed;
