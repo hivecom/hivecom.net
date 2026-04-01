@@ -23,7 +23,7 @@ const isAuthorized = ref(false)
 const { user: cachedUserData } = useDataUser(resolvedUserId, { includeRole: true, includeAvatar: false })
 const userRole = computed(() => cachedUserData.value?.role ?? null)
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Hivecom',
   description: 'A worldwide community of friends building projects together.',
 })

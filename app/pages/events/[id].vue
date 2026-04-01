@@ -27,7 +27,7 @@ const error = ref<string | null>(null)
 // Derive event games from the cached list
 const games = computed(() => event.value?.games ? getByIds(event.value.games) : [])
 
-defineOgImageComponent('Event', {
+defineOgImage('Event', {
   eventId,
 })
 

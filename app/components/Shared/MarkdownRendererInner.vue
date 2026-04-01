@@ -88,7 +88,7 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style lang="scss">
+<style lang="scss" scoped>
 /* Consecutive solo-image paragraphs grouped into a flex row */
 .md-image-group {
   display: grid;
@@ -285,10 +285,28 @@ onUnmounted(() => {
   overflow-wrap: break-word;
   word-break: break-word; // Safari fallback - break-word is non-standard but widely supported
 
-  table {
+  :deep(table) {
+    display: table;
+    border-collapse: collapse;
+    margin: var(--space-xs) 0;
+    width: fit-content;
+    min-width: 100%;
     table-layout: fixed;
-    width: 100%;
     position: relative;
+  }
+
+  :deep(table th),
+  :deep(table td) {
+    padding: var(--space-xs) var(--space-s);
+    border: 1px solid var(--color-border);
+    text-align: left;
+    white-space: nowrap;
+    min-width: 80px;
+  }
+
+  :deep(table th) {
+    background-color: var(--color-bg-raised);
+    font-weight: 600;
   }
 
   .contains-task-list {
@@ -330,28 +348,5 @@ onUnmounted(() => {
       }
     }
   }
-}
-
-/* Tables with horizontal scrolling */
-table {
-  display: table;
-  border-collapse: collapse;
-  margin: var(--space-xs) 0;
-  width: fit-content;
-  min-width: 100%;
-}
-
-table th,
-table td {
-  padding: var(--space-xs) var(--space-s);
-  border: 1px solid var(--color-border);
-  text-align: left;
-  white-space: nowrap;
-  min-width: 80px;
-}
-
-table th {
-  background-color: var(--color-bg-raised);
-  font-weight: 600;
 }
 </style>

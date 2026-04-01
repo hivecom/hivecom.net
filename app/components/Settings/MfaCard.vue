@@ -79,7 +79,7 @@ function resolveErrorMessage(error: unknown, fallback: string) {
 
 function factorTypeLabel(factorType: MfaFactor['factor_type']) {
   if (factorType === 'totp')
-    return 'Authenticator app'
+    return 'App'
   if (factorType === 'phone')
     return 'Phone'
   return 'Security key'
@@ -449,9 +449,8 @@ onBeforeMount(() => {
                   class="device-row"
                   x-between
                   y-center
-                  wrap
                 >
-                  <Flex column gap="xxs" class="device-meta">
+                  <Flex gap="xxs">
                     <Skeleton width="160px" height="0.95rem" />
                     <Skeleton width="240px" height="0.85rem" />
                   </Flex>
@@ -466,24 +465,29 @@ onBeforeMount(() => {
         </Flex>
 
         <template v-else>
-          <Flex class="security-panel" gap="l" wrap expand>
-            <Flex gap="m" y-center class="security-panel__content">
-              <div class="security-panel__icon" :class="{ 'is-active': hasVerifiedTotp }">
-                <Icon :name="mfaStatusIcon" size="28" />
-              </div>
-              <Flex column gap="xxs" class="flex-1">
-                <Flex gap="s" y-center wrap>
-                  <strong>{{ hasVerifiedTotp ? 'Enabled' : 'Not Enabled' }}</strong>
-                  <TinyBadge :variant="mfaStatusBadge.variant">
-                    <Icon :class="`text-color-${mfaStatusBadge.variant === 'success' ? 'accent' : 'red'}`" :name="mfaStatusIcon" />
-                    {{ mfaStatusBadge.label }}
-                  </TinyBadge>
+          <Flex class="security-panel" gap="l" wrap expand y-center>
+            <Flex gap="m" y-center class="security-panel__content" expand wrap :x-between="!isBelowSmall">
+              <Flex :column="isBelowSmall" :x-center="isBelowSmall" :expand="isBelowSmall">
+                <Flex :expand="isBelowSmall" x-center>
+                  <div class="security-panel__icon" :class="{ 'is-active': hasVerifiedTotp }">
+                    <Icon :name="mfaStatusIcon" size="28" />
+                  </div>
                 </Flex>
-                <p class="text-m text-color-lighter">
-                  {{ mfaStatusCopy }}
-                </p>
+                <Flex column gap="xxs" :y-center="isBelowSmall" :expand="isBelowSmall">
+                  <Flex gap="s" y-center wrap>
+                    <strong>{{ hasVerifiedTotp ? 'Enabled' : 'Not Enabled' }}</strong>
+                    <TinyBadge :variant="mfaStatusBadge.variant">
+                      <Icon :class="`text-color-${mfaStatusBadge.variant === 'success' ? 'accent' : 'red'}`" :name="mfaStatusIcon" />
+                      {{ mfaStatusBadge.label }}
+                    </TinyBadge>
+                  </Flex>
+                  <p :class="`text-m text-color-lighter ${isBelowSmall ? 'text-center' : ''}`">
+                    {{ mfaStatusCopy }}
+                  </p>
+                </Flex>
               </Flex>
               <Button
+                :expand="isBelowSmall"
                 variant="accent"
                 @click="totpSetup.naming = true"
               >
@@ -507,14 +511,11 @@ onBeforeMount(() => {
                   class="device-row"
                   x-between
                   y-center
-                  wrap
                 >
-                  <Flex column gap="xs" class="device-meta">
+                  <Flex gap="xs" expand column>
                     <strong class="text-s">{{ factorDisplayName(factor, index) }}</strong>
                     <Flex gap="xs" y-center>
                       <span class="text-xs text-color-lighter">{{ factorTypeLabel(factor.factor_type) }}</span>
-                      <span class="text-xs text-color-lighter">•</span>
-                      <span class="text-xs text-color-lighter">{{ factor.status === 'verified' ? 'Verified' : 'Pending verification' }}</span>
                       <template v-if="factor.created_at">
                         <span class="text-xs text-color-lighter">•</span>
                         <span class="text-xs text-color-lighter">Added {{ formatFactorDate(factor.created_at) }}</span>
@@ -522,7 +523,7 @@ onBeforeMount(() => {
                     </Flex>
                   </Flex>
 
-                  <Flex gap="s" y-center :column="isBelowSmall" :row="!isBelowSmall" :expand="isBelowSmall">
+                  <Flex gap="s" y-center :row="!isBelowSmall">
                     <TinyBadge :variant="factor.status === 'verified' ? 'success' : 'warning'">
                       {{ factor.status === 'verified' ? 'Verified' : 'Pending' }}
                     </TinyBadge>
@@ -602,8 +603,8 @@ onBeforeMount(() => {
 
     <Flex v-else gap="xl" column y-start>
       <!-- QR code & secret  -->
-      <Flex column gap="s" expand>
-        <p class="text-m">
+      <Flex column gap="s" expand y-center>
+        <p class="text-m text-center">
           1. Scan the QR code or enter this key manually in your authenticator app.
         </p>
         <Card class="card-bg">
@@ -611,13 +612,13 @@ onBeforeMount(() => {
             <div class="qr-wrapper">
               <img :src="totpSetup.qrCode" alt="Authenticator QR code">
             </div>
-            <div class="secret-block w-100">
+            <div class="secret-block">
               <template v-if="totpSetup.secret">
                 <template
                   v-for="(letter, index) of totpSetup.secret.split('')"
                   :key="letter + index"
                 >
-                  <span :class="{ 'text-color-blue': !Number.isNaN(Number(letter)) }">
+                  <span :class="{ 'text-color-accent': !Number.isNaN(Number(letter)) }">
                     {{ letter }}
                   </span>
                   <span v-if="(index + 1) % 6 === 0">&nbsp;</span>
@@ -636,8 +637,8 @@ onBeforeMount(() => {
       </Flex>
 
       <!-- Verification -->
-      <Flex column gap="s" expand>
-        <p class="text-m">
+      <Flex column gap="s" expand y-center>
+        <p class="text-m text-center">
           2. Enter the 6-digit code below to confirm and finish the setup.
         </p>
         <OTP
@@ -652,11 +653,11 @@ onBeforeMount(() => {
       </Flex>
     </Flex>
     <template v-if="!totpSetup.naming" #footer>
-      <Flex gap="s" :column="isBelowSmall" :row="!isBelowSmall" :expand="isBelowSmall">
-        <Button :expand="isBelowSmall" variant="accent" :loading="totpSetup.verifying" @click="verifyTotpEnrollment">
+      <Flex gap="s" :column="isBelowSmall" :row="!isBelowSmall" expand y-center>
+        <Button expand variant="accent" :loading="totpSetup.verifying" @click="verifyTotpEnrollment">
           Verify Code
         </Button>
-        <Button :expand="isBelowSmall" :disabled="totpSetup.verifying" @click="cancelTotpEnrollment">
+        <Button expand :disabled="totpSetup.verifying" @click="cancelTotpEnrollment">
           Cancel
         </Button>
       </Flex>
@@ -682,11 +683,6 @@ onBeforeMount(() => {
   border-radius: var(--border-radius-l);
   border: 1px solid var(--color-border);
   background: var(--color-bg-subtle);
-}
-
-.security-panel__content {
-  flex: 1;
-  min-width: 240px;
 }
 
 .security-panel__icon {
@@ -727,10 +723,6 @@ onBeforeMount(() => {
   background: var(--color-bg);
 }
 
-.device-meta {
-  min-width: 220px;
-}
-
 .mfa-benefits {
   padding: var(--space-m) var(--space-l);
   border-radius: var(--border-radius-m);
@@ -762,7 +754,11 @@ onBeforeMount(() => {
   border: 1px dashed var(--color-border);
   border-radius: var(--border-radius-s);
   word-break: break-all;
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
   width: 100%;
   position: relative;
 

@@ -407,7 +407,7 @@ useSeoMeta({
   ogDescription: seoDescription,
 })
 
-defineOgImageComponent('Discussion', {
+defineOgImage('Discussion', {
   identifier,
 })
 

@@ -47,7 +47,7 @@ useSeoMeta({
   ogTitle: 'Forum Statistics',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Forum Statistics',
   description: 'View statistics and activity metrics for the Hivecom community forum.',
 })

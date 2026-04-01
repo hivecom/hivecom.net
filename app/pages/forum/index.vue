@@ -38,7 +38,7 @@ useSeoMeta({
   ogDescription: 'Browse and participate in discussions across the Hivecom community forum.',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Forum',
   description: 'Browse and participate in discussions across the Hivecom community forum.',
 })

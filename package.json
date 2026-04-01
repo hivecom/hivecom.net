@@ -33,6 +33,7 @@
     "@nuxtjs/supabase": "^2.0.4",
     "@pinia/nuxt": "^0.11.3",
     "@resvg/resvg-js": "^2.6.2",
+    "@takumi-rs/core": "^1.0.0-rc.12",
     "@tiptap/extension-details": "^3.21.0",
     "@tiptap/extension-file-handler": "^3.21.0",
     "@tiptap/extension-image": "^3.21.0",

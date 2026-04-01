@@ -23,7 +23,7 @@ useSeoMeta({
   ogDescription: seoDescription,
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: computed(() => seoTitle.value),
   description: computed(() => seoDescription.value),
 })

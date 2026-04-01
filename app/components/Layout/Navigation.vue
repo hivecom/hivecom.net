@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
+import { useMfaStatus } from '@/composables/useMfaStatus'
 import { navigationLinks } from '@/config/navigation'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import NavEventBadge from './NavEventBadge.vue'
@@ -47,6 +48,12 @@ onBeforeMount(async () => {
 // Track an animated background blob when user is hovering over the navbar links
 const navbarLinksRef = useTemplateRef('navbarLinksRef')
 const { elementX, isOutside } = useMouseInElement(navbarLinksRef)
+
+// Hide user section when MFA challenge is in progress
+const mfaCache = useMfaStatus()
+const needsMfaChallenge = computed(
+  () => mfaCache.value.nextLevel === 'aal2' && mfaCache.value.currentLevel !== 'aal2',
+)
 
 const hoveredElement = ref<HTMLElement | null>(null)
 
@@ -158,7 +165,7 @@ function updateHoveredElement(event: MouseEvent) {
           </div>
         </div>
 
-        <div v-else-if="user" class="navigation__user">
+        <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
           <NotificationSheet />
           <UserSheet v-if="isMobile" />
           <UserDropdown v-else />

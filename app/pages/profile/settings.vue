@@ -8,7 +8,10 @@ import ConnectionsCard from '@/components/Settings/ConnectionsCard.vue'
 import DeleteAccountCard from '@/components/Settings/DeleteAccountCard.vue'
 import GeneralUserSettings from '@/components/Settings/GeneralUserSettings.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { scrollToId } from '@/lib/utils/common'
+
+const isMobile = useBreakpoint('<s')
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -130,7 +133,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page container container-m">
+  <div :class="`page ${isMobile ? '' : 'container container-m'}` ">
     <template v-if="loading && !authReady">
       <div class="loading-container">
         <Skeleton height="2.5rem" width="60%" style="margin-bottom: var(--space-l);" />
