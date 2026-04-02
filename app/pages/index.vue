@@ -65,14 +65,15 @@ onMounted(async () => {
   loading.value = true
 
   try {
-    // Prefer metrics snapshots from storage with DB fallback
     const metricsSnapshot = await fetchMetrics()
-    const users = metricsSnapshot.totals.users
-    communityStats.value.membersAccurate = users > 0
-    communityStats.value.members = users > 0 ? users : 100
-    communityStats.value.gameservers = metricsSnapshot.totals.gameservers
-    communityStats.value.projects = metricsSnapshot.totals.projects
-    communityStats.value.forumPosts = metricsSnapshot.totals.forumPosts
+    if (metricsSnapshot != null) {
+      const users = metricsSnapshot.totals.users
+      communityStats.value.membersAccurate = users > 0
+      communityStats.value.members = users > 0 ? users : 100
+      communityStats.value.gameservers = metricsSnapshot.totals.gameservers
+      communityStats.value.projects = metricsSnapshot.totals.projects
+      communityStats.value.forumPosts = metricsSnapshot.totals.forumPosts
+    }
   }
   catch (error: unknown) {
     console.error('Error fetching data:', error)
