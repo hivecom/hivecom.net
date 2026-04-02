@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
-import { Badge, Button, Carousel, Flex, Sheet, Skeleton } from '@dolanske/vui'
+import type { UseForumActivityFeedPaginatedOptions } from '@/composables/useForumActivityFeedPaginated'
+import { Badge, Button, Carousel, Flex, Sheet, Skeleton, Spinner } from '@dolanske/vui'
 import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
+import { useBulkDataUser } from '@/composables/useDataUser'
+import { useForumActivityFeedPaginated } from '@/composables/useForumActivityFeedPaginated'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
@@ -10,14 +13,27 @@ const props = defineProps<{
   postSinceYesterday: number
   lastVisitedAt: string | null
   mentionLookup: Record<string, string>
+  // Pass-through options for the paginated sheet feed
+  feedOptions: Omit<UseForumActivityFeedPaginatedOptions, never>
 }>()
 
+const user = useSupabaseUser()
+
 const sheetOpen = ref(false)
+const sentinel = ref<HTMLElement | null>(null)
+
+// Close sheet if user signs out mid-session
+watch(user, (u) => {
+  if (u == null)
+    sheetOpen.value = false
+})
 
 const isMobile = useBreakpoint('<s')
 
-// Index of the first item that is older than the last visit - the divider
-// renders between index (splitIndex - 1) and index splitIndex.
+// ── Carousel divider ───────────────────────────────────────────────────────
+
+// Index of the first item older than the last visit - divider renders between
+// index (splitIndex - 1) and index splitIndex.
 const splitIndex = computed<number | null>(() => {
   if (props.lastVisitedAt == null || props.loading)
     return null
@@ -31,10 +47,90 @@ const splitIndex = computed<number | null>(() => {
   return idx
 })
 
-const newSinceLastVisit = computed<number>(() => {
-  if (splitIndex.value == null)
-    return 0
-  return splitIndex.value
+const newSinceLastVisit = computed<number>(() => splitIndex.value ?? 0)
+
+// ── Paginated sheet feed ───────────────────────────────────────────────────
+
+const {
+  items: sheetItems,
+  mentionIds: sheetMentionIds,
+  authorIds: sheetAuthorIds,
+  loading: sheetLoading,
+  loadingMore: sheetLoadingMore,
+  exhausted: sheetExhausted,
+  load: loadSheet,
+  loadMore,
+} = useForumActivityFeedPaginated(props.feedOptions)
+
+// Divider index in the sheet feed - same logic as carousel
+const sheetSplitIndex = computed<number | null>(() => {
+  if (props.lastVisitedAt == null || sheetLoading.value)
+    return null
+  const visitedAt = new Date(props.lastVisitedAt).getTime()
+  const idx = sheetItems.value.findIndex(
+    item => new Date(item.timestampRaw).getTime() <= visitedAt,
+  )
+  if (idx <= 0 || idx >= sheetItems.value.length)
+    return null
+  return idx
+})
+
+// Pre-warm mention and author caches for sheet items
+const sheetMentionIdsRef = computed(() => sheetMentionIds.value)
+const { users: sheetMentionUsers } = useBulkDataUser(sheetMentionIdsRef, {
+  includeAvatar: false,
+  includeRole: false,
+})
+useBulkDataUser(sheetAuthorIds, {
+  includeAvatar: true,
+  includeRole: true,
+})
+
+const sheetMentionLookup = computed<Record<string, string>>(() => {
+  const lookup: Record<string, string> = {}
+  for (const [id, u] of sheetMentionUsers.value.entries())
+    lookup[id] = u.username ?? id
+  return lookup
+})
+
+// Also extract mentions from props.mentionLookup for items that are in both
+// feeds (carousel items reuse the parent's mention lookup)
+const combinedMentionLookup = computed<Record<string, string>>(() => ({
+  ...props.mentionLookup,
+  ...sheetMentionLookup.value,
+}))
+
+// Load sheet data on first open, set up IntersectionObserver for infinite scroll
+let observer: IntersectionObserver | null = null
+
+watch(sheetOpen, async (open) => {
+  if (!open) {
+    observer?.disconnect()
+    observer = null
+    return
+  }
+
+  // First open - fetch initial page
+  if (sheetItems.value.length === 0)
+    await loadSheet()
+
+  // Set up sentinel observer after DOM settles
+  await nextTick()
+  if (sentinel.value == null)
+    return
+
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0]?.isIntersecting && !sheetLoadingMore.value && !sheetExhausted.value)
+        void loadMore()
+    },
+    { threshold: 0.1 },
+  )
+  observer.observe(sentinel.value)
+})
+
+onUnmounted(() => {
+  observer?.disconnect()
 })
 </script>
 
@@ -45,14 +141,14 @@ const newSinceLastVisit = computed<number>(() => {
         Latest updates
       </h5>
       <Badge v-if="newSinceLastVisit > 0" variant="accent">
-        {{ newSinceLastVisit }} since last visit
+        {{ newSinceLastVisit }} new
       </Badge>
       <Badge v-if="props.postSinceYesterday" variant="neutral">
         {{ props.postSinceYesterday }} {{ isMobile ? null : 'today' }}
       </Badge>
 
       <div class="flex-1" />
-      <Button size="s" outline @click="sheetOpen = !sheetOpen">
+      <Button v-if="user" size="s" outline @click="sheetOpen = !sheetOpen">
         See more
         <template #end>
           <Icon name="ph:caret-up-down" />
@@ -81,7 +177,7 @@ const newSinceLastVisit = computed<number>(() => {
       <template v-else>
         <template v-for="(post, index) in props.latestPosts.slice(0, 16)" :key="post.id">
           <div v-if="splitIndex !== null && index === splitIndex" class="forum__latest-divider">
-            <span class="text-color-accent">Last visited</span>
+            <span>Last visited</span>
           </div>
           <ForumLatestItem
             :post="post"
@@ -91,7 +187,7 @@ const newSinceLastVisit = computed<number>(() => {
       </template>
     </Carousel>
 
-    <Sheet :open="sheetOpen" :size="456" @close="sheetOpen = false">
+    <Sheet v-if="user" :open="sheetOpen" :size="456" @close="sheetOpen = false">
       <template #header>
         <h4 class="pt-xxs">
           Latest updates
@@ -99,15 +195,31 @@ const newSinceLastVisit = computed<number>(() => {
       </template>
 
       <Flex column gap="m">
-        <template v-for="(post, index) in props.latestPosts.slice(0, 65)" :key="post.id">
-          <div v-if="splitIndex !== null && index === splitIndex" class="forum__latest-divider forum__latest-divider--sheet">
-            <span class="text-color-accent">Last visited</span>
+        <template v-if="sheetLoading">
+          <Skeleton v-for="i in 6" :key="i" width="100%" height="96px" />
+        </template>
+
+        <template v-else>
+          <template v-for="(post, index) in sheetItems" :key="post.id">
+            <div v-if="sheetSplitIndex !== null && index === sheetSplitIndex" class="forum__latest-divider forum__latest-divider--sheet">
+              <span>Last visited</span>
+            </div>
+            <ForumLatestItem
+              :post="post"
+              :mention-lookup="combinedMentionLookup"
+              expand
+            />
+          </template>
+
+          <!-- Infinite scroll sentinel -->
+          <div ref="sentinel" class="forum__latest-sentinel">
+            <Flex v-if="sheetLoadingMore" expand x-center>
+              <Spinner size="l" />
+            </Flex>
+            <span v-else-if="sheetExhausted" class="forum__latest-exhausted">
+              All caught up
+            </span>
           </div>
-          <ForumLatestItem
-            :post="post"
-            :mention-lookup="props.mentionLookup"
-            expand
-          />
         </template>
       </Flex>
     </Sheet>
@@ -148,8 +260,8 @@ const newSinceLastVisit = computed<number>(() => {
   align-self: stretch;
   position: relative;
   flex-shrink: 0;
-  width: 1px;
-  background-color: var(--color-accent);
+  width: 2px;
+  background-color: var(--color-border-strong);
   border-radius: 999px;
 
   span {
@@ -168,7 +280,7 @@ const newSinceLastVisit = computed<number>(() => {
 
   &--sheet {
     width: 100%;
-    height: 1px;
+    height: 2px;
     flex-direction: row;
     align-self: unset;
 
@@ -177,5 +289,19 @@ const newSinceLastVisit = computed<number>(() => {
       background-color: var(--color-bg-medium);
     }
   }
+}
+
+.forum__latest-sentinel {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-m) 0;
+  min-height: 48px;
+}
+
+.forum__latest-exhausted {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-lighter);
 }
 </style>

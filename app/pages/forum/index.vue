@@ -231,6 +231,14 @@ watch(() => route.fullPath, () => fetchUserActivity(userId.value))
 // recordFeedVisit() reads the stored value, updates it to now, and returns the old one.
 const lastFeedVisitedAt = ref<string | null>(null)
 
+const feedOptions = computed(() => ({
+  settings,
+  discussionLookup,
+  visibleDiscussionIds,
+  hiddenTopicIds,
+  onTopicClick: (id: string) => setActiveTopicById(id),
+}))
+
 onMounted(() => {
   lastFeedVisitedAt.value = forumUnread.recordFeedVisit()
 })
@@ -689,6 +697,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         :post-since-yesterday="postSinceYesterday"
         :last-visited-at="lastFeedVisitedAt"
         :mention-lookup="mentionLookup"
+        :feed-options="feedOptions"
       />
 
       <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xxs' : 'xs'">
@@ -1085,11 +1094,18 @@ h5 {
       }
     }
 
+    .forum__category-post--meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xxs);
+    }
+
     .forum__category-post--meta span {
       font-size: var(--font-size-s);
       color: var(--color-text-light);
       text-align: center;
-      display: block;
+      white-space: nowrap;
     }
   }
 
@@ -1163,7 +1179,6 @@ h5 {
 
   .forum__category-post .forum__category-post--item .forum__category-post--meta {
     span {
-      white-space: nowrap;
       font-size: var(--font-size-xs);
     }
 

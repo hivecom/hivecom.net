@@ -10,6 +10,7 @@ import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
@@ -312,7 +313,7 @@ const editedAtFormatted = computed(() => {
           </p>
         </Flex>
         <p class="author-meta mt-xs text-color-lightest">
-          {{ discussionCount }} {{ discussionCount === 1 ? 'discussion' : 'discussions' }} / {{ replyCount }} {{ replyCount === 1 ? 'reply' : 'replies' }}
+          <CountDisplay :value="discussionCount ?? 0" /> {{ (discussionCount ?? 0) === 1 ? 'discussion' : 'discussions' }} / <CountDisplay :value="replyCount ?? 0" /> {{ (replyCount ?? 0) === 1 ? 'reply' : 'replies' }}
         </p>
         <Divider v-if="user?.introduction || user?.created_at || country" />
         <p v-if="user?.introduction" class="text-s text-center">
@@ -508,7 +509,7 @@ const editedAtFormatted = computed(() => {
               </template>
             </span>
             <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
-              {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+              <CountDisplay :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
             </button>
           </p>
 
@@ -522,7 +523,7 @@ const editedAtFormatted = computed(() => {
       <!-- Mobile footer: reply count + reactions (only rendered on mobile when there's content) -->
       <div v-if="!data.is_deleted && isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
         <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
-          {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+          <CountDisplay :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
         </button>
         <!-- Empty div makes sure reactions are forced to flex end -->
         <div v-else />

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
-import { Flex } from '@dolanske/vui'
+import { Flex, Tooltip } from '@dolanske/vui'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
 const props = defineProps<{
@@ -38,7 +39,12 @@ function handleClick(event: MouseEvent) {
           </template>
         </span>
       </Flex>
-      <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
+      <Tooltip placement="top">
+        <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
+        <template #tooltip>
+          <TimestampDate :date="post.timestampRaw" :tooltip="false" format="YYYY-MM-DD HH:mm:ss" size="xs" />
+        </template>
+      </Tooltip>
     </Flex>
     <strong class="forum__latest-title">
       <MarkdownPreview v-if="post.type === 'Reply'" :markdown="post.title" :mention-lookup="props.mentionLookup" />

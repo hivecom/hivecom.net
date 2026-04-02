@@ -1826,6 +1826,20 @@ export interface Database {
           slug: string
         }[]
       }
+      get_forum_activity_feed: {
+        Args: { p_limit?: number, p_offset?: number }
+        Returns: {
+          body: string
+          created_at: string
+          created_by: string
+          discussion_id: string
+          id: string
+          is_nsfw: boolean
+          is_offtopic: boolean
+          item_type: string
+          title: string
+        }[]
+      }
       get_private_config: { Args: { config_key: string }, Returns: Json }
       get_user_emails: {
         Args: never
@@ -1844,10 +1858,12 @@ export interface Database {
         Args: { permission_name: Database['public']['Enums']['app_permission'] }
         Returns: boolean
       }
+      has_verified_mfa: { Args: never, Returns: boolean }
       increment_discussion_view_count: {
         Args: { target_discussion_id: string }
         Returns: undefined
       }
+      is_not_banned: { Args: never, Returns: boolean }
       is_owner: { Args: { record_user_id: string }, Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }, Returns: boolean }
       normalize_mentions: { Args: { input_text: string }, Returns: string }

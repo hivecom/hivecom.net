@@ -5,6 +5,7 @@ import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dol
 import { capitalize, computed, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
@@ -296,7 +297,7 @@ function clearFilters() {
                 {{ capitalize(referendum.Status) }}
               </Badge>
             </Table.Cell>
-            <Table.Cell>{{ referendum['Vote Count'] }}</Table.Cell>
+            <Table.Cell><CountDisplay :value="referendum['Vote Count']" /></Table.Cell>
             <Table.Cell>
               <Badge size="xs" :variant="referendum.Visibility === 'Public' ? 'success' : 'neutral'">
                 <Icon :name="referendum.Visibility === 'Public' ? 'ph:globe' : 'ph:lock'" />

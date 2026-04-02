@@ -11,6 +11,7 @@ import DiscussionDetails from '@/components/Admin/Discussions/DiscussionDetails.
 import DiscussionEditSheet from '@/components/Admin/Discussions/DiscussionEditSheet.vue'
 import DiscussionFilters from '@/components/Admin/Discussions/DiscussionFilters.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { getUserActivityStatus } from '@/lib/lastSeen'
@@ -529,9 +530,9 @@ function handleDiscussionDeleted(discussionId: string) {
                 <span v-else :class="{ 'text-color-red': getContextType(discussion._original as QueryDiscussion) === 'other' }">{{ discussion.Context }}</span>
               </Table.Cell>
 
-              <Table.Cell>{{ discussion.Replies }}</Table.Cell>
+              <Table.Cell><CountDisplay :value="discussion.Replies" /></Table.Cell>
 
-              <Table.Cell>{{ discussion.Views }}</Table.Cell>
+              <Table.Cell><CountDisplay :value="discussion.Views" /></Table.Cell>
 
               <Table.Cell>
                 <Flex column :gap="0">

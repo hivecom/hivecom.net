@@ -3,6 +3,8 @@ import type { Tables } from '@/types/database.overrides'
 import { Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useTopicIcon } from '@/composables/useTopicIcon'
 import BadgeCircle from '../Shared/BadgeCircle.vue'
 import ForumItemActions from './ForumItemActions.vue'
@@ -92,13 +94,18 @@ const { iconUrl } = useTopicIcon(topicId)
       </div>
 
       <div class="forum__category-post--meta">
-        <span>{{ discussionCount || 0 }} / {{ replyCount ?? 0 }}</span>
+        <CountDisplay :value="discussionCount || 0" /> <span>/</span> <CountDisplay :value="replyCount ?? 0" />
       </div>
       <div class="forum__category-post--meta">
-        <span>{{ viewCount ?? 0 }}</span>
+        <CountDisplay :value="viewCount ?? 0" />
       </div>
       <div class="forum__category-post--meta">
-        <span>{{ dayjs(lastActivity ?? data.modified_at).fromNow() }}</span>
+        <Tooltip placement="top">
+          <span>{{ dayjs(lastActivity ?? data.modified_at).fromNow() }}</span>
+          <template #tooltip>
+            <TimestampDate :date="lastActivity ?? data.modified_at" :tooltip="false" format="YYYY-MM-DD HH:mm:ss" size="xs" />
+          </template>
+        </Tooltip>
       </div>
 
       <ForumItemActions table="discussion_topics" :data @update="emit('update', $event)" @remove="emit('remove', $event)" />

@@ -9,6 +9,7 @@ import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
@@ -270,7 +271,7 @@ const { displayReactions, toggleReaction } = useReactions({
           </template>
         </Tooltip>
         <button v-if="threadReplyCount && threadReplyCount > 0 && !isMobile" class="discussion-comment__reply-count" @click.stop="emit('openReplies')">
-          {{ threadReplyCount }} {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+          <CountDisplay :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
         </button>
 
         <TinyBadge v-if="isPinned" variant="accent" style="margin-right:2px" filled>

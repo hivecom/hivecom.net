@@ -10,6 +10,7 @@ import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
 import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
@@ -618,23 +619,14 @@ function revealNsfw() {
               <Icon name="ph:warning" class="text-color-red" />
               NSFW
             </Badge>
-            <Tooltip>
-              <span>
-                <Icon :size="18" name="ph:eye" />
-                {{ post.view_count + 1 }}</span>
-              <template #tooltip>
-                {{ post.view_count + 1 }} views
-              </template>
-            </Tooltip>
-            <Tooltip>
-              <span>
-                <Icon :size="18" name="ph:chat-dots" />
-                {{ post.reply_count }}
-              </span>
-              <template #tooltip>
-                {{ post.reply_count }} replies
-              </template>
-            </Tooltip>
+            <Flex y-center gap="xxs">
+              <Icon :size="18" name="ph:eye" />
+              <CountDisplay :value="post.view_count + 1" class="text-s text-color-lighter" />
+            </Flex>
+            <Flex y-center gap="xxs">
+              <Icon :size="18" name="ph:chat-dots" />
+              <CountDisplay :value="post.reply_count" class="text-s text-color-lighter" />
+            </Flex>
 
             <Flex gap="xxs">
               <Button
