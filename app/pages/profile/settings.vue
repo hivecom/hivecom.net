@@ -8,10 +8,12 @@ import ConnectionsCard from '@/components/Settings/ConnectionsCard.vue'
 import DeleteAccountCard from '@/components/Settings/DeleteAccountCard.vue'
 import GeneralUserSettings from '@/components/Settings/GeneralUserSettings.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
+import PasskeyCard from '@/components/Settings/PasskeyCard.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { scrollToId } from '@/lib/utils/common'
 
 const isMobile = useBreakpoint('<s')
+const isDev = import.meta.dev
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -191,6 +193,7 @@ onMounted(() => {
             <Flex column gap="xl">
               <ChangePasswordCard />
               <MfaCard />
+              <PasskeyCard v-if="isDev" />
             </Flex>
           </div>
           <div id="account" class="w-100">

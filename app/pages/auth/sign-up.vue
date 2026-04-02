@@ -12,7 +12,7 @@ const discordLoading = ref(false)
 const googleLoading = ref(false)
 const showEmailNotice = ref(false)
 const isBelowS = useBreakpoint('<s')
-const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(720px, 96vh)'))
+const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(820px, 96vh)'))
 const metaballWidth = computed(() => (isBelowS.value ? '100%' : 'min(520px, 96vw)'))
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -109,7 +109,7 @@ async function signUpWithGoogle() {
 
 <template>
   <Flex y-center x-center class="sign-in-page" column expand>
-    <MetaballContainer :width="metaballWidth" :height="metaballHeight" min-height="520px">
+    <MetaballContainer :width="metaballWidth" :height="metaballHeight" min-height="520px" :absolute="isBelowS">
       <Card class="login-card" separators>
         <template #header>
           <h4>Sign up</h4>

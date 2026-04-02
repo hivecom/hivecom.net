@@ -5,6 +5,7 @@ import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useMfaStatus } from '@/composables/useMfaStatus'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { beginPasskeyAuthentication, completePasskeyAuthentication, PASSKEY_NOT_AVAILABLE } from '@/lib/passkey'
 import { normalizeInternalRedirect } from '@/lib/utils/common'
 
 import '@/assets/elements/auth.scss'
@@ -17,6 +18,7 @@ const supabase = useSupabaseClient()
 const loading = ref(false)
 const discordLoading = ref(false)
 const googleLoading = ref(false)
+const passkeyLoading = ref(false)
 const email = ref('')
 const password = ref('')
 const errorMessage = ref('')
@@ -55,7 +57,8 @@ const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?
 const requiresMfaChallenge = computed(() => Boolean(pendingMfa.factorId))
 const mfaPromptCopy = 'Finish verification to sign-in.'
 const isBelowS = useBreakpoint('<s')
-const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(720px, 96vh)'))
+const isDev = import.meta.dev
+const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(820px, 96vh)'))
 const metaballWidth = computed(() => (isBelowS.value ? '100%' : 'min(520px, 96vw)'))
 const postSignInRedirect = computed(() => normalizeInternalRedirect(route.query.redirect))
 const resolvedPostSignInRedirect = computed(() => postSignInRedirect.value ?? '/profile')
@@ -235,6 +238,46 @@ async function signInWithGoogle() {
   }
   finally {
     googleLoading.value = false
+  }
+}
+
+async function signInWithPasskey() {
+  errorMessage.value = ''
+  passkeyLoading.value = true
+
+  try {
+    // TODO: read from useRuntimeConfig() once wiring up real fetch calls
+    const projectUrl = ''
+
+    // Step 1: get authentication options from server (no email needed - discoverable credentials)
+    const options = await beginPasskeyAuthentication(projectUrl)
+
+    // Step 2: browser WebAuthn prompt (requires @simplewebauthn/browser)
+    // TODO: import { startAuthentication } from '@simplewebauthn/browser'
+    // const credential = await startAuthentication(options)
+    const credential = options // placeholder - remove when wiring up
+
+    // Step 3: complete authentication on server, get session
+    const session = await completePasskeyAuthentication(projectUrl, credential)
+
+    // Step 4: set session in Supabase client and navigate
+    await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    })
+
+    navigateTo(resolvedPostSignInRedirect.value)
+  }
+  catch (err) {
+    if (err === PASSKEY_NOT_AVAILABLE) {
+      errorMessage.value = 'Passkey sign-in is not yet available on the hosted project.'
+    }
+    else {
+      errorMessage.value = err instanceof Error ? err.message : 'Passkey sign-in failed.'
+    }
+  }
+  finally {
+    passkeyLoading.value = false
   }
 }
 
@@ -488,7 +531,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Flex y-center x-center class="sign-in-page" column expand>
-    <MetaballContainer :width="metaballWidth" :height="metaballHeight" min-height="520px">
+    <MetaballContainer :width="metaballWidth" :height="metaballHeight" min-height="520px" :absolute="isBelowS">
       <Card class="login-card" separators>
         <template #header>
           <h4>Sign in</h4>
@@ -571,6 +614,12 @@ onBeforeUnmount(() => {
                 <Flex y-center gap="s">
                   <Icon name="ph:google-logo" />
                   Continue with Google
+                </Flex>
+              </Button>
+              <Button v-if="isDev" variant="gray" :loading="passkeyLoading" expand @click="signInWithPasskey">
+                <Flex y-center gap="s" expand>
+                  <Icon name="ph:fingerprint" />
+                  Continue with passkey
                 </Flex>
               </Button>
             </Flex>
