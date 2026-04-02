@@ -12,6 +12,7 @@ interface DiscussionSeenState {
 interface ForumUnreadStorage {
   topics: Record<string, TopicSeenState>
   discussions: Record<string, DiscussionSeenState>
+  feedVisitedAt: string | null
 }
 
 const STORAGE_KEY = 'forum-unread'
@@ -28,17 +29,17 @@ const STORAGE_KEY = 'forum-unread'
 export function useDataForumUnread() {
   const storage = useStorage<ForumUnreadStorage>(
     STORAGE_KEY,
-    { topics: {}, discussions: {} },
+    { topics: {}, discussions: {}, feedVisitedAt: null },
     typeof window !== 'undefined' ? window.localStorage : undefined,
     {
       mergeDefaults: true,
       serializer: {
         read: (v) => {
           try {
-            return v ? (JSON.parse(v) as ForumUnreadStorage) : { topics: {}, discussions: {} }
+            return v ? (JSON.parse(v) as ForumUnreadStorage) : { topics: {}, discussions: {}, feedVisitedAt: null }
           }
           catch {
-            return { topics: {}, discussions: {} }
+            return { topics: {}, discussions: {}, feedVisitedAt: null }
           }
         },
         write: v => JSON.stringify(v),
@@ -153,8 +154,19 @@ export function useDataForumUnread() {
     }
 
     if (changed) {
-      storage.value = { topics: updatedTopics, discussions: updatedDiscussions }
+      storage.value = { ...storage.value, topics: updatedTopics, discussions: updatedDiscussions }
     }
+  }
+
+  /**
+   * Records the current time as the feed visit timestamp and returns the
+   * previous value. Call this once on mount (client-side only) so the
+   * "last visited" divider in the activity feed reflects the prior session.
+   */
+  function recordFeedVisit(): string | null {
+    const previous = storage.value.feedVisitedAt
+    storage.value = { ...storage.value, feedVisitedAt: new Date().toISOString() }
+    return previous
   }
 
   return {
@@ -164,5 +176,6 @@ export function useDataForumUnread() {
     markDiscussionSeen,
     bumpTopicReplySeen,
     initializeTopics,
+    recordFeedVisit,
   }
 }

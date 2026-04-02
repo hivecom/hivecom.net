@@ -8,12 +8,34 @@ const props = defineProps<{
   loading: boolean
   latestPosts: ActivityItem[]
   postSinceYesterday: number
+  lastVisitedAt: string | null
   mentionLookup: Record<string, string>
 }>()
 
 const sheetOpen = ref(false)
 
 const isMobile = useBreakpoint('<s')
+
+// Index of the first item that is older than the last visit - the divider
+// renders between index (splitIndex - 1) and index splitIndex.
+const splitIndex = computed<number | null>(() => {
+  if (props.lastVisitedAt == null || props.loading)
+    return null
+  const visitedAt = new Date(props.lastVisitedAt).getTime()
+  const idx = props.latestPosts.findIndex(
+    post => new Date(post.timestampRaw).getTime() <= visitedAt,
+  )
+  // No divider if everything is new or nothing is new
+  if (idx <= 0 || idx >= props.latestPosts.length)
+    return null
+  return idx
+})
+
+const newSinceLastVisit = computed<number>(() => {
+  if (splitIndex.value == null)
+    return 0
+  return splitIndex.value
+})
 </script>
 
 <template>
@@ -22,7 +44,10 @@ const isMobile = useBreakpoint('<s')
       <h5>
         Latest updates
       </h5>
-      <Badge v-if="props.postSinceYesterday" variant="accent">
+      <Badge v-if="newSinceLastVisit > 0" variant="accent">
+        {{ newSinceLastVisit }} since last visit
+      </Badge>
+      <Badge v-if="props.postSinceYesterday" variant="neutral">
         {{ props.postSinceYesterday }} {{ isMobile ? null : 'today' }}
       </Badge>
 
@@ -54,12 +79,15 @@ const isMobile = useBreakpoint('<s')
       </template>
 
       <template v-else>
-        <ForumLatestItem
-          v-for="post in props.latestPosts.slice(0, 16)"
-          :key="post.id"
-          :post="post"
-          :mention-lookup="props.mentionLookup"
-        />
+        <template v-for="(post, index) in props.latestPosts.slice(0, 16)" :key="post.id">
+          <div v-if="splitIndex !== null && index === splitIndex" class="forum__latest-divider">
+            <span class="text-color-accent">Last visited</span>
+          </div>
+          <ForumLatestItem
+            :post="post"
+            :mention-lookup="props.mentionLookup"
+          />
+        </template>
       </template>
     </Carousel>
 
@@ -71,13 +99,16 @@ const isMobile = useBreakpoint('<s')
       </template>
 
       <Flex column gap="m">
-        <ForumLatestItem
-          v-for="post in props.latestPosts.slice(0, 65)"
-          :key="post.id"
-          :post="post"
-          :mention-lookup="props.mentionLookup"
-          expand
-        />
+        <template v-for="(post, index) in props.latestPosts.slice(0, 65)" :key="post.id">
+          <div v-if="splitIndex !== null && index === splitIndex" class="forum__latest-divider forum__latest-divider--sheet">
+            <span class="text-color-accent">Last visited</span>
+          </div>
+          <ForumLatestItem
+            :post="post"
+            :mention-lookup="props.mentionLookup"
+            expand
+          />
+        </template>
       </Flex>
     </Sheet>
   </section>
@@ -107,6 +138,44 @@ const isMobile = useBreakpoint('<s')
 @media screen and (max-width: 480px) {
   .forum__latest-skeleton {
     min-width: 256px;
+  }
+}
+
+.forum__latest-divider {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-self: stretch;
+  position: relative;
+  flex-shrink: 0;
+  width: 1px;
+  background-color: var(--color-accent);
+  border-radius: 999px;
+
+  span {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-90deg);
+    white-space: nowrap;
+    font-size: var(--font-size-xxs);
+    color: var(--color-text-lighter);
+    background-color: var(--color-bg);
+    padding: 0 var(--space-xxs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &--sheet {
+    width: 100%;
+    height: 1px;
+    flex-direction: row;
+    align-self: unset;
+
+    span {
+      transform: translate(-50%, -50%);
+      background-color: var(--color-bg-medium);
+    }
   }
 }
 </style>

@@ -227,6 +227,14 @@ const {
 
 watch(() => route.fullPath, () => fetchUserActivity(userId.value))
 
+// Capture the timestamp from the *previous* visit before we update it.
+// recordFeedVisit() reads the stored value, updates it to now, and returns the old one.
+const lastFeedVisitedAt = ref<string | null>(null)
+
+onMounted(() => {
+  lastFeedVisitedAt.value = forumUnread.recordFeedVisit()
+})
+
 const {
   latestPosts,
   latestPostMentionIds,
@@ -679,6 +687,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         :loading="loading"
         :latest-posts="latestPosts"
         :post-since-yesterday="postSinceYesterday"
+        :last-visited-at="lastFeedVisitedAt"
         :mention-lookup="mentionLookup"
       />
 
