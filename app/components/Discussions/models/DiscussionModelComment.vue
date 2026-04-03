@@ -399,6 +399,7 @@ const { displayReactions, toggleReaction } = useReactions({
         :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"
         :media-bucket-id="FORUMS_BUCKET_ID"
         min-height="128px"
+        show-expand-button
         show-attachment-button
         placeholder="Edit your comment. Do not leave it empty!"
         class="mb-xs"

@@ -178,8 +178,27 @@ function handleViewModeUpdate(val: ViewMode) {
   settings.value.discussion_view_mode = val
 }
 
+const hasManuallySwitched = ref(false)
 const showOfftopic = ref(settings.value.show_offtopic_replies ?? false)
 const showThreadReplies = ref(settings.value.show_thread_replies ?? false)
+
+// If the URL targets a specific comment, ensure it's visible even if it's
+// off-topic. We watch modelledComments so this fires once data has loaded -
+// the query param is already there on mount but comments may not be yet.
+const linkedCommentId = Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment
+if (linkedCommentId) {
+  const unwatch = watch(modelledComments, (comments) => {
+    if (comments.length === 0)
+      return
+    const target = comments.find(c => c.id === linkedCommentId)
+    if (target?.is_offtopic && !showOfftopic.value) {
+      showOfftopic.value = true
+      hasManuallySwitched.value = true
+    }
+    // Only needs to run once - the comment either exists or it doesn't.
+    unwatch()
+  }, { immediate: true })
+}
 
 const pinnedReply = computed(() => {
   const pinnedId = discussion.value?.pinned_reply_id
@@ -205,7 +224,6 @@ async function handleGoToPinnedReply() {
 // Keep in sync if the global setting changes (e.g. user visits settings page
 // in another tab) but do not overwrite a manual per-session choice made after
 // the component has mounted.
-const hasManuallySwitched = ref(false)
 watch(
   () => settings.value.show_offtopic_replies,
   (val) => {

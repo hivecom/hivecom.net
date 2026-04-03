@@ -51,12 +51,43 @@ export function useDataForumUnread() {
    * Returns true when a topic has accrued new discussions or replies since the
    * user last "saw" it. Always returns false for topics not yet stored (they
    * will be initialised as seen by `initializeTopics`).
+   *
+   * Cross-checks the per-discussion seen state: if every discussion in the
+   * topic has already been individually marked seen at its current reply count
+   * (e.g. the user navigated to each discussion via the activity feed without
+   * ever clicking the topic row), the dot is suppressed even though the
+   * topic-level aggregate counters were never explicitly updated.
    */
-  function isTopicNew(topicId: string, currentDiscussionCount: number, currentReplyCount: number): boolean {
+  function isTopicNew(
+    topicId: string,
+    currentDiscussionCount: number,
+    currentReplyCount: number,
+    discussions?: Array<{ id: string, reply_count?: number | null }>,
+  ): boolean {
     const seen = storage.value.topics[topicId]
     if (!seen)
       return false
-    return currentDiscussionCount > seen.discussionCount || currentReplyCount > seen.replyCount
+
+    const hasNewAtTopicLevel = currentDiscussionCount > seen.discussionCount || currentReplyCount > seen.replyCount
+    if (!hasNewAtTopicLevel)
+      return false
+
+    // If the caller provides the discussions list we can check whether every
+    // discussion is already individually caught up. If so, the aggregate
+    // counters are stale (topic was never clicked directly) but nothing is
+    // actually unread - suppress the dot.
+    if (discussions != null && discussions.length > 0) {
+      const allDiscussionsSeen = discussions.every((d) => {
+        const dSeen = storage.value.discussions[d.id]
+        if (!dSeen)
+          return false
+        return (d.reply_count ?? 0) <= dSeen.replyCount
+      })
+      if (allDiscussionsSeen)
+        return false
+    }
+
+    return true
   }
 
   /**

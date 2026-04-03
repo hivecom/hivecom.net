@@ -753,6 +753,7 @@ function clearBirthday() {
           hint="You can use markdown"
           placeholder="Detailed profile content in markdown format"
           min-height="216px"
+          show-expand-button
           :disabled="!canEditForm"
           :errors="markdownValidation.valid ? [] : [markdownValidation.error ?? 'Invalid markdown content']"
           :media-context="props.user?.id ? `${props.user.id}/markdown/media` : undefined"

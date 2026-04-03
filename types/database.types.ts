@@ -1827,7 +1827,7 @@ export interface Database {
         }[]
       }
       get_forum_activity_feed: {
-        Args: { p_limit?: number, p_offset?: number }
+        Args: { p_created_by?: string, p_limit?: number, p_offset?: number }
         Returns: {
           body: string
           created_at: string

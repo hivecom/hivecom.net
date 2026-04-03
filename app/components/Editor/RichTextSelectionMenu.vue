@@ -696,6 +696,7 @@ useEventListener(document, 'mousedown', (e) => {
     v-else
     :editor="editor"
     :options="{
+      strategy: 'fixed',
       placement: 'top',
       offset: 8,
       flip: false,

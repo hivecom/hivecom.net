@@ -203,6 +203,7 @@ async function updateMedia() {
   <BubbleMenu
     :editor="editor"
     :options="{
+      strategy: 'fixed',
       placement: 'bottom',
       offset: 0,
       flip: false,

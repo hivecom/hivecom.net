@@ -458,6 +458,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
           :limit="MARKDOWN_LIMIT"
           :errors="markdownValidation.error ? [markdownValidation.error] : undefined"
           :show-attachment-button="!!props.profile?.id"
+          show-expand-button
         />
       </Flex>
 

@@ -50,7 +50,7 @@ const currentUser = useSupabaseUser()
 
 const { user: currentUserData } = useDataUser(userId, { includeRole: true })
 
-const isMobile = useBreakpoint('<s')
+const isMobile = useBreakpoint('<m')
 
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
 const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
@@ -565,6 +565,7 @@ const editedAtFormatted = computed(() => {
         :errors="editError"
         :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"
         :media-bucket-id="FORUMS_BUCKET_ID"
+        show-expand-button
         show-attachment-button
         min-height="196px"
         class="mb-xs"

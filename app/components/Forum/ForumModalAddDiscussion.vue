@@ -488,8 +488,9 @@ function confirmPublish() {
         max-height="33vh"
         hint="You can use markdown and added media through drag-and-drop"
         label="Content"
-        placeholder="Add more context to the discussion"
+        placeholder="This is the main body of your discussion"
         show-attachment-button
+        show-expand-button
       />
 
       <Card class="card-bg">

@@ -9,21 +9,26 @@ const props = defineProps<{
   post: ActivityItem
   mentionLookup: Record<string, string>
   expand?: boolean
+  hideUser?: boolean
 }>()
 
-function handleClick(event: MouseEvent) {
+const router = useRouter()
+
+function handleClick() {
   if (props.post.onClick) {
-    event.preventDefault()
     props.post.onClick()
+    return
+  }
+  if (props.post.href) {
+    void router.push(props.post.href)
   }
 }
 </script>
 
 <template>
-  <NuxtLink
+  <div
     class="forum__latest-item"
     :class="{ 'forum__latest-item--expand': props.expand }"
-    :href="post.href"
     :draggable="false"
     @click="handleClick"
   >
@@ -50,14 +55,14 @@ function handleClick(event: MouseEvent) {
       <MarkdownPreview v-if="post.type === 'Reply'" :markdown="post.title" :mention-lookup="props.mentionLookup" />
       <template v-else>{{ post.title }}</template>
     </strong>
-    <Flex y-center x-between expand class="forum__latest-footer">
+    <Flex v-if="!props.hideUser" y-center x-between expand class="forum__latest-footer">
       <UserDisplay
         :user-id="post.user"
         size="s"
         show-role
       />
     </Flex>
-  </NuxtLink>
+  </div>
 </template>
 
 <style lang="scss" scoped>
