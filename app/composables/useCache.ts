@@ -11,7 +11,7 @@
 
 import type { MaybeRefOrGetter, Ref } from 'vue'
 import type { Database } from '@/types/database.types'
-import { computed, ref, toValue, watch } from 'vue'
+import { ref, toValue, watch } from 'vue'
 
 export interface CacheEntry<T = unknown> {
   data: T
@@ -40,13 +40,13 @@ const keyValueCache = new Map<string, CacheEntry>()
 const queryCache = new Map<string, CacheEntry>()
 
 // Cache statistics for debugging
-const cacheStats = ref({
+const cacheStats = {
   keyValueHits: 0,
   keyValueMisses: 0,
   queryHits: 0,
   queryMisses: 0,
   lastCleanup: 0,
-})
+}
 
 let cleanupTimer: number | null = null
 
@@ -107,7 +107,7 @@ function cleanupExpiredEntries() {
     }
   }
 
-  cacheStats.value.lastCleanup = now
+  cacheStats.lastCleanup = now
 }
 
 /**
@@ -179,17 +179,17 @@ export function useCache(config: CacheConfig = {}) {
     const entry = keyValueCache.get(key) as CacheEntry<T> | undefined
 
     if (!entry) {
-      cacheStats.value.keyValueMisses++
+      cacheStats.keyValueMisses++
       return null
     }
 
     if (!isEntryValid(entry)) {
       keyValueCache.delete(key)
-      cacheStats.value.keyValueMisses++
+      cacheStats.keyValueMisses++
       return null
     }
 
-    cacheStats.value.keyValueHits++
+    cacheStats.keyValueHits++
     return entry.data
   }
 
@@ -231,17 +231,17 @@ export function useCache(config: CacheConfig = {}) {
     const entry = queryCache.get(queryHash) as CacheEntry<T> | undefined
 
     if (!entry) {
-      cacheStats.value.queryMisses++
+      cacheStats.queryMisses++
       return null
     }
 
     if (!isEntryValid(entry)) {
       queryCache.delete(queryHash)
-      cacheStats.value.queryMisses++
+      cacheStats.queryMisses++
       return null
     }
 
-    cacheStats.value.queryHits++
+    cacheStats.queryHits++
     return entry.data
   }
 
@@ -302,13 +302,11 @@ export function useCache(config: CacheConfig = {}) {
   function clearCache(): void {
     keyValueCache.clear()
     queryCache.clear()
-    cacheStats.value = {
-      keyValueHits: 0,
-      keyValueMisses: 0,
-      queryHits: 0,
-      queryMisses: 0,
-      lastCleanup: Date.now(),
-    }
+    cacheStats.keyValueHits = 0
+    cacheStats.keyValueMisses = 0
+    cacheStats.queryHits = 0
+    cacheStats.queryMisses = 0
+    cacheStats.lastCleanup = Date.now()
   }
 
   /**
@@ -324,13 +322,15 @@ export function useCache(config: CacheConfig = {}) {
   /**
    * Get cache statistics
    */
-  const stats = computed(() => ({
-    ...cacheStats.value,
-    keyValueSize: keyValueCache.size,
-    querySize: queryCache.size,
-    keyValueHitRate: cacheStats.value.keyValueHits / (cacheStats.value.keyValueHits + cacheStats.value.keyValueMisses) || 0,
-    queryHitRate: cacheStats.value.queryHits / (cacheStats.value.queryHits + cacheStats.value.queryMisses) || 0,
-  }))
+  function getStats() {
+    return {
+      ...cacheStats,
+      keyValueSize: keyValueCache.size,
+      querySize: queryCache.size,
+      keyValueHitRate: cacheStats.keyValueHits / (cacheStats.keyValueHits + cacheStats.keyValueMisses) || 0,
+      queryHitRate: cacheStats.queryHits / (cacheStats.queryHits + cacheStats.queryMisses) || 0,
+    }
+  }
 
   return {
     // Key-value cache methods
@@ -353,7 +353,7 @@ export function useCache(config: CacheConfig = {}) {
     dispose,
 
     // Statistics
-    stats,
+    getStats,
   }
 }
 

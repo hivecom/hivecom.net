@@ -6,6 +6,7 @@ import { Button, Card, Flex, Sheet, Skeleton, Spinner } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
+import { useActivityFeedSheet } from '@/composables/useActivityFeedSheet'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { extractMentionIds } from '@/lib/markdownProcessors'
@@ -238,121 +239,50 @@ const emptyStateText = computed(() =>
 
 const PAGE_SIZE = 20
 
-const sheetOpen = ref(false)
-const sentinel = ref<HTMLElement | null>(null)
-
-const sheetRaw = ref<FeedRow[]>([])
-const sheetLoading = ref(false)
-const sheetLoadingMore = ref(false)
-const sheetExhausted = ref(false)
-const sheetOffset = ref(0)
-
-const sheetItems = computed<ActivityItem[]>(() => {
-  const result: ActivityItem[] = []
-  for (const row of sheetRaw.value) {
+async function fetchSheetPage(rows: FeedRow[]): Promise<ActivityItem[]> {
+  await warmDiscussionCache(rows)
+  const items: ActivityItem[] = []
+  for (const row of rows) {
     const item = mapRow(row)
     if (item != null)
-      result.push(item)
+      items.push(item)
   }
-  return result
-})
-
-async function loadSheet() {
-  if (sheetLoading.value)
-    return
-  sheetLoading.value = true
-  sheetExhausted.value = false
-  sheetOffset.value = 0
-  sheetRaw.value = []
-
-  const { data, error: rpcError } = await supabase.rpc('get_forum_activity_feed', {
-    p_limit: PAGE_SIZE,
-    p_offset: 0,
-    p_created_by: props.profileId,
-  })
-
-  if (rpcError != null || data == null || data.length === 0) {
-    sheetExhausted.value = true
-    sheetLoading.value = false
-    return
-  }
-
-  const rows = data as FeedRow[]
-  if (rows.length < PAGE_SIZE)
-    sheetExhausted.value = true
-
-  await warmDiscussionCache(rows)
-  sheetRaw.value = rows
-  sheetOffset.value = rows.length
-  sheetLoading.value = false
+  return items
 }
 
-async function loadMoreSheet() {
-  if (sheetLoadingMore.value || sheetExhausted.value)
-    return
-  sheetLoadingMore.value = true
+const {
+  sheetOpen,
+  sheetItems,
+  sheetLoading,
+  sheetLoadingMore,
+  sheetExhausted,
+  sentinel,
+  sheetMentionLookup,
+  reset: resetSheet,
+} = useActivityFeedSheet({
+  pageSize: PAGE_SIZE,
 
-  const { data, error: rpcError } = await supabase.rpc('get_forum_activity_feed', {
-    p_limit: PAGE_SIZE,
-    p_offset: sheetOffset.value,
-    p_created_by: props.profileId,
-  })
+  async load() {
+    const { data, error: rpcError } = await supabase.rpc('get_forum_activity_feed', {
+      p_limit: PAGE_SIZE,
+      p_offset: 0,
+      p_created_by: props.profileId,
+    })
+    if (rpcError != null || data == null)
+      return []
+    return fetchSheetPage(data as FeedRow[])
+  },
 
-  if (rpcError != null || data == null || data.length === 0) {
-    sheetExhausted.value = true
-    sheetLoadingMore.value = false
-    return
-  }
-
-  const rows = data as FeedRow[]
-  if (rows.length < PAGE_SIZE)
-    sheetExhausted.value = true
-
-  await warmDiscussionCache(rows)
-  sheetRaw.value = [...sheetRaw.value, ...rows]
-  sheetOffset.value += rows.length
-  sheetLoadingMore.value = false
-}
-
-// Mention pre-warming for sheet items
-// Stabilized as refs with key guards to prevent reactive churn - computed arrays
-// create fresh references on every sheetRaw mutation, which triggers useBulkDataUser's
-// watcher, which replaces the users Map, which can cause a tight re-render loop.
-const sheetMentionIds = ref<string[]>([])
-let _lastMentionKey = ''
-watchEffect(() => {
-  const ids = [...new Set(sheetRaw.value
-    .filter(r => r.item_type === 'reply' && r.body != null)
-    .flatMap(r => extractMentionIds(r.body!)),
-  )]
-  const key = ids.toSorted().join(',')
-  if (key !== _lastMentionKey) {
-    _lastMentionKey = key
-    sheetMentionIds.value = ids
-  }
-})
-const { users: sheetMentionUsers } = useBulkDataUser(sheetMentionIds, { includeAvatar: false })
-
-// Pre-warm author avatars for sheet items
-const sheetAuthorIds = ref<string[]>([])
-let _lastAuthorKey = ''
-watchEffect(() => {
-  const ids = [...new Set(sheetRaw.value.map(r => r.created_by).filter((id): id is string => id != null))]
-  const key = ids.toSorted().join(',')
-  if (key !== _lastAuthorKey) {
-    _lastAuthorKey = key
-    sheetAuthorIds.value = ids
-  }
-})
-useBulkDataUser(sheetAuthorIds, { includeAvatar: true, includeRole: true })
-
-const sheetMentionLookup = computed<Record<string, string>>(() => {
-  const lookup: Record<string, string> = {}
-  for (const [id, u] of sheetMentionUsers.value.entries()) {
-    if (u?.username)
-      lookup[id] = u.username
-  }
-  return lookup
+  async loadMore(offset) {
+    const { data, error: rpcError } = await supabase.rpc('get_forum_activity_feed', {
+      p_limit: PAGE_SIZE,
+      p_offset: offset,
+      p_created_by: props.profileId,
+    })
+    if (rpcError != null || data == null)
+      return []
+    return fetchSheetPage(data as FeedRow[])
+  },
 })
 
 const combinedMentionLookup = computed<Record<string, string>>(() => ({
@@ -360,42 +290,9 @@ const combinedMentionLookup = computed<Record<string, string>>(() => ({
   ...sheetMentionLookup.value,
 }))
 
-let observer: IntersectionObserver | null = null
-
-watch(sheetOpen, async (open) => {
-  if (!open) {
-    observer?.disconnect()
-    observer = null
-    return
-  }
-
-  if (sheetRaw.value.length === 0) {
-    await loadSheet()
-  }
-
-  await nextTick()
-  if (sentinel.value == null)
-    return
-
-  observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0]?.isIntersecting && !sheetLoadingMore.value && !sheetExhausted.value)
-        void loadMoreSheet()
-    },
-    { threshold: 0.1 },
-  )
-  observer.observe(sentinel.value)
-})
-
-// Reset sheet when profile changes
+// Reset sheet when profile changes so the next open fetches fresh data
 watch(() => props.profileId, () => {
-  sheetRaw.value = []
-  sheetOffset.value = 0
-  sheetExhausted.value = false
-})
-
-onUnmounted(() => {
-  observer?.disconnect()
+  resetSheet()
 })
 </script>
 
@@ -441,6 +338,7 @@ onUnmounted(() => {
         :key="item.id"
         :post="item"
         :mention-lookup="previewMentionLookup"
+        variant="compact"
         expand
         hide-user
       />

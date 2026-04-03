@@ -10,6 +10,7 @@ const props = defineProps<{
   mentionLookup: Record<string, string>
   expand?: boolean
   hideUser?: boolean
+  variant?: 'default' | 'compact'
 }>()
 
 const router = useRouter()
@@ -28,7 +29,10 @@ function handleClick() {
 <template>
   <div
     class="forum__latest-item"
-    :class="{ 'forum__latest-item--expand': props.expand }"
+    :class="{
+      'forum__latest-item--expand': props.expand,
+      'forum__latest-item--compact': props.variant === 'compact',
+    }"
     :draggable="false"
     @click="handleClick"
   >
@@ -51,11 +55,11 @@ function handleClick() {
         </template>
       </Tooltip>
     </Flex>
-    <strong class="forum__latest-title">
+    <strong class="forum__latest-title" :class="{ 'forum__latest-title--compact': props.variant === 'compact' }">
       <MarkdownPreview v-if="post.type === 'Reply'" :markdown="post.title" :mention-lookup="props.mentionLookup" />
       <template v-else>{{ post.title }}</template>
     </strong>
-    <Flex v-if="!props.hideUser" y-center x-between expand class="forum__latest-footer">
+    <Flex v-if="!props.hideUser" y-center x-between expand class="forum__latest-footer" @click.stop>
       <UserDisplay
         :user-id="post.user"
         size="s"
@@ -100,7 +104,22 @@ function handleClick() {
     }
   }
 
-  &:hover {
+  &--compact {
+    border: none;
+    background-color: transparent;
+    padding: var(--space-xs) var(--space-xxs);
+    border-radius: var(--border-radius-s);
+
+    .markdown-preview {
+      font-size: var(--font-size-s);
+    }
+
+    &:hover {
+      background-color: var(--color-bg-raised);
+    }
+  }
+
+  &:not(&--compact):hover {
     background-color: var(--color-bg-raised);
   }
 
@@ -150,6 +169,10 @@ function handleClick() {
 
   p {
     @include line-clamp(1);
+  }
+
+  &--compact {
+    font-size: var(--font-size-s);
   }
 }
 

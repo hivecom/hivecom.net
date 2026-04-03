@@ -98,6 +98,7 @@ export function useForumActivityFeedPaginated({
       return {
         id: row.id,
         type: 'Discussion',
+        typeLabel: 'Created Discussion',
         title: row.title ?? 'Discussion',
         description: row.body ?? undefined,
         timestamp: dayjs(row.created_at).fromNow(),
@@ -117,6 +118,7 @@ export function useForumActivityFeedPaginated({
       return {
         id: row.id,
         type: 'Topic',
+        typeLabel: 'Created Topic',
         title: row.title ?? 'Topic',
         description: row.body ?? undefined,
         timestamp: dayjs(row.created_at).fromNow(),

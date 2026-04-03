@@ -155,6 +155,7 @@ export function useForumActivityFeed({
         return {
           id,
           type: isTopic ? 'Topic' : 'Discussion',
+          typeLabel: isTopic ? 'Created Topic' : 'Created Discussion',
           title,
           description: item.description ?? undefined,
           timestamp: `${dayjs(item.created_at).fromNow()}`,
