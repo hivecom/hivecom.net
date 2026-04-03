@@ -416,7 +416,6 @@ function openFriendsModal() {
             :profile="profile"
             :friends="friends"
             :friendship-status="friendshipStatus"
-            :incoming-requests="incomingRequests"
             :is-own-profile="isOwnProfile"
             :is-logged-in="isLoggedIn"
             :loading="friendsLoading"
