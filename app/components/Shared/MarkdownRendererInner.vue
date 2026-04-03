@@ -200,12 +200,13 @@ onUnmounted(() => {
 }
 
 /* YouTube embed produced by processYoutubeDirectives */
-.md-youtube-embed {
+:deep(.md-youtube-embed) {
   display: flex;
   justify-content: center;
   margin: var(--space-s) 0;
 
   iframe {
+    position: relative;
     max-width: 100%;
     border-radius: var(--border-radius-s);
     aspect-ratio: 16 / 9;
@@ -214,7 +215,7 @@ onUnmounted(() => {
 }
 
 /* Video embed produced by processVideoDirectives */
-.md-video-embed {
+:deep(.md-video-embed) {
   display: flex;
   justify-content: center;
   margin: var(--space-s) 0;
@@ -226,14 +227,14 @@ onUnmounted(() => {
 }
 
 /* KaTeX math produced by rehype-katex */
-.katex-display {
+:deep(.katex-display) {
   overflow-x: auto;
   overflow-y: hidden;
   padding: var(--space-xs) 0;
 }
 
 /* Data file attachment card produced by processDataFileDirectives */
-.md-datafile-card {
+:deep(.md-datafile-card) {
   display: flex;
   align-items: center;
   gap: var(--space-s);

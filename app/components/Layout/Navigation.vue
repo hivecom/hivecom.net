@@ -57,6 +57,13 @@ const needsMfaChallenge = computed(
 
 const hoveredElement = ref<HTMLElement | null>(null)
 
+function isSublinkActive(sublinkPath: string): boolean {
+  const [path, query] = sublinkPath.split('?')
+  const sublinkTab = new URLSearchParams(query ?? '').get('tab') ?? 'list'
+  const routeTab = (route.query.tab as string | undefined) ?? 'list'
+  return route.path === path && routeTab === sublinkTab
+}
+
 const { width, update } = useElementBounding(hoveredElement)
 
 function updateHoveredElement(event: MouseEvent) {
@@ -99,11 +106,15 @@ function updateHoveredElement(event: MouseEvent) {
                 :visible="!!hoveredElement?.firstElementChild?.textContent.includes(link.label)"
                 :teleport="false"
               >
-                <NuxtLink v-for="sublink in link.children" :key="sublink.path" :to="sublink.path">
+                <a
+                  v-for="sublink in link.children" :key="sublink.path" :href="sublink.path"
+                  :class="{ 'router-link-active': isSublinkActive(sublink.path) }"
+                  @click.prevent="$router.push(sublink.path)"
+                >
                   <DropdownItem>
                     {{ sublink.label }}
                   </DropdownItem>
-                </NuxtLink>
+                </a>
               </Popout>
             </li>
           </template>
@@ -134,7 +145,8 @@ function updateHoveredElement(event: MouseEvent) {
               <NuxtLink
                 v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)" :to="link.path"
                 class="navigation__mobile-menu-item"
-                :class="{ 'router-link-active': $route.path.includes(link.path) && link.path !== '/' }"
+                active-class=""
+                :class="{ 'router-link-active': $route.path.startsWith(link.path.split('?')[0] ?? link.path) && link.path !== '/' }"
                 @click="closeMobileMenu"
               >
                 <Icon :name="link.icon" />
@@ -143,12 +155,14 @@ function updateHoveredElement(event: MouseEvent) {
               </NuxtLink>
 
               <div class="navigation__mobile-submenu">
-                <NuxtLink
-                  v-for="sublink in link.children" :key="sublink.path" :to="sublink.path"
-                  class="navigation__mobile-menu-item" @click="closeMobileMenu"
+                <a
+                  v-for="sublink in link.children" :key="sublink.path" :href="sublink.path"
+                  class="navigation__mobile-menu-item"
+                  :class="{ 'router-link-active': isSublinkActive(sublink.path) }"
+                  @click.prevent="$router.push(sublink.path); closeMobileMenu()"
                 >
                   {{ sublink.label }}
-                </NuxtLink>
+                </a>
               </div>
             </template>
           </div>

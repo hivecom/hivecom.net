@@ -196,8 +196,8 @@ onMounted(() => {
       </Flex>
 
       <template v-else>
-        <Flex class="security-panel" gap="l" wrap expand y-center>
-          <Flex gap="m" y-center class="security-panel__content" expand wrap :x-between="!isBelowSmall">
+        <Flex class="security-panel" gap="l" expand y-center>
+          <Flex gap="m" y-center class="security-panel__content" expand :column="isBelowSmall" :x-between="!isBelowSmall">
             <Flex :column="isBelowSmall" :x-center="isBelowSmall" :expand="isBelowSmall">
               <Flex :expand="isBelowSmall" x-center>
                 <div class="security-panel__icon" :class="{ 'is-active': passkeys.length > 0 }">
@@ -216,7 +216,7 @@ onMounted(() => {
                   </TinyBadge>
                 </Flex>
                 <p :class="`text-m text-color-lighter${isBelowSmall ? ' text-center' : ''}`">
-                  Sign in with biometrics, a PIN, or a hardware key - no password required.
+                  Passwordless sign in with biometrics, a PIN, or a hardware key.
                 </p>
               </Flex>
             </Flex>

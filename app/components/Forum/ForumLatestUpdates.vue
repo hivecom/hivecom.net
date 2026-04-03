@@ -32,14 +32,20 @@ const isMobile = useBreakpoint('<s')
 
 // ── Carousel divider ───────────────────────────────────────────────────────
 
+// Shared boundary timestamp used by both the carousel and sheet split indexes.
+const visitedAt = computed<number | null>(() => {
+  if (props.lastVisitedAt == null)
+    return null
+  return new Date(props.lastVisitedAt).getTime()
+})
+
 // Index of the first item older than the last visit - divider renders between
 // index (splitIndex - 1) and index splitIndex.
 const splitIndex = computed<number | null>(() => {
-  if (props.lastVisitedAt == null || props.loading)
+  if (visitedAt.value == null || props.loading)
     return null
-  const visitedAt = new Date(props.lastVisitedAt).getTime()
   const idx = props.latestPosts.findIndex(
-    post => new Date(post.timestampRaw).getTime() <= visitedAt,
+    post => new Date(post.timestampRaw).getTime() <= visitedAt.value!,
   )
   // No divider if everything is new or nothing is new
   if (idx <= 0 || idx >= props.latestPosts.length)
@@ -47,7 +53,16 @@ const splitIndex = computed<number | null>(() => {
   return idx
 })
 
-const newSinceLastVisit = computed<number>(() => splitIndex.value ?? 0)
+// Exclude the current user's own posts from the "new" count - they don't need
+// to see their own activity flagged as unseen.
+const newSinceLastVisit = computed<number>(() => {
+  if (splitIndex.value == null)
+    return 0
+  return props.latestPosts
+    .slice(0, splitIndex.value)
+    .filter(post => post.user !== user.value?.id)
+    .length
+})
 
 // ── Paginated sheet feed ───────────────────────────────────────────────────
 
@@ -62,13 +77,12 @@ const {
   loadMore,
 } = useForumActivityFeedPaginated(props.feedOptions)
 
-// Divider index in the sheet feed - same logic as carousel
+// Divider index in the sheet feed - same logic as carousel, same boundary.
 const sheetSplitIndex = computed<number | null>(() => {
-  if (props.lastVisitedAt == null || sheetLoading.value)
+  if (visitedAt.value == null || sheetLoading.value)
     return null
-  const visitedAt = new Date(props.lastVisitedAt).getTime()
   const idx = sheetItems.value.findIndex(
-    item => new Date(item.timestampRaw).getTime() <= visitedAt,
+    item => new Date(item.timestampRaw).getTime() <= visitedAt.value!,
   )
   if (idx <= 0 || idx >= sheetItems.value.length)
     return null
@@ -111,8 +125,23 @@ watch(sheetOpen, async (open) => {
   }
 
   // First open - fetch initial page
-  if (sheetItems.value.length === 0)
+  if (sheetItems.value.length === 0) {
     await loadSheet()
+
+    // If lastVisitedAt is set but no boundary item was found in the first page
+    // (findIndex === -1 means all loaded items are newer), keep loading pages
+    // until we find an item older than the last visit or exhaust the feed.
+    if (visitedAt.value != null) {
+      while (!sheetExhausted.value) {
+        const idx = sheetItems.value.findIndex(
+          item => new Date(item.timestampRaw).getTime() <= visitedAt.value!,
+        )
+        if (idx !== -1)
+          break
+        await loadMore()
+      }
+    }
+  }
 
   // Set up sentinel observer after DOM settles
   await nextTick()
@@ -141,7 +170,7 @@ onUnmounted(() => {
         Latest updates
       </h5>
       <Badge v-if="newSinceLastVisit > 0" variant="accent">
-        {{ newSinceLastVisit }} new
+        {{ newSinceLastVisit }} since last visit
       </Badge>
       <Badge v-if="props.postSinceYesterday" variant="neutral">
         {{ props.postSinceYesterday }} {{ isMobile ? null : 'today' }}
@@ -177,7 +206,7 @@ onUnmounted(() => {
       <template v-else>
         <template v-for="(post, index) in props.latestPosts.slice(0, 16)" :key="post.id">
           <div v-if="splitIndex !== null && index === splitIndex" class="forum__latest-divider">
-            <span>Last visited</span>
+            <span class="text-color-accent">Last visited</span>
           </div>
           <ForumLatestItem
             :post="post"
@@ -202,7 +231,7 @@ onUnmounted(() => {
         <template v-else>
           <template v-for="(post, index) in sheetItems" :key="post.id">
             <div v-if="sheetSplitIndex !== null && index === sheetSplitIndex" class="forum__latest-divider forum__latest-divider--sheet">
-              <span>Last visited</span>
+              <span class="text-color-accent">Last visited</span>
             </div>
             <ForumLatestItem
               :post="post"
@@ -214,7 +243,7 @@ onUnmounted(() => {
           <!-- Infinite scroll sentinel -->
           <div ref="sentinel" class="forum__latest-sentinel">
             <Flex v-if="sheetLoadingMore" expand x-center>
-              <Spinner size="l" />
+              <Spinner />
             </Flex>
             <span v-else-if="sheetExhausted" class="forum__latest-exhausted">
               All caught up

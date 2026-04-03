@@ -1226,6 +1226,7 @@ async function handleSubmit() {
     display: flex;
     flex-direction: column;
     max-height: v-bind(maxHeight);
+    overflow: hidden;
 
     &:has(.ProseMirror-focused) {
       border-color: var(--color-border-strong);
@@ -1399,7 +1400,7 @@ async function handleSubmit() {
   // which suffers from a timing issue on initial mount where
   // `this.editor.isEmpty` can resolve incorrectly before the view is wired up).
   .editor-rich-wrapper {
-    overflow: visible;
+    overflow-y: auto;
     flex: 1 1 auto;
     min-height: 0;
     position: relative;
