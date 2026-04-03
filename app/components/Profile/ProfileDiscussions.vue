@@ -315,18 +315,35 @@ async function loadMoreSheet() {
 }
 
 // Mention pre-warming for sheet items
-const sheetMentionIds = computed(() =>
-  [...new Set(sheetRaw.value
+// Stabilized as refs with key guards to prevent reactive churn - computed arrays
+// create fresh references on every sheetRaw mutation, which triggers useBulkDataUser's
+// watcher, which replaces the users Map, which can cause a tight re-render loop.
+const sheetMentionIds = ref<string[]>([])
+let _lastMentionKey = ''
+watchEffect(() => {
+  const ids = [...new Set(sheetRaw.value
     .filter(r => r.item_type === 'reply' && r.body != null)
     .flatMap(r => extractMentionIds(r.body!)),
-  )],
-)
+  )]
+  const key = ids.toSorted().join(',')
+  if (key !== _lastMentionKey) {
+    _lastMentionKey = key
+    sheetMentionIds.value = ids
+  }
+})
 const { users: sheetMentionUsers } = useBulkDataUser(sheetMentionIds, { includeAvatar: false })
 
 // Pre-warm author avatars for sheet items
-const sheetAuthorIds = computed(() =>
-  [...new Set(sheetRaw.value.map(r => r.created_by).filter((id): id is string => id != null))],
-)
+const sheetAuthorIds = ref<string[]>([])
+let _lastAuthorKey = ''
+watchEffect(() => {
+  const ids = [...new Set(sheetRaw.value.map(r => r.created_by).filter((id): id is string => id != null))]
+  const key = ids.toSorted().join(',')
+  if (key !== _lastAuthorKey) {
+    _lastAuthorKey = key
+    sheetAuthorIds.value = ids
+  }
+})
 useBulkDataUser(sheetAuthorIds, { includeAvatar: true, includeRole: true })
 
 const sheetMentionLookup = computed<Record<string, string>>(() => {
