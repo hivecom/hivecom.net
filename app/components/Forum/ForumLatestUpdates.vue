@@ -176,10 +176,10 @@ onUnmounted(() => {
       <Badge v-else-if="newSinceLastVisit > 0" variant="accent">
         {{ newSinceLastVisit }} since last visit
       </Badge>
-      <TinyBadge v-if="isMobile && props.postSinceYesterday" variant="neutral">
+      <TinyBadge v-if="isMobile && !props.loading && props.postSinceYesterday" variant="neutral">
         {{ props.postSinceYesterday }}
       </TinyBadge>
-      <Badge v-else-if="props.postSinceYesterday" variant="neutral">
+      <Badge v-else-if="!props.loading && props.postSinceYesterday" variant="neutral">
         {{ props.postSinceYesterday }} today
       </Badge>
 

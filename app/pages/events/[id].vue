@@ -8,6 +8,9 @@ import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { useDataGames } from '@/composables/useDataGames'
 import { useEventTiming } from '@/composables/useEventTiming'
+import { useBreakpoint } from '@/lib/mediaQuery'
+
+const isMobile = useBreakpoint('<s')
 
 // Get route parameter
 const route = useRoute()
@@ -91,60 +94,62 @@ useHead({
 
 <template>
   <div class="page">
-    <!-- Loading and Error States -->
-    <DetailStates
-      :loading="loading"
-      :error="error"
-      back-to="/events"
-      back-label="Events"
-    >
-      <template #error-message>
-        We are unable to load event details at this time. Please try again later.
-      </template>
-    </DetailStates>
+    <div :class="!isMobile && 'container container-m'">
+      <!-- Loading and Error States -->
+      <DetailStates
+        :loading="loading"
+        :error="error"
+        back-to="/events"
+        back-label="Events"
+      >
+        <template #error-message>
+          We are unable to load event details at this time. Please try again later.
+        </template>
+      </DetailStates>
 
-    <!-- Event Content -->
-    <div v-if="event && !loading && !error" class="event-detail">
-      <!-- Back Button -->
-      <Flex x-between>
-        <Button
-          variant="gray"
-          plain
-          size="s"
-          aria-label="Go back to Events page"
-          class="event-detail__back-link"
-          @click="$router.push('/events')"
-        >
-          <template #start>
-            <Icon name="ph:arrow-left" />
-          </template>
-          Back to Events
-        </Button>
-      </Flex>
+      <!-- Event Content -->
+      <div v-if="event && !loading && !error" class="event-detail">
+        <!-- Back Button -->
+        <Flex x-between>
+          <Button
+            variant="gray"
+            plain
+            size="s"
+            aria-label="Go back to Events page"
+            class="event-detail__back-link"
+            @click="$router.push('/events')"
+          >
+            <template #start>
+              <Icon name="ph:arrow-left" />
+            </template>
+            Back to Events
+          </Button>
+        </Flex>
 
-      <!-- Header -->
-      <div :class="{ 'event-ongoing': isOngoing }">
-        <EventHeader
-          :event="event"
-          :games="games"
-          :is-upcoming="isUpcoming"
-          :is-ongoing="isOngoing"
-          :countdown="countdown"
-          :time-ago="timeAgo"
-        />
-      </div>
+        <!-- Header -->
+        <div :class="{ 'event-ongoing': isOngoing }">
+          <EventHeader
+            :event="event"
+            :games="games"
+            :is-upcoming="isUpcoming"
+            :is-ongoing="isOngoing"
+            :countdown="countdown"
+            :time-ago="timeAgo"
+          />
+        </div>
 
-      <div class="event-detail__content">
-        <!-- Markdown -->
-        <EventMarkdown :event="event" />
+        <div class="event-detail__content">
+          <!-- Markdown -->
+          <EventMarkdown :event="event" />
 
-        <!-- Related discussion -->
-        <Discussion
-          :id="String(event.id)"
-          class="event-discussion"
-          type="event"
-          @reply-submitted="handleReplySubmitted"
-        />
+          <!-- Related discussion -->
+          <Discussion
+            :id="String(event.id)"
+            class="event-discussion"
+            type="event"
+            @reply-submitted="handleReplySubmitted"
+          />
+        </div>
       </div>
     </div>
   </div>

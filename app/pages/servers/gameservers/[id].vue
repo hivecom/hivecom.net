@@ -8,6 +8,9 @@ import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
+import { useBreakpoint } from '@/lib/mediaQuery'
+
+const isMobile = useBreakpoint('<s')
 
 // Get route parameter
 const route = useRoute()
@@ -148,61 +151,63 @@ useHead({
 
 <template>
   <div class="page">
-    <DetailStates
-      :loading="loading"
-      :error="error"
-      :back-to="() => router.back()"
-      back-label="Game Servers"
-    >
-      <template #error-message>
-        The game server you're looking for might have been removed or doesn't exist.
-      </template>
-    </DetailStates>
-
-    <!-- Gameserver Content -->
-    <div v-if="gameserver && !loading && !error" class="page-content">
-      <!-- Back button -->
-      <Flex x-start>
-        <Button
-          variant="gray"
-          plain
-          size="s"
-          aria-label="Go back to Game Servers"
-          @click="$router.push('/servers/gameservers')"
-        >
-          <template #start>
-            <Icon name="ph:arrow-left" />
-          </template>
-          Game Servers
-        </Button>
-      </Flex>
-
-      <!-- Background Image -->
-      <div
-        v-if="gameBackground"
-        class="game-background-section"
-        :style="{ backgroundImage: `url(${gameBackground})` }"
+    <div :class="!isMobile && 'container container-m'">
+      <DetailStates
+        :loading="loading"
+        :error="error"
+        :back-to="() => router.back()"
+        back-label="Game Servers"
       >
-        <div class="background-overlay" />
+        <template #error-message>
+          The game server you're looking for might have been removed or doesn't exist.
+        </template>
+      </DetailStates>
+
+      <!-- Gameserver Content -->
+      <div v-if="gameserver && !loading && !error" class="page-content">
+        <!-- Back button -->
+        <Flex x-start>
+          <Button
+            variant="gray"
+            plain
+            size="s"
+            aria-label="Go back to Game Servers"
+            @click="$router.push('/servers/gameservers')"
+          >
+            <template #start>
+              <Icon name="ph:arrow-left" />
+            </template>
+            Game Servers
+          </Button>
+        </Flex>
+
+        <!-- Background Image -->
+        <div
+          v-if="gameBackground"
+          class="game-background-section"
+          :style="{ backgroundImage: `url(${gameBackground})` }"
+        >
+          <div class="background-overlay" />
+        </div>
+
+        <!-- Header -->
+        <GameServerHeader
+          :gameserver="gameserver"
+          :game="game"
+          :container="containerForHeader"
+          :state="state"
+          :state-config="stateConfig"
+        />
+
+        <!-- Server Details (Markdown) -->
+        <GameServerMarkdown :gameserver="gameserver" />
+
+        <Discussion
+          :id="String(gameserver.id)"
+          type="gameserver"
+          class="gameserver-discussion"
+        />
       </div>
-
-      <!-- Header -->
-      <GameServerHeader
-        :gameserver="gameserver"
-        :game="game"
-        :container="containerForHeader"
-        :state="state"
-        :state-config="stateConfig"
-      />
-
-      <!-- Server Details (Markdown) -->
-      <GameServerMarkdown :gameserver="gameserver" />
-
-      <Discussion
-        :id="String(gameserver.id)"
-        type="gameserver"
-        class="gameserver-discussion"
-      />
     </div>
   </div>
 </template>
@@ -223,7 +228,7 @@ useHead({
 .game-background-section {
   position: relative;
   width: 100%;
-  height: 440px;
+  height: 320px;
   border-radius: var(--border-radius-m);
   overflow: hidden;
   background-size: cover;
