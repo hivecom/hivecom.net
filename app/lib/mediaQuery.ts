@@ -16,10 +16,6 @@ type BreakpointKey = keyof typeof BREAKPOINTS
 
 type BreakpointQuery = `<${BreakpointKey}` | `>=${BreakpointKey}`
 
-function createMediaQuery(query: string) {
-  return useMediaQuery(query)
-}
-
 export function useBreakpoint(query: BreakpointQuery) {
   const operator = query.startsWith('>=') ? '>=' : '<'
   const key = query.replace(BREAKPOINT_OPERATOR_RE, '') as BreakpointKey
@@ -29,8 +25,8 @@ export function useBreakpoint(query: BreakpointQuery) {
     throw new Error(`[useBreakpoint] Unknown breakpoint key: ${key}`)
 
   const mq = operator === '>='
-    ? createMediaQuery(`(min-width: ${value}px)`)
-    : createMediaQuery(`(max-width: ${value - 1}px)`)
+    ? useMediaQuery(`(min-width: ${value}px)`)
+    : useMediaQuery(`(max-width: ${value - 1}px)`)
 
   return mq
 }
@@ -43,11 +39,11 @@ export function useActiveBreakpoints() {
   const queries = Object.keys(BREAKPOINTS).map(key => [key, BREAKPOINTS[key as BreakpointKey]] as const)
 
   const entries = queries.map(([key, value]) => {
-    const current = createMediaQuery(`(min-width: ${value}px)`)
+    const current = useMediaQuery(`(min-width: ${value}px)`)
     return [key as BreakpointKey, current] as const
   })
 
-  const booleans = Object.fromEntries(entries) as Record<BreakpointKey, ReturnType<typeof createMediaQuery>>
+  const booleans = Object.fromEntries(entries) as Record<BreakpointKey, ReturnType<typeof useMediaQuery>>
 
   const current = computed(() => {
     let active: BreakpointKey = 'xs'

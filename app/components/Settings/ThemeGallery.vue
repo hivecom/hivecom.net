@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Flex, Grid, Input, searchString, Tab, Tabs } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ThemeCard from './ThemeCard.vue'
 
 const emit = defineEmits<{
@@ -11,7 +12,7 @@ const emit = defineEmits<{
 const userId = useUserId()
 
 const { activeTheme, setActiveTheme } = useUserTheme()
-const { themes } = useDataThemes()
+const { themes, softDelete } = useDataThemes()
 
 const activeTab = ref <'gallery' | 'stock' | 'created'>('gallery')
 const search = ref('')
@@ -19,21 +20,26 @@ const search = ref('')
 const sortedThemes = computed(() => {
   const activeThemeId = activeTheme.value?.id
 
+  // Filter out unmaintaned from stock/gallery but keep them in my created themes
   const categorized = (() => {
     switch (activeTab.value) {
       case 'gallery':
-        return themes.value.filter(item => item.created_by !== null)
+        return themes.value
+          .filter(item => item.created_by !== null)
+          .filter(item => !item.is_unmaintained || item.id === activeThemeId)
       case 'stock':
         // Hivecom is the 02 user
-        return themes.value.filter(item => item.created_by === null)
+        return themes.value
+          .filter(item => item.created_by === null)
+          .filter(item => !item.is_unmaintained || item.id === activeThemeId)
       case 'created':
         return themes.value.filter(item => item.created_by === userId.value)
     }
   })()
 
   return categorized
-    // Hide unmaintained themes unless the current user still has it active
-    .filter(item => !item.is_unmaintained || item.id === activeThemeId)
+  // Hide unmaintained themes unless the current user still has it active
+
     // Search thems via name & description (NOTE: author would have been nice, but I only got the UUIDs)
     .filter(item => searchString([item.name, item.description], search.value))
     // Sorted active first, rest by date
@@ -42,15 +48,21 @@ const sortedThemes = computed(() => {
       const bIsActive = b.id === activeTheme.value?.id
       if (aIsActive !== bIsActive)
         return aIsActive ? -1 : 1
+      if (a.is_unmaintained !== b.is_unmaintained)
+        return a.is_unmaintained ? 1 : -1
       return a.created_at.localeCompare(b.created_at)
     })
 })
 
-function deleteTheme(id: string) {
+function deprecateTheme(id: string) {
   if (activeTheme.value?.id === id) {
     setActiveTheme(null)
   }
+
+  softDelete(id)
 }
+
+const isMobile = useBreakpoint('<s')
 </script>
 
 <template>
@@ -69,23 +81,23 @@ function deleteTheme(id: string) {
 
     <Flex x-between y-center class="mb-s">
       <Input v-model="search" placeholder="Search themes..." class="search-input" />
-
-      <Button variant="accent" @click="emit('create')">
+      <Button variant="accent" :square="isMobile" @click="emit('create')">
+        <Icon v-if="isMobile" name="ph:plus" :size="16" />
         <template #start>
-          <Icon name="ph:plus" :size="16" />
+          <Icon v-if="!isMobile" name="ph:plus" :size="16" />
         </template>
-        Create theme
+        {{ isMobile ? '' : 'Create theme' }}
       </Button>
     </Flex>
 
-    <Grid column gap="l" expand :columns="2">
+    <Grid column gap="l" expand :columns="isMobile ? 1 : 2">
       <!-- Fake theme card which resets theme to default. Shows up in stock or if it's active -->
       <ThemeCard
         v-if="activeTab === 'stock'"
         :item="{
           id: '$$$$default',
           created_by: null,
-          name: 'Default theme',
+          name: 'Default Theme',
           description: 'The default Hivecom theme',
         } as any"
         :active-theme-id="activeTheme ? '' : '$$$$default'"
@@ -99,7 +111,7 @@ function deleteTheme(id: string) {
         :active-theme-id="activeTheme?.id"
         @apply="setActiveTheme(item.id)"
         @edit="emit('edit', item)"
-        @delete="deleteTheme(item.id)"
+        @deprecate="deprecateTheme(item.id)"
       />
     </Grid>
 

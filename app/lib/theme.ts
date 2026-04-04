@@ -1,6 +1,4 @@
 /**
- * theme.ts
- *
  * Runtime utilities for applying VUI color themes.
  *
  * The `themes` table stores color values with column names like `dark_bg`,
@@ -8,7 +6,7 @@
  * (`--dark-color-bg`, `--light-color-text-red`). This module handles the
  * conversion and application so consumers don't need to think about it.
  *
- * Scale columns (spacing, rounding, transitions) are stored as integers 0-100
+ * Scale columns (spacing, rounding, transitions, widening) are stored as integers 0-100
  * in the DB and mapped to percentage multipliers that are applied to the
  * default VUI token values at runtime.
  *

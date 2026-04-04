@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Card, Dropdown, DropdownItem, Flex, theme } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, theme } from '@dolanske/vui'
 import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
 import { truncate } from '@/lib/utils/formatting'
@@ -15,21 +15,28 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   apply: []
-  delete: []
+  deprecate: []
   edit: []
 }>()
 
 const userId = useUserId()
 const user = useSupabaseUser()
 
-const confirmDelete = ref(false)
+const confirmDeprecate = ref(false)
 </script>
 
 <template>
-  <div class="theme-menu__card" :class="{ active: props.item.id === props.activeThemeId }">
+  <div
+    class="theme-menu__card" :class="{ active: props.item.id === props.activeThemeId,
+                                       unmaintained: props.item.is_unmaintained }"
+  >
     <!-- Theme preview UI -->
     <TinyBadge v-if="props.item.id === props.activeThemeId" variant="accent" filled>
       Active
+    </TinyBadge>
+
+    <TinyBadge v-else-if="props.item.is_unmaintained" variant="neutral">
+      Deprecated
     </TinyBadge>
 
     <div class="theme-menu__card--preview" :style="themeToScopedProperties(props.item, theme === 'light' ? 'light' : 'dark')">
@@ -70,42 +77,50 @@ const confirmDelete = ref(false)
       <Flex start class="mt-m" gap="xs">
         <UserDisplay :user-id="props.item.created_by" size="s" :show-role="false" />
         <div class="flex-1" />
-        <Button size="s" outline @click="emit('apply')">
-          <template #start>
-            <Icon name="ph:paint-brush-fill" :size="16" />
-          </template>
-          Apply
-        </Button>
-        <Dropdown v-if="userId && props.item.created_by === userId">
-          <template #trigger="{ toggle, isOpen }">
-            <Button size="s" square :class="{ active: isOpen }" @click="toggle">
-              <Icon name="ph:dots-three-bold" :size="18" />
-            </Button>
-          </template>
-
-          <DropdownItem @click="emit('edit')">
-            Edit
-          </DropdownItem>
-          <DropdownItem v-if="userId === props.item.created_by || user?.role === 'moderator' || user?.role === 'admin'" @click="confirmDelete = true">
-            Delete
-          </DropdownItem>
-        </Dropdown>
+        <ButtonGroup :gap="2">
+          <Button size="s" @click="emit('apply')">
+            <template #start>
+              <Icon name="ph:paint-brush-fill" :size="16" />
+            </template>
+            Apply
+          </Button>
+          <Dropdown v-if="userId && props.item.created_by === userId">
+            <template #trigger="{ toggle, isOpen }">
+              <Button size="s" square :class="{ active: isOpen }" @click="toggle">
+                <Icon name="ph:dots-three-bold" :size="18" />
+              </Button>
+            </template>
+            <DropdownItem @click="emit('edit')">
+              Edit
+            </DropdownItem>
+            <DropdownItem v-if="userId === props.item.created_by || user?.role === 'moderator' || user?.role === 'admin'" @click="confirmDeprecate = true">
+              Deprecate
+            </DropdownItem>
+          </Dropdown>
+        </ButtonGroup>
       </Flex>
     </div>
   </div>
 
   <ConfirmModal
-    :open="confirmDelete"
-    title="Delete theme?"
-    description="This action cannot be undone. Users who are currently using the theme will still be able to keep it, but it won't be visible in any theme listings."
-    confirm-text="Delete"
-    variant="danger"
-    @confirm="emit('delete')"
-    @cancel="confirmDelete = false"
-  />
+    :open="confirmDeprecate"
+    title="Deprecate theme?"
+    confirm-text="Deprecate"
+    destructive
+    @confirm="emit('deprecate')"
+    @cancel="confirmDeprecate = false"
+  >
+    <p class="mb-xs">
+      Users who are currently using the theme will still be able to keep it, but it won't be visible in any any lists.
+    </p>
+    <p>This action cannot be undone.</p>
+  </ConfirmModal>
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/mixins.scss' as *;
+@use '@/assets/breakpoints.scss' as *;
+
 .theme-menu__card {
   display: flex;
   flex-direction: column;
@@ -125,6 +140,19 @@ const confirmDelete = ref(false)
     z-index: 10;
   }
 
+  &.unmaintained {
+    .theme-menu__card--preview {
+      filter: saturate(0) opacity(0.25);
+    }
+
+    .theme-menu__card--content {
+      strong,
+      p {
+        color: var(--color-text-lighter);
+      }
+    }
+  }
+
   &.active {
     border-color: var(--color-bg-accent-lowered);
   }
@@ -133,7 +161,7 @@ const confirmDelete = ref(false)
   &:hover {
     .theme-menu__card--preview {
       :deep(.vui-card) {
-        top: 32px;
+        top: 24px;
       }
     }
 
@@ -171,8 +199,9 @@ const confirmDelete = ref(false)
       position: absolute;
       left: 50%;
       top: 32px;
-      transition: var(--transition-slow);
+      transition: var(--transition);
       transform: translateX(-50%);
+      transition-timing-function: ease-in-out;
     }
 
     strong {
@@ -205,11 +234,21 @@ const confirmDelete = ref(false)
       font-size: var(--font-size-s);
       color: var(--color-text-lighter);
       margin-top: var(--space-s);
+      height: 36px;
+      @include line-clamp(2);
     }
   }
 }
 
 :root.light .theme-menu__card--preview::before {
   background: linear-gradient(to top, rgba(8, 8, 8, 0.1), transparent);
+}
+
+@media screen and (max-width: $breakpoint-s) {
+  .theme-menu__card--content {
+    :deep(.vui-button) {
+      visibility: visible !important;
+    }
+  }
 }
 </style>
