@@ -960,6 +960,14 @@ const editedAtFormatted = computed(() => {
       padding: var(--space-m);
       background-color: var(--color-bg-medium);
     }
+
+    &--highlight {
+      .discussion-forum__mobile-header,
+      .discussion-forum__body,
+      .discussion-forum__mobile-footer {
+        background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
+      }
+    }
   }
 }
 </style>
