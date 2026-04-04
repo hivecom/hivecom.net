@@ -174,7 +174,7 @@ function extractStoragePath(src: string, bucketId: string): string | null {
 // callbacks can close over these reactive refs at setup time)
 // ---------------------------------------------------------------------------
 const expandedOpen = ref(false)
-const isMobile = useBreakpoint('<xs')
+const isMobile = useBreakpoint('<s')
 
 const mathModalOpen = ref(false)
 const mathModalLatex = ref('')
@@ -1042,7 +1042,7 @@ async function handleSubmit() {
     <EditorTableMenu v-if="editor && editorMode === 'rich'" :editor />
 
     <!-- Main editor instance -->
-    <div class="relative editor-host">
+    <div class="relative editor-host" :inert="expandedOpen">
       <!-- Content agreement -->
       <div v-if="shouldShowContentRulesOverlay" class="editor-overlay">
         <p>{{ props.contentRulesOverlayText || 'Before being able to add content, you must agree our content rules' }}</p>

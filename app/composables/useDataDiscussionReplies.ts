@@ -291,6 +291,38 @@ export function useDataDiscussionReplies(
     onDeleted?.(id)
   }
 
+  /**
+   * Permanently hard-deletes a reply row. Admin only.
+   * Any child replies that referenced this row via reply_to_id will become
+   * orphaned roots - the caller should warn the user about this before calling.
+   */
+  async function forceDeleteComment(id: string): Promise<void> {
+    const res = await supabase
+      .from('discussion_replies')
+      .delete()
+      .eq('id', id)
+
+    if (res.error) {
+      throw new Error(res.error.message)
+    }
+
+    // Remove from the local list entirely
+    comments.value = comments.value.filter(c => c.id !== id)
+
+    if (discussion.value?.pinned_reply_id === id) {
+      const { error: pinError } = await supabase
+        .from('discussions')
+        .update({ pinned_reply_id: null })
+        .eq('id', discussion.value.id)
+
+      if (!pinError) {
+        discussion.value.pinned_reply_id = null
+      }
+    }
+
+    onDeleted?.(id)
+  }
+
   const offtopicCount = computed(() =>
     comments.value.filter(c => c.is_offtopic).length,
   )
@@ -303,6 +335,7 @@ export function useDataDiscussionReplies(
     threadRoots,
     toggleOfftopic,
     deleteComment,
+    forceDeleteComment,
     offtopicCount,
   }
 }

@@ -33,8 +33,11 @@ export const DISCUSSION_KEYS = {
   /** Callback to toggle a comment's off-topic status */
   toggleOfftopic: Symbol('toggleOfftopic') as InjectionKey<(comment: Comment) => Promise<void>>,
 
-  /** Callback to delete a comment by ID */
+  /** Callback to delete a comment by ID (soft delete - marks as deleted) */
   deleteComment: Symbol('delete-comment') as InjectionKey<(id: string) => Promise<unknown>>,
+
+  /** Callback to permanently force-delete a comment by ID (admin only, hard DELETE) */
+  forceDeleteComment: Symbol('force-delete-comment') as InjectionKey<(id: string) => Promise<unknown>>,
 
   /** The discussion row itself */
   discussion: Symbol('discussion') as InjectionKey<ProvidedDiscussion>,

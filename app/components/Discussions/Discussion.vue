@@ -138,6 +138,7 @@ const {
   threadRoots,
   toggleOfftopic,
   deleteComment: deleteCommentFromList,
+  forceDeleteComment: forceDeleteCommentFromList,
   offtopicCount,
 } = useDataDiscussionReplies(
   {
@@ -418,7 +419,12 @@ async function deleteComment(id: string) {
   return deleteCommentFromList(id)
 }
 
+async function forceDeleteComment(id: string) {
+  return forceDeleteCommentFromList(id)
+}
+
 provide(DISCUSSION_KEYS.deleteComment, deleteComment)
+provide(DISCUSSION_KEYS.forceDeleteComment, forceDeleteComment)
 
 // ── Off-topic visibility helpers ──────────────────────────────────────────────
 

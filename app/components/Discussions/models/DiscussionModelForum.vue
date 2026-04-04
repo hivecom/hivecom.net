@@ -151,8 +151,13 @@ async function handleTogglePin() {
 
 // Comment deletion
 const deleteComment = inject(DISCUSSION_KEYS.deleteComment) as (id: string) => Promise<void>
+const forceDeleteComment = inject(DISCUSSION_KEYS.forceDeleteComment) as (id: string) => Promise<void>
 const loadingDeletion = ref(false)
 const showDeleteModal = ref(false)
+const showForceDeleteModal = ref(false)
+const loadingForceDeletion = ref(false)
+
+const isAdmin = computed(() => currentUserData.value?.role === 'admin')
 
 function handleDeletion() {
   loadingDeletion.value = true
@@ -162,6 +167,17 @@ function handleDeletion() {
     })
     .finally(() => {
       loadingDeletion.value = false
+    })
+}
+
+function handleForceDeletion() {
+  loadingForceDeletion.value = true
+  forceDeleteComment(data.value.id)
+    .then(() => {
+      emit('interact')
+    })
+    .finally(() => {
+      loadingForceDeletion.value = false
     })
 }
 
@@ -438,10 +454,28 @@ const editedAtFormatted = computed(() => {
       <div class="discussion-forum__body">
         <!-- Tombstone: soft-deleted reply -->
         <template v-if="data.is_deleted">
-          <p class="discussion-forum__deleted">
-            <Icon name="ph:trash" />
-            This reply was deleted.
-          </p>
+          <Flex expand x-between class="discussion-forum__deleted-row">
+            <p class="discussion-forum__deleted">
+              <Icon name="ph:trash" />
+              This reply was deleted.
+            </p>
+            <Tooltip v-if="isAdmin" placement="top">
+              <Button
+                size="s"
+                square
+                plain
+                variant="danger"
+                :loading="loadingForceDeletion"
+                class="discussion-forum__force-delete"
+                @click.stop="showForceDeleteModal = true"
+              >
+                <Icon name="ph:trash-simple-bold" class="text-color-red" />
+              </Button>
+              <template #tooltip>
+                <p>Permanently delete</p>
+              </template>
+            </Tooltip>
+          </Flex>
         </template>
 
         <template v-else>
@@ -533,6 +567,38 @@ const editedAtFormatted = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Force delete confirmation modal (admin only) -->
+    <Modal
+      :open="showForceDeleteModal"
+      size="s"
+      centered
+      @close="showForceDeleteModal = false"
+    >
+      <template #header>
+        <h3>Permanently delete reply</h3>
+      </template>
+
+      <Flex column gap="m">
+        <Alert variant="danger" icon-align="start">
+          <p><strong>This cannot be undone.</strong> The reply row will be hard-deleted from the database.</p>
+        </Alert>
+        <p class="text-color-light text-m text-justified">
+          If other replies quote or reply to this one, they will become orphaned - their reply context will break and the thread flow may appear confusing to readers. Force deletion is <strong class="text-m">heavily discouraged</strong> unless the reply has no dependents.
+        </p>
+      </Flex>
+
+      <template #footer>
+        <Flex x-end gap="s">
+          <Button plain :inert="loadingForceDeletion" @click="showForceDeleteModal = false">
+            Cancel
+          </Button>
+          <Button variant="danger" :loading="loadingForceDeletion" @click="handleForceDeletion">
+            Permanently delete
+          </Button>
+        </Flex>
+      </template>
+    </Modal>
 
     <!-- Delete confirmation modal -->
     <ConfirmModal
@@ -761,6 +827,25 @@ const editedAtFormatted = computed(() => {
 
   &__reply-user {
     font-size: var(--font-size-s);
+  }
+
+  &__deleted-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+  }
+
+  &__force-delete {
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+
+    .discussion-forum__deleted-row:hover & {
+      opacity: 1;
+    }
+
+    @media screen and (max-width: $breakpoint-s) {
+      opacity: 1;
+    }
   }
 
   &__deleted {

@@ -3,6 +3,7 @@ import type { ActivityItem } from '@/composables/useForumActivityFeed'
 import type { UseForumActivityFeedPaginatedOptions } from '@/composables/useForumActivityFeedPaginated'
 import { Badge, Button, Carousel, Flex, Sheet, Skeleton, Spinner } from '@dolanske/vui'
 import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
+import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useForumActivityFeedPaginated } from '@/composables/useForumActivityFeedPaginated'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -169,11 +170,17 @@ onUnmounted(() => {
       <h5>
         Latest updates
       </h5>
-      <Badge v-if="newSinceLastVisit > 0" variant="accent">
+      <TinyBadge v-if="isMobile && newSinceLastVisit > 0" variant="accent">
+        {{ newSinceLastVisit }} new
+      </TinyBadge>
+      <Badge v-else-if="newSinceLastVisit > 0" variant="accent">
         {{ newSinceLastVisit }} since last visit
       </Badge>
-      <Badge v-if="props.postSinceYesterday" variant="neutral">
-        {{ props.postSinceYesterday }} {{ isMobile ? null : 'today' }}
+      <TinyBadge v-if="isMobile && props.postSinceYesterday" variant="neutral">
+        {{ props.postSinceYesterday }}
+      </TinyBadge>
+      <Badge v-else-if="props.postSinceYesterday" variant="neutral">
+        {{ props.postSinceYesterday }} today
       </Badge>
 
       <div class="flex-1" />

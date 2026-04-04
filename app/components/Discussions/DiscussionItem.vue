@@ -56,11 +56,11 @@ onMounted(async () => {
 })
 
 // Scroll into view whenever another comment's scrollReply() sets ?comment=<this id> in the URL.
-// nextTick is sufficient here because the page is already fully rendered at this point.
+// Use waitForLayoutStability() to handle late-rendering content (images, avatars) shifting the layout.
 watch(isActive, async (active) => {
   if (!active)
     return
-  await nextTick()
+  await waitForLayoutStability()
   const el = Array.isArray(self.value) ? self.value[0]?.$el : self.value?.$el
   el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }, { immediate: false })
