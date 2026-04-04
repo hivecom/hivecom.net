@@ -50,7 +50,7 @@ const currentUser = useSupabaseUser()
 
 const { user: currentUserData } = useDataUser(userId, { includeRole: true })
 
-const isMobile = useBreakpoint('<m')
+const isMobile = useBreakpoint('<s')
 
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
 const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
@@ -798,6 +798,7 @@ const editedAtFormatted = computed(() => {
   &__reply {
     margin-bottom: var(--space-m);
     cursor: pointer;
+    overflow-wrap: break-word;
 
     &:hover {
       background-color: var(--color-bg-raised);

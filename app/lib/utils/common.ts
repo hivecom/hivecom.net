@@ -155,14 +155,17 @@ export async function waitForImages(timeoutMs = 4000): Promise<void> {
  * images with non-16:9 aspect ratios that shift the layout more than the CSS
  * placeholder pre-allocated.
  */
-export async function waitForLayoutStability(timeoutMs = 5000, stableForMs = 500): Promise<void> {
+export async function waitForLayoutStability(timeoutMs = 8000, stableForMs = 1000): Promise<void> {
   if (!import.meta.client)
     return
 
   return new Promise((resolve) => {
     const deadline = Date.now() + timeoutMs
     let lastHeight = document.body.scrollHeight
-    let stableStart = Date.now()
+    // Initialise to null so the stable window only starts once we've taken
+    // at least one rAF measurement - avoids a false "already stable" resolve
+    // before image loads have even started shifting the layout.
+    let stableStart: number | null = null
 
     const tick = () => {
       const now = Date.now()
@@ -172,8 +175,12 @@ export async function waitForLayoutStability(timeoutMs = 5000, stableForMs = 500
         lastHeight = currentHeight
         stableStart = now
       }
+      else {
+        // First tick with no change - begin the stable window now
+        stableStart ??= now
+      }
 
-      if (now - stableStart >= stableForMs || now >= deadline) {
+      if (now >= deadline || (stableStart !== null && now - stableStart >= stableForMs)) {
         resolve()
         return
       }
