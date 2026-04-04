@@ -13,7 +13,8 @@ interface Props {
 
 const {
   editing,
-  floating,
+  // TODO: for edit-as-you go controls
+  // floating,
 } = defineProps<Props>()
 
 const emit = defineEmits<{
