@@ -16,7 +16,7 @@ import type { Tables } from './database.overrides'
 export type Theme = Tables<'themes'>
 
 /** The palette-independent 0-100 scale column names. */
-export type ThemeScaleKey = 'spacing' | 'rounding' | 'transitions'
+export type ThemeScaleKey = 'spacing' | 'rounding' | 'transitions' | 'widening'
 
 /** Only the color columns from a theme row (excludes metadata and scale columns). */
 export type ThemeColors = Omit<

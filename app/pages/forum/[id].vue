@@ -781,6 +781,7 @@ function revealNsfw() {
       </section>
 
       <!-- Fullscreen NSFW overlay -->
+      <!-- TODO: remove this and add option to Modal/Sheet to increase background blur. No need to reimplement modal -->
       <Transition name="fade">
         <div v-if="showNSFWWarning" class="forum-post__nsfw-overlay">
           <div class="forum-post__nsfw-overlay-inner">
