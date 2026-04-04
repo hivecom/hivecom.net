@@ -52,14 +52,12 @@ function onSuspenseResolve() {
       <template #fallback>
         <span />
       </template>
-      <Transition name="md-content">
-        <MarkdownRendererInner
-          v-if="resolved || !showSkeleton"
-          :extra-class="props.class"
-          :md="props.md"
-          :tag="props.tag"
-        />
-      </Transition>
+      <MarkdownRendererInner
+        v-show="resolved || !showSkeleton"
+        :extra-class="props.class"
+        :md="props.md"
+        :tag="props.tag"
+      />
     </Suspense>
   </div>
 </template>
@@ -84,15 +82,6 @@ function onSuspenseResolve() {
 }
 
 .md-skeleton-leave-to {
-  opacity: 0;
-}
-
-// Content fades in underneath the leaving skeleton, staggered by index if provided
-.md-content-enter-active {
-  transition: opacity 0.2s ease calc(var(--stagger-index, 0) * 0.05s);
-}
-
-.md-content-enter-from {
   opacity: 0;
 }
 </style>

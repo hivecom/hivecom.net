@@ -884,6 +884,14 @@ watch(() => editor.value, (value) => {
 
 // Update editor content manually on model change
 watch(content, (newContent) => {
+  // When the expanded modal is open it owns the editor with focus. Syncing
+  // content back into this (background) editor on every keystroke causes
+  // setContent() to fire, which triggers layout reflows and makes the view
+  // jump. Skip the sync entirely - when the modal closes the two editors
+  // share the same v-model so they'll already be in sync.
+  if (expandedOpen.value)
+    return
+
   // In plain-text mode the textarea owns the content directly; do not forward
   // changes to the Tiptap editor or its onUpdate hook will fire and run
   // getEditorMarkdown(), which escapes angle brackets and writes the mangled
