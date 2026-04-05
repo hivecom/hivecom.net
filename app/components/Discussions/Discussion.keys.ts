@@ -18,6 +18,8 @@ import type { InjectionKey, Ref } from 'vue'
 import type { Comment, DiscussionSettings, ProvidedDiscussion } from './Discussion.types'
 
 export const DISCUSSION_KEYS = {
+  /** Callback to lazily load children for a root comment (threaded view) */
+  loadChildren: Symbol('loadChildren') as InjectionKey<(rootId: string) => Promise<void>>,
   /** The current view mode: 'flat' | 'threaded' */
   viewMode: Symbol('viewMode') as InjectionKey<Ref<'flat' | 'threaded'>>,
 

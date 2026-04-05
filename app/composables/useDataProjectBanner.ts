@@ -1,12 +1,23 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+// Banner URL is wrapped in an object when stored so that a cached null (no banner)
+// is distinguishable from a cache miss (useCache.get returns null for both otherwise).
 import type { Ref } from 'vue'
 import type { Database } from '@/types/database.types'
 import { onMounted, readonly, ref, unref, watchEffect } from 'vue'
+import { useCache } from '@/composables/useCache'
 import { useProjectBannerBus } from '@/composables/useProjectBannerBus'
 import { getProjectBannerUrl } from '@/lib/storage'
 
+interface BannerCacheEntry { value: string | null }
+
+// Cache is shared across all composable instances and persists across page reloads.
+// Positive and negative results use different TTLs (passed per-set-call).
+const _bannerCache = useCache()
+
 const CACHE_PREFIX = 'project-banner:'
-const memoryCache = new Map<number, { url: string | null, expiresAt: number }>()
+
+function getCacheKey(projectId: number): string {
+  return `${CACHE_PREFIX}${projectId}`
+}
 
 export interface UseProjectBannerOptions {
   ttl?: number
@@ -14,72 +25,13 @@ export interface UseProjectBannerOptions {
 }
 
 type MaybeRef<T> = T | Ref<T>
-type ProjectBannerFetcher = (client: SupabaseClient<Database>, projectId: number) => Promise<string | null>
 
-function now() {
-  return Date.now()
-}
-
-function getCacheKey(projectId: number) {
-  return `${CACHE_PREFIX}${projectId}`
-}
-
-function canUseBrowserCache() {
-  return typeof window !== 'undefined'
-}
-
-function readCache(projectId: number): string | null | undefined {
-  if (!canUseBrowserCache())
-    return undefined
-
-  const entry = memoryCache.get(projectId)
-  if (entry && entry.expiresAt > now())
-    return entry.url
-  if (entry)
-    memoryCache.delete(projectId)
-
-  const cacheKey = getCacheKey(projectId)
-  const raw = window.localStorage.getItem(cacheKey)
-  if (raw === null)
-    return undefined
-
-  try {
-    const parsed = JSON.parse(raw) as { url: string | null, expiresAt: number }
-    if (parsed.expiresAt <= now()) {
-      window.localStorage.removeItem(cacheKey)
-      return undefined
-    }
-
-    memoryCache.set(projectId, parsed)
-    return parsed.url
-  }
-  catch {
-    window.localStorage.removeItem(cacheKey)
-    return undefined
-  }
-}
-
-function writeCache(projectId: number, url: string | null, ttl: number, negativeTtl: number) {
-  if (!canUseBrowserCache())
-    return
-
-  const expiresAt = now() + (url !== null ? ttl : negativeTtl)
-  const entry = { url, expiresAt }
-  memoryCache.set(projectId, entry)
-
-  try {
-    window.localStorage.setItem(getCacheKey(projectId), JSON.stringify(entry))
-  }
-  catch {
-    // localStorage may be unavailable (e.g., Safari private mode)
-  }
-}
-
+/**
+ * Invalidate the cached banner for a specific project.
+ * Exported so callers outside the composable (e.g. admin upload flows) can bust the cache.
+ */
 export function invalidateProjectBannerData(projectId: number) {
-  memoryCache.delete(projectId)
-  if (canUseBrowserCache()) {
-    window.localStorage.removeItem(getCacheKey(projectId))
-  }
+  _bannerCache.delete(getCacheKey(projectId))
 }
 
 export function useDataProjectBanner(
@@ -89,7 +41,6 @@ export function useDataProjectBanner(
   const supabase = useSupabaseClient<Database>()
   const ttl = options.ttl ?? 30 * 60 * 1000
   const negativeTtl = options.negativeTtl ?? 5 * 60 * 1000
-  const fetchProjectBannerUrl = getProjectBannerUrl as ProjectBannerFetcher
 
   const bannerUrl = ref<string | null>(null)
   const loading = ref(false)
@@ -98,9 +49,9 @@ export function useDataProjectBanner(
 
   async function fetchBanner(id: number, force = false) {
     if (!force) {
-      const cached = readCache(id)
-      if (cached !== undefined) {
-        bannerUrl.value = cached
+      const cached = _bannerCache.get<BannerCacheEntry>(getCacheKey(id))
+      if (cached !== null) {
+        bannerUrl.value = cached.value
         error.value = null
         loading.value = false
         return
@@ -112,12 +63,12 @@ export function useDataProjectBanner(
     error.value = null
 
     try {
-      const url = await fetchProjectBannerUrl(supabase, id)
+      const url = await getProjectBannerUrl(supabase, id)
       if (currentRequest !== requestToken)
         return
 
       bannerUrl.value = url
-      writeCache(id, url, ttl, negativeTtl)
+      _bannerCache.set(getCacheKey(id), { value: url }, url !== null ? ttl : negativeTtl)
     }
     catch (err) {
       if (currentRequest !== requestToken)
@@ -166,7 +117,7 @@ export function useDataProjectBanner(
         bannerUrl.value = detail.url
         error.value = null
         loading.value = false
-        writeCache(detail.projectId, detail.url, ttl, negativeTtl)
+        _bannerCache.set(getCacheKey(detail.projectId), { value: detail.url }, ttl)
       })
     })
   }

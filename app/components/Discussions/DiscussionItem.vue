@@ -8,6 +8,19 @@ import { DISCUSSION_KEYS } from './Discussion.keys'
 import DiscussionModelComment from './models/DiscussionModelComment.vue'
 import DiscussionModelForum from './models/DiscussionModelForum.vue'
 
+const {
+  data,
+  model,
+  threadNode,
+  children = [],
+  depth = 0,
+  showOfftopic = false,
+  showThreadReplies = false,
+  staggerIndex,
+} = defineProps<Props>()
+
+const loadChildren = inject(DISCUSSION_KEYS.loadChildren)
+
 interface Props {
   data: Comment
   model?: 'comment' | 'forum'
@@ -20,17 +33,6 @@ interface Props {
   showThreadReplies?: boolean
   staggerIndex?: number
 }
-
-const {
-  data,
-  model,
-  threadNode,
-  children = [],
-  depth = 0,
-  showOfftopic = false,
-  showThreadReplies = false,
-  staggerIndex,
-} = defineProps<Props>()
 
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
 const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
@@ -98,6 +100,11 @@ const sourceChildren = computed((): ThreadNode[] =>
   children.length > 0 ? children : (threadNode?.children ?? []),
 )
 
+// Whether children have been requested at least once (threaded lazy load).
+// Separate from sourceChildren.length > 0 because a root can legitimately
+// have zero children even after a successful fetch.
+const childrenRequested = ref(children.length > 0)
+
 // Filter for off-topic visibility
 const visibleChildren = computed((): ThreadNode[] =>
   sourceChildren.value.filter(n => !n.comment.is_offtopic || showOfftopic),
@@ -119,9 +126,47 @@ watch(
 // Threaded mode: whether this node's sub-tree is folded closed
 const threadCollapsed = ref(false)
 
-function toggleThreadCollapsed() {
+async function toggleThreadCollapsed() {
+  if (threadCollapsed.value) {
+    // Expanding: lazily load children if not yet fetched
+    if (!childrenRequested.value && loadChildren != null) {
+      childrenRequested.value = true
+      await loadChildren(data.id)
+    }
+  }
   threadCollapsed.value = !threadCollapsed.value
 }
+
+// ── Lazy child loading (threaded mode) ────────────────────────────────────────
+
+const wrapperEl = useTemplateRef<HTMLDivElement>('wrapperEl')
+
+// Becomes true the first time this item enters the viewport.
+// The observer stops itself after the first intersection so it only fires once.
+const isVisible = ref(false)
+const { stop: stopVisibilityObserver } = useIntersectionObserver(
+  wrapperEl,
+  ([entry]) => {
+    if (entry?.isIntersecting) {
+      isVisible.value = true
+      stopVisibilityObserver()
+    }
+  },
+)
+
+// Trigger child fetch when:
+//   • the item scrolls into view while already in threaded mode, OR
+//   • the mode switches to threaded while the item is already visible.
+// Guards prevent double-fetching and respect the collapsed state.
+watch(
+  [isVisible, viewMode],
+  ([visible, mode]) => {
+    if (!visible || mode !== 'threaded' || childrenRequested.value || loadChildren == null || threadCollapsed.value)
+      return
+    childrenRequested.value = true
+    void loadChildren(data.id)
+  },
+)
 
 // ── Showing replies in a sheet ───────────────────────────────────
 
@@ -136,6 +181,7 @@ function stripReplyData(entry: Comment) {
 <template>
   <div
     :id="`comment-${data.id}`"
+    ref="wrapperEl"
     class="discussion-comment-wrapper"
     :class="data.is_offtopic && 'discussion-comment-wrapper--offtopic'"
     :style="staggerIndex != null ? { '--stagger-index': staggerIndex } : undefined"

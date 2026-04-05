@@ -813,7 +813,7 @@ function revealNsfw() {
         placeholder="Write your reply to this thread..."
         @reply-submitted="handleReplySubmitted"
       />
-
+      <!-- Removing this in place of the new timeline.
       <div v-show="contentHeight > 1600" class="forum-post__fast-travel">
         <Tooltip>
           <Button size="s" plain square @click="scrollHandler">
@@ -824,6 +824,7 @@ function revealNsfw() {
           </template>
         </Tooltip>
       </div>
+       -->
     </template>
 
     <!-- Nothing found or an error -->
