@@ -101,9 +101,9 @@ useSwipe(imageWrap, {
 
 <template>
   <Modal class="md-lightbox" size="screen" :open="isOpen" centered @close="close">
-    <div ref="imageWrap" class="md-lightbox__img-wrap" @click.self="close">
+    <div ref="imageWrap" class="md-lightbox__img-wrap">
       <Transition :name="`md-lightbox-slide-${slideDir}`">
-        <div v-if="activeUrl" :key="activeUrl" class="md-lightbox__slide">
+        <div v-if="activeUrl" :key="activeUrl" class="md-lightbox__slide" @click.self="close">
           <img class="ignored" :src="activeUrl">
         </div>
       </Transition>

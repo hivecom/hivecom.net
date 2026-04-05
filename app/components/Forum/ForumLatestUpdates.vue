@@ -40,13 +40,26 @@ const visitedAt = computed<number | null>(() => {
   return new Date(props.lastVisitedAt).getTime()
 })
 
+// Advance the effective visit time to cover any posts by the current user -
+// they obviously saw their own post when they wrote it, so it should never
+// appear in the "new since last visit" zone.
+const effectiveVisitedAt = computed<number | null>(() => {
+  if (visitedAt.value == null)
+    return null
+  const ownPosts = props.latestPosts.filter(post => post.user === user.value?.id)
+  if (ownPosts.length === 0)
+    return visitedAt.value
+  const latestOwn = Math.max(...ownPosts.map(p => new Date(p.timestampRaw).getTime()))
+  return Math.max(visitedAt.value, latestOwn)
+})
+
 // Index of the first item older than the last visit - divider renders between
 // index (splitIndex - 1) and index splitIndex.
 const splitIndex = computed<number | null>(() => {
-  if (visitedAt.value == null || props.loading)
+  if (effectiveVisitedAt.value == null || props.loading)
     return null
   const idx = props.latestPosts.findIndex(
-    post => new Date(post.timestampRaw).getTime() <= visitedAt.value!,
+    post => new Date(post.timestampRaw).getTime() <= effectiveVisitedAt.value!,
   )
   // No divider if everything is new or nothing is new
   if (idx <= 0 || idx >= props.latestPosts.length)
@@ -80,10 +93,10 @@ const {
 
 // Divider index in the sheet feed - same logic as carousel, same boundary.
 const sheetSplitIndex = computed<number | null>(() => {
-  if (visitedAt.value == null || sheetLoading.value)
+  if (effectiveVisitedAt.value == null || sheetLoading.value)
     return null
   const idx = sheetItems.value.findIndex(
-    item => new Date(item.timestampRaw).getTime() <= visitedAt.value!,
+    item => new Date(item.timestampRaw).getTime() <= effectiveVisitedAt.value!,
   )
   if (idx <= 0 || idx >= sheetItems.value.length)
     return null
@@ -132,10 +145,10 @@ watch(sheetOpen, async (open) => {
     // If lastVisitedAt is set but no boundary item was found in the first page
     // (findIndex === -1 means all loaded items are newer), keep loading pages
     // until we find an item older than the last visit or exhaust the feed.
-    if (visitedAt.value != null) {
+    if (effectiveVisitedAt.value != null) {
       while (!sheetExhausted.value) {
         const idx = sheetItems.value.findIndex(
-          item => new Date(item.timestampRaw).getTime() <= visitedAt.value!,
+          item => new Date(item.timestampRaw).getTime() <= effectiveVisitedAt.value!,
         )
         if (idx !== -1)
           break
