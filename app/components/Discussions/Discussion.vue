@@ -278,6 +278,37 @@ function handleShowOfftopicUpdate(val: boolean) {
   showOfftopic.value = val
 }
 
+/**
+ * Set of comment IDs after which a run of hidden offtopic replies begins.
+ * Used to insert the inline offtopic banner at the right position in the list.
+ * Only populated when showOfftopic is false and there are offtopic replies loaded.
+ */
+const offtopicBannerAfterIds = computed((): Set<string> => {
+  if (showOfftopic.value || offtopicCount.value === 0)
+    return new Set()
+  const ids = new Set<string>()
+  const list = modelledComments.value
+  for (let i = 0; i < list.length - 1; i++) {
+    const curr = list[i]!
+    const next = list[i + 1]!
+    // Insert banner after a visible comment that is immediately followed by an offtopic one
+    if (!curr.is_offtopic && next.is_offtopic) {
+      ids.add(curr.id)
+    }
+  }
+  // Also handle the case where offtopic replies are at the very start (no preceding visible comment)
+  // - we use a sentinel empty-string key checked separately in the template
+  return ids
+})
+
+/** True when the first loaded comment is already offtopic (banner goes before everything) */
+const offtopicBannerAtStart = computed((): boolean => {
+  if (showOfftopic.value || offtopicCount.value === 0)
+    return false
+  const first = modelledComments.value[0]
+  return first != null && first.is_offtopic
+})
+
 // Whether the current user is the discussion author (OP)
 const isDiscussionAuthor = computed(() =>
   !!userId.value && !!discussion.value && discussion.value.created_by === userId.value,
@@ -336,6 +367,22 @@ watch(hasMore, async (val) => {
   }
 })
 
+// Also check sentinel visibility whenever modelledComments changes - if the
+// loaded set is short enough that the sentinel is still in viewport after a
+// page loads, the intersection observer won't re-fire for the next page.
+watch(modelledComments, async () => {
+  if (!hasMore.value || loadingMore.value)
+    return
+  await nextTick()
+  const sentinel = viewMode.value === 'threaded' ? bottomSentinelThreadedEl.value : bottomSentinelEl.value
+  if (sentinel == null)
+    return
+  const rect = sentinel.getBoundingClientRect()
+  if (rect.top < window.innerHeight + 300) {
+    void loadMore()
+  }
+})
+
 /**
  * Show the timeline scrubber when:
  * - forum model (ascending, replies grow at the bottom)
@@ -351,8 +398,6 @@ const timelineSpanMs = computed(() => {
 
 const showTimeline = computed(() => {
   if (props.model !== 'forum')
-    return false
-  if (viewMode.value !== 'flat')
     return false
   const d = discussion.value
   if (d == null)
@@ -387,26 +432,68 @@ interface TimelineBucket {
 }
 
 const timelineBuckets = ref<TimelineBucket[]>([])
+const timelineOfftopicBuckets = ref<TimelineBucket[]>([])
 
-// Fetch activity buckets once the timeline becomes visible.
-watch(showTimeline, async (visible) => {
-  if (!visible || !discussion.value)
+/**
+ * The unloaded gap's time range as ISO strings, derived from the loaded
+ * comment list. The gap starts just after the comment with gap.afterId and
+ * ends just before the first comment that follows it in the list.
+ * Passed to DiscussionTimeline so it can render a dashed region on the track.
+ */
+const timelineGapRange = computed((): { start: string, end: string } | null => {
+  if (gap.value == null)
+    return null
+  const list = modelledComments.value
+  const afterIdx = list.findIndex(c => c.id === gap.value!.afterId)
+  if (afterIdx === -1)
+    return null
+  const afterComment = list[afterIdx]
+  const nextComment = list[afterIdx + 1]
+  if (afterComment == null || nextComment == null)
+    return null
+  return { start: afterComment.created_at, end: nextComment.created_at }
+})
+
+async function fetchTimelineBuckets() {
+  if (!showTimeline.value || discussion.value == null)
     return
 
-  const { data } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>)(
-    'get_discussion_reply_activity_buckets',
-    {
-      p_discussion_id: discussion.value.id,
-      p_bucket_size: timelineBucketInterval.value,
-      p_hash: props.hash ?? null,
-      p_root_only: false,
-    },
-  )
+  const rpc = (fn: string, args: Record<string, unknown>) =>
+    (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>).call(supabase, fn, args)
+  const baseArgs = {
+    p_discussion_id: discussion.value.id,
+    p_bucket_size: timelineBucketInterval.value,
+    p_hash: props.hash ?? null,
+    p_root_only: viewMode.value === 'threaded',
+  }
+
+  const [{ data }, { data: offtopicData }] = await Promise.all([
+    rpc('get_discussion_reply_activity_buckets', baseArgs),
+    rpc('get_discussion_reply_activity_buckets', { ...baseArgs, p_offtopic_only: true }),
+  ])
+
   const rows = data as Array<{ bucket_start: string, reply_count: number }> | null
   if (rows != null) {
     timelineBuckets.value = rows.map(r => ({ bucketStart: r.bucket_start, replyCount: r.reply_count }))
   }
+
+  const offtopicRows = offtopicData as Array<{ bucket_start: string, reply_count: number }> | null
+  if (offtopicRows != null) {
+    timelineOfftopicBuckets.value = offtopicRows.map(r => ({ bucketStart: r.bucket_start, replyCount: r.reply_count }))
+  }
+}
+
+// Fetch activity buckets once the timeline becomes visible.
+watch(showTimeline, async (visible) => {
+  if (!visible)
+    return
+  await fetchTimelineBuckets()
 }, { immediate: true })
+
+// Re-fetch when view mode changes - threaded uses root-only buckets, flat uses all replies.
+watch(viewMode, async () => {
+  await fetchTimelineBuckets()
+})
 
 function updateScrollFraction() {
   if (replyAreaEl.value == null || !discussion.value)
@@ -808,6 +895,16 @@ function isNodeVisible(node: ThreadNode): boolean {
         <!-- v-show (not v-if) keeps items mounted across mode switches so MarkdownRenderer -->
         <!-- never re-suspends and the skeleton/fade-in flash doesn't appear. -->
         <div v-show="viewMode === 'flat' && modelledComments.length > 0">
+          <!-- Offtopic banner at the very start when all leading replies are offtopic -->
+          <div
+            v-if="offtopicBannerAtStart"
+            class="discussion__offtopic-banner"
+            @click="handleShowOfftopicUpdate(true)"
+          >
+            <button>
+              {{ offtopicCount }} off-topic {{ offtopicCount === 1 ? 'reply' : 'replies' }} hidden
+            </button>
+          </div>
           <template v-for="(comment, index) in modelledComments" :key="comment.id">
             <DiscussionItem
               v-if="isCommentVisible(comment)"
@@ -818,13 +915,23 @@ function isNodeVisible(node: ThreadNode): boolean {
               :show-thread-replies="showThreadReplies"
               :stagger-index="Math.min(index, 10)"
             />
+            <!-- Offtopic banner: appears after the last visible comment before a hidden offtopic run -->
+            <div
+              v-if="offtopicBannerAfterIds.has(comment.id)"
+              class="discussion__offtopic-banner"
+              @click="handleShowOfftopicUpdate(true)"
+            >
+              <button>
+                {{ offtopicCount }} off-topic {{ offtopicCount === 1 ? 'reply' : 'replies' }} hidden
+              </button>
+            </div>
             <!-- Gap banner: appears after the last item of the early block -->
             <div
               v-if="gap != null && comment.id === gap.afterId"
               class="discussion__gap-banner"
               @click="!loadingGap && loadGap()"
             >
-              <button :disabled="loadingGap" class="text-color-accent">
+              <button :disabled="loadingGap">
                 Load {{ gap.count }} {{ gap.count === 1 ? 'reply' : 'replies' }} between
               </button>
             </div>
@@ -866,9 +973,7 @@ function isNodeVisible(node: ThreadNode): boolean {
               @click="!loadingGap && loadGap()"
             >
               <button :disabled="loadingGap">
-                <Icon name="ph:dots-three" :size="12" />
                 Load {{ gap.count }} {{ gap.count === 1 ? 'reply' : 'replies' }} between
-                <Icon name="ph:dots-three" :size="12" />
               </button>
             </div>
           </template>
@@ -930,6 +1035,8 @@ function isNodeVisible(node: ThreadNode): boolean {
           :start="timelineStart"
           :end="timelineEnd"
           :buckets="timelineBuckets"
+          :offtopic-buckets="timelineOfftopicBuckets"
+          :gap-range="timelineGapRange"
           :bucket-interval-ms="timelineBucketIntervalMs"
           :current-fraction="currentScrollFraction"
           :loading="navigateToDateLoading"
@@ -952,20 +1059,6 @@ function isNodeVisible(node: ThreadNode): boolean {
     justify-content: center;
     margin-block: var(--space-s);
     cursor: pointer;
-
-    &:before {
-      content: '';
-      display: block;
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      left: 0;
-      right: 0;
-      border-bottom: 1px solid var(--color-border-strong);
-      opacity: 0.5;
-      z-index: 1;
-      transition: opacity var(--transition);
-    }
 
     &:hover:before {
       opacity: 1;
@@ -993,6 +1086,47 @@ function isNodeVisible(node: ThreadNode): boolean {
         opacity: 0.5;
         cursor: default;
       }
+    }
+  }
+
+  &__gap-banner button {
+    color: var(--color-accent);
+
+    &:hover:not(:disabled) {
+      color: var(--color-accent);
+      opacity: 0.8;
+    }
+  }
+
+  &__gap-banner {
+    &:before {
+      content: '';
+      display: block;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      left: 0;
+      right: 0;
+      border-bottom: 1px dashed var(--color-border-strong);
+      opacity: 0.5;
+      z-index: 1;
+      transition: opacity var(--transition);
+    }
+  }
+
+  &__load-more {
+    &:before {
+      content: '';
+      display: block;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      left: 0;
+      right: 0;
+      border-bottom: 1px solid var(--color-border-strong);
+      opacity: 0.5;
+      z-index: 1;
+      transition: opacity var(--transition);
     }
   }
 
@@ -1066,6 +1200,48 @@ function isNodeVisible(node: ThreadNode): boolean {
   &--forum {
     .discussion__add {
       padding-left: 0;
+    }
+  }
+
+  &__offtopic-banner {
+    width: 100%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    margin-bottom: var(--space-s);
+    cursor: pointer;
+
+    &:before {
+      content: '';
+      display: block;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      left: 0;
+      right: 0;
+      border-bottom: 1px dashed var(--color-text-yellow);
+      opacity: 0.5;
+      z-index: 1;
+      transition: opacity var(--transition);
+    }
+
+    &:hover:before {
+      opacity: 1;
+    }
+
+    button {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: 0 var(--space-s);
+      border: none;
+      background-color: var(--color-bg);
+      font-size: var(--font-size-xs);
+      color: var(--color-text-yellow);
+      cursor: pointer;
+      transition: color var(--transition);
     }
   }
 

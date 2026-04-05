@@ -59,6 +59,7 @@ export function useDataDiscussionReplies(
   const loadingMore = ref(false)
   const loadingChildren = ref(false)
   const error = ref<string>()
+  const offtopicCount = ref(0)
 
   const ascending = computed(() => props.model !== 'comment')
   const pageSize = computed(() => props.model === 'forum' ? PAGE_SIZE_FORUM : PAGE_SIZE_COMMENT)
@@ -529,7 +530,15 @@ export function useDataDiscussionReplies(
       if (!fastPathComplete)
         loading.value = true
 
-      const fetchedDiscussion = await fetchDiscussion()
+      const [fetchedDiscussion] = await Promise.all([
+        fetchDiscussion(),
+        supabase
+          .from('discussion_replies')
+          .select('*', { count: 'exact', head: true })
+          .eq('discussion_id', props.id)
+          .eq('is_offtopic', true)
+          .then(({ count }) => { offtopicCount.value = count ?? 0 }),
+      ])
 
       if (discussionCache.error.value != null) {
         loading.value = false
@@ -784,10 +793,6 @@ export function useDataDiscussionReplies(
 
     onDeleted?.(id)
   }
-
-  const offtopicCount = computed(() =>
-    comments.value.filter(c => c.is_offtopic).length,
-  )
 
   return {
     loading,

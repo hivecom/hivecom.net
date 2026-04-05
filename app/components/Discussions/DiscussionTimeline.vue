@@ -11,6 +11,13 @@ interface Props {
   end: string
   /** Activity buckets from get_discussion_reply_activity_buckets */
   buckets?: TimelineBucket[]
+  /** Off-topic-only activity buckets - rendered as a second layer in warning color */
+  offtopicBuckets?: TimelineBucket[]
+  /**
+   * Time range of the unloaded gap, if one exists. Rendered as a dashed
+   * region on the track so users can see what they'd be skipping.
+   */
+  gapRange?: { start: string, end: string } | null
   /**
    * Expected gap between consecutive buckets in milliseconds.
    * Used to detect whether adjacent buckets are part of a continuous active
@@ -28,6 +35,8 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   buckets: () => [],
+  offtopicBuckets: () => [],
+  gapRange: null,
   bucketIntervalMs: 0,
   currentFraction: null,
   loading: false,
@@ -58,6 +67,10 @@ const maxBucketCount = computed(() =>
   props.buckets.reduce((m, b) => Math.max(m, b.replyCount), 0),
 )
 
+const maxOfftopicBucketCount = computed(() =>
+  props.offtopicBuckets.reduce((m, b) => Math.max(m, b.replyCount), 0),
+)
+
 interface BucketSegment {
   /** Fraction (0-1) of the top edge of this segment on the track */
   topFraction: number
@@ -79,12 +92,10 @@ interface BucketSegment {
  * greater than 1.5x the expected bucket interval (allows for DST jitter).
  * Isolated buckets become dots; runs become boxes.
  */
-const bucketSegments = computed((): BucketSegment[] => {
-  const buckets = props.buckets
+function buildSegments(buckets: TimelineBucket[], max: number): BucketSegment[] {
   if (buckets.length === 0)
     return []
 
-  const max = maxBucketCount.value || 1
   const intervalMs = props.bucketIntervalMs
 
   const segments: BucketSegment[] = []
@@ -97,8 +108,6 @@ const bucketSegments = computed((): BucketSegment[] => {
     const first = buckets[runStart]!
     const last = buckets[endIdx]!
     const isSingle = runLength === 1
-    // For a box, extend bottom edge by one bucket-width so the last bucket
-    // is visually included rather than just marking its start.
     const bucketFraction = intervalMs > 0 ? intervalMs / spanMs.value : 0
     const topFraction = toFraction(first.bucketStart)
     const bottomFraction = isSingle
@@ -142,8 +151,26 @@ const bucketSegments = computed((): BucketSegment[] => {
 
   return segments.map(s => ({
     ...s,
-    opacity: 0.25 + (s.maxCount / max) * 0.75,
+    opacity: 0.25 + (s.maxCount / (max || 1)) * 0.75,
   }))
+}
+
+const bucketSegments = computed((): BucketSegment[] => {
+  return buildSegments(props.buckets, maxBucketCount.value)
+})
+
+const offtopicSegments = computed((): BucketSegment[] => {
+  return buildSegments(props.offtopicBuckets, maxOfftopicBucketCount.value)
+})
+
+/** Fractional range [top, bottom] of the unloaded gap on the track, or null. */
+const gapFractions = computed((): { top: number, bottom: number } | null => {
+  if (props.gapRange == null)
+    return null
+  return {
+    top: toFraction(props.gapRange.start),
+    bottom: toFraction(props.gapRange.end),
+  }
 })
 
 function onMouseMove(e: MouseEvent) {
@@ -183,6 +210,42 @@ function navigateToEnd() {
 function formatTooltip(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
+
+const hoveredSegment = computed((): BucketSegment | null => {
+  if (!isHovering.value)
+    return null
+  const f = hoverFraction.value
+  // Check offtopic layer first - it renders on top
+  for (const seg of offtopicSegments.value) {
+    if (seg.isSingle) {
+      if (Math.abs(f - seg.topFraction) <= 0.02)
+        return seg
+    }
+    else {
+      if (f >= seg.topFraction && f <= seg.bottomFraction)
+        return seg
+    }
+  }
+  // Fall back to normal segments
+  for (const seg of bucketSegments.value) {
+    if (seg.isSingle) {
+      if (Math.abs(f - seg.topFraction) <= 0.02)
+        return seg
+    }
+    else {
+      if (f >= seg.topFraction && f <= seg.bottomFraction)
+        return seg
+    }
+  }
+  return null
+})
+
+const tooltipText = computed((): string => {
+  const date = formatTooltip(hoverDate.value)
+  if (hoveredSegment.value != null)
+    return `${date}\n${hoveredSegment.value.label}`
+  return date
+})
 </script>
 
 <template>
@@ -208,10 +271,27 @@ function formatTooltip(date: Date): string {
         @mouseleave="isHovering = false"
         @click="onClick"
       >
+        <!-- Track bar: split into solid/dashed/solid segments around the gap.
+             When no gap exists, a single full-height solid bar is rendered. -->
+        <template v-if="gapFractions != null">
+          <div
+            class="discussion-timeline__bar" :style="{ top: '0%',
+                                                       height: `${gapFractions.top * 100}%` }"
+          />
+          <div
+            class="discussion-timeline__bar discussion-timeline__bar--gap" :style="{ top: `${gapFractions.top * 100}%`,
+                                                                                     height: `${(gapFractions.bottom - gapFractions.top) * 100}%` }"
+          />
+          <div
+            class="discussion-timeline__bar" :style="{ top: `${gapFractions.bottom * 100}%`,
+                                                       height: `${(1 - gapFractions.bottom) * 100}%` }"
+          />
+        </template>
+        <div v-else class="discussion-timeline__bar" style="top: 0%; height: 100%;" />
         <!-- Activity segments: dots for isolated buckets, boxes for consecutive runs -->
         <div
           v-for="(seg, i) in bucketSegments"
-          :key="i"
+          :key="`main-${i}`"
           class="discussion-timeline__segment"
           :class="seg.isSingle ? 'discussion-timeline__segment--dot' : 'discussion-timeline__segment--box'"
           :style="{
@@ -219,10 +299,20 @@ function formatTooltip(date: Date): string {
             height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
             opacity: seg.opacity,
           }"
-        >
-          <!-- Per-segment tooltip on hover -->
-          <span class="discussion-timeline__segment-label">{{ seg.label }}</span>
-        </div>
+        />
+
+        <!-- Off-topic segments: second layer in warning color -->
+        <div
+          v-for="(seg, i) in offtopicSegments"
+          :key="`offtopic-${i}`"
+          class="discussion-timeline__segment discussion-timeline__segment--offtopic"
+          :class="seg.isSingle ? 'discussion-timeline__segment--dot' : 'discussion-timeline__segment--box'"
+          :style="{
+            top: `${seg.topFraction * 100}%`,
+            height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
+            opacity: seg.opacity,
+          }"
+        />
 
         <!-- Current position indicator: shows where in the timeline you are -->
         <div
@@ -238,18 +328,20 @@ function formatTooltip(date: Date): string {
           :style="{ top: `${hoverFraction * 100}%` }"
         />
 
-        <!-- Date tooltip: appears to the left of the track on hover -->
+        <!-- Merged tooltip: appears to the right of the track on hover -->
         <div
           v-show="isHovering && !loading"
           class="discussion-timeline__tooltip"
           :style="{ top: `${hoverFraction * 100}%` }"
         >
-          {{ formatTooltip(hoverDate) }}
+          <template v-for="(line, i) in tooltipText.split('\n')" :key="i">
+            <span :class="i === 0 ? 'discussion-timeline__tooltip-date' : 'discussion-timeline__tooltip-count'">{{ line }}</span>
+          </template>
         </div>
       </div>
 
       <button
-        class="discussion-timeline__label discussion-timeline__label--clickable"
+        class="discussion-timeline__label discussion-timeline__label--clickable discussion-timeline__label--end"
         :disabled="loading"
         @click="navigateToEnd"
       >
@@ -306,8 +398,8 @@ function formatTooltip(date: Date): string {
       color var(--transition);
     // Vertical text so "Mar 26" fits without forcing width.
     writing-mode: vertical-rl;
-    // rotate so it reads top-to-bottom (left-to-right rotated 90deg CW)
-    transform: rotate(180deg);
+    // writing-mode: vertical-rl alone reads top-to-bottom naturally.
+    transform: rotate(0deg);
 
     // Reset button defaults
     background: none;
@@ -327,6 +419,11 @@ function formatTooltip(date: Date): string {
     &--clickable:disabled {
       cursor: default;
     }
+
+    // End label matches start - both read top-to-bottom with vertical-rl.
+    &--end {
+      transform: rotate(0deg);
+    }
   }
 
   &__inner:hover &__label {
@@ -340,27 +437,6 @@ function formatTooltip(date: Date): string {
     background: transparent;
     position: relative;
     cursor: pointer;
-
-    // The visible bar is a 2px line centered inside the 20px hit area.
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 2px;
-      background-color: var(--color-border);
-      border-radius: var(--border-radius-l);
-      transition:
-        background-color var(--transition),
-        width var(--transition-fast);
-    }
-
-    &:hover::after {
-      background-color: var(--color-border-strong);
-      width: 3px;
-    }
 
     &--loading {
       opacity: 0.4;
@@ -391,28 +467,53 @@ function formatTooltip(date: Date): string {
       min-height: 6px;
     }
 
-    // Per-segment tooltip: appears to the left, same pattern as the hover tooltip
-    &-label {
-      display: none;
-      position: absolute;
-      left: calc(100% + var(--space-xs));
-      top: 50%;
-      transform: translateY(-50%);
-      white-space: nowrap;
-      background-color: var(--color-bg-raised);
-      border: 1px solid var(--color-border);
-      border-radius: var(--border-radius-s);
-      padding: 2px var(--space-xs);
-      font-size: var(--font-size-xxs);
-      color: var(--color-text);
-      pointer-events: none;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      z-index: 10;
+    // Off-topic overlay: slightly wider so it's visible even when overlapping
+    // a normal segment, and uses the warning color token.
+    &--offtopic {
+      background-color: var(--color-text-yellow);
+      width: 4px;
+      z-index: 2;
     }
+  }
 
-    &:hover &-label {
-      display: block;
+  &__bar {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    background-color: var(--color-border);
+    border-radius: var(--border-radius-l);
+    pointer-events: none;
+    transition:
+      background-color var(--transition),
+      width var(--transition-fast);
+
+    &--gap {
+      background-color: transparent;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        var(--color-border) 0px,
+        var(--color-border) 3px,
+        transparent 3px,
+        transparent 7px
+      );
+      border-radius: 0;
     }
+  }
+
+  &__track:hover &__bar:not(.discussion-timeline__bar--gap) {
+    background-color: var(--color-border-strong);
+    width: 3px;
+  }
+
+  &__track:hover &__bar--gap {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      var(--color-border-strong) 0px,
+      var(--color-border-strong) 3px,
+      transparent 3px,
+      transparent 7px
+    );
   }
 
   &__position {
@@ -444,10 +545,10 @@ function formatTooltip(date: Date): string {
   }
 
   &__tooltip {
-    // Appears to the LEFT of the track. right: 100% = right edge of the 20px track element,
+    // Appears to the RIGHT of the track. left: 100% = left edge past the 20px track,
     // then an extra gap, then the tooltip box.
     position: absolute;
-    right: calc(100% + var(--space-xs));
+    left: calc(100% + var(--space-xs));
     transform: translateY(-50%);
     white-space: nowrap;
     background-color: var(--color-bg-raised);
@@ -459,6 +560,17 @@ function formatTooltip(date: Date): string {
     pointer-events: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    &-date {
+      color: var(--color-text);
+    }
+
+    &-count {
+      color: var(--color-text-light);
+    }
   }
 }
 </style>
