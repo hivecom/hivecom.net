@@ -60,7 +60,7 @@ async function signOut() {
 
 <template>
   <div class="user-sheet">
-    <Button square plain class="vui-button-accent-weak" aria-label="Open user menu" @click="open = true">
+    <Button square plain class="vui-button-accent-weak vui-button-rounded" aria-label="Open user menu" @click="open = true">
       <Avatar
         :size="30"
         :alt="userData?.username || 'User profile'"
