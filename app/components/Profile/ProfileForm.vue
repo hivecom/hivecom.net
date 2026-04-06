@@ -343,7 +343,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
                   </div>
                   <div v-else class="help-text">
                     <Icon name="ph:info" />
-                    Username can only contain letters, numbers, and underscores. Usernames are case-insensitive.
+                    Username can only contain Latin letters (A-Z), numbers, and underscores. Usernames are case-insensitive.
                   </div>
                   <div class="character-count">
                     <span :class="{ 'over-limit': profileForm.username.length > USERNAME_LIMIT }">

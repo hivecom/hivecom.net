@@ -581,7 +581,7 @@ function clearBirthday() {
               </div>
               <div v-else class="help-text">
                 <Icon name="ph:info" />
-                Username can only contain letters, numbers, and underscores
+                Username can only contain Latin letters, numbers, and underscores
               </div>
               <div class="character-count">
                 <span :class="{ 'over-limit': userForm.username.length > USERNAME_LIMIT }">
