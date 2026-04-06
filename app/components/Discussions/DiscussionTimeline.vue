@@ -84,6 +84,14 @@ interface BucketSegment {
   label: string
   /** Opacity 0.25 (quiet) → 1.0 (peak) */
   opacity: number
+  /**
+   * The date to pass to navigateToDate when this segment is clicked.
+   * - Dot: end of the bucket window (bucketStart + intervalMs) so that floor
+   *   semantics ("last reply at or before target") land inside this bucket,
+   *   not the one before it.
+   * - Box: midpoint of the run, which is well inside the active period.
+   */
+  targetDate: Date
 }
 
 /**
@@ -118,6 +126,17 @@ function buildSegments(buckets: TimelineBucket[], max: number): BucketSegment[] 
       ? `${runMaxCount} ${runMaxCount === 1 ? 'reply' : 'replies'}`
       : `${runTotalCount} ${runTotalCount === 1 ? 'reply' : 'replies'} (${runLength} ${intervalMs >= 86400000 ? 'days' : 'periods'})`
 
+    // Use the START of the first bucket as the target date.
+    // navigateToDate is called with findFirst: true, which uses ceiling
+    // semantics in the RPC ("first reply at or after target"). Passing the
+    // bucket start time means the RPC returns the very first reply in the
+    // segment - exactly what the user expects when clicking a block.
+    // The old approach of passing firstMs + intervalMs with floor semantics
+    // returned the LAST reply in the first bucket instead, causing the
+    // viewport to land on reply #2 (or later) rather than reply #1.
+    const firstMs = new Date(first.bucketStart).getTime()
+    const targetDate = new Date(firstMs)
+
     segments.push({
       topFraction,
       bottomFraction,
@@ -125,6 +144,7 @@ function buildSegments(buckets: TimelineBucket[], max: number): BucketSegment[] 
       isSingle,
       label,
       opacity: 0,
+      targetDate,
     })
   }
 
@@ -185,10 +205,10 @@ function onMouseEnter(e: MouseEvent) {
   onMouseMove(e)
 }
 
-function onClick() {
+function onSegmentClick(seg: BucketSegment) {
   if (props.loading)
     return
-  emit('navigate', new Date(hoverDate.value))
+  emit('navigate', seg.targetDate)
 }
 
 // "Mar 26" - month + day, always. Two dates in the same month year become
@@ -204,7 +224,7 @@ function navigateToStart() {
 
 function navigateToEnd() {
   if (!props.loading)
-    emit('navigate', new Date(props.end))
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
 }
 
 function formatTooltip(date: Date): string {
@@ -240,6 +260,9 @@ const hoveredSegment = computed((): BucketSegment | null => {
   return null
 })
 
+/** True when the cursor is over a clickable segment. */
+const isOverSegment = computed(() => hoveredSegment.value != null)
+
 const tooltipText = computed((): string => {
   const date = formatTooltip(hoverDate.value)
   if (hoveredSegment.value != null)
@@ -265,11 +288,11 @@ const tooltipText = computed((): string => {
       <div
         ref="trackRef"
         class="discussion-timeline__track"
-        :class="{ 'discussion-timeline__track--loading': loading }"
+        :class="{ 'discussion-timeline__track--loading': loading,
+                  'discussion-timeline__track--over-segment': isOverSegment }"
         @mousemove="onMouseMove"
         @mouseenter="onMouseEnter"
         @mouseleave="isHovering = false"
-        @click="onClick"
       >
         <!-- Track bar: split into solid/dashed/solid segments around the gap.
              When no gap exists, a single full-height solid bar is rendered. -->
@@ -299,6 +322,7 @@ const tooltipText = computed((): string => {
             height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
             opacity: seg.opacity,
           }"
+          @click="onSegmentClick(seg)"
         />
 
         <!-- Off-topic segments: second layer in warning color -->
@@ -312,6 +336,7 @@ const tooltipText = computed((): string => {
             height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
             opacity: seg.opacity,
           }"
+          @click="onSegmentClick(seg)"
         />
 
         <!-- Current position indicator: shows where in the timeline you are -->
@@ -436,11 +461,15 @@ const tooltipText = computed((): string => {
     width: 20px;
     background: transparent;
     position: relative;
-    cursor: pointer;
+    cursor: default;
 
     &--loading {
       opacity: 0.4;
       pointer-events: none;
+    }
+
+    &--over-segment {
+      cursor: pointer;
     }
   }
 
@@ -449,6 +478,7 @@ const tooltipText = computed((): string => {
     left: 50%;
     background-color: var(--color-accent);
     pointer-events: all;
+    cursor: pointer;
     z-index: 1;
 
     // Isolated bucket: small centred dot, size reflects activity weight

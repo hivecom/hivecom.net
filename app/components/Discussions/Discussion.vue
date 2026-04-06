@@ -253,7 +253,7 @@ async function handleGoToPinnedReply() {
   router.replace({ query: { ...route.query, comment: pinned.id } })
   await nextTick()
   await waitForLayoutStability()
-  scrollToId(`#comment-${pinned.id}`, 'center')
+  scrollToId(`#comment-${pinned.id}`, 'center', true)
 }
 
 // Keep in sync if the global setting changes (e.g. user visits settings page
@@ -435,23 +435,50 @@ const timelineBuckets = ref<TimelineBucket[]>([])
 const timelineOfftopicBuckets = ref<TimelineBucket[]>([])
 
 /**
- * The unloaded gap's time range as ISO strings, derived from the loaded
- * comment list. The gap starts just after the comment with gap.afterId and
- * ends just before the first comment that follows it in the list.
- * Passed to DiscussionTimeline so it can render a dashed region on the track.
+ * The unloaded gap's time range as ISO strings.
+ *
+ * There are two kinds of unloaded regions:
+ *
+ * 1. Explicit gap - two loaded blocks with unloaded replies between them
+ *    (created by navigateToComment). The gap starts just after the boundary
+ *    comment and extends to timelineEnd, because everything beyond the early
+ *    block is still unloaded until the gap is fully closed.
+ *
+ * 2. Trailing unloaded zone - no explicit gap, but hasMore is true, meaning
+ *    the loaded page(s) cover only the oldest replies. The unloaded region
+ *    starts just after the last loaded comment and extends to timelineEnd.
+ *
+ * In both cases the dashed region runs to the discussion's end timestamp so
+ * the user can see at a glance how much of the timeline is still unloaded.
  */
 const timelineGapRange = computed((): { start: string, end: string } | null => {
-  if (gap.value == null)
+  const end = timelineEnd.value
+  if (!end)
     return null
+
   const list = modelledComments.value
-  const afterIdx = list.findIndex(c => c.id === gap.value!.afterId)
-  if (afterIdx === -1)
-    return null
-  const afterComment = list[afterIdx]
-  const nextComment = list[afterIdx + 1]
-  if (afterComment == null || nextComment == null)
-    return null
-  return { start: afterComment.created_at, end: nextComment.created_at }
+
+  // Case 1: explicit gap between two loaded blocks.
+  if (gap.value != null) {
+    const afterIdx = list.findIndex(c => c.id === gap.value!.afterId)
+    if (afterIdx !== -1) {
+      const afterComment = list[afterIdx]
+      if (afterComment != null)
+        return { start: afterComment.created_at, end }
+    }
+  }
+
+  // Case 2: simple trailing unloaded zone (page 1 loaded, more pages exist).
+  // Suppress if the last loaded reply IS the final reply of the discussion -
+  // i.e. its created_at matches last_activity_at (timelineEnd). In that case
+  // there is nothing after it to show as unloaded, regardless of hasMore.
+  if (hasMore.value && list.length > 0) {
+    const lastComment = list.at(-1)
+    if (lastComment != null && lastComment.created_at !== end)
+      return { start: lastComment.created_at, end }
+  }
+
+  return null
 })
 
 async function fetchTimelineBuckets() {
@@ -617,15 +644,29 @@ async function handleTimelineNavigate(date: Date) {
   navigateToDateLoading.value = true
   navigating.value = true
   try {
-    const replyId = await navigateToDate(date)
+    const replyId = await navigateToDate(date, { findFirst: true })
     if (replyId != null) {
+      // If the target reply is offtopic and hidden, reveal it so the element
+      // actually exists in the DOM before we try to scroll to it.
+      const target = modelledComments.value.find(c => c.id === replyId)
+      if (target?.is_offtopic && !showOfftopic.value) {
+        showOfftopic.value = true
+        hasManuallySwitched.value = true
+      }
+
+      // Wait for Vue to flush the DOM, then for layout to stabilise.
+      // waitForLayoutStability polls scrollHeight on rAF until it stops
+      // changing - this catches MarkdownRenderer behind Suspense boundaries
+      // whose images aren't in the DOM yet when waitForImages would scan.
       await nextTick()
-      requestAnimationFrame(() => scrollToId(`#comment-${replyId}`, 'start'))
+      await waitForLayoutStability(5000)
+      scrollToId(`#comment-${replyId}`, 'start')
     }
   }
   finally {
+    // Clear loading *after* the scroll call so the dim stays up until the
+    // target is actually in view - not while waitForImages is still running.
     navigateToDateLoading.value = false
-    // Keep the dim until after scroll animation settles.
     setTimeout(() => {
       navigating.value = false
     }, 350)

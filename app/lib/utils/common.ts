@@ -89,11 +89,42 @@ export function deepMergePlainObjects<
   return deepMergePlainObjects(target, ...sources)
 }
 
-export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = 'center') {
+const SCROLL_NAVBAR_OFFSET = 148
+
+/**
+ * Scrolls the element matching `id` into view, positioning its top edge just
+ * below the sticky navbar. Uses `window.scrollTo` instead of
+ * `scrollIntoView({ block: 'start' })` so it works correctly even when the
+ * target is near the bottom of the document (where `scrollIntoView` can't
+ * scroll far enough to put the element at the top of the viewport).
+ *
+ * The `block` parameter is kept for call-site compatibility but only
+ * `'start'` / `'center'` produce meaningfully different behaviour:
+ * - `'start'`  → top of element sits just below the navbar (default)
+ * - `'center'` → element is vertically centred in the available viewport
+ */
+export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = 'start', smooth = false) {
   const el = document.querySelector(id)
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block })
+  if (!el)
+    return
+
+  const rect = el.getBoundingClientRect()
+  const absoluteTop = rect.top + window.scrollY
+
+  let target: number
+  if (block === 'center') {
+    const availableHeight = window.innerHeight - SCROLL_NAVBAR_OFFSET
+    target = absoluteTop - SCROLL_NAVBAR_OFFSET - availableHeight / 2 + rect.height / 2
   }
+  else {
+    // 'start' and everything else: align top of element to just below navbar
+    target = absoluteTop - SCROLL_NAVBAR_OFFSET
+  }
+
+  // Programmatic navigation uses 'instant' by default so layout shifts during
+  // a smooth animation can't cause the final scroll position to drift.
+  // Pass smooth=true only for user-visible transitions where animation matters.
+  window.scrollTo({ top: Math.max(0, target), behavior: smooth ? 'smooth' : 'instant' })
 }
 
 /**
@@ -155,7 +186,7 @@ export async function waitForImages(timeoutMs = 4000): Promise<void> {
  * images with non-16:9 aspect ratios that shift the layout more than the CSS
  * placeholder pre-allocated.
  */
-export async function waitForLayoutStability(timeoutMs = 8000, stableForMs = 1000): Promise<void> {
+export async function waitForLayoutStability(timeoutMs = 8000, stableForMs = 120): Promise<void> {
   if (!import.meta.client)
     return
 

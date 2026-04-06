@@ -287,32 +287,53 @@ export function useDataDiscussionReplies(
    * If all replies are already loaded (hasMore is false and no gap exists),
    * the nearest reply is resolved locally without an RPC round-trip.
    *
+   * Options:
+   *   findFirst - when true, uses ceiling semantics: finds the FIRST reply
+   *     at or after the target time (for ascending mode). This is used by
+   *     timeline segment clicks so that clicking a block always navigates to
+   *     the start of that activity block rather than its end.
+   *     Default is false (floor semantics: last reply at or before target).
+   *
    * Returns the resolved reply id on success (caller can use it to scroll),
    * null on RPC error, no replies found, or navigation failure.
    */
-  async function navigateToDate(date: Date): Promise<string | null> {
+  async function navigateToDate(date: Date, { findFirst = false }: { findFirst?: boolean } = {}): Promise<string | null> {
     if (!discussion.value)
       return null
 
     // Short-circuit: if every reply is already in memory, resolve locally.
-    // Use floor semantics: the last post at or before the target date.
-    // "I clicked March 6" means "show me what was most recently posted as of
-    // March 6", not "find whatever timestamp is closest in either direction."
     if (!hasMore.value && gap.value == null && comments.value.length > 0) {
       const targetMs = date.getTime()
-      let floor: typeof comments.value[0] | null = null
 
-      for (const c of comments.value) {
-        const ms = new Date(c.created_at).getTime()
-        if (ms <= targetMs) {
-          if (floor == null || ms > new Date(floor.created_at).getTime()) {
-            floor = c
+      if (findFirst) {
+        // Ceiling semantics: first reply at or after the target.
+        // Sort ascending and find the earliest reply >= target.
+        const sorted = [...comments.value].sort((a, b) => {
+          const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          return ascending.value ? diff : -diff
+        })
+        const ceil = sorted.find(c => new Date(c.created_at).getTime() >= targetMs)
+        // Nothing at or after the target - clamp to the last reply in sort order.
+        return (ceil ?? sorted.at(-1)!).id
+      }
+      else {
+        // Floor semantics: the last post at or before the target date.
+        // "I clicked March 6" means "show me what was most recently posted as of
+        // March 6", not "find whatever timestamp is closest in either direction."
+        let floor: typeof comments.value[0] | null = null
+
+        for (const c of comments.value) {
+          const ms = new Date(c.created_at).getTime()
+          if (ms <= targetMs) {
+            if (floor == null || ms > new Date(floor.created_at).getTime()) {
+              floor = c
+            }
           }
         }
-      }
 
-      // Nothing at or before the target - clamp to the first reply.
-      return (floor ?? comments.value[0]!).id
+        // Nothing at or before the target - clamp to the first reply.
+        return (floor ?? comments.value[0]!).id
+      }
     }
 
     // eslint-disable-next-line ts/no-unsafe-assignment
@@ -324,6 +345,7 @@ export function useDataDiscussionReplies(
         p_ascending: ascending.value,
         p_hash: props.hash ?? null,
         p_root_only: false,
+        p_find_first: findFirst,
       },
     )
 
