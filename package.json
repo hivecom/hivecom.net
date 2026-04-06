@@ -46,7 +46,7 @@
     "@tiptap/markdown": "^3.21.0",
     "@tiptap/pm": "^3.21.0",
     "@tiptap/starter-kit": "^3.21.0",
-    "@tiptap/vue-3": "^3.21.0",
+    "@tiptap/vue-3": "^3.22.2",
     "@unhead/vue": "^2.1.12",
     "@vueuse/nuxt": "^14.2.1",
     "@vueuse/router": "^14.2.1",
