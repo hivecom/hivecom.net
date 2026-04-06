@@ -17,6 +17,7 @@ const {
   showOfftopic = false,
   showThreadReplies = false,
   staggerIndex,
+  idPrefix = 'comment',
 } = defineProps<Props>()
 
 const loadChildren = inject(DISCUSSION_KEYS.loadChildren)
@@ -24,6 +25,10 @@ const loadChildren = inject(DISCUSSION_KEYS.loadChildren)
 interface Props {
   data: Comment
   model?: 'comment' | 'forum'
+  /** ID prefix for the wrapper element. Defaults to 'comment'. Use a different
+   *  value (e.g. 'pinned-comment') for pinned duplicates so querySelector
+   *  can distinguish the list instance from the pinned banner. */
+  idPrefix?: string
   // Flat mode: the node for this comment (used for inline reply preview)
   threadNode?: ThreadNode
   // Threaded mode: pre-resolved direct children to render recursively
@@ -36,6 +41,7 @@ interface Props {
 
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
 const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
+const replyCountMap = inject(DISCUSSION_KEYS.replyCountMap)
 const isPinned = computed(() => discussion?.value?.pinned_reply_id === data.id)
 
 const self = useTemplateRef('self')
@@ -123,6 +129,14 @@ watch(
   (val) => { repliesExpanded.value = val },
 )
 
+// When the flat-mode sheet opens, lazily load children if not yet fetched.
+watch(repliesExpanded, (open) => {
+  if (open && !childrenRequested.value && loadChildren != null) {
+    childrenRequested.value = true
+    void loadChildren(data.id)
+  }
+})
+
 // Threaded mode: whether this node's sub-tree is folded closed
 const threadCollapsed = ref(false)
 
@@ -180,7 +194,7 @@ function stripReplyData(entry: Comment) {
 
 <template>
   <div
-    :id="`comment-${data.id}`"
+    :id="`${idPrefix}-${data.id}`"
     ref="wrapperEl"
     class="discussion-comment-wrapper"
     :class="data.is_offtopic && 'discussion-comment-wrapper--offtopic'"
@@ -190,7 +204,7 @@ function stripReplyData(entry: Comment) {
       v-if="model === 'comment'"
       ref="self"
       :data
-      :thread-reply-count="viewMode === 'flat' ? visibleChildren.length : undefined"
+      :thread-reply-count="viewMode === 'flat' ? (replyCountMap?.get(data.id) ?? visibleChildren.length) : undefined"
       :class="{ 'discussion-comment--highlight': isActive,
                 'discussion-comment--pinned': isPinned }"
       @copy-link="copyLink"
@@ -201,7 +215,7 @@ function stripReplyData(entry: Comment) {
       v-else
       ref="self"
       :data
-      :thread-reply-count="viewMode === 'flat' ? visibleChildren.length : undefined"
+      :thread-reply-count="viewMode === 'flat' ? (replyCountMap?.get(data.id) ?? visibleChildren.length) : undefined"
       :class="{ 'discussion-forum--highlight': isActive,
                 'discussion-forum--pinned': isPinned }"
       @copy-link="copyLink"
@@ -219,7 +233,7 @@ function stripReplyData(entry: Comment) {
               <UserName inherit :user-id="data.created_by" />'s thread
             </h4>
             <p class="text-color-lighter">
-              {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
+              {{ replyCountMap?.get(data.id) ?? visibleChildren.length }} {{ (replyCountMap?.get(data.id) ?? visibleChildren.length) === 1 ? 'reply' : 'replies' }}
             </p>
           </Flex>
         </Flex>

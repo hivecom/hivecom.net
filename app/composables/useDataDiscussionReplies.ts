@@ -73,6 +73,7 @@ export function useDataDiscussionReplies(
 
   // Children loaded for threaded view, keyed by root comment id.
   const childrenMap = ref<Map<string, RawComment[]>>(new Map())
+  const replyCountMap = ref<Map<string, number>>(new Map())
 
   // Pinned reply fetched independently so the pinned banner works even when
   // the reply lives on a page that hasn't been loaded yet.
@@ -511,6 +512,27 @@ export function useDataDiscussionReplies(
     }
   }
 
+  async function fetchReplyCountMap(discussionId: string): Promise<void> {
+    const { data } = await supabase
+      .from('discussion_replies')
+      .select('reply_to_id')
+      .eq('discussion_id', discussionId)
+      .not('reply_to_id', 'is', null)
+      .eq('is_deleted', false)
+
+    if (data == null)
+      return
+
+    const rows = data as Array<{ reply_to_id: string | null }>
+    const map = new Map<string, number>()
+    for (const row of rows) {
+      const parentId = row.reply_to_id
+      if (parentId != null)
+        map.set(parentId, (map.get(parentId) ?? 0) + 1)
+    }
+    replyCountMap.value = map
+  }
+
   // ── Initial load ────────────────────────────────────────────────────────────
 
   watch(
@@ -560,6 +582,7 @@ export function useDataDiscussionReplies(
           .eq('discussion_id', props.id)
           .eq('is_offtopic', true)
           .then(({ count }) => { offtopicCount.value = count ?? 0 }),
+        fetchReplyCountMap(props.id),
       ])
 
       if (discussionCache.error.value != null) {
@@ -770,6 +793,16 @@ export function useDataDiscussionReplies(
       throw new Error(res.error.message)
     }
 
+    // Update the reply count map for the parent
+    const deletedComment = comments.value.find(c => c.id === id)
+    if (deletedComment?.reply_to_id != null) {
+      const prev = replyCountMap.value.get(deletedComment.reply_to_id) ?? 0
+      if (prev > 1)
+        replyCountMap.value.set(deletedComment.reply_to_id, prev - 1)
+      else
+        replyCountMap.value.delete(deletedComment.reply_to_id)
+    }
+
     const comment = comments.value.find(c => c.id === id)
     if (comment) {
       comment.is_deleted = true
@@ -798,6 +831,16 @@ export function useDataDiscussionReplies(
 
     if (res.error) {
       throw new Error(res.error.message)
+    }
+
+    // Update the reply count map for the parent
+    const forceDeletedComment = comments.value.find(c => c.id === id)
+    if (forceDeletedComment?.reply_to_id != null) {
+      const prev = replyCountMap.value.get(forceDeletedComment.reply_to_id) ?? 0
+      if (prev > 1)
+        replyCountMap.value.set(forceDeletedComment.reply_to_id, prev - 1)
+      else
+        replyCountMap.value.delete(forceDeletedComment.reply_to_id)
     }
 
     comments.value = comments.value.filter(c => c.id !== id)
@@ -830,6 +873,7 @@ export function useDataDiscussionReplies(
     threadNodeMap,
     threadRoots,
     childrenMap,
+    replyCountMap,
     loadMore,
     loadGap,
     navigateToComment,

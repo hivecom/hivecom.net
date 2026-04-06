@@ -9,7 +9,7 @@ import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
-import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'
+import { scrollToId, scrollToIdWhenStable, waitForLayoutStability } from '@/lib/utils/common'
 import { normalizeTipTapOutput } from '@/lib/utils/formatting'
 import { DISCUSSION_KEYS } from './Discussion.keys'
 import DiscussionItem from './DiscussionItem.vue'
@@ -161,6 +161,7 @@ const {
   deleteComment: deleteCommentFromList,
   forceDeleteComment: forceDeleteCommentFromList,
   offtopicCount,
+  replyCountMap,
 } = useDataDiscussionReplies(
   {
     id: props.id,
@@ -185,6 +186,7 @@ const {
 )
 
 provide(DISCUSSION_KEYS.loadChildren, loadChildren)
+provide(DISCUSSION_KEYS.replyCountMap, replyCountMap)
 
 const pinnedComment = computed((): Comment | null => {
   const pinnedId = discussion.value?.pinned_reply_id
@@ -463,8 +465,19 @@ const timelineGapRange = computed((): { start: string, end: string } | null => {
     const afterIdx = list.findIndex(c => c.id === gap.value!.afterId)
     if (afterIdx !== -1) {
       const afterComment = list[afterIdx]
-      if (afterComment != null)
+      if (afterComment != null) {
+        // When there are no more pages after the tail block, the gap is the only
+        // unloaded region - cap the dashed zone at the first tail-block reply so
+        // the timeline accurately reflects what is loaded vs. what isn't.
+        // When hasMore is still true the tail end does not equal the discussion
+        // end, so we conservatively extend the dashed region all the way to end.
+        if (!hasMore.value) {
+          const firstTailComment = list[afterIdx + 1]
+          if (firstTailComment != null)
+            return { start: afterComment.created_at, end: firstTailComment.created_at }
+        }
         return { start: afterComment.created_at, end }
+      }
     }
   }
 
@@ -474,8 +487,14 @@ const timelineGapRange = computed((): { start: string, end: string } | null => {
   // there is nothing after it to show as unloaded, regardless of hasMore.
   if (hasMore.value && list.length > 0) {
     const lastComment = list.at(-1)
-    if (lastComment != null && lastComment.created_at !== end)
-      return { start: lastComment.created_at, end }
+    if (lastComment != null) {
+      // Suppress the dashed region if the last loaded reply is within 1 second
+      // of the discussion's last_activity_at - close enough to consider it "the end".
+      const lastMs = new Date(lastComment.created_at).getTime()
+      const endMs2 = new Date(end).getTime()
+      if (Math.abs(lastMs - endMs2) > 1000)
+        return { start: lastComment.created_at, end }
+    }
   }
 
   return null
@@ -530,6 +549,19 @@ function updateScrollFraction() {
   const endMs = new Date(discussion.value.last_activity_at).getTime()
   if (endMs === startMs)
     return
+
+  // If we are scrolled to (or past) the very bottom of the page, always pin the
+  // indicator to 1 so it sits at the bottom of the track even when the last reply
+  // is small and the normal topmost-element logic would leave it short.
+  // Skip this during active navigation: the page height is in flux while new
+  // pages load, so a temporarily short scrollHeight can cause a false atBottom
+  // signal that pegs the indicator to 1 for the rest of the navigation.
+  const atBottom = !navigating.value
+    && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4
+  if (atBottom) {
+    currentScrollFraction.value = 1
+    return
+  }
 
   const NAVBAR_OFFSET = 148
   const replyAreaRect = replyAreaEl.value.getBoundingClientRect()
@@ -654,13 +686,17 @@ async function handleTimelineNavigate(date: Date) {
         hasManuallySwitched.value = true
       }
 
-      // Wait for Vue to flush the DOM, then for layout to stabilise.
-      // waitForLayoutStability polls scrollHeight on rAF until it stops
-      // changing - this catches MarkdownRenderer behind Suspense boundaries
-      // whose images aren't in the DOM yet when waitForImages would scan.
+      // Two-phase scroll:
+      // 1. Wait for the DOM to flush and the page rebuild to fully settle
+      //    (scrollHeight stable). This prevents scrollToIdWhenStable from
+      //    catching the element mid-rebuild at absoluteTop ~0 and locking
+      //    the scroll to the top of the page.
+      // 2. Once the layout is stable, hand off to scrollToIdWhenStable which
+      //    re-anchors on every rAF to handle any remaining content shifts
+      //    (lazy images, markdown renders) that occur after the initial settle.
       await nextTick()
       await waitForLayoutStability(5000)
-      scrollToId(`#comment-${replyId}`, 'start')
+      await scrollToIdWhenStable(`#comment-${replyId}`, 'start', 3000, 150)
     }
   }
   finally {
@@ -675,6 +711,34 @@ async function handleTimelineNavigate(date: Date) {
 
 function handleTimelineNavigateToStart() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+async function handleTimelineNavigateToEnd() {
+  if (!timelineEnd.value || navigateToDateLoading.value)
+    return
+  navigateToDateLoading.value = true
+  navigating.value = true
+  try {
+    // Floor semantics: navigate to the last reply at or before the discussion end.
+    const replyId = await navigateToDate(new Date(timelineEnd.value), { findFirst: false })
+    if (replyId != null) {
+      const target = modelledComments.value.find(c => c.id === replyId)
+      if (target?.is_offtopic && !showOfftopic.value) {
+        showOfftopic.value = true
+        hasManuallySwitched.value = true
+      }
+      await nextTick()
+      await waitForLayoutStability(5000)
+      // Snap to the very bottom so the final reply is fully visible.
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
+    }
+  }
+  finally {
+    navigateToDateLoading.value = false
+    setTimeout(() => {
+      navigating.value = false
+    }, 350)
+  }
 }
 
 // ── View count ────────────────────────────────────────────────────────────────
@@ -802,6 +866,11 @@ async function submitReply() {
       }
       else {
         reset()
+        // Increment the reply count for the parent before clearing replyingTo.
+        const parentId = replyingTo.value?.id
+        if (parentId != null) {
+          replyCountMap.value.set(parentId, (replyCountMap.value.get(parentId) ?? 0) + 1)
+        }
         replyingTo.value = undefined
         form.message = ''
         form.is_nsfw = false
@@ -925,11 +994,14 @@ function isNodeVisible(node: ThreadNode): boolean {
         :class="{ 'discussion__reply-area--navigating': navigating }"
       >
         <!-- Pinned - if a comment is set as pinned, it's duplicated and listed up above everything else -->
+        <!-- Uses a distinct id-prefix so querySelector('#comment-{id}') in scroll
+             helpers always resolves to the list instance, not this pinned banner. -->
         <DiscussionItem
           v-if="pinnedComment"
           :class="props.model === 'forum' ? 'mb-xl' : 'mb-m'"
           :data="pinnedComment"
           :model="props.model"
+          id-prefix="pinned-comment"
         />
 
         <!-- Flat view: all comments chronologically with inline reply previews -->
@@ -1083,6 +1155,7 @@ function isNodeVisible(node: ThreadNode): boolean {
           :loading="navigateToDateLoading"
           @navigate="handleTimelineNavigate"
           @navigate-to-start="handleTimelineNavigateToStart"
+          @navigate-to-end="handleTimelineNavigateToEnd"
         />
       </div>
     </template>
@@ -1148,7 +1221,7 @@ function isNodeVisible(node: ThreadNode): boolean {
       transform: translateY(-50%);
       left: 0;
       right: 0;
-      border-bottom: 1px dashed var(--color-border-strong);
+      border-bottom: 1px solid var(--color-accent);
       opacity: 0.5;
       z-index: 1;
       transition: opacity var(--transition);

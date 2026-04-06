@@ -45,6 +45,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   navigate: [date: Date]
   navigateToStart: []
+  navigateToEnd: []
 }>()
 
 const trackRef = ref<HTMLElement | null>(null)
@@ -208,6 +209,20 @@ function onMouseEnter(e: MouseEvent) {
 function onSegmentClick(seg: BucketSegment) {
   if (props.loading)
     return
+
+  // For a box segment, use the hover position to pick a date proportionally
+  // within the segment's time range, so clicking the middle of a tall group
+  // navigates to the middle, not always the top.
+  if (!seg.isSingle && seg.topFraction < seg.bottomFraction) {
+    const segSpan = seg.bottomFraction - seg.topFraction
+    const relFraction = Math.max(0, Math.min(1, (hoverFraction.value - seg.topFraction) / segSpan))
+    const segStartMs = startMs.value + seg.topFraction * spanMs.value
+    const segEndMs = startMs.value + seg.bottomFraction * spanMs.value
+    const targetMs = segStartMs + relFraction * (segEndMs - segStartMs)
+    emit('navigate', new Date(targetMs))
+    return
+  }
+
   emit('navigate', seg.targetDate)
 }
 
@@ -224,7 +239,7 @@ function navigateToStart() {
 
 function navigateToEnd() {
   if (!props.loading)
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+    emit('navigateToEnd')
 }
 
 function formatTooltip(date: Date): string {
@@ -551,9 +566,9 @@ const tooltipText = computed((): string => {
     position: absolute;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 12px;
-    height: 2px;
-    background-color: var(--color-text-lighter);
+    width: 14px;
+    height: 3px;
+    background-color: var(--color-accent);
     border-radius: 1px;
     pointer-events: none;
     z-index: 3;

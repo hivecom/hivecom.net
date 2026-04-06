@@ -103,8 +103,30 @@ const SCROLL_NAVBAR_OFFSET = 148
  * - `'start'`  → top of element sits just below the navbar (default)
  * - `'center'` → element is vertically centred in the available viewport
  */
+/**
+ * When multiple elements share the same id (e.g. a pinned-comment banner plus
+ * the list instance, or flat-view and threaded-view copies kept alive by
+ * v-show), querySelector always returns the first in DOM order which may be
+ * hidden (display:none on itself or an ancestor → zero bounding rect).
+ *
+ * This helper walks all matching elements and returns the first one whose
+ * bounding rect has a non-zero height, falling back to the very first match
+ * if every instance is currently hidden.
+ */
+function findVisibleElement(id: string): HTMLElement | null {
+  const els = document.querySelectorAll<HTMLElement>(id)
+  if (els.length === 0)
+    return null
+  for (const el of els) {
+    if (el.getBoundingClientRect().height > 0)
+      return el
+  }
+  // All hidden - return the first so callers can at least measure it.
+  return els[0]!
+}
+
 export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = 'start', smooth = false) {
-  const el = document.querySelector(id)
+  const el = findVisibleElement(id)
   if (!el)
     return
 
@@ -125,6 +147,77 @@ export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = '
   // a smooth animation can't cause the final scroll position to drift.
   // Pass smooth=true only for user-visible transitions where animation matters.
   window.scrollTo({ top: Math.max(0, target), behavior: smooth ? 'smooth' : 'instant' })
+}
+
+/**
+ * Scrolls to `id` and keeps re-anchoring on every animation frame while the
+ * layout is still shifting (e.g. images loading, markdown rendering, newly
+ * injected comment pages). Resolves once the element's absolute position has
+ * been stable for `stableForMs` milliseconds, or the hard `timeoutMs`
+ * deadline is hit.
+ *
+ * This solves the problem where `waitForLayoutStability` + `scrollToId` fires
+ * once at the right position, but content *above* the target later expands and
+ * pushes the target down — leaving the viewport anchored to the wrong spot.
+ * By re-scrolling every frame we stay locked onto the element throughout the
+ * settling period.
+ */
+export async function scrollToIdWhenStable(
+  id: string,
+  block: ScrollIntoViewOptions['block'] = 'start',
+  timeoutMs = 5000,
+  stableForMs = 150,
+): Promise<void> {
+  if (!import.meta.client)
+    return
+
+  const el = findVisibleElement(id)
+  if (!el)
+    return
+
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs
+    let lastAbsoluteTop: number | null = null
+    let stableStart: number | null = null
+
+    const tick = () => {
+      const now = Date.now()
+
+      // Recompute the element's absolute position every frame.
+      const rect = el.getBoundingClientRect()
+      const absoluteTop = rect.top + window.scrollY
+
+      let target: number
+      if (block === 'center') {
+        const availableHeight = window.innerHeight - SCROLL_NAVBAR_OFFSET
+        target = absoluteTop - SCROLL_NAVBAR_OFFSET - availableHeight / 2 + rect.height / 2
+      }
+      else {
+        target = absoluteTop - SCROLL_NAVBAR_OFFSET
+      }
+
+      // Always re-apply the scroll so we stay pinned to the element.
+      window.scrollTo({ top: Math.max(0, target), behavior: 'instant' })
+
+      // Track whether the element's absolute position has stabilised.
+      if (lastAbsoluteTop === null || Math.abs(absoluteTop - lastAbsoluteTop) > 1) {
+        lastAbsoluteTop = absoluteTop
+        stableStart = now
+      }
+      else {
+        stableStart ??= now
+      }
+
+      if (now >= deadline || (stableStart !== null && now - stableStart >= stableForMs)) {
+        resolve()
+        return
+      }
+
+      requestAnimationFrame(tick)
+    }
+
+    requestAnimationFrame(tick)
+  })
 }
 
 /**
