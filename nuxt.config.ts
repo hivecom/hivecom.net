@@ -48,6 +48,7 @@ export default defineNuxtConfig({
   devtools: {
     enabled: false,
   },
+  components: false,
   compatibilityDate: '2024-09-25',
   typescript: {
     typeCheck: false,

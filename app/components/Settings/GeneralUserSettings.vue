@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, ButtonGroup, Card, Divider, Flex, Select, setColorTheme, Switch } from '@dolanske/vui'
+import SharedTinyBadge from '@/components/Shared/TinyBadge.vue'
 
 // Placeholder theme options for the planned Theme selector
 const themeSelectOptions = [

@@ -2,6 +2,7 @@
 import { Button, Divider, DropdownItem, Flex, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
 import { until, useStorage as useLocalStorage, useMediaQuery } from '@vueuse/core'
 import LogoIcon from '@/components/Shared/LogoIcon.vue'
+import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useBreakpoint } from '@/lib/mediaQuery'
 

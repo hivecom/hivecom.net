@@ -6,6 +6,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import ReactionsList from '@/components/Reactions/ReactionsList.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
@@ -14,6 +15,7 @@ import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
+import SharedUserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import UserRole from '@/components/Shared/UserRole.vue'
@@ -580,8 +582,8 @@ const editedAtFormatted = computed(() => {
           </p>
 
           <div class="discussion-forum__reactions">
-            <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
-            <ReactionsSelect v-if="userId && !showNSFWWarning && displayReactions.length > 0" @reaction="(emote) => toggleReaction(emote)" />
+            <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="toggleReaction" />
+            <ReactionsSelect v-if="userId && !showNSFWWarning && displayReactions.length > 0" @reaction="toggleReaction" />
           </div>
         </Flex>
       </template>
@@ -594,8 +596,8 @@ const editedAtFormatted = computed(() => {
         <!-- Empty div makes sure reactions are forced to flex end -->
         <div v-else />
         <div class="discussion-forum__reactions">
-          <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
-          <ReactionsSelect v-if="userId && !showNSFWWarning" @reaction="(emote) => toggleReaction(emote)" />
+          <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="toggleReaction" />
+          <ReactionsSelect v-if="userId && !showNSFWWarning" @reaction="toggleReaction" />
         </div>
       </div>
     </div>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Spinner } from '@dolanske/vui'
+
 const props = defineProps<{
   loading: boolean
   remainingCount?: number
@@ -18,9 +20,14 @@ function handleClick() {
 <template>
   <div class="discussion-load-more" @click="handleClick">
     <button :disabled="loading">
-      <Icon name="ph:arrow-down" :size="12" />
-      {{ remainingCount && remainingCount > 0 ? `${remainingCount} more ${remainingCount === 1 ? 'reply' : 'replies'}` : 'Load more' }}
-      <Icon name="ph:arrow-down" :size="12" />
+      <template v-if="loading">
+        <Spinner size="s" />
+      </template>
+      <template v-else>
+        <Icon name="ph:arrow-down" :size="12" />
+        {{ remainingCount && remainingCount > 0 ? `${remainingCount} more ${remainingCount === 1 ? 'reply' : 'replies'}` : 'Load more' }}
+        <Icon name="ph:arrow-down" :size="12" />
+      </template>
     </button>
   </div>
 </template>

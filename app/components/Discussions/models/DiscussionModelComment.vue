@@ -6,6 +6,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import ReactionsList from '@/components/Reactions/ReactionsList.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -396,8 +397,8 @@ watch(
     </template>
 
     <Flex v-if="displayReactions.length > 0" y-center x-start gap="xxs" class="discussion-comment__reactions">
-      <ReactionsList :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
-      <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)" />
+      <ReactionsList :reactions="displayReactions" :disabled="!userId" @toggle="toggleReaction" />
+      <ReactionsSelect v-if="userId" @reaction="toggleReaction" />
     </Flex>
 
     <ConfirmModal

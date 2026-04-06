@@ -14,6 +14,8 @@ import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
 import { useFriendship } from '@/composables/useFriendship'
 import Discussion from '../Discussions/Discussion.vue'
+import ProfileActivity from './ProfileActivity.vue'
+import ProfileDiscussions from './ProfileDiscussions.vue'
 
 interface Props {
   userId?: string

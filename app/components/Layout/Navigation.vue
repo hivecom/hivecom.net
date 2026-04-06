@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
+import SharedLogo from '@/components/Shared/Logo.vue'
 import { useMfaStatus } from '@/composables/useMfaStatus'
 import { navigationLinks } from '@/config/navigation'
 import { useBreakpoint } from '@/lib/mediaQuery'

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Alert, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
+import LegalDiffView from '@/components/Legal/DiffView.vue'
 import { formatDateLong } from '@/lib/utils/date'
 
 const route = useRoute()
