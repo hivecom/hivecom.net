@@ -1215,7 +1215,6 @@ async function handleSubmit() {
       <template #header />
 
       <div class="rich-text-expand-body">
-        <slot name="expanded-prepend" />
         <RichTextEditor
           v-bind="expandedProps"
           v-model="content"
