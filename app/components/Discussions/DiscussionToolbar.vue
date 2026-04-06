@@ -83,8 +83,13 @@ const emit = defineEmits<{
         </template>
       </Tooltip>
       <Tooltip>
-        <Button square size="s" variant="gray" @click="emit('goToEnd')">
-          <Icon :size="18" name="ph:arrow-down" />
+        <Button size="s" variant="gray" @click="emit('goToEnd')">
+          <template #end>
+            <Icon :size="18" name="ph:arrow-down" />
+          </template>
+          <span>
+            Latest
+          </span>
         </Button>
         <template #tooltip>
           <p>Go to last reply</p>

@@ -2,6 +2,7 @@
 import type { ValidationError } from '@dolanske/v-valid'
 import type { ComponentExposed } from 'vue-component-type-helpers'
 import type { Comment, DiscussionSettings, RawComment, ThreadNode } from './Discussion.types'
+import type { TimelineBucket } from './DiscussionTimeline.vue'
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Skeleton } from '@dolanske/vui'
@@ -334,21 +335,20 @@ provide(DISCUSSION_KEYS.toggleOfftopic, toggleOfftopic)
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
+/** Height of the sticky navbar in px - used to offset scroll position tracking. */
+const NAVBAR_OFFSET = 148
 const navigateToDateLoading = ref(false)
 const navigating = ref(false)
 const replyAreaEl = ref<HTMLElement | null>(null)
 const bottomSentinelEl = ref<HTMLElement | null>(null)
 const bottomSentinelThreadedEl = ref<HTMLElement | null>(null)
+const activeSentinel = computed(() =>
+  viewMode.value === 'threaded' ? bottomSentinelThreadedEl.value : bottomSentinelEl.value,
+)
 const currentScrollFraction = ref<number | null>(null)
 
 // Infinite scroll: auto-load the next page when the sentinel enters the viewport.
-useIntersectionObserver(bottomSentinelEl, ([entry]) => {
-  if (entry?.isIntersecting && hasMore.value && !loadingMore.value) {
-    void loadMore()
-  }
-}, { rootMargin: '0px 0px 300px 0px' })
-
-useIntersectionObserver(bottomSentinelThreadedEl, ([entry]) => {
+useIntersectionObserver(activeSentinel, ([entry]) => {
   if (entry?.isIntersecting && hasMore.value && !loadingMore.value) {
     void loadMore()
   }
@@ -362,7 +362,7 @@ watch(hasMore, async (val) => {
   if (!val || loadingMore.value)
     return
   await nextTick()
-  const sentinel = viewMode.value === 'threaded' ? bottomSentinelThreadedEl.value : bottomSentinelEl.value
+  const sentinel = activeSentinel.value
   if (!sentinel)
     return
   const rect = sentinel.getBoundingClientRect()
@@ -378,7 +378,7 @@ watch(modelledComments, async () => {
   if (!hasMore.value || loadingMore.value)
     return
   await nextTick()
-  const sentinel = viewMode.value === 'threaded' ? bottomSentinelThreadedEl.value : bottomSentinelEl.value
+  const sentinel = activeSentinel.value
   if (sentinel == null)
     return
   const rect = sentinel.getBoundingClientRect()
@@ -431,11 +431,6 @@ const timelineBucketIntervalMs = computed((): number => {
     default: return 60 * 60 * 1000
   }
 })
-
-interface TimelineBucket {
-  bucketStart: string
-  replyCount: number
-}
 
 const timelineBuckets = ref<TimelineBucket[]>([])
 const timelineOfftopicBuckets = ref<TimelineBucket[]>([])
@@ -542,6 +537,7 @@ watch(showTimeline, async (visible) => {
 
 // Re-fetch when view mode changes - threaded uses root-only buckets, flat uses all replies.
 watch(viewMode, async () => {
+  currentScrollFraction.value = null
   await fetchTimelineBuckets()
 })
 
@@ -567,7 +563,6 @@ function updateScrollFraction() {
     return
   }
 
-  const NAVBAR_OFFSET = 148
   const replyAreaRect = replyAreaEl.value.getBoundingClientRect()
 
   // If the reply area top is still below the navbar, we're above the replies - pin to 0.
@@ -902,16 +897,8 @@ async function submitReply() {
     })
 }
 
-async function deleteComment(id: string) {
-  return deleteCommentFromList(id)
-}
-
-async function forceDeleteComment(id: string) {
-  return forceDeleteCommentFromList(id)
-}
-
-provide(DISCUSSION_KEYS.deleteComment, deleteComment)
-provide(DISCUSSION_KEYS.forceDeleteComment, forceDeleteComment)
+provide(DISCUSSION_KEYS.deleteComment, deleteCommentFromList)
+provide(DISCUSSION_KEYS.forceDeleteComment, forceDeleteCommentFromList)
 
 // ── Off-topic visibility helpers ──────────────────────────────────────────────
 
@@ -927,7 +914,6 @@ function isNodeVisible(node: ThreadNode): boolean {
 </script>
 
 <template>
-  <!-- <ClientOnly> -->
   <div class="discussion" :class="[`discussion--${props.model}`]">
     <template v-if="loading">
       <Skeleton height="128px" width="auto" />
@@ -973,7 +959,7 @@ function isNodeVisible(node: ThreadNode): boolean {
         :has-comments="modelledComments.length > 0"
         :offtopic-count="offtopicCount"
         :show-offtopic="showOfftopic"
-        :show-timeline-button="showTimeline && timelineStart !== '' && timelineEnd !== ''"
+        :show-timeline-button="showTimeline"
         @update:view-mode="handleViewModeUpdate"
         @update:show-offtopic="handleShowOfftopicUpdate"
         @go-to-pinned="handleGoToPinnedReply"
@@ -982,17 +968,13 @@ function isNodeVisible(node: ThreadNode): boolean {
       />
 
       <!-- Pending banner for comment model: sits between toolbar and comments -->
-      <div
-        v-if="realtime.pendingReplyCount.value > 0 && props.model === 'comment'"
-        class="discussion__pending-banner"
-        @click="!realtime.pendingLoading.value && realtime.loadPendingReplies()"
-      >
-        <button :disabled="realtime.pendingLoading.value">
-          <Icon name="ph:arrow-up" :size="12" />
-          Click to load {{ realtime.pendingReplyCount.value }} new {{ realtime.pendingReplyCount.value === 1 ? 'comment' : 'comments' }}
-          <Icon name="ph:arrow-up" :size="12" />
-        </button>
-      </div>
+      <DiscussionPendingBanner
+        v-if="realtime.pendingReplyCount.value > 0"
+        model="comment"
+        :count="realtime.pendingReplyCount.value"
+        :loading="realtime.pendingLoading.value"
+        @load="realtime.loadPendingReplies()"
+      />
 
       <!-- Reply area: position:relative so the timeline's absolute top aligns with the first card -->
       <div
@@ -1046,37 +1028,25 @@ function isNodeVisible(node: ThreadNode): boolean {
               </button>
             </div>
             <!-- Gap banner: appears after the last item of the early block -->
-            <div
+            <DiscussionGapBanner
               v-if="gap != null && comment.id === gap.afterId"
-              class="discussion__gap-banner"
-            >
-              <button :disabled="loadingGap" @click="loadGapFromBottom()">
-                <Icon name="ph:arrow-up" />
-                Load up
-              </button>
-              <span class="discussion__gap-count">{{ gap.count }} {{ gap.count === 1 ? 'reply' : 'replies' }}</span>
-              <button :disabled="loadingGap" @click="loadGapFromTop()">
-                Load down
-                <Icon name="ph:arrow-down" />
-              </button>
-            </div>
+              :count="gap.count"
+              :loading="loadingGap"
+              @load-up="loadGapFromBottom()"
+              @load-down="loadGapFromTop()"
+            />
           </template>
 
           <!-- Infinite scroll sentinel (flat mode) -->
           <div ref="bottomSentinelEl" />
 
           <!-- Load more (flat mode) - kept as explicit fallback / status strip -->
-          <div
+          <DiscussionLoadMore
             v-if="hasMore"
-            class="discussion__load-more"
-            @click="!loadingMore && loadMore()"
-          >
-            <button :disabled="loadingMore">
-              <Icon name="ph:arrow-down" :size="12" />
-              {{ remainingCount > 0 ? `${remainingCount} more ${remainingCount === 1 ? 'reply' : 'replies'}` : 'Load more' }}
-              <Icon name="ph:arrow-down" :size="12" />
-            </button>
-          </div>
+            :loading="loadingMore"
+            :remaining-count="remainingCount"
+            @load="loadMore()"
+          />
         </div>
 
         <!-- Threaded view: only roots rendered, children nest recursively -->
@@ -1092,51 +1062,34 @@ function isNodeVisible(node: ThreadNode): boolean {
               :stagger-index="Math.min(index, 10)"
             />
             <!-- Gap banner (threaded mode - roots only pagination) -->
-            <div
+            <DiscussionGapBanner
               v-if="gap != null && node.comment.id === gap.afterId"
-              class="discussion__gap-banner"
-            >
-              <button :disabled="loadingGap" @click="loadGapFromBottom()">
-                <Icon name="ph:arrow-up" />
-                Load up
-              </button>
-              <span class="discussion__gap-count">{{ gap.count }} {{ gap.count === 1 ? 'reply' : 'replies' }}</span>
-              <button :disabled="loadingGap" @click="loadGapFromTop()">
-                Load down
-                <Icon name="ph:arrow-down" />
-              </button>
-            </div>
+              :count="gap.count"
+              :loading="loadingGap"
+              @load-up="loadGapFromBottom()"
+              @load-down="loadGapFromTop()"
+            />
           </template>
 
           <!-- Infinite scroll sentinel (threaded mode) -->
           <div ref="bottomSentinelThreadedEl" />
 
           <!-- Load more (threaded mode) - explicit fallback -->
-          <div
+          <DiscussionLoadMore
             v-if="hasMore"
-            class="discussion__load-more"
-            @click="!loadingMore && loadMore()"
-          >
-            <button :disabled="loadingMore">
-              <Icon name="ph:arrow-down" :size="12" />
-              Load more
-              <Icon name="ph:arrow-down" :size="12" />
-            </button>
-          </div>
+            :loading="loadingMore"
+            @load="loadMore()"
+          />
         </div>
 
         <!-- Pending replies banner - forum model: sits below comments (newest appended at bottom) -->
-        <div
-          v-if="realtime.pendingReplyCount.value > 0 && props.model === 'forum'"
-          class="discussion__pending-banner"
-          @click="!realtime.pendingLoading.value && realtime.loadPendingReplies()"
-        >
-          <button :disabled="realtime.pendingLoading.value">
-            <Icon name="ph:arrow-down" :size="12" />
-            Click to load {{ realtime.pendingReplyCount.value }} new {{ realtime.pendingReplyCount.value === 1 ? 'reply' : 'replies' }}
-            <Icon name="ph:arrow-down" :size="12" />
-          </button>
-        </div>
+        <DiscussionPendingBanner
+          v-if="realtime.pendingReplyCount.value > 0"
+          model="forum"
+          :count="realtime.pendingReplyCount.value"
+          :loading="realtime.pendingLoading.value"
+          @load="realtime.loadPendingReplies()"
+        />
 
         <!-- Forum model: input at bottom -->
         <template v-if="props.model !== 'comment'">
@@ -1161,7 +1114,7 @@ function isNodeVisible(node: ThreadNode): boolean {
 
         <!-- Timeline scrubber: sits just outside the right edge of the reply area -->
         <DiscussionTimeline
-          v-if="showTimeline && timelineStart !== '' && timelineEnd !== ''"
+          v-if="showTimeline"
           ref="timelineRef"
           :start="timelineStart"
           :end="timelineEnd"
@@ -1178,151 +1131,10 @@ function isNodeVisible(node: ThreadNode): boolean {
       </div>
     </template>
   </div>
-  <!-- </ClientOnly> -->
 </template>
 
 <style scoped lang="scss">
 .discussion {
-  &__gap-banner,
-  &__load-more {
-    width: 100%;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    margin-block: var(--space-s);
-    cursor: pointer;
-
-    &:hover:before {
-      opacity: 1;
-    }
-
-    button {
-      position: relative;
-      z-index: 3;
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-      padding: 0 var(--space-s);
-      border: none;
-      background-color: var(--color-bg);
-      font-size: var(--font-size-xs);
-      color: var(--color-text-lighter);
-      cursor: pointer;
-      transition: color var(--transition);
-
-      &:hover:not(:disabled) {
-        color: var(--color-text);
-      }
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: default;
-      }
-    }
-  }
-
-  &__gap-banner button {
-    color: var(--color-accent);
-
-    &:hover:not(:disabled) {
-      color: var(--color-accent);
-      opacity: 0.8;
-    }
-  }
-
-  &__gap-banner {
-    align-items: center;
-    gap: var(--space-s);
-    cursor: default;
-
-    &:before {
-      content: '';
-      display: block;
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      left: 0;
-      right: 0;
-      border-bottom: 1px solid var(--color-accent);
-      opacity: 0.5;
-      z-index: 1;
-      transition: opacity var(--transition);
-    }
-  }
-
-  &__gap-count {
-    position: relative;
-    z-index: 3;
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-    background-color: var(--color-bg);
-    padding: 0 var(--space-xs);
-    white-space: nowrap;
-  }
-
-  &__load-more {
-    &:before {
-      content: '';
-      display: block;
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      left: 0;
-      right: 0;
-      border-bottom: 1px solid var(--color-border-strong);
-      opacity: 0.5;
-      z-index: 1;
-      transition: opacity var(--transition);
-    }
-  }
-
-  &__pending-banner {
-    width: 100%;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    margin-bottom: var(--space-s);
-    cursor: pointer;
-
-    &:before {
-      content: '';
-      display: block;
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      left: 0;
-      right: 0;
-      border-bottom: 1px solid var(--color-accent);
-      opacity: 0.5;
-      z-index: 1;
-      transition: opacity var(--transition);
-    }
-
-    &:hover:before {
-      opacity: 1;
-    }
-
-    button {
-      position: relative;
-      z-index: 3;
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-      padding: 0 var(--space-s);
-      border: none;
-      background-color: var(--color-bg);
-      font-size: var(--font-size-xs);
-      color: var(--color-accent);
-      cursor: pointer;
-      transition: color var(--transition);
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: default;
-      }
-    }
-  }
-
   display: flex;
   width: 100%;
   flex-direction: column;
