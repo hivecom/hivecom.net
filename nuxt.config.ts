@@ -166,6 +166,10 @@ export default defineNuxtConfig({
 
         // events
         'ph:arrows-vertical',
+
+        // Discussions/DiscussionTimeline.vue jump-to-date button + toolbar
+        'ph:clock',
+        'ph:arrow-down',
       ],
     },
   },

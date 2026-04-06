@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Button, Calendar, Flex, Modal } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
+
 export interface TimelineBucket {
   bucketStart: string
   replyCount: number
@@ -284,6 +287,39 @@ const tooltipText = computed((): string => {
     return `${date}\n${hoveredSegment.value.label}`
   return date
 })
+
+// ─── Jump-to-date modal ───────────────────────────────────────────────────────
+
+const isMobile = useBreakpoint('<s')
+const showJumpModal = ref(false)
+const jumpDate = ref<Date | null>(null)
+
+function openJumpModal() {
+  if (props.currentFraction != null) {
+    const ms = startMs.value + props.currentFraction * spanMs.value
+    jumpDate.value = new Date(ms)
+  }
+  else {
+    jumpDate.value = new Date(props.start)
+  }
+  showJumpModal.value = true
+}
+
+function onCalendarDateSelect(date: Date | null) {
+  if (!date)
+    return
+  emit('navigate', date)
+  showJumpModal.value = false
+}
+
+function handleModalSegmentClick(seg: BucketSegment) {
+  if (props.loading)
+    return
+  emit('navigate', seg.targetDate)
+  showJumpModal.value = false
+}
+
+defineExpose({ openJumpModal })
 </script>
 
 <template>
@@ -292,6 +328,14 @@ const tooltipText = computed((): string => {
   <div class="discussion-timeline" aria-hidden="true">
     <!-- Inner: sticky so the scrubber stays in viewport while scrolling. -->
     <div class="discussion-timeline__inner">
+      <button
+        class="discussion-timeline__jump-btn"
+        title="Jump to date"
+        @click="openJumpModal"
+      >
+        <Icon name="ph:clock" size="12" />
+      </button>
+
       <button
         class="discussion-timeline__label discussion-timeline__label--clickable"
         :disabled="loading"
@@ -389,10 +433,257 @@ const tooltipText = computed((): string => {
       </button>
     </div>
   </div>
+
+  <!-- Jump-to-date modal - sits outside aria-hidden wrapper -->
+  <Modal
+    :open="showJumpModal"
+    :size="isMobile ? 'screen' : 'l'"
+    :card="{ separators: true }"
+    @close="showJumpModal = false"
+  >
+    <template #header>
+      <Flex y-center gap="m">
+        <h4>Jump to Date</h4>
+        <Calendar
+          v-model="jumpDate"
+          :min-date="new Date(props.start)"
+          :max-date="new Date(props.end)"
+          format="MMM d, yyyy"
+          @update:model-value="onCalendarDateSelect"
+        >
+          <template #trigger>
+            <Button variant="gray">
+              {{ jumpDate ? jumpDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              }) : 'Pick a date' }}
+              <template #end>
+                <Icon name="ph:calendar" />
+              </template>
+            </Button>
+          </template>
+        </Calendar>
+      </Flex>
+    </template>
+
+    <Flex column gap="l" class="timeline-jump-modal">
+      <!-- Expanded timeline: centred two-column layout -->
+      <div class="timeline-jump-modal__track-area">
+        <!-- Start anchor above the shared row -->
+        <span class="timeline-jump-modal__anchor">{{ formatLabel(start) }}</span>
+
+        <!-- inner-row: track-col and labels-col share identical height -->
+        <div class="timeline-jump-modal__inner-row">
+          <!-- Left column: the vertical track -->
+          <div class="timeline-jump-modal__track-col">
+            <div class="timeline-jump-modal__track">
+              <template v-if="gapFractions != null">
+                <div
+                  class="discussion-timeline__bar"
+                  :style="{
+                    top: '0%',
+                    height: `${gapFractions.top * 100}%`,
+                  }"
+                />
+                <div
+                  class="discussion-timeline__bar discussion-timeline__bar--gap"
+                  :style="{
+                    top: `${gapFractions.top * 100}%`,
+                    height: `${(gapFractions.bottom - gapFractions.top) * 100}%`,
+                  }"
+                />
+                <div
+                  class="discussion-timeline__bar"
+                  :style="{
+                    top: `${gapFractions.bottom * 100}%`,
+                    height: `${(1 - gapFractions.bottom) * 100}%`,
+                  }"
+                />
+              </template>
+              <div v-else class="discussion-timeline__bar" style="top: 0%; height: 100%;" />
+
+              <div
+                v-for="(seg, i) in bucketSegments"
+                :key="`mjm-${i}`"
+                class="discussion-timeline__segment timeline-jump-modal__segment"
+                :class="seg.isSingle ? 'discussion-timeline__segment--dot' : 'discussion-timeline__segment--box'"
+                :style="{
+                  top: `${seg.topFraction * 100}%`,
+                  height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
+                  opacity: seg.opacity,
+                }"
+                @click="handleModalSegmentClick(seg)"
+              />
+              <div
+                v-for="(seg, i) in offtopicSegments"
+                :key="`mjot-${i}`"
+                class="discussion-timeline__segment discussion-timeline__segment--offtopic timeline-jump-modal__segment"
+                :class="seg.isSingle ? 'discussion-timeline__segment--dot' : 'discussion-timeline__segment--box'"
+                :style="{
+                  top: `${seg.topFraction * 100}%`,
+                  height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
+                  opacity: seg.opacity,
+                }"
+                @click="handleModalSegmentClick(seg)"
+              />
+
+              <div
+                v-if="currentFraction != null"
+                class="discussion-timeline__position"
+                :style="{ top: `${currentFraction * 100}%` }"
+              />
+            </div>
+          </div>
+
+          <!-- Right column: always-visible labels -->
+          <div class="timeline-jump-modal__labels-col">
+            <button
+              v-for="(seg, i) in bucketSegments"
+              :key="`mjl-${i}`"
+              class="timeline-jump-modal__label"
+              :style="{ top: `${((seg.topFraction + seg.bottomFraction) / 2) * 100}%` }"
+              @click="handleModalSegmentClick(seg)"
+            >
+              <span class="timeline-jump-modal__label-date">{{ formatTooltip(seg.targetDate) }}</span>
+              <span class="timeline-jump-modal__label-count">{{ seg.label }}</span>
+            </button>
+            <button
+              v-for="(seg, i) in offtopicSegments"
+              :key="`mjlo-${i}`"
+              class="timeline-jump-modal__label timeline-jump-modal__label--offtopic"
+              :style="{ top: `${((seg.topFraction + seg.bottomFraction) / 2) * 100}%` }"
+              @click="handleModalSegmentClick(seg)"
+            >
+              <span class="timeline-jump-modal__label-date">{{ formatTooltip(seg.targetDate) }}</span>
+              <span class="timeline-jump-modal__label-count">{{ seg.label }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- End anchor below the shared row -->
+        <span class="timeline-jump-modal__anchor">{{ formatLabel(end) }}</span>
+      </div>
+    </Flex>
+
+    <template #footer="{ close }">
+      <Flex x-end expand>
+        <Button @click="close">
+          Close
+        </Button>
+      </Flex>
+    </template>
+  </Modal>
 </template>
 
 <style scoped lang="scss">
 @use '@/assets/breakpoints.scss' as *;
+
+.timeline-jump-modal {
+  height: 100%;
+
+  &__track-area {
+    display: flex;
+    flex-direction: column;
+    max-width: 560px;
+    width: 100%;
+    margin: 0 auto;
+    height: calc(86vh - 134px);
+    min-height: 400px;
+
+    @media screen and (max-width: $breakpoint-s) {
+      height: calc(98vh - 134px);
+      max-width: 100%;
+    }
+  }
+
+  &__inner-row {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  &__track-col {
+    flex-shrink: 0;
+    width: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  &__track {
+    flex: 1;
+    width: 100%;
+    position: relative;
+  }
+
+  // Bigger segments inside the modal
+  &__segment {
+    &.discussion-timeline__segment--dot {
+      width: 12px !important;
+      height: 12px !important;
+    }
+
+    &.discussion-timeline__segment--box {
+      width: 12px !important;
+    }
+  }
+
+  &__labels-col {
+    flex: 1;
+    position: relative;
+  }
+
+  &__label {
+    position: absolute;
+    left: var(--space-s);
+    right: 0;
+    transform: translateY(-50%);
+    display: flex;
+    gap: var(--space-xs);
+    align-items: baseline;
+    background: none;
+    border: none;
+    padding: 3px var(--space-xs);
+    cursor: pointer;
+    text-align: left;
+    border-radius: var(--border-radius-s);
+    font-family: inherit;
+    transition: background-color var(--transition);
+
+    &:hover {
+      background: var(--color-bg-raised);
+    }
+
+    &-date {
+      font-size: var(--font-size-xs);
+      color: var(--color-text);
+      white-space: nowrap;
+    }
+
+    &-count {
+      font-size: var(--font-size-xxs);
+      color: var(--color-text-light);
+      white-space: nowrap;
+    }
+
+    &--offtopic &-date {
+      color: var(--color-text-yellow);
+    }
+  }
+
+  &__anchor {
+    font-size: var(--font-size-xxs);
+    color: var(--color-text-lighter);
+    user-select: none;
+    pointer-events: none;
+    line-height: 1;
+    text-align: center;
+    width: 40px;
+    flex-shrink: 0;
+    padding: var(--space-s) 0;
+  }
+}
 
 .discussion-timeline {
   // Positioned just outside the right edge of .discussion (which is position: relative).
@@ -411,6 +702,26 @@ const tooltipText = computed((): string => {
   // Only show when there is actual dead-zone space to the right.
   @media screen and (max-width: $breakpoint-m) {
     display: none;
+  }
+
+  &__jump-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--color-text-lighter);
+    opacity: 0.35;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      opacity var(--transition),
+      color var(--transition);
+
+    &:hover {
+      opacity: 1;
+      color: var(--color-accent);
+    }
   }
 
   &__inner {

@@ -87,7 +87,9 @@ export function useDataDiscussionReplies(
   const _tailBlock = ref<RawComment[]>([])
 
   const gap = ref<ReplyGap | null>(null)
-  const loadingGap = ref(false)
+  const loadingGapTop = ref(false)
+  const loadingGapBottom = ref(false)
+  const loadingGap = computed(() => loadingGapTop.value || loadingGapBottom.value)
 
   /** Approximate number of replies that remain after the current loaded end. */
   const remainingCount = computed((): number => {
@@ -371,11 +373,11 @@ export function useDataDiscussionReplies(
    * then extended with each bottom-page fetch). The gap banner sits between
    * the last early item and the first tail item.
    */
-  async function loadGap(): Promise<void> {
+  async function loadGapFromTop(): Promise<void> {
     if (gap.value == null || !discussion.value || loadingGap.value)
       return
 
-    loadingGap.value = true
+    loadingGapTop.value = true
 
     try {
       const tailIds = new Set(_tailBlock.value.map(r => r.id))
@@ -387,29 +389,11 @@ export function useDataDiscussionReplies(
         rootOnly: rootOnly.value,
       }
 
-      // Fetch from both ends of the gap simultaneously.
-      // Top: next page from gap.cursor (ascending from start of gap).
-      // Bottom: one page in reverse just before _tailBlock[0], then flip to
-      //         ascending order so it slots naturally before the tail block.
-      const firstTailItem = _tailBlock.value[0]
-      const [forwardPage, bottomPage] = await Promise.all([
-        repliesCache.fetchPage(discussionId, { ...fetchOpts, cursor: gap.value.cursor }),
-        firstTailItem != null
-          ? repliesCache.fetchPage(discussionId, {
-              ...fetchOpts,
-              ascending: !ascending.value,
-              cursor: { cursorTime: firstTailItem.created_at, cursorId: firstTailItem.id },
-            })
-          : Promise.resolve(null),
-      ])
+      const forwardPage = await repliesCache.fetchPage(discussionId, { ...fetchOpts, cursor: gap.value.cursor })
 
       if (forwardPage == null)
         return
 
-      // Bottom page arrives in reverse order - flip back to ascending.
-      const bottomRows = bottomPage != null ? [...bottomPage.rows].reverse() : []
-
-      // Where does the current tail block begin in the comments array?
       const firstTailId = _tailBlock.value[0]?.id
       const insertPoint = firstTailId != null
         ? comments.value.findIndex(c => c.id === firstTailId)
@@ -418,49 +402,107 @@ export function useDataDiscussionReplies(
 
       const existingIds = new Set(comments.value.map(c => c.id))
       const freshForward = forwardPage.rows.filter(r => !existingIds.has(r.id))
-      const forwardIds = new Set(freshForward.map(r => r.id))
-      // Filter bottom rows: skip anything already loaded or overlapping with
-      // the forward page (the two pages met in the middle - gap is closed).
-      const freshBottom = bottomRows.filter(r => !existingIds.has(r.id) && !forwardIds.has(r.id))
 
-      const reachedTail = forwardPage.rows.some(r => tailIds.has(r.id))
-      const pagesOverlap = bottomRows.some(r => forwardIds.has(r.id))
-      const gapClosed = reachedTail || pagesOverlap || !forwardPage.hasMore || forwardPage.nextCursor == null
-
-      // Splice both fresh chunks into comments before the current tail block.
-      // freshForward goes at the top of the gap, freshBottom at the bottom.
-      const allFresh = [...freshForward, ...freshBottom]
-      if (allFresh.length > 0) {
+      if (freshForward.length > 0) {
         comments.value = [
           ...comments.value.slice(0, splice),
-          ...allFresh,
+          ...freshForward,
           ...comments.value.slice(splice),
         ]
       }
 
+      const reachedTail = forwardPage.rows.some(r => tailIds.has(r.id))
+      const gapClosed = reachedTail || !forwardPage.hasMore || forwardPage.nextCursor == null
+
       if (gapClosed) {
         gap.value = null
         _tailBlock.value = []
-        if (forwardPage.hasMore && !reachedTail && !pagesOverlap && forwardPage.nextCursor != null) {
+        if (forwardPage.hasMore && !reachedTail && forwardPage.nextCursor != null) {
           hasMore.value = true
           nextCursor.value = forwardPage.nextCursor
         }
       }
       else {
-        // Extend the tail block to include the new bottom items so future
-        // calls know the new boundary of the late block.
-        _tailBlock.value = [...freshBottom, ..._tailBlock.value]
-
         gap.value = {
-          // Banner moves to just after the last forward item.
           afterId: freshForward.at(-1)?.id ?? gap.value.afterId,
-          count: Math.max(0, gap.value.count - freshForward.length - freshBottom.length),
+          count: Math.max(0, gap.value.count - freshForward.length),
           cursor: forwardPage.nextCursor!,
         }
       }
     }
     finally {
-      loadingGap.value = false
+      loadingGapTop.value = false
+    }
+  }
+
+  async function loadGapFromBottom(): Promise<void> {
+    if (gap.value == null || !discussion.value || loadingGap.value)
+      return
+
+    loadingGapBottom.value = true
+
+    try {
+      const firstTailItem = _tailBlock.value[0]
+      if (firstTailItem == null) {
+        loadingGapBottom.value = false
+        return
+      }
+
+      const discussionId = discussion.value.id
+      const fetchOpts = {
+        ascending: ascending.value,
+        pageSize: pageSize.value,
+        hash: props.hash,
+        rootOnly: rootOnly.value,
+      }
+
+      const bottomPage = await repliesCache.fetchPage(discussionId, {
+        ...fetchOpts,
+        ascending: !ascending.value,
+        cursor: { cursorTime: firstTailItem.created_at, cursorId: firstTailItem.id },
+      })
+
+      if (bottomPage == null)
+        return
+
+      // Bottom page arrives in reverse order - flip back to ascending.
+      const bottomRows = [...bottomPage.rows].reverse()
+
+      const firstTailId = _tailBlock.value[0]?.id
+      const insertPoint = firstTailId != null
+        ? comments.value.findIndex(c => c.id === firstTailId)
+        : -1
+      const splice = insertPoint >= 0 ? insertPoint : comments.value.length
+
+      const existingIds = new Set(comments.value.map(c => c.id))
+      const freshBottom = bottomRows.filter(r => !existingIds.has(r.id))
+
+      if (freshBottom.length > 0) {
+        comments.value = [
+          ...comments.value.slice(0, splice),
+          ...freshBottom,
+          ...comments.value.slice(splice),
+        ]
+      }
+
+      // Gap is closed when the reverse page ran out of rows (hit the early block boundary).
+      const gapClosed = !bottomPage.hasMore || freshBottom.length === 0
+
+      if (gapClosed) {
+        gap.value = null
+        _tailBlock.value = []
+      }
+      else {
+        _tailBlock.value = [...freshBottom, ..._tailBlock.value]
+        gap.value = {
+          afterId: gap.value.afterId,
+          count: Math.max(0, gap.value.count - freshBottom.length),
+          cursor: gap.value.cursor,
+        }
+      }
+    }
+    finally {
+      loadingGapBottom.value = false
     }
   }
 
@@ -864,6 +906,8 @@ export function useDataDiscussionReplies(
     loadingMore,
     loadingChildren,
     loadingGap,
+    loadingGapTop,
+    loadingGapBottom,
     error,
     hasMore,
     gap,
@@ -875,7 +919,8 @@ export function useDataDiscussionReplies(
     childrenMap,
     replyCountMap,
     loadMore,
-    loadGap,
+    loadGapFromTop,
+    loadGapFromBottom,
     navigateToComment,
     navigateToDate,
     loadChildren,

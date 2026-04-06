@@ -102,7 +102,34 @@ const country = computed(() => getCountryInfo(user.value?.country))
 const setReplyToComment = inject(DISCUSSION_KEYS.setReplyToComment) as (data: Comment) => void
 const setQuoteOfComment = inject(DISCUSSION_KEYS.setQuoteOfComment) as (data: Comment) => void
 
-const replyMentionIds = computed(() => extractMentionIds(data.value.reply?.markdown ?? ''))
+// ── Lazy-load missing reply ───────────────────────────────────────────────────
+
+// If the comment has a reply_to_id but the reply wasn't joined in the initial
+// query (e.g. it wasn't in the loaded window), fetch it on demand.
+const fetchedReply = ref<import('../Discussion.types').RawComment | null>(null)
+const replyLoading = ref(false)
+
+const resolvedReply = computed(() => data.value.reply ?? fetchedReply.value)
+
+watch(
+  () => data.value.reply_to_id,
+  async (replyToId) => {
+    if (!replyToId || data.value.reply != null || fetchedReply.value != null || replyLoading.value)
+      return
+    replyLoading.value = true
+    const { data: row } = await supabase
+      .from('discussion_replies')
+      .select('id, created_at, created_by, modified_at, modified_by, discussion_id, markdown, reply_to_id, is_deleted, is_nsfw, is_offtopic, reactions')
+      .eq('id', replyToId)
+      .single()
+    if (row)
+      fetchedReply.value = row as import('../Discussion.types').RawComment
+    replyLoading.value = false
+  },
+  { immediate: true },
+)
+
+const replyMentionIds = computed(() => extractMentionIds(resolvedReply.value?.markdown ?? ''))
 const { users: replyMentionUsers } = useBulkDataUser(replyMentionIds)
 const replyMentionLookup = computed<Record<string, string>>(() => {
   const lookup: Record<string, string> = {}
@@ -485,17 +512,22 @@ const editedAtFormatted = computed(() => {
           </Badge>
 
           <!-- Reply information -->
-          <template v-if="data.reply && viewMode !== 'threaded'">
-            <Alert v-if="!data.reply.is_deleted" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
-              <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
-                <UserName size="s" show-preview :user-id="data.reply.created_by" /> wrote:
+          <template v-if="(resolvedReply != null || replyLoading) && viewMode !== 'threaded'">
+            <Alert v-if="replyLoading && resolvedReply == null" icon-align="start" class="discussion-forum__reply">
+              <p class="discussion-forum__reply-user text-color-lighter">
+                Loading...
+              </p>
+            </Alert>
+            <Alert v-else-if="resolvedReply && !resolvedReply.is_deleted" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
+              <p v-if="resolvedReply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
+                <UserName size="s" show-preview :user-id="resolvedReply.created_by" /> wrote:
               </p>
               <p v-else class="discussion-forum__reply-user">
                 You wrote:
               </p>
-              <MarkdownPreview class="text-color-light" :markdown="data.reply.markdown" :mention-lookup="replyMentionLookup" :max-length="164" />
+              <MarkdownPreview class="text-color-light" :markdown="resolvedReply.markdown" :mention-lookup="replyMentionLookup" :max-length="164" />
             </Alert>
-            <div v-else class="discussion-forum__reply discussion-forum__reply--deleted">
+            <div v-else-if="resolvedReply" class="discussion-forum__reply discussion-forum__reply--deleted">
               <Icon name="ph:trash" />
               <p class="discussion-forum__reply-user">
                 Original reply was deleted

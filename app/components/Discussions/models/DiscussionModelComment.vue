@@ -204,6 +204,33 @@ const { displayReactions, toggleReaction } = useReactions({
   rowId: data.value.id,
   initialReactions: data.value.reactions,
 })
+
+// ── Lazy-load missing reply ───────────────────────────────────────────────────
+
+// If the comment has a reply_to_id but the reply wasn't joined in the initial
+// query (e.g. it wasn't in the loaded window), fetch it on demand.
+const fetchedReply = ref<import('../Discussion.types').RawComment | null>(null)
+const replyLoading = ref(false)
+
+const resolvedReply = computed(() => data.value.reply ?? fetchedReply.value)
+
+watch(
+  () => data.value.reply_to_id,
+  async (replyToId) => {
+    if (!replyToId || data.value.reply != null || fetchedReply.value != null || replyLoading.value)
+      return
+    replyLoading.value = true
+    const { data: row } = await supabase
+      .from('discussion_replies')
+      .select('id, created_at, created_by, modified_at, modified_by, discussion_id, markdown, reply_to_id, is_deleted, is_nsfw, is_offtopic, reactions')
+      .eq('id', replyToId)
+      .single()
+    if (row)
+      fetchedReply.value = row as import('../Discussion.types').RawComment
+    replyLoading.value = false
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -316,29 +343,35 @@ const { displayReactions, toggleReaction } = useReactions({
       </Flex>
     </Flex>
 
-    <template v-if="data.reply && viewMode !== 'threaded'">
-      <Tooltip v-if="!data.reply.is_deleted" :delay="750" :disabled="data.reply.markdown.length <= COMMENT_TRUNCATE">
-        <button class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': data.reply.created_by === currentUserData?.id }" @click="emit('scrollReply')">
+    <template v-if="(resolvedReply != null || replyLoading) && viewMode !== 'threaded'">
+      <div v-if="replyLoading && resolvedReply == null" class="discussion-comment__reply">
+        <Icon name="ph:arrow-elbow-up-right" />
+        <p class="discussion-comment__reply-user text-color-lighter">
+          Loading...
+        </p>
+      </div>
+      <Tooltip v-else-if="resolvedReply && !resolvedReply.is_deleted" :delay="750" :disabled="resolvedReply.markdown.length <= COMMENT_TRUNCATE">
+        <button class="discussion-comment__reply" :class="{ 'discussion-comment__reply--me': resolvedReply.created_by === currentUserData?.id }" @click="emit('scrollReply')">
           <Icon name="ph:arrow-elbow-up-right" />
-          <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-comment__reply-user">
-            <UserDisplay class="inline-block" size="s" :user-id="data.reply.created_by" hide-avatar />:
+          <p v-if="resolvedReply.created_by !== currentUserData?.id" class="discussion-comment__reply-user">
+            <UserDisplay class="inline-block" size="s" :user-id="resolvedReply.created_by" hide-avatar />:
           </p>
           <p v-else class="discussion-comment__reply-user">
             You:
           </p>
           <p class="text-overflow-1">
-            {{ stripMarkdown(data.reply.markdown, 512) }}
+            {{ stripMarkdown(resolvedReply.markdown, 512) }}
           </p>
         </button>
         <template #tooltip>
           <MarkdownRenderer
             style="max-width: 256px"
-            :md="data.reply.markdown"
+            :md="resolvedReply.markdown"
             skeleton-height="0px"
           />
         </template>
       </Tooltip>
-      <div v-else class="discussion-comment__reply discussion-comment__reply--deleted">
+      <div v-else-if="resolvedReply" class="discussion-comment__reply discussion-comment__reply--deleted">
         <Icon name="ph:trash" />
         <p class="discussion-comment__reply-user">
           Original reply was deleted
@@ -389,8 +422,8 @@ const { displayReactions, toggleReaction } = useReactions({
         <h3>Edit comment</h3>
       </template>
 
-      <Alert v-if="data.reply" icon-align="start" class="mb-s">
-        <MarkdownPreview :markdown="data.reply.markdown" :max-length="164" />
+      <Alert v-if="resolvedReply" icon-align="start" class="mb-s">
+        <MarkdownPreview :markdown="resolvedReply.markdown" :max-length="164" />
       </Alert>
 
       <RichTextEditor

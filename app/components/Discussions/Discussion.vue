@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ValidationError } from '@dolanske/v-valid'
+import type { ComponentExposed } from 'vue-component-type-helpers'
 import type { Comment, DiscussionSettings, RawComment, ThreadNode } from './Discussion.types'
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
@@ -152,7 +153,8 @@ const {
   threadNodeMap,
   threadRoots,
   loadMore,
-  loadGap,
+  loadGapFromTop,
+  loadGapFromBottom,
   navigateToComment,
   navigateToDate,
   loadChildren,
@@ -397,6 +399,8 @@ const timelineSpanMs = computed(() => {
     return 0
   return new Date(d.last_activity_at).getTime() - new Date(d.created_at).getTime()
 })
+
+const timelineRef = ref<ComponentExposed<typeof DiscussionTimeline> | null>(null)
 
 const showTimeline = computed(() => {
   if (props.model !== 'forum')
@@ -969,9 +973,12 @@ function isNodeVisible(node: ThreadNode): boolean {
         :has-comments="modelledComments.length > 0"
         :offtopic-count="offtopicCount"
         :show-offtopic="showOfftopic"
+        :show-timeline-button="showTimeline && timelineStart !== '' && timelineEnd !== ''"
         @update:view-mode="handleViewModeUpdate"
         @update:show-offtopic="handleShowOfftopicUpdate"
         @go-to-pinned="handleGoToPinnedReply"
+        @open-timeline="timelineRef?.openJumpModal()"
+        @go-to-end="handleTimelineNavigateToEnd"
       />
 
       <!-- Pending banner for comment model: sits between toolbar and comments -->
@@ -1042,10 +1049,15 @@ function isNodeVisible(node: ThreadNode): boolean {
             <div
               v-if="gap != null && comment.id === gap.afterId"
               class="discussion__gap-banner"
-              @click="!loadingGap && loadGap()"
             >
-              <button :disabled="loadingGap">
-                Load {{ gap.count }} {{ gap.count === 1 ? 'reply' : 'replies' }} between
+              <button :disabled="loadingGap" @click="loadGapFromBottom()">
+                <Icon name="ph:arrow-up" />
+                Load up
+              </button>
+              <span class="discussion__gap-count">{{ gap.count }} {{ gap.count === 1 ? 'reply' : 'replies' }}</span>
+              <button :disabled="loadingGap" @click="loadGapFromTop()">
+                Load down
+                <Icon name="ph:arrow-down" />
               </button>
             </div>
           </template>
@@ -1083,10 +1095,15 @@ function isNodeVisible(node: ThreadNode): boolean {
             <div
               v-if="gap != null && node.comment.id === gap.afterId"
               class="discussion__gap-banner"
-              @click="!loadingGap && loadGap()"
             >
-              <button :disabled="loadingGap">
-                Load {{ gap.count }} {{ gap.count === 1 ? 'reply' : 'replies' }} between
+              <button :disabled="loadingGap" @click="loadGapFromBottom()">
+                <Icon name="ph:arrow-up" />
+                Load up
+              </button>
+              <span class="discussion__gap-count">{{ gap.count }} {{ gap.count === 1 ? 'reply' : 'replies' }}</span>
+              <button :disabled="loadingGap" @click="loadGapFromTop()">
+                Load down
+                <Icon name="ph:arrow-down" />
               </button>
             </div>
           </template>
@@ -1145,6 +1162,7 @@ function isNodeVisible(node: ThreadNode): boolean {
         <!-- Timeline scrubber: sits just outside the right edge of the reply area -->
         <DiscussionTimeline
           v-if="showTimeline && timelineStart !== '' && timelineEnd !== ''"
+          ref="timelineRef"
           :start="timelineStart"
           :end="timelineEnd"
           :buckets="timelineBuckets"
@@ -1213,6 +1231,10 @@ function isNodeVisible(node: ThreadNode): boolean {
   }
 
   &__gap-banner {
+    align-items: center;
+    gap: var(--space-s);
+    cursor: default;
+
     &:before {
       content: '';
       display: block;
@@ -1226,6 +1248,16 @@ function isNodeVisible(node: ThreadNode): boolean {
       z-index: 1;
       transition: opacity var(--transition);
     }
+  }
+
+  &__gap-count {
+    position: relative;
+    z-index: 3;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    background-color: var(--color-bg);
+    padding: 0 var(--space-xs);
+    white-space: nowrap;
   }
 
   &__load-more {
