@@ -233,7 +233,8 @@ const editor = useEditor({
   content: content.value,
   extensions: [
     StarterKit,
-    Markdown.configure({ marked: noHtmlMarked }),
+    // eslint-disable-next-line ts/no-explicit-any
+    Markdown.configure({ marked: noHtmlMarked as any }),
     Image,
     ImageGroup,
     // Ctrl+Enter to submit
@@ -1215,7 +1216,6 @@ async function handleSubmit() {
       <template #header />
 
       <div class="rich-text-expand-body">
-        <slot name="expanded-prepend" />
         <RichTextEditor
           v-bind="expandedProps"
           v-model="content"

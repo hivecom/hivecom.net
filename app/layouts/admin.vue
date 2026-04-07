@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Divider, DropdownItem, Flex, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
+import { Button, Divider, DropdownItem, Flex, Kbd, KbdGroup, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
 import { until, useStorage as useLocalStorage, useMediaQuery } from '@vueuse/core'
 import LogoIcon from '@/components/Shared/LogoIcon.vue'
 import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
@@ -8,6 +8,8 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 const router = useRouter()
 const route = useRoute()
+const { openCommand } = useCommand()
+const isMac = import.meta.client && /Mac/i.test(navigator.platform)
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -265,7 +267,21 @@ watch(() => route.path, () => {
           <Icon name="ph:list" />
         </Button>
 
-        <LogoIcon style="margin-left: 2px" />
+        <LogoIcon style="margin-left: -24px" />
+
+        <!-- <Tooltip>
+          <Button square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded" @click="openCommand()">
+            <Icon name="ph:magnifying-glass" size="20" />
+          </Button>
+          <template #tooltip>
+            <p>
+              Keyboard shortcut: <KbdGroup>
+                <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
+                <Kbd keys="K" />
+              </KbdGroup>
+            </p>
+          </template>
+        </Tooltip> -->
 
         <span />
       </Flex>
@@ -280,9 +296,9 @@ watch(() => route.path, () => {
         <template #header>
           <Flex y-center gap="xs">
             <LogoIcon style="margin-left: 2px" />
-            <h5 class="admin-layout__mobile-title">
+            <!-- <h5 class="admin-layout__mobile-title">
               Admin
-            </h5>
+            </h5> -->
           </Flex>
         </template>
         <template #header-end>
@@ -324,11 +340,24 @@ watch(() => route.path, () => {
             <Flex y-center class="mb-s">
               <Flex y-center gap="s" expand>
                 <LogoIcon style="margin-left: 2px" />
-                <h5 v-if="!miniSidebar" class="flex-1">
+                <!-- <h5 v-if="!miniSidebar" class="flex-1">
                   Admin
-                </h5>
+                </h5> -->
               </Flex>
               <Flex gap="xxs">
+                <Tooltip placement="right">
+                  <Button square plain aria-label="Search" @click="openCommand()">
+                    <Icon name="ph:magnifying-glass" />
+                  </Button>
+                  <template #tooltip>
+                    <p>
+                      Keyboard shortcut: <KbdGroup>
+                        <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
+                        <Kbd keys="K" />
+                      </KbdGroup>
+                    </p>
+                  </template>
+                </Tooltip>
                 <Tooltip placement="right">
                   <Button v-if="!isBelowExtraLarge" square plain :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
                     <Icon :name="expandToggleIcon" />
@@ -373,6 +402,16 @@ watch(() => route.path, () => {
 
           <template v-if="miniSidebar">
             <Divider />
+            <Tooltip placement="right">
+              <DropdownItem square aria-label="Search" @click="openCommand()">
+                <template #icon>
+                  <Icon name="ph:magnifying-glass" />
+                </template>
+              </DropdownItem>
+              <template #tooltip>
+                <p>Search</p>
+              </template>
+            </Tooltip>
             <Tooltip placement="right">
               <DropdownItem square @click="miniSidebar = !miniSidebar">
                 <template #icon>

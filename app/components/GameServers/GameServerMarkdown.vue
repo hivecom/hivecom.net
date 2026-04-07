@@ -14,7 +14,7 @@ defineProps<Props>()
 <template>
   <!-- Server Details (Markdown) -->
   <Card v-if="gameserver.markdown" class="gameserver-markdown card-bg ">
-    <Flex column gap="l" class="p-l">
+    <Flex column gap="l" class="pb-l">
       <strong class="gameserver-markdown__title">
         <Icon name="ph:article" />
         Server Details
