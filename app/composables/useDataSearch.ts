@@ -20,6 +20,7 @@ export interface SearchResult {
   subtitle: string | null
   url: string
   score: number
+  is_archived: boolean
 }
 
 // Cast helper - search_global won't be in generated types until `supabase gen
@@ -37,7 +38,7 @@ const DEBOUNCE_MS = 300
 const MIN_QUERY_LENGTH = 2
 const DEFAULT_LIMIT = 20
 
-export function useDataSearch(query: Ref<string>, scope: Ref<SearchType[] | null>) {
+export function useDataSearch(query: Ref<string>, scope: Ref<SearchType[] | null>, showArchived: Ref<boolean> = ref(true)) {
   const supabase = useSupabaseClient()
 
   const results = ref<SearchResult[]>([])
@@ -64,6 +65,7 @@ export function useDataSearch(query: Ref<string>, scope: Ref<SearchType[] | null
           p_query: trimmed,
           p_types: scope.value ?? null,
           p_limit: DEFAULT_LIMIT,
+          p_show_archived: showArchived.value,
         },
       )
 
@@ -92,11 +94,10 @@ export function useDataSearch(query: Ref<string>, scope: Ref<SearchType[] | null
     void runSearch(q)
   })
 
-  // Clear results immediately when the scope changes so stale results from a
-  // different scope don't flash while the new search is in-flight.
-  watch(scope, () => {
+  // Clear results immediately when the scope or archived setting changes so stale
+  // results don't flash while the new search is in-flight.
+  watch([scope, showArchived], () => {
     results.value = []
-    // Re-trigger if there's already a live query.
     if (debouncedQuery.value.trim().length >= MIN_QUERY_LENGTH) {
       void runSearch(debouncedQuery.value)
     }

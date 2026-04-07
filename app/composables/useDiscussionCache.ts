@@ -153,7 +153,7 @@ export function useDiscussionCache() {
       const { data, error: fetchError } = await supabase
         .from('discussions')
         .select('*')
-        .eq(`${type}_id`, entityId)
+        .eq(`${type}_id` as 'id', entityId)
         .maybeSingle()
 
       if (fetchError)

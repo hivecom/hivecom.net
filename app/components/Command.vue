@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
-import type { SearchType } from '@/composables/useCommand'
+import type { SearchType } from '@/composables/useDataSearch'
 import { Commands } from '@dolanske/vui'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
+import { useDataForumTopics } from '@/composables/useDataForumTopics'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { commandLinks } from '@/config/navigation'
 
 const LABEL_SPLIT_RE = /[\s/,&-]+/
@@ -13,6 +15,18 @@ const user = useSupabaseUser()
 const userId = useUserId()
 const { user: userData } = useDataUser(userId, { includeRole: true, includeAvatar: false })
 const userRole = computed(() => userData.value?.role ?? null)
+
+// Forum topics - used for pre-populated results when forum-scoped
+const { topics: forumTopics } = useDataForumTopics()
+const { settings } = useDataUserSettings()
+const showArchived = computed(() => settings.value.show_forum_archived)
+
+// True when the scope is restricted to forum types (no nav items, pre-populate with topics)
+const isForumScoped = computed(() =>
+  scope.value != null
+  && scope.value.length > 0
+  && scope.value.every(t => t === 'discussion' || t === 'discussion_topic'),
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Search state (two-way bound to VUI Commands)
@@ -38,7 +52,7 @@ watch(scope, () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 watch(search, (val) => {
-  if (val.startsWith('/')) {
+  if (val.startsWith('/') && !isForumScoped.value) {
     search.value = val.slice(1)
     activeGroup.value = 'Navigation'
   }
@@ -82,7 +96,7 @@ const effectiveScope = computed<SearchType[] | null>(() => {
 // Search
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { results, loading } = useDataSearch(search, effectiveScope)
+const { results, loading } = useDataSearch(search, effectiveScope, showArchived)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Nav items
@@ -128,6 +142,51 @@ const matchingNavItems = computed(() => {
 const isNavOnly = computed(() => activeGroup.value === 'Navigation')
 
 const commands = computed<Command[]>(() => {
+  // Forum-scoped: never show nav items
+  if (isForumScoped.value) {
+    const q = search.value.trim()
+
+    // Empty query - pre-populate with topics from cache, respecting archived setting
+    if (q.length === 0) {
+      return forumTopics.value
+        .filter(t => showArchived.value || !t.is_archived)
+        .map(t => ({
+          title: t.name,
+          description: t.is_archived ? '[Archived]' : (t.description ?? undefined),
+          group: 'Forum',
+          handler: () => {
+            void router.push(`/forum?topic=${t.slug}`)
+            closeCommand()
+          },
+        }))
+    }
+
+    // Active query - client-side filter topics while DB results are loading or below min length
+    const ql = q.toLowerCase()
+    const matchingTopics = forumTopics.value
+      .filter(t => (showArchived.value || !t.is_archived) && (t.name.toLowerCase().includes(ql) || (t.description ?? '').toLowerCase().includes(ql)))
+
+    const dbCommands: Command[] = results.value.map(dbResultToCommand)
+
+    // Exclude topics already returned by DB to avoid duplicates
+    const dbTopicIds = new Set(
+      results.value.filter(r => r.result_type === 'discussion_topic').map(r => r.id),
+    )
+    const filteredTopics: Command[] = matchingTopics
+      .filter(t => !dbTopicIds.has(t.id))
+      .map(t => ({
+        title: t.name,
+        description: t.is_archived ? '[Archived]' : (t.description ?? undefined),
+        group: 'Forum',
+        handler: () => {
+          void router.push(`/forum?topic=${t.slug}`)
+          closeCommand()
+        },
+      }))
+
+    return [...dbCommands, ...filteredTopics]
+  }
+
   const navCommands: Command[] = matchingNavItems.value.map(link => ({
     title: link.label,
     group: 'Navigation',
@@ -144,15 +203,7 @@ const commands = computed<Command[]>(() => {
   if (q.length === 0)
     return navCommands
 
-  const dbCommands: Command[] = results.value.map(result => ({
-    title: result.title,
-    description: result.subtitle ?? undefined,
-    group: TYPE_META[result.result_type]?.group ?? result.result_type,
-    handler: () => {
-      void router.push(result.url)
-      closeCommand()
-    },
-  }))
+  const dbCommands: Command[] = results.value.map(dbResultToCommand)
 
   return [...dbCommands, ...navCommands]
 })
@@ -167,7 +218,37 @@ const NAV_GROUP_ICONS: Record<string, string> = Object.fromEntries(
   commandLinks.map(link => [link.label, link.icon]),
 )
 
+function dbResultToCommand(result: import('@/composables/useDataSearch').SearchResult): Command {
+  const archivedPrefix = result.is_archived ? '[Archived] ' : ''
+  return {
+    title: result.title,
+    description: archivedPrefix + (result.subtitle ?? '') || undefined,
+    group: TYPE_META[result.result_type]?.group ?? result.result_type,
+    handler: () => {
+      void router.push(result.url)
+      closeCommand()
+    },
+  }
+}
+
+// Maps title -> result_type for DB results so the icon slot can differentiate
+// discussion topics (folder) from discussions (chat bubble) within the same group.
+const resultTypeByTitle = computed(() => {
+  const map = new Map<string, string>()
+  for (const result of results.value)
+    map.set(result.title, result.result_type)
+  return map
+})
+
 function iconForCommand(command: Command): string {
+  // Differentiate discussions from topics within the Forum group
+  if (command.group === 'Forum') {
+    const resultType = resultTypeByTitle.value.get(command.title)
+    if (resultType === 'discussion')
+      return 'ph:chat-circle'
+    // Pre-populated topics and discussion_topic DB results both get folder
+    return 'ph:folder'
+  }
   // DB result groups map directly via TYPE_META
   const typeMeta = Object.values(TYPE_META).find(m => m.group === command.group)
   if (typeMeta != null)
@@ -238,17 +319,3 @@ useEventListener('keydown', (e: KeyboardEvent) => {
     </template>
   </Commands>
 </template>
-
-<style lang="scss">
-// VUI Commands renders as a Sheet (slides up from bottom or side).
-// Our previous implementation was a centered overlay - visually different.
-// TODO: If the Sheet presentation is not acceptable, raise a feature request
-// with Jan for a "dialog" variant of Commands, or wrap in our own Teleport
-// overlay and pass `open` conditionally.
-//
-// Minimal overrides only - let VUI own all the structural styles.
-.command-palette {
-  // Intentionally empty - VUI owns layout.
-  // Add targeted overrides here only if the Sheet variant needs adjustments.
-}
-</style>

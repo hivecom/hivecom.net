@@ -1,13 +1,3 @@
-// Searchable entity types used to scope the command modal.
-// Add new types here as more content becomes searchable.
-export type SearchType
-  = | 'discussion_topic'
-    | 'discussion'
-    | 'profile'
-    | 'event'
-    | 'gameserver'
-    | 'project'
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Singleton state – shared across all callers so every button and the modal
 // itself stay in sync without duplicate watchers.
