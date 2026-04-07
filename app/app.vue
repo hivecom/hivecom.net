@@ -80,6 +80,7 @@ useLastSeenTracking()
 
   <Toasts />
   <LayoutLoading />
+  <Command />
 </template>
 
 <style>

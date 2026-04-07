@@ -225,7 +225,7 @@ function toStorageAsset(
 
   return {
     id: item.id,
-    bucket_id: item.bucket_id,
+    bucket_id: item.bucket_id ?? bucketId,
     name: item.name,
     path,
     type: isFolder ? 'folder' : 'file',

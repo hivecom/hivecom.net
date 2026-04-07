@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, DropdownItem, Flex, Popout, Sheet, Skeleton } from '@dolanske/vui'
+import { Button, DropdownItem, Flex, Kbd, KbdGroup, Popout, Sheet, Skeleton, Tooltip } from '@dolanske/vui'
 import { useMfaStatus } from '@/composables/useMfaStatus'
 import { navigationLinks } from '@/config/navigation'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -7,6 +7,10 @@ import NavEventBadge from './NavEventBadge.vue'
 import NotificationSheet from './NotificationSheet.vue'
 import UserDropdown from './UserDropdown.vue'
 import UserSheet from './UserSheet.vue'
+
+const { openCommand } = useCommand()
+
+const isMac = import.meta.client && /Mac/i.test(navigator.platform)
 
 const { signInPath } = useAuthRedirect()
 
@@ -76,9 +80,15 @@ function updateHoveredElement(event: MouseEvent) {
   <nav class="navigation" :class="{ landing: route.path === '/' }">
     <div class="container container-l">
       <div class="navigation__items">
-        <Button square class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
-          <Icon name="ph:list" size="2rem" />
-        </Button>
+        <Flex>
+          <Button square class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
+            <Icon name="ph:list" size="2rem" />
+          </Button>
+
+          <Button v-if="isMobile && user && !needsMfaChallenge" square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded navigation__mobile-search" @click="openCommand()">
+            <Icon name="ph:magnifying-glass" size="20" />
+          </Button>
+        </Flex>
 
         <SharedLogo class="navigation__logo" />
 
@@ -180,6 +190,19 @@ function updateHoveredElement(event: MouseEvent) {
         </div>
 
         <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
+          <Tooltip v-if="!isMobile" :delay="1000">
+            <Button square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded" @click="openCommand()">
+              <Icon name="ph:magnifying-glass" size="20" />
+            </Button>
+            <template #tooltip>
+              <p>
+                Keyboard shortcut: <KbdGroup>
+                  <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
+                  <Kbd keys="K" />
+                </KbdGroup>
+              </p>
+            </template>
+          </Tooltip>
           <NotificationSheet />
           <UserSheet v-if="isMobile" />
           <UserDropdown v-else />
@@ -547,7 +570,6 @@ function updateHoveredElement(event: MouseEvent) {
       display: flex;
       align-items: center;
       justify-content: center;
-      order: 1;
     }
 
     &__logo {
