@@ -1,35 +1,29 @@
 import type { Database } from '@/types/database.types'
 import { computed, ref, unref, watch } from 'vue'
+import { useCache } from '@/composables/useCache'
 import { getTopicIconUrl } from '@/lib/storage'
 
 // ── Global dedup & cache ──────────────────────────────────────────────────────
 
 const _inflightIcons = new Map<string, Promise<string | null>>()
-const _iconCache = new Map<string, { url: string | null, expires: number }>()
 
-const ICON_TTL = 30 * 60 * 1000 // 30 minutes in-memory
+const ICON_TTL = 60 * 60 * 1000 // 1 hour — matches getTopicIconUrl's own TTL
 
-function getCached(topicId: string): string | null | undefined {
-  const entry = _iconCache.get(topicId)
-  if (entry == null)
-    return undefined
-  if (Date.now() > entry.expires) {
-    _iconCache.delete(topicId)
-    return undefined
-  }
-  return entry.url
-}
+// Module-level localStorage cache shared across all composable instances.
+// Key: topic ID (stored under 'hivecom:cache:kv:topic-icon:<id>' in localStorage).
+const _topicIconCache = useCache({ ttl: ICON_TTL })
 
-function setCache(topicId: string, url: string | null): void {
-  _iconCache.set(topicId, { url, expires: Date.now() + ICON_TTL })
+function iconCacheKey(topicId: string): string {
+  return `topic-icon:${topicId}`
 }
 
 /**
- * Invalidate the in-memory icon cache for a specific topic.
- * Also exported so callers (e.g. the edit modal) can bust the cache after upload.
+ * Invalidate the cached icon for a specific topic.
+ * Clears both the localStorage cache entry and any in-flight request.
+ * Call this after uploading or deleting a topic icon.
  */
-export function invalidateTopicIconMemoryCache(topicId: string): void {
-  _iconCache.delete(topicId)
+export function invalidateTopicIconCache(topicId: string): void {
+  _topicIconCache.delete(iconCacheKey(topicId))
   _inflightIcons.delete(topicId)
 }
 
@@ -44,8 +38,8 @@ export interface UseTopicIconOptions {
  * Reactive composable that resolves a topic's icon URL from Supabase Storage.
  *
  * Mirrors the avatar pattern: tries multiple extensions via `getTopicIconUrl`,
- * caches results in localStorage (via the storage helper) and in-memory, and
- * deduplicates concurrent fetches across all component instances.
+ * caches results in localStorage (via useCache) and deduplicates concurrent
+ * fetches across all component instances.
  *
  * ```ts
  * const { iconUrl, loading } = useTopicIcon(topicId)
@@ -67,16 +61,16 @@ export function useTopicIcon(
       return
     }
 
-    // Check in-memory cache first
-    const cached = getCached(id)
-    if (cached !== undefined) {
-      iconUrl.value = cached
+    // Check localStorage cache first (has() correctly handles cached null results)
+    const cacheKey = iconCacheKey(id)
+    if (_topicIconCache.has(cacheKey)) {
+      iconUrl.value = _topicIconCache.get<string | null>(cacheKey)
       return
     }
 
     loading.value = true
 
-    // Coalesce concurrent fetches
+    // Coalesce concurrent fetches for the same topic
     let inflight = _inflightIcons.get(id)
     if (inflight == null) {
       inflight = (async () => {
@@ -88,7 +82,7 @@ export function useTopicIcon(
           console.warn('Failed to fetch topic icon URL:', err)
           url = null
         }
-        setCache(id, url)
+        _topicIconCache.set(iconCacheKey(id), url)
         return url
       })().finally(() => {
         _inflightIcons.delete(id)
@@ -110,12 +104,8 @@ export function useTopicIcon(
    */
   async function refresh(): Promise<void> {
     const id = resolvedId.value
-    if (id != null) {
-      invalidateTopicIconMemoryCache(id)
-      // Also bust localStorage via the storage helper
-      const { invalidateTopicIconCache } = await import('@/lib/storage')
+    if (id != null)
       invalidateTopicIconCache(id)
-    }
     await fetchIcon(resolvedId.value)
   }
 
@@ -150,9 +140,9 @@ export function useBulkTopicIcons(
 
     await Promise.all(
       ids.map(async (id) => {
-        const cached = getCached(id)
-        if (cached !== undefined) {
-          result.set(id, cached)
+        // Check localStorage cache first
+        if (_topicIconCache.has(iconCacheKey(id))) {
+          result.set(id, _topicIconCache.get<string | null>(iconCacheKey(id)))
           return
         }
 
@@ -166,7 +156,7 @@ export function useBulkTopicIcons(
             catch {
               url = null
             }
-            setCache(id, url)
+            _topicIconCache.set(iconCacheKey(id), url)
             return url
           })().finally(() => {
             _inflightIcons.delete(id)
@@ -191,8 +181,6 @@ export function useBulkTopicIcons(
    * Updates the icons map in place so consumers react immediately.
    */
   async function refresh(id: string): Promise<void> {
-    invalidateTopicIconMemoryCache(id)
-    const { invalidateTopicIconCache } = await import('@/lib/storage')
     invalidateTopicIconCache(id)
 
     let url: string | null = null
@@ -202,7 +190,7 @@ export function useBulkTopicIcons(
     catch {
       url = null
     }
-    setCache(id, url)
+    _topicIconCache.set(iconCacheKey(id), url)
     icons.value = new Map(icons.value).set(id, url)
   }
 

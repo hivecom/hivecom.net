@@ -1,6 +1,7 @@
 <script setup>
 import { Button, Card, Flex, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
+import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { navigationLinks } from '@/config/navigation'
 
 function scrollUp() {

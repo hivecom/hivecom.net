@@ -6,8 +6,8 @@ import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '
 import { Button, Card, Dropdown, DropdownTitle, Flex, Input, Modal, pushToast, searchString, Switch } from '@dolanske/vui'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
 import FileUpload from '@/components/Shared/FileUpload.vue'
-import { invalidateTopicIconMemoryCache } from '@/composables/useTopicIcon'
-import { deleteTopicIcon, getTopicIconUrl, invalidateTopicIconCache, uploadTopicIcon } from '@/lib/storage'
+import { invalidateTopicIconCache } from '@/composables/useTopicIcon'
+import { deleteTopicIcon, getTopicIconUrl, uploadTopicIcon } from '@/lib/storage'
 import { flattenTopicsTree } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 
@@ -125,9 +125,8 @@ async function handleIconUpload(file: File) {
 
     if (result.success && result.url) {
       iconUrl.value = result.url
-      // Bust both caches and refresh the forum list's bulk icon map
+      // Bust cache and refresh the forum list's bulk icon map
       invalidateTopicIconCache(props.editedItem.id)
-      invalidateTopicIconMemoryCache(props.editedItem.id)
       void refreshTopicIcon?.(props.editedItem.id)
       pushToast('Topic icon uploaded')
     }
@@ -161,7 +160,6 @@ async function handleIconDelete() {
     if (result.success) {
       iconUrl.value = null
       invalidateTopicIconCache(props.editedItem.id)
-      invalidateTopicIconMemoryCache(props.editedItem.id)
       void refreshTopicIcon?.(props.editedItem.id)
       pushToast('Topic icon deleted')
     }

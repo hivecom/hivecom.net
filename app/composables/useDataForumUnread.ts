@@ -12,6 +12,7 @@ interface DiscussionSeenState {
 interface ForumUnreadStorage {
   topics: Record<string, TopicSeenState>
   discussions: Record<string, DiscussionSeenState>
+  feedVisitedAt: string | null
 }
 
 const STORAGE_KEY = 'forum-unread'
@@ -28,17 +29,17 @@ const STORAGE_KEY = 'forum-unread'
 export function useDataForumUnread() {
   const storage = useStorage<ForumUnreadStorage>(
     STORAGE_KEY,
-    { topics: {}, discussions: {} },
+    { topics: {}, discussions: {}, feedVisitedAt: null },
     typeof window !== 'undefined' ? window.localStorage : undefined,
     {
       mergeDefaults: true,
       serializer: {
         read: (v) => {
           try {
-            return v ? (JSON.parse(v) as ForumUnreadStorage) : { topics: {}, discussions: {} }
+            return v ? (JSON.parse(v) as ForumUnreadStorage) : { topics: {}, discussions: {}, feedVisitedAt: null }
           }
           catch {
-            return { topics: {}, discussions: {} }
+            return { topics: {}, discussions: {}, feedVisitedAt: null }
           }
         },
         write: v => JSON.stringify(v),
@@ -50,12 +51,43 @@ export function useDataForumUnread() {
    * Returns true when a topic has accrued new discussions or replies since the
    * user last "saw" it. Always returns false for topics not yet stored (they
    * will be initialised as seen by `initializeTopics`).
+   *
+   * Cross-checks the per-discussion seen state: if every discussion in the
+   * topic has already been individually marked seen at its current reply count
+   * (e.g. the user navigated to each discussion via the activity feed without
+   * ever clicking the topic row), the dot is suppressed even though the
+   * topic-level aggregate counters were never explicitly updated.
    */
-  function isTopicNew(topicId: string, currentDiscussionCount: number, currentReplyCount: number): boolean {
+  function isTopicNew(
+    topicId: string,
+    currentDiscussionCount: number,
+    currentReplyCount: number,
+    discussions?: Array<{ id: string, reply_count?: number | null }>,
+  ): boolean {
     const seen = storage.value.topics[topicId]
     if (!seen)
       return false
-    return currentDiscussionCount > seen.discussionCount || currentReplyCount > seen.replyCount
+
+    const hasNewAtTopicLevel = currentDiscussionCount > seen.discussionCount || currentReplyCount > seen.replyCount
+    if (!hasNewAtTopicLevel)
+      return false
+
+    // If the caller provides the discussions list we can check whether every
+    // discussion is already individually caught up. If so, the aggregate
+    // counters are stale (topic was never clicked directly) but nothing is
+    // actually unread - suppress the dot.
+    if (discussions != null && discussions.length > 0) {
+      const allDiscussionsSeen = discussions.every((d) => {
+        const dSeen = storage.value.discussions[d.id]
+        if (!dSeen)
+          return false
+        return (d.reply_count ?? 0) <= dSeen.replyCount
+      })
+      if (allDiscussionsSeen)
+        return false
+    }
+
+    return true
   }
 
   /**
@@ -153,8 +185,19 @@ export function useDataForumUnread() {
     }
 
     if (changed) {
-      storage.value = { topics: updatedTopics, discussions: updatedDiscussions }
+      storage.value = { ...storage.value, topics: updatedTopics, discussions: updatedDiscussions }
     }
+  }
+
+  /**
+   * Records the current time as the feed visit timestamp and returns the
+   * previous value. Call this once on mount (client-side only) so the
+   * "last visited" divider in the activity feed reflects the prior session.
+   */
+  function recordFeedVisit(): string | null {
+    const previous = storage.value.feedVisitedAt
+    storage.value = { ...storage.value, feedVisitedAt: new Date().toISOString() }
+    return previous
   }
 
   return {
@@ -164,5 +207,6 @@ export function useDataForumUnread() {
     markDiscussionSeen,
     bumpTopicReplySeen,
     initializeTopics,
+    recordFeedVisit,
   }
 }

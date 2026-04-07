@@ -9,26 +9,32 @@ const props = withDefaults(defineProps<{
   minHeight?: SizeProp
   padding?: SizeProp
   ariaLabel?: string
+  absolute?: boolean
 }>(), {
   width: 'min(520px, 90%)',
   height: 'max(60vh, 780px)',
   padding: '0',
   ariaLabel: 'Decorative metaball frame',
+  absolute: false,
 })
 
 const toCssSize = (value?: SizeProp) => (typeof value === 'number' ? `${value}px` : value)
 
-const containerStyle = computed(() => ({
-  width: toCssSize(props.width),
-  height: toCssSize(props.height),
-  minHeight: toCssSize(props.minHeight),
-  padding: toCssSize(props.padding),
-}))
+const containerStyle = computed(() => {
+  if (props.absolute)
+    return {}
+  return {
+    width: toCssSize(props.width),
+    height: toCssSize(props.height),
+    minHeight: toCssSize(props.minHeight),
+    padding: toCssSize(props.padding),
+  }
+})
 </script>
 
 <template>
-  <div class="metaball-shell" :style="containerStyle">
-    <div class="visualization" :style="containerStyle" :aria-label="props.ariaLabel">
+  <div class="metaball-shell" :class="{ 'metaball-shell--absolute': absolute }" :style="containerStyle">
+    <div class="visualization" :class="{ 'visualization--absolute': absolute }" :style="containerStyle" :aria-label="props.ariaLabel">
       <div class="blob-field">
         <div class="orb orb-a" />
         <div class="orb orb-b" />
@@ -67,6 +73,14 @@ const containerStyle = computed(() => ({
   place-items: center;
 }
 
+.metaball-shell--absolute {
+  width: 100vw;
+  min-height: 100vh;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .metaball-defs {
   position: absolute;
   width: 0;
@@ -84,6 +98,17 @@ const containerStyle = computed(() => ({
   filter: drop-shadow(0 25px 45px rgba(0, 0, 0, 0.35));
   overflow: hidden;
   isolation: isolate;
+}
+
+.visualization--absolute {
+  width: 100%;
+  min-height: 100vh;
+  border-radius: 0;
+  filter: none;
+}
+
+.visualization--absolute .content {
+  overflow-y: auto;
 }
 
 .blob-field {

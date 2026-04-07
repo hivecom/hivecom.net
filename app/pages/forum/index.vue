@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { Command } from '@dolanske/vui'
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Commands, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
@@ -14,6 +13,7 @@ import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import ForumRecentlyVisited from '@/components/Forum/ForumRecentlyVisited.vue'
 import ForumTopicItem from '@/components/Forum/ForumTopicItem.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
+import SharedTinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useCache } from '@/composables/useCache'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
@@ -23,7 +23,7 @@ import { useForumDraftCount } from '@/composables/useForumDraftCount'
 import { useForumUserActivity } from '@/composables/useForumUserActivity'
 import { useBulkTopicIcons } from '@/composables/useTopicIcon'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { composedPathToString, composePathToTopic } from '@/lib/topics'
+import { composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
 
 dayjs.extend(relativeTime)
@@ -38,7 +38,7 @@ useSeoMeta({
   ogDescription: 'Browse and participate in discussions across the Hivecom community forum.',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Forum',
   description: 'Browse and participate in discussions across the Hivecom community forum.',
 })
@@ -226,6 +226,22 @@ const {
 })
 
 watch(() => route.fullPath, () => fetchUserActivity(userId.value))
+
+// Capture the timestamp from the *previous* visit before we update it.
+// recordFeedVisit() reads the stored value, updates it to now, and returns the old one.
+const lastFeedVisitedAt = ref<string | null>(null)
+
+const feedOptions = computed(() => ({
+  settings,
+  discussionLookup,
+  visibleDiscussionIds,
+  hiddenTopicIds,
+  onTopicClick: (id: string) => setActiveTopicById(id),
+}))
+
+onMounted(() => {
+  lastFeedVisitedAt.value = forumUnread.recordFeedVisit()
+})
 
 const {
   latestPosts,
@@ -445,50 +461,7 @@ watch(
 )
 
 // Search implementation
-const searchOpen = ref(false)
-
-// Transform topics & discussions into a searchable list of commands. Grouped by topic & discussions
-const searchResults = computed<Command[]>(() => {
-  return topics.value.flatMap((topic, index) => {
-    if (!settings.value.show_forum_archived && topic.is_archived)
-      return []
-
-    const topicItem = {
-      title: topic.name || `Topic ${index + 1}`,
-      group: 'Topics',
-      description: composedPathToString(composePathToTopic(topic.parent_id, topics.value)),
-      handler: () => {
-        setActiveTopicById(topic.parent_id)
-        searchOpen.value = false
-
-        if (!topic.parent_id) {
-          const el = document.querySelector(`#${slugify(topic.name)}`)
-          el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-        }
-      },
-    }
-
-    const discussionResults: Command[] = topic.discussions
-      .filter(discussion => settings.value.show_forum_archived || !discussion.is_archived)
-      .filter(discussion => settings.value.show_nsfw_content || !discussion.is_nsfw)
-      .map((discussion, index) => {
-        const fallbackTitle = discussion.title ?? `Discussion ${index + 1}`
-
-        return {
-          title: discussion.is_archived ? `${fallbackTitle} (Archived)` : fallbackTitle,
-          group: 'Discussions',
-          description: discussion.description ?? undefined,
-          handler: () => {
-            const discussionSlug = discussion.slug ?? discussion.id
-            router.push(`/forum/${discussionSlug}`)
-            searchOpen.value = false
-          },
-        }
-      })
-
-    return [topicItem, ...discussionResults]
-  })
-})
+const { openCommand } = useCommand()
 
 // Sort results by most recently modified and by sticky (pinned)
 function sortDiscussions(discussions: ForumDiscussion[]) {
@@ -636,14 +609,6 @@ onBeforeMount(() => {
   fetchDraftCount()
 })
 
-// Shortcut to open search
-useEventListener('keydown', (event) => {
-  if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
-    event.preventDefault()
-    searchOpen.value = true
-  }
-})
-
 const isMac = import.meta.client && /Mac/i.test(navigator.platform)
 
 function handleBreadcrumbMiddleClick(path: string = '/forum') {
@@ -679,7 +644,9 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         :loading="loading"
         :latest-posts="latestPosts"
         :post-since-yesterday="postSinceYesterday"
+        :last-visited-at="lastFeedVisitedAt"
         :mention-lookup="mentionLookup"
+        :feed-options="feedOptions"
       />
 
       <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xxs' : 'xs'">
@@ -759,7 +726,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
           </template>
 
           <Tooltip :delay="1000">
-            <Button size="s" :square="isMobile" @click="searchOpen = true">
+            <Button size="s" :square="isMobile" @click="openCommand(['discussion_topic', 'discussion'])">
               <template v-if="!isMobile" #start>
                 <Icon name="ph:magnifying-glass" :size="16" />
               </template>
@@ -897,7 +864,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :discussion-count="subtopic.discussions.length"
               :reply-count="subtopic.total_reply_count"
               :view-count="subtopic.total_view_count"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNew(subtopic.id, subtopic.discussions.length, subtopic.total_reply_count ?? 0)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNew(subtopic.id, subtopic.discussions.length, subtopic.total_reply_count ?? 0, subtopic.discussions)"
               @click="setActiveTopicFromTopic(subtopic)"
               @update="replaceItemData('topic', $event)"
               @remove="removeItem('topic', $event)"
@@ -933,12 +900,6 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         @draft-updated="handleDraftUpdated()"
       />
 
-      <Commands
-        :open="searchOpen"
-        :commands="searchResults"
-        placeholder="Find a forum post..."
-        @close="searchOpen = false"
-      />
       <Flex expand x-end>
         <NuxtLink to="/forum/stats">
           <Button plain size="s" square>
@@ -1076,11 +1037,18 @@ h5 {
       }
     }
 
+    .forum__category-post--meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xxs);
+    }
+
     .forum__category-post--meta span {
       font-size: var(--font-size-s);
       color: var(--color-text-light);
       text-align: center;
-      display: block;
+      white-space: nowrap;
     }
   }
 
@@ -1154,7 +1122,6 @@ h5 {
 
   .forum__category-post .forum__category-post--item .forum__category-post--meta {
     span {
-      white-space: nowrap;
       font-size: var(--font-size-xs);
     }
 

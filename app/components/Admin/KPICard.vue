@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Card, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
 
 defineProps<{
   label: string
@@ -38,7 +39,12 @@ defineProps<{
         <Skeleton v-if="isLoading" :height="32" width="60%" class="mt-xs" />
         <Flex v-else y-center gap="xs" class="mt-xs">
           <div class="kpi-card__value" :class="`kpi-card__value--${variant || 'primary'}`">
-            {{ prefix }}{{ value }}{{ suffix }}
+            <template v-if="typeof value === 'number'">
+              {{ prefix }}<CountDisplay :value="value" class="text-xxl" />{{ suffix }}
+            </template>
+            <template v-else>
+              {{ prefix }}{{ value }}{{ suffix }}
+            </template>
           </div>
         </Flex>
       </Flex>

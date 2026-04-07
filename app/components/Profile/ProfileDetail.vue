@@ -14,6 +14,8 @@ import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
 import { useFriendship } from '@/composables/useFriendship'
 import Discussion from '../Discussions/Discussion.vue'
+import ProfileActivity from './ProfileActivity.vue'
+import ProfileDiscussions from './ProfileDiscussions.vue'
 
 interface Props {
   userId?: string
@@ -99,7 +101,7 @@ const {
   friendshipStatus,
   friends,
   sentRequests,
-  pendingRequests,
+  incomingRequests,
   friendsLoading,
   checkFriendshipStatus,
   fetchAllFriendships,
@@ -416,7 +418,6 @@ function openFriendsModal() {
             :profile="profile"
             :friends="friends"
             :friendship-status="friendshipStatus"
-            :pending-requests="pendingRequests"
             :is-own-profile="isOwnProfile"
             :is-logged-in="isLoggedIn"
             :loading="friendsLoading"
@@ -465,7 +466,7 @@ function openFriendsModal() {
       v-model:open="showFriendsModal"
       :friends="friends"
       :sent-requests="sentRequests"
-      :pending-requests="pendingRequests"
+      :incoming-requests="incomingRequests"
       :user-name="profile?.username || 'User'"
       :show-all-tabs="isOwnProfile"
       @close="showFriendsModal = false"

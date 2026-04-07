@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { UserActivityItem } from '@/composables/useForumUserActivity'
-import { Badge, Carousel, Skeleton } from '@dolanske/vui'
+import { Badge, Carousel, Flex, Skeleton } from '@dolanske/vui'
 
 const props = defineProps<{
   loading: boolean
   items: UserActivityItem[]
   topicLookup: Map<string, string>
 }>()
+const skeletonWidths = ['120px', '90px', '140px', '100px', '80px', '110px']
 </script>
 
 <template>
@@ -15,11 +16,11 @@ const props = defineProps<{
       Pick up where you left off
     </h5>
 
-    <ul v-if="props.loading" class="forum__continue-list">
-      <li v-for="item in 6" :key="item">
-        <Skeleton :height="40" width="100%" />
-      </li>
-    </ul>
+    <Carousel v-if="props.loading" gap="xs" hide-scrollbar>
+      <Flex>
+        <Skeleton v-for="item in 9" :key="item" height="38px" :width="skeletonWidths[(item - 1) % skeletonWidths.length]" radius="100" />
+      </Flex>
+    </Carousel>
 
     <Carousel v-else-if="props.items.length > 0" :gap="8" hide-scrollbar>
       <NuxtLink v-for="item in props.items" :key="item.id" :to="item.discussionHref" class="forum__continue--item" :draggable="false">
@@ -38,14 +39,6 @@ const props = defineProps<{
 .forum__continue {
   margin-bottom: var(--space-xl);
 
-  &--title {
-    display: block;
-    font-size: var(--font-size-s);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text-light);
-    margin-bottom: var(--space-xs);
-  }
-
   &--item {
     .vui-badge {
       --vui-badge-padding-inline: 14px !important;
@@ -57,14 +50,5 @@ const props = defineProps<{
       background-color: var(--color-button-gray-hover) !important;
     }
   }
-
-  /* &--list {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    max-width: 892px;
-    gap: var(--space-xs);
-    list-style: none;
-  } */
 }
 </style>

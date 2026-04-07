@@ -65,7 +65,7 @@ useSeoMeta({
   ogDescription: 'Learn about Hivecom, explore community projects, and connect with members.',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Community',
   description: 'Learn about Hivecom, explore community projects, and connect with members.',
 })

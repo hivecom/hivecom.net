@@ -58,7 +58,7 @@ useSeoMeta({
   ogDescription: 'Discover upcoming, ongoing, and past events in the Hivecom community.',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Events',
   description: 'Discover upcoming, ongoing, and past events in the Hivecom community.',
 })

@@ -8,7 +8,7 @@ useSeoMeta({
   ogDescription: 'View live voice channels and connect with the community on TeamSpeak.',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Voice Servers',
   description: 'View live voice channels and connect with the community on TeamSpeak.',
 })

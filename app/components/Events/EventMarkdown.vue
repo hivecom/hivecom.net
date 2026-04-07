@@ -43,9 +43,7 @@ const props = defineProps<Props>()
   }
 
   &__content {
-    padding: var(--space-m);
-    /* max-width: 728px; */
-    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-m);
   }
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, ButtonGroup, Card, Divider, Flex, Select, setColorTheme, Switch } from '@dolanske/vui'
+import SharedTinyBadge from '@/components/Shared/TinyBadge.vue'
 
 // Placeholder theme options for the planned Theme selector
 const themeSelectOptions = [
@@ -97,8 +98,8 @@ const selectedTheme = computed({
       v-model="settings.show_thread_replies"
       class="reversed"
       label="Expand reply threads by default"
-      hint="When enabled, inline reply previews will be expanded automatically on each post."
-      :disabled="settings.discussion_view_mode === 'threaded'"
+      hint="Threaded view only - when enabled, reply sub-trees are expanded automatically on each post."
+      :disabled="settings.discussion_view_mode === 'flat'"
     />
 
     <Divider :size="64" />

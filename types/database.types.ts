@@ -7,6 +7,83 @@ export type Json
     | Json[]
 
 export interface Database {
+  private: {
+    Tables: {
+      kvstore: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          key: string
+          modified_at: string | null
+          modified_by: string | null
+          type: Database['public']['Enums']['kvstore_type']
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          key: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database['public']['Enums']['kvstore_type']
+          value: Json
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          key?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database['public']['Enums']['kvstore_type']
+          value?: Json
+        }
+        Relationships: []
+      }
+      teamspeak_tokens: {
+        Row: {
+          attempts: number
+          created_at: string
+          expires_at: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id?: string
+          token_hash?: string
+          unique_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      queue_dispatch_worker_sync_steam: { Args: never, Returns: undefined }
+      queue_enqueue_worker_sync_steam: { Args: never, Returns: undefined }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       alerts: {
@@ -1817,6 +1894,113 @@ export interface Database {
           user_id: string
         }[]
       }
+      get_discussion_replies_page: {
+        Args: {
+          p_ascending?: boolean
+          p_cursor_id?: string
+          p_cursor_time?: string
+          p_discussion_id: string
+          p_hash?: string
+          p_limit?: number
+          p_root_only?: boolean
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          discussion_id: string
+          has_more: boolean
+          id: string
+          is_deleted: boolean
+          is_forum_reply: boolean
+          is_nsfw: boolean
+          is_offtopic: boolean
+          markdown: string
+          meta: Json
+          modified_at: string
+          modified_by: string
+          reactions: Json
+          reply_to_id: string
+        }[]
+      }
+      get_discussion_replies_tail: {
+        Args: {
+          p_discussion_id: string
+          p_hash?: string
+          p_limit?: number
+          p_root_only?: boolean
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          discussion_id: string
+          id: string
+          is_deleted: boolean
+          is_forum_reply: boolean
+          is_nsfw: boolean
+          is_offtopic: boolean
+          markdown: string
+          meta: Json
+          modified_at: string
+          modified_by: string
+          reactions: Json
+          reply_to_id: string
+        }[]
+      }
+      get_discussion_reply_activity_buckets: {
+        Args: {
+          p_bucket_size?: string
+          p_discussion_id: string
+          p_hash?: string
+          p_offtopic_only?: boolean
+          p_root_only?: boolean
+        }
+        Returns: {
+          bucket_start: string
+          reply_count: number
+        }[]
+      }
+      get_discussion_reply_nearest_to_date:
+        | {
+          Args: {
+            p_ascending?: boolean
+            p_discussion_id: string
+            p_hash?: string
+            p_root_only?: boolean
+            p_target_time: string
+          }
+          Returns: {
+            id: string
+          }[]
+        }
+        | {
+          Args: {
+            p_ascending?: boolean
+            p_discussion_id: string
+            p_find_first?: boolean
+            p_hash?: string
+            p_root_only?: boolean
+            p_target_time: string
+          }
+          Returns: {
+            id: string
+          }[]
+        }
+      get_discussion_reply_page_cursor: {
+        Args: {
+          p_ascending?: boolean
+          p_discussion_id: string
+          p_hash?: string
+          p_limit?: number
+          p_root_only?: boolean
+          p_target_id: string
+        }
+        Returns: {
+          cursor_id: string
+          cursor_time: string
+          page_index: number
+          predecessor_count: number
+        }[]
+      }
       get_discussion_topic_breadcrumbs: {
         Args: { target_topic_id: string }
         Returns: {
@@ -1824,6 +2008,20 @@ export interface Database {
           name: string
           parent_id: string
           slug: string
+        }[]
+      }
+      get_forum_activity_feed: {
+        Args: { p_created_by?: string, p_limit?: number, p_offset?: number }
+        Returns: {
+          body: string
+          created_at: string
+          created_by: string
+          discussion_id: string
+          id: string
+          is_nsfw: boolean
+          is_offtopic: boolean
+          item_type: string
+          title: string
         }[]
       }
       get_private_config: { Args: { config_key: string }, Returns: Json }
@@ -1844,10 +2042,12 @@ export interface Database {
         Args: { permission_name: Database['public']['Enums']['app_permission'] }
         Returns: boolean
       }
+      has_verified_mfa: { Args: never, Returns: boolean }
       increment_discussion_view_count: {
         Args: { target_discussion_id: string }
         Returns: undefined
       }
+      is_not_banned: { Args: never, Returns: boolean }
       is_owner: { Args: { record_user_id: string }, Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }, Returns: boolean }
       normalize_mentions: { Args: { input_text: string }, Returns: string }
@@ -1866,6 +2066,36 @@ export interface Database {
         }
       }
       pgmq_send: { Args: { msg: Json, queue_name: string }, Returns: number }
+      search_global:
+        | {
+          Args: { p_limit?: number, p_query: string, p_types?: string[] }
+          Returns: {
+            id: string
+            result_type: string
+            score: number
+            subtitle: string
+            title: string
+            url: string
+          }[]
+        }
+        | {
+          Args: {
+            p_limit?: number
+            p_query: string
+            p_show_archived?: boolean
+            p_types?: string[]
+          }
+          Returns: {
+            id: string
+            is_archived: boolean
+            result_type: string
+            score: number
+            subtitle: string
+            title: string
+            topic_id: string
+            url: string
+          }[]
+        }
       search_profiles: {
         Args: { search_term: string }
         Returns: {
@@ -2105,6 +2335,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  private: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_permission: [

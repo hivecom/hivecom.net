@@ -18,6 +18,15 @@ import type { InjectionKey, Ref } from 'vue'
 import type { Comment, DiscussionSettings, ProvidedDiscussion } from './Discussion.types'
 
 export const DISCUSSION_KEYS = {
+  /** Callback to lazily load children for a root comment (threaded view) */
+  loadChildren: Symbol('loadChildren') as InjectionKey<(rootId: string) => Promise<void>>,
+
+  /**
+   * A reactive map of reply ID → count of direct (non-deleted) child replies.
+   * Fetched once at discussion load time so the flat view can display correct
+   * reply counts even before children have been lazily loaded.
+   */
+  replyCountMap: Symbol('replyCountMap') as InjectionKey<Ref<Map<string, number>>>,
   /** The current view mode: 'flat' | 'threaded' */
   viewMode: Symbol('viewMode') as InjectionKey<Ref<'flat' | 'threaded'>>,
 
@@ -33,8 +42,11 @@ export const DISCUSSION_KEYS = {
   /** Callback to toggle a comment's off-topic status */
   toggleOfftopic: Symbol('toggleOfftopic') as InjectionKey<(comment: Comment) => Promise<void>>,
 
-  /** Callback to delete a comment by ID */
+  /** Callback to delete a comment by ID (soft delete - marks as deleted) */
   deleteComment: Symbol('delete-comment') as InjectionKey<(id: string) => Promise<unknown>>,
+
+  /** Callback to permanently force-delete a comment by ID (admin only, hard DELETE) */
+  forceDeleteComment: Symbol('force-delete-comment') as InjectionKey<(id: string) => Promise<unknown>>,
 
   /** The discussion row itself */
   discussion: Symbol('discussion') as InjectionKey<ProvidedDiscussion>,

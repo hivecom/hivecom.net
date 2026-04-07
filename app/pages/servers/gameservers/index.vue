@@ -60,7 +60,7 @@ useSeoMeta({
   ogDescription: 'Browse the Hivecom game server library and live server listings.',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Game Servers',
   description: 'Browse the Hivecom game server library and live server listings.',
 })

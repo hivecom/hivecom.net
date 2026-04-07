@@ -3,7 +3,7 @@ import type { JSONContent } from '@tiptap/core'
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
-import { Button, ButtonGroup, Dropdown, DropdownItem, pushToast, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Dropdown, DropdownItem, Modal, pushToast, Tooltip } from '@dolanske/vui'
 import { Extension } from '@tiptap/core'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import Image from '@tiptap/extension-image'
@@ -25,6 +25,7 @@ import { computed, nextTick, ref, useId, watch } from 'vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, stripImageMetadata } from '@/lib/storage'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorMathModal from './EditorMathModal.vue'
@@ -80,6 +81,8 @@ interface Props {
   maxHeight?: string
   limit?: number
   showAttachmentButton?: boolean
+  showExpandButton?: boolean
+  alwaysShowExpandButton?: boolean
   showSubmitOptions?: boolean
   contentRulesOverlayText?: string
   /**
@@ -170,6 +173,9 @@ function extractStoragePath(src: string, bucketId: string): string | null {
 // Math modal state (declared before useEditor so the extension onClick
 // callbacks can close over these reactive refs at setup time)
 // ---------------------------------------------------------------------------
+const expandedOpen = ref(false)
+const isMobile = useBreakpoint('<s')
+
 const mathModalOpen = ref(false)
 const mathModalLatex = ref('')
 const mathModalType = ref<'inline' | 'block'>('inline')
@@ -227,7 +233,8 @@ const editor = useEditor({
   content: content.value,
   extensions: [
     StarterKit,
-    Markdown.configure({ marked: noHtmlMarked }),
+    // eslint-disable-next-line ts/no-explicit-any
+    Markdown.configure({ marked: noHtmlMarked as any }),
     Image,
     ImageGroup,
     // Ctrl+Enter to submit
@@ -878,6 +885,14 @@ watch(() => editor.value, (value) => {
 
 // Update editor content manually on model change
 watch(content, (newContent) => {
+  // When the expanded modal is open it owns the editor with focus. Syncing
+  // content back into this (background) editor on every keystroke causes
+  // setContent() to fire, which triggers layout reflows and makes the view
+  // jump. Skip the sync entirely - when the modal closes the two editors
+  // share the same v-model so they'll already be in sync.
+  if (expandedOpen.value)
+    return
+
   // In plain-text mode the textarea owns the content directly; do not forward
   // changes to the Tiptap editor or its onUpdate hook will fire and run
   // getEditorMarkdown(), which escapes angle brackets and writes the mangled
@@ -917,8 +932,12 @@ watch(content, (newContent) => {
 
   void hydrateMentionLabels(editor.value, supabase, newContent ?? '')
 
-  // If content is updated externally, focus at the end of it
-  editor.value?.commands.focus('end')
+  // Only focus at the end if this editor doesn't already have focus - otherwise
+  // a shared v-model (e.g. the expanded modal editor) will steal focus back on
+  // every keystroke as its content changes propagate to this instance.
+  if (!editor.value?.isFocused) {
+    editor.value?.commands.focus('end')
+  }
 })
 
 const elementId = useId()
@@ -990,6 +1009,16 @@ async function handleEditorModeSwitch() {
   editorMode.value = newMode
 }
 
+const expandedProps = computed(() => {
+  const { label: _label, hint: _hint, ...rest } = props
+  return rest
+})
+
+function handleExpandedSubmit() {
+  emit('submit')
+  expandedOpen.value = false
+}
+
 async function handleSubmit() {
   if (!content.value || content.value.trim().length === 0)
     return
@@ -1022,7 +1051,7 @@ async function handleSubmit() {
     <EditorTableMenu v-if="editor && editorMode === 'rich'" :editor />
 
     <!-- Main editor instance -->
-    <div class="relative">
+    <div class="relative editor-host" :inert="expandedOpen">
       <!-- Content agreement -->
       <div v-if="shouldShowContentRulesOverlay" class="editor-overlay">
         <p>{{ props.contentRulesOverlayText || 'Before being able to add content, you must agree our content rules' }}</p>
@@ -1081,7 +1110,19 @@ async function handleSubmit() {
         />
 
         <div class="editor-actions">
-          <template v-if="props.showAttachmentButton">
+          <Tooltip v-if="props.showExpandButton && (!isMobile || props.alwaysShowExpandButton)">
+            <Button plain square size="s" @click="expandedOpen = true">
+              <Icon name="ph:arrows-out" />
+            </Button>
+            <template #tooltip>
+              <p>Expand editor</p>
+            </template>
+          </Tooltip>
+
+          <Tooltip v-if="props.showAttachmentButton">
+            <template #tooltip>
+              <p>Insert content</p>
+            </template>
             <Dropdown>
               <template #trigger="{ toggle }">
                 <Button plain square size="s" @click="toggle">
@@ -1121,9 +1162,7 @@ async function handleSubmit() {
             </Dropdown>
 
             <input ref="file-input" class="visually-hidden" type="file" multiple :accept="`${allowedMediaExtensions},${allowedDataExtensions}`" @input="handleCombinedFileInput">
-          </template>
-
-          <!-- (removed plain text spoiler button) -->
+          </Tooltip>
 
           <Tooltip>
             <Button plain square size="s" @click="handleEditorModeSwitch">
@@ -1165,10 +1204,73 @@ async function handleSubmit() {
         {{ err }}
       </li>
     </ul>
+
+    <!-- Fullscreen expand modal -->
+    <Modal
+      :open="expandedOpen"
+      size="screen"
+      scrollable
+      class="rich-text-expand-modal"
+      @close="expandedOpen = false"
+    >
+      <template #header />
+
+      <div class="rich-text-expand-body">
+        <RichTextEditor
+          v-bind="expandedProps"
+          v-model="content"
+          v-model:nsfw="isNsfw"
+          :errors="errors"
+          :show-expand-button="false"
+          min-height="calc(100vh - 142px)"
+          max-height="100%"
+          @submit="handleExpandedSubmit"
+        />
+      </div>
+    </Modal>
   </div>
 </template>
 
 <style lang="scss">
+.rich-text-expand-modal {
+  :deep(.vui-card-content) {
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.rich-text-expand-body {
+  flex: 1;
+  min-height: 0;
+  max-width: var(--container-m);
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+
+  .vui-rich-text {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .editor-host {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .editor-container {
+    flex: 1;
+    min-height: 0;
+    max-height: none !important;
+  }
+}
+
 .vui-rich-text {
   display: block;
   width: 100%;
@@ -1226,6 +1328,7 @@ async function handleSubmit() {
     display: flex;
     flex-direction: column;
     max-height: v-bind(maxHeight);
+    overflow: hidden;
 
     &:has(.ProseMirror-focused) {
       border-color: var(--color-border-strong);
@@ -1399,7 +1502,8 @@ async function handleSubmit() {
   // which suffers from a timing issue on initial mount where
   // `this.editor.isEmpty` can resolve incorrectly before the view is wired up).
   .editor-rich-wrapper {
-    overflow: visible;
+    max-height: 90vh;
+    overflow-y: auto;
     flex: 1 1 auto;
     min-height: 0;
     position: relative;

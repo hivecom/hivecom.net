@@ -3,6 +3,8 @@ import type { Tables } from '@/types/database.overrides'
 import { Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import BadgeCircle from '../Shared/BadgeCircle.vue'
 import ForumItemActions from './ForumItemActions.vue'
 
@@ -77,13 +79,18 @@ dayjs.extend(relativeTime)
       </div>
 
       <div class="forum__category-post--meta">
-        <span>{{ data.reply_count }}</span>
+        <CountDisplay :value="data.reply_count ?? 0" />
       </div>
       <div class="forum__category-post--meta">
-        <span>{{ data.view_count }}</span>
+        <CountDisplay :value="data.view_count ?? 0" />
       </div>
       <div class="forum__category-post--meta">
-        <span>{{ dayjs(lastActivity ?? data.created_at).fromNow() }}</span>
+        <Tooltip placement="top">
+          <span>{{ dayjs(lastActivity ?? data.created_at).fromNow() }}</span>
+          <template #tooltip>
+            <TimestampDate :date="lastActivity ?? data.created_at" :tooltip="false" format="YYYY-MM-DD HH:mm:ss" size="xs" />
+          </template>
+        </Tooltip>
       </div>
 
       <ForumItemActions table="discussions" :data @update="emit('update', $event)" @remove="emit('remove', $event)" />

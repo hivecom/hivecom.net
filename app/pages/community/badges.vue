@@ -29,7 +29,7 @@ useSeoMeta({
   ogDescription: 'Explore the badges available in the Hivecom community.',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Badges',
   description: 'Explore the badges available in the Hivecom community.',
 })

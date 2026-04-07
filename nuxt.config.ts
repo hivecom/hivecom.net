@@ -48,6 +48,7 @@ export default defineNuxtConfig({
   devtools: {
     enabled: false,
   },
+  components: false,
   compatibilityDate: '2024-09-25',
   typescript: {
     typeCheck: false,
@@ -166,6 +167,10 @@ export default defineNuxtConfig({
 
         // events
         'ph:arrows-vertical',
+
+        // Discussions/DiscussionTimeline.vue jump-to-date button + toolbar
+        'ph:clock',
+        'ph:arrow-down',
       ],
     },
   },

@@ -32,7 +32,7 @@ useSeoMeta({
   ogDescription: 'See Hivecom community funding, expenses, and how to support the project.',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Funding',
   description: 'See Hivecom community funding, expenses, and how to support the project.',
 })

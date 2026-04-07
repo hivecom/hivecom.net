@@ -1,19 +1,180 @@
 <script setup lang="ts">
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
-import { Badge, Button, Carousel, Flex, Sheet, Skeleton } from '@dolanske/vui'
+import type { UseForumActivityFeedPaginatedOptions } from '@/composables/useForumActivityFeedPaginated'
+import { Badge, Button, Carousel, Flex, Sheet, Skeleton, Spinner } from '@dolanske/vui'
 import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
+import TinyBadge from '@/components/Shared/TinyBadge.vue'
+import { useBulkDataUser } from '@/composables/useDataUser'
+import { useForumActivityFeedPaginated } from '@/composables/useForumActivityFeedPaginated'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   loading: boolean
   latestPosts: ActivityItem[]
   postSinceYesterday: number
+  lastVisitedAt: string | null
   mentionLookup: Record<string, string>
+  // Pass-through options for the paginated sheet feed
+  feedOptions: Omit<UseForumActivityFeedPaginatedOptions, never>
 }>()
 
+const user = useSupabaseUser()
+
 const sheetOpen = ref(false)
+const sentinel = ref<HTMLElement | null>(null)
+
+// Close sheet if user signs out mid-session
+watch(user, (u) => {
+  if (u == null)
+    sheetOpen.value = false
+})
 
 const isMobile = useBreakpoint('<s')
+
+// ── Carousel divider ───────────────────────────────────────────────────────
+
+// Shared boundary timestamp used by both the carousel and sheet split indexes.
+const visitedAt = computed<number | null>(() => {
+  if (props.lastVisitedAt == null)
+    return null
+  return new Date(props.lastVisitedAt).getTime()
+})
+
+// Advance the effective visit time to cover any posts by the current user -
+// they obviously saw their own post when they wrote it, so it should never
+// appear in the "new since last visit" zone.
+const effectiveVisitedAt = computed<number | null>(() => {
+  if (visitedAt.value == null)
+    return null
+  const ownPosts = props.latestPosts.filter(post => post.user === user.value?.id)
+  if (ownPosts.length === 0)
+    return visitedAt.value
+  const latestOwn = Math.max(...ownPosts.map(p => new Date(p.timestampRaw).getTime()))
+  return Math.max(visitedAt.value, latestOwn)
+})
+
+// Index of the first item older than the last visit - divider renders between
+// index (splitIndex - 1) and index splitIndex.
+const splitIndex = computed<number | null>(() => {
+  if (effectiveVisitedAt.value == null || props.loading)
+    return null
+  const idx = props.latestPosts.findIndex(
+    post => new Date(post.timestampRaw).getTime() <= effectiveVisitedAt.value!,
+  )
+  // No divider if everything is new or nothing is new
+  if (idx <= 0 || idx >= props.latestPosts.length)
+    return null
+  return idx
+})
+
+// Exclude the current user's own posts from the "new" count - they don't need
+// to see their own activity flagged as unseen.
+const newSinceLastVisit = computed<number>(() => {
+  if (splitIndex.value == null)
+    return 0
+  return props.latestPosts
+    .slice(0, splitIndex.value)
+    .filter(post => post.user !== user.value?.id)
+    .length
+})
+
+// ── Paginated sheet feed ───────────────────────────────────────────────────
+
+const {
+  items: sheetItems,
+  mentionIds: sheetMentionIds,
+  authorIds: sheetAuthorIds,
+  loading: sheetLoading,
+  loadingMore: sheetLoadingMore,
+  exhausted: sheetExhausted,
+  load: loadSheet,
+  loadMore,
+} = useForumActivityFeedPaginated(props.feedOptions)
+
+// Divider index in the sheet feed - same logic as carousel, same boundary.
+const sheetSplitIndex = computed<number | null>(() => {
+  if (effectiveVisitedAt.value == null || sheetLoading.value)
+    return null
+  const idx = sheetItems.value.findIndex(
+    item => new Date(item.timestampRaw).getTime() <= effectiveVisitedAt.value!,
+  )
+  if (idx <= 0 || idx >= sheetItems.value.length)
+    return null
+  return idx
+})
+
+// Pre-warm mention and author caches for sheet items
+const sheetMentionIdsRef = computed(() => sheetMentionIds.value)
+const { users: sheetMentionUsers } = useBulkDataUser(sheetMentionIdsRef, {
+  includeAvatar: false,
+  includeRole: false,
+})
+useBulkDataUser(sheetAuthorIds, {
+  includeAvatar: true,
+  includeRole: true,
+})
+
+const sheetMentionLookup = computed<Record<string, string>>(() => {
+  const lookup: Record<string, string> = {}
+  for (const [id, u] of sheetMentionUsers.value.entries())
+    lookup[id] = u.username ?? id
+  return lookup
+})
+
+// Also extract mentions from props.mentionLookup for items that are in both
+// feeds (carousel items reuse the parent's mention lookup)
+const combinedMentionLookup = computed<Record<string, string>>(() => ({
+  ...props.mentionLookup,
+  ...sheetMentionLookup.value,
+}))
+
+// Load sheet data on first open, set up IntersectionObserver for infinite scroll
+let observer: IntersectionObserver | null = null
+
+watch(sheetOpen, async (open) => {
+  if (!open) {
+    observer?.disconnect()
+    observer = null
+    return
+  }
+
+  // First open - fetch initial page
+  if (sheetItems.value.length === 0) {
+    await loadSheet()
+
+    // If lastVisitedAt is set but no boundary item was found in the first page
+    // (findIndex === -1 means all loaded items are newer), keep loading pages
+    // until we find an item older than the last visit or exhaust the feed.
+    if (effectiveVisitedAt.value != null) {
+      while (!sheetExhausted.value) {
+        const idx = sheetItems.value.findIndex(
+          item => new Date(item.timestampRaw).getTime() <= effectiveVisitedAt.value!,
+        )
+        if (idx !== -1)
+          break
+        await loadMore()
+      }
+    }
+  }
+
+  // Set up sentinel observer after DOM settles
+  await nextTick()
+  if (sentinel.value == null)
+    return
+
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0]?.isIntersecting && !sheetLoadingMore.value && !sheetExhausted.value)
+        void loadMore()
+    },
+    { threshold: 0.1 },
+  )
+  observer.observe(sentinel.value)
+})
+
+onUnmounted(() => {
+  observer?.disconnect()
+})
 </script>
 
 <template>
@@ -22,12 +183,21 @@ const isMobile = useBreakpoint('<s')
       <h5>
         Latest updates
       </h5>
-      <Badge v-if="props.postSinceYesterday" variant="accent">
-        {{ props.postSinceYesterday }} {{ isMobile ? null : 'today' }}
+      <TinyBadge v-if="isMobile && newSinceLastVisit > 0" variant="accent">
+        {{ newSinceLastVisit }} new
+      </TinyBadge>
+      <Badge v-else-if="newSinceLastVisit > 0" variant="accent">
+        {{ newSinceLastVisit }} since last visit
+      </Badge>
+      <TinyBadge v-if="isMobile && !props.loading && props.postSinceYesterday" variant="neutral">
+        {{ props.postSinceYesterday }}
+      </TinyBadge>
+      <Badge v-else-if="!props.loading && props.postSinceYesterday" variant="neutral">
+        {{ props.postSinceYesterday }} today
       </Badge>
 
       <div class="flex-1" />
-      <Button size="s" outline @click="sheetOpen = !sheetOpen">
+      <Button v-if="user" size="s" outline @click="sheetOpen = !sheetOpen">
         See more
         <template #end>
           <Icon name="ph:caret-up-down" />
@@ -54,16 +224,19 @@ const isMobile = useBreakpoint('<s')
       </template>
 
       <template v-else>
-        <ForumLatestItem
-          v-for="post in props.latestPosts.slice(0, 16)"
-          :key="post.id"
-          :post="post"
-          :mention-lookup="props.mentionLookup"
-        />
+        <template v-for="(post, index) in props.latestPosts.slice(0, 16)" :key="post.id">
+          <div v-if="splitIndex !== null && index === splitIndex" class="forum__latest-divider">
+            <span class="text-color-accent">Last visited</span>
+          </div>
+          <ForumLatestItem
+            :post="post"
+            :mention-lookup="props.mentionLookup"
+          />
+        </template>
       </template>
     </Carousel>
 
-    <Sheet :open="sheetOpen" :size="456" @close="sheetOpen = false">
+    <Sheet v-if="user" :open="sheetOpen" :size="456" @close="sheetOpen = false">
       <template #header>
         <h4 class="pt-xxs">
           Latest updates
@@ -71,13 +244,32 @@ const isMobile = useBreakpoint('<s')
       </template>
 
       <Flex column gap="m">
-        <ForumLatestItem
-          v-for="post in props.latestPosts.slice(0, 65)"
-          :key="post.id"
-          :post="post"
-          :mention-lookup="props.mentionLookup"
-          expand
-        />
+        <template v-if="sheetLoading">
+          <Skeleton v-for="i in 6" :key="i" width="100%" height="96px" />
+        </template>
+
+        <template v-else>
+          <template v-for="(post, index) in sheetItems" :key="post.id">
+            <div v-if="sheetSplitIndex !== null && index === sheetSplitIndex" class="forum__latest-divider forum__latest-divider--sheet">
+              <span class="text-color-accent">Last visited</span>
+            </div>
+            <ForumLatestItem
+              :post="post"
+              :mention-lookup="combinedMentionLookup"
+              expand
+            />
+          </template>
+
+          <!-- Infinite scroll sentinel -->
+          <div ref="sentinel" class="forum__latest-sentinel">
+            <Flex v-if="sheetLoadingMore" expand x-center>
+              <Spinner />
+            </Flex>
+            <span v-else-if="sheetExhausted" class="forum__latest-exhausted">
+              All caught up
+            </span>
+          </div>
+        </template>
       </Flex>
     </Sheet>
   </section>
@@ -108,5 +300,57 @@ const isMobile = useBreakpoint('<s')
   .forum__latest-skeleton {
     min-width: 256px;
   }
+}
+
+.forum__latest-divider {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-self: stretch;
+  position: relative;
+  flex-shrink: 0;
+  width: 2px;
+  background-color: var(--color-border-strong);
+  border-radius: 999px;
+
+  span {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-90deg);
+    white-space: nowrap;
+    font-size: var(--font-size-xxs);
+    color: var(--color-text-lighter);
+    background-color: var(--color-bg);
+    padding: 0 var(--space-xxs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &--sheet {
+    width: 100%;
+    height: 2px;
+    flex-direction: row;
+    align-self: unset;
+
+    span {
+      transform: translate(-50%, -50%);
+      background-color: var(--color-bg-medium);
+    }
+  }
+}
+
+.forum__latest-sentinel {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-m) 0;
+  min-height: 48px;
+}
+
+.forum__latest-exhausted {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-lighter);
 }
 </style>

@@ -22,6 +22,11 @@ const isOpen = computed(() => activeIndex.value !== -1)
 const hasPrev = computed(() => activeIndex.value > 0)
 const hasNext = computed(() => activeIndex.value < imageUrls.value.length - 1)
 
+// Track slide direction so the transition CSS knows which way to animate.
+// Must be set before mutating activeIndex so Vue picks up the right classes.
+type SlideDir = 'left' | 'right'
+const slideDir = ref<SlideDir>('left')
+
 // Lightbox UI control methods
 function open(index: number) {
   activeIndex.value = index
@@ -33,12 +38,14 @@ function close() {
 
 function prev() {
   if (hasPrev.value) {
+    slideDir.value = 'right'
     activeIndex.value--
   }
 }
 
 function next() {
   if (hasNext.value) {
+    slideDir.value = 'left'
     activeIndex.value++
   }
 }
@@ -77,24 +84,29 @@ useEventListener('keydown', (event) => {
   }
 })
 
-// Listen for swipe events
+// Listen for swipe events - use onSwipeEnd so it fires exactly once per gesture,
+// not on every touch-move frame like whenever(isSwiping) would.
 const imageWrap = useTemplateRef('imageWrap')
-const { isSwiping, direction } = useSwipe(imageWrap)
-
-whenever(isSwiping, () => {
-  if (direction.value === 'left') {
-    prev()
-  }
-  else if (direction.value === 'right') {
-    next()
-  }
+useSwipe(imageWrap, {
+  onSwipeEnd(_e, direction) {
+    if (direction === 'left') {
+      next()
+    }
+    else if (direction === 'right') {
+      prev()
+    }
+  },
 })
 </script>
 
 <template>
   <Modal class="md-lightbox" size="screen" :open="isOpen" centered @close="close">
-    <div ref="imageWrap" class="md-lightbox__img-wrap" @click.self="close">
-      <img v-if="activeUrl" class="ignored" :src="activeUrl">
+    <div ref="imageWrap" class="md-lightbox__img-wrap">
+      <Transition :name="`md-lightbox-slide-${slideDir}`">
+        <div v-if="activeUrl" :key="activeUrl" class="md-lightbox__slide" @click.self="close">
+          <img class="ignored" :src="activeUrl">
+        </div>
+      </Transition>
     </div>
 
     <Flex v-if="imageUrls.length > 1" x-center gap="l" class="md-lightbox-nav" y-center>
@@ -117,12 +129,18 @@ whenever(isSwiping, () => {
   --width: calc(100vw - 32px);
 
   &__img-wrap {
+    height: var(--height);
+    width: var(--width);
+    position: relative;
+    overflow: hidden;
+  }
+
+  &__slide {
     display: flex;
     justify-content: center;
     align-items: center;
     height: var(--height);
     width: var(--width);
-    position: relative;
 
     img {
       border-radius: var(--border-radius-m);
@@ -144,5 +162,39 @@ whenever(isSwiping, () => {
   .md-lightbox-nav {
     height: 60px;
   }
+}
+
+// Slide transitions - global so Vue's runtime-injected transition classes match
+.md-lightbox-slide-left-enter-active,
+.md-lightbox-slide-left-leave-active,
+.md-lightbox-slide-right-enter-active,
+.md-lightbox-slide-right-leave-active {
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+  position: absolute;
+  inset: 0;
+}
+
+// Slide left: new enters from right, old exits to left
+.md-lightbox-slide-left-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.md-lightbox-slide-left-leave-to {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+// Slide right: new enters from left, old exits to right
+.md-lightbox-slide-right-enter-from {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.md-lightbox-slide-right-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
 }
 </style>

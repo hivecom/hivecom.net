@@ -126,6 +126,8 @@ defineExpose({
         min-height="64px"
         show-submit-options
         show-attachment-button
+        show-expand-button
+        always-show-expand-button
         :loading="formLoading"
         :errors="normalizeErrors(errors.message)"
         :placeholder="replyingTo ? 'Write your reply here...' : placeholder"
@@ -134,7 +136,29 @@ defineExpose({
         @update:model-value="emit('update:message', $event ?? '')"
         @update:nsfw="emit('update:isNsfw', $event)"
         @submit="emit('submit')"
-      />
+      >
+        <template v-if="replyingTo" #expanded-prepend>
+          <Alert>
+            <Flex y-start gap="xl" x-between>
+              <div>
+                <span class="discussion__add--replying-label">
+                  Replying to
+                  <UserName size="s" show-preview :user-id="replyingTo.created_by" />:
+                </span>
+                <MarkdownPreview :markdown="replyingTo.markdown" :mention-lookup="replyMentionLookup" :max-length="240" />
+              </div>
+              <Tooltip>
+                <Button square size="s" plain @click="emit('update:replyingTo', undefined)">
+                  <Icon name="ph:x" />
+                </Button>
+                <template #tooltip>
+                  <p>Remove attached reply</p>
+                </template>
+              </Tooltip>
+            </Flex>
+          </Alert>
+        </template>
+      </RichTextEditor>
     </template>
   </div>
 
@@ -155,3 +179,14 @@ defineExpose({
     </Alert>
   </div>
 </template>
+
+<style scoped lang="scss">
+.discussion__add--replying-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  font-size: var(--font-size-s);
+  color: var(--color-text-light);
+  margin-bottom: var(--space-xxs);
+}
+</style>

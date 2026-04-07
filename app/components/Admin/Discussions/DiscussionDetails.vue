@@ -4,6 +4,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, Card, CopyClipboard, Divider, Dropdown, DropdownTitle, Flex, Grid, pushToast, searchString, Sheet, Tooltip } from '@dolanske/vui'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import DiscussionEditSheet from '@/components/Admin/Discussions/DiscussionEditSheet.vue'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -406,12 +407,12 @@ async function reassignToTopic(topicId: string) {
 
           <Grid class="detail-item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Replies:</span>
-            <span>{{ props.discussion.reply_count }}</span>
+            <CountDisplay :value="props.discussion.reply_count" />
           </Grid>
 
           <Grid class="detail-item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Views:</span>
-            <span>{{ props.discussion.view_count }}</span>
+            <CountDisplay :value="props.discussion.view_count" />
           </Grid>
 
           <Grid class="detail-item" expand columns="1fr 2fr">

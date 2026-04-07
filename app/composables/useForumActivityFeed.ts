@@ -73,6 +73,7 @@ export function useForumActivityFeed({
       .from('forum_discussion_replies')
       .select('*')
       .eq('is_offtopic', false)
+      .eq('is_deleted', false)
       .limit(30)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
@@ -106,6 +107,9 @@ export function useForumActivityFeed({
           return false
 
         if (reply.isOfftopic)
+          return false
+
+        if ((reply.description ?? '').trim().length === 0)
           return false
 
         if (!settings.value.show_nsfw_content) {
@@ -155,6 +159,7 @@ export function useForumActivityFeed({
         return {
           id,
           type: isTopic ? 'Topic' : 'Discussion',
+          typeLabel: isTopic ? 'Created Topic' : 'Created Discussion',
           title,
           description: item.description ?? undefined,
           timestamp: `${dayjs(item.created_at).fromNow()}`,

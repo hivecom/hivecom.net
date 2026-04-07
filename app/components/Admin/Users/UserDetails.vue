@@ -156,24 +156,24 @@ const sentRequests = computed(() => {
   return sentRequests
 })
 
-// Get pending requests (others sent to user but user hasn't reciprocated)
-const pendingRequests = computed(() => {
+// Get incoming requests (others sent to user but user hasn't reciprocated)
+const incomingRequests = computed(() => {
   if (!props.user?.id)
     return []
 
   const sentByUser = allFriendships.value.filter(f => f.friender === props.user!.id)
   const receivedByUser = allFriendships.value.filter(f => f.friend === props.user!.id)
 
-  const pendingRequests: string[] = []
+  const incomingRequests: string[] = []
 
   receivedByUser.forEach((received) => {
     const mutual = sentByUser.find(sent => sent.friend === received.friender)
     if (!mutual) {
-      pendingRequests.push(received.friender)
+      incomingRequests.push(received.friender)
     }
   })
 
-  return pendingRequests
+  return incomingRequests
 })
 
 // Define models for two-way binding with proper type definitions
@@ -379,11 +379,11 @@ function getUserInitials(username: string): string {
                 <span v-if="sentRequests.length > 0" class="text-s text-color-light">
                   • {{ sentRequests.length }} sent
                 </span>
-                <span v-if="pendingRequests.length > 0" class="text-s text-color-light">
-                  • {{ pendingRequests.length }} pending
+                <span v-if="incomingRequests.length > 0" class="text-s text-color-light">
+                  • {{ incomingRequests.length }} incoming
                 </span>
                 <Button
-                  v-if="friends.length > 0 || sentRequests.length > 0 || pendingRequests.length > 0"
+                  v-if="friends.length > 0 || sentRequests.length > 0 || incomingRequests.length > 0"
                   variant="gray"
                   size="s"
                   @click="showFriendsModal = true"
@@ -599,7 +599,7 @@ function getUserInitials(username: string): string {
       v-model:open="showFriendsModal"
       :friends="friends"
       :sent-requests="sentRequests"
-      :pending-requests="pendingRequests"
+      :incoming-requests="incomingRequests"
       :user-name="user.username"
       :show-all-tabs="true"
       @close="showFriendsModal = false"

@@ -336,7 +336,7 @@ function handleChoiceClick(index: number) {
 
 <template>
   <div class="page">
-    <div :class="!isMobile && 'container container-s'">
+    <div :class="!isMobile && 'container container-m'">
       <!-- Loading state: show skeleton while auth is unresolved OR data is loading -->
       <VoteLoadingSkeleton v-if="loadingReferendum || !user" />
 
