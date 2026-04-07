@@ -5,8 +5,14 @@
  * - Key-value caching for simple data
  * - Query signature caching for complex queries
  * - Automatic cache invalidation with TTL
- * - Cross-component cache sharing
- * - Memory-efficient with configurable size limits
+ * - Cross-component and cross-reload cache sharing via localStorage
+ * - LRU eviction with configurable entry limit
+ * - Quota-error recovery (evict + retry on write failure)
+ *
+ * All entries are stored in localStorage and TTL-checked on every read.
+ * A background cleanup timer sweeps expired entries and enforces the entry
+ * budget periodically. On SSR (no window), all reads return null and writes
+ * are no-ops — caching is a client-side optimisation only.
  */
 
 import type { MaybeRefOrGetter, Ref } from 'vue'
@@ -16,13 +22,27 @@ import { ref, toValue, watch } from 'vue'
 export interface CacheEntry<T = unknown> {
   data: T
   timestamp: number
-  ttl: number // Time to live in milliseconds
+  ttl: number
 }
 
 export interface CacheConfig {
-  ttl?: number // Default TTL in milliseconds (default: 5 minutes)
-  maxSize?: number // Maximum number of entries (default: 1000)
-  cleanupInterval?: number // Cleanup interval in milliseconds (default: 30 seconds)
+  /** Default TTL in milliseconds. Default: 5 minutes. */
+  ttl?: number
+  /** Cleanup interval in milliseconds. Default: 30 seconds. */
+  cleanupInterval?: number
+  /**
+   * Namespace prefix for localStorage keys. Should end with ':'.
+   * KV entries land at `${prefix}kv:${key}`, query entries at `${prefix}q:${hash}`.
+   * Default: 'hivecom:cache:'.
+   */
+  storagePrefix?: string
+  /**
+   * Maximum number of entries allowed in the kv namespace.
+   * When the limit is reached during cleanup, or when a write fails due to
+   * quota exhaustion, the least-recently-used entries are evicted first.
+   * Default: 500.
+   */
+  maxEntries?: number
 }
 
 export interface QueryCacheKey {
@@ -35,11 +55,18 @@ export interface QueryCacheKey {
   single?: boolean
 }
 
-// Global cache stores
-const keyValueCache = new Map<string, CacheEntry>()
-const queryCache = new Map<string, CacheEntry>()
+// ── Shared module-level state ──────────────────────────────────────────────────
 
-// Cache statistics for debugging
+const LS_DEFAULT_PREFIX = 'hivecom:cache:'
+
+/**
+ * Maps storagePrefix → maxEntries so the cleanup timer knows each prefix's budget.
+ * Using a Map rather than a Set so we can store the budget alongside the prefix.
+ */
+const activeLocalStoragePrefixes = new Map<string, number>()
+
+let cleanupTimer: number | null = null
+
 const cacheStats = {
   keyValueHits: 0,
   keyValueMisses: 0,
@@ -48,11 +75,242 @@ const cacheStats = {
   lastCleanup: 0,
 }
 
-let cleanupTimer: number | null = null
+// ── In-memory access-time tracking ────────────────────────────────────────────
+//
+// Keyed by the full localStorage key (prefix + logical key).
+// Updated on every valid cache read so LRU eviction prefers entries that
+// haven't been touched recently. Resets on page reload; the entry's own
+// `timestamp` (creation time) is used as a fallback for ordering.
+
+const _accessTimes = new Map<string, number>()
+
+function touchEntry(fullKey: string): void {
+  _accessTimes.set(fullKey, Date.now())
+}
+
+function lastAccessedOf(fullKey: string, entry: CacheEntry): number {
+  return _accessTimes.get(fullKey) ?? entry.timestamp
+}
+
+// ── localStorage primitives ────────────────────────────────────────────────────
+
+function lsGet<T>(prefix: string, key: string): CacheEntry<T> | null {
+  if (typeof window === 'undefined')
+    return null
+  try {
+    const raw = window.localStorage.getItem(`${prefix}${key}`)
+    if (raw == null)
+      return null
+    return JSON.parse(raw) as CacheEntry<T>
+  }
+  catch {
+    return null
+  }
+}
 
 /**
- * Generate a consistent hash for query parameters
+ * Write an entry to localStorage.
+ * If the write fails (quota exceeded), evict LRU entries from the given
+ * namespace down to `keepOnFail` entries and retry once.
  */
+function lsSet<T>(
+  prefix: string,
+  key: string,
+  entry: CacheEntry<T>,
+  maxEntries: number,
+): void {
+  if (typeof window === 'undefined')
+    return
+
+  const fullKey = `${prefix}${key}`
+
+  try {
+    window.localStorage.setItem(fullKey, JSON.stringify(entry))
+    touchEntry(fullKey)
+  }
+  catch {
+    // Quota exceeded — evict LRU down to 50 % of the budget and retry once
+    evictLRU(prefix, Math.floor(maxEntries * 0.5))
+    try {
+      window.localStorage.setItem(fullKey, JSON.stringify(entry))
+      touchEntry(fullKey)
+    }
+    catch {
+      // localStorage genuinely unavailable (private mode, storage disabled) —
+      // silently skip; reads will just be cache misses
+    }
+  }
+}
+
+function lsDelete(prefix: string, key: string): boolean {
+  if (typeof window === 'undefined')
+    return false
+  const fullKey = `${prefix}${key}`
+  const had = window.localStorage.getItem(fullKey) != null
+  window.localStorage.removeItem(fullKey)
+  _accessTimes.delete(fullKey)
+  return had
+}
+
+/**
+ * Snapshot all logical keys (prefix stripped) under the given full prefix.
+ * Snapshotted up-front so callers can safely mutate localStorage while iterating.
+ */
+function lsKeys(prefix: string): string[] {
+  if (typeof window === 'undefined')
+    return []
+  const keys: string[] = []
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const fullKey = window.localStorage.key(i)
+    if (fullKey != null && fullKey.startsWith(prefix))
+      keys.push(fullKey.slice(prefix.length))
+  }
+  return keys
+}
+
+function lsClearPrefix(prefix: string): void {
+  if (typeof window === 'undefined')
+    return
+  const keysToRemove: string[] = []
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const k = window.localStorage.key(i)
+    if (k != null && k.startsWith(prefix))
+      keysToRemove.push(k)
+  }
+  keysToRemove.forEach((k) => {
+    window.localStorage.removeItem(k)
+    _accessTimes.delete(k)
+  })
+}
+
+function lsSize(prefix: string): number {
+  if (typeof window === 'undefined')
+    return 0
+  let count = 0
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const k = window.localStorage.key(i)
+    if (k != null && k.startsWith(prefix))
+      count++
+  }
+  return count
+}
+
+function isEntryValid<T>(entry: CacheEntry<T>): boolean {
+  return Date.now() - entry.timestamp < entry.ttl
+}
+
+// ── LRU eviction ──────────────────────────────────────────────────────────────
+
+/**
+ * Evict entries under `prefix` until at most `keepCount` remain.
+ * Entries are sorted by last-access time ascending (least recently used first).
+ * Falls back to `entry.timestamp` (creation time) for entries not yet touched
+ * in the current session.
+ */
+function evictLRU(prefix: string, keepCount: number): void {
+  if (typeof window === 'undefined' || keepCount < 0)
+    return
+
+  const candidates: { fullKey: string, lastAccessed: number }[] = []
+
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const fullKey = window.localStorage.key(i)
+    if (fullKey == null || !fullKey.startsWith(prefix))
+      continue
+
+    const raw = window.localStorage.getItem(fullKey)
+    let lastAccessed = 0
+
+    if (raw != null) {
+      try {
+        const entry = JSON.parse(raw) as CacheEntry
+        lastAccessed = lastAccessedOf(fullKey, entry)
+      }
+      catch {
+        // Corrupt entry — treat as oldest so it gets evicted first
+        lastAccessed = 0
+      }
+    }
+
+    candidates.push({ fullKey, lastAccessed })
+  }
+
+  if (candidates.length <= keepCount)
+    return
+
+  // Sort ascending — LRU (least recently used) first
+  candidates.sort((a, b) => a.lastAccessed - b.lastAccessed)
+
+  const toEvict = candidates.length - keepCount
+  for (let i = 0; i < toEvict; i++) {
+    const c = candidates[i]!
+    window.localStorage.removeItem(c.fullKey)
+    _accessTimes.delete(c.fullKey)
+  }
+}
+
+// ── Cleanup ────────────────────────────────────────────────────────────────────
+
+/**
+ * Remove expired entries under the given prefix, then enforce the entry
+ * budget via LRU eviction if the kv sub-namespace is still over budget.
+ */
+function cleanupPrefix(storagePrefix: string, maxEntries: number): void {
+  if (typeof window === 'undefined')
+    return
+
+  const now = Date.now()
+  const keysToRemove: string[] = []
+
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const fullKey = window.localStorage.key(i)
+    if (fullKey == null || !fullKey.startsWith(storagePrefix))
+      continue
+
+    const raw = window.localStorage.getItem(fullKey)
+    if (raw == null) {
+      keysToRemove.push(fullKey)
+      continue
+    }
+
+    try {
+      const entry = JSON.parse(raw) as CacheEntry
+      if (now - entry.timestamp >= entry.ttl)
+        keysToRemove.push(fullKey)
+    }
+    catch {
+      // Corrupt entry — evict
+      keysToRemove.push(fullKey)
+    }
+  }
+
+  keysToRemove.forEach((k) => {
+    window.localStorage.removeItem(k)
+    _accessTimes.delete(k)
+  })
+
+  // After TTL cleanup, enforce maxEntries on the kv sub-namespace via LRU
+  const kvPrefix = `${storagePrefix}kv:`
+  if (lsSize(kvPrefix) > maxEntries)
+    evictLRU(kvPrefix, Math.floor(maxEntries * 0.8))
+}
+
+function cleanupAll(): void {
+  for (const [prefix, maxEntries] of activeLocalStoragePrefixes)
+    cleanupPrefix(prefix, maxEntries)
+  cacheStats.lastCleanup = Date.now()
+}
+
+function initializeCleanup(interval: number): void {
+  if (cleanupTimer !== null)
+    return
+  if (typeof window !== 'undefined') {
+    cleanupTimer = window.setInterval(cleanupAll, interval)
+  }
+}
+
+// ── Query hash ─────────────────────────────────────────────────────────────────
+
 function generateQueryHash(query: QueryCacheKey): string {
   const normalizedQuery = {
     table: query.table,
@@ -66,9 +324,8 @@ function generateQueryHash(query: QueryCacheKey): string {
     filterOperators: query.filterOperators
       ? Object.keys(query.filterOperators).sort().reduce((acc, key) => {
           const operator = query.filterOperators![key]
-          if (operator !== undefined) {
+          if (operator !== undefined)
             acc[key] = operator
-          }
           return acc
         }, {} as Record<string, string>)
       : {},
@@ -76,232 +333,137 @@ function generateQueryHash(query: QueryCacheKey): string {
     limit: query.limit,
     single: query.single ?? false,
   }
-
   return btoa(JSON.stringify(normalizedQuery))
 }
 
-/**
- * Check if a cache entry is still valid
- */
-function isEntryValid<T>(entry: CacheEntry<T>): boolean {
-  return Date.now() - entry.timestamp < entry.ttl
-}
+// ── Main composable ────────────────────────────────────────────────────────────
 
-/**
- * Clean up expired entries from cache
- */
-function cleanupExpiredEntries() {
-  const now = Date.now()
-
-  // Clean key-value cache
-  for (const [key, entry] of keyValueCache.entries()) {
-    if (!isEntryValid(entry)) {
-      keyValueCache.delete(key)
-    }
-  }
-
-  // Clean query cache
-  for (const [key, entry] of queryCache.entries()) {
-    if (!isEntryValid(entry)) {
-      queryCache.delete(key)
-    }
-  }
-
-  cacheStats.lastCleanup = now
-}
-
-/**
- * Enforce cache size limits using LRU strategy
- */
-function enforceCacheSizeLimit(cache: Map<string, CacheEntry>, maxSize: number) {
-  if (cache.size <= maxSize)
-    return
-
-  // Convert to array and sort by timestamp (oldest first)
-  const entries = [...cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)
-
-  // Remove oldest entries until we're under the limit
-  const toRemove = cache.size - maxSize
-  for (let i = 0; i < toRemove; i++) {
-    const entry = entries[i]
-    if (entry !== undefined) {
-      cache.delete(entry[0])
-    }
-  }
-}
-
-/**
- * Initialize cleanup timer
- */
-function initializeCleanup(interval: number) {
-  if (cleanupTimer !== null)
-    return
-
-  // Only set up cleanup timer on the client side (not during SSR)
-  if (typeof window !== 'undefined') {
-    cleanupTimer = window.setInterval(() => {
-      cleanupExpiredEntries()
-    }, interval)
-  }
-}
-
-/**
- * Main cache composable
- */
 export function useCache(config: CacheConfig = {}) {
   const {
-    ttl = 5 * 60 * 1000, // 5 minutes default
-    maxSize = 1000,
-    cleanupInterval = 30 * 1000, // 30 seconds
+    ttl = 5 * 60 * 1000,
+    cleanupInterval = 30 * 1000,
+    storagePrefix = LS_DEFAULT_PREFIX,
+    maxEntries = 500,
   } = config
 
-  // Initialize cleanup on first use
+  const kvPrefix = `${storagePrefix}kv:`
+  const qPrefix = `${storagePrefix}q:`
+
+  // Register/update this prefix so the cleanup timer knows its budget
+  activeLocalStoragePrefixes.set(storagePrefix, maxEntries)
   initializeCleanup(cleanupInterval)
 
-  /**
-   * Cache data by key-value pair
-   */
-  function cacheSet<T>(key: string, data: T, customTtl?: number): void {
-    const entry: CacheEntry<T> = {
-      data,
-      timestamp: Date.now(),
-      ttl: customTtl ?? ttl,
-    }
+  // ── Key-value cache ──────────────────────────────────────────────────────────
 
-    keyValueCache.set(key, entry)
-    enforceCacheSizeLimit(keyValueCache, maxSize)
+  function cacheSet<T>(key: string, data: T, customTtl?: number): void {
+    lsSet(kvPrefix, key, { data, timestamp: Date.now(), ttl: customTtl ?? ttl }, maxEntries)
   }
 
-  /**
-   * Get data by key
-   */
   function cacheGet<T>(key: string): T | null {
-    const entry = keyValueCache.get(key) as CacheEntry<T> | undefined
-
-    if (!entry) {
+    const entry = lsGet<T>(kvPrefix, key)
+    if (entry == null) {
       cacheStats.keyValueMisses++
       return null
     }
-
     if (!isEntryValid(entry)) {
-      keyValueCache.delete(key)
+      lsDelete(kvPrefix, key)
       cacheStats.keyValueMisses++
       return null
     }
-
+    touchEntry(`${kvPrefix}${key}`)
     cacheStats.keyValueHits++
     return entry.data
   }
 
-  /**
-   * Check if key exists and is valid
-   */
   function cacheHas(key: string): boolean {
-    const entry = keyValueCache.get(key)
-    return entry ? isEntryValid(entry) : false
-  }
-
-  /**
-   * Remove specific key from cache
-   */
-  function cacheDelete(key: string): boolean {
-    return keyValueCache.delete(key)
-  }
-
-  /**
-   * Cache a Supabase query result
-   */
-  function cacheQuery<T>(query: QueryCacheKey, data: T, customTtl?: number): void {
-    const queryHash = generateQueryHash(query)
-    const entry: CacheEntry<T> = {
-      data,
-      timestamp: Date.now(),
-      ttl: customTtl ?? ttl,
-    }
-
-    queryCache.set(queryHash, entry)
-    enforceCacheSizeLimit(queryCache, maxSize)
-  }
-
-  /**
-   * Get cached query result
-   */
-  function getCachedQuery<T>(query: QueryCacheKey): T | null {
-    const queryHash = generateQueryHash(query)
-    const entry = queryCache.get(queryHash) as CacheEntry<T> | undefined
-
-    if (!entry) {
-      cacheStats.queryMisses++
-      return null
-    }
-
+    const entry = lsGet(kvPrefix, key)
+    if (entry == null)
+      return false
     if (!isEntryValid(entry)) {
-      queryCache.delete(queryHash)
+      lsDelete(kvPrefix, key)
+      return false
+    }
+    touchEntry(`${kvPrefix}${key}`)
+    return true
+  }
+
+  function cacheDelete(key: string): boolean {
+    return lsDelete(kvPrefix, key)
+  }
+
+  // ── Query cache ──────────────────────────────────────────────────────────────
+
+  function cacheQuery<T>(query: QueryCacheKey, data: T, customTtl?: number): void {
+    const hash = generateQueryHash(query)
+    // Query entries tend to be small; evict at a generous cap if quota is hit
+    lsSet(qPrefix, hash, { data, timestamp: Date.now(), ttl: customTtl ?? ttl }, maxEntries)
+  }
+
+  function getCachedQuery<T>(query: QueryCacheKey): T | null {
+    const hash = generateQueryHash(query)
+    const entry = lsGet<T>(qPrefix, hash)
+    if (entry == null) {
       cacheStats.queryMisses++
       return null
     }
-
+    if (!isEntryValid(entry)) {
+      lsDelete(qPrefix, hash)
+      cacheStats.queryMisses++
+      return null
+    }
+    touchEntry(`${qPrefix}${hash}`)
     cacheStats.queryHits++
     return entry.data
   }
 
-  /**
-   * Check if query is cached and valid
-   */
   function hasQuery(query: QueryCacheKey): boolean {
-    const queryHash = generateQueryHash(query)
-    const entry = queryCache.get(queryHash)
-    return entry ? isEntryValid(entry) : false
+    const hash = generateQueryHash(query)
+    const entry = lsGet(qPrefix, hash)
+    if (entry == null)
+      return false
+    if (!isEntryValid(entry)) {
+      lsDelete(qPrefix, hash)
+      return false
+    }
+    touchEntry(`${qPrefix}${hash}`)
+    return true
   }
 
-  /**
-   * Invalidate cache entries by pattern or table
-   */
+  // ── Invalidation ─────────────────────────────────────────────────────────────
+
   function invalidateByPattern(pattern: string | RegExp): number {
     let removed = 0
-
-    // Invalidate key-value cache
-    for (const key of keyValueCache.keys()) {
-      if (typeof pattern === 'string' ? key.includes(pattern) : pattern.test(key)) {
-        keyValueCache.delete(key)
+    for (const key of lsKeys(kvPrefix)) {
+      const matches = typeof pattern === 'string' ? key.includes(pattern) : pattern.test(key)
+      if (matches) {
+        lsDelete(kvPrefix, key)
         removed++
       }
     }
-
     return removed
   }
 
-  /**
-   * Invalidate all queries for a specific table
-   */
   function invalidateTable(tableName: string): number {
     let removed = 0
-
-    for (const [queryHash, _entry] of queryCache.entries()) {
-      // Decode the hash to check the table name
+    for (const hash of lsKeys(qPrefix)) {
       try {
-        const queryData = JSON.parse(atob(queryHash)) as QueryCacheKey
+        const queryData = JSON.parse(atob(hash)) as QueryCacheKey
         if (queryData.table === tableName) {
-          queryCache.delete(queryHash)
+          lsDelete(qPrefix, hash)
           removed++
         }
       }
       catch {
-        // If we can't decode the hash, it's probably corrupted, remove it
-        queryCache.delete(queryHash)
+        lsDelete(qPrefix, hash)
         removed++
       }
     }
-
     return removed
   }
 
-  /**
-   * Clear all cache
-   */
   function clearCache(): void {
-    keyValueCache.clear()
-    queryCache.clear()
+    lsClearPrefix(kvPrefix)
+    lsClearPrefix(qPrefix)
     cacheStats.keyValueHits = 0
     cacheStats.keyValueMisses = 0
     cacheStats.queryHits = 0
@@ -309,42 +471,33 @@ export function useCache(config: CacheConfig = {}) {
     cacheStats.lastCleanup = Date.now()
   }
 
-  /**
-   * Dispose of cleanup timer
-   */
   function dispose(): void {
-    if (cleanupTimer !== null && typeof window !== 'undefined') {
-      window.clearInterval(cleanupTimer)
-      cleanupTimer = null
-    }
+    activeLocalStoragePrefixes.delete(storagePrefix)
   }
 
-  /**
-   * Get cache statistics
-   */
   function getStats() {
     return {
       ...cacheStats,
-      keyValueSize: keyValueCache.size,
-      querySize: queryCache.size,
+      keyValueSize: lsSize(kvPrefix),
+      querySize: lsSize(qPrefix),
       keyValueHitRate: cacheStats.keyValueHits / (cacheStats.keyValueHits + cacheStats.keyValueMisses) || 0,
       queryHitRate: cacheStats.queryHits / (cacheStats.queryHits + cacheStats.queryMisses) || 0,
     }
   }
 
   return {
-    // Key-value cache methods
+    // Key-value
     set: cacheSet,
     get: cacheGet,
     has: cacheHas,
     delete: cacheDelete,
 
-    // Query cache methods
+    // Query
     cacheQuery,
     getCachedQuery,
     hasQuery,
 
-    // Invalidation methods
+    // Invalidation
     invalidateByPattern,
     invalidateTable,
     clearCache,
@@ -393,9 +546,6 @@ export function useCachedFetch<T = unknown>(
     return toValue(enabled)
   }
 
-  /**
-   * Execute the Supabase query against the current resolved query value.
-   */
   async function executeQuery(q: QueryCacheKey): Promise<T | null> {
     try {
       let queryBuilder = supabase.from(q.table).select(q.select ?? '*')
@@ -434,14 +584,12 @@ export function useCachedFetch<T = unknown>(
                 queryBuilder = queryBuilder.lte(key, value)
                 break
               case 'in':
-                if (Array.isArray(value)) {
+                if (Array.isArray(value))
                   queryBuilder = queryBuilder.in(key, value)
-                }
                 break
               case 'is':
-                if (value === null || typeof value === 'boolean') {
+                if (value === null || typeof value === 'boolean')
                   queryBuilder = queryBuilder.is(key, value)
-                }
                 break
               default:
                 queryBuilder = queryBuilder.eq(key, value)
@@ -452,23 +600,19 @@ export function useCachedFetch<T = unknown>(
 
       if (q.orderBy) {
         for (const [column, direction] of Object.entries(q.orderBy)) {
-          queryBuilder = queryBuilder.order(column, {
-            ascending: direction === 'asc',
-          })
+          queryBuilder = queryBuilder.order(column, { ascending: direction === 'asc' })
         }
       }
 
-      if (q.limit != null && q.limit > 0) {
+      if (q.limit != null && q.limit > 0)
         queryBuilder = queryBuilder.limit(q.limit)
-      }
 
       const result = q.single
         ? await queryBuilder.single()
         : await queryBuilder
 
-      if (result.error) {
+      if (result.error)
         throw result.error
-      }
 
       return result.data as T
     }
@@ -519,23 +663,19 @@ export function useCachedFetch<T = unknown>(
     })
   }
 
-  // Re-fetch whenever the resolved query shape changes (covers prop/route changes).
   watch(
     () => JSON.stringify(resolvedQuery()),
     () => {
-      if (isEnabled()) {
+      if (isEnabled())
         void fetch()
-      }
     },
   )
 
-  // Re-fetch when enabled flips false → true.
   watch(
     () => isEnabled(),
     (nowEnabled) => {
-      if (nowEnabled) {
+      if (nowEnabled)
         void fetch()
-      }
     },
   )
 

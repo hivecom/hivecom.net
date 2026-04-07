@@ -374,8 +374,6 @@ export async function uploadTopicIcon(
       .from(TOPIC_ICON_BUCKET)
       .getPublicUrl(filePath)
 
-    invalidateTopicIconCache(topicId)
-
     return {
       success: true,
       url: urlData.publicUrl,
@@ -392,98 +390,40 @@ export async function uploadTopicIcon(
 
 /**
  * Gets the public URL for a topic's icon.
- * Tries multiple extensions, prioritizing WebP.
- * Results are cached in localStorage to avoid repeated storage API calls.
+ * Lists the topic's folder once and picks the best available extension.
+ * This is a pure fetch — caching is handled by the useTopicIcon composable.
  */
 export async function getTopicIconUrl(
   supabaseClient: SupabaseClient<Database>,
   topicId: string,
 ): Promise<string | null> {
-  const cacheKey = `topic-icon:${topicId}`
-  const cacheTTL = 60 * 60 * 1000 // 1 hour
-
-  if (typeof window !== 'undefined') {
-    const cached = window.localStorage.getItem(cacheKey)
-    if (cached !== null && cached.length > 0) {
-      try {
-        const parsed = JSON.parse(cached) as { url: string | null, timestamp: number }
-        const { url, timestamp } = parsed
-        const isExpired = Date.now() - timestamp > cacheTTL
-
-        if (!isExpired) {
-          return url
-        }
-      }
-      catch {
-        window.localStorage.removeItem(cacheKey)
-      }
-    }
-  }
-
   try {
-    const extensions = ['webp', 'png', 'jpg', 'jpeg']
     const folder = `topics/${topicId}`
+    // Preferred extension order — one list() call covers all of them
+    const preferredOrder = ['icon.webp', 'icon.png', 'icon.jpg', 'icon.jpeg']
 
-    for (const extension of extensions) {
-      const { data, error } = await supabaseClient.storage
-        .from(TOPIC_ICON_BUCKET)
-        .list(folder, {
-          search: `icon.${extension}`,
-        })
+    const { data, error } = await supabaseClient.storage
+      .from(TOPIC_ICON_BUCKET)
+      .list(folder)
 
-      if (error === null && data !== null && data.length > 0) {
-        const filePath = `${folder}/icon.${extension}`
-        const { data: urlData } = supabaseClient.storage
-          .from(TOPIC_ICON_BUCKET)
-          .getPublicUrl(filePath)
+    if (error !== null || data === null)
+      return null
 
-        const iconUrl = urlData.publicUrl
+    const fileNames = new Set(data.map(f => f.name))
+    const found = preferredOrder.find(name => fileNames.has(name))
 
-        if (typeof window !== 'undefined') {
-          try {
-            window.localStorage.setItem(cacheKey, JSON.stringify({
-              url: iconUrl,
-              timestamp: Date.now(),
-            }))
-          }
-          catch {
-            // localStorage might be full
-          }
-        }
+    if (found == null)
+      return null
 
-        return iconUrl
-      }
-    }
+    const { data: urlData } = supabaseClient.storage
+      .from(TOPIC_ICON_BUCKET)
+      .getPublicUrl(`${folder}/${found}`)
 
-    // No icon found - cache the miss
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(cacheKey, JSON.stringify({
-          url: null,
-          timestamp: Date.now(),
-        }))
-      }
-      catch {
-        // localStorage might be full
-      }
-    }
-
-    return null
+    return urlData.publicUrl
   }
   catch (error) {
     console.error('Error getting topic icon URL:', error)
     return null
-  }
-}
-
-/**
- * Invalidates the cached topic icon URL.
- * Should be called when a topic icon is uploaded or deleted.
- */
-export function invalidateTopicIconCache(topicId: string): void {
-  if (typeof window !== 'undefined') {
-    const cacheKey = `topic-icon:${topicId}`
-    window.localStorage.removeItem(cacheKey)
   }
 }
 
@@ -520,7 +460,6 @@ export async function deleteTopicIcon(
         return { success: false, error: error.message }
       }
 
-      invalidateTopicIconCache(topicId)
       return { success: true }
     }
 

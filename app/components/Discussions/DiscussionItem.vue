@@ -1,25 +1,13 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion, ThreadNode } from './Discussion.types'
-import { Button, Flex, pushToast, Sheet } from '@dolanske/vui'
+import { Flex, pushToast, Sheet } from '@dolanske/vui'
 import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'
 import UserAvatar from '../Shared/UserAvatar.vue'
 import UserName from '../Shared/UserName.vue'
 import { DISCUSSION_KEYS } from './Discussion.keys'
+import DiscussionThreadToggle from './DiscussionThreadToggle.vue'
 import DiscussionModelComment from './models/DiscussionModelComment.vue'
 import DiscussionModelForum from './models/DiscussionModelForum.vue'
-
-interface Props {
-  data: Comment
-  model?: 'comment' | 'forum'
-  // Flat mode: the node for this comment (used for inline reply preview)
-  threadNode?: ThreadNode
-  // Threaded mode: pre-resolved direct children to render recursively
-  children?: ThreadNode[]
-  depth?: number
-  showOfftopic?: boolean
-  showThreadReplies?: boolean
-  staggerIndex?: number
-}
 
 const {
   data,
@@ -28,12 +16,32 @@ const {
   children = [],
   depth = 0,
   showOfftopic = false,
-  showThreadReplies = false,
   staggerIndex,
+  idPrefix = 'comment',
 } = defineProps<Props>()
 
+const loadChildren = inject(DISCUSSION_KEYS.loadChildren)
+
+interface Props {
+  data: Comment
+  model?: 'comment' | 'forum'
+  /** ID prefix for the wrapper element. Defaults to 'comment'. Use a different
+   *  value (e.g. 'pinned-comment') for pinned duplicates so querySelector
+   *  can distinguish the list instance from the pinned banner. */
+  idPrefix?: string
+  // Flat mode: the node for this comment (used for inline reply preview)
+  threadNode?: ThreadNode
+  // Threaded mode: pre-resolved direct children to render recursively
+  children?: ThreadNode[]
+  depth?: number
+  showOfftopic?: boolean
+  staggerIndex?: number
+}
+
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
+const showThreadRepliesInjected = inject(DISCUSSION_KEYS.showThreadReplies, ref(false))
 const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
+const replyCountMap = inject(DISCUSSION_KEYS.replyCountMap)
 const isPinned = computed(() => discussion?.value?.pinned_reply_id === data.id)
 
 const self = useTemplateRef('self')
@@ -98,30 +106,86 @@ const sourceChildren = computed((): ThreadNode[] =>
   children.length > 0 ? children : (threadNode?.children ?? []),
 )
 
+// Whether children have been requested at least once (threaded lazy load).
+// Separate from sourceChildren.length > 0 because a root can legitimately
+// have zero children even after a successful fetch.
+const childrenRequested = ref(children.length > 0)
+
 // Filter for off-topic visibility
 const visibleChildren = computed((): ThreadNode[] =>
   sourceChildren.value.filter(n => !n.comment.is_offtopic || showOfftopic),
 )
 
-const hasReplies = computed(() => visibleChildren.value.length > 0)
-
-// Flat mode: expand state seeded from the per-discussion `showThreadReplies`
-// setting but overridable per-item by the user clicking the toggle.
-const repliesExpanded = ref(showThreadReplies)
-
-// Keep in sync when the parent setting changes (unless the user has already
-// toggled this item manually - handled by the click itself overriding the ref)
-watch(
-  () => showThreadReplies,
-  (val) => { repliesExpanded.value = val },
+const hasReplies = computed(() =>
+  visibleChildren.value.length > 0 || (replyCountMap?.value?.get(data.id) ?? 0) > 0,
 )
 
-// Threaded mode: whether this node's sub-tree is folded closed
-const threadCollapsed = ref(false)
+// Flat mode: sheet always starts closed - only opens on explicit user click.
+const repliesExpanded = ref(false)
 
-function toggleThreadCollapsed() {
+// When the flat-mode sheet opens, lazily load children if not yet fetched.
+watch(repliesExpanded, (open) => {
+  if (open && !childrenRequested.value && loadChildren != null) {
+    childrenRequested.value = true
+    void loadChildren(data.id)
+  }
+})
+
+// Threaded mode: whether this node's sub-tree is folded closed.
+// - Root replies (depth 0): driven by the showThreadReplies setting.
+// - Sub-replies (depth > 0): auto-expanded unless they have more than 5 replies,
+//   in which case they follow the same setting as roots.
+const threadCollapsed = ref((() => {
+  if (viewMode.value !== 'threaded')
+    return false
+  if (depth > 0) {
+    const count = replyCountMap?.value?.get(data.id) ?? 0
+    return count > 5 ? !showThreadRepliesInjected.value : false
+  }
+  return !showThreadRepliesInjected.value
+})())
+
+async function toggleThreadCollapsed() {
+  if (threadCollapsed.value) {
+    // Expanding: lazily load children if not yet fetched
+    if (!childrenRequested.value && loadChildren != null) {
+      childrenRequested.value = true
+      await loadChildren(data.id)
+    }
+  }
   threadCollapsed.value = !threadCollapsed.value
 }
+
+// ── Lazy child loading (threaded mode) ────────────────────────────────────────
+
+const wrapperEl = useTemplateRef<HTMLDivElement>('wrapperEl')
+
+// Becomes true the first time this item enters the viewport.
+// The observer stops itself after the first intersection so it only fires once.
+const isVisible = ref(false)
+const { stop: stopVisibilityObserver } = useIntersectionObserver(
+  wrapperEl,
+  ([entry]) => {
+    if (entry?.isIntersecting) {
+      isVisible.value = true
+      stopVisibilityObserver()
+    }
+  },
+)
+
+// Trigger child fetch when:
+//   • the item scrolls into view while already in threaded mode, OR
+//   • the mode switches to threaded while the item is already visible.
+// Guards prevent double-fetching and respect the collapsed state.
+watch(
+  [isVisible, viewMode],
+  ([visible, mode]) => {
+    if (!visible || mode !== 'threaded' || childrenRequested.value || loadChildren == null || threadCollapsed.value)
+      return
+    childrenRequested.value = true
+    void loadChildren(data.id)
+  },
+)
 
 // ── Showing replies in a sheet ───────────────────────────────────
 
@@ -135,7 +199,8 @@ function stripReplyData(entry: Comment) {
 
 <template>
   <div
-    :id="`comment-${data.id}`"
+    :id="`${idPrefix}-${data.id}`"
+    ref="wrapperEl"
     class="discussion-comment-wrapper"
     :class="data.is_offtopic && 'discussion-comment-wrapper--offtopic'"
     :style="staggerIndex != null ? { '--stagger-index': staggerIndex } : undefined"
@@ -144,7 +209,7 @@ function stripReplyData(entry: Comment) {
       v-if="model === 'comment'"
       ref="self"
       :data
-      :thread-reply-count="viewMode === 'flat' ? visibleChildren.length : undefined"
+      :thread-reply-count="viewMode === 'flat' ? (replyCountMap?.get(data.id) ?? visibleChildren.length) : undefined"
       :class="{ 'discussion-comment--highlight': isActive,
                 'discussion-comment--pinned': isPinned }"
       @copy-link="copyLink"
@@ -155,7 +220,7 @@ function stripReplyData(entry: Comment) {
       v-else
       ref="self"
       :data
-      :thread-reply-count="viewMode === 'flat' ? visibleChildren.length : undefined"
+      :thread-reply-count="viewMode === 'flat' ? (replyCountMap?.get(data.id) ?? visibleChildren.length) : undefined"
       :class="{ 'discussion-forum--highlight': isActive,
                 'discussion-forum--pinned': isPinned }"
       @copy-link="copyLink"
@@ -173,7 +238,7 @@ function stripReplyData(entry: Comment) {
               <UserName inherit :user-id="data.created_by" />'s thread
             </h4>
             <p class="text-color-lighter">
-              {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
+              {{ replyCountMap?.get(data.id) ?? visibleChildren.length }} {{ (replyCountMap?.get(data.id) ?? visibleChildren.length) === 1 ? 'reply' : 'replies' }}
             </p>
           </Flex>
         </Flex>
@@ -207,26 +272,11 @@ function stripReplyData(entry: Comment) {
     <!-- MarkdownRenderer never re-suspends and the skeleton/fade-in flash doesn't appear. -->
     <div v-show="viewMode === 'threaded' && hasReplies">
       <!-- Collapsed summary pill -->
-      <Flex
+      <DiscussionThreadToggle
         v-if="threadCollapsed"
-        x-center
-        class="discussion-comment-wrapper__thread-toggle discussion-comment-wrapper__thread-toggle--threaded"
-      >
-        <Button
-          plain
-          size="s"
-          @click="toggleThreadCollapsed"
-        >
-          {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
-          <template #end>
-            <Icon
-              name="ph:caret-down"
-              :size="12"
-              class="discussion-comment-wrapper__thread-caret"
-            />
-          </template>
-        </Button>
-      </Flex>
+        :count="replyCountMap?.get(data.id) ?? visibleChildren.length"
+        @toggle="toggleThreadCollapsed"
+      />
 
       <!-- Expanded children with clickable left border line -->
       <div
@@ -249,7 +299,6 @@ function stripReplyData(entry: Comment) {
           :children="child.children"
           :depth="depth + 1"
           :show-offtopic
-          :show-thread-replies
         />
       </div>
     </div>
@@ -326,45 +375,6 @@ function stripReplyData(entry: Comment) {
 
     &:hover::after {
       background-color: var(--color-accent);
-    }
-  }
-
-  &__thread-toggle {
-    width: 100%;
-    position: relative;
-
-    &--threaded {
-      margin-top: var(--space-xs);
-      margin-bottom: var(--space-s);
-    }
-
-    &:before {
-      content: '';
-      display: block;
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      left: 0;
-      right: 0;
-      border-bottom: 2px dashed var(--color-border-weak);
-      z-index: 1;
-    }
-
-    &:after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      height: 4px;
-      width: 80px;
-      background-color: var(--color-bg);
-      z-index: 1;
-    }
-
-    :deep(.vui-button) {
-      position: relative;
-      z-index: 3;
     }
   }
 }

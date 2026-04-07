@@ -21,6 +21,13 @@ const { topics: forumTopics } = useDataForumTopics()
 const { settings } = useDataUserSettings()
 const showArchived = computed(() => settings.value.show_forum_archived)
 
+const topicById = computed(() => {
+  const map = new Map<string, string>()
+  for (const t of forumTopics.value)
+    map.set(t.id, t.name)
+  return map
+})
+
 // True when the scope is restricted to forum types (no nav items, pre-populate with topics)
 const isForumScoped = computed(() =>
   scope.value != null
@@ -220,9 +227,11 @@ const NAV_GROUP_ICONS: Record<string, string> = Object.fromEntries(
 
 function dbResultToCommand(result: import('@/composables/useDataSearch').SearchResult): Command {
   const archivedPrefix = result.is_archived ? '[Archived] ' : ''
+  const topicName = result.topic_id != null ? topicById.value.get(result.topic_id) : null
+  const body = [topicName, result.subtitle].filter(s => s != null && s !== '').join(' · ')
   return {
     title: result.title,
-    description: archivedPrefix + (result.subtitle ?? '') || undefined,
+    description: archivedPrefix + body || undefined,
     group: TYPE_META[result.result_type]?.group ?? result.result_type,
     handler: () => {
       void router.push(result.url)

@@ -481,31 +481,7 @@ watch(isPageTitleVisible, () => {
   scrollHeaderReady.value = true
 }, { once: true })
 
-// Track if user is at the bottom of the page with about half a screen size of leeway
-const { y } = useWindowScroll()
-
-const isUserAtBottom = computed(() => {
-  const scrollPosition = y.value
-
-  if (scrollPosition === 0)
-    return false
-
-  const windowHeight = window.innerHeight
-  const documentHeight = document.documentElement.scrollHeight
-  return scrollPosition + windowHeight >= documentHeight - windowHeight
-})
-
-function scrollHandler() {
-  if (isUserAtBottom.value) {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-  else {
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
-  }
-}
-
 const page = useTemplateRef('page')
-const { height: contentHeight } = useElementSize(page)
 
 // If post is NSFW and user has disabled NSFW content, go back to the previous
 // page. This is to prevent users from accidentally seeing NSFW content if they
@@ -813,7 +789,7 @@ function revealNsfw() {
         placeholder="Write your reply to this thread..."
         @reply-submitted="handleReplySubmitted"
       />
-
+      <!-- Removing this in place of the new timeline.
       <div v-show="contentHeight > 1600" class="forum-post__fast-travel">
         <Tooltip>
           <Button size="s" plain square @click="scrollHandler">
@@ -824,6 +800,7 @@ function revealNsfw() {
           </template>
         </Tooltip>
       </div>
+       -->
     </template>
 
     <!-- Nothing found or an error -->

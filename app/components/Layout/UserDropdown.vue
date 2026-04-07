@@ -2,6 +2,7 @@
 import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Spinner, Tooltip } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
+import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useDataUser } from '@/composables/useDataUser'
 
 const user = useSupabaseUser()

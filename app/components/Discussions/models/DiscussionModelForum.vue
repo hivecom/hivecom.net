@@ -6,6 +6,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import ReactionsList from '@/components/Reactions/ReactionsList.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
@@ -14,6 +15,7 @@ import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
+import SharedUserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import UserRole from '@/components/Shared/UserRole.vue'
@@ -102,7 +104,34 @@ const country = computed(() => getCountryInfo(user.value?.country))
 const setReplyToComment = inject(DISCUSSION_KEYS.setReplyToComment) as (data: Comment) => void
 const setQuoteOfComment = inject(DISCUSSION_KEYS.setQuoteOfComment) as (data: Comment) => void
 
-const replyMentionIds = computed(() => extractMentionIds(data.value.reply?.markdown ?? ''))
+// ── Lazy-load missing reply ───────────────────────────────────────────────────
+
+// If the comment has a reply_to_id but the reply wasn't joined in the initial
+// query (e.g. it wasn't in the loaded window), fetch it on demand.
+const fetchedReply = ref<import('../Discussion.types').RawComment | null>(null)
+const replyLoading = ref(false)
+
+const resolvedReply = computed(() => data.value.reply ?? fetchedReply.value)
+
+watch(
+  () => data.value.reply_to_id,
+  async (replyToId) => {
+    if (!replyToId || data.value.reply != null || fetchedReply.value != null || replyLoading.value)
+      return
+    replyLoading.value = true
+    const { data: row } = await supabase
+      .from('discussion_replies')
+      .select('id, created_at, created_by, modified_at, modified_by, discussion_id, markdown, reply_to_id, is_deleted, is_nsfw, is_offtopic, reactions')
+      .eq('id', replyToId)
+      .single()
+    if (row)
+      fetchedReply.value = row as import('../Discussion.types').RawComment
+    replyLoading.value = false
+  },
+  { immediate: true },
+)
+
+const replyMentionIds = computed(() => extractMentionIds(resolvedReply.value?.markdown ?? ''))
 const { users: replyMentionUsers } = useBulkDataUser(replyMentionIds)
 const replyMentionLookup = computed<Record<string, string>>(() => {
   const lookup: Record<string, string> = {}
@@ -286,7 +315,6 @@ const editedAtFormatted = computed(() => {
   <div
     class="discussion-forum"
     :class="{
-      'discussion-forum--highlight': data.is_offtopic,
       'discussion-forum--pinned': isPinned,
     }"
   >
@@ -295,7 +323,7 @@ const editedAtFormatted = computed(() => {
       <Flex column x-center y-center gap="s">
         <SharedUserAvatar :user-id="data.created_by" size="l" linked />
         <Flex wrap gap="xxs" y-center x-center>
-          <UserName :user-id="data.created_by" show-preview />
+          <UserName :user-id="data.created_by" />
           <BadgeCircle v-if="data.created_by === discussion?.created_by">
             <span class="text-xxs text-color-light">OP</span>
           </BadgeCircle>
@@ -329,7 +357,7 @@ const editedAtFormatted = computed(() => {
           </p>
         </Flex>
         <p class="author-meta mt-xs text-color-lightest">
-          <CountDisplay :value="discussionCount ?? 0" /> {{ (discussionCount ?? 0) === 1 ? 'discussion' : 'discussions' }} / <CountDisplay :value="replyCount ?? 0" /> {{ (replyCount ?? 0) === 1 ? 'reply' : 'replies' }}
+          <CountDisplay class="text-s" :value="discussionCount ?? 0" /> {{ (discussionCount ?? 0) === 1 ? 'discussion' : 'discussions' }} / <CountDisplay class="text-s" :value="replyCount ?? 0" /> {{ (replyCount ?? 0) === 1 ? 'reply' : 'replies' }}
         </p>
         <Divider v-if="user?.introduction || user?.created_at || country" />
         <p v-if="user?.introduction" class="text-s text-center">
@@ -395,7 +423,7 @@ const editedAtFormatted = computed(() => {
             <Flex gap="xs" y-center>
               <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
               <Flex wrap gap="xxs" y-center>
-                <UserName :user-id="data.created_by" size="s" show-preview />
+                <UserName :user-id="data.created_by" size="s" />
                 <BadgeCircle v-if="data.created_by === discussion?.created_by">
                   <span class="text-xxs text-color-light">OP</span>
                 </BadgeCircle>
@@ -485,17 +513,22 @@ const editedAtFormatted = computed(() => {
           </Badge>
 
           <!-- Reply information -->
-          <template v-if="data.reply && viewMode !== 'threaded'">
-            <Alert v-if="!data.reply.is_deleted" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
-              <p v-if="data.reply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
-                <UserName size="s" show-preview :user-id="data.reply.created_by" /> wrote:
+          <template v-if="(resolvedReply != null || replyLoading) && viewMode !== 'threaded'">
+            <Alert v-if="replyLoading && resolvedReply == null" icon-align="start" class="discussion-forum__reply">
+              <p class="discussion-forum__reply-user text-color-lighter">
+                Loading...
+              </p>
+            </Alert>
+            <Alert v-else-if="resolvedReply && !resolvedReply.is_deleted" icon-align="start" role="button" class="discussion-forum__reply" @click="emit('scrollReply')">
+              <p v-if="resolvedReply.created_by !== currentUserData?.id" class="discussion-forum__reply-user">
+                <UserName size="s" show-preview :user-id="resolvedReply.created_by" /> wrote:
               </p>
               <p v-else class="discussion-forum__reply-user">
                 You wrote:
               </p>
-              <MarkdownPreview class="text-color-light" :markdown="data.reply.markdown" :mention-lookup="replyMentionLookup" :max-length="164" />
+              <MarkdownPreview class="text-color-light" :markdown="resolvedReply.markdown" :mention-lookup="replyMentionLookup" :max-length="164" />
             </Alert>
-            <div v-else class="discussion-forum__reply discussion-forum__reply--deleted">
+            <div v-else-if="resolvedReply" class="discussion-forum__reply discussion-forum__reply--deleted">
               <Icon name="ph:trash" />
               <p class="discussion-forum__reply-user">
                 Original reply was deleted
@@ -548,8 +581,8 @@ const editedAtFormatted = computed(() => {
           </p>
 
           <div class="discussion-forum__reactions">
-            <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
-            <ReactionsSelect v-if="userId && !showNSFWWarning && displayReactions.length > 0" @reaction="(emote) => toggleReaction(emote)" />
+            <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="toggleReaction" />
+            <ReactionsSelect v-if="userId && !showNSFWWarning && displayReactions.length > 0" @reaction="toggleReaction" />
           </div>
         </Flex>
       </template>
@@ -562,8 +595,8 @@ const editedAtFormatted = computed(() => {
         <!-- Empty div makes sure reactions are forced to flex end -->
         <div v-else />
         <div class="discussion-forum__reactions">
-          <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="(emote, provider) => toggleReaction(emote, provider)" />
-          <ReactionsSelect v-if="userId && !showNSFWWarning" @reaction="(emote) => toggleReaction(emote)" />
+          <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="toggleReaction" />
+          <ReactionsSelect v-if="userId && !showNSFWWarning" @reaction="toggleReaction" />
         </div>
       </div>
     </div>

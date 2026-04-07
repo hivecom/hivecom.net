@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Avatar, Button, Divider, Flex, Sheet, Spinner } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
+import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { useDataUser } from '@/composables/useDataUser'
 
