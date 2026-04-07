@@ -34,7 +34,7 @@ import { useCache } from './useCache'
 
 const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
 
-export const PAGE_SIZE_FORUM = 5
+export const PAGE_SIZE_FORUM = 10
 export const PAGE_SIZE_COMMENT = 50
 
 // ---------------------------------------------------------------------------

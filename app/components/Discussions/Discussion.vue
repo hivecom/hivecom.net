@@ -468,16 +468,14 @@ const timelineGapRange = computed((): { start: string, end: string } | null => {
     if (afterIdx !== -1) {
       const afterComment = list[afterIdx]
       if (afterComment != null) {
-        // When there are no more pages after the tail block, the gap is the only
-        // unloaded region - cap the dashed zone at the first tail-block reply so
-        // the timeline accurately reflects what is loaded vs. what isn't.
-        // When hasMore is still true the tail end does not equal the discussion
-        // end, so we conservatively extend the dashed region all the way to end.
-        if (!hasMore.value) {
-          const firstTailComment = list[afterIdx + 1]
-          if (firstTailComment != null)
-            return { start: afterComment.created_at, end: firstTailComment.created_at }
-        }
+        // Always cap the dashed zone at the first tail-block reply - the tail
+        // is already loaded, so painting dashes over it is wrong regardless of
+        // whether hasMore is still true. When hasMore IS true, Case 2 below
+        // will independently show a trailing dashed zone after the tail block.
+        const firstTailComment = list[afterIdx + 1]
+        if (firstTailComment != null)
+          return { start: afterComment.created_at, end: firstTailComment.created_at }
+        // No tail item found (edge case) - fall back to discussion end.
         return { start: afterComment.created_at, end }
       }
     }
@@ -1017,7 +1015,6 @@ function isNodeVisible(node: ThreadNode): boolean {
               :model="props.model"
               :thread-node="threadNodeMap.get(comment.id)"
               :show-offtopic="showOfftopic"
-              :show-thread-replies="showThreadReplies"
               :stagger-index="Math.min(index, 10)"
             />
             <!-- Offtopic banner: appears after the last visible comment before a hidden offtopic run -->
@@ -1032,7 +1029,7 @@ function isNodeVisible(node: ThreadNode): boolean {
             </div>
             <!-- Gap banner: appears after the last item of the early block -->
             <DiscussionGapBanner
-              v-if="gap != null && comment.id === gap.afterId"
+              v-if="gap != null && gap.count > 0 && comment.id === gap.afterId"
               :count="gap.count"
               :loading="loadingGap"
               @load-up="loadGapFromBottom()"
@@ -1066,7 +1063,7 @@ function isNodeVisible(node: ThreadNode): boolean {
             />
             <!-- Gap banner (threaded mode - roots only pagination) -->
             <DiscussionGapBanner
-              v-if="gap != null && node.comment.id === gap.afterId"
+              v-if="gap != null && gap.count > 0 && node.comment.id === gap.afterId"
               :count="gap.count"
               :loading="loadingGap"
               @load-up="loadGapFromBottom()"

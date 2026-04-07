@@ -15,7 +15,6 @@ const {
   children = [],
   depth = 0,
   showOfftopic = false,
-  showThreadReplies = false,
   staggerIndex,
   idPrefix = 'comment',
 } = defineProps<Props>()
@@ -35,11 +34,11 @@ interface Props {
   children?: ThreadNode[]
   depth?: number
   showOfftopic?: boolean
-  showThreadReplies?: boolean
   staggerIndex?: number
 }
 
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
+const showThreadRepliesInjected = inject(DISCUSSION_KEYS.showThreadReplies, ref(false))
 const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
 const replyCountMap = inject(DISCUSSION_KEYS.replyCountMap)
 const isPinned = computed(() => discussion?.value?.pinned_reply_id === data.id)
@@ -116,18 +115,12 @@ const visibleChildren = computed((): ThreadNode[] =>
   sourceChildren.value.filter(n => !n.comment.is_offtopic || showOfftopic),
 )
 
-const hasReplies = computed(() => visibleChildren.value.length > 0)
-
-// Flat mode: expand state seeded from the per-discussion `showThreadReplies`
-// setting but overridable per-item by the user clicking the toggle.
-const repliesExpanded = ref(showThreadReplies)
-
-// Keep in sync when the parent setting changes (unless the user has already
-// toggled this item manually - handled by the click itself overriding the ref)
-watch(
-  () => showThreadReplies,
-  (val) => { repliesExpanded.value = val },
+const hasReplies = computed(() =>
+  visibleChildren.value.length > 0 || (replyCountMap?.value?.get(data.id) ?? 0) > 0,
 )
+
+// Flat mode: sheet always starts closed - only opens on explicit user click.
+const repliesExpanded = ref(false)
 
 // When the flat-mode sheet opens, lazily load children if not yet fetched.
 watch(repliesExpanded, (open) => {
@@ -137,8 +130,19 @@ watch(repliesExpanded, (open) => {
   }
 })
 
-// Threaded mode: whether this node's sub-tree is folded closed
-const threadCollapsed = ref(false)
+// Threaded mode: whether this node's sub-tree is folded closed.
+// - Root replies (depth 0): driven by the showThreadReplies setting.
+// - Sub-replies (depth > 0): auto-expanded unless they have more than 5 replies,
+//   in which case they follow the same setting as roots.
+const threadCollapsed = ref((() => {
+  if (viewMode.value !== 'threaded')
+    return false
+  if (depth > 0) {
+    const count = replyCountMap?.value?.get(data.id) ?? 0
+    return count > 5 ? !showThreadRepliesInjected.value : false
+  }
+  return !showThreadRepliesInjected.value
+})())
 
 async function toggleThreadCollapsed() {
   if (threadCollapsed.value) {
@@ -277,7 +281,7 @@ function stripReplyData(entry: Comment) {
           size="s"
           @click="toggleThreadCollapsed"
         >
-          {{ visibleChildren.length }} {{ visibleChildren.length === 1 ? 'reply' : 'replies' }}
+          {{ replyCountMap?.get(data.id) ?? visibleChildren.length }} {{ (replyCountMap?.get(data.id) ?? visibleChildren.length) === 1 ? 'reply' : 'replies' }}
           <template #end>
             <Icon
               name="ph:caret-down"
@@ -309,7 +313,6 @@ function stripReplyData(entry: Comment) {
           :children="child.children"
           :depth="depth + 1"
           :show-offtopic
-          :show-thread-replies
         />
       </div>
     </div>

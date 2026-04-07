@@ -18,6 +18,7 @@ export interface SearchResult {
   result_type: SearchType
   title: string
   subtitle: string | null
+  topic_id: string | null
   url: string
   score: number
   is_archived: boolean

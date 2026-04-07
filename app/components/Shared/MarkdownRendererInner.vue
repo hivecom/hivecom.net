@@ -3,6 +3,7 @@ import { useBulkDataUser } from '@/composables/useDataUser'
 import { groupImages } from '@/lib/imageGrouping'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import MarkdownLightbox from './MarkdownLightbox.vue'
+import SharedUserMention from './UserMention.global.vue'
 
 const props = defineProps({
   tag: {
@@ -17,6 +18,11 @@ const props = defineProps({
     required: true,
   },
 })
+
+// MDCRenderer.components prop is typed as Record<string, string | DefineComponent<any,any,any>>.
+// Casting via unknown as Record<string, string> satisfies the type (string is a subtype of the union)
+// while keeping the actual runtime value as the component object.
+const mdcComponents = { SharedUserMention } as unknown as Record<string, string>
 
 // Wraps runs of solo-image <p> elements in .md-image-group divs.
 // groupImages() operates on a direct container element - pass the .typeset node.
@@ -83,6 +89,7 @@ onUnmounted(() => {
       :data="parsed.data ?? {}"
       :tag="props.tag"
       :class="`typeset ${props.extraClass}`"
+      :components="mdcComponents"
     />
     <MarkdownLightbox v-if="props.md" :markdown="props.md" :container="container" />
   </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Toasts } from '@dolanske/vui'
 import { computed } from 'vue'
+import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
 import { useLastSeenTracking } from '@/lib/lastSeen'
 

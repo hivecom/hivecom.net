@@ -324,7 +324,7 @@ const editedAtFormatted = computed(() => {
       <Flex column x-center y-center gap="s">
         <SharedUserAvatar :user-id="data.created_by" size="l" linked />
         <Flex wrap gap="xxs" y-center x-center>
-          <UserName :user-id="data.created_by" show-preview />
+          <UserName :user-id="data.created_by" />
           <BadgeCircle v-if="data.created_by === discussion?.created_by">
             <span class="text-xxs text-color-light">OP</span>
           </BadgeCircle>
@@ -424,7 +424,7 @@ const editedAtFormatted = computed(() => {
             <Flex gap="xs" y-center>
               <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
               <Flex wrap gap="xxs" y-center>
-                <UserName :user-id="data.created_by" size="s" show-preview />
+                <UserName :user-id="data.created_by" size="s" />
                 <BadgeCircle v-if="data.created_by === discussion?.created_by">
                   <span class="text-xxs text-color-light">OP</span>
                 </BadgeCircle>

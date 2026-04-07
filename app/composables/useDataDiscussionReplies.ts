@@ -261,7 +261,21 @@ export function useDataDiscussionReplies(
         _tailBlock.value = freshTarget
         comments.value = [...firstPage.rows, ...freshTarget]
 
-        const gapCount = result.predecessorCount - firstPage.rows.length
+        // predecessorCount is the number of replies strictly before the target
+        // reply itself - it includes items on the target page that precede the
+        // target. Those items are already loaded as part of the target page, so
+        // using predecessorCount directly over-counts the gap.
+        //
+        // The correct gap size is the number of items between the END of page 1
+        // and the START of the target page:
+        //   page_index * pageSize - firstPage.rows.length
+        //
+        // page_index = floor(predecessorCount / pageSize), so:
+        //   result.pageIndex * pageSize.value
+        // gives the 0-based index of the first item on the target page, which
+        // is exactly where the gap ends. Subtracting firstPage.rows.length
+        // (the items already loaded on page 1) gives the true unloaded count.
+        const gapCount = result.pageIndex * pageSize.value - firstPage.rows.length
 
         if (gapCount > 0 && firstPage.nextCursor != null) {
           gap.value = {
@@ -683,7 +697,6 @@ export function useDataDiscussionReplies(
       nextCursor.value = null
       hasMore.value = false
       childrenMap.value = new Map()
-      comments.value = []
       await loadFirstPage(discussion.value.id)
     })
   }
