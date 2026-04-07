@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@dolanske/v-valid": "^2.1.1",
-    "@dolanske/vui": "^1.10.2",
+    "@dolanske/vui": "^1.10.3",
     "@iconify-json/material-symbols-light": "^1.2.65",
     "@iconify-json/mdi": "^1.2.3",
     "@iconify-json/ph": "^1.2.2",
@@ -28,8 +28,8 @@
     "@nuxt/image": "^2.0.0",
     "@nuxtjs/mdc": "^0.21.1",
     "@nuxtjs/robots": "^6.0.6",
-    "@nuxtjs/seo": "^5.1.1",
-    "@nuxtjs/sitemap": "^8.0.11",
+    "@nuxtjs/seo": "^5.1.2",
+    "@nuxtjs/sitemap": "^8.0.12",
     "@nuxtjs/supabase": "^2.0.5",
     "@pinia/nuxt": "^0.11.3",
     "@resvg/resvg-js": "^2.6.2",
@@ -61,7 +61,7 @@
     "katex": "^0.16.45",
     "marked": "^18.0.0",
     "nuxt": "^4.4.2",
-    "nuxt-og-image": "^6.3.2",
+    "nuxt-og-image": "^6.3.3",
     "nuxt-toc": "^2.7.2",
     "pinia": "^3.0.4",
     "rehype-katex": "^7.0.1",
@@ -82,7 +82,7 @@
     "eslint-plugin-format": "^2.0.1",
     "eslint-plugin-vue": "^10.8.0",
     "nuxi": "^3.34.0",
-    "supabase": "^2.87.0",
+    "supabase": "^2.87.2",
     "typescript": "^6.0.2",
     "vue-tsc": "^3.2.6"
   }

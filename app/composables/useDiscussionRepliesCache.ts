@@ -59,18 +59,20 @@ export interface ReplyPageCursorResult {
   cursor: PageCursor | null // null when the target is on page 0
 }
 
-// Shape returned by get_discussion_replies_page RPC rows
-interface RawPageRow extends RawComment {
-  has_more: boolean
-}
-
-// Shape returned by get_discussion_reply_page_cursor RPC rows
+// Shape returned by get_discussion_reply_page_cursor RPC rows.
+// cursor_time / cursor_id are nullable at runtime even though the generated
+// schema omits `| null`; the SQL function returns NULL when the target reply
+// is on the first page (no predecessor cursor needed).
 interface RawCursorRow {
   page_index: number
   predecessor_count: number
   cursor_time: string | null
   cursor_id: string | null
 }
+
+// Shape returned by get_discussion_replies_tail RPC rows — derived from the
+// generated database types so the function name and args are type-checked.
+type TailRow = Database['public']['Functions']['get_discussion_replies_tail']['Returns'][number]
 
 // ---------------------------------------------------------------------------
 // Cache key helpers
@@ -202,15 +204,15 @@ export function useDiscussionRepliesCache() {
     error.value = null
 
     try {
-      const { data, error: rpcError } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>)(
+      const { data, error: rpcError } = await supabase.rpc(
         'get_discussion_replies_page',
         {
           p_discussion_id: discussionId,
           p_limit: pageSize,
           p_ascending: ascending,
-          p_cursor_time: cursor?.cursorTime ?? null,
-          p_cursor_id: cursor?.cursorId ?? null,
-          p_hash: options.hash ?? null,
+          p_cursor_time: cursor?.cursorTime ?? undefined,
+          p_cursor_id: cursor?.cursorId ?? undefined,
+          p_hash: options.hash ?? undefined,
           p_root_only: rootOnly,
         },
       )
@@ -221,11 +223,11 @@ export function useDiscussionRepliesCache() {
       if (data == null)
         return null
 
-      const rows = (data as unknown) as RawPageRow[]
+      const rows = data
       const hasMore = rows.length > 0 && (rows.at(-1)!.has_more)
 
       // Strip the synthetic has_more column before storing rows
-      const cleanRows: RawComment[] = rows.map(({ has_more: _hm, ...rest }) => rest as RawComment)
+      const cleanRows: RawComment[] = rows.map(({ has_more: _hm, ...rest }) => rest as unknown as RawComment)
 
       // The next-page cursor is the (created_at, id) of the last row on this page
       const lastRow = cleanRows.at(-1)
@@ -287,14 +289,14 @@ export function useDiscussionRepliesCache() {
     const rootOnly = options.rootOnly ?? false
 
     try {
-      const { data, error: rpcError } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>)(
+      const { data, error: rpcError } = await supabase.rpc(
         'get_discussion_reply_page_cursor',
         {
           p_discussion_id: discussionId,
           p_target_id: targetId,
           p_limit: pageSize,
           p_ascending: ascending,
-          p_hash: options.hash ?? null,
+          p_hash: options.hash ?? undefined,
           p_root_only: rootOnly,
         },
       )
@@ -302,7 +304,7 @@ export function useDiscussionRepliesCache() {
       if (rpcError != null)
         throw rpcError
 
-      const rows = (data as unknown) as RawCursorRow[]
+      const rows = data as unknown as RawCursorRow[]
 
       if (rows == null || rows.length === 0)
         return null
@@ -367,12 +369,12 @@ export function useDiscussionRepliesCache() {
     error.value = null
 
     try {
-      const { data, error: rpcError } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>)(
+      const { data, error: rpcError } = await supabase.rpc(
         'get_discussion_replies_tail',
         {
           p_discussion_id: discussionId,
           p_limit: pageSize,
-          p_hash: options.hash ?? null,
+          p_hash: options.hash ?? undefined,
           p_root_only: rootOnly,
         },
       )
@@ -383,9 +385,9 @@ export function useDiscussionRepliesCache() {
       if (data == null)
         return null
 
-      const rows = (data as unknown) as RawComment[]
-      cache.set(key, rows, CACHE_TTL)
-      return rows
+      const rows = data as unknown as TailRow[]
+      cache.set(key, rows as unknown as RawComment[], CACHE_TTL)
+      return rows as unknown as RawComment[]
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch tail replies'
