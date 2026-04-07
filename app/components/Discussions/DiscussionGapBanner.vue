@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@dolanske/vui'
+
 defineProps<{
   count: number
   loading: boolean
@@ -12,19 +14,23 @@ const emit = defineEmits<{
 
 <template>
   <div class="discussion-gap-banner">
-    <button :disabled="loading" @click="emit('loadUp')">
-      <Icon name="ph:arrow-up" :size="12" />
+    <Button plain size="s" :disabled="loading" @click="emit('loadUp')">
+      <template #start>
+        <Icon name="ph:arrow-up" :size="12" />
+      </template>
       Load up
-    </button>
+    </Button>
 
     <span class="discussion-gap-banner__count">
-      {{ count }} {{ count === 1 ? 'reply' : 'replies' }}
+      {{ count }} more {{ count === 1 ? 'reply' : 'replies' }} between
     </span>
 
-    <button :disabled="loading" @click="emit('loadDown')">
+    <Button plain size="s" :disabled="loading" @click="emit('loadDown')">
       Load down
-      <Icon name="ph:arrow-down" :size="12" />
-    </button>
+      <template #end>
+        <Icon name="ph:arrow-down" :size="12" />
+      </template>
+    </Button>
   </div>
 </template>
 
@@ -47,35 +53,22 @@ const emit = defineEmits<{
     transform: translateY(-50%);
     left: 0;
     right: 0;
-    border-bottom: 1px solid var(--color-accent);
+    border-bottom: 1px dashed var(--color-accent);
     opacity: 0.5;
     z-index: 1;
     transition: opacity var(--transition);
   }
 
-  button {
+  &:hover:before {
+    opacity: 1;
+  }
+
+  :deep(.vui-button) {
     position: relative;
     z-index: 3;
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: 0 var(--space-s);
-    border: none;
     background-color: var(--color-bg);
-    font-size: var(--font-size-xs);
     color: var(--color-accent);
-    cursor: pointer;
-    transition: color var(--transition);
-
-    &:hover:not(:disabled) {
-      color: var(--color-accent);
-      opacity: 0.8;
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
+    font-size: var(--font-size-xs);
   }
 
   &__count {
@@ -89,6 +82,3 @@ const emit = defineEmits<{
   }
 }
 </style>
-```
-
-Now let me run diagnostics on the file.

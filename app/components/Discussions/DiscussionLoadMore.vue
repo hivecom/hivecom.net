@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Spinner } from '@dolanske/vui'
+import { Button, Spinner } from '@dolanske/vui'
 
 const props = defineProps<{
   loading: boolean
@@ -19,16 +19,18 @@ function handleClick() {
 
 <template>
   <div class="discussion-load-more" @click="handleClick">
-    <button :disabled="loading">
-      <template v-if="loading">
-        <Spinner size="s" />
+    <Button plain size="s" :disabled="loading">
+      <template v-if="!loading" #start>
+        <Icon name="ph:arrow-down" :size="12" />
       </template>
+      <Spinner v-if="loading" size="s" />
       <template v-else>
-        <Icon name="ph:arrow-down" :size="12" />
         {{ remainingCount && remainingCount > 0 ? `${remainingCount} more ${remainingCount === 1 ? 'reply' : 'replies'}` : 'Load more' }}
+      </template>
+      <template v-if="!loading" #end>
         <Icon name="ph:arrow-down" :size="12" />
       </template>
-    </button>
+    </Button>
   </div>
 </template>
 
@@ -40,10 +42,6 @@ function handleClick() {
   justify-content: center;
   margin-block: var(--space-s);
   cursor: pointer;
-
-  &:hover:before {
-    opacity: 1;
-  }
 
   &:before {
     content: '';
@@ -59,27 +57,19 @@ function handleClick() {
     transition: opacity var(--transition);
   }
 
-  button {
+  &:hover:before {
+    opacity: 1;
+  }
+
+  :deep(.vui-button) {
     position: relative;
     z-index: 3;
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: 0 var(--space-s);
-    border: none;
     background-color: var(--color-bg);
-    font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
-    cursor: pointer;
-    transition: color var(--transition);
+    font-size: var(--font-size-xs);
 
     &:hover:not(:disabled) {
       color: var(--color-text);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
     }
   }
 }

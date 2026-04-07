@@ -17,6 +17,7 @@ import { DISCUSSION_KEYS } from './Discussion.keys'
 import DiscussionGapBanner from './DiscussionGapBanner.vue'
 import DiscussionItem from './DiscussionItem.vue'
 import DiscussionLoadMore from './DiscussionLoadMore.vue'
+import DiscussionOfftopicBanner from './DiscussionOfftopicBanner.vue'
 import DiscussionPendingBanner from './DiscussionPendingBanner.vue'
 import DiscussionReplyInput from './DiscussionReplyInput.vue'
 import DiscussionTimeline from './DiscussionTimeline.vue'
@@ -999,15 +1000,11 @@ function isNodeVisible(node: ThreadNode): boolean {
         <!-- never re-suspends and the skeleton/fade-in flash doesn't appear. -->
         <div v-show="viewMode === 'flat' && modelledComments.length > 0">
           <!-- Offtopic banner at the very start when all leading replies are offtopic -->
-          <div
+          <DiscussionOfftopicBanner
             v-if="offtopicBannerAtStart"
-            class="discussion__offtopic-banner"
-            @click="handleShowOfftopicUpdate(true)"
-          >
-            <button>
-              {{ offtopicCount }} off-topic {{ offtopicCount === 1 ? 'reply' : 'replies' }} hidden
-            </button>
-          </div>
+            :count="offtopicCount"
+            @show="handleShowOfftopicUpdate(true)"
+          />
           <template v-for="(comment, index) in modelledComments" :key="comment.id">
             <DiscussionItem
               v-if="isCommentVisible(comment)"
@@ -1018,15 +1015,11 @@ function isNodeVisible(node: ThreadNode): boolean {
               :stagger-index="Math.min(index, 10)"
             />
             <!-- Offtopic banner: appears after the last visible comment before a hidden offtopic run -->
-            <div
+            <DiscussionOfftopicBanner
               v-if="offtopicBannerAfterIds.has(comment.id)"
-              class="discussion__offtopic-banner"
-              @click="handleShowOfftopicUpdate(true)"
-            >
-              <button>
-                {{ offtopicCount }} off-topic {{ offtopicCount === 1 ? 'reply' : 'replies' }} hidden
-              </button>
-            </div>
+              :count="offtopicCount"
+              @show="handleShowOfftopicUpdate(true)"
+            />
             <!-- Gap banner: appears after the last item of the early block -->
             <DiscussionGapBanner
               v-if="gap != null && gap.count > 0 && comment.id === gap.afterId"
@@ -1051,6 +1044,11 @@ function isNodeVisible(node: ThreadNode): boolean {
 
         <!-- Threaded view: only roots rendered, children nest recursively -->
         <div v-show="viewMode === 'threaded' && threadRoots.length > 0">
+          <DiscussionOfftopicBanner
+            v-if="offtopicBannerAtStart"
+            :count="offtopicCount"
+            @show="handleShowOfftopicUpdate(true)"
+          />
           <template v-for="(node, index) in threadRoots" :key="node.comment.id">
             <DiscussionItem
               v-if="isNodeVisible(node)"
@@ -1060,6 +1058,12 @@ function isNodeVisible(node: ThreadNode): boolean {
               :show-offtopic="showOfftopic"
               :depth="0"
               :stagger-index="Math.min(index, 10)"
+            />
+            <!-- Offtopic banner: appears after the last visible root before a hidden offtopic run -->
+            <DiscussionOfftopicBanner
+              v-if="offtopicBannerAfterIds.has(node.comment.id)"
+              :count="offtopicCount"
+              @show="handleShowOfftopicUpdate(true)"
             />
             <!-- Gap banner (threaded mode - roots only pagination) -->
             <DiscussionGapBanner
@@ -1158,48 +1162,6 @@ function isNodeVisible(node: ThreadNode): boolean {
   &--forum {
     .discussion__add {
       padding-left: 0;
-    }
-  }
-
-  &__offtopic-banner {
-    width: 100%;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    margin-bottom: var(--space-s);
-    cursor: pointer;
-
-    &:before {
-      content: '';
-      display: block;
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      left: 0;
-      right: 0;
-      border-bottom: 1px dashed var(--color-text-yellow);
-      opacity: 0.5;
-      z-index: 1;
-      transition: opacity var(--transition);
-    }
-
-    &:hover:before {
-      opacity: 1;
-    }
-
-    button {
-      position: relative;
-      z-index: 3;
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-      padding: 0 var(--space-s);
-      border: none;
-      background-color: var(--color-bg);
-      font-size: var(--font-size-xs);
-      color: var(--color-text-yellow);
-      cursor: pointer;
-      transition: color var(--transition);
     }
   }
 

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion, ThreadNode } from './Discussion.types'
-import { Button, Flex, pushToast, Sheet } from '@dolanske/vui'
+import { Flex, pushToast, Sheet } from '@dolanske/vui'
 import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'
 import UserAvatar from '../Shared/UserAvatar.vue'
 import UserName from '../Shared/UserName.vue'
 import { DISCUSSION_KEYS } from './Discussion.keys'
+import DiscussionThreadToggle from './DiscussionThreadToggle.vue'
 import DiscussionModelComment from './models/DiscussionModelComment.vue'
 import DiscussionModelForum from './models/DiscussionModelForum.vue'
 
@@ -271,26 +272,11 @@ function stripReplyData(entry: Comment) {
     <!-- MarkdownRenderer never re-suspends and the skeleton/fade-in flash doesn't appear. -->
     <div v-show="viewMode === 'threaded' && hasReplies">
       <!-- Collapsed summary pill -->
-      <Flex
+      <DiscussionThreadToggle
         v-if="threadCollapsed"
-        x-center
-        class="discussion-comment-wrapper__thread-toggle discussion-comment-wrapper__thread-toggle--threaded"
-      >
-        <Button
-          plain
-          size="s"
-          @click="toggleThreadCollapsed"
-        >
-          {{ replyCountMap?.get(data.id) ?? visibleChildren.length }} {{ (replyCountMap?.get(data.id) ?? visibleChildren.length) === 1 ? 'reply' : 'replies' }}
-          <template #end>
-            <Icon
-              name="ph:caret-down"
-              :size="12"
-              class="discussion-comment-wrapper__thread-caret"
-            />
-          </template>
-        </Button>
-      </Flex>
+        :count="replyCountMap?.get(data.id) ?? visibleChildren.length"
+        @toggle="toggleThreadCollapsed"
+      />
 
       <!-- Expanded children with clickable left border line -->
       <div
@@ -389,45 +375,6 @@ function stripReplyData(entry: Comment) {
 
     &:hover::after {
       background-color: var(--color-accent);
-    }
-  }
-
-  &__thread-toggle {
-    width: 100%;
-    position: relative;
-
-    &--threaded {
-      margin-top: var(--space-xs);
-      margin-bottom: var(--space-s);
-    }
-
-    &:before {
-      content: '';
-      display: block;
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      left: 0;
-      right: 0;
-      border-bottom: 2px dashed var(--color-border-weak);
-      z-index: 1;
-    }
-
-    &:after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      height: 4px;
-      width: 80px;
-      background-color: var(--color-bg);
-      z-index: 1;
-    }
-
-    :deep(.vui-button) {
-      position: relative;
-      z-index: 3;
     }
   }
 }

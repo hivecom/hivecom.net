@@ -315,7 +315,6 @@ const editedAtFormatted = computed(() => {
   <div
     class="discussion-forum"
     :class="{
-      'discussion-forum--highlight': data.is_offtopic,
       'discussion-forum--pinned': isPinned,
     }"
   >

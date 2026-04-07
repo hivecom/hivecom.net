@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from '@dolanske/vui'
 import { computed } from 'vue'
 
 const props = defineProps<{
@@ -25,11 +26,15 @@ function handleClick() {
 
 <template>
   <div class="discussion-pending-banner" @click="handleClick">
-    <button :disabled="loading">
-      <Icon :name="icon" :size="12" />
+    <Button plain size="s" :disabled="loading">
+      <template #start>
+        <Icon :name="icon" :size="12" />
+      </template>
       Click to load {{ count }} new {{ noun }}
-      <Icon :name="icon" :size="12" />
-    </button>
+      <template #end>
+        <Icon :name="icon" :size="12" />
+      </template>
+    </Button>
   </div>
 </template>
 
@@ -39,7 +44,7 @@ function handleClick() {
   position: relative;
   display: flex;
   justify-content: center;
-  margin-bottom: var(--space-s);
+  margin-block: var(--space-s);
   cursor: pointer;
 
   &:before {
@@ -60,27 +65,12 @@ function handleClick() {
     opacity: 1;
   }
 
-  button {
+  :deep(.vui-button) {
     position: relative;
     z-index: 3;
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: 0 var(--space-s);
-    border: none;
     background-color: var(--color-bg);
-    font-size: var(--font-size-xs);
     color: var(--color-accent);
-    cursor: pointer;
-    transition: color var(--transition);
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
+    font-size: var(--font-size-xs);
   }
 }
 </style>
-```
-
-Now let me run diagnostics on the file.
