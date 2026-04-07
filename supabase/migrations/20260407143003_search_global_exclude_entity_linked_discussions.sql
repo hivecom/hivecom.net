@@ -65,7 +65,6 @@ AS $$
       AND d.is_draft = false
       AND d.discussion_topic_id IS NOT NULL
       AND d.event_id IS NULL
-      AND d.announcement_id IS NULL
       AND d.referendum_id IS NULL
       AND d.profile_id IS NULL
       AND d.project_id IS NULL
