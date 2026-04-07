@@ -132,7 +132,7 @@ async function submitPasswordReset() {
     passwordResetReady.value = false
 
     setTimeout(() => {
-      router.push('/profile/settings')
+      navigateTo('/profile/settings')
     }, 2000)
   }
   catch (err) {
@@ -203,10 +203,10 @@ onBeforeUnmount(() => {
           <ErrorAlert message="Password reset failed" :error="error" />
 
           <Flex x-center class="mt-l" gap="s">
-            <Button variant="fill" @click="router.push('/auth/forgot-password')">
+            <Button variant="fill" @click="navigateTo('/auth/forgot-password')">
               Request New Link
             </Button>
-            <Button variant="gray" @click="router.push('/auth/sign-in')">
+            <Button variant="gray" @click="navigateTo('/auth/sign-in')">
               Back to Sign In
             </Button>
           </Flex>

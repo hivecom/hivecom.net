@@ -32,7 +32,6 @@ interface Props {
 }
 
 const isMobile = useBreakpoint('<s')
-const router = useRouter()
 
 const supabase = useSupabaseClient()
 const userId = useUserId()
@@ -279,7 +278,7 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
       emit('draftUpdated')
 
       // Redirect to the draft page
-      router.push(`/forum/${data[0].slug ?? data[0].id}`)
+      navigateTo(`/forum/${data[0].slug ?? data[0].id}`)
     }
     else {
       if (drafts.value.some(d => d.id === data[0].id)) {
@@ -290,7 +289,7 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
       emit('close')
       // Navigate to the newly published discussion (skip when editing an existing post)
       if (!isEditing.value) {
-        router.push(`/forum/${data[0].slug ?? data[0].id}`)
+        navigateTo(`/forum/${data[0].slug ?? data[0].id}`)
       }
     }
   }
@@ -511,7 +510,7 @@ function confirmPublish() {
     <template v-else-if="showTabs">
       <strong class="mb-s text-l block font-bold">Drafts</strong>
       <Flex column gap="s">
-        <Card v-for="draft of drafts" :key="draft.id" class="card-bg draft-item" style="cursor: pointer;" @click="router.push(`/forum/${draft.slug ?? draft.id}`)">
+        <Card v-for="draft of drafts" :key="draft.id" class="card-bg draft-item" style="cursor: pointer;" @click="navigateTo(`/forum/${draft.slug ?? draft.id}`)">
           <Flex x-between y-center>
             <div>
               <strong class="font-weight-bold">{{ draft.title }}</strong>

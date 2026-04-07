@@ -13,15 +13,13 @@ const props = defineProps<{
   variant?: 'default' | 'compact'
 }>()
 
-const router = useRouter()
-
 function handleClick() {
   if (props.post.onClick) {
     props.post.onClick()
     return
   }
   if (props.post.href) {
-    void router.push(props.post.href)
+    navigateTo(props.post.href)
   }
 }
 </script>

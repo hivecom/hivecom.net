@@ -6,7 +6,6 @@ import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-const router = useRouter()
 const route = useRoute()
 const { openCommand } = useCommand()
 const isMac = import.meta.client && /Mac/i.test(navigator.platform)
@@ -50,7 +49,7 @@ onMounted(async () => {
     const targetUserId = userId.value
 
     if (!targetUserId) {
-      await router.push('/')
+      await navigateTo('/')
       return
     }
 
@@ -63,7 +62,7 @@ onMounted(async () => {
     const hasRequiredRole = role === 'admin' || role === 'moderator'
 
     if (!hasRequiredRole) {
-      await router.push('/')
+      await navigateTo('/')
       return
     }
 
@@ -84,7 +83,7 @@ onMounted(async () => {
   }
   catch (error) {
     console.error('Error in admin layout:', error)
-    await router.push('/')
+    await navigateTo('/')
   }
   finally {
     isLoading.value = false
@@ -96,7 +95,7 @@ watch(user, async (newUser) => {
   if (!newUser) {
     // User logged out, redirect to landing page
     isAuthorized.value = false
-    await router.push('/')
+    await navigateTo('/')
   }
 })
 
@@ -321,7 +320,7 @@ watch(() => route.path, () => {
 
         <template #footer>
           <Flex x-between y-center>
-            <Button expand outline @click="router.push('/')">
+            <Button expand outline @click="navigateTo('/')">
               <template #start>
                 <Icon name="ph:caret-left" />
               </template>
@@ -443,7 +442,7 @@ watch(() => route.path, () => {
                 </template>
               </Tooltip>
               <Tooltip placement="right">
-                <DropdownItem square aria-label="Close admin console" @click="router.push('/')">
+                <DropdownItem square aria-label="Close admin console" @click="navigateTo('/')">
                   <template #icon>
                     <Icon name="ph:caret-left" />
                   </template>
@@ -454,7 +453,7 @@ watch(() => route.path, () => {
               </Tooltip>
             </Flex>
             <Flex v-else x-between y-center gap="xs">
-              <Button expand size="m" outline @click="router.push('/')">
+              <Button expand size="m" outline @click="navigateTo('/')">
                 <template #start>
                   <Icon name="ph:caret-left" />
                 </template>

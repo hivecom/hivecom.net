@@ -18,7 +18,7 @@ import {
 } from 'chart.js'
 import { computed, onBeforeMount, ref, watchEffect } from 'vue'
 import { Bar, Line } from 'vue-chartjs'
-import { useRouter } from 'vue-router'
+
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import LightRays from '@/components/Shared/LightRays.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
@@ -71,7 +71,6 @@ const allUserIds = computed(() => {
 })
 
 const currentUserId = useUserId()
-const router = useRouter()
 const isMobile = useBreakpoint('<xs')
 const cache = useCache()
 
@@ -80,7 +79,7 @@ function navigateToProfile(userId: string) {
   const path = profile?.username_set && profile?.username
     ? `/profile/${profile.username}`
     : `/profile/${userId}`
-  router.push(path)
+  navigateTo(path)
 }
 
 useBulkDataUser(allUserIds, {
@@ -368,7 +367,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
     <ClientOnly>
       <section class="page-title mb-xl">
         <Breadcrumbs>
-          <BreadcrumbItem @click="$router.push('/forum')">
+          <BreadcrumbItem @click="navigateTo('/forum')">
             Forum
           </BreadcrumbItem>
           <BreadcrumbItem>

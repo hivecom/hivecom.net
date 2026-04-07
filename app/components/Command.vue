@@ -10,7 +10,7 @@ import { commandLinks } from '@/config/navigation'
 const LABEL_SPLIT_RE = /[\s/,&-]+/
 
 const { isOpen, scope, openCommand, closeCommand } = useCommand()
-const router = useRouter()
+
 const user = useSupabaseUser()
 const userId = useUserId()
 const { user: userData } = useDataUser(userId, { includeRole: true, includeAvatar: false })
@@ -162,7 +162,7 @@ const commands = computed<Command[]>(() => {
           description: t.is_archived ? '[Archived]' : (t.description ?? undefined),
           group: 'Forum',
           handler: () => {
-            void router.push(`/forum?topic=${t.slug}`)
+            navigateTo(`/forum?topic=${t.slug}`)
             closeCommand()
           },
         }))
@@ -186,7 +186,7 @@ const commands = computed<Command[]>(() => {
         description: t.is_archived ? '[Archived]' : (t.description ?? undefined),
         group: 'Forum',
         handler: () => {
-          void router.push(`/forum?topic=${t.slug}`)
+          navigateTo(`/forum?topic=${t.slug}`)
           closeCommand()
         },
       }))
@@ -198,7 +198,7 @@ const commands = computed<Command[]>(() => {
     title: link.label,
     group: 'Navigation',
     handler: () => {
-      void router.push(link.path)
+      navigateTo(link.path)
       closeCommand()
     },
   }))
@@ -234,7 +234,7 @@ function dbResultToCommand(result: import('@/composables/useDataSearch').SearchR
     description: archivedPrefix + body || undefined,
     group: TYPE_META[result.result_type]?.group ?? result.result_type,
     handler: () => {
-      void router.push(result.url)
+      navigateTo(result.url)
       closeCommand()
     },
   }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, DropdownItem, Flex, Kbd, KbdGroup, Popout, Sheet, Skeleton, Tooltip } from '@dolanske/vui'
+import { Button, DropdownItem, Flex, Kbd, Popout, Sheet, Skeleton, Tooltip } from '@dolanske/vui'
 import SharedLogo from '@/components/Shared/Logo.vue'
 import { useCommand } from '@/composables/useCommand'
 import { useMfaStatus } from '@/composables/useMfaStatus'
@@ -87,7 +87,7 @@ function updateHoveredElement(event: MouseEvent) {
             <Icon name="ph:list" size="2rem" />
           </Button>
 
-          <Button v-if="isMobile && user && !needsMfaChallenge" square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded navigation__mobile-search" @click="openCommand()">
+          <Button v-if="isMobile" square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded navigation__mobile-search" @click="openCommand()">
             <Icon name="ph:magnifying-glass" size="20" />
           </Button>
         </Flex>
@@ -130,6 +130,19 @@ function updateHoveredElement(event: MouseEvent) {
               </Popout>
             </li>
           </template>
+          <Tooltip v-if="!isMobile" :delay="1000">
+            <Button size="s" square plain aria-label="Search" class="navigation__search vui-button-accent-weak vui-button-rounded" @click="openCommand()">
+              <Icon name="ph:list-magnifying-glass" size="16" style="margin-top: 2px" />
+            </Button>
+            <template #tooltip>
+              <p>
+                Keyboard shortcut: <KbdGroup>
+                  <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
+                  <Kbd keys="K" />
+                </KbdGroup>
+              </p>
+            </template>
+          </Tooltip>
 
           <ul
             class="navigation__links-hover" :class="{ active: !isOutside }" :style="{
@@ -192,19 +205,6 @@ function updateHoveredElement(event: MouseEvent) {
         </div>
 
         <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
-          <Tooltip v-if="!isMobile" :delay="1000">
-            <Button square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded" @click="openCommand()">
-              <Icon name="ph:magnifying-glass" size="20" />
-            </Button>
-            <template #tooltip>
-              <p>
-                Keyboard shortcut: <KbdGroup>
-                  <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
-                  <Kbd keys="K" />
-                </KbdGroup>
-              </p>
-            </template>
-          </Tooltip>
           <NotificationSheet />
           <UserSheet v-if="isMobile" />
           <UserDropdown v-else />
@@ -255,6 +255,16 @@ function updateHoveredElement(event: MouseEvent) {
     gap: 16px;
     align-items: center;
     position: relative;
+  }
+
+  &__search {
+    .iconify {
+      color: var(--color-text-lighter);
+    }
+
+    &:hover .iconify {
+      color: var(--color-text);
+    }
   }
 
   &__hamburger {
