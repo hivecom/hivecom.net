@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Command } from '@dolanske/vui'
 import type { SearchType } from '@/composables/useDataSearch'
+import type { Database } from '@/types/database.types'
 import { Commands } from '@dolanske/vui'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
@@ -55,13 +56,13 @@ watch(scope, () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// /  shortcut: strip prefix + force Navigation group
+// /  shortcut: strip prefix + force Commands group
 // ─────────────────────────────────────────────────────────────────────────────
 
 watch(search, (val) => {
   if (val.startsWith('/') && !isForumScoped.value) {
     search.value = val.slice(1)
-    activeGroup.value = 'Navigation'
+    activeGroup.value = 'Commands'
   }
 })
 
@@ -89,8 +90,8 @@ const GROUP_TO_TYPES: Record<string, SearchType[]> = {
 
 const effectiveScope = computed<SearchType[] | null>(() => {
   const g = activeGroup.value
-  // Navigation group - no DB search needed
-  if (g === 'Navigation')
+  // Navigation and Commands groups - no DB search needed
+  if (g === 'Navigation' || g === 'Commands')
     return null
   // Specific DB group selected
   if (g != null && g !== 'All' && GROUP_TO_TYPES[g] != null)
@@ -143,10 +144,78 @@ const matchingNavItems = computed(() => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Quick commands
+// These are static pre-populated entries that perform a DB query on activation.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const supabase = useSupabaseClient<Database>()
+
+const quickCommands = computed<Command[]>(() => [
+  {
+    title: 'Latest Discussion',
+    description: 'Jump to the most recently active discussion',
+    group: 'Commands',
+    handler: async () => {
+      const { data } = await supabase
+        .from('discussions')
+        .select('id, slug')
+        .eq('is_draft', false)
+        .eq('is_archived', false)
+        .not('title', 'is', null)
+        .is('profile_id', null)
+        .is('event_id', null)
+        .is('referendum_id', null)
+        .is('project_id', null)
+        .is('gameserver_id', null)
+        .not('discussion_topic_id', 'is', null)
+        .order('last_activity_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (data != null) {
+        navigateTo(`/forum/${data.slug ?? data.id}`)
+        closeCommand()
+      }
+    },
+  },
+  ...(user.value != null
+    ? [{
+        title: 'New Discussion',
+        description: 'Start a new forum discussion',
+        group: 'Commands',
+        handler: () => {
+          navigateTo('/forum?new=discussion')
+          closeCommand()
+        },
+      }]
+    : []),
+  {
+    title: 'Latest Event',
+    description: 'Jump to the next upcoming event',
+    group: 'Commands',
+    handler: async () => {
+      const now = new Date().toISOString()
+      const { data } = await supabase
+        .from('events')
+        .select('id')
+        .gte('date', now)
+        .order('date', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (data != null) {
+        navigateTo(`/events/${data.id}`)
+        closeCommand()
+      }
+    },
+  },
+])
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Command list assembly
 // ─────────────────────────────────────────────────────────────────────────────
 
 const isNavOnly = computed(() => activeGroup.value === 'Navigation')
+const isCommandsOnly = computed(() => activeGroup.value === 'Commands')
 
 const commands = computed<Command[]>(() => {
   // Forum-scoped: never show nav items
@@ -206,13 +275,44 @@ const commands = computed<Command[]>(() => {
   if (isNavOnly.value)
     return navCommands
 
+  if (isCommandsOnly.value) {
+    const q = search.value.trim()
+    if (q.length === 0)
+      return quickCommands.value
+    const ql = q.toLowerCase()
+    return quickCommands.value.filter(
+      c => c.title.toLowerCase().includes(ql) || (c.description ?? '').toLowerCase().includes(ql),
+    )
+  }
+
   const q = search.value.trim()
   if (q.length === 0)
-    return navCommands
+    return [...quickCommands.value, ...navCommands]
+
+  const ql = q.toLowerCase()
+  const matchingQuickCommands = quickCommands.value.filter(
+    c => c.title.toLowerCase().includes(ql) || (c.description ?? '').toLowerCase().includes(ql),
+  )
 
   const dbCommands: Command[] = results.value.map(dbResultToCommand)
 
-  return [...dbCommands, ...navCommands]
+  const dbTopicIds = new Set(
+    results.value.filter(r => r.result_type === 'discussion_topic').map(r => r.id),
+  )
+  const topicCommands: Command[] = forumTopics.value
+    .filter(t => (showArchived.value || !t.is_archived) && (t.name.toLowerCase().includes(ql) || (t.description ?? '').toLowerCase().includes(ql)))
+    .filter(t => !dbTopicIds.has(t.id))
+    .map(t => ({
+      title: t.name,
+      description: t.is_archived ? '[Archived]' : (t.description ?? undefined),
+      group: 'Forum',
+      handler: () => {
+        navigateTo(`/forum?topic=${t.slug}`)
+        closeCommand()
+      },
+    }))
+
+  return [...dbCommands, ...topicCommands, ...matchingQuickCommands, ...navCommands]
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -250,6 +350,15 @@ const resultTypeByTitle = computed(() => {
 })
 
 function iconForCommand(command: Command): string {
+  // Quick commands have fixed icons keyed on title
+  if (command.group === 'Commands') {
+    if (command.title === 'Latest Discussion')
+      return 'ph:chat-circle'
+    if (command.title === 'New Discussion')
+      return 'ph:pencil-simple'
+    if (command.title === 'Latest Event')
+      return 'ph:calendar'
+  }
   // Differentiate discussions from topics within the Forum group
   if (command.group === 'Forum') {
     const resultType = resultTypeByTitle.value.get(command.title)
@@ -284,7 +393,7 @@ const profileIdByUsername = computed(() => {
 const placeholder = computed(() => {
   const s = scope.value
   if (s == null)
-    return 'Search or type / for navigation...'
+    return 'Search everything or type / for commands...'
   if (s.includes('discussion') || s.includes('discussion_topic'))
     return 'Search Forum...'
   return 'Search...'

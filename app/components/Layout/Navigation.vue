@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, DropdownItem, Flex, Kbd, Popout, Sheet, Skeleton, Tooltip } from '@dolanske/vui'
+import { Button, DropdownItem, Flex, Kbd, KbdGroup, Popout, Sheet, Skeleton, Tooltip } from '@dolanske/vui'
 import SharedLogo from '@/components/Shared/Logo.vue'
 import { useCommand } from '@/composables/useCommand'
 import { useMfaStatus } from '@/composables/useMfaStatus'
@@ -136,7 +136,7 @@ function updateHoveredElement(event: MouseEvent) {
             </Button>
             <template #tooltip>
               <p>
-                Keyboard shortcut: <KbdGroup>
+                Search <KbdGroup>
                   <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
                   <Kbd keys="K" />
                 </KbdGroup>

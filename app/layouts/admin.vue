@@ -274,7 +274,7 @@ watch(() => route.path, () => {
           </Button>
           <template #tooltip>
             <p>
-              Keyboard shortcut: <KbdGroup>
+              Search <KbdGroup>
                 <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
                 <Kbd keys="K" />
               </KbdGroup>
@@ -350,7 +350,7 @@ watch(() => route.path, () => {
                   </Button>
                   <template #tooltip>
                     <p>
-                      Keyboard shortcut: <KbdGroup>
+                      Search <KbdGroup>
                         <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
                         <Kbd keys="K" />
                       </KbdGroup>

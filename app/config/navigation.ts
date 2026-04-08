@@ -1,3 +1,5 @@
+const isDev = import.meta.dev
+
 export interface CommandLink {
   path: string
   label: string
@@ -45,6 +47,8 @@ export const commandLinks: CommandLink[] = [
   { path: '/admin/games', label: 'Admin Games', group: 'Admin', icon: 'ph:game-controller', requiresRole: ['admin'] },
   { path: '/admin/motds', label: 'Admin MOTDs', group: 'Admin', icon: 'ph:megaphone', requiresRole: ['admin'] },
   { path: '/admin/kvstore', label: 'Admin KV Store', group: 'Admin', icon: 'ph:database', requiresRole: ['admin'] },
+  // Dev only
+  ...(isDev ? [{ path: '/playground', label: 'Playground', group: 'Dev', icon: 'ph:flask' }] : []),
 ]
 
 export const navigationLinks = [
