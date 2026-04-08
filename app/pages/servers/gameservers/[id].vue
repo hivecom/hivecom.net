@@ -172,7 +172,7 @@ useHead({
             plain
             size="s"
             aria-label="Go back to Game Servers"
-            @click="$router.push('/servers/gameservers')"
+            @click="navigateTo('/servers/gameservers')"
           >
             <template #start>
               <Icon name="ph:arrow-left" />

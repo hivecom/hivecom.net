@@ -16,7 +16,6 @@ const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
 const route = useRoute()
-const router = useRouter()
 
 const loading = ref(true)
 const error = ref('')
@@ -584,7 +583,7 @@ onMounted(() => {
           <ErrorAlert message="Authentication failed" :error="error" />
 
           <Flex x-center class="mt-l" expand>
-            <Button expand variant="fill" @click="router.push('/auth/sign-in')">
+            <Button expand variant="fill" @click="navigateTo('/auth/sign-in')">
               Return to Sign In
             </Button>
           </Flex>

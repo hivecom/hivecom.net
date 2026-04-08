@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { BadgeVariant } from '@/lib/badges'
 import { Tooltip } from '@dolanske/vui'
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = withDefaults(defineProps<{
   label: string
@@ -66,6 +66,9 @@ const tooltipBindings = computed(() => props.description ? { placement: 'bottom'
 
 const badgeEl = ref<HTMLElement | null>(null)
 const isTiltActive = ref(false)
+const isTouchTooltipOpen = ref(false)
+let touchStartX = 0
+let touchStartY = 0
 
 let rafId: number | null = null
 let lastFrameTs = 0
@@ -181,7 +184,7 @@ function setTargetsFromPointer(event: PointerEvent) {
 }
 
 function onPointerEnter(event: PointerEvent) {
-  if (event.pointerType !== 'mouse')
+  if (event.pointerType !== 'mouse' && event.pointerType !== 'touch')
     return
   if (prefersReducedMotion())
     return
@@ -196,7 +199,7 @@ function onPointerEnter(event: PointerEvent) {
 function onPointerMove(event: PointerEvent) {
   if (!isTiltActive.value)
     return
-  if (event.pointerType !== 'mouse')
+  if (event.pointerType !== 'mouse' && event.pointerType !== 'touch')
     return
   if (prefersReducedMotion())
     return
@@ -206,7 +209,7 @@ function onPointerMove(event: PointerEvent) {
 }
 
 function onPointerLeave(event: PointerEvent) {
-  if (event.pointerType !== 'mouse')
+  if (event.pointerType !== 'mouse' && event.pointerType !== 'touch')
     return
   if (prefersReducedMotion())
     return
@@ -219,9 +222,56 @@ function onPointerLeave(event: PointerEvent) {
   ensureTicking()
 }
 
+// Browsers apply implicit pointer capture on pointerdown for touch, which means
+// pointerleave may not fire on finger-lift if the touch moves outside the element.
+// pointerup / pointercancel are the reliable end-of-touch signals.
+function onPointerDown(event: PointerEvent) {
+  if (event.pointerType !== 'touch')
+    return
+  touchStartX = event.clientX
+  touchStartY = event.clientY
+}
+
+function onPointerUp(event: PointerEvent) {
+  if (event.pointerType !== 'touch')
+    return
+  if (prefersReducedMotion())
+    return
+
+  isTiltActive.value = false
+  tilt.targetX = 0
+  tilt.targetY = 0
+  tilt.targetScale = 1
+  tilt.targetZ = 0
+  ensureTicking()
+
+  // Treat as a tap if finger didn't travel more than 8px - toggle tooltip
+  if (props.description) {
+    const dx = event.clientX - touchStartX
+    const dy = event.clientY - touchStartY
+    if (Math.sqrt(dx * dx + dy * dy) < 8)
+      isTouchTooltipOpen.value = !isTouchTooltipOpen.value
+  }
+}
+
+function onDocumentPointerDown(event: PointerEvent) {
+  if (!isTouchTooltipOpen.value)
+    return
+  if (event.pointerType !== 'touch')
+    return
+  if (badgeEl.value?.contains(event.target as Node))
+    return
+  isTouchTooltipOpen.value = false
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', onDocumentPointerDown)
+})
+
 onBeforeUnmount(() => {
   if (rafId != null)
     window.cancelAnimationFrame(rafId)
+  document.removeEventListener('pointerdown', onDocumentPointerDown)
 })
 </script>
 
@@ -243,9 +293,12 @@ onBeforeUnmount(() => {
       :aria-label="ariaLabel"
       role="figure"
       :data-tilt-active="isTiltActive ? 'true' : 'false'"
+      @pointerdown="onPointerDown"
       @pointerenter="onPointerEnter"
       @pointermove="onPointerMove"
       @pointerleave="onPointerLeave"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerUp"
     >
       <div class="profile-badge__hex-wrapper" aria-hidden="true">
         <div class="profile-badge__hex-stack">
@@ -305,6 +358,18 @@ onBeforeUnmount(() => {
         </p>
       </div>
     </article>
+
+    <Transition name="touch-tooltip">
+      <div
+        v-if="props.description && isTouchTooltipOpen"
+        class="profile-badge__touch-tooltip"
+        role="tooltip"
+      >
+        <p :class="descriptionClasses" class="text-m">
+          {{ props.description }}
+        </p>
+      </div>
+    </Transition>
   </component>
 </template>
 
@@ -545,6 +610,38 @@ onBeforeUnmount(() => {
   max-width: 360px;
 }
 
+.profile-badge__touch-tooltip {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + var(--space-xs));
+  transform: translateX(-50%);
+  z-index: var(--z-popout);
+  background-color: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-m);
+  padding: var(--space-xs) var(--space-s);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+
+  p {
+    margin: 0;
+  }
+}
+
+.touch-tooltip-enter-active,
+.touch-tooltip-leave-active {
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.touch-tooltip-enter-from,
+.touch-tooltip-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-4px);
+}
+
 .profile-badge__label {
   font-size: clamp(1rem, 2vw, 2rem);
   font-weight: var(--font-weight-bold, 700);
@@ -561,6 +658,7 @@ onBeforeUnmount(() => {
 
 .profile-badge__tooltip-wrapper {
   display: block;
+  position: relative;
 }
 
 .profile-badge__description {

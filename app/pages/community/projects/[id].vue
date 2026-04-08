@@ -98,7 +98,7 @@ useHead({
             size="s"
             plain
             aria-label="Go back to Projects page"
-            @click="$router.push('/community/projects')"
+            @click="navigateTo('/community/projects')"
           >
             <template #start>
               <Icon name="ph:arrow-left" />

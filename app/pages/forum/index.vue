@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Dropdown, DropdownItem, Flex, Kbd, KbdGroup, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, Dropdown, DropdownItem, Flex, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
@@ -463,6 +463,20 @@ watch(
 // Search implementation
 const { openCommand } = useCommand()
 
+// Allow external navigation (e.g. command palette) to open the create discussion modal
+// by passing ?new=discussion in the URL. Clean up the param immediately after.
+// Watched rather than onMounted so it also fires when already on the page.
+watch(
+  () => route.query.new,
+  async (val) => {
+    if (val === 'discussion') {
+      await router.replace({ query: { ...route.query, new: undefined } })
+      await requestCreate('discussion')
+    }
+  },
+  { immediate: true },
+)
+
 // Sort results by most recently modified and by sticky (pinned)
 function sortDiscussions(discussions: ForumDiscussion[]) {
   let filtered = settings.value.show_forum_archived
@@ -609,8 +623,6 @@ onBeforeMount(() => {
   fetchDraftCount()
 })
 
-const isMac = import.meta.client && /Mac/i.test(navigator.platform)
-
 function handleBreadcrumbMiddleClick(path: string = '/forum') {
   window.open(path, '_blank')
 }
@@ -725,26 +737,15 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
             </Tooltip>
           </template>
 
-          <Tooltip :delay="1000">
-            <Button size="s" :square="isMobile" @click="openCommand(['discussion_topic', 'discussion'])">
-              <template v-if="!isMobile" #start>
-                <Icon name="ph:magnifying-glass" :size="16" />
-              </template>
-              <template v-if="isMobile">
-                <Icon name="ph:magnifying-glass" :size="16" />
-              </template>
-              {{ isMobile ? '' : 'Search' }}
-            </Button>
-
-            <template #tooltip>
-              <p>
-                Keyboard shortcut: <KbdGroup>
-                  <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
-                  <Kbd keys="K" />
-                </KbdGroup>
-              </p>
+          <Button size="s" :square="isMobile" @click="openCommand(['discussion_topic', 'discussion'])">
+            <template v-if="!isMobile" #start>
+              <Icon name="ph:magnifying-glass" :size="16" />
             </template>
-          </Tooltip>
+            <template v-if="isMobile">
+              <Icon name="ph:magnifying-glass" :size="16" />
+            </template>
+            {{ isMobile ? '' : 'Search' }}
+          </Button>
 
           <Button size="s" :square="isMobile" @click="rulesModalOpen = true">
             <template v-if="!isMobile" #start>

@@ -567,7 +567,7 @@ function revealNsfw() {
                 :items="breadcrumbItems"
                 :icons="breadcrumbTopicIcons"
                 root-href="/forum"
-                :on-root-click="() => router.push('/forum')"
+                :on-root-click="() => navigateTo('/forum')"
               />
             </template>
             <template v-else-if="isMobile">
@@ -579,7 +579,7 @@ function revealNsfw() {
                   size="s"
                   plain
                   aria-label="Go back to Forum"
-                  @click="$router.push('/forum')"
+                  @click="navigateTo('/forum')"
                 >
                   <template #start>
                     <Icon name="ph:arrow-left" />

@@ -117,7 +117,7 @@ useHead({
             size="s"
             aria-label="Go back to Events page"
             class="event-detail__back-link"
-            @click="$router.push('/events')"
+            @click="navigateTo('/events')"
           >
             <template #start>
               <Icon name="ph:arrow-left" />

@@ -19,7 +19,7 @@ import { formatDuration } from '@/lib/utils/duration'
 const isMobile = useBreakpoint('<s')
 
 const route = useRoute()
-const router = useRouter()
+
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -60,7 +60,7 @@ function handleUpdated(updated: Tables<'referendums'>) {
 }
 
 function handleDeleted() {
-  void router.push('/votes')
+  navigateTo('/votes')
 }
 
 // Fetch user's existing vote
@@ -347,7 +347,7 @@ function handleChoiceClick(index: number) {
         <p class="text-color-light mb-l">
           The vote you're looking for doesn't exist or has been removed.
         </p>
-        <Button @click="router.push('/votes')">
+        <Button @click="navigateTo('/votes')">
           <template #start>
             <Icon name="ph:arrow-left" />
           </template>
@@ -364,7 +364,7 @@ function handleChoiceClick(index: number) {
             size="s"
             plain
             aria-label="Go back to Votes page"
-            @click="router.push('/votes')"
+            @click="navigateTo('/votes')"
           >
             <template #start>
               <Icon name="ph:arrow-left" />

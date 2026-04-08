@@ -171,7 +171,7 @@ defineExpose({
           <template #tooltip>
             <p>Sign-in to start the conversation</p>
           </template>
-          <Button variant="accent" disabled>
+          <Button variant="accent" @click="navigateTo('/auth/sign-in')">
             Sign in
           </Button>
         </Tooltip>

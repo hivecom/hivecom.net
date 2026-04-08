@@ -19,8 +19,6 @@ const props = defineProps<{
   compact?: boolean
 }>()
 
-const router = useRouter()
-
 const state = computed(() => {
   if (!props.container)
     return 'unknown'
@@ -51,7 +49,7 @@ const isCompactLayout = useBreakpoint('<s')
 </script>
 
 <template>
-  <button class="gameserver-row" @click="router.push(`/servers/gameservers/${props.gameserver.id}`)">
+  <button class="gameserver-row" @click="navigateTo(`/servers/gameservers/${props.gameserver.id}`)">
     <Flex
       y-center
       row
