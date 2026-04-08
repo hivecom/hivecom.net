@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Alert, Button, Card, Flex } from '@dolanske/vui'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import BannerEditor from '@/components/Profile/Banner/BannerEditor.vue'
+import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 
 definePageMeta({ layout: 'default' })
 
@@ -9,9 +10,30 @@ const userId = useUserId()
 
 // ── Banner ────────────────────────────────────────────────────────────────────
 
+const supabase = useSupabaseClient()
+
 const editorOpen = ref(false)
 const bannerUrl = ref<string | null>(null)
 const bannerDeleted = ref(false)
+
+onMounted(async () => {
+  const id = userId.value
+  if (id == null)
+    return
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('has_banner')
+    .eq('id', id)
+    .single()
+
+  if (data?.has_banner) {
+    const { data: urlData } = supabase.storage
+      .from(USERS_BUCKET_ID)
+      .getPublicUrl(`${id}/banner.webp`)
+    bannerUrl.value = `${urlData.publicUrl}?t=${Date.now()}`
+  }
+})
 
 function onBannerSaved(url: string) {
   bannerUrl.value = `${url}?t=${Date.now()}`

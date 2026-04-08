@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/queryLocalFonts
 /**
  * BannerEditor - A canvas-based editor for creating user forum banners.
  *
@@ -17,6 +18,13 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { validateImageFile } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 
+interface FontData {
+  family: string
+  fullName: string
+  postscriptName: string
+  style: string
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface TextLayer {
@@ -27,6 +35,14 @@ export interface TextLayer {
   /** Capped between TEXT_FONT_SIZE_MIN and TEXT_FONT_SIZE_MAX */
   fontSize: number
   color: string
+  /** null = solid fill, string = gradient end color */
+  gradientColor: string | null
+  /** Gradient angle in degrees (0 = left→right) */
+  gradientAngle: number
+  /** 0–1 */
+  opacity: number
+  /** Rotation in degrees, clockwise */
+  rotation: number
   x: number
   y: number
   bold: boolean
@@ -48,6 +64,8 @@ export interface ImageLayer {
   /** Raw file when freshly added; null when restored from metadata */
   file: File | null
   assetMeta: ImageAssetMeta
+  /** Rotation in degrees, clockwise */
+  rotation: number
   x: number
   y: number
   width: number
@@ -65,6 +83,10 @@ export interface MetadataTextLayer {
   fontFamily: string
   fontSize: number
   color: string
+  gradientColor?: string | null
+  gradientAngle?: number
+  opacity?: number
+  rotation?: number
   x: number
   y: number
   bold: boolean
@@ -74,6 +96,7 @@ export interface MetadataTextLayer {
 export interface MetadataImageLayer {
   id: string
   type: 'image'
+  rotation?: number
   x: number
   y: number
   width: number
@@ -115,13 +138,13 @@ const emit = defineEmits<{
 
 const BANNER_WIDTH = 728
 const BANNER_HEIGHT = 48
-const WORKSPACE_PADDING = 40
+const WORKSPACE_PADDING = 120
 const WORKSPACE_WIDTH = BANNER_WIDTH + WORKSPACE_PADDING * 2
 const WORKSPACE_HEIGHT = BANNER_HEIGHT + WORKSPACE_PADDING * 2
 const METADATA_MARKER = '<!-- HIVECOM_BANNER_META:'
 const METADATA_END = ':END -->'
 const TEXT_FONT_SIZE_MIN = 8
-const TEXT_FONT_SIZE_MAX = 32
+const TEXT_FONT_SIZE_MAX = 108
 
 interface SelectOption<T extends string = string> {
   label: string
@@ -133,12 +156,50 @@ const BG_TYPE_OPTIONS: SelectOption<'solid' | 'gradient'>[] = [
   { label: 'Gradient', value: 'gradient' },
 ]
 
-const FONT_OPTIONS: SelectOption[] = [
-  { label: 'Sans-serif', value: 'sans-serif' },
-  { label: 'Serif', value: 'serif' },
-  { label: 'Monospace', value: 'monospace' },
-  { label: 'Cursive', value: 'cursive' },
+const FALLBACK_FONT_FAMILIES: string[] = [
+  'sans-serif',
+  'serif',
+  'monospace',
+  'cursive',
 ]
+
+const systemFontFamilies = ref<string[]>([])
+const fontsLoaded = ref(false)
+const fontsPermissionDenied = ref(false)
+// When true, show a free-text Input instead of the Select dropdown
+const fontCustomMode = ref(false)
+
+// All families as SelectOptions: fallbacks first, then system fonts
+const fontOptions = computed<SelectOption[]>(() => {
+  const families = systemFontFamilies.value.length > 0
+    ? [
+        ...FALLBACK_FONT_FAMILIES,
+        ...systemFontFamilies.value.filter(f => !FALLBACK_FONT_FAMILIES.includes(f)),
+      ]
+    : FALLBACK_FONT_FAMILIES
+  return families.map(f => ({ label: f, value: f }))
+})
+
+async function loadSystemFonts() {
+  if (!('queryLocalFonts' in window)) {
+    // API not available (Firefox, Safari) - manual entry still works via the text input
+    fontsLoaded.value = true
+    return
+  }
+  try {
+    const fonts = await (window as Window & { queryLocalFonts: () => Promise<FontData[]> }).queryLocalFonts()
+    const families = [...new Set(fonts.map(f => f.family))].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' }),
+    )
+    systemFontFamilies.value = families
+    fontsLoaded.value = true
+    fontsPermissionDenied.value = false
+  }
+  catch (err) {
+    fontsLoaded.value = true
+    fontsPermissionDenied.value = err instanceof DOMException && err.name === 'NotAllowedError'
+  }
+}
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -184,16 +245,50 @@ const fontFamilyModel = computed<SelectOption[] | undefined>({
     const layer = selectedTextLayer.value
     if (!layer)
       return undefined
-    const match = FONT_OPTIONS.find(option => option.value === layer.fontFamily)
-    return match ? [match] : undefined
+    const match = fontOptions.value.find(o => o.value === layer.fontFamily)
+    if (match)
+      return [match]
+    // Family came from saved metadata and isn't in the list - show it as-is
+    return layer.fontFamily ? [{ label: layer.fontFamily, value: layer.fontFamily }] : undefined
   },
   set(selection) {
     const layer = selectedTextLayer.value
     if (!layer)
       return
     const next = selection?.[0]?.value
-    if (next)
+    if (next != null && next !== '')
       layer.fontFamily = next
+    redraw()
+  },
+})
+
+function setTextGradientColor(value: string) {
+  const layer = selectedTextLayer.value
+  if (!layer)
+    return
+  layer.gradientColor = value
+  redraw()
+}
+
+function clearTextGradient() {
+  const layer = selectedTextLayer.value
+  if (!layer)
+    return
+  layer.gradientColor = null
+  redraw()
+}
+
+const fontFamilyCustom = computed<string>({
+  get() {
+    return selectedTextLayer.value?.fontFamily ?? ''
+  },
+  set(value: string) {
+    const layer = selectedTextLayer.value
+    if (!layer)
+      return
+    if (value.trim() !== '')
+      layer.fontFamily = value.trim()
+    redraw()
   },
 })
 
@@ -241,6 +336,10 @@ function buildMetadata(): BannerMetadata {
           fontFamily: l.fontFamily,
           fontSize: l.fontSize,
           color: l.color,
+          gradientColor: l.gradientColor,
+          gradientAngle: l.gradientAngle,
+          opacity: l.opacity,
+          rotation: l.rotation,
           x: l.x,
           y: l.y,
           bold: l.bold,
@@ -250,6 +349,7 @@ function buildMetadata(): BannerMetadata {
       return {
         id: l.id,
         type: 'image' as const,
+        rotation: l.rotation,
         x: l.x,
         y: l.y,
         width: l.width,
@@ -281,6 +381,10 @@ function applyMetadata(meta: BannerMetadata) {
         fontFamily: l.fontFamily,
         fontSize: Math.min(TEXT_FONT_SIZE_MAX, Math.max(TEXT_FONT_SIZE_MIN, l.fontSize)),
         color: l.color,
+        gradientColor: l.gradientColor ?? null,
+        gradientAngle: l.gradientAngle ?? 0,
+        opacity: l.opacity ?? 1,
+        rotation: l.rotation ?? 0,
         x: l.x,
         y: l.y,
         bold: l.bold,
@@ -301,6 +405,7 @@ function applyMetadata(meta: BannerMetadata) {
       src: '',
       file: null,
       assetMeta,
+      rotation: l.rotation ?? 0,
       x: l.x,
       y: l.y,
       width: l.width,
@@ -385,25 +490,49 @@ function redraw() {
       if (!layer.src)
         continue
       const img = getOrLoadImage(layer.src)
-      if (img)
-        ctx.drawImage(img, layer.x, layer.y, layer.width, layer.height)
+      if (img) {
+        const cx = layer.x + layer.width / 2
+        const cy = layer.y + layer.height / 2
+        ctx.save()
+        ctx.translate(cx, cy)
+        ctx.rotate((layer.rotation * Math.PI) / 180)
+        ctx.drawImage(img, -layer.width / 2, -layer.height / 2, layer.width, layer.height)
+        ctx.restore()
+      }
     }
     else if (layer.type === 'text') {
       if (!layer.content.trim())
         continue
+      ctx.save()
+      ctx.globalAlpha = layer.opacity
+      ctx.translate(layer.x, layer.y)
+      ctx.rotate((layer.rotation * Math.PI) / 180)
       ctx.font = buildFontStyle(layer)
-      ctx.fillStyle = layer.color
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
+
+      if (layer.gradientColor != null) {
+        // Measure text width so gradient spans the actual glyph extents
+        const metrics = ctx.measureText(layer.content)
+        const tw = metrics.width
+        const angleRad = (layer.gradientAngle * Math.PI) / 180
+        const dx = Math.cos(angleRad) * tw / 2
+        const dy = Math.sin(angleRad) * tw / 2
+        const grad = ctx.createLinearGradient(-dx, -dy, dx, dy)
+        grad.addColorStop(0, layer.color)
+        grad.addColorStop(1, layer.gradientColor)
+        ctx.fillStyle = grad
+      }
+      else {
+        ctx.fillStyle = layer.color
+      }
+
       ctx.shadowColor = 'rgba(0,0,0,0.5)'
       ctx.shadowBlur = 4
       ctx.shadowOffsetX = 1
       ctx.shadowOffsetY = 1
-      ctx.fillText(layer.content, layer.x, layer.y)
-      ctx.shadowColor = 'transparent'
-      ctx.shadowBlur = 0
-      ctx.shadowOffsetX = 0
-      ctx.shadowOffsetY = 0
+      ctx.fillText(layer.content, 0, 0)
+      ctx.restore()
     }
   }
 
@@ -435,24 +564,34 @@ function drawSelectionIndicators(ctx: CanvasRenderingContext2D) {
       const metrics = ctx.measureText(layer.content)
       const tw = metrics.width
       const th = layer.fontSize
+      ctx.save()
+      ctx.translate(layer.x, layer.y)
+      ctx.rotate((layer.rotation * Math.PI) / 180)
       ctx.strokeStyle = isSelected ? '#4fc3f7' : 'rgba(255,255,255,0.5)'
-      ctx.strokeRect(layer.x - tw / 2 - 4, layer.y - th / 2 - 4, tw + 8, th + 8)
+      ctx.strokeRect(-tw / 2 - 4, -th / 2 - 4, tw + 8, th + 8)
+      ctx.restore()
     }
     else if (layer.type === 'image') {
+      const cx = layer.x + layer.width / 2
+      const cy = layer.y + layer.height / 2
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.rotate((layer.rotation * Math.PI) / 180)
       ctx.strokeStyle = isSelected ? '#4fc3f7' : 'rgba(255,255,255,0.5)'
-      ctx.strokeRect(layer.x - 1, layer.y - 1, layer.width + 2, layer.height + 2)
+      ctx.strokeRect(-layer.width / 2 - 1, -layer.height / 2 - 1, layer.width + 2, layer.height + 2)
       if (isSelected) {
         const handleSize = 8
         ctx.setLineDash([])
         ctx.fillStyle = '#4fc3f7'
         ctx.fillRect(
-          layer.x + layer.width - handleSize / 2,
-          layer.y + layer.height - handleSize / 2,
+          layer.width / 2 - handleSize / 2,
+          layer.height / 2 - handleSize / 2,
           handleSize,
           handleSize,
         )
         ctx.setLineDash([4, 4])
       }
+      ctx.restore()
     }
   }
 
@@ -483,6 +622,16 @@ function canvasToLocal(e: MouseEvent): { x: number, y: number } {
   }
 }
 
+/** Rotate point (px, py) around (cx, cy) by -angle degrees (inverse rotation for hit testing). */
+function rotatePoint(px: number, py: number, cx: number, cy: number, angleDeg: number): { x: number, y: number } {
+  const rad = (-angleDeg * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  const dx = px - cx
+  const dy = py - cy
+  return { x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos }
+}
+
 function hitTestTextLayer(x: number, y: number, layer: TextLayer): boolean {
   if (!layer.content.trim())
     return false
@@ -497,23 +646,31 @@ function hitTestTextLayer(x: number, y: number, layer: TextLayer): boolean {
   const tw = metrics.width
   const th = layer.fontSize
   const pad = 6
+  // Rotate the test point into layer-local (unrotated) space
+  const local = rotatePoint(x, y, layer.x, layer.y, layer.rotation)
   return (
-    x >= layer.x - tw / 2 - pad
-    && x <= layer.x + tw / 2 + pad
-    && y >= layer.y - th / 2 - pad
-    && y <= layer.y + th / 2 + pad
+    local.x >= layer.x - tw / 2 - pad
+    && local.x <= layer.x + tw / 2 + pad
+    && local.y >= layer.y - th / 2 - pad
+    && local.y <= layer.y + th / 2 + pad
   )
 }
 
 function hitTestImageLayer(x: number, y: number, layer: ImageLayer): boolean {
-  return x >= layer.x && x <= layer.x + layer.width && y >= layer.y && y <= layer.y + layer.height
+  const cx = layer.x + layer.width / 2
+  const cy = layer.y + layer.height / 2
+  const local = rotatePoint(x, y, cx, cy, layer.rotation)
+  return local.x >= layer.x && local.x <= layer.x + layer.width && local.y >= layer.y && local.y <= layer.y + layer.height
 }
 
 function hitTestImageResizeHandle(x: number, y: number, layer: ImageLayer): boolean {
+  const cx = layer.x + layer.width / 2
+  const cy = layer.y + layer.height / 2
   const handleSize = 12
   const hx = layer.x + layer.width
   const hy = layer.y + layer.height
-  return x >= hx - handleSize && x <= hx + handleSize && y >= hy - handleSize && y <= hy + handleSize
+  const local = rotatePoint(x, y, cx, cy, layer.rotation)
+  return local.x >= hx - handleSize && local.x <= hx + handleSize && local.y >= hy - handleSize && local.y <= hy + handleSize
 }
 
 // ── Mouse handlers ────────────────────────────────────────────────────────────
@@ -570,9 +727,17 @@ function onCanvasMouseMove(e: MouseEvent) {
       return
     const dx = pos.x - resizeStartPos.value.x
     const newWidth = Math.max(16, resizeStartSize.value.width + dx)
-    const newHeight = newWidth / layer.aspect
-    layer.width = Math.round(newWidth)
-    layer.height = Math.round(newHeight)
+    if (e.shiftKey) {
+      // Free resize - ignore aspect ratio
+      const dy = pos.y - resizeStartPos.value.y
+      layer.width = Math.round(newWidth)
+      layer.height = Math.round(Math.max(4, resizeStartSize.value.height + dy))
+    }
+    else {
+      const newHeight = newWidth / layer.aspect
+      layer.width = Math.round(newWidth)
+      layer.height = Math.round(newHeight)
+    }
     redraw()
     return
   }
@@ -625,6 +790,10 @@ function addTextLayer() {
     fontFamily: 'sans-serif',
     fontSize: 20,
     color: '#ffffff',
+    gradientColor: null,
+    gradientAngle: 0,
+    opacity: 1,
+    rotation: 0,
     x: Math.round(BANNER_WIDTH / 2),
     y: Math.round(BANNER_HEIGHT / 2),
     bold: false,
@@ -715,6 +884,7 @@ function onImageSelected(e: Event) {
       src: url,
       file,
       assetMeta,
+      rotation: 0,
       x: Math.round((BANNER_WIDTH - width) / 2),
       y: Math.round((BANNER_HEIGHT - height) / 2),
       width,
@@ -748,6 +918,58 @@ function removeLayer(id: string) {
 function removeSelectedLayer() {
   if (selectedLayerId.value)
     removeLayer(selectedLayerId.value)
+}
+
+function duplicateLayer(id: string) {
+  const src = layers.value.find(l => l.id === id)
+  if (!src)
+    return
+  const newId = crypto.randomUUID()
+  let clone: BannerLayer
+  if (src.type === 'text') {
+    clone = { ...src, id: newId, x: src.x + 6, y: src.y + 6 }
+  }
+  else {
+    clone = { ...src, id: newId, x: src.x + 6, y: src.y + 6, file: src.file, src: src.src }
+  }
+  const idx = layers.value.findIndex(l => l.id === id)
+  layers.value.splice(idx + 1, 0, clone)
+  selectedLayerId.value = newId
+  redraw()
+}
+
+function setImageX(layer: ImageLayer, raw: string) {
+  const v = Number.parseInt(raw, 10)
+  if (!Number.isFinite(v))
+    return
+  layer.x = v
+  redraw()
+}
+
+function setImageY(layer: ImageLayer, raw: string) {
+  const v = Number.parseInt(raw, 10)
+  if (!Number.isFinite(v))
+    return
+  layer.y = v
+  redraw()
+}
+
+function setImageWidth(layer: ImageLayer, raw: string) {
+  const v = Math.max(4, Number.parseInt(raw, 10))
+  if (!Number.isFinite(v))
+    return
+  layer.width = v
+  layer.height = Math.round(v / layer.aspect)
+  redraw()
+}
+
+function setImageHeight(layer: ImageLayer, raw: string) {
+  const v = Math.max(4, Number.parseInt(raw, 10))
+  if (!Number.isFinite(v))
+    return
+  layer.height = v
+  layer.width = Math.round(v * layer.aspect)
+  redraw()
 }
 
 /** Move layer toward front (higher z-order = higher index in array). */
@@ -951,6 +1173,7 @@ async function saveBanner() {
       .getPublicUrl(filePath)
 
     emit('saved', urlData.publicUrl)
+    emit('close')
   }
   catch (err) {
     saveError.value = err instanceof Error ? err.message : 'Unknown error occurred'
@@ -998,6 +1221,7 @@ async function deleteBanner() {
     selectedLayerId.value = null
     redraw()
     emit('deleted')
+    emit('close')
   }
   catch (err) {
     saveError.value = err instanceof Error ? err.message : 'Unknown error occurred'
@@ -1034,11 +1258,14 @@ const workspaceStyle = computed(() => ({
 watch([bgType, bgColor, bgGradientEnd, bgGradientAngle], () => redraw())
 watch(layers, () => redraw(), { deep: true })
 
-// Reload existing banner whenever the modal is opened
+// Reload existing banner whenever the modal is opened; also trigger font load
 watch(() => props.open, async (isOpen) => {
   if (isOpen && props.userId && !loading.value) {
     const supabase = useSupabaseClient<Database>()
     await loadExistingBanner(supabase, props.userId)
+  }
+  if (isOpen && !fontsLoaded.value) {
+    void loadSystemFonts()
   }
 })
 
@@ -1130,9 +1357,7 @@ function onClose() {
               Loading…
             </span>
             <Button square size="s" plain :disabled="saving" @click="onClose">
-              <template #start>
-                <Icon name="ph:x" />
-              </template>
+              <Icon name="ph:x" />
             </Button>
           </Flex>
         </Flex>
@@ -1246,6 +1471,19 @@ function onClose() {
                       <Button
                         square
                         size="s"
+                        variant="gray"
+                        @click.stop="duplicateLayer(layer.id)"
+                      >
+                        <Icon name="ph:copy" />
+                      </Button>
+                      <template #tooltip>
+                        <p>Duplicate layer</p>
+                      </template>
+                    </Tooltip>
+                    <Tooltip>
+                      <Button
+                        square
+                        size="s"
                         variant="danger"
                         plain
                         @click.stop="removeLayer(layer.id)"
@@ -1284,14 +1522,58 @@ function onClose() {
                   placeholder="Layer text…"
                   expand
                 />
-                <Flex y-center gap="s">
+                <!-- Font family row -->
+                <Flex y-center gap="xs">
                   <Select
+                    v-if="!fontCustomMode"
                     v-model="fontFamilyModel"
-                    :options="FONT_OPTIONS"
+                    :options="fontOptions"
                     single
+                    searchable
                     size="s"
                     expand
+                    placeholder="Font family…"
                   />
+                  <Input
+                    v-else
+                    v-model="fontFamilyCustom"
+                    size="s"
+                    expand
+                    placeholder="e.g. Fira Code"
+                    spellcheck="false"
+                  />
+                  <!-- Toggle custom entry -->
+                  <Tooltip>
+                    <Button
+                      size="s"
+                      variant="gray"
+                      square
+                      :outline="fontCustomMode"
+                      @click="fontCustomMode = !fontCustomMode"
+                    >
+                      <Icon name="ph:pencil-simple" />
+                    </Button>
+                    <template #tooltip>
+                      <p>{{ fontCustomMode ? 'Back to font list' : 'Enter font name manually' }}</p>
+                    </template>
+                  </Tooltip>
+                  <!-- Load system fonts (Chrome/Edge only) -->
+                  <Tooltip v-if="!fontsLoaded || fontsPermissionDenied">
+                    <Button
+                      size="s"
+                      variant="gray"
+                      square
+                      @click="loadSystemFonts"
+                    >
+                      <Icon name="ph:text-aa" />
+                    </Button>
+                    <template #tooltip>
+                      <p>{{ fontsPermissionDenied ? 'Permission denied - click to retry' : 'Load system fonts' }}</p>
+                    </template>
+                  </Tooltip>
+                </Flex>
+                <!-- Font size row -->
+                <Flex y-center gap="s">
                   <input
                     v-model.number="selectedTextLayer.fontSize"
                     type="range"
@@ -1299,9 +1581,19 @@ function onClose() {
                     :max="TEXT_FONT_SIZE_MAX"
                     step="1"
                     class="banner-editor__range"
+                    @input="redraw()"
                   >
-                  <span class="banner-editor__range-value">{{ selectedTextLayer.fontSize }}px</span>
+                  <Input
+                    v-model="selectedTextLayer.fontSize"
+                    type="number"
+                    size="s"
+                    :min="TEXT_FONT_SIZE_MIN"
+                    :max="TEXT_FONT_SIZE_MAX"
+                    style="width: 56px; flex-shrink: 0;"
+                    @change="redraw()"
+                  />
                 </Flex>
+                <!-- Colour + gradient row -->
                 <Flex y-center gap="s">
                   <Tooltip>
                     <label class="banner-editor__swatch">
@@ -1309,6 +1601,7 @@ function onClose() {
                         v-model="selectedTextLayer.color"
                         type="color"
                         class="banner-editor__color-input"
+                        @input="redraw()"
                       >
                       <span
                         class="banner-editor__color-preview"
@@ -1316,7 +1609,44 @@ function onClose() {
                       />
                     </label>
                     <template #tooltip>
-                      <p>Text colour</p>
+                      <p>{{ selectedTextLayer.gradientColor != null ? 'Gradient start' : 'Text colour' }}</p>
+                    </template>
+                  </Tooltip>
+                  <Tooltip>
+                    <label
+                      class="banner-editor__swatch"
+                      :style="selectedTextLayer.gradientColor == null ? 'opacity: 0.35; cursor: pointer;' : ''"
+                    >
+                      <input
+                        :value="selectedTextLayer.gradientColor ?? selectedTextLayer.color"
+                        type="color"
+                        class="banner-editor__color-input"
+                        @input="(e) => setTextGradientColor((e.target as HTMLInputElement).value)"
+                      >
+                      <span
+                        class="banner-editor__color-preview"
+                        :style="{
+                          background: selectedTextLayer.gradientColor != null
+                            ? `linear-gradient(90deg, ${selectedTextLayer.color}, ${selectedTextLayer.gradientColor})`
+                            : selectedTextLayer.color,
+                        }"
+                      />
+                    </label>
+                    <template #tooltip>
+                      <p>Gradient end (click to enable)</p>
+                    </template>
+                  </Tooltip>
+                  <Tooltip v-if="selectedTextLayer.gradientColor != null">
+                    <Button
+                      size="s"
+                      variant="gray"
+                      square
+                      @click="clearTextGradient"
+                    >
+                      <Icon name="ph:x" />
+                    </Button>
+                    <template #tooltip>
+                      <p>Remove gradient</p>
                     </template>
                   </Tooltip>
                   <Tooltip>
@@ -1347,6 +1677,48 @@ function onClose() {
                     </template>
                   </Tooltip>
                 </Flex>
+                <!-- Gradient angle (only when gradient is active) -->
+                <Flex v-if="selectedTextLayer.gradientColor != null" y-center gap="s">
+                  <span class="banner-editor__field-label">Angle</span>
+                  <input
+                    v-model.number="selectedTextLayer.gradientAngle"
+                    type="range"
+                    min="0"
+                    max="360"
+                    step="1"
+                    class="banner-editor__range"
+                    @input="redraw()"
+                  >
+                  <span class="banner-editor__range-value">{{ selectedTextLayer.gradientAngle }}°</span>
+                </Flex>
+                <!-- Rotation row -->
+                <Flex y-center gap="s">
+                  <span class="banner-editor__field-label">Rotate</span>
+                  <input
+                    v-model.number="selectedTextLayer.rotation"
+                    type="range"
+                    min="-180"
+                    max="180"
+                    step="1"
+                    class="banner-editor__range"
+                    @input="redraw()"
+                  >
+                  <span class="banner-editor__range-value">{{ selectedTextLayer.rotation }}°</span>
+                </Flex>
+                <!-- Opacity row -->
+                <Flex y-center gap="s">
+                  <span class="banner-editor__field-label">Opacity</span>
+                  <input
+                    v-model.number="selectedTextLayer.opacity"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    class="banner-editor__range"
+                    @input="redraw()"
+                  >
+                  <span class="banner-editor__range-value">{{ Math.round(selectedTextLayer.opacity * 100) }}%</span>
+                </Flex>
               </Flex>
             </div>
           </template>
@@ -1358,8 +1730,61 @@ function onClose() {
               <span class="banner-editor__group-label">Image</span>
               <Flex column gap="s">
                 <p class="banner-editor__hint">
-                  Drag to move &middot; drag corner handle to resize
+                  Drag to move &middot; drag corner to resize &middot; hold Shift to ignore aspect ratio
                 </p>
+
+                <!-- Rotation -->
+                <Flex y-center gap="s">
+                  <span class="banner-editor__field-label">Rotate</span>
+                  <input
+                    v-model.number="selectedImageLayer.rotation"
+                    type="range"
+                    min="-180"
+                    max="180"
+                    step="1"
+                    class="banner-editor__range"
+                    @input="redraw()"
+                  >
+                  <span class="banner-editor__range-value">{{ selectedImageLayer.rotation }}°</span>
+                </Flex>
+                <!-- Position -->
+                <div class="banner-editor__transform-grid">
+                  <span class="banner-editor__field-label">X</span>
+                  <input
+                    class="banner-editor__num-input"
+                    type="number"
+                    :value="selectedImageLayer.x"
+                    @change="setImageX(selectedImageLayer, ($event.target as HTMLInputElement).value)"
+                  >
+                  <span class="banner-editor__field-label">Y</span>
+                  <input
+                    class="banner-editor__num-input"
+                    type="number"
+                    :value="selectedImageLayer.y"
+                    @change="setImageY(selectedImageLayer, ($event.target as HTMLInputElement).value)"
+                  >
+                </div>
+
+                <!-- Size (aspect-locked) -->
+                <div class="banner-editor__transform-grid">
+                  <span class="banner-editor__field-label">W</span>
+                  <input
+                    class="banner-editor__num-input"
+                    type="number"
+                    min="4"
+                    :value="selectedImageLayer.width"
+                    @change="setImageWidth(selectedImageLayer, ($event.target as HTMLInputElement).value)"
+                  >
+                  <span class="banner-editor__field-label">H</span>
+                  <input
+                    class="banner-editor__num-input"
+                    type="number"
+                    min="4"
+                    :value="selectedImageLayer.height"
+                    @change="setImageHeight(selectedImageLayer, ($event.target as HTMLInputElement).value)"
+                  >
+                </div>
+
                 <p v-if="!selectedImageLayer.src" class="banner-editor__hint">
                   Image file missing. Replace to restore.
                 </p>
@@ -1606,6 +2031,40 @@ function onClose() {
   &__hint {
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
+  }
+
+  &__transform-grid {
+    display: grid;
+    grid-template-columns: 16px 1fr 16px 1fr;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  &__num-input {
+    width: 100%;
+    min-width: 0;
+    background: var(--color-bg-lowered);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-xs);
+    color: var(--color-text);
+    font-size: var(--font-size-xs);
+    font-variant-numeric: tabular-nums;
+    padding: 2px var(--space-xs);
+    height: 26px;
+    text-align: right;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-accent);
+    }
+
+    // Hide browser spin buttons - the value is readable enough without them
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+    }
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
 
   &__error {
