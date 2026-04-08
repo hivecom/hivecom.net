@@ -288,12 +288,9 @@ const commands = computed<Command[]>(() => {
 
   const q = search.value.trim()
   if (q.length === 0)
-    return [...quickCommands.value, ...navCommands]
+    return navCommands
 
   const ql = q.toLowerCase()
-  const matchingQuickCommands = quickCommands.value.filter(
-    c => c.title.toLowerCase().includes(ql) || (c.description ?? '').toLowerCase().includes(ql),
-  )
 
   const dbCommands: Command[] = results.value.map(dbResultToCommand)
 
@@ -313,7 +310,7 @@ const commands = computed<Command[]>(() => {
       },
     }))
 
-  return [...dbCommands, ...topicCommands, ...matchingQuickCommands, ...navCommands]
+  return [...dbCommands, ...topicCommands, ...navCommands]
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
