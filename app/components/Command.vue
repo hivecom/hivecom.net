@@ -277,12 +277,13 @@ const commands = computed<Command[]>(() => {
 
   if (isCommandsOnly.value) {
     const q = search.value.trim()
-    if (q.length === 0)
-      return quickCommands.value
     const ql = q.toLowerCase()
-    return quickCommands.value.filter(
-      c => c.title.toLowerCase().includes(ql) || (c.description ?? '').toLowerCase().includes(ql),
-    )
+    const matching = q.length === 0
+      ? quickCommands.value
+      : quickCommands.value.filter(
+          c => c.title.toLowerCase().includes(ql) || (c.description ?? '').toLowerCase().includes(ql),
+        )
+    return [...matching, ...navCommands]
   }
 
   const q = search.value.trim()

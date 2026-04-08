@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useSupabaseUser } from '#imports'
 import { Avatar, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
@@ -18,6 +19,8 @@ const props = withDefaults(defineProps<Props>(), {
   linked: false,
   showPreview: false,
 })
+
+const currentUser = useSupabaseUser()
 
 const { user: userData, loading } = useDataUser(
   computed(() => props.userId ?? null),
@@ -46,6 +49,10 @@ const initials = computed(() => {
 
 const profileLink = computed(() => {
   if (!props.userId)
+    return null
+
+  const isOwner = currentUser.value?.id === props.userId
+  if (!isOwner && !userData.value?.isPublic)
     return null
 
   if (userData.value?.username_set && userData.value?.username)

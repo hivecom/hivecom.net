@@ -75,7 +75,7 @@ const pastEvents = computed(() => {
 
       <!-- Past events skeletons -->
       <div class="events-section__past-list">
-        <Skeleton v-for="i in 4" :key="`past-${i}`" :width="322" :height="164" style="min-width: 322px;" />
+        <Skeleton v-for="i in 4" :key="`past-${i}`" :width="264" :height="164" style="flex-shrink: 0;" />
       </div>
     </Flex>
   </div>
@@ -161,6 +161,13 @@ const pastEvents = computed(() => {
     .vui-divider:last-of-type {
       display: none;
     }
+  }
+
+  &__past-list {
+    display: flex;
+    flex-direction: row;
+    gap: var(--space-m);
+    overflow: hidden;
   }
 
   &__no-events {
