@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import BannerEditor from '@/components/Profile/Banner/BannerEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { normalizeWebsiteUrl, useUserFormValidation } from '@/composables/useUserFormValidation'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -48,6 +49,101 @@ const {
 // Avatar upload state
 const avatarUploading = ref(false)
 const avatarError = ref<string | null>(null)
+
+// Banner state
+const bannerEditorOpen = ref(false)
+const bannerUrl = ref<string | null>(null)
+const bannerDeleting = ref(false)
+const importFileRef = ref<HTMLInputElement | null>(null)
+const bannerEditorRef = ref<{ importBanner: (file: File) => Promise<{ hadMetadata: boolean }> } | null>(null)
+const bannerUploading = ref(false)
+const showBannerDeleteConfirm = ref(false)
+const showImportConfirm = ref(false)
+
+function onBannerSaved(url: string) {
+  bannerUrl.value = `${url}?t=${Date.now()}`
+}
+
+function onBannerDeleted() {
+  bannerUrl.value = null
+}
+
+async function handleImportFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  // Reset so the same file can be re-selected next time
+  input.value = ''
+  if (!file || !props.profile?.id)
+    return
+
+  // Check for embedded metadata without touching the editor
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const text = new TextDecoder().decode(bytes)
+  const hasMetadata = text.includes('<!-- HIVECOM_BANNER_META:')
+
+  if (hasMetadata) {
+    // Upload the file directly - no need to re-render through the editor
+    try {
+      bannerUploading.value = true
+      const supabase = useSupabaseClient()
+      const filePath = `${props.profile.id}/banner.webp`
+
+      await supabase.storage
+        .from(USERS_BUCKET_ID)
+        .upload(filePath, file, { upsert: true, contentType: 'image/webp' })
+
+      await supabase
+        .from('profiles')
+        .update({ has_banner: true })
+        .eq('id', props.profile.id)
+
+      const { data } = supabase.storage.from(USERS_BUCKET_ID).getPublicUrl(filePath)
+      bannerUrl.value = `${data.publicUrl}?t=${Date.now()}`
+    }
+    catch (error) {
+      console.error('Error uploading imported banner:', error)
+    }
+    finally {
+      bannerUploading.value = false
+    }
+  }
+  else {
+    // No metadata - load as an image layer and let the user edit first
+    await bannerEditorRef.value?.importBanner(file)
+    bannerEditorOpen.value = true
+  }
+}
+
+function confirmImport() {
+  importFileRef.value?.click()
+}
+
+async function handleBannerDelete() {
+  if (!props.profile?.id)
+    return
+
+  try {
+    bannerDeleting.value = true
+    const supabase = useSupabaseClient()
+
+    await supabase.storage
+      .from(USERS_BUCKET_ID)
+      .remove([`${props.profile.id}/banner.webp`])
+
+    await supabase
+      .from('profiles')
+      .update({ has_banner: false })
+      .eq('id', props.profile.id)
+
+    bannerUrl.value = null
+  }
+  catch (error) {
+    console.error('Error deleting banner:', error)
+  }
+  finally {
+    bannerDeleting.value = false
+  }
+}
 const avatarUrl = ref<string | null>(null)
 
 // Avatar delete confirmation state
@@ -135,6 +231,17 @@ watch(
       // Initialize avatar URL
       const supabase = useSupabaseClient()
       avatarUrl.value = await getUserAvatarUrl(supabase, newProfile.id)
+
+      // Initialize banner URL from has_banner flag
+      if (newProfile.has_banner) {
+        const { data } = supabase.storage
+          .from(USERS_BUCKET_ID)
+          .getPublicUrl(`${newProfile.id}/banner.webp`)
+        bannerUrl.value = `${data.publicUrl}?t=${Date.now()}`
+      }
+      else {
+        bannerUrl.value = null
+      }
     }
     else {
       // Reset form
@@ -149,6 +256,7 @@ watch(
       }
 
       avatarUrl.value = null
+      bannerUrl.value = null
     }
   },
   { immediate: true },
@@ -449,6 +557,67 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
           </Textarea>
         </Flex>
 
+        <!-- Banner / Signature -->
+        <Flex column gap="s" expand>
+          <label class="profile-edit-form__banner-label">Forum Signature</label>
+
+          <Flex v-if="bannerUrl" expand class="profile-edit-form__banner-wrapper">
+            <img
+              :src="bannerUrl"
+              alt="Your forum banner"
+              class="profile-edit-form__banner-preview"
+            >
+            <div class="profile-edit-form__banner-overlay">
+              <Button size="s" variant="gray" @click="bannerEditorOpen = true">
+                <template #start>
+                  <Icon name="ph:pencil-simple" />
+                </template>
+                Edit
+              </Button>
+              <Button size="s" variant="danger" :loading="bannerDeleting" @click="showBannerDeleteConfirm = true">
+                <template #start>
+                  <Icon name="ph:trash" />
+                </template>
+                Delete
+              </Button>
+            </div>
+          </Flex>
+
+          <Flex v-else gap="s" expand>
+            <Button
+              variant="accent"
+              outline
+              expand
+              :disabled="!props.profile"
+              @click="bannerEditorOpen = true"
+            >
+              <template #start>
+                <Icon name="ph:plus" />
+              </template>
+              Create Signature
+            </Button>
+            <Button
+              variant="gray"
+              outline
+              :disabled="!props.profile"
+              title="Import an existing .webp banner file"
+              @click="showImportConfirm = true"
+            >
+              <template #start>
+                <Icon name="ph:upload-simple" />
+              </template>
+              Import
+            </Button>
+            <input
+              ref="importFileRef"
+              type="file"
+              accept="image/webp"
+              class="profile-edit-form__import-input"
+              @change="handleImportFile"
+            >
+          </Flex>
+        </Flex>
+
         <RichTextEditor
           v-model="profileForm.markdown"
           :media-context="props.profile?.id ? `${props.profile.id}/markdown/media` : undefined"
@@ -500,6 +669,43 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
         </Button>
       </Flex>
     </template>
+
+    <!-- Banner Editor Modal -->
+    <BannerEditor
+      ref="bannerEditorRef"
+      :open="bannerEditorOpen"
+      :user-id="props.profile?.id ?? null"
+      @saved="onBannerSaved"
+      @deleted="onBannerDeleted"
+      @close="bannerEditorOpen = false"
+    />
+
+    <!-- Delete Banner Confirmation Modal -->
+    <ConfirmModal
+      v-model:open="showBannerDeleteConfirm"
+      :confirm="handleBannerDelete"
+      title="Delete Signature"
+      description="Are you sure you want to delete your forum signature? This cannot be undone."
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      :destructive="true"
+    />
+
+    <!-- Import Banner Confirmation Modal -->
+    <ConfirmModal
+      v-model:open="showImportConfirm"
+      :confirm="confirmImport"
+      title="Import Signature"
+      description="This will load the selected file into the signature editor."
+      confirm-text="Import"
+      cancel-text="Cancel"
+    >
+      <Alert variant="danger" title="Only import files from sources you trust">
+        <p class="text-s">
+          <br> Hivecom banner files can contain embedded editor metadata. While we parse it carefully, importing a file that was sent to you by someone else at their request carries a small inherent risk. When in doubt, don't import it.
+        </p>
+      </alert>
+    </ConfirmModal>
 
     <!-- Delete Avatar Confirmation Modal -->
     <ConfirmModal
@@ -576,6 +782,48 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
   &__birthday-container,
   &__country-container {
     position: relative;
+  }
+
+  &__banner-label {
+    display: block;
+    text-align: left;
+    font-size: var(--font-size-m);
+    color: var(--color-text);
+  }
+
+  &__banner-wrapper {
+    position: relative;
+    border-radius: var(--border-radius-s);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+
+    &:hover .profile-edit-form__banner-overlay {
+      opacity: 1;
+    }
+  }
+
+  &__banner-preview {
+    display: block;
+    width: 100%;
+    aspect-ratio: 728 / 36;
+    height: auto;
+    object-fit: cover;
+  }
+
+  &__import-input {
+    display: none;
+  }
+
+  &__banner-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-s);
+    opacity: 0;
+    background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+    transition: opacity var(--transition);
   }
 
   h4 {

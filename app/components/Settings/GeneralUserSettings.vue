@@ -73,6 +73,7 @@ const selectedTheme = computed({
     <Switch v-model="settings.show_nsfw_content" class="reversed mb-m" label="Show NSFW content" />
     <Switch v-model="settings.show_nsfw_warning" class="reversed mb-m" label="Show NSFW content warnings" :disabled="!settings.show_nsfw_content" hint="You will be warned before viewing content marked as NSFW each time." />
     <Switch v-model="settings.show_offtopic_replies" class="reversed mb-m" label="Show off-topic replies by default" hint="When enabled, replies marked as off-topic by the discussion author will be visible (but dimmed) by default." />
+    <Switch v-model="settings.show_user_banners" class="reversed mb-m" label="Show user banners" hint="When enabled, custom banners set by users are shown at the bottom of their posts." />
 
     <Flex x-between y-center class="mb-m">
       <p>Default reply view</p>

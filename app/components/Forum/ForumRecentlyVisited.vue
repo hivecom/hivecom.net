@@ -22,7 +22,7 @@ const skeletonWidths = ['120px', '90px', '140px', '100px', '80px', '110px']
       </Flex>
     </Carousel>
 
-    <Carousel v-else-if="props.items.length > 0" gap="xs" hide-scrollbar>
+    <Carousel v-else-if="props.items.length > 0" :gap="8" hide-scrollbar>
       <NuxtLink v-for="item in props.items" :key="item.id" :to="item.discussionHref" class="forum__continue--item" :draggable="false">
         <Badge variant="neutral" class="ws-nowrap">
           {{ item.discussionTitle }}
