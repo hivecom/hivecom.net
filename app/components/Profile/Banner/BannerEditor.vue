@@ -27,6 +27,14 @@ interface FontData {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export interface GradientStop {
+  color: string
+  /** 0–1 */
+  position: number
+}
+
+export type FillType = 'solid' | 'linear' | 'radial' | 'conic'
+
 export interface TextLayer {
   id: string
   type: 'text'
@@ -34,11 +42,13 @@ export interface TextLayer {
   fontFamily: string
   /** Capped between TEXT_FONT_SIZE_MIN and TEXT_FONT_SIZE_MAX */
   fontSize: number
-  color: string
-  /** null = solid fill, string = gradient end color */
-  gradientColor: string | null
-  /** Gradient angle in degrees (0 = left→right) */
-  gradientAngle: number
+  fillType: FillType
+  /** Primary / solid color; also the first gradient stop default */
+  fillColor: string
+  /** Gradient stops - used when fillType != 'solid' */
+  fillStops: GradientStop[]
+  /** Angle in degrees for linear and conic gradients */
+  fillAngle: number
   /** 0–1 */
   opacity: number
   /** Rotation in degrees, clockwise */
@@ -54,6 +64,10 @@ export interface ImageAssetMeta {
   size: number | null
   type: string | null
   lastModified: number | null
+  /** Base name of the source folder, stored only when the user opts in */
+  folderName: string | null
+  /** Path relative to the folder root (e.g. "sub/image.png"), stored only when the user opts in */
+  folderRelativePath: string | null
 }
 
 export interface ImageLayer {
@@ -82,9 +96,15 @@ export interface MetadataTextLayer {
   content: string
   fontFamily: string
   fontSize: number
-  color: string
+  // Legacy fields (v3 and below) - kept for backward-compat reads
+  color?: string
   gradientColor?: string | null
   gradientAngle?: number
+  // Current fill system
+  fillType?: FillType
+  fillColor?: string
+  fillStops?: GradientStop[]
+  fillAngle?: number
   opacity?: number
   rotation?: number
   x: number
@@ -106,15 +126,28 @@ export interface MetadataImageLayer {
   originalName?: string
 }
 
+// File System Access API - typed as unknown-cast to avoid lib conflicts
+type FsFileHandle = FileSystemFileHandle & { kind: 'file' }
+type FsDirHandle = FileSystemDirectoryHandle & {
+  kind: 'directory'
+  values: () => AsyncIterableIterator<FsFileHandle | FsDirHandle>
+}
+
 export type MetadataLayer = MetadataTextLayer | MetadataImageLayer
 
 export interface BannerMetadata {
-  version: 2 | 3
+  version: 2 | 3 | 4
   background: {
-    type: 'solid' | 'gradient'
-    color: string
-    gradientEnd: string
-    gradientAngle: number
+    // Legacy fields (v3 and below)
+    type?: 'solid' | 'gradient'
+    color?: string
+    gradientEnd?: string
+    gradientAngle?: number
+    // Current fill system
+    fillType?: FillType
+    fillColor?: string
+    fillStops?: GradientStop[]
+    fillAngle?: number
   }
   layers: MetadataLayer[]
 }
@@ -151,9 +184,11 @@ interface SelectOption<T extends string = string> {
   value: T
 }
 
-const BG_TYPE_OPTIONS: SelectOption<'solid' | 'gradient'>[] = [
+const FILL_TYPE_OPTIONS: SelectOption<FillType>[] = [
   { label: 'Solid', value: 'solid' },
-  { label: 'Gradient', value: 'gradient' },
+  { label: 'Linear', value: 'linear' },
+  { label: 'Radial', value: 'radial' },
+  { label: 'Conic', value: 'conic' },
 ]
 
 const FALLBACK_FONT_FAMILIES: string[] = [
@@ -201,10 +236,28 @@ async function loadSystemFonts() {
   }
 }
 
+// ── Asset-path settings ───────────────────────────────────────────────────────
+
+const ASSET_PATHS_KEY = 'hivecom:banner-editor:store-asset-paths'
+const storeAssetPaths = ref<boolean>(
+  typeof localStorage !== 'undefined'
+    ? localStorage.getItem(ASSET_PATHS_KEY) === 'true'
+    : false,
+)
+watch(storeAssetPaths, v => localStorage.setItem(ASSET_PATHS_KEY, String(v)))
+
+const hasDirPicker = typeof window !== 'undefined' && 'showDirectoryPicker' in window
+// webkitdirectory is supported everywhere including Firefox
+const hasWebkitDir = typeof window !== 'undefined'
+
+const scanning = ref(false)
+const scanResult = ref<string | null>(null)
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const dirInputRef = ref<HTMLInputElement | null>(null)
 const pendingReplaceLayerId = ref<string | null>(null)
 
 const saving = ref(false)
@@ -212,16 +265,23 @@ const saveError = ref<string | null>(null)
 const loading = ref(false)
 
 // Background
-const bgType = ref<'solid' | 'gradient'>('solid')
-const bgColor = ref('#1a1a2e')
-const bgGradientEnd = ref('#16213e')
-const bgGradientAngle = ref(90)
+const bgFillType = ref<FillType>('solid')
+const bgFillColor = ref('#1a1a2e')
+const bgFillStops = ref<GradientStop[]>([
+  { color: '#1a1a2e', position: 0 },
+  { color: '#16213e', position: 1 },
+])
+const bgFillAngle = ref(90)
 
 // Unified layer array
 const layers = ref<BannerLayer[]>([])
 
 // Selection
 const selectedLayerId = ref<string | null>(null)
+
+const missingLayerCount = computed(() =>
+  layers.value.filter(l => l.type === 'image' && !l.src).length,
+)
 const selectedLayer = computed(() => layers.value.find(l => l.id === selectedLayerId.value) ?? null)
 const selectedTextLayer = computed<TextLayer | null>(() =>
   selectedLayer.value?.type === 'text' ? (selectedLayer.value as TextLayer) : null,
@@ -230,15 +290,56 @@ const selectedImageLayer = computed<ImageLayer | null>(() =>
   selectedLayer.value?.type === 'image' ? (selectedLayer.value as ImageLayer) : null,
 )
 
-const bgTypeModel = computed<SelectOption<'solid' | 'gradient'>[] | undefined>({
+const bgFillTypeModel = computed<SelectOption<FillType>[] | undefined>({
   get() {
-    const match = BG_TYPE_OPTIONS.find(option => option.value === bgType.value)
-    return match ? [match] : undefined
+    return [FILL_TYPE_OPTIONS.find(o => o.value === bgFillType.value) ?? FILL_TYPE_OPTIONS[0]!]
   },
   set(selection) {
-    bgType.value = selection?.[0]?.value ?? 'solid'
+    const next = selection?.[0]?.value ?? 'solid'
+    bgFillType.value = next
+    if (next !== 'solid' && bgFillStops.value.length < 2) {
+      bgFillStops.value = [
+        { color: bgFillColor.value, position: 0 },
+        { color: '#000000', position: 1 },
+      ]
+    }
+    redraw()
   },
 })
+
+function addBgStop() {
+  const stops = bgFillStops.value
+  const last = stops.at(-1)?.position ?? 1
+  const prev = stops[stops.length - 2]?.position ?? 0
+  const pos = Math.round(((prev + last) / 2) * 100) / 100
+  stops.push({ color: bgFillColor.value, position: pos })
+  stops.sort((a, b) => a.position - b.position)
+  redraw()
+}
+
+function removeBgStop(index: number) {
+  if (bgFillStops.value.length <= 2)
+    return
+  bgFillStops.value.splice(index, 1)
+  redraw()
+}
+
+function setBgStopColor(index: number, value: string) {
+  const stop = bgFillStops.value[index]
+  if (!stop)
+    return
+  stop.color = value
+  redraw()
+}
+
+function setBgStopPosition(index: number, value: number) {
+  const stop = bgFillStops.value[index]
+  if (!stop)
+    return
+  stop.position = Math.min(1, Math.max(0, value))
+  bgFillStops.value.sort((a, b) => a.position - b.position)
+  redraw()
+}
 
 const fontFamilyModel = computed<SelectOption[] | undefined>({
   get() {
@@ -262,19 +363,64 @@ const fontFamilyModel = computed<SelectOption[] | undefined>({
   },
 })
 
-function setTextGradientColor(value: string) {
-  const layer = selectedTextLayer.value
-  if (!layer)
-    return
-  layer.gradientColor = value
+const fillTypeModel = computed<SelectOption<FillType>[] | undefined>({
+  get() {
+    const layer = selectedTextLayer.value
+    if (!layer)
+      return undefined
+    return [FILL_TYPE_OPTIONS.find(o => o.value === layer.fillType) ?? FILL_TYPE_OPTIONS[0]!]
+  },
+  set(selection) {
+    const layer = selectedTextLayer.value
+    if (!layer)
+      return
+    const next = selection?.[0]?.value
+    if (!next)
+      return
+    layer.fillType = next
+    // Seed stops from fillColor when switching into gradient for the first time
+    if (next !== 'solid' && layer.fillStops.length < 2) {
+      layer.fillStops = [
+        { color: layer.fillColor, position: 0 },
+        { color: '#000000', position: 1 },
+      ]
+    }
+    redraw()
+  },
+})
+
+function addFillStop(layer: TextLayer) {
+  // Insert at midpoint between last two stops, or at 0.5 if only one exists
+  const stops = layer.fillStops
+  const last = stops.at(-1)?.position ?? 1
+  const prev = stops[stops.length - 2]?.position ?? 0
+  const pos = Math.round(((prev + last) / 2) * 100) / 100
+  stops.push({ color: layer.fillColor, position: pos })
+  stops.sort((a, b) => a.position - b.position)
   redraw()
 }
 
-function clearTextGradient() {
-  const layer = selectedTextLayer.value
-  if (!layer)
+function removeFillStop(layer: TextLayer, index: number) {
+  if (layer.fillStops.length <= 2)
     return
-  layer.gradientColor = null
+  layer.fillStops.splice(index, 1)
+  redraw()
+}
+
+function setFillStopColor(layer: TextLayer, index: number, value: string) {
+  const stop = layer.fillStops[index]
+  if (!stop)
+    return
+  stop.color = value
+  redraw()
+}
+
+function setFillStopPosition(layer: TextLayer, index: number, value: number) {
+  const stop = layer.fillStops[index]
+  if (!stop)
+    return
+  stop.position = Math.min(1, Math.max(0, value))
+  layer.fillStops.sort((a, b) => a.position - b.position)
   redraw()
 }
 
@@ -322,10 +468,10 @@ function buildMetadata(): BannerMetadata {
   return {
     version: 3,
     background: {
-      type: bgType.value,
-      color: bgColor.value,
-      gradientEnd: bgGradientEnd.value,
-      gradientAngle: bgGradientAngle.value,
+      fillType: bgFillType.value,
+      fillColor: bgFillColor.value,
+      fillStops: bgFillStops.value,
+      fillAngle: bgFillAngle.value,
     },
     layers: layers.value.map((l) => {
       if (l.type === 'text') {
@@ -335,9 +481,10 @@ function buildMetadata(): BannerMetadata {
           content: l.content,
           fontFamily: l.fontFamily,
           fontSize: l.fontSize,
-          color: l.color,
-          gradientColor: l.gradientColor,
-          gradientAngle: l.gradientAngle,
+          fillType: l.fillType,
+          fillColor: l.fillColor,
+          fillStops: l.fillStops,
+          fillAngle: l.fillAngle,
           opacity: l.opacity,
           rotation: l.rotation,
           x: l.x,
@@ -367,22 +514,38 @@ function buildMetadata(): BannerMetadata {
 }
 
 function applyMetadata(meta: BannerMetadata) {
-  bgType.value = meta.background.type
-  bgColor.value = meta.background.color
-  bgGradientEnd.value = meta.background.gradientEnd
-  bgGradientAngle.value = meta.background.gradientAngle
+  const bg = meta.background
+  // Migrate legacy solid/gradient fields
+  const legacyFillType: FillType = bg.type === 'gradient' ? 'linear' : 'solid'
+  const legacyColor = bg.color ?? '#1a1a2e'
+  const legacyStops: GradientStop[] = bg.gradientEnd != null
+    ? [{ color: legacyColor, position: 0 }, { color: bg.gradientEnd, position: 1 }]
+    : [{ color: legacyColor, position: 0 }, { color: '#16213e', position: 1 }]
+
+  bgFillType.value = bg.fillType ?? legacyFillType
+  bgFillColor.value = bg.fillColor ?? legacyColor
+  bgFillStops.value = bg.fillStops ?? legacyStops
+  bgFillAngle.value = bg.fillAngle ?? bg.gradientAngle ?? 90
 
   layers.value = meta.layers.map((l): BannerLayer => {
     if (l.type === 'text') {
+      // Migrate legacy color/gradientColor fields to fillStops
+      const legacyFillType: FillType = l.gradientColor != null ? 'linear' : 'solid'
+      const legacyColor = l.color ?? '#ffffff'
+      const legacyStops: GradientStop[] = l.gradientColor != null
+        ? [{ color: legacyColor, position: 0 }, { color: l.gradientColor, position: 1 }]
+        : [{ color: legacyColor, position: 0 }, { color: '#000000', position: 1 }]
+
       return {
         id: l.id,
         type: 'text',
         content: l.content,
         fontFamily: l.fontFamily,
         fontSize: Math.min(TEXT_FONT_SIZE_MAX, Math.max(TEXT_FONT_SIZE_MIN, l.fontSize)),
-        color: l.color,
-        gradientColor: l.gradientColor ?? null,
-        gradientAngle: l.gradientAngle ?? 0,
+        fillType: l.fillType ?? legacyFillType,
+        fillColor: l.fillColor ?? legacyColor,
+        fillStops: l.fillStops ?? legacyStops,
+        fillAngle: l.fillAngle ?? l.gradientAngle ?? 0,
         opacity: l.opacity ?? 1,
         rotation: l.rotation ?? 0,
         x: l.x,
@@ -396,6 +559,8 @@ function applyMetadata(meta: BannerMetadata) {
       size: null,
       type: null,
       lastModified: null,
+      folderName: null,
+      folderRelativePath: null,
     }
     return {
       id: l.id,
@@ -444,20 +609,32 @@ function buildFontStyle(layer: TextLayer): string {
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D) {
-  if (bgType.value === 'gradient') {
-    const angleRad = (bgGradientAngle.value * Math.PI) / 180
+  if (bgFillType.value !== 'solid' && bgFillStops.value.length >= 2) {
     const cx = BANNER_WIDTH / 2
     const cy = BANNER_HEIGHT / 2
-    const len = Math.max(BANNER_WIDTH, BANNER_HEIGHT)
-    const dx = Math.cos(angleRad) * len
-    const dy = Math.sin(angleRad) * len
-    const grad = ctx.createLinearGradient(cx - dx, cy - dy, cx + dx, cy + dy)
-    grad.addColorStop(0, bgColor.value)
-    grad.addColorStop(1, bgGradientEnd.value)
+    let grad: CanvasGradient
+    if (bgFillType.value === 'linear') {
+      const angleRad = (bgFillAngle.value * Math.PI) / 180
+      const len = Math.max(BANNER_WIDTH, BANNER_HEIGHT)
+      const dx = Math.cos(angleRad) * len
+      const dy = Math.sin(angleRad) * len
+      grad = ctx.createLinearGradient(cx - dx, cy - dy, cx + dx, cy + dy)
+    }
+    else if (bgFillType.value === 'radial') {
+      const r = Math.max(BANNER_WIDTH, BANNER_HEIGHT) / 2
+      grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+    }
+    else {
+      // conic
+      const angleRad = (bgFillAngle.value * Math.PI) / 180
+      grad = ctx.createConicGradient(angleRad, cx, cy)
+    }
+    for (const stop of bgFillStops.value)
+      grad.addColorStop(stop.position, stop.color)
     ctx.fillStyle = grad
   }
   else {
-    ctx.fillStyle = bgColor.value
+    ctx.fillStyle = bgFillColor.value
   }
   ctx.fillRect(0, 0, BANNER_WIDTH, BANNER_HEIGHT)
 }
@@ -483,22 +660,47 @@ function redraw() {
   ctx.clip()
 
   drawBackground(ctx)
+  drawLayers(ctx)
 
-  // Draw each layer in array order (index 0 = backmost, last = frontmost)
+  ctx.restore()
+  ctx.restore()
+}
+
+/**
+ * Draw all layers onto ctx. The context is assumed to already be translated so
+ * that (0,0) maps to the top-left of the banner export area.
+ *
+ * Used by both redraw() (with WORKSPACE_PADDING translate applied upstream) and
+ * exportToWebPBlob() (no padding - ctx origin is already the banner origin).
+ */
+function drawLayers(ctx: CanvasRenderingContext2D, opts: { forExport?: boolean } = {}) {
   for (const layer of layers.value) {
     if (layer.type === 'image') {
       if (!layer.src)
         continue
-      const img = getOrLoadImage(layer.src)
-      if (img) {
-        const cx = layer.x + layer.width / 2
-        const cy = layer.y + layer.height / 2
-        ctx.save()
-        ctx.translate(cx, cy)
-        ctx.rotate((layer.rotation * Math.PI) / 180)
-        ctx.drawImage(img, -layer.width / 2, -layer.height / 2, layer.width, layer.height)
-        ctx.restore()
+      const img = opts.forExport ? loadedImages.get(layer.src) : getOrLoadImage(layer.src)
+      if (!img?.complete)
+        continue
+
+      let source: CanvasImageSource = img
+      if (opts.forExport && (img.naturalWidth > layer.width * 2 || img.naturalHeight > layer.height * 2)) {
+        // Downsample oversized source images to avoid memory bloat on export
+        const tmp = document.createElement('canvas')
+        tmp.width = layer.width
+        tmp.height = layer.height
+        const tmpCtx = tmp.getContext('2d')
+        if (tmpCtx)
+          tmpCtx.drawImage(img, 0, 0, layer.width, layer.height)
+        source = tmp
       }
+
+      const cx = layer.x + layer.width / 2
+      const cy = layer.y + layer.height / 2
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.rotate((layer.rotation * Math.PI) / 180)
+      ctx.drawImage(source, -layer.width / 2, -layer.height / 2, layer.width, layer.height)
+      ctx.restore()
     }
     else if (layer.type === 'text') {
       if (!layer.content.trim())
@@ -511,20 +713,33 @@ function redraw() {
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
 
-      if (layer.gradientColor != null) {
-        // Measure text width so gradient spans the actual glyph extents
+      if (layer.fillType !== 'solid' && layer.fillStops.length >= 2) {
         const metrics = ctx.measureText(layer.content)
         const tw = metrics.width
-        const angleRad = (layer.gradientAngle * Math.PI) / 180
-        const dx = Math.cos(angleRad) * tw / 2
-        const dy = Math.sin(angleRad) * tw / 2
-        const grad = ctx.createLinearGradient(-dx, -dy, dx, dy)
-        grad.addColorStop(0, layer.color)
-        grad.addColorStop(1, layer.gradientColor)
+        const th = layer.fontSize
+
+        let grad: CanvasGradient
+        if (layer.fillType === 'linear') {
+          const angleRad = (layer.fillAngle * Math.PI) / 180
+          const dx = Math.cos(angleRad) * tw / 2
+          const dy = Math.sin(angleRad) * tw / 2
+          grad = ctx.createLinearGradient(-dx, -dy, dx, dy)
+        }
+        else if (layer.fillType === 'radial') {
+          const r = Math.max(tw, th) / 2
+          grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r)
+        }
+        else {
+          // conic
+          const angleRad = (layer.fillAngle * Math.PI) / 180
+          grad = ctx.createConicGradient(angleRad, 0, 0)
+        }
+        for (const stop of layer.fillStops)
+          grad.addColorStop(stop.position, stop.color)
         ctx.fillStyle = grad
       }
       else {
-        ctx.fillStyle = layer.color
+        ctx.fillStyle = layer.fillColor
       }
 
       ctx.shadowColor = 'rgba(0,0,0,0.5)'
@@ -535,9 +750,6 @@ function redraw() {
       ctx.restore()
     }
   }
-
-  ctx.restore()
-  ctx.restore()
 
   // Render guides outside banner bounds
   ctx.save()
@@ -789,9 +1001,10 @@ function addTextLayer() {
     content: 'Text',
     fontFamily: 'sans-serif',
     fontSize: 20,
-    color: '#ffffff',
-    gradientColor: null,
-    gradientAngle: 0,
+    fillType: 'solid',
+    fillColor: '#ffffff',
+    fillStops: [{ color: '#ffffff', position: 0 }, { color: '#000000', position: 1 }],
+    fillAngle: 0,
     opacity: 1,
     rotation: 0,
     x: Math.round(BANNER_WIDTH / 2),
@@ -807,6 +1020,135 @@ function addTextLayer() {
 function openImagePicker(layerId?: string) {
   pendingReplaceLayerId.value = layerId ?? null
   fileInputRef.value?.click()
+}
+
+function buildAssetMeta(file: File, folderName?: string | null, folderRelativePath?: string | null): ImageAssetMeta {
+  return {
+    originalName: file.name,
+    size: file.size,
+    type: file.type || null,
+    lastModified: file.lastModified ?? null,
+    folderName: storeAssetPaths.value ? (folderName ?? null) : null,
+    folderRelativePath: storeAssetPaths.value ? (folderRelativePath ?? null) : null,
+  }
+}
+
+function layerMatchesFile(layer: ImageLayer, file: File): boolean {
+  const meta = layer.assetMeta
+  if (!meta)
+    return false
+  const nameMatches = meta.originalName === file.name
+  const sizeMatches = meta.size == null || meta.size === file.size
+  const typeMatches = meta.type == null || meta.type === file.type
+  const modifiedMatches = meta.lastModified == null || meta.lastModified === file.lastModified
+  return nameMatches && sizeMatches && typeMatches && modifiedMatches
+}
+
+function relinkLayer(layer: ImageLayer, file: File, url: string, folderName?: string | null, folderRelativePath?: string | null) {
+  if (layer.src && layer.src.startsWith('blob:')) {
+    URL.revokeObjectURL(layer.src)
+    loadedImages.delete(layer.src)
+  }
+  layer.src = url
+  layer.file = file
+  layer.assetMeta = buildAssetMeta(file, folderName, folderRelativePath)
+}
+
+/** Shared matching + re-link logic for both picker and webkitdirectory paths. */
+function processFileList(
+  entries: Array<{ file: File, relativePath: string, folderName: string }>,
+): number {
+  const missingLayers = layers.value.filter((l): l is ImageLayer => l.type === 'image' && !l.src)
+  let linked = 0
+  for (const layer of missingLayers) {
+    const match = entries.find(({ file }) => layerMatchesFile(layer, file))
+    if (!match)
+      continue
+    const url = URL.createObjectURL(match.file)
+    relinkLayer(layer, match.file, url, match.folderName, match.relativePath)
+    linked++
+  }
+  return linked
+}
+
+async function scanFolder() {
+  scanning.value = true
+  scanResult.value = null
+  try {
+    if (hasDirPicker) {
+      const dirHandle = await (window as unknown as { showDirectoryPicker: () => Promise<FsDirHandle> }).showDirectoryPicker()
+
+      async function collectFiles(
+        handle: FsDirHandle,
+        prefix: string,
+      ): Promise<Array<{ file: File, relativePath: string, folderName: string }>> {
+        const results: Array<{ file: File, relativePath: string, folderName: string }> = []
+        for await (const entry of handle.values()) {
+          if (entry.kind === 'file') {
+            const file = await (entry as FsFileHandle).getFile()
+            results.push({ file, relativePath: prefix ? `${prefix}/${file.name}` : file.name, folderName: dirHandle.name })
+          }
+          else if (entry.kind === 'directory') {
+            const sub = await collectFiles(
+              entry as FsDirHandle,
+              prefix ? `${prefix}/${entry.name}` : entry.name,
+            )
+            results.push(...sub)
+          }
+        }
+        return results
+      }
+
+      const allFiles = await collectFiles(dirHandle, '')
+      const linked = processFileList(allFiles)
+      scanResult.value = linked > 0
+        ? `Re-linked ${linked} image${linked === 1 ? '' : 's'}.`
+        : 'No matching images found in that folder.'
+      redraw()
+    }
+    else {
+      // Firefox / Safari fallback: trigger a hidden <input webkitdirectory>
+      // Result is handled in onDirSelected
+      dirInputRef.value?.click()
+      // scanning stays true until onDirSelected finishes
+    }
+  }
+  catch (err) {
+    if (!(err instanceof DOMException && err.name === 'AbortError'))
+      scanResult.value = 'Could not open folder.'
+    scanning.value = false
+  }
+  finally {
+    // For the API path, clear scanning here. For the input path it's cleared in onDirSelected.
+    if (hasDirPicker)
+      scanning.value = false
+  }
+}
+
+function onDirSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = input.files
+  if (!files || files.length === 0) {
+    scanning.value = false
+    scanResult.value = null
+    input.value = ''
+    return
+  }
+  const entries = Array.from(files).map((file) => {
+    // webkitRelativePath is "folderName/sub/file.png"
+    const parts = file.webkitRelativePath.split('/')
+    const folderName = parts[0] ?? ''
+    // relativePath is everything after the top-level folder name
+    const relativePath = parts.slice(1).join('/') || file.name
+    return { file, relativePath, folderName }
+  })
+  const linked = processFileList(entries)
+  scanResult.value = linked > 0
+    ? `Re-linked ${linked} image${linked === 1 ? '' : 's'}.`
+    : 'No matching images found in that folder.'
+  redraw()
+  scanning.value = false
+  input.value = ''
 }
 
 function onImageSelected(e: Event) {
@@ -827,17 +1169,10 @@ function onImageSelected(e: Event) {
   pendingReplaceLayerId.value = null
 
   if (!targetLayerId) {
-    const match = layers.value.find((layer) => {
-      if (layer.type !== 'image' || layer.src)
+    const match = layers.value.find((layer): layer is ImageLayer => {
+      if (layer.type !== 'image' || !!layer.src)
         return false
-      const meta = layer.assetMeta
-      if (!meta)
-        return false
-      const nameMatches = meta.originalName === file.name
-      const sizeMatches = meta.size == null || meta.size === file.size
-      const typeMatches = meta.type == null || meta.type === file.type
-      const modifiedMatches = meta.lastModified == null || meta.lastModified === file.lastModified
-      return nameMatches && sizeMatches && typeMatches && modifiedMatches
+      return layerMatchesFile(layer, file)
     })
     if (match)
       targetLayerId = match.id
@@ -847,26 +1182,12 @@ function onImageSelected(e: Event) {
   const img = new Image()
   img.onload = () => {
     const aspect = img.width / img.height
-    const assetMeta: ImageAssetMeta = {
-      originalName: file.name,
-      size: file.size,
-      type: file.type || null,
-      lastModified: file.lastModified ?? null,
-    }
 
     if (targetLayerId) {
       const existing = layers.value.find(l => l.id === targetLayerId)
       if (existing && existing.type === 'image') {
-        if (existing.src && existing.src.startsWith('blob:')) {
-          URL.revokeObjectURL(existing.src)
-          loadedImages.delete(existing.src)
-        }
-
         const { width, height, aspect: storedAspect } = existing
-
-        existing.src = url
-        existing.file = file
-        existing.assetMeta = assetMeta
+        relinkLayer(existing, file, url)
         existing.width = width
         existing.height = height
         existing.aspect = storedAspect
@@ -883,7 +1204,7 @@ function onImageSelected(e: Event) {
       type: 'image',
       src: url,
       file,
-      assetMeta,
+      assetMeta: buildAssetMeta(file),
       rotation: 0,
       x: Math.round((BANNER_WIDTH - width) / 2),
       y: Math.round((BANNER_HEIGHT - height) / 2),
@@ -1005,47 +1326,7 @@ async function exportToWebPBlob(): Promise<Blob> {
     throw new Error('Could not get canvas context')
 
   drawBackground(ctx)
-
-  for (const layer of layers.value) {
-    if (layer.type === 'image') {
-      if (!layer.src)
-        continue
-      const img = loadedImages.get(layer.src)
-      if (!img?.complete)
-        continue
-
-      // Downsample oversized source images to avoid memory bloat
-      let source: CanvasImageSource = img
-      if (img.naturalWidth > layer.width * 2 || img.naturalHeight > layer.height * 2) {
-        const tmp = document.createElement('canvas')
-        tmp.width = layer.width
-        tmp.height = layer.height
-        const tmpCtx = tmp.getContext('2d')
-        if (tmpCtx) {
-          tmpCtx.drawImage(img, 0, 0, layer.width, layer.height)
-          source = tmp
-        }
-      }
-      ctx.drawImage(source, layer.x, layer.y, layer.width, layer.height)
-    }
-    else if (layer.type === 'text') {
-      if (!layer.content.trim())
-        continue
-      ctx.font = buildFontStyle(layer)
-      ctx.fillStyle = layer.color
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.shadowColor = 'rgba(0,0,0,0.5)'
-      ctx.shadowBlur = 4
-      ctx.shadowOffsetX = 1
-      ctx.shadowOffsetY = 1
-      ctx.fillText(layer.content, layer.x, layer.y)
-      ctx.shadowColor = 'transparent'
-      ctx.shadowBlur = 0
-      ctx.shadowOffsetX = 0
-      ctx.shadowOffsetY = 0
-    }
-  }
+  drawLayers(ctx, { forExport: true })
 
   // Quality loop: start at 0.85, reduce by 0.1 if > 900 KB, floor at 0.3
   const toBlob = (quality: number): Promise<Blob> =>
@@ -1209,10 +1490,10 @@ async function deleteBanner() {
     }
 
     // Reset editor state
-    bgType.value = 'solid'
-    bgColor.value = '#1a1a2e'
-    bgGradientEnd.value = '#16213e'
-    bgGradientAngle.value = 90
+    bgFillType.value = 'solid'
+    bgFillColor.value = '#1a1a2e'
+    bgFillStops.value = [{ color: '#1a1a2e', position: 0 }, { color: '#16213e', position: 1 }]
+    bgFillAngle.value = 90
     for (const layer of layers.value) {
       if (layer.type === 'image' && layer.src.startsWith('blob:'))
         URL.revokeObjectURL(layer.src)
@@ -1255,7 +1536,9 @@ const workspaceStyle = computed(() => ({
 
 // ── Watchers ──────────────────────────────────────────────────────────────────
 
-watch([bgType, bgColor, bgGradientEnd, bgGradientAngle], () => redraw())
+watch([bgFillType, bgFillColor, bgFillAngle], () => redraw())
+watch(bgFillStops, () => redraw(), { deep: true })
+// Text fill changes are caught by the deep layers watcher below
 watch(layers, () => redraw(), { deep: true })
 
 // Reload existing banner whenever the modal is opened; also trigger font load
@@ -1318,6 +1601,14 @@ function onClose() {
       style="display: none"
       @change="onImageSelected"
     >
+    <input
+      ref="dirInputRef"
+      type="file"
+      webkitdirectory
+      multiple
+      style="display: none"
+      @change="onDirSelected"
+    >
 
     <div class="banner-editor__layout">
       <!-- ── Left: canvas preview area ────────────────────────────────── -->
@@ -1368,45 +1659,100 @@ function onClose() {
           <div class="banner-editor__group">
             <span class="banner-editor__group-label">Background</span>
             <Flex column gap="xs">
-              <Flex y-center gap="s">
+              <Flex y-center gap="xs">
                 <Select
-                  v-model="bgTypeModel"
-                  :options="BG_TYPE_OPTIONS"
+                  v-model="bgFillTypeModel"
+                  :options="FILL_TYPE_OPTIONS"
                   single
                   size="s"
                   expand
                 />
-                <Tooltip>
-                  <label class="banner-editor__swatch">
-                    <input v-model="bgColor" type="color" class="banner-editor__color-input">
-                    <span class="banner-editor__color-preview" :style="{ background: bgColor }" />
-                  </label>
-                  <template #tooltip>
-                    <p>Background colour</p>
-                  </template>
-                </Tooltip>
-                <Tooltip v-if="bgType === 'gradient'">
-                  <label class="banner-editor__swatch">
-                    <input v-model="bgGradientEnd" type="color" class="banner-editor__color-input">
-                    <span class="banner-editor__color-preview" :style="{ background: bgGradientEnd }" />
-                  </label>
-                  <template #tooltip>
-                    <p>Gradient end colour</p>
-                  </template>
-                </Tooltip>
+                <!-- Solid: single colour swatch -->
+                <label v-if="bgFillType === 'solid'" class="banner-editor__swatch">
+                  <input
+                    v-model="bgFillColor"
+                    type="color"
+                    class="banner-editor__color-input"
+                    @input="redraw()"
+                  >
+                  <span class="banner-editor__color-preview" :style="{ background: bgFillColor }" />
+                </label>
+                <!-- Gradient: preview bar -->
+                <span
+                  v-else
+                  class="banner-editor__gradient-preview"
+                  :style="{
+                    background: `linear-gradient(90deg, ${bgFillStops.map(s => `${s.color} ${s.position * 100}%`).join(', ')})`,
+                  }"
+                />
               </Flex>
-              <Flex v-if="bgType === 'gradient'" y-center gap="s">
-                <span class="banner-editor__field-label">Angle</span>
-                <input
-                  v-model.number="bgGradientAngle"
-                  type="range"
-                  min="0"
-                  max="360"
-                  step="1"
-                  class="banner-editor__range"
-                >
-                <span class="banner-editor__range-value">{{ bgGradientAngle }}&deg;</span>
-              </Flex>
+
+              <!-- Gradient stops -->
+              <template v-if="bgFillType !== 'solid'">
+                <div class="banner-editor__stops">
+                  <div
+                    v-for="(stop, idx) in bgFillStops"
+                    :key="idx"
+                    class="banner-editor__stop-row"
+                  >
+                    <label class="banner-editor__swatch">
+                      <input
+                        :value="stop.color"
+                        type="color"
+                        class="banner-editor__color-input"
+                        @input="(e) => setBgStopColor(idx, (e.target as HTMLInputElement).value)"
+                      >
+                      <span class="banner-editor__color-preview" :style="{ background: stop.color }" />
+                    </label>
+                    <input
+                      :value="Math.round(stop.position * 100)"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      class="banner-editor__range"
+                      @input="(e) => setBgStopPosition(idx, Number((e.target as HTMLInputElement).value) / 100)"
+                    >
+                    <span class="banner-editor__range-value">{{ Math.round(stop.position * 100) }}%</span>
+                    <Tooltip>
+                      <Button
+                        size="s"
+                        variant="gray"
+                        square
+                        :disabled="bgFillStops.length <= 2"
+                        @click="removeBgStop(idx)"
+                      >
+                        <Icon name="ph:x" />
+                      </Button>
+                      <template #tooltip>
+                        <p>Remove stop</p>
+                      </template>
+                    </Tooltip>
+                  </div>
+                </div>
+                <Flex y-center gap="s">
+                  <Button size="s" variant="gray" @click="addBgStop">
+                    <template #start>
+                      <Icon name="ph:plus" />
+                    </template>
+                    Add stop
+                  </Button>
+                </Flex>
+                <!-- Angle (linear + conic only) -->
+                <Flex v-if="bgFillType !== 'radial'" y-center gap="s" expand>
+                  <span class="banner-editor__field-label">Angle</span>
+                  <input
+                    v-model.number="bgFillAngle"
+                    type="range"
+                    min="0"
+                    max="360"
+                    step="1"
+                    class="banner-editor__range"
+                    @input="redraw()"
+                  >
+                  <span class="banner-editor__range-value">{{ bgFillAngle }}&deg;</span>
+                </Flex>
+              </template>
             </Flex>
           </div>
 
@@ -1573,7 +1919,7 @@ function onClose() {
                   </Tooltip>
                 </Flex>
                 <!-- Font size row -->
-                <Flex y-center gap="s">
+                <Flex y-center gap="s" expand>
                   <input
                     v-model.number="selectedTextLayer.fontSize"
                     type="range"
@@ -1593,68 +1939,112 @@ function onClose() {
                     @change="redraw()"
                   />
                 </Flex>
-                <!-- Colour + gradient row -->
-                <Flex y-center gap="s">
-                  <Tooltip>
-                    <label class="banner-editor__swatch">
-                      <input
-                        v-model="selectedTextLayer.color"
-                        type="color"
-                        class="banner-editor__color-input"
-                        @input="redraw()"
-                      >
-                      <span
-                        class="banner-editor__color-preview"
-                        :style="{ background: selectedTextLayer.color }"
-                      />
-                    </label>
-                    <template #tooltip>
-                      <p>{{ selectedTextLayer.gradientColor != null ? 'Gradient start' : 'Text colour' }}</p>
-                    </template>
-                  </Tooltip>
-                  <Tooltip>
-                    <label
-                      class="banner-editor__swatch"
-                      :style="selectedTextLayer.gradientColor == null ? 'opacity: 0.35; cursor: pointer;' : ''"
+                <!-- Fill type + solid colour / gradient stops -->
+                <Flex y-center gap="xs">
+                  <Select
+                    v-model="fillTypeModel"
+                    :options="FILL_TYPE_OPTIONS"
+                    single
+                    size="s"
+                    expand
+                  />
+                  <!-- Solid: single colour swatch -->
+                  <label v-if="selectedTextLayer.fillType === 'solid'" class="banner-editor__swatch">
+                    <input
+                      v-model="selectedTextLayer.fillColor"
+                      type="color"
+                      class="banner-editor__color-input"
+                      @input="redraw()"
                     >
-                      <input
-                        :value="selectedTextLayer.gradientColor ?? selectedTextLayer.color"
-                        type="color"
-                        class="banner-editor__color-input"
-                        @input="(e) => setTextGradientColor((e.target as HTMLInputElement).value)"
-                      >
-                      <span
-                        class="banner-editor__color-preview"
-                        :style="{
-                          background: selectedTextLayer.gradientColor != null
-                            ? `linear-gradient(90deg, ${selectedTextLayer.color}, ${selectedTextLayer.gradientColor})`
-                            : selectedTextLayer.color,
-                        }"
-                      />
-                    </label>
-                    <template #tooltip>
-                      <p>Gradient end (click to enable)</p>
-                    </template>
-                  </Tooltip>
-                  <Tooltip v-if="selectedTextLayer.gradientColor != null">
-                    <Button
-                      size="s"
-                      variant="gray"
-                      square
-                      @click="clearTextGradient"
+                    <span
+                      class="banner-editor__color-preview"
+                      :style="{ background: selectedTextLayer.fillColor }"
+                    />
+                  </label>
+                  <!-- Gradient: preview bar -->
+                  <span
+                    v-else
+                    class="banner-editor__gradient-preview"
+                    :style="{
+                      background: `linear-gradient(90deg, ${selectedTextLayer.fillStops.map(s => `${s.color} ${s.position * 100}%`).join(', ')})`,
+                    }"
+                  />
+                </Flex>
+
+                <!-- Gradient stops (shown when fill is not solid) -->
+                <template v-if="selectedTextLayer.fillType !== 'solid'">
+                  <div class="banner-editor__stops">
+                    <div
+                      v-for="(stop, idx) in selectedTextLayer.fillStops"
+                      :key="idx"
+                      class="banner-editor__stop-row"
                     >
-                      <Icon name="ph:x" />
+                      <label class="banner-editor__swatch">
+                        <input
+                          :value="stop.color"
+                          type="color"
+                          class="banner-editor__color-input"
+                          @input="(e) => selectedTextLayer && setFillStopColor(selectedTextLayer, idx, (e.target as HTMLInputElement).value)"
+                        >
+                        <span class="banner-editor__color-preview" :style="{ background: stop.color }" />
+                      </label>
+                      <input
+                        :value="Math.round(stop.position * 100)"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        class="banner-editor__range"
+                        @input="(e) => selectedTextLayer && setFillStopPosition(selectedTextLayer, idx, Number((e.target as HTMLInputElement).value) / 100)"
+                      >
+                      <span class="banner-editor__range-value">{{ Math.round(stop.position * 100) }}%</span>
+                      <Tooltip>
+                        <Button
+                          size="s"
+                          variant="gray"
+                          square
+                          :disabled="selectedTextLayer.fillStops.length <= 2"
+                          @click="removeFillStop(selectedTextLayer, idx)"
+                        >
+                          <Icon name="ph:x" />
+                        </Button>
+                        <template #tooltip>
+                          <p>Remove stop</p>
+                        </template>
+                      </Tooltip>
+                    </div>
+                  </div>
+                  <Flex y-center gap="s">
+                    <Button size="s" variant="gray" @click="addFillStop(selectedTextLayer)">
+                      <template #start>
+                        <Icon name="ph:plus" />
+                      </template>
+                      Add stop
                     </Button>
-                    <template #tooltip>
-                      <p>Remove gradient</p>
-                    </template>
-                  </Tooltip>
+                  </Flex>
+                  <!-- Angle (linear + conic only) -->
+                  <Flex v-if="selectedTextLayer.fillType !== 'radial'" y-center gap="s" expand>
+                    <span class="banner-editor__field-label">Angle</span>
+                    <input
+                      v-model.number="selectedTextLayer.fillAngle"
+                      type="range"
+                      min="0"
+                      max="360"
+                      step="1"
+                      class="banner-editor__range"
+                      @input="redraw()"
+                    >
+                    <span class="banner-editor__range-value">{{ selectedTextLayer.fillAngle }}°</span>
+                  </Flex>
+                </template>
+
+                <Flex y-center gap="xs">
                   <Tooltip>
                     <Button
                       square
                       size="s"
                       :variant="selectedTextLayer.bold ? 'fill' : 'gray'"
-                      @click="selectedTextLayer.bold = !selectedTextLayer.bold"
+                      @click="selectedTextLayer.bold = !selectedTextLayer.bold; redraw()"
                     >
                       B
                     </Button>
@@ -1668,7 +2058,7 @@ function onClose() {
                       size="s"
                       style="font-style: italic"
                       :variant="selectedTextLayer.italic ? 'fill' : 'gray'"
-                      @click="selectedTextLayer.italic = !selectedTextLayer.italic"
+                      @click="selectedTextLayer.italic = !selectedTextLayer.italic; redraw()"
                     >
                       I
                     </Button>
@@ -1677,22 +2067,8 @@ function onClose() {
                     </template>
                   </Tooltip>
                 </Flex>
-                <!-- Gradient angle (only when gradient is active) -->
-                <Flex v-if="selectedTextLayer.gradientColor != null" y-center gap="s">
-                  <span class="banner-editor__field-label">Angle</span>
-                  <input
-                    v-model.number="selectedTextLayer.gradientAngle"
-                    type="range"
-                    min="0"
-                    max="360"
-                    step="1"
-                    class="banner-editor__range"
-                    @input="redraw()"
-                  >
-                  <span class="banner-editor__range-value">{{ selectedTextLayer.gradientAngle }}°</span>
-                </Flex>
                 <!-- Rotation row -->
-                <Flex y-center gap="s">
+                <Flex y-center gap="s" expand>
                   <span class="banner-editor__field-label">Rotate</span>
                   <input
                     v-model.number="selectedTextLayer.rotation"
@@ -1706,7 +2082,7 @@ function onClose() {
                   <span class="banner-editor__range-value">{{ selectedTextLayer.rotation }}°</span>
                 </Flex>
                 <!-- Opacity row -->
-                <Flex y-center gap="s">
+                <Flex y-center gap="s" expand>
                   <span class="banner-editor__field-label">Opacity</span>
                   <input
                     v-model.number="selectedTextLayer.opacity"
@@ -1734,7 +2110,7 @@ function onClose() {
                 </p>
 
                 <!-- Rotation -->
-                <Flex y-center gap="s">
+                <Flex y-center gap="s" expand>
                   <span class="banner-editor__field-label">Rotate</span>
                   <input
                     v-model.number="selectedImageLayer.rotation"
@@ -1785,9 +2161,15 @@ function onClose() {
                   >
                 </div>
 
-                <p v-if="!selectedImageLayer.src" class="banner-editor__hint">
-                  Image file missing. Replace to restore.
-                </p>
+                <template v-if="!selectedImageLayer.src">
+                  <p class="banner-editor__hint">
+                    Image file missing. Replace to restore.
+                  </p>
+                  <p v-if="selectedImageLayer.assetMeta.folderRelativePath" class="banner-editor__hint banner-editor__hint--path">
+                    <Icon name="ph:folder" style="vertical-align: -2px; margin-right: 2px;" />
+                    {{ selectedImageLayer.assetMeta.folderName }}/{{ selectedImageLayer.assetMeta.folderRelativePath }}
+                  </p>
+                </template>
                 <Flex y-center gap="s">
                   <Button size="s" variant="gray" @click="openImagePicker(selectedImageLayer.id)">
                     <template #start>
@@ -1805,6 +2187,45 @@ function onClose() {
               </Flex>
             </div>
           </template>
+        </div>
+
+        <!-- Asset path settings + scan -->
+        <div class="banner-editor__group">
+          <span class="banner-editor__group-label">Asset paths</span>
+          <Flex column gap="s">
+            <Flex y-center gap="s">
+              <input
+                id="banner-store-paths"
+                v-model="storeAssetPaths"
+                type="checkbox"
+                class="banner-editor__checkbox"
+              >
+              <label for="banner-store-paths" class="banner-editor__hint" style="cursor: pointer; user-select: none;">
+                Store folder path in metadata
+              </label>
+            </Flex>
+            <p class="banner-editor__hint" style="opacity: 0.7;">
+              When enabled, the source folder and relative path are saved with each image layer so you can re-link them later.
+            </p>
+            <template v-if="hasWebkitDir">
+              <Button
+                size="s"
+                variant="gray"
+                expand
+                :loading="scanning"
+                :disabled="missingLayerCount === 0"
+                @click="scanFolder"
+              >
+                <template #start>
+                  <Icon name="ph:folder-open" />
+                </template>
+                {{ missingLayerCount > 0 ? `Scan folder (${missingLayerCount} missing)` : 'No missing images' }}
+              </Button>
+              <p v-if="scanResult" class="banner-editor__hint">
+                {{ scanResult }}
+              </p>
+            </template>
+          </Flex>
         </div>
 
         <!-- Footer: save / delete -->
@@ -1857,13 +2278,14 @@ function onClose() {
   --width: 100vw;
 
   .vui-card-content {
+    padding: 0;
     height: 100%;
   }
 
   &__layout {
     display: grid;
     grid-template-columns: 1fr 360px;
-    height: 97vh;
+    height: 100vh;
     width: 100%;
     overflow: hidden;
   }
@@ -2028,9 +2450,42 @@ function onClose() {
     flex-shrink: 0;
   }
 
+  &__gradient-preview {
+    flex: 1;
+    height: 24px;
+    border-radius: var(--border-radius-xs);
+    border: 1px solid var(--color-border);
+    min-width: 0;
+  }
+
+  &__stops {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  &__stop-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
   &__hint {
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
+
+    &--path {
+      font-family: monospace;
+      word-break: break-all;
+    }
+  }
+
+  &__checkbox {
+    accent-color: var(--color-accent);
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    cursor: pointer;
   }
 
   &__transform-grid {
