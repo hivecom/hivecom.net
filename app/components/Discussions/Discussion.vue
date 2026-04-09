@@ -412,6 +412,8 @@ const showTimeline = computed(() => {
   const d = discussion.value
   if (d == null)
     return false
+  if (d.reply_count === 0)
+    return false
   return timelineSpanMs.value >= 24 * 60 * 60 * 1000
 })
 

@@ -727,9 +727,12 @@ defineExpose({ openJumpModal })
   &__inner {
     // Sticky so the scrubber floats in the viewport while the user scrolls.
     // Vertically centered: top at 20vh, height 60vh → sits at 20-80% of viewport.
+    // max-height: 100% ensures it never overflows the absolute outer container
+    // on short discussions where the discussion is less than 80vh tall.
     position: sticky;
     top: 20vh;
     height: 60vh;
+    max-height: 100%;
     pointer-events: all;
     display: flex;
     flex-direction: column;

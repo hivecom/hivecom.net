@@ -553,9 +553,6 @@ const editedAtFormatted = computed(() => {
         </template>
       </div>
 
-      <!-- User signature / banner — shown below the post body when not deleted and not NSFW-hidden -->
-      <BannerDisplay v-if="!data.is_deleted && !showNSFWWarning" :user="user ?? null" />
-
       <!-- Desktop bottom row: timestamps + reactions (only rendered on desktop, hidden when deleted) -->
       <template v-if="!isMobile && !data.is_deleted">
         <div class="flex-1" />
@@ -591,17 +588,24 @@ const editedAtFormatted = computed(() => {
         </Flex>
       </template>
 
+      <!-- User signature / banner — shown below the post body on desktop only -->
+      <BannerDisplay v-if="!isMobile && !data.is_deleted && !showNSFWWarning" :user="user ?? null" />
+
       <!-- Mobile footer: reply count + reactions (only rendered on mobile when there's content) -->
       <div v-if="!data.is_deleted && isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
-        <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
-          <CountDisplay :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
-        </button>
-        <!-- Empty div makes sure reactions are forced to flex end -->
-        <div v-else />
-        <div class="discussion-forum__reactions">
-          <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="toggleReaction" />
-          <ReactionsSelect v-if="userId && !showNSFWWarning" @reaction="toggleReaction" />
+        <div class="discussion-forum__mobile-footer-row">
+          <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
+            <CountDisplay :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+          </button>
+          <!-- Empty div makes sure reactions are forced to flex end -->
+          <div v-else />
+          <div class="discussion-forum__reactions">
+            <ReactionsList v-if="displayReactions.length > 0" :reactions="displayReactions" :disabled="!userId" @toggle="toggleReaction" />
+            <ReactionsSelect v-if="userId && !showNSFWWarning" @reaction="toggleReaction" />
+          </div>
         </div>
+        <!-- User banner sits on its own full-width row below reply count + reactions -->
+        <BannerDisplay v-if="!showNSFWWarning" :user="user ?? null" flush />
       </div>
     </div>
 
@@ -776,15 +780,20 @@ const editedAtFormatted = computed(() => {
 
   &__mobile-footer {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: var(--space-xxs);
     padding: var(--space-s) var(--space-m);
     border-top: 1px solid var(--color-border);
     background-color: var(--color-bg-medium);
     border-bottom-left-radius: var(--border-radius-m);
     border-bottom-right-radius: var(--border-radius-m);
+  }
+
+  &__mobile-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xxs);
   }
 
   &__body {

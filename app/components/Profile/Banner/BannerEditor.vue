@@ -3,7 +3,7 @@
 /**
  * BannerEditor - A canvas-based editor for creating user forum banners.
  *
- * Banners are horizontal images (728×48) stored as WebP. The editor supports:
+ * Banners are horizontal images (728×36) stored as WebP. The editor supports:
  * - Background: solid colour or linear gradient
  * - Multiple text layers with independent font/colour/position
  * - Multiple image layers with drag-to-move and corner-handle resize
@@ -12,11 +12,19 @@
  * in the WebP file so the editor state can be restored when re-editing.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { BannerLayer, BannerMetadata, FillType, GradientStop, ImageAssetMeta, ImageLayer, SelectOption, TextLayer } from './types'
 import type { Database } from '@/types/database.types'
-import { Button, Divider, Flex, Input, Modal, Select, Tooltip } from '@dolanske/vui'
+import { Button, Flex, Modal } from '@dolanske/vui'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { validateImageFile } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
+import BannerEditorBackground from './BannerEditorBackground.vue'
+import BannerEditorImagePanel from './BannerEditorImagePanel.vue'
+import BannerEditorLayersPanel from './BannerEditorLayersPanel.vue'
+import BannerEditorTextPanel from './BannerEditorTextPanel.vue'
+
+export type { BannerLayer, BannerMetadata, FillType, GradientStop, ImageAssetMeta, ImageLayer, TextLayer } from './types'
+export type { MetadataImageLayer, MetadataLayer, MetadataTextLayer } from './types'
 
 interface FontData {
   family: string
@@ -25,131 +33,12 @@ interface FontData {
   style: string
 }
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface GradientStop {
-  color: string
-  /** 0–1 */
-  position: number
-}
-
-export type FillType = 'solid' | 'linear' | 'radial' | 'conic'
-
-export interface TextLayer {
-  id: string
-  type: 'text'
-  content: string
-  fontFamily: string
-  /** Capped between TEXT_FONT_SIZE_MIN and TEXT_FONT_SIZE_MAX */
-  fontSize: number
-  fillType: FillType
-  /** Primary / solid color; also the first gradient stop default */
-  fillColor: string
-  /** Gradient stops - used when fillType != 'solid' */
-  fillStops: GradientStop[]
-  /** Angle in degrees for linear and conic gradients */
-  fillAngle: number
-  /** 0–1 */
-  opacity: number
-  /** Rotation in degrees, clockwise */
-  rotation: number
-  x: number
-  y: number
-  bold: boolean
-  italic: boolean
-}
-
-export interface ImageAssetMeta {
-  originalName: string
-  size: number | null
-  type: string | null
-  lastModified: number | null
-  /** Base name of the source folder, stored only when the user opts in */
-  folderName: string | null
-  /** Path relative to the folder root (e.g. "sub/image.png"), stored only when the user opts in */
-  folderRelativePath: string | null
-}
-
-export interface ImageLayer {
-  id: string
-  type: 'image'
-  /** Object URL for local preview; empty string when restored from metadata */
-  src: string
-  /** Raw file when freshly added; null when restored from metadata */
-  file: File | null
-  assetMeta: ImageAssetMeta
-  /** Rotation in degrees, clockwise */
-  rotation: number
-  x: number
-  y: number
-  width: number
-  height: number
-  /** width / height - preserved during resize */
-  aspect: number
-}
-
-export type BannerLayer = TextLayer | ImageLayer
-
-export interface MetadataTextLayer {
-  id: string
-  type: 'text'
-  content: string
-  fontFamily: string
-  fontSize: number
-  // Legacy fields (v3 and below) - kept for backward-compat reads
-  color?: string
-  gradientColor?: string | null
-  gradientAngle?: number
-  // Current fill system
-  fillType?: FillType
-  fillColor?: string
-  fillStops?: GradientStop[]
-  fillAngle?: number
-  opacity?: number
-  rotation?: number
-  x: number
-  y: number
-  bold: boolean
-  italic: boolean
-}
-
-export interface MetadataImageLayer {
-  id: string
-  type: 'image'
-  rotation?: number
-  x: number
-  y: number
-  width: number
-  height: number
-  aspect: number
-  asset?: ImageAssetMeta
-  originalName?: string
-}
-
-// File System Access API - typed as unknown-cast to avoid lib conflicts
+// ── Internal file-system API types ───────────────────────────────────────────
+// (typed as unknown-cast to avoid lib conflicts)
 type FsFileHandle = FileSystemFileHandle & { kind: 'file' }
 type FsDirHandle = FileSystemDirectoryHandle & {
   kind: 'directory'
   values: () => AsyncIterableIterator<FsFileHandle | FsDirHandle>
-}
-
-export type MetadataLayer = MetadataTextLayer | MetadataImageLayer
-
-export interface BannerMetadata {
-  version: 2 | 3 | 4
-  background: {
-    // Legacy fields (v3 and below)
-    type?: 'solid' | 'gradient'
-    color?: string
-    gradientEnd?: string
-    gradientAngle?: number
-    // Current fill system
-    fillType?: FillType
-    fillColor?: string
-    fillStops?: GradientStop[]
-    fillAngle?: number
-  }
-  layers: MetadataLayer[]
 }
 
 // ── Props / Emits ─────────────────────────────────────────────────────────────
@@ -170,19 +59,14 @@ const emit = defineEmits<{
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const BANNER_WIDTH = 728
-const BANNER_HEIGHT = 48
+const BANNER_HEIGHT = 36
 const WORKSPACE_PADDING = 120
 const WORKSPACE_WIDTH = BANNER_WIDTH + WORKSPACE_PADDING * 2
 const WORKSPACE_HEIGHT = BANNER_HEIGHT + WORKSPACE_PADDING * 2
 const METADATA_MARKER = '<!-- HIVECOM_BANNER_META:'
 const METADATA_END = ':END -->'
-const TEXT_FONT_SIZE_MIN = 8
+const TEXT_FONT_SIZE_MIN = 7
 const TEXT_FONT_SIZE_MAX = 108
-
-interface SelectOption<T extends string = string> {
-  label: string
-  value: T
-}
 
 const FILL_TYPE_OPTIONS: SelectOption<FillType>[] = [
   { label: 'Solid', value: 'solid' },
@@ -191,11 +75,12 @@ const FILL_TYPE_OPTIONS: SelectOption<FillType>[] = [
   { label: 'Conic', value: 'conic' },
 ]
 
-const FALLBACK_FONT_FAMILIES: string[] = [
-  'sans-serif',
-  'serif',
-  'monospace',
-  'cursive',
+const FALLBACK_FONT_FAMILIES: SelectOption[] = [
+  { label: 'Banner (Visitor BRK)', value: 'Visitor BRK' },
+  { label: 'Sans-serif', value: 'sans-serif' },
+  { label: 'Serif', value: 'serif' },
+  { label: 'Monospace', value: 'monospace' },
+  { label: 'Cursive', value: 'cursive' },
 ]
 
 const systemFontFamilies = ref<string[]>([])
@@ -206,13 +91,13 @@ const fontCustomMode = ref(false)
 
 // All families as SelectOptions: fallbacks first, then system fonts
 const fontOptions = computed<SelectOption[]>(() => {
-  const families = systemFontFamilies.value.length > 0
-    ? [
-        ...FALLBACK_FONT_FAMILIES,
-        ...systemFontFamilies.value.filter(f => !FALLBACK_FONT_FAMILIES.includes(f)),
-      ]
+  const fallbackValues = FALLBACK_FONT_FAMILIES.map(f => f.value)
+  const systemOptions: SelectOption[] = systemFontFamilies.value
+    .filter(f => !fallbackValues.includes(f))
+    .map(f => ({ label: f, value: f }))
+  return systemFontFamilies.value.length > 0
+    ? [...FALLBACK_FONT_FAMILIES, ...systemOptions]
     : FALLBACK_FONT_FAMILIES
-  return families.map(f => ({ label: f, value: f }))
 })
 
 async function loadSystemFonts() {
@@ -253,6 +138,32 @@ const hasWebkitDir = typeof window !== 'undefined'
 const scanning = ref(false)
 const scanResult = ref<string | null>(null)
 
+// ── CSS variable resolver ─────────────────────────────────────────────────────
+
+/**
+ * Resolves a CSS custom property to a hex colour string by painting it onto
+ * a 1×1 off-screen canvas. Falls back to `fallback` if the variable is empty
+ * or the canvas API is unavailable.
+ */
+function getCssColor(variable: string, fallback: string): string {
+  if (typeof document === 'undefined')
+    return fallback
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(variable).trim()
+  if (!raw)
+    return fallback
+  // Use canvas to normalise any valid CSS colour to #rrggbb
+  const canvas = document.createElement('canvas')
+  canvas.width = 1
+  canvas.height = 1
+  const ctx = canvas.getContext('2d')
+  if (!ctx)
+    return fallback
+  ctx.fillStyle = raw
+  ctx.fillRect(0, 0, 1, 1)
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+  return `#${[r, g, b].map(v => (v ?? 0).toString(16).padStart(2, '0')).join('')}`
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -272,6 +183,8 @@ const bgFillStops = ref<GradientStop[]>([
   { color: '#16213e', position: 1 },
 ])
 const bgFillAngle = ref(90)
+const bgBorder = ref(false)
+const bgBorderColor = ref('#ffffff')
 
 // Unified layer array
 const layers = ref<BannerLayer[]>([])
@@ -467,11 +380,14 @@ function updateDisplayScale() {
 function buildMetadata(): BannerMetadata {
   return {
     version: 3,
+    creatorId: props.userId ?? undefined,
     background: {
       fillType: bgFillType.value,
       fillColor: bgFillColor.value,
       fillStops: bgFillStops.value,
       fillAngle: bgFillAngle.value,
+      border: bgBorder.value,
+      borderColor: bgBorderColor.value,
     },
     layers: layers.value.map((l) => {
       if (l.type === 'text') {
@@ -491,6 +407,14 @@ function buildMetadata(): BannerMetadata {
           y: l.y,
           bold: l.bold,
           italic: l.italic,
+          outline: l.outline,
+          outlineColor: l.outlineColor,
+          outlineWidth: l.outlineWidth,
+          shadow: l.shadow,
+          shadowColor: l.shadowColor,
+          shadowBlur: l.shadowBlur,
+          shadowOffsetX: l.shadowOffsetX,
+          shadowOffsetY: l.shadowOffsetY,
         }
       }
       return {
@@ -526,6 +450,8 @@ function applyMetadata(meta: BannerMetadata) {
   bgFillColor.value = bg.fillColor ?? legacyColor
   bgFillStops.value = bg.fillStops ?? legacyStops
   bgFillAngle.value = bg.fillAngle ?? bg.gradientAngle ?? 90
+  bgBorder.value = bg.border ?? false
+  bgBorderColor.value = bg.borderColor ?? '#ffffff'
 
   layers.value = meta.layers.map((l): BannerLayer => {
     if (l.type === 'text') {
@@ -552,6 +478,14 @@ function applyMetadata(meta: BannerMetadata) {
         y: l.y,
         bold: l.bold,
         italic: l.italic,
+        outline: l.outline ?? false,
+        outlineColor: l.outlineColor ?? '#ffffff',
+        outlineWidth: l.outlineWidth ?? 1,
+        shadow: l.shadow ?? true,
+        shadowColor: l.shadowColor ?? '#000000',
+        shadowBlur: l.shadowBlur ?? 4,
+        shadowOffsetX: l.shadowOffsetX ?? 1,
+        shadowOffsetY: l.shadowOffsetY ?? 1,
       }
     }
     const assetMeta: ImageAssetMeta = l.asset ?? {
@@ -662,7 +596,19 @@ function redraw() {
   drawBackground(ctx)
   drawLayers(ctx)
 
+  // Border drawn last so it always sits above all layers
+  if (bgBorder.value) {
+    ctx.strokeStyle = bgBorderColor.value
+    ctx.lineWidth = 1
+    ctx.strokeRect(0.5, 0.5, BANNER_WIDTH - 1, BANNER_HEIGHT - 1)
+  }
+
   ctx.restore()
+
+  // Render guides outside the clipped banner bounds
+  drawSelectionIndicators(ctx)
+  drawBannerBoundary(ctx)
+
   ctx.restore()
 }
 
@@ -742,21 +688,34 @@ function drawLayers(ctx: CanvasRenderingContext2D, opts: { forExport?: boolean }
         ctx.fillStyle = layer.fillColor
       }
 
-      ctx.shadowColor = 'rgba(0,0,0,0.5)'
-      ctx.shadowBlur = 4
-      ctx.shadowOffsetX = 1
-      ctx.shadowOffsetY = 1
+      // Outline drawn first (behind fill) so the stroke doesn't overlap the text
+      if (layer.outline) {
+        ctx.shadowColor = 'transparent'
+        ctx.shadowBlur = 0
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 0
+        ctx.lineWidth = layer.outlineWidth * 2
+        ctx.strokeStyle = layer.outlineColor
+        ctx.strokeText(layer.content, 0, 0)
+      }
+
+      // Shadow
+      if (layer.shadow) {
+        ctx.shadowColor = layer.shadowColor
+        ctx.shadowBlur = layer.shadowBlur
+        ctx.shadowOffsetX = layer.shadowOffsetX
+        ctx.shadowOffsetY = layer.shadowOffsetY
+      }
+      else {
+        ctx.shadowColor = 'transparent'
+        ctx.shadowBlur = 0
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 0
+      }
       ctx.fillText(layer.content, 0, 0)
       ctx.restore()
     }
   }
-
-  // Render guides outside banner bounds
-  ctx.save()
-  ctx.translate(WORKSPACE_PADDING, WORKSPACE_PADDING)
-  drawSelectionIndicators(ctx)
-  drawBannerBoundary(ctx)
-  ctx.restore()
 }
 
 function drawSelectionIndicators(ctx: CanvasRenderingContext2D) {
@@ -999,11 +958,14 @@ function addTextLayer() {
     id: crypto.randomUUID(),
     type: 'text',
     content: 'Text',
-    fontFamily: 'sans-serif',
-    fontSize: 20,
+    fontFamily: 'Visitor BRK',
+    fontSize: 26,
     fillType: 'solid',
-    fillColor: '#ffffff',
-    fillStops: [{ color: '#ffffff', position: 0 }, { color: '#000000', position: 1 }],
+    fillColor: getCssColor('--color-text', '#ffffff'),
+    fillStops: [
+      { color: getCssColor('--color-text', '#ffffff'), position: 0 },
+      { color: getCssColor('--color-text-lighter', '#888888'), position: 1 },
+    ],
     fillAngle: 0,
     opacity: 1,
     rotation: 0,
@@ -1011,6 +973,14 @@ function addTextLayer() {
     y: Math.round(BANNER_HEIGHT / 2),
     bold: false,
     italic: false,
+    outline: false,
+    outlineColor: '#ffffff',
+    outlineWidth: 1,
+    shadow: true,
+    shadowColor: '#000000',
+    shadowBlur: 4,
+    shadowOffsetX: 1,
+    shadowOffsetY: 1,
   }
   layers.value.push(layer)
   selectedLayerId.value = layer.id
@@ -1328,6 +1298,13 @@ async function exportToWebPBlob(): Promise<Blob> {
   drawBackground(ctx)
   drawLayers(ctx, { forExport: true })
 
+  // Border drawn last so it always sits above all layers
+  if (bgBorder.value) {
+    ctx.strokeStyle = bgBorderColor.value
+    ctx.lineWidth = 1
+    ctx.strokeRect(0.5, 0.5, BANNER_WIDTH - 1, BANNER_HEIGHT - 1)
+  }
+
   // Quality loop: start at 0.85, reduce by 0.1 if > 900 KB, floor at 0.3
   const toBlob = (quality: number): Promise<Blob> =>
     new Promise((resolve, reject) => {
@@ -1427,6 +1404,19 @@ async function saveBanner() {
   try {
     const supabase = useSupabaseClient<Database>()
     const blob = await exportToWebPBlob()
+
+    // Guard: decode the blob and verify it is exactly the canonical 728×48
+    // dimensions before we allow the upload. This catches any path that
+    // somehow bypasses the canvas export (e.g. programmatic misuse of the
+    // exposed saveBanner method).
+    const bitmap = await createImageBitmap(blob)
+    const { width: bw, height: bh } = bitmap
+    bitmap.close()
+    if (bw !== BANNER_WIDTH || bh !== BANNER_HEIGHT) {
+      saveError.value = `Banner must be exactly ${BANNER_WIDTH}×${BANNER_HEIGHT} px (got ${bw}×${bh}).`
+      return
+    }
+
     const file = new File([blob], 'banner.webp', { type: 'image/webp', lastModified: Date.now() })
     const filePath = `${props.userId}/banner.webp`
 
@@ -1494,6 +1484,8 @@ async function deleteBanner() {
     bgFillColor.value = '#1a1a2e'
     bgFillStops.value = [{ color: '#1a1a2e', position: 0 }, { color: '#16213e', position: 1 }]
     bgFillAngle.value = 90
+    bgBorder.value = false
+    bgBorderColor.value = '#ffffff'
     for (const layer of layers.value) {
       if (layer.type === 'image' && layer.src.startsWith('blob:'))
         URL.revokeObjectURL(layer.src)
@@ -1564,6 +1556,15 @@ onMounted(async () => {
     resizeObserver.observe(canvasContainerRef.value)
   }
 
+  // Apply VUI theme colours as defaults for new banners
+  const colorBg = getCssColor('--color-bg', '#1a1a2e')
+  const colorBgRaised = getCssColor('--color-bg-raised', '#16213e')
+  bgFillColor.value = colorBg
+  bgFillStops.value = [
+    { color: colorBg, position: 0 },
+    { color: colorBgRaised, position: 1 },
+  ]
+
   await nextTick()
   redraw()
 
@@ -1582,7 +1583,105 @@ onBeforeUnmount(() => {
   loadedImages.clear()
 })
 
-defineExpose({ saveBanner, deleteBanner, exportToWebPBlob })
+// ── Import ────────────────────────────────────────────────────────────────────
+
+/**
+ * Import an external WebP file into the editor. If the file contains embedded
+ * Hivecom banner metadata the editor state is fully restored from it. Otherwise
+ * the image is placed as a centered image layer so the user can keep editing.
+ */
+async function importBanner(file: File): Promise<{ hadMetadata: boolean }> {
+  // Try to extract embedded metadata first
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const text = new TextDecoder().decode(bytes)
+  const markerIndex = text.lastIndexOf(METADATA_MARKER)
+
+  if (markerIndex >= 0) {
+    const endIndex = text.indexOf(METADATA_END, markerIndex)
+    if (endIndex >= 0) {
+      const jsonStr = text.substring(markerIndex + METADATA_MARKER.length, endIndex)
+      try {
+        const meta = JSON.parse(jsonStr) as BannerMetadata
+        applyMetadata(meta)
+        await nextTick()
+        redraw()
+        return { hadMetadata: true }
+      }
+      catch {
+        // Fall through to image-layer fallback
+      }
+    }
+  }
+
+  // No metadata found - place the whole image as a centred image layer
+  await new Promise<void>((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      const aspect = img.width / img.height
+      const height = Math.min(BANNER_HEIGHT, img.height)
+      const width = Math.round(height * aspect)
+      const layer: ImageLayer = {
+        id: crypto.randomUUID(),
+        type: 'image',
+        src: url,
+        file,
+        assetMeta: buildAssetMeta(file),
+        rotation: 0,
+        x: Math.round((BANNER_WIDTH - width) / 2),
+        y: Math.round((BANNER_HEIGHT - height) / 2),
+        width,
+        height,
+        aspect,
+      }
+      layers.value = [layer]
+      selectedLayerId.value = layer.id
+      nextTick(() => redraw())
+      resolve()
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve()
+    }
+    img.src = url
+  })
+
+  return { hadMetadata: false }
+}
+
+// ── Text-layer panel helpers ──────────────────────────────────────────────────
+// Thin wrappers so BannerEditorTextPanel can call these without non-null
+// assertions in template expressions.
+
+function addSelectedTextFillStop() {
+  if (selectedTextLayer.value)
+    addFillStop(selectedTextLayer.value)
+}
+
+function removeSelectedTextFillStop(index: number) {
+  if (selectedTextLayer.value)
+    removeFillStop(selectedTextLayer.value, index)
+}
+
+function setSelectedTextFillStopColor(index: number, color: string) {
+  if (selectedTextLayer.value)
+    setFillStopColor(selectedTextLayer.value, index, color)
+}
+
+function setSelectedTextFillStopPosition(index: number, position: number) {
+  if (selectedTextLayer.value)
+    setFillStopPosition(selectedTextLayer.value, index, position)
+}
+
+function onTextLayerFillAngle(angle: number) {
+  if (selectedTextLayer.value) {
+    selectedTextLayer.value.fillAngle = angle
+    redraw()
+  }
+}
+
+defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
+// saveBanner is also used externally after importBanner when hadMetadata is true
 
 // ── Close ─────────────────────────────────────────────────────────────────────
 
@@ -1655,577 +1754,121 @@ function onClose() {
 
         <!-- Scrollable control groups -->
         <div class="banner-editor__groups">
-          <!-- Background -->
-          <div class="banner-editor__group">
-            <span class="banner-editor__group-label">Background</span>
-            <Flex column gap="xs">
-              <Flex y-center gap="xs">
-                <Select
-                  v-model="bgFillTypeModel"
-                  :options="FILL_TYPE_OPTIONS"
-                  single
-                  size="s"
-                  expand
-                />
-                <!-- Solid: single colour swatch -->
-                <label v-if="bgFillType === 'solid'" class="banner-editor__swatch">
-                  <input
-                    v-model="bgFillColor"
-                    type="color"
-                    class="banner-editor__color-input"
-                    @input="redraw()"
-                  >
-                  <span class="banner-editor__color-preview" :style="{ background: bgFillColor }" />
-                </label>
-                <!-- Gradient: preview bar -->
-                <span
-                  v-else
-                  class="banner-editor__gradient-preview"
-                  :style="{
-                    background: `linear-gradient(90deg, ${bgFillStops.map(s => `${s.color} ${s.position * 100}%`).join(', ')})`,
-                  }"
-                />
-              </Flex>
+          <div class="banner-editor__groups-inner">
+            <!-- Background -->
+            <BannerEditorBackground
+              :fill-type="bgFillType"
+              :fill-color="bgFillColor"
+              :fill-stops="bgFillStops"
+              :fill-angle="bgFillAngle"
+              :border="bgBorder"
+              :border-color="bgBorderColor"
+              :fill-type-options="FILL_TYPE_OPTIONS"
+              :fill-type-model="bgFillTypeModel"
+              :redraw="redraw"
+              :add-stop="addBgStop"
+              :remove-stop="removeBgStop"
+              :set-stop-color="setBgStopColor"
+              :set-stop-position="setBgStopPosition"
+              @update:fill-color="bgFillColor = $event"
+              @update:fill-angle="bgFillAngle = $event"
+              @update:border="bgBorder = $event"
+              @update:border-color="bgBorderColor = $event"
+              @update:fill-type-model="bgFillTypeModel = $event"
+            />
 
-              <!-- Gradient stops -->
-              <template v-if="bgFillType !== 'solid'">
-                <div class="banner-editor__stops">
-                  <div
-                    v-for="(stop, idx) in bgFillStops"
-                    :key="idx"
-                    class="banner-editor__stop-row"
-                  >
-                    <label class="banner-editor__swatch">
-                      <input
-                        :value="stop.color"
-                        type="color"
-                        class="banner-editor__color-input"
-                        @input="(e) => setBgStopColor(idx, (e.target as HTMLInputElement).value)"
-                      >
-                      <span class="banner-editor__color-preview" :style="{ background: stop.color }" />
-                    </label>
-                    <input
-                      :value="Math.round(stop.position * 100)"
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="1"
-                      class="banner-editor__range"
-                      @input="(e) => setBgStopPosition(idx, Number((e.target as HTMLInputElement).value) / 100)"
-                    >
-                    <span class="banner-editor__range-value">{{ Math.round(stop.position * 100) }}%</span>
-                    <Tooltip>
-                      <Button
-                        size="s"
-                        variant="gray"
-                        square
-                        :disabled="bgFillStops.length <= 2"
-                        @click="removeBgStop(idx)"
-                      >
-                        <Icon name="ph:x" />
-                      </Button>
-                      <template #tooltip>
-                        <p>Remove stop</p>
-                      </template>
-                    </Tooltip>
-                  </div>
-                </div>
-                <Flex y-center gap="s">
-                  <Button size="s" variant="gray" @click="addBgStop">
-                    <template #start>
-                      <Icon name="ph:plus" />
-                    </template>
-                    Add stop
-                  </Button>
-                </Flex>
-                <!-- Angle (linear + conic only) -->
-                <Flex v-if="bgFillType !== 'radial'" y-center gap="s" expand>
-                  <span class="banner-editor__field-label">Angle</span>
-                  <input
-                    v-model.number="bgFillAngle"
-                    type="range"
-                    min="0"
-                    max="360"
-                    step="1"
-                    class="banner-editor__range"
-                    @input="redraw()"
-                  >
-                  <span class="banner-editor__range-value">{{ bgFillAngle }}&deg;</span>
-                </Flex>
+            <!-- Layers -->
+            <BannerEditorLayersPanel
+              :layers-reversed="layersReversed"
+              :selected-layer-id="selectedLayerId"
+              @add-text="addTextLayer"
+              @add-image="openImagePicker()"
+              @select="selectedLayerId = $event; redraw()"
+              @move-up="moveLayerUp"
+              @move-down="moveLayerDown"
+              @duplicate="duplicateLayer"
+              @remove="removeLayer"
+            />
+
+            <!-- Text layer controls -->
+            <BannerEditorTextPanel
+              v-if="selectedTextLayer"
+              :layer="selectedTextLayer"
+              :font-options="fontOptions"
+              :font-family-model="fontFamilyModel"
+              :font-custom-mode="fontCustomMode"
+              :font-family-custom="fontFamilyCustom"
+              :fonts-loaded="fontsLoaded"
+              :fonts-permission-denied="fontsPermissionDenied"
+              :fill-type-options="FILL_TYPE_OPTIONS"
+              :fill-type-model="fillTypeModel"
+              :text-font-size-min="TEXT_FONT_SIZE_MIN"
+              :text-font-size-max="TEXT_FONT_SIZE_MAX"
+              :redraw="redraw"
+              :add-fill-stop="addSelectedTextFillStop"
+              :remove-fill-stop="removeSelectedTextFillStop"
+              :set-fill-stop-color="setSelectedTextFillStopColor"
+              :set-fill-stop-position="setSelectedTextFillStopPosition"
+              @update:font-custom-mode="fontCustomMode = $event"
+              @update:font-family-model="fontFamilyModel = $event"
+              @update:font-family-custom="fontFamilyCustom = $event"
+              @update:fill-type-model="fillTypeModel = $event"
+              @update:fill-angle="onTextLayerFillAngle($event)"
+              @load-system-fonts="loadSystemFonts()"
+            />
+
+            <!-- Image layer controls -->
+            <BannerEditorImagePanel
+              v-if="selectedImageLayer"
+              :layer="selectedImageLayer"
+              :redraw="redraw"
+              :set-image-x="setImageX"
+              :set-image-y="setImageY"
+              :set-image-width="setImageWidth"
+              :set-image-height="setImageHeight"
+              @replace-image="openImagePicker($event)"
+              @remove="removeSelectedLayer()"
+            />
+          </div>
+
+          <!-- Asset path settings + scan -->
+          <div class="banner-editor__group banner-editor__group--flat">
+            <span class="banner-editor__group-label">Asset paths</span>
+            <Flex column gap="s">
+              <Flex y-center gap="s">
+                <input
+                  id="banner-store-paths"
+                  v-model="storeAssetPaths"
+                  type="checkbox"
+                  class="banner-editor__checkbox"
+                >
+                <label for="banner-store-paths" class="banner-editor__hint" style="cursor: pointer; user-select: none;">
+                  Store folder path in metadata
+                </label>
+              </Flex>
+              <p class="banner-editor__hint" style="opacity: 0.7;">
+                When enabled, the source folder and relative path are saved with each image layer so you can re-link them later.
+              </p>
+              <template v-if="hasWebkitDir">
+                <Button
+                  size="s"
+                  variant="gray"
+                  expand
+                  :loading="scanning"
+                  :disabled="missingLayerCount === 0"
+                  @click="scanFolder"
+                >
+                  <template #start>
+                    <Icon name="ph:folder-open" />
+                  </template>
+                  {{ missingLayerCount > 0 ? `Scan folder (${missingLayerCount} missing)` : 'No missing images' }}
+                </Button>
+                <p v-if="scanResult" class="banner-editor__hint">
+                  {{ scanResult }}
+                </p>
               </template>
             </Flex>
           </div>
-
-          <Divider :size="0" />
-
-          <!-- Layers -->
-          <div class="banner-editor__group">
-            <span class="banner-editor__group-label">Layers</span>
-            <Flex column gap="s">
-              <Flex y-center gap="xs">
-                <Button size="s" variant="gray" @click="addTextLayer">
-                  <template #start>
-                    <Icon name="ph:text-t" />
-                  </template>
-                  Add text
-                </Button>
-                <Button size="s" variant="gray" @click="openImagePicker">
-                  <template #start>
-                    <Icon name="ph:image" />
-                  </template>
-                  Add image
-                </Button>
-              </Flex>
-              <div v-if="layers.length > 0" class="banner-editor__layers">
-                <div
-                  v-for="(layer, index) in layersReversed"
-                  :key="layer.id"
-                  class="banner-editor__layer-item"
-                  :class="{ 'banner-editor__layer-item--selected': layer.id === selectedLayerId }"
-                  @click="selectedLayerId = layer.id; redraw()"
-                >
-                  <div class="banner-editor__layer-actions">
-                    <Tooltip>
-                      <Button
-                        square
-                        size="s"
-                        variant="gray"
-                        :disabled="index === 0"
-                        @click.stop="moveLayerUp(layer.id)"
-                      >
-                        <Icon name="ph:arrow-up" />
-                      </Button>
-                      <template #tooltip>
-                        <p>Move forward</p>
-                      </template>
-                    </Tooltip>
-                    <Tooltip>
-                      <Button
-                        square
-                        size="s"
-                        variant="gray"
-                        :disabled="index === layersReversed.length - 1"
-                        @click.stop="moveLayerDown(layer.id)"
-                      >
-                        <Icon name="ph:arrow-down" />
-                      </Button>
-                      <template #tooltip>
-                        <p>Move backward</p>
-                      </template>
-                    </Tooltip>
-                    <Tooltip>
-                      <Button
-                        square
-                        size="s"
-                        variant="gray"
-                        @click.stop="duplicateLayer(layer.id)"
-                      >
-                        <Icon name="ph:copy" />
-                      </Button>
-                      <template #tooltip>
-                        <p>Duplicate layer</p>
-                      </template>
-                    </Tooltip>
-                    <Tooltip>
-                      <Button
-                        square
-                        size="s"
-                        variant="danger"
-                        plain
-                        @click.stop="removeLayer(layer.id)"
-                      >
-                        <Icon name="ph:trash" />
-                      </Button>
-                      <template #tooltip>
-                        <p>Remove layer</p>
-                      </template>
-                    </Tooltip>
-                  </div>
-                  <span class="banner-editor__layer-icon">
-                    <Icon :name="layer.type === 'text' ? 'ph:text-t' : 'ph:image'" />
-                  </span>
-                  <span class="banner-editor__layer-label">
-                    <template v-if="layer.type === 'text'">
-                      {{ layer.content || '(empty)' }}
-                    </template>
-                    <template v-else>
-                      {{ layer.file?.name ?? layer.assetMeta?.originalName ?? 'Image' }}
-                    </template>
-                  </span>
-                </div>
-              </div>
-            </Flex>
-          </div>
-
-          <!-- Text layer controls -->
-          <template v-if="selectedTextLayer">
-            <Divider :size="0" />
-            <div class="banner-editor__group">
-              <span class="banner-editor__group-label">Text</span>
-              <Flex column gap="xs">
-                <Input
-                  v-model="selectedTextLayer.content"
-                  placeholder="Layer text…"
-                  expand
-                />
-                <!-- Font family row -->
-                <Flex y-center gap="xs">
-                  <Select
-                    v-if="!fontCustomMode"
-                    v-model="fontFamilyModel"
-                    :options="fontOptions"
-                    single
-                    searchable
-                    size="s"
-                    expand
-                    placeholder="Font family…"
-                  />
-                  <Input
-                    v-else
-                    v-model="fontFamilyCustom"
-                    size="s"
-                    expand
-                    placeholder="e.g. Fira Code"
-                    spellcheck="false"
-                  />
-                  <!-- Toggle custom entry -->
-                  <Tooltip>
-                    <Button
-                      size="s"
-                      variant="gray"
-                      square
-                      :outline="fontCustomMode"
-                      @click="fontCustomMode = !fontCustomMode"
-                    >
-                      <Icon name="ph:pencil-simple" />
-                    </Button>
-                    <template #tooltip>
-                      <p>{{ fontCustomMode ? 'Back to font list' : 'Enter font name manually' }}</p>
-                    </template>
-                  </Tooltip>
-                  <!-- Load system fonts (Chrome/Edge only) -->
-                  <Tooltip v-if="!fontsLoaded || fontsPermissionDenied">
-                    <Button
-                      size="s"
-                      variant="gray"
-                      square
-                      @click="loadSystemFonts"
-                    >
-                      <Icon name="ph:text-aa" />
-                    </Button>
-                    <template #tooltip>
-                      <p>{{ fontsPermissionDenied ? 'Permission denied - click to retry' : 'Load system fonts' }}</p>
-                    </template>
-                  </Tooltip>
-                </Flex>
-                <!-- Font size row -->
-                <Flex y-center gap="s" expand>
-                  <input
-                    v-model.number="selectedTextLayer.fontSize"
-                    type="range"
-                    :min="TEXT_FONT_SIZE_MIN"
-                    :max="TEXT_FONT_SIZE_MAX"
-                    step="1"
-                    class="banner-editor__range"
-                    @input="redraw()"
-                  >
-                  <Input
-                    v-model="selectedTextLayer.fontSize"
-                    type="number"
-                    size="s"
-                    :min="TEXT_FONT_SIZE_MIN"
-                    :max="TEXT_FONT_SIZE_MAX"
-                    style="width: 56px; flex-shrink: 0;"
-                    @change="redraw()"
-                  />
-                </Flex>
-                <!-- Fill type + solid colour / gradient stops -->
-                <Flex y-center gap="xs">
-                  <Select
-                    v-model="fillTypeModel"
-                    :options="FILL_TYPE_OPTIONS"
-                    single
-                    size="s"
-                    expand
-                  />
-                  <!-- Solid: single colour swatch -->
-                  <label v-if="selectedTextLayer.fillType === 'solid'" class="banner-editor__swatch">
-                    <input
-                      v-model="selectedTextLayer.fillColor"
-                      type="color"
-                      class="banner-editor__color-input"
-                      @input="redraw()"
-                    >
-                    <span
-                      class="banner-editor__color-preview"
-                      :style="{ background: selectedTextLayer.fillColor }"
-                    />
-                  </label>
-                  <!-- Gradient: preview bar -->
-                  <span
-                    v-else
-                    class="banner-editor__gradient-preview"
-                    :style="{
-                      background: `linear-gradient(90deg, ${selectedTextLayer.fillStops.map(s => `${s.color} ${s.position * 100}%`).join(', ')})`,
-                    }"
-                  />
-                </Flex>
-
-                <!-- Gradient stops (shown when fill is not solid) -->
-                <template v-if="selectedTextLayer.fillType !== 'solid'">
-                  <div class="banner-editor__stops">
-                    <div
-                      v-for="(stop, idx) in selectedTextLayer.fillStops"
-                      :key="idx"
-                      class="banner-editor__stop-row"
-                    >
-                      <label class="banner-editor__swatch">
-                        <input
-                          :value="stop.color"
-                          type="color"
-                          class="banner-editor__color-input"
-                          @input="(e) => selectedTextLayer && setFillStopColor(selectedTextLayer, idx, (e.target as HTMLInputElement).value)"
-                        >
-                        <span class="banner-editor__color-preview" :style="{ background: stop.color }" />
-                      </label>
-                      <input
-                        :value="Math.round(stop.position * 100)"
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="1"
-                        class="banner-editor__range"
-                        @input="(e) => selectedTextLayer && setFillStopPosition(selectedTextLayer, idx, Number((e.target as HTMLInputElement).value) / 100)"
-                      >
-                      <span class="banner-editor__range-value">{{ Math.round(stop.position * 100) }}%</span>
-                      <Tooltip>
-                        <Button
-                          size="s"
-                          variant="gray"
-                          square
-                          :disabled="selectedTextLayer.fillStops.length <= 2"
-                          @click="removeFillStop(selectedTextLayer, idx)"
-                        >
-                          <Icon name="ph:x" />
-                        </Button>
-                        <template #tooltip>
-                          <p>Remove stop</p>
-                        </template>
-                      </Tooltip>
-                    </div>
-                  </div>
-                  <Flex y-center gap="s">
-                    <Button size="s" variant="gray" @click="addFillStop(selectedTextLayer)">
-                      <template #start>
-                        <Icon name="ph:plus" />
-                      </template>
-                      Add stop
-                    </Button>
-                  </Flex>
-                  <!-- Angle (linear + conic only) -->
-                  <Flex v-if="selectedTextLayer.fillType !== 'radial'" y-center gap="s" expand>
-                    <span class="banner-editor__field-label">Angle</span>
-                    <input
-                      v-model.number="selectedTextLayer.fillAngle"
-                      type="range"
-                      min="0"
-                      max="360"
-                      step="1"
-                      class="banner-editor__range"
-                      @input="redraw()"
-                    >
-                    <span class="banner-editor__range-value">{{ selectedTextLayer.fillAngle }}°</span>
-                  </Flex>
-                </template>
-
-                <Flex y-center gap="xs">
-                  <Tooltip>
-                    <Button
-                      square
-                      size="s"
-                      :variant="selectedTextLayer.bold ? 'fill' : 'gray'"
-                      @click="selectedTextLayer.bold = !selectedTextLayer.bold; redraw()"
-                    >
-                      B
-                    </Button>
-                    <template #tooltip>
-                      <p>Bold</p>
-                    </template>
-                  </Tooltip>
-                  <Tooltip>
-                    <Button
-                      square
-                      size="s"
-                      style="font-style: italic"
-                      :variant="selectedTextLayer.italic ? 'fill' : 'gray'"
-                      @click="selectedTextLayer.italic = !selectedTextLayer.italic; redraw()"
-                    >
-                      I
-                    </Button>
-                    <template #tooltip>
-                      <p>Italic</p>
-                    </template>
-                  </Tooltip>
-                </Flex>
-                <!-- Rotation row -->
-                <Flex y-center gap="s" expand>
-                  <span class="banner-editor__field-label">Rotate</span>
-                  <input
-                    v-model.number="selectedTextLayer.rotation"
-                    type="range"
-                    min="-180"
-                    max="180"
-                    step="1"
-                    class="banner-editor__range"
-                    @input="redraw()"
-                  >
-                  <span class="banner-editor__range-value">{{ selectedTextLayer.rotation }}°</span>
-                </Flex>
-                <!-- Opacity row -->
-                <Flex y-center gap="s" expand>
-                  <span class="banner-editor__field-label">Opacity</span>
-                  <input
-                    v-model.number="selectedTextLayer.opacity"
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    class="banner-editor__range"
-                    @input="redraw()"
-                  >
-                  <span class="banner-editor__range-value">{{ Math.round(selectedTextLayer.opacity * 100) }}%</span>
-                </Flex>
-              </Flex>
-            </div>
-          </template>
-
-          <!-- Image layer controls -->
-          <template v-if="selectedImageLayer">
-            <Divider :size="0" />
-            <div class="banner-editor__group">
-              <span class="banner-editor__group-label">Image</span>
-              <Flex column gap="s">
-                <p class="banner-editor__hint">
-                  Drag to move &middot; drag corner to resize &middot; hold Shift to ignore aspect ratio
-                </p>
-
-                <!-- Rotation -->
-                <Flex y-center gap="s" expand>
-                  <span class="banner-editor__field-label">Rotate</span>
-                  <input
-                    v-model.number="selectedImageLayer.rotation"
-                    type="range"
-                    min="-180"
-                    max="180"
-                    step="1"
-                    class="banner-editor__range"
-                    @input="redraw()"
-                  >
-                  <span class="banner-editor__range-value">{{ selectedImageLayer.rotation }}°</span>
-                </Flex>
-                <!-- Position -->
-                <div class="banner-editor__transform-grid">
-                  <span class="banner-editor__field-label">X</span>
-                  <input
-                    class="banner-editor__num-input"
-                    type="number"
-                    :value="selectedImageLayer.x"
-                    @change="setImageX(selectedImageLayer, ($event.target as HTMLInputElement).value)"
-                  >
-                  <span class="banner-editor__field-label">Y</span>
-                  <input
-                    class="banner-editor__num-input"
-                    type="number"
-                    :value="selectedImageLayer.y"
-                    @change="setImageY(selectedImageLayer, ($event.target as HTMLInputElement).value)"
-                  >
-                </div>
-
-                <!-- Size (aspect-locked) -->
-                <div class="banner-editor__transform-grid">
-                  <span class="banner-editor__field-label">W</span>
-                  <input
-                    class="banner-editor__num-input"
-                    type="number"
-                    min="4"
-                    :value="selectedImageLayer.width"
-                    @change="setImageWidth(selectedImageLayer, ($event.target as HTMLInputElement).value)"
-                  >
-                  <span class="banner-editor__field-label">H</span>
-                  <input
-                    class="banner-editor__num-input"
-                    type="number"
-                    min="4"
-                    :value="selectedImageLayer.height"
-                    @change="setImageHeight(selectedImageLayer, ($event.target as HTMLInputElement).value)"
-                  >
-                </div>
-
-                <template v-if="!selectedImageLayer.src">
-                  <p class="banner-editor__hint">
-                    Image file missing. Replace to restore.
-                  </p>
-                  <p v-if="selectedImageLayer.assetMeta.folderRelativePath" class="banner-editor__hint banner-editor__hint--path">
-                    <Icon name="ph:folder" style="vertical-align: -2px; margin-right: 2px;" />
-                    {{ selectedImageLayer.assetMeta.folderName }}/{{ selectedImageLayer.assetMeta.folderRelativePath }}
-                  </p>
-                </template>
-                <Flex y-center gap="s">
-                  <Button size="s" variant="gray" @click="openImagePicker(selectedImageLayer.id)">
-                    <template #start>
-                      <Icon name="ph:image" />
-                    </template>
-                    Replace image
-                  </Button>
-                  <Button size="s" variant="danger" @click="removeSelectedLayer">
-                    <template #start>
-                      <Icon name="ph:trash" />
-                    </template>
-                    Remove
-                  </Button>
-                </Flex>
-              </Flex>
-            </div>
-          </template>
-        </div>
-
-        <!-- Asset path settings + scan -->
-        <div class="banner-editor__group">
-          <span class="banner-editor__group-label">Asset paths</span>
-          <Flex column gap="s">
-            <Flex y-center gap="s">
-              <input
-                id="banner-store-paths"
-                v-model="storeAssetPaths"
-                type="checkbox"
-                class="banner-editor__checkbox"
-              >
-              <label for="banner-store-paths" class="banner-editor__hint" style="cursor: pointer; user-select: none;">
-                Store folder path in metadata
-              </label>
-            </Flex>
-            <p class="banner-editor__hint" style="opacity: 0.7;">
-              When enabled, the source folder and relative path are saved with each image layer so you can re-link them later.
-            </p>
-            <template v-if="hasWebkitDir">
-              <Button
-                size="s"
-                variant="gray"
-                expand
-                :loading="scanning"
-                :disabled="missingLayerCount === 0"
-                @click="scanFolder"
-              >
-                <template #start>
-                  <Icon name="ph:folder-open" />
-                </template>
-                {{ missingLayerCount > 0 ? `Scan folder (${missingLayerCount} missing)` : 'No missing images' }}
-              </Button>
-              <p v-if="scanResult" class="banner-editor__hint">
-                {{ scanResult }}
-              </p>
-            </template>
-          </Flex>
         </div>
 
         <!-- Footer: save / delete -->
@@ -2270,6 +1913,13 @@ function onClose() {
 </template>
 
 <style lang="scss">
+@font-face {
+  font-family: 'Visitor BRK';
+  src: url('/fonts/visitorbrk.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 // Not scoped — mirrors the ThemeEditor pattern so we can target Modal internals
 .banner-editor {
   // ── Two-column full-screen layout ──────────────────────────────────────────
@@ -2280,6 +1930,7 @@ function onClose() {
   .vui-card-content {
     padding: 0;
     height: 100%;
+    overflow: hidden;
   }
 
   &__layout {
@@ -2368,16 +2019,36 @@ function onClose() {
   }
 
   &__groups {
-    flex: 1;
-    overflow-y: auto;
+    overflow-y: scroll;
     overflow-x: hidden;
     min-height: 0;
     min-width: 0;
+    height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__groups-inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-s);
+    padding: var(--space-s);
   }
 
   &__group {
     padding: var(--space-m);
     min-width: 0;
+    background-color: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-m);
+
+    &--flat {
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+    }
   }
 
   &__group-label {
@@ -2398,6 +2069,12 @@ function onClose() {
   }
 
   // ── Controls ───────────────────────────────────────────────────────────────
+
+  &__sub-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    gap: var(--space-xxs);
+  }
 
   &__field-label {
     font-size: var(--font-size-xs);
@@ -2462,6 +2139,7 @@ function onClose() {
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
+    width: 100%;
   }
 
   &__stop-row {

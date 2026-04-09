@@ -171,6 +171,21 @@ export default defineNuxtConfig({
         // Discussions/DiscussionTimeline.vue jump-to-date button + toolbar
         'ph:clock',
         'ph:arrow-down',
+        'ph:arrow-up',
+
+        // Profile/Banner editor
+        'ph:arrows-out',
+        'ph:circle-half-tilt',
+        'ph:copy',
+        'ph:floppy-disk',
+        'ph:folder-open',
+        'ph:frame-corners',
+        'ph:image',
+        'ph:pencil-simple',
+        'ph:plus',
+        'ph:selection-foreground',
+        'ph:text-t',
+        'ph:trash',
 
         // Global search + searches
         'ph:magnifying-glass',

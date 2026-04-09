@@ -89,6 +89,7 @@ interface TableColumnOverrides {
       show_forum_unread_bubbles: boolean
       editor_floating: boolean
       strip_image_metadata: boolean
+      show_user_banners: boolean
     }
   }
 
