@@ -159,7 +159,6 @@ const supabase = useSupabaseClient()
 const showSubmitModal = ref(false)
 const submitLoading = ref(false)
 const submitError = ref('')
-
 const form = reactive({ name: '', description: '', useAsCurrent: true })
 
 const { validate, errors } = useValidation(form, {
@@ -279,7 +278,14 @@ const isMobile = useBreakpoint('<s')
 
         <div class="flex-1" />
 
-        <Button square size="s" plain @click="close">
+        <Button v-if="isMobile" size="s" variant="accent" @click="openSubmitModal">
+          Save
+          <template #end>
+            <Icon name="ph:arrow-right" />
+          </template>
+        </Button>
+
+        <Button v-else square size="s" plain @click="close">
           <Icon name="ph:x" />
         </Button>
       </Flex>
@@ -291,7 +297,7 @@ const isMobile = useBreakpoint('<s')
             <span class="theme-editor__group-label">Spacing</span>
             <Flex y-center gap="l">
               <input
-                type="range" min="0" max="100"
+                type="range" min="0" max="100" class="w-100"
                 :value="scaleValues.spacing"
                 :style="rangeProgressStyle('spacing')"
                 @input="onScaleChange('spacing', Number(($event.target as HTMLInputElement).value))"
@@ -304,7 +310,7 @@ const isMobile = useBreakpoint('<s')
             <span class="theme-editor__group-label">Rounding</span>
             <Flex y-center gap="l">
               <input
-                type="range" min="0" max="100"
+                type="range" min="0" max="100" class="w-100"
                 :value="scaleValues.rounding"
                 :style="rangeProgressStyle('rounding')"
                 @input="onScaleChange('rounding', Number(($event.target as HTMLInputElement).value))"
@@ -317,7 +323,7 @@ const isMobile = useBreakpoint('<s')
             <span class="theme-editor__group-label">Transitions</span>
             <Flex y-center gap="l">
               <input
-                type="range" min="0" max="100"
+                type="range" min="0" max="100" class="w-100"
                 :value="scaleValues.transitions"
                 :style="rangeProgressStyle('transitions')"
                 @input="onScaleChange('transitions', Number(($event.target as HTMLInputElement).value))"
@@ -330,7 +336,7 @@ const isMobile = useBreakpoint('<s')
             <span class="theme-editor__group-label">Widening</span>
             <Flex y-center gap="l">
               <input
-                type="range" min="0" max="100"
+                type="range" min="0" max="100" class="w-100"
                 :value="scaleValues.widening"
                 :style="rangeProgressStyle('widening')"
                 @input="onScaleChange('widening', Number(($event.target as HTMLInputElement).value))"
@@ -378,10 +384,11 @@ const isMobile = useBreakpoint('<s')
     <!-- Mobile -->
     <template v-if="isMobile">
       <Drawer
+        container-class="theme-editor__drawer-container"
         open :root-props="{ dismissible: false,
                             modal: false,
-                            activeSnapPoint: 0.5,
-                            snapPoints: [0.4, 0.5, 0.6, 0.7, 0.8],
+                            activeSnapPoint: 0.2,
+                            snapPoints: [0.2, 0.35, 0.5, 0.75],
         }"
       >
         <ThemeEditorControls />
@@ -553,22 +560,25 @@ const isMobile = useBreakpoint('<s')
       width: 100% !important;
     }
 
+    &__drawer-container {
+      padding-inline: 0 !important;
+    }
+
     &__controls {
       border: none;
       height: auto;
     }
 
-    &__header,
-    &__footer {
+    &__header {
       position: sticky;
       top: 0;
       background-color: var(--color-bg-medium);
       z-index: 5;
+      padding-top: 0;
     }
 
     &__footer {
-      top: unset;
-      bottom: -20px;
+      display: none !important;
     }
 
     &__groups {
