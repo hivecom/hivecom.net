@@ -150,7 +150,7 @@ const {
   data: profileData,
   loading: profileLoading,
   error: profileError,
-  refetch: _refetchProfile,
+  refetch: refetchProfile,
 } = useCachedFetch<Tables<'profiles'>>(
   profileQuery,
   {
@@ -247,6 +247,15 @@ function closeEditSheet() {
 
 function clearProfileError() {
   profileSubmissionError.value = null
+}
+
+function handleProfilePatch(patch: Partial<Tables<'profiles'>>) {
+  if (!profile.value)
+    return
+  // Patch local state immediately so the UI updates without waiting
+  profile.value = cloneProfileRecord({ ...profile.value, ...patch })
+  // Bust the localStorage cache so reloads don't serve stale has_banner state
+  void refetchProfile()
 }
 
 async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
@@ -481,6 +490,7 @@ function openFriendsModal() {
       @close="closeEditSheet"
       @update:is-open="isEditSheetOpen = $event"
       @clear-error="clearProfileError"
+      @profile-patch="handleProfilePatch"
     />
 
     <!-- Complaints Manager -->

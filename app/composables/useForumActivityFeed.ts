@@ -62,6 +62,11 @@ export function useForumActivityFeed({
 
   const latestReplies = ref<ActivityItem[]>([])
 
+  // Realtime-only items (new discussions arriving via INSERT) that bypass the
+  // latestReplies pipeline. These are already in display format and get merged
+  // directly into latestPosts alongside flattenedTopics.
+  const realtimeDiscussions = ref<ActivityItem[]>([])
+
   async function fetchLatestReplies() {
     const cached = forumCache.get<ActivityItem[]>(FORUM_REPLIES_CACHE_KEY)
     if (cached !== null) {
@@ -174,7 +179,7 @@ export function useForumActivityFeed({
         } as ActivityItem
       })
 
-    return [...flattenedTopics, ...visibleReplies.value]
+    return [...realtimeDiscussions.value, ...flattenedTopics, ...visibleReplies.value]
       .toSorted((a, b) => {
         const ta = new Date(a.timestampRaw).getTime()
         const tb = new Date(b.timestampRaw).getTime()
@@ -213,6 +218,24 @@ export function useForumActivityFeed({
       .length
   })
 
+  /**
+   * Prepend a single reply ActivityItem to the live feed without waiting for
+   * a cache-busting refetch. The cache is invalidated so the next cold load
+   * picks up the fresh data from the server.
+   */
+  function prependReplyItem(item: ActivityItem) {
+    latestReplies.value = [item, ...latestReplies.value]
+    forumCache.delete(FORUM_REPLIES_CACHE_KEY)
+  }
+
+  /**
+   * Prepend a new discussion that arrived via realtime INSERT. These don't go
+   * through latestReplies - they're merged directly into latestPosts.
+   */
+  function prependDiscussionItem(item: ActivityItem) {
+    realtimeDiscussions.value = [item, ...realtimeDiscussions.value]
+  }
+
   return {
     latestReplies,
     latestPosts,
@@ -221,5 +244,7 @@ export function useForumActivityFeed({
     postSinceYesterday,
     visibleReplies,
     fetchLatestReplies,
+    prependReplyItem,
+    prependDiscussionItem,
   }
 }

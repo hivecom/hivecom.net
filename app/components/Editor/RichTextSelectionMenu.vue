@@ -231,11 +231,21 @@ function toggleHeading(level: HeadingLevel) {
     insertMarkdown('', '', `${'#'.repeat(level)} `)
   }
   else {
+    // If the selection spans multiple blocks, collapse to the anchor position
+    // so toggling a heading only affects the block the user clicked in, not
+    // every paragraph covered by the selection.
+    const { from, to, $from, $to } = props.editor.state.selection
+    const isMultiBlock = from !== to && $from.parent !== $to.parent
+
+    const chain = isMultiBlock
+      ? props.editor.chain().focus().setTextSelection(from)
+      : props.editor.chain().focus()
+
     if (getActiveHeading() === level) {
-      props.editor.chain().focus().setParagraph().run()
+      chain.setParagraph().run()
     }
     else {
-      props.editor.chain().focus().toggleHeading({ level }).run()
+      chain.toggleHeading({ level }).run()
     }
   }
   headingPickerOpen.value = false

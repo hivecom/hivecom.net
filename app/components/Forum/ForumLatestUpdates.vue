@@ -16,6 +16,12 @@ const props = defineProps<{
   mentionLookup: Record<string, string>
   // Pass-through options for the paginated sheet feed
   feedOptions: Omit<UseForumActivityFeedPaginatedOptions, never>
+  // Count of incoming realtime items not yet in the sheet feed
+  feedPendingCount?: number
+}>()
+
+const emit = defineEmits<{
+  feedReloaded: []
 }>()
 
 const user = useSupabaseUser()
@@ -46,7 +52,11 @@ const visitedAt = computed<number | null>(() => {
 const effectiveVisitedAt = computed<number | null>(() => {
   if (visitedAt.value == null)
     return null
-  const ownPosts = props.latestPosts.filter(post => post.user === user.value?.id)
+  // If the user isn't hydrated yet, don't try to advance the boundary -
+  // we can't reliably identify own posts without an ID.
+  if (user.value == null)
+    return visitedAt.value
+  const ownPosts = props.latestPosts.filter(post => post.user === user.value!.id)
   if (ownPosts.length === 0)
     return visitedAt.value
   const latestOwn = Math.max(...ownPosts.map(p => new Date(p.timestampRaw).getTime()))
@@ -72,9 +82,13 @@ const splitIndex = computed<number | null>(() => {
 const newSinceLastVisit = computed<number>(() => {
   if (splitIndex.value == null)
     return 0
+  // If the user isn't hydrated yet, don't count anything as new - we can't
+  // filter out own posts and would over-count.
+  if (user.value == null)
+    return 0
   return props.latestPosts
     .slice(0, splitIndex.value)
-    .filter(post => post.user !== user.value?.id)
+    .filter(post => post.user !== user.value!.id)
     .length
 })
 
@@ -131,6 +145,22 @@ const combinedMentionLookup = computed<Record<string, string>>(() => ({
 // Load sheet data on first open, set up IntersectionObserver for infinite scroll
 let observer: IntersectionObserver | null = null
 
+async function reloadSheet() {
+  await loadSheet()
+  emit('feedReloaded')
+
+  if (effectiveVisitedAt.value != null) {
+    while (!sheetExhausted.value) {
+      const idx = sheetItems.value.findIndex(
+        item => new Date(item.timestampRaw).getTime() <= effectiveVisitedAt.value!,
+      )
+      if (idx !== -1)
+        break
+      await loadMore()
+    }
+  }
+}
+
 watch(sheetOpen, async (open) => {
   if (!open) {
     observer?.disconnect()
@@ -181,7 +211,7 @@ onUnmounted(() => {
   <section class="forum__latest">
     <Flex y-center x-start expand class="mb-s">
       <h5>
-        Latest updates
+        Latest activity
       </h5>
       <TinyBadge v-if="isMobile && newSinceLastVisit > 0" variant="accent">
         {{ newSinceLastVisit }} new
@@ -238,9 +268,23 @@ onUnmounted(() => {
 
     <Sheet v-if="user" :open="sheetOpen" :size="456" @close="sheetOpen = false">
       <template #header>
-        <h4 class="pt-xxs">
-          Latest updates
-        </h4>
+        <Flex y-center x-between expand>
+          <h4>
+            Latest activity
+          </h4>
+          <Button
+            v-if="(props.feedPendingCount ?? 0) > 0"
+            size="s"
+            variant="accent"
+            outline
+            @click="reloadSheet"
+          >
+            <template #start>
+              <Icon name="ph:arrow-counter-clockwise" />
+            </template>
+            {{ props.feedPendingCount }} new
+          </Button>
+        </Flex>
       </template>
 
       <Flex column gap="m">

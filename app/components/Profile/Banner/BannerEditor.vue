@@ -183,8 +183,8 @@ const bgFillStops = ref<GradientStop[]>([
   { color: '#16213e', position: 1 },
 ])
 const bgFillAngle = ref(90)
-const bgBorder = ref(false)
-const bgBorderColor = ref('#ffffff')
+const bgBorder = ref(true)
+const bgBorderColor = ref('#181818')
 
 // Unified layer array
 const layers = ref<BannerLayer[]>([])
@@ -1564,6 +1564,7 @@ onMounted(async () => {
     { color: colorBg, position: 0 },
     { color: colorBgRaised, position: 1 },
   ]
+  bgBorderColor.value = getCssColor('--color-border-weak', '#181818')
 
   await nextTick()
   redraw()

@@ -109,7 +109,7 @@ const selectedTheme = computed({
       Forum
     </strong>
 
-    <Switch v-model="settings.show_forum_updates" class="reversed mb-m" label="Show latest updates" />
+    <Switch v-model="settings.show_forum_updates" class="reversed mb-m" label="Show latest activity" />
     <Switch v-model="settings.show_forum_recently_visited" class="reversed mb-m" label="Show recently visited" />
     <Switch v-model="settings.show_forum_archived" class="reversed" label="Show archived topics & discussions" />
 

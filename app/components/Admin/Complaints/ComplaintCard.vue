@@ -190,7 +190,6 @@ function handleAcknowledge(event: Event) {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 280px;
   overflow: hidden;
 
   :deep(.vui-card-header),

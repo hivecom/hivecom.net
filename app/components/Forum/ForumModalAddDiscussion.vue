@@ -130,7 +130,6 @@ const showDraftTooltip = computed(() => {
 
 const slugTouched = ref(false)
 const isAutoUpdatingSlug = ref(false)
-const isSyncingForm = ref(false)
 
 function getDatePrefix() {
   return new Date().toISOString().slice(0, 10)
@@ -142,12 +141,9 @@ function getSlugPrefix(slug: string) {
 }
 
 // When we're editing, make sure the form and edited data are in sync
-watch(() => editedDiscussion.value, (item) => {
+watch(() => editedDiscussion.value, async (item) => {
   if (!item)
     return
-
-  isAutoUpdatingSlug.value = true
-  isSyncingForm.value = true
 
   Object.assign(form, {
     title: item.title ?? '',
@@ -161,17 +157,15 @@ watch(() => editedDiscussion.value, (item) => {
     is_nsfw: item.is_nsfw ?? false,
   })
 
-  isAutoUpdatingSlug.value = false
-  isSyncingForm.value = false
+  // Wait for Vue to flush watchers triggered by the Object.assign above before
+  // resetting slugTouched - otherwise the slug watcher fires async and stamps
+  // slugTouched = true after we clear it here.
+  await nextTick()
   slugTouched.value = false
   activeTab.value = 'create'
 }, { immediate: true })
 
 watch(() => form.title, (value) => {
-  if (isSyncingForm.value) {
-    return
-  }
-
   if (!slugTouched.value || !form.slug) {
     const baseSlug = slugify(value)
     const prefix = getSlugPrefix(form.slug) ?? getDatePrefix()
@@ -344,7 +338,7 @@ function deleteDraft() {
     .delete()
     .eq('id', deleteConfirm.value)
     .then(({ error }) => {
-      deleteLoading.value = true
+      deleteLoading.value = false
 
       if (error) {
         pushToast('Failed to delete draft')
@@ -363,7 +357,7 @@ function deleteDraft() {
 }
 
 // Clear form when modal is closed
-watch(() => props.open, (isOpen) => {
+watch(() => props.open, async (isOpen) => {
   if (!isOpen) {
     Object.assign(form, {
       title: '',
@@ -373,32 +367,17 @@ watch(() => props.open, (isOpen) => {
       is_locked: false,
       is_sticky: false,
       is_draft: true,
+      is_nsfw: false,
       discussion_topic_id: null,
     })
 
     activeTab.value = 'create'
     isAutoUpdatingSlug.value = false
-    slugTouched.value = false
     editingDraft.value = null
     publishConfirmOpen.value = false
-  }
-  else if (editedDiscussion.value) {
-    isAutoUpdatingSlug.value = true
-
-    Object.assign(form, {
-      title: editedDiscussion.value.title ?? '',
-      slug: editedDiscussion.value.slug ?? '',
-      description: editedDiscussion.value.description ?? '',
-      markdown: editedDiscussion.value.markdown ?? '',
-      discussion_topic_id: editedDiscussion.value.discussion_topic_id ?? null,
-      is_locked: editedDiscussion.value.is_locked,
-      is_sticky: editedDiscussion.value.is_sticky,
-      is_draft: editedDiscussion.value.is_draft,
-    })
-
-    isAutoUpdatingSlug.value = false
+    // nextTick so the slug watcher flush from clearing form.slug doesn't set slugTouched
+    await nextTick()
     slugTouched.value = false
-    activeTab.value = 'create'
   }
 })
 
@@ -476,8 +455,8 @@ function confirmPublish() {
         </ul>
       </div>
       <Input v-model="form.title" :errors="normalizeErrors(errors.title)" label="Name" expand placeholder="What is this discussion about?" required />
-      <Input v-model="form.slug" :errors="normalizeErrors(errors.slug)" label="Slug (optional)" expand placeholder="Auto-generated from the title" />
-      <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description" expand placeholder="Short summary for the discussion" />
+      <Input v-model="form.slug" :errors="normalizeErrors(errors.slug)" label="URL slug (optional)" expand placeholder="e.g. my-discussion-title" hint="A custom URL-friendly identifier for this discussion. Leave blank to generate one automatically." />
+      <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description / Subtitle" expand placeholder="Short summary for the discussion" hint="" />
       <RichTextEditor
         v-model="form.markdown"
         :errors="normalizeErrors(errors.markdown)"

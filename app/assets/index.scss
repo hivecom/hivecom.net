@@ -188,13 +188,6 @@ label:is(.required):after {
   font-size: var(--font-size-l);
 }
 
-.vui-card:not(.vui-sheet),
-.vui-card:not(.vui-modal) {
-  .vui-card-header {
-    align-items: flex-start;
-  }
-}
-
 .vui-modal > .vui-card {
   margin-bottom: 0;
 }

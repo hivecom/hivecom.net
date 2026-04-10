@@ -21,6 +21,7 @@ import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useForumActivityFeed } from '@/composables/useForumActivityFeed'
 import { useForumDraftCount } from '@/composables/useForumDraftCount'
 import { useForumUserActivity } from '@/composables/useForumUserActivity'
+import { useRealtimeForumFeed } from '@/composables/useRealtimeForumFeed'
 import { useBulkTopicIcons } from '@/composables/useTopicIcon'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composePathToTopic } from '@/lib/topics'
@@ -249,6 +250,8 @@ const {
   latestPostAuthorIds,
   postSinceYesterday,
   fetchLatestReplies,
+  prependReplyItem,
+  prependDiscussionItem,
 } = useForumActivityFeed({
   topics,
   settings,
@@ -256,6 +259,22 @@ const {
   visibleDiscussionIds,
   hiddenTopicIds,
   onTopicClick: (id: string) => setActiveTopicById(id),
+})
+
+// ── Realtime feed updates ─────────────────────────────────────────────────
+
+// Count of incoming items not yet reflected in the paginated sheet feed.
+// Reset when the sheet reloads. The carousel updates immediately.
+const feedPendingCount = ref(0)
+
+const { subscribe: subscribeForumFeed } = useRealtimeForumFeed({
+  onReply: prependReplyItem,
+  onDiscussion: prependDiscussionItem,
+  onPendingSheet: (delta) => { feedPendingCount.value += delta },
+  discussionLookup,
+  settings,
+  visibleDiscussionIds,
+  hiddenTopicIds,
 })
 
 const { draftCount, fetchDraftCount, handleDraftUpdated } = useForumDraftCount(userId)
@@ -361,6 +380,10 @@ onBeforeMount(async () => {
   await fetchLatestReplies()
 
   loading.value = false
+
+  // Start realtime subscription after initial data is loaded so that the
+  // discussionLookup and visibleDiscussionIds are populated for filtering.
+  subscribeForumFeed()
 })
 
 const activeTopicPath = computed(() => composePathToTopic(activeTopicId.value, topics.value))
@@ -659,6 +682,8 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         :last-visited-at="lastFeedVisitedAt"
         :mention-lookup="mentionLookup"
         :feed-options="feedOptions"
+        :feed-pending-count="feedPendingCount"
+        @feed-reloaded="feedPendingCount = 0"
       />
 
       <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xxs' : 'xs'">
@@ -778,11 +803,11 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
                   </Button>
                 </NuxtLink>
               </Flex>
-              <Switch v-model="settings.show_forum_updates" label="Show latest updates" />
+              <Switch v-model="settings.show_forum_updates" label="Show latest activity" />
               <Switch v-model="settings.show_forum_recently_visited" label="Show recently visited" />
               <Switch v-model="settings.show_forum_archived" label="Show archived topics & discussions" />
               <Switch v-model="settings.show_forum_unread_bubbles" label="Show unread bubbles" />
-              <!-- <Switch v-model="settings.showNsfw" label="Show NSFW in latest updates" /> -->
+              <!-- <Switch v-model="settings.showNsfw" label="Show NSFW in latest activity" /> -->
             </Flex>
           </Popout>
         </Flex>

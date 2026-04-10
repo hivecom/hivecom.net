@@ -20,7 +20,13 @@ const props = defineProps<{
   submissionError?: string | null
 }>()
 // Define emits
-const emit = defineEmits(['save', 'close', 'update:isOpen', 'clearError'])
+const emit = defineEmits<{
+  'save': [profile: Partial<Tables<'profiles'>>]
+  'close': []
+  'update:isOpen': [value: boolean]
+  'clearError': []
+  'profilePatch': [patch: Partial<Tables<'profiles'>>]
+}>()
 
 // Form state
 const profileForm = ref({
@@ -62,10 +68,12 @@ const showImportConfirm = ref(false)
 
 function onBannerSaved(url: string) {
   bannerUrl.value = `${url}?t=${Date.now()}`
+  emit('profilePatch', { has_banner: true })
 }
 
 function onBannerDeleted() {
   bannerUrl.value = null
+  emit('profilePatch', { has_banner: false })
 }
 
 async function handleImportFile(e: Event) {
@@ -99,6 +107,7 @@ async function handleImportFile(e: Event) {
 
       const { data } = supabase.storage.from(USERS_BUCKET_ID).getPublicUrl(filePath)
       bannerUrl.value = `${data.publicUrl}?t=${Date.now()}`
+      emit('profilePatch', { has_banner: true })
     }
     catch (error) {
       console.error('Error uploading imported banner:', error)
@@ -136,6 +145,7 @@ async function handleBannerDelete() {
       .eq('id', props.profile.id)
 
     bannerUrl.value = null
+    emit('profilePatch', { has_banner: false })
   }
   catch (error) {
     console.error('Error deleting banner:', error)
