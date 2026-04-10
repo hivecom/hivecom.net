@@ -279,10 +279,7 @@ const isMobile = useBreakpoint('<s')
         <div class="flex-1" />
 
         <Button v-if="isMobile" size="s" variant="accent" @click="openSubmitModal">
-          Save
-          <template #end>
-            <Icon name="ph:arrow-right" />
-          </template>
+          Finalize
         </Button>
 
         <Button v-else square size="s" plain @click="close">

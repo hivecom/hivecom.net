@@ -176,13 +176,13 @@ export const VUI_COLOR_KEYS = [
  * value maps to.
  *
  * `minPercent` / `maxPercent` define the output range.
- *   - spacing:     0% - 300%   (DB 0 = no spacing, DB 100 = 3x default)
- *   - rounding:    0% - 250%   (DB 0 = sharp corners, DB 100 = 2.5x default)
- *   - transitions: 0% - 200%   (DB 0 = instant, DB 100 = 2x default)
+ *   - spacing:     0% - 200%   (DB 0 = no spacing, DB 50 = VUI default, DB 100 = 2x default)
+ *   - rounding:    0% - 500%   (DB 0 = sharp corners, DB 20 = VUI default, DB 100 = 5x default)
+ *   - transitions: 0% - 400%   (DB 0 = instant, DB 25 = VUI default, DB 100 = 4x default)
  *
  * `defaultDb` is the DB value that reproduces the original VUI defaults
- * (i.e. 100% of the default value). For all three that is ~33 for spacing
- * (100/300), ~40 for rounding (100/250), and ~50 for transitions (100/200).
+ * (i.e. 100% of the default value). Must be stored as an integer.
+ * Formula (with minPercent=0): defaultDb = 10000 / maxPercent
  */
 
 export interface ScaleConfig {
@@ -190,7 +190,7 @@ export interface ScaleConfig {
   minPercent: number
   /** Maximum percentage (at DB value 100) */
   maxPercent: number
-  /** The DB value that maps to exactly 100% (the VUI default) */
+  /** The DB value that maps to exactly 100% (the VUI default). Must be an integer. */
   defaultDb: number
   /** CSS variable names and their default pixel/time values */
   tokens: { varName: string, defaultValue: number }[]
@@ -234,31 +234,29 @@ const CONTAINER_TOKENS: ScaleConfig['tokens'] = [
 
 export const SCALE_CONFIGS: Record<ThemeScaleKey, ScaleConfig> = {
   spacing: {
-    minPercent: 25,
-    maxPercent: 250,
-    // Exact float so dbToPercent(defaultDb, 'spacing') === 100 without rounding error
-    defaultDb: (100 - 25) / (250 - 25) * 100, // 33.333...
+    minPercent: 0,
+    maxPercent: 200,
+    defaultDb: 50,
     tokens: SPACE_TOKENS,
     unit: 'px',
   },
   rounding: {
     minPercent: 0,
     maxPercent: 500,
-    defaultDb: (100 - 0) / (500 - 0) * 100, // 20
+    defaultDb: 20,
     tokens: RADIUS_TOKENS,
     unit: 'px',
   },
   transitions: {
     minPercent: 0,
     maxPercent: 400,
-    defaultDb: (100 - 0) / (400 - 0) * 100, // 25
+    defaultDb: 25,
     tokens: TRANSITION_TOKENS,
     unit: 's',
   },
   widening: {
     minPercent: 100,
     maxPercent: 300,
-    // DB 0 = 100% (default container widths), DB 100 = 300% (full width)
     defaultDb: 0,
     tokens: CONTAINER_TOKENS,
     unit: 'px',
