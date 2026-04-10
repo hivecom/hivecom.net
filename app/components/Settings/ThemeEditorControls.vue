@@ -103,8 +103,9 @@ function rangeProgressStyle(key: ThemeScaleKey): Record<string, string> {
 
 /** Called when a range slider changes */
 function onScaleChange(key: ThemeScaleKey, value: number) {
-  scaleValues[key] = value
-  applyScale(key, value)
+  const intValue = Math.round(value)
+  scaleValues[key] = intValue
+  applyScale(key, intValue)
 }
 
 onMounted(() => seed())
