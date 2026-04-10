@@ -76,21 +76,33 @@ function updateHoveredElement(event: MouseEvent) {
   hoveredElement.value = event.target as HTMLElement | null
   update()
 }
+
+const [DefineSearchButton, SearchButton] = createReusableTemplate()
 </script>
 
 <template>
   <nav class="navigation" :class="{ landing: route.path === '/' }">
+    <DefineSearchButton>
+      <Tooltip :disabled="isMobile">
+        <Button square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded" @click="openCommand()">
+          <Icon name="ph:list-magnifying-glass" size="20" />
+        </Button>
+        <template #tooltip>
+          <p>
+            Search <KbdGroup>
+              <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
+              <Kbd keys="K" />
+            </KbdGroup>
+          </p>
+        </template>
+      </Tooltip>
+    </DefineSearchButton>
+
     <div class="container container-l">
       <div class="navigation__items">
-        <Flex>
-          <Button square class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
-            <Icon name="ph:list" size="2rem" />
-          </Button>
-
-          <Button v-if="isMobile" square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded navigation__mobile-search" @click="openCommand()">
-            <Icon name="ph:magnifying-glass" size="20" />
-          </Button>
-        </Flex>
+        <Button square class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
+          <Icon name="ph:list" size="2rem" />
+        </Button>
 
         <SharedLogo class="navigation__logo" />
 
@@ -107,7 +119,6 @@ function updateHoveredElement(event: MouseEvent) {
                 }"
               >
                 {{ link.label }}
-                <!-- <NavAnnouncementBadge v-if="link.label === 'Announcements'" /> -->
                 <NavEventBadge v-if="link.label === 'Events'" />
                 <Icon v-if="link.children" name="ph:caret-down-fill" size="12px" />
               </NuxtLink>
@@ -130,19 +141,6 @@ function updateHoveredElement(event: MouseEvent) {
               </Popout>
             </li>
           </template>
-          <Tooltip v-if="!isMobile" :delay="1000">
-            <Button size="s" square plain aria-label="Search" class="navigation__search vui-button-accent-weak vui-button-rounded" @click="openCommand()">
-              <Icon name="ph:list-magnifying-glass" size="16" style="margin-top: 2px" />
-            </Button>
-            <template #tooltip>
-              <p>
-                Search <KbdGroup>
-                  <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
-                  <Kbd keys="K" />
-                </KbdGroup>
-              </p>
-            </template>
-          </Tooltip>
 
           <ul
             class="navigation__links-hover" :class="{ active: !isOutside }" :style="{
@@ -205,13 +203,17 @@ function updateHoveredElement(event: MouseEvent) {
         </div>
 
         <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
-          <NotificationSheet />
+          <SearchButton />
+          <!-- Custom margin, since visually the pfp appears closer than the distance between search & notif icons -->
+          <NotificationSheet style="margin-right:6px" />
           <UserSheet v-if="isMobile" />
           <UserDropdown v-else />
         </div>
 
         <div v-else class="navigation__auth">
           <div class="navigation__auth-buttons">
+            <SearchButton />
+
             <Button plain @click="$router.push(signInPath())">
               Sign in
             </Button>
@@ -449,7 +451,7 @@ function updateHoveredElement(event: MouseEvent) {
   &__user {
     display: flex;
     align-items: center;
-    gap: var(--space-s);
+    gap: var(--space-xs);
   }
 
   &__dropdown {

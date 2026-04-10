@@ -2,7 +2,7 @@
 import type { Command } from '@dolanske/vui'
 import type { SearchType } from '@/composables/useDataSearch'
 import type { Database } from '@/types/database.types'
-import { Commands } from '@dolanske/vui'
+import { Commands, setColorTheme, theme } from '@dolanske/vui'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
@@ -208,6 +208,17 @@ const quickCommands = computed<Command[]>(() => [
       }
     },
   },
+  {
+    title: theme.value === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode',
+    description: `Changes the theme variant to ${theme.value === 'light' ? 'dark' : 'light'}`,
+    group: 'Commands',
+    handler: () => {
+      const newTheme = theme.value === 'light' ? 'dark' : 'light'
+      setColorTheme(newTheme)
+      settings.value.theme = newTheme
+      closeCommand()
+    },
+  },
 ])
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -356,6 +367,8 @@ function iconForCommand(command: Command): string {
       return 'ph:pencil-simple'
     if (command.title === 'Latest Event')
       return 'ph:calendar'
+    if (command.title.startsWith('Switch to'))
+      return theme.value === 'light' ? 'ph:moon' : 'ph:sun'
   }
   // Differentiate discussions from topics within the Forum group
   if (command.group === 'Forum') {
