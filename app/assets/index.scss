@@ -190,13 +190,6 @@ label:is(.required):after {
   font-size: var(--font-size-l);
 }
 
-.vui-card:not(.vui-sheet),
-.vui-card:not(.vui-modal) {
-  .vui-card-header {
-    align-items: flex-start;
-  }
-}
-
 .vui-modal > .vui-card {
   margin-bottom: 0;
 }
@@ -212,8 +205,12 @@ table td {
 
 .vui-button-accent-weak {
   &:hover {
-    background-color: color-mix(in srgb, var(--color-accent) 15%, transparent) !important;
+    background-color: color-mix(in srgb, var(--color-accent) 25%, transparent) !important;
   }
+}
+
+.vui-button-rounded {
+  border-radius: 100%;
 }
 
 .vui-breadcrumbs li {

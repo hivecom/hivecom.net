@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { Button, Divider, DropdownItem, Flex, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
+import { Button, Divider, DropdownItem, Flex, Kbd, KbdGroup, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
 import { until, useStorage as useLocalStorage, useMediaQuery } from '@vueuse/core'
 import LogoIcon from '@/components/Shared/LogoIcon.vue'
+import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-const router = useRouter()
 const route = useRoute()
+const { openCommand } = useCommand()
+const isMac = import.meta.client && /Mac/i.test(navigator.platform)
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -23,7 +25,7 @@ const isAuthorized = ref(false)
 const { user: cachedUserData } = useDataUser(resolvedUserId, { includeRole: true, includeAvatar: false })
 const userRole = computed(() => cachedUserData.value?.role ?? null)
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Hivecom',
   description: 'A worldwide community of friends building projects together.',
 })
@@ -47,7 +49,7 @@ onMounted(async () => {
     const targetUserId = userId.value
 
     if (!targetUserId) {
-      await router.push('/')
+      await navigateTo('/')
       return
     }
 
@@ -60,7 +62,7 @@ onMounted(async () => {
     const hasRequiredRole = role === 'admin' || role === 'moderator'
 
     if (!hasRequiredRole) {
-      await router.push('/')
+      await navigateTo('/')
       return
     }
 
@@ -81,7 +83,7 @@ onMounted(async () => {
   }
   catch (error) {
     console.error('Error in admin layout:', error)
-    await router.push('/')
+    await navigateTo('/')
   }
   finally {
     isLoading.value = false
@@ -93,7 +95,7 @@ watch(user, async (newUser) => {
   if (!newUser) {
     // User logged out, redirect to landing page
     isAuthorized.value = false
-    await router.push('/')
+    await navigateTo('/')
   }
 })
 
@@ -264,7 +266,21 @@ watch(() => route.path, () => {
           <Icon name="ph:list" />
         </Button>
 
-        <LogoIcon style="margin-left: 2px" />
+        <LogoIcon style="margin-left: -24px" />
+
+        <!-- <Tooltip>
+          <Button square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded" @click="openCommand()">
+            <Icon name="ph:magnifying-glass" size="20" />
+          </Button>
+          <template #tooltip>
+            <p>
+              Search <KbdGroup>
+                <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
+                <Kbd keys="K" />
+              </KbdGroup>
+            </p>
+          </template>
+        </Tooltip> -->
 
         <span />
       </Flex>
@@ -279,9 +295,9 @@ watch(() => route.path, () => {
         <template #header>
           <Flex y-center gap="xs">
             <LogoIcon style="margin-left: 2px" />
-            <h5 class="admin-layout__mobile-title">
+            <!-- <h5 class="admin-layout__mobile-title">
               Admin
-            </h5>
+            </h5> -->
           </Flex>
         </template>
         <template #header-end>
@@ -304,7 +320,7 @@ watch(() => route.path, () => {
 
         <template #footer>
           <Flex x-between y-center>
-            <Button expand outline @click="router.push('/')">
+            <Button expand outline @click="navigateTo('/')">
               <template #start>
                 <Icon name="ph:caret-left" />
               </template>
@@ -323,11 +339,24 @@ watch(() => route.path, () => {
             <Flex y-center class="mb-s">
               <Flex y-center gap="s" expand>
                 <LogoIcon style="margin-left: 2px" />
-                <h5 v-if="!miniSidebar" class="flex-1">
+                <!-- <h5 v-if="!miniSidebar" class="flex-1">
                   Admin
-                </h5>
+                </h5> -->
               </Flex>
               <Flex gap="xxs">
+                <Tooltip placement="right">
+                  <Button square plain aria-label="Search" @click="openCommand()">
+                    <Icon name="ph:magnifying-glass" />
+                  </Button>
+                  <template #tooltip>
+                    <p>
+                      Search <KbdGroup>
+                        <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
+                        <Kbd keys="K" />
+                      </KbdGroup>
+                    </p>
+                  </template>
+                </Tooltip>
                 <Tooltip placement="right">
                   <Button v-if="!isBelowExtraLarge" square plain :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
                     <Icon :name="expandToggleIcon" />
@@ -373,6 +402,16 @@ watch(() => route.path, () => {
           <template v-if="miniSidebar">
             <Divider />
             <Tooltip placement="right">
+              <DropdownItem square aria-label="Search" @click="openCommand()">
+                <template #icon>
+                  <Icon name="ph:magnifying-glass" />
+                </template>
+              </DropdownItem>
+              <template #tooltip>
+                <p>Search</p>
+              </template>
+            </Tooltip>
+            <Tooltip placement="right">
               <DropdownItem square @click="miniSidebar = !miniSidebar">
                 <template #icon>
                   <Icon name="tabler:layout-sidebar-left-expand" />
@@ -403,7 +442,7 @@ watch(() => route.path, () => {
                 </template>
               </Tooltip>
               <Tooltip placement="right">
-                <DropdownItem square aria-label="Close admin console" @click="router.push('/')">
+                <DropdownItem square aria-label="Close admin console" @click="navigateTo('/')">
                   <template #icon>
                     <Icon name="ph:caret-left" />
                   </template>
@@ -414,7 +453,7 @@ watch(() => route.path, () => {
               </Tooltip>
             </Flex>
             <Flex v-else x-between y-center gap="xs">
-              <Button expand size="m" outline @click="router.push('/')">
+              <Button expand size="m" outline @click="navigateTo('/')">
                 <template #start>
                   <Icon name="ph:caret-left" />
                 </template>

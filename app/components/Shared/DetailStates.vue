@@ -31,7 +31,7 @@ defineProps<Props>()
       variant="accent"
       plain
       :aria-label="backLabel"
-      @click="typeof backTo === 'function' ? backTo() : $router.push(backTo)"
+      @click="typeof backTo === 'function' ? backTo() : navigateTo(backTo)"
     >
       <template #start>
         <Icon name="ph:arrow-left" />

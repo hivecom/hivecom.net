@@ -77,118 +77,120 @@ useHead({
 
 <template>
   <div class="page">
-    <DetailStates
-      :loading="loading"
-      :error="error"
-      back-to="/community/projects"
-      back-label="Projects"
-    >
-      <template #error-message>
-        The project you're looking for might have been removed or doesn't exist.
-      </template>
-    </DetailStates>
+    <div :class="!isMobile && 'container container-m'">
+      <DetailStates
+        :loading="loading"
+        :error="error"
+        back-to="/community/projects"
+        back-label="Projects"
+      >
+        <template #error-message>
+          The project you're looking for might have been removed or doesn't exist.
+        </template>
+      </DetailStates>
 
-    <!-- Project Content -->
-    <div v-if="project && !loading && !error" class="page-content">
-      <!-- Back Button -->
-      <Flex x-between>
-        <Button
-          variant="gray"
-          size="s"
-          plain
-          aria-label="Go back to Projects page"
-          @click="$router.push('/community/projects')"
-        >
-          <template #start>
-            <Icon name="ph:arrow-left" />
-          </template>
-          Back to Projects
-        </Button>
-      </Flex>
+      <!-- Project Content -->
+      <div v-if="project && !loading && !error" class="page-content">
+        <!-- Back Button -->
+        <Flex x-between>
+          <Button
+            variant="gray"
+            size="s"
+            plain
+            aria-label="Go back to Projects page"
+            @click="navigateTo('/community/projects')"
+          >
+            <template #start>
+              <Icon name="ph:arrow-left" />
+            </template>
+            Back to Projects
+          </Button>
+        </Flex>
 
-      <!-- Header -->
-      <Card class="project-header card-bg" expand>
-        <div class="project-header__banner">
-          <div
-            class="project-header__banner-surface"
-            :class="{
-              'project-header__banner-surface--image': hasProjectBannerImage,
-            }"
-            :style="heroBannerStyle"
-          />
-        </div>
+        <!-- Header -->
+        <Card class="project-header card-bg" expand>
+          <div class="project-header__banner">
+            <div
+              class="project-header__banner-surface"
+              :class="{
+                'project-header__banner-surface--image': hasProjectBannerImage,
+              }"
+              :style="heroBannerStyle"
+            />
+          </div>
 
-        <div class="project-header__body">
-          <Flex column gap="m" expand :y-center="isMobile">
-            <h1 class="project-header__title">
-              {{ project.title }}
-            </h1>
+          <div class="project-header__body">
+            <Flex column gap="m" expand :y-center="isMobile">
+              <h1 class="project-header__title">
+                {{ project.title }}
+              </h1>
 
-            <p v-if="project.description" class="project-header__description">
-              {{ project.description }}
-            </p>
+              <p v-if="project.description" class="project-header__description">
+                {{ project.description }}
+              </p>
 
-            <!-- Meta information -->
-            <Flex :column="isMobile" :gap="isMobile ? 's' : 'l'" :x-between="!isMobile" :x-center="isMobile" y-center wrap expand>
-              <Flex v-if="project.owner" y-center gap="xs">
-                <span class="text-s text-color-light">Project by</span>
-                <UserDisplay :user-id="project.owner" size="s" :show-profile-preview="true" :hide-avatar="false" />
-              </Flex>
-              <Flex gap="s" :column="isMobile" :expand="isMobile" class="project-header__actions">
-                <Button
-                  v-if="project.link"
-                  class="project-header__action"
-                  :size="isMobile ? 'l' : 's'"
-                  :href="project.link"
-                  target="_blank"
-                  expand
-                >
-                  <template #start>
-                    <Icon name="ph:arrow-square-out" />
-                  </template>
-                  Open Link
-                </Button>
-                <Button
-                  v-if="project.github"
-                  class="project-header__action"
-                  :size="isMobile ? 'l' : 's'"
-                  :href="`https://github.com/${project.github}`"
-                  target="_blank"
-                  expand
-                >
-                  <template #start>
-                    <Icon name="ph:github-logo" />
-                  </template>
-                  View on GitHub
-                </Button>
+              <!-- Meta information -->
+              <Flex :column="isMobile" :gap="isMobile ? 's' : 'l'" :x-between="!isMobile" :x-center="isMobile" y-center wrap expand>
+                <Flex v-if="project.owner" y-center gap="xs">
+                  <span class="text-s text-color-light">Project by</span>
+                  <UserDisplay :user-id="project.owner" size="s" :show-profile-preview="true" :hide-avatar="false" />
+                </Flex>
+                <Flex gap="s" :column="isMobile" :expand="isMobile" class="project-header__actions">
+                  <Button
+                    v-if="project.link"
+                    class="project-header__action"
+                    :size="isMobile ? 'l' : 's'"
+                    :href="project.link"
+                    target="_blank"
+                    expand
+                  >
+                    <template #start>
+                      <Icon name="ph:arrow-square-out" />
+                    </template>
+                    Open Link
+                  </Button>
+                  <Button
+                    v-if="project.github"
+                    class="project-header__action"
+                    :size="isMobile ? 'l' : 's'"
+                    :href="`https://github.com/${project.github}`"
+                    target="_blank"
+                    expand
+                  >
+                    <template #start>
+                      <Icon name="ph:github-logo" />
+                    </template>
+                    View on GitHub
+                  </Button>
+                </Flex>
               </Flex>
             </Flex>
-          </Flex>
-        </div>
-      </Card>
+          </div>
+        </Card>
 
-      <!-- Project Content (Markdown) -->
-      <Card class="project-content card-bg">
-        <div class="project-content__markdown">
-          <MarkdownRenderer :md="project.markdown" />
-        </div>
+        <!-- Project Content (Markdown) -->
+        <Card class="project-content card-bg">
+          <div class="project-content__markdown">
+            <MarkdownRenderer :md="project.markdown" />
+          </div>
 
-        <!-- Project Metadata -->
-        <MetadataCard
-          :tags="project.tags"
-          :created-at="project.created_at"
-          :created-by="project.created_by"
-          :modified-at="project.modified_at"
-          :modified-by="project.modified_by"
+          <!-- Project Metadata -->
+          <MetadataCard
+            :tags="project.tags"
+            :created-at="project.created_at"
+            :created-by="project.created_by"
+            :modified-at="project.modified_at"
+            :modified-by="project.modified_by"
+          />
+        </Card>
+
+        <!-- Related discussion -->
+        <Discussion
+          :id="String(project.id)"
+          class="project-discussion"
+          type="project"
         />
-      </Card>
-
-      <!-- Related discussion -->
-      <Discussion
-        :id="String(project.id)"
-        class="project-discussion"
-        type="project"
-      />
+      </div>
     </div>
   </div>
 </template>
@@ -254,8 +256,7 @@ useHead({
 
 .project-content {
   &__markdown {
-    padding: var(--space-m);
-    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-l);
   }
 }
 

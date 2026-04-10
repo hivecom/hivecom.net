@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Flex, Skeleton } from '@dolanske/vui'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
 
 interface CommunityStats {
   members: number
@@ -26,7 +27,7 @@ defineProps<{
             <Skeleton height="2.5rem" width="4rem" />
           </template>
           <template v-else>
-            {{ communityStats.members }}{{ communityStats.membersAccurate ? '' : '+' }}
+            <CountDisplay :value="communityStats.members" class="text-xxl" />{{ communityStats.membersAccurate ? '' : '+' }}
           </template>
         </Flex>
         <span class="text-xs">Members</span>
@@ -38,7 +39,7 @@ defineProps<{
             <Skeleton height="2.5rem" width="4rem" />
           </template>
           <template v-else>
-            {{ communityStats.forumPosts }}
+            <CountDisplay :value="communityStats.forumPosts" class="text-xxl" />
           </template>
         </Flex>
         <span class="text-xs">Discussions</span>

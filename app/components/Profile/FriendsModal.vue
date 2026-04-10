@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { Badge, Button, Flex, Modal, Tab, Tabs } from '@dolanske/vui'
+import { Button, Flex, Modal, Tab, Tabs } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import TinyBadge from '../Shared/TinyBadge.vue'
 
 interface Props {
   friends: string[]
   sentRequests: string[]
-  pendingRequests: string[]
+  incomingRequests: string[]
   userName: string
   open: boolean
   showAllTabs: boolean
@@ -23,12 +24,12 @@ const isOpen = defineModel<boolean>('open', { default: false })
 const isBelowSmall = useBreakpoint('<xs')
 
 // Tab state
-const activeTab = ref<'friends' | 'sent' | 'pending'>('friends')
+const activeTab = ref<'friends' | 'sent' | 'incoming'>('friends')
 
 // Computed counts for each tab
 const friendsCount = computed(() => props.friends.length)
 const sentCount = computed(() => props.sentRequests.length)
-const pendingCount = computed(() => props.pendingRequests.length)
+const incomingCount = computed(() => props.incomingRequests.length)
 
 // Computed data for current tab (only show friends for other users)
 const currentTabData = computed(() => {
@@ -41,8 +42,8 @@ const currentTabData = computed(() => {
       return props.friends
     case 'sent':
       return props.sentRequests
-    case 'pending':
-      return props.pendingRequests
+    case 'incoming':
+      return props.incomingRequests
     default:
       return []
   }
@@ -72,27 +73,27 @@ function handleClose() {
           <Flex y-center gap="xs">
             <Icon name="ph:users" />
             Friends
-            <Badge v-if="friendsCount > 0" variant="success" size="s">
+            <TinyBadge v-if="friendsCount > 0" variant="success" size="s">
               {{ friendsCount }}
-            </Badge>
+            </TinyBadge>
           </Flex>
         </Tab>
         <Tab value="sent">
           <Flex y-center gap="xs">
             <Icon name="ph:paper-plane-tilt" />
             Sent
-            <Badge v-if="sentCount > 0" variant="info" size="s">
+            <TinyBadge v-if="sentCount > 0" variant="info" size="s">
               {{ sentCount }}
-            </Badge>
+            </TinyBadge>
           </Flex>
         </Tab>
-        <Tab value="pending">
+        <Tab value="incoming">
           <Flex y-center gap="xs">
             <Icon name="ph:bell" />
-            Pending
-            <Badge v-if="pendingCount > 0" variant="warning" size="s">
-              {{ pendingCount }}
-            </Badge>
+            Incoming
+            <TinyBadge v-if="incomingCount > 0" variant="warning" size="s">
+              {{ incomingCount }}
+            </TinyBadge>
           </Flex>
         </Tab>
       </Tabs>
@@ -115,7 +116,7 @@ function handleClose() {
                 No friend requests sent.
               </template>
               <template v-else>
-                No pending friend requests.
+                No incoming friend requests.
               </template>
             </p>
           </Flex>

@@ -444,6 +444,7 @@ function handleTagInputEnter() {
           :media-context="props.project?.id ? `projects/${props.project.id}/markdown/media` : undefined"
           :media-bucket-id="CMS_BUCKET_ID"
           :show-attachment-button="!!props.project?.id"
+          show-expand-button
         />
       </Flex>
     </Flex>

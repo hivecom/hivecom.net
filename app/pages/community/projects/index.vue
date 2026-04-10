@@ -75,7 +75,7 @@ useSeoMeta({
   ogDescription: 'Explore community projects and initiatives from the Hivecom community.',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Community Projects',
   description: 'Explore community projects and initiatives from the Hivecom community.',
 })
@@ -144,10 +144,9 @@ defineOgImageComponent('Default', {
           <!-- All projects at full width -->
           <Grid :columns="isBelowM ? 1 : 2" column gap="m" class="projects__section" expand>
             <ProjectCard
-              v-for="(project, index) in filteredProjects"
+              v-for="(project) in filteredProjects"
               :key="project.id"
               :project="project"
-              :is-latest="index === 0"
             />
           </Grid>
         </template>

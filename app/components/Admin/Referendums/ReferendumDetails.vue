@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import { capitalize, computed } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import ReferendumResults from '@/components/Shared/ReferendumResults.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -169,7 +170,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
 
             <Grid class="referendum-details__item" expand :columns="2">
               <span class="text-color-light text-bold">Votes:</span>
-              <span>{{ voteCount }} vote{{ voteCount !== 1 ? 's' : '' }}</span>
+              <span><CountDisplay :value="voteCount" /> vote{{ voteCount !== 1 ? 's' : '' }}</span>
             </Grid>
           </Flex>
         </Card>

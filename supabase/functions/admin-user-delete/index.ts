@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
-import { authorizeAuthenticatedHasPermission } from "../_shared/auth.ts";
+import { authorizeAuthenticatedHasPermissionAal2 } from "../_shared/auth.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
 import { Database } from "database-types";
 
@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Verify user has permission to delete users
-    const authResponse = await authorizeAuthenticatedHasPermission(
+    const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
       ["users.delete"],
     );

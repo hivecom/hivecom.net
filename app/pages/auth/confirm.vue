@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { UserIdentity } from '@supabase/supabase-js'
 
-import { Alert, Button, Card, Flex, Input, Spinner, Switch } from '@dolanske/vui'
+import { Alert, Button, Card, Drawer, Flex, Input, Spinner, Switch } from '@dolanske/vui'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
 import { useCache } from '@/composables/useCache'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { normalizeInternalRedirect } from '@/lib/utils/common'
 
 const WHITESPACE_RE = /\s+/g
@@ -14,7 +16,6 @@ const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
 const route = useRoute()
-const router = useRouter()
 
 const loading = ref(true)
 const error = ref('')
@@ -29,6 +30,11 @@ let discordIdentityFetchPromise: Promise<UserIdentity | null> | null = null
 
 const isDev = process.env.NODE_ENV === 'development'
 const showDebugPanel = ref(isDev)
+const debugDrawerOpen = ref(false)
+
+const isBelowS = useBreakpoint('<s')
+const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(820px, 96vh)'))
+const metaballWidth = computed(() => (isBelowS.value ? '100%' : 'min(580px, 96vw)'))
 const debugOptions = reactive({
   bypassAuth: false,
   forceUsernameStep: false,
@@ -514,7 +520,58 @@ onMounted(() => {
 
 <template>
   <Flex y-center x-center class="flex-1 w-100" column>
-    <Card class="auth-confirm-card text-center" separators>
+    <MetaballContainer v-if="usernameStep" :width="metaballWidth" :height="metaballHeight" min-height="520px" :absolute="isBelowS">
+      <Card class="auth-confirm-card text-center" separators>
+        <template #header>
+          <h4>Welcome to Hivecom!</h4>
+        </template>
+        <div class="auth-confirm-content">
+          <div class="auth-confirm-state">
+            <Icon name="ph:user-circle" size="48" class="mb-s" />
+            <p>
+              Before continuing, please choose a unique username to identify yourself on the platform.
+            </p>
+            <Flex x-center column gap="l" class="w-100 mt-l" style="max-width: 320px;">
+              <Input v-model="username" expand label="Username" placeholder="Choose a username">
+                <template #start>
+                  <Icon name="ph:at" />
+                </template>
+                <template #after>
+                  <Flex class="text-xs mt-xs text-color-lightest" gap="xs" expand x-center>
+                    Only Latin letters, numbers, and underscores are allowed. Max 32 characters.
+                  </Flex>
+                </template>
+              </Input>
+              <Alert v-if="usernameError" variant="danger" filled>
+                <span class="text-s">
+                  {{ usernameError }}
+                </span>
+              </Alert>
+              <Button expand variant="accent" :loading="usernameLoading" :disabled="!username" @click="submitUsername">
+                Continue
+              </Button>
+            </Flex>
+          </div>
+        </div>
+      </Card>
+    </MetaballContainer>
+
+    <MetaballContainer v-else-if="processComplete && !error" :width="metaballWidth" :height="metaballHeight" min-height="520px" :absolute="isBelowS">
+      <Card class="auth-confirm-card text-center" separators>
+        <template #header>
+          <h4>Success!</h4>
+        </template>
+        <div class="auth-confirm-content">
+          <Flex column gap="l" y-center class="auth-confirm-state success">
+            <Icon name="ph:check-circle" size="48" />
+            <p>You have been successfully authenticated and will be redirected shortly.</p>
+            <Spinner size="m" />
+          </Flex>
+        </div>
+      </Card>
+    </MetaballContainer>
+
+    <div v-else class="auth-confirm-card text-center" separators>
       <div class="auth-confirm-content">
         <div v-if="loading" class="auth-confirm-state">
           <Spinner size="l" />
@@ -522,38 +579,11 @@ onMounted(() => {
           <p>Please wait while we complete your sign-in process.</p>
         </div>
 
-        <div v-else-if="usernameStep" class="auth-confirm-state">
-          <Icon name="ph:user-circle" size="48" class="mb-s" />
-          <h4>Welcome to Hivecom!</h4>
-          <p>
-            Before continuing, please choose a unique username to identify yourself on the platform.
-          </p>
-          <Flex x-center column gap="l" class="w-100 mt-l" style="max-width: 320px;">
-            <Input v-model="username" expand label="Username" placeholder="Choose a username">
-              <template #start>
-                <Icon name="ph:at" />
-              </template>
-            </Input>
-            <Alert v-if="usernameError" variant="danger" filled>
-              {{ usernameError }}
-            </Alert>
-            <Button expand variant="accent" :loading="usernameLoading" :disabled="!username" @click="submitUsername">
-              Continue
-            </Button>
-          </Flex>
-        </div>
-
-        <div v-else-if="processComplete && !error" class="auth-confirm-state success">
-          <Icon name="ph:check-circle" size="48" />
-          <h4>Success!</h4>
-          <p>You have been successfully authenticated.</p>
-        </div>
-
         <div v-else-if="error" class="auth-confirm-state error">
           <ErrorAlert message="Authentication failed" :error="error" />
 
-          <Flex x-center class="mt-l">
-            <Button variant="fill" @click="router.push('/auth/sign-in')">
+          <Flex x-center class="mt-l" expand>
+            <Button expand variant="fill" @click="navigateTo('/auth/sign-in')">
               Return to Sign In
             </Button>
           </Flex>
@@ -565,54 +595,90 @@ onMounted(() => {
           </Alert>
         </div>
       </div>
-    </Card>
+    </div>
 
-    <Card v-if="isDev && showDebugPanel" class="debug-panel">
-      <template #header>
-        <Flex y-center gap="m">
-          <Icon name="ph:bug" size="64" />
-          <Flex column>
-            <h3>Debug Panel</h3>
+    <template v-if="isDev && showDebugPanel">
+      <!-- Mobile: floating button + drawer -->
+      <template v-if="isBelowS">
+        <Button class="debug-fab" square variant="gray" @click="debugDrawerOpen = true">
+          <Icon name="ph:bug" size="20" />
+        </Button>
+        <Drawer :open="debugDrawerOpen" @close="debugDrawerOpen = false">
+          <Flex y-center gap="s" class="mb-m">
+            <Icon name="ph:bug" size="24" />
+            <h4>Debug Panel</h4>
           </Flex>
-        </Flex>
+          <Flex column gap="m">
+            <Flex y-center gap="m">
+              <Switch v-model="debugOptions.bypassAuth" />
+              <span>Bypass Authentication</span>
+            </Flex>
+            <Flex y-center gap="m">
+              <Switch v-model="debugOptions.forceUsernameStep" :disabled="debugOptions.forceSuccess || debugOptions.forceError" />
+              <span>Force Username Step</span>
+            </Flex>
+            <Flex y-center gap="m">
+              <Switch v-model="debugOptions.forceSuccess" :disabled="debugOptions.forceUsernameStep || debugOptions.forceError" />
+              <span>Force Success State</span>
+            </Flex>
+            <Flex y-center gap="m">
+              <Switch v-model="debugOptions.forceError" :disabled="debugOptions.forceUsernameStep || debugOptions.forceSuccess" />
+              <span>Force Error State</span>
+            </Flex>
+            <Flex y-center gap="m">
+              <Switch v-model="debugOptions.skipRedirect" />
+              <span>Skip Redirect</span>
+            </Flex>
+            <Flex v-if="debugOptions.forceError" column gap="s">
+              <label>Custom Error Message:</label>
+              <Input v-model="debugOptions.customError" expand />
+            </Flex>
+            <Button expand variant="accent" @click="applyDebugOptions(); debugDrawerOpen = false">
+              Apply Debug Settings
+            </Button>
+          </Flex>
+        </Drawer>
       </template>
 
-      <Flex column gap="m" class="p-m">
-        <Flex y-center gap="m">
-          <Switch v-model="debugOptions.bypassAuth" />
-          <span>Bypass Authentication</span>
+      <!-- Desktop: fixed card -->
+      <Card v-else class="debug-panel">
+        <template #header>
+          <Flex y-center gap="m">
+            <Icon name="ph:bug" size="24" />
+            <h3>Debug Panel</h3>
+          </Flex>
+        </template>
+        <Flex column gap="m" class="p-m">
+          <Flex y-center gap="m">
+            <Switch v-model="debugOptions.bypassAuth" />
+            <span>Bypass Authentication</span>
+          </Flex>
+          <Flex y-center gap="m">
+            <Switch v-model="debugOptions.forceUsernameStep" :disabled="debugOptions.forceSuccess || debugOptions.forceError" />
+            <span>Force Username Step</span>
+          </Flex>
+          <Flex y-center gap="m">
+            <Switch v-model="debugOptions.forceSuccess" :disabled="debugOptions.forceUsernameStep || debugOptions.forceError" />
+            <span>Force Success State</span>
+          </Flex>
+          <Flex y-center gap="m">
+            <Switch v-model="debugOptions.forceError" :disabled="debugOptions.forceUsernameStep || debugOptions.forceSuccess" />
+            <span>Force Error State</span>
+          </Flex>
+          <Flex y-center gap="m">
+            <Switch v-model="debugOptions.skipRedirect" />
+            <span>Skip Redirect</span>
+          </Flex>
+          <Flex v-if="debugOptions.forceError" column gap="s">
+            <label>Custom Error Message:</label>
+            <Input v-model="debugOptions.customError" expand />
+          </Flex>
+          <Button expand variant="accent" @click="applyDebugOptions">
+            Apply Debug Settings
+          </Button>
         </Flex>
-
-        <Flex y-center gap="m">
-          <Switch v-model="debugOptions.forceUsernameStep" :disabled="debugOptions.forceSuccess || debugOptions.forceError" />
-          <span>Force Username Step</span>
-        </Flex>
-
-        <Flex y-center gap="m">
-          <Switch v-model="debugOptions.forceSuccess" :disabled="debugOptions.forceUsernameStep || debugOptions.forceError" />
-          <span>Force Success State</span>
-        </Flex>
-
-        <Flex y-center gap="m">
-          <Switch v-model="debugOptions.forceError" :disabled="debugOptions.forceUsernameStep || debugOptions.forceSuccess" />
-          <span>Force Error State</span>
-        </Flex>
-
-        <Flex y-center gap="m">
-          <Switch v-model="debugOptions.skipRedirect" />
-          <span>Skip Redirect</span>
-        </Flex>
-
-        <Flex v-if="debugOptions.forceError" column gap="s">
-          <label>Custom Error Message:</label>
-          <Input v-model="debugOptions.customError" expand />
-        </Flex>
-
-        <Button expand variant="accent" @click="applyDebugOptions">
-          Apply Debug Settings
-        </Button>
-      </Flex>
-    </Card>
+      </Card>
+    </template>
   </Flex>
 </template>
 
@@ -668,5 +734,12 @@ onMounted(() => {
   &:hover {
     opacity: 1;
   }
+}
+
+.debug-fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: var(--z-sticky);
 }
 </style>

@@ -75,7 +75,7 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
 
 <template>
   <div class="notification-menu" aria-live="polite">
-    <Button square plain aria-label="Open notifications" class="vui-button-accent-weak" @click="open = true">
+    <Button square plain aria-label="Open notifications" class="vui-button-accent-weak vui-button-rounded" @click="open = true">
       <Icon name="ph:bell" :size="20" />
       <span v-if="badgeText" class="notification-menu__badge" />
     </Button>

@@ -55,7 +55,7 @@ export function useFriendship(
   })
 
   // Requests received by the profile that have not been accepted
-  const pendingRequests = computed<string[]>(() => {
+  const incomingRequests = computed<string[]>(() => {
     const pid = profileId.value
     if (pid == null)
       return []
@@ -319,7 +319,7 @@ export function useFriendship(
     friendsLoading,
     friends,
     sentRequests,
-    pendingRequests,
+    incomingRequests,
     checkFriendshipStatus,
     fetchAllFriendships,
     sendFriendRequest,

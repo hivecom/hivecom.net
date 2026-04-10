@@ -339,6 +339,7 @@ onMounted(fetchDropdownData)
           hint="You can use markdown"
           placeholder="Enter markdown content (optional)"
           min-height="216px"
+          show-expand-button
           :media-context="props.gameserver?.id ? `gameservers/${props.gameserver.id}/markdown/media` : undefined"
           :media-bucket-id="CMS_BUCKET_ID"
           :show-attachment-button="!!props.gameserver?.id"

@@ -2,6 +2,7 @@
 import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Spinner, Tooltip } from '@dolanske/vui'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
+import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useDataUser } from '@/composables/useDataUser'
 
 const user = useSupabaseUser()
@@ -68,7 +69,7 @@ async function signOut() {
   <div class="user-dropdown">
     <Dropdown ref="dropdown" min-width="268px" placement="bottom-end">
       <template #trigger="{ toggle }">
-        <Button square plain class="vui-button-accent-weak" @click="toggle">
+        <Button square plain class="vui-button-accent-weak vui-button-rounded" @click="toggle">
           <Avatar
             :size="30"
             :alt="userData?.username || 'User profile'"

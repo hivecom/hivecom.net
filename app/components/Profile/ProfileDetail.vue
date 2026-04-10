@@ -14,6 +14,8 @@ import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
 import { useFriendship } from '@/composables/useFriendship'
 import Discussion from '../Discussions/Discussion.vue'
+import ProfileActivity from './ProfileActivity.vue'
+import ProfileDiscussions from './ProfileDiscussions.vue'
 
 interface Props {
   userId?: string
@@ -99,7 +101,7 @@ const {
   friendshipStatus,
   friends,
   sentRequests,
-  pendingRequests,
+  incomingRequests,
   friendsLoading,
   checkFriendshipStatus,
   fetchAllFriendships,
@@ -148,7 +150,7 @@ const {
   data: profileData,
   loading: profileLoading,
   error: profileError,
-  refetch: _refetchProfile,
+  refetch: refetchProfile,
 } = useCachedFetch<Tables<'profiles'>>(
   profileQuery,
   {
@@ -245,6 +247,15 @@ function closeEditSheet() {
 
 function clearProfileError() {
   profileSubmissionError.value = null
+}
+
+function handleProfilePatch(patch: Partial<Tables<'profiles'>>) {
+  if (!profile.value)
+    return
+  // Patch local state immediately so the UI updates without waiting
+  profile.value = cloneProfileRecord({ ...profile.value, ...patch })
+  // Bust the localStorage cache so reloads don't serve stale has_banner state
+  void refetchProfile()
 }
 
 async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
@@ -416,7 +427,6 @@ function openFriendsModal() {
             :profile="profile"
             :friends="friends"
             :friendship-status="friendshipStatus"
-            :pending-requests="pendingRequests"
             :is-own-profile="isOwnProfile"
             :is-logged-in="isLoggedIn"
             :loading="friendsLoading"
@@ -465,7 +475,7 @@ function openFriendsModal() {
       v-model:open="showFriendsModal"
       :friends="friends"
       :sent-requests="sentRequests"
-      :pending-requests="pendingRequests"
+      :incoming-requests="incomingRequests"
       :user-name="profile?.username || 'User'"
       :show-all-tabs="isOwnProfile"
       @close="showFriendsModal = false"
@@ -480,6 +490,7 @@ function openFriendsModal() {
       @close="closeEditSheet"
       @update:is-open="isEditSheetOpen = $event"
       @clear-error="clearProfileError"
+      @profile-patch="handleProfilePatch"
     />
 
     <!-- Complaints Manager -->

@@ -73,40 +73,6 @@ async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>, path:
   }
 }
 
-async function fetchMetricsFromDatabase(supabase: SupabaseClient<Database>): Promise<MetricsSnapshot> {
-  const [usersResponse, gameserversResponse, projectsResponse, forumResponse] = await Promise.all([
-    supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    supabase.from('gameservers').select('id', { count: 'exact', head: true }),
-    supabase.from('projects').select('id', { count: 'exact', head: true }),
-    supabase.from('discussions').select('id', { count: 'exact', head: true }).not('discussion_topic_id', 'is', null),
-  ])
-
-  if (usersResponse.error)
-    throw new Error(`Unable to get user count: ${usersResponse.error.message}`)
-
-  if (gameserversResponse.error)
-    throw new Error(`Unable to get gameserver count: ${gameserversResponse.error.message}`)
-
-  if (projectsResponse.error)
-    throw new Error(`Unable to get project count: ${projectsResponse.error.message}`)
-
-  if (forumResponse.error)
-    throw new Error(`Unable to get forum discussion count: ${forumResponse.error.message}`)
-
-  return {
-    collectedAt: new Date().toISOString(),
-    totals: {
-      users: usersResponse.count ?? 0,
-      gameservers: gameserversResponse.count ?? 0,
-      projects: projectsResponse.count ?? 0,
-      forumPosts: forumResponse.count ?? 0,
-    },
-    breakdowns: {
-      usersByCountry: {},
-    },
-  }
-}
-
 async function fetchMetricsWithFallback(supabase: SupabaseClient<Database>) {
   const today = new Date()
   const yesterday = new Date(today)
@@ -120,7 +86,7 @@ async function fetchMetricsWithFallback(supabase: SupabaseClient<Database>) {
       return snapshot
   }
 
-  return fetchMetricsFromDatabase(supabase)
+  return null
 }
 
 export function useDataMetrics() {

@@ -191,6 +191,10 @@ function closeDrawer() {
 </template>
 
 <style scoped lang="scss">
+.reactions__list {
+  user-select: none;
+}
+
 .reactions__drawer {
   padding: var(--space-m) var(--space-m) var(--space-xl);
 

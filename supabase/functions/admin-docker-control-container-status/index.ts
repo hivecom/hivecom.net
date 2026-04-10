@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
-import { authorizeAuthenticatedHasPermission } from "../_shared/auth.ts";
+import { authorizeAuthenticatedHasPermissionAal2 } from "../_shared/auth.ts";
 import {
   buildDockerControlActionUrl,
   extractContainerNameFromPath,
@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Verify user has permission to manage servers
-    const authResponse = await authorizeAuthenticatedHasPermission(
+    const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
       ["containers.read"],
     );

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Hivecom',
   description: 'A worldwide community of friends building projects together.',
 })

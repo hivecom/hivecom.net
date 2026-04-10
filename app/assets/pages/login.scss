@@ -28,6 +28,10 @@
       animation: blob-two 60s infinite;
     }
   }
+
+  @media (max-width: 768px) {
+    align-items: unset !important;
+  }
 }
 
 @keyframes blob-one {

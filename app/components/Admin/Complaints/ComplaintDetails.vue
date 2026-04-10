@@ -461,6 +461,22 @@ function confirmDeleteComplaint() {
             Acknowledge
           </template>
         </Button>
+        <!-- Respond/Update button -->
+        <Button
+          :disabled="!(complaint != null && ((canRespond && responseText.trim() && !complaint.response) || isEditingResponse)) || undefined"
+          variant="success"
+          :loading="isSubmitting"
+          :square="!showActionLabels"
+          @click="handleSubmitResponse"
+        >
+          <template v-if="showActionLabels" #start>
+            <Icon name="ph:paper-plane-tilt" />
+          </template>
+          <Icon v-if="!showActionLabels" name="ph:paper-plane-tilt" />
+          <template v-if="showActionLabels">
+            {{ isEditingResponse ? 'Update Response' : 'Send Response' }}
+          </template>
+        </Button>
         <Button
           v-if="canDeleteComplaints"
           variant="danger"
@@ -474,24 +490,6 @@ function confirmDeleteComplaint() {
             Delete
           </template>
           <Icon v-if="!showActionLabels" name="ph:trash" />
-        </Button>
-
-        <!-- Respond/Update button -->
-        <Button
-          v-if="complaint && ((canRespond && responseText.trim() && !complaint.response) || isEditingResponse)"
-          size="s"
-          variant="success"
-          :loading="isSubmitting"
-          :square="!showActionLabels"
-          @click="handleSubmitResponse"
-        >
-          <template v-if="showActionLabels" #start>
-            <Icon name="ph:paper-plane-tilt" />
-          </template>
-          <Icon v-if="!showActionLabels" name="ph:paper-plane-tilt" />
-          <template v-if="showActionLabels">
-            {{ isEditingResponse ? 'Update Response' : 'Send Response' }}
-          </template>
         </Button>
 
         <div class="flex-1" />

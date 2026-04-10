@@ -77,6 +77,17 @@ const remainingCount = computed(() => {
   return Math.max(0, eligibleCount - props.maxUsers)
 })
 
+// When there's overflow, we reserve the last avatar slot for the +X bubble so it
+// stays in the same row rather than wrapping onto a new line.
+const effectiveMaxUsers = computed(() => {
+  return remainingCount.value > 0 ? props.maxUsers - 1 : props.maxUsers
+})
+
+// The displayed remaining count includes the user we bumped off to make room.
+const displayedRemainingCount = computed(() => {
+  return remainingCount.value > 0 ? remainingCount.value + 1 : 0
+})
+
 interface UserListEntry {
   id: string
   profile: UserDisplayData
@@ -87,7 +98,7 @@ const usersList = computed<UserListEntry[]>(() => {
   const entries: UserListEntry[] = []
 
   for (const id of orderedUserIds.value) {
-    if (entries.length >= props.maxUsers)
+    if (entries.length >= effectiveMaxUsers.value)
       break
 
     const profile = users.value.get(id)
@@ -221,12 +232,12 @@ defineExpose({
       </div>
 
       <div
-        v-if="remainingCount > 0"
+        v-if="displayedRemainingCount > 0"
         class="bulk-avatar-display__avatar bulk-avatar-display__remaining"
         :style="avatarStyleVars"
       >
         <div class="bulk-avatar-display__remaining-count">
-          +{{ remainingCount }}
+          +{{ displayedRemainingCount }}
         </div>
       </div>
     </Flex>

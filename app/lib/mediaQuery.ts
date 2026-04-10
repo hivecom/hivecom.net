@@ -1,5 +1,5 @@
 import { useMediaQuery } from '@vueuse/core'
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 const BREAKPOINT_OPERATOR_RE = /^[<>]=?/
 
@@ -16,6 +16,20 @@ type BreakpointKey = keyof typeof BREAKPOINTS
 
 type BreakpointQuery = `<${BreakpointKey}` | `>=${BreakpointKey}`
 
+// useMediaQuery returns `false` during SSR, which causes hydration mismatches
+// when components conditionally render based on breakpoints. By gating the
+// real media query result behind a mounted flag we ensure the SSR and initial
+// client render both produce the same output (always-false), and the correct
+// value is only applied after the client has mounted and evaluated the query.
+function createMediaQuery(query: string) {
+  const mq = useMediaQuery(query)
+  const mounted = ref(false)
+  onMounted(() => {
+    mounted.value = true
+  })
+  return computed(() => mounted.value && mq.value)
+}
+
 export function useBreakpoint(query: BreakpointQuery) {
   const operator = query.startsWith('>=') ? '>=' : '<'
   const key = query.replace(BREAKPOINT_OPERATOR_RE, '') as BreakpointKey
@@ -24,11 +38,9 @@ export function useBreakpoint(query: BreakpointQuery) {
   if (!value)
     throw new Error(`[useBreakpoint] Unknown breakpoint key: ${key}`)
 
-  const mq = operator === '>='
-    ? useMediaQuery(`(min-width: ${value}px)`)
-    : useMediaQuery(`(max-width: ${value - 1}px)`)
-
-  return mq
+  return operator === '>='
+    ? createMediaQuery(`(min-width: ${value}px)`)
+    : createMediaQuery(`(max-width: ${value - 1}px)`)
 }
 
 // REVIEW (@dolanske) Renamed because it clashes with vueuse export (at least what

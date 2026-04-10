@@ -18,8 +18,6 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const router = useRouter()
-
 function handleClick() {
   if (props.data.href == null || props.data.href === '')
     return
@@ -36,7 +34,7 @@ function handleClick() {
     : props.data.href
 
   removeToast(props.toastId)
-  void router.push(target)
+  navigateTo(target)
 }
 </script>
 

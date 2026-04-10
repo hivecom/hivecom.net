@@ -18,7 +18,8 @@ import {
 } from 'chart.js'
 import { computed, onBeforeMount, ref, watchEffect } from 'vue'
 import { Bar, Line } from 'vue-chartjs'
-import { useRouter } from 'vue-router'
+
+import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import LightRays from '@/components/Shared/LightRays.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
@@ -47,7 +48,7 @@ useSeoMeta({
   ogTitle: 'Forum Statistics',
 })
 
-defineOgImageComponent('Default', {
+defineOgImage('Default', {
   title: 'Forum Statistics',
   description: 'View statistics and activity metrics for the Hivecom community forum.',
 })
@@ -70,7 +71,6 @@ const allUserIds = computed(() => {
 })
 
 const currentUserId = useUserId()
-const router = useRouter()
 const isMobile = useBreakpoint('<xs')
 const cache = useCache()
 
@@ -79,7 +79,7 @@ function navigateToProfile(userId: string) {
   const path = profile?.username_set && profile?.username
     ? `/profile/${profile.username}`
     : `/profile/${userId}`
-  router.push(path)
+  navigateTo(path)
 }
 
 useBulkDataUser(allUserIds, {
@@ -367,7 +367,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
     <ClientOnly>
       <section class="page-title mb-xl">
         <Breadcrumbs>
-          <BreadcrumbItem @click="$router.push('/forum')">
+          <BreadcrumbItem @click="navigateTo('/forum')">
             Forum
           </BreadcrumbItem>
           <BreadcrumbItem>
@@ -530,7 +530,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
                   :class="`podium__pillar--${position + 1}`"
                 >
                   <span class="podium__rank">#{{ position + 1 }}</span>
-                  <span class="podium__count">{{ activeLeaderboard[position].count.toLocaleString() }}</span>
+                  <CountDisplay class="podium__count" :value="activeLeaderboard[position].count" :max-chars="4" />
                   <span class="podium__count-label">{{ leaderboardLabel.unit }}</span>
                 </div>
               </div>
@@ -570,7 +570,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
                 </td>
                 <td class="leaderboard__td leaderboard__td--count">
                   <Badge variant="neutral" size="s">
-                    {{ user.count.toLocaleString() }}
+                    <CountDisplay :value="user.count" :max-chars="4" class="text-s" />
                   </Badge>
                 </td>
               </tr>
@@ -603,7 +603,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
                   </td>
                   <td class="leaderboard__td leaderboard__td--count">
                     <Badge variant="neutral" size="s">
-                      {{ currentUserOutsideTop.count.toLocaleString() }}
+                      <CountDisplay :value="currentUserOutsideTop.count" :max-chars="4" />
                     </Badge>
                   </td>
                 </tr>
@@ -617,21 +617,21 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
           <Card class="stats-counter-card">
             <div class="stats-counter">
               <Icon name="ph:folder-open" size="24" class="stats-counter__icon stats-counter__icon--topics" />
-              <span class="stats-counter__value">{{ stats.totalTopics }}</span>
+              <CountDisplay class="stats-counter__value" :value="stats.totalTopics" />
               <span class="stats-counter__label">Topics</span>
             </div>
           </Card>
           <Card class="stats-counter-card">
             <div class="stats-counter">
               <Icon name="ph:scroll" size="24" class="stats-counter__icon stats-counter__icon--discussions" />
-              <span class="stats-counter__value">{{ stats.totalDiscussions.toLocaleString() }}</span>
+              <CountDisplay class="stats-counter__value" :value="stats.totalDiscussions" />
               <span class="stats-counter__label">Discussions</span>
             </div>
           </Card>
           <Card class="stats-counter-card">
             <div class="stats-counter">
               <Icon name="ph:chats-circle" size="24" class="stats-counter__icon stats-counter__icon--replies" />
-              <span class="stats-counter__value">{{ stats.totalReplies.toLocaleString() }}</span>
+              <CountDisplay class="stats-counter__value" :value="stats.totalReplies" />
               <span class="stats-counter__label">Replies</span>
             </div>
           </Card>
@@ -740,7 +740,8 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
     }
   }
 
-  &__value {
+  &__value,
+  :deep(.stats-counter__value) {
     font-size: var(--font-size-xxxl);
     font-weight: 700;
     line-height: 1;

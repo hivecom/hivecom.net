@@ -223,6 +223,7 @@ async function handleDelete() {
           :media-context="props.discussion.id ? `forums/${props.discussion.id}/markdown/media` : undefined"
           :media-bucket-id="FORUMS_BUCKET_ID"
           :show-attachment-button="!!props.discussion.id"
+          show-expand-button
         />
       </Flex>
 

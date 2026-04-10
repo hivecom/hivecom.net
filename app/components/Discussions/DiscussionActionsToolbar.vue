@@ -51,16 +51,22 @@ const canInteract = computed(() =>
   (!discussion?.value?.is_locked || props.canBypassLock) && !discussion?.value?.is_archived,
 )
 
-const canEditOrDelete = computed(() =>
-  !!props.currentUserData
-  && (
-    props.currentUserData.id === props.data.created_by
+const isAdmin = computed(() => props.currentUserData?.role === 'admin')
+
+const canEditOrDelete = computed(() => {
+  if (!props.currentUserData)
+    return false
+  const isOwnerOrMod = props.currentUserData.id === props.data.created_by
     || props.currentUserData.role === 'admin'
     || props.currentUserData.role === 'moderator'
-  )
-  && (!discussion?.value?.is_locked || props.canBypassLock)
-  && !discussion?.value?.is_archived,
-)
+  if (!isOwnerOrMod)
+    return false
+  // Admins can always delete regardless of lock/archive state
+  if (isAdmin.value)
+    return true
+  return (!discussion?.value?.is_locked || props.canBypassLock)
+    && !discussion?.value?.is_archived
+})
 
 const canReport = computed(() =>
   !!props.currentUserData && props.data.created_by !== props.currentUserData.id,

@@ -581,7 +581,7 @@ function clearBirthday() {
               </div>
               <div v-else class="help-text">
                 <Icon name="ph:info" />
-                Username can only contain letters, numbers, and underscores
+                Username can only contain Latin letters, numbers, and underscores
               </div>
               <div class="character-count">
                 <span :class="{ 'over-limit': userForm.username.length > USERNAME_LIMIT }">
@@ -753,6 +753,7 @@ function clearBirthday() {
           hint="You can use markdown"
           placeholder="Detailed profile content in markdown format"
           min-height="216px"
+          show-expand-button
           :disabled="!canEditForm"
           :errors="markdownValidation.valid ? [] : [markdownValidation.error ?? 'Invalid markdown content']"
           :media-context="props.user?.id ? `${props.user.id}/markdown/media` : undefined"

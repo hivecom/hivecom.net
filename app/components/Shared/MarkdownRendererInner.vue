@@ -3,6 +3,7 @@ import { useBulkDataUser } from '@/composables/useDataUser'
 import { groupImages } from '@/lib/imageGrouping'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import MarkdownLightbox from './MarkdownLightbox.vue'
+import SharedUserMention from './UserMention.global.vue'
 
 const props = defineProps({
   tag: {
@@ -17,6 +18,11 @@ const props = defineProps({
     required: true,
   },
 })
+
+// MDCRenderer.components prop is typed as Record<string, string | DefineComponent<any,any,any>>.
+// Casting via unknown as Record<string, string> satisfies the type (string is a subtype of the union)
+// while keeping the actual runtime value as the component object.
+const mdcComponents = { SharedUserMention } as unknown as Record<string, string>
 
 // Wraps runs of solo-image <p> elements in .md-image-group divs.
 // groupImages() operates on a direct container element - pass the .typeset node.
@@ -83,12 +89,13 @@ onUnmounted(() => {
       :data="parsed.data ?? {}"
       :tag="props.tag"
       :class="`typeset ${props.extraClass}`"
+      :components="mdcComponents"
     />
     <MarkdownLightbox v-if="props.md" :markdown="props.md" :container="container" />
   </div>
 </template>
 
-<style lang="scss">
+<style lang="scss" scoped>
 /* Consecutive solo-image paragraphs grouped into a flex row */
 .md-image-group {
   display: grid;
@@ -119,13 +126,50 @@ onUnmounted(() => {
 
   // 1 image left over in the last row (count % 3 == 1): span it full width.
   // :last-child:nth-child(3n+1) matches exactly that case.
-  // We do NOT span the 2-leftover case (3n+2) - those two share the row fine.
   > :last-child:nth-child(3n + 1) {
     grid-column: 1 / -1;
   }
 
+  // 2 images left over in the last row (count % 3 == 2, e.g. 5, 8, 11...):
+  // A 3-col grid gives each orphan 1/3 width with the last third empty - looks bad.
+  // Fix: switch to a 6-col grid where each item spans 2 cols (still 3 per row),
+  // and the last two orphans each span 3 cols (equal halves of the row).
+  &[data-count='5'],
+  &[data-count='8'],
+  &[data-count='11'],
+  &[data-count='14'] {
+    grid-template-columns: repeat(6, 1fr);
+
+    > p,
+    > img {
+      grid-column: span 2;
+    }
+
+    > :nth-last-child(-n + 2) {
+      grid-column: span 3;
+    }
+  }
+
   @media (max-width: 600px) {
     grid-template-columns: repeat(2, 1fr);
+
+    // Reset the 6-col span overrides applied for 3n+2 counts - on mobile
+    // we use a plain 2-col grid so items must auto-place without forced spans.
+    &[data-count='5'],
+    &[data-count='8'],
+    &[data-count='11'],
+    &[data-count='14'] {
+      grid-template-columns: repeat(2, 1fr);
+
+      > p,
+      > img {
+        grid-column: unset;
+      }
+
+      > :nth-last-child(-n + 2) {
+        grid-column: unset;
+      }
+    }
 
     > p > img,
     > img {
@@ -163,12 +207,13 @@ onUnmounted(() => {
 }
 
 /* YouTube embed produced by processYoutubeDirectives */
-.md-youtube-embed {
+:deep(.md-youtube-embed) {
   display: flex;
   justify-content: center;
   margin: var(--space-s) 0;
 
   iframe {
+    position: relative;
     max-width: 100%;
     border-radius: var(--border-radius-s);
     aspect-ratio: 16 / 9;
@@ -177,7 +222,7 @@ onUnmounted(() => {
 }
 
 /* Video embed produced by processVideoDirectives */
-.md-video-embed {
+:deep(.md-video-embed) {
   display: flex;
   justify-content: center;
   margin: var(--space-s) 0;
@@ -189,14 +234,14 @@ onUnmounted(() => {
 }
 
 /* KaTeX math produced by rehype-katex */
-.katex-display {
+:deep(.katex-display) {
   overflow-x: auto;
   overflow-y: hidden;
   padding: var(--space-xs) 0;
 }
 
 /* Data file attachment card produced by processDataFileDirectives */
-.md-datafile-card {
+:deep(.md-datafile-card) {
   display: flex;
   align-items: center;
   gap: var(--space-s);
@@ -245,11 +290,31 @@ onUnmounted(() => {
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  overflow-wrap: break-word;
+  word-break: break-word; // Safari fallback - break-word is non-standard but widely supported
 
-  table {
+  :deep(table) {
+    display: table;
+    border-collapse: collapse;
+    margin: var(--space-xs) 0;
+    width: fit-content;
+    min-width: 100%;
     table-layout: fixed;
-    width: 100%;
     position: relative;
+  }
+
+  :deep(table th),
+  :deep(table td) {
+    padding: var(--space-xs) var(--space-s);
+    border: 1px solid var(--color-border);
+    text-align: left;
+    white-space: nowrap;
+    min-width: 80px;
+  }
+
+  :deep(table th) {
+    background-color: var(--color-bg-raised);
+    font-weight: 600;
   }
 
   .contains-task-list {
@@ -291,28 +356,5 @@ onUnmounted(() => {
       }
     }
   }
-}
-
-/* Tables with horizontal scrolling */
-table {
-  display: table;
-  border-collapse: collapse;
-  margin: var(--space-xs) 0;
-  width: fit-content;
-  min-width: 100%;
-}
-
-table th,
-table td {
-  padding: var(--space-xs) var(--space-s);
-  border: 1px solid var(--color-border);
-  text-align: left;
-  white-space: nowrap;
-  min-width: 80px;
-}
-
-table th {
-  background-color: var(--color-bg-raised);
-  font-weight: 600;
 }
 </style>

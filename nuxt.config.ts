@@ -48,6 +48,7 @@ export default defineNuxtConfig({
   devtools: {
     enabled: false,
   },
+  components: false,
   compatibilityDate: '2024-09-25',
   typescript: {
     typeCheck: false,
@@ -166,6 +167,29 @@ export default defineNuxtConfig({
 
         // events
         'ph:arrows-vertical',
+
+        // Discussions/DiscussionTimeline.vue jump-to-date button + toolbar
+        'ph:clock',
+        'ph:arrow-down',
+        'ph:arrow-up',
+
+        // Profile/Banner editor
+        'ph:arrows-out',
+        'ph:circle-half-tilt',
+        'ph:copy',
+        'ph:floppy-disk',
+        'ph:folder-open',
+        'ph:frame-corners',
+        'ph:image',
+        'ph:pencil-simple',
+        'ph:plus',
+        'ph:selection-foreground',
+        'ph:text-t',
+        'ph:trash',
+
+        // Global search + searches
+        'ph:magnifying-glass',
+        'ph:list-magnifying-glass',
       ],
     },
   },
