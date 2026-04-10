@@ -38,7 +38,7 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
   const fetchIds = async <T extends { id: string | number, created_at: string, modified_at?: string | null }>(
     table: string,
     select: string,
-    getEntry: (item: T) => { route: string, lastmod: string },
+    getEntry: (item: T) => { route: string, lastmod: string, extraRoutes?: string[], skipSitemap?: boolean },
     filter?: string,
   ) => {
     try {
@@ -59,9 +59,27 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
 
       if (Array.isArray(data)) {
         for (const item of data) {
-          const { route, lastmod } = getEntry(item)
+          const { route, lastmod, extraRoutes, skipSitemap } = getEntry(item)
+
+          // Always add the canonical route to prerender.
           routes.push(route)
-          sitemapUrls.push({ loc: route, lastmod })
+
+          // Only add to sitemap if not explicitly skipped.
+          // Sitemap URLs get a trailing slash to match what GitHub Pages actually serves,
+          // avoiding the 301 redirect that Google would otherwise follow.
+          if (skipSitemap !== true) {
+            sitemapUrls.push({ loc: route.endsWith('/') ? route : `${route}/`, lastmod })
+          }
+
+          // Extra routes (e.g. UUID aliases) go into prerender only - never the sitemap.
+          // This ensures old UUID-based URLs that Google or external sites have cached
+          // resolve to a real HTML file instead of a hard 404. The SPA then does a
+          // client-side redirect to the canonical URL.
+          if (extraRoutes != null) {
+            for (const extra of extraRoutes) {
+              routes.push(extra)
+            }
+          }
         }
         // eslint-disable-next-line no-console
         console.log(`✔ Added ${data.length} routes from ${table}`)
@@ -97,20 +115,48 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
     // Pre-render all discussions that have a discussion_topic_id. This covers pure forum
     // threads and any entity-linked discussion that has been assigned a topic. Discussions
     // without a topic redirect to their parent entity and should not be indexed.
+    //
+    // When a discussion has a slug, the slug is the canonical URL (goes into both prerender
+    // and sitemap). The UUID is also prerendered as an alias so that old links from Google
+    // or external sites resolve to a real HTML file instead of a hard 404 - the SPA then
+    // does a client-side redirect to the canonical slug URL.
     fetchIds<{ id: string, slug: string | null, created_at: string, modified_at: string }>(
       'discussions',
       'id,slug,created_at,modified_at',
       (item) => {
         const discussionSlug = item.slug?.trim()
-        const slugOrId = (discussionSlug !== undefined && discussionSlug.length > 0)
-          ? discussionSlug
-          : item.id
+        const hasSlug = discussionSlug !== undefined && discussionSlug.length > 0
+
+        if (hasSlug) {
+          return {
+            route: `/forum/${discussionSlug}`,
+            lastmod: item.modified_at,
+            // UUID alias: prerender only, not in sitemap
+            extraRoutes: [`/forum/${item.id}`],
+          }
+        }
+
         return {
-          route: `/forum/${slugOrId}`,
+          route: `/forum/${item.id}`,
           lastmod: item.modified_at,
         }
       },
       'discussion_topic_id=not.is.null&is_draft=eq.false&is_nsfw=eq.false',
+    ),
+
+    // Also prerender UUID routes for entity-linked discussions that have no topic
+    // (null discussion_topic_id). These are not indexed - they redirect client-side
+    // to their parent entity page - but they need a real HTML file so GitHub Pages
+    // doesn't serve a hard 404 to crawlers that have old UUID links cached.
+    fetchIds<{ id: string, created_at: string, modified_at: string }>(
+      'discussions',
+      'id,created_at,modified_at',
+      item => ({
+        route: `/forum/${item.id}`,
+        lastmod: item.modified_at,
+        skipSitemap: true,
+      }),
+      'discussion_topic_id=is.null&is_draft=eq.false',
     ),
 
     fetchIds<{ id: number, created_at: string, modified_at: string | null }>(

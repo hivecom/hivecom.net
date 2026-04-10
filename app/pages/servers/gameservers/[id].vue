@@ -143,6 +143,10 @@ useSeoMeta({
   ogDescription: computed(() => gameserver.value?.description || 'Game server details'),
 })
 
+defineOgImage('Gameserver', {
+  gameserverId,
+})
+
 // Page title
 useHead({
   title: computed(() => gameserver.value ? gameserver.value.name : 'Game Server Details'),

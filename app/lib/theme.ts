@@ -203,7 +203,7 @@ const SPACE_TOKENS: ScaleConfig['tokens'] = [
   { varName: '--space-xxs', defaultValue: 4 },
   { varName: '--space-xs', defaultValue: 8 },
   { varName: '--space-s', defaultValue: 12 },
-  { varName: '--space-m', defaultValue: 18 },
+  { varName: '--space-m', defaultValue: 16 },
   { varName: '--space-l', defaultValue: 24 },
   { varName: '--space-xl', defaultValue: 34 },
   { varName: '--space-xxl', defaultValue: 48 },

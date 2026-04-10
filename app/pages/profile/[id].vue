@@ -10,6 +10,11 @@ const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 const isUuid = uuidRegex.test(identifier)
 const userId = isUuid ? identifier : undefined
 const username = !isUuid ? identifier : undefined
+
+defineOgImage('Profile', {
+  userId,
+  username,
+})
 </script>
 
 <template>

@@ -73,6 +73,10 @@ useSeoMeta({
 useHead({
   title: computed(() => project.value ? project.value.title : 'Project Details'),
 })
+
+defineOgImage('Project', {
+  projectId,
+})
 </script>
 
 <template>

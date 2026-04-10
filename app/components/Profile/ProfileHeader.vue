@@ -444,7 +444,7 @@ onUnmounted(() => stopConfetti())
           <!-- Avatar -->
           <div class="profile-avatar">
             <div class="avatar-container">
-              <Avatar :size="164" :url="avatarUrl || undefined" @click="avatarUrl && (showAvatarLightbox = true)">
+              <Avatar :size="164" :url="avatarUrl || undefined" style="border: 1px solid var(--color-border);" @click="avatarUrl && (showAvatarLightbox = true)">
                 <template v-if="!avatarUrl" #default>
                   {{ getUserInitials(profile.username) }}
                 </template>

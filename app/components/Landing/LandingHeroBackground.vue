@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useGlobePerf } from '@/composables/useGlobePerf'
+import { isLightTheme, parseColor } from '@/lib/globe/GlobeTheme'
 import fragSrc from './LandingHeroBackgroundShader.frag.glsl?raw'
 import vertSrc from './LandingHeroBackgroundShader.vert.glsl?raw'
 
@@ -22,17 +23,19 @@ const { params: perfParams } = useGlobePerf()
 // Current accent color as a [r, g, b] vec normalized to 0..1
 let baseColor: [number, number, number] = [0.655, 0.988, 0.184] // #a7fc2f fallback
 let altColor: [number, number, number] = [0.5, 0.92, 0.32]
+// Whether we've successfully read a real accent color from CSS vars yet.
+// If not, we retry each frame until the theme is applied.
+let accentResolved = false
 
 function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
-function hexToVec3(hex: string): [number, number, number] {
-  const clean = hex.replace('#', '')
-  const r = Number.parseInt(clean.slice(0, 2), 16) / 255
-  const g = Number.parseInt(clean.slice(2, 4), 16) / 255
-  const b = Number.parseInt(clean.slice(4, 6), 16) / 255
-  return [r, g, b]
+function toVec3(color: string): [number, number, number] | null {
+  if (color === '')
+    return null
+  const [r, g, b] = parseColor(color)
+  return [r / 255, g / 255, b / 255]
 }
 
 /**
@@ -52,15 +55,16 @@ function blendVec3(
 }
 
 function readAccentColors() {
-  const accent = cssVar('--color-accent')
-  const accentRaised = cssVar('--color-bg-accent-raised')
-
-  if (accent.startsWith('#')) {
-    baseColor = hexToVec3(accent)
-    // alt color: blend accent toward the raised variant for subtle variation
-    const raised = accentRaised.startsWith('#') ? hexToVec3(accentRaised) : baseColor
-    altColor = blendVec3(baseColor, raised, 0.35)
-  }
+  const palette = isLightTheme() ? 'light' : 'dark'
+  const rawAccent = cssVar(`--${palette}-color-accent`)
+  const rawRaised = cssVar(`--${palette}-color-bg-accent-raised`)
+  const parsed = toVec3(rawAccent)
+  if (parsed == null)
+    return
+  baseColor = parsed
+  const raisedParsed = toVec3(rawRaised)
+  altColor = blendVec3(baseColor, raisedParsed ?? baseColor, 0.35)
+  accentResolved = true
 }
 
 function createShader(context: WebGLRenderingContext, type: number, source: string) {
@@ -118,6 +122,13 @@ function render(now: number) {
   if (!start)
     start = now - startOffset
   const t = (now - start) / 1000
+
+  // Retry until the theme CSS vars are actually resolved. On a hard reload the
+  // loading screen is still fading in while this canvas is already ticking, so
+  // getComputedStyle can return empty strings on the first few frames.
+  if (!accentResolved)
+    readAccentColors()
+
   resize()
 
   gl.useProgram(program)
@@ -137,6 +148,8 @@ function render(now: number) {
 }
 
 function onThemeChange() {
+  // Reset so readAccentColors re-runs and picks up the new values.
+  accentResolved = false
   readAccentColors()
 }
 
@@ -144,10 +157,12 @@ function setupThemeWatcher() {
   themeMedia = window.matchMedia?.('(prefers-color-scheme: light)') ?? null
   themeMedia?.addEventListener('change', onThemeChange)
 
+  // Watch 'style' in addition to 'class'/'data-theme' so that applyTheme's
+  // style.setProperty calls (which don't touch class or data-theme) are caught.
   themeObserver = new MutationObserver(onThemeChange)
   themeObserver.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ['class', 'data-theme'],
+    attributeFilter: ['class', 'data-theme', 'style'],
   })
 }
 

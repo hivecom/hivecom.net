@@ -111,7 +111,7 @@ const confirmDeprecate = ref(false)
     @cancel="confirmDeprecate = false"
   >
     <p class="mb-xs">
-      Users who are currently using the theme will still be able to keep it, but it won't be visible in any any lists.
+      Users who are currently using the theme will still be able to keep it, but it won't be visible.
     </p>
     <p>This action cannot be undone.</p>
   </ConfirmModal>

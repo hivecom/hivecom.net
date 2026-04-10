@@ -59,7 +59,7 @@ const HEX6_RE = /^#([0-9a-f]{6})$/i
 const HEX3_RE = /^#([0-9a-f]{3})$/i
 
 /** Parse any CSS color string into an [r, g, b] 0-255 tuple. */
-function parseColor(color: string): [number, number, number] {
+export function parseColor(color: string): [number, number, number] {
   // Fast path: plain 6-digit hex - no canvas needed.
   const hex6 = HEX6_RE.exec(color)
   if (hex6 != null) {

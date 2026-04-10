@@ -14,7 +14,7 @@ const userId = useUserId()
 const { activeTheme, setActiveTheme } = useUserTheme()
 const { themes, softDelete } = useDataThemes()
 
-const activeTab = ref <'gallery' | 'stock' | 'created'>('gallery')
+const activeTab = ref <'gallery' | 'official' | 'created'>('gallery')
 const search = ref('')
 
 const sortedThemes = computed(() => {
@@ -27,7 +27,7 @@ const sortedThemes = computed(() => {
         return themes.value
           .filter(item => item.created_by !== null)
           .filter(item => !item.is_unmaintained || item.id === activeThemeId)
-      case 'stock':
+      case 'official':
         // Hivecom is the 02 user
         return themes.value
           .filter(item => item.created_by === null)
@@ -71,8 +71,8 @@ const isMobile = useBreakpoint('<s')
       <Tab value="gallery">
         Gallery
       </Tab>
-      <Tab value="stock">
-        Stock
+      <Tab value="official">
+        Official
       </Tab>
       <Tab v-if="userId" value="created">
         My themes
@@ -93,7 +93,7 @@ const isMobile = useBreakpoint('<s')
     <Grid column gap="l" expand :columns="isMobile ? 1 : 2">
       <!-- Fake theme card which resets theme to default. Shows up in stock or if it's active -->
       <ThemeCard
-        v-if="activeTab === 'stock'"
+        v-if="activeTab === 'official'"
         :item="{
           id: '$$$$default',
           created_by: null,
