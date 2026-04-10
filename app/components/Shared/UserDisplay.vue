@@ -49,7 +49,7 @@ withDefaults(defineProps<Props>(), {
           class="user-display__name-row"
         >
           <UserName :user-id="userId" :size="size" :show-preview="showProfilePreview">
-            <Badge v-if="!userId" size="xs" variant="accent">
+            <Badge v-if="!userId && showRole" size="xs" variant="accent">
               System
             </Badge>
           </UserName>

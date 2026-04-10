@@ -83,15 +83,10 @@ export function useDataUserSettings() {
     await updateSettings(newSettings)
   }, { deep: true })
 
-  // Fetch settings on before mount or when user changes
-  onBeforeMount(async () => {
-    if (isNil(user.value)) {
-      return
-    }
-
-    await fetchSettings()
-  })
-
+  // Re-fetch settings when the user changes (login/logout).
+  // The initial fetch on page load is handled by useInitialUserPreferences
+  // inside Loading.vue, which blocks the fade-out until both settings and
+  // the custom theme are ready.
   watch(user, async (newUser) => {
     if (isNil(newUser)) {
       hasFetched.value = false
@@ -105,5 +100,6 @@ export function useDataUserSettings() {
     settings,
     settingsLoading,
     settingsError,
+    fetchSettings,
   }
 }

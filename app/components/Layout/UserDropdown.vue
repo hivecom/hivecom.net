@@ -108,6 +108,15 @@ async function signOut() {
         </DropdownItem>
       </NuxtLink>
 
+      <NuxtLink to="/themes">
+        <DropdownItem>
+          <template #icon>
+            <Icon name="ph:circle-half-tilt-fill" />
+          </template>
+          Appearance
+        </DropdownItem>
+      </NuxtLink>
+
       <NuxtLink to="/profile/settings">
         <DropdownItem>
           <template #icon>

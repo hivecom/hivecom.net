@@ -23,6 +23,7 @@ withDefaults(defineProps<Props>(), {
   font-size: var(--font-size-xxs);
   padding: 0 var(--space-xs);
   line-height: 0;
+  width: fit-content;
 
   span,
   .iconify {

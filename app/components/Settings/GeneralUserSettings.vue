@@ -1,42 +1,7 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.overrides'
-import { Button, ButtonGroup, Card, Divider, Flex, Select, setColorTheme, Switch } from '@dolanske/vui'
-import SharedTinyBadge from '@/components/Shared/TinyBadge.vue'
-
-// Placeholder theme options for the planned Theme selector
-const themeSelectOptions = [
-  { label: 'Default', value: 'default' },
-]
-const selectedCustomTheme = ref([{ label: 'Default', value: 'default' }])
+import { Button, ButtonGroup, Card, Divider, Flex, Switch } from '@dolanske/vui'
 
 const { settings, settingsError } = useDataUserSettings()
-
-// Theme options & setting
-const themeOptions = [
-  // I spent _so_ damn long on this and I couldn't get the system theme working
-  // properly. It just wouldn't update if system theme changed
-
-  // { label: 'System', value: 'system' },
-  { label: 'Light', value: 'light' },
-  { label: 'Dark', value: 'dark' },
-]
-
-const selectedTheme = computed({
-  get() {
-    const option = themeOptions.find(option => option.value === settings.value.theme)
-    if (!option) {
-      return []
-    }
-    return [option]
-  },
-  set(options) {
-    if (options && options[0]) {
-      const value = options[0].value as Tables<'settings'>['data']['theme']
-      settings.value.theme = value
-      setColorTheme(value)
-    }
-  },
-})
 </script>
 
 <template>
@@ -46,26 +11,6 @@ const selectedTheme = computed({
         General
       </h4>
     </template>
-
-    <strong class="text-color-lighter text-s block mb-m">
-      Appearance
-    </strong>
-
-    <Flex x-between y-center class="mb-s">
-      <Flex y-center gap="xxs" class="text-color-lightest">
-        <p>Theme</p>
-        <SharedTinyBadge>
-          Coming Soon
-        </SharedTinyBadge>
-      </Flex>
-      <Select v-model="selectedCustomTheme" class="settings-select" :show-clear="false" :options="themeSelectOptions" size="s" disabled />
-    </Flex>
-    <Flex x-between y-center class="mb-s">
-      <p>Theme Variant</p>
-      <Select v-model="selectedTheme" class="settings-select" :show-clear="false" :options="themeOptions" size="s" />
-    </Flex>
-
-    <Divider :size="64" />
 
     <strong class="text-color-lighter text-s block mb-m">
       Discussions

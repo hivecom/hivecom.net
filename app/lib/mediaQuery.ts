@@ -51,11 +51,11 @@ export function useActiveBreakpoints() {
   const queries = Object.keys(BREAKPOINTS).map(key => [key, BREAKPOINTS[key as BreakpointKey]] as const)
 
   const entries = queries.map(([key, value]) => {
-    const current = createMediaQuery(`(min-width: ${value}px)`)
+    const current = useMediaQuery(`(min-width: ${value}px)`)
     return [key as BreakpointKey, current] as const
   })
 
-  const booleans = Object.fromEntries(entries) as Record<BreakpointKey, ReturnType<typeof createMediaQuery>>
+  const booleans = Object.fromEntries(entries) as Record<BreakpointKey, ReturnType<typeof useMediaQuery>>
 
   const current = computed(() => {
     let active: BreakpointKey = 'xs'
