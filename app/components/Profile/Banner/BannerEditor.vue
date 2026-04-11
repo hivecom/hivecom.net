@@ -14,10 +14,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BannerLayer, BannerMetadata, FillType, GradientStop, ImageAssetMeta, ImageLayer, SelectOption, TextLayer } from './types'
 import type { Database } from '@/types/database.types'
-import { Button, Flex, Modal } from '@dolanske/vui'
+import { Button, Checkbox, Flex, Modal } from '@dolanske/vui'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { validateImageFile } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
+import { getCssVarAsHex } from '@/lib/theme'
 import BannerEditorBackground from './BannerEditorBackground.vue'
 import BannerEditorImagePanel from './BannerEditorImagePanel.vue'
 import BannerEditorLayersPanel from './BannerEditorLayersPanel.vue'
@@ -137,32 +138,6 @@ const hasWebkitDir = typeof window !== 'undefined'
 
 const scanning = ref(false)
 const scanResult = ref<string | null>(null)
-
-// ── CSS variable resolver ─────────────────────────────────────────────────────
-
-/**
- * Resolves a CSS custom property to a hex colour string by painting it onto
- * a 1×1 off-screen canvas. Falls back to `fallback` if the variable is empty
- * or the canvas API is unavailable.
- */
-function getCssColor(variable: string, fallback: string): string {
-  if (typeof document === 'undefined')
-    return fallback
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(variable).trim()
-  if (!raw)
-    return fallback
-  // Use canvas to normalise any valid CSS colour to #rrggbb
-  const canvas = document.createElement('canvas')
-  canvas.width = 1
-  canvas.height = 1
-  const ctx = canvas.getContext('2d')
-  if (!ctx)
-    return fallback
-  ctx.fillStyle = raw
-  ctx.fillRect(0, 0, 1, 1)
-  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
-  return `#${[r, g, b].map(v => (v ?? 0).toString(16).padStart(2, '0')).join('')}`
-}
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -969,10 +944,10 @@ function addTextLayer() {
     fontFamily: 'Visitor BRK',
     fontSize: 26,
     fillType: 'solid',
-    fillColor: getCssColor('--color-text', '#ffffff'),
+    fillColor: getCssVarAsHex('--color-text', '#ffffff'),
     fillStops: [
-      { color: getCssColor('--color-text', '#ffffff'), position: 0 },
-      { color: getCssColor('--color-text-lighter', '#888888'), position: 1 },
+      { color: getCssVarAsHex('--color-text', '#ffffff'), position: 0 },
+      { color: getCssVarAsHex('--color-text-lighter', '#888888'), position: 1 },
     ],
     fillAngle: 0,
     opacity: 1,
@@ -1565,14 +1540,14 @@ onMounted(async () => {
   }
 
   // Apply VUI theme colours as defaults for new banners
-  const colorBg = getCssColor('--color-bg', '#1a1a2e')
-  const colorBgRaised = getCssColor('--color-bg-raised', '#16213e')
+  const colorBg = getCssVarAsHex('--color-bg', '#1a1a2e')
+  const colorBgRaised = getCssVarAsHex('--color-bg-raised', '#16213e')
   bgFillColor.value = colorBg
   bgFillStops.value = [
     { color: colorBg, position: 0 },
     { color: colorBgRaised, position: 1 },
   ]
-  bgBorderColor.value = getCssColor('--color-border-weak', '#181818')
+  bgBorderColor.value = getCssVarAsHex('--color-border-weak', '#181818')
 
   await nextTick()
   redraw()
@@ -1691,16 +1666,10 @@ function onTextLayerFillAngle(angle: number) {
 
 defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
 // saveBanner is also used externally after importBanner when hadMetadata is true
-
-// ── Close ─────────────────────────────────────────────────────────────────────
-
-function onClose() {
-  emit('close')
-}
 </script>
 
 <template>
-  <Modal size="screen" :open="open" class="banner-editor" hide-close-button @close="onClose">
+  <Modal size="screen" :open="open" class="banner-editor" hide-close-button @close="emit('close')">
     <!-- Hidden file input for image layers -->
     <input
       ref="fileInputRef"
@@ -1755,7 +1724,7 @@ function onClose() {
             <span v-if="loading" class="banner-editor__hint">
               Loading…
             </span>
-            <Button square size="s" plain :disabled="saving" @click="onClose">
+            <Button square size="s" plain :disabled="saving" @click="emit('close')">
               <Icon name="ph:x" />
             </Button>
           </Flex>
@@ -1844,19 +1813,13 @@ function onClose() {
           <div class="banner-editor__group banner-editor__group--flat">
             <span class="banner-editor__group-label">Asset paths</span>
             <Flex column gap="s">
-              <Flex y-center gap="s">
-                <input
-                  id="banner-store-paths"
-                  v-model="storeAssetPaths"
-                  type="checkbox"
-                  class="banner-editor__checkbox"
-                >
-                <label for="banner-store-paths" class="banner-editor__hint" style="cursor: pointer; user-select: none;">
-                  Store folder path in metadata
-                </label>
-              </Flex>
-              <p class="banner-editor__hint" style="opacity: 0.7;">
-                When enabled, the source folder and relative path are saved with each image layer so you can re-link them later.
+              <Checkbox
+                v-model="storeAssetPaths"
+                label="Store folder path in metadata"
+                accent
+              />
+              <p class="vui-hint" style="opacity: 0.7;">
+                When enabled, the source folder and relative path are saved with each layer so you can re-link them later.
               </p>
               <template v-if="hasWebkitDir">
                 <Button
@@ -2087,6 +2050,7 @@ function onClose() {
     color: var(--color-text-light);
     white-space: nowrap;
     flex-shrink: 0;
+    min-width: 42px;
   }
 
   &__swatch {
@@ -2182,15 +2146,15 @@ function onClose() {
   &__num-input {
     width: 100%;
     min-width: 0;
-    background: var(--color-bg-lowered);
+    background: var(--color-bg-medium);
     border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-xs);
+    border-radius: var(--border-radius-s);
     color: var(--color-text);
     font-size: var(--font-size-xs);
     font-variant-numeric: tabular-nums;
     padding: 2px var(--space-xs);
     height: 26px;
-    text-align: right;
+    text-align: center;
 
     &:focus {
       outline: none;

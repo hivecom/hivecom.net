@@ -44,6 +44,17 @@ const emit = defineEmits<{
           :class="{ 'banner-editor__layer-item--selected': layer.id === selectedLayerId }"
           @click="emit('select', layer.id)"
         >
+          <span class="banner-editor__layer-icon">
+            <Icon :name="layer.type === 'text' ? 'ph:text-t' : 'ph:image'" />
+          </span>
+          <span class="banner-editor__layer-label">
+            <template v-if="layer.type === 'text'">
+              {{ layer.content || '(empty)' }}
+            </template>
+            <template v-else>
+              {{ layer.file?.name ?? layer.assetMeta?.originalName ?? 'Image' }}
+            </template>
+          </span>
           <div class="banner-editor__layer-actions">
             <Tooltip>
               <Button
@@ -101,17 +112,6 @@ const emit = defineEmits<{
               </template>
             </Tooltip>
           </div>
-          <span class="banner-editor__layer-icon">
-            <Icon :name="layer.type === 'text' ? 'ph:text-t' : 'ph:image'" />
-          </span>
-          <span class="banner-editor__layer-label">
-            <template v-if="layer.type === 'text'">
-              {{ layer.content || '(empty)' }}
-            </template>
-            <template v-else>
-              {{ layer.file?.name ?? layer.assetMeta?.originalName ?? 'Image' }}
-            </template>
-          </span>
         </div>
       </div>
     </Flex>

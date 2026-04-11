@@ -437,13 +437,14 @@ const RGB_RE = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/
  * Read the current computed value of a CSS variable from :root and convert
  * it to a hex string suitable for <input type="color">.
  */
-export function getCssVarAsHex(varName: string): string {
+export function getCssVarAsHex(varName: string, fallback: string = '#000000'): string {
+  if (typeof document === 'undefined')
+    return fallback
+
   const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
-
   if (!raw)
-    return '#000000'
+    return fallback
 
-  // Parse rgb(...) / rgba(...)
   const match = raw.match(RGB_RE)
   if (match) {
     const r = Number(match[1])
@@ -463,5 +464,5 @@ export function getCssVarAsHex(varName: string): string {
     return `#${hex.slice(0, 6)}`
   }
 
-  return '#000000'
+  return fallback
 }

@@ -235,7 +235,7 @@ const isMobile = useBreakpoint('<s')
     <DefineControls>
       <Flex y-center x-between gap="xs" class="theme-editor__header">
         <h4 class="mr-m">
-          Editor
+          Theme editor
         </h4>
 
         <ButtonGroup>
@@ -266,7 +266,8 @@ const isMobile = useBreakpoint('<s')
           </template>
         </Tooltip>
 
-        <Tooltip>
+        <!-- TODO: enable later -->
+        <!-- <Tooltip>
           <Button size="s" square @click="reset">
             <Icon name="ph:arrow-square-out" />
           </Button>
@@ -275,7 +276,7 @@ const isMobile = useBreakpoint('<s')
               Popout editor. Browse the website while editing your theme
             </p>
           </template>
-        </Tooltip>
+        </Tooltip> -->
 
         <div class="flex-1" />
 
