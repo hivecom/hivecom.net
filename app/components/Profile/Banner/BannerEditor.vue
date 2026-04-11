@@ -1868,9 +1868,9 @@ function onClose() {
                   @click="scanFolder"
                 >
                   <template #start>
-                    <Icon name="ph:folder-open" />
+                    <Icon name="ph:folder-open" class="mr-xs" />
+                    {{ missingLayerCount > 0 ? `Scan folder (${missingLayerCount} missing)` : 'No missing images' }}
                   </template>
-                  {{ missingLayerCount > 0 ? `Scan folder (${missingLayerCount} missing)` : 'No missing images' }}
                 </Button>
                 <p v-if="scanResult" class="banner-editor__hint">
                   {{ scanResult }}
@@ -1891,16 +1891,13 @@ function onClose() {
           <Flex x-end y-center gap="s">
             <Button
               variant="danger"
-              outline
               size="s"
+              plain
               :loading="saving"
               :disabled="!userId || loading"
               @click="deleteBanner"
             >
-              <template #start>
-                <Icon name="ph:trash" />
-              </template>
-              Delete
+              Cancel
             </Button>
             <Button
               variant="accent"
@@ -1909,10 +1906,10 @@ function onClose() {
               :disabled="!userId || loading"
               @click="saveBanner"
             >
-              <template #start>
-                <Icon name="ph:floppy-disk" />
-              </template>
-              Save banner
+              Save
+              <!-- <template #end>
+                <Icon name="ph:arrow-right" />
+              </template> -->
             </Button>
           </Flex>
         </div>

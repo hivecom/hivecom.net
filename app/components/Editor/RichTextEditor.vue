@@ -1195,7 +1195,7 @@ async function handleSubmit() {
     </div>
 
     <!-- Limit & errors -->
-    <p v-if="limit && editor" class="vui-hint" style="margin-top: var(--space-xxs)">
+    <p v-if="limit && editor" class="vui-input-limit" style="margin-top: var(--space-xxs)">
       {{ `${editor.storage.characterCount.characters()} / ${limit}` }}
     </p>
 

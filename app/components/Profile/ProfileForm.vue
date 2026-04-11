@@ -380,9 +380,6 @@ const isMobile = useBreakpoint('<s')
 async function confirmAvatarDelete() {
   await handleAvatarDelete()
 }
-
-// Character counts for text areas
-const introductionCharCount = computed(() => profileForm.value.introduction.length)
 </script>
 
 <template>
@@ -547,25 +544,27 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
       <Flex column gap="m" expand>
         <h4>About</h4>
 
-        <Flex expand class="profile-edit-form__introduction-container">
-          <Textarea
-            v-model="profileForm.introduction"
-            expand
-            name="introduction"
-            label="Introduction"
-            placeholder="A brief introduction about yourself (optional)"
-            :rows="3"
-            :maxlength="INTRODUCTION_LIMIT"
-          >
-            <template #after>
-              <div class="character-count">
-                <span :class="{ 'over-limit': introductionCharCount > INTRODUCTION_LIMIT }">
-                  {{ introductionCharCount }}/{{ INTRODUCTION_LIMIT }}
-                </span>
-              </div>
-            </template>
-          </Textarea>
-        </Flex>
+        <Textarea
+          v-model="profileForm.introduction"
+          expand
+          name="introduction"
+          label="Introduction"
+          placeholder="A brief introduction about yourself (optional)"
+          :rows="3"
+          :limit="INTRODUCTION_LIMIT"
+        />
+
+        <RichTextEditor
+          v-model="profileForm.markdown"
+          :media-context="props.profile?.id ? `${props.profile.id}/markdown/media` : undefined"
+          :media-bucket-id="USERS_BUCKET_ID"
+          placeholder="Tell others about yourself!"
+          label="Content"
+          :limit="MARKDOWN_LIMIT"
+          :errors="markdownValidation.error ? [markdownValidation.error] : undefined"
+          :show-attachment-button="!!props.profile?.id"
+          show-expand-button
+        />
 
         <!-- Banner / Signature -->
         <Flex column gap="s" expand>
@@ -600,11 +599,8 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
               </div>
             </Flex>
 
-            <Flex v-else gap="s" expand>
+            <Flex v-else gap="xs">
               <Button
-                variant="accent"
-                outline
-                expand
                 :disabled="!props.profile"
                 @click="bannerEditorOpen = true"
               >
@@ -615,7 +611,6 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
               </Button>
               <Button
                 variant="gray"
-                outline
                 :disabled="!props.profile"
                 title="Import an existing .webp banner file"
                 @click="showImportConfirm = true"
@@ -635,22 +630,11 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
             </Flex>
           </div>
         </Flex>
-
-        <RichTextEditor
-          v-model="profileForm.markdown"
-          :media-context="props.profile?.id ? `${props.profile.id}/markdown/media` : undefined"
-          :media-bucket-id="USERS_BUCKET_ID"
-          placeholder="Tell others about yourself!"
-          label="Content"
-          :limit="MARKDOWN_LIMIT"
-          :errors="markdownValidation.error ? [markdownValidation.error] : undefined"
-          :show-attachment-button="!!props.profile?.id"
-          show-expand-button
-        />
       </Flex>
 
       <!-- Tips -->
-      <Flex column gap="s" class="profile-tips" expand>
+      <!-- TODO: move these into a tooltip below/above profile content -->
+      <!-- <Flex column gap="s" class="profile-tips" expand>
         <h5>Tips</h5>
         <ul class="tips-list">
           <li>
@@ -666,7 +650,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
             Paste or drop images directly into the editor
           </li>
         </ul>
-      </Flex>
+      </Flex> -->
     </Flex>
 
     <template #footer>

@@ -370,11 +370,11 @@ const isMobile = useBreakpoint('<s')
       </div>
 
       <Flex x-end class="theme-editor__footer">
-        <Button variant="accent" @click="openSubmitModal">
-          Finalize
-          <template #end>
-            <Icon name="ph:arrow-right" :size="18" />
-          </template>
+        <Button size="s" plain variant="danger" @click="close">
+          Cancel
+        </Button>
+        <Button variant="accent" size="s" @click="openSubmitModal">
+          Save
         </Button>
       </Flex>
     </DefineControls>

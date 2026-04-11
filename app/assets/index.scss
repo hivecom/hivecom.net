@@ -551,6 +551,15 @@ input[type='range'] {
   padding-block: var(--space-xs);
 }
 
+// TODO: remove once vui ships it
+.vui-input-limit {
+  display: block;
+  margin-top: 6px;
+  text-align: left;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-lighter);
+}
+
 @include meta.load-css('./utilities.scss');
 @include meta.load-css('./pages/login.scss');
 @include meta.load-css('./elements/auth.scss');
