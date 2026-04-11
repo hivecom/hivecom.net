@@ -605,39 +605,36 @@ function revealNsfw() {
             </Flex>
 
             <Flex gap="xxs">
-              <Button
-                v-if="userId"
-                variant="gray"
-                size="s"
-                square
-                :loading="subscriptionLoading"
-                @click="toggleSubscription"
-              >
-                <Tooltip>
+              <Tooltip v-if="userId">
+                <Button
+                  variant="gray"
+                  size="s"
+                  square
+                  :loading="subscriptionLoading"
+                  @click="toggleSubscription"
+                >
                   <Icon
                     :name="isSubscribed ? 'ph:bell-ringing' : 'ph:bell'"
                     :class="{ 'text-color-accent': isSubscribed }"
                   />
-                  <template #tooltip>
-                    <p>{{ isSubscribed ? 'Unsubscribe' : 'Subscribe' }}</p>
-                  </template>
-                </Tooltip>
-              </Button>
-
-              <Button
-                v-if="userId && post.created_by !== userId"
-                variant="gray"
-                size="s"
-                square
-                @click="showReportModal = true"
-              >
-                <Tooltip>
+                </Button>
+                <template #tooltip>
+                  <p>{{ isSubscribed ? 'Unsubscribe' : 'Subscribe' }}</p>
+                </template>
+              </Tooltip>
+              <Tooltip v-if="userId && post.created_by !== userId">
+                <Button
+                  variant="gray"
+                  size="s"
+                  square
+                  @click="showReportModal = true"
+                >
                   <Icon name="ph:flag-bold" />
-                  <template #tooltip>
-                    <p>Report discussion</p>
-                  </template>
-                </Tooltip>
-              </Button>
+                </Button>
+                <template #tooltip>
+                  <p>Report discussion</p>
+                </template>
+              </Tooltip>
 
               <ForumItemActions
                 :key="post.is_draft.toString()"

@@ -374,14 +374,14 @@ const editedAtFormatted = computed(() => {
         <div class="discussion-forum__actions">
           <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
             <template #default="{ toggle }">
-              <Button size="s" square @click="toggle">
-                <Tooltip>
+              <Tooltip>
+                <Button size="s" square @click="toggle">
                   <Icon name="ph:smiley-bold" />
-                  <template #tooltip>
-                    <p>Add reactions</p>
-                  </template>
-                </Tooltip>
-              </Button>
+                </Button>
+                <template #tooltip>
+                  <p>Add reactions</p>
+                </template>
+              </Tooltip>
             </template>
           </ReactionsSelect>
 

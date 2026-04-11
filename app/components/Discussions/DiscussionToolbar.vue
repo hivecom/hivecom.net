@@ -25,32 +25,32 @@ const emit = defineEmits<{
     <Flex y-center gap="xs">
       <!-- View mode segmented control - hidden when there are no replies -->
       <ButtonGroup v-if="hasComments" size="s">
-        <Button
-          square
-          size="s"
-          :outline="viewMode !== 'flat'"
-          @click="emit('update:viewMode', 'flat')"
-        >
-          <Tooltip>
+        <Tooltip>
+          <Button
+            square
+            size="s"
+            :outline="viewMode !== 'flat'"
+            @click="emit('update:viewMode', 'flat')"
+          >
             <Icon :size="18" name="ph:square-split-vertical" />
-            <template #tooltip>
-              <p>Flat view - all replies in chronological order</p>
-            </template>
-          </Tooltip>
-        </Button>
-        <Button
-          square
-          size="s"
-          :outline="viewMode !== 'threaded'"
-          @click="emit('update:viewMode', 'threaded')"
-        >
-          <Tooltip>
+          </Button>
+          <template #tooltip>
+            <p>Flat view - all replies in chronological order</p>
+          </template>
+        </Tooltip>
+        <Tooltip>
+          <Button
+            square
+            size="s"
+            :outline="viewMode !== 'threaded'"
+            @click="emit('update:viewMode', 'threaded')"
+          >
             <Icon :size="18" name="ph:arrows-split" />
-            <template #tooltip>
-              <p>Threaded view - replies nested under their parent</p>
-            </template>
-          </Tooltip>
-        </Button>
+          </Button>
+          <template #tooltip>
+            <p>Threaded view - replies nested under their parent</p>
+          </template>
+        </Tooltip>
       </ButtonGroup>
 
       <!-- Off-topic toggle - only shown when relevant -->

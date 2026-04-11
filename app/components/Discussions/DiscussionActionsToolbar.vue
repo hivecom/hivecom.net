@@ -239,91 +239,89 @@ function handleReport() {
 
       <ButtonGroup v-if="currentUserData">
         <template v-if="canInteract">
-          <Button square size="s" @click="emit('reply')">
-            <Tooltip>
-              <Icon name="ph:arrow-elbow-up-left-bold" />
-              <template #tooltip>
-                <p>Reply</p>
-              </template>
-            </Tooltip>
-          </Button>
-          <Button square size="s" @click="emit('quote')">
-            <Tooltip>
-              <Icon name="ph:quotes-bold" />
-              <template #tooltip>
-                <p>Quote</p>
-              </template>
-            </Tooltip>
-          </Button>
-        </template>
-        <Button size="s" square @click="emit('copyLink')">
           <Tooltip>
-            <Icon name="ph:link-bold" />
+            <Button square size="s" @click="emit('reply')">
+              <Icon name="ph:arrow-elbow-up-left-bold" />
+            </Button>
             <template #tooltip>
-              <p>Copy link</p>
+              <p>Reply</p>
             </template>
           </Tooltip>
-        </Button>
+          <Tooltip>
+            <Button square size="s" @click="emit('quote')">
+              <Icon name="ph:quotes-bold" />
+            </Button>
+            <template #tooltip>
+              <p>Quote</p>
+            </template>
+          </Tooltip>
+        </template>
+        <Tooltip>
+          <Button size="s" square @click="emit('copyLink')">
+            <Icon name="ph:link-bold" />
+          </Button>
+          <template #tooltip>
+            <p>Copy link</p>
+          </template>
+        </Tooltip>
       </ButtonGroup>
 
       <ButtonGroup v-if="canEditOrDelete">
-        <Button size="s" square :inert="loadingDeletion" @click="emit('startEditing')">
-          <Tooltip>
+        <Tooltip>
+          <Button size="s" square :inert="loadingDeletion" @click="emit('startEditing')">
             <Icon name="ph:pen-bold" />
-            <template #tooltip>
-              <p>Edit post</p>
-            </template>
-          </Tooltip>
-        </Button>
-        <Button size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="emit('delete')">
-          <Tooltip>
+          </Button>
+          <template #tooltip>
+            <p>Edit post</p>
+          </template>
+        </Tooltip>
+        <Tooltip>
+          <Button size="s" square :inert="loadingDeletion" :loading="loadingDeletion" @click="emit('delete')">
             <Icon name="ph:trash-bold" />
-            <template #tooltip>
-              <p>Delete post</p>
-            </template>
-          </Tooltip>
-        </Button>
+          </Button>
+          <template #tooltip>
+            <p>Delete post</p>
+          </template>
+        </Tooltip>
       </ButtonGroup>
 
       <ButtonGroup v-if="showModGroup || canPin">
-        <Button
-          v-if="canPin"
-          size="s"
-          square
-          :loading="pinnedLoading"
-          :variant="isPinned ? 'accent' : 'gray'"
-          @click="emit('togglePin')"
-        >
-          <Tooltip>
+        <Tooltip v-if="canPin">
+          <Button
+            size="s"
+            square
+            :loading="pinnedLoading"
+            :variant="isPinned ? 'accent' : 'gray'"
+            @click="emit('togglePin')"
+          >
             <Icon :name="isPinned ? 'ph:push-pin-fill' : 'ph:push-pin-bold'" />
-            <template #tooltip>
-              <p>{{ isPinned ? 'Unpin reply' : 'Pin reply' }}</p>
-            </template>
-          </Tooltip>
-        </Button>
-        <Button
-          v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by)"
-          size="s"
-          square
-          :loading="offtopicLoading"
-          :variant="data.is_offtopic ? 'danger' : 'gray'"
-          @click="emit('toggleOfftopic')"
-        >
-          <Tooltip>
+          </Button>
+          <template #tooltip>
+            <p>{{ isPinned ? 'Unpin reply' : 'Pin reply' }}</p>
+          </template>
+        </Tooltip>
+        <Tooltip v-if="canMarkOfftopic && (canBypassLock || userId !== data.created_by)">
+          <Button
+            size="s"
+            square
+            :loading="offtopicLoading"
+            :variant="data.is_offtopic ? 'danger' : 'gray'"
+            @click="emit('toggleOfftopic')"
+          >
             <Icon :name="data.is_offtopic ? 'ph:warning-circle-fill' : 'ph:warning-circle'" />
-            <template #tooltip>
-              <p>{{ data.is_offtopic ? 'Remove off-topic flag' : 'Mark as off-topic' }}</p>
-            </template>
-          </Tooltip>
-        </Button>
-        <Button v-if="canReport" size="s" square @click="emit('report')">
-          <Tooltip>
+          </Button>
+          <template #tooltip>
+            <p>{{ data.is_offtopic ? 'Remove off-topic flag' : 'Mark as off-topic' }}</p>
+          </template>
+        </Tooltip>
+        <Tooltip v-if="canReport">
+          <Button size="s" square @click="emit('report')">
             <Icon name="ph:flag-bold" />
-            <template #tooltip>
-              <p>Report post</p>
-            </template>
-          </Tooltip>
-        </Button>
+          </Button>
+          <template #tooltip>
+            <p>Report post</p>
+          </template>
+        </Tooltip>
       </ButtonGroup>
     </div>
   </template>
@@ -347,6 +345,26 @@ function handleReport() {
   &__desktop {
     display: flex;
     gap: 3px;
+  }
+}
+</style>
+
+<style lang="scss">
+:root.light {
+  .discussion-forum__actions .inline-block .vui-button {
+    border-color: var(--color-border);
+    background-color: var(--color-bg);
+    box-shadow: var(--box-shadow);
+  }
+
+  .discussion-toolbar__desktop .vui-button-group {
+    box-shadow: var(--box-shadow);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-m);
+
+    .vui-button {
+      background-color: var(--color-bg);
+    }
   }
 }
 </style>
