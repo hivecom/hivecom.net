@@ -109,6 +109,19 @@ export function useDiscussionCache() {
   }
 
   /**
+   * Populate the cache for a discussion only when no valid entry exists yet.
+   * Use this when writing partial projections (e.g. from the forum index or
+   * profile discussions batch query) so that a full row already in the cache
+   * (written by forum/[id].vue with markdown + joins) is never overwritten with
+   * a stripped row that would cause the content to disappear on the next visit.
+   */
+  function setIfAbsent(discussion: Tables<'discussions'>, options: SetDiscussionOptions = {}): void {
+    if (cache.has(idKey(discussion.id)))
+      return
+    set(discussion, options)
+  }
+
+  /**
    * Remove cached entries for a discussion. Pass optional slug, entityType,
    * and entityId when known to ensure all keys are cleared atomically.
    */
@@ -288,6 +301,7 @@ export function useDiscussionCache() {
     getBySlug,
     getByEntity,
     set,
+    setIfAbsent,
     invalidate,
     invalidateAll,
 
