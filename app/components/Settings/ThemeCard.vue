@@ -201,7 +201,6 @@ const confirmDeprecate = ref(false)
       top: 32px;
       transition: var(--transition);
       transform: translateX(-50%);
-      transition-timing-function: ease-in-out;
     }
 
     strong {

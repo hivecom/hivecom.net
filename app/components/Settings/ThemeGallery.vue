@@ -14,7 +14,7 @@ const userId = useUserId()
 const { activeTheme, setActiveTheme } = useUserTheme()
 const { themes, softDelete } = useDataThemes()
 
-const activeTab = ref <'gallery' | 'official' | 'created'>('gallery')
+const activeTab = ref <'community' | 'official' | 'created'>('official')
 const search = ref('')
 
 const sortedThemes = computed(() => {
@@ -23,7 +23,7 @@ const sortedThemes = computed(() => {
   // Filter out unmaintaned from stock/gallery but keep them in my created themes
   const categorized = (() => {
     switch (activeTab.value) {
-      case 'gallery':
+      case 'community':
         return themes.value
           .filter(item => item.created_by !== null)
           .filter(item => !item.is_unmaintained || item.id === activeThemeId)
@@ -68,26 +68,29 @@ const isMobile = useBreakpoint('<s')
 <template>
   <section>
     <Tabs v-model="activeTab" class="mb-m">
-      <Tab value="gallery">
-        Gallery
-      </Tab>
       <Tab value="official">
         Official
+      </Tab>
+      <Tab value="community">
+        Community
       </Tab>
       <Tab v-if="userId" value="created">
         My themes
       </Tab>
+
+      <template #end>
+        <Button variant="accent" :square="isMobile" size="s" @click="emit('create')">
+          <Icon v-if="isMobile" name="ph:plus" :size="16" />
+          <template #start>
+            <Icon v-if="!isMobile" name="ph:plus" :size="16" />
+          </template>
+          {{ isMobile ? '' : 'Create' }}
+        </Button>
+      </template>
     </Tabs>
 
     <Flex x-between y-center class="mb-s">
       <Input v-model="search" placeholder="Search themes..." class="search-input" />
-      <Button variant="accent" :square="isMobile" @click="emit('create')">
-        <Icon v-if="isMobile" name="ph:plus" :size="16" />
-        <template #start>
-          <Icon v-if="!isMobile" name="ph:plus" :size="16" />
-        </template>
-        {{ isMobile ? '' : 'Create theme' }}
-      </Button>
     </Flex>
 
     <Grid column gap="l" expand :columns="isMobile ? 1 : 2">
@@ -115,12 +118,21 @@ const isMobile = useBreakpoint('<s')
       />
     </Grid>
 
-    <Card v-if="activeTab === 'created' && sortedThemes.length === 0">
-      <Flex x-center y-center expand class="p-l">
-        <Icon name="ph:paint-brush-bold" :size="24" />
-        <strong>You've not created a theme yet!</strong>
-      </Flex>
-    </Card>
+    <template v-if="sortedThemes.length === 0">
+      <Card v-if="activeTab === 'created'" class="card-bg">
+        <Flex x-center y-center expand class="p-l">
+          <Icon name="ph:paint-brush-bold" :size="24" />
+          <strong>You've not created a theme yet!</strong>
+        </Flex>
+      </Card>
+
+      <Card v-else-if="activeTab === 'community'" class="card-bg">
+        <Flex x-center y-center expand class="p-l">
+          <Icon name="ph:paint-brush-bold" :size="24" />
+          <strong>No community themes available! Be the first to create one.</strong>
+        </Flex>
+      </Card>
+    </template>
   </section>
 </template>
 

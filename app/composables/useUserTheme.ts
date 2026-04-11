@@ -1,6 +1,14 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
+import { setColorTheme } from '@dolanske/vui'
 import { applyTheme } from '@/lib/theme'
+
+interface VariantOption { label: string, value: string }
+
+const variantOptions: VariantOption[] = [
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+]
 
 /**
  * Loads and applies the authenticated user's custom theme (if any) from their
@@ -15,6 +23,43 @@ export function useUserTheme() {
 
   const activeTheme = useState<Tables<'themes'> | null>('user-active-theme', () => null)
   const hasFetched = useState<boolean>('user-theme-fetched', () => false)
+
+  const { settings } = useDataUserSettings()
+  const { themes } = useDataThemes()
+
+  interface ThemeOption { label: string, value: string | null }
+
+  const themeOptions = computed<ThemeOption[]>(() => [
+    { label: 'Default', value: null },
+    ...themes.value.map(t => ({ label: t.name, value: t.id })),
+  ])
+
+  const selectedTheme = computed({
+    get(): ThemeOption[] {
+      if (!activeTheme.value)
+        return [{ label: 'Default', value: null }]
+      return [{ label: activeTheme.value.name, value: activeTheme.value.id }]
+    },
+    set(options: ThemeOption[]) {
+      if (options?.[0] !== undefined)
+        // eslint-disable-next-line ts/no-floating-promises
+        setActiveTheme(options[0].value)
+    },
+  })
+
+  const selectedVariant = computed({
+    get(): VariantOption[] {
+      const option = variantOptions.find(o => o.value === settings.value.theme)
+      return option ? [option] : []
+    },
+    set(options: VariantOption[]) {
+      if (options?.[0]) {
+        const value = options[0].value as Tables<'settings'>['data']['theme']
+        settings.value.theme = value
+        setColorTheme(value)
+      }
+    },
+  })
 
   async function fetchAndApply(force = false): Promise<void> {
     const id = userId.value
@@ -127,5 +172,9 @@ export function useUserTheme() {
     activeTheme,
     fetchAndApply,
     setActiveTheme,
+    themeOptions,
+    selectedTheme,
+    variantOptions,
+    selectedVariant,
   }
 }

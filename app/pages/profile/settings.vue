@@ -6,6 +6,7 @@ import ChangeEmailCard from '@/components/Settings/ChangeEmailCard.vue'
 import ChangePasswordCard from '@/components/Settings/ChangePasswordCard.vue'
 import ConnectionsCard from '@/components/Settings/ConnectionsCard.vue'
 import DeleteAccountCard from '@/components/Settings/DeleteAccountCard.vue'
+import GeneralAppearanceSettings from '@/components/Settings/GeneralAppearanceSettings.vue'
 import GeneralUserSettings from '@/components/Settings/GeneralUserSettings.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
 import PasskeyCard from '@/components/Settings/PasskeyCard.vue'
@@ -181,7 +182,8 @@ onMounted(() => {
       <div class="settings">
         <Flex expand column gap="xxxl" class="settings__container">
           <div id="general" class="w-100">
-            <GeneralUserSettings />
+            <GeneralUserSettings class="mb-m" />
+            <GeneralAppearanceSettings />
           </div>
           <div id="connections" class="w-100">
             <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" />

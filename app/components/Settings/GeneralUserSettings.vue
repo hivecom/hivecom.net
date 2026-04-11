@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Button, ButtonGroup, Card, Divider, Flex, Switch } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Divider, Flex, Select, Switch } from '@dolanske/vui'
 
 const { settings, settingsError } = useDataUserSettings()
+const { selectedTheme, themeOptions, selectedVariant, variantOptions } = useUserTheme()
 </script>
 
 <template>
@@ -11,6 +12,20 @@ const { settings, settingsError } = useDataUserSettings()
         General
       </h4>
     </template>
+
+    <strong class="text-color-lighter text-s block mb-m">
+      Appearance
+    </strong>
+    <Flex class="mb-m" x-between y-center>
+      <p>Current theme</p>
+      <Select v-model="selectedTheme" search :show-clear="false" :options="themeOptions" size="s" searchable />
+    </Flex>
+    <Flex x-between y-center>
+      <p>Variant</p>
+      <Select v-model="selectedVariant" :show-clear="false" :options="variantOptions" size="s" />
+    </Flex>
+
+    <Divider :size="64" />
 
     <strong class="text-color-lighter text-s block mb-m">
       Discussions

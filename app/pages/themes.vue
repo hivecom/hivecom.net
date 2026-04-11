@@ -1,42 +1,15 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, ButtonGroup, Card, Flex, Grid, Select, setColorTheme, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Flex, Grid, Select, Tooltip } from '@dolanske/vui'
 import ThemeEditor from '@/components/Settings/ThemeEditor.vue'
 import ThemeGallery from '@/components/Settings/ThemeGallery.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 // Placeholder theme options for the planned Theme selector
 // const { themes, loading: themesLoading } = useDataThemes()
-const { activeTheme, setActiveTheme } = useUserTheme()
-const { settings } = useDataUserSettings()
+const { activeTheme, setActiveTheme, selectedVariant, variantOptions } = useUserTheme()
 
 const isMobile = useBreakpoint('<s')
-
-// Theme options & setting
-const variantOptions = [
-  // I spent _so_ damn long on the system theme and I couldn't get it working
-  // properly. It just wouldn't update if system theme changed
-  // { label: 'System', value: 'system' },
-  { label: 'Light', value: 'light' },
-  { label: 'Dark', value: 'dark' },
-]
-
-const selectedVariant = computed({
-  get() {
-    const option = variantOptions.find(option => option.value === settings.value.theme)
-    if (!option) {
-      return []
-    }
-    return [option]
-  },
-  set(options) {
-    if (options && options[0]) {
-      const value = options[0].value as Tables<'settings'>['data']['theme']
-      settings.value.theme = value
-      setColorTheme(value)
-    }
-  },
-})
 
 const editedTheme = ref<Tables<'themes'> | null>(null)
 const themeEditorOpen = ref(false)
