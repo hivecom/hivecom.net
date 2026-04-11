@@ -27,7 +27,7 @@ defineProps<{
             <Skeleton height="2.5rem" width="4rem" />
           </template>
           <template v-else>
-            <CountDisplay :value="communityStats.members" class="text-xxl" />{{ communityStats.membersAccurate ? '' : '+' }}
+            <CountDisplay :value="communityStats.members" :approx="!communityStats.membersAccurate" class="text-xxl" />
           </template>
         </Flex>
         <span class="text-xs">Members</span>

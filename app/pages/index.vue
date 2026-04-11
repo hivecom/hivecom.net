@@ -52,10 +52,10 @@ const events = computed<Tables<'events'>[]>(() => {
 const communityStats = ref({
   members: 100,
   membersAccurate: false,
-  gameservers: 0,
+  gameservers: 5,
   age: new Date().getFullYear() - 2013,
-  projects: 0, // Will be fetched from the projects table
-  forumPosts: 0,
+  projects: 10, // Will be fetched from the projects table
+  forumPosts: 1000,
 })
 
 // Convert platforms object to array for easier v-for iteration

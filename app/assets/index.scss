@@ -75,9 +75,6 @@
   --shiny-gradient: linear-gradient(100deg, #59d7f7, #3afea2, #a7fc2f);
   --banner-filter: none;
 
-  --dark-color-bg-card: #141414;
-  --light-color-bg-card: #f8f8f8;
-
   // EXPERIMENTAL, original VUI value is 18px
   --space-m: 16px;
 }
@@ -89,7 +86,7 @@
 
 :root.dark {
   --banner-filter: none;
-  --color-bg-card: var(--dark-color-bg-card);
+  --color-bg-card: var(--color-bg-medium);
 
   .vui-backdrop:after {
     background-color: color-mix(in srgb, var(--color-bg-lowered) 90%, transparent);
@@ -98,7 +95,7 @@
 
 :root:not(.dark) {
   --banner-filter: invert(1);
-  --color-bg-card: var(--light-color-bg-card);
+  --color-bg-card: var(--color-bg-medium);
 
   // Light theme text-color palette overrides - slightly darker shades for
   // better contrast on light backgrounds.

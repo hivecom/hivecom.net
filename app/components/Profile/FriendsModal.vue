@@ -149,6 +149,9 @@ function handleClose() {
 .friends-modal-content {
   min-height: 300px;
   max-height: 500px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .friends-modal__tabs {
@@ -161,6 +164,8 @@ function handleClose() {
 
 .friends-modal__tab-content {
   min-height: 200px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .friends-modal__tab-empty {

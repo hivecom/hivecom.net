@@ -14,6 +14,10 @@
  *   within the same session skip the DB entirely, even if the TTL hasn't
  *   expired yet. Agreement is permanent so a cache hit of `true` is always
  *   correct.
+ * - On `SIGNED_IN`, the localStorage entry is evicted before the first fetch.
+ *   This means a stale `true` from a previous session (e.g. after a dev DB
+ *   reset) is always cleared before it can be read, making localStorage caching
+ *   of `true` safe.
  * - `markAgreed()`: called by `ContentRulesModal` immediately after the DB
  *   update succeeds. Warms the cache to `true` so any other mounted editor
  *   on the same page reflects the change without a re-fetch.
@@ -40,6 +44,20 @@ export function useContentRulesAgreement() {
 
   const agreed = ref<boolean | null>(null)
   const loading = ref(false)
+
+  // Evict any stale localStorage entry on SIGNED_IN. Runs at setup time so the
+  // cache lookup in the immediate watch below never returns a value written by a
+  // previous session (e.g. before a dev DB reset). Safe to leave unsubscribed -
+  // the composable is per-instance and the extra DB fetch on login is negligible.
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN') {
+      const id = userId.value
+      if (id != null && id !== '') {
+        cache.delete(getCacheKey(id))
+      }
+      agreed.value = null
+    }
+  })
 
   async function fetch(force = false): Promise<void> {
     const id = userId.value
@@ -80,7 +98,6 @@ export function useContentRulesAgreement() {
 
       const value = data.agreed_content_rules
 
-      // Only cache true permanently - false can change, so respect the TTL
       cache.set(cacheKey, value, value === true ? TTL : 5 * 60 * 1000)
       agreed.value = value
     }
@@ -94,8 +111,8 @@ export function useContentRulesAgreement() {
 
   /**
    * Called by ContentRulesModal after the DB write succeeds.
-   * Warms the cache to true so other mounted editors reflect agreement
-   * immediately without a re-fetch.
+   * Warms the cache to `true` so any other mounted editor on the same page
+   * reflects the change without a re-fetch.
    */
   function markAgreed(): void {
     const id = userId.value

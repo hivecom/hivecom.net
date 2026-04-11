@@ -349,7 +349,6 @@ defineExpose({
   }
 
   &__remaining-count {
-    font-size: inherit;
     line-height: 1;
     display: flex;
     align-items: center;

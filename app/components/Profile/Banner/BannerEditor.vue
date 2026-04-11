@@ -896,11 +896,19 @@ function onCanvasMouseMove(e: MouseEvent) {
     const layer = layers.value.find(l => l.id === resizingLayerId.value)
     if (!layer || layer.type !== 'image')
       return
-    const dx = pos.x - resizeStartPos.value.x
+
+    // Project the current and start positions into layer-local space so that
+    // the resize delta follows the layer's own axes regardless of rotation.
+    const cx = layer.x + resizeStartSize.value.width / 2
+    const cy = layer.y + resizeStartSize.value.height / 2
+    const localCurrent = rotatePoint(pos.x, pos.y, cx, cy, layer.rotation)
+    const localStart = rotatePoint(resizeStartPos.value.x, resizeStartPos.value.y, cx, cy, layer.rotation)
+
+    const dx = localCurrent.x - localStart.x
     const newWidth = Math.max(16, resizeStartSize.value.width + dx)
     if (e.shiftKey) {
       // Free resize - ignore aspect ratio
-      const dy = pos.y - resizeStartPos.value.y
+      const dy = localCurrent.y - localStart.y
       layer.width = Math.round(newWidth)
       layer.height = Math.round(Math.max(4, resizeStartSize.value.height + dy))
     }

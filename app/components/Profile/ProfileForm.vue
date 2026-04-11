@@ -571,61 +571,69 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
         <Flex column gap="s" expand>
           <label class="profile-edit-form__banner-label">Forum Signature</label>
 
-          <Flex v-if="bannerUrl" expand class="profile-edit-form__banner-wrapper">
-            <img
-              :src="bannerUrl"
-              alt="Your forum banner"
-              class="profile-edit-form__banner-preview"
-            >
-            <div class="profile-edit-form__banner-overlay">
-              <Button size="s" variant="gray" @click="bannerEditorOpen = true">
-                <template #start>
-                  <Icon name="ph:pencil-simple" />
-                </template>
-                Edit
-              </Button>
-              <Button size="s" variant="danger" :loading="bannerDeleting" @click="showBannerDeleteConfirm = true">
-                <template #start>
-                  <Icon name="ph:trash" />
-                </template>
-                Delete
-              </Button>
-            </div>
-          </Flex>
+          <div class="profile-edit-form__signature-mobile-notice">
+            <Alert variant="info">
+              Forum signature editing requires a desktop or tablet - please switch to a larger device.
+            </Alert>
+          </div>
 
-          <Flex v-else gap="s" expand>
-            <Button
-              variant="accent"
-              outline
-              expand
-              :disabled="!props.profile"
-              @click="bannerEditorOpen = true"
-            >
-              <template #start>
-                <Icon name="ph:plus" />
-              </template>
-              Create Signature
-            </Button>
-            <Button
-              variant="gray"
-              outline
-              :disabled="!props.profile"
-              title="Import an existing .webp banner file"
-              @click="showImportConfirm = true"
-            >
-              <template #start>
-                <Icon name="ph:upload-simple" />
-              </template>
-              Import
-            </Button>
-            <input
-              ref="importFileRef"
-              type="file"
-              accept="image/webp"
-              class="profile-edit-form__import-input"
-              @change="handleImportFile"
-            >
-          </Flex>
+          <div class="profile-edit-form__signature-editor">
+            <Flex v-if="bannerUrl" expand class="profile-edit-form__banner-wrapper">
+              <img
+                :src="bannerUrl"
+                alt="Your forum banner"
+                class="profile-edit-form__banner-preview"
+              >
+              <div class="profile-edit-form__banner-overlay">
+                <Button size="s" variant="gray" @click="bannerEditorOpen = true">
+                  <template #start>
+                    <Icon name="ph:pencil-simple" />
+                  </template>
+                  Edit
+                </Button>
+                <Button size="s" variant="danger" :loading="bannerDeleting" @click="showBannerDeleteConfirm = true">
+                  <template #start>
+                    <Icon name="ph:trash" />
+                  </template>
+                  Delete
+                </Button>
+              </div>
+            </Flex>
+
+            <Flex v-else gap="s" expand>
+              <Button
+                variant="accent"
+                outline
+                expand
+                :disabled="!props.profile"
+                @click="bannerEditorOpen = true"
+              >
+                <template #start>
+                  <Icon name="ph:plus" />
+                </template>
+                Create Signature
+              </Button>
+              <Button
+                variant="gray"
+                outline
+                :disabled="!props.profile"
+                title="Import an existing .webp banner file"
+                @click="showImportConfirm = true"
+              >
+                <template #start>
+                  <Icon name="ph:upload-simple" />
+                </template>
+                Import
+              </Button>
+              <input
+                ref="importFileRef"
+                type="file"
+                accept="image/webp"
+                class="profile-edit-form__import-input"
+                @change="handleImportFile"
+              >
+            </Flex>
+          </div>
         </Flex>
 
         <RichTextEditor
@@ -714,7 +722,7 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
         <p class="text-s">
           <br> Hivecom banner files can contain embedded editor metadata. While we parse it carefully, importing a file that was sent to you by someone else at their request carries a small inherent risk. When in doubt, don't import it.
         </p>
-      </alert>
+      </Alert>
     </ConfirmModal>
 
     <!-- Delete Avatar Confirmation Modal -->
@@ -792,6 +800,22 @@ const introductionCharCount = computed(() => profileForm.value.introduction.leng
   &__birthday-container,
   &__country-container {
     position: relative;
+  }
+
+  &__signature-mobile-notice {
+    width: 100%;
+    display: none;
+
+    @media (max-width: 767px) {
+      display: block;
+    }
+  }
+
+  &__signature-editor {
+    width: 100%;
+    @media (max-width: 767px) {
+      display: none;
+    }
   }
 
   &__banner-label {

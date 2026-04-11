@@ -11,6 +11,8 @@ const props = defineProps<{
   // 5 → abbreviate at 10,000 (default, "9,999" is 5 chars)
   // 6 → abbreviate at 100,000 ("99,999" is 6 chars)
   maxChars?: number
+  // Appends a '+' suffix directly to the formatted value (no gap).
+  approx?: boolean
 }>()
 
 const abbreviateAbove = computed(() => {
@@ -21,7 +23,10 @@ const abbreviateAbove = computed(() => {
   }
 })
 
-const formatted = computed(() => formatCount(props.value, abbreviateAbove.value))
+const formatted = computed(() => {
+  const base = formatCount(props.value, abbreviateAbove.value)
+  return props.approx ? `${base}+` : base
+})
 const needsTooltip = computed(() => props.value >= abbreviateAbove.value)
 
 const attrs = useAttrs()
