@@ -19,7 +19,8 @@ import dayjs from 'dayjs'
 import { computed, ref, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
 import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
-import { getLineChartDefaults } from '@/lib/charts'
+import { useUserTheme } from '@/composables/useUserTheme'
+import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
 // Register Chart.js components
@@ -46,9 +47,16 @@ const { allFunding, loading: fundingLoading, error: fundingError } = useDataMont
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartRef = ref<ChartComponentRef<'line'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
+const { activeTheme } = useUserTheme()
 
 // Chart data
 const chartData = computed(() => {
+  // Track both theme (light/dark switch) and activeTheme (custom palette applied
+  // after async fetch). getCSSVariable reads the DOM directly - not reactive -
+  // so we need explicit deps to re-run after applyTheme() writes to :root.
+  void theme.value
+  void activeTheme.value
+
   if (!monthlyFundings.value.length) {
     return {
       labels: [],
@@ -79,22 +87,24 @@ const chartData = computed(() => {
     return patreonLifetime + donationLifetime
   })
 
+  const palette = getChartPalette()
+
   return {
     labels,
     datasets: [
       {
         label: 'Monthly Income (€)',
         data: monthlyIncomeData,
-        borderColor: '#22C55E',
-        backgroundColor: '#22C55E',
+        borderColor: palette.datasets[0], // blue
+        backgroundColor: palette.datasets[0],
         yAxisID: 'y',
         fill: false,
       },
       {
         label: 'Lifetime Earnings (€)',
         data: lifetimeEarningsData,
-        borderColor: '#8B5CF6',
-        backgroundColor: '#8B5CF6',
+        borderColor: palette.datasets[4], // accent
+        backgroundColor: palette.datasets[4],
         yAxisID: 'y1',
         fill: false,
       },
@@ -226,11 +236,11 @@ watchEffect(() => {
       <p>No funding data available for chart</p>
     </div>
 
-    <div v-else ref="chartWrapperRef" :key="theme" class="chart-wrapper">
+    <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}`" class="chart-wrapper">
       <Line
         ref="chartRef"
         :data="chartData"
-        :options="deepMergePlainObjects(getLineChartDefaults(theme), localChartOptions)"
+        :options="deepMergePlainObjects(getLineChartDefaults(), localChartOptions)"
       />
     </div>
   </div>

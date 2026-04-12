@@ -17,7 +17,8 @@ import {
 import dayjs from 'dayjs'
 import { computed, onBeforeMount, ref, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
-import { getLineChartDefaults } from '@/lib/charts'
+import { useUserTheme } from '@/composables/useUserTheme'
+import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
 // Register Chart.js components
@@ -47,6 +48,7 @@ const monthlyData = ref<MonthlyUserData[]>([])
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartRef = ref<ChartComponentRef<'line'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
+const { activeTheme } = useUserTheme()
 
 // Fetch users data and group by month
 async function fetchUsersData() {
@@ -160,6 +162,12 @@ async function fetchAllData() {
 
 // Chart data
 const chartData = computed(() => {
+  // Track both theme (light/dark switch) and activeTheme (custom palette applied
+  // after async fetch). getCSSVariable reads the DOM directly - not reactive -
+  // so we need explicit deps to re-run after applyTheme() writes to :root.
+  void theme.value
+  void activeTheme.value
+
   if (!monthlyData.value.length) {
     return {
       labels: [],
@@ -178,28 +186,30 @@ const chartData = computed(() => {
   const patreonSupportersData = sortedData.map(data => data.patreonSupporters)
   const totalSupportersData = sortedData.map(data => data.totalSupporters)
 
+  const palette = getChartPalette()
+
   return {
     labels,
     datasets: [
       {
         label: 'Total Users',
         data: totalUsersData,
-        borderColor: '#3B82F6',
-        backgroundColor: '#3B82F6',
+        borderColor: palette.datasets[0], // blue
+        backgroundColor: palette.datasets[0],
         yAxisID: 'y',
       },
       {
         label: 'Patreon Supporters',
         data: patreonSupportersData,
-        borderColor: '#FF424D',
-        backgroundColor: '#FF424D',
+        borderColor: palette.datasets[2], // red
+        backgroundColor: palette.datasets[2],
         yAxisID: 'y',
       },
       {
         label: 'Supporters',
         data: totalSupportersData,
-        borderColor: '#10B981',
-        backgroundColor: '#10B981',
+        borderColor: palette.datasets[1], // green
+        backgroundColor: palette.datasets[1],
         yAxisID: 'y',
       },
     ],
@@ -296,11 +306,11 @@ onBeforeMount(fetchAllData)
       <p>No user data available for chart</p>
     </div>
 
-    <div v-else ref="chartWrapperRef" :key="theme" class="chart-wrapper">
+    <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}`" class="chart-wrapper">
       <Line
         ref="chartRef"
         :data="chartData"
-        :options="deepMergePlainObjects(getLineChartDefaults(theme), localChartOptions)"
+        :options="deepMergePlainObjects(getLineChartDefaults(), localChartOptions)"
       />
     </div>
   </div>

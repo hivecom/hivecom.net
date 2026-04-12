@@ -16,6 +16,7 @@ import type { BannerLayer, BannerMetadata, FillType, GradientStop, ImageAssetMet
 import type { Database } from '@/types/database.types'
 import { Button, Checkbox, Flex, Modal } from '@dolanske/vui'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { validateImageFile } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 import { getCssVarAsHex } from '@/lib/theme'
@@ -149,6 +150,11 @@ const pendingReplaceLayerId = ref<string | null>(null)
 const saving = ref(false)
 const saveError = ref<string | null>(null)
 const loading = ref(false)
+const isDirty = ref(false)
+const showDiscardConfirm = ref(false)
+
+// Layer clipboard for Ctrl+C / Ctrl+V
+const clipboardLayer = ref<BannerLayer | null>(null)
 
 // Background
 const bgFillType = ref<FillType>('solid')
@@ -341,13 +347,21 @@ const hoveredLayerId = ref<string | null>(null)
 // ── Canvas scaling ────────────────────────────────────────────────────────────
 
 const canvasContainerRef = ref<HTMLDivElement | null>(null)
-const displayScale = ref(1)
+const canvasScrollRef = ref<HTMLDivElement | null>(null)
+const fitScale = ref(1)
+const zoomLevel = ref(1) // multiplier on top of fit scale, range 0.25–4
+
+const displayScale = computed(() => fitScale.value * zoomLevel.value)
 
 function updateDisplayScale() {
   if (!canvasContainerRef.value)
     return
   const containerWidth = canvasContainerRef.value.clientWidth
-  displayScale.value = Math.min(1, containerWidth / WORKSPACE_WIDTH)
+  // Leave room for the zoom bar (48px) and some breathing room
+  const containerHeight = canvasContainerRef.value.clientHeight - 48
+  const scaleByWidth = containerWidth / WORKSPACE_WIDTH
+  const scaleByHeight = containerHeight / WORKSPACE_HEIGHT
+  fitScale.value = Math.min(1, scaleByWidth, scaleByHeight)
 }
 
 // ── Metadata ──────────────────────────────────────────────────────────────────
@@ -768,6 +782,15 @@ function canvasToLocal(e: MouseEvent): { x: number, y: number } {
   }
 }
 
+/** Returns true if the mouse event is positioned over the canvas element. */
+function isOverCanvas(e: MouseEvent): boolean {
+  const canvas = canvasRef.value
+  if (!canvas)
+    return false
+  const rect = canvas.getBoundingClientRect()
+  return e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom
+}
+
 /** Rotate point (px, py) around (cx, cy) by -angle degrees (inverse rotation for hit testing). */
 function rotatePoint(px: number, py: number, cx: number, cy: number, angleDeg: number): { x: number, y: number } {
   const rad = (-angleDeg * Math.PI) / 180
@@ -821,7 +844,24 @@ function hitTestImageResizeHandle(x: number, y: number, layer: ImageLayer): bool
 
 // ── Mouse handlers ────────────────────────────────────────────────────────────
 
+// Whether the pointer is currently over the resize handle
+const cursorOnResizeHandle = ref(false)
+
+// Pan state — dragging on empty canvas space translates the workspace
+const panning = ref(false)
+const panStart = ref({ x: 0, y: 0 })
+const panOffset = ref({ x: 0, y: 0 })
+const panOffsetAtStart = ref({ x: 0, y: 0 })
+
 function onCanvasMouseDown(e: MouseEvent) {
+  // Click outside canvas bounds — just start a pan, don't touch selection
+  if (!isOverCanvas(e)) {
+    panning.value = true
+    panStart.value = { x: e.clientX, y: e.clientY }
+    panOffsetAtStart.value = { x: panOffset.value.x, y: panOffset.value.y }
+    return
+  }
+
   const pos = canvasToLocal(e)
 
   // Iterate layers in reverse (topmost rendered = last in array, checked first)
@@ -858,80 +898,30 @@ function onCanvasMouseDown(e: MouseEvent) {
     }
   }
 
-  // Clicked empty space — deselect
+  // Clicked empty space — start pan or deselect
+  panning.value = true
+  panStart.value = { x: e.clientX, y: e.clientY }
+  panOffsetAtStart.value = { x: panOffset.value.x, y: panOffset.value.y }
   selectedLayerId.value = null
   redraw()
 }
 
-function onCanvasMouseMove(e: MouseEvent) {
-  const pos = canvasToLocal(e)
+function onScrollAreaMouseUp() {
+  onCanvasMouseUp()
+}
 
-  // Resize
-  if (resizingLayerId.value) {
-    const layer = layers.value.find(l => l.id === resizingLayerId.value)
-    if (!layer || layer.type !== 'image')
-      return
-
-    // Project the current and start positions into layer-local space so that
-    // the resize delta follows the layer's own axes regardless of rotation.
-    const cx = layer.x + resizeStartSize.value.width / 2
-    const cy = layer.y + resizeStartSize.value.height / 2
-    const localCurrent = rotatePoint(pos.x, pos.y, cx, cy, layer.rotation)
-    const localStart = rotatePoint(resizeStartPos.value.x, resizeStartPos.value.y, cx, cy, layer.rotation)
-
-    const dx = localCurrent.x - localStart.x
-    const newWidth = Math.max(16, resizeStartSize.value.width + dx)
-    if (e.shiftKey) {
-      // Free resize - ignore aspect ratio
-      const dy = localCurrent.y - localStart.y
-      layer.width = Math.round(newWidth)
-      layer.height = Math.round(Math.max(4, resizeStartSize.value.height + dy))
-    }
-    else {
-      const newHeight = newWidth / layer.aspect
-      layer.width = Math.round(newWidth)
-      layer.height = Math.round(newHeight)
-    }
-    redraw()
-    return
-  }
-
-  // Drag
-  if (dragging.value === 'layer' && draggingLayerId.value) {
-    const layer = layers.value.find(l => l.id === draggingLayerId.value)
-    if (!layer)
-      return
-    layer.x = Math.round(pos.x - dragOffset.value.x)
-    layer.y = Math.round(pos.y - dragOffset.value.y)
-    redraw()
-    return
-  }
-
-  // Hover detection
-  let newHoverId: string | null = null
-  for (let i = layers.value.length - 1; i >= 0; i--) {
-    const layer = layers.value[i]
-    if (!layer)
-      continue
-    const hit = layer.type === 'image'
-      ? hitTestImageLayer(pos.x, pos.y, layer)
-      : hitTestTextLayer(pos.x, pos.y, layer)
-    if (hit) {
-      newHoverId = layer.id
-      break
-    }
-  }
-
-  if (newHoverId !== hoveredLayerId.value) {
-    hoveredLayerId.value = newHoverId
-    redraw()
-  }
+function onScrollAreaWheel(e: WheelEvent) {
+  e.preventDefault()
+  const delta = e.deltaY > 0 ? -0.1 : 0.1
+  zoomLevel.value = Math.min(4, Math.max(0.25, Math.round((zoomLevel.value + delta) * 100) / 100))
 }
 
 function onCanvasMouseUp() {
   dragging.value = null
   draggingLayerId.value = null
   resizingLayerId.value = null
+  cursorOnResizeHandle.value = false
+  panning.value = false
 }
 
 // ── Layer management ──────────────────────────────────────────────────────────
@@ -1364,6 +1354,8 @@ async function loadExistingBanner(supabase: SupabaseClient<Database>, userId: st
 
     await nextTick()
     redraw()
+    await nextTick()
+    isDirty.value = false
   }
   catch {
     // Could not load existing banner — start fresh
@@ -1426,6 +1418,7 @@ async function saveBanner() {
       .from(USERS_BUCKET_ID)
       .getPublicUrl(filePath)
 
+    isDirty.value = false
     emit('saved', urlData.publicUrl)
     emit('close')
   }
@@ -1476,6 +1469,7 @@ async function deleteBanner() {
     layers.value = []
     selectedLayerId.value = null
     redraw()
+    isDirty.value = false
     emit('deleted')
     emit('close')
   }
@@ -1496,10 +1490,33 @@ function onKeyDown(e: KeyboardEvent) {
       removeSelectedLayer()
     }
   }
-  if (e.key === 'Escape') {
-    selectedLayerId.value = null
-    redraw()
+}
+
+function copySelectedLayer() {
+  const layer = selectedLayer.value
+  if (!layer)
+    return
+  // Deep clone so mutations to the original don't affect the clipboard
+  clipboardLayer.value = JSON.parse(JSON.stringify(layer)) as BannerLayer
+}
+
+function pasteLayer() {
+  const src = clipboardLayer.value
+  if (!src)
+    return
+  const newId = crypto.randomUUID()
+  let clone: BannerLayer
+  if (src.type === 'text') {
+    clone = { ...src, id: newId, x: src.x + 6, y: src.y + 6 }
   }
+  else {
+    // Image layers pasted from clipboard won't have a live src/file -
+    // reuse whatever was captured at copy time (blob URL may still be valid)
+    clone = { ...src, id: newId, x: src.x + 6, y: src.y + 6 }
+  }
+  layers.value.push(clone)
+  selectedLayerId.value = newId
+  redraw()
 }
 
 // ── Computed ──────────────────────────────────────────────────────────────────
@@ -1507,7 +1524,25 @@ function onKeyDown(e: KeyboardEvent) {
 const workspaceStyle = computed(() => ({
   width: `${WORKSPACE_WIDTH * displayScale.value}px`,
   height: `${WORKSPACE_HEIGHT * displayScale.value}px`,
+  flexShrink: '0',
+  transform: `translate(${panOffset.value.x}px, ${panOffset.value.y}px)`,
 }))
+
+// Cursor to show on the canvas based on hover/drag state
+const canvasCursor = computed(() => {
+  if (panning.value)
+    return 'grabbing'
+  if (dragging.value === 'layer')
+    return 'grabbing'
+  if (resizingLayerId.value)
+    return 'nw-resize'
+  if (cursorOnResizeHandle.value)
+    return 'nw-resize'
+  if (hoveredLayerId.value)
+    return 'grab'
+  // Show grab cursor on empty canvas to hint that panning is available
+  return 'grab'
+})
 
 // ── Watchers ──────────────────────────────────────────────────────────────────
 
@@ -1515,6 +1550,13 @@ watch([bgFillType, bgFillColor, bgFillAngle], () => redraw())
 watch(bgFillStops, () => redraw(), { deep: true })
 // Text fill changes are caught by the deep layers watcher below
 watch(layers, () => redraw(), { deep: true })
+
+watch([bgFillType, bgFillColor, bgFillAngle, bgFillStops, bgBorder, bgBorderColor], () => {
+  isDirty.value = true
+}, { deep: true })
+watch(layers, () => {
+  isDirty.value = true
+}, { deep: true })
 
 // Reload existing banner whenever the modal is opened; also trigger font load
 watch(() => props.open, async (isOpen) => {
@@ -1531,7 +1573,64 @@ watch(() => props.open, async (isOpen) => {
 
 let resizeObserver: ResizeObserver | null = null
 
+function requestClose() {
+  if (isDirty.value) {
+    showDiscardConfirm.value = true
+  }
+  else {
+    emit('close')
+  }
+}
+
+function onWindowKeyDownCapture(e: KeyboardEvent) {
+  if (!props.open)
+    return
+
+  const ctrl = e.ctrlKey || e.metaKey
+
+  if (ctrl && e.key === 'c') {
+    if (selectedLayerId.value) {
+      e.preventDefault()
+      copySelectedLayer()
+    }
+    return
+  }
+
+  if (ctrl && e.key === 'v') {
+    if (clipboardLayer.value) {
+      e.preventDefault()
+      pasteLayer()
+    }
+    return
+  }
+
+  if (ctrl && e.key === 'd') {
+    if (selectedLayerId.value) {
+      e.preventDefault()
+      duplicateLayer(selectedLayerId.value)
+    }
+    return
+  }
+
+  if (e.key !== 'Escape')
+    return
+  e.preventDefault()
+  e.stopImmediatePropagation()
+  if (selectedLayerId.value) {
+    selectedLayerId.value = null
+    redraw()
+  }
+  else {
+    nextTick(() => requestClose())
+  }
+}
+
 onMounted(async () => {
+  document.addEventListener('mousemove', onDocumentMouseMove)
+  document.addEventListener('mouseup', onDocumentMouseUp)
+  // Capture phase so we intercept before VUI's bubble-phase window listener
+  window.addEventListener('keydown', onWindowKeyDownCapture, true)
+
   updateDisplayScale()
 
   if (canvasContainerRef.value) {
@@ -1551,6 +1650,7 @@ onMounted(async () => {
 
   await nextTick()
   redraw()
+  isDirty.value = false
 
   if (props.userId) {
     const supabase = useSupabaseClient<Database>()
@@ -1558,7 +1658,114 @@ onMounted(async () => {
   }
 })
 
+function onDocumentMouseMove(e: MouseEvent) {
+  if (panning.value) {
+    panOffset.value = {
+      x: panOffsetAtStart.value.x + (e.clientX - panStart.value.x),
+      y: panOffsetAtStart.value.y + (e.clientY - panStart.value.y),
+    }
+    return
+  }
+
+  // Resize — works regardless of where mouse is
+  if (resizingLayerId.value) {
+    const layer = layers.value.find(l => l.id === resizingLayerId.value)
+    if (layer && layer.type === 'image') {
+      const pos = canvasToLocal(e)
+      const cx = layer.x + resizeStartSize.value.width / 2
+      const cy = layer.y + resizeStartSize.value.height / 2
+      const localCurrent = rotatePoint(pos.x, pos.y, cx, cy, layer.rotation)
+      const localStart = rotatePoint(resizeStartPos.value.x, resizeStartPos.value.y, cx, cy, layer.rotation)
+      const dx = localCurrent.x - localStart.x
+      const newWidth = Math.max(16, resizeStartSize.value.width + dx)
+      if (e.shiftKey) {
+        const dy = localCurrent.y - localStart.y
+        layer.width = Math.round(newWidth)
+        layer.height = Math.round(Math.max(4, resizeStartSize.value.height + dy))
+      }
+      else {
+        layer.width = Math.round(newWidth)
+        layer.height = Math.round(newWidth / layer.aspect)
+      }
+      redraw()
+    }
+    return
+  }
+
+  // Drag — works regardless of where mouse is
+  if (dragging.value === 'layer' && draggingLayerId.value) {
+    const layer = layers.value.find(l => l.id === draggingLayerId.value)
+    if (layer) {
+      const pos = canvasToLocal(e)
+      layer.x = Math.round(pos.x - dragOffset.value.x)
+      layer.y = Math.round(pos.y - dragOffset.value.y)
+      redraw()
+    }
+    return
+  }
+
+  // Idle — only do hover detection if the mouse is actually over the canvas.
+  // Use a single getBoundingClientRect call shared by the over-canvas check and canvasToLocal.
+  const canvas = canvasRef.value
+  if (!canvas)
+    return
+  const rect = canvas.getBoundingClientRect()
+  if (
+    e.clientX < rect.left || e.clientX > rect.right
+    || e.clientY < rect.top || e.clientY > rect.bottom
+  ) {
+    return
+  }
+
+  const scaleX = WORKSPACE_WIDTH / rect.width
+  const scaleY = WORKSPACE_HEIGHT / rect.height
+  const pos = {
+    x: (e.clientX - rect.left) * scaleX - WORKSPACE_PADDING,
+    y: (e.clientY - rect.top) * scaleY - WORKSPACE_PADDING,
+  }
+
+  if (selectedLayerId.value) {
+    const sel = layers.value.find(l => l.id === selectedLayerId.value)
+    if (sel?.type === 'image') {
+      cursorOnResizeHandle.value = hitTestImageResizeHandle(pos.x, pos.y, sel)
+    }
+    else {
+      cursorOnResizeHandle.value = false
+    }
+  }
+  else {
+    cursorOnResizeHandle.value = false
+  }
+
+  let newHoverId: string | null = null
+  for (let i = layers.value.length - 1; i >= 0; i--) {
+    const layer = layers.value[i]
+    if (!layer)
+      continue
+    const hit = layer.type === 'image'
+      ? hitTestImageLayer(pos.x, pos.y, layer)
+      : hitTestTextLayer(pos.x, pos.y, layer)
+    if (hit) {
+      newHoverId = layer.id
+      break
+    }
+  }
+
+  if (newHoverId !== hoveredLayerId.value) {
+    hoveredLayerId.value = newHoverId
+    redraw()
+  }
+}
+
+function onDocumentMouseUp() {
+  if (panning.value)
+    panning.value = false
+}
+
 onBeforeUnmount(() => {
+  document.removeEventListener('mousemove', onDocumentMouseMove)
+  document.removeEventListener('mouseup', onDocumentMouseUp)
+  window.removeEventListener('keydown', onWindowKeyDownCapture, true)
   resizeObserver?.disconnect()
   for (const layer of layers.value) {
     if (layer.type === 'image' && layer.src.startsWith('blob:'))
@@ -1695,24 +1902,44 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
         tabindex="0"
         @keydown="onKeyDown"
       >
-        <div class="banner-editor__workspace" :style="workspaceStyle">
-          <div class="banner-editor__canvas-wrap">
-            <canvas
-              ref="canvasRef"
-              :width="WORKSPACE_WIDTH"
-              :height="WORKSPACE_HEIGHT"
-              :style="workspaceStyle"
-              class="banner-editor__canvas"
-              @mousedown="onCanvasMouseDown"
-              @mousemove="onCanvasMouseMove"
-              @mouseup="onCanvasMouseUp"
-              @mouseleave="onCanvasMouseUp"
-            />
+        <div
+          ref="canvasScrollRef"
+          class="banner-editor__canvas-scroll"
+          :style="{ cursor: canvasCursor }"
+          @mousedown="onCanvasMouseDown"
+          @mouseup="onScrollAreaMouseUp"
+          @wheel="onScrollAreaWheel"
+        >
+          <div class="banner-editor__workspace" :style="workspaceStyle">
+            <div class="banner-editor__canvas-wrap">
+              <canvas
+                ref="canvasRef"
+                :width="WORKSPACE_WIDTH"
+                :height="WORKSPACE_HEIGHT"
+                :style="workspaceStyle"
+                class="banner-editor__canvas"
+                draggable="false"
+              />
+            </div>
           </div>
         </div>
-        <p class="banner-editor__canvas-hint">
-          Click to select a layer &middot; Delete key removes selection &middot; Escape deselects
-        </p>
+        <div class="banner-editor__zoom-bar">
+          <span class="banner-editor__zoom-label">{{ Math.round(zoomLevel * 100) }}%</span>
+          <input
+            v-model.number="zoomLevel"
+            type="range"
+            min="0.25"
+            max="4"
+            step="0.05"
+            class="banner-editor__range banner-editor__zoom-range"
+          >
+          <button class="banner-editor__zoom-reset" @click="zoomLevel = 1">
+            Reset
+          </button>
+          <p class="banner-editor__canvas-hint">
+            Click to select &middot; Drag to move &middot; Delete removes &middot; Esc deselects
+          </p>
+        </div>
       </div>
 
       <!-- ── Right: controls sidebar ───────────────────────────────────── -->
@@ -1724,7 +1951,7 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
             <span v-if="loading" class="banner-editor__hint">
               Loading…
             </span>
-            <Button square size="s" plain :disabled="saving" @click="emit('close')">
+            <Button square size="s" plain :disabled="saving" @click="requestClose()">
               <Icon name="ph:x" />
             </Button>
           </Flex>
@@ -1870,7 +2097,7 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
               @click="saveBanner"
             >
               Save
-              <!-- <template #end>
+            <!-- <template #end>
                 <Icon name="ph:arrow-right" />
               </template> -->
             </Button>
@@ -1878,6 +2105,15 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
         </div>
       </div>
     </div>
+    <ConfirmModal
+      v-model:open="showDiscardConfirm"
+      title="Discard changes?"
+      description="You have unsaved changes. They will be lost if you close the editor."
+      confirm-text="Discard"
+      cancel-text="Keep editing"
+      destructive
+      @confirm="emit('close')"
+    />
   </Modal>
 </template>
 
@@ -1915,9 +2151,9 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
   &__preview-area {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-l);
+    align-items: stretch;
+    justify-content: stretch;
+    gap: 0;
     padding: 0;
     background-color: transparent;
     overflow: hidden;
@@ -1927,14 +2163,20 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
     }
   }
 
-  &__workspace {
-    width: auto;
-    height: auto;
+  &__canvas-scroll {
+    flex: 1;
     min-height: 0;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
+  }
+
+  &__workspace {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
   &__canvas-wrap {
@@ -1944,7 +2186,7 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
   }
 
   &__canvas {
-    cursor: crosshair;
+    // cursor is set dynamically via :style binding
     border-radius: var(--border-radius-l);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
     image-rendering: auto;
@@ -1959,16 +2201,58 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
       24px 24px,
       6px 6px,
       6px 6px;
+  }
 
-    &:active {
-      cursor: grabbing;
+  &__zoom-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    padding: var(--space-xs) var(--space-m);
+    border-top: 1px solid var(--color-border);
+    flex-shrink: 0;
+  }
+
+  &__zoom-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    font-variant-numeric: tabular-nums;
+    min-width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  &__zoom-range {
+    flex: 1;
+  }
+
+  &__zoom-reset {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-s);
+    padding: 2px var(--space-xs);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+      border-color var(--transition),
+      color var(--transition);
+
+    &:hover {
+      border-color: var(--color-border-strong);
+      color: var(--color-text);
     }
   }
 
   &__canvas-hint {
     font-size: var(--font-size-xs);
-    color: var(--color-text-lightest);
+    color: var(--color-text-lighter);
     text-align: center;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   // ── Right: sidebar ─────────────────────────────────────────────────────────

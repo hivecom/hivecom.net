@@ -65,6 +65,7 @@ const reflectionTextureSrc = computed(() => badgeTextureConfig[props.variant].re
 const tooltipBindings = computed(() => props.description ? { placement: 'bottom' as const } : undefined)
 
 const badgeEl = ref<HTMLElement | null>(null)
+const hexStackEl = ref<HTMLElement | null>(null)
 const isTiltActive = ref(false)
 const isTouchTooltipOpen = ref(false)
 let touchStartX = 0
@@ -102,7 +103,7 @@ function renderTransform() {
   if (!el)
     return
 
-  const maxRotate = 10
+  const maxRotate = 16
   const maxTranslate = 7
 
   const rx = -tilt.currentY * maxRotate
@@ -112,6 +113,18 @@ function renderTransform() {
   const z = tilt.currentZ
 
   el.style.transform = `perspective(900px) translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, ${z.toFixed(2)}px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) scale(${tilt.currentScale.toFixed(4)})`
+
+  // Image layer parallax: higher rotation multiplier, lower translation to simulate proximity
+  const hexStack = hexStackEl.value
+  if (hexStack) {
+    const imgMaxRotate = 6
+    const imgMaxTranslate = 3
+    const irx = -tilt.currentY * imgMaxRotate
+    const iry = tilt.currentX * imgMaxRotate
+    const itx = tilt.currentX * imgMaxTranslate
+    const ity = tilt.currentY * imgMaxTranslate
+    hexStack.style.transform = `perspective(900px) translate3d(${itx.toFixed(2)}px, ${ity.toFixed(2)}px, 0px) rotateX(${irx.toFixed(2)}deg) rotateY(${iry.toFixed(2)}deg)`
+  }
 }
 
 function tick(ts: number) {
@@ -142,6 +155,8 @@ function tick(ts: number) {
 
   if (!isTiltActive.value && closeEnough) {
     el.style.transform = ''
+    if (hexStackEl.value)
+      hexStackEl.value.style.transform = ''
     rafId = null
     lastFrameTs = 0
     return
@@ -301,7 +316,7 @@ onBeforeUnmount(() => {
       @pointercancel="onPointerUp"
     >
       <div class="profile-badge__hex-wrapper" aria-hidden="true">
-        <div class="profile-badge__hex-stack">
+        <div ref="hexStackEl" class="profile-badge__hex-stack">
           <img
             class="profile-badge__hex-image"
             :src="baseTextureSrc"

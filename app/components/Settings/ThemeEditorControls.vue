@@ -137,16 +137,37 @@ function seed() {
 }
 
 function reset() {
-  applyTheme(null)
+  if (editing) {
+    // Restore to the saved state of the theme being edited
+    for (const key of VUI_COLOR_KEYS) {
+      const darkCol = `dark_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
+      const lightCol = `light_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
+      if (editing[darkCol] != null)
+        themeForm.dark[key] = editing[darkCol] as string
+      if (editing[lightCol] != null)
+        themeForm.light[key] = editing[lightCol] as string
+    }
+    applyPaletteLocal('dark', themeForm.dark)
+    applyPaletteLocal('light', themeForm.light)
 
-  for (const key of THEME_SCALE_KEYS) {
-    scaleValues[key] = SCALE_CONFIGS[key].defaultDb
+    for (const key of THEME_SCALE_KEYS) {
+      scaleValues[key] = editing[key] ?? SCALE_CONFIGS[key].defaultDb
+      applyScale(key, scaleValues[key])
+    }
   }
+  else {
+    applyTheme(null)
 
-  seedPalette('dark', themeForm.dark)
-  seedPalette('light', themeForm.light)
-  applyPaletteLocal('dark', themeForm.dark)
-  applyPaletteLocal('light', themeForm.light)
+    for (const key of THEME_SCALE_KEYS) {
+      scaleValues[key] = SCALE_CONFIGS[key].defaultDb
+      applyScale(key, scaleValues[key])
+    }
+
+    seedPalette('dark', themeForm.dark)
+    seedPalette('light', themeForm.light)
+    applyPaletteLocal('dark', themeForm.dark)
+    applyPaletteLocal('light', themeForm.light)
+  }
 }
 
 function close() {

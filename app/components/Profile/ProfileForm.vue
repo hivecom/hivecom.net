@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import BannerEditor from '@/components/Profile/Banner/BannerEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { normalizeWebsiteUrl, useUserFormValidation } from '@/composables/useUserFormValidation'
@@ -62,9 +62,20 @@ const bannerUrl = ref<string | null>(null)
 const bannerDeleting = ref(false)
 const importFileRef = ref<HTMLInputElement | null>(null)
 const bannerEditorRef = ref<{ importBanner: (file: File) => Promise<{ hadMetadata: boolean }> } | null>(null)
+const sheetContentRef = ref<{ $el: HTMLElement } | null>(null)
 const bannerUploading = ref(false)
 const showBannerDeleteConfirm = ref(false)
 const showImportConfirm = ref(false)
+
+// When the banner editor closes, focus back into the sheet so the Radix
+// focusOutside handler doesn't see focus leaving and dismiss the sheet.
+watch(bannerEditorOpen, (isOpen) => {
+  if (!isOpen) {
+    nextTick(() => {
+      sheetContentRef.value?.$el?.focus({ preventScroll: true })
+    })
+  }
+})
 
 function onBannerSaved(url: string) {
   bannerUrl.value = `${url}?t=${Date.now()}`
@@ -399,7 +410,7 @@ async function confirmAvatarDelete() {
       </Flex>
     </template>
 
-    <Flex column gap="l" class="profile-edit-form" expand>
+    <Flex ref="sheetContentRef" tabindex="-1" column gap="l" class="profile-edit-form" expand>
       <Flex gap="l" expand :column="isMobile">
         <!-- Avatar -->
         <Flex column gap="m" class="profile-edit-form__avatar-section" :expand="isMobile">
@@ -674,6 +685,7 @@ async function confirmAvatarDelete() {
 
     <!-- Banner Editor Modal -->
     <BannerEditor
+      v-if="bannerEditorOpen"
       ref="bannerEditorRef"
       :open="bannerEditorOpen"
       :user-id="props.profile?.id ?? null"

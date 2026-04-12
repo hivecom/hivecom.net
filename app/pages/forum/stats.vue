@@ -27,7 +27,8 @@ import { useCache } from '@/composables/useCache'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useForumStats } from '@/composables/useForumStats'
 import { useUserId } from '@/composables/useUserId'
-import { getChartGridColor, getLineChartDefaults } from '@/lib/charts'
+import { useUserTheme } from '@/composables/useUserTheme'
+import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
@@ -89,17 +90,26 @@ useBulkDataUser(allUserIds, {
   avatarTtl: 30 * 60 * 1000,
 })
 
+const { activeTheme } = useUserTheme()
+
 // ── Activity chart ───────────────────────────────────────────────────────────
 const activityChartWrapperRef = ref<HTMLElement | null>(null)
 const activityChartRef = ref<ChartComponentRef<'line'> | null>(null)
 const { width: activityChartWidth } = useElementSize(activityChartWrapperRef, { width: 0, height: 0 })
 
 const activityChartData = computed(() => {
+  // Track both theme (light/dark switch) and activeTheme (custom palette applied
+  // after async fetch). getCSSVariable reads the DOM directly - not reactive -
+  // so we need explicit deps to re-run after applyTheme() writes to :root.
+  void theme.value
+  void activeTheme.value
+
   if (stats.value == null)
     return { labels: [], datasets: [] }
 
   const points = stats.value.activityOverTime
   const labels = points.map(p => p.date)
+  const palette = getChartPalette()
 
   return {
     labels,
@@ -107,16 +117,16 @@ const activityChartData = computed(() => {
       {
         label: 'Discussions',
         data: points.map(p => p.discussions),
-        borderColor: '#8B5CF6',
-        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        borderColor: palette.datasets[4], // accent
+        backgroundColor: `${palette.datasets[4]}1a`,
         fill: true,
         tension: 0.3,
       },
       {
         label: 'Replies',
         data: points.map(p => p.replies),
-        borderColor: '#22C55E',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        borderColor: palette.datasets[1], // green
+        backgroundColor: `${palette.datasets[1]}1a`,
         fill: true,
         tension: 0.3,
       },
@@ -168,11 +178,18 @@ const topicChartRef = ref<ChartComponentRef<'bar'> | null>(null)
 const { width: topicChartWidth } = useElementSize(topicChartWrapperRef, { width: 0, height: 0 })
 
 const topicChartData = computed(() => {
+  // Track both theme (light/dark switch) and activeTheme (custom palette applied
+  // after async fetch). getCSSVariable reads the DOM directly - not reactive -
+  // so we need explicit deps to re-run after applyTheme() writes to :root.
+  void theme.value
+  void activeTheme.value
+
   if (stats.value == null)
     return { labels: [], datasets: [] }
 
   const topics = stats.value.topicBreakdown.slice(0, 12)
   const labels = topics.map(t => t.topic_name)
+  const palette = getChartPalette()
 
   return {
     labels,
@@ -180,16 +197,16 @@ const topicChartData = computed(() => {
       {
         label: 'Discussions',
         data: topics.map(t => t.discussion_count),
-        backgroundColor: 'rgba(139, 92, 246, 0.7)',
-        borderColor: '#8B5CF6',
+        backgroundColor: `${palette.datasets[4]}b3`, // accent @ ~70% opacity
+        borderColor: palette.datasets[4],
         borderWidth: 1,
         borderRadius: 4,
       },
       {
         label: 'Replies',
         data: topics.map(t => t.reply_count),
-        backgroundColor: 'rgba(34, 197, 94, 0.7)',
-        borderColor: '#22C55E',
+        backgroundColor: `${palette.datasets[1]}b3`, // green @ ~70% opacity
+        borderColor: palette.datasets[1],
         borderWidth: 1,
         borderRadius: 4,
       },
@@ -197,7 +214,8 @@ const topicChartData = computed(() => {
   }
 })
 
-function getBarChartDefaults(currentTheme: string): ChartOptions<'bar'> {
+function getBarChartDefaults(): ChartOptions<'bar'> {
+  const palette = getChartPalette()
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -208,6 +226,7 @@ function getBarChartDefaults(currentTheme: string): ChartOptions<'bar'> {
     plugins: {
       title: {
         display: true,
+        color: palette.text,
         font: {
           size: 16,
           weight: 'bold',
@@ -217,6 +236,7 @@ function getBarChartDefaults(currentTheme: string): ChartOptions<'bar'> {
         display: true,
         position: 'top',
         labels: {
+          color: palette.text,
           boxHeight: 10,
           boxWidth: 10,
         },
@@ -226,7 +246,10 @@ function getBarChartDefaults(currentTheme: string): ChartOptions<'bar'> {
       x: {
         display: true,
         grid: {
-          color: getChartGridColor(currentTheme),
+          color: palette.grid,
+        },
+        ticks: {
+          color: palette.textLight,
         },
       },
       y: {
@@ -235,7 +258,10 @@ function getBarChartDefaults(currentTheme: string): ChartOptions<'bar'> {
         position: 'left',
         beginAtZero: true,
         grid: {
-          color: getChartGridColor(currentTheme),
+          color: palette.grid,
+        },
+        ticks: {
+          color: palette.textLight,
         },
       },
     },
@@ -654,11 +680,11 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
         <!-- Activity over time chart -->
         <Card class="mb-xl">
           <div class="chart-container">
-            <div ref="activityChartWrapperRef" :key="theme" class="chart-wrapper">
+            <div ref="activityChartWrapperRef" :key="`${theme}-${activeTheme?.id}`" class="chart-wrapper">
               <Line
                 ref="activityChartRef"
                 :data="activityChartData"
-                :options="deepMergePlainObjects(getLineChartDefaults(theme), activityChartOptions)"
+                :options="deepMergePlainObjects(getLineChartDefaults(), activityChartOptions)"
               />
             </div>
           </div>
@@ -667,11 +693,11 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
         <!-- Topic breakdown chart -->
         <Card class="mb-xl">
           <div class="chart-container">
-            <div ref="topicChartWrapperRef" :key="`topic-${theme}`" class="chart-wrapper">
+            <div ref="topicChartWrapperRef" :key="`topic-${theme}-${activeTheme?.id}`" class="chart-wrapper">
               <Bar
                 ref="topicChartRef"
                 :data="topicChartData"
-                :options="deepMergePlainObjects(getBarChartDefaults(theme), topicChartOptions)"
+                :options="deepMergePlainObjects(getBarChartDefaults(), topicChartOptions)"
               />
             </div>
           </div>

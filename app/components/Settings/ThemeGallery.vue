@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, Flex, Grid, Input, searchString, Tab, Tabs } from '@dolanske/vui'
+import type { Database } from '@/types/database.types'
+import { Button, Card, Flex, Grid, Input, paginate, Pagination, Skeleton, Tab, Tabs } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import ThemeCard from './ThemeCard.vue'
 
@@ -9,60 +10,152 @@ const emit = defineEmits<{
   edit: [theme: Tables<'themes'>]
 }>()
 
+const supabase = useSupabaseClient<Database>()
 const userId = useUserId()
 
 const { activeTheme, setActiveTheme } = useUserTheme()
-const { themes, softDelete } = useDataThemes()
+const { softDelete } = useDataThemes()
 
-const activeTab = ref <'community' | 'official' | 'created'>('official')
+const activeTab = ref<'community' | 'official' | 'created'>('official')
 const search = ref('')
+const currentPage = ref(1)
+const PER_PAGE = 6
 
-const sortedThemes = computed(() => {
-  const activeThemeId = activeTheme.value?.id
+// Per-tab state
+const items = ref<Tables<'themes'>[]>([])
+const totalCount = ref(0)
+const loading = ref(false)
+const error = ref<string | null>(null)
 
-  // Filter out unmaintaned from stock/gallery but keep them in my created themes
-  const categorized = (() => {
-    switch (activeTab.value) {
-      case 'community':
-        return themes.value
-          .filter(item => item.created_by !== null)
-          .filter(item => !item.is_unmaintained || item.id === activeThemeId)
-      case 'official':
-        // Hivecom is the 02 user
-        return themes.value
-          .filter(item => item.created_by === null)
-          .filter(item => !item.is_unmaintained || item.id === activeThemeId)
-      case 'created':
-        return themes.value.filter(item => item.created_by === userId.value)
+async function fetchPage(tab: typeof activeTab.value, page: number, searchValue: string) {
+  loading.value = true
+  error.value = null
+  items.value = []
+
+  const from = (page - 1) * PER_PAGE
+  const to = from + PER_PAGE - 1
+
+  try {
+    let query = supabase
+      .from('themes')
+      .select('*', { count: 'exact' })
+      .order('name', { ascending: true })
+      .range(from, to)
+
+    if (searchValue.trim()) {
+      query = query.or(`name.ilike.%${searchValue}%,description.ilike.%${searchValue}%`)
     }
-  })()
 
-  return categorized
-  // Hide unmaintained themes unless the current user still has it active
+    switch (tab) {
+      case 'official':
+        query = query.eq('is_official', true)
+        break
+      case 'community':
+        query = query.eq('is_official', false).not('created_by', 'is', null)
+        break
+      case 'created':
+        if (!userId.value) {
+          items.value = []
+          totalCount.value = 0
+          loading.value = false
+          return
+        }
+        query = query.eq('created_by', userId.value)
+        break
+    }
 
-    // Search thems via name & description (NOTE: author would have been nice, but I only got the UUIDs)
-    .filter(item => searchString([item.name, item.description], search.value))
-    // Sorted active first, rest by date
-    .toSorted((a, b) => {
-      const aIsActive = a.id === activeTheme.value?.id
-      const bIsActive = b.id === activeTheme.value?.id
-      if (aIsActive !== bIsActive)
-        return aIsActive ? -1 : 1
-      if (a.is_unmaintained !== b.is_unmaintained)
-        return a.is_unmaintained ? 1 : -1
-      return a.created_at.localeCompare(b.created_at)
-    })
+    // Keep unmaintained hidden unless it's the user's currently active theme
+    if (tab !== 'created') {
+      const activeId = activeTheme.value?.id
+      if (activeId) {
+        query = query.or(`is_unmaintained.eq.false,id.eq.${activeId}`)
+      }
+      else {
+        query = query.eq('is_unmaintained', false)
+      }
+    }
+
+    const { data, count, error: fetchError } = await query
+
+    if (fetchError)
+      throw fetchError
+
+    items.value = data ?? []
+    totalCount.value = count ?? 0
+  }
+  catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to fetch themes'
+    items.value = []
+    totalCount.value = 0
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+const visibleItems = computed(() => items.value)
+
+const defaultCardMatchesSearch = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q)
+    return true
+  return 'default theme'.includes(q) || 'the default hivecom theme'.includes(q)
 })
+
+const pagination = computed(() =>
+  paginate(totalCount.value, currentPage.value, PER_PAGE),
+)
+
+// Reset page and re-fetch when tab or search changes
+watch(activeTab, () => {
+  currentPage.value = 1
+  search.value = ''
+  void fetchPage(activeTab.value, 1, '')
+})
+
+watch(search, () => {
+  currentPage.value = 1
+  void fetchPage(activeTab.value, 1, search.value)
+})
+
+function onPageChange(page: number) {
+  currentPage.value = page
+  void fetchPage(activeTab.value, page, search.value)
+}
 
 function deprecateTheme(id: string) {
   if (activeTheme.value?.id === id) {
     setActiveTheme(null)
   }
 
-  softDelete(id)
+  void softDelete(id).then(() => {
+    void fetchPage(activeTab.value, currentPage.value, search.value)
+  })
 }
 
+// Initial load
+onMounted(() => {
+  void fetchPage(activeTab.value, currentPage.value, search.value)
+})
+
+// Only re-fetch when the active theme change affects visibility - i.e. when an
+// unmaintained theme is becoming or ceasing to be the active one.
+watch(() => activeTheme.value?.id, (newId, oldId) => {
+  const affectsVisibility
+    = items.value.some(t => t.id === newId && t.is_unmaintained)
+      || items.value.some(t => t.id === oldId && t.is_unmaintained)
+  if (affectsVisibility)
+    void fetchPage(activeTab.value, currentPage.value, search.value)
+})
+
 const isMobile = useBreakpoint('<s')
+
+// Expose refresh so ThemeEditor can trigger a re-fetch after writes
+function refresh() {
+  void fetchPage(activeTab.value, currentPage.value, search.value)
+}
+
+defineExpose({ refresh })
 </script>
 
 <template>
@@ -94,45 +187,66 @@ const isMobile = useBreakpoint('<s')
     </Flex>
 
     <Grid column gap="l" expand :columns="isMobile ? 1 : 2">
-      <!-- Fake theme card which resets theme to default. Shows up in stock or if it's active -->
-      <ThemeCard
-        v-if="activeTab === 'official'"
-        :item="{
-          id: '$$$$default',
-          created_by: null,
-          name: 'Default Theme',
-          description: 'The default Hivecom theme',
-        } as any"
-        :active-theme-id="activeTheme ? '' : '$$$$default'"
-        @apply="setActiveTheme(null)"
-      />
+      <template v-if="loading">
+        <div v-for="i in 6" :key="i" class="theme-card-skeleton">
+          <div class="skeleton-preview" />
+          <div class="skeleton-content">
+            <Skeleton :height="22" width="55%" :radius="4" />
+            <Skeleton :height="12" width="90%" :radius="4" />
+            <Skeleton :height="12" width="65%" :radius="4" />
+            <Flex x-between y-center class="mt-s">
+              <Skeleton :height="28" :width="96" :radius="8" />
+              <Skeleton :height="28" :width="72" :radius="4" />
+            </Flex>
+          </div>
+        </div>
+      </template>
 
-      <ThemeCard
-        v-for="item in sortedThemes"
-        :key="item.id"
-        :item="item"
-        :active-theme-id="activeTheme?.id"
-        @apply="setActiveTheme(item.id)"
-        @edit="emit('edit', item)"
-        @deprecate="deprecateTheme(item.id)"
-      />
+      <template v-else>
+        <!-- Fake default theme card - always first in the official tab -->
+        <ThemeCard
+          v-if="activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
+          :item="{
+            id: '$$$$default',
+            created_by: null,
+            name: 'Default Theme',
+            description: 'The default Hivecom theme',
+          } as any"
+          :active-theme-id="activeTheme ? '' : '$$$$default'"
+          @apply="setActiveTheme(null)"
+        />
+
+        <ThemeCard
+          v-for="item in visibleItems"
+          :key="item.id"
+          :item="item"
+          :active-theme-id="activeTheme?.id"
+          @apply="setActiveTheme(item.id)"
+          @edit="emit('edit', item)"
+          @deprecate="deprecateTheme(item.id)"
+        />
+      </template>
     </Grid>
 
-    <template v-if="sortedThemes.length === 0">
-      <Card v-if="activeTab === 'created'" class="card-bg">
+    <template v-if="!loading && visibleItems.length === 0">
+      <Card class="card-bg">
         <Flex x-center y-center expand class="p-l">
           <Icon name="ph:paint-brush-bold" :size="24" />
-          <strong>You've not created a theme yet!</strong>
-        </Flex>
-      </Card>
-
-      <Card v-else-if="activeTab === 'community'" class="card-bg">
-        <Flex x-center y-center expand class="p-l">
-          <Icon name="ph:paint-brush-bold" :size="24" />
-          <strong>No community themes available! Be the first to create one.</strong>
+          <strong v-if="search.trim()">No themes match your search.</strong>
+          <strong v-else-if="activeTab === 'created'">You've not created a theme yet!</strong>
+          <strong v-else-if="activeTab === 'community'">No community themes available! Be the first to create one.</strong>
         </Flex>
       </Card>
     </template>
+
+    <Flex v-if="pagination.totalPages > 1" x-center class="mt-l">
+      <Pagination
+        :pagination="pagination"
+        numbers
+        prev-next
+        @change="onPageChange"
+      />
+    </Flex>
   </section>
 </template>
 
@@ -140,5 +254,31 @@ const isMobile = useBreakpoint('<s')
 .search-input {
   width: 100%;
   max-width: 328px;
+}
+
+.theme-card-skeleton {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: var(--border-radius-m);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-card);
+  overflow: hidden;
+  flex-grow: 1;
+
+  .skeleton-preview {
+    height: 120px;
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-bg-lowered);
+  }
+
+  .skeleton-content {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-m);
+    padding-top: var(--space-l);
+    flex: 1;
+    gap: var(--space-s);
+  }
 }
 </style>
