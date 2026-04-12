@@ -19,7 +19,7 @@ const { softDelete } = useDataThemes()
 const activeTab = ref<'community' | 'official' | 'created'>('official')
 const search = ref('')
 const currentPage = ref(1)
-const PER_PAGE = 6
+const PER_PAGE = 8
 
 // Per-tab state
 const items = ref<Tables<'themes'>[]>([])
@@ -39,8 +39,6 @@ async function fetchPage(tab: typeof activeTab.value, page: number, searchValue:
     let query = supabase
       .from('themes')
       .select('*', { count: 'exact' })
-      .order('name', { ascending: true })
-      .range(from, to)
 
     if (searchValue.trim()) {
       query = query.or(`name.ilike.%${searchValue}%,description.ilike.%${searchValue}%`)
@@ -64,8 +62,9 @@ async function fetchPage(tab: typeof activeTab.value, page: number, searchValue:
         break
     }
 
-    // Keep unmaintained hidden unless it's the user's currently active theme
-    if (tab !== 'created') {
+    // For official tab, keep unmaintained hidden unless it's the user's currently active theme.
+    // For community and created tabs, always show unmaintained but sort them last.
+    if (tab === 'official') {
       const activeId = activeTheme.value?.id
       if (activeId) {
         query = query.or(`is_unmaintained.eq.false,id.eq.${activeId}`)
@@ -73,7 +72,13 @@ async function fetchPage(tab: typeof activeTab.value, page: number, searchValue:
       else {
         query = query.eq('is_unmaintained', false)
       }
+      query = query.order('name', { ascending: true })
     }
+    else {
+      query = query.order('is_unmaintained', { ascending: true }).order('name', { ascending: true })
+    }
+
+    query = query.range(from, to)
 
     const { data, count, error: fetchError } = await query
 
@@ -92,8 +97,6 @@ async function fetchPage(tab: typeof activeTab.value, page: number, searchValue:
     loading.value = false
   }
 }
-
-const visibleItems = computed(() => items.value)
 
 const defaultCardMatchesSearch = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -138,9 +141,11 @@ onMounted(() => {
   void fetchPage(activeTab.value, currentPage.value, search.value)
 })
 
-// Only re-fetch when the active theme change affects visibility - i.e. when an
-// unmaintained theme is becoming or ceasing to be the active one.
+// On the official tab, unmaintained themes are hidden unless they are the active theme.
+// Re-fetch when the active theme changes to an unmaintained one or away from one.
 watch(() => activeTheme.value?.id, (newId, oldId) => {
+  if (activeTab.value !== 'official')
+    return
   const affectsVisibility
     = items.value.some(t => t.id === newId && t.is_unmaintained)
       || items.value.some(t => t.id === oldId && t.is_unmaintained)
@@ -182,7 +187,7 @@ defineExpose({ refresh })
       </template>
     </Tabs>
 
-    <Flex x-between y-center class="mb-s">
+    <Flex x-start y-center class="mb-s">
       <Input v-model="search" placeholder="Search themes..." class="search-input" />
     </Flex>
 
@@ -191,12 +196,11 @@ defineExpose({ refresh })
         <div v-for="i in 6" :key="i" class="theme-card-skeleton">
           <div class="skeleton-preview" />
           <div class="skeleton-content">
-            <Skeleton :height="22" width="55%" :radius="4" />
-            <Skeleton :height="12" width="90%" :radius="4" />
-            <Skeleton :height="12" width="65%" :radius="4" />
-            <Flex x-between y-center class="mt-s">
+            <Skeleton :height="24" width="55%" />
+            <Skeleton :height="20" width="80%" />
+            <Flex x-between y-center class="mt-m">
               <Skeleton :height="28" :width="96" :radius="8" />
-              <Skeleton :height="28" :width="72" :radius="4" />
+              <Skeleton :height="28" :width="72" />
             </Flex>
           </div>
         </div>
@@ -217,7 +221,7 @@ defineExpose({ refresh })
         />
 
         <ThemeCard
-          v-for="item in visibleItems"
+          v-for="item in items"
           :key="item.id"
           :item="item"
           :active-theme-id="activeTheme?.id"
@@ -228,7 +232,7 @@ defineExpose({ refresh })
       </template>
     </Grid>
 
-    <template v-if="!loading && visibleItems.length === 0">
+    <template v-if="!loading && items.length === 0">
       <Card class="card-bg">
         <Flex x-center y-center expand class="p-l">
           <Icon name="ph:paint-brush-bold" :size="24" />

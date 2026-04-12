@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, theme } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, Skeleton, theme } from '@dolanske/vui'
 import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
-import { truncate } from '@/lib/utils/formatting'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
 import TinyBadge from '../Shared/TinyBadge.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
@@ -43,27 +42,29 @@ const confirmDeprecate = ref(false)
       <Card>
         <template #header>
           <Flex column gap="xxs">
-            <strong class="text-color">{{ props.item.name }}</strong>
-            <p class="text-color-lighter">
-              {{ props.item.description ? truncate(props.item.description, 40) : 'Lorem dolan sit amon please just sit down...' }}
+            <strong>
+              <Skeleton class="text-skeleton" height="13px" width="80px" style="background-color: var(--color-text)" />
+            </strong>
+            <p>
+              <Skeleton class="text-skeleton" height="16px" width="120px" style="background-color: var(--color-text-lighter)" />
             </p>
           </Flex>
         </template>
         <template #header-end>
           <Flex gap="xs">
             <TinyBadge variant="info">
-              Cool
+              <Skeleton class="badge-skeleton" height="12px" width="24px" style="background-color: var(--color-text-blue)" />
             </TinyBadge>
             <TinyBadge variant="warning">
-              Theme
+              <Skeleton class="badge-skeleton" height="12px" width="36px" style="background-color: var(--color-text-yellow)" />
             </TinyBadge>
           </Flex>
         </template>
         <Alert variant="success" filled>
-          You have successfully looked
+          <Skeleton class="text-skeleton" height="16px" width="154px" style="background-color: var(--color-text-lighter)" />
         </Alert>
 
-        <div style="height:156px" />
+        <div style="height:167px" />
       </Card>
     </div>
 
@@ -192,6 +193,18 @@ const confirmDeprecate = ref(false)
       height: 16px;
       z-index: 2;
       background: linear-gradient(to top, rgba(8, 8, 8, 0.4), transparent);
+    }
+
+    :deep(.vui-skeleton) {
+      animation: none;
+
+      &.text-skeleton {
+        opacity: 0.25;
+      }
+
+      &.badge-skeleton {
+        opacity: 0.5;
+      }
     }
 
     :deep(.vui-card) {
