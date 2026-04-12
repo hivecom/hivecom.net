@@ -420,7 +420,7 @@ onUnmounted(() => stopConfetti())
       <template v-if="loading">
         <Flex gap="xl" expand y-start class="profile-header-skeleton__grid">
           <div class="profile-header-skeleton__avatar">
-            <Skeleton width="164px" height="164px" style="border-radius: 50%;" />
+            <Skeleton width="164px" height="164px" style="border-radius: var(--border-radius-pill);" />
           </div>
 
           <Flex column gap="s" expand>

@@ -419,7 +419,7 @@ defineExpose({ openJumpModal })
           :style="{ top: `${hoverFraction * 100}%` }"
         >
           <template v-for="(line, i) in tooltipText.split('\n')" :key="i">
-            <span :class="i === 0 ? 'discussion-timeline__tooltip-date' : 'discussion-timeline__tooltip-count'">{{ line }}</span>
+            <span :class="i === 0 ? 'block' : 'text-color-lighter block'">{{ line }}</span>
           </template>
         </div>
       </div>
@@ -437,7 +437,7 @@ defineExpose({ openJumpModal })
   <!-- Jump-to-date modal - sits outside aria-hidden wrapper -->
   <Modal
     :open="showJumpModal"
-    :size="isMobile ? 'screen' : 'l'"
+    :size="isMobile ? 'screen' : 'm'"
     :card="{ separators: true }"
     @close="showJumpModal = false"
   >
@@ -453,14 +453,14 @@ defineExpose({ openJumpModal })
         >
           <template #trigger>
             <Button variant="gray">
+              <template #start>
+                <Icon name="ph:calendar" />
+              </template>
               {{ jumpDate ? jumpDate.toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',
               }) : 'Pick a date' }}
-              <template #end>
-                <Icon name="ph:calendar" />
-              </template>
             </Button>
           </template>
         </Calendar>
@@ -545,8 +545,8 @@ defineExpose({ openJumpModal })
               :style="{ top: `${((seg.topFraction + seg.bottomFraction) / 2) * 100}%` }"
               @click="handleModalSegmentClick(seg)"
             >
-              <span class="timeline-jump-modal__label-date">{{ formatTooltip(seg.targetDate) }}</span>
-              <span class="timeline-jump-modal__label-count">{{ seg.label }}</span>
+              <span>{{ formatTooltip(seg.targetDate) }}</span>
+              <span>{{ seg.label }}</span>
             </button>
             <button
               v-for="(seg, i) in offtopicSegments"
@@ -555,8 +555,8 @@ defineExpose({ openJumpModal })
               :style="{ top: `${((seg.topFraction + seg.bottomFraction) / 2) * 100}%` }"
               @click="handleModalSegmentClick(seg)"
             >
-              <span class="timeline-jump-modal__label-date">{{ formatTooltip(seg.targetDate) }}</span>
-              <span class="timeline-jump-modal__label-count">{{ seg.label }}</span>
+              <span>{{ formatTooltip(seg.targetDate) }}</span>
+              <span>{{ seg.label }}</span>
             </button>
           </div>
         </div>
@@ -565,14 +565,6 @@ defineExpose({ openJumpModal })
         <span class="timeline-jump-modal__anchor">{{ formatLabel(end) }}</span>
       </div>
     </Flex>
-
-    <template #footer="{ close }">
-      <Flex x-end expand>
-        <Button @click="close">
-          Close
-        </Button>
-      </Flex>
-    </template>
   </Modal>
 </template>
 
@@ -585,7 +577,7 @@ defineExpose({ openJumpModal })
   &__track-area {
     display: flex;
     flex-direction: column;
-    max-width: 560px;
+    // max-width: 560px;
     width: 100%;
     margin: 0 auto;
     height: calc(86vh - 134px);
@@ -714,6 +706,7 @@ defineExpose({ openJumpModal })
     display: flex;
     align-items: center;
     justify-content: center;
+    transform: translateX(-1px);
     transition:
       opacity var(--transition),
       color var(--transition);
@@ -737,7 +730,7 @@ defineExpose({ openJumpModal })
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-xxs);
+    gap: var(--space-xs);
     user-select: none;
   }
 
@@ -791,6 +784,7 @@ defineExpose({ openJumpModal })
     background: transparent;
     position: relative;
     cursor: default;
+    transform: translateX(-1px);
 
     &--loading {
       opacity: 0.4;
@@ -862,7 +856,7 @@ defineExpose({ openJumpModal })
 
   &__track:hover &__bar:not(.discussion-timeline__bar--gap) {
     background-color: var(--color-border-strong);
-    width: 3px;
+    // width: 3px;
   }
 
   &__track:hover &__bar--gap {
@@ -913,7 +907,7 @@ defineExpose({ openJumpModal })
     background-color: var(--color-bg-raised);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-s);
-    padding: 2px var(--space-xs);
+    padding: var(--space-xs);
     font-size: var(--font-size-xxs);
     color: var(--color-text);
     pointer-events: none;
