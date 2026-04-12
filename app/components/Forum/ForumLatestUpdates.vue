@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
 import type { UseForumActivityFeedPaginatedOptions } from '@/composables/useForumActivityFeedPaginated'
-import { Badge, Button, Carousel, Flex, Sheet, Skeleton, Spinner } from '@dolanske/vui'
+import { Badge, Button, Carousel, Flex, Sheet, Skeleton, Spinner, Tooltip } from '@dolanske/vui'
 import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
@@ -255,9 +255,14 @@ onUnmounted(() => {
 
       <template v-else>
         <template v-for="(post, index) in props.latestPosts.slice(0, 16)" :key="post.id">
-          <div v-if="splitIndex !== null && index === splitIndex" class="forum__latest-divider">
-            <span class="text-color-accent">Last visited</span>
-          </div>
+          <Tooltip v-if="splitIndex !== null && index === splitIndex" :disabled="isMobile">
+            <div class="forum__latest-divider">
+              <Icon name="ph:clock" :size="16" />
+            </div>
+            <template #tooltip>
+              <p>You've caught up</p>
+            </template>
+          </Tooltip>
           <ForumLatestItem
             :post="post"
             :mention-lookup="props.mentionLookup"
@@ -294,9 +299,14 @@ onUnmounted(() => {
 
         <template v-else>
           <template v-for="(post, index) in sheetItems" :key="post.id">
-            <div v-if="sheetSplitIndex !== null && index === sheetSplitIndex" class="forum__latest-divider forum__latest-divider--sheet">
-              <span class="text-color-accent">Last visited</span>
-            </div>
+            <Tooltip v-if="sheetSplitIndex !== null && index === sheetSplitIndex" :disabled="isMobile">
+              <div class="forum__latest-divider forum__latest-divider--sheet">
+                <Icon name="ph:clock" :size="16" />
+              </div>
+              <template #tooltip>
+                <p>You've caught up</p>
+              </template>
+            </Tooltip>
             <ForumLatestItem
               :post="post"
               :mention-lookup="combinedMentionLookup"
@@ -354,32 +364,41 @@ onUnmounted(() => {
   position: relative;
   flex-shrink: 0;
   width: 2px;
-  background-color: var(--color-border-strong);
+  border: 1px dashed var(--color-border-strong);
   border-radius: 999px;
+  margin-inline: 4px;
+  z-index: 1;
+
+  &:after {
+    content: '';
+    z-index: -1;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 3px;
+    height: 32px;
+    transform: translate(-50%, -50%);
+    background-color: var(--color-bg);
+  }
 
   span {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    white-space: nowrap;
-    font-size: var(--font-size-xxs);
-    color: var(--color-text-lighter);
-    background-color: var(--color-bg);
-    padding: 0 var(--space-xxs);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    transform: translate(-50%, -50%);
+    padding-block: var(--space-s);
+    z-index: 2;
+    color: var(--color-accent);
   }
 
   &--sheet {
     width: 100%;
-    height: 2px;
     flex-direction: row;
     align-self: unset;
 
-    span {
-      transform: translate(-50%, -50%);
-      background-color: var(--color-bg-medium);
+    &:after {
+      height: 3px;
+      width: 34px;
     }
   }
 }
