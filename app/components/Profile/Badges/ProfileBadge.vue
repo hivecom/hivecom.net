@@ -56,7 +56,7 @@ const badgeTextureConfig: Record<BadgeVariant, { base: string, reflection: strin
   },
   bronze: {
     base: '/badges/copper.png',
-    reflection: '/badges/textures/reflection_metal.png',
+    reflection: '/badges/textures/scratches.png',
   },
 }
 
@@ -114,7 +114,7 @@ function renderTransform() {
 
   el.style.transform = `perspective(900px) translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, ${z.toFixed(2)}px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) scale(${tilt.currentScale.toFixed(4)})`
 
-  // Image layer parallax: higher rotation multiplier, lower translation to simulate proximity
+  // Image layer parallax: lower rotation to feel deeper/further away
   const hexStack = hexStackEl.value
   if (hexStack) {
     const imgMaxRotate = 6
@@ -124,6 +124,12 @@ function renderTransform() {
     const itx = tilt.currentX * imgMaxTranslate
     const ity = tilt.currentY * imgMaxTranslate
     hexStack.style.transform = `perspective(900px) translate3d(${itx.toFixed(2)}px, ${ity.toFixed(2)}px, 0px) rotateX(${irx.toFixed(2)}deg) rotateY(${iry.toFixed(2)}deg)`
+
+    // Shine stripe: position sweeps with X tilt, angle tilts with Y
+    const shinePos = (50 + tilt.currentX * 60).toFixed(2)
+    const shineAngle = (90 + tilt.currentY * 30).toFixed(2)
+    hexStack.style.setProperty('--shine-pos', `${shinePos}%`)
+    hexStack.style.setProperty('--shine-angle', `${shineAngle}deg`)
   }
 }
 
@@ -155,8 +161,11 @@ function tick(ts: number) {
 
   if (!isTiltActive.value && closeEnough) {
     el.style.transform = ''
-    if (hexStackEl.value)
+    if (hexStackEl.value) {
       hexStackEl.value.style.transform = ''
+      hexStackEl.value.style.removeProperty('--shine-pos')
+      hexStackEl.value.style.removeProperty('--shine-angle')
+    }
     rafId = null
     lastFrameTs = 0
     return
@@ -323,13 +332,12 @@ onBeforeUnmount(() => {
             alt=""
             decoding="async"
           >
-          <img
+          <div
             v-if="reflectionTextureSrc"
-            class="profile-badge__hex-image profile-badge__hex-image--reflection"
-            :src="reflectionTextureSrc"
-            alt=""
-            decoding="async"
-          >
+            class="profile-badge__hex-specular"
+            :style="{ '--specular-src': `url('${reflectionTextureSrc}')`,
+                      '--base-src': `url('${baseTextureSrc}')` }"
+          />
           <div class="profile-badge__hex-center">
             <slot name="hex">
               <div v-if="props.icon" class="profile-badge__icon profile-badge__icon--embossed">
@@ -522,14 +530,54 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-.profile-badge__hex-image--reflection {
+.profile-badge__hex-specular {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  mix-blend-mode: color-dodge;
   pointer-events: none;
+  mix-blend-mode: color-dodge;
+  background-image: var(--specular-src);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  // Stripe mask: a tight bright band that sweeps across as the badge tilts
+  -webkit-mask-image: linear-gradient(
+    var(--shine-angle, 90deg),
+    transparent 0%,
+    transparent calc(var(--shine-pos, 50%) - 22%),
+    rgba(0, 0, 0, 0.6) calc(var(--shine-pos, 50%) - 12%),
+    black var(--shine-pos, 50%),
+    rgba(0, 0, 0, 0.6) calc(var(--shine-pos, 50%) + 12%),
+    transparent calc(var(--shine-pos, 50%) + 22%),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    var(--shine-angle, 90deg),
+    transparent 0%,
+    transparent calc(var(--shine-pos, 50%) - 22%),
+    rgba(0, 0, 0, 0.6) calc(var(--shine-pos, 50%) - 12%),
+    black var(--shine-pos, 50%),
+    rgba(0, 0, 0, 0.6) calc(var(--shine-pos, 50%) + 12%),
+    transparent calc(var(--shine-pos, 50%) + 22%),
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity var(--transition-slow);
+}
+
+.profile-badge[data-tilt-active='true'] .profile-badge__hex-specular {
+  opacity: 1;
+}
+
+.profile-badge--shiny .profile-badge__hex-specular {
+  mix-blend-mode: color-dodge;
+  opacity: 0;
+  filter: hue-rotate(calc((var(--shine-pos, 50%) - 50%) * 2.4));
+}
+
+.profile-badge--shiny[data-tilt-active='true'] .profile-badge__hex-specular {
+  opacity: 1;
 }
 
 .profile-badge__hex-center {
