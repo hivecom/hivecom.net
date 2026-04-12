@@ -630,7 +630,7 @@ function getUserInitials(username: string): string {
 .online-dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
   background-color: var(--color-text-green) !important;
   display: inline-block;
 }

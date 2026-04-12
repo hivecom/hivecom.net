@@ -447,7 +447,7 @@ watchEffect(async () => {
   &__status-indicator {
     width: 8px;
     height: 8px;
-    border-radius: 50%;
+    border-radius: var(--border-radius-pill);
     flex-shrink: 0;
 
     &--healthy {

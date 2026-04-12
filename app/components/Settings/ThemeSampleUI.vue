@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Badge, Button, Card, Flex, Grid } from '@dolanske/vui'
+import UserDisplay from '../Shared/UserDisplay.vue'
 </script>
 
 <template>
@@ -103,6 +104,8 @@ import { Badge, Button, Card, Flex, Grid } from '@dolanske/vui'
 
       <template #footer>
         <Flex x-end>
+          <UserDisplay size="s" />
+          <div class="flex-1" />
           <Button size="s">
             Cancel
           </Button>

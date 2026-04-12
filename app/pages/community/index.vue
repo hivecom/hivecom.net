@@ -590,7 +590,7 @@ watch(user, () => {
     justify-content: center;
     width: 80px;
     height: 80px;
-    border-radius: 50%;
+    border-radius: var(--border-radius-pill);
     background: linear-gradient(135deg, var(--color-accent-weak), var(--color-accent-alpha));
     color: var(--color-accent);
     margin: 0 auto;
@@ -626,7 +626,7 @@ watch(user, () => {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
   background: var(--color-bg-accent-weak);
   color: var(--color-accent);
   transition: all 0.3s ease;

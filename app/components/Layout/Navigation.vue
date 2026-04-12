@@ -390,7 +390,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
   &__links-hover {
     display: block;
-    border-radius: 990px;
+    border-radius: var(--border-radius-pill);
     position: absolute;
     height: 32px;
     top: 50%;
@@ -519,7 +519,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
         top: 0px;
         border: 2px solid var(--color-border);
         clip-path: inset(8px 8px 0 0);
-        border-radius: 999px;
+        border-radius: var(--border-radius-pill);
       }
 
       &:after {

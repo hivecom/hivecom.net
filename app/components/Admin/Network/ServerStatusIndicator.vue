@@ -48,7 +48,7 @@ const statusDescriptions = {
   display: inline-block;
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
 
   &.active {
     background-color: var(--color-text-green);

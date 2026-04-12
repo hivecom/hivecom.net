@@ -88,7 +88,7 @@ const attrs = useAttrs()
     v-if="showSkeleton"
     :width="getSizePixels(size)"
     :height="getSizePixels(size)"
-    style="border-radius: 50%;"
+    style="border-radius: var(--border-radius-pill);"
   />
 
   <!-- With preview hover + link -->

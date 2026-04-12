@@ -164,7 +164,7 @@ const isBelowSmall = useBreakpoint('<m')
         width: 8px;
         height: 8px;
         background-color: var(--color-text-red);
-        border-radius: 999px;
+        border-radius: var(--border-radius-pill);
         animation: shimmer 2s linear infinite;
       }
     }

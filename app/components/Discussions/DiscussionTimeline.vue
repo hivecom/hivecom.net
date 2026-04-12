@@ -814,7 +814,7 @@ defineExpose({ openJumpModal })
     &--dot {
       width: 6px;
       height: 6px;
-      border-radius: 50%;
+      border-radius: var(--border-radius-pill);
       transform: translate(-50%, -50%);
     }
 
@@ -895,7 +895,7 @@ defineExpose({ openJumpModal })
     transform: translate(-50%, -50%);
     width: 8px;
     height: 8px;
-    border-radius: 50%;
+    border-radius: var(--border-radius-pill);
     background-color: var(--color-accent);
     // Ring cutout to visually separate from the track bar
     box-shadow: 0 0 0 2px var(--color-bg);

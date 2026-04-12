@@ -996,7 +996,7 @@ function openRawSnapshot() {
 .ts-viewer__channel-bullet {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
   background: var(--color-text-light);
   display: inline-block;
   flex-shrink: 0;

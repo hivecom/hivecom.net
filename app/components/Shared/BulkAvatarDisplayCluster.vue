@@ -140,7 +140,7 @@ defineExpose({
         class="bulk-avatar-display__avatar"
         :style="avatarStyleVars"
       >
-        <Skeleton :width="`${avatarSize}px`" :height="`${avatarSize}px`" style="border-radius: 50%;" />
+        <Skeleton :width="`${avatarSize}px`" :height="`${avatarSize}px`" style="border-radius: var(--border-radius-pill);" />
       </div>
     </Flex>
 
@@ -254,7 +254,7 @@ defineExpose({
     flex: 0 0 auto;
     width: var(--avatar-size, 40px);
     height: var(--avatar-size, 40px);
-    border-radius: 50%;
+    border-radius: var(--border-radius-pill);
     overflow: visible;
   }
 
@@ -266,7 +266,7 @@ defineExpose({
     transition:
       transform 0.2s ease,
       z-index 0.2s ease;
-    border-radius: 50%;
+    border-radius: var(--border-radius-pill);
     overflow: hidden;
     position: relative;
     z-index: 1;
@@ -297,7 +297,7 @@ defineExpose({
   &__link {
     display: block;
     text-decoration: none;
-    border-radius: 50%;
+    border-radius: var(--border-radius-pill);
 
     &:focus-visible {
       outline: 2px solid var(--color-accent);
@@ -311,7 +311,7 @@ defineExpose({
     justify-content: center;
     width: var(--avatar-size, 40px);
     height: var(--avatar-size, 40px);
-    border-radius: 50%;
+    border-radius: var(--border-radius-pill);
     background: var(--color-bg-subtle);
     border: 2px solid var(--color-bg);
     font-size: calc(var(--avatar-size, 40px) * 0.3);

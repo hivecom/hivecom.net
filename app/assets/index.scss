@@ -207,7 +207,7 @@ table td {
 }
 
 .vui-button-rounded {
-  border-radius: 100%;
+  border-radius: var(--border-radius-pill);
 }
 
 .vui-breadcrumbs li {
@@ -505,12 +505,13 @@ code {
   gap: var(--space-m) !important;
 }
 
+// TODO: remove this once vui ships the defaults
 input[type='range'] {
   appearance: none;
   display: block;
   /* width: 100%; */
   height: 20px;
-  border-radius: 9999px;
+  border-radius: var(--border-radius-pill);
   overflow: hidden;
   background-color: transparent;
 
@@ -523,11 +524,11 @@ input[type='range'] {
       var(--color-border-strong) var(--range-progress, 0%),
       var(--color-border-strong) 100%
     );
-    border-radius: 100px;
+    border-radius: var(--border-radius-pill);
   }
   &::-moz-range-track {
     background-color: var(--color-border-strong);
-    border-radius: 100px;
+    border-radius: var(--border-radius-pill);
   }
 
   // Thumb
@@ -541,7 +542,7 @@ input[type='range'] {
   // Progress fill (Firefox only; use linear-gradient on track for Chrome/Safari)
   &::-moz-range-progress {
     background-color: var(--color-accent);
-    border-radius: 100px;
+    border-radius: var(--border-radius-pill);
   }
 }
 
@@ -549,15 +550,6 @@ input[type='range'] {
   height: auto !important;
   min-height: var(--interactive-el-height);
   padding-block: var(--space-xs);
-}
-
-// TODO: remove once vui ships it
-.vui-input-limit {
-  display: block;
-  margin-top: 6px;
-  text-align: left;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-lighter);
 }
 
 @include meta.load-css('./utilities.scss');

@@ -96,7 +96,7 @@ const sortedData = computed<FormattedEvents>(() => {
     .item-indicator {
       width: 8px;
       height: 8px;
-      border-radius: 50%;
+      border-radius: var(--border-radius-pill);
       background-color: var(--color-border-strong);
     }
 

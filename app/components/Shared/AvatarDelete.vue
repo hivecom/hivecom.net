@@ -156,7 +156,7 @@ function handleMouseLeave() {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
   display: flex;
   align-items: center;
   justify-content: center;

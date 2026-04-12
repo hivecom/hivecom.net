@@ -215,6 +215,7 @@ const RADIUS_TOKENS: ScaleConfig['tokens'] = [
   { varName: '--border-radius-s', defaultValue: 5 },
   { varName: '--border-radius-m', defaultValue: 8 },
   { varName: '--border-radius-l', defaultValue: 12 },
+  { varName: '--border-radius-pill', defaultValue: 99 },
 ]
 
 const TRANSITION_TOKENS: ScaleConfig['tokens'] = [

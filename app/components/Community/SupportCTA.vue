@@ -170,7 +170,7 @@ onMounted(async () => {
 .support-card__sheen {
   position: absolute;
   inset: 12% 8%;
-  border-radius: 999px;
+  border-radius: var(--border-radius-pill);
   opacity: 0.2;
   filter: blur(36px);
   transform: scale(1.1);

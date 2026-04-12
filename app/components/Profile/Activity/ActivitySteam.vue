@@ -333,7 +333,7 @@ watch(() => props.profileId, () => {
   display: inline-block;
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
 }
 
 .activity-item__game-icon {

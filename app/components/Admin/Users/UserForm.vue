@@ -448,7 +448,6 @@ async function handleAvatarDelete() {
 
 // Character counts for text areas
 const markdownCharCount = computed(() => userForm.value.markdown.length)
-const introductionCharCount = computed(() => userForm.value.introduction.length)
 
 type CountrySelectOption = (typeof COUNTRY_SELECT_OPTIONS)[number]
 
@@ -567,30 +566,12 @@ function clearBirthday() {
           v-model="userForm.username"
           expand
           label="Username"
+          hint="Username can only contain Latin letters, numbers, and underscores"
           placeholder="Enter username"
-          :valid="usernameValidation.valid"
-          :error="usernameValidation.error"
-          :maxlength="USERNAME_LIMIT"
+          :limit="USERNAME_LIMIT"
           :disabled="!canEditForm"
-        >
-          <template #after>
-            <Flex expand x-between>
-              <div v-if="!usernameValidation.valid && userForm.username" class="help-text error">
-                <Icon name="ph:warning" />
-                {{ usernameValidation.error }}
-              </div>
-              <div v-else class="help-text">
-                <Icon name="ph:info" />
-                Username can only contain Latin letters, numbers, and underscores
-              </div>
-              <div class="character-count">
-                <span :class="{ 'over-limit': userForm.username.length > USERNAME_LIMIT }">
-                  {{ userForm.username.length }}/{{ USERNAME_LIMIT }}
-                </span>
-              </div>
-            </Flex>
-          </template>
-        </Input>
+          :errors="usernameValidation.error ? [usernameValidation.error] : undefined"
+        />
 
         <!-- Role Management Section -->
         <Flex column gap="m" expand>
@@ -640,25 +621,11 @@ function clearBirthday() {
             label="Introduction"
             placeholder="Short introduction about the user"
             :rows="3"
-            :maxlength="INTRODUCTION_LIMIT"
+            :limit="INTRODUCTION_LIMIT"
             :disabled="!canEditForm"
-            :valid="introductionValidation.valid"
-            :error="introductionValidation.error"
-          >
-            <template #after>
-              <Flex x-between>
-                <div class="help-text">
-                  <Icon name="ph:info" />
-                  HTML tags are not allowed
-                </div>
-                <div class="character-count">
-                  <span :class="{ 'over-limit': introductionCharCount > INTRODUCTION_LIMIT }">
-                    {{ introductionCharCount }}/{{ INTRODUCTION_LIMIT }}
-                  </span>
-                </div>
-              </Flex>
-            </template>
-          </Textarea>
+            :errors="introductionValidation.error ? [introductionValidation.error] : undefined"
+          />
+
           <Flex column gap="xs">
             <label class="text-m">Avatar</label>
             <!-- Avatar Management (Edit Mode Only) -->
@@ -781,64 +748,31 @@ function clearBirthday() {
           v-model="userForm.patreon_id"
           expand
           label="Patreon ID"
+          hint="Numeric ID from Patreon user profile (optional)"
           placeholder="Enter Patreon ID"
-          :valid="patreonIdValidation.valid"
-          :error="patreonIdValidation.error"
+          :errors="patreonIdValidation.error ? [patreonIdValidation.error] : undefined"
           :disabled="!canEditForm"
-        >
-          <template #after>
-            <div v-if="!patreonIdValidation.valid && userForm.patreon_id" class="help-text error">
-              <Icon name="ph:warning" />
-              {{ patreonIdValidation.error }}
-            </div>
-            <div v-else class="help-text">
-              <Icon name="ph:info" />
-              Numeric ID from Patreon user profile (optional)
-            </div>
-          </template>
-        </Input>
+        />
 
         <Input
           v-model="userForm.discord_id"
           expand
           label="Discord ID"
+          hint="Discord user ID (17-19 digits, optional)"
           placeholder="Enter Discord ID"
-          :valid="discordIdValidation.valid"
-          :error="discordIdValidation.error"
+          :errors="discordIdValidation.error ? [discordIdValidation.error] : undefined"
           :disabled="!canEditForm"
-        >
-          <template #after>
-            <div v-if="!discordIdValidation.valid && userForm.discord_id" class="help-text error">
-              <Icon name="ph:warning" />
-              {{ discordIdValidation.error }}
-            </div>
-            <div v-else class="help-text">
-              <Icon name="ph:info" />
-              Discord user ID (17-19 digits, optional)
-            </div>
-          </template>
-        </Input>
+        />
 
         <Input
           v-model="userForm.steam_id"
           expand
           label="Steam ID"
+          hint="Steam ID64 format (17 digits, optional)"
           placeholder="Enter Steam ID"
-          :valid="steamIdValidation.valid"
-          :error="steamIdValidation.error"
+          :errors="steamIdValidation.error ? [steamIdValidation.error] : undefined"
           :disabled="!canEditForm"
-        >
-          <template #after>
-            <div v-if="!steamIdValidation.valid && userForm.steam_id" class="help-text error">
-              <Icon name="ph:warning" />
-              {{ steamIdValidation.error }}
-            </div>
-            <div v-else class="help-text">
-              <Icon name="ph:info" />
-              Steam ID64 format (17 digits, optional)
-            </div>
-          </template>
-        </Input>
+        />
       </Flex>
 
       <!-- Supporter Status Section -->

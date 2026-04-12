@@ -455,30 +455,12 @@ async function confirmAvatarDelete() {
               expand
               name="username"
               label="Username"
+              hint="Username can only contain Latin letters, numbers, and underscores"
               required
-              :valid="usernameValidation.valid"
-              :error="usernameValidation.error"
               placeholder="Enter your username"
-              :maxlength="USERNAME_LIMIT"
-            >
-              <template #after>
-                <Flex expand x-between>
-                  <div v-if="!usernameValidation.valid && profileForm.username" class="help-text error">
-                    <Icon name="ph:warning" />
-                    {{ usernameValidation.error }}
-                  </div>
-                  <div v-else class="help-text">
-                    <Icon name="ph:info" />
-                    Username can only contain Latin letters (A-Z), numbers, and underscores. Usernames are case-insensitive.
-                  </div>
-                  <div class="character-count">
-                    <span :class="{ 'over-limit': profileForm.username.length > USERNAME_LIMIT }">
-                      {{ profileForm.username.length }}/{{ USERNAME_LIMIT }}
-                    </span>
-                  </div>
-                </Flex>
-              </template>
-            </Input>
+              :limit="USERNAME_LIMIT"
+              :errors="usernameValidation.error ? [usernameValidation.error] : undefined"
+            />
           </Flex>
           <Flex expand class="profile-edit-form__website-container">
             <Input
@@ -760,7 +742,7 @@ async function confirmAvatarDelete() {
       &__image {
         width: 64px;
         height: 64px;
-        border-radius: 50%;
+        border-radius: var(--border-radius-pill);
         object-fit: cover;
         border: 2px solid var(--color-border);
       }
@@ -768,7 +750,7 @@ async function confirmAvatarDelete() {
       &__placeholder {
         width: 64px;
         height: 64px;
-        border-radius: 50%;
+        border-radius: var(--border-radius-pill);
         display: flex;
         align-items: center;
         justify-content: center;

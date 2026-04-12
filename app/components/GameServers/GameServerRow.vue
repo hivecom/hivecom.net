@@ -175,7 +175,7 @@ const isCompactLayout = useBreakpoint('<s')
 .gameserver-indicator {
   width: 10px;
   height: 10px;
-  border-radius: 99px;
+  border-radius: var(--border-radius-pill);
   flex-shrink: 0;
 
   &.healthy,

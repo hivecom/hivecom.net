@@ -473,7 +473,7 @@ onUnmounted(() => {
     &--avatar {
       width: 240px;
       height: 240px;
-      border-radius: 50%;
+      border-radius: var(--border-radius-pill);
     }
 
     &:hover .file-upload__overlay {
@@ -526,7 +526,7 @@ onUnmounted(() => {
     &--avatar {
       width: 212px;
       height: 212px;
-      border-radius: 50%;
+      border-radius: var(--border-radius-pill);
       padding: var(--space-m);
       min-height: auto;
     }

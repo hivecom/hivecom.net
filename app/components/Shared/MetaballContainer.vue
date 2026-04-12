@@ -128,7 +128,7 @@ const containerStyle = computed(() => {
 
 .orb {
   position: absolute;
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
   filter: blur(16px);
   mix-blend-mode: screen;
   opacity: 0.88;

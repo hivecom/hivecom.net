@@ -70,7 +70,7 @@ const lastSeen = computed(() => formatDate(props.profile?.last_seen))
 
     <div v-if="summaryLoading" class="profile-summary-card__loading">
       <Flex gap="m" y-center>
-        <Skeleton width="72px" height="72px" style="border-radius: 50%;" />
+        <Skeleton width="72px" height="72px" style="border-radius: var(--border-radius-pill);" />
         <div class="profile-summary-card__loading-meta">
           <Skeleton width="120px" height="18px" style="margin-bottom: var(--space-xs);" />
           <Skeleton width="80px" height="16px" />
@@ -160,7 +160,7 @@ const lastSeen = computed(() => formatDate(props.profile?.last_seen))
 
   &__avatar-link {
     display: inline-flex;
-    border-radius: 999px;
+    border-radius: var(--border-radius-pill);
     transition: transform 0.2s ease;
 
     &:hover,

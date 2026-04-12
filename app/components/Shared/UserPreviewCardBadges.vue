@@ -237,7 +237,7 @@ const hasBadges = computed(() => badgeEntries.value.length > 0)
 
 .user-preview-card-badges__overflow {
   padding: 0 var(--space-xs);
-  border-radius: 999px;
+  border-radius: var(--border-radius-pill);
   background: rgba(255, 255, 255, 0.08);
   color: var(--color-text-light);
 }

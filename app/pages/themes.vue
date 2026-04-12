@@ -21,8 +21,8 @@ function onEditTheme(themeToEdit: Tables<'themes'>) {
 </script>
 
 <template>
-  <ClientOnly>
-    <div class="page">
+  <div class="page">
+    <ClientOnly>
       <section class="page-title">
         <h1>
           Theming
@@ -86,8 +86,8 @@ function onEditTheme(themeToEdit: Tables<'themes'>) {
         :editing="editedTheme"
         @close="themeEditorOpen = false; editedTheme = null;"
       />
-    </div>
-  </ClientOnly>
+    </ClientOnly>
+  </div>
 </template>
 
 <style lang="scss" scoped>

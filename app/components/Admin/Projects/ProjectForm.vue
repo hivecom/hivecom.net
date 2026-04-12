@@ -559,7 +559,7 @@ function handleTagInputEnter() {
       min-height: auto;
       width: 16px;
       height: 16px;
-      border-radius: 50%;
+      border-radius: var(--border-radius-pill);
       background: rgba(0, 0, 0, 0.2);
       color: currentColor;
 

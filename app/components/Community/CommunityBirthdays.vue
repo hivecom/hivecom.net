@@ -104,7 +104,7 @@ function getUserInitials(username: string): string {
 }
 
 .birthday-avatar-ring {
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
   padding: 2px;
   background: var(--shiny-gradient);
   background-size: 200% 200%;

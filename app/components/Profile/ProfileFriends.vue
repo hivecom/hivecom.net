@@ -284,11 +284,11 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
 .friends-loading__avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
   overflow: hidden;
 }
 
 .friends-loading__avatar-skeleton {
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
 }
 </style>

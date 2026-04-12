@@ -23,7 +23,7 @@ const isBelowSmall = useBreakpoint('<s')
           </div>
           <!-- User display skeleton -->
           <Flex gap="s" y-center>
-            <Skeleton :width="32" :height="32" style="border-radius: 50%;" />
+            <Skeleton :width="32" :height="32" style="border-radius: var(--border-radius-pill);" />
             <Skeleton :width="80" :height="20" :radius="4" />
           </Flex>
         </Flex>

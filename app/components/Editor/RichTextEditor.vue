@@ -1101,7 +1101,6 @@ async function handleSubmit() {
           ref="plain-textarea"
           class="plain-textarea"
           :rows="1"
-          :style="plainTextStartHeight ? { height: plainTextStartHeight } : undefined"
           :value="plainTextContent"
           :placeholder="placeholder"
           @input="handlePlainTextInput(($event.target as HTMLTextAreaElement).value)"
@@ -1195,7 +1194,7 @@ async function handleSubmit() {
     </div>
 
     <!-- Limit & errors -->
-    <p v-if="limit && editor" class="vui-input-limit" style="margin-top: var(--space-xxs)">
+    <p v-if="limit && editor" class="vui-input-limit">
       {{ `${editor.storage.characterCount.characters()} / ${limit}` }}
     </p>
 

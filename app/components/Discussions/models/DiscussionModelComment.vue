@@ -586,7 +586,7 @@ watch(
     display: flex;
     align-items: center;
     text-align: left;
-    border-radius: 99px;
+    border-radius: var(--border-radius-pill);
     background-color: var(--color-bg-raised);
     position: relative;
     width: fit-content;
@@ -616,7 +616,7 @@ watch(
     }
 
     &--deleted {
-      border-radius: 99px;
+      border-radius: var(--border-radius-pill);
       cursor: default;
       pointer-events: none;
 

@@ -688,7 +688,7 @@ onBeforeMount(() => {
 .security-panel__icon {
   width: 52px;
   height: 52px;
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
   background: var(--color-bg, #0e1018);
   display: flex;
   align-items: center;

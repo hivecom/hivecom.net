@@ -175,7 +175,7 @@ async function signOut() {
   }
 
   img {
-    border-radius: 999px;
+    border-radius: var(--border-radius-pill);
   }
 
   &__info {

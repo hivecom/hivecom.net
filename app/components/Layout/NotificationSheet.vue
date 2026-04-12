@@ -214,7 +214,7 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
     right: 4px;
     width: 12px;
     height: 12px;
-    border-radius: 50%;
+    border-radius: var(--border-radius-pill);
     background-color: var(--color-text-green);
     border: 2px solid var(--color-bg);
     pointer-events: none;

@@ -365,7 +365,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   width: 2px;
   border: 1px dashed var(--color-border-strong);
-  border-radius: 999px;
+  border-radius: var(--border-radius-pill);
   margin-inline: 4px;
   z-index: 1;
 

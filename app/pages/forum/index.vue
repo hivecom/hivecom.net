@@ -1073,7 +1073,7 @@ h5 {
     justify-content: center;
     width: 40px;
     height: 40px;
-    border-radius: 16px;
+    border-radius: var(--border-radius-l);
     border: 1px solid var(--color-border);
     position: relative;
 
@@ -1088,7 +1088,7 @@ h5 {
       right: -3px;
       width: 8px;
       height: 8px;
-      border-radius: 50%;
+      border-radius: var(--border-radius-pill);
       background: var(--color-accent);
       border: 2px solid var(--color-bg);
     }
@@ -1161,7 +1161,7 @@ h5 {
   .forum__category-post--icon {
     width: 32px;
     height: 32px;
-    border-radius: 12px;
+    border-radius: var(--border-radius-l);
     align-self: start;
 
     .iconify {

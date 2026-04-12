@@ -247,7 +247,7 @@ const bannerSurfaceStyle = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: var(--border-radius-pill);
   color: var(--color-text-light);
   transition: var(--transition-fast);
 
@@ -290,9 +290,9 @@ const bannerSurfaceStyle = computed(() => {
   left: 12px;
   background-color: var(--color-bg-lowered);
   border: 1px solid var(--color-border-weak);
-  color: white;
+  color: var(--color-text-invert);
   padding: 5px 8px;
-  border-radius: 999px;
+  border-radius: var(--border-radius-pill);
   font-size: var(--font-size-xxs);
   text-transform: uppercase;
 }

@@ -162,7 +162,7 @@ onBeforeMount(() => {
         <div class="alert-row">
           <Flex class="alert-severity" y-center gap="xs" expand>
             <span style="width: 10px" />
-            <Skeleton :height="32" :width="32" style="border-radius: 50%;" />
+            <Skeleton :height="32" :width="32" style="border-radius: var(--border-radius-pill);" />
           </Flex>
           <div class="alert-content">
             <Skeleton :height="16" width="60%" />
