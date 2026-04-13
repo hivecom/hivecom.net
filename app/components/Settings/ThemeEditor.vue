@@ -13,6 +13,7 @@ const { open, editing } = defineProps<Props>()
 
 const emit = defineEmits<{
   close: []
+  saved: []
 }>()
 </script>
 
@@ -27,7 +28,7 @@ const emit = defineEmits<{
         v-if="open"
         :editing
         @close="emit('close')"
-        @saved="emit('close')"
+        @saved="emit('saved'); emit('close')"
       />
     </div>
   </Modal>

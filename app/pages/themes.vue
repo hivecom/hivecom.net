@@ -5,6 +5,8 @@ import ThemeEditor from '@/components/Settings/ThemeEditor.vue'
 import ThemeGallery from '@/components/Settings/ThemeGallery.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+const galleryRef = ref<InstanceType<typeof ThemeGallery> | null>(null)
+
 // Placeholder theme options for the planned Theme selector
 // const { themes, loading: themesLoading } = useDataThemes()
 const { activeTheme, setActiveTheme, selectedVariant, variantOptions } = useUserTheme()
@@ -86,6 +88,7 @@ function personalizeTheme() {
       </Card>
 
       <ThemeGallery
+        ref="galleryRef"
         @create="themeEditorOpen = true"
         @edit="onEditTheme"
       />
@@ -94,6 +97,7 @@ function personalizeTheme() {
         :open="themeEditorOpen"
         :editing="editedTheme"
         @close="themeEditorOpen = false; editedTheme = null;"
+        @saved="galleryRef?.refresh()"
       />
     </ClientOnly>
   </div>
