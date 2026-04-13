@@ -3,9 +3,19 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Divider, Dropdown, DropdownItem, pushToast, Tooltip } from '@dolanske/vui'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { slugify } from '@/lib/utils/formatting'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
 import ForumModalAddDiscussion from './ForumModalAddDiscussion.vue'
 import ForumModalAddTopic from './ForumModalAddTopic.vue'
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  update: [data: Props['data']]
+  remove: [id: string]
+}>()
+
+const SLUG_DATE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}-/
 
 interface ModalControls {
   hideDiscussionTabs?: boolean
@@ -20,11 +30,6 @@ type Props
     data: Tables<'discussions'>
   }
 
-const props = defineProps<Props>()
-const emit = defineEmits<{
-  update: [data: Props['data']]
-  remove: [id: string]
-}>()
 const dropdownRef = useTemplateRef('dropdownRef')
 const supabase = useSupabaseClient()
 
@@ -177,8 +182,145 @@ const linkedDiscussionReason = computed(() => {
     || discussion.referendum_id,
   )
 
-  return isLinked ? 'This discussion is linked to an entity and cannot be deleted.' : null
+  return isLinked ? 'This discussion is linked to an entity and cannot be re-created or deleted.' : null
 })
+
+// Re-create
+const recreateConfirm = ref(false)
+const recreateLoading = ref(false)
+
+const recreateDescription = computed(() => {
+  if (props.table !== 'discussions')
+    return ''
+  const discussion = props.data as Tables<'discussions'>
+  const created = new Date(discussion.created_at)
+  const suffix = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`
+  return `This will lock, unpin, and archive "${discussion.title ?? 'this discussion'}" - renaming its slug with a ${suffix}- prefix - then create a fresh discussion with the same title, description, and content. This cannot be undone.`
+})
+
+async function handleRecreate() {
+  if (props.table !== 'discussions')
+    return
+
+  recreateLoading.value = true
+  dropdownRef.value?.close()
+
+  const discussion = props.data as Tables<'discussions'>
+
+  // Build the YYYY-MM-DD suffix from the discussion's creation date
+  const created = new Date(discussion.created_at)
+  const suffix = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`
+
+  const oldTitle = discussion.title ?? 'Untitled'
+  const archivedTitle = `${oldTitle} (${suffix})`
+  const baseSlug = discussion.slug ?? slugify(oldTitle)
+  // Strip any existing YYYY-MM-DD prefix from the slug before prepending
+  const cleanSlug = baseSlug.replace(SLUG_DATE_PREFIX_RE, '')
+  const archivedSlugBase = `${suffix}-${cleanSlug}`
+
+  // Resolve a free archived slug - append -2, -3, etc. on conflict
+  let archivedSlug = archivedSlugBase
+  {
+    let counter = 1
+    while (true) {
+      const { data: existing } = await supabase
+        .from('discussions')
+        .select('id')
+        .eq('slug', archivedSlug)
+        .neq('id', discussion.id)
+        .limit(1)
+      if (!existing || existing.length === 0)
+        break
+      counter++
+      archivedSlug = `${archivedSlugBase}-${counter}`
+    }
+  }
+
+  // Resolve a free slug for the new discussion - the original slug may already
+  // be taken if this discussion was previously re-created
+  let newSlug = baseSlug
+  {
+    let counter = 1
+    while (true) {
+      const { data: existing } = await supabase
+        .from('discussions')
+        .select('id')
+        .eq('slug', newSlug)
+        .limit(1)
+      if (!existing || existing.length === 0)
+        break
+      counter++
+      newSlug = `${baseSlug}-${counter}`
+    }
+  }
+
+  try {
+    // 1. Update the old discussion: lock, unsticky, archive, rename
+    const { data: archivedData, error: archiveError } = await supabase
+      .from('discussions')
+      .update({
+        is_locked: true,
+        is_sticky: false,
+        is_archived: true,
+        title: archivedTitle,
+        slug: archivedSlug,
+      })
+      .eq('id', discussion.id)
+      .select()
+      .single()
+
+    if (archiveError) {
+      pushToast('Failed to archive the original discussion', { description: archiveError.message })
+      recreateLoading.value = false
+      return
+    }
+
+    // Invalidate the old slug key now that the slug has changed - the old URL
+    // should no longer serve a cache hit for the pre-rename data.
+    discussionCache.invalidate(discussion.id, discussion.slug)
+    // Warm the cache with the renamed archived record so /forum/YYYY-MM-DD-slug
+    // is a cache hit if someone navigates there.
+    discussionCache.set(archivedData)
+
+    // 2. Create the new discussion with the original title, description, content and topic
+    const { data: newData, error: createError } = await supabase
+      .from('discussions')
+      .insert({
+        title: oldTitle,
+        slug: newSlug,
+        description: discussion.description,
+        markdown: discussion.markdown,
+        discussion_topic_id: discussion.discussion_topic_id,
+        is_draft: false,
+        is_locked: false,
+        is_sticky: false,
+        is_archived: false,
+        is_nsfw: discussion.is_nsfw ?? false,
+      })
+      .select()
+      .single()
+
+    if (createError) {
+      pushToast('Failed to create the new discussion', { description: createError.message })
+      recreateLoading.value = false
+      return
+    }
+
+    // Warm the cache with the new discussion so the navigation below is an
+    // immediate cache hit rather than a fresh DB round-trip.
+    discussionCache.set(newData)
+
+    pushToast(`Re-created discussion "${oldTitle}"`)
+    emit('update', props.data)
+    recreateConfirm.value = false
+    recreateLoading.value = false
+
+    await navigateTo(`/forum/${newData.slug ?? newData.id}`)
+  }
+  catch {
+    recreateLoading.value = false
+  }
+}
 
 // Delete
 const deleteLoading = ref(false)
@@ -256,6 +398,22 @@ function handleDelete() {
       <DropdownItem @click="showEditModal = true">
         Edit
       </DropdownItem>
+      <!-- Re-create - discussions only, admin/mod only, blocked for entity-linked discussions -->
+      <template v-if="props.table === 'discussions' && (user?.role === 'admin' || user?.role === 'moderator')">
+        <template v-if="linkedDiscussionReason">
+          <Tooltip placement="left">
+            <template #tooltip>
+              <p>{{ linkedDiscussionReason }}</p>
+            </template>
+            <DropdownItem class="forum__item-actions-disabled" @click.stop.prevent>
+              Re-create
+            </DropdownItem>
+          </Tooltip>
+        </template>
+        <DropdownItem v-else @click="recreateConfirm = true; dropdownRef?.close()">
+          Re-create
+        </DropdownItem>
+      </template>
       <!-- Topic-only: create sub-topic and create discussion shortcuts -->
       <template v-if="props.table === 'discussion_topics'">
         <Divider :size="0" margin="8px 0" />
@@ -313,6 +471,17 @@ function handleDelete() {
         {{ archiveError }}
       </Alert>
     </ConfirmModal>
+
+    <!-- Confirmation modal for re-create -->
+    <ConfirmModal
+      v-model:open="recreateConfirm"
+      :confirm-loading="recreateLoading"
+      destructive
+      confirm-text="Re-create"
+      title="Re-create discussion"
+      :description="recreateDescription"
+      @confirm="handleRecreate"
+    />
 
     <ConfirmModal
       v-model:open="deleteConfirm"

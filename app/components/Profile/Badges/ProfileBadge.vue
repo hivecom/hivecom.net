@@ -398,6 +398,8 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .profile-badge {
+  user-select: none;
+  touch-action: none;
   --badge-surface: linear-gradient(135deg, #161625 0%, #0f111c 100%);
   --badge-border: rgba(255, 255, 255, 0.08);
   --badge-glow: rgba(255, 255, 255, 0.08);

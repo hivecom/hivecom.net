@@ -26,6 +26,10 @@ import { formatDate } from '@/lib/utils/date'
 
 dayjs.extend(relativeTime)
 
+definePageMeta({
+  key: route => route.params.id as string,
+})
+
 type DiscussionWithContext = Tables<'discussions'> & {
   profile?: Pick<Tables<'profiles'>, 'id' | 'username'> | null
   project?: Pick<Tables<'projects'>, 'id' | 'title'> | null

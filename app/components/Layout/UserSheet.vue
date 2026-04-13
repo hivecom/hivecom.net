@@ -111,6 +111,11 @@ async function signOut() {
             Profile
           </NuxtLink>
 
+          <NuxtLink to="/themes" class="user-sheet__nav-item">
+            <Icon name="ph:circle-half-tilt-fill" :size="18" />
+            Appearance
+          </NuxtLink>
+
           <NuxtLink to="/profile/settings" class="user-sheet__nav-item">
             <Icon name="ph:gear-six" :size="18" />
             Settings

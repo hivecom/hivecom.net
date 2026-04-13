@@ -6,12 +6,15 @@ import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, 
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useDataUser } from '@/composables/useDataUser'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { flattenTopicsTree } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
+import TinyBadge from '../Shared/TinyBadge.vue'
 
 const props = defineProps<Props>()
 
@@ -29,12 +32,14 @@ interface Props {
   drafts?: Tables<'discussions'>[]
   hideTabs?: boolean
   defaultTopicId?: string | null
+  startOnDrafts?: boolean
 }
 
 const isMobile = useBreakpoint('<s')
 
 const supabase = useSupabaseClient()
 const userId = useUserId()
+const discussionCache = useDiscussionCache()
 
 // Use the cached user data composable - role is already fetched and shared
 // with ForumItemActions and the parent page. No extra DB queries needed.
@@ -44,6 +49,8 @@ const { user: cachedUser } = useDataUser(userId, { includeRole: true })
 const canUpdateDiscussions = computed(() =>
   cachedUser.value?.role === 'admin' || cachedUser.value?.role === 'moderator',
 )
+
+const { settings } = useDataUserSettings()
 
 const search = ref('')
 const editingDraft = ref<Tables<'discussions'> | null>(null)
@@ -83,7 +90,10 @@ const topicOptions = computed(() => {
 
   return flattenTopicsTree(
     resolvedTopics.value.filter(item =>
-      item.id === pinnedId || (!item.is_archived && (canUpdateDiscussions.value || !item.is_locked)),
+      item.id === pinnedId || (
+        (settings.value.show_forum_archived || !item.is_archived)
+        && (canUpdateDiscussions.value || !item.is_locked)
+      ),
     ),
   )
     .filter(({ topic, path }) => search.value ? searchString([topic.name, path], search.value) : true)
@@ -261,6 +271,14 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
 
     pushToast(`${isEditing.value ? 'Updated' : 'Created'} discussion ${payload.title}${payload.is_draft ? ' (draft)' : ''}`)
 
+    // Invalidate the old cache entry before writing the new one so stale slug
+    // and id keys don't survive a title/slug/topic change.
+    if (isEditing.value && editedDiscussion.value) {
+      discussionCache.invalidate(editedDiscussion.value.id, editedDiscussion.value.slug)
+    }
+    // Warm the cache with the freshly saved row.
+    discussionCache.set(data[0])
+
     if (payload.is_draft) {
       const existingIndex = drafts.value.findIndex(d => d.id === data[0].id)
       if (existingIndex === -1) {
@@ -271,8 +289,9 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
       }
       emit('draftUpdated')
 
-      // Redirect to the draft page
-      navigateTo(`/forum/${data[0].slug ?? data[0].id}`)
+      // Redirect to the draft page - deferred so the modal teardown completes first
+      await nextTick()
+      await navigateTo(`/forum/${data[0].slug ?? data[0].id}`)
     }
     else {
       if (drafts.value.some(d => d.id === data[0].id)) {
@@ -281,9 +300,21 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
       }
       emit('created', data[0])
       emit('close')
-      // Navigate to the newly published discussion (skip when editing an existing post)
-      if (!isEditing.value) {
-        navigateTo(`/forum/${data[0].slug ?? data[0].id}`)
+      // Defer navigation until after the modal has had a tick to tear down.
+      // Navigating synchronously while the modal is still mounted causes a
+      // null-node unmount crash in Vue's patch cycle.
+      await nextTick()
+      // Navigate to the new slug when editing and the slug changed, or to the
+      // newly published discussion when creating.
+      if (isEditing.value && editedDiscussion.value) {
+        const oldIdentifier = editedDiscussion.value.slug ?? editedDiscussion.value.id
+        const newIdentifier = data[0].slug ?? data[0].id
+        if (oldIdentifier !== newIdentifier) {
+          await navigateTo(`/forum/${newIdentifier}`)
+        }
+      }
+      else {
+        await navigateTo(`/forum/${data[0].slug ?? data[0].id}`)
       }
     }
   }
@@ -306,7 +337,13 @@ watch(() => props.open, (open) => {
 const draftsLoaded = ref(false)
 
 watch(() => props.open, (isOpen) => {
-  if (!isOpen || draftsLoaded.value || !userId.value)
+  if (!isOpen || !userId.value)
+    return
+
+  if (props.startOnDrafts && showTabs.value)
+    activeTab.value = 'drafts'
+
+  if (draftsLoaded.value)
     return
 
   draftsLoaded.value = true
@@ -356,7 +393,11 @@ function deleteDraft() {
     })
 }
 
-// Clear form when modal is closed
+// Clear form when modal is closed, repopulate when it re-opens.
+// The editedDiscussion watcher only fires on value *changes* - if the same
+// object reference is passed on re-open (e.g. after a save that didn't change
+// the prop reference), the watcher won't re-fire and the form stays blank.
+// Watching props.open and repopulating on open covers that case.
 watch(() => props.open, async (isOpen) => {
   if (!isOpen) {
     Object.assign(form, {
@@ -378,6 +419,25 @@ watch(() => props.open, async (isOpen) => {
     // nextTick so the slug watcher flush from clearing form.slug doesn't set slugTouched
     await nextTick()
     slugTouched.value = false
+  }
+  else if (editedDiscussion.value) {
+    // Re-opening with an existing editedItem - force repopulate in case the
+    // object reference hasn't changed and the editedDiscussion watcher didn't fire.
+    const item = editedDiscussion.value
+    Object.assign(form, {
+      title: item.title ?? '',
+      slug: item.slug ?? '',
+      description: item.description ?? '',
+      markdown: item.markdown ?? '',
+      discussion_topic_id: item.discussion_topic_id ?? null,
+      is_locked: item.is_locked,
+      is_sticky: item.is_sticky,
+      is_draft: item.is_draft,
+      is_nsfw: item.is_nsfw ?? false,
+    })
+    await nextTick()
+    slugTouched.value = false
+    activeTab.value = 'create'
   }
 })
 
@@ -401,10 +461,12 @@ function confirmPublish() {
         Create
       </Tab>
       <Tab value="drafts" :disabled="drafts.length === 0">
-        Drafts
-        <div v-if="drafts.length > 0" class="counter">
-          {{ drafts.length }}
-        </div>
+        <Flex y-center gap="xs">
+          Drafts
+          <TinyBadge v-if="drafts.length > 0" variant="info">
+            {{ drafts.length }}
+          </TinyBadge>
+        </Flex>
       </Tab>
     </Tabs>
 

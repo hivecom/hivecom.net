@@ -248,7 +248,7 @@ if (linkedCommentId) {
       showOfftopic.value = true
       hasManuallySwitched.value = true
     }
-  }, { immediate: true })
+  })
 }
 
 async function handleGoToPinnedReply() {

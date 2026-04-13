@@ -28,7 +28,7 @@ import { slugify } from '@/lib/utils/formatting'
 
 dayjs.extend(relativeTime)
 
-const FORUM_TOPICS_CACHE_KEY = 'forum:topics-with-discussions'
+const FORUM_TOPICS_CACHE_KEY = 'forum:topics-with-discussions:v2'
 const FORUM_TOPICS_TTL = 5 * 60 * 1000 // 5 minutes
 
 useSeoMeta({
@@ -64,6 +64,7 @@ const forumUnread = useDataForumUnread()
 
 const addingTopic = ref(false)
 const addingDiscussion = ref(false)
+const openDraftsDirectly = ref(false)
 const rulesModalOpen = ref(false)
 const contentRulesGateOpen = ref(false)
 const { agreed: agreedContentRules, loading: contentRulesLoading, markAgreed } = useContentRulesAgreement()
@@ -78,6 +79,16 @@ const forumCache = useCache()
 watch(contentRulesGateOpen, (open) => {
   if (!open)
     pendingCreateAction.value = null
+})
+
+function openDrafts() {
+  openDraftsDirectly.value = true
+  addingDiscussion.value = true
+}
+
+watch(addingDiscussion, (open) => {
+  if (!open)
+    openDraftsDirectly.value = false
 })
 
 async function requestCreate(action: 'discussion' | 'topic') {
@@ -329,7 +340,7 @@ onBeforeMount(async () => {
   else {
     await supabase
       .from('discussion_topics')
-      .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id)')
+      .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id)')
       .neq('discussions.is_draft', true)
       .then(({ data, error }) => {
         if (error) {
@@ -698,6 +709,22 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         <!-- Only allow creating things for signed in users -->
         <Flex :gap="isMobile ? 'xxs' : 'xs'">
           <template v-if="user">
+            <Button
+              v-if="user && draftCount > 0"
+              size="s"
+              variant="link"
+              :square="isMobile"
+              @click="openDrafts"
+            >
+              <template v-if="!isMobile" #start>
+                <Icon name="ph:note-pencil" :size="16" />
+              </template>
+              <template v-if="isMobile">
+                <Icon name="ph:note-pencil" :size="16" />
+              </template>
+              {{ isMobile ? draftCount : `${draftCount} Draft${draftCount > 1 ? 's' : ''}` }}
+            </Button>
+
             <Dropdown v-if="user.role === 'admin' || user.role === 'moderator'">
               <template #trigger="{ toggle }">
                 <Button size="s" variant="accent" :square="isMobile" @click="toggle">
@@ -910,7 +937,8 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 
       <ForumModalAddDiscussion
         :open="addingDiscussion"
-        @close="addingDiscussion = false"
+        :start-on-drafts="openDraftsDirectly"
+        @close="addingDiscussion = false; openDraftsDirectly = false"
         @created="appendDiscussionToTopic"
         @draft-updated="handleDraftUpdated()"
       />
