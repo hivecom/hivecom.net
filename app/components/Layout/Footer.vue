@@ -20,29 +20,44 @@ function scrollUp() {
           </p>
         </div>
         <div class="footer__social-links">
-          <Tooltip>
-            <SharedThemeToggle button no-text />
-            <template #tooltip>
-              <p>
-                Toggle theme
-              </p>
+          <ClientOnly>
+            <Tooltip>
+              <SharedThemeToggle button no-text />
+              <template #tooltip>
+                <p>
+                  Toggle theme
+                </p>
+              </template>
+            </Tooltip>
+            <Tooltip v-for="(link, key) in constants.LINKS" :key="key">
+              <NuxtLink
+                external :to="link.url" target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button square outline>
+                  <Icon :name="link.icon" />
+                </Button>
+              </NuxtLink>
+              <template #tooltip>
+                <p>
+                  Visit our {{ link.name }}
+                </p>
+              </template>
+            </Tooltip>
+            <template #fallback>
+              <SharedThemeToggle button no-text />
+              <NuxtLink
+                v-for="(link, key) in constants.LINKS"
+                :key="key"
+                external :to="link.url" target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button square outline>
+                  <Icon :name="link.icon" />
+                </Button>
+              </NuxtLink>
             </template>
-          </Tooltip>
-          <Tooltip v-for="(link, key) in constants.LINKS" :key="key">
-            <NuxtLink
-              external :to="link.url" target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button square outline>
-                <Icon :name="link.icon" />
-              </Button>
-            </NuxtLink>
-            <template #tooltip>
-              <p>
-                Visit our {{ link.name }}
-              </p>
-            </template>
-          </Tooltip>
+          </ClientOnly>
         </div>
       </Flex>
 
@@ -52,14 +67,21 @@ function scrollUp() {
             {{ link.label }}
           </Button>
 
-          <Tooltip>
-            <Button class="footer__scroll-up" square plain @click="scrollUp">
-              <Icon name="ph:arrow-up" />
-            </Button>
-            <template #tooltip>
-              <p>Scroll up</p>
+          <ClientOnly>
+            <Tooltip>
+              <Button class="footer__scroll-up" square plain @click="scrollUp">
+                <Icon name="ph:arrow-up" />
+              </Button>
+              <template #tooltip>
+                <p>Scroll up</p>
+              </template>
+            </Tooltip>
+            <template #fallback>
+              <Button class="footer__scroll-up" square plain @click="scrollUp">
+                <Icon name="ph:arrow-up" />
+              </Button>
             </template>
-          </Tooltip>
+          </ClientOnly>
         </Flex>
 
         <template #footer>

@@ -370,6 +370,10 @@ function toggleTinyText() {
 // Makes sure that when editor is clicked, we do not show bubble menu for empty
 // text selection. Not used in plain text mode.
 function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
+  // Never show the bubble menu in plain text mode - the static toolbar handles it.
+  if (props.plainText)
+    return false
+
   const { selection } = state
   const { empty } = selection
 
@@ -694,16 +698,22 @@ useEventListener(document, 'mousedown', (e) => {
     </Flex>
   </DefineToolbar>
 
-  <!-- Static toolbar: rendered above the textarea in plain text mode -->
-  <template v-if="plainText">
-    <div ref="toolbar-root" class="rich-text-menu rich-text-menu--static">
-      <ReuseToolbar />
-    </div>
-  </template>
+  <!-- Static toolbar: rendered above the textarea in plain text mode.
+       ReuseToolbar is only mounted here when plainText is true so that there
+       is never more than one live ReuseToolbar consumer at a time.
+       (createReusableTemplate does not support concurrent consumers - two
+       simultaneous instances cause an infinite reactive-update loop.) -->
+  <div v-show="plainText" ref="toolbar-root" class="rich-text-menu rich-text-menu--static">
+    <ReuseToolbar v-if="plainText" />
+  </div>
 
-  <!-- Rich text mode: floating bubble menu that appears on selection -->
+  <!-- Rich text mode: floating bubble menu that appears on selection.
+       Always kept mounted (no v-else) so that Tiptap never tears down its
+       DOM hooks during a mode switch (which causes "insertBefore, t is null"
+       crashes). shouldShow() returns false when plainText is true so it
+       stays hidden. ReuseToolbar is only rendered here in rich mode so only
+       one consumer is ever active at once. -->
   <BubbleMenu
-    v-else
     :editor="editor"
     :options="{
       strategy: 'fixed',
@@ -714,7 +724,7 @@ useEventListener(document, 'mousedown', (e) => {
     :should-show="shouldShow"
   >
     <div class="rich-text-menu rich-text-menu--floating">
-      <ReuseToolbar />
+      <ReuseToolbar v-if="!plainText" />
     </div>
   </BubbleMenu>
 </template>

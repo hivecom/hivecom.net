@@ -84,7 +84,9 @@ useUserTheme()
     </NuxtLayout>
   </div>
 
-  <Toasts />
+  <ClientOnly>
+    <Toasts />
+  </ClientOnly>
   <LayoutLoading />
   <Command />
 </template>
