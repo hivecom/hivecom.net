@@ -32,7 +32,7 @@
     "@nuxtjs/sitemap": "^8.0.12",
     "@nuxtjs/supabase": "^2.0.5",
     "@pinia/nuxt": "^0.11.3",
-    "@takumi-rs/core": "^1.0.0-rc.12",
+    "@takumi-rs/core": "^1.0.7",
     "@tiptap/extension-details": "^3.22.2",
     "@tiptap/extension-file-handler": "^3.22.2",
     "@tiptap/extension-image": "^3.22.2",
