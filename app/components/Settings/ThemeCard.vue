@@ -94,10 +94,10 @@ if (props.item.forked_from) {
       <Flex start class="mt-m" gap="xs" y-center>
         <UserDisplay :user-id="props.item.created_by" size="s" :show-role="false" />
 
-        <Tooltip v-if="props.item.forked_from && fork">
+        <Tooltip v-if="props.item.forked_from">
           <Icon name="ph:git-fork" :size="20" />
           <template #tooltip>
-            <p style="max-width:256px">
+            <p v-if="fork" style="max-width:256px">
               This theme is based on {{ fork.name }} created by
               <b><UserName inherit :user-id="fork.created_by" /></b>
             </p>
