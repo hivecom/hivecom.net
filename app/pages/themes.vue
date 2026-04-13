@@ -55,7 +55,7 @@ function personalizeTheme() {
               <strong class="text-semibold text-color-accent mr-xs">{{ activeTheme?.name ?? 'Default' }}</strong>
               <ButtonGroup :gap="2">
                 <Tooltip>
-                  <Button size="s" :square="isMobile" :disabled="!activeTheme" @click="personalizeTheme()">
+                  <Button size="s" :square="isMobile" @click="personalizeTheme()">
                     <Icon v-if="isMobile" name="ph:pen" />
                     <template #start>
                       <Icon v-if="!isMobile" name="ph:pen" />
