@@ -60,7 +60,7 @@
     "katex": "^0.16.45",
     "marked": "^18.0.0",
     "nuxt": "^4.4.2",
-    "nuxt-og-image": "^6.3.3",
+    "nuxt-og-image": "^6.4.0",
     "nuxt-toc": "^2.7.2",
     "pinia": "^3.0.4",
     "rehype-katex": "^7.0.1",
