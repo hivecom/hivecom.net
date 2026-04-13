@@ -182,7 +182,6 @@ onMounted(() => {
         <Flex expand column gap="xxxl" class="settings__container">
           <div id="general" class="w-100">
             <GeneralUserSettings class="mb-m" />
-            <GeneralAppearanceSettings />
           </div>
           <div id="connections" class="w-100">
             <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" />

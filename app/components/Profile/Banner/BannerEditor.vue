@@ -1924,21 +1924,27 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
           </div>
         </div>
         <div class="banner-editor__zoom-bar">
-          <span class="banner-editor__zoom-label">{{ Math.round(zoomLevel * 100) }}%</span>
-          <input
-            v-model.number="zoomLevel"
-            type="range"
-            min="0.25"
-            max="4"
-            step="0.05"
-            class="banner-editor__range banner-editor__zoom-range"
-          >
-          <button class="banner-editor__zoom-reset" @click="zoomLevel = 1">
-            Reset
-          </button>
           <p class="banner-editor__canvas-hint">
             Click to select &middot; Drag to move &middot; Delete removes &middot; Esc deselects
           </p>
+
+          <Flex y-center inline>
+            <Flex y-center class="banner-editor__zoom-label" gap="xxs">
+              <Icon name="ph:magnifying-glass" />
+              <span>{{ Math.round(zoomLevel * 100) }}%</span>
+            </Flex>
+            <input
+              v-model.number="zoomLevel"
+              type="range"
+              min="0.25"
+              max="4"
+              step="0.05"
+              class="banner-editor__range banner-editor__zoom-range"
+            >
+            <Button size="s" outline @click="zoomLevel = 1">
+              Reset
+            </Button>
+          </Flex>
         </div>
       </div>
 
@@ -2118,6 +2124,8 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
 </template>
 
 <style lang="scss">
+@use '@/assets/mixins.scss' as *;
+
 @font-face {
   font-family: 'Visitor BRK';
   src: url('/fonts/visitorbrk.ttf') format('truetype');
@@ -2206,10 +2214,10 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
   &__zoom-bar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-s);
     padding: var(--space-xs) var(--space-m);
     border-top: 1px solid var(--color-border);
-    flex-shrink: 0;
   }
 
   &__zoom-label {
@@ -2219,10 +2227,10 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
     min-width: 36px;
     text-align: right;
     flex-shrink: 0;
-  }
 
-  &__zoom-range {
-    flex: 1;
+    span {
+      font-size: inherit;
+    }
   }
 
   &__zoom-reset {
@@ -2247,12 +2255,7 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
   &__canvas-hint {
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
-    text-align: center;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    @include line-clamp(1);
   }
 
   // ── Right: sidebar ─────────────────────────────────────────────────────────
@@ -2364,12 +2367,6 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
     &:hover {
       border-color: var(--color-border-strong);
     }
-  }
-
-  &__range {
-    flex: 1;
-    min-width: 0;
-    accent-color: var(--color-accent);
   }
 
   &__range-value {

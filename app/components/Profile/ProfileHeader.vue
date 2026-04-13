@@ -628,7 +628,7 @@ onUnmounted(() => stopConfetti())
       <template v-else-if="profile?.markdown || isOwnProfile" #footer>
         <div v-if="profile?.markdown" class="profile-markdown">
           <MarkdownRenderer
-            skeleton-height="504px"
+            skeleton-height="96px"
             :md="profile.markdown"
           />
         </div>
