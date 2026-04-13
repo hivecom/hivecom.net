@@ -18,6 +18,15 @@ function onEditTheme(themeToEdit: Tables<'themes'>) {
   editedTheme.value = themeToEdit
   themeEditorOpen.value = true
 }
+
+function personalizeTheme() {
+  if (activeTheme.value) {
+    onEditTheme(activeTheme.value)
+  }
+  else {
+    themeEditorOpen.value = true
+  }
+}
 </script>
 
 <template>
@@ -44,7 +53,7 @@ function onEditTheme(themeToEdit: Tables<'themes'>) {
               <strong class="text-semibold text-color-accent mr-xs">{{ activeTheme?.name ?? 'Default' }}</strong>
               <ButtonGroup :gap="2">
                 <Tooltip>
-                  <Button size="s" :square="isMobile" @click="themeEditorOpen = true">
+                  <Button size="s" :square="isMobile" :disabled="!activeTheme" @click="personalizeTheme()">
                     <Icon v-if="isMobile" name="ph:pen" />
                     <template #start>
                       <Icon v-if="!isMobile" name="ph:pen" />

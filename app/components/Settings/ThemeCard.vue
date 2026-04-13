@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, Skeleton, theme } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, Skeleton, theme, Tooltip } from '@dolanske/vui'
 import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
 import TinyBadge from '../Shared/TinyBadge.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
+import UserName from '../Shared/UserName.vue'
 
 const props = defineProps<{
   item: Tables<'themes'>
@@ -22,6 +23,21 @@ const userId = useUserId()
 const user = useSupabaseUser()
 
 const confirmDeprecate = ref(false)
+
+// Fetch the forked theme name & author
+const fork = ref<{ name: string, created_by: string } | null>(null)
+if (props.item.forked_from) {
+  useSupabaseClient()
+    .from('themes')
+    .select('name, created_by')
+    .eq('id', props.item.forked_from)
+    .single()
+    .then(({ data }) => {
+      if (data) {
+        fork.value = data
+      }
+    })
+}
 </script>
 
 <template>
@@ -75,8 +91,19 @@ const confirmDeprecate = ref(false)
         {{ props.item.description }}
       </p>
       <div class="flex-1" />
-      <Flex start class="mt-m" gap="xs">
+      <Flex start class="mt-m" gap="xs" y-center>
         <UserDisplay :user-id="props.item.created_by" size="s" :show-role="false" />
+
+        <Tooltip v-if="props.item.forked_from && fork">
+          <Icon name="ph:git-fork" :size="20" />
+          <template #tooltip>
+            <p style="max-width:256px">
+              This theme is based on {{ fork.name }} created by
+              <b><UserName inherit :user-id="fork.created_by" /></b>
+            </p>
+          </template>
+        </Tooltip>
+
         <div class="flex-1" />
         <ButtonGroup :gap="2">
           <Button size="s" @click="emit('apply')">

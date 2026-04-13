@@ -6,6 +6,7 @@ import { Alert, Button, ButtonGroup, Card, Divider, Drawer, Flex, Input, Modal, 
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { applyScale, applyTheme, dbToPercent, getCssVarAsHex, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
 import { normalizeErrors } from '@/lib/utils/formatting'
+import UserName from '../Shared/UserName.vue'
 
 interface Props {
   editing?: Tables<'themes'> | null
@@ -32,9 +33,26 @@ const { activeTheme } = useUserTheme()
 
 const activeType = computed<ThemeType>(() => theme.value === 'light' ? 'light' : 'dark')
 
+// Forking / editin
+const userId = useUserId()
+
 const themeForm = reactive<Record<ThemeType, Record<string, string>>>({
   light: {},
   dark: {},
+})
+
+const form = reactive({
+  name: '',
+  description: '',
+  useAsCurrent: true,
+  forked_from: null as string | null,
+})
+
+const { validate, errors } = useValidation(form, {
+  name: [required, minLenNoSpace(3), maxLength(64)],
+  description: [maxLength(128)],
+}, {
+  autoclear: true,
 })
 
 const scaleValues = reactive<Record<ThemeScaleKey, number>>({
@@ -91,17 +109,17 @@ function onColorChange(key: string, value: string) {
   document.documentElement.style.setProperty(cssVar, value)
 }
 
-/** Formatted display percentage for a given scale key */
+// Formatted display percentage for a given scale key
 function scaleDisplay(key: ThemeScaleKey): string {
   return `${Math.round(dbToPercent(scaleValues[key], key))}%`
 }
 
-/** Compute --range-progress style for a range input */
+// Compute --range-progress style for a range input
 function rangeProgressStyle(key: ThemeScaleKey): Record<string, string> {
   return { '--range-progress': `${scaleValues[key]}%` }
 }
 
-/** Called when a range slider changes */
+// Called when a range slider changes
 function onScaleChange(key: ThemeScaleKey, value: number) {
   const intValue = Math.round(value)
   scaleValues[key] = intValue
@@ -110,7 +128,7 @@ function onScaleChange(key: ThemeScaleKey, value: number) {
 
 onMounted(() => seed())
 
-/** Seed all editor state (colors + scales) from the editing prop or active theme */
+// Seed all editor state (colors + scales) from the editing prop or active theme
 function seed() {
   const t = editing ?? activeTheme.value
 
@@ -168,6 +186,13 @@ function reset() {
     applyPaletteLocal('dark', themeForm.dark)
     applyPaletteLocal('light', themeForm.light)
   }
+
+  Object.assign(form, {
+    name: '',
+    description: '',
+    useAsCurrent: true,
+    forked_from: null,
+  })
 }
 
 function close() {
@@ -181,18 +206,20 @@ const supabase = useSupabaseClient()
 const showSubmitModal = ref(false)
 const submitLoading = ref(false)
 const submitError = ref('')
-const form = reactive({ name: '', description: '', useAsCurrent: true })
-
-const { validate, errors } = useValidation(form, {
-  name: [required, minLenNoSpace(3), maxLength(64)],
-  description: [maxLength(128)],
-}, {
-  autoclear: true,
-})
 
 function openSubmitModal() {
-  form.name = editing?.name ?? ''
-  form.description = editing?.description ?? ''
+  if (editing) {
+    // Editing my own theme -> prefill name & description
+    if (editing.created_by === userId.value) {
+      form.name = editing?.name ?? ''
+      form.description = editing?.description ?? ''
+    }
+    // Forking someone else's theme -> prefill nothing and set the original theme as the fork source
+    else {
+      form.forked_from = editing.id
+    }
+  }
+
   showSubmitModal.value = true
 }
 
@@ -206,7 +233,9 @@ async function submitForm() {
   submitLoading.value = true
 
   const payload: Record<string, string | number> = {
-    ...(editing && { id: editing.id }),
+    // If editing an existing theme that I own, update that theme. Otherwise, create a new theme (optionally as a fork).
+    ...(editing && editing.created_by === userId.value && { id: editing.id }),
+    ...(form.forked_from && { forked_from: form.forked_from }),
     name: form.name,
     description: form.description,
     spacing: scaleValues.spacing,
@@ -283,7 +312,7 @@ const isMobile = useBreakpoint('<s')
             <Icon name="ph:arrow-clockwise" />
           </Button>
           <template #tooltip>
-            <p>Reset</p>
+            <p>Reset changes</p>
           </template>
         </Tooltip>
 
@@ -429,33 +458,41 @@ const isMobile = useBreakpoint('<s')
         </p>
       </template>
 
-      <Alert v-if="submitError" variant="danger">
-        {{ submitError }}
-      </Alert>
+      <Flex column gap="m">
+        <Alert v-if="submitError" variant="danger">
+          {{ submitError }}
+        </Alert>
 
-      <Input
-        v-model="form.name"
-        placeholder="My Cool Theme"
-        class="mb-m"
-        expand
-        label="Name"
-        :errors="normalizeErrors(errors.name)"
-        required
-      />
-      <Textarea
-        v-model="form.description"
-        class="mb-m"
-        placeholder="Briefly describe your theme and its features"
-        :rows="5"
-        :resize="false"
-        expand
-        label="Description"
-        :errors="normalizeErrors(errors.description)"
-      />
+        <Alert v-if="form.forked_from" variant="info" filled icon-align="start">
+          <p>
+            This theme is based on {{ editing?.name }} created by
+            <b><UserName inherit :user-id="editing?.created_by" /></b>
+          </p>
+        </Alert>
 
-      <Card>
-        <Switch v-model="form.useAsCurrent" label="Set as current theme" />
-      </Card>
+        <Input
+          v-model="form.name"
+          placeholder="My Cool Theme"
+          expand
+          label="Name"
+          :errors="normalizeErrors(errors.name)"
+          required
+        />
+
+        <Textarea
+          v-model="form.description"
+          placeholder="Briefly describe your theme and its features"
+          :rows="5"
+          :resize="false"
+          expand
+          label="Description"
+          :errors="normalizeErrors(errors.description)"
+        />
+
+        <Card class="card-bg">
+          <Switch v-model="form.useAsCurrent" label="Set as current theme" />
+        </Card>
+      </Flex>
 
       <template #footer>
         <Flex x-end>

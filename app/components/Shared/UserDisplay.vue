@@ -23,7 +23,7 @@ withDefaults(defineProps<Props>(), {
 
 <template>
   <div class="user-display">
-    <Flex gap="s" y-center x-center class="user-display__header">
+    <Flex gap="s" y-center x-center class="user-display__header" inline>
       <!-- Avatar -->
       <template v-if="!hideAvatar">
         <!-- System avatar (no userId) -->
