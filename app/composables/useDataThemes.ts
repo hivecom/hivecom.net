@@ -103,6 +103,26 @@ export function useDataThemes() {
     return null
   }
 
+  /**
+   * Hard-delete a theme row. Admin-only - RLS will reject this for regular users.
+   * Removes the theme from the local ref immediately and invalidates the cache.
+   * Returns an error string on failure, or null on success.
+   */
+  async function hardDelete(id: string): Promise<string | null> {
+    const { error: deleteError } = await supabase
+      .from('themes')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError)
+      return deleteError.message
+
+    themes.value = themes.value.filter(t => t.id !== id)
+    invalidate()
+
+    return null
+  }
+
   onMounted(() => {
     void fetch()
   })
@@ -115,5 +135,6 @@ export function useDataThemes() {
     refresh,
     invalidate,
     softDelete,
+    hardDelete,
   }
 }

@@ -16,13 +16,19 @@ const props = defineProps<{
 const emit = defineEmits<{
   apply: []
   deprecate: []
+  delete: []
   edit: []
 }>()
 
 const userId = useUserId()
-const user = useSupabaseUser()
+const { user: userData } = useDataUser(userId, { includeRole: true })
+
+const isAdmin = computed(() => userData.value?.role === 'admin')
+const isOwner = computed(() => userId.value != null && props.item.created_by === userId.value)
+const canSeeDropdown = computed(() => isOwner.value || isAdmin.value)
 
 const confirmDeprecate = ref(false)
+const confirmDelete = ref(false)
 
 // Fetch the forked theme name & author
 const fork = ref<{ name: string, created_by: string } | null>(null)
@@ -112,17 +118,20 @@ if (props.item.forked_from) {
             </template>
             Apply
           </Button>
-          <Dropdown v-if="userId && props.item.created_by === userId">
+          <Dropdown v-if="canSeeDropdown && !props.item.is_official">
             <template #trigger="{ toggle, isOpen }">
               <Button size="s" square :class="{ active: isOpen }" @click="toggle">
                 <Icon name="ph:dots-three-bold" :size="18" />
               </Button>
             </template>
-            <DropdownItem @click="emit('edit')">
+            <DropdownItem v-if="isOwner" @click="emit('edit')">
               Edit
             </DropdownItem>
-            <DropdownItem v-if="userId === props.item.created_by || user?.role === 'moderator' || user?.role === 'admin'" @click="confirmDeprecate = true">
+            <DropdownItem v-if="!props.item.is_unmaintained && !props.item.is_official" @click="confirmDeprecate = true">
               Deprecate
+            </DropdownItem>
+            <DropdownItem v-if="isAdmin && props.item.is_unmaintained" class="text-danger" @click="confirmDelete = true">
+              Delete
             </DropdownItem>
           </Dropdown>
         </ButtonGroup>
@@ -135,11 +144,25 @@ if (props.item.forked_from) {
     title="Deprecate theme?"
     confirm-text="Deprecate"
     destructive
-    @confirm="emit('deprecate')"
+    @confirm="emit('deprecate'); confirmDeprecate = false"
     @cancel="confirmDeprecate = false"
   >
     <p class="mb-xs">
-      Users who are currently using the theme will still be able to keep it, but it won't be visible.
+      Users who are currently using the theme will still be able to keep it, but it won't be visible in the gallery.
+    </p>
+    <p>This action cannot be undone.</p>
+  </ConfirmModal>
+
+  <ConfirmModal
+    :open="confirmDelete"
+    title="Delete theme?"
+    confirm-text="Delete"
+    destructive
+    @confirm="emit('delete'); confirmDelete = false"
+    @cancel="confirmDelete = false"
+  >
+    <p class="mb-xs">
+      This will permanently delete <strong>{{ props.item.name }}</strong> and remove it for all users currently using it.
     </p>
     <p>This action cannot be undone.</p>
   </ConfirmModal>
@@ -277,6 +300,10 @@ if (props.item.forked_from) {
       @include line-clamp(2);
     }
   }
+}
+
+.text-danger {
+  color: var(--color-text-red);
 }
 
 :root.light .theme-menu__card--preview::before {

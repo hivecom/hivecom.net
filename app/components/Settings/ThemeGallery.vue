@@ -14,7 +14,7 @@ const supabase = useSupabaseClient<Database>()
 const userId = useUserId()
 
 const { activeTheme, setActiveTheme } = useUserTheme()
-const { softDelete } = useDataThemes()
+const { softDelete, hardDelete } = useDataThemes()
 
 const activeTab = ref<'community' | 'official' | 'created'>('official')
 const search = ref('')
@@ -136,6 +136,16 @@ function deprecateTheme(id: string) {
   })
 }
 
+function deleteTheme(id: string) {
+  if (activeTheme.value?.id === id) {
+    setActiveTheme(null)
+  }
+
+  void hardDelete(id).then(() => {
+    void fetchPage(activeTab.value, currentPage.value, search.value)
+  })
+}
+
 // Initial load
 onMounted(() => {
   void fetchPage(activeTab.value, currentPage.value, search.value)
@@ -228,6 +238,7 @@ defineExpose({ refresh })
           @apply="setActiveTheme(item.id)"
           @edit="emit('edit', item)"
           @deprecate="deprecateTheme(item.id)"
+          @delete="deleteTheme(item.id)"
         />
       </template>
     </Grid>

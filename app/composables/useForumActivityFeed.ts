@@ -159,7 +159,7 @@ export function useForumActivityFeed({
         const isTopic = !('discussion_topic_id' in item)
         const id = item.id
 
-        const title = (isTopic ? (item as Tables<'discussion_topics'>).name : (item).title) ?? (isTopic ? 'Topic' : 'Discussion')
+        const title = (isTopic ? (item).name : (item).title) ?? (isTopic ? 'Topic' : 'Discussion')
 
         return {
           id,
