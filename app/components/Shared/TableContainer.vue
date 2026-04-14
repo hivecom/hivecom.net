@@ -8,18 +8,24 @@ defineProps<{ class?: string }>()
   </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss">
 .table-scroll-wrapper {
   width: 100%;
 }
 
-.table-scroll-wrapper :deep(.vui-table-container) {
+.table-scroll-wrapper .vui-table-container {
   width: 100%;
   overflow-x: auto;
   display: block;
+  position: relative;
 }
 
-.table-scroll-wrapper :deep(.vui-table-container table) {
+.table-scroll-wrapper .vui-table-container .vui-table-pagination-wrap {
+  position: sticky;
+  left: 0;
+}
+
+.table-scroll-wrapper .vui-table-container table {
   min-width: 100%;
 }
 </style>
