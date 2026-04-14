@@ -36,6 +36,10 @@ export interface UseForumActivityFeedPaginatedOptions {
   hiddenTopicIds: ComputedRef<Set<string>>
   /** Called when a topic item is clicked */
   onTopicClick: (id: string) => void
+  /** When set, only return items created by the current signed-in user (maps to p_created_by RPC param) */
+  createdByCurrentUser?: boolean
+  /** When set, exclude items created by the current signed-in user (maps to p_exclude RPC param) */
+  excludeCurrentUser?: boolean
 }
 
 export function useForumActivityFeedPaginated({
@@ -44,8 +48,11 @@ export function useForumActivityFeedPaginated({
   visibleDiscussionIds,
   hiddenTopicIds,
   onTopicClick,
+  createdByCurrentUser,
+  excludeCurrentUser,
 }: UseForumActivityFeedPaginatedOptions) {
   const supabase = useSupabaseClient<Database>()
+  const userId = useUserId()
 
   const rawItems = ref<FeedRow[]>([])
   const loading = ref(false)
@@ -173,11 +180,13 @@ export function useForumActivityFeedPaginated({
   })
 
   async function fetchPage(pageOffset: number, append: boolean) {
-    const { data: rawData, error } = await supabase.rpc('get_forum_activity_feed', {
+    const currentUserId = userId.value
+    const { data, error } = await supabase.rpc('get_forum_activity_feed', {
       p_limit: PAGE_SIZE,
       p_offset: pageOffset,
+      ...(createdByCurrentUser === true && currentUserId != null ? { p_created_by: currentUserId } : {}),
+      ...(excludeCurrentUser === true && currentUserId != null ? { p_exclude: currentUserId } : {}),
     })
-    const data = rawData as FeedRow[] | null
 
     if (error != null) {
       console.error('[useForumActivityFeedPaginated] fetch error:', error.message)

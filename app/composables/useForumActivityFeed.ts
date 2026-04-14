@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { computed, ref, watchEffect } from 'vue'
 import { useCache } from '@/composables/useCache'
+import { useUserId } from '@/composables/useUserId'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 
 dayjs.extend(relativeTime)
@@ -59,6 +60,7 @@ export function useForumActivityFeed({
 }: UseForumActivityFeedOptions) {
   const supabase = useSupabaseClient<Database>()
   const forumCache = useCache()
+  const userId = useUserId()
 
   const latestReplies = ref<ActivityItem[]>([])
 
@@ -211,12 +213,18 @@ export function useForumActivityFeed({
     }
   })
 
-  const postSinceYesterday = computed(() => {
-    const now = dayjs()
-    return latestPosts.value
-      .filter(item => dayjs(item.timestampRaw).isAfter(now.subtract(24, 'hour')))
-      .length
-  })
+  const postSinceYesterday = ref(0)
+
+  async function fetchTodayCount() {
+    const { data, error } = await supabase.rpc('get_forum_activity_feed_today_count', {
+      ...(userId.value != null ? { p_exclude: userId.value } : {}),
+    })
+    if (error != null) {
+      console.error('[useForumActivityFeed] today count error:', error.message)
+      return
+    }
+    postSinceYesterday.value = data ?? 0
+  }
 
   /**
    * Prepend a single reply ActivityItem to the live feed without waiting for
@@ -244,6 +252,7 @@ export function useForumActivityFeed({
     postSinceYesterday,
     visibleReplies,
     fetchLatestReplies,
+    fetchTodayCount,
     prependReplyItem,
     prependDiscussionItem,
   }

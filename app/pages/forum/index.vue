@@ -259,6 +259,7 @@ const {
   latestPostAuthorIds,
   postSinceYesterday,
   fetchLatestReplies,
+  fetchTodayCount,
   prependReplyItem,
   prependDiscussionItem,
 } = useForumActivityFeed({
@@ -377,7 +378,7 @@ onBeforeMount(async () => {
   }
 
   // ── Latest replies ───────────────────────────────────────────────────────
-  await fetchLatestReplies()
+  await Promise.all([fetchLatestReplies(), fetchTodayCount()])
 
   loading.value = false
 

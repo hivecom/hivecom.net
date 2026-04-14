@@ -80,46 +80,6 @@ export interface AdminUserProfile {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Raw RPC row shape (what Supabase actually returns before mapping)
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface RawAdminUserRow {
-  user_id: string
-  username: string | null
-  country: string | null
-  birthday: string | null
-  created_at: string
-  modified_at: string | null
-  modified_by: string | null
-  supporter_lifetime: boolean
-  supporter_patreon: boolean
-  badges: ProfileBadge[]
-  patreon_id: string | null
-  steam_id: string | null
-  discord_id: string | null
-  introduction: string | null
-  markdown: string | null
-  banned: boolean
-  ban_reason: string | null
-  ban_start: string | null
-  ban_end: string | null
-  last_seen: string
-  website: string | null
-  public: boolean
-  role: string | null
-  email: string | null
-  is_confirmed: boolean
-  discord_display_name: string | null
-  auth_provider: string | null
-  auth_providers: string[]
-  platform_count: number
-  is_supporter: boolean
-  is_banned: boolean
-  role_sort: number
-  total_count: number
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Composable
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -154,7 +114,7 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
     errorMessage.value = ''
 
     try {
-      const { data, error } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown, error: unknown }>)('get_admin_users_paginated', {
+      const { data, error } = await supabase.rpc('get_admin_users_paginated', {
         p_search: search.value,
         p_role: roleFilter.value,
         p_status: statusFilter.value,
@@ -167,9 +127,7 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
       if (error != null)
         throw error
 
-      const rows = (data ?? []) as unknown as RawAdminUserRow[]
-
-      users.value = rows.map((row): AdminUserRecord => ({
+      users.value = (data ?? []).map((row): AdminUserRecord => ({
         id: row.user_id,
         username: row.username,
         country: row.country,

@@ -353,20 +353,14 @@ export function useDataDiscussionReplies(
       }
     }
 
-    // eslint-disable-next-line ts/no-unsafe-assignment
-    const { data, error: rpcError } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>)(
-      'get_discussion_reply_nearest_to_date',
-      {
-        p_discussion_id: discussion.value.id,
-        p_target_time: date.toISOString(),
-        p_ascending: ascending.value,
-        p_hash: props.hash ?? null,
-        p_root_only: false,
-        p_find_first: findFirst,
-      },
-    )
-
-    const rows = data as Array<{ id: string }> | null
+    const { data: rows, error: rpcError } = (await supabase.rpc('get_discussion_reply_nearest_to_date', {
+      p_discussion_id: discussion.value.id,
+      p_target_time: date.toISOString(),
+      p_ascending: ascending.value,
+      p_hash: props.hash ?? null,
+      p_root_only: false,
+      p_find_first: findFirst,
+    })) as { data: Array<{ id: string }> | null, error: { message: string } | null }
     if (rpcError != null || rows == null || rows.length === 0)
       return null
 

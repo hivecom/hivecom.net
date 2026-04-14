@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
 import type { UseForumActivityFeedPaginatedOptions } from '@/composables/useForumActivityFeedPaginated'
-import { Badge, Button, Carousel, Flex, Sheet, Skeleton, Spinner, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Carousel, Flex, Sheet, Skeleton, Spinner, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
@@ -25,9 +25,12 @@ const emit = defineEmits<{
 }>()
 
 const user = useSupabaseUser()
+const userId = useUserId()
 
 const sheetOpen = ref(false)
+const activeTab = ref<'feed' | 'mine'>('feed')
 const sentinel = ref<HTMLElement | null>(null)
+const mineSentinel = ref<HTMLElement | null>(null)
 
 // Close sheet if user signs out mid-session
 watch(user, (u) => {
@@ -37,62 +40,42 @@ watch(user, (u) => {
 
 const isMobile = useBreakpoint('<s')
 
-// ── Carousel divider ───────────────────────────────────────────────────────
+// ── Carousel ──────────────────────────────────────────────────────────────
 
-// Shared boundary timestamp used by both the carousel and sheet split indexes.
+// Carousel shows everyone's activity except the current user's own posts.
+const carouselPosts = computed<ActivityItem[]>(() => {
+  if (userId.value == null)
+    return props.latestPosts
+  return props.latestPosts.filter(post => post.user !== userId.value)
+})
+
+// Boundary timestamp for the "since last visit" divider
 const visitedAt = computed<number | null>(() => {
   if (props.lastVisitedAt == null)
     return null
   return new Date(props.lastVisitedAt).getTime()
 })
 
-// Advance the effective visit time to cover any posts by the current user -
-// they obviously saw their own post when they wrote it, so it should never
-// appear in the "new since last visit" zone.
-const effectiveVisitedAt = computed<number | null>(() => {
-  if (visitedAt.value == null)
-    return null
-  // If the user isn't hydrated yet, don't try to advance the boundary -
-  // we can't reliably identify own posts without an ID.
-  if (user.value == null)
-    return visitedAt.value
-  const ownPosts = props.latestPosts.filter(post => post.user === user.value!.id)
-  if (ownPosts.length === 0)
-    return visitedAt.value
-  const latestOwn = Math.max(...ownPosts.map(p => new Date(p.timestampRaw).getTime()))
-  return Math.max(visitedAt.value, latestOwn)
-})
-
-// Index of the first item older than the last visit - divider renders between
-// index (splitIndex - 1) and index splitIndex.
+// Index of the first carousel item older than the last visit
 const splitIndex = computed<number | null>(() => {
-  if (effectiveVisitedAt.value == null || props.loading)
+  if (visitedAt.value == null || props.loading)
     return null
-  const idx = props.latestPosts.findIndex(
-    post => new Date(post.timestampRaw).getTime() <= effectiveVisitedAt.value!,
+  const idx = carouselPosts.value.findIndex(
+    post => new Date(post.timestampRaw).getTime() <= visitedAt.value!,
   )
-  // No divider if everything is new or nothing is new
-  if (idx <= 0 || idx >= props.latestPosts.length)
+  if (idx <= 0 || idx >= carouselPosts.value.length)
     return null
   return idx
 })
 
-// Exclude the current user's own posts from the "new" count - they don't need
-// to see their own activity flagged as unseen.
+// New-since-last-visit count - already excludes own posts via carouselPosts
 const newSinceLastVisit = computed<number>(() => {
-  if (splitIndex.value == null)
+  if (splitIndex.value == null || user.value == null)
     return 0
-  // If the user isn't hydrated yet, don't count anything as new - we can't
-  // filter out own posts and would over-count.
-  if (user.value == null)
-    return 0
-  return props.latestPosts
-    .slice(0, splitIndex.value)
-    .filter(post => post.user !== user.value!.id)
-    .length
+  return splitIndex.value
 })
 
-// ── Paginated sheet feed ───────────────────────────────────────────────────
+// ── Paginated sheet feed - community tab (excludes current user) ───────────
 
 const {
   items: sheetItems,
@@ -103,56 +86,96 @@ const {
   exhausted: sheetExhausted,
   load: loadSheet,
   loadMore,
-} = useForumActivityFeedPaginated(props.feedOptions)
+} = useForumActivityFeedPaginated({
+  ...props.feedOptions,
+  excludeCurrentUser: true,
+})
 
-// Divider index in the sheet feed - same logic as carousel, same boundary.
+// ── Paginated sheet feed - my activity tab ─────────────────────────────────
+
+const {
+  items: mineItems,
+  mentionIds: mineMentionIds,
+  authorIds: mineAuthorIds,
+  loading: mineLoading,
+  loadingMore: mineLoadingMore,
+  exhausted: mineExhausted,
+  load: loadMine,
+  loadMore: loadMoreMine,
+} = useForumActivityFeedPaginated({
+  ...props.feedOptions,
+  createdByCurrentUser: true,
+})
+
+// Divider index for the community feed - same visit boundary logic
 const sheetSplitIndex = computed<number | null>(() => {
-  if (effectiveVisitedAt.value == null || sheetLoading.value)
+  if (visitedAt.value == null || sheetLoading.value)
     return null
   const idx = sheetItems.value.findIndex(
-    item => new Date(item.timestampRaw).getTime() <= effectiveVisitedAt.value!,
+    item => new Date(item.timestampRaw).getTime() <= visitedAt.value!,
   )
   if (idx <= 0 || idx >= sheetItems.value.length)
     return null
   return idx
 })
 
-// Pre-warm mention and author caches for sheet items
+// ── Mention / author cache ─────────────────────────────────────────────────
+
 const sheetMentionIdsRef = computed(() => sheetMentionIds.value)
+const mineMentionIdsRef = computed(() => mineMentionIds.value)
+
 const { users: sheetMentionUsers } = useBulkDataUser(sheetMentionIdsRef, {
   includeAvatar: false,
   includeRole: false,
 })
-useBulkDataUser(sheetAuthorIds, {
-  includeAvatar: true,
-  includeRole: true,
+const { users: mineMentionUsers } = useBulkDataUser(mineMentionIdsRef, {
+  includeAvatar: false,
+  includeRole: false,
 })
 
-const sheetMentionLookup = computed<Record<string, string>>(() => {
-  const lookup: Record<string, string> = {}
+useBulkDataUser(sheetAuthorIds, { includeAvatar: true, includeRole: true })
+useBulkDataUser(mineAuthorIds, { includeAvatar: true, includeRole: true })
+
+const combinedMentionLookup = computed<Record<string, string>>(() => {
+  const lookup: Record<string, string> = { ...props.mentionLookup }
   for (const [id, u] of sheetMentionUsers.value.entries())
+    lookup[id] = u.username ?? id
+  for (const [id, u] of mineMentionUsers.value.entries())
     lookup[id] = u.username ?? id
   return lookup
 })
 
-// Also extract mentions from props.mentionLookup for items that are in both
-// feeds (carousel items reuse the parent's mention lookup)
-const combinedMentionLookup = computed<Record<string, string>>(() => ({
-  ...props.mentionLookup,
-  ...sheetMentionLookup.value,
-}))
+// ── Infinite scroll sentinels ──────────────────────────────────────────────
 
-// Load sheet data on first open, set up IntersectionObserver for infinite scroll
 let observer: IntersectionObserver | null = null
+let mineObserver: IntersectionObserver | null = null
 
-async function reloadSheet() {
+function setupSentinelObserver(
+  el: HTMLElement,
+  onIntersect: () => void,
+): IntersectionObserver {
+  const obs = new IntersectionObserver(
+    (entries) => {
+      if (entries[0]?.isIntersecting)
+        onIntersect()
+    },
+    { threshold: 0.1 },
+  )
+  obs.observe(el)
+  return obs
+}
+
+async function ensureSheetLoaded() {
+  if (sheetItems.value.length > 0)
+    return
+
   await loadSheet()
-  emit('feedReloaded')
 
-  if (effectiveVisitedAt.value != null) {
+  // Keep loading until we find an item older than the visit boundary
+  if (visitedAt.value != null) {
     while (!sheetExhausted.value) {
       const idx = sheetItems.value.findIndex(
-        item => new Date(item.timestampRaw).getTime() <= effectiveVisitedAt.value!,
+        item => new Date(item.timestampRaw).getTime() <= visitedAt.value!,
       )
       if (idx !== -1)
         break
@@ -161,49 +184,86 @@ async function reloadSheet() {
   }
 }
 
+async function ensureMineLoaded() {
+  if (mineItems.value.length > 0 || mineExhausted.value)
+    return
+  await loadMine()
+}
+
+async function reloadSheet() {
+  await loadSheet()
+  emit('feedReloaded')
+
+  if (visitedAt.value != null) {
+    while (!sheetExhausted.value) {
+      const idx = sheetItems.value.findIndex(
+        item => new Date(item.timestampRaw).getTime() <= visitedAt.value!,
+      )
+      if (idx !== -1)
+        break
+      await loadMore()
+    }
+  }
+}
+
+// Re-attach sentinels when tab changes
+watch(activeTab, async (tab) => {
+  await nextTick()
+
+  if (tab === 'feed') {
+    mineObserver?.disconnect()
+    mineObserver = null
+
+    await ensureSheetLoaded()
+    await nextTick()
+
+    if (sentinel.value != null) {
+      observer = setupSentinelObserver(sentinel.value, () => {
+        if (!sheetLoadingMore.value && !sheetExhausted.value)
+          void loadMore()
+      })
+    }
+  }
+  else {
+    observer?.disconnect()
+    observer = null
+
+    await ensureMineLoaded()
+    await nextTick()
+
+    if (mineSentinel.value != null) {
+      mineObserver = setupSentinelObserver(mineSentinel.value, () => {
+        if (!mineLoadingMore.value && !mineExhausted.value)
+          void loadMoreMine()
+      })
+    }
+  }
+})
+
 watch(sheetOpen, async (open) => {
   if (!open) {
     observer?.disconnect()
     observer = null
+    mineObserver?.disconnect()
+    mineObserver = null
+    activeTab.value = 'feed'
     return
   }
 
-  // First open - fetch initial page
-  if (sheetItems.value.length === 0) {
-    await loadSheet()
-
-    // If lastVisitedAt is set but no boundary item was found in the first page
-    // (findIndex === -1 means all loaded items are newer), keep loading pages
-    // until we find an item older than the last visit or exhaust the feed.
-    if (effectiveVisitedAt.value != null) {
-      while (!sheetExhausted.value) {
-        const idx = sheetItems.value.findIndex(
-          item => new Date(item.timestampRaw).getTime() <= effectiveVisitedAt.value!,
-        )
-        if (idx !== -1)
-          break
-        await loadMore()
-      }
-    }
-  }
-
-  // Set up sentinel observer after DOM settles
+  await ensureSheetLoaded()
   await nextTick()
-  if (sentinel.value == null)
-    return
 
-  observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0]?.isIntersecting && !sheetLoadingMore.value && !sheetExhausted.value)
+  if (sentinel.value != null) {
+    observer = setupSentinelObserver(sentinel.value, () => {
+      if (!sheetLoadingMore.value && !sheetExhausted.value)
         void loadMore()
-    },
-    { threshold: 0.1 },
-  )
-  observer.observe(sentinel.value)
+    })
+  }
 })
 
 onUnmounted(() => {
   observer?.disconnect()
+  mineObserver?.disconnect()
 })
 </script>
 
@@ -254,7 +314,7 @@ onUnmounted(() => {
       </template>
 
       <template v-else>
-        <template v-for="(post, index) in props.latestPosts.slice(0, 16)" :key="post.id">
+        <template v-for="(post, index) in carouselPosts.slice(0, 16)" :key="post.id">
           <Tooltip v-if="splitIndex !== null && index === splitIndex" :disabled="isMobile">
             <div class="forum__latest-divider">
               <Icon name="ph:clock" :size="16" />
@@ -273,12 +333,12 @@ onUnmounted(() => {
 
     <Sheet v-if="user" :open="sheetOpen" :size="456" @close="sheetOpen = false">
       <template #header>
-        <Flex y-center x-between expand>
+        <Flex y-center x-between expand class="mb-s">
           <h4>
             Latest activity
           </h4>
           <Button
-            v-if="(props.feedPendingCount ?? 0) > 0"
+            v-if="activeTab === 'feed' && (props.feedPendingCount ?? 0) > 0"
             size="s"
             variant="accent"
             outline
@@ -290,9 +350,19 @@ onUnmounted(() => {
             {{ props.feedPendingCount }} new
           </Button>
         </Flex>
+
+        <Tabs v-model="activeTab" class="forum__latest-sheet-tabs">
+          <Tab value="feed">
+            Feed
+          </Tab>
+          <Tab value="mine">
+            My Activity
+          </Tab>
+        </Tabs>
       </template>
 
-      <Flex column gap="m">
+      <!-- Community feed tab -->
+      <Flex v-if="activeTab === 'feed'" column gap="m" class="pt-s">
         <template v-if="sheetLoading">
           <Skeleton v-for="i in 6" :key="i" width="100%" height="96px" />
         </template>
@@ -314,13 +384,45 @@ onUnmounted(() => {
             />
           </template>
 
-          <!-- Infinite scroll sentinel -->
           <div ref="sentinel" class="forum__latest-sentinel">
             <Flex v-if="sheetLoadingMore" expand x-center>
               <Spinner />
             </Flex>
             <span v-else-if="sheetExhausted" class="forum__latest-exhausted">
               All caught up
+            </span>
+          </div>
+        </template>
+      </Flex>
+
+      <!-- My activity tab -->
+      <Flex v-else-if="activeTab === 'mine'" column gap="m" class="pt-s">
+        <template v-if="mineLoading">
+          <Skeleton v-for="i in 6" :key="i" width="100%" height="96px" />
+        </template>
+
+        <template v-else-if="!mineLoading && mineItems.length === 0 && mineExhausted">
+          <Flex column x-center y-center class="forum__latest-empty">
+            <Icon name="ph:pencil-slash" :size="32" />
+            <p>Nothing posted yet</p>
+          </Flex>
+        </template>
+
+        <template v-else>
+          <ForumLatestItem
+            v-for="post in mineItems"
+            :key="post.id"
+            :post="post"
+            :mention-lookup="combinedMentionLookup"
+            expand
+          />
+
+          <div ref="mineSentinel" class="forum__latest-sentinel">
+            <Flex v-if="mineLoadingMore" expand x-center>
+              <Spinner />
+            </Flex>
+            <span v-else-if="mineExhausted" class="forum__latest-exhausted">
+              That's everything
             </span>
           </div>
         </template>
@@ -415,5 +517,19 @@ onUnmounted(() => {
 .forum__latest-exhausted {
   font-size: var(--font-size-xs);
   color: var(--color-text-lighter);
+}
+
+.forum__latest-empty {
+  padding: var(--space-xl) 0;
+  gap: var(--space-s);
+  color: var(--color-text-lighter);
+
+  p {
+    font-size: var(--font-size-s);
+  }
+}
+
+.forum__latest-sheet-tabs {
+  margin-bottom: -13px;
 }
 </style>

@@ -1,4 +1,5 @@
 import type { Ref } from 'vue'
+import type { Database } from '@/types/database.types'
 import { refDebounced } from '@vueuse/core'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -24,13 +25,6 @@ export interface SearchResult {
   is_archived: boolean
 }
 
-// Cast helper - search_global won't be in generated types until `supabase gen
-// types` is re-run after the migration. Route through `unknown` to avoid `any`.
-type UnknownRpc = (
-  name: string,
-  args?: Record<string, unknown>,
-) => PromiseLike<{ data: unknown, error: { message: string } | null }>
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Composable
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,7 +34,7 @@ const MIN_QUERY_LENGTH = 2
 const DEFAULT_LIMIT = 20
 
 export function useDataSearch(query: Ref<string>, scope: Ref<SearchType[] | null>, showArchived: Ref<boolean> = ref(true)) {
-  const supabase = useSupabaseClient()
+  const supabase = useSupabaseClient<Database>()
 
   const results = ref<SearchResult[]>([])
   const loading = ref(false)
@@ -60,15 +54,12 @@ export function useDataSearch(query: Ref<string>, scope: Ref<SearchType[] | null
     error.value = null
 
     try {
-      const { data, error: rpcError } = await (supabase.rpc as unknown as UnknownRpc)(
-        'search_global',
-        {
-          p_query: trimmed,
-          p_types: scope.value ?? null,
-          p_limit: DEFAULT_LIMIT,
-          p_show_archived: showArchived.value,
-        },
-      )
+      const { data, error: rpcError } = await supabase.rpc('search_global', {
+        p_query: trimmed,
+        p_types: scope.value ?? undefined,
+        p_limit: DEFAULT_LIMIT,
+        p_show_archived: showArchived.value,
+      })
 
       if (rpcError != null) {
         console.error('[useDataSearch] RPC error:', rpcError.message)
