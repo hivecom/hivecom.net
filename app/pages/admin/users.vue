@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.overrides'
+import type { AdminUserProfile } from '@/composables/useAdminUserTableData'
 import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
 import RolesGrid from '@/components/Admin/Roles/RolesGrid.vue'
 
@@ -8,37 +8,6 @@ import UserForm from '@/components/Admin/Users/UserForm.vue'
 import UserKPIs from '@/components/Admin/Users/UserKPIs.vue'
 import UserTable from '@/components/Admin/Users/UserTable.vue'
 import { getRouteQueryString } from '@/lib/utils/common'
-
-// Define types for user data and actions - matching what UserTable expects
-type QueryUserProfile = Pick<Tables<'profiles'>, | 'id'
-  | 'username'
-  | 'country'
-  | 'birthday'
-  | 'created_at'
-  | 'modified_at'
-  | 'modified_by'
-  | 'supporter_lifetime'
-  | 'supporter_patreon'
-  | 'patreon_id'
-  | 'steam_id'
-  | 'discord_id'
-  | 'introduction'
-  | 'markdown'
-  | 'banned'
-  | 'ban_reason'
-  | 'ban_start'
-  | 'ban_end'
-  | 'last_seen'
-  | 'public'>
-
-type AdminUserProfile = QueryUserProfile & {
-  email: string | null
-  role?: string | null
-  confirmed?: boolean
-  discord_display_name?: string | null
-  auth_provider?: string | null
-  auth_providers?: string[] | null
-}
 
 interface UserAction {
   user: AdminUserProfile

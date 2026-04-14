@@ -1,25 +1,44 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
-import type { AdminUserProfile, QueryUserProfile } from '@/composables/useAdminUserTableData'
+import type { AdminUserProfile, AdminUserRecord, AdminUserSortCol } from '@/composables/useAdminUserTableData'
 
-import { Alert, Button, CopyClipboard, defineTable, Flex, Pagination, Table, Tooltip } from '@dolanske/vui'
+import { Alert, Button, CopyClipboard, defineTable, Flex, paginate, Pagination, Table, Tooltip } from '@dolanske/vui'
+import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
-
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useAdminUserTableData } from '@/composables/useAdminUserTableData'
-import { isBanActive } from '@/lib/banStatus'
 import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import UserActions from './UserActions.vue'
 import UserFilters from './UserFilters.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
 
-// Type for user action
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+// Minimal shape that UserActions component works with (username must be non-null)
+interface UserActionUser {
+  id: string
+  username: string
+  supporter_patreon: boolean
+  supporter_lifetime: boolean
+  patreon_id: string | null
+  banned: boolean
+}
+
+// Internal v-model shape for UserActions binding
+interface UserActionInternal {
+  user: UserActionUser
+  type: 'ban' | 'unban' | 'edit' | 'delete' | null
+  banDuration?: string
+  banReason?: string
+}
+
+// Emitted action shape - uses full AdminUserProfile
 interface UserAction {
   user: AdminUserProfile
   type: 'ban' | 'unban' | 'edit' | 'delete' | null
@@ -27,11 +46,12 @@ interface UserAction {
   banReason?: string
 }
 
-// Define interface for Select options
 interface SelectOption {
   label: string
   value: string
 }
+
+// ─── Props / emits ────────────────────────────────────────────────────────────
 
 const props = withDefaults(defineProps<{
   canViewUserEmails?: boolean
@@ -41,65 +61,52 @@ const props = withDefaults(defineProps<{
   focusUserId: null,
 })
 
-// Emits
 const emit = defineEmits<{
   userSelected: [user: AdminUserProfile]
   action: [action: UserAction]
 }>()
 
-// Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
-// Get current user
+// ─── Session user ─────────────────────────────────────────────────────────────
+
 const currentUser = useSupabaseUser()
 
-// Define interface for transformed user data
-interface TransformedUser {
-  'Confirmed': boolean
-  'Username': string
-  'UUID': string
-  'Email': string | null
-  'Role': number
-  'Status': 'active' | 'banned'
-  'Providers': string
-  'Last Seen': number
-  'Platforms': number
-  'Supporter': boolean
-  'Joined': string
-  '_lastSeenVariant': 'online' | 'fresh' | 'light' | 'lighter' | 'lightest'
-  '_lastSeenText': string
-  '_original': AdminUserProfile
-}
+// ─── Layout ───────────────────────────────────────────────────────────────────
+
+const isBelowMedium = useBreakpoint('<m')
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
+
+// ─── Composable ───────────────────────────────────────────────────────────────
 
 const {
   loading,
+  initialLoad,
   errorMessage,
   users,
-  userRoles,
+  totalCount,
+  page,
+  sortCol,
+  sortDir,
+  search,
+  roleFilter,
+  statusFilter,
   fetchUsers,
-  getUserEmail,
-  getUserConfirmedState,
-  getUserAuthProvider,
-  getUserAuthProviders,
-  getUserRole,
+  setPage,
+  setSort,
   buildAdminProfile,
-} = useAdminUserTableData(computed(() => props.canViewUserEmails))
+} = useAdminUserTableData({ perPage: adminTablePerPage })
 
-const search = ref('')
+// defineTable is used solely to provide the VUI table injection context
+// (TableSelectionProvideSymbol). All pagination/sorting is server-driven.
+const { rows } = defineTable(users, { pagination: { enabled: false }, select: false })
 
-const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
-const roleFilter = ref<SelectOption[]>()
-const statusFilter = ref<SelectOption[]>()
-const isBelowMedium = useBreakpoint('<m')
+// ─── Filter options ───────────────────────────────────────────────────────────
 
-// User action state
-const userAction = ref<UserAction | null>(null)
-const actionLoading = ref<Record<string, Record<string, boolean>>>({})
-
-// Filter options
 const roleOptions: SelectOption[] = [
   { label: 'Admin', value: 'admin' },
   { label: 'Moderator', value: 'moderator' },
+  { label: 'User', value: 'user' },
 ]
 
 const statusOptions: SelectOption[] = [
@@ -107,260 +114,233 @@ const statusOptions: SelectOption[] = [
   { label: 'Banned', value: 'banned' },
 ]
 
-// Helper function to get user status
-function getUserStatus(user: QueryUserProfile, _role: string | null): 'active' | 'banned' {
-  const activeBan = isBanActive(user.banned ?? false, user.ban_end ?? null)
-  return activeBan ? 'banned' : 'active'
-}
+// ─── Action state ─────────────────────────────────────────────────────────────
 
-function getRoleSortValue(role: string | null | undefined): number {
-  switch (role) {
-    case 'admin':
-      return 2
-    case 'moderator':
-      return 1
-    default:
-      return 0
-  }
-}
+const userAction = ref<UserActionInternal | null>(null)
+const actionLoading = ref<Record<string, Record<string, boolean>>>({})
 
-// Filter based on search and filters
-const filteredData = computed<TransformedUser[]>(() => {
-  let filtered = users.value
+// ─── Pagination ───────────────────────────────────────────────────────────────
 
-  // Apply search filter
-  if (search.value) {
-    const searchTerm = search.value.toLowerCase()
-    filtered = filtered.filter((user: QueryUserProfile) => {
-      const usernameMatch = user.username?.toLowerCase().includes(searchTerm)
-      const idMatch = user.id?.toLowerCase().includes(searchTerm)
-      const emailValue = props.canViewUserEmails ? (getUserEmail(user.id)?.toLowerCase() ?? '') : ''
-      const emailMatch = props.canViewUserEmails ? emailValue.includes(searchTerm) : false
-      return Boolean(usernameMatch || idMatch || emailMatch)
-    })
-  }
+const paginationState = computed(() => paginate(totalCount.value, page.value, adminTablePerPage.value))
 
-  // Apply role filters
-  if (roleFilter.value && roleFilter.value.length > 0) {
-    filtered = filtered.filter((user: QueryUserProfile) => {
-      const role = userRoles.value[user.id] || null
-      return roleFilter.value?.some(roleOpt => role === roleOpt.value)
-    })
-  }
+const shouldShowPagination = computed(() => totalCount.value > adminTablePerPage.value)
 
-  // Apply status filters
-  if (statusFilter.value && statusFilter.value.length > 0) {
-    filtered = filtered.filter((user: QueryUserProfile) => {
-      const role = userRoles.value[user.id] || null
-      const status = getUserStatus(user, role)
-      return statusFilter.value?.some(statusOpt => status === statusOpt.value)
-    })
-  }
+// ─── Filters ─────────────────────────────────────────────────────────────────
 
-  // Transform the data into explicit key-value pairs
-  return filtered.map((user: QueryUserProfile) => {
-    const role = getUserRole(user.id)
-    const roleSort = getRoleSortValue(role)
-    const status = getUserStatus(user, role)
-    const isSupporter = !!(user.supporter_lifetime || user.supporter_patreon)
-    const activityStatus = user.last_seen ? getUserActivityStatus(user.last_seen) : null
-    const email = getUserEmail(user.id)
-    const confirmed = getUserConfirmedState(user.id)
+const isFiltered = computed(() => search.value !== '' || roleFilter.value !== '' || statusFilter.value !== '')
 
-    const platformCount = [user.steam_id, user.discord_id, user.patreon_id].filter(Boolean).length
-    const lastSeenVariant = getLastSeenVariant(activityStatus)
-    const authProvider = getUserAuthProvider(user.id)
-    const authProviders = getUserAuthProviders(user.id)
-    const normalizedProviders = normalizeAuthProviders(authProviders, authProvider)
-
-    const lastSeenMs = activityStatus && !Number.isNaN(activityStatus.lastSeenTimestamp.getTime())
-      ? activityStatus.lastSeenTimestamp.getTime()
-      : 0
-    const lastSeenText = lastSeenMs > 0 ? (activityStatus?.lastSeenText || 'Never') : 'Never'
-
-    return {
-      'Confirmed': confirmed,
-      'Username': user.username || 'Unknown',
-      'Email': email,
-      'UUID': user.id,
-      'Role': roleSort,
-      'Status': status,
-      'Providers': normalizedProviders.join(', '),
-      'Last Seen': lastSeenMs,
-      'Platforms': platformCount,
-      'Supporter': isSupporter,
-      'Joined': user.created_at,
-      '_lastSeenVariant': lastSeenVariant,
-      '_lastSeenText': lastSeenText,
-      '_original': buildAdminProfile(user),
-    }
-  })
-})
-
-const totalCount = computed(() => users.value.length)
-const filteredCount = computed(() => filteredData.value.length)
-const isFiltered = computed(() => Boolean(
-  search.value
-  || (roleFilter.value && roleFilter.value.length > 0)
-  || (statusFilter.value && statusFilter.value.length > 0),
-))
-
-// Table configuration
-const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredData, {
-  pagination: {
-    enabled: true,
-    perPage: adminTablePerPage.value,
-  },
-  select: false,
-})
-
-watch(adminTablePerPage, (perPage) => {
-  options.value.pagination.perPage = perPage
-  setPage(1)
-})
-
-// Set default sorting to newest join date
-setSort('Joined', 'desc')
-
-function handleUserClick(userData: unknown) {
-  // userData might be transformed by defineTable, so we need to check its structure
-  const user = (userData as TransformedUser)._original || (userData as AdminUserProfile)
-  emit('userSelected', user)
-}
-
-function openUserById(userId: string | null | undefined): boolean {
-  if (!userId)
-    return false
-
-  const normalizedTarget = userId.trim().toLowerCase()
-  if (!normalizedTarget)
-    return false
-
-  const match = users.value.find(user => user.id.toLowerCase() === normalizedTarget)
-  if (!match)
-    return false
-
-  emit('userSelected', buildAdminProfile(match))
-  return true
-}
-
-// Check if action is loading for a specific user and action type
-function isActionLoading(userId: string, action: string): boolean {
-  return !!(actionLoading.value[userId]?.[action])
-}
-
-// Watch for action completion to refresh data
-watch(() => userAction.value, (action) => {
-  if (action && action.type && action.type !== null) {
-    // Emit the action to the parent component
-    emit('action', action)
-
-    const actionType = action.type // Store in variable for type safety
-    const userId = action.user.id
-
-    // Set loading state
-    if (!actionLoading.value[userId]) {
-      actionLoading.value[userId] = {}
-    }
-    actionLoading.value[userId][actionType] = true
-
-    // After action completes, refresh the data
-    setTimeout(() => {
-      fetchUsers()
-      if (actionLoading.value[userId] && actionType) {
-        actionLoading.value[userId][actionType] = false
-      }
-    }, 1500)
-  }
-})
-
-// Watch for refresh signal changes to trigger data refresh
-watch(() => refreshSignal.value, (newValue, oldValue) => {
-  // Only fetch if the signal actually changed and it's not the initial load
-  if (newValue !== oldValue && newValue > 0) {
-    fetchUsers()
-  }
-}, { immediate: false })
-
-// Clear all filters
 function clearFilters() {
   search.value = ''
-  roleFilter.value = undefined
-  statusFilter.value = undefined
+  roleFilter.value = ''
+  statusFilter.value = ''
 }
+
+function handleSearchEnter() {
+  page.value = 1
+  void fetchUsers()
+}
+
+// ─── Sorting ─────────────────────────────────────────────────────────────────
+
+// Columns that default to 'asc' when first clicked; everything else defaults to 'desc'
+const ascDefaultCols = new Set<AdminUserSortCol>(['username', 'role'])
+
+function handleSort(col: AdminUserSortCol) {
+  if (sortCol.value === col) {
+    setSort(col, sortDir.value === 'asc' ? 'desc' : 'asc')
+  }
+  else {
+    setSort(col, ascDefaultCols.has(col) ? 'asc' : 'desc')
+  }
+}
+
+function sortIcon(col: AdminUserSortCol): string {
+  if (sortCol.value !== col)
+    return 'ph:arrows-down-up'
+  return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
+}
+
+// ─── Last-seen helpers (inline, per-row) ─────────────────────────────────────
+
+function getLastSeenVariantFor(lastSeen: string) {
+  const status = lastSeen ? getUserActivityStatus(lastSeen) : null
+  return getLastSeenVariant(status)
+}
+
+function getLastSeenTextFor(lastSeen: string): string {
+  if (!lastSeen)
+    return 'Never'
+  const status = getUserActivityStatus(lastSeen)
+  if (!status || Number.isNaN(status.lastSeenTimestamp.getTime()))
+    return 'Never'
+  return status.lastSeenText || 'Never'
+}
+
+// ─── Auth provider helpers ────────────────────────────────────────────────────
 
 function normalizeAuthProviders(providers: readonly string[] | null | undefined, provider: string | null | undefined): string[] {
   const combined = new Set<string>()
   ;(providers ?? []).forEach(p => combined.add(p))
-  if (provider)
+  if (provider != null && provider !== '')
     combined.add(provider)
   return [...combined]
 }
 
 function getProviderInfo(provider: string) {
   const normalized = provider.toLowerCase()
-
-  const providers: Record<string, { icon: string, label: string }> = {
+  const map: Record<string, { icon: string, label: string }> = {
     google: { icon: 'ph:google-logo', label: 'Google' },
     discord: { icon: 'ph:discord-logo', label: 'Discord' },
     email: { icon: 'ph:envelope-simple', label: 'Email' },
   }
-
-  return providers[normalized] || { icon: 'ph:identification-card', label: provider }
+  return map[normalized] ?? { icon: 'ph:identification-card', label: provider }
 }
 
-// Get platform icon name and display info
+// ─── Platform helpers ─────────────────────────────────────────────────────────
+
 function getPlatformInfo(platform: string) {
-  const platformIcons: Record<string, { icon: string, label: string, color: string }> = {
+  const map: Record<string, { icon: string, label: string, color: string }> = {
     steam: { icon: 'ph:steam-logo', label: 'Steam', color: 'var(--color-text-blue)' },
     discord: { icon: 'ph:discord-logo', label: 'Discord', color: 'var(--color-text-purple)' },
     patreon: { icon: 'ph:patreon-logo', label: 'Patreon', color: 'var(--color-accent)' },
   }
-
-  return platformIcons[platform] || { icon: 'ph:question', label: 'Unknown', color: 'var(--color-text-light)' }
+  return map[platform] ?? { icon: 'ph:question', label: 'Unknown', color: 'var(--color-text-light)' }
 }
 
-// React to external focus requests (e.g. from query params)
+// ─── Action loading ───────────────────────────────────────────────────────────
+
+function isActionLoading(userId: string, action: string): boolean {
+  return !!(actionLoading.value[userId]?.[action])
+}
+
+// ─── Handlers ────────────────────────────────────────────────────────────────
+
+function handleUserClick(user: AdminUserRecord) {
+  emit('userSelected', buildAdminProfile(user))
+}
+
+function openUserById(userId: string | null | undefined): boolean {
+  if (userId == null || userId.trim() === '')
+    return false
+
+  const normalizedTarget = userId.trim().toLowerCase()
+  const match = users.value.find(u => u.id.toLowerCase() === normalizedTarget)
+  if (match == null)
+    return false
+
+  emit('userSelected', buildAdminProfile(match))
+  return true
+}
+
+// ─── Watches ──────────────────────────────────────────────────────────────────
+
+// Search: debounced so we don't fire on every keystroke
+watchDebounced(search, () => {
+  page.value = 1
+  void fetchUsers()
+}, { debounce: 300 })
+
+// Filters: immediate re-fetch on change
+watch([roleFilter, statusFilter], () => {
+  page.value = 1
+  void fetchUsers()
+})
+
+// Sort: immediate re-fetch on change
+watch([sortCol, sortDir], () => {
+  page.value = 1
+  void fetchUsers()
+})
+
+// Page: re-fetch when page changes (driven by setPage calls)
+watch(page, () => {
+  void fetchUsers()
+})
+
+// When per-page changes, reset to page 1 and re-fetch
+watch(adminTablePerPage, () => {
+  if (page.value !== 1) {
+    setPage(1)
+    // page watch in composable will trigger fetch
+  }
+  else {
+    void fetchUsers()
+  }
+})
+
+// Action: forward to parent, set loading, refresh after delay
+watch(() => userAction.value, (action) => {
+  if (action == null || action.type == null)
+    return
+
+  // Re-build a full AdminUserProfile for the emitted action
+  const match = users.value.find(u => u.id === action.user.id)
+  if (match != null) {
+    emit('action', {
+      type: action.type,
+      banDuration: action.banDuration,
+      banReason: action.banReason,
+      user: buildAdminProfile(match),
+    })
+  }
+
+  const actionType = action.type
+  const userId = action.user.id
+
+  actionLoading.value[userId] ??= {}
+  actionLoading.value[userId][actionType] = true
+
+  setTimeout(() => {
+    void fetchUsers()
+    const userActions = actionLoading.value[userId]
+    if (userActions != null) {
+      userActions[actionType] = false
+    }
+  }, 1500)
+})
+
+// Refresh signal from parent
+watch(() => refreshSignal.value, (newValue, oldValue) => {
+  if (newValue !== oldValue && newValue > 0) {
+    void fetchUsers()
+  }
+}, { immediate: false })
+
+// Focus a user by id once data loads
 watch(
-  () => [props.focusUserId, loading.value] as const,
-  ([focusUserId, isLoading]) => {
-    if (isLoading)
-      return
-    openUserById(focusUserId)
+  () => props.focusUserId,
+  (focusUserId) => {
+    if (!loading.value)
+      openUserById(focusUserId)
   },
   { immediate: true },
 )
 
-// Lifecycle
-onBeforeMount(fetchUsers)
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
 
-// Define refresh function for parent components
-defineExpose({
-  refresh: fetchUsers,
-})
+onBeforeMount(() => void fetchUsers())
+
+defineExpose({ refresh: fetchUsers })
 </script>
 
 <template>
-  <!-- Error message -->
-  <Alert v-if="errorMessage" variant="danger">
-    {{ errorMessage }}
-  </Alert>
+  <Flex column expand>
+    <!-- Error state -->
+    <Alert v-if="errorMessage" variant="danger">
+      {{ errorMessage }}
+    </Alert>
 
-  <!-- Loading state -->
-  <template v-else-if="loading">
-    <Flex gap="s" column expand>
-      <!-- Header and filters -->
+    <!-- Loading state - skeleton only on initial load to avoid destroying DOM (and focus) on refetches -->
+    <Flex v-else-if="initialLoad" gap="s" column expand>
       <UserFilters
         v-model:search="search"
         v-model:role-filter="roleFilter"
         v-model:status-filter="statusFilter"
         :role-options="roleOptions"
         :status-options="statusOptions"
-        :expand="isBelowMedium"
         @clear-filters="clearFilters"
+        @search-enter="handleSearchEnter"
       />
-
-      <!-- Table skeleton -->
       <TableSkeleton
         :columns="props.canViewUserEmails ? 11 : 10"
         :rows="10"
@@ -368,228 +348,313 @@ defineExpose({
         compact
       />
     </Flex>
-  </template>
 
-  <Flex v-else gap="s" column expand>
-    <!-- Header and filters -->
-    <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
-      <UserFilters
-        v-model:search="search"
-        v-model:role-filter="roleFilter"
-        v-model:status-filter="statusFilter"
-        :role-options="roleOptions"
-        :status-options="statusOptions"
-        :expand="isBelowMedium"
-        @clear-filters="clearFilters"
-      />
-
-      <Flex
-        gap="s"
-        :y-center="!isBelowMedium"
-        :y-start="isBelowMedium"
-        :wrap="isBelowMedium"
-        :x-end="!isBelowMedium"
-        :x-center="isBelowMedium"
-        :x-start="isBelowMedium"
-        :expand="isBelowMedium"
-      >
-        <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
-          {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
-        </span>
+    <Flex v-else gap="s" column expand>
+      <!-- Filters + count row -->
+      <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
+        <UserFilters
+          v-model:search="search"
+          v-model:role-filter="roleFilter"
+          v-model:status-filter="statusFilter"
+          :role-options="roleOptions"
+          :status-options="statusOptions"
+          @clear-filters="clearFilters"
+          @search-enter="handleSearchEnter"
+        />
+        <Flex
+          gap="s"
+          :y-center="!isBelowMedium"
+          :y-start="isBelowMedium"
+          :wrap="isBelowMedium"
+          :x-end="!isBelowMedium"
+          :x-center="isBelowMedium"
+          :x-start="isBelowMedium"
+          :expand="isBelowMedium"
+        >
+          <span class="text-color-lighter text-s" style="text-wrap: nowrap;" :class="{ 'text-center': isBelowMedium }">
+            {{ isFiltered ? `Filtered ${totalCount}` : `Total ${totalCount}` }}
+          </span>
+        </Flex>
       </Flex>
-    </Flex>
 
-    <TableContainer>
-      <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading">
-        <template #header>
-          <Table.Head v-for="header in headers.filter(header => !header.label.startsWith('_') && (props.canViewUserEmails || header.label !== 'Email'))" :key="header.label" sort :header />
-          <Table.Head>Actions</Table.Head>
-        </template>
+      <div class="table-loading-wrapper" :class="{ 'table-loading': loading && !initialLoad }">
+        <TableContainer>
+          <Table.Root v-if="rows.length > 0" separate-cells>
+            <template #header>
+              <!-- Confirmed -->
+              <Table.Head class="sortable-head" @click="handleSort('confirmed')">
+                <Flex gap="xs" y-center>
+                  Confirmed
+                  <Icon :name="sortIcon('confirmed')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
 
-        <template #body>
-          <tr v-for="user in rows" :key="user._original.id" class="clickable-row" @click="handleUserClick(user)">
-            <Table.Cell class="confirmed-cell" @click.stop>
-              <Tooltip placement="top">
-                <template #tooltip>
-                  <div>{{ user.Confirmed ? 'User confirmed (via social auth or email)' : 'Not confirmed' }}</div>
-                </template>
-                <span v-if="user.Confirmed" class="confirmed-check">
-                  <Icon name="ph:check" size="16" />
-                </span>
-                <span v-else class="unconfirmed-x">
-                  <Icon name="ph:x" size="16" />
-                </span>
-              </Tooltip>
-            </Table.Cell>
+              <!-- Username -->
+              <Table.Head class="sortable-head" @click="handleSort('username')">
+                <Flex gap="xs" y-center>
+                  Username
+                  <Icon :name="sortIcon('username')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
 
-            <Table.Cell class="username-cell">
-              <div class="username-content">
-                <UserAvatar :user-id="user._original.id" :size="20" show-preview />
-                <UserLink :user-id="user._original.id" />
-              </div>
-            </Table.Cell>
+              <!-- Email - only when permitted -->
+              <Table.Head v-if="props.canViewUserEmails">
+                Email
+              </Table.Head>
 
-            <Table.Cell v-if="props.canViewUserEmails" class="email-cell" @click.stop>
-              <template v-if="user.Email">
-                <CopyClipboard :text="user.Email" confirm>
-                  <Button variant="gray" plain size="s" class="email-button">
-                    <template #start>
-                      <Icon name="ph:copy" />
-                    </template>
-                    <span class="text-xxs">{{ user.Email }}</span>
-                  </Button>
-                </CopyClipboard>
-              </template>
-              <span v-else class="text-color-light text-xxs">
-                No email on file
-              </span>
-            </Table.Cell>
+              <!-- UUID - not sortable -->
+              <Table.Head>UUID</Table.Head>
 
-            <Table.Cell class="uuid-cell" @click.stop>
-              <CopyClipboard :text="user.UUID" confirm>
-                <Button variant="gray" plain size="s" class="uuid-button">
-                  <template #start>
-                    <Icon name="ph:copy" />
-                  </template>
-                  <span class="text-xxs">{{ user.UUID }}</span>
-                </Button>
-              </CopyClipboard>
-            </Table.Cell>
+              <!-- Role -->
+              <Table.Head class="sortable-head" @click="handleSort('role')">
+                <Flex gap="xs" y-center>
+                  Role
+                  <Icon :name="sortIcon('role')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
 
-            <Table.Cell class="role-cell">
-              <RoleIndicator
-                :role="user._original.role"
-                size="s"
-              />
-            </Table.Cell>
+              <!-- Status -->
+              <Table.Head class="sortable-head" @click="handleSort('status')">
+                <Flex gap="xs" y-center>
+                  Status
+                  <Icon :name="sortIcon('status')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
 
-            <Table.Cell class="status-cell">
-              <UserStatusIndicator :status="user.Status" :show-label="true" />
-            </Table.Cell>
+              <!-- Providers - not sortable -->
+              <Table.Head>Providers</Table.Head>
 
-            <Table.Cell class="providers-cell" @click.stop>
-              <Flex gap="xs" y-center :wrap="false">
-                <template
-                  v-for="provider in normalizeAuthProviders(user._original.auth_providers ?? null, user._original.auth_provider ?? null)"
-                  :key="provider"
-                >
+              <!-- Last Seen -->
+              <Table.Head class="sortable-head" @click="handleSort('last_seen')">
+                <Flex gap="xs" y-center>
+                  Last Seen
+                  <Icon :name="sortIcon('last_seen')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
+
+              <!-- Platforms -->
+              <Table.Head class="sortable-head" @click="handleSort('platforms')">
+                <Flex gap="xs" y-center>
+                  Platforms
+                  <Icon :name="sortIcon('platforms')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
+
+              <!-- Supporter -->
+              <Table.Head class="sortable-head" @click="handleSort('supporter')">
+                <Flex gap="xs" y-center>
+                  Supporter
+                  <Icon :name="sortIcon('supporter')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
+
+              <!-- Joined -->
+              <Table.Head class="sortable-head" @click="handleSort('created_at')">
+                <Flex gap="xs" y-center>
+                  Joined
+                  <Icon :name="sortIcon('created_at')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
+
+              <!-- Actions - not sortable -->
+              <Table.Head>Actions</Table.Head>
+            </template>
+
+            <template #body>
+              <tr v-for="user in rows" :key="user.id" class="clickable-row" @click="handleUserClick(user as unknown as AdminUserRecord)">
+                <!-- Confirmed -->
+                <Table.Cell class="confirmed-cell" @click.stop>
                   <Tooltip placement="top">
                     <template #tooltip>
-                      <div>{{ getProviderInfo(provider).label }}</div>
+                      <div>{{ user.is_confirmed ? 'User confirmed (via social auth or email)' : 'Not confirmed' }}</div>
                     </template>
-                    <Button variant="gray" size="s" square class="provider-button">
-                      <Icon :name="getProviderInfo(provider).icon" size="16" />
-                    </Button>
+                    <span v-if="user.is_confirmed" class="confirmed-check">
+                      <Icon name="ph:check" size="16" />
+                    </span>
+                    <span v-else class="unconfirmed-x">
+                      <Icon name="ph:x" size="16" />
+                    </span>
                   </Tooltip>
-                </template>
+                </Table.Cell>
 
-                <span
-                  v-if="normalizeAuthProviders(user._original.auth_providers ?? null, user._original.auth_provider ?? null).length === 0"
-                  class="text-color-light text-s"
-                >
-                  None
-                </span>
-              </Flex>
-            </Table.Cell>
+                <!-- Username -->
+                <Table.Cell class="username-cell">
+                  <div class="username-content">
+                    <UserAvatar :user-id="user.id" :size="20" show-preview />
+                    <UserLink :user-id="user.id" />
+                  </div>
+                </Table.Cell>
 
-            <Table.Cell class="last-seen-cell">
-              <Flex gap="xs" y-center>
-                <span v-if="user._lastSeenVariant === 'online'" class="online-dot" />
-                <span
-                  class="text-s"
-                  :class="getLastSeenTextClass(user._lastSeenVariant)"
-                >
-                  {{ user._lastSeenText }}
-                </span>
-              </Flex>
-            </Table.Cell>
-
-            <Table.Cell class="platform-connections-cell" @click.stop>
-              <Flex gap="xs" y-center>
-                <!-- Steam Connection -->
-                <Tooltip v-if="user._original.steam_id" placement="top">
-                  <template #tooltip>
-                    <div>Steam ID: {{ user._original.steam_id }}</div>
+                <!-- Email -->
+                <Table.Cell v-if="props.canViewUserEmails" class="email-cell" @click.stop>
+                  <template v-if="user.email != null && user.email !== ''">
+                    <CopyClipboard :text="user.email" confirm>
+                      <Button variant="gray" plain size="s" class="email-button">
+                        <template #start>
+                          <Icon name="ph:copy" />
+                        </template>
+                        <span class="text-xxs">{{ user.email }}</span>
+                      </Button>
+                    </CopyClipboard>
                   </template>
-                  <CopyClipboard :text="user._original.steam_id" confirm>
-                    <Button variant="gray" size="s" square class="platform-button steam">
-                      <Icon :name="getPlatformInfo('steam').icon" size="16" />
+                  <span v-else class="text-color-light text-xxs">No email on file</span>
+                </Table.Cell>
+
+                <!-- UUID -->
+                <Table.Cell class="uuid-cell" @click.stop>
+                  <CopyClipboard :text="user.id" confirm>
+                    <Button variant="gray" plain size="s" class="uuid-button">
+                      <template #start>
+                        <Icon name="ph:copy" />
+                      </template>
+                      <span class="text-xxs">{{ user.id }}</span>
                     </Button>
                   </CopyClipboard>
-                </Tooltip>
+                </Table.Cell>
 
-                <!-- Discord Connection -->
-                <Tooltip v-if="user._original.discord_id" placement="top">
-                  <template #tooltip>
-                    <div>
-                      <div v-if="user._original.discord_display_name">
-                        Discord: {{ user._original.discord_display_name }}
-                      </div>
-                      <div v-else>
-                        Discord: Unknown
-                      </div>
-                      <div>Discord ID: {{ user._original.discord_id }}</div>
-                    </div>
-                  </template>
-                  <CopyClipboard :text="user._original.discord_id" confirm>
-                    <Button variant="gray" size="s" square class="platform-button discord">
-                      <Icon :name="getPlatformInfo('discord').icon" size="16" />
-                    </Button>
-                  </CopyClipboard>
-                </Tooltip>
+                <!-- Role -->
+                <Table.Cell class="role-cell">
+                  <RoleIndicator :role="user.role" size="s" />
+                </Table.Cell>
 
-                <!-- Patreon Connection -->
-                <Tooltip v-if="user._original.patreon_id" placement="top">
-                  <template #tooltip>
-                    <div>Patreon ID: {{ user._original.patreon_id }}</div>
-                  </template>
-                  <CopyClipboard :text="user._original.patreon_id" confirm>
-                    <Button variant="gray" size="s" square class="platform-button patreon">
-                      <Icon :name="getPlatformInfo('patreon').icon" size="16" />
-                    </Button>
-                  </CopyClipboard>
-                </Tooltip>
+                <!-- Status -->
+                <Table.Cell class="status-cell">
+                  <UserStatusIndicator :status="user.is_banned ? 'banned' : 'active'" :show-label="true" />
+                </Table.Cell>
 
-                <!-- No connections indicator -->
-                <span v-if="!user._original.steam_id && !user._original.discord_id && !user._original.patreon_id" class="text-color-light text-s">
-                  No connections
-                </span>
-              </Flex>
-            </Table.Cell>
+                <!-- Providers -->
+                <Table.Cell class="providers-cell" @click.stop>
+                  <Flex gap="xs" y-center :wrap="false">
+                    <template
+                      v-for="provider in normalizeAuthProviders(user.auth_providers, user.auth_provider)"
+                      :key="provider"
+                    >
+                      <Tooltip placement="top">
+                        <template #tooltip>
+                          <div>{{ getProviderInfo(provider).label }}</div>
+                        </template>
+                        <Button variant="gray" size="s" square class="provider-button">
+                          <Icon :name="getProviderInfo(provider).icon" size="16" />
+                        </Button>
+                      </Tooltip>
+                    </template>
+                    <span
+                      v-if="normalizeAuthProviders(user.auth_providers, user.auth_provider).length === 0"
+                      class="text-color-light text-s"
+                    >
+                      None
+                    </span>
+                  </Flex>
+                </Table.Cell>
 
-            <Table.Cell class="supporter-cell">
-              <span class="text-s">
-                {{ user.Supporter ? 'Yes' : 'No' }}
-              </span>
-            </Table.Cell>
+                <!-- Last Seen -->
+                <Table.Cell class="last-seen-cell">
+                  <Flex gap="xs" y-center>
+                    <span v-if="getLastSeenVariantFor(user.last_seen) === 'online'" class="online-dot" />
+                    <span
+                      class="text-s"
+                      :class="getLastSeenTextClass(getLastSeenVariantFor(user.last_seen))"
+                    >
+                      {{ getLastSeenTextFor(user.last_seen) }}
+                    </span>
+                  </Flex>
+                </Table.Cell>
 
-            <Table.Cell class="joined-cell">
-              <TimestampDate :date="user.Joined" />
-            </Table.Cell>
+                <!-- Platform connections -->
+                <Table.Cell class="platform-connections-cell" @click.stop>
+                  <Flex gap="xs" y-center>
+                    <Tooltip v-if="user.steam_id != null && user.steam_id !== ''" placement="top">
+                      <template #tooltip>
+                        <div>Steam ID: {{ user.steam_id }}</div>
+                      </template>
+                      <CopyClipboard :text="user.steam_id" confirm>
+                        <Button variant="gray" size="s" square class="platform-button steam">
+                          <Icon :name="getPlatformInfo('steam').icon" size="16" />
+                        </Button>
+                      </CopyClipboard>
+                    </Tooltip>
 
-            <Table.Cell class="actions-cell" @click.stop>
-              <UserActions
-                v-model="userAction"
-                :user="user._original"
-                :status="user.Status"
-                :is-loading="(action) => isActionLoading(user._original.id, action)"
-                :current-user-id="currentUser?.id"
-                size="s"
-              />
-            </Table.Cell>
-          </tr>
-        </template>
+                    <Tooltip v-if="user.discord_id != null && user.discord_id !== ''" placement="top">
+                      <template #tooltip>
+                        <div>
+                          <div v-if="user.discord_display_name != null && user.discord_display_name !== ''">
+                            Discord: {{ user.discord_display_name }}
+                          </div>
+                          <div v-else>
+                            Discord: Unknown
+                          </div>
+                          <div>Discord ID: {{ user.discord_id }}</div>
+                        </div>
+                      </template>
+                      <CopyClipboard :text="user.discord_id" confirm>
+                        <Button variant="gray" size="s" square class="platform-button discord">
+                          <Icon :name="getPlatformInfo('discord').icon" size="16" />
+                        </Button>
+                      </CopyClipboard>
+                    </Tooltip>
 
-        <template v-if="filteredData.length > adminTablePerPage" #pagination>
-          <Pagination :pagination="pagination" @change="setPage" />
-        </template>
-      </Table.Root>
+                    <Tooltip v-if="user.patreon_id != null && user.patreon_id !== ''" placement="top">
+                      <template #tooltip>
+                        <div>Patreon ID: {{ user.patreon_id }}</div>
+                      </template>
+                      <CopyClipboard :text="user.patreon_id" confirm>
+                        <Button variant="gray" size="s" square class="platform-button patreon">
+                          <Icon :name="getPlatformInfo('patreon').icon" size="16" />
+                        </Button>
+                      </CopyClipboard>
+                    </Tooltip>
 
-      <!-- No results message -->
-      <Alert v-else-if="!loading" variant="info">
-        No users found
-      </Alert>
-    </TableContainer>
+                    <span
+                      v-if="(user.steam_id == null || user.steam_id === '') && (user.discord_id == null || user.discord_id === '') && (user.patreon_id == null || user.patreon_id === '')"
+                      class="text-color-light text-s"
+                    >
+                      No connections
+                    </span>
+                  </Flex>
+                </Table.Cell>
+
+                <!-- Supporter -->
+                <Table.Cell class="supporter-cell">
+                  <span class="text-s">{{ user.is_supporter ? 'Yes' : 'No' }}</span>
+                </Table.Cell>
+
+                <!-- Joined -->
+                <Table.Cell class="joined-cell">
+                  <TimestampDate :date="user.created_at" />
+                </Table.Cell>
+
+                <!-- Actions -->
+                <Table.Cell class="actions-cell" @click.stop>
+                  <UserActions
+                    v-model="(userAction as UserActionInternal | null)"
+                    :user="{
+                      id: user.id,
+                      username: user.username ?? user.id,
+                      supporter_patreon: user.supporter_patreon,
+                      supporter_lifetime: user.supporter_lifetime,
+                      patreon_id: user.patreon_id ?? null,
+                      banned: user.banned,
+                    }"
+                    :status="user.is_banned ? 'banned' : 'active'"
+                    :is-loading="(action) => isActionLoading(user.id, action)"
+                    :current-user-id="currentUser?.id"
+                    size="s"
+                  />
+                </Table.Cell>
+              </tr>
+            </template>
+
+            <template v-if="shouldShowPagination" #pagination>
+              <Pagination :pagination="paginationState" @change="setPage" />
+            </template>
+          </Table.Root>
+
+          <Alert v-else-if="!loading && rows.length === 0" variant="info">
+            No users found
+          </Alert>
+        </TableContainer>
+      </div>
+    </Flex>
   </Flex>
 </template>
 
@@ -666,6 +731,20 @@ defineExpose({
 
 .user-row:hover {
   background-color: var(--color-bg-light);
+}
+
+.sortable-head {
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.sort-icon {
+  color: var(--color-text-lighter);
+  flex-shrink: 0;
 }
 
 .username-cell {
@@ -753,6 +832,17 @@ defineExpose({
 .actions-cell {
   min-width: 150px;
   text-align: right;
+}
+
+.table-loading-wrapper {
+  width: 100%;
+  overflow: hidden;
+  transition: opacity var(--transition-slow);
+}
+
+.table-loading {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .no-users {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex, Input, Select } from '@dolanske/vui'
+import { computed } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption {
@@ -12,19 +13,33 @@ const props = defineProps<{
   statusOptions: SelectOption[]
 }>()
 
-// Emit is still needed for the clearFilters action
 const emit = defineEmits<{
   (e: 'clearFilters'): void
+  (e: 'searchEnter'): void
 }>()
 
 const isBelowMedium = useBreakpoint('<m')
 
-// Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const roleFilter = defineModel<SelectOption[]>('roleFilter')
-const statusFilter = defineModel<SelectOption[]>('statusFilter')
+const roleFilter = defineModel<string>('roleFilter', { default: '' })
+const statusFilter = defineModel<string>('statusFilter', { default: '' })
 
-// Clear filters handler
+// VUI Select speaks SelectOption[] - bridge to/from plain string models
+
+const roleSelectModel = computed({
+  get: () => roleFilter.value !== '' ? props.roleOptions.filter(o => o.value === roleFilter.value) : [],
+  set: (val: SelectOption[] | undefined) => {
+    roleFilter.value = val && val.length > 0 ? (val[0]?.value ?? '') : ''
+  },
+})
+
+const statusSelectModel = computed({
+  get: () => statusFilter.value !== '' ? props.statusOptions.filter(o => o.value === statusFilter.value) : [],
+  set: (val: SelectOption[] | undefined) => {
+    statusFilter.value = val && val.length > 0 ? (val[0]?.value ?? '') : ''
+  },
+})
+
 function clearFilters() {
   emit('clearFilters')
 }
@@ -32,48 +47,14 @@ function clearFilters() {
 
 <template>
   <Flex gap="s" x-start wrap expand>
-    <!-- Search input -->
-    <!-- I was too lazy to properly scale the search input -->
-    <Input
-      v-model="search"
-      style="min-width: 16vw"
-      placeholder="Search by username, email, or UUID"
-      :expand="isBelowMedium"
-    >
+    <Input v-model="search" style="min-width: 16vw" placeholder="Search by username, email, or UUID" :expand="isBelowMedium" @keydown.enter.prevent="emit('searchEnter')">
       <template #start>
         <Icon name="ph:magnifying-glass" />
       </template>
     </Input>
-
-    <!-- Role filter -->
-    <Select
-      v-model="roleFilter"
-      :options="props.roleOptions"
-      placeholder="Filter by role"
-      :expand="isBelowMedium"
-      search
-      show-clear
-    />
-
-    <!-- Status filter -->
-    <Select
-      v-model="statusFilter"
-      :options="props.statusOptions"
-      placeholder="Filter by status"
-      :expand="isBelowMedium"
-      search
-      show-clear
-    />
-
-    <!-- Clear all filters -->
-    <Button
-      v-if="search || roleFilter || statusFilter"
-      plain
-      outline
-      :expand="isBelowMedium"
-      :disabled="!search && !roleFilter && !statusFilter"
-      @click="clearFilters"
-    >
+    <Select v-model="roleSelectModel" :options="props.roleOptions" placeholder="Filter by role" :expand="isBelowMedium" show-clear />
+    <Select v-model="statusSelectModel" :options="props.statusOptions" placeholder="Filter by status" :expand="isBelowMedium" show-clear />
+    <Button v-if="search || roleFilter || statusFilter" plain outline :expand="isBelowMedium" :disabled="!search && !roleFilter && !statusFilter" @click="clearFilters">
       Clear Filters
     </Button>
   </Flex>

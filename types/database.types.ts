@@ -1,12 +1,12 @@
-export type Json
-  = | string
-    | number
-    | boolean
-    | null
-    | { [key: string]: Json | undefined }
-    | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export interface Database {
+export type Database = {
   private: {
     Tables: {
       kvstore: {
@@ -16,7 +16,7 @@ export interface Database {
           key: string
           modified_at: string | null
           modified_by: string | null
-          type: Database['public']['Enums']['kvstore_type']
+          type: Database["public"]["Enums"]["kvstore_type"]
           value: Json
         }
         Insert: {
@@ -25,7 +25,7 @@ export interface Database {
           key: string
           modified_at?: string | null
           modified_by?: string | null
-          type?: Database['public']['Enums']['kvstore_type']
+          type?: Database["public"]["Enums"]["kvstore_type"]
           value: Json
         }
         Update: {
@@ -34,7 +34,7 @@ export interface Database {
           key?: string
           modified_at?: string | null
           modified_by?: string | null
-          type?: Database['public']['Enums']['kvstore_type']
+          type?: Database["public"]["Enums"]["kvstore_type"]
           value?: Json
         }
         Relationships: []
@@ -74,8 +74,8 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      queue_dispatch_worker_sync_steam: { Args: never, Returns: undefined }
-      queue_enqueue_worker_sync_steam: { Args: never, Returns: undefined }
+      queue_dispatch_worker_sync_steam: { Args: never; Returns: undefined }
+      queue_enqueue_worker_sync_steam: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
@@ -176,32 +176,32 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'complaints_context_discussion_fkey'
-            columns: ['context_discussion']
+            foreignKeyName: "complaints_context_discussion_fkey"
+            columns: ["context_discussion"]
             isOneToOne: false
-            referencedRelation: 'discussions'
-            referencedColumns: ['id']
+            referencedRelation: "discussions"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'complaints_context_discussion_reply_fkey'
-            columns: ['context_discussion_reply']
+            foreignKeyName: "complaints_context_discussion_reply_fkey"
+            columns: ["context_discussion_reply"]
             isOneToOne: false
-            referencedRelation: 'discussion_replies'
-            referencedColumns: ['id']
+            referencedRelation: "discussion_replies"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'complaints_context_discussion_reply_fkey'
-            columns: ['context_discussion_reply']
+            foreignKeyName: "complaints_context_discussion_reply_fkey"
+            columns: ["context_discussion_reply"]
             isOneToOne: false
-            referencedRelation: 'forum_discussion_replies'
-            referencedColumns: ['id']
+            referencedRelation: "forum_discussion_replies"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'complaints_context_gameserver_fkey'
-            columns: ['context_gameserver']
+            foreignKeyName: "complaints_context_gameserver_fkey"
+            columns: ["context_gameserver"]
             isOneToOne: false
-            referencedRelation: 'gameservers'
-            referencedColumns: ['id']
+            referencedRelation: "gameservers"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -235,11 +235,11 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'gameserver_containers_server_fkey'
-            columns: ['server']
+            foreignKeyName: "gameserver_containers_server_fkey"
+            columns: ["server"]
             isOneToOne: false
-            referencedRelation: 'servers'
-            referencedColumns: ['id']
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -294,39 +294,39 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'discussion_replies_created_by_fkey'
-            columns: ['created_by']
+            foreignKeyName: "discussion_replies_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussion_replies_discussion_id_fkey'
-            columns: ['discussion_id']
+            foreignKeyName: "discussion_replies_discussion_id_fkey"
+            columns: ["discussion_id"]
             isOneToOne: false
-            referencedRelation: 'discussions'
-            referencedColumns: ['id']
+            referencedRelation: "discussions"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussion_replies_modified_by_fkey'
-            columns: ['modified_by']
+            foreignKeyName: "discussion_replies_modified_by_fkey"
+            columns: ["modified_by"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussion_replies_reply_to_id_fkey'
-            columns: ['reply_to_id']
+            foreignKeyName: "discussion_replies_reply_to_id_fkey"
+            columns: ["reply_to_id"]
             isOneToOne: false
-            referencedRelation: 'discussion_replies'
-            referencedColumns: ['id']
+            referencedRelation: "discussion_replies"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussion_replies_reply_to_id_fkey'
-            columns: ['reply_to_id']
+            foreignKeyName: "discussion_replies_reply_to_id_fkey"
+            columns: ["reply_to_id"]
             isOneToOne: false
-            referencedRelation: 'forum_discussion_replies'
-            referencedColumns: ['id']
+            referencedRelation: "forum_discussion_replies"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -360,11 +360,11 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'discussion_subscriptions_discussion_id_fkey'
-            columns: ['discussion_id']
+            foreignKeyName: "discussion_subscriptions_discussion_id_fkey"
+            columns: ["discussion_id"]
             isOneToOne: false
-            referencedRelation: 'discussions'
-            referencedColumns: ['id']
+            referencedRelation: "discussions"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -422,25 +422,25 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'discussion_topics_created_by_fkey'
-            columns: ['created_by']
+            foreignKeyName: "discussion_topics_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussion_topics_modified_by_fkey'
-            columns: ['modified_by']
+            foreignKeyName: "discussion_topics_modified_by_fkey"
+            columns: ["modified_by"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussion_topics_parent_id_fkey'
-            columns: ['parent_id']
+            foreignKeyName: "discussion_topics_parent_id_fkey"
+            columns: ["parent_id"]
             isOneToOne: false
-            referencedRelation: 'discussion_topics'
-            referencedColumns: ['id']
+            referencedRelation: "discussion_topics"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -531,88 +531,88 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'discussions_accepted_reply_id_fkey'
-            columns: ['accepted_reply_id']
+            foreignKeyName: "discussions_accepted_reply_id_fkey"
+            columns: ["accepted_reply_id"]
             isOneToOne: false
-            referencedRelation: 'discussion_replies'
-            referencedColumns: ['id']
+            referencedRelation: "discussion_replies"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_accepted_reply_id_fkey'
-            columns: ['accepted_reply_id']
+            foreignKeyName: "discussions_accepted_reply_id_fkey"
+            columns: ["accepted_reply_id"]
             isOneToOne: false
-            referencedRelation: 'forum_discussion_replies'
-            referencedColumns: ['id']
+            referencedRelation: "forum_discussion_replies"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_created_by_fkey'
-            columns: ['created_by']
+            foreignKeyName: "discussions_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_discussion_topic_id_fkey'
-            columns: ['discussion_topic_id']
+            foreignKeyName: "discussions_discussion_topic_id_fkey"
+            columns: ["discussion_topic_id"]
             isOneToOne: false
-            referencedRelation: 'discussion_topics'
-            referencedColumns: ['id']
+            referencedRelation: "discussion_topics"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_event_id_fkey'
-            columns: ['event_id']
+            foreignKeyName: "discussions_event_id_fkey"
+            columns: ["event_id"]
             isOneToOne: false
-            referencedRelation: 'events'
-            referencedColumns: ['id']
+            referencedRelation: "events"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_gameserver_id_fkey'
-            columns: ['gameserver_id']
+            foreignKeyName: "discussions_gameserver_id_fkey"
+            columns: ["gameserver_id"]
             isOneToOne: false
-            referencedRelation: 'gameservers'
-            referencedColumns: ['id']
+            referencedRelation: "gameservers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_modified_by_fkey'
-            columns: ['modified_by']
+            foreignKeyName: "discussions_modified_by_fkey"
+            columns: ["modified_by"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_pinned_reply_id_fkey'
-            columns: ['pinned_reply_id']
+            foreignKeyName: "discussions_pinned_reply_id_fkey"
+            columns: ["pinned_reply_id"]
             isOneToOne: false
-            referencedRelation: 'discussion_replies'
-            referencedColumns: ['id']
+            referencedRelation: "discussion_replies"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_pinned_reply_id_fkey'
-            columns: ['pinned_reply_id']
+            foreignKeyName: "discussions_pinned_reply_id_fkey"
+            columns: ["pinned_reply_id"]
             isOneToOne: false
-            referencedRelation: 'forum_discussion_replies'
-            referencedColumns: ['id']
+            referencedRelation: "forum_discussion_replies"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_profile_id_fkey'
-            columns: ['profile_id']
+            foreignKeyName: "discussions_profile_id_fkey"
+            columns: ["profile_id"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_project_id_fkey'
-            columns: ['project_id']
+            foreignKeyName: "discussions_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: 'projects'
-            referencedColumns: ['id']
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussions_referendum_id_fkey'
-            columns: ['referendum_id']
+            foreignKeyName: "discussions_referendum_id_fkey"
+            columns: ["referendum_id"]
             isOneToOne: false
-            referencedRelation: 'referendums'
-            referencedColumns: ['id']
+            referencedRelation: "referendums"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -687,7 +687,7 @@ export interface Database {
           id: number
           modified_at: string | null
           modified_by: string | null
-          rsvp: Database['public']['Enums']['events_rsvp_status']
+          rsvp: Database["public"]["Enums"]["events_rsvp_status"]
           user_id: string
         }
         Insert: {
@@ -697,7 +697,7 @@ export interface Database {
           id?: number
           modified_at?: string | null
           modified_by?: string | null
-          rsvp: Database['public']['Enums']['events_rsvp_status']
+          rsvp: Database["public"]["Enums"]["events_rsvp_status"]
           user_id: string
         }
         Update: {
@@ -707,16 +707,16 @@ export interface Database {
           id?: number
           modified_at?: string | null
           modified_by?: string | null
-          rsvp?: Database['public']['Enums']['events_rsvp_status']
+          rsvp?: Database["public"]["Enums"]["events_rsvp_status"]
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: 'events_rsvps_event_id_fkey'
-            columns: ['event_id']
+            foreignKeyName: "events_rsvps_event_id_fkey"
+            columns: ["event_id"]
             isOneToOne: false
-            referencedRelation: 'events'
-            referencedColumns: ['id']
+            referencedRelation: "events"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -834,7 +834,7 @@ export interface Database {
           modified_by: string | null
           name: string
           port: string | null
-          region: Database['public']['Enums']['region'] | null
+          region: Database["public"]["Enums"]["region"] | null
         }
         Insert: {
           addresses?: string[] | null
@@ -850,7 +850,7 @@ export interface Database {
           modified_by?: string | null
           name?: string
           port?: string | null
-          region?: Database['public']['Enums']['region'] | null
+          region?: Database["public"]["Enums"]["region"] | null
         }
         Update: {
           addresses?: string[] | null
@@ -866,22 +866,22 @@ export interface Database {
           modified_by?: string | null
           name?: string
           port?: string | null
-          region?: Database['public']['Enums']['region'] | null
+          region?: Database["public"]["Enums"]["region"] | null
         }
         Relationships: [
           {
-            foreignKeyName: 'gameservers_container_fkey'
-            columns: ['container']
+            foreignKeyName: "gameservers_container_fkey"
+            columns: ["container"]
             isOneToOne: false
-            referencedRelation: 'containers'
-            referencedColumns: ['name']
+            referencedRelation: "containers"
+            referencedColumns: ["name"]
           },
           {
-            foreignKeyName: 'gameservers_game_fkey'
-            columns: ['game']
+            foreignKeyName: "gameservers_game_fkey"
+            columns: ["game"]
             isOneToOne: false
-            referencedRelation: 'games'
-            referencedColumns: ['id']
+            referencedRelation: "games"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -892,7 +892,7 @@ export interface Database {
           key: string
           modified_at: string | null
           modified_by: string | null
-          type: Database['public']['Enums']['kvstore_type']
+          type: Database["public"]["Enums"]["kvstore_type"]
           value: Json
         }
         Insert: {
@@ -901,7 +901,7 @@ export interface Database {
           key: string
           modified_at?: string | null
           modified_by?: string | null
-          type?: Database['public']['Enums']['kvstore_type']
+          type?: Database["public"]["Enums"]["kvstore_type"]
           value: Json
         }
         Update: {
@@ -910,7 +910,7 @@ export interface Database {
           key?: string
           modified_at?: string | null
           modified_by?: string | null
-          type?: Database['public']['Enums']['kvstore_type']
+          type?: Database["public"]["Enums"]["kvstore_type"]
           value?: Json
         }
         Relationships: []
@@ -1062,11 +1062,11 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'presences_discord_profile_id_fkey'
-            columns: ['profile_id']
+            foreignKeyName: "presences_discord_profile_id_fkey"
+            columns: ["profile_id"]
             isOneToOne: true
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1081,7 +1081,7 @@ export interface Database {
           last_app_name: string | null
           last_online_at: string | null
           profile_id: string
-          status: Database['public']['Enums']['presence_steam_status'] | null
+          status: Database["public"]["Enums"]["presence_steam_status"] | null
           steam_name: string | null
           updated_at: string
           visibility: string | null
@@ -1096,7 +1096,7 @@ export interface Database {
           last_app_name?: string | null
           last_online_at?: string | null
           profile_id: string
-          status?: Database['public']['Enums']['presence_steam_status'] | null
+          status?: Database["public"]["Enums"]["presence_steam_status"] | null
           steam_name?: string | null
           updated_at?: string
           visibility?: string | null
@@ -1111,18 +1111,18 @@ export interface Database {
           last_app_name?: string | null
           last_online_at?: string | null
           profile_id?: string
-          status?: Database['public']['Enums']['presence_steam_status'] | null
+          status?: Database["public"]["Enums"]["presence_steam_status"] | null
           steam_name?: string | null
           updated_at?: string
           visibility?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: 'presences_steam_profile_id_fkey'
-            columns: ['profile_id']
+            foreignKeyName: "presences_steam_profile_id_fkey"
+            columns: ["profile_id"]
             isOneToOne: true
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1165,18 +1165,18 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'presences_teamspeak_profile_id_fkey'
-            columns: ['profile_id']
+            foreignKeyName: "presences_teamspeak_profile_id_fkey"
+            columns: ["profile_id"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
       profiles: {
         Row: {
           agreed_content_rules: boolean
-          badges: Database['public']['Enums']['profile_badge'][]
+          badges: Database["public"]["Enums"]["profile_badge"][]
           ban_end: string | null
           ban_reason: string | null
           ban_start: string | null
@@ -1208,7 +1208,7 @@ export interface Database {
         }
         Insert: {
           agreed_content_rules?: boolean
-          badges?: Database['public']['Enums']['profile_badge'][]
+          badges?: Database["public"]["Enums"]["profile_badge"][]
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
@@ -1240,7 +1240,7 @@ export interface Database {
         }
         Update: {
           agreed_content_rules?: boolean
-          badges?: Database['public']['Enums']['profile_badge'][]
+          badges?: Database["public"]["Enums"]["profile_badge"][]
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
@@ -1272,11 +1272,11 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'profiles_theme_id_fkey'
-            columns: ['theme_id']
+            foreignKeyName: "profiles_theme_id_fkey"
+            columns: ["theme_id"]
             isOneToOne: false
-            referencedRelation: 'themes'
-            referencedColumns: ['id']
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1325,11 +1325,11 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'projects_owner_fkey'
-            columns: ['owner']
+            foreignKeyName: "projects_owner_fkey"
+            columns: ["owner"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1360,11 +1360,11 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'referendum_votes_referendum_id_fkey'
-            columns: ['referendum_id']
+            foreignKeyName: "referendum_votes_referendum_id_fkey"
+            columns: ["referendum_id"]
             isOneToOne: false
-            referencedRelation: 'referendums'
-            referencedColumns: ['id']
+            referencedRelation: "referendums"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1416,18 +1416,18 @@ export interface Database {
       role_permissions: {
         Row: {
           id: number
-          permission: Database['public']['Enums']['app_permission']
-          role: Database['public']['Enums']['app_role']
+          permission: Database["public"]["Enums"]["app_permission"]
+          role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
           id?: number
-          permission: Database['public']['Enums']['app_permission']
-          role: Database['public']['Enums']['app_role']
+          permission: Database["public"]["Enums"]["app_permission"]
+          role: Database["public"]["Enums"]["app_role"]
         }
         Update: {
           id?: number
-          permission?: Database['public']['Enums']['app_permission']
-          role?: Database['public']['Enums']['app_role']
+          permission?: Database["public"]["Enums"]["app_permission"]
+          role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
       }
@@ -1737,28 +1737,28 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'themes_forked_from_fkey'
-            columns: ['forked_from']
+            foreignKeyName: "themes_forked_from_fkey"
+            columns: ["forked_from"]
             isOneToOne: false
-            referencedRelation: 'themes'
-            referencedColumns: ['id']
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
           },
         ]
       }
       user_roles: {
         Row: {
           id: number
-          role: Database['public']['Enums']['app_role']
+          role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           id?: number
-          role: Database['public']['Enums']['app_role']
+          role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           id?: number
-          role?: Database['public']['Enums']['app_role']
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -1816,39 +1816,39 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'discussion_replies_created_by_fkey'
-            columns: ['created_by']
+            foreignKeyName: "discussion_replies_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussion_replies_discussion_id_fkey'
-            columns: ['discussion_id']
+            foreignKeyName: "discussion_replies_discussion_id_fkey"
+            columns: ["discussion_id"]
             isOneToOne: false
-            referencedRelation: 'discussions'
-            referencedColumns: ['id']
+            referencedRelation: "discussions"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussion_replies_modified_by_fkey'
-            columns: ['modified_by']
+            foreignKeyName: "discussion_replies_modified_by_fkey"
+            columns: ["modified_by"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussion_replies_reply_to_id_fkey'
-            columns: ['reply_to_id']
+            foreignKeyName: "discussion_replies_reply_to_id_fkey"
+            columns: ["reply_to_id"]
             isOneToOne: false
-            referencedRelation: 'discussion_replies'
-            referencedColumns: ['id']
+            referencedRelation: "discussion_replies"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'discussion_replies_reply_to_id_fkey'
-            columns: ['reply_to_id']
+            foreignKeyName: "discussion_replies_reply_to_id_fkey"
+            columns: ["reply_to_id"]
             isOneToOne: false
-            referencedRelation: 'forum_discussion_replies'
-            referencedColumns: ['id']
+            referencedRelation: "forum_discussion_replies"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1859,11 +1859,11 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: 'profiles_theme_id_fkey'
-            columns: ['theme_id']
+            foreignKeyName: "profiles_theme_id_fkey"
+            columns: ["theme_id"]
             isOneToOne: false
-            referencedRelation: 'themes'
-            referencedColumns: ['id']
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1874,26 +1874,26 @@ export interface Database {
         Returns: undefined
       }
       audit_fields_unchanged: {
-        Args: { created_at: string, created_by: string }
+        Args: { created_at: string; created_by: string }
         Returns: boolean
       }
       authorize: {
         Args: {
-          requested_permission: Database['public']['Enums']['app_permission']
+          requested_permission: Database["public"]["Enums"]["app_permission"]
         }
         Returns: boolean
       }
-      contains_html_tags: { Args: { input_text: string }, Returns: boolean }
+      contains_html_tags: { Args: { input_text: string }; Returns: boolean }
       current_user_role: {
         Args: never
-        Returns: Database['public']['Enums']['app_role']
+        Returns: Database["public"]["Enums"]["app_role"]
       }
-      custom_access_token_hook: { Args: { event: Json }, Returns: Json }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       event_rsvp_window_open: {
         Args: { target_event_id: number }
         Returns: boolean
       }
-      generate_username: { Args: never, Returns: string }
+      generate_username: { Args: never; Returns: string }
       get_admin_user_overview: {
         Args: never
         Returns: {
@@ -1903,6 +1903,52 @@ export interface Database {
           email: string
           is_confirmed: boolean
           user_id: string
+        }[]
+      }
+      get_admin_users_paginated: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_role?: string
+          p_search?: string
+          p_sort_col?: string
+          p_sort_dir?: string
+          p_status?: string
+        }
+        Returns: {
+          auth_provider: string
+          auth_providers: string[]
+          badges: Database["public"]["Enums"]["profile_badge"][]
+          ban_end: string
+          ban_reason: string
+          ban_start: string
+          banned: boolean
+          birthday: string
+          country: string
+          created_at: string
+          discord_display_name: string
+          discord_id: string
+          email: string
+          introduction: string
+          is_banned: boolean
+          is_confirmed: boolean
+          is_supporter: boolean
+          last_seen: string
+          markdown: string
+          modified_at: string
+          modified_by: string
+          patreon_id: string
+          platform_count: number
+          public: boolean
+          role: string
+          role_sort: number
+          steam_id: string
+          supporter_lifetime: boolean
+          supporter_patreon: boolean
+          total_count: number
+          user_id: string
+          username: string
+          website: string
         }[]
       }
       get_discussion_replies_page: {
@@ -1972,30 +2018,30 @@ export interface Database {
       }
       get_discussion_reply_nearest_to_date:
         | {
-          Args: {
-            p_ascending?: boolean
-            p_discussion_id: string
-            p_hash?: string
-            p_root_only?: boolean
-            p_target_time: string
+            Args: {
+              p_ascending?: boolean
+              p_discussion_id: string
+              p_hash?: string
+              p_root_only?: boolean
+              p_target_time: string
+            }
+            Returns: {
+              id: string
+            }[]
           }
-          Returns: {
-            id: string
-          }[]
-        }
         | {
-          Args: {
-            p_ascending?: boolean
-            p_discussion_id: string
-            p_find_first?: boolean
-            p_hash?: string
-            p_root_only?: boolean
-            p_target_time: string
+            Args: {
+              p_ascending?: boolean
+              p_discussion_id: string
+              p_find_first?: boolean
+              p_hash?: string
+              p_root_only?: boolean
+              p_target_time: string
+            }
+            Returns: {
+              id: string
+            }[]
           }
-          Returns: {
-            id: string
-          }[]
-        }
       get_discussion_reply_page_cursor: {
         Args: {
           p_ascending?: boolean
@@ -2022,7 +2068,7 @@ export interface Database {
         }[]
       }
       get_forum_activity_feed: {
-        Args: { p_created_by?: string, p_limit?: number, p_offset?: number }
+        Args: { p_created_by?: string; p_limit?: number; p_offset?: number }
         Returns: {
           body: string
           created_at: string
@@ -2035,7 +2081,7 @@ export interface Database {
           title: string
         }[]
       }
-      get_private_config: { Args: { config_key: string }, Returns: Json }
+      get_private_config: { Args: { config_key: string }; Returns: Json }
       get_user_emails: {
         Args: never
         Returns: {
@@ -2050,63 +2096,63 @@ export interface Database {
         }[]
       }
       has_permission: {
-        Args: { permission_name: Database['public']['Enums']['app_permission'] }
+        Args: { permission_name: Database["public"]["Enums"]["app_permission"] }
         Returns: boolean
       }
-      has_verified_mfa: { Args: never, Returns: boolean }
+      has_verified_mfa: { Args: never; Returns: boolean }
       increment_discussion_view_count: {
         Args: { target_discussion_id: string }
         Returns: undefined
       }
-      is_not_banned: { Args: never, Returns: boolean }
-      is_owner: { Args: { record_user_id: string }, Returns: boolean }
-      is_profile_owner: { Args: { profile_id: string }, Returns: boolean }
-      normalize_mentions: { Args: { input_text: string }, Returns: string }
+      is_not_banned: { Args: never; Returns: boolean }
+      is_owner: { Args: { record_user_id: string }; Returns: boolean }
+      is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
+      normalize_mentions: { Args: { input_text: string }; Returns: string }
       pgmq_delete: {
-        Args: { msg_id: number, queue_name: string }
+        Args: { msg_id: number; queue_name: string }
         Returns: boolean
       }
       pgmq_read: {
-        Args: { qty: number, queue_name: string, vt: number }
+        Args: { qty: number; queue_name: string; vt: number }
         Returns: unknown[]
         SetofOptions: {
-          from: '*'
-          to: 'message_record'
+          from: "*"
+          to: "message_record"
           isOneToOne: false
           isSetofReturn: true
         }
       }
-      pgmq_send: { Args: { msg: Json, queue_name: string }, Returns: number }
+      pgmq_send: { Args: { msg: Json; queue_name: string }; Returns: number }
       search_global:
         | {
-          Args: { p_limit?: number, p_query: string, p_types?: string[] }
-          Returns: {
-            id: string
-            result_type: string
-            score: number
-            subtitle: string
-            title: string
-            url: string
-          }[]
-        }
-        | {
-          Args: {
-            p_limit?: number
-            p_query: string
-            p_show_archived?: boolean
-            p_types?: string[]
+            Args: { p_limit?: number; p_query: string; p_types?: string[] }
+            Returns: {
+              id: string
+              result_type: string
+              score: number
+              subtitle: string
+              title: string
+              url: string
+            }[]
           }
-          Returns: {
-            id: string
-            is_archived: boolean
-            result_type: string
-            score: number
-            subtitle: string
-            title: string
-            topic_id: string
-            url: string
-          }[]
-        }
+        | {
+            Args: {
+              p_limit?: number
+              p_query: string
+              p_show_archived?: boolean
+              p_types?: string[]
+            }
+            Returns: {
+              id: string
+              is_archived: boolean
+              result_type: string
+              score: number
+              subtitle: string
+              title: string
+              topic_id: string
+              url: string
+            }[]
+          }
       search_profiles: {
         Args: { search_term: string }
         Returns: {
@@ -2114,7 +2160,7 @@ export interface Database {
           username: string
         }[]
       }
-      slugify: { Args: { input: string }, Returns: string }
+      slugify: { Args: { input: string }; Returns: string }
       toggle_reaction: {
         Args: {
           p_emote: string
@@ -2124,103 +2170,103 @@ export interface Database {
         }
         Returns: Json
       }
-      unique_discussion_slug: { Args: { base_slug: string }, Returns: string }
-      update_user_last_seen: { Args: { user_id?: string }, Returns: undefined }
-      validate_github_repo: { Args: { github_repo: string }, Returns: boolean }
-      validate_tag_format: { Args: { tag: string }, Returns: boolean }
-      validate_tags_array: { Args: { tags: string[] }, Returns: boolean }
+      unique_discussion_slug: { Args: { base_slug: string }; Returns: string }
+      update_user_last_seen: { Args: { user_id?: string }; Returns: undefined }
+      validate_github_repo: { Args: { github_repo: string }; Returns: boolean }
+      validate_tag_format: { Args: { tag: string }; Returns: boolean }
+      validate_tags_array: { Args: { tags: string[] }; Returns: boolean }
     }
     Enums: {
       app_permission:
-        | 'assets.create'
-        | 'assets.delete'
-        | 'assets.read'
-        | 'assets.update'
-        | 'complaints.create'
-        | 'complaints.delete'
-        | 'complaints.read'
-        | 'complaints.update'
-        | 'containers.create'
-        | 'containers.delete'
-        | 'containers.read'
-        | 'containers.update'
-        | 'discussion_topics.create'
-        | 'discussion_topics.read'
-        | 'discussion_topics.update'
-        | 'discussion_topics.delete'
-        | 'discussions.create'
-        | 'discussions.read'
-        | 'discussions.update'
-        | 'discussions.delete'
-        | 'events.create'
-        | 'events.delete'
-        | 'events.read'
-        | 'events.update'
-        | 'expenses.create'
-        | 'expenses.delete'
-        | 'expenses.read'
-        | 'expenses.update'
-        | 'funding.create'
-        | 'funding.delete'
-        | 'funding.read'
-        | 'funding.update'
-        | 'games.create'
-        | 'games.delete'
-        | 'games.read'
-        | 'games.update'
-        | 'gameservers.create'
-        | 'gameservers.delete'
-        | 'gameservers.read'
-        | 'gameservers.update'
-        | 'kvstore.create'
-        | 'kvstore.read'
-        | 'kvstore.update'
-        | 'kvstore.delete'
-        | 'motds.create'
-        | 'motds.read'
-        | 'motds.update'
-        | 'motds.delete'
-        | 'profiles.delete'
-        | 'profiles.read'
-        | 'profiles.update'
-        | 'projects.create'
-        | 'projects.read'
-        | 'projects.update'
-        | 'projects.delete'
-        | 'referendums.create'
-        | 'referendums.delete'
-        | 'referendums.read'
-        | 'referendums.update'
-        | 'roles.create'
-        | 'roles.delete'
-        | 'roles.read'
-        | 'roles.update'
-        | 'servers.create'
-        | 'servers.delete'
-        | 'servers.read'
-        | 'servers.update'
-        | 'users.create'
-        | 'users.delete'
-        | 'users.read'
-        | 'users.update'
-        | 'alerts.read'
-        | 'themes.create'
-        | 'themes.read'
-        | 'themes.update'
-        | 'themes.delete'
-      app_role: 'admin' | 'moderator'
-      events_rsvp_status: 'yes' | 'no' | 'tentative'
-      kvstore_type: 'NUMBER' | 'BOOLEAN' | 'STRING' | 'JSON'
+        | "assets.create"
+        | "assets.delete"
+        | "assets.read"
+        | "assets.update"
+        | "complaints.create"
+        | "complaints.delete"
+        | "complaints.read"
+        | "complaints.update"
+        | "containers.create"
+        | "containers.delete"
+        | "containers.read"
+        | "containers.update"
+        | "discussion_topics.create"
+        | "discussion_topics.read"
+        | "discussion_topics.update"
+        | "discussion_topics.delete"
+        | "discussions.create"
+        | "discussions.read"
+        | "discussions.update"
+        | "discussions.delete"
+        | "events.create"
+        | "events.delete"
+        | "events.read"
+        | "events.update"
+        | "expenses.create"
+        | "expenses.delete"
+        | "expenses.read"
+        | "expenses.update"
+        | "funding.create"
+        | "funding.delete"
+        | "funding.read"
+        | "funding.update"
+        | "games.create"
+        | "games.delete"
+        | "games.read"
+        | "games.update"
+        | "gameservers.create"
+        | "gameservers.delete"
+        | "gameservers.read"
+        | "gameservers.update"
+        | "kvstore.create"
+        | "kvstore.read"
+        | "kvstore.update"
+        | "kvstore.delete"
+        | "motds.create"
+        | "motds.read"
+        | "motds.update"
+        | "motds.delete"
+        | "profiles.delete"
+        | "profiles.read"
+        | "profiles.update"
+        | "projects.create"
+        | "projects.read"
+        | "projects.update"
+        | "projects.delete"
+        | "referendums.create"
+        | "referendums.delete"
+        | "referendums.read"
+        | "referendums.update"
+        | "roles.create"
+        | "roles.delete"
+        | "roles.read"
+        | "roles.update"
+        | "servers.create"
+        | "servers.delete"
+        | "servers.read"
+        | "servers.update"
+        | "users.create"
+        | "users.delete"
+        | "users.read"
+        | "users.update"
+        | "alerts.read"
+        | "themes.create"
+        | "themes.read"
+        | "themes.update"
+        | "themes.delete"
+      app_role: "admin" | "moderator"
+      events_rsvp_status: "yes" | "no" | "tentative"
+      kvstore_type: "NUMBER" | "BOOLEAN" | "STRING" | "JSON"
       presence_steam_status:
-        | 'offline'
-        | 'online'
-        | 'busy'
-        | 'away'
-        | 'snooze'
-        | 'looking_to_trade'
-        | 'looking_to_play'
-      profile_badge: 'founder' | 'earlybird' | 'builder' | 'host'
-      region: 'eu' | 'na' | 'all'
+        | "offline"
+        | "online"
+        | "busy"
+        | "away"
+        | "snooze"
+        | "looking_to_trade"
+        | "looking_to_play"
+      profile_badge: "founder" | "earlybird" | "builder" | "host"
+      region: "eu" | "na" | "all"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2228,121 +2274,121 @@ export interface Database {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-      & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-      ? R
-      : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables']
-    & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables']
-      & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
-        ? R
-        : never
+      ? R
+      : never
     : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema['Tables']
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
-    Insert: infer I
-  }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
       ? I
       : never
     : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema['Tables']
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
-    Update: infer U
-  }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
       ? U
       : never
     : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema['Enums']
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema['CompositeTypes']
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -2352,97 +2398,98 @@ export const Constants = {
   public: {
     Enums: {
       app_permission: [
-        'assets.create',
-        'assets.delete',
-        'assets.read',
-        'assets.update',
-        'complaints.create',
-        'complaints.delete',
-        'complaints.read',
-        'complaints.update',
-        'containers.create',
-        'containers.delete',
-        'containers.read',
-        'containers.update',
-        'discussion_topics.create',
-        'discussion_topics.read',
-        'discussion_topics.update',
-        'discussion_topics.delete',
-        'discussions.create',
-        'discussions.read',
-        'discussions.update',
-        'discussions.delete',
-        'events.create',
-        'events.delete',
-        'events.read',
-        'events.update',
-        'expenses.create',
-        'expenses.delete',
-        'expenses.read',
-        'expenses.update',
-        'funding.create',
-        'funding.delete',
-        'funding.read',
-        'funding.update',
-        'games.create',
-        'games.delete',
-        'games.read',
-        'games.update',
-        'gameservers.create',
-        'gameservers.delete',
-        'gameservers.read',
-        'gameservers.update',
-        'kvstore.create',
-        'kvstore.read',
-        'kvstore.update',
-        'kvstore.delete',
-        'motds.create',
-        'motds.read',
-        'motds.update',
-        'motds.delete',
-        'profiles.delete',
-        'profiles.read',
-        'profiles.update',
-        'projects.create',
-        'projects.read',
-        'projects.update',
-        'projects.delete',
-        'referendums.create',
-        'referendums.delete',
-        'referendums.read',
-        'referendums.update',
-        'roles.create',
-        'roles.delete',
-        'roles.read',
-        'roles.update',
-        'servers.create',
-        'servers.delete',
-        'servers.read',
-        'servers.update',
-        'users.create',
-        'users.delete',
-        'users.read',
-        'users.update',
-        'alerts.read',
-        'themes.create',
-        'themes.read',
-        'themes.update',
-        'themes.delete',
+        "assets.create",
+        "assets.delete",
+        "assets.read",
+        "assets.update",
+        "complaints.create",
+        "complaints.delete",
+        "complaints.read",
+        "complaints.update",
+        "containers.create",
+        "containers.delete",
+        "containers.read",
+        "containers.update",
+        "discussion_topics.create",
+        "discussion_topics.read",
+        "discussion_topics.update",
+        "discussion_topics.delete",
+        "discussions.create",
+        "discussions.read",
+        "discussions.update",
+        "discussions.delete",
+        "events.create",
+        "events.delete",
+        "events.read",
+        "events.update",
+        "expenses.create",
+        "expenses.delete",
+        "expenses.read",
+        "expenses.update",
+        "funding.create",
+        "funding.delete",
+        "funding.read",
+        "funding.update",
+        "games.create",
+        "games.delete",
+        "games.read",
+        "games.update",
+        "gameservers.create",
+        "gameservers.delete",
+        "gameservers.read",
+        "gameservers.update",
+        "kvstore.create",
+        "kvstore.read",
+        "kvstore.update",
+        "kvstore.delete",
+        "motds.create",
+        "motds.read",
+        "motds.update",
+        "motds.delete",
+        "profiles.delete",
+        "profiles.read",
+        "profiles.update",
+        "projects.create",
+        "projects.read",
+        "projects.update",
+        "projects.delete",
+        "referendums.create",
+        "referendums.delete",
+        "referendums.read",
+        "referendums.update",
+        "roles.create",
+        "roles.delete",
+        "roles.read",
+        "roles.update",
+        "servers.create",
+        "servers.delete",
+        "servers.read",
+        "servers.update",
+        "users.create",
+        "users.delete",
+        "users.read",
+        "users.update",
+        "alerts.read",
+        "themes.create",
+        "themes.read",
+        "themes.update",
+        "themes.delete",
       ],
-      app_role: ['admin', 'moderator'],
-      events_rsvp_status: ['yes', 'no', 'tentative'],
-      kvstore_type: ['NUMBER', 'BOOLEAN', 'STRING', 'JSON'],
+      app_role: ["admin", "moderator"],
+      events_rsvp_status: ["yes", "no", "tentative"],
+      kvstore_type: ["NUMBER", "BOOLEAN", "STRING", "JSON"],
       presence_steam_status: [
-        'offline',
-        'online',
-        'busy',
-        'away',
-        'snooze',
-        'looking_to_trade',
-        'looking_to_play',
+        "offline",
+        "online",
+        "busy",
+        "away",
+        "snooze",
+        "looking_to_trade",
+        "looking_to_play",
       ],
-      profile_badge: ['founder', 'earlybird', 'builder', 'host'],
-      region: ['eu', 'na', 'all'],
+      profile_badge: ["founder", "earlybird", "builder", "host"],
+      region: ["eu", "na", "all"],
     },
   },
 } as const
+
