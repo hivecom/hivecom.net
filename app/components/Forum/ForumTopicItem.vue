@@ -132,18 +132,15 @@ const { iconUrl } = useTopicIcon(topicId)
       object-fit: cover;
       border-radius: inherit;
       overflow: hidden;
-      filter: grayscale(1);
-      opacity: 0.25;
-      transition:
-        filter var(--transition-slow),
-        opacity var(--transition-slow);
+      opacity: 0.4;
+      transition: var(--transition-fast);
       z-index: 0;
     }
 
     .topic-icon__folder {
       position: relative;
       z-index: 1;
-      transition: opacity var(--transition-slow);
+      transition: var(--transition-fast);
     }
   }
 }
