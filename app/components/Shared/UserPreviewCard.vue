@@ -273,6 +273,14 @@ const {
       background-color: var(--color-bg-raised);
       border: 1px solid var(--color-border);
     }
+
+    :deep(.activity-item__label) {
+      color: var(--color-text);
+
+      .iconify {
+        color: var(--color-text);
+      }
+    }
   }
 }
 

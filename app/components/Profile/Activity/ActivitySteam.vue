@@ -263,9 +263,7 @@ watch(() => props.profileId, () => {
               <span class="activity-item__label">
                 <Icon class="activity-item__icon" name="mdi:steam" size="13" />
                 Steam
-              </span>
-              <strong class="activity-item__title">
-                <Tooltip v-if="!isPlaying && presence.status === 'offline' && lastOnlineFormatted" position="top">
+                <Tooltip :disabled="!(!isPlaying && presence.status === 'offline' && lastOnlineFormatted)" position="top">
                   <template #tooltip>
                     Last online {{ lastOnlineFormatted }}
                   </template>
@@ -274,11 +272,8 @@ watch(() => props.profileId, () => {
                     :style="{ backgroundColor: statusColor }"
                   />
                 </Tooltip>
-                <span
-                  v-else
-                  class="activity-item__status-dot"
-                  :style="{ backgroundColor: statusColor }"
-                />
+              </span>
+              <strong class="activity-item__title">
                 <template v-if="isPlaying">
                   <a
                     v-if="currentAppUrl"

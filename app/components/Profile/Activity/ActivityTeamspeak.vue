@@ -224,9 +224,7 @@ watch(() => props.profileId, () => {
               <span class="activity-item__label">
                 <Icon class="activity-item__icon" name="mdi:teamspeak" size="13" />
                 TeamSpeak
-              </span>
-              <strong class="activity-item__title">
-                <Tooltip v-if="lastSeenFormatted && hasPresence" position="top">
+                <Tooltip :disabled="!(lastSeenFormatted && hasPresence)" position="top">
                   <template #tooltip>
                     Last seen {{ lastSeenFormatted }}
                   </template>
@@ -235,11 +233,8 @@ watch(() => props.profileId, () => {
                     :style="{ backgroundColor: statusColor }"
                   />
                 </Tooltip>
-                <span
-                  v-else
-                  class="activity-item__status-dot"
-                  :style="{ backgroundColor: statusColor }"
-                />
+              </span>
+              <strong class="activity-item__title">
                 <template v-if="hasPresence">Offline</template>
                 <template v-else>No recent activity</template>
               </strong>

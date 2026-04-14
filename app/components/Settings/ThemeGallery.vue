@@ -72,10 +72,10 @@ async function fetchPage(tab: typeof activeTab.value, page: number, searchValue:
       else {
         query = query.eq('is_unmaintained', false)
       }
-      query = query.order('name', { ascending: true })
+      query = query.order('created_at', { ascending: false })
     }
     else {
-      query = query.order('is_unmaintained', { ascending: true }).order('name', { ascending: true })
+      query = query.order('is_unmaintained', { ascending: true }).order('created_at', { ascending: false })
     }
 
     query = query.range(from, to)
