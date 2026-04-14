@@ -19,6 +19,7 @@ export function getDefaultUserSettings(): Tables<'settings'>['data'] {
     editor_floating: false,
     strip_image_metadata: true,
     show_user_banners: true,
+    allow_custom_css: false,
   }
 }
 

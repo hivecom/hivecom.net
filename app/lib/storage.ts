@@ -15,7 +15,7 @@ export interface UploadResult {
   error?: string
 }
 
-export const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+export const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
 export const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg']
 export const allowedMediaTypes = [...allowedImageTypes, ...allowedVideoTypes]
 export const allowedMediaExtensions = allowedMediaTypes.join(', ')
@@ -71,6 +71,10 @@ export function validateImageFile(file: File): { valid: boolean, error?: string 
  * (e.g. SVG or other non-raster formats).
  */
 export async function stripImageMetadata(file: File): Promise<File> {
+  // Canvas round-tripping a GIF produces a static single frame - pass through unchanged.
+  if (file.type === 'image/gif')
+    return file
+
   return new Promise((resolve) => {
     const img = new Image()
 

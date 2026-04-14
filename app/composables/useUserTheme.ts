@@ -1,7 +1,7 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { setColorTheme } from '@dolanske/vui'
-import { applyTheme } from '@/lib/theme'
+import { applyCustomCss, applyTheme, removeCustomCss } from '@/lib/theme'
 
 interface VariantOption { label: string, value: string }
 
@@ -65,6 +65,7 @@ export function useUserTheme() {
     const id = userId.value
     if (id == null) {
       applyTheme(null)
+      removeCustomCss()
       activeTheme.value = null
       return
     }
@@ -82,6 +83,7 @@ export function useUserTheme() {
     if (profileError || profile?.theme_id == null) {
       // No custom theme set - ensure defaults are active
       applyTheme(null)
+      removeCustomCss()
       activeTheme.value = null
       hasFetched.value = true
       return
@@ -96,6 +98,7 @@ export function useUserTheme() {
 
     if (themeError || theme == null) {
       applyTheme(null)
+      removeCustomCss()
       activeTheme.value = null
       hasFetched.value = true
       return
@@ -104,6 +107,10 @@ export function useUserTheme() {
     // 3. Apply colors + scales
     activeTheme.value = theme
     applyTheme(theme)
+    if (settings.value.allow_custom_css && theme.custom_css)
+      applyCustomCss(theme.custom_css)
+    else
+      removeCustomCss()
     hasFetched.value = true
   }
 
@@ -119,6 +126,7 @@ export function useUserTheme() {
 
     if (themeId == null) {
       applyTheme(null)
+      removeCustomCss()
       activeTheme.value = null
 
       // Clear the persisted selection from the profile
@@ -141,6 +149,10 @@ export function useUserTheme() {
 
     activeTheme.value = theme
     applyTheme(theme)
+    if (settings.value.allow_custom_css && theme.custom_css)
+      applyCustomCss(theme.custom_css)
+    else
+      removeCustomCss()
 
     // Persist the selection so fetchAndApply picks it up on next load
     await supabase
@@ -157,6 +169,7 @@ export function useUserTheme() {
     if (newId == null) {
       // Logged out - revert to defaults
       applyTheme(null)
+      removeCustomCss()
       activeTheme.value = null
       hasFetched.value = false
       return
@@ -166,6 +179,14 @@ export function useUserTheme() {
       hasFetched.value = false
       void fetchAndApply()
     }
+  })
+
+  watch(() => settings.value.allow_custom_css, (allowed) => {
+    const css = activeTheme.value?.custom_css
+    if (allowed && css !== undefined && css !== '')
+      applyCustomCss(css)
+    else
+      removeCustomCss()
   })
 
   return {

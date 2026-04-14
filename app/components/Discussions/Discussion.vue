@@ -225,6 +225,11 @@ const hasManuallySwitched = ref(false)
 const showOfftopic = ref(settings.value.show_offtopic_replies ?? false)
 const showThreadReplies = ref(settings.value.show_thread_replies ?? false)
 
+function handleShowThreadRepliesUpdate(val: boolean) {
+  showThreadReplies.value = val
+  settings.value.show_thread_replies = val
+}
+
 // If the URL targets a specific comment, ensure it's visible even if it's
 // off-topic. We watch modelledComments so this fires once data has loaded -
 // the query param is already there on mount but comments may not be yet.
@@ -394,8 +399,7 @@ watch(modelledComments, async () => {
 /**
  * Show the timeline scrubber when:
  * - forum model (ascending, replies grow at the bottom)
- * - discussion spans at least 24 hours
- * - discussion has more than a page-worth of replies (worth navigating)
+ * - discussion has more than 1 reply
  */
 const timelineSpanMs = computed(() => {
   const d = discussion.value
@@ -412,9 +416,7 @@ const showTimeline = computed(() => {
   const d = discussion.value
   if (d == null)
     return false
-  if (d.reply_count === 0)
-    return false
-  return timelineSpanMs.value >= 24 * 60 * 60 * 1000
+  return d.reply_count > 1
 })
 
 const timelineStart = computed(() => discussion.value?.created_at ?? '')
@@ -963,9 +965,11 @@ function isNodeVisible(node: ThreadNode): boolean {
         :has-comments="modelledComments.length > 0"
         :offtopic-count="offtopicCount"
         :show-offtopic="showOfftopic"
+        :show-thread-replies="showThreadReplies"
         :show-timeline-button="showTimeline"
         @update:view-mode="handleViewModeUpdate"
         @update:show-offtopic="handleShowOfftopicUpdate"
+        @update:show-thread-replies="handleShowThreadRepliesUpdate"
         @go-to-pinned="handleGoToPinnedReply"
         @open-timeline="timelineRef?.openJumpModal()"
         @go-to-end="handleTimelineNavigateToEnd"

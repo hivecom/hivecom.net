@@ -135,7 +135,7 @@ watch(repliesExpanded, (open) => {
 // - Root replies (depth 0): driven by the showThreadReplies setting.
 // - Sub-replies (depth > 0): auto-expanded unless they have more than 5 replies,
 //   in which case they follow the same setting as roots.
-const threadCollapsed = ref((() => {
+function computeThreadCollapsed() {
   if (viewMode.value !== 'threaded')
     return false
   if (depth > 0) {
@@ -143,7 +143,16 @@ const threadCollapsed = ref((() => {
     return count > 5 ? !showThreadRepliesInjected.value : false
   }
   return !showThreadRepliesInjected.value
-})())
+}
+
+const threadCollapsed = ref(computeThreadCollapsed())
+
+// Re-evaluate collapsed state whenever the view mode or the expand-threads setting
+// changes. The IIFE only ran once at setup, so items mounted in flat mode (or while
+// the setting had a different value) need this to get the correct collapsed state.
+watch([viewMode, showThreadRepliesInjected], () => {
+  threadCollapsed.value = computeThreadCollapsed()
+})
 
 async function toggleThreadCollapsed() {
   if (threadCollapsed.value) {
@@ -177,6 +186,15 @@ const { stop: stopVisibilityObserver } = useIntersectionObserver(
 //   • the item scrolls into view while already in threaded mode, OR
 //   • the mode switches to threaded while the item is already visible.
 // Guards prevent double-fetching and respect the collapsed state.
+//
+// NOTE: childrenMap in the composable is cleared whenever the view mode changes,
+// so we must reset childrenRequested here too - otherwise the guard below would
+// permanently block re-fetching after a flat→threaded switch.
+watch(viewMode, (mode, prev) => {
+  if (mode === 'threaded' && prev !== 'threaded')
+    childrenRequested.value = false
+})
+
 watch(
   [isVisible, viewMode],
   ([visible, mode]) => {

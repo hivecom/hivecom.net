@@ -24,6 +24,7 @@ const { selectedTheme, themeOptions, selectedVariant, variantOptions } = useUser
       <p>Variant</p>
       <Select v-model="selectedVariant" :show-clear="false" :options="variantOptions" size="s" />
     </Flex>
+    <Switch v-model="settings.allow_custom_css" class="reversed" label="Allow custom CSS from themes" hint="When enabled, themes that include custom CSS will apply it. Only enable this if you trust the theme author." />
 
     <Divider :size="64" />
 

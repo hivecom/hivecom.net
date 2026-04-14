@@ -90,6 +90,7 @@ interface TableColumnOverrides {
       editor_floating: boolean
       strip_image_metadata: boolean
       show_user_banners: boolean
+      allow_custom_css: boolean
     }
   }
 

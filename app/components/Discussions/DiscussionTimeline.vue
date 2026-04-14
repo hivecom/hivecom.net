@@ -116,15 +116,17 @@ function buildSegments(buckets: TimelineBucket[], max: number): BucketSegment[] 
   let runTotalCount = buckets[0]!.replyCount
   let runLength = 1
 
-  function flushRun(endIdx: number) {
+  function flushRun(endIdx: number, isFinal = false) {
     const first = buckets[runStart]!
     const last = buckets[endIdx]!
     const isSingle = runLength === 1
     const bucketFraction = intervalMs > 0 ? intervalMs / spanMs.value : 0
-    const topFraction = toFraction(first.bucketStart)
-    const bottomFraction = isSingle
-      ? topFraction
-      : Math.min(1, toFraction(last.bucketStart) + bucketFraction)
+    const topFraction = isSingle && isFinal ? 1 : toFraction(first.bucketStart)
+    const bottomFraction = isFinal
+      ? 1
+      : isSingle
+        ? topFraction
+        : Math.min(1, toFraction(last.bucketStart) + bucketFraction)
 
     const label = isSingle
       ? `${runMaxCount} ${runMaxCount === 1 ? 'reply' : 'replies'}`
@@ -171,7 +173,7 @@ function buildSegments(buckets: TimelineBucket[], max: number): BucketSegment[] 
       runLength = 1
     }
   }
-  flushRun(buckets.length - 1)
+  flushRun(buckets.length - 1, true)
 
   return segments.map(s => ({
     ...s,
@@ -232,7 +234,10 @@ function onSegmentClick(seg: BucketSegment) {
 // "Mar 26" - month + day, always. Two dates in the same month year become
 // indistinguishable with "Mar '26 / Mar '26", day disambiguates them.
 function formatLabel(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const d = new Date(isoDate)
+  if (props.bucketIntervalMs <= 60 * 60 * 1000)
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function navigateToStart() {
@@ -246,6 +251,8 @@ function navigateToEnd() {
 }
 
 function formatTooltip(date: Date): string {
+  if (props.bucketIntervalMs <= 60 * 60 * 1000)
+    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
@@ -370,6 +377,8 @@ defineExpose({ openJumpModal })
           />
         </template>
         <div v-else class="discussion-timeline__bar" style="top: 0%; height: 100%;" />
+        <!-- Static dot at the very start of the timeline - same action as the start label -->
+        <div class="discussion-timeline__segment discussion-timeline__segment--dot" style="top: 0%; opacity: 1; cursor: pointer;" @click="navigateToStart" />
         <!-- Activity segments: dots for isolated buckets, boxes for consecutive runs -->
         <div
           v-for="(seg, i) in bucketSegments"

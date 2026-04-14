@@ -6,6 +6,7 @@ interface Props {
   hasComments: boolean
   offtopicCount: number
   showOfftopic: boolean
+  showThreadReplies: boolean
   showTimelineButton?: boolean
 }
 
@@ -14,6 +15,7 @@ defineProps<Props>()
 const emit = defineEmits<{
   'update:viewMode': [value: 'flat' | 'threaded']
   'update:showOfftopic': [value: boolean]
+  'update:showThreadReplies': [value: boolean]
   'goToPinned': []
   'openTimeline': []
   'goToEnd': []
@@ -52,6 +54,22 @@ const emit = defineEmits<{
           </template>
         </Tooltip>
       </ButtonGroup>
+
+      <!-- Expand threads toggle - threaded view only -->
+      <Tooltip v-if="hasComments && viewMode === 'threaded'">
+        <Button
+          square
+          size="s"
+          :variant="showThreadReplies ? 'fill' : 'gray'"
+          :outline="!showThreadReplies"
+          @click="emit('update:showThreadReplies', !showThreadReplies)"
+        >
+          <Icon :size="18" :name="showThreadReplies ? 'ph:arrows-in-line-vertical' : 'ph:arrows-out-line-vertical'" />
+        </Button>
+        <template #tooltip>
+          <p>{{ showThreadReplies ? 'Collapse reply threads' : 'Expand reply threads' }}</p>
+        </template>
+      </Tooltip>
 
       <!-- Off-topic toggle - only shown when relevant -->
       <Tooltip v-if="offtopicCount > 0">
