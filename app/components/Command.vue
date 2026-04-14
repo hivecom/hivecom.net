@@ -2,11 +2,12 @@
 import type { Command } from '@dolanske/vui'
 import type { SearchType } from '@/composables/useDataSearch'
 import type { Database } from '@/types/database.types'
-import { Commands, setColorTheme, theme } from '@dolanske/vui'
+import { Commands, searchString, setColorTheme, theme } from '@dolanske/vui'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { commandLinks } from '@/config/navigation'
+import { DEFAULT_THEME } from '@/lib/theme'
 
 const LABEL_SPLIT_RE = /[\s/,&-]+/
 
@@ -90,8 +91,8 @@ const GROUP_TO_TYPES: Record<string, SearchType[]> = {
 
 const effectiveScope = computed<SearchType[] | null>(() => {
   const g = activeGroup.value
-  // Navigation and Commands groups - no DB search needed
-  if (g === 'Navigation' || g === 'Commands')
+  // No DB search needed
+  if (g === 'Navigation' || g === 'Commands' || g === 'Themes')
     return null
   // Specific DB group selected
   if (g != null && g !== 'All' && GROUP_TO_TYPES[g] != null)
@@ -135,12 +136,49 @@ function navScore(label: string, q: string): number {
 }
 
 const matchingNavItems = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  if (q.length === 0)
-    return navItems.value
   return navItems.value
-    .filter(link => link.label.toLowerCase().includes(q) || link.group.toLowerCase().includes(q))
-    .sort((a, b) => navScore(b.label.toLowerCase(), q) - navScore(a.label.toLowerCase(), q))
+    .filter(link => searchString([link.label, link.group], search.value))
+    .sort((a, b) => navScore(b.label.toLowerCase(), search.value) - navScore(a.label.toLowerCase(), search.value))
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Themes
+// Dynamically load available themes for the theming command group
+// ─────────────────────────────────────────────────────────────────────────────
+
+const { themes, refresh } = useDataThemes()
+const { activeTheme, setActiveTheme } = useUserTheme()
+
+const themeCommands = computed<Command[]>(() => {
+  const fetched = themes.value.map(theme => ({
+    title: `${theme.name}${theme.id === activeTheme.value?.id ? ' (Active)' : ''}`,
+    description: theme.description,
+    group: 'Themes',
+    handler: () => {
+      setActiveTheme(theme.id)
+      // Slight timeout so theme is applied by the time commands close
+      setTimeout(() => {
+        closeCommand()
+      }, 100)
+    },
+  }))
+
+  return [
+    // Manually insert default theme at the top
+    {
+      title: DEFAULT_THEME.name,
+      description: DEFAULT_THEME.description,
+      group: 'Themes',
+      handler: () => {
+        setActiveTheme(null)
+        // Slight timeout so theme is applied by the time commands close
+        setTimeout(() => {
+          closeCommand()
+        }, 100)
+      },
+    },
+    ...fetched,
+  ]
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,13 +248,24 @@ const quickCommands = computed<Command[]>(() => [
   },
   {
     title: theme.value === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode',
-    description: `Changes the theme variant to ${theme.value === 'light' ? 'dark' : 'light'}`,
+    // description: `Changes the theme variant to ${theme.value === 'light' ? 'dark' : 'light'}`,
     group: 'Commands',
     handler: () => {
       const newTheme = theme.value === 'light' ? 'dark' : 'light'
       setColorTheme(newTheme)
       settings.value.theme = newTheme
       closeCommand()
+    },
+  },
+  {
+    title: 'Browse Themes',
+    description: 'Browse and apply default or community made themes.',
+    group: 'Commands',
+    handler: async () => {
+      activeGroup.value = 'Themes'
+      loading.value = true
+      await refresh()
+      loading.value = false
     },
   },
 ])
@@ -227,14 +276,13 @@ const quickCommands = computed<Command[]>(() => [
 
 const isNavOnly = computed(() => activeGroup.value === 'Navigation')
 const isCommandsOnly = computed(() => activeGroup.value === 'Commands')
+const isThemesOnly = computed(() => activeGroup.value === 'Themes')
 
 const commands = computed<Command[]>(() => {
   // Forum-scoped: never show nav items
   if (isForumScoped.value) {
-    const q = search.value.trim()
-
     // Empty query - pre-populate with topics from cache, respecting archived setting
-    if (q.length === 0) {
+    if (!search.value) {
       return forumTopics.value
         .filter(t => showArchived.value || !t.is_archived)
         .map(t => ({
@@ -248,10 +296,9 @@ const commands = computed<Command[]>(() => {
         }))
     }
 
-    // Active query - client-side filter topics while DB results are loading or below min length
-    const ql = q.toLowerCase()
+    // Client-side filter topics while DB results are loading or below min length
     const matchingTopics = forumTopics.value
-      .filter(t => (showArchived.value || !t.is_archived) && (t.name.toLowerCase().includes(ql) || (t.description ?? '').toLowerCase().includes(ql)))
+      .filter(t => (showArchived.value || !t.is_archived) && searchString([t.name, t.description], search.value))
 
     const dbCommands: Command[] = results.value.map(dbResultToCommand)
 
@@ -283,25 +330,16 @@ const commands = computed<Command[]>(() => {
     },
   }))
 
-  if (isNavOnly.value)
+  if (isNavOnly.value) {
     return navCommands
-
-  if (isCommandsOnly.value) {
-    const q = search.value.trim()
-    const ql = q.toLowerCase()
-    const matching = q.length === 0
-      ? quickCommands.value
-      : quickCommands.value.filter(
-          c => c.title.toLowerCase().includes(ql) || (c.description ?? '').toLowerCase().includes(ql),
-        )
+  }
+  else if (isCommandsOnly.value) {
+    const matching = quickCommands.value.filter(c => searchString([c.title, c.description], search.value))
     return [...matching, ...navCommands]
   }
-
-  const q = search.value.trim()
-  if (q.length === 0)
-    return navCommands
-
-  const ql = q.toLowerCase()
+  else if (isThemesOnly.value) {
+    return themeCommands.value.filter(c => searchString([c.title, c.description], search.value))
+  }
 
   const dbCommands: Command[] = results.value.map(dbResultToCommand)
 
@@ -309,7 +347,7 @@ const commands = computed<Command[]>(() => {
     results.value.filter(r => r.result_type === 'discussion_topic').map(r => r.id),
   )
   const topicCommands: Command[] = forumTopics.value
-    .filter(t => (showArchived.value || !t.is_archived) && (t.name.toLowerCase().includes(ql) || (t.description ?? '').toLowerCase().includes(ql)))
+    .filter(t => (showArchived.value || !t.is_archived) && searchString([t.name, t.description], search.value))
     .filter(t => !dbTopicIds.has(t.id))
     .map(t => ({
       title: t.name,
@@ -363,15 +401,18 @@ function iconForCommand(command: Command): string {
   if (command.group === 'Commands') {
     if (command.title === 'Latest Discussion')
       return 'ph:chat-circle'
-    if (command.title === 'New Discussion')
+    else if (command.title === 'New Discussion')
       return 'ph:pencil-simple'
-    if (command.title === 'Latest Event')
+    else if (command.title === 'Latest Event')
       return 'ph:calendar'
-    if (command.title.startsWith('Switch to'))
+    else if (command.title.startsWith('Switch to'))
       return theme.value === 'light' ? 'ph:moon' : 'ph:sun'
   }
+  else if (command.group === 'Themes') {
+    return 'ph:circle-half-tilt-fill'
+  }
   // Differentiate discussions from topics within the Forum group
-  if (command.group === 'Forum') {
+  else if (command.group === 'Forum') {
     const resultType = resultTypeByTitle.value.get(command.title)
     if (resultType === 'discussion')
       return 'ph:chat-circle'
@@ -429,7 +470,7 @@ useEventListener('keydown', (e: KeyboardEvent) => {
 
 <template>
   <Commands
-    v-model:search="search"
+    v-model:search.trim="search"
     v-model:group="activeGroup"
     :open="isOpen"
     :commands="commands"

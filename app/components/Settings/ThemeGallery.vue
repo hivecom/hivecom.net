@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { Button, Card, Flex, Grid, Input, paginate, Pagination, Skeleton, Tab, Tabs } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { DEFAULT_THEME } from '@/lib/theme'
 import ThemeCard from './ThemeCard.vue'
 
 const emit = defineEmits<{
@@ -220,12 +221,7 @@ defineExpose({ refresh })
         <!-- Fake default theme card - always first in the official tab -->
         <ThemeCard
           v-if="activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
-          :item="{
-            id: '$$$$default',
-            created_by: null,
-            name: 'Default Theme',
-            description: 'The default Hivecom theme',
-          } as any"
+          :item="DEFAULT_THEME as never"
           :active-theme-id="activeTheme ? '' : '$$$$default'"
           @apply="setActiveTheme(null)"
         />

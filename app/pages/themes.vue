@@ -36,7 +36,7 @@ function personalizeTheme() {
     <ClientOnly>
       <section class="page-title">
         <h1>
-          Theming
+          Themes
         </h1>
         <p>
           Discover community-made themes for Hivecom apps, or create your own!

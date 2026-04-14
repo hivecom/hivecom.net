@@ -467,3 +467,10 @@ export function getCssVarAsHex(varName: string, fallback: string = '#000000'): s
 
   return fallback
 }
+
+export const DEFAULT_THEME = {
+  id: '$$$$default',
+  created_by: null,
+  name: 'Default Theme',
+  description: 'The default Hivecom theme',
+}

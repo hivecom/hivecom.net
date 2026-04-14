@@ -12,6 +12,7 @@ export interface CommandLink {
 export const commandLinks: CommandLink[] = [
   // General
   { path: '/', label: 'Home', group: 'General', icon: 'ph:house' },
+  { path: '/themes', label: 'Themes', group: 'General', icon: 'ph:circle-half-tilt-fill', requiresAuth: true },
   // Community
   { path: '/community', label: 'Community', group: 'Community', icon: 'ph:users' },
   { path: '/community/funding', label: 'Funding', group: 'Community', icon: 'ph:coins' },
