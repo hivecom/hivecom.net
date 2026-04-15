@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Card, Flex } from '@dolanske/vui'
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
@@ -13,6 +13,21 @@ const emit = defineEmits<{
   (e: 'select', complaint: Tables<'complaints'>): void
   (e: 'acknowledge', id: number): void
 }>()
+const supabase = useSupabaseClient()
+const contextGameserverName = ref<string | null>(null)
+
+onMounted(() => {
+  if (props.complaint.context_gameserver) {
+    supabase
+      .from('gameservers')
+      .select('name')
+      .eq('id', props.complaint.context_gameserver)
+      .maybeSingle()
+      .then(({ data }) => {
+        contextGameserverName.value = data?.name ?? null
+      })
+  }
+})
 
 // Computed properties for status
 const status = computed(() => {
@@ -67,16 +82,16 @@ const truncatedMessage = computed(() => {
   return `${props.complaint.message.substring(0, maxLength)}...`
 })
 
-// Derive a single context type label for the card
+// Derive context type + the ID needed to render the target
 const contextType = computed(() => {
   if (props.complaint.context_discussion_reply)
-    return { label: 'Reply', icon: 'ph:flag' }
+    return { label: 'Reply', icon: 'ph:flag', userId: null, isServer: false }
   if (props.complaint.context_discussion)
-    return { label: 'Discussion', icon: 'ph:chats' }
+    return { label: 'Discussion', icon: 'ph:chats', userId: null, isServer: false }
   if (props.complaint.context_user)
-    return { label: 'User', icon: 'ph:user' }
+    return { label: null, icon: 'ph:user', userId: props.complaint.context_user as string, isServer: false }
   if (props.complaint.context_gameserver)
-    return { label: 'Server', icon: 'ph:game-controller' }
+    return { label: null, icon: 'ph:game-controller', userId: null, isServer: true }
   return null
 })
 
@@ -135,6 +150,9 @@ function handleAcknowledge(event: Event) {
       <p>{{ truncatedMessage }}</p>
     </div>
 
+    <!-- Spacer pushes footer to bottom -->
+    <div class="complaint-card__spacer" />
+
     <!-- Response indicator -->
     <template #footer>
       <!-- Actions -->
@@ -142,8 +160,18 @@ function handleAcknowledge(event: Event) {
         <Flex gap="xs" y-center>
           <template v-if="contextType">
             <Icon :name="contextType.icon" class="text-color-light" size="14" />
-            <span class="complaint-card__context-label">{{ contextType.label }}</span>
+            <UserDisplay
+              v-if="contextType.userId"
+              :user-id="contextType.userId"
+              size="s"
+              hide-avatar
+            />
+            <span v-else-if="contextType.isServer" class="complaint-card__context-label">
+              {{ contextGameserverName ?? `#${complaint.context_gameserver}` }}
+            </span>
+            <span v-else class="complaint-card__context-label">{{ contextType.label }}</span>
           </template>
+          <span v-else class="complaint-card__context-label text-color-lighter">No context</span>
         </Flex>
         <Flex gap="xs" y-center>
           <div v-if="complaint.response" class="complaint-card__response-indicator">
@@ -199,6 +227,9 @@ function handleAcknowledge(event: Event) {
 
   :deep(.vui-card-content) {
     padding-block: var(--space-l) !important;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
   }
 }
 
@@ -240,9 +271,12 @@ function handleAcknowledge(event: Event) {
 }
 
 .complaint-card__message {
-  flex: 1;
   display: flex;
   align-items: flex-start;
+}
+
+.complaint-card__spacer {
+  flex: 1;
 }
 
 .complaint-card__message p {

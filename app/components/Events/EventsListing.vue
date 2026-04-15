@@ -39,7 +39,10 @@ const ongoingEvents = computed(() => {
   })
 })
 
-const pastEvents = computed(() => {
+// const PAST_INCREMENT = 10
+const pastLimit = ref(10)
+
+const allPastEvents = computed(() => {
   if (!props.events)
     return []
   const now = new Date()
@@ -53,6 +56,8 @@ const pastEvents = computed(() => {
     return eventEnd < now
   }).reverse()
 })
+
+const displayedPastEvents = computed(() => allPastEvents.value.slice(0, pastLimit.value))
 </script>
 
 <template>
@@ -121,14 +126,20 @@ const pastEvents = computed(() => {
         </h2>
       </template>
       <EventPast
-        v-for="event in pastEvents"
+        v-for="event in displayedPastEvents"
         :key="event.id"
         :data="event"
       />
     </Carousel>
 
+    <Flex v-if="displayedPastEvents.length < allPastEvents.length" x-center class="mt-m">
+      <!-- <Button variant="gray" plain outline @click="pastLimit += PAST_INCREMENT">
+        Show more past events
+      </Button> -->
+    </Flex>
+
     <!-- No Events Message -->
-    <div v-if="upcomingEvents.length === 0 && pastEvents.length === 0 && ongoingEvents.length === 0" class="events-section__no-events">
+    <div v-if="upcomingEvents.length === 0 && allPastEvents.length === 0 && ongoingEvents.length === 0" class="events-section__no-events">
       <p class="text-color-lighter">
         No events found.
       </p>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Badge, Button, Card, Flex, Modal, Spinner, Tooltip } from '@dolanske/vui'
-import { onMounted, ref, watch } from 'vue'
+import { Badge, Button, Card, Flex, Modal, paginate, Pagination, Spinner, Tooltip } from '@dolanske/vui'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDateWithTime } from '@/lib/utils/date'
 import ConfirmModal from './ConfirmModal.vue'
@@ -20,22 +20,35 @@ const emit = defineEmits<{
   (e: 'newComplaint'): void
 }>()
 
+const PAGE_SIZE = 5
+
 // State
 const complaints = ref<Complaint[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
-const expandedComplaints = ref<Set<number>>(new Set())
 const deletingComplaints = ref<Set<number>>(new Set())
 const showDeleteConfirm = ref(false)
 const complaintToDelete = ref<number | null>(null)
 const isBelowSmall = useBreakpoint('<xs')
+
+// Pagination
+const currentPage = ref(1)
+const totalCount = ref(0)
+
+const paginationState = computed(() =>
+  paginate(totalCount.value, currentPage.value, PAGE_SIZE),
+)
+
+const shouldShowPagination = computed(() =>
+  totalCount.value > PAGE_SIZE,
+)
 
 // Get current user and supabase client
 const user = useSupabaseUser()
 const userId = useUserId()
 const supabase = useSupabaseClient<Database>()
 
-// Fetch user's complaints
+// Fetch user's complaints for the current page
 async function fetchComplaints() {
   if (!user.value || !userId.value)
     return
@@ -43,18 +56,23 @@ async function fetchComplaints() {
   isLoading.value = true
   error.value = null
 
+  const from = (currentPage.value - 1) * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
+
   try {
-    const { data, error: fetchError } = await supabase
+    const { data, error: fetchError, count } = await supabase
       .from('complaints')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('created_by', userId.value)
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (fetchError) {
       throw fetchError
     }
 
-    complaints.value = data || []
+    complaints.value = data ?? []
+    totalCount.value = count ?? 0
   }
   catch (err: unknown) {
     console.error('Error fetching complaints:', err)
@@ -64,8 +82,6 @@ async function fetchComplaints() {
     isLoading.value = false
   }
 }
-
-// Format date helper
 
 // Get status badge variant
 function getStatusVariant(complaint: Complaint) {
@@ -98,7 +114,6 @@ async function deleteComplaint() {
 
   const complaintId = complaintToDelete.value
 
-  // Add to deleting set to show loading state
   deletingComplaints.value.add(complaintId)
 
   try {
@@ -106,17 +121,20 @@ async function deleteComplaint() {
       .from('complaints')
       .delete()
       .eq('id', complaintId)
-      .eq('created_by', userId.value) // Ensure user can only delete their own complaints
+      .eq('created_by', userId.value)
 
     if (deleteError) {
       throw deleteError
     }
 
-    // Remove from local state
-    complaints.value = complaints.value.filter(c => c.id !== complaintId)
-
-    // Remove from expanded set if it was expanded
-    expandedComplaints.value.delete(complaintId)
+    // If we just deleted the last item on a page that is not page 1, go back one page
+    const isLastItemOnPage = complaints.value.length === 1 && currentPage.value > 1
+    if (isLastItemOnPage) {
+      currentPage.value -= 1
+    }
+    else {
+      await fetchComplaints()
+    }
   }
   catch (err: unknown) {
     console.error('Error deleting complaint:', err)
@@ -124,39 +142,43 @@ async function deleteComplaint() {
   }
   finally {
     deletingComplaints.value.delete(complaintId)
-    // Reset modal state
     showDeleteConfirm.value = false
     complaintToDelete.value = null
   }
 }
 
-// Check if complaint is being deleted
 function isDeleting(complaintId: number) {
   return deletingComplaints.value.has(complaintId)
 }
 
-// Handle modal close
 function handleClose() {
   emit('close')
 }
 
-// Handle new complaint
 function handleNewComplaint() {
   emit('newComplaint')
 }
 
-// Watch for modal open to fetch complaints
+function handlePageChange(page: number) {
+  currentPage.value = page
+}
+
+// Re-fetch when page changes
+watch(currentPage, () => {
+  void fetchComplaints()
+})
+
+// Watch for modal open to fetch complaints and reset state
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
-    fetchComplaints()
-    // Reset expanded state when modal opens
-    expandedComplaints.value.clear()
+    currentPage.value = 1
+    void fetchComplaints()
   }
 })
 
 onMounted(() => {
   if (props.open) {
-    fetchComplaints()
+    void fetchComplaints()
   }
 })
 </script>
@@ -185,7 +207,7 @@ onMounted(() => {
         </Flex>
       </Card>
 
-      <Card v-else-if="complaints.length === 0" class="card-bg">
+      <Card v-else-if="totalCount === 0" class="card-bg">
         <Flex column gap="s" x-center y-center class="information-card">
           <p class="text-color-light">
             You haven't submitted any complaints yet.
@@ -196,93 +218,102 @@ onMounted(() => {
         </Flex>
       </Card>
 
-      <div v-else class="complaints-list">
-        <Card
-          v-for="complaint in complaints"
-          :key="complaint.id"
-          class="card-bg"
-          :class="{ 'complaint-card--deleting': isDeleting(complaint.id) }"
-        >
-          <Flex column gap="s" expand>
-            <!-- Header with responded_by user or status, and date with delete button -->
-            <Flex x-between y-center expand>
-              <div>
-                <UserDisplay
-                  v-if="complaint.response && complaint.responded_by"
-                  :user-id="complaint.responded_by"
-                  show-role
-                />
-                <Badge v-else :variant="getStatusVariant(complaint)">
-                  {{ getStatusText(complaint) }}
-                </Badge>
+      <Flex v-else column gap="m">
+        <div class="complaints-list">
+          <Card
+            v-for="complaint in complaints"
+            :key="complaint.id"
+            class="card-bg"
+            :class="{ 'complaint-card--deleting': isDeleting(complaint.id) }"
+          >
+            <Flex column gap="s" expand>
+              <!-- Header with responded_by user or status, and date with delete button -->
+              <Flex x-between y-center expand>
+                <div>
+                  <UserDisplay
+                    v-if="complaint.response && complaint.responded_by"
+                    :user-id="complaint.responded_by"
+                    show-role
+                  />
+                  <Badge v-else :variant="getStatusVariant(complaint)">
+                    {{ getStatusText(complaint) }}
+                  </Badge>
+                </div>
+                <Flex y-center gap="xs">
+                  <Icon name="ph:clock" size="12" />
+                  <Tooltip>
+                    <template #tooltip>
+                      <p class="text-xs">
+                        Complaint made: {{ formatDateWithTime(complaint.created_at) }}
+                      </p>
+                    </template>
+                    <span class="text-s">
+                      {{ formatDateWithTime(complaint.response ? complaint.responded_at || complaint.created_at : complaint.created_at) }}
+                    </span>
+                  </Tooltip>
+                  <Button
+                    size="s"
+                    variant="danger"
+                    :disabled="isDeleting(complaint.id)"
+                    :loading="isDeleting(complaint.id)"
+                    aria-label="Delete complaint"
+                    @click="showDeleteConfirmation(complaint.id)"
+                  >
+                    <Icon name="ph:trash" />
+                  </Button>
+                </Flex>
+              </Flex>
+
+              <!-- Response (shown by default if exists) -->
+              <div v-if="complaint.response">
+                <p class="text-s">
+                  {{ complaint.response }}
+                </p>
               </div>
-              <Flex y-center gap="xs">
-                <Icon name="ph:clock" size="12" />
-                <Tooltip>
-                  <template #tooltip>
-                    <p class="text-xs">
-                      Complaint made: {{ formatDateWithTime(complaint.created_at) }}
-                    </p>
-                  </template>
-                  <span class="text-s">
-                    {{ formatDateWithTime(complaint.response ? complaint.responded_at || complaint.created_at : complaint.created_at) }}
-                  </span>
-                </Tooltip>
-                <Button
-                  size="s"
-                  variant="danger"
-                  :disabled="isDeleting(complaint.id)"
-                  :loading="isDeleting(complaint.id)"
-                  aria-label="Delete complaint"
-                  @click="showDeleteConfirmation(complaint.id)"
-                >
-                  <Icon name="ph:trash" />
-                </Button>
-              </Flex>
+
+              <!-- Original complaint message (always shown) -->
+              <div>
+                <p class="text-color-light text-s quote quote-border">
+                  {{ complaint.message }}
+                </p>
+              </div>
+
+              <!-- Context information -->
+              <div v-if="complaint.context_user || complaint.context_gameserver">
+                <Flex gap="m" wrap>
+                  <div v-if="complaint.context_user">
+                    <Flex gap="xs" y-center>
+                      <Icon name="ph:user" class="text-color-light" size="14" />
+                      <span class="text-s text-color-light">Related User:</span>
+                      <UserLink class="text-s" :user-id="complaint.context_user" />
+                    </Flex>
+                  </div>
+                  <div v-if="complaint.context_gameserver">
+                    <Flex gap="xs" y-center>
+                      <Icon name="ph:game-controller" class="text-color-light" size="14" />
+                      <span class="text-s text-color-light">Related Game Server:</span>
+                      <GameServerLink :gameserver-id="complaint.context_gameserver" />
+                    </Flex>
+                  </div>
+                </Flex>
+              </div>
             </Flex>
+          </Card>
+        </div>
 
-            <!-- Response (shown by default if exists) -->
-            <div v-if="complaint.response">
-              <p class="text-s">
-                {{ complaint.response }}
-              </p>
-            </div>
-
-            <!-- Original complaint message (always shown) -->
-            <div>
-              <p class="text-color-light text-s quote quote-border">
-                {{ complaint.message }}
-              </p>
-            </div>
-
-            <!-- Context information -->
-            <div v-if="complaint.context_user || complaint.context_gameserver">
-              <Flex gap="m" wrap>
-                <div v-if="complaint.context_user">
-                  <Flex gap="xs" y-center>
-                    <Icon name="ph:user" class="text-color-light" size="14" />
-                    <span class="text-s text-color-light">Related User:</span>
-                    <UserLink class="text-s" :user-id="complaint.context_user" />
-                  </Flex>
-                </div>
-                <div v-if="complaint.context_gameserver">
-                  <Flex gap="xs" y-center>
-                    <Icon name="ph:game-controller" class="text-color-light" size="14" />
-                    <span class="text-s text-color-light">Related Game Server:</span>
-                    <GameServerLink :gameserver-id="complaint.context_gameserver" />
-                  </Flex>
-                </div>
-              </Flex>
-            </div>
-          </Flex>
-        </Card>
-      </div>
+        <!-- Pagination -->
+        <Pagination
+          v-if="shouldShowPagination"
+          :pagination="paginationState"
+          @change="handlePageChange"
+        />
+      </Flex>
     </div>
 
     <template #footer>
       <Flex x-end y-center gap="s" expand>
         <Button
-          v-if="complaints.length !== 0"
+          v-if="totalCount > 0"
           variant="accent"
           :expand="isBelowSmall"
           @click="handleNewComplaint"
@@ -316,17 +347,6 @@ onMounted(() => {
 
 .information-card {
   min-height: 108px;
-}
-
-.loading-state,
-.error-state,
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem;
-  text-align: center;
 }
 
 .complaints-list {

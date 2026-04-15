@@ -1,26 +1,73 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
+import type { Database } from '@/types/database.types'
 import { Button, Flex, theme } from '@dolanske/vui'
+import { useDebounceFn } from '@vueuse/core'
 import dayjs from 'dayjs'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { createArray } from '@/lib/utils/common'
 import { dateFormat } from '@/lib/utils/date'
 import EventCalendarColumnList from './EventCalendarColumnList.vue'
 
-interface Props {
-  events: Tables<'events'>[] | undefined
-  loading: boolean
-  errorMessage: string
-}
-
 interface Emits {
   (e: 'openEvent', event: Tables<'events'>): void
 }
 
-const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const calendarRef = useTemplateRef('calendar')
+const supabase = useSupabaseClient<Database>()
+
+// ─── Windowed data fetch ──────────────────────────────────────────────────────
+// Fetches only the events visible in the current calendar window (startMonth +
+// calendarColumns months). Re-fetches when the window changes. A simple
+// Map-based cache avoids repeat network calls for months already visited.
+
+const windowedEvents = ref<Tables<'events'>[]>([])
+const loading = ref(false)
+const errorMessage = ref('')
+
+// Cache: key = "YYYY-MM:columns", value = fetched rows
+const windowCache = new Map<string, Tables<'events'>[]>()
+
+async function fetchWindow(start: dayjs.Dayjs, columns: number) {
+  const cacheKey = `${start.format('YYYY-MM')}:${columns}`
+  if (windowCache.has(cacheKey)) {
+    windowedEvents.value = windowCache.get(cacheKey)!
+    return
+  }
+
+  loading.value = true
+  errorMessage.value = ''
+
+  try {
+    // Expand the window slightly: events that *start* up to a month before the
+    // visible range but have a duration that overlaps should still appear.
+    const windowStart = start.subtract(1, 'month').startOf('month').toISOString()
+    const windowEnd = start.add(columns, 'month').endOf('month').toISOString()
+
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .gte('date', windowStart)
+      .lte('date', windowEnd)
+      .order('date', { ascending: true })
+
+    if (error)
+      throw error
+
+    const rows = (data ?? []) as Tables<'events'>[]
+    windowCache.set(cacheKey, rows)
+    windowedEvents.value = rows
+  }
+  catch (err) {
+    errorMessage.value = err instanceof Error ? err.message : 'Failed to load events'
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+const calendarRef = useTemplateRef<{ move: (page: { year: number, month: number }) => void }>('calendar')
 
 // Initialize with current date and ensure it updates properly
 const date = ref(dayjs().startOf('day'))
@@ -31,12 +78,9 @@ const isDark = computed(() => theme.value === 'dark')
 // Convert events to calendar attributes
 // eslint-disable-next-line ts/no-explicit-any
 const calendarAttributes = computed<any[]>(() => {
-  if (!props.events)
-    return []
-
   const now = dayjs()
 
-  return props.events.map((event) => {
+  return windowedEvents.value.map((event) => {
     const eventStart = dayjs(event.date)
     const eventEnd = event.duration_minutes
       ? eventStart.add(event.duration_minutes, 'minute')
@@ -212,13 +256,25 @@ const calendarColumns = computed(() => {
   return 3
 })
 
+// Debounced fetch so rapid month navigation doesn't fire a request per step
+const debouncedFetch = useDebounceFn(
+  (start: dayjs.Dayjs, columns: number) => fetchWindow(start, columns),
+  150,
+)
+
+watch(
+  [startMonth, calendarColumns] as const,
+  ([start, columns]) => { void debouncedFetch(start, columns) },
+  { immediate: true },
+)
+
 // Update startMonth whenever users navigate between months
 function updatePaggeIndex(data: { id: string }[]) {
   if (!data[0])
     return
 
-  const date = dayjs(data[0].id, 'YYYY-MM')
-  startMonth.value = date.startOf('month')
+  const navDate = dayjs(data[0].id, 'YYYY-MM')
+  startMonth.value = navDate.startOf('month')
 }
 
 function moveToToday() {
@@ -229,11 +285,8 @@ function moveToToday() {
 }
 
 const upcomingEvents = computed(() => {
-  if (!props.events)
-    return createArray(calendarColumns.value, () => [])
-
   // eslint-disable-next-line ts/no-explicit-any
-  return props.events.reduce((acc: any, event) => {
+  return windowedEvents.value.reduce((acc: any, event) => {
     const eventMonth = dayjs(event.date).startOf('month')
     const monthDiff = eventMonth.diff(startMonth.value, 'month')
 

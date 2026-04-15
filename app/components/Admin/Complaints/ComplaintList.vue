@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { QueryData } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
 import type { Tables, TablesUpdate } from '@/types/database.overrides'
-import { Alert, Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
-import { computed, inject, onMounted, ref, watch } from 'vue'
+import { Alert, Card, Flex, Grid, paginate, Pagination, Skeleton } from '@dolanske/vui'
+import { watchDebounced } from '@vueuse/core'
+import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getRouteQueryString } from '@/lib/utils/common'
 import ComplaintCard from './ComplaintCard.vue'
@@ -16,6 +16,22 @@ interface SelectOption {
   value: string
 }
 
+interface RpcComplaint {
+  id: number
+  created_at: string
+  created_by: string
+  message: string
+  acknowledged: boolean
+  responded_at: string | null
+  responded_by: string | null
+  response: string | null
+  context_user: string | null
+  context_gameserver: number | null
+  context_discussion: string | null
+  context_discussion_reply: string | null
+  total_count: number
+}
+
 // Props
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 const route = useRoute()
@@ -26,33 +42,17 @@ const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
 
-// Complaint query
-const complaintsQuery = supabase
-  .from('complaints')
-  .select(`
-    id,
-    created_at,
-    created_by,
-    message,
-    acknowledged,
-    responded_at,
-    responded_by,
-    response,
-    context_user,
-    context_gameserver,
-    context_discussion,
-    context_discussion_reply
-  `)
-  .order('created_at', { ascending: false })
-
 // Data states
 const loading = ref(true)
-const complaints = ref<QueryData<typeof complaintsQuery>>([])
+const initialLoad = ref(true)
+const complaints = ref<RpcComplaint[]>([])
+const totalCount = ref(0)
 const errorMessage = ref('')
 
 // Filter states
 const search = ref('')
 const statusFilter = ref<SelectOption[]>([])
+const contextFilter = ref<SelectOption[]>([])
 
 // Detail states
 const selectedComplaint = ref<Tables<'complaints'> | null>(null)
@@ -80,74 +80,46 @@ const gridColumns = computed(() => {
 })
 
 // Pagination
-const itemsPerPage = 12
 const currentPage = ref(1)
 
-// Computed filtered complaints
-const filteredComplaints = computed(() => {
-  let filtered = complaints.value
-
-  // Apply search filter
-  if (search.value) {
-    const searchLower = search.value.toLowerCase()
-    filtered = filtered.filter((complaint: QueryData<typeof complaintsQuery>[0]) =>
-      complaint.message.toLowerCase().includes(searchLower),
-    )
-  }
-
-  // Apply status filter
-  if (statusFilter.value.length > 0) {
-    filtered = filtered.filter((complaint: QueryData<typeof complaintsQuery>[0]) => {
-      const status = getComplaintStatus(complaint)
-      return statusFilter.value.some(filter => filter.value === status)
-    })
-  }
-
-  return filtered
-})
-
-// Paginated complaints
-const paginatedComplaints = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  const end = start + itemsPerPage
-  return filteredComplaints.value.slice(start, end)
-})
-
-// Pagination info
-const totalPages = computed(() =>
-  Math.ceil(filteredComplaints.value.length / itemsPerPage),
+const paginationState = computed(() =>
+  paginate(totalCount.value, currentPage.value, adminTablePerPage.value),
 )
 
-// Helper function to get complaint status
-function getComplaintStatus(complaint: Tables<'complaints'>): string {
-  if (complaint.response) {
-    return 'responded'
-  }
-  if (complaint.acknowledged) {
-    return 'acknowledged'
-  }
-  return 'new'
-}
+const shouldShowPagination = computed(() =>
+  totalCount.value > adminTablePerPage.value,
+)
 
-// Fetch complaints data
+// Fetch complaints data via server-side paginated RPC
 async function fetchComplaints() {
   try {
     loading.value = true
     errorMessage.value = ''
 
-    const { data, error } = await complaintsQuery
+    const pStatus = (statusFilter.value ?? []).map(o => o.value)
+    const pContext = (contextFilter.value ?? []).map(o => o.value)
 
-    if (error) {
+    const { data, error } = await supabase.rpc('get_admin_complaints_paginated', {
+      p_search: search.value,
+      p_status: pStatus,
+      p_context: pContext,
+      p_limit: adminTablePerPage.value,
+      p_offset: (currentPage.value - 1) * adminTablePerPage.value,
+    })
+
+    if (error)
       throw error
-    }
 
-    complaints.value = data || []
+    const fetched = (data ?? []) as RpcComplaint[]
+    complaints.value = fetched
+    totalCount.value = fetched[0]?.total_count ?? 0
   }
   catch (error) {
     console.error('Error fetching complaints:', error)
     errorMessage.value = 'Failed to load complaints'
   }
   finally {
+    initialLoad.value = false
     loading.value = false
   }
 }
@@ -162,12 +134,12 @@ function openComplaintById(complaintId: number | null): boolean {
   if (complaintId === null)
     return false
 
-  const match = complaints.value.find((complaint: QueryData<typeof complaintsQuery>[0]) => complaint.id === complaintId)
+  const match = complaints.value.find(c => c.id === complaintId)
 
   if (!match)
     return false
 
-  handleComplaintSelect(match as Tables<'complaints'>)
+  handleComplaintSelect(match as unknown as Tables<'complaints'>)
   return true
 }
 
@@ -179,36 +151,19 @@ async function handleAcknowledge(complaintId: number) {
   try {
     actionLoading.value[complaintId] = true
 
-    const updateData: TablesUpdate<'complaints'> = {
-      acknowledged: true,
-    }
-
     const { error } = await supabase
       .from('complaints')
-      .update(updateData)
+      .update({ acknowledged: true } satisfies TablesUpdate<'complaints'>)
       .eq('id', complaintId)
 
-    if (error) {
+    if (error)
       throw error
-    }
 
-    // Update local data
-    const complaint = complaints.value.find((c: QueryData<typeof complaintsQuery>[0]) => c.id === complaintId)
-    if (complaint) {
-      complaint.acknowledged = true
-    }
-
-    // Update selected complaint if it's the same one
-    if (selectedComplaint.value?.id === complaintId) {
-      selectedComplaint.value.acknowledged = true
-    }
-
-    // Trigger refresh signal
+    await fetchComplaints()
     refreshSignal.value = Date.now()
   }
   catch (error) {
     console.error('Error acknowledging complaint:', error)
-    // You might want to show a toast notification here
   }
   finally {
     actionLoading.value[complaintId] = false
@@ -223,45 +178,24 @@ async function handleRespond(data: { id: number, response: string }) {
   try {
     actionLoading.value[data.id] = true
 
-    const updateData: TablesUpdate<'complaints'> = {
-      response: data.response,
-      responded_at: new Date().toISOString(),
-      responded_by: userId.value,
-      acknowledged: true, // Ensure it's acknowledged when responded
-    }
-
     const { error } = await supabase
       .from('complaints')
-      .update(updateData)
+      .update({
+        response: data.response,
+        responded_at: new Date().toISOString(),
+        responded_by: userId.value,
+        acknowledged: true,
+      } satisfies TablesUpdate<'complaints'>)
       .eq('id', data.id)
 
-    if (error) {
+    if (error)
       throw error
-    }
 
-    // Update local data
-    const complaint = complaints.value.find((c: QueryData<typeof complaintsQuery>[0]) => c.id === data.id)
-    if (complaint) {
-      complaint.response = data.response
-      complaint.responded_at = updateData.responded_at!
-      complaint.responded_by = updateData.responded_by!
-      complaint.acknowledged = true
-    }
-
-    // Update selected complaint if it's the same one
-    if (selectedComplaint.value?.id === data.id) {
-      selectedComplaint.value.response = data.response
-      selectedComplaint.value.responded_at = updateData.responded_at!
-      selectedComplaint.value.responded_by = updateData.responded_by!
-      selectedComplaint.value.acknowledged = true
-    }
-
-    // Trigger refresh signal
+    await fetchComplaints()
     refreshSignal.value = Date.now()
   }
   catch (error) {
     console.error('Error responding to complaint:', error)
-    // You might want to show a toast notification here
   }
   finally {
     actionLoading.value[data.id] = false
@@ -276,42 +210,23 @@ async function handleUpdateResponse(data: { id: number, response: string }) {
   try {
     actionLoading.value[data.id] = true
 
-    const updateData: TablesUpdate<'complaints'> = {
-      response: data.response,
-      responded_at: new Date().toISOString(),
-      responded_by: userId.value,
-    }
-
     const { error } = await supabase
       .from('complaints')
-      .update(updateData)
+      .update({
+        response: data.response,
+        responded_at: new Date().toISOString(),
+        responded_by: userId.value,
+      } satisfies TablesUpdate<'complaints'>)
       .eq('id', data.id)
 
-    if (error) {
+    if (error)
       throw error
-    }
 
-    // Update local data
-    const complaint = complaints.value.find((c: QueryData<typeof complaintsQuery>[0]) => c.id === data.id)
-    if (complaint) {
-      complaint.response = data.response
-      complaint.responded_at = updateData.responded_at!
-      complaint.responded_by = updateData.responded_by!
-    }
-
-    // Update selected complaint if it's the same one
-    if (selectedComplaint.value?.id === data.id) {
-      selectedComplaint.value.response = data.response
-      selectedComplaint.value.responded_at = updateData.responded_at!
-      selectedComplaint.value.responded_by = updateData.responded_by!
-    }
-
-    // Trigger refresh signal
+    await fetchComplaints()
     refreshSignal.value = Date.now()
   }
   catch (error) {
     console.error('Error updating complaint response:', error)
-    // You might want to show a toast notification here
   }
   finally {
     actionLoading.value[data.id] = false
@@ -326,45 +241,24 @@ async function handleRemoveResponse(complaintId: number) {
   try {
     actionLoading.value[complaintId] = true
 
-    const updateData: TablesUpdate<'complaints'> = {
-      response: null,
-      responded_at: null,
-      responded_by: null,
-      // Keep acknowledged as true, so it reverts to "acknowledged" status
-    }
-
     const { error } = await supabase
       .from('complaints')
-      .update(updateData)
+      .update({
+        response: null,
+        responded_at: null,
+        responded_by: null,
+        // Keep acknowledged as true, so it reverts to "acknowledged" status
+      } satisfies TablesUpdate<'complaints'>)
       .eq('id', complaintId)
 
-    if (error) {
+    if (error)
       throw error
-    }
 
-    // Update local data
-    const complaint = complaints.value.find((c: QueryData<typeof complaintsQuery>[0]) => c.id === complaintId)
-    if (complaint) {
-      complaint.response = null
-      complaint.responded_at = null
-      complaint.responded_by = null
-      // Keep acknowledged as true
-    }
-
-    // Update selected complaint if it's the same one
-    if (selectedComplaint.value?.id === complaintId) {
-      selectedComplaint.value.response = null
-      selectedComplaint.value.responded_at = null
-      selectedComplaint.value.responded_by = null
-      // Keep acknowledged as true
-    }
-
-    // Trigger refresh signal
+    await fetchComplaints()
     refreshSignal.value = Date.now()
   }
   catch (error) {
     console.error('Error removing complaint response:', error)
-    // You might want to show a toast notification here
   }
   finally {
     actionLoading.value[complaintId] = false
@@ -384,27 +278,17 @@ async function handleDeleteComplaint(complaintId: number) {
       .delete()
       .eq('id', complaintId)
 
-    if (error) {
+    if (error)
       throw error
-    }
 
-    // Remove from local data
-    const index = complaints.value.findIndex((c: QueryData<typeof complaintsQuery>[0]) => c.id === complaintId)
-    if (index !== -1) {
-      complaints.value.splice(index, 1)
-    }
-
-    // Clear selected complaint if it's the deleted one
-    if (selectedComplaint.value?.id === complaintId) {
+    if (selectedComplaint.value?.id === complaintId)
       selectedComplaint.value = null
-    }
 
-    // Trigger refresh signal
+    await fetchComplaints()
     refreshSignal.value = Date.now()
   }
   catch (error) {
     console.error('Error deleting complaint:', error)
-    // You might want to show a toast notification here
   }
   finally {
     actionLoading.value[complaintId] = false
@@ -441,25 +325,46 @@ watch(
   { immediate: true },
 )
 
-// Handle pagination
 function handlePageChange(page: number) {
   currentPage.value = page
 }
 
-// Reset pagination when filters change
-watch([search, statusFilter], () => {
+// Search: debounced fetch
+watchDebounced(search, () => {
   currentPage.value = 1
+  void fetchComplaints()
+}, { debounce: 300 })
+
+// Status + context filters: immediate fetch
+watch([statusFilter, contextFilter], () => {
+  currentPage.value = 1
+  void fetchComplaints()
+}, { deep: true })
+
+// Page: fetch on change
+watch(currentPage, () => {
+  void fetchComplaints()
 })
 
-// Watch for refresh signal changes
-watch(() => refreshSignal.value, () => {
-  if (refreshSignal.value > 0) {
-    fetchComplaints()
+// Per-page: reset and fetch
+watch(adminTablePerPage, () => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1
+    // currentPage watch fires fetch
+  }
+  else {
+    void fetchComplaints()
   }
 })
 
+// Refresh signal from KPIs or external actions
+watch(() => refreshSignal.value, (val) => {
+  if (val > 0)
+    void fetchComplaints()
+})
+
 // Initial data fetch
-onMounted(fetchComplaints)
+onBeforeMount(() => void fetchComplaints())
 </script>
 
 <template>
@@ -468,10 +373,11 @@ onMounted(fetchComplaints)
     <ComplaintFilters
       v-model:search="search"
       v-model:status-filter="statusFilter"
+      v-model:context-filter="contextFilter"
     />
 
-    <!-- Loading skeleton -->
-    <Grid v-if="loading" :columns="gridColumns" gap="m" expand>
+    <!-- Loading skeleton (initial load only) -->
+    <Grid v-if="initialLoad" :columns="gridColumns" gap="m" expand>
       <Card v-for="i in 6" :key="i" separators>
         <template #header>
           <Flex x-between y-center expand>
@@ -497,51 +403,30 @@ onMounted(fetchComplaints)
     </Alert>
 
     <!-- No complaints message -->
-    <Alert v-else-if="filteredComplaints.length === 0" variant="info">
+    <Alert v-else-if="!loading && complaints.length === 0" variant="info">
       No complaints found
     </Alert>
 
     <!-- Complaints grid -->
     <Flex v-else column gap="l" expand>
-      <Grid :columns="gridColumns" gap="m" class="complaints-grid" expand>
-        <ComplaintCard
-          v-for="complaint in paginatedComplaints"
-          :key="complaint.id"
-          :complaint="complaint"
-          @select="handleComplaintSelect"
-          @acknowledge="handleAcknowledge"
-        />
-      </Grid>
+      <div class="complaints-loading-wrapper" :class="{ 'complaints-loading': loading && !initialLoad }">
+        <Grid :columns="gridColumns" gap="m" class="complaints-grid" expand>
+          <ComplaintCard
+            v-for="complaint in complaints"
+            :key="complaint.id"
+            :complaint="(complaint as unknown as Tables<'complaints'>)"
+            @select="handleComplaintSelect"
+            @acknowledge="handleAcknowledge"
+          />
+        </Grid>
+      </div>
 
       <!-- Pagination -->
-      <Flex v-if="totalPages > 1" x-center class="pagination-container">
-        <Flex column x-center gap="s">
-          <p class="text-s text-color-light">
-            Showing {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredComplaints.length) }} of {{ filteredComplaints.length }} complaints
-          </p>
-          <Flex y-center gap="m">
-            <Button
-              v-if="currentPage > 1"
-              variant="gray"
-              size="s"
-              @click="handlePageChange(currentPage - 1)"
-            >
-              Previous
-            </Button>
-            <span class="pagination-current text-s">
-              Page {{ currentPage }} of {{ totalPages }}
-            </span>
-            <Button
-              v-if="currentPage < totalPages"
-              variant="gray"
-              size="s"
-              @click="handlePageChange(currentPage + 1)"
-            >
-              Next
-            </Button>
-          </Flex>
-        </Flex>
-      </Flex>
+      <Pagination
+        v-if="shouldShowPagination"
+        :pagination="paginationState"
+        @change="handlePageChange"
+      />
     </Flex>
 
     <!-- Complaint Details -->
@@ -559,14 +444,14 @@ onMounted(fetchComplaints)
 </template>
 
 <style scoped lang="scss">
-.pagination-container {
-  margin-top: var(--space-l);
+.complaints-loading-wrapper {
+  width: 100%;
+  transition: opacity var(--transition-slow);
 }
 
-.pagination-current {
-  padding: var(--space-xs) var(--space-s);
-  background-color: var(--color-bg-medium);
-  border-radius: var(--border-radius-s);
+.complaints-loading {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .complaints-grid {

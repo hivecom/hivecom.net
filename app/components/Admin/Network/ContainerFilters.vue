@@ -17,8 +17,18 @@ const emit = defineEmits<{
 }>()
 // Use defineModel with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const serverFilter = defineModel<SelectOption[]>('serverFilter')
-const statusFilter = defineModel<SelectOption[]>('statusFilter')
+const _serverFilter = defineModel<SelectOption[] | undefined>('serverFilter')
+const _statusFilter = defineModel<SelectOption[] | undefined>('statusFilter')
+
+// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+const serverFilter = computed({
+  get: () => _serverFilter.value ?? [],
+  set: (v) => { _serverFilter.value = v ?? [] },
+})
+const statusFilter = computed({
+  get: () => _statusFilter.value ?? [],
+  set: (v) => { _statusFilter.value = v ?? [] },
+})
 
 const isBelowMedium = useBreakpoint('<m')
 
@@ -58,11 +68,11 @@ function clearFilters() {
     />
 
     <Button
-      v-if="search || serverFilter || statusFilter"
+      v-if="search || serverFilter.length > 0 || statusFilter.length > 0"
       plain
       outline
       :expand="isBelowMedium"
-      :disabled="!search && !serverFilter && !statusFilter"
+      :disabled="!search && serverFilter.length === 0 && statusFilter.length === 0"
       @click="clearFilters"
     >
       Clear Filters

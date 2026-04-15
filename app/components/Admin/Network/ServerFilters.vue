@@ -20,7 +20,13 @@ const isBelowMedium = useBreakpoint('<m')
 
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const statusFilter = defineModel<SelectOption[]>('statusFilter')
+const _statusFilter = defineModel<SelectOption[] | undefined>('statusFilter')
+
+// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+const statusFilter = computed({
+  get: () => _statusFilter.value ?? [],
+  set: (v) => { _statusFilter.value = v ?? [] },
+})
 
 // Clear filters handler
 function clearFilters() {
@@ -53,11 +59,11 @@ function clearFilters() {
 
     <!-- Clear all filters -->
     <Button
-      v-if="search || statusFilter"
+      v-if="search || statusFilter.length > 0"
       plain
       outline
       :expand="isBelowMedium"
-      :disabled="!search && !statusFilter"
+      :disabled="!search && statusFilter.length === 0"
       @click="clearFilters"
     >
       Clear Filters

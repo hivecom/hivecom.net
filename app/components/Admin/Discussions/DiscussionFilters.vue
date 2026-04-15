@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Button, Flex, Input, Select } from '@dolanske/vui'
+import AuthorFilter from '@/components/Admin/Shared/AuthorFilter.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+
+interface ProfileResult {
+  id: string
+  username: string
+}
 
 interface SelectOption {
   label: string
@@ -19,8 +25,19 @@ const emit = defineEmits<{
 const isBelowMedium = useBreakpoint('<m')
 
 const search = defineModel<string>('search', { default: '' })
-const statusFilter = defineModel<SelectOption[]>('statusFilter')
-const contextFilter = defineModel<SelectOption[]>('contextFilter')
+const _statusFilter = defineModel<SelectOption[] | undefined>('statusFilter')
+const _contextFilter = defineModel<SelectOption[] | undefined>('contextFilter')
+
+// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+const statusFilter = computed({
+  get: () => _statusFilter.value ?? [],
+  set: (v) => { _statusFilter.value = v ?? [] },
+})
+const contextFilter = computed({
+  get: () => _contextFilter.value ?? [],
+  set: (v) => { _contextFilter.value = v ?? [] },
+})
+const authorFilter = defineModel<ProfileResult | null>('authorFilter', { default: null })
 
 function clearFilters() {
   emit('clearFilters')
@@ -29,7 +46,8 @@ function clearFilters() {
 const hasActiveFilters = computed(() =>
   search.value.length > 0
   || (statusFilter.value && statusFilter.value.length > 0)
-  || (contextFilter.value && contextFilter.value.length > 0),
+  || (contextFilter.value && contextFilter.value.length > 0)
+  || authorFilter.value !== null,
 )
 </script>
 
@@ -62,6 +80,10 @@ const hasActiveFilters = computed(() =>
       show-clear
       :single="false"
     />
+
+    <Flex y-center :gap="isBelowMedium ? 's' : 'xs'" :expand="isBelowMedium">
+      <AuthorFilter v-model="authorFilter" />
+    </Flex>
 
     <Button
       v-if="hasActiveFilters"

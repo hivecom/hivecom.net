@@ -239,7 +239,7 @@ defineExpose({ refresh })
       </template>
     </Grid>
 
-    <template v-if="!loading && items.length === 0">
+    <template v-if="!loading && items.length === 0 && !(activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch)">
       <Card class="card-bg">
         <Flex x-center y-center expand class="p-l">
           <Icon name="ph:paint-brush-bold" :size="24" />

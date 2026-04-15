@@ -5,7 +5,6 @@ import { Button, Flex, Input, Tab, Tabs } from '@dolanske/vui'
 
 import ReferendumGrid from '@/components/Votes/ReferendumGrid.vue'
 import ReferendumModal from '@/components/Votes/ReferendumModal.vue'
-import { useCachedFetch } from '@/composables/useCache'
 
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -21,53 +20,122 @@ useHead({
 const tab = ref<'Active' | 'Concluded'>('Active')
 const search = ref('')
 
-const currentDate = new Date().toISOString()
+const PAGE_SIZE = 12
 
-// ─── Public referendums ───────────────────────────────────────────────────────
+// ─── Public referendums (paginated) ──────────────────────────────────────────
 
-const { data: activePublic, loading: loadingActivePublic } = useCachedFetch<Tables<'referendums'>[]>(
-  () => tab.value === 'Active' && !!user.value
-    ? {
-        table: 'referendums',
-        select: '*',
-        filters: {
-          date_end: currentDate,
-          is_public: true,
-        },
-        filterOperators: {
-          date_end: 'gte',
-        },
-        orderBy: { created_at: false },
-      }
-    : null,
-  {
-    ttl: 60000,
+const activePublicItems = ref<Tables<'referendums'>[]>([])
+const activePublicOffset = ref(0)
+const activePublicExhausted = ref(false)
+const activePublicLoading = ref(false)
+
+const concludedPublicItems = ref<Tables<'referendums'>[]>([])
+const concludedPublicOffset = ref(0)
+const concludedPublicExhausted = ref(false)
+const concludedPublicLoading = ref(false)
+
+async function fetchActivePublicPage() {
+  if (activePublicLoading.value || activePublicExhausted.value)
+    return
+
+  activePublicLoading.value = true
+  try {
+    const now = new Date().toISOString()
+    const offset = activePublicOffset.value
+    const { data, error } = await supabase
+      .from('referendums')
+      .select('*')
+      .eq('is_public', true)
+      .gte('date_end', now)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1)
+
+    if (error)
+      throw error
+
+    const rows = data ?? []
+    activePublicItems.value = [...activePublicItems.value, ...rows]
+    activePublicOffset.value = offset + rows.length
+    if (rows.length < PAGE_SIZE)
+      activePublicExhausted.value = true
+  }
+  catch (err) {
+    console.error('Error fetching active public referendums:', err)
+  }
+  finally {
+    activePublicLoading.value = false
+  }
+}
+
+async function fetchConcludedPublicPage() {
+  if (concludedPublicLoading.value || concludedPublicExhausted.value)
+    return
+
+  concludedPublicLoading.value = true
+  try {
+    const now = new Date().toISOString()
+    const offset = concludedPublicOffset.value
+    const { data, error } = await supabase
+      .from('referendums')
+      .select('*')
+      .eq('is_public', true)
+      .lt('date_end', now)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1)
+
+    if (error)
+      throw error
+
+    const rows = data ?? []
+    concludedPublicItems.value = [...concludedPublicItems.value, ...rows]
+    concludedPublicOffset.value = offset + rows.length
+    if (rows.length < PAGE_SIZE)
+      concludedPublicExhausted.value = true
+  }
+  catch (err) {
+    console.error('Error fetching concluded public referendums:', err)
+  }
+  finally {
+    concludedPublicLoading.value = false
+  }
+}
+
+function resetAndLoadActivePublic() {
+  activePublicItems.value = []
+  activePublicOffset.value = 0
+  activePublicExhausted.value = false
+  void fetchActivePublicPage()
+}
+
+function resetAndLoadConcludedPublic() {
+  concludedPublicItems.value = []
+  concludedPublicOffset.value = 0
+  concludedPublicExhausted.value = false
+  void fetchConcludedPublicPage()
+}
+
+// Load first page when user is available
+watch(
+  user,
+  (u) => {
+    if (u) {
+      resetAndLoadActivePublic()
+    }
   },
+  { immediate: true },
 )
 
-const { data: concludedPublic, loading: loadingConcludedPublic } = useCachedFetch<Tables<'referendums'>[]>(
-  () => tab.value === 'Concluded' && !!user.value
-    ? {
-        table: 'referendums',
-        select: '*',
-        filters: {
-          date_end: currentDate,
-          is_public: true,
-        },
-        filterOperators: {
-          date_end: 'lt',
-        },
-        orderBy: { created_at: false },
-      }
-    : null,
-  {
-    ttl: 300000,
-  },
-)
+// When tab changes, load the other tab's first page if not yet started
+watch(tab, (newTab) => {
+  if (newTab === 'Active' && activePublicOffset.value === 0 && !activePublicLoading.value) {
+    resetAndLoadActivePublic()
+  }
+  else if (newTab === 'Concluded' && concludedPublicOffset.value === 0 && !concludedPublicLoading.value) {
+    resetAndLoadConcludedPublic()
+  }
+})
 
 // ─── User's own private referendums + voted-in private referendums ────────────
-// These use direct Supabase calls because they require complex OR/join logic
-// that doesn't map cleanly to the useCachedFetch query shape.
 
 const ownPrivateActive = ref<Tables<'referendums'>[]>([])
 const ownPrivateConcluded = ref<Tables<'referendums'>[]>([])
@@ -150,7 +218,6 @@ async function fetchVotedPrivate() {
     }
 
     // Step 2 - fetch those referendums that are private and not created by us
-    // (own private ones are already in ownPrivateActive/ownPrivateConcluded)
     const { data: referendums, error: refError } = await supabase
       .from('referendums')
       .select('*')
@@ -179,26 +246,24 @@ watch(userId, (id) => {
 }, { immediate: true })
 
 // ─── Merged lists ─────────────────────────────────────────────────────────────
-// Deduplication by id - public list takes precedence (it has the canonical row),
-// then own private, then voted-in private.
 
 function mergeReferendums(
-  publicList: readonly Tables<'referendums'>[] | null,
-  ownList: readonly Tables<'referendums'>[] | null,
+  publicList: readonly Tables<'referendums'>[],
+  ownList: readonly Tables<'referendums'>[],
   votedList: readonly Tables<'referendums'>[],
-  afterDate: boolean, // true = active (date_end >= now), false = concluded (date_end < now)
+  afterDate: boolean,
 ): Tables<'referendums'>[] {
   const seen = new Set<number>()
   const result: Tables<'referendums'>[] = []
 
-  for (const r of (publicList ?? [])) {
+  for (const r of publicList) {
     if (!seen.has(r.id)) {
       seen.add(r.id)
       result.push(r)
     }
   }
 
-  for (const r of (ownList ?? [])) {
+  for (const r of ownList) {
     if (!seen.has(r.id)) {
       seen.add(r.id)
       result.push(r)
@@ -221,7 +286,7 @@ function mergeReferendums(
 
 const mergedActive = computed(() =>
   mergeReferendums(
-    activePublic.value as Tables<'referendums'>[] | null,
+    activePublicItems.value,
     ownPrivateActive.value,
     votedPrivateReferendums.value,
     true,
@@ -230,7 +295,7 @@ const mergedActive = computed(() =>
 
 const mergedConcluded = computed(() =>
   mergeReferendums(
-    concludedPublic.value as Tables<'referendums'>[] | null,
+    concludedPublicItems.value,
     ownPrivateConcluded.value,
     votedPrivateReferendums.value,
     false,
@@ -246,40 +311,66 @@ const allVisibleIds = computed(() => {
   return [...ids]
 })
 
-const { data: allVotesForCounting } = useCachedFetch<Tables<'referendum_votes'>[]>(
-  () => !!user.value && allVisibleIds.value.length > 0
-    ? {
-        table: 'referendum_votes',
-        select: 'referendum_id, user_id',
+const referendumVoteCounts = ref(new Map<number, number>())
+const referendumVoterIds = ref(new Map<number, string[]>())
+let voteCountFetchController: AbortController | null = null
+
+async function fetchVoteCounts(ids: number[]) {
+  if (ids.length === 0) {
+    referendumVoteCounts.value = new Map()
+    referendumVoterIds.value = new Map()
+    return
+  }
+
+  // Cancel any in-flight fetch
+  voteCountFetchController?.abort()
+  voteCountFetchController = new AbortController()
+
+  try {
+    const { data, error } = await supabase
+      .from('referendum_votes')
+      .select('referendum_id, user_id')
+      .in('referendum_id', ids)
+
+    if (error)
+      throw error
+
+    const counts = new Map<number, number>()
+    const voters = new Map<number, string[]>()
+
+    data?.forEach((v) => {
+      if (v.referendum_id != null) {
+        counts.set(v.referendum_id, (counts.get(v.referendum_id) ?? 0) + 1)
+        if (v.user_id) {
+          const arr = voters.get(v.referendum_id) ?? []
+          if (!arr.includes(v.user_id))
+            voters.set(v.referendum_id, [...arr, v.user_id])
+        }
       }
-    : null,
-  {
-    ttl: 60000,
+    })
+
+    referendumVoteCounts.value = counts
+    referendumVoterIds.value = voters
+  }
+  catch (err) {
+    console.error('Error fetching vote counts:', err)
+  }
+}
+
+// Debounce vote count fetches so rapid list changes don't fire many requests
+let voteCountDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(
+  allVisibleIds,
+  (ids) => {
+    if (voteCountDebounceTimer !== null)
+      clearTimeout(voteCountDebounceTimer)
+    voteCountDebounceTimer = setTimeout(() => {
+      void fetchVoteCounts(ids)
+    }, 150)
   },
+  { immediate: true },
 )
-
-const referendumVoteCounts = computed(() => {
-  const counts = new Map<number, number>()
-  allVotesForCounting.value?.forEach((vote) => {
-    if (vote.referendum_id != null) {
-      counts.set(vote.referendum_id, (counts.get(vote.referendum_id) ?? 0) + 1)
-    }
-  })
-  return counts
-})
-
-const referendumVoterIds = computed(() => {
-  const voterIds = new Map<number, string[]>()
-  allVotesForCounting.value?.forEach((vote) => {
-    if (vote.referendum_id != null && vote.user_id != null) {
-      const current = voterIds.get(vote.referendum_id) ?? []
-      if (!current.includes(vote.user_id)) {
-        voterIds.set(vote.referendum_id, [...current, vote.user_id])
-      }
-    }
-  })
-  return voterIds
-})
 
 function getVoteCount(referendumId: number): number {
   return referendumVoteCounts.value.get(referendumId) ?? 0
@@ -309,7 +400,6 @@ function handleModalClose() {
 }
 
 function handleCreated(referendum: Tables<'referendums'>) {
-  // Prepend into the appropriate private list so it shows immediately
   if (referendum.date_end >= new Date().toISOString()) {
     ownPrivateActive.value = [referendum, ...ownPrivateActive.value]
   }
@@ -320,7 +410,6 @@ function handleCreated(referendum: Tables<'referendums'>) {
 }
 
 function handleUpdated(referendum: Tables<'referendums'>) {
-  // Patch in place across all lists
   const patch = (list: Tables<'referendums'>[]) =>
     list.map(r => r.id === referendum.id ? referendum : r)
 
@@ -346,9 +435,17 @@ function handleDeleted(referendumId: number) {
 
 const isLoading = computed(() => {
   if (tab.value === 'Active')
-    return loadingActivePublic.value || loadingOwnActive.value || loadingVoted.value
-  return loadingConcludedPublic.value || loadingOwnConcluded.value || loadingVoted.value
+    return activePublicLoading.value || loadingOwnActive.value || loadingVoted.value
+  return concludedPublicLoading.value || loadingOwnConcluded.value || loadingVoted.value
 })
+
+const showLoadMoreActive = computed(
+  () => !activePublicExhausted.value && !activePublicLoading.value && !search.value.trim(),
+)
+
+const showLoadMoreConcluded = computed(
+  () => !concludedPublicExhausted.value && !concludedPublicLoading.value && !search.value.trim(),
+)
 
 const currentReferendums = computed(() => {
   const list = tab.value === 'Active' ? mergedActive.value : mergedConcluded.value
@@ -403,28 +500,40 @@ const currentReferendums = computed(() => {
     </Flex>
 
     <!-- Active tab -->
-    <ReferendumGrid
-      v-if="tab === 'Active'"
-      :referendums="currentReferendums"
-      :is-loading="isLoading"
-      empty-title="No active votes"
-      empty-message="Stay on the lookout for new votes!"
-      :get-vote-count="getVoteCount"
-      :get-voter-ids="getVoterIds"
-      :has-voted="hasVoted"
-    />
+    <template v-if="tab === 'Active'">
+      <ReferendumGrid
+        :referendums="currentReferendums"
+        :is-loading="isLoading"
+        empty-title="No active votes"
+        empty-message="Stay on the lookout for new votes!"
+        :get-vote-count="getVoteCount"
+        :get-voter-ids="getVoterIds"
+        :has-voted="hasVoted"
+      />
+      <Flex v-if="showLoadMoreActive" x-center class="mt-l">
+        <Button variant="gray" :loading="activePublicLoading" @click="fetchActivePublicPage">
+          Load more
+        </Button>
+      </Flex>
+    </template>
 
     <!-- Concluded tab -->
-    <ReferendumGrid
-      v-else
-      :referendums="currentReferendums"
-      :is-loading="isLoading"
-      empty-title="No concluded votes"
-      empty-message="Previous votes will appear here once they conclude."
-      :get-vote-count="getVoteCount"
-      :get-voter-ids="getVoterIds"
-      :has-voted="hasVoted"
-    />
+    <template v-else>
+      <ReferendumGrid
+        :referendums="currentReferendums"
+        :is-loading="isLoading"
+        empty-title="No concluded votes"
+        empty-message="Previous votes will appear here once they conclude."
+        :get-vote-count="getVoteCount"
+        :get-voter-ids="getVoterIds"
+        :has-voted="hasVoted"
+      />
+      <Flex v-if="showLoadMoreConcluded" x-center class="mt-l">
+        <Button variant="gray" :loading="concludedPublicLoading" @click="fetchConcludedPublicPage">
+          Load more
+        </Button>
+      </Flex>
+    </template>
 
     <ReferendumModal
       :open="modalOpen"

@@ -158,7 +158,7 @@ onMounted(fetchDiscussions)
     />
 
     <KPICard
-      label="Last Discussion / Reply"
+      label="Last Activity"
       :value="lastDiscussionOrReply"
       :is-loading="loading"
       icon="ph:timer"

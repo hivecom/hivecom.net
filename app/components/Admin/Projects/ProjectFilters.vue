@@ -20,7 +20,13 @@ const isBelowMedium = useBreakpoint('<m')
 
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const tagFilter = defineModel<SelectOption[]>('tagFilter')
+const _tagFilter = defineModel<SelectOption[] | undefined>('tagFilter')
+
+// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+const tagFilter = computed({
+  get: () => _tagFilter.value ?? [],
+  set: (v) => { _tagFilter.value = v ?? [] },
+})
 
 // Clear filters handler
 function clearFilters() {

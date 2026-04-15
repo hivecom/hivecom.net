@@ -21,8 +21,18 @@ const isBelowMedium = useBreakpoint('<m')
 
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const regionFilter = defineModel<SelectOption[]>('regionFilter')
-const gameFilter = defineModel<SelectOption[]>('gameFilter')
+const _regionFilter = defineModel<SelectOption[] | undefined>('regionFilter')
+const _gameFilter = defineModel<SelectOption[] | undefined>('gameFilter')
+
+// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+const regionFilter = computed({
+  get: () => _regionFilter.value ?? [],
+  set: (v) => { _regionFilter.value = v ?? [] },
+})
+const gameFilter = computed({
+  get: () => _gameFilter.value ?? [],
+  set: (v) => { _gameFilter.value = v ?? [] },
+})
 
 // Clear filters handler
 function clearFilters() {
@@ -65,11 +75,11 @@ function clearFilters() {
 
     <!-- Clear all filters -->
     <Button
-      v-if="search || regionFilter || gameFilter"
+      v-if="search || regionFilter.length > 0 || gameFilter.length > 0"
       plain
       outline
       :expand="isBelowMedium"
-      :disabled="!search && !regionFilter && !gameFilter"
+      :disabled="!search && regionFilter.length === 0 && gameFilter.length === 0"
       @click="clearFilters"
     >
       Clear Filters

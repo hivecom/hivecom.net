@@ -10,6 +10,7 @@ interface SelectOption {
 const props = defineProps<{
   statusOptions: SelectOption[]
   typeOptions: SelectOption[]
+  visibilityOptions: SelectOption[]
 }>()
 
 // Emit is still needed for the clearFilters action
@@ -21,8 +22,23 @@ const isBelowMedium = useBreakpoint('<m')
 
 // Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const statusFilter = defineModel<SelectOption[]>('statusFilter')
-const typeFilter = defineModel<SelectOption[]>('typeFilter')
+const _statusFilter = defineModel<SelectOption[] | undefined>('statusFilter', { default: () => [] })
+const _typeFilter = defineModel<SelectOption[] | undefined>('typeFilter', { default: () => [] })
+const _visibilityFilter = defineModel<SelectOption[] | undefined>('visibilityFilter', { default: () => [] })
+
+// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+const statusFilter = computed({
+  get: () => _statusFilter.value ?? [],
+  set: (v) => { _statusFilter.value = v ?? [] },
+})
+const typeFilter = computed({
+  get: () => _typeFilter.value ?? [],
+  set: (v) => { _typeFilter.value = v ?? [] },
+})
+const visibilityFilter = computed({
+  get: () => _visibilityFilter.value ?? [],
+  set: (v) => { _visibilityFilter.value = v ?? [] },
+})
 
 // Clear filters handler
 function clearFilters() {
@@ -33,7 +49,8 @@ function clearFilters() {
 const hasActiveFilters = computed(() =>
   search.value.length > 0
   || (statusFilter.value && statusFilter.value.length > 0)
-  || (typeFilter.value && typeFilter.value.length > 0),
+  || (typeFilter.value && typeFilter.value.length > 0)
+  || (visibilityFilter.value && visibilityFilter.value.length > 0),
 )
 </script>
 
@@ -57,6 +74,7 @@ const hasActiveFilters = computed(() =>
       placeholder="Filter by status"
       :expand="isBelowMedium"
       show-clear
+      :single="false"
     />
 
     <!-- Type filter -->
@@ -66,6 +84,17 @@ const hasActiveFilters = computed(() =>
       placeholder="Filter by type"
       :expand="isBelowMedium"
       show-clear
+      :single="false"
+    />
+
+    <!-- Visibility filter -->
+    <Select
+      v-model="visibilityFilter"
+      :options="props.visibilityOptions"
+      placeholder="Filter by visibility"
+      :expand="isBelowMedium"
+      show-clear
+      :single="false"
     />
 
     <!-- Clear all filters -->

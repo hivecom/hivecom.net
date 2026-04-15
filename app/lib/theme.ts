@@ -224,6 +224,13 @@ const TRANSITION_TOKENS: ScaleConfig['tokens'] = [
   { varName: '--transition-slow', defaultValue: 0.25 },
 ]
 
+/** Maps each transition shorthand token to its companion duration-only token */
+const TRANSITION_DURATION_COMPANIONS: Record<string, string> = {
+  '--transition-fast': '--transition-fast-duration',
+  '--transition': '--transition-duration',
+  '--transition-slow': '--transition-slow-duration',
+}
+
 const CONTAINER_TOKENS: ScaleConfig['tokens'] = [
   { varName: '--container-xs', defaultValue: 360 },
   { varName: '--container-s', defaultValue: 728 },
@@ -309,6 +316,11 @@ export function applyScale(
       const easing = TRANSITION_EASINGS[token.varName] ?? 'ease-in-out'
       const duration = `${Math.round(scaled * 1000) / 1000}s`
       target.style.setProperty(token.varName, `${duration} all ${easing}`)
+      // Also set the companion duration-only token so it can be used in
+      // places like transition-delay where a bare time value is required
+      const companion = TRANSITION_DURATION_COMPANIONS[token.varName] ?? null
+      if (companion != null)
+        target.style.setProperty(companion, duration)
     }
     else {
       // Spacing and rounding are simple pixel values (round to 1 decimal)
@@ -414,6 +426,13 @@ export function applyTheme(theme: Theme | null, target: HTMLElement = document.d
   for (const scaleKey of THEME_SCALE_KEYS) {
     for (const token of SCALE_CONFIGS[scaleKey].tokens) {
       target.style.removeProperty(token.varName)
+      // Also clear any companion duration tokens so they fall back to the
+      // values defined in index.scss rather than stale theme overrides
+      if (scaleKey === 'transitions') {
+        const companion = TRANSITION_DURATION_COMPANIONS[token.varName] ?? null
+        if (companion != null)
+          target.style.removeProperty(companion)
+      }
     }
   }
 

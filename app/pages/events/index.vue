@@ -47,7 +47,7 @@ onMounted(() => {
   activeTab.value = sessionStorage.getItem('events_active_tab') ?? 'list'
 })
 
-// Fetch data
+// Fetch data for the listing view only - the calendar self-fetches its own windowed data
 const { events, loading, error } = useDataEvents()
 const errorMessage = computed(() => error.value ?? '')
 
@@ -100,12 +100,8 @@ defineOgImage('Default', {
       />
 
       <!-- Calendar View -->
-      <EventsCalendar
-        v-else-if="activeTab === 'calendar'"
-        :events="events"
-        :loading="loading"
-        :error-message="errorMessage"
-      />
+      <!-- EventsCalendar self-fetches only the visible month window -->
+      <EventsCalendar v-else-if="activeTab === 'calendar'" />
     </section>
   </div>
 </template>

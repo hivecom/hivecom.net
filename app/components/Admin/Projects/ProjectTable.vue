@@ -90,7 +90,7 @@ const tagOptions = computed<SelectOption[]>(() => {
 // Apply tag filter on top of the composable's search-filtered rows
 const filteredData = computed(() => {
   return searchFilteredRows.value.filter((row) => {
-    if (tagFilter.value.length > 0) {
+    if ((tagFilter.value ?? []).length > 0) {
       const selected = tagFilter.value.map(o => o.value)
       if (!row._original.tags || !selected.some(tag => row._original.tags!.includes(tag)))
         return false

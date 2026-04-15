@@ -10,7 +10,18 @@ interface SelectOption {
 
 // Define models for filter values
 const search = defineModel<string>('search', { default: '' })
-const statusFilter = defineModel<SelectOption[]>('statusFilter', { default: () => [] })
+const _statusFilter = defineModel<SelectOption[] | undefined>('statusFilter', { default: () => [] })
+const _contextFilter = defineModel<SelectOption[] | undefined>('contextFilter', { default: () => [] })
+
+// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+const statusFilter = computed({
+  get: () => _statusFilter.value ?? [],
+  set: (v) => { _statusFilter.value = v ?? [] },
+})
+const contextFilter = computed({
+  get: () => _contextFilter.value ?? [],
+  set: (v) => { _contextFilter.value = v ?? [] },
+})
 
 const isBelowMedium = useBreakpoint('<m')
 
@@ -21,15 +32,26 @@ const statusOptions: SelectOption[] = [
   { label: 'Responded', value: 'responded' },
 ]
 
+// Context filter options
+const contextOptions: SelectOption[] = [
+  { label: 'User', value: 'user' },
+  { label: 'Game Server', value: 'gameserver' },
+  { label: 'Discussion', value: 'discussion' },
+  { label: 'Reply', value: 'reply' },
+]
+
 // Clear all filters
 function clearFilters() {
   search.value = ''
   statusFilter.value = []
+  contextFilter.value = []
 }
 
 // Check if any filters are active
 const hasActiveFilters = computed(() =>
-  search.value.length > 0 || statusFilter.value.length > 0,
+  search.value.length > 0
+  || statusFilter.value.length > 0
+  || contextFilter.value.length > 0,
 )
 </script>
 
@@ -52,8 +74,18 @@ const hasActiveFilters = computed(() =>
       :options="statusOptions"
       placeholder="Filter by status"
       :expand="isBelowMedium"
-      search
       show-clear
+      :single="false"
+    />
+
+    <!-- Context filter -->
+    <Select
+      v-model="contextFilter"
+      :options="contextOptions"
+      placeholder="Filter by context"
+      :expand="isBelowMedium"
+      show-clear
+      :single="false"
     />
 
     <!-- Clear filters button -->

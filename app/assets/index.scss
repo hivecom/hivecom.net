@@ -5,6 +5,13 @@
 
 // Place global styles which should be available on all pages here
 :root {
+  // Transition duration tokens - mirrors the duration component of VUI's transition shorthand
+  // tokens (--transition-fast/--transition/--transition-slow). Those are full shorthand values
+  // and cannot be used as a bare duration or delay, so we define discrete duration tokens here.
+  --transition-fast-duration: 0.05s;
+  --transition-duration: 0.11s;
+  --transition-slow-duration: 0.15s;
+
   // Main container sizes
   --container-l: 1280px;
   --container-m: 968px;

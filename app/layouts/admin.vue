@@ -467,7 +467,7 @@ watch(() => route.path, () => {
     </div>
     <main class="admin-layout__content">
       <div
-        class="pt-xl pb-l"
+        class="admin-layout__page-inner pt-xl pb-l"
         :class="!expandedLayout ? 'container container-l' : null"
         :style="expandedLayout ? expandedContentStyle : undefined"
       >
@@ -543,6 +543,10 @@ watch(() => route.path, () => {
     flex: 1;
     height: 100vh;
     overflow-y: auto;
+  }
+
+  &__page-inner {
+    position: relative;
   }
 }
 

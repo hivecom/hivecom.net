@@ -18,6 +18,7 @@
 INSERT INTO public.themes (
   id,
   created_by,
+  is_official,
   name,
   description,
   spacing,
@@ -54,6 +55,7 @@ VALUES
 (
   '00000000-0000-0000-0000-000000000001',
   NULL,
+  TRUE,
   'Default Colorblind - Deuteranopia',
   'Colorblind-friendly theme for red-green color vision deficiency (deuteranopia / protanopia). Red is replaced with orange-amber; green is replaced with teal.',
   50, 20, 25, 0,
@@ -96,6 +98,7 @@ VALUES
 (
   '00000000-0000-0000-0000-000000000002',
   NULL,
+  TRUE,
   'Default Colorblind - Tritanopia',
   'Colorblind-friendly theme for blue-yellow color vision deficiency (tritanopia). Yellow is replaced with magenta-rose; blue is replaced with cyan-teal.',
   50, 20, 25, 0,
@@ -142,6 +145,7 @@ VALUES
 (
   '00000000-0000-0000-0000-000000000003',
   NULL,
+  TRUE,
   'Default Colorblind - Achromatopsia',
   'Colorblind-friendly theme for total color blindness (achromatopsia). All semantic colors are replaced with luminance-distinct grays.',
   50, 20, 25, 0,
@@ -187,6 +191,7 @@ VALUES
 (
   '00000000-0000-0000-0000-000000000004',
   NULL,
+  TRUE,
   'Default - High Contrast',
   'Maximum luminance contrast theme for low vision or bright environments. Pure black and white backgrounds with fully saturated semantic colors.',
   50, 20, 25, 0,
