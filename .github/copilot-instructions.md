@@ -55,7 +55,7 @@
 
 - VUI token quick-reference (from `@dolanske/vui@1.5.7`):
 - Colors: `--color-bg`, `--color-bg-medium`, `--color-bg-raised`, `--color-bg-lowered`, `--color-text`, `--color-text-light`, `--color-text-lighter`, `--color-text-invert`, `--color-border`, `--color-border-strong`, `--color-border-weak`, `--color-accent`, `--color-text-red/green/yellow/blue`, button gray/fill variants, with light/dark palettes baked in.
-- Sizes: tokens are `xxs, xs, s, m, l, xl, xxl, xxxl` (not sm/md/lg); font sizes `--font-size-xxs..xxxxl` (1.1rem–4.8rem), spaces `--space-xxs..xxxl` (4px–64px), radii `--border-radius-xs/s/m/l` (3/5/8/12px), interactive height `--interactive-el-height` (36px).
+- Sizes: tokens are `xxs, xs, s, m, l, xl, xxl, xxxl` (not sm/md/lg); font sizes `--font-size-xxs..xxxxl` (1.1rem–4.8rem), spaces `--space-xxs..xxxl` (4px–64px), radii `--border-radius-xs/s/m/l` (3/5/8/12px), interactive height `--interactive-el-height` (34px).
 - Transitions: `--transition-fast` (.05s), `--transition` (.11s cubic-bezier(.65,0,.35,1)), `--transition-slow` (.25s).
 - Z-index scale: `--z-behind`, `--z-default`, `--z-active`, `--z-mask`, `--z-sticky`, `--z-nav`, `--z-overlay`, `--z-popout`, `--z-toast`, `--z-modal`.
 - Components: button variants (gray/fill/accent/success/warning/danger/link, `square|icon|outline|plain`), badge variants (neutral/info/success/warning/danger/accent, `filled|outline`), avatar sizes (s=28px, m=36px default, l=48px), modal sizes (s/m/l/screen), tabs underline styles, `<Tooltip>` for labels and rich content.

@@ -1,6 +1,7 @@
 import type { SitemapUrl } from './nitro/fetch-routes'
 import { fileURLToPath } from 'node:url'
 import process from 'process'
+import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 import fetchRoutes from './nitro/fetch-routes'
 
 // Only fetch routes when actually building/generating — not during `nuxi prepare`, type-gen, etc.
@@ -216,6 +217,9 @@ export default defineNuxtConfig({
     },
   },
   vite: {
+    plugins: [
+      monacoEditorPlugin({ languageWorkers: ['editorWorkerService', 'css'] }),
+    ],
     build: {
       rollupOptions: {
         // consola imports node:tty for its terminal reporter; it's safely
@@ -235,6 +239,10 @@ export default defineNuxtConfig({
       },
     },
     optimizeDeps: {
+      // Caused call-stack exceeded errors
+      exclude: [
+        'monaco-editor',
+      ],
       include: [
         'debug', // CJS
         '@dolanske/vui',

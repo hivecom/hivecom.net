@@ -470,9 +470,10 @@ useEventListener('keydown', (e: KeyboardEvent) => {
 
 <template>
   <Commands
+    v-if="isOpen"
     v-model:search.trim="search"
     v-model:group="activeGroup"
-    :open="isOpen"
+    open
     :commands="commands"
     :loading="loading"
     :placeholder="placeholder"

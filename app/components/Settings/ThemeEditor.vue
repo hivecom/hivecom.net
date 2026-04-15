@@ -40,7 +40,7 @@ const emit = defineEmits<{
 .theme-editor {
   &__layout {
     display: grid;
-    grid-template-columns: 1fr 420px;
+    grid-template-columns: 1fr 456px;
 
     .container {
       padding-top: var(--space-xxxl);

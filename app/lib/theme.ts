@@ -487,43 +487,11 @@ export function getCssVarAsHex(varName: string, fallback: string = '#000000'): s
   return fallback
 }
 
-const CUSTOM_CSS_ELEMENT_ID = 'hivecom-theme-custom-css'
-
-/**
- * Inject a theme's custom CSS into the document via a dedicated <style> element.
- *
- * The CSS is sanitized before injection to strip the most dangerous constructs:
- *   - @import rules (external resource loading / data exfil)
- *   - javascript: URI schemes (JS execution via CSS properties)
- *   - expression() (old IE JS-in-CSS)
- *   - url() containing data: or javascript: (embedded resource injection)
- *
- * This is a defence-in-depth layer on top of the DB's 16 KiB length cap.
- * Pass `null` or an empty string to remove the element.
- */
-export function applyCustomCss(css: string | null | undefined): void {
-  removeCustomCss()
-  const sanitized = sanitizeCustomCss(css)
-  if (!sanitized)
-    return
-
-  const style = document.createElement('style')
-  style.id = CUSTOM_CSS_ELEMENT_ID
-  style.setAttribute('data-source', 'hivecom-theme')
-  style.textContent = sanitized
-  document.head.appendChild(style)
-}
-
-/** Remove the injected custom CSS element if it exists. */
-export function removeCustomCss(): void {
-  document.getElementById(CUSTOM_CSS_ELEMENT_ID)?.remove()
-}
-
 /**
  * Strip constructs that could be used for XSS or data exfiltration.
  * Returns the sanitized string, or empty string if the result is blank.
  */
-function sanitizeCustomCss(css: string | null | undefined): string {
+export function sanitizeCustomCss(css: string | null | undefined): string {
   if (css == null || css === '')
     return ''
 

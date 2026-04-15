@@ -20,7 +20,7 @@ const { selectedTheme, themeOptions, selectedVariant, variantOptions } = useUser
       <p>Current theme</p>
       <Select v-model="selectedTheme" search :show-clear="false" :options="themeOptions" size="s" searchable />
     </Flex>
-    <Flex x-between y-center>
+    <Flex x-between y-center class="mb-m">
       <p>Variant</p>
       <Select v-model="selectedVariant" :show-clear="false" :options="variantOptions" size="s" />
     </Flex>

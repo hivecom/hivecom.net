@@ -2,11 +2,12 @@
 import type { ThemeScaleKey } from '@/lib/theme'
 import type { Tables } from '@/types/database.overrides'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, Button, ButtonGroup, Card, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Textarea, theme, Tooltip } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Tab, Tabs, Textarea, theme, Tooltip } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { applyScale, applyTheme, dbToPercent, getCssVarAsHex, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
 import { normalizeErrors } from '@/lib/utils/formatting'
 import UserName from '../Shared/UserName.vue'
+import CodeEditorClient from './CodeEditor.vue'
 
 interface Props {
   editing?: Tables<'themes'> | null
@@ -29,11 +30,15 @@ const HYPHEN_RE = /-/g
 type ThemeType = 'dark' | 'light'
 
 const { refresh } = useDataThemes()
-const { activeTheme } = useUserTheme()
+const { settings } = useDataUserSettings()
+const { activeTheme, reapplyCustomCss, applyCustomCss } = useUserTheme()
 
 const activeType = computed<ThemeType>(() => theme.value === 'light' ? 'light' : 'dark')
 
-// Forking / editin
+// Tabs
+const activeTab = ref<'tokens' | 'css'>('tokens')
+
+// Forking / editing
 const userId = useUserId()
 
 const themeForm = reactive<Record<ThemeType, Record<string, string>>>({
@@ -46,6 +51,7 @@ const form = reactive({
   description: '',
   useAsCurrent: true,
   forked_from: null as string | null,
+  custom_css: '',
 })
 
 const { validate, errors } = useValidation(form, {
@@ -126,9 +132,17 @@ function onScaleChange(key: ThemeScaleKey, value: number) {
   applyScale(key, intValue)
 }
 
-onMounted(() => seed())
+const showCustomCSSWarning = ref(false)
 
-// Seed all editor state (colors + scales) from the editing prop or active theme
+onMounted(() => {
+  seed()
+
+  if (settings.value && !settings.value.allow_custom_css) {
+    showCustomCSSWarning.value = true
+  }
+})
+
+// Seed all editor state (colors + scales + custom CSS) from the editing prop or active theme
 function seed() {
   const t = editing ?? activeTheme.value
 
@@ -152,7 +166,16 @@ function seed() {
   for (const key of THEME_SCALE_KEYS) {
     scaleValues[key] = t?.[key] ?? SCALE_CONFIGS[key].defaultDb
   }
+
+  // Seed and immediately apply custom CSS from the seeded theme
+  form.custom_css = t?.custom_css ?? ''
+  applyCustomCss(form.custom_css)
 }
+
+// Apply custom CSS as the user types.
+watch(() => form.custom_css, (css) => {
+  applyCustomCss(css)
+})
 
 function reset() {
   if (editing) {
@@ -187,6 +210,9 @@ function reset() {
     applyPaletteLocal('light', themeForm.light)
   }
 
+  // Reset custom CSS to the editing theme's saved state (or clear for new themes)
+  form.custom_css = editing?.custom_css ?? ''
+
   Object.assign(form, {
     name: '',
     description: '',
@@ -197,6 +223,8 @@ function reset() {
 
 function close() {
   applyTheme(activeTheme.value ?? null)
+  // Restore the active theme's custom CSS (respects allow_custom_css setting)
+  reapplyCustomCss()
   emit('close')
 }
 
@@ -232,12 +260,13 @@ async function submitForm() {
 
   submitLoading.value = true
 
-  const payload: Record<string, string | number> = {
+  const payload: Record<string, string | number | null> = {
     // If editing an existing theme that I own, update that theme. Otherwise, create a new theme (optionally as a fork).
     ...(editing && editing.created_by === userId.value && { id: editing.id }),
     ...(form.forked_from && { forked_from: form.forked_from }),
     name: form.name,
     description: form.description,
+    custom_css: form.custom_css || null,
     spacing: scaleValues.spacing,
     rounding: scaleValues.rounding,
     transitions: scaleValues.transitions,
@@ -267,6 +296,8 @@ async function submitForm() {
     if (form.useAsCurrent) {
       applyPaletteLocal('dark', themeForm.dark)
       applyPaletteLocal('light', themeForm.light)
+      // Keep the custom CSS that was previewed during editing applied
+      applyCustomCss(form.custom_css)
     }
 
     showSubmitModal.value = false
@@ -283,41 +314,42 @@ const isMobile = useBreakpoint('<s')
 <template>
   <div class="theme-editor__controls">
     <DefineControls>
-      <Flex y-center x-between gap="xs" class="theme-editor__header">
-        <h4 class="mr-m">
-          Theme editor
-        </h4>
+      <div class="theme-editor__header">
+        <Flex y-center x-between gap="xs">
+          <h4 class="mr-m">
+            Theme editor
+          </h4>
 
-        <ButtonGroup>
+          <ButtonGroup>
+            <Tooltip>
+              <Button square size="s" :outline="activeType === 'light'" @click="setColorTheme('dark')">
+                <Icon name="ph:moon" />
+              </Button>
+              <template #tooltip>
+                <p>Dark variant</p>
+              </template>
+            </Tooltip>
+            <Tooltip>
+              <Button square size="s" :outline="activeType === 'dark'" @click="setColorTheme('light')">
+                <Icon name="ph:sun" />
+              </Button>
+              <template #tooltip>
+                <p>Light variant</p>
+              </template>
+            </Tooltip>
+          </ButtonGroup>
+
           <Tooltip>
-            <Button square size="s" :outline="activeType === 'light'" @click="setColorTheme('dark')">
-              <Icon name="ph:moon" />
+            <Button size="s" square @click="reset">
+              <Icon name="ph:arrow-clockwise" />
             </Button>
             <template #tooltip>
-              <p>Dark variant</p>
+              <p>Reset changes</p>
             </template>
           </Tooltip>
-          <Tooltip>
-            <Button square size="s" :outline="activeType === 'dark'" @click="setColorTheme('light')">
-              <Icon name="ph:sun" />
-            </Button>
-            <template #tooltip>
-              <p>Light variant</p>
-            </template>
-          </Tooltip>
-        </ButtonGroup>
 
-        <Tooltip>
-          <Button size="s" square @click="reset">
-            <Icon name="ph:arrow-clockwise" />
-          </Button>
-          <template #tooltip>
-            <p>Reset changes</p>
-          </template>
-        </Tooltip>
-
-        <!-- TODO: enable later -->
-        <!-- <Tooltip>
+          <!-- TODO: enable later -->
+          <!-- <Tooltip>
           <Button size="s" square @click="reset">
             <Icon name="ph:arrow-square-out" />
           </Button>
@@ -328,20 +360,36 @@ const isMobile = useBreakpoint('<s')
           </template>
         </Tooltip> -->
 
-        <div class="flex-1" />
+          <div class="flex-1" />
 
-        <Button v-if="isMobile" size="s" variant="accent" @click="openSubmitModal">
-          Finalize
-        </Button>
+          <Button v-if="isMobile" size="s" variant="accent" @click="openSubmitModal">
+            Finalize
+          </Button>
 
-        <Button v-else square size="s" plain @click="close">
-          <Icon name="ph:x" />
-        </Button>
-      </Flex>
+          <Button v-else square size="s" plain @click="close">
+            <Icon name="ph:x" />
+          </Button>
+        </Flex>
+
+        <Tabs v-model="activeTab" class="theme-editor__tabs">
+          <Tab value="tokens">
+            Tokens
+          </Tab>
+          <Tab value="css">
+            CSS
+          </Tab>
+        </Tabs>
+      </div>
 
       <!-- Scrollable color + scale list -->
       <div class="theme-editor__groups--outer">
-        <div class="theme-editor__groups--inner">
+        <!-- CSS editor -->
+        <div v-show="activeTab === 'css'" class="theme-editor__groups--inner">
+          <CodeEditorClient v-model="form.custom_css" :focused="activeTab === 'css'" />
+        </div>
+
+        <!-- Token editor -->
+        <div v-show="activeTab === 'tokens'" class="theme-editor__groups--inner">
           <div class="theme-editor__group">
             <span class="theme-editor__group-label">Spacing</span>
             <Flex y-center gap="l">
@@ -420,14 +468,28 @@ const isMobile = useBreakpoint('<s')
         </div>
       </div>
 
-      <Flex x-end class="theme-editor__footer">
-        <Button size="s" plain variant="danger" @click="close">
-          Cancel
-        </Button>
-        <Button variant="accent" size="s" @click="openSubmitModal">
-          Save
-        </Button>
-      </Flex>
+      <div class="theme-editor__footer">
+        <div v-if="showCustomCSSWarning" class="theme-editor__footer-css-consent">
+          <Flex x-between y-center>
+            <span class="theme-editor__group-label">CSS settings</span>
+            <Button square size="s" plain @click="showCustomCSSWarning = false">
+              <Icon name="ph:x" />
+            </Button>
+          </Flex>
+          <Checkbox v-model="settings.allow_custom_css" accent class="mb-s" label="Enable custom CSS" />
+          <p class="vui-hint" style="opacity: 0.7;">
+            If disabled, you will not be able to use or preview custom CSS styles. This can be changed in your user settings.
+          </p>
+        </div>
+        <Flex x-end>
+          <Button size="s" plain variant="danger" @click="close">
+            Cancel
+          </Button>
+          <Button variant="accent" size="s" @click="openSubmitModal">
+            Save
+          </Button>
+        </Flex>
+      </div>
     </DefineControls>
 
     <!-- Mobile -->
@@ -548,7 +610,6 @@ const isMobile = useBreakpoint('<s')
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
     margin-bottom: var(--space-xs);
-    padding-left: 4px;
   }
 
   input[type='range'] {
@@ -608,6 +669,26 @@ const isMobile = useBreakpoint('<s')
   &__footer {
     padding: var(--space-m);
     border-top: 1px solid var(--color-border);
+  }
+
+  &__footer-css-consent {
+    margin-bottom: var(--space-m);
+    padding-bottom: var(--space-m);
+    position: relative;
+
+    &:after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: -16px;
+      right: -16px;
+      border-bottom: 1px solid var(--color-border);
+    }
+  }
+
+  &__tabs {
+    margin-bottom: -17px;
+    margin-top: var(--space-xs);
   }
 }
 

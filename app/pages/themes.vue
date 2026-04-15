@@ -94,7 +94,8 @@ function personalizeTheme() {
       />
 
       <ThemeEditor
-        :open="themeEditorOpen"
+        v-if="themeEditorOpen"
+        open
         :editing="editedTheme"
         @close="themeEditorOpen = false; editedTheme = null;"
         @saved="galleryRef?.refresh()"

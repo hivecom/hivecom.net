@@ -1,7 +1,8 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { setColorTheme } from '@dolanske/vui'
-import { applyCustomCss, applyTheme, removeCustomCss } from '@/lib/theme'
+import { useStyleTag } from '@vueuse/core'
+import { applyTheme, sanitizeCustomCss } from '@/lib/theme'
 
 interface VariantOption { label: string, value: string }
 
@@ -16,6 +17,12 @@ const variantOptions: VariantOption[] = [
  *
  * Designed to be called once in a root layout/component. Uses `useState` so
  * the active theme is shared across all component instances.
+ *
+ * Custom CSS is managed via a `useStyleTag`-backed shared ref. Setting the ref
+ * to a non-empty string injects/updates the style tag; setting it to '' clears
+ * the content without removing the element (an empty style tag has no effect).
+ * `load()` is called lazily on the first non-empty apply; it is intentionally
+ * never called with `unload()` to avoid multi-instance watcher staleness issues.
  */
 export function useUserTheme() {
   const supabase = useSupabaseClient<Database>()
@@ -26,6 +33,29 @@ export function useUserTheme() {
 
   const { settings } = useDataUserSettings()
   const { themes } = useDataThemes()
+
+  // Shared CSS content ref - all useUserTheme() instances share the same ref via
+  // useState so every useStyleTag watcher always writes the same value to the element.
+  const customCssContent = useState<string>('theme-custom-css', () => '')
+
+  const { load: loadStyleTag } = useStyleTag(customCssContent, {
+    id: 'hivecom-theme-custom-css',
+    immediate: false,
+    manual: true,
+  })
+
+  /**
+   * Sanitize `raw` and update the shared style tag content.
+   * Calls `load()` lazily on the first non-empty CSS so the element is only
+   * created when actually needed. Never calls `unload()` - setting the content
+   * to '' is equivalent (empty style tag has no cascade effect).
+   */
+  function applyCustomCss(raw: string | null | undefined): void {
+    const sanitized = sanitizeCustomCss(raw)
+    customCssContent.value = sanitized
+    if (sanitized)
+      loadStyleTag()
+  }
 
   interface ThemeOption { label: string, value: string | null }
 
@@ -65,7 +95,7 @@ export function useUserTheme() {
     const id = userId.value
     if (id == null) {
       applyTheme(null)
-      removeCustomCss()
+      applyCustomCss(null)
       activeTheme.value = null
       return
     }
@@ -83,7 +113,7 @@ export function useUserTheme() {
     if (profileError || profile?.theme_id == null) {
       // No custom theme set - ensure defaults are active
       applyTheme(null)
-      removeCustomCss()
+      applyCustomCss(null)
       activeTheme.value = null
       hasFetched.value = true
       return
@@ -98,7 +128,7 @@ export function useUserTheme() {
 
     if (themeError || theme == null) {
       applyTheme(null)
-      removeCustomCss()
+      applyCustomCss(null)
       activeTheme.value = null
       hasFetched.value = true
       return
@@ -107,10 +137,10 @@ export function useUserTheme() {
     // 3. Apply colors + scales
     activeTheme.value = theme
     applyTheme(theme)
-    if (settings.value.allow_custom_css && theme.custom_css)
+    if (settings.value.allow_custom_css)
       applyCustomCss(theme.custom_css)
     else
-      removeCustomCss()
+      applyCustomCss(null)
     hasFetched.value = true
   }
 
@@ -126,7 +156,7 @@ export function useUserTheme() {
 
     if (themeId == null) {
       applyTheme(null)
-      removeCustomCss()
+      applyCustomCss(null)
       activeTheme.value = null
 
       // Clear the persisted selection from the profile
@@ -149,10 +179,10 @@ export function useUserTheme() {
 
     activeTheme.value = theme
     applyTheme(theme)
-    if (settings.value.allow_custom_css && theme.custom_css)
+    if (settings.value.allow_custom_css)
       applyCustomCss(theme.custom_css)
     else
-      removeCustomCss()
+      applyCustomCss(null)
 
     // Persist the selection so fetchAndApply picks it up on next load
     await supabase
@@ -169,7 +199,7 @@ export function useUserTheme() {
     if (newId == null) {
       // Logged out - revert to defaults
       applyTheme(null)
-      removeCustomCss()
+      applyCustomCss(null)
       activeTheme.value = null
       hasFetched.value = false
       return
@@ -182,17 +212,23 @@ export function useUserTheme() {
   })
 
   watch(() => settings.value.allow_custom_css, (allowed) => {
-    const css = activeTheme.value?.custom_css
-    if (allowed && css !== undefined && css !== '')
-      applyCustomCss(css)
-    else
-      removeCustomCss()
+    applyCustomCss(allowed ? activeTheme.value?.custom_css : null)
   })
+
+  /**
+   * Re-apply the active theme's custom CSS respecting the allow_custom_css setting.
+   * Call this when restoring state after closing the theme editor.
+   */
+  function reapplyCustomCss(): void {
+    applyCustomCss(settings.value.allow_custom_css ? activeTheme.value?.custom_css : null)
+  }
 
   return {
     activeTheme,
     fetchAndApply,
     setActiveTheme,
+    applyCustomCss,
+    reapplyCustomCss,
     themeOptions,
     selectedTheme,
     variantOptions,
