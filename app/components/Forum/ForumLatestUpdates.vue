@@ -56,23 +56,33 @@ const visitedAt = computed<number | null>(() => {
   return new Date(props.lastVisitedAt).getTime()
 })
 
-// Index of the first carousel item older than the last visit
+const CAROUSEL_LIMIT = 16
+
+// The slice of carousel posts actually rendered
+const carouselSlice = computed<ActivityItem[]>(() => carouselPosts.value.slice(0, CAROUSEL_LIMIT))
+
+// Index of the first carousel item older than the last visit, scoped to the
+// rendered slice so the divider is never beyond what's visible.
 const splitIndex = computed<number | null>(() => {
   if (visitedAt.value == null || props.loading)
     return null
-  const idx = carouselPosts.value.findIndex(
+  const idx = carouselSlice.value.findIndex(
     post => new Date(post.timestampRaw).getTime() <= visitedAt.value!,
   )
-  if (idx <= 0 || idx >= carouselPosts.value.length)
+  if (idx <= 0 || idx >= carouselSlice.value.length)
     return null
   return idx
 })
 
-// New-since-last-visit count - already excludes own posts via carouselPosts
+// New-since-last-visit count scoped to the rendered slice - already excludes
+// own posts via carouselPosts. Computed independently so it works even when
+// every visible post is newer than the visit boundary (splitIndex is null then).
 const newSinceLastVisit = computed<number>(() => {
-  if (splitIndex.value == null || user.value == null)
+  if (visitedAt.value == null || user.value == null || props.loading)
     return 0
-  return splitIndex.value
+  return carouselSlice.value.filter(
+    post => new Date(post.timestampRaw).getTime() > visitedAt.value!,
+  ).length
 })
 
 // ── Paginated sheet feed - community tab (excludes current user) ───────────
@@ -314,7 +324,7 @@ onUnmounted(() => {
       </template>
 
       <template v-else>
-        <template v-for="(post, index) in carouselPosts.slice(0, 16)" :key="post.id">
+        <template v-for="(post, index) in carouselSlice" :key="post.id">
           <Tooltip v-if="splitIndex !== null && index === splitIndex" :disabled="isMobile">
             <div class="forum__latest-divider">
               <Icon name="ph:clock" :size="16" />
