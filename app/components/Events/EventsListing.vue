@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Carousel, Flex, Skeleton } from '@dolanske/vui'
+import { Flex, Skeleton } from '@dolanske/vui'
 import Event from './Event.vue'
-import EventPast from './EventPast.vue'
+import EventsPastListing from './EventsPastListing.vue'
 
 interface Props {
   events: Tables<'events'>[] | undefined
@@ -12,52 +12,29 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// Split events into upcoming, ongoing, and past
-const upcomingEvents = computed(() => {
-  if (!props.events)
-    return []
-  const now = new Date()
-
-  return props.events.filter((event) => {
-    const eventStart = new Date(event.date)
-    return eventStart > now
-  })
-})
-
 const ongoingEvents = computed(() => {
   if (!props.events)
     return []
   const now = new Date()
-
   return props.events.filter((event) => {
-    const eventStart = new Date(event.date)
-    const eventEnd = event.duration_minutes
-      ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
-      : eventStart
-
-    return eventStart <= now && now <= eventEnd
+    const start = new Date(event.date)
+    const end = event.duration_minutes
+      ? new Date(start.getTime() + event.duration_minutes * 60 * 1000)
+      : start
+    return start <= now && now <= end
   })
 })
 
-// const PAST_INCREMENT = 10
-const pastLimit = ref(10)
-
-const allPastEvents = computed(() => {
+const upcomingEvents = computed(() => {
   if (!props.events)
     return []
   const now = new Date()
-
-  return props.events.filter((event) => {
-    const eventStart = new Date(event.date)
-    const eventEnd = event.duration_minutes
-      ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
-      : eventStart
-
-    return eventEnd < now
-  }).reverse()
+  return props.events.filter(event => new Date(event.date) > now)
 })
 
-const displayedPastEvents = computed(() => allPastEvents.value.slice(0, pastLimit.value))
+const hasActiveEvents = computed(() =>
+  ongoingEvents.value.length > 0 || upcomingEvents.value.length > 0,
+)
 </script>
 
 <template>
@@ -74,16 +51,10 @@ const displayedPastEvents = computed(() => allPastEvents.value.slice(0, pastLimi
       <Skeleton :width="150" :height="36" :radius="8" class="mt-xl" />
 
       <!-- Upcoming events skeleton -->
-      <Skeleton v-for="i in 2" :key="`past-${i}`" :height="108" :radius="8" />
-
-      <Skeleton :width="150" :height="36" :radius="8" class="mt-xl" />
-
-      <!-- Past events skeletons -->
-      <div class="events-section__past-list">
-        <Skeleton v-for="i in 4" :key="`past-${i}`" :width="264" :height="164" style="flex-shrink: 0;" />
-      </div>
+      <Skeleton v-for="i in 2" :key="`upcoming-${i}`" :height="108" :radius="8" />
     </Flex>
   </div>
+
   <template v-else>
     <!-- Ongoing Events Section -->
     <div v-if="ongoingEvents.length > 0" class="events-section events-section--ongoing">
@@ -118,32 +89,15 @@ const displayedPastEvents = computed(() => allPastEvents.value.slice(0, pastLimi
       </div>
     </div>
 
-    <!-- Past Events Section -->
-    <Carousel class="events-section--past">
-      <template #header>
-        <h2 class="events-section__title">
-          Past Events
-        </h2>
-      </template>
-      <EventPast
-        v-for="event in displayedPastEvents"
-        :key="event.id"
-        :data="event"
-      />
-    </Carousel>
-
-    <Flex v-if="displayedPastEvents.length < allPastEvents.length" x-center class="mt-m">
-      <!-- <Button variant="gray" plain outline @click="pastLimit += PAST_INCREMENT">
-        Show more past events
-      </Button> -->
-    </Flex>
-
-    <!-- No Events Message -->
-    <div v-if="upcomingEvents.length === 0 && allPastEvents.length === 0 && ongoingEvents.length === 0" class="events-section__no-events">
+    <!-- No active events message - past listing handles its own empty state -->
+    <div v-if="!hasActiveEvents" class="events-section__no-active">
       <p class="text-color-lighter">
-        No events found.
+        No upcoming or ongoing events.
       </p>
     </div>
+
+    <!-- Past Events Section - self-contained, manages its own data fetching -->
+    <EventsPastListing />
   </template>
 </template>
 
@@ -174,14 +128,7 @@ const displayedPastEvents = computed(() => allPastEvents.value.slice(0, pastLimi
     }
   }
 
-  &__past-list {
-    display: flex;
-    flex-direction: row;
-    gap: var(--space-m);
-    overflow: hidden;
-  }
-
-  &__no-events {
+  &__no-active {
     text-align: center;
     padding: 3rem 0;
   }
@@ -192,13 +139,13 @@ const displayedPastEvents = computed(() => allPastEvents.value.slice(0, pastLimi
       color: var(--color-text-light);
     }
 
-    &:hover a {
-      opacity: 1;
-    }
-
     a {
       opacity: 0.7;
       transition: var(--transition);
+
+      &:hover {
+        opacity: 1;
+      }
     }
   }
 
@@ -237,18 +184,14 @@ const displayedPastEvents = computed(() => allPastEvents.value.slice(0, pastLimi
 }
 
 :root.light {
-  .events-section--past .events-section__past-list {
-    opacity: 0.5;
+  .events-section--past {
+    a {
+      opacity: 0.5;
 
-    &:hover {
-      opacity: 1;
+      &:hover {
+        opacity: 1;
+      }
     }
-  }
-}
-
-@media (max-width: $breakpoint-m) {
-  .events-section__past-list--expanded {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -256,10 +199,6 @@ const displayedPastEvents = computed(() => allPastEvents.value.slice(0, pastLimi
 @media (max-width: $breakpoint-s) {
   .events-section {
     text-align: center !important;
-  }
-
-  .events-section__past-list--expanded {
-    grid-template-columns: 1fr;
   }
 
   .events-section__title {
@@ -314,11 +253,6 @@ const displayedPastEvents = computed(() => allPastEvents.value.slice(0, pastLimi
       width: 30px;
       text-align: center !important;
     }
-  }
-
-  .no-events {
-    padding: 2rem 0;
-    text-align: center !important;
   }
 }
 </style>

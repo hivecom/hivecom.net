@@ -53,29 +53,32 @@ const count = computed(() => countEl.value?.count ?? 0)
 
 <style lang="scss">
 .event-past {
-  width: 328px;
-  min-width: 328px;
+  width: 100%;
 
   &:hover {
     background-color: var(--color-bg-raised);
   }
 
   &__wrapper {
-    height: 144px;
+    min-height: 144px;
   }
 
   &__title {
-    display: block;
+    display: -webkit-box;
     font-size: var(--font-size-l);
-    white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
+    padding-bottom: 0.15em;
   }
 
   &__description {
     font-size: var(--font-size-m);
     color: var(--color-text-lighter);
     flex: 1;
+    text-align: left;
   }
 
   &__details {

@@ -152,6 +152,7 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
         :show-names="true"
         :gap="8"
         :random="true"
+        @remaining-click="emit('openFriendsModal')"
       />
     </Flex>
 

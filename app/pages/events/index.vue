@@ -136,20 +136,4 @@ defineOgImage('Default', {
     }
   }
 }
-
-// NOTE (@dolanske) Will test how things look like without this. It is messing a lot of UI up
-// Mobile responsiveness for page header
-/* @media (max-width: $breakpoint-s) {
-  .page section:first-child {
-    text-align: center !important;
-
-    h1 {
-      text-align: center !important;
-    }
-
-    p {
-      text-align: center !important;
-    }
-  }
-} */
 </style>

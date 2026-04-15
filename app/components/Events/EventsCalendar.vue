@@ -23,7 +23,7 @@ const supabase = useSupabaseClient<Database>()
 // Map-based cache avoids repeat network calls for months already visited.
 
 const windowedEvents = ref<Tables<'events'>[]>([])
-const loading = ref(false)
+const fetching = ref(false)
 const errorMessage = ref('')
 
 // Cache: key = "YYYY-MM:columns", value = fetched rows
@@ -35,8 +35,7 @@ async function fetchWindow(start: dayjs.Dayjs, columns: number) {
     windowedEvents.value = windowCache.get(cacheKey)!
     return
   }
-
-  loading.value = true
+  fetching.value = true
   errorMessage.value = ''
 
   try {
@@ -63,7 +62,7 @@ async function fetchWindow(start: dayjs.Dayjs, columns: number) {
     errorMessage.value = err instanceof Error ? err.message : 'Failed to load events'
   }
   finally {
-    loading.value = false
+    fetching.value = false
   }
 }
 
@@ -300,23 +299,56 @@ const upcomingEvents = computed(() => {
   }, createArray(calendarColumns.value, () => []))
 })
 
-// Page title depending on amount of months
+// Page title depending on position relative to now
 const pageTitle = computed(() => {
-  if (isMobile.value && calendarRowCount.value === 1) {
-    return 'This month'
+  const totalColumns = calendarColumns.value * calendarRowCount.value
+
+  // Single column: the calendar header already shows the month name
+  if (totalColumns === 1)
+    return null
+
+  const now = dayjs().startOf('month')
+  const endMonth = startMonth.value.add(totalColumns - 1, 'month')
+
+  // Month offset from now to the start of the visible window (0 = current month)
+  const startOffset = startMonth.value.diff(now, 'month')
+  // Month offset from now to the end of the visible window
+  const endOffset = endMonth.diff(now, 'month')
+
+  // Entirely in the past, more than a year ago
+  if (endOffset < -11) {
+    if (startMonth.value.year() === endMonth.year())
+      return `Back in ${startMonth.value.format('YYYY')}`
+    return `Back in ${startMonth.value.format('YYYY')} - ${endMonth.format('YYYY')}`
   }
 
-  return `Next ${calendarColumns.value * calendarRowCount.value} months`
+  // Entirely in the future, a year or more out
+  if (startOffset > 11) {
+    if (startMonth.value.year() === endMonth.year())
+      return `In ${startMonth.value.format('YYYY')}`
+    return `In ${startMonth.value.format('YYYY')} - ${endMonth.format('YYYY')}`
+  }
+
+  // Window contains the current month - describe how far it reaches
+  if (startOffset <= 0 && endOffset >= 0)
+    return `The next ${endOffset + 1} months`
+
+  // Window is entirely in the past - 1-indexed months ago
+  if (endOffset < 0)
+    return `${Math.abs(endOffset)}-${Math.abs(startOffset)} months ago`
+
+  // Window is entirely in the future - 1-indexed from next month
+  return `The next ${startOffset + 1}-${endOffset + 1} months`
 })
 </script>
 
 <template>
   <Flex gap="m" class="events-calendar__title" y-center>
-    <h2>
+    <h2 v-if="pageTitle">
       {{ pageTitle }}
     </h2>
 
-    <Button size="s" plain outline @click="moveToToday">
+    <Button size="s" plain outline :expand="!pageTitle" @click="moveToToday">
       Today
     </Button>
 
@@ -341,16 +373,7 @@ const pageTitle = computed(() => {
   </Flex>
 
   <div class="events-calendar">
-    <div v-if="loading" class="calendar-loading">
-      <Flex column gap="l" y-center>
-        <Icon name="ph:calendar" size="64" class="text-color-lighter" />
-        <p class="text-color-lighter">
-          Loading events...
-        </p>
-      </Flex>
-    </div>
-
-    <div v-else-if="errorMessage" class="calendar-error">
+    <div v-if="errorMessage" class="calendar-error">
       <Flex column gap="l" y-center>
         <Icon name="ph:warning" size="64" class="text-color-red" />
         <p class="text-color-red">
@@ -360,7 +383,7 @@ const pageTitle = computed(() => {
     </div>
 
     <ClientOnly v-else>
-      <div class="events-calendar__layout">
+      <div class="events-calendar__layout" :class="{ 'events-calendar__layout--fetching': fetching }">
         <!-- There are no slots to put content to the footer of a VC calendar column. So we teleport them there instead -->
         <template v-for="(upcoming, index) in upcomingEvents" :key="upcoming">
           <Teleport v-if="upcoming.length > 0" :to="`.vc-pane.column-${index as number + 1}`" defer>
@@ -473,6 +496,12 @@ const pageTitle = computed(() => {
 
   &__layout {
     width: 100%;
+    transition: opacity var(--transition-slow);
+
+    &--fetching {
+      opacity: 0.4;
+      pointer-events: none;
+    }
 
     .vc-pane-layout {
       display: grid;
@@ -497,7 +526,6 @@ const pageTitle = computed(() => {
   }
 }
 
-.calendar-loading,
 .calendar-error {
   padding: 4rem 2rem;
   text-align: center;

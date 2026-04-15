@@ -148,7 +148,6 @@ function handleClose() {
 <style lang="scss" scoped>
 .friends-modal-content {
   min-height: 300px;
-  max-height: 500px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -164,6 +163,7 @@ function handleClose() {
 
 .friends-modal__tab-content {
   min-height: 200px;
+  max-height: 80vh;
   overflow-y: auto;
   flex: 1;
 }

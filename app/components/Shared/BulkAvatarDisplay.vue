@@ -30,6 +30,10 @@ const props = withDefaults(defineProps<Props>(), {
   expand: true,
 })
 
+const emit = defineEmits<{
+  remainingClick: []
+}>()
+
 const GENERIC_USERNAME_REGEX = /^user\d+$/i
 
 // Convert userIds array to reactive ref
@@ -235,6 +239,11 @@ defineExpose({
         v-if="displayedRemainingCount > 0"
         class="bulk-avatar-display__avatar bulk-avatar-display__remaining"
         :style="avatarStyleVars"
+        role="button"
+        tabindex="0"
+        @click="emit('remainingClick')"
+        @keydown.enter="emit('remainingClick')"
+        @keydown.space.prevent="emit('remainingClick')"
       >
         <div class="bulk-avatar-display__remaining-count">
           +{{ displayedRemainingCount }}
@@ -342,9 +351,15 @@ defineExpose({
     font-weight: var(--font-weight-medium);
     color: var(--color-text-light);
     transition: background-color 0.2s ease;
+    cursor: pointer;
 
     &:hover {
       background: var(--color-bg-raised);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
     }
   }
 
