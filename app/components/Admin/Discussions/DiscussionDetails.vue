@@ -192,8 +192,8 @@ const contextLinks = computed<ContextLink[]>(() => {
 
   if (props.discussion.theme_id) {
     links.push({
-      label: `Theme thread · ${props.discussion.theme_id}`,
-      href: `/admin/themes?theme=${props.discussion.theme_id}`,
+      label: `Theme · ${props.discussion.theme_id}`,
+      href: `/themes/${props.discussion.theme_id}`,
       icon: 'ph:paint-brush',
     })
   }

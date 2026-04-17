@@ -113,7 +113,7 @@ async function signOut() {
 
           <NuxtLink to="/themes" class="user-sheet__nav-item">
             <Icon name="ph:circle-half-tilt-fill" :size="18" />
-            Appearance
+            Themes
           </NuxtLink>
 
           <NuxtLink to="/profile/settings" class="user-sheet__nav-item">

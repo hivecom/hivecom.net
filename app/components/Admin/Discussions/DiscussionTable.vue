@@ -248,7 +248,7 @@ function getContextLink(discussion: RpcDiscussion): string | null {
   if (discussion.referendum_id)
     return `/votes/${discussion.referendum_id}`
   if (discussion.theme_id)
-    return `/admin/themes?theme=${discussion.theme_id}`
+    return `/themes/${discussion.theme_id}`
   if (discussion.discussion_topic_id)
     return `/forum?activeTopicId=${encodeURIComponent(discussion.discussion_topic_id)}`
   return null
