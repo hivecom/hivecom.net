@@ -470,6 +470,7 @@ export interface Database {
           referendum_id: number | null
           reply_count: number
           slug: string | null
+          theme_id: string | null
           title: string | null
           view_count: number
         }
@@ -498,6 +499,7 @@ export interface Database {
           referendum_id?: number | null
           reply_count?: number
           slug?: string | null
+          theme_id?: string | null
           title?: string | null
           view_count?: number
         }
@@ -526,6 +528,7 @@ export interface Database {
           referendum_id?: number | null
           reply_count?: number
           slug?: string | null
+          theme_id?: string | null
           title?: string | null
           view_count?: number
         }
@@ -612,6 +615,13 @@ export interface Database {
             columns: ['referendum_id']
             isOneToOne: false
             referencedRelation: 'referendums'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'discussions_theme_id_fkey'
+            columns: ['theme_id']
+            isOneToOne: false
+            referencedRelation: 'themes'
             referencedColumns: ['id']
           },
         ]
@@ -1921,52 +1931,102 @@ export interface Database {
           total_count: number
         }[]
       }
-      get_admin_discussions_paginated: {
-        Args: {
-          p_author_id?: string
-          p_context?: string[]
-          p_limit?: number
-          p_offset?: number
-          p_search?: string
-          p_sort_col?: string
-          p_sort_dir?: string
-          p_status?: string[]
+      get_admin_discussions_paginated:
+        | {
+          Args: {
+            p_author_id?: string
+            p_context?: string[]
+            p_limit?: number
+            p_offset?: number
+            p_search?: string
+            p_sort_col?: string
+            p_sort_dir?: string
+            p_status?: string[]
+          }
+          Returns: {
+            accepted_reply_id: string
+            created_at: string
+            created_by: string
+            created_by_username: string
+            description: string
+            discussion_topic_id: string
+            discussion_topic_name: string
+            event_id: number
+            event_title: string
+            gameserver_id: number
+            gameserver_name: string
+            id: string
+            is_archived: boolean
+            is_draft: boolean
+            is_locked: boolean
+            is_nsfw: boolean
+            is_sticky: boolean
+            last_reply_at: string
+            last_reply_by: string
+            modified_at: string
+            modified_by: string
+            profile_id: string
+            profile_username: string
+            project_id: number
+            project_title: string
+            referendum_id: number
+            referendum_title: string
+            reply_count: number
+            slug: string
+            theme_id: string
+            theme_name: string
+            title: string
+            total_count: number
+            view_count: number
+          }[]
         }
-        Returns: {
-          accepted_reply_id: string
-          created_at: string
-          created_by: string
-          created_by_username: string
-          description: string
-          discussion_topic_id: string
-          discussion_topic_name: string
-          event_id: number
-          event_title: string
-          gameserver_id: number
-          gameserver_name: string
-          id: string
-          is_archived: boolean
-          is_draft: boolean
-          is_locked: boolean
-          is_nsfw: boolean
-          is_sticky: boolean
-          last_reply_at: string
-          last_reply_by: string
-          modified_at: string
-          modified_by: string
-          profile_id: string
-          profile_username: string
-          project_id: number
-          project_title: string
-          referendum_id: number
-          referendum_title: string
-          reply_count: number
-          slug: string
-          title: string
-          total_count: number
-          view_count: number
-        }[]
-      }
+        | {
+          Args: {
+            p_context?: string[]
+            p_limit?: number
+            p_offset?: number
+            p_search?: string
+            p_sort_col?: string
+            p_sort_dir?: string
+            p_status?: string[]
+          }
+          Returns: {
+            accepted_reply_id: string
+            created_at: string
+            created_by: string
+            created_by_username: string
+            description: string
+            discussion_topic_id: string
+            discussion_topic_name: string
+            event_id: number
+            event_title: string
+            gameserver_id: number
+            gameserver_name: string
+            id: string
+            is_archived: boolean
+            is_draft: boolean
+            is_locked: boolean
+            is_nsfw: boolean
+            is_sticky: boolean
+            last_reply_at: string
+            last_reply_by: string
+            modified_at: string
+            modified_by: string
+            profile_id: string
+            profile_username: string
+            project_id: number
+            project_title: string
+            referendum_id: number
+            referendum_title: string
+            reply_count: number
+            slug: string
+            theme_id: string
+            theme_name: string
+            title: string
+            total_count: number
+            view_count: number
+          }[]
+        }
       get_admin_events_paginated: {
         Args: {
           p_limit?: number
@@ -2023,6 +2083,35 @@ export interface Database {
           title: string
           total_count: number
           vote_count: number
+        }[]
+      }
+      get_admin_themes_paginated: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_sort_col?: string
+          p_sort_dir?: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          custom_css: string
+          dark_accent: string
+          description: string
+          forked_from: string
+          id: string
+          is_official: boolean
+          is_unmaintained: boolean
+          light_accent: string
+          modified_at: string
+          modified_by: string
+          name: string
+          rounding: number
+          spacing: number
+          total_count: number
+          transitions: number
+          widening: number
         }[]
       }
       get_admin_user_overview: {

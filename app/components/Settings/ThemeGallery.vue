@@ -193,7 +193,13 @@ function refresh() {
   void fetchPage(activeTab.value, currentPage.value, search.value)
 }
 
-defineExpose({ refresh })
+function switchToCreated() {
+  activeTab.value = 'created'
+  currentPage.value = 1
+  void fetchPage('created', 1, search.value)
+}
+
+defineExpose({ refresh, switchToCreated })
 </script>
 
 <template>

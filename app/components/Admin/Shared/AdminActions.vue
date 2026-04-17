@@ -8,7 +8,7 @@ interface AdminActionsProps {
   /**
    * Type of resource (used for permission checking)
    */
-  resourceType: 'games' | 'events' | 'gameservers' | 'profiles' | 'expenses' | 'referendums' | 'servers' | 'assets' | 'projects' | 'discussions' | 'kvstore' | 'motds'
+  resourceType: 'games' | 'events' | 'gameservers' | 'profiles' | 'expenses' | 'referendums' | 'servers' | 'assets' | 'projects' | 'discussions' | 'kvstore' | 'motds' | 'themes'
 
   /**
    * The item being acted upon
@@ -148,6 +148,7 @@ function getResourceDisplayName(): string {
     discussions: 'Discussion',
     kvstore: 'Key/Value',
     motds: 'MOTD',
+    themes: 'Theme',
   }
 
   return resourceMap[props.resourceType] || 'Item'

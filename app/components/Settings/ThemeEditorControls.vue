@@ -253,7 +253,7 @@ async function submitForm() {
     ...(form.forked_from && { forked_from: form.forked_from }),
     name: form.name,
     description: form.description,
-    custom_css: form.custom_css || null,
+    custom_css: form.custom_css || '',
     spacing: scaleValues.spacing,
     rounding: scaleValues.rounding,
     transitions: scaleValues.transitions,

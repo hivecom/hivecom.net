@@ -184,6 +184,12 @@ const menuItems = [
     permissions: ['referendums.read', 'referendums.create', 'referendums.update', 'referendums.delete'],
   },
   {
+    name: 'Themes',
+    path: '/admin/themes',
+    icon: 'ph:paint-brush',
+    permissions: ['themes.read', 'themes.create', 'themes.update', 'themes.delete'],
+  },
+  {
     name: 'Users & Roles',
     path: '/admin/users',
     icon: 'ph:user',

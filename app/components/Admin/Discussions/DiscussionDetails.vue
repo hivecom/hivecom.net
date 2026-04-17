@@ -190,6 +190,14 @@ const contextLinks = computed<ContextLink[]>(() => {
     })
   }
 
+  if (props.discussion.theme_id) {
+    links.push({
+      label: `Theme thread · ${props.discussion.theme_id}`,
+      href: `/admin/themes?theme=${props.discussion.theme_id}`,
+      icon: 'ph:paint-brush',
+    })
+  }
+
   if (props.discussion.discussion_topic_id) {
     const discussionSlug = props.discussion.slug ?? props.discussion.id
     links.push({

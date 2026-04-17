@@ -15,9 +15,11 @@ const isMobile = useBreakpoint('<s')
 
 const editedTheme = ref<Tables<'themes'> | null>(null)
 const themeEditorOpen = ref(false)
+const isCreatingTheme = ref(false)
 
 function onEditTheme(themeToEdit: Tables<'themes'>) {
   editedTheme.value = themeToEdit
+  isCreatingTheme.value = false
   themeEditorOpen.value = true
 }
 
@@ -26,7 +28,18 @@ function personalizeTheme() {
     onEditTheme(activeTheme.value)
   }
   else {
+    isCreatingTheme.value = true
     themeEditorOpen.value = true
+  }
+}
+
+function onThemeSaved() {
+  if (isCreatingTheme.value) {
+    galleryRef.value?.refresh()
+    galleryRef.value?.switchToCreated()
+  }
+  else {
+    galleryRef.value?.refresh()
   }
 }
 </script>
@@ -89,7 +102,7 @@ function personalizeTheme() {
 
       <ThemeGallery
         ref="galleryRef"
-        @create="themeEditorOpen = true"
+        @create="isCreatingTheme = true; themeEditorOpen = true"
         @edit="onEditTheme"
       />
 
@@ -97,8 +110,8 @@ function personalizeTheme() {
         v-if="themeEditorOpen"
         open
         :editing="editedTheme"
-        @close="themeEditorOpen = false; editedTheme = null;"
-        @saved="galleryRef?.refresh()"
+        @close="themeEditorOpen = false; editedTheme = null; isCreatingTheme = false"
+        @saved="onThemeSaved"
       />
     </ClientOnly>
   </div>

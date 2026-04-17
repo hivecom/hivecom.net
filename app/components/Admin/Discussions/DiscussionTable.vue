@@ -44,6 +44,7 @@ interface RpcDiscussion {
   event_id: number | null
   gameserver_id: number | null
   referendum_id: number | null
+  theme_id: string | null
   created_by: string | null
   modified_by: string | null
   // Joined flat fields
@@ -54,6 +55,7 @@ interface RpcDiscussion {
   gameserver_name: string | null
   referendum_title: string | null
   discussion_topic_name: string | null
+  theme_name: string | null
   // Last reply
   last_reply_at: string | null
   last_reply_by: string | null
@@ -103,6 +105,7 @@ const contextOptions: SelectOption[] = [
   { label: 'Profiles', value: 'profiles' },
   { label: 'Projects', value: 'projects' },
   { label: 'Referendums', value: 'referendums' },
+  { label: 'Themes', value: 'themes' },
 ]
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
@@ -191,6 +194,8 @@ function getContextType(discussion: RpcDiscussion): string {
     return 'gameservers'
   if (discussion.referendum_id)
     return 'referendums'
+  if (discussion.theme_id)
+    return 'themes'
   if (discussion.discussion_topic_id)
     return 'forum'
   return 'other'
@@ -222,6 +227,10 @@ function getContextLabel(discussion: RpcDiscussion): string {
     const referendumTitle = discussion.referendum_title
     return referendumTitle ? `Referendum - ${referendumTitle}` : 'Referendum'
   }
+  if (context === 'themes') {
+    const themeName = discussion.theme_name
+    return themeName ? `Theme - ${themeName}` : 'Theme'
+  }
   return 'Orphaned'
 }
 
@@ -238,6 +247,8 @@ function getContextLink(discussion: RpcDiscussion): string | null {
     return `/servers/gameservers/${discussion.gameserver_id}`
   if (discussion.referendum_id)
     return `/votes/${discussion.referendum_id}`
+  if (discussion.theme_id)
+    return `/admin/themes?theme=${discussion.theme_id}`
   if (discussion.discussion_topic_id)
     return `/forum?activeTopicId=${encodeURIComponent(discussion.discussion_topic_id)}`
   return null
