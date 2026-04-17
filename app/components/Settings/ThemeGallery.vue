@@ -22,7 +22,6 @@ const search = ref('')
 const currentPage = ref(1)
 const PER_PAGE = 8
 
-// Per-tab state
 const items = ref<Tables<'themes'>[]>([])
 const totalCount = ref(0)
 const loading = ref(false)
@@ -39,7 +38,7 @@ async function fetchPage(tab: typeof activeTab.value, page: number, searchValue:
   try {
     let query = supabase
       .from('themes')
-      .select('*', { count: 'exact' })
+      .select('*, theme_usage!profiles_theme_id_fkey(user_count)', { count: 'exact' })
 
     if (searchValue.trim()) {
       query = query.or(`name.ilike.%${searchValue}%,description.ilike.%${searchValue}%`)
@@ -86,7 +85,30 @@ async function fetchPage(tab: typeof activeTab.value, page: number, searchValue:
     if (fetchError)
       throw fetchError
 
-    items.value = data ?? []
+    const rawData = (data ?? [])
+
+    // Count forks via a secondary query (self-referential joins are unsupported in PostgREST)
+    // REVIEW: this could be an rpc function?
+    const pageIds = rawData.map(t => t.id)
+    const forkCounts: Record<string, number> = {}
+    if (pageIds.length > 0) {
+      const { data: forkRows } = await supabase
+        .from('themes')
+        .select('forked_from')
+        .in('forked_from', pageIds)
+        .not('forked_from', 'is', null)
+      for (const row of forkRows ?? []) {
+        if (row.forked_from)
+          forkCounts[row.forked_from] = (forkCounts[row.forked_from] ?? 0) + 1
+      }
+    }
+
+    items.value = rawData.map(({ theme_usage, ...row }) => ({
+      ...row,
+      user_count: theme_usage?.[0]?.user_count ?? null,
+      fork_count: forkCounts[row.id] ?? null,
+    }))
+
     totalCount.value = count ?? 0
   }
   catch (err) {
@@ -222,7 +244,7 @@ defineExpose({ refresh })
         <ThemeCard
           v-if="activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
           :item="DEFAULT_THEME as never"
-          :active-theme-id="activeTheme ? '' : '$$$$default'"
+          :active-theme-id="activeTheme ? '' : '$default'"
           @apply="setActiveTheme(null)"
         />
 

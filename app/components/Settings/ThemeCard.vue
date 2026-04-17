@@ -47,7 +47,8 @@ if (props.item.forked_from) {
 </script>
 
 <template>
-  <div
+  <NuxtLink
+    :to="`/themes/${props.item.id}`"
     class="theme-menu__card" :class="{ active: props.item.id === props.activeThemeId,
                                        unmaintained: props.item.is_unmaintained }"
   >
@@ -112,7 +113,7 @@ if (props.item.forked_from) {
 
         <div class="flex-1" />
         <ButtonGroup :gap="2">
-          <Button size="s" @click="emit('apply')">
+          <Button size="s" @click.prevent.stop="emit('apply')">
             <template #start>
               <Icon name="ph:paint-brush-fill" :size="16" />
             </template>
@@ -120,7 +121,7 @@ if (props.item.forked_from) {
           </Button>
           <Dropdown v-if="canSeeDropdown && !props.item.is_official">
             <template #trigger="{ toggle, isOpen }">
-              <Button size="s" square :class="{ active: isOpen }" @click="toggle">
+              <Button size="s" square :class="{ active: isOpen }" @click.prevent.stop="toggle">
                 <Icon name="ph:dots-three-bold" :size="18" />
               </Button>
             </template>
@@ -137,7 +138,7 @@ if (props.item.forked_from) {
         </ButtonGroup>
       </Flex>
     </div>
-  </div>
+  </NuxtLink>
 
   <ConfirmModal
     :open="confirmDeprecate"

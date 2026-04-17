@@ -119,7 +119,7 @@ const lastSeen = computed(() => formatDate(props.profile?.last_seen))
             <RoleIndicator :role="role || 'member'" size="s" />
           </Flex>
           <p class="profile-summary-card__meta-line">
-            Member since {{ joinedDate }} · Last active {{ lastSeen }}
+            Joined {{ joinedDate }} · Last active {{ lastSeen }}
           </p>
         </div>
       </Flex>

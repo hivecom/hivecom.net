@@ -218,7 +218,7 @@ const {
 
           <Flex expand x-between>
             <p v-if="memberSince" class="user-preview-card__meta text-xs">
-              Member since {{ memberSince }}
+              Joined {{ memberSince }}
             </p>
             <p v-if="countryInfo" class="user-preview-card__meta text-xs">
               {{ countryInfo.name }} {{ countryInfo.emoji }}

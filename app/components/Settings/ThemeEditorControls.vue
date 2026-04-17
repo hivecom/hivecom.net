@@ -4,7 +4,7 @@ import type { Tables } from '@/types/database.overrides'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Tab, Tabs, Textarea, theme, Tooltip } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { applyScale, applyTheme, dbToPercent, getCssVarAsHex, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
+import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, getCssVarAsHex, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
 import { normalizeErrors } from '@/lib/utils/formatting'
 import UserName from '../Shared/UserName.vue'
 import CodeEditorClient from './CodeEditor.vue'
@@ -67,19 +67,6 @@ const scaleValues = reactive<Record<ThemeScaleKey, number>>({
   transitions: SCALE_CONFIGS.transitions.defaultDb,
   widening: SCALE_CONFIGS.widening.defaultDb,
 })
-
-// Logically group colors and their key definitions for the UI
-const COLOR_GROUPS: Record<string, typeof VUI_COLOR_KEYS[number][]> = {
-  Background: ['bg', 'bg-medium', 'bg-raised', 'bg-lowered'],
-  Text: ['text', 'text-light', 'text-lighter', 'text-lightest', 'text-invert'],
-  Buttons: ['button-gray', 'button-gray-hover', 'button-fill', 'button-fill-hover'],
-  Red: ['text-red', 'bg-red-lowered', 'bg-red-raised'],
-  Green: ['text-green', 'bg-green-lowered', 'bg-green-raised'],
-  Yellow: ['text-yellow', 'bg-yellow-lowered', 'bg-yellow-raised'],
-  Blue: ['text-blue', 'bg-blue-lowered', 'bg-blue-raised'],
-  Border: ['border', 'border-strong', 'border-weak'],
-  Accent: ['accent', 'bg-accent-lowered', 'bg-accent-raised'],
-}
 
 // Seed the theme from computed CSS vars into a target record
 function seedPalette(prefix: 'dark' | 'light', target: Record<string, string>) {

@@ -271,6 +271,19 @@ export const SCALE_CONFIGS: Record<ThemeScaleKey, ScaleConfig> = {
   },
 }
 
+// Logically group colors and their key definitions for the UI
+export const COLOR_GROUPS: Record<string, typeof VUI_COLOR_KEYS[number][]> = {
+  Background: ['bg', 'bg-medium', 'bg-raised', 'bg-lowered'],
+  Text: ['text', 'text-light', 'text-lighter', 'text-lightest', 'text-invert'],
+  Buttons: ['button-gray', 'button-gray-hover', 'button-fill', 'button-fill-hover'],
+  Red: ['text-red', 'bg-red-lowered', 'bg-red-raised'],
+  Green: ['text-green', 'bg-green-lowered', 'bg-green-raised'],
+  Yellow: ['text-yellow', 'bg-yellow-lowered', 'bg-yellow-raised'],
+  Blue: ['text-blue', 'bg-blue-lowered', 'bg-blue-raised'],
+  Border: ['border', 'border-strong', 'border-weak'],
+  Accent: ['accent', 'bg-accent-lowered', 'bg-accent-raised'],
+}
+
 /**
  * Convert a DB value (0-100) to the actual percentage multiplier.
  * E.g. for spacing: dbToPercent(50, 'spacing') => 150 (%)
@@ -297,6 +310,32 @@ const TRANSITION_EASINGS: Record<string, string> = {
 }
 
 /**
+ * Compute the scaled output value for a single token.
+ * Given a token's default value and a DB scale value (0-100), returns the
+ * new scaled value in the token's native unit.
+ *
+ * E.g. scaleToken(16, 50, 'spacing') => 24 (px)
+ */
+export function scaleToken(defaultValue: number, dbValue: number, key: ThemeScaleKey): number {
+  return defaultValue * (dbToPercent(dbValue, key) / 100)
+}
+
+/**
+ * Compute the scaled transition shorthand string for a single transition token.
+ * Given a token's default duration (in seconds), a DB scale value (0-100), and
+ * the token's variable name (used to look up the easing), returns a full CSS
+ * transition shorthand string ready to be set on a CSS property.
+ *
+ * E.g. scaleTransition({ varName: '--transition', defaultValue: 0.11 }, 50) => "0.22s all cubic-bezier(.65, 0, .35, 1)"
+ */
+export function scaleTransition(token: { varName: string, defaultValue: number }, dbValue: number): string {
+  const scaled = scaleToken(token.defaultValue, dbValue, 'transitions')
+  const duration = `${Math.round(scaled * 1000) / 1000}s`
+  const easing = TRANSITION_EASINGS[token.varName] ?? 'ease-in-out'
+  return `${duration} all ${easing}`
+}
+
+/**
  * Apply a single scale value (0-100) to the DOM by computing each token's
  * scaled value and setting it on the target element.
  */
@@ -306,23 +345,20 @@ export function applyScale(
   target: HTMLElement = document.documentElement,
 ): void {
   const cfg = SCALE_CONFIGS[key]
-  const multiplier = dbToPercent(dbValue, key) / 100
 
   for (const token of cfg.tokens) {
-    const scaled = token.defaultValue * multiplier
-
     if (key === 'transitions') {
       // Transitions need the full shorthand: `<duration> all <easing>`
-      const easing = TRANSITION_EASINGS[token.varName] ?? 'ease-in-out'
-      const duration = `${Math.round(scaled * 1000) / 1000}s`
-      target.style.setProperty(token.varName, `${duration} all ${easing}`)
+      const shorthand = scaleTransition(token, dbValue)
+      target.style.setProperty(token.varName, shorthand)
       // Also set the companion duration-only token so it can be used in
       // places like transition-delay where a bare time value is required
       const companion = TRANSITION_DURATION_COMPANIONS[token.varName] ?? null
       if (companion != null)
-        target.style.setProperty(companion, duration)
+        target.style.setProperty(companion, shorthand.split(' ')[0] ?? '')
     }
     else {
+      const scaled = scaleToken(token.defaultValue, dbValue, key)
       // Spacing and rounding are simple pixel values (round to 1 decimal)
       target.style.setProperty(token.varName, `${Math.round(scaled * 10) / 10}${cfg.unit}`)
     }
@@ -333,7 +369,7 @@ export function applyScale(
  * Convert a DB column name (e.g. `dark_bg_accent_raised`) to its
  * corresponding VUI CSS custom property name (e.g. `--dark-color-bg-accent-raised`).
  */
-function columnToCssVar(column: string): string {
+export function columnToCssVar(column: string): string {
   // Column format: `{dark|light}_{suffix_with_underscores}`
   // CSS var format: `--{dark|light}-color-{suffix-with-hyphens}`
   const firstUnderscore = column.indexOf('_')
@@ -391,17 +427,13 @@ export function themeToScopedProperties(t: Theme, palette: 'dark' | 'light'): Re
   for (const scaleKey of THEME_SCALE_KEYS) {
     const cfg = SCALE_CONFIGS[scaleKey]
     const dbValue = t[scaleKey] ?? cfg.defaultDb
-    const multiplier = dbToPercent(dbValue, scaleKey) / 100
 
     for (const token of cfg.tokens) {
-      const scaled = token.defaultValue * multiplier
-
       if (scaleKey === 'transitions') {
-        const easing = TRANSITION_EASINGS[token.varName] ?? 'ease-in-out'
-        const duration = `${Math.round(scaled * 1000) / 1000}s`
-        vars[token.varName] = `${duration} all ${easing}`
+        vars[token.varName] = scaleTransition(token, dbValue)
       }
       else {
+        const scaled = scaleToken(token.defaultValue, dbValue, scaleKey)
         vars[token.varName] = `${Math.round(scaled * 10) / 10}${cfg.unit}`
       }
     }
@@ -509,7 +541,7 @@ export function sanitizeCustomCss(css: string | null | undefined): string {
 }
 
 export const DEFAULT_THEME = {
-  id: '$$$$default',
+  id: '$default',
   created_by: null,
   name: 'Default Theme',
   description: 'The default Hivecom theme',

@@ -61,7 +61,9 @@ const attrs = useAttrs()
         {{ tooltipText }}
       </div>
     </template>
-    <span class="timestamp-date" v-bind="attrs" :class="`text-${size}`">{{ formattedDate }}</span>
+    <slot>
+      <span class="timestamp-date" v-bind="attrs" :class="`text-${size}`">{{ formattedDate }}</span>
+    </slot>
   </Tooltip>
   <span v-else class="timestamp-date" v-bind="attrs" :class="`text-${size}`">{{ formattedDate }}</span>
 </template>
