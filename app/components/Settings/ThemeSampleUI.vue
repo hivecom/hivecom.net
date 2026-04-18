@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { Badge, Button, Card, Flex, Grid } from '@dolanske/vui'
 import UserDisplay from '../Shared/UserDisplay.vue'
+
+const props = defineProps<{
+  compact?: boolean
+}>()
 </script>
 
 <template>
@@ -9,7 +13,7 @@ import UserDisplay from '../Shared/UserDisplay.vue'
       Sample Theme
     </h1>
 
-    <p class="text-color-light text-l mb-xxl block">
+    <p class="text-color-light text-l block" :class="[props.compact ? 'mb-m' : 'mb-xxl']">
       Make sure you get the contrast right.
       <span class="text-color-lighter text-l">
         But you can of course make it goofy, as long as it's somewhat useable.
@@ -19,7 +23,7 @@ import UserDisplay from '../Shared/UserDisplay.vue'
       </span>
     </p>
 
-    <Card separators class="card-bg mb-xxl">
+    <Card separators class="card-bg mb-xxl" :class="props.compact ? 'mb-m' : 'mb-xxl'">
       <template #header>
         <Flex y-center x-start gap="xs">
           <h5 class="flex-1">
@@ -121,30 +125,65 @@ import UserDisplay from '../Shared/UserDisplay.vue'
     </h4>
 
     <Grid expand :columns="3" class="mb-m">
-      <div class="example-card weak">
+      <div class="theme-example-card weak">
         <p>Weak border</p>
       </div>
-      <div class="example-card ">
+      <div class="theme-example-card ">
         <p>Default border</p>
       </div>
-      <div class="example-card strong">
+      <div class="theme-example-card strong">
         <p>Strong border</p>
       </div>
     </Grid>
 
     <Grid expand :columns="4" class="mb-xxl">
-      <div class="example-card lowered">
+      <div class="theme-example-card lowered">
         <p>Lowered</p>
       </div>
-      <div class="example-card ">
+      <div class="theme-example-card ">
         <p>Normal</p>
       </div>
-      <div class="example-card medium">
+      <div class="theme-example-card medium">
         <p>Medium</p>
       </div>
-      <div class="example-card raised">
+      <div class="theme-example-card raised">
         <p>Raised</p>
       </div>
     </Grid>
   </div>
 </template>
+
+<style lang="scss">
+.theme-example-card {
+  display: block;
+  width: 100%;
+  text-align: center;
+
+  padding: var(--space-l);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-m);
+  color: var(--color-text-light);
+
+  &.weak {
+    border-color: var(--color-border-weak);
+    color: var(--color-text-lighter);
+  }
+
+  &.strong {
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
+
+  &.lowered {
+    background-color: var(--color-bg-lowered);
+  }
+
+  &.raised {
+    background-color: var(--color-bg-raised);
+  }
+
+  &.medium {
+    background-color: var(--color-bg-medium);
+  }
+}
+</style>

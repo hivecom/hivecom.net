@@ -422,6 +422,11 @@ export function themeToScopedProperties(t: Theme, palette: 'dark' | 'light'): Re
     vars[`--color-${key}`] = (value ?? defaults[key]) as string
   }
 
+  // App-level alias token: .card-bg uses --color-bg-card which resolves to
+  // --color-bg-medium. Emit it explicitly so scoped previews (e.g. ThemeSampleUI)
+  // use the themed value instead of the global :root value.
+  vars['--color-bg-card'] = vars['--color-bg-medium']
+
   // Also inline the scale tokens (spacing, rounding, transitions) so the
   // preview card renders with the theme's own sizes, not the active :root values.
   for (const scaleKey of THEME_SCALE_KEYS) {

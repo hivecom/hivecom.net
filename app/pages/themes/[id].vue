@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, Card, Divider, Flex, Tab, Tabs } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Divider, Flex, Tab, Tabs, theme } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
+import ThemeSampleUI from '@/components/Settings/ThemeSampleUI.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -9,6 +10,7 @@ import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import ThemeDetailColors from '@/components/Themes/ThemeDetailColors.vue'
 import ThemeDetailCss from '@/components/Themes/ThemeDetailCss.vue'
 import ThemeDetailTokens from '@/components/Themes/ThemeDetailTokens.vue'
+import { themeToScopedProperties } from '@/lib/theme'
 import { formatTimeAgo } from '@/lib/utils/date'
 
 // TODO: examples
@@ -22,7 +24,7 @@ const dataError = ref<string | null>(null)
 const forks = ref<Tables<'themes'>[]>([])
 const userIds = ref<string[]>([])
 
-const activeTab = ref<'colors' | 'tokens' | 'css'>('colors')
+const activeTab = ref<'colors' | 'tokens' | 'css' | 'sample'>('colors')
 
 onBeforeMount(() => {
   if (route.params.id) {
@@ -83,20 +85,19 @@ onBeforeMount(() => {
       <template v-else-if="data">
         <section>
           <Flex x-between>
-            <NuxtLink to="/themes">
-              <Button
-                variant="gray"
-                plain
-                size="s"
-                aria-label="Go back to Events page"
-                class="event-detail__back-link"
-              >
-                <template #start>
-                  <Icon name="ph:arrow-left" />
-                </template>
-                Back to Themes
-              </Button>
-            </NuxtLink>
+            <Button
+              variant="gray"
+              plain
+              size="s"
+              aria-label="Go back to Events page"
+              class="event-detail__back-link"
+              @click="$router.back()"
+            >
+              <template #start>
+                <Icon name="ph:arrow-left" />
+              </template>
+              Back to Themes
+            </Button>
           </Flex>
           <div class="page-title">
             <h1>{{ data.name }}</h1>
@@ -126,7 +127,7 @@ onBeforeMount(() => {
 
         <section class="theme-details">
           <Flex column gap="xl">
-            <Card class="card-bg" separators>
+            <Card :class="{ 'card-bg': activeTab !== 'sample' }" separators>
               <template #header>
                 <Tabs v-model="activeTab" variant="filled" style="width:fit-content">
                   <Tab value="colors">
@@ -137,6 +138,9 @@ onBeforeMount(() => {
                   </Tab>
                   <Tab value="css">
                     CSS
+                  </Tab>
+                  <Tab value="sample">
+                    Sample
                   </Tab>
                 </Tabs>
               </template>
@@ -149,6 +153,11 @@ onBeforeMount(() => {
 
               <!-- CSS tab -->
               <ThemeDetailCss v-show="activeTab === 'css'" :data="data" />
+
+              <!-- Sample UI -->
+              <div v-show="activeTab === 'sample'" :style="themeToScopedProperties(data, theme === 'light' ? 'light' : 'dark')">
+                <ThemeSampleUI compact />
+              </div>
             </Card>
 
             <Flex column gap="s" expand>

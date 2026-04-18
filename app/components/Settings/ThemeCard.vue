@@ -65,9 +65,10 @@ if (props.item.forked_from) {
       <Card>
         <template #header>
           <Flex column gap="xxs">
-            <strong>
+            <Flex gap="xs" y-center>
+              <Skeleton class="text-skeleton" height="13px" width="48px" style="background-color: var(--color-accent)" />
               <Skeleton class="text-skeleton" height="13px" width="80px" style="background-color: var(--color-text)" />
-            </strong>
+            </Flex>
             <p>
               <Skeleton class="text-skeleton" height="16px" width="120px" style="background-color: var(--color-text-lighter)" />
             </p>
@@ -83,7 +84,7 @@ if (props.item.forked_from) {
             </TinyBadge>
           </Flex>
         </template>
-        <Alert variant="success" filled>
+        <Alert variant="info" filled>
           <Skeleton class="text-skeleton" height="16px" width="154px" style="background-color: var(--color-text-lighter)" />
         </Alert>
 
@@ -229,7 +230,6 @@ if (props.item.forked_from) {
     height: 120px;
     overflow: hidden;
     position: relative;
-    border-bottom: 1px solid var(--color-border);
     background-color: var(--color-bg-lowered);
     z-index: 1;
     opacity: 0.75;
@@ -282,6 +282,7 @@ if (props.item.forked_from) {
     padding: var(--space-m);
     padding-top: var(--space-l);
     flex: 1;
+    border-top: 1px solid var(--color-border);
 
     :deep(.vui-button) {
       visibility: hidden;

@@ -52,39 +52,6 @@ const emit = defineEmits<{
   .vui-card .vui-card-content {
     padding: 0;
   }
-
-  .example-card {
-    display: block;
-    width: 100%;
-    text-align: center;
-
-    padding: var(--space-l);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-m);
-    color: var(--color-text-light);
-
-    &.weak {
-      border-color: var(--color-border-weak);
-      color: var(--color-text-lighter);
-    }
-
-    &.strong {
-      border-color: var(--color-border-strong);
-      color: var(--color-text);
-    }
-
-    &.lowered {
-      background-color: var(--color-bg-lowered);
-    }
-
-    &.raised {
-      background-color: var(--color-bg-raised);
-    }
-
-    &.medium {
-      background-color: var(--color-bg-medium);
-    }
-  }
 }
 
 @media screen and (max-width: $breakpoint-s) {
