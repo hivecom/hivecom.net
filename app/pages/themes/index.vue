@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, ButtonGroup, Card, Flex, Grid, Select, Tooltip } from '@dolanske/vui'
-import ThemeEditor from '@/components/Settings/ThemeEditor.vue'
-import ThemeGallery from '@/components/Settings/ThemeGallery.vue'
+import ThemeEditor from '@/components/Themes/ThemeEditor.vue'
+import ThemeGallery from '@/components/Themes/ThemeGallery.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const galleryRef = ref<InstanceType<typeof ThemeGallery> | null>(null)

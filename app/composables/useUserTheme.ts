@@ -11,6 +11,8 @@ const variantOptions: VariantOption[] = [
   { label: 'Dark', value: 'dark' },
 ]
 
+const HAS_URL_REGEX = /url\s*\(/i
+
 /**
  * Loads and applies the authenticated user's custom theme (if any) from their
  * profile's `theme_id` foreign key.
@@ -30,6 +32,9 @@ export function useUserTheme() {
 
   const activeTheme = useState<Tables<'themes'> | null>('user-active-theme', () => null)
   const hasFetched = useState<boolean>('user-theme-fetched', () => false)
+
+  // Non-null when a theme with custom CSS is awaiting user confirmation before being applied.
+  const pendingTheme = useState<{ theme: Tables<'themes'>, hasUrl: boolean } | null>('theme-pending-confirmation', () => null)
 
   const { settings } = useDataUserSettings()
   const { themes } = useDataThemes()
@@ -120,19 +125,21 @@ export function useUserTheme() {
     }
 
     // 2. Fetch the full theme row
-    const { data: theme, error: themeError } = await supabase
+    const { data: themeData, error: themeError } = await supabase
       .from('themes')
       .select('*')
       .eq('id', profile.theme_id)
       .single()
 
-    if (themeError || theme == null) {
+    if (themeError || themeData == null) {
       applyTheme(null)
       applyCustomCss(null)
       activeTheme.value = null
       hasFetched.value = true
       return
     }
+
+    const theme = themeData as Tables<'themes'>
 
     // 3. Apply colors + scales
     activeTheme.value = theme
@@ -145,9 +152,34 @@ export function useUserTheme() {
   }
 
   /**
+   * Applies a fully-fetched theme to the DOM and persists it to the user's profile.
+   */
+  async function applyAndPersistTheme(theme: Tables<'themes'>): Promise<void> {
+    const id = userId.value
+    if (id == null)
+      return
+
+    activeTheme.value = theme
+    applyTheme(theme)
+    if (settings.value.allow_custom_css)
+      applyCustomCss(theme.custom_css)
+    else
+      applyCustomCss(null)
+
+    await supabase
+      .from('profiles')
+      .update({ theme_id: theme.id })
+      .eq('id', id)
+  }
+
+  /**
    * Immediately switch to a theme by ID, or pass `null` to revert to defaults.
    * Fetches the full theme row, applies it to the DOM, updates `activeTheme`,
    * and persists the selection to the user's profile so it survives page reloads.
+   *
+   * If the theme contains custom CSS, the switch is held in `pendingTheme` and
+   * requires explicit user confirmation via `confirmPendingTheme()` before it is
+   * applied. Check `pendingTheme` to know when to show the warning modal.
    */
   async function setActiveTheme(themeId: string | null): Promise<void> {
     const id = userId.value
@@ -168,27 +200,39 @@ export function useUserTheme() {
       return
     }
 
-    const { data: theme, error } = await supabase
+    const { data, error } = await supabase
       .from('themes')
       .select('*')
       .eq('id', themeId)
       .single()
 
-    if (error || theme == null)
+    if (error || data == null)
       return
 
-    activeTheme.value = theme
-    applyTheme(theme)
-    if (settings.value.allow_custom_css)
-      applyCustomCss(theme.custom_css)
-    else
-      applyCustomCss(null)
+    const theme = data as Tables<'themes'>
 
-    // Persist the selection so fetchAndApply picks it up on next load
-    await supabase
-      .from('profiles')
-      .update({ theme_id: themeId })
-      .eq('id', id)
+    // If the theme ships custom CSS, hold it for user confirmation instead of
+    // applying immediately. The caller should react to `pendingTheme` and show
+    // a warning modal.
+    if (theme.custom_css && theme.custom_css.trim().length > 0) {
+      const hasUrl = HAS_URL_REGEX.test(theme.custom_css)
+      pendingTheme.value = { theme, hasUrl }
+      return
+    }
+
+    await applyAndPersistTheme(theme)
+  }
+
+  /**
+   * Apply and persist the theme that is currently awaiting confirmation.
+   * Call this when the user accepts the CSS warning modal.
+   */
+  async function confirmPendingTheme(): Promise<void> {
+    if (!pendingTheme.value)
+      return
+    const { theme } = pendingTheme.value
+    pendingTheme.value = null
+    await applyAndPersistTheme(theme)
   }
 
   // Re-fetch and apply when the user changes (login/logout).
@@ -225,8 +269,10 @@ export function useUserTheme() {
 
   return {
     activeTheme,
+    pendingTheme,
     fetchAndApply,
     setActiveTheme,
+    confirmPendingTheme,
     applyCustomCss,
     reapplyCustomCss,
     themeOptions,

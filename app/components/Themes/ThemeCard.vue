@@ -66,7 +66,7 @@ if (props.item.forked_from) {
         <template #header>
           <Flex column gap="xxs">
             <Flex gap="xs" y-center>
-              <Skeleton class="text-skeleton" height="13px" width="48px" style="background-color: var(--color-accent)" />
+              <Skeleton class="text-skeleton accent" height="13px" width="48px" style="background-color: var(--color-accent)" />
               <Skeleton class="text-skeleton" height="13px" width="80px" style="background-color: var(--color-text)" />
             </Flex>
             <p>
@@ -250,7 +250,11 @@ if (props.item.forked_from) {
       animation: none;
 
       &.text-skeleton {
-        opacity: 0.25;
+        opacity: 0.35;
+
+        &.accent {
+          opacity: 0.75;
+        }
       }
 
       &.badge-skeleton {

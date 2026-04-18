@@ -2,7 +2,6 @@
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, Card, Divider, Flex, Tab, Tabs, theme } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
-import ThemeSampleUI from '@/components/Settings/ThemeSampleUI.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -10,14 +9,15 @@ import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import ThemeDetailColors from '@/components/Themes/ThemeDetailColors.vue'
 import ThemeDetailCss from '@/components/Themes/ThemeDetailCss.vue'
 import ThemeDetailTokens from '@/components/Themes/ThemeDetailTokens.vue'
+import ThemeEditor from '@/components/Themes/ThemeEditor.vue'
+import ThemeSampleUI from '@/components/Themes/ThemeSampleUI.vue'
 import { themeToScopedProperties } from '@/lib/theme'
 import { formatTimeAgo } from '@/lib/utils/date'
-
-// TODO: examples
 
 const route = useRoute()
 const supabase = useSupabaseClient()
 const { setActiveTheme } = useUserTheme()
+const userId = useUserId()
 
 const data = ref<Tables<'themes'> | null>(null)
 const dataError = ref<string | null>(null)
@@ -25,6 +25,9 @@ const forks = ref<Tables<'themes'>[]>([])
 const userIds = ref<string[]>([])
 
 const activeTab = ref<'colors' | 'tokens' | 'css' | 'sample'>('colors')
+const editorOpen = ref(false)
+
+const isOwner = computed(() => !!userId.value && data.value?.created_by === userId.value)
 
 onBeforeMount(() => {
   if (route.params.id) {
@@ -99,6 +102,11 @@ onBeforeMount(() => {
               Back to Themes
             </Button>
           </Flex>
+
+          <Alert v-if="data.is_unmaintained" variant="info" class="mt-m" filled>
+            This theme is no longer maintained. You can still use it or fork it to make your own version.
+          </Alert>
+
           <div class="page-title">
             <h1>{{ data.name }}</h1>
             <p>
@@ -108,7 +116,10 @@ onBeforeMount(() => {
           <Flex y-end x-start gap="xs">
             <UserDisplay :user-id="data.created_by" show-role />
             <div class="flex-1" />
-            <Button size="s">
+            <Button v-if="isOwner" square size="s" @click="editorOpen = true">
+              <Icon name="ph:pencil-simple" />
+            </Button>
+            <Button v-else-if="userId" size="s" @click="editorOpen = true">
               <template #start>
                 <Icon name="ph:git-fork" />
               </template>
@@ -162,7 +173,7 @@ onBeforeMount(() => {
 
             <Flex column gap="s" expand>
               <h4>
-                Reviews
+                Comments
               </h4>
               <Discussion
                 :id="String(data.id)"
@@ -218,6 +229,14 @@ onBeforeMount(() => {
         </section>
       </template>
     </div>
+
+    <ThemeEditor
+      v-if="data && editorOpen"
+      open
+      :editing="data"
+      @close="editorOpen = false"
+      @saved="editorOpen = false"
+    />
   </div>
 </template>
 

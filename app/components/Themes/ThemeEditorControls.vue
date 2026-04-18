@@ -6,8 +6,8 @@ import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Inpu
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, getCssVarAsHex, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
 import { normalizeErrors } from '@/lib/utils/formatting'
+import CodeEditorClient from '../Shared/CodeEditor.vue'
 import UserName from '../Shared/UserName.vue'
-import CodeEditorClient from './CodeEditor.vue'
 
 interface Props {
   editing?: Tables<'themes'> | null
@@ -379,7 +379,7 @@ const isMobile = useBreakpoint('<s')
         <div v-show="activeTab === 'tokens'" class="theme-editor__groups--inner">
           <div class="theme-editor__group">
             <span class="theme-editor__group-label">Spacing</span>
-            <Flex y-center gap="l">
+            <Flex y-center gap="s">
               <input
                 type="range" min="0" max="100" class="w-100"
                 :value="scaleValues.spacing"
@@ -387,12 +387,15 @@ const isMobile = useBreakpoint('<s')
                 @input="onScaleChange('spacing', Number(($event.target as HTMLInputElement).value))"
               >
               <span class="theme-editor__range-value">{{ scaleDisplay('spacing') }}</span>
+              <Button square plain size="s" @click="onScaleChange('spacing', SCALE_CONFIGS.spacing.defaultDb)">
+                <Icon name="ph:arrow-clockwise" />
+              </Button>
             </Flex>
           </div>
 
           <div class="theme-editor__group">
             <span class="theme-editor__group-label">Rounding</span>
-            <Flex y-center gap="l">
+            <Flex y-center gap="s">
               <input
                 type="range" min="0" max="100" class="w-100"
                 :value="scaleValues.rounding"
@@ -400,12 +403,15 @@ const isMobile = useBreakpoint('<s')
                 @input="onScaleChange('rounding', Number(($event.target as HTMLInputElement).value))"
               >
               <span class="theme-editor__range-value">{{ scaleDisplay('rounding') }}</span>
+              <Button square plain size="s" @click="onScaleChange('rounding', SCALE_CONFIGS.rounding.defaultDb)">
+                <Icon name="ph:arrow-clockwise" />
+              </Button>
             </Flex>
           </div>
 
           <div class="theme-editor__group">
             <span class="theme-editor__group-label">Transitions</span>
-            <Flex y-center gap="l">
+            <Flex y-center gap="s">
               <input
                 type="range" min="0" max="100" class="w-100"
                 :value="scaleValues.transitions"
@@ -413,12 +419,15 @@ const isMobile = useBreakpoint('<s')
                 @input="onScaleChange('transitions', Number(($event.target as HTMLInputElement).value))"
               >
               <span class="theme-editor__range-value">{{ scaleDisplay('transitions') }}</span>
+              <Button square plain size="s" @click="onScaleChange('transitions', SCALE_CONFIGS.transitions.defaultDb)">
+                <Icon name="ph:arrow-clockwise" />
+              </Button>
             </Flex>
           </div>
 
           <div class="theme-editor__group">
             <span class="theme-editor__group-label">Widening</span>
-            <Flex y-center gap="l">
+            <Flex y-center gap="s">
               <input
                 type="range" min="0" max="100" class="w-100"
                 :value="scaleValues.widening"
@@ -426,6 +435,9 @@ const isMobile = useBreakpoint('<s')
                 @input="onScaleChange('widening', Number(($event.target as HTMLInputElement).value))"
               >
               <span class="theme-editor__range-value">{{ scaleDisplay('widening') }}</span>
+              <Button square plain size="s" @click="onScaleChange('widening', SCALE_CONFIGS.widening.defaultDb)">
+                <Icon name="ph:arrow-clockwise" />
+              </Button>
             </Flex>
           </div>
 

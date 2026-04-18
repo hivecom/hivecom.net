@@ -2,7 +2,6 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { Button, Card, Flex, Grid, Input, paginate, Pagination, Skeleton, Tab, Tabs } from '@dolanske/vui'
-import { useUrlSearchParams } from '@vueuse/core'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { DEFAULT_THEME } from '@/lib/theme'
 import ThemeCard from './ThemeCard.vue'
@@ -18,8 +17,22 @@ const userId = useUserId()
 const { activeTheme, setActiveTheme } = useUserTheme()
 const { softDelete, hardDelete } = useDataThemes()
 
-const params = useUrlSearchParams<{ tab: 'official' | 'community' | 'created' }>('history', {
-  initialValue: { tab: 'official' },
+type GalleryTab = 'official' | 'community' | 'created'
+
+const route = useRoute()
+const router = useRouter()
+
+// Active tab + URL sync
+const activeTab = computed<GalleryTab>({
+  get() {
+    const t = route.query.tab
+    if (t === 'community' || t === 'created')
+      return t
+    return 'official'
+  },
+  set(value) {
+    router.replace({ query: { ...route.query, tab: value } })
+  },
 })
 
 const search = ref('')
@@ -31,7 +44,7 @@ const totalCount = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-async function fetchPage(tab: typeof params.tab, page: number, searchValue: string) {
+async function fetchPage(tab: GalleryTab, page: number, searchValue: string) {
   loading.value = true
   error.value = null
   items.value = []
@@ -137,20 +150,20 @@ const pagination = computed(() =>
 )
 
 // Reset page and re-fetch when tab or search changes
-watch(() => params.tab, () => {
+watch(activeTab, () => {
   currentPage.value = 1
   search.value = ''
-  void fetchPage(params.tab, 1, '')
+  void fetchPage(activeTab.value, 1, '')
 })
 
 watch(search, () => {
   currentPage.value = 1
-  void fetchPage(params.tab, 1, search.value)
+  void fetchPage(activeTab.value, 1, search.value)
 })
 
 function onPageChange(page: number) {
   currentPage.value = page
-  void fetchPage(params.tab, page, search.value)
+  void fetchPage(activeTab.value, page, search.value)
 }
 
 function deprecateTheme(id: string) {
@@ -159,7 +172,7 @@ function deprecateTheme(id: string) {
   }
 
   void softDelete(id).then(() => {
-    void fetchPage(params.tab, currentPage.value, search.value)
+    void fetchPage(activeTab.value, currentPage.value, search.value)
   })
 }
 
@@ -169,36 +182,36 @@ function deleteTheme(id: string) {
   }
 
   void hardDelete(id).then(() => {
-    void fetchPage(params.tab, currentPage.value, search.value)
+    void fetchPage(activeTab.value, currentPage.value, search.value)
   })
 }
 
 // Initial load
 onMounted(() => {
-  void fetchPage(params.tab, currentPage.value, search.value)
+  void fetchPage(activeTab.value, currentPage.value, search.value)
 })
 
 // On the official tab, unmaintained themes are hidden unless they are the active theme.
 // Re-fetch when the active theme changes to an unmaintained one or away from one.
 watch(() => activeTheme.value?.id, (newId, oldId) => {
-  if (params.tab !== 'official')
+  if (activeTab.value !== 'official')
     return
   const affectsVisibility
     = items.value.some(t => t.id === newId && t.is_unmaintained)
       || items.value.some(t => t.id === oldId && t.is_unmaintained)
   if (affectsVisibility)
-    void fetchPage(params.tab, currentPage.value, search.value)
+    void fetchPage(activeTab.value, currentPage.value, search.value)
 })
 
 const isMobile = useBreakpoint('<s')
 
 // Expose refresh so ThemeEditor can trigger a re-fetch after writes
 function refresh() {
-  void fetchPage(params.tab, currentPage.value, search.value)
+  void fetchPage(activeTab.value, currentPage.value, search.value)
 }
 
 function switchToCreated() {
-  params.tab = 'created'
+  activeTab.value = 'created'
   currentPage.value = 1
   void fetchPage('created', 1, search.value)
 }
@@ -208,7 +221,7 @@ defineExpose({ refresh, switchToCreated })
 
 <template>
   <section>
-    <Tabs v-model="params.tab" class="mb-m">
+    <Tabs v-model="activeTab" class="mb-m">
       <Tab value="official">
         Official
       </Tab>
@@ -252,7 +265,7 @@ defineExpose({ refresh, switchToCreated })
       <template v-else>
         <!-- Fake default theme card - always first in the official tab -->
         <ThemeCard
-          v-if="params.tab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
+          v-if="activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
           :item="DEFAULT_THEME as never"
           :active-theme-id="activeTheme ? '' : '$default'"
           @apply="setActiveTheme(null)"
@@ -271,13 +284,13 @@ defineExpose({ refresh, switchToCreated })
       </template>
     </Grid>
 
-    <template v-if="!loading && items.length === 0 && !(params.tab === 'official' && currentPage === 1 && defaultCardMatchesSearch)">
+    <template v-if="!loading && items.length === 0 && !(activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch)">
       <Card class="card-bg">
         <Flex x-center y-center expand class="p-l">
           <Icon name="ph:paint-brush-bold" :size="24" />
           <strong v-if="search.trim()">No themes match your search.</strong>
-          <strong v-else-if="params.tab === 'created'">You've not created a theme yet!</strong>
-          <strong v-else-if="params.tab === 'community'">No community themes available! Be the first to create one.</strong>
+          <strong v-else-if="activeTab === 'created'">You've not created a theme yet!</strong>
+          <strong v-else-if="activeTab === 'community'">No community themes available! Be the first to create one.</strong>
         </Flex>
       </Card>
     </template>

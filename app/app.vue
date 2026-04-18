@@ -5,6 +5,7 @@ import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { useLastSeenTracking } from '@/lib/lastSeen'
+import ConfirmModal from './components/Shared/ConfirmModal.vue'
 
 const route = useRoute()
 const site = useSiteConfig()
@@ -72,7 +73,7 @@ const layoutName = computed(() => {
 useLastSeenTracking()
 
 // Load and apply the user's custom theme (if any) from their profile
-useUserTheme()
+const { pendingTheme, confirmPendingTheme } = useUserTheme()
 </script>
 
 <template>
@@ -89,6 +90,19 @@ useUserTheme()
   </ClientOnly>
   <LayoutLoading />
   <Command />
+
+  <ConfirmModal
+    :open="!!pendingTheme"
+    title="Apply theme with custom CSS?"
+    :description="pendingTheme?.hasUrl
+      ? 'This theme contains custom CSS with external URL references, which may load remote resources or track your activity. Apply anyway?'
+      : 'This theme contains custom CSS that can alter the appearance of the site in unexpected ways. Apply anyway?'"
+    confirm-text="Apply theme"
+    @confirm="confirmPendingTheme"
+    @cancel="pendingTheme = null"
+  >
+    <pre class="theme-custom-css-viewer">{{ pendingTheme?.theme.custom_css }}</pre>
+  </ConfirmModal>
 </template>
 
 <style>
@@ -116,5 +130,10 @@ useUserTheme()
 .page-leave-from {
   opacity: 1;
   transform: translateY(0);
+}
+
+.theme-custom-css-viewer {
+  max-height: 328px;
+  overflow-y: auto;
 }
 </style>
