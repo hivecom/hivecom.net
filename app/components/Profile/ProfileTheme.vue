@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Card, Flex, Tooltip } from '@dolanske/vui'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
+import { DEFAULT_THEME } from '@/lib/theme'
 
 const props = defineProps<{
   themeId?: string | null
@@ -9,7 +10,7 @@ const props = defineProps<{
 const { getById } = useDataThemes()
 const { setActiveTheme } = useUserTheme()
 
-const activeTheme = computed(() => props.themeId ? getById(props.themeId) : null)
+const activeTheme = computed(() => props.themeId ? getById(props.themeId) : DEFAULT_THEME)
 </script>
 
 <template>
@@ -20,7 +21,7 @@ const activeTheme = computed(() => props.themeId ? getById(props.themeId) : null
           Theme
         </span>
         <strong class="activity-item__title no-padding">
-          {{ activeTheme ? activeTheme.name : 'Default theme' }}
+          {{ activeTheme ? activeTheme.name : 'Hivecom Theme' }}
         </strong>
       </div>
       <Tooltip>

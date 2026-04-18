@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
 const SIZE_PX: Record<string, number> = {
   s: 24,
   m: 32,
-  l: 56,
+  l: 64,
 }
 
 function seededRng(seed: number) {

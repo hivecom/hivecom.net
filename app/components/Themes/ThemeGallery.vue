@@ -266,7 +266,7 @@ defineExpose({ refresh, switchToCreated })
         <!-- Fake default theme card - always first in the official tab -->
         <ThemeCard
           v-if="activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
-          :item="DEFAULT_THEME as never"
+          :item="DEFAULT_THEME"
           :active-theme-id="activeTheme ? '' : '$default'"
           @apply="setActiveTheme(null)"
         />

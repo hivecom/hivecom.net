@@ -12,7 +12,7 @@ import ThemeDetailTokens from '@/components/Themes/ThemeDetailTokens.vue'
 import ThemeEditor from '@/components/Themes/ThemeEditor.vue'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import ThemeSampleUI from '@/components/Themes/ThemeSampleUI.vue'
-import { themeToScopedProperties } from '@/lib/theme'
+import { DEFAULT_THEME, themeToScopedProperties } from '@/lib/theme'
 import { formatTimeAgo } from '@/lib/utils/date'
 
 const route = useRoute()
@@ -28,9 +28,15 @@ const userIds = ref<string[]>([])
 const activeTab = ref<'colors' | 'tokens' | 'css' | 'sample'>('colors')
 const editorOpen = ref(false)
 
+const isDefaultTheme = computed(() => data.value?.id === '$default')
 const isOwner = computed(() => !!userId.value && data.value?.created_by === userId.value)
 
 onBeforeMount(() => {
+  if (route.params.id === '$default') {
+    data.value = DEFAULT_THEME
+    return
+  }
+
   if (route.params.id) {
     // Fetch all theme data
     supabase
@@ -122,7 +128,7 @@ onBeforeMount(() => {
             </Flex>
           </div>
           <Flex y-end x-start gap="xs">
-            <UserDisplay :user-id="data.created_by" show-role size="s" />
+            <UserDisplay v-if="data.created_by || data.is_official" :user-id="data.created_by" show-role size="s" />
             <div class="flex-1" />
             <Button v-if="isOwner" square size="s" @click="editorOpen = true">
               <Icon name="ph:pencil-simple" />
@@ -133,7 +139,7 @@ onBeforeMount(() => {
               </template>
               Fork
             </Button>
-            <Button size="s" variant="accent" @click="setActiveTheme(data.id)">
+            <Button size="s" variant="accent" @click="setActiveTheme(isDefaultTheme ? null : data.id)">
               <template #start>
                 <Icon name="ph:paint-brush-fill" :size="16" />
               </template>
@@ -179,7 +185,7 @@ onBeforeMount(() => {
               </div>
             </Card>
 
-            <Flex column gap="s" expand>
+            <Flex v-if="!isDefaultTheme" column gap="s" expand>
               <h4>
                 Comments
               </h4>

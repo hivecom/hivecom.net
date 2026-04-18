@@ -425,6 +425,7 @@ export function themeToScopedProperties(t: Theme, palette: 'dark' | 'light'): Re
   // App-level alias token: .card-bg uses --color-bg-card which resolves to
   // --color-bg-medium. Emit it explicitly so scoped previews (e.g. ThemeSampleUI)
   // use the themed value instead of the global :root value.
+  // @ts-expect-error Assignemnt
   vars['--color-bg-card'] = vars['--color-bg-medium']
 
   // Also inline the scale tokens (spacing, rounding, transitions) so the
@@ -547,7 +548,26 @@ export function sanitizeCustomCss(css: string | null | undefined): string {
 
 export const DEFAULT_THEME = {
   id: '$default',
-  created_by: null,
-  name: 'Default Theme',
+  name: 'Hivecom Theme',
   description: 'The default Hivecom theme',
-}
+  created_at: '2024-01-01T00:00:00.000Z',
+  created_by: null,
+  modified_at: null,
+  modified_by: null,
+  forked_from: null,
+  is_official: true,
+  is_unmaintained: false,
+  custom_css: '',
+  spacing: 50,
+  rounding: 20,
+  transitions: 25,
+  widening: 0,
+  ...Object.fromEntries(
+    (['dark', 'light'] as const).flatMap(palette =>
+      Object.entries(VUI_DEFAULT_COLORS[palette]).map(([key, value]) => [
+        `${palette}_${key.replace(HYPHEN_RE, '_')}`,
+        value,
+      ]),
+    ),
+  ),
+} as Theme
