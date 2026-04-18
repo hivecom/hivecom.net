@@ -4,7 +4,9 @@ import { setColorTheme } from '@dolanske/vui'
 import { useStyleTag } from '@vueuse/core'
 import { applyTheme, sanitizeCustomCss } from '@/lib/theme'
 
-interface VariantOption { label: string, value: string }
+export type ThemeVariant = 'light' | 'dark'
+
+interface VariantOption { label: string, value: ThemeVariant }
 
 const variantOptions: VariantOption[] = [
   { label: 'Light', value: 'light' },

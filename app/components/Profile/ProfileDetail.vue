@@ -16,6 +16,7 @@ import { useFriendship } from '@/composables/useFriendship'
 import Discussion from '../Discussions/Discussion.vue'
 import ProfileActivity from './ProfileActivity.vue'
 import ProfileDiscussions from './ProfileDiscussions.vue'
+import ProfileTheme from './ProfileTheme.vue'
 
 interface Props {
   userId?: string
@@ -411,6 +412,8 @@ function openFriendsModal() {
 
         <!-- (Right) -->
         <Flex column gap="m" class="profile-sidebar-col">
+          <ProfileTheme :theme-id="profile.theme_id" />
+
           <!-- Activity section -->
           <ProfileActivity
             v-if="profile.steam_id !== null || profile.teamspeak_identities?.toString() !== ''"

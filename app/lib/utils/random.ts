@@ -23,6 +23,19 @@ export function seedRndMinMax(min: number, max: number, seed: string) {
 }
 
 /**
+ * Deterministic hash of a string to an unsigned 32-bit integer.
+ * Identical inputs always produce the same number, making it suitable as a
+ * seed for reproducible pseudo-random sequences.
+ */
+export function hashSeed(seed: string): number {
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0
+  }
+  return hash
+}
+
+/**
  * Returns a new array with elements in a random order using the Fisher-Yates shuffle.
  * Does not mutate the original array.
  */

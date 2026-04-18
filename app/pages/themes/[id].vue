@@ -10,6 +10,7 @@ import ThemeDetailColors from '@/components/Themes/ThemeDetailColors.vue'
 import ThemeDetailCss from '@/components/Themes/ThemeDetailCss.vue'
 import ThemeDetailTokens from '@/components/Themes/ThemeDetailTokens.vue'
 import ThemeEditor from '@/components/Themes/ThemeEditor.vue'
+import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import ThemeSampleUI from '@/components/Themes/ThemeSampleUI.vue'
 import { themeToScopedProperties } from '@/lib/theme'
 import { formatTimeAgo } from '@/lib/utils/date'
@@ -108,13 +109,20 @@ onBeforeMount(() => {
           </Alert>
 
           <div class="page-title">
-            <h1>{{ data.name }}</h1>
-            <p>
-              {{ data.description }}
-            </p>
+            <Flex y-start gap="l">
+              <ThemeIcon :theme="data" size="l" />
+              <div>
+                <h1>
+                  {{ data.name }}
+                </h1>
+                <p v-if="data.description">
+                  {{ data.description }}
+                </p>
+              </div>
+            </Flex>
           </div>
           <Flex y-end x-start gap="xs">
-            <UserDisplay :user-id="data.created_by" show-role />
+            <UserDisplay :user-id="data.created_by" show-role size="s" />
             <div class="flex-1" />
             <Button v-if="isOwner" square size="s" @click="editorOpen = true">
               <Icon name="ph:pencil-simple" />

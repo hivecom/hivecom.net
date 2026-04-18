@@ -1,4 +1,5 @@
 import rawUsernames from '@/assets/usernames.json'
+import { hashSeed } from '@/lib/utils/random'
 
 interface UsernameDataset {
   attributes: string[]
@@ -42,14 +43,6 @@ function resolveDataset(): UsernameDataset {
     colors: colors.length ? colors : FALLBACK_DATASET.colors,
     animals: animals.length ? animals : FALLBACK_DATASET.animals,
   }
-}
-
-function hashSeed(seed: string) {
-  let hash = 0
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0
-  }
-  return hash
 }
 
 function pick(list: string[], hash: number) {
