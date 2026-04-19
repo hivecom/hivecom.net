@@ -1,10 +1,9 @@
+import type { ThemeVariant } from './useUserTheme'
 import type { ThemeScaleKey } from '@/lib/theme'
 import type { Tables } from '@/types/database.overrides'
 import { applyScale, getCssVarAsHex, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
 
 const HYPHEN_RE = /-/g
-
-type ThemeType = 'dark' | 'light'
 
 /**
  * Shared state bag for the theme editor.
@@ -23,7 +22,7 @@ export function useThemeEditorState() {
   const { activeTheme, applyCustomCss } = useUserTheme()
 
   // In-progress palette values for both dark and light variants.
-  const themeForm = useState<Record<ThemeType, Record<string, string>>>(
+  const themeForm = useState<Record<ThemeVariant, Record<string, string>>>(
     'theme-editor-form',
     () => ({ light: {}, dark: {} }),
   )
@@ -39,28 +38,28 @@ export function useThemeEditorState() {
     }),
   )
 
-  // Currently active editor tab persisted across context switches.
+  // Currently active editor
   const activeTab = useState<'tokens' | 'css'>('theme-editor-tab', () => 'tokens')
 
-  // In-progress custom CSS content (separate from the applied style tag).
+  // In-progress custom CSS content
   const customCss = useState<string>('theme-editor-css', () => '')
 
-  // The theme being edited / forked, or null for new-theme creation.
+  // The theme being edited / forked, or null for new-theme creation
   const editingTheme = useState<Tables<'themes'> | null>('theme-editor-editing', () => null)
 
-  // True once seedEditor has run; prevents re-seeding on second mount.
+  // True once seedEditor has run which prevents re-seeding on second mount
   const seeded = useState<boolean>('theme-editor-seeded', () => false)
 
-  // Controls whether the floating sidebar editor is visible in app.vue.
+  // Controls whether the ditor is visible
   const editorActive = useState<boolean>('theme-editor-visible', () => false)
 
-  function seedPalette(prefix: ThemeType, target: Record<string, string>) {
+  function seedPalette(prefix: ThemeVariant, target: Record<string, string>) {
     for (const key of VUI_COLOR_KEYS) {
       target[key] = getCssVarAsHex(`--${prefix}-color-${key}`)
     }
   }
 
-  function applyPaletteLocal(prefix: ThemeType, source: Record<string, string>) {
+  function applyPaletteLocal(prefix: ThemeVariant, source: Record<string, string>) {
     for (const key of VUI_COLOR_KEYS) {
       if (source[key] != null)
         document.documentElement.style.setProperty(`--${prefix}-color-${key}`, source[key])
@@ -91,10 +90,10 @@ export function useThemeEditorState() {
       editingTheme.value = theme ?? null
     }
 
-    const t = editingTheme.value ?? activeTheme.value
+    const _theme = editingTheme.value ?? activeTheme.value
 
-    if (t) {
-      themeToForm(t)
+    if (_theme) {
+      themeToForm(_theme)
       applyPaletteLocal('dark', themeForm.value.dark)
       applyPaletteLocal('light', themeForm.value.light)
     }
@@ -104,11 +103,11 @@ export function useThemeEditorState() {
     }
 
     for (const key of THEME_SCALE_KEYS) {
-      scaleValues.value[key] = t?.[key] ?? SCALE_CONFIGS[key].defaultDb
+      scaleValues.value[key] = _theme?.[key] ?? SCALE_CONFIGS[key].defaultDb
       applyScale(key, scaleValues.value[key])
     }
 
-    customCss.value = t?.custom_css ?? ''
+    customCss.value = _theme?.custom_css ?? ''
     applyCustomCss(customCss.value)
     seeded.value = true
   }

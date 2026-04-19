@@ -258,7 +258,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
   @media screen and (min-width: $breakpoint-s) {
     &.editing {
-      right: var(--editor-width, 456px);
+      right: var(--editor-width);
       left: 0;
       width: auto;
     }
