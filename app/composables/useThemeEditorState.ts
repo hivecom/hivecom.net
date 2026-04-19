@@ -52,7 +52,7 @@ export function useThemeEditorState() {
   const seeded = useState<boolean>('theme-editor-seeded', () => false)
 
   // Controls whether the floating sidebar editor is visible in app.vue.
-  const floatingEditorVisible = useState<boolean>('theme-editor-visible', () => false)
+  const editorActive = useState<boolean>('theme-editor-visible', () => false)
 
   function seedPalette(prefix: ThemeType, target: Record<string, string>) {
     for (const key of VUI_COLOR_KEYS) {
@@ -129,7 +129,7 @@ export function useThemeEditorState() {
     customCss.value = ''
     editingTheme.value = null
     seeded.value = false
-    floatingEditorVisible.value = false
+    editorActive.value = false
   }
 
   return {
@@ -139,7 +139,7 @@ export function useThemeEditorState() {
     customCss,
     editingTheme,
     seeded,
-    floatingEditorVisible,
+    editorActive,
     seedPalette,
     applyPaletteLocal,
     themeToForm,

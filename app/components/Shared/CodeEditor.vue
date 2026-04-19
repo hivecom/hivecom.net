@@ -144,6 +144,7 @@ onMounted(async () => {
     folding: false,
     lineNumbersMinChars: 2,
     fixedOverflowWidgets: true,
+    fontSize: 12,
   })
 
   editor.onDidChangeModelContent(() => {

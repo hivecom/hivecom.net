@@ -3,19 +3,12 @@ import type { ThemeScaleKey } from '@/lib/theme'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Tab, Tabs, Textarea, theme, Tooltip } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
+import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS, VUI_DEFAULT_COLORS } from '@/lib/theme'
 import { normalizeErrors } from '@/lib/utils/formatting'
 import CodeEditorClient from '../Shared/CodeEditor.vue'
 import UserName from '../Shared/UserName.vue'
 
-interface Props {
-  floating?: boolean
-}
-
-const { floating } = defineProps<Props>()
-
 const emit = defineEmits<{
-  close: []
   saved: []
 }>()
 
@@ -33,7 +26,7 @@ const {
   customCss,
   editingTheme,
   seeded,
-  floatingEditorVisible,
+  editorActive,
   seedPalette,
   applyPaletteLocal,
   themeToForm,
@@ -42,7 +35,6 @@ const {
 } = useThemeEditorState()
 
 const activeType = computed<ThemeType>(() => theme.value === 'light' ? 'light' : 'dark')
-
 const userId = useUserId()
 
 // Submit-modal form fields - intentionally local/ephemeral, not shared.
@@ -153,17 +145,10 @@ function reset() {
 }
 
 function close() {
-  if (floating) {
-    // TODO: if we are in floating, close instead goes back to themes and reopens
-    // editor modal while persisting state
-  }
-  else {
-    applyTheme(activeTheme.value ?? null)
-    // Restore the active theme's custom CSS (respects allow_custom_css setting)
-    reapplyCustomCss()
-    clearEditorState()
-    emit('close')
-  }
+  applyTheme(activeTheme.value ?? null)
+  reapplyCustomCss()
+  clearEditorState()
+  editorActive.value = false
 }
 
 // DB operations
@@ -239,25 +224,23 @@ async function submitForm() {
 
     showSubmitModal.value = false
 
-    // In modal mode, clear state so the next open starts fresh.
-    // In floating/layout mode, keep state visible - the user is still browsing.
-    if (!floating) {
-      clearEditorState()
-    }
-
     emit('saved')
-    emit('close')
   }
+}
+
+function resetColor(colorKey: string) {
+  const col = `${activeType.value}_${colorKey.replace(HYPHEN_RE, '_')}` as keyof typeof editingTheme.value
+  const savedValue = editingTheme.value
+    ? editingTheme.value[col]
+    : VUI_DEFAULT_COLORS[activeType.value][colorKey]
+
+  if (savedValue)
+    onColorChange(colorKey, savedValue)
 }
 
 // Reusable template so the content can be moved to a Drawer on phone
 const [DefineControls, ThemeEditorControls] = createReusableTemplate()
 const isMobile = useBreakpoint('<s')
-
-function popEditorOut() {
-  emit('close')
-  floatingEditorVisible.value = true
-}
 </script>
 
 <template>
@@ -298,16 +281,6 @@ function popEditorOut() {
           </Tooltip>
 
           <!-- Pop editor out, not on phone -->
-          <Tooltip v-if="!isMobile && !floating">
-            <Button size="s" square @click="popEditorOut">
-              <Icon name="ph:arrow-square-out" />
-            </Button>
-            <template #tooltip>
-              <p style="max-width: 256px">
-                Popout editor. Browse the website while editing your theme
-              </p>
-            </template>
-          </Tooltip>
 
           <div class="flex-1" />
 
@@ -423,6 +396,11 @@ function popEditorOut() {
                   @input="onColorChange(colorKey, ($event.target as HTMLInputElement).value)"
                 >
                 <span>{{ colorKey }}</span>
+
+                <div class="flex-1" />
+                <Button square size="s" plain @click="resetColor(colorKey)">
+                  <Icon name="ph:arrow-clockwise" />
+                </Button>
               </label>
             </Flex>
           </div>
@@ -443,8 +421,8 @@ function popEditorOut() {
           </p>
         </div>
         <Flex x-end>
-          <Button size="s" plain variant="danger" @click="floating ? reset() : close()">
-            {{ floating ? 'Reset' : 'Cancel' }}
+          <Button size="s" plain variant="danger" @click="reset">
+            Reset
           </Button>
           <Button variant="accent" size="s" @click="openSubmitModal">
             Save
@@ -591,14 +569,28 @@ function popEditorOut() {
     gap: var(--space-xs);
     width: 100%;
     cursor: pointer;
+    position: relative;
     padding: var(--space-xxs);
 
     &:hover {
       background-color: var(--color-bg-raised);
+
+      .vui-button {
+        display: block;
+      }
     }
 
     span {
       font-size: var(--font-size-m);
+    }
+
+    // Hide button by default, show on hover
+    .vui-button {
+      display: none;
+      position: absolute;
+      right: 2px;
+      top: 50%;
+      transform: translateY(-50%);
     }
 
     input {

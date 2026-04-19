@@ -75,20 +75,20 @@ useLastSeenTracking()
 
 // Load and apply the user's custom theme (if any) from their profile
 const { pendingTheme, confirmPendingTheme } = useUserTheme()
-const { floatingEditorVisible } = useThemeEditorState()
+const { editorActive } = useThemeEditorState()
 </script>
 
 <template>
   <NuxtLoadingIndicator color="var(--color-accent)" />
 
-  <div class="app-shell" :class="{ 'theme-editing': floatingEditorVisible }">
+  <div class="app-shell" :class="{ 'theme-editing': editorActive }">
     <div vaul-drawer-wrapper>
       <NuxtLayout :name="layoutName">
         <NuxtPage />
       </NuxtLayout>
     </div>
 
-    <ThemeEditorControls v-if="floatingEditorVisible" floating />
+    <ThemeEditorControls v-if="editorActive" />
   </div>
 
   <ClientOnly>
@@ -113,6 +113,8 @@ const { floatingEditorVisible } = useThemeEditorState()
 </template>
 
 <style lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 /* Custom page transitions that work better with data fetching */
 .page-enter-active {
   transition: var(--transition);
@@ -144,21 +146,24 @@ const { floatingEditorVisible } = useThemeEditorState()
   overflow-y: auto;
 }
 
-.app-shell {
-  &.theme-editing {
-    position: relative;
-    // The actual vaul drawer houses the application. While editing, we force it
-    // to the screen and make it scrollable. This _could_ break some things, but
-    // it's only during theming so we can let that be
-    [vaul-drawer-wrapper] {
+// Two column layout unless on mobile
+@media screen and (min-width: $breakpoint-s) {
+  .app-shell {
+    &.theme-editing {
       position: relative;
-      overflow: hidden;
-      overflow-y: auto;
-      height: 100vh;
-    }
+      // The actual vaul drawer houses the application. While editing, we force it
+      // to the screen and make it scrollable. This _could_ break some things, but
+      // it's only during theming so we can let that be
+      [vaul-drawer-wrapper] {
+        position: relative;
+        overflow: hidden;
+        overflow-y: auto;
+        height: 100vh;
+      }
 
-    display: grid;
-    grid-template-columns: 1fr 456px;
+      display: grid;
+      grid-template-columns: 1fr var(--editor-width);
+    }
   }
 }
 </style>

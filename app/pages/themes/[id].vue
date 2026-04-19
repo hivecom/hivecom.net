@@ -9,16 +9,16 @@ import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import ThemeDetailColors from '@/components/Themes/ThemeDetailColors.vue'
 import ThemeDetailCss from '@/components/Themes/ThemeDetailCss.vue'
 import ThemeDetailTokens from '@/components/Themes/ThemeDetailTokens.vue'
-import ThemeEditor from '@/components/Themes/ThemeEditor.vue'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import ThemeSampleUI from '@/components/Themes/ThemeSampleUI.vue'
 import { DEFAULT_THEME, themeToScopedProperties } from '@/lib/theme'
 import { formatTimeAgo } from '@/lib/utils/date'
 
 const route = useRoute()
+const router = useRouter()
 const supabase = useSupabaseClient()
 const { setActiveTheme } = useUserTheme()
-const { seedEditor } = useThemeEditorState()
+const { seedEditor, editorActive } = useThemeEditorState()
 const userId = useUserId()
 
 const data = ref<Tables<'themes'> | null>(null)
@@ -27,11 +27,11 @@ const forks = ref<Tables<'themes'>[]>([])
 const userIds = ref<string[]>([])
 
 const activeTab = ref<'colors' | 'tokens' | 'css' | 'sample'>('colors')
-const editorOpen = ref(false)
 
 function openEditor() {
   seedEditor(data.value)
-  editorOpen.value = true
+  editorActive.value = true
+  router.push('/themes/sample')
 }
 
 const isDefaultTheme = computed(() => data.value?.id === '$default')
@@ -249,13 +249,6 @@ onBeforeMount(() => {
         </section>
       </template>
     </div>
-
-    <ThemeEditor
-      v-if="data && editorOpen"
-      open
-      @close="editorOpen = false"
-      @saved="editorOpen = false"
-    />
   </div>
 </template>
 
