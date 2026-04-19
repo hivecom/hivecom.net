@@ -88,7 +88,9 @@ const { editorActive } = useThemeEditorState()
       </NuxtLayout>
     </div>
 
-    <ThemeEditorControls v-if="editorActive" />
+    <div class="app-editor-container">
+      <ThemeEditorControls v-if="editorActive" />
+    </div>
   </div>
 
   <ClientOnly>
@@ -150,19 +152,13 @@ const { editorActive } = useThemeEditorState()
 @media screen and (min-width: $breakpoint-s) {
   .app-shell {
     &.theme-editing {
-      position: relative;
-      // The actual vaul drawer houses the application. While editing, we force it
-      // to the screen and make it scrollable. This _could_ break some things, but
-      // it's only during theming so we can let that be
-      [vaul-drawer-wrapper] {
-        position: relative;
-        overflow: hidden;
-        overflow-y: auto;
-        height: 100vh;
-      }
-
       display: grid;
       grid-template-columns: 1fr var(--editor-width);
+
+      .theme-editor__controls {
+        position: sticky;
+        top: 0;
+      }
     }
   }
 }
