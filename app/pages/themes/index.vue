@@ -13,13 +13,20 @@ const { activeTheme, setActiveTheme, selectedVariant, variantOptions } = useUser
 
 const isMobile = useBreakpoint('<s')
 
-const editedTheme = ref<Tables<'themes'> | null>(null)
+const { seedEditor } = useThemeEditorState()
+
 const themeEditorOpen = ref(false)
 const isCreatingTheme = ref(false)
 
-function onEditTheme(themeToEdit: Tables<'themes'>) {
-  editedTheme.value = themeToEdit
+function onEditTheme(themeToEdit?: Tables<'themes'> | null) {
+  seedEditor(themeToEdit)
   isCreatingTheme.value = false
+  themeEditorOpen.value = true
+}
+
+function createNewTheme() {
+  seedEditor(null)
+  isCreatingTheme.value = true
   themeEditorOpen.value = true
 }
 
@@ -28,8 +35,7 @@ function personalizeTheme() {
     onEditTheme(activeTheme.value)
   }
   else {
-    isCreatingTheme.value = true
-    themeEditorOpen.value = true
+    createNewTheme()
   }
 }
 
@@ -102,15 +108,14 @@ function onThemeSaved() {
 
       <ThemeGallery
         ref="galleryRef"
-        @create="isCreatingTheme = true; themeEditorOpen = true"
+        @create="createNewTheme"
         @edit="onEditTheme"
       />
 
       <ThemeEditor
         v-if="themeEditorOpen"
         open
-        :editing="editedTheme"
-        @close="themeEditorOpen = false; editedTheme = null; isCreatingTheme = false"
+        @close="themeEditorOpen = false; isCreatingTheme = false"
         @saved="onThemeSaved"
       />
     </ClientOnly>

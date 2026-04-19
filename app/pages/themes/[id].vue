@@ -18,6 +18,7 @@ import { formatTimeAgo } from '@/lib/utils/date'
 const route = useRoute()
 const supabase = useSupabaseClient()
 const { setActiveTheme } = useUserTheme()
+const { seedEditor } = useThemeEditorState()
 const userId = useUserId()
 
 const data = ref<Tables<'themes'> | null>(null)
@@ -27,6 +28,11 @@ const userIds = ref<string[]>([])
 
 const activeTab = ref<'colors' | 'tokens' | 'css' | 'sample'>('colors')
 const editorOpen = ref(false)
+
+function openEditor() {
+  seedEditor(data.value)
+  editorOpen.value = true
+}
 
 const isDefaultTheme = computed(() => data.value?.id === '$default')
 const isOwner = computed(() => !!userId.value && data.value?.created_by === userId.value)
@@ -130,10 +136,10 @@ onBeforeMount(() => {
           <Flex y-end x-start gap="xs">
             <UserDisplay v-if="data.created_by || data.is_official" :user-id="data.created_by" show-role size="s" />
             <div class="flex-1" />
-            <Button v-if="isOwner" square size="s" @click="editorOpen = true">
+            <Button v-if="isOwner" square size="s" @click="openEditor">
               <Icon name="ph:pencil-simple" />
             </Button>
-            <Button v-else-if="userId" size="s" @click="editorOpen = true">
+            <Button v-else-if="userId" size="s" @click="openEditor">
               <template #start>
                 <Icon name="ph:git-fork" />
               </template>
@@ -247,7 +253,6 @@ onBeforeMount(() => {
     <ThemeEditor
       v-if="data && editorOpen"
       open
-      :editing="data"
       @close="editorOpen = false"
       @saved="editorOpen = false"
     />

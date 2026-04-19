@@ -1,24 +1,18 @@
 <script setup lang="ts">
 import type { ThemeScaleKey } from '@/lib/theme'
-import type { Tables } from '@/types/database.overrides'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Tab, Tabs, Textarea, theme, Tooltip } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, getCssVarAsHex, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
+import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS } from '@/lib/theme'
 import { normalizeErrors } from '@/lib/utils/formatting'
 import CodeEditorClient from '../Shared/CodeEditor.vue'
 import UserName from '../Shared/UserName.vue'
 
 interface Props {
-  editing?: Tables<'themes'> | null
   floating?: boolean
 }
 
-const {
-  editing,
-  // TODO: for edit-as-you go controls
-  // floating,
-} = defineProps<Props>()
+const { floating } = defineProps<Props>()
 
 const emit = defineEmits<{
   close: []
@@ -32,26 +26,31 @@ type ThemeType = 'dark' | 'light'
 const { refresh } = useDataThemes()
 const { settings } = useDataUserSettings()
 const { activeTheme, reapplyCustomCss, applyCustomCss } = useUserTheme()
+const {
+  themeForm,
+  scaleValues,
+  activeTab,
+  customCss,
+  editingTheme,
+  seeded,
+  floatingEditorVisible,
+  seedPalette,
+  applyPaletteLocal,
+  themeToForm,
+  seedEditor,
+  clearEditorState,
+} = useThemeEditorState()
 
 const activeType = computed<ThemeType>(() => theme.value === 'light' ? 'light' : 'dark')
 
-// Tabs
-const activeTab = ref<'tokens' | 'css'>('tokens')
-
-// Forking / editing
 const userId = useUserId()
 
-const themeForm = reactive<Record<ThemeType, Record<string, string>>>({
-  light: {},
-  dark: {},
-})
-
+// Submit-modal form fields - intentionally local/ephemeral, not shared.
 const form = reactive({
   name: '',
   description: '',
   useAsCurrent: true,
   forked_from: null as string | null,
-  custom_css: '',
 })
 
 const { validate, errors } = useValidation(form, {
@@ -61,35 +60,12 @@ const { validate, errors } = useValidation(form, {
   autoclear: true,
 })
 
-const scaleValues = reactive<Record<ThemeScaleKey, number>>({
-  spacing: SCALE_CONFIGS.spacing.defaultDb,
-  rounding: SCALE_CONFIGS.rounding.defaultDb,
-  transitions: SCALE_CONFIGS.transitions.defaultDb,
-  widening: SCALE_CONFIGS.widening.defaultDb,
-})
-
-// Seed the theme from computed CSS vars into a target record
-function seedPalette(prefix: 'dark' | 'light', target: Record<string, string>) {
-  for (const key of VUI_COLOR_KEYS) {
-    const cssVar = `--${prefix}-color-${key}`
-    target[key] = getCssVarAsHex(cssVar)
-  }
-}
-
-// Apply a palette record to the DOM
-function applyPaletteLocal(prefix: 'dark' | 'light', source: Record<string, string>) {
-  for (const key of VUI_COLOR_KEYS) {
-    if (source[key] != null)
-      document.documentElement.style.setProperty(`--${prefix}-color-${key}`, source[key])
-  }
-}
-
 // When the user toggles dark/light, re-seed the newly active palette from
 // computed styles (so we pick up VUI defaults for keys we haven't touched),
 // then re-apply any overrides we had stored for that palette.
 watch(activeType, (prefix) => {
   nextTick(() => {
-    const target = themeForm[prefix]
+    const target = themeForm.value[prefix]
     seedPalette(prefix, target)
     applyPaletteLocal(prefix, target)
   })
@@ -97,108 +73,76 @@ watch(activeType, (prefix) => {
 
 // Immediately update CSS on the document to reflect the color change
 function onColorChange(key: string, value: string) {
-  themeForm[activeType.value][key] = value
-  const cssVar = `--${activeType.value}-color-${key}`
-  document.documentElement.style.setProperty(cssVar, value)
+  themeForm.value[activeType.value][key] = value
+  document.documentElement.style.setProperty(`--${activeType.value}-color-${key}`, value)
 }
 
 // Formatted display percentage for a given scale key
 function scaleDisplay(key: ThemeScaleKey): string {
-  return `${Math.round(dbToPercent(scaleValues[key], key))}%`
+  return `${Math.round(dbToPercent(scaleValues.value[key], key))}%`
 }
 
 // Compute --range-progress style for a range input
 function rangeProgressStyle(key: ThemeScaleKey): Record<string, string> {
-  return { '--range-progress': `${scaleValues[key]}%` }
+  return { '--range-progress': `${scaleValues.value[key]}%` }
 }
 
 // Called when a range slider changes
 function onScaleChange(key: ThemeScaleKey, value: number) {
   const intValue = Math.round(value)
-  scaleValues[key] = intValue
+  scaleValues.value[key] = intValue
   applyScale(key, intValue)
 }
 
 const showCustomCSSWarning = ref(false)
 
 onMounted(() => {
-  seed()
+  // Only seed on first mount; if seeded=true, shared state is already live
+  // (e.g. switching from modal to layout mode, or re-opening after seedEditor
+  // was called by the parent before mounting).
+  if (!seeded.value) {
+    seedEditor()
+  }
 
   if (settings.value && !settings.value.allow_custom_css) {
     showCustomCSSWarning.value = true
   }
 })
 
-// Seed all editor state (colors + scales + custom CSS) from the editing prop or active theme
-function seed() {
-  const t = editing ?? activeTheme.value
-
-  if (t) {
-    for (const key of VUI_COLOR_KEYS) {
-      const darkCol = `dark_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
-      const lightCol = `light_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
-      if (t[darkCol] != null)
-        themeForm.dark[key] = t[darkCol] as string
-      if (t[lightCol] != null)
-        themeForm.light[key] = t[lightCol] as string
-    }
-    applyPaletteLocal('dark', themeForm.dark)
-    applyPaletteLocal('light', themeForm.light)
-  }
-  else {
-    seedPalette('dark', themeForm.dark)
-    seedPalette('light', themeForm.light)
-  }
-
-  for (const key of THEME_SCALE_KEYS) {
-    scaleValues[key] = t?.[key] ?? SCALE_CONFIGS[key].defaultDb
-  }
-
-  // Seed and immediately apply custom CSS from the seeded theme
-  form.custom_css = t?.custom_css ?? ''
-  applyCustomCss(form.custom_css)
-}
-
 // Apply custom CSS as the user types.
-watch(() => form.custom_css, (css) => {
+watch(customCss, (css) => {
   applyCustomCss(css)
 })
 
 function reset() {
-  if (editing) {
+  if (editingTheme.value) {
     // Restore to the saved state of the theme being edited
-    for (const key of VUI_COLOR_KEYS) {
-      const darkCol = `dark_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
-      const lightCol = `light_${key.replace(HYPHEN_RE, '_')}` as keyof Tables<'themes'>
-      if (editing[darkCol] != null)
-        themeForm.dark[key] = editing[darkCol] as string
-      if (editing[lightCol] != null)
-        themeForm.light[key] = editing[lightCol] as string
-    }
-    applyPaletteLocal('dark', themeForm.dark)
-    applyPaletteLocal('light', themeForm.light)
+    themeToForm(editingTheme.value)
+    applyPaletteLocal('dark', themeForm.value.dark)
+    applyPaletteLocal('light', themeForm.value.light)
 
     for (const key of THEME_SCALE_KEYS) {
-      scaleValues[key] = editing[key] ?? SCALE_CONFIGS[key].defaultDb
-      applyScale(key, scaleValues[key])
+      scaleValues.value[key] = editingTheme.value[key] ?? SCALE_CONFIGS[key].defaultDb
+      applyScale(key, scaleValues.value[key])
     }
+
+    customCss.value = editingTheme.value.custom_css ?? ''
   }
   else {
     applyTheme(null)
 
     for (const key of THEME_SCALE_KEYS) {
-      scaleValues[key] = SCALE_CONFIGS[key].defaultDb
-      applyScale(key, scaleValues[key])
+      scaleValues.value[key] = SCALE_CONFIGS[key].defaultDb
+      applyScale(key, scaleValues.value[key])
     }
 
-    seedPalette('dark', themeForm.dark)
-    seedPalette('light', themeForm.light)
-    applyPaletteLocal('dark', themeForm.dark)
-    applyPaletteLocal('light', themeForm.light)
-  }
+    seedPalette('dark', themeForm.value.dark)
+    seedPalette('light', themeForm.value.light)
+    applyPaletteLocal('dark', themeForm.value.dark)
+    applyPaletteLocal('light', themeForm.value.light)
 
-  // Reset custom CSS to the editing theme's saved state (or clear for new themes)
-  form.custom_css = editing?.custom_css ?? ''
+    customCss.value = ''
+  }
 
   Object.assign(form, {
     name: '',
@@ -209,10 +153,17 @@ function reset() {
 }
 
 function close() {
-  applyTheme(activeTheme.value ?? null)
-  // Restore the active theme's custom CSS (respects allow_custom_css setting)
-  reapplyCustomCss()
-  emit('close')
+  if (floating) {
+    // TODO: if we are in floating, close instead goes back to themes and reopens
+    // editor modal while persisting state
+  }
+  else {
+    applyTheme(activeTheme.value ?? null)
+    // Restore the active theme's custom CSS (respects allow_custom_css setting)
+    reapplyCustomCss()
+    clearEditorState()
+    emit('close')
+  }
 }
 
 // DB operations
@@ -223,15 +174,15 @@ const submitLoading = ref(false)
 const submitError = ref('')
 
 function openSubmitModal() {
-  if (editing) {
+  if (editingTheme.value) {
     // Editing my own theme -> prefill name & description
-    if (editing.created_by === userId.value) {
-      form.name = editing?.name ?? ''
-      form.description = editing?.description ?? ''
+    if (editingTheme.value.created_by === userId.value) {
+      form.name = editingTheme.value.name ?? ''
+      form.description = editingTheme.value.description ?? ''
     }
-    // Forking someone else's theme -> prefill nothing and set the original theme as the fork source
+    // Forking someone else's theme -> set the original theme as the fork source
     else {
-      form.forked_from = editing.id
+      form.forked_from = editingTheme.value.id
     }
   }
 
@@ -248,22 +199,22 @@ async function submitForm() {
   submitLoading.value = true
 
   const payload: Record<string, string | number | null> = {
-    // If editing an existing theme that I own, update that theme. Otherwise, create a new theme (optionally as a fork).
-    ...(editing && editing.created_by === userId.value && { id: editing.id }),
+    // Update the theme if we own it, otherwise create a new one (optionally as a fork).
+    ...(editingTheme.value && editingTheme.value.created_by === userId.value && { id: editingTheme.value.id }),
     ...(form.forked_from && { forked_from: form.forked_from }),
     name: form.name,
     description: form.description,
-    custom_css: form.custom_css || '',
-    spacing: scaleValues.spacing,
-    rounding: scaleValues.rounding,
-    transitions: scaleValues.transitions,
-    widening: scaleValues.widening,
+    custom_css: customCss.value || '',
+    spacing: scaleValues.value.spacing,
+    rounding: scaleValues.value.rounding,
+    transitions: scaleValues.value.transitions,
+    widening: scaleValues.value.widening,
   }
 
   for (const key of VUI_COLOR_KEYS) {
     const col = key.replace(HYPHEN_RE, '_')
-    payload[`dark_${col}`] = themeForm.dark[key] ?? ''
-    payload[`light_${col}`] = themeForm.light[key] ?? ''
+    payload[`dark_${col}`] = themeForm.value.dark[key] ?? ''
+    payload[`light_${col}`] = themeForm.value.light[key] ?? ''
   }
 
   const { error } = await supabase
@@ -281,13 +232,19 @@ async function submitForm() {
     refresh()
 
     if (form.useAsCurrent) {
-      applyPaletteLocal('dark', themeForm.dark)
-      applyPaletteLocal('light', themeForm.light)
-      // Keep the custom CSS that was previewed during editing applied
-      applyCustomCss(form.custom_css)
+      applyPaletteLocal('dark', themeForm.value.dark)
+      applyPaletteLocal('light', themeForm.value.light)
+      applyCustomCss(customCss.value)
     }
 
     showSubmitModal.value = false
+
+    // In modal mode, clear state so the next open starts fresh.
+    // In floating/layout mode, keep state visible - the user is still browsing.
+    if (!floating) {
+      clearEditorState()
+    }
+
     emit('saved')
     emit('close')
   }
@@ -296,6 +253,11 @@ async function submitForm() {
 // Reusable template so the content can be moved to a Drawer on phone
 const [DefineControls, ThemeEditorControls] = createReusableTemplate()
 const isMobile = useBreakpoint('<s')
+
+function popEditorOut() {
+  emit('close')
+  floatingEditorVisible.value = true
+}
 </script>
 
 <template>
@@ -335,17 +297,17 @@ const isMobile = useBreakpoint('<s')
             </template>
           </Tooltip>
 
-          <!-- TODO: enable later -->
-          <!-- <Tooltip>
-          <Button size="s" square @click="reset">
-            <Icon name="ph:arrow-square-out" />
-          </Button>
-          <template #tooltip>
-            <p style="max-width: 256px">
-              Popout editor. Browse the website while editing your theme
-            </p>
-          </template>
-        </Tooltip> -->
+          <!-- Pop editor out, not on phone -->
+          <Tooltip v-if="!isMobile && !floating">
+            <Button size="s" square @click="popEditorOut">
+              <Icon name="ph:arrow-square-out" />
+            </Button>
+            <template #tooltip>
+              <p style="max-width: 256px">
+                Popout editor. Browse the website while editing your theme
+              </p>
+            </template>
+          </Tooltip>
 
           <div class="flex-1" />
 
@@ -372,7 +334,7 @@ const isMobile = useBreakpoint('<s')
       <div class="theme-editor__groups--outer">
         <!-- CSS editor -->
         <div v-show="activeTab === 'css'" class="theme-editor__groups--inner">
-          <CodeEditorClient v-model="form.custom_css" :focused="activeTab === 'css'" />
+          <CodeEditorClient v-model="customCss" :focused="activeTab === 'css'" />
         </div>
 
         <!-- Token editor -->
@@ -481,8 +443,8 @@ const isMobile = useBreakpoint('<s')
           </p>
         </div>
         <Flex x-end>
-          <Button size="s" plain variant="danger" @click="close">
-            Cancel
+          <Button size="s" plain variant="danger" @click="floating ? reset() : close()">
+            {{ floating ? 'Reset' : 'Cancel' }}
           </Button>
           <Button variant="accent" size="s" @click="openSubmitModal">
             Save
@@ -526,8 +488,8 @@ const isMobile = useBreakpoint('<s')
 
         <Alert v-if="form.forked_from" variant="info" filled icon-align="start">
           <p>
-            This theme is based on {{ editing?.name }} created by
-            <b><UserName inherit :user-id="editing?.created_by" /></b>
+            This theme is based on {{ editingTheme?.name }} created by
+            <b><UserName inherit :user-id="editingTheme?.created_by" /></b>
           </p>
         </Alert>
 
@@ -561,7 +523,7 @@ const isMobile = useBreakpoint('<s')
             Close
           </Button>
           <Button variant="accent" :loading="submitLoading" @click="submitForm">
-            {{ editing ? 'Save' : 'Publish' }}
+            {{ editingTheme ? 'Save' : 'Publish' }}
           </Button>
         </Flex>
       </template>

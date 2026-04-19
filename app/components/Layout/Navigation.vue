@@ -10,6 +10,7 @@ import NotificationSheet from './NotificationSheet.vue'
 import UserDropdown from './UserDropdown.vue'
 import UserSheet from './UserSheet.vue'
 
+const { floatingEditorVisible } = useThemeEditorState()
 const { openCommand } = useCommand()
 
 const isMac = import.meta.client && /Mac/i.test(navigator.platform)
@@ -81,7 +82,10 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 </script>
 
 <template>
-  <nav class="navigation" :class="{ landing: route.path === '/' }">
+  <nav
+    class="navigation" :class="{ landing: route.path === '/',
+                                 editing: floatingEditorVisible }"
+  >
     <DefineSearchButton>
       <Tooltip :disabled="isMobile">
         <Button square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded" @click="openCommand()">
@@ -249,6 +253,13 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
   background-color: var(--color-bg);
   z-index: var(--z-nav); // Make sure the nav is main content
   border-bottom: 1px solid var(--color-border);
+
+  &.editing {
+    right: var(--editor-width, 456px);
+    left: 0;
+    width: auto;
+    // width: auto;
+  }
 
   &__items {
     display: flex;

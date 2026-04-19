@@ -3,6 +3,7 @@ import { Toasts } from '@dolanske/vui'
 import { computed } from 'vue'
 import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
+import ThemeEditorControls from '@/components/Themes/ThemeEditorControls.vue'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { useLastSeenTracking } from '@/lib/lastSeen'
 import ConfirmModal from './components/Shared/ConfirmModal.vue'
@@ -74,23 +75,29 @@ useLastSeenTracking()
 
 // Load and apply the user's custom theme (if any) from their profile
 const { pendingTheme, confirmPendingTheme } = useUserTheme()
+const { floatingEditorVisible } = useThemeEditorState()
 </script>
 
 <template>
   <NuxtLoadingIndicator color="var(--color-accent)" />
 
-  <div vaul-drawer-wrapper>
-    <NuxtLayout :name="layoutName">
-      <NuxtPage />
-    </NuxtLayout>
+  <div class="app-shell" :class="{ 'theme-editing': floatingEditorVisible }">
+    <div vaul-drawer-wrapper>
+      <NuxtLayout :name="layoutName">
+        <NuxtPage />
+      </NuxtLayout>
+    </div>
+
+    <ThemeEditorControls v-if="floatingEditorVisible" floating />
   </div>
 
   <ClientOnly>
     <Toasts />
   </ClientOnly>
+
+  <!-- Global always present components -->
   <LayoutLoading />
   <Command />
-
   <ConfirmModal
     :open="!!pendingTheme"
     title="Apply theme with custom CSS?"
@@ -105,7 +112,7 @@ const { pendingTheme, confirmPendingTheme } = useUserTheme()
   </ConfirmModal>
 </template>
 
-<style>
+<style lang="scss">
 /* Custom page transitions that work better with data fetching */
 .page-enter-active {
   transition: var(--transition);
@@ -135,5 +142,23 @@ const { pendingTheme, confirmPendingTheme } = useUserTheme()
 .theme-custom-css-viewer {
   max-height: 328px;
   overflow-y: auto;
+}
+
+.app-shell {
+  &.theme-editing {
+    position: relative;
+    // The actual vaul drawer houses the application. While editing, we force it
+    // to the screen and make it scrollable. This _could_ break some things, but
+    // it's only during theming so we can let that be
+    [vaul-drawer-wrapper] {
+      position: relative;
+      overflow: hidden;
+      overflow-y: auto;
+      height: 100vh;
+    }
+
+    display: grid;
+    grid-template-columns: 1fr 456px;
+  }
 }
 </style>

@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.overrides'
 import { Modal } from '@dolanske/vui'
 import ThemeEditorControls from './ThemeEditorControls.vue'
 import ThemeSampleUI from './ThemeSampleUI.vue'
 
 interface Props {
   open: boolean
-  editing?: Tables<'themes'> | null
 }
 
-const { open, editing } = defineProps<Props>()
+const { open } = defineProps<Props>()
 
 const emit = defineEmits<{
   close: []
@@ -26,7 +24,6 @@ const emit = defineEmits<{
 
       <ThemeEditorControls
         v-if="open"
-        :editing
         @close="emit('close')"
         @saved="emit('saved'); emit('close')"
       />
