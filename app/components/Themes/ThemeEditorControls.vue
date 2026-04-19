@@ -538,6 +538,8 @@ const isMobile = useBreakpoint('<s')
   &__header {
     padding: var(--space-m);
     border-bottom: 1px solid var(--color-border);
+    position: relative;
+    padding-bottom: 48px;
   }
 
   &__group {
@@ -640,7 +642,8 @@ const isMobile = useBreakpoint('<s')
   }
 
   &__tabs {
-    margin-bottom: -17px;
+    position: absolute;
+    bottom: -1px;
     margin-top: var(--space-xs);
   }
 }
