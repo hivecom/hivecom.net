@@ -225,15 +225,19 @@ if (props.item.forked_from) {
 
     .theme-menu__card--context {
       visibility: visible;
+      top: 8px;
+      opacity: 1;
     }
   }
 
   &--context {
     position: absolute;
-    top: 8px;
+    top: 16px;
     right: 8px;
     z-index: 10;
     visibility: hidden;
+    transition: var(--transition-fast);
+    opacity: 0;
   }
 
   &--preview {
