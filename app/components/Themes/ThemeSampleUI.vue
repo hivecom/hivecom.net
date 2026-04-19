@@ -37,7 +37,7 @@ const props = defineProps<{
         </p>
 
         <Flex column class="mb-l" gap="m">
-          <Flex>
+          <Flex wrap>
             <Badge variant="accent" outline>
               Accent
             </Badge>
@@ -58,7 +58,7 @@ const props = defineProps<{
             </Badge>
           </Flex>
 
-          <Flex>
+          <Flex wrap>
             <Badge variant="accent">
               Accent
             </Badge>
@@ -79,7 +79,7 @@ const props = defineProps<{
             </Badge>
           </Flex>
 
-          <Flex>
+          <Flex wrap>
             <Badge variant="accent" filled>
               Accent
             </Badge>

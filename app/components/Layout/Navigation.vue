@@ -253,13 +253,14 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
   background-color: var(--color-bg);
   z-index: var(--z-nav); // Make sure the nav is main content
   border-bottom: 1px solid var(--color-border);
+  container-type: inline-size;
+  container-name: navigation;
 
   @media screen and (min-width: $breakpoint-s) {
     &.editing {
       right: var(--editor-width, 456px);
       left: 0;
       width: auto;
-      // width: auto;
     }
   }
 
@@ -583,7 +584,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 }
 
 /* We make a custom breakpoint here simply because the navigation is a bit of an edge case */
-@media (max-width: 920px) {
+@container navigation (max-width: 920px) {
   .navigation {
     &__items {
       justify-content: space-between;
@@ -627,7 +628,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
   }
 }
 
-@media screen and (max-width: $breakpoint-vui-mobile) {
+@container navigation (max-width: #{$breakpoint-vui-mobile}) {
   .navigation {
     &__mobile-menu {
       gap: var(--space-xs);

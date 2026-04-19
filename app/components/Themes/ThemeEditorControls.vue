@@ -297,7 +297,7 @@ const isMobile = useBreakpoint('<s')
           <Tab value="tokens">
             Tokens
           </Tab>
-          <Tab value="css">
+          <Tab v-if="!isMobile" value="css">
             CSS
           </Tab>
         </Tabs>
@@ -306,7 +306,7 @@ const isMobile = useBreakpoint('<s')
       <!-- Scrollable color + scale list -->
       <div class="theme-editor__groups--outer">
         <!-- CSS editor -->
-        <div v-show="activeTab === 'css'" class="theme-editor__groups--inner">
+        <div v-if="!isMobile" v-show="activeTab === 'css'" class="theme-editor__groups--inner">
           <CodeEditorClient v-model="customCss" :focused="activeTab === 'css'" />
         </div>
 
