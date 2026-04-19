@@ -1,46 +1,18 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.overrides'
 import { Button, ButtonGroup, Card, Flex, Grid, Select, Tooltip } from '@dolanske/vui'
-import ThemeEditor from '@/components/Themes/ThemeEditor.vue'
 import ThemeGallery from '@/components/Themes/ThemeGallery.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-const galleryRef = ref<InstanceType<typeof ThemeGallery> | null>(null)
-
-// Placeholder theme options for the planned Theme selector
-// const { themes, loading: themesLoading } = useDataThemes()
 const { activeTheme, setActiveTheme, selectedVariant, variantOptions } = useUserTheme()
+const { seedEditor, editorActive } = useThemeEditorState()
 
 const isMobile = useBreakpoint('<s')
+const router = useRouter()
 
-const editedTheme = ref<Tables<'themes'> | null>(null)
-const themeEditorOpen = ref(false)
-const isCreatingTheme = ref(false)
-
-function onEditTheme(themeToEdit: Tables<'themes'>) {
-  editedTheme.value = themeToEdit
-  isCreatingTheme.value = false
-  themeEditorOpen.value = true
-}
-
-function personalizeTheme() {
-  if (activeTheme.value) {
-    onEditTheme(activeTheme.value)
-  }
-  else {
-    isCreatingTheme.value = true
-    themeEditorOpen.value = true
-  }
-}
-
-function onThemeSaved() {
-  if (isCreatingTheme.value) {
-    galleryRef.value?.refresh()
-    galleryRef.value?.switchToCreated()
-  }
-  else {
-    galleryRef.value?.refresh()
-  }
+function openEditor(theme?: Parameters<typeof seedEditor>[0]) {
+  seedEditor(theme ?? null)
+  editorActive.value = true
+  router.push('/themes/sample')
 }
 </script>
 
@@ -68,7 +40,7 @@ function onThemeSaved() {
               <strong class="text-semibold text-color-accent mr-xs">{{ activeTheme?.name ?? 'Default' }}</strong>
               <ButtonGroup :gap="2">
                 <Tooltip>
-                  <Button size="s" :square="isMobile" @click="personalizeTheme()">
+                  <Button size="s" :square="isMobile" @click="openEditor(activeTheme ?? null)">
                     <Icon v-if="isMobile" name="ph:pen" />
                     <template #start>
                       <Icon v-if="!isMobile" name="ph:pen" />
@@ -101,17 +73,8 @@ function onThemeSaved() {
       </Card>
 
       <ThemeGallery
-        ref="galleryRef"
-        @create="isCreatingTheme = true; themeEditorOpen = true"
-        @edit="onEditTheme"
-      />
-
-      <ThemeEditor
-        v-if="themeEditorOpen"
-        open
-        :editing="editedTheme"
-        @close="themeEditorOpen = false; editedTheme = null; isCreatingTheme = false"
-        @saved="onThemeSaved"
+        @create="openEditor(null)"
+        @edit="openEditor"
       />
     </ClientOnly>
   </div>

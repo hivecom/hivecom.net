@@ -126,7 +126,7 @@ if (props.item.forked_from) {
                 <Icon name="ph:dots-three-bold" :size="18" />
               </Button>
             </template>
-            <DropdownItem v-if="isOwner" @click="emit('edit')">
+            <DropdownItem v-if="isOwner || isAdmin" @click="emit('edit')">
               Edit
             </DropdownItem>
             <DropdownItem v-if="!props.item.is_unmaintained && !props.item.is_official" @click="confirmDeprecate = true">

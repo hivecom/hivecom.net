@@ -88,7 +88,7 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
       @close="open = false"
     >
       <template #header>
-        <Flex x-between y-center expand class="mb-s">
+        <Flex x-between y-center expand class="notification-menu__header">
           <h4>Notifications</h4>
           <Flex v-if="isDev" y-center gap="xs" class="mr-xxs">
             <Button
@@ -203,9 +203,15 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
 .notification-menu {
   position: relative;
 
+  &__header {
+    padding-bottom: 40px;
+    position: relative;
+  }
+
   // Aligns tabs with the header boreder (12px + 1px border)
   &__tabs {
-    margin-bottom: -13px;
+    position: absolute;
+    bottom: -1px;
   }
 
   &__badge {

@@ -32,9 +32,9 @@ const meshStyle = computed(() => {
   // const { theme } = props
   const colors = [
     props.theme[`${theme.value as ThemeVariant}_accent`],
-    props.theme[`${theme.value as ThemeVariant}_text_blue`],
     props.theme[`${theme.value as ThemeVariant}_text_yellow`],
     props.theme[`${theme.value as ThemeVariant}_text_red`],
+    props.theme[`${theme.value as ThemeVariant}_text_blue`],
   ]
 
   const rng = seededRng(hashSeed(props.theme.id))
@@ -46,7 +46,7 @@ const meshStyle = computed(() => {
   const px = SIZE_PX[props.size] ?? 40
 
   return {
-    background: [...gradients, props.theme.dark_bg].join(', '),
+    background: [...gradients, props.theme[`${theme.value as ThemeVariant}_bg_lowered`]].join(', '),
     width: `${px}px`,
     height: `${px}px`,
     borderRadius: `var(--border-radius-${props.size})`,

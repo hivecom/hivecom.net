@@ -60,8 +60,10 @@ export function useUserTheme() {
   function applyCustomCss(raw: string | null | undefined): void {
     const sanitized = sanitizeCustomCss(raw)
     customCssContent.value = sanitized
-    if (sanitized)
+
+    if (sanitized) {
       loadStyleTag()
+    }
   }
 
   interface ThemeOption { label: string, value: string | null }
@@ -277,8 +279,12 @@ export function useUserTheme() {
     confirmPendingTheme,
     applyCustomCss,
     reapplyCustomCss,
+    // Options for the theme selector dropdown. Specifically formatted to be used with
+    // vui's <Select /> component
     themeOptions,
     selectedTheme,
+    // Light / dark theme toggle options & state. Specifically formatted to be
+    // used with vui's <Select /> component
     variantOptions,
     selectedVariant,
   }

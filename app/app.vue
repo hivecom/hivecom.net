@@ -3,6 +3,7 @@ import { Toasts } from '@dolanske/vui'
 import { computed } from 'vue'
 import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
+import ThemeEditorControls from '@/components/Themes/ThemeEditorControls.vue'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { useLastSeenTracking } from '@/lib/lastSeen'
 import ConfirmModal from './components/Shared/ConfirmModal.vue'
@@ -74,23 +75,31 @@ useLastSeenTracking()
 
 // Load and apply the user's custom theme (if any) from their profile
 const { pendingTheme, confirmPendingTheme } = useUserTheme()
+const { editorActive } = useThemeEditorState()
 </script>
 
 <template>
   <NuxtLoadingIndicator color="var(--color-accent)" />
 
-  <div vaul-drawer-wrapper>
-    <NuxtLayout :name="layoutName">
-      <NuxtPage />
-    </NuxtLayout>
+  <div class="app-shell" :class="{ 'theme-editing': editorActive }">
+    <div vaul-drawer-wrapper>
+      <NuxtLayout :name="layoutName">
+        <NuxtPage />
+      </NuxtLayout>
+    </div>
+
+    <div class="app-editor-container">
+      <ThemeEditorControls v-if="editorActive" />
+    </div>
   </div>
 
   <ClientOnly>
     <Toasts />
   </ClientOnly>
+
+  <!-- Global always present components -->
   <LayoutLoading />
   <Command />
-
   <ConfirmModal
     :open="!!pendingTheme"
     title="Apply theme with custom CSS?"
@@ -105,7 +114,9 @@ const { pendingTheme, confirmPendingTheme } = useUserTheme()
   </ConfirmModal>
 </template>
 
-<style>
+<style lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 /* Custom page transitions that work better with data fetching */
 .page-enter-active {
   transition: var(--transition);
@@ -135,5 +146,20 @@ const { pendingTheme, confirmPendingTheme } = useUserTheme()
 .theme-custom-css-viewer {
   max-height: 328px;
   overflow-y: auto;
+}
+
+// Two column layout unless on mobile
+@media screen and (min-width: $breakpoint-s) {
+  .app-shell {
+    &.theme-editing {
+      display: grid;
+      grid-template-columns: 1fr var(--editor-width);
+
+      .theme-editor__controls {
+        position: sticky;
+        top: 0;
+      }
+    }
+  }
 }
 </style>
