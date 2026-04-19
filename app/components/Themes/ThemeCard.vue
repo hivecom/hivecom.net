@@ -7,6 +7,7 @@ import ConfirmModal from '../Shared/ConfirmModal.vue'
 import TinyBadge from '../Shared/TinyBadge.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
 import UserName from '../Shared/UserName.vue'
+import ThemeIcon from './ThemeIcon.vue'
 
 const props = defineProps<{
   item: Tables<'themes'>
@@ -61,6 +62,31 @@ if (props.item.forked_from) {
       Deprecated
     </TinyBadge>
 
+    <ButtonGroup :gap="2" class="theme-menu__card--context">
+      <Button size="s" @click.prevent.stop="emit('apply')">
+        <template #start>
+          <Icon name="ph:paint-brush-fill" :size="16" />
+        </template>
+        Apply
+      </Button>
+      <Dropdown v-if="canSeeDropdown && !props.item.is_official">
+        <template #trigger="{ toggle, isOpen }">
+          <Button size="s" square :class="{ active: isOpen }" @click.prevent.stop="toggle">
+            <Icon name="ph:dots-three-bold" :size="18" />
+          </Button>
+        </template>
+        <DropdownItem v-if="isOwner || isAdmin" @click="emit('edit')">
+          Edit
+        </DropdownItem>
+        <DropdownItem v-if="!props.item.is_unmaintained && !props.item.is_official" @click="confirmDeprecate = true">
+          Deprecate
+        </DropdownItem>
+        <DropdownItem v-if="isAdmin && props.item.is_unmaintained" class="text-danger" @click="confirmDelete = true">
+          Delete
+        </DropdownItem>
+      </Dropdown>
+    </ButtonGroup>
+
     <div class="theme-menu__card--preview" :style="themeToScopedProperties(props.item, theme === 'light' ? 'light' : 'dark')">
       <Card>
         <template #header>
@@ -94,50 +120,28 @@ if (props.item.forked_from) {
 
     <!-- Theme metadata -->
     <div class="theme-menu__card--content">
-      <strong>{{ props.item.name }}</strong>
-      <p v-if="props.item.description">
-        {{ props.item.description }}
-      </p>
-      <div class="flex-1" />
-      <Flex start class="mt-m" gap="xs" y-center>
-        <UserDisplay :user-id="props.item.created_by" size="s" :show-role="false" />
-
-        <Tooltip v-if="props.item.forked_from">
-          <Icon name="ph:git-fork" :size="20" />
-          <template #tooltip>
-            <p v-if="fork" style="max-width:256px">
-              This theme is based on {{ fork.name }} created by
-              <b><UserName inherit :user-id="fork.created_by" /></b>
-            </p>
-          </template>
-        </Tooltip>
-
-        <div class="flex-1" />
-        <ButtonGroup :gap="2">
-          <Button size="s" @click.prevent.stop="emit('apply')">
-            <template #start>
-              <Icon name="ph:paint-brush-fill" :size="16" />
+      <Flex x-start y-start>
+        <ThemeIcon size="l" :theme="props.item" />
+        <div class="flex-1 pr-m">
+          <strong>{{ props.item.name }}</strong>
+          <p v-if="props.item.description">
+            {{ props.item.description }}
+          </p>
+        </div>
+        <Flex y-center gap="xxs">
+          <UserDisplay :user-id="props.item.created_by" size="s" :show-role="false" />
+          <Tooltip v-if="props.item.forked_from">
+            <Icon name="ph:git-fork" :size="20" />
+            <template #tooltip>
+              <p v-if="fork" style="max-width:256px">
+                This theme is based on {{ fork.name }} created by
+                <b><UserName inherit :user-id="fork.created_by" /></b>
+              </p>
             </template>
-            Apply
-          </Button>
-          <Dropdown v-if="canSeeDropdown && !props.item.is_official">
-            <template #trigger="{ toggle, isOpen }">
-              <Button size="s" square :class="{ active: isOpen }" @click.prevent.stop="toggle">
-                <Icon name="ph:dots-three-bold" :size="18" />
-              </Button>
-            </template>
-            <DropdownItem v-if="isOwner || isAdmin" @click="emit('edit')">
-              Edit
-            </DropdownItem>
-            <DropdownItem v-if="!props.item.is_unmaintained && !props.item.is_official" @click="confirmDeprecate = true">
-              Deprecate
-            </DropdownItem>
-            <DropdownItem v-if="isAdmin && props.item.is_unmaintained" class="text-danger" @click="confirmDelete = true">
-              Delete
-            </DropdownItem>
-          </Dropdown>
-        </ButtonGroup>
+          </Tooltip>
+        </Flex>
       </Flex>
+      <div class="flex-1" />
     </div>
   </NuxtLink>
 
@@ -208,6 +212,7 @@ if (props.item.forked_from) {
 
   &.active {
     border-color: var(--color-bg-accent-lowered);
+    // border-color: var(--color-text-lightest);
   }
 
   &:has(.vui-button.active),
@@ -218,11 +223,17 @@ if (props.item.forked_from) {
       }
     }
 
-    .theme-menu__card--content {
-      :deep(.vui-button) {
-        visibility: visible;
-      }
+    .theme-menu__card--context {
+      visibility: visible;
     }
+  }
+
+  &--context {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    visibility: hidden;
   }
 
   &--preview {
@@ -232,7 +243,7 @@ if (props.item.forked_from) {
     position: relative;
     background-color: var(--color-bg-lowered);
     z-index: 1;
-    opacity: 0.75;
+    opacity: 0.55;
     pointer-events: none;
     user-select: none;
 
@@ -299,11 +310,9 @@ if (props.item.forked_from) {
     }
 
     p {
-      font-size: var(--font-size-s);
+      font-size: var(--font-size-m);
       color: var(--color-text-lighter);
-      margin-top: var(--space-s);
-      height: 36px;
-      @include line-clamp(2);
+      margin-top: var(--space-xxs);
     }
   }
 }

@@ -155,8 +155,13 @@ const { editorActive } = useThemeEditorState()
       display: grid;
       grid-template-columns: 1fr var(--editor-width);
 
+      [vaul-drawer-wrapper] {
+        overflow-x: hidden;
+      }
+
       .theme-editor__controls {
         position: sticky;
+        z-index: 500;
         top: 0;
       }
     }

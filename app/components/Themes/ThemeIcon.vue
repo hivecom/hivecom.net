@@ -7,7 +7,7 @@ import { hashSeed } from '@/lib/utils/random'
 
 interface Props {
   theme: Theme
-  size?: Sizes
+  size?: Sizes | 'xl'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -17,7 +17,8 @@ const props = withDefaults(defineProps<Props>(), {
 const SIZE_PX: Record<string, number> = {
   s: 24,
   m: 32,
-  l: 64,
+  l: 40,
+  xl: 72,
 }
 
 function seededRng(seed: number) {

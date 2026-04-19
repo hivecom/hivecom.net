@@ -6,6 +6,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS, VUI_DEFAULT_COLORS } from '@/lib/theme'
 import { normalizeErrors } from '@/lib/utils/formatting'
 import CodeEditorClient from '../Shared/CodeEditor.vue'
+import ConfirmModal from '../Shared/ConfirmModal.vue'
 import UserName from '../Shared/UserName.vue'
 
 const emit = defineEmits<{
@@ -238,6 +239,8 @@ function resetColor(colorKey: string) {
     onColorChange(colorKey, savedValue)
 }
 
+const showCloseConfirm = ref(false)
+
 // Reusable template so the content can be moved to a Drawer on phone
 const [DefineControls, ThemeEditorControls] = createReusableTemplate()
 const isMobile = useBreakpoint('<s')
@@ -249,8 +252,19 @@ const isMobile = useBreakpoint('<s')
       <div class="theme-editor__header">
         <Flex y-center x-between gap="xs">
           <h4 class="mr-m">
-            Theme editor
+            Theming
           </h4>
+
+          <Tooltip>
+            <NuxtLink to="/themes/sample">
+              <Button size="s">
+                Sample
+              </Button>
+            </NuxtLink>
+            <template #tooltip>
+              <p>Go to UI sample page</p>
+            </template>
+          </Tooltip>
 
           <ButtonGroup>
             <Tooltip>
@@ -288,7 +302,7 @@ const isMobile = useBreakpoint('<s')
             Finalize
           </Button>
 
-          <Button v-else square size="s" plain @click="close">
+          <Button v-else square size="s" plain @click="showCloseConfirm = true">
             <Icon name="ph:x" />
           </Button>
         </Flex>
@@ -409,12 +423,7 @@ const isMobile = useBreakpoint('<s')
 
       <div class="theme-editor__footer">
         <div v-if="showCustomCSSWarning" class="theme-editor__footer-css-consent">
-          <Flex x-between y-center>
-            <span class="theme-editor__group-label">CSS settings</span>
-            <Button square size="s" plain @click="showCustomCSSWarning = false">
-              <Icon name="ph:x" />
-            </Button>
-          </Flex>
+          <span class="theme-editor__group-label">CSS settings</span>
           <Checkbox v-model="settings.allow_custom_css" accent class="mb-s" label="Enable custom CSS" />
           <p class="vui-hint" style="opacity: 0.7;">
             If disabled, you will not be able to use or preview custom CSS styles. This can be changed in your user settings.
@@ -449,6 +458,17 @@ const isMobile = useBreakpoint('<s')
     <template v-else>
       <ThemeEditorControls />
     </template>
+
+    <ConfirmModal
+      :open="showCloseConfirm"
+      title="Discard changes?"
+      description="Any unsaved changes to your theme will be lost."
+      confirm-text="Discard"
+      cancel-text="Keep editing"
+      :destructive="true"
+      @confirm="close"
+      @cancel="showCloseConfirm = false"
+    />
 
     <!-- Submit / details modal -->
     <Modal :open="showSubmitModal" size="s" :card="{ separators: true }" @close="showSubmitModal = false">

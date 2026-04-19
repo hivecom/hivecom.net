@@ -5,6 +5,7 @@ import Discussion from '@/components/Discussions/Discussion.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import ThemeDetailColors from '@/components/Themes/ThemeDetailColors.vue'
 import ThemeDetailCss from '@/components/Themes/ThemeDetailCss.vue'
@@ -17,7 +18,7 @@ import { formatTimeAgo } from '@/lib/utils/date'
 const route = useRoute()
 const router = useRouter()
 const supabase = useSupabaseClient()
-const { setActiveTheme } = useUserTheme()
+const { setActiveTheme, activeTheme } = useUserTheme()
 const { seedEditor, editorActive } = useThemeEditorState()
 const userId = useUserId()
 
@@ -122,10 +123,13 @@ onBeforeMount(() => {
 
           <div class="page-title">
             <Flex y-start gap="l">
-              <ThemeIcon :theme="data" size="l" />
+              <ThemeIcon :theme="data" size="xl" />
               <div>
                 <h1>
                   {{ data.name }}
+                  <TinyBadge v-if="data.id === activeTheme?.id || route.params.id === '$default'" style="vertical-align: middle;">
+                    Current
+                  </TinyBadge>
                 </h1>
                 <p v-if="data.description">
                   {{ data.description }}
