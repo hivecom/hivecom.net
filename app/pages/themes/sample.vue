@@ -16,7 +16,7 @@ watch(editorActive, (isActive) => {
 
 <template>
   <div class="page">
-    <div class="container container-s">
+    <div class="container-s">
       <ThemeSampleUI />
     </div>
   </div>

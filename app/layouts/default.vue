@@ -13,7 +13,7 @@ defineOgImage('Default', {
 
   <slot name="hero" />
 
-  <!-- <div class="container container-l"> -->
+  <!-- <div class="container-l"> -->
   <main>
     <slot />
   </main>

@@ -11,7 +11,7 @@ function scrollUp() {
 
 <template>
   <footer class="footer">
-    <div class="container container-footer">
+    <div class="container-footer">
       <Flex x-between>
         <div>
           <img src="/logotype-white.svg" class="footer__logo">
@@ -121,6 +121,8 @@ function scrollUp() {
   border-top: 1px solid var(--color-border);
 
   .container-footer {
+    margin-inline: auto;
+    padding-inline: var(--space-m);
     max-width: var(--container-m);
   }
 

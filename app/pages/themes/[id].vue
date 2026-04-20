@@ -106,7 +106,7 @@ const isMobile = useBreakpoint('<s')
 
 <template>
   <div class="page">
-    <div class="container container-m">
+    <div class="container-m">
       <template v-if="dataError">
         <Alert variant="danger">
           {{ dataError }}

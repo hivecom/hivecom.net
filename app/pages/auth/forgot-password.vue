@@ -59,7 +59,7 @@ onMounted(() => {
         <template #header>
           <h4>Reset Password</h4>
         </template>
-        <div class="container container-xs">
+        <div class="container-xs">
           <Flex x-center y-center column gap="l" class="py-l">
             <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
             <Button expand variant="fill" :loading="loading" :disabled="!email" @click="resetPassword">

@@ -163,7 +163,7 @@ useHead({
 
 <template>
   <div class="page">
-    <div :class="!isMobile && 'container container-m'">
+    <div :class="!isMobile && 'container-m'">
       <DetailStates
         :loading="loading"
         :error="error"

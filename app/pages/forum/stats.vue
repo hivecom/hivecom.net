@@ -389,7 +389,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
 </script>
 
 <template>
-  <div class="page forum-stats container container-l">
+  <div class="page forum-stats container-l">
     <ClientOnly>
       <section class="page-title mb-xl">
         <Breadcrumbs>

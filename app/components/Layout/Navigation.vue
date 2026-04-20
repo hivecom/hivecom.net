@@ -102,7 +102,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
       </Tooltip>
     </DefineSearchButton>
 
-    <div class="container container-l">
+    <div class="container-l">
       <div class="navigation__items">
         <Button square class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
           <Icon name="ph:list" size="2rem" />

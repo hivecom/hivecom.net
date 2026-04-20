@@ -17,7 +17,7 @@ function openEditor(theme?: Parameters<typeof seedEditor>[0]) {
 </script>
 
 <template>
-  <div class="page container container-l">
+  <div class="page container-l">
     <ClientOnly>
       <section class="page-title">
         <h1>

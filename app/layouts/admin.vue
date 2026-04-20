@@ -474,7 +474,7 @@ watch(() => route.path, () => {
     <main class="admin-layout__content">
       <div
         class="admin-layout__page-inner pt-xl pb-l"
-        :class="!expandedLayout ? 'container container-l' : null"
+        :class="!expandedLayout ? 'container-l' : null"
         :style="expandedLayout ? expandedContentStyle : undefined"
       >
         <ClientOnly>

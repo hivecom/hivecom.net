@@ -522,7 +522,7 @@ function revealNsfw() {
 </script>
 
 <template>
-  <div ref="page" class="page forum container container-m">
+  <div ref="page" class="page forum container-m">
     <!-- Loading state -->
     <template v-if="loading">
       <Spinner />
@@ -533,7 +533,7 @@ function revealNsfw() {
       <!-- Floating header when scrolling down -->
       <Transition name="fade">
         <section v-if="scrollHeaderReady && !isPageTitleVisible" class="forum-post__scroll">
-          <div class="container container-m">
+          <div class="container-m">
             <div>
               <strong class="forum-post__scroll-title">
                 <Button

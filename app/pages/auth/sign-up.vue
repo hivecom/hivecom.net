@@ -114,7 +114,7 @@ async function signUpWithGoogle() {
         <template #header>
           <h4>Sign up</h4>
         </template>
-        <div class="container container-xs">
+        <div class="container-xs">
           <Flex x-center y-center column :style="{ paddingBlock: '64px' }" gap="l">
             <Flex column gap="s" class="w-100">
               <Button variant="gray" :loading="discordLoading" class="w-100" @click="signUpWithDiscord">

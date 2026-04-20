@@ -134,7 +134,7 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
 
 <template>
   <div>
-    <div class="container container-m">
+    <div class="container-m">
       <div class="page legal-page typeset">
         <div v-if="hasError" class="legal-page__not-found">
           <h1>Something Went Wrong</h1>

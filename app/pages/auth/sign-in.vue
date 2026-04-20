@@ -536,7 +536,7 @@ onBeforeUnmount(() => {
         <template #header>
           <h4>Sign in</h4>
         </template>
-        <div v-if="requiresMfaChallenge" class="container container-xs" style="min-height:356px">
+        <div v-if="requiresMfaChallenge" class="container-xs" style="min-height:356px">
           <Flex column gap="l" class="py-l" y-center expand>
             <Flex column gap="xs" y-center expand>
               <span class="text-s text-color-muted">Step 2 of 2</span>
@@ -601,7 +601,7 @@ onBeforeUnmount(() => {
             </Flex>
           </Flex>
         </div>
-        <div v-else class="container container-xs" style="min-height:356px">
+        <div v-else class="container-xs" style="min-height:356px">
           <Flex x-center y-center column gap="l" class="py-l">
             <Flex x-center y-center column gap="s" expand>
               <Button variant="gray" :loading="discordLoading" expand @click="signInWithDiscord">

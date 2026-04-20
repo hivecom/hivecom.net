@@ -4,7 +4,7 @@ definePageMeta({ layout: 'default' })
 
 <template>
   <div class="playground-page">
-    <div class="container container-m">
+    <div class="container-m">
       <!-- playground -->
     </div>
   </div>

@@ -90,8 +90,8 @@ onMounted(async () => {
   <div style="display:contents;">
     <LandingHero :community-stats="communityStats" :loading="loading" />
 
-    <div class="container container-l">
-      <div class="page-landing container container-m">
+    <div class="container-l">
+      <div class="page-landing container-m">
         <!-- About section -->
         <section class="about-section">
           <h2 class="heading">

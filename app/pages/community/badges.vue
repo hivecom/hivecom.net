@@ -36,7 +36,7 @@ defineOgImage('Default', {
 </script>
 
 <template>
-  <div class="badges-playground page container container-l">
+  <div class="badges-playground page container-l">
     <section class="page-title">
       <div>
         <h1>Badges</h1>

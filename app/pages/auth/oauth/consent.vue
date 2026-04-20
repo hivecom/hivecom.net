@@ -156,7 +156,7 @@ onMounted(() => {
           <h4>Authorize</h4>
         </template>
 
-        <div class="container container-xs" style="min-height:356px">
+        <div class="container-xs" style="min-height:356px">
           <Flex x-center y-center column gap="l" class="py-l">
             <Alert v-if="errorMessage" variant="danger" filled>
               <p class="text-s">

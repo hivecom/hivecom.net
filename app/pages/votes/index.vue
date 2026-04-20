@@ -462,7 +462,7 @@ const currentReferendums = computed(() => {
 </script>
 
 <template>
-  <div class="page container container-l">
+  <div class="page container-l">
     <section class="page-title">
       <h1>
         Votes
