@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.overrides'
+import type { Database } from '@/types/database.types'
 import { Alert, Badge, Button, Card, Divider, Flex, Tab, Tabs, theme } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
@@ -17,14 +17,23 @@ import { formatTimeAgo } from '@/lib/utils/date'
 
 const route = useRoute()
 const router = useRouter()
+
+function goBack() {
+  const prev = window.history.state?.back as string | undefined
+  if (prev && prev.startsWith('/themes'))
+    router.back()
+  else
+    router.push('/themes')
+}
 const supabase = useSupabaseClient()
 const { setActiveTheme, activeTheme } = useUserTheme()
 const { seedEditor, editorActive } = useThemeEditorState()
 const userId = useUserId()
 
-const data = ref<Tables<'themes'> | null>(null)
+type ThemeRow = Database['public']['Tables']['themes']['Row']
+const data = ref<ThemeRow | null>(null)
 const dataError = ref<string | null>(null)
-const forks = ref<Tables<'themes'>[]>([])
+const forks = ref<ThemeRow[]>([])
 const userIds = ref<string[]>([])
 
 const activeTab = ref<'colors' | 'tokens' | 'css' | 'sample'>('colors')
@@ -37,6 +46,7 @@ function openEditor() {
 
 const isDefaultTheme = computed(() => data.value?.id === '$default')
 const isOwner = computed(() => !!userId.value && data.value?.created_by === userId.value)
+const isThemeActive = computed(() => isDefaultTheme.value || activeTheme.value?.id === data.value?.id)
 
 onBeforeMount(() => {
   if (route.params.id === '$default') {
@@ -108,7 +118,7 @@ onBeforeMount(() => {
               size="s"
               aria-label="Go back to Events page"
               class="event-detail__back-link"
-              @click="$router.back()"
+              @click="goBack"
             >
               <template #start>
                 <Icon name="ph:arrow-left" />
@@ -127,8 +137,8 @@ onBeforeMount(() => {
               <div>
                 <h1>
                   {{ data.name }}
-                  <TinyBadge v-if="data.id === activeTheme?.id || route.params.id === '$default'" style="vertical-align: middle;">
-                    Current
+                  <TinyBadge v-if="data.id === activeTheme?.id || route.params.id === '$default'" variant="accent" style="vertical-align: middle;">
+                    Active
                   </TinyBadge>
                 </h1>
                 <p v-if="data.description">
@@ -149,11 +159,15 @@ onBeforeMount(() => {
               </template>
               Fork
             </Button>
-            <Button size="s" variant="accent" @click="setActiveTheme(isDefaultTheme ? null : data.id)">
+            <Button
+              size="s"
+              :variant="isThemeActive ? 'gray' : 'accent'"
+              @click="setActiveTheme(isThemeActive ? null : data.id)"
+            >
               <template #start>
-                <Icon name="ph:paint-brush-fill" :size="16" />
+                <Icon :name="isThemeActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
               </template>
-              Apply
+              {{ isThemeActive ? 'Remove' : 'Apply' }}
             </Button>
           </Flex>
         </section>

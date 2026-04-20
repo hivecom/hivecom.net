@@ -113,14 +113,27 @@ const showNSFWWarning = computed({
 // ── Deletion ──────────────────────────────────────────────────────────────────
 
 const deleteComment = inject(DISCUSSION_KEYS.deleteComment) as (id: string) => Promise<void>
+const forceDeleteComment = inject(DISCUSSION_KEYS.forceDeleteComment) as (id: string) => Promise<void>
 const loadingDeletion = ref(false)
 const showDeleteModal = ref(false)
+const showForceDeleteModal = ref(false)
+const loadingForceDeletion = ref(false)
+
+const isAdmin = computed(() => currentUserData.value?.role === 'admin')
 
 function handleDeletion() {
   loadingDeletion.value = true
   deleteComment(data.value.id)
     .finally(() => {
       loadingDeletion.value = false
+    })
+}
+
+function handleForceDeletion() {
+  loadingForceDeletion.value = true
+  forceDeleteComment(data.value.id)
+    .finally(() => {
+      loadingForceDeletion.value = false
     })
 }
 
@@ -237,9 +250,9 @@ watch(
 <template>
   <div class="discussion-comment">
     <!-- Desktop floating actions (hover-revealed) - first child so sticky works from top -->
-    <div v-if="!isMobile" class="discussion-forum__actions-anchor discussion-comment__actions-anchor">
+    <div v-if="!isMobile && !data.is_deleted" class="discussion-forum__actions-anchor discussion-comment__actions-anchor">
       <div class="discussion-comment__actions">
-        <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
+        <ReactionsSelect v-if="userId && !data.is_deleted" @reaction="(emote) => toggleReaction(emote)">
           <template #default="{ toggle }">
             <Tooltip>
               <Button size="s" square @click="toggle">
@@ -311,8 +324,8 @@ watch(
       </Flex>
 
       <!-- Mobile: reaction button (only when no reactions exist) + three-dot trigger -->
-      <Flex v-if="isMobile" y-center gap="xxs">
-        <ReactionsSelect v-if="userId && displayReactions.length === 0" @reaction="(emote) => toggleReaction(emote)">
+      <Flex v-if="isMobile && !data.is_deleted" y-center gap="xxs">
+        <ReactionsSelect v-if="userId && !data.is_deleted && displayReactions.length === 0" @reaction="(emote) => toggleReaction(emote)">
           <template #default="{ toggle }">
             <Button size="s" square plain @click="toggle">
               <Icon name="ph:smiley-bold" />
@@ -382,8 +395,18 @@ watch(
 
     <!-- Tombstone: soft-deleted reply -->
     <p v-if="data.is_deleted" class="discussion-comment__deleted">
-      <Icon name="ph:trash" />
-      This reply was deleted.
+      <Flex y-center x-start gap="xxs">
+        <Tooltip v-if="isAdmin" placement="top">
+          <Button plain square size="s" class="discussion-comment__force-delete-icon" :loading="loadingForceDeletion" @click.stop="showForceDeleteModal = true">
+            <Icon name="ph:trash" />
+          </Button>
+          <template #tooltip>
+            <p>Permanently delete</p>
+          </template>
+        </Tooltip>
+        <Icon v-else name="ph:trash" />
+        This reply was deleted.
+      </Flex>
     </p>
 
     <template v-else>
@@ -396,10 +419,42 @@ watch(
       <MarkdownRenderer v-else :md="data.markdown" skeleton-height="24px" />
     </template>
 
-    <Flex v-if="displayReactions.length > 0" y-center x-start gap="xxs" class="discussion-comment__reactions">
+    <Flex v-if="!data.is_deleted && displayReactions.length > 0" y-center x-start gap="xxs" class="discussion-comment__reactions">
       <ReactionsList :reactions="displayReactions" :disabled="!userId" @toggle="toggleReaction" />
       <ReactionsSelect v-if="userId" @reaction="toggleReaction" />
     </Flex>
+
+    <!-- Force delete confirmation modal (admin only) -->
+    <Modal
+      :open="showForceDeleteModal"
+      size="s"
+      centered
+      @close="showForceDeleteModal = false"
+    >
+      <template #header>
+        <h3>Permanently delete reply</h3>
+      </template>
+
+      <Flex column gap="m">
+        <Alert variant="danger" icon-align="start">
+          <p><strong>This cannot be undone.</strong> The reply row will be hard-deleted from the database.</p>
+        </Alert>
+        <p class="text-color-light text-m text-justified">
+          If other replies quote or reply to this one, they will become orphaned - their reply context will break and the thread flow may appear confusing to readers. Force deletion is <strong class="text-m">heavily discouraged</strong> unless the reply has no dependents.
+        </p>
+      </Flex>
+
+      <template #footer>
+        <Flex x-end gap="s">
+          <Button plain :inert="loadingForceDeletion" @click="showForceDeleteModal = false">
+            Cancel
+          </Button>
+          <Button variant="danger" :loading="loadingForceDeletion" @click="handleForceDeletion">
+            Permanently delete
+          </Button>
+        </Flex>
+      </template>
+    </Modal>
 
     <ConfirmModal
       :open="showDeleteModal"
@@ -563,10 +618,8 @@ watch(
   }
 
   &__deleted {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
     margin-left: 40px;
+    margin-right: 4px;
     color: var(--color-text-lighter);
     font-size: var(--font-size-s);
     font-style: italic;
@@ -574,6 +627,14 @@ watch(
 
     .iconify {
       opacity: 0.5;
+    }
+  }
+
+  &__force-delete-icon {
+    color: inherit !important;
+
+    &:hover .iconify {
+      opacity: 1;
     }
   }
 

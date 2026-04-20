@@ -1,4 +1,3 @@
-import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
 import { useCache } from './useCache'
@@ -9,7 +8,8 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 // Module-level refs so all composable instances share the same reactive state.
 // Updating via refresh() in any instance (e.g. ThemeEditor) is immediately
 // reflected in every other consumer (e.g. ThemeGallery) without re-fetching.
-const themes = ref<Tables<'themes'>[]>([])
+type ThemeRow = Database['public']['Tables']['themes']['Row']
+const themes = ref<ThemeRow[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -30,7 +30,7 @@ export function useDataThemes() {
 
   async function fetch(force = false): Promise<void> {
     if (!force) {
-      const cached = cache.get<Tables<'themes'>[]>(CACHE_KEY)
+      const cached = cache.get<ThemeRow[]>(CACHE_KEY)
       if (cached !== null) {
         themes.value = cached
         return
@@ -61,7 +61,7 @@ export function useDataThemes() {
     }
   }
 
-  function getById(id: string): Tables<'themes'> | null {
+  function getById(id: string): ThemeRow | null {
     return themes.value.find(t => t.id === id) ?? null
   }
 
@@ -95,7 +95,7 @@ export function useDataThemes() {
       themes.value[idx] = {
         ...themes.value[idx],
         is_unmaintained: true,
-      } as Tables<'themes'>
+      } as ThemeRow
     }
 
     invalidate()

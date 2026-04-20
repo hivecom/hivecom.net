@@ -1007,6 +1007,7 @@ h5 {
     object-fit: cover;
     flex-shrink: 0;
     vertical-align: middle;
+    margin-left: var(--space-xs);
     margin-right: var(--space-xs);
   }
 

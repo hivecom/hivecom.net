@@ -49,6 +49,14 @@ type TopicBreadcrumb = Pick<Tables<'discussion_topics'>, 'id' | 'name' | 'slug' 
 const route = useRoute()
 const router = useRouter()
 
+function goBack() {
+  const prev = window.history.state?.back as string | undefined
+  if (prev && prev.startsWith('/forum'))
+    router.back()
+  else
+    router.push('/forum')
+}
+
 const { settings } = useDataUserSettings()
 const forumUnread = useDataForumUnread()
 
@@ -535,7 +543,7 @@ function revealNsfw() {
                   square
                   size="s"
                   aria-label="Go back to Events page"
-                  @click="$router.back()"
+                  @click="goBack"
                 >
                   <Icon class="text-color" name="ph:arrow-left" :size="16" />
                 </Button>
@@ -563,7 +571,7 @@ function revealNsfw() {
                 square
                 size="s"
                 aria-label="Go back to Events page"
-                @click="$router.back()"
+                @click="goBack"
               >
                 <Icon class="text-color" name="ph:arrow-left" :size="16" />
               </Button>

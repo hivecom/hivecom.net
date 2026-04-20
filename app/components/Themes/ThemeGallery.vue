@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { Button, Card, Flex, Grid, Input, paginate, Pagination, Skeleton, Tab, Tabs } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { DEFAULT_THEME } from '@/lib/theme'
 import ThemeCard from './ThemeCard.vue'
 
+type ThemeRow = Database['public']['Tables']['themes']['Row']
+type GalleryTheme = ThemeRow & { user_count: number | null, fork_count: number | null }
+
 const emit = defineEmits<{
   create: []
-  edit: [theme: Tables<'themes'>]
+  edit: [theme: ThemeRow]
 }>()
 
 const supabase = useSupabaseClient<Database>()
@@ -39,7 +41,7 @@ const search = ref('')
 const currentPage = ref(1)
 const PER_PAGE = 8
 
-const items = ref<Tables<'themes'>[]>([])
+const items = ref<GalleryTheme[]>([])
 const totalCount = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -269,6 +271,7 @@ defineExpose({ refresh, switchToCreated })
           :item="DEFAULT_THEME"
           :active-theme-id="activeTheme ? '' : '$default'"
           @apply="setActiveTheme(null)"
+          @remove="setActiveTheme(null)"
         />
 
         <ThemeCard
@@ -277,6 +280,7 @@ defineExpose({ refresh, switchToCreated })
           :item="item"
           :active-theme-id="activeTheme?.id"
           @apply="setActiveTheme(item.id)"
+          @remove="setActiveTheme(null)"
           @edit="emit('edit', item)"
           @deprecate="deprecateTheme(item.id)"
           @delete="deleteTheme(item.id)"

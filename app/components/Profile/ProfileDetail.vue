@@ -412,7 +412,7 @@ function openFriendsModal() {
 
         <!-- (Right) -->
         <Flex column gap="m" class="profile-sidebar-col">
-          <ProfileTheme :theme-id="profile.theme_id" />
+          <ProfileTheme v-if="profile.theme_id" :theme-id="profile.theme_id" />
 
           <!-- Activity section -->
           <ProfileActivity

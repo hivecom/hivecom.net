@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.overrides'
+import type { Database } from '@/types/database.types'
 import { Alert, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, Skeleton, theme, Tooltip } from '@dolanske/vui'
 import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
@@ -10,16 +10,19 @@ import UserName from '../Shared/UserName.vue'
 import ThemeIcon from './ThemeIcon.vue'
 
 const props = defineProps<{
-  item: Tables<'themes'>
+  item: Database['public']['Tables']['themes']['Row']
   activeThemeId: string | undefined
 }>()
 
 const emit = defineEmits<{
   apply: []
+  remove: []
   deprecate: []
   delete: []
   edit: []
 }>()
+
+const isActive = computed(() => props.item.id === props.activeThemeId)
 
 const userId = useUserId()
 const { user: userData } = useDataUser(userId, { includeRole: true })
@@ -63,11 +66,11 @@ if (props.item.forked_from) {
     </TinyBadge>
 
     <ButtonGroup :gap="2" class="theme-menu__card--context">
-      <Button size="s" @click.prevent.stop="emit('apply')">
+      <Button size="s" variant="gray" @click.prevent.stop="isActive ? emit('remove') : emit('apply')">
         <template #start>
-          <Icon name="ph:paint-brush-fill" :size="16" />
+          <Icon :name="isActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
         </template>
-        Apply
+        {{ isActive ? 'Remove' : 'Apply' }}
       </Button>
       <Dropdown v-if="canSeeDropdown && !props.item.is_official">
         <template #trigger="{ toggle, isOpen }">

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ThemeScaleKey } from '@/lib/theme'
+import type { Theme } from '@/types/theme'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Tab, Tabs, Textarea, theme, Tooltip } from '@dolanske/vui'
+import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS, VUI_DEFAULT_COLORS } from '@/lib/theme'
 import { normalizeErrors } from '@/lib/utils/formatting'
@@ -244,6 +246,51 @@ const showCloseConfirm = ref(false)
 // Reusable template so the content can be moved to a Drawer on phone
 const [DefineControls, ThemeEditorControls] = createReusableTemplate()
 const isMobile = useBreakpoint('<s')
+
+const ICON_COLOR_KEYS = [
+  'accent',
+  'text_yellow',
+  'text_red',
+  'text_blue',
+  'bg_lowered',
+  'bg',
+  'bg_medium',
+  'bg_raised',
+  'text',
+  'text_light',
+  'text_lighter',
+  'text_lightest',
+  'text_invert',
+  'text_green',
+  'border',
+  'border_strong',
+  'border_weak',
+  'button_fill',
+  'button_fill_hover',
+  'button_gray',
+  'button_gray_hover',
+  'bg_accent_lowered',
+  'bg_accent_raised',
+  'bg_red_lowered',
+  'bg_red_raised',
+  'bg_yellow_lowered',
+  'bg_yellow_raised',
+  'bg_blue_lowered',
+  'bg_blue_raised',
+  'bg_green_lowered',
+  'bg_green_raised',
+]
+
+const iconTheme = computed<Theme>(() => {
+  const entries = ICON_COLOR_KEYS.flatMap(k => [
+    [`dark_${k}`, themeForm.value.dark[k.replace(/_/g, '-')] ?? ''],
+    [`light_${k}`, themeForm.value.light[k.replace(/_/g, '-')] ?? ''],
+  ])
+  return {
+    id: editingTheme.value?.id ?? '',
+    ...Object.fromEntries(entries),
+  } as Theme
+})
 </script>
 
 <template>
@@ -251,9 +298,16 @@ const isMobile = useBreakpoint('<s')
     <DefineControls>
       <div class="theme-editor__header">
         <Flex y-center x-between gap="xs">
-          <h4 class="mr-m">
-            Theming
-          </h4>
+          <Flex y-center gap="xs" class="mr-m">
+            <Tooltip v-if="!editingTheme">
+              <ThemeIcon :theme="iconTheme" size="s" animated />
+              <template #tooltip>
+                <p>Your theme icon will be finalized when you submit it</p>
+              </template>
+            </Tooltip>
+            <ThemeIcon v-else :theme="iconTheme" size="s" />
+            <h4>Theming</h4>
+          </Flex>
 
           <Tooltip>
             <NuxtLink to="/themes/sample">

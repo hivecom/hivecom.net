@@ -150,8 +150,16 @@ const threadCollapsed = ref(computeThreadCollapsed())
 // Re-evaluate collapsed state whenever the view mode or the expand-threads setting
 // changes. The IIFE only ran once at setup, so items mounted in flat mode (or while
 // the setting had a different value) need this to get the correct collapsed state.
-watch([viewMode, showThreadRepliesInjected], () => {
+watch([viewMode, showThreadRepliesInjected], ([, showReplies], [, prevShowReplies]) => {
   threadCollapsed.value = computeThreadCollapsed()
+
+  // When the global "expand reply threads" toggle is turned on, lazily load
+  // children if they haven't been fetched yet - the visibility watcher won't
+  // fire again because threadCollapsed was already true when it last ran.
+  if (showReplies && !prevShowReplies && !childrenRequested.value && loadChildren != null) {
+    childrenRequested.value = true
+    void loadChildren(data.id)
+  }
 })
 
 async function toggleThreadCollapsed() {

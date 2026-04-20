@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
 import type { Tables, TablesUpdate } from '@/types/database.overrides'
+import type { Theme } from '@/types/theme'
 import { Alert, defineTable, Flex, paginate, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
@@ -9,6 +10,7 @@ import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getRouteQueryString } from '@/lib/utils/common'
@@ -31,7 +33,15 @@ interface RpcTheme {
   transitions: number
   widening: number
   dark_accent: string
+  dark_bg_lowered: string
+  dark_text_yellow: string
+  dark_text_red: string
+  dark_text_blue: string
   light_accent: string
+  light_bg_lowered: string
+  light_text_yellow: string
+  light_text_red: string
+  light_text_blue: string
   custom_css: string
   total_count: number
 }
@@ -302,11 +312,7 @@ onBeforeMount(async () => {
               >
                 <Table.Cell>
                   <Flex gap="xs" y-center>
-                    <span
-                      class="theme-swatch"
-                      :style="{ background: theme.dark_accent }"
-                      :title="theme.dark_accent"
-                    />
+                    <ThemeIcon :theme="theme as unknown as Theme" size="s" />
                     <span>{{ theme.name }}</span>
                   </Flex>
                 </Table.Cell>
@@ -376,15 +382,6 @@ td {
     cursor: pointer;
     background-color: var(--color-bg-raised);
   }
-}
-
-.theme-swatch {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: var(--border-radius-xs);
-  border: 1px solid var(--color-border);
-  flex-shrink: 0;
 }
 
 .table-loading-wrapper {

@@ -15,6 +15,14 @@ const isMobile = useBreakpoint('<s')
 // Get route parameter
 const route = useRoute()
 const router = useRouter()
+
+function goBack() {
+  const prev = window.history.state?.back as string | undefined
+  if (prev && prev.startsWith('/servers/gameservers'))
+    router.back()
+  else
+    router.push('/servers/gameservers')
+}
 const gameserverId = Number.parseInt(route.params.id as string)
 
 // Reactive data
@@ -159,7 +167,7 @@ useHead({
       <DetailStates
         :loading="loading"
         :error="error"
-        :back-to="() => router.back()"
+        :back-to="goBack"
         back-label="Game Servers"
       >
         <template #error-message>

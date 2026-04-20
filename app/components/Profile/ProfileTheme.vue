@@ -8,7 +8,6 @@ const props = defineProps<{
 }>()
 
 const { getById } = useDataThemes()
-const { setActiveTheme } = useUserTheme()
 
 const activeTheme = computed(() => props.themeId ? getById(props.themeId) : DEFAULT_THEME)
 </script>
@@ -24,12 +23,13 @@ const activeTheme = computed(() => props.themeId ? getById(props.themeId) : DEFA
           {{ activeTheme ? activeTheme.name : 'Hivecom Theme' }}
         </strong>
       </div>
-      <Tooltip>
-        <button @click="setActiveTheme(props.themeId ?? null)">
-          <ThemeIcon v-if="activeTheme" :theme="activeTheme" size="m" />
-        </button>
+      <Tooltip v-if="activeTheme">
+        <NuxtLink v-if="props.themeId" :to="`/themes/${props.themeId}`">
+          <ThemeIcon :theme="activeTheme" size="m" />
+        </NuxtLink>
+        <ThemeIcon v-else :theme="activeTheme" size="m" />
         <template #tooltip>
-          <p>Use theme</p>
+          <p>{{ props.themeId ? 'View Theme' : activeTheme.name }}</p>
         </template>
       </Tooltip>
     </Flex>

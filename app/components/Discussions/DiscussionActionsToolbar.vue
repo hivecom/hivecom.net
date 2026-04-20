@@ -182,13 +182,13 @@ function handleReport() {
             <template #icon>
               <Icon name="ph:pen-bold" />
             </template>
-            Edit post
+            Edit reply
           </DropdownItem>
           <DropdownItem expand variant="danger" :inert="loadingDeletion" :loading="loadingDeletion" @click="handleDelete">
             <template #icon>
               <Icon name="ph:trash-bold" class="text-color-red" />
             </template>
-            Delete post
+            Delete reply
           </DropdownItem>
         </template>
 
@@ -272,7 +272,7 @@ function handleReport() {
             <Icon name="ph:pen-bold" />
           </Button>
           <template #tooltip>
-            <p>Edit post</p>
+            <p>Edit reply</p>
           </template>
         </Tooltip>
         <Tooltip>
@@ -280,7 +280,7 @@ function handleReport() {
             <Icon name="ph:trash-bold" />
           </Button>
           <template #tooltip>
-            <p>Delete post</p>
+            <p>Delete reply</p>
           </template>
         </Tooltip>
       </ButtonGroup>

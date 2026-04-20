@@ -10,10 +10,10 @@
  * Runtime utilities (mapping, applying) live in `app/lib/theme.ts`.
  */
 
-import type { Tables } from './database.overrides'
+import type { Database } from './database.types'
 
 /** A theme row from the database. */
-export type Theme = Tables<'themes'>
+export type Theme = Database['public']['Tables']['themes']['Row']
 
 /** The palette-independent 0-100 scale column names. */
 export type ThemeScaleKey = 'spacing' | 'rounding' | 'transitions' | 'widening'

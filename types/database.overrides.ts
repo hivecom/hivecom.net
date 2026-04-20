@@ -75,10 +75,7 @@ interface TableColumnOverrides {
   forum_discussion_replies: {
     reactions: ReactionData
   }
-  themes: {
-    user_count: number | null
-    fork_count: number | null
-  }
+
   settings: {
     data: {
       theme: 'dark' | 'light'
