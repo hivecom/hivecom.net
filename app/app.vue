@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { Toasts } from '@dolanske/vui'
+import { Button, Flex, Modal, Toasts } from '@dolanske/vui'
 import { computed } from 'vue'
 import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
 import ThemeEditorControls from '@/components/Themes/ThemeEditorControls.vue'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { useLastSeenTracking } from '@/lib/lastSeen'
-import ConfirmModal from './components/Shared/ConfirmModal.vue'
 
 const route = useRoute()
 const site = useSiteConfig()
@@ -74,7 +73,7 @@ const layoutName = computed(() => {
 useLastSeenTracking()
 
 // Load and apply the user's custom theme (if any) from their profile
-const { pendingTheme, confirmPendingTheme } = useUserTheme()
+const { pendingTheme, confirmPendingTheme, confirmPendingThemeWithoutCss } = useUserTheme()
 const { editorActive } = useThemeEditorState()
 </script>
 
@@ -100,18 +99,42 @@ const { editorActive } = useThemeEditorState()
   <!-- Global always present components -->
   <LayoutLoading />
   <Command />
-  <ConfirmModal
+  <Modal
     :open="!!pendingTheme"
-    title="Apply theme with custom CSS?"
-    :description="pendingTheme?.hasUrl
-      ? 'This theme contains custom CSS with external URL references, which may load remote resources or track your activity. Apply anyway?'
-      : 'This theme contains custom CSS that can alter the appearance of the site in unexpected ways. Apply anyway?'"
-    confirm-text="Apply theme"
-    @confirm="confirmPendingTheme"
-    @cancel="pendingTheme = null"
+    centered
+    :card="{ footerSeparator: true }"
+    :can-dismiss="false"
+    size="s"
+    @close="pendingTheme = null"
   >
+    <template #header>
+      <Flex column gap="s">
+        <h4>Apply theme with custom CSS?</h4>
+        <p v-if="pendingTheme?.hasUrl">
+          This theme contains custom CSS with external URL references, which may load remote resources or track your activity.
+        </p>
+        <p v-else>
+          This theme contains custom CSS that can alter the appearance of the site in unexpected ways.
+        </p>
+      </Flex>
+    </template>
+
     <pre class="theme-custom-css-viewer">{{ pendingTheme?.theme.custom_css }}</pre>
-  </ConfirmModal>
+
+    <template #footer="{ close }">
+      <Flex gap="xs" expand x-end>
+        <Button @click="pendingTheme = null; close()">
+          Cancel
+        </Button>
+        <Button @click="confirmPendingThemeWithoutCss(); close()">
+          Apply without CSS
+        </Button>
+        <Button variant="fill" @click="confirmPendingTheme(); close()">
+          Apply theme
+        </Button>
+      </Flex>
+    </template>
+  </Modal>
 </template>
 
 <style lang="scss">

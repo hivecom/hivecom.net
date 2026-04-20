@@ -203,7 +203,7 @@ onMounted(() => {
     position: absolute;
     inset: 0;
     top: 65%;
-    background: linear-gradient(rgba(17, 17, 17, 0), rgba(17, 17, 17, 1) 100%);
+    background: linear-gradient(transparent, var(--color-bg) 100%);
     z-index: 2;
   }
 }

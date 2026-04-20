@@ -187,8 +187,6 @@ async function submitForm() {
   submitLoading.value = true
 
   const payload: Record<string, string | number | null> = {
-    // Update the theme if we own it, otherwise create a new one (optionally as a fork).
-    ...(editingTheme.value && editingTheme.value.created_by === userId.value && { id: editingTheme.value.id }),
     ...(form.forked_from && { forked_from: form.forked_from }),
     name: form.name,
     description: form.description,
@@ -205,10 +203,30 @@ async function submitForm() {
     payload[`light_${col}`] = themeForm.value.light[key] ?? ''
   }
 
-  const { error } = await supabase
-    .from('themes')
-    .upsert(payload)
-    .single()
+  const isUpdate = !!(editingTheme.value && editingTheme.value.created_by === userId.value)
+
+  let themeId: string | null = null
+  let error = null
+
+  if (isUpdate) {
+    const { error: updateError } = await supabase
+      .from('themes')
+      .update(payload)
+      .eq('id', editingTheme.value!.id)
+
+    error = updateError
+    themeId = editingTheme.value!.id
+  }
+  else {
+    const { data: insertedTheme, error: insertError } = await supabase
+      .from('themes')
+      .insert(payload)
+      .select('id')
+      .single()
+
+    error = insertError
+    themeId = insertedTheme?.id ?? null
+  }
 
   submitLoading.value = false
 
@@ -228,6 +246,11 @@ async function submitForm() {
     showSubmitModal.value = false
 
     emit('saved')
+
+    if (themeId) {
+      await navigateTo(`/themes/${themeId}`)
+      close()
+    }
   }
 }
 

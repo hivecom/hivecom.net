@@ -236,6 +236,20 @@ export function useUserTheme() {
       return
     const { theme } = pendingTheme.value
     pendingTheme.value = null
+    settings.value.allow_custom_css = true
+    await applyAndPersistTheme(theme)
+  }
+
+  /**
+   * Apply and persist the pending theme but disable custom CSS first.
+   * Call this when the user wants to apply the theme without its custom CSS.
+   */
+  async function confirmPendingThemeWithoutCss(): Promise<void> {
+    if (!pendingTheme.value)
+      return
+    const { theme } = pendingTheme.value
+    pendingTheme.value = null
+    settings.value.allow_custom_css = false
     await applyAndPersistTheme(theme)
   }
 
@@ -277,6 +291,7 @@ export function useUserTheme() {
     fetchAndApply,
     setActiveTheme,
     confirmPendingTheme,
+    confirmPendingThemeWithoutCss,
     applyCustomCss,
     reapplyCustomCss,
     // Options for the theme selector dropdown. Specifically formatted to be used with
