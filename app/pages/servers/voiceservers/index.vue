@@ -15,7 +15,7 @@ defineOgImage('Default', {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page container container-m">
     <section class="page-title">
       <h1>Voice Servers</h1>
       <p>View live channels and connect with the community on TeamSpeak.</p>

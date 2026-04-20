@@ -82,7 +82,7 @@ defineOgImage('Default', {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page container container-l">
     <section class="page-title">
       <h1>Projects</h1>
       <p>

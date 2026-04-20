@@ -205,7 +205,7 @@ function clearFilters() {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page container container-l">
     <section class="page-title">
       <div>
         <h1>Game Servers</h1>

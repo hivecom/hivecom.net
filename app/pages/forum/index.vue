@@ -653,7 +653,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 </script>
 
 <template>
-  <div class="page forum">
+  <div class="page forum container container-l">
     <ClientOnly>
       <section class="page-title mb-m">
         <Flex expand x-between y-center>

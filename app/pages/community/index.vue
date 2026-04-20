@@ -217,7 +217,7 @@ watch(user, () => {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page container container-l">
     <!-- Hero section -->
     <section class="page-title">
       <h1>Community</h1>

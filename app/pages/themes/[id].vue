@@ -12,6 +12,7 @@ import ThemeDetailCss from '@/components/Themes/ThemeDetailCss.vue'
 import ThemeDetailTokens from '@/components/Themes/ThemeDetailTokens.vue'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import ThemeSampleUI from '@/components/Themes/ThemeSampleUI.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { DEFAULT_THEME, themeToScopedProperties } from '@/lib/theme'
 import { formatTimeAgo } from '@/lib/utils/date'
 
@@ -99,6 +100,8 @@ onBeforeMount(() => {
       })
   }
 })
+
+const isMobile = useBreakpoint('<s')
 </script>
 
 <template>
@@ -133,7 +136,7 @@ onBeforeMount(() => {
 
           <div class="page-title">
             <Flex y-start gap="l">
-              <ThemeIcon :theme="data" size="xl" />
+              <ThemeIcon :theme="data" :size="isMobile ? 'm' : 'xl'" />
               <div>
                 <h1>
                   {{ data.name }}
@@ -153,11 +156,14 @@ onBeforeMount(() => {
             <Button v-if="isOwner" square size="s" @click="openEditor">
               <Icon name="ph:pencil-simple" />
             </Button>
-            <Button v-else-if="userId" size="s" @click="openEditor">
-              <template #start>
+            <Button v-else-if="userId" size="s" :square="isMobile" @click="openEditor">
+              <template v-if="isMobile">
                 <Icon name="ph:git-fork" />
               </template>
-              Fork
+              <template #start>
+                <Icon v-if="!isMobile" name="ph:git-fork" />
+              </template>
+              {{ isMobile ? '' : 'Fork' }}
             </Button>
             <Button
               size="s"
@@ -178,7 +184,7 @@ onBeforeMount(() => {
           <Flex column gap="xl">
             <Card :class="{ 'card-bg': activeTab !== 'sample' }" separators>
               <template #header>
-                <Tabs v-model="activeTab" variant="filled" style="width:fit-content">
+                <Tabs v-model="activeTab" variant="filled" :style="{ width: isMobile ? '100%' : 'fit-content' }" :expand="isMobile">
                   <Tab value="colors">
                     Colors
                   </Tab>
@@ -254,7 +260,7 @@ onBeforeMount(() => {
                 <span v-else>None</span>
               </Flex>
 
-              <Flex gap="xs" class="theme-details__meta-item">
+              <Flex v-if="data.custom_css" gap="xs" class="theme-details__meta-item">
                 <Badge v-if="data.custom_css" variant="warning">
                   CSS
                 </Badge>
@@ -271,6 +277,8 @@ onBeforeMount(() => {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .theme-details {
   display: grid;
   grid-template-columns: 1fr 212px;
@@ -291,6 +299,15 @@ onBeforeMount(() => {
     & > span {
       color: var(--color-text-light);
     }
+  }
+}
+
+@media screen and (max-width: $breakpoint-s) {
+  .theme-details {
+    display: flex;
+    gap: var(--space-l);
+    flex-direction: column-reverse;
+    // grid-template-columns: 1fr;
   }
 }
 </style>

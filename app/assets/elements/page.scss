@@ -32,3 +32,15 @@
     padding-block: calc(var(--navbar-offset) + 2rem);
   }
 }
+
+@media screen and (max-width: $breakpoint-m) {
+  .page-title {
+    h1 {
+      font-size: var(--font-size-xxl);
+    }
+
+    & > p {
+      font-size: var(--font-size-s);
+    }
+  }
+}

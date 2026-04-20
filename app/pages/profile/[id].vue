@@ -18,7 +18,7 @@ defineOgImage('Profile', {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page container container-l">
     <ProfileDetail
       :user-id="userId"
       :username="username"

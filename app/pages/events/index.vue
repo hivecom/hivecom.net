@@ -65,7 +65,7 @@ defineOgImage('Default', {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page container container-l">
     <!-- Hero section -->
     <section class="page-title">
       <h1>

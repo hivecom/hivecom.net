@@ -13,11 +13,11 @@ defineOgImage('Default', {
 
   <slot name="hero" />
 
-  <div class="container container-l">
-    <main>
-      <slot />
-    </main>
-  </div>
+  <!-- <div class="container container-l"> -->
+  <main>
+    <slot />
+  </main>
+  <!-- </div> -->
 
   <LayoutFooter />
 </template>

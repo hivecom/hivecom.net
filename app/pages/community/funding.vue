@@ -95,7 +95,7 @@ const combinedError = computed(() => errorMessage.value || expensesError.value |
 </script>
 
 <template>
-  <div class="page">
+  <div class="page container container-l">
     <!-- Hero section -->
     <section class="page-title">
       <h1>Funding</h1>

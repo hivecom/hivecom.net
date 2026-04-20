@@ -36,7 +36,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page container container-l">
     <template v-if="loading">
       <Spinner size="l" />
     </template>
