@@ -28,6 +28,7 @@ const props = defineProps<Props>()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const isLoggedIn = computed(() => !!user.value)
+const authReady = ref(false)
 const userId = useUserId() // Use helper to get ID from JWT claims
 const { navigateToSignIn } = useAuthRedirect()
 type ProfileRecord = Tables<'profiles'>
@@ -172,14 +173,28 @@ watch(hydratedProfileData, (newData) => {
   }
 }, { immediate: true })
 
+// Resolve the auth session once on mount so we know whether the user is truly
+// unauthenticated before running the private-profile guard. Without this, a hard
+// reload causes useSupabaseUser() to be null while the session is still being
+// restored, triggering a false redirect to sign-in.
+onMounted(async () => {
+  await supabase.auth.getSession().catch(() => null)
+  authReady.value = true
+})
+
 // Private-profile guard: redirect unauthenticated visitors away from private profiles.
 // This replaces the duplicate guard-only query that used to live in pages/profile/[id].vue.
 // We only act once the profile has loaded (so we know the public flag) and only when
 // the caller passed explicit userId/username props (i.e. we're on a public profile route,
 // not the "my own profile" fallback path).
+// We also wait for authReady so we don't fire before the session has been restored on
+// a hard reload - otherwise a signed-in user would get redirected to sign-in.
 watch(
-  [hydratedProfileData, user],
-  ([loadedProfile, currentUser]) => {
+  [hydratedProfileData, user, authReady],
+  ([loadedProfile, currentUser, isAuthReady]) => {
+    if (!isAuthReady)
+      return
+
     const isExplicitRoute = !!(props.userId ?? props.username)
     if (!isExplicitRoute || !loadedProfile)
       return
