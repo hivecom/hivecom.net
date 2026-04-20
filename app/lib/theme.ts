@@ -548,8 +548,8 @@ export function sanitizeCustomCss(css: string | null | undefined): string {
 
 export const DEFAULT_THEME = {
   id: '$default',
-  name: 'Hivecom Theme',
-  description: 'The default Hivecom theme',
+  name: 'Default',
+  description: 'The tried and tested default skin/theme of Hivecom',
   created_at: '2024-01-01T00:00:00.000Z',
   created_by: null,
   modified_at: null,

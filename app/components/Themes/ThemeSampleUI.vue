@@ -7,14 +7,18 @@ const props = defineProps<{
   compact?: boolean
 }>()
 
-const isMobile = useBreakpoint('<m')
+const isMobile = useBreakpoint('<xs')
 </script>
 
 <template>
   <div>
-    <h1 class="mb-s">
+    <h1 v-if="!props.compact" class="mb-s">
       Sample Theme
     </h1>
+
+    <h3 v-else class="mb-s">
+      Sample Theme
+    </h3>
 
     <p class="text-color-light text-l block" :class="[props.compact ? 'mb-m' : 'mb-xxl']">
       Make sure you get the contrast right.
@@ -111,7 +115,7 @@ const isMobile = useBreakpoint('<m')
 
       <template #footer>
         <Flex x-end>
-          <UserDisplay size="s" />
+          <UserDisplay v-if="!isMobile" size="s" />
           <div class="flex-1" />
           <Button size="s">
             Cancel

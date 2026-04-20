@@ -37,7 +37,7 @@ const dataError = ref<string | null>(null)
 const forks = ref<ThemeRow[]>([])
 const userIds = ref<string[]>([])
 
-const activeTab = ref<'colors' | 'tokens' | 'css' | 'sample'>('colors')
+const activeTab = ref<'preview' | 'colors' | 'tokens' | 'css'>('preview')
 
 function openEditor() {
   seedEditor(data.value)
@@ -182,9 +182,12 @@ const isMobile = useBreakpoint('<s')
 
         <section class="theme-details">
           <Flex column gap="xl">
-            <Card :class="{ 'card-bg': activeTab !== 'sample' }" separators>
+            <Card :class="{ 'card-bg': activeTab !== 'preview' }" separators>
               <template #header>
                 <Tabs v-model="activeTab" variant="filled" :style="{ width: isMobile ? '100%' : 'fit-content' }" :expand="isMobile">
+                  <Tab value="preview">
+                    Preview
+                  </Tab>
                   <Tab value="colors">
                     Colors
                   </Tab>
@@ -193,9 +196,6 @@ const isMobile = useBreakpoint('<s')
                   </Tab>
                   <Tab value="css">
                     CSS
-                  </Tab>
-                  <Tab value="sample">
-                    Sample
                   </Tab>
                 </Tabs>
               </template>
@@ -209,8 +209,13 @@ const isMobile = useBreakpoint('<s')
               <!-- CSS tab -->
               <ThemeDetailCss v-show="activeTab === 'css'" :data="data" />
 
-              <!-- Sample UI -->
-              <div v-show="activeTab === 'sample'" :style="themeToScopedProperties(data, theme === 'light' ? 'light' : 'dark')">
+              <!-- Preview UI -->
+              <div
+                v-show="activeTab === 'preview'"
+                class="preview-panel"
+                :style="{ ...themeToScopedProperties(data, theme === 'light' ? 'light' : 'dark'),
+                          backgroundColor: 'var(--color-bg)' }"
+              >
                 <ThemeSampleUI compact />
               </div>
             </Card>
@@ -278,6 +283,13 @@ const isMobile = useBreakpoint('<s')
 
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
+
+.preview-panel {
+  // Pull the panel out of the card's body padding so it fills edge-to-edge,
+  // then re-apply padding inside so content still has breathing room.
+  margin: calc(-1 * var(--space-m));
+  padding: var(--space-m);
+}
 
 .theme-details {
   display: grid;

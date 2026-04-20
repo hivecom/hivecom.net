@@ -144,7 +144,7 @@ const defaultCardMatchesSearch = computed(() => {
   const q = search.value.trim().toLowerCase()
   if (!q)
     return true
-  return 'default theme'.includes(q) || 'the default hivecom theme'.includes(q)
+  return 'default theme'.includes(q) || 'the tried and tested default skin/theme of hivecom'.includes(q)
 })
 
 const pagination = computed(() =>
