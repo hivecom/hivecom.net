@@ -78,7 +78,7 @@
     "@antfu/eslint-config": "^8.0.0",
     "@olrtg/emmet-language-server": "^2.8.0",
     "@types/three": "^0.183.1",
-    "eslint": "^10.2.0",
+    "eslint": "^10.2.1",
     "eslint-plugin-format": "^2.0.1",
     "eslint-plugin-vue": "^10.8.0",
     "nuxi": "^3.34.0",
