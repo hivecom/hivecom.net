@@ -361,11 +361,11 @@ const iconTheme = computed<Theme>(() => {
           </Button>
         </Flex>
 
-        <Tabs v-model="activeTab" class="theme-editor__tabs">
+        <Tabs v-if="!isMobile" v-model="activeTab" class="theme-editor__tabs">
           <Tab value="tokens">
             Tokens
           </Tab>
-          <Tab v-if="!isMobile" value="css">
+          <Tab value="css">
             CSS
           </Tab>
         </Tabs>
@@ -495,23 +495,20 @@ const iconTheme = computed<Theme>(() => {
     </DefineControls>
 
     <!-- Mobile -->
-    <template v-if="isMobile">
-      <Drawer
-        container-class="theme-editor__drawer-container"
-        open :root-props="{ dismissible: false,
-                            modal: false,
-                            activeSnapPoint: 0.2,
-                            snapPoints: [0.2, 0.35, 0.5, 0.75],
-        }"
-      >
-        <ThemeEditorControls />
-      </Drawer>
-    </template>
+    <Drawer
+      v-if="isMobile"
+      container-class="theme-editor__drawer-container"
+      open :root-props="{ dismissible: false,
+                          modal: false,
+                          activeSnapPoint: 0.2,
+                          snapPoints: [0.2, 0.35, 0.5, 0.75],
+      }"
+    >
+      <ThemeEditorControls />
+    </Drawer>
 
     <!-- Desktop -->
-    <template v-else>
-      <ThemeEditorControls />
-    </template>
+    <ThemeEditorControls v-else />
 
     <ConfirmModal
       :open="showCloseConfirm"

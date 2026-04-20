@@ -319,6 +319,12 @@ code {
   background-color: var(--color-bg);
 }
 
+@media (max-width: $breakpoint-m) {
+  :root {
+    --editor-width: 378px;
+  }
+}
+
 @media (max-width: $breakpoint-s) {
   .vui-table-container {
     width: auto !important;

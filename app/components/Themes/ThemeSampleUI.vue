@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { Badge, Button, Card, Flex, Grid } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import UserDisplay from '../Shared/UserDisplay.vue'
 
 const props = defineProps<{
   compact?: boolean
 }>()
+
+const isMobile = useBreakpoint('<m')
 </script>
 
 <template>
@@ -124,7 +127,7 @@ const props = defineProps<{
       Backgrounds & Borders
     </h4>
 
-    <Grid expand :columns="3" class="mb-m">
+    <Grid expand :columns="isMobile ? 1 : 3" class="mb-m">
       <div class="theme-example-card weak">
         <p>Weak border</p>
       </div>
@@ -136,7 +139,7 @@ const props = defineProps<{
       </div>
     </Grid>
 
-    <Grid expand :columns="4" class="mb-xxl">
+    <Grid expand :columns="isMobile ? 2 : 4" class="mb-xxl">
       <div class="theme-example-card lowered">
         <p>Lowered</p>
       </div>
