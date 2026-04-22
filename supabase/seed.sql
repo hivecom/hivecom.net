@@ -374,7 +374,7 @@ INSERT INTO public.user_roles(role, user_id)
   VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Create or update a profile for our admin user
-INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, badges, markdown)
+INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, badges, markdown, public)
   VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', '76561198000000001', '2013-01-01 00:00:00+00', 'Hivecom', 'Local develop and test user', 'true', ARRAY['founder']::public.profile_badge[], '# whoami
 
 ```javascript
@@ -423,14 +423,55 @@ Inline `code` example.
 
 ##### Heading 5
 
-###### Heading 6')
+###### Heading 6
+
+## Link Embeds
+
+Here is a plain discussion link:
+
+http://localhost:3000/forum/looking-for-people-to-play-cs2-with
+
+And the same discussion but linking to a specific reply:
+
+http://localhost:3000/forum/looking-for-people-to-play-cs2-with?comment=018d224c-0e49-4b6d-b57a-87299605c2b5
+
+And here is a profile link (public):
+
+http://localhost:3000/profile/018d224c-0e49-4b6d-b57a-87299605c2b1
+
+Profile link (private):
+
+http://localhost:3000/profile/018d224c-0e49-4b6d-b57a-87299605c2b3
+
+And a game server link:
+
+http://localhost:3000/servers/gameservers/1
+
+An event link:
+
+http://localhost:3000/events/1
+
+And a community vote link:
+
+http://localhost:3000/votes/1
+
+A multi-choice ongoing vote:
+
+http://localhost:3000/votes/3
+
+A concluded vote:
+
+http://localhost:3000/votes/4
+
+Links that appear **inline** like [this one](http://localhost:3000/forum/looking-for-people-to-play-cs2-with) should stay as regular links and not get embedded.', true)
 ON CONFLICT (id)
   DO UPDATE SET
     steam_id = EXCLUDED.steam_id,
     username = EXCLUDED.username,
     introduction = EXCLUDED.introduction,
     badges = EXCLUDED.badges,
-    markdown = EXCLUDED.markdown;
+    markdown = EXCLUDED.markdown,
+    public = EXCLUDED.public;
 
 -- The audit trigger (update_profiles_audit_fields) always resets created_at = OLD.created_at on
 -- any UPDATE, so ON CONFLICT DO UPDATE cannot change it. Bypass the trigger temporarily to force
@@ -811,6 +852,23 @@ INSERT INTO public.referendums(created_at, created_by, title, description, choic
 INSERT INTO public.referendums(created_at, created_by, title, description, choices, date_start, date_end, multiple_choice, is_public)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b3', 'Movie Night Pick', 'Hey everyone, which movie should we watch this Friday? Drop your vote!', ARRAY['Interstellar', 'In Brugges', 'Bo Burnham: Inside'], NOW(), NOW() + INTERVAL '3 days', FALSE, FALSE);
 
+-- Insert a multi-choice ongoing referendum from Hivecom
+INSERT INTO public.referendums(created_at, created_by, title, description, choices, date_start, date_end, multiple_choice, is_public)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Community Event Activities', 'Which activities should we include at the next community event? Pick all that apply!', ARRAY['Big Hike', 'Movie Night', 'Andrew Explosion Chamber', '69 Challenge', 'Soap Hiding'], NOW(), NOW() + INTERVAL '10 days', TRUE, TRUE);
+
+-- Insert a concluded referendum from Hivecom
+INSERT INTO public.referendums(created_at, created_by, title, description, choices, date_start, date_end, multiple_choice, is_public)
+  VALUES (NOW() - INTERVAL '30 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Community Name Vote', 'What should we call our weekly community meetup?', ARRAY['Andy and the Boys', 'Hivecome', 'Unfit and Stinky Podcast', 'Hangout'], NOW() - INTERVAL '30 days', NOW() - INTERVAL '16 days', FALSE, TRUE);
+
+-- Insert votes on the concluded referendum
+INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices)
+  SELECT NOW() - INTERVAL '20 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', id, ARRAY[2]
+  FROM public.referendums WHERE title = 'Community Name Vote';
+
+INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices)
+  SELECT NOW() - INTERVAL '22 days', '018d224c-0e49-4b6d-b57a-87299605c2b3', id, ARRAY[0]
+  FROM public.referendums WHERE title = 'Community Name Vote';
+
 -- Insert a test vote on the public referendum from Hivecom
 INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices)
   SELECT NOW() + INTERVAL '1 hour', '018d224c-0e49-4b6d-b57a-87299605c2b1', id, ARRAY[1]
@@ -935,8 +993,9 @@ WHERE dt.slug = 'general'
 -- This fires both the subscription fan-out trigger (no-op for TestUser since
 -- they are already subscribed) and the mention notification trigger which will
 -- create a notification for the Hivecom user.
-INSERT INTO public.discussion_replies(created_at, created_by, discussion_id, markdown)
+INSERT INTO public.discussion_replies(id, created_at, created_by, discussion_id, markdown)
 SELECT
+  '018d224c-0e49-4b6d-b57a-87299605c2b5'::uuid,
   NOW() - INTERVAL '30 minutes',
   '018d224c-0e49-4b6d-b57a-87299605c2b3'::uuid,
   d.id,

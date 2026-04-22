@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { MDCRoot } from '@nuxtjs/mdc'
+import SharedLinkEmbed from '@/components/LinkEmbed/index.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { groupImagesAST } from '@/lib/imageGrouping'
+import { transformLinkEmbeds } from '@/lib/linkEmbedAST'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import MarkdownLightbox from './MarkdownLightbox.vue'
-
 import SharedUserMention from './UserMention.global.vue'
 
 const props = defineProps({
@@ -24,7 +25,7 @@ const props = defineProps({
 // MDCRenderer.components prop is typed as Record<string, string | DefineComponent<any,any,any>>.
 // Casting via unknown as Record<string, string> satisfies the type (string is a subtype of the union)
 // while keeping the actual runtime value as the component object.
-const mdcComponents = { SharedUserMention } as unknown as Record<string, string>
+const mdcComponents = { SharedUserMention, SharedLinkEmbed } as unknown as Record<string, string>
 
 const container = useTemplateRef('container')
 
@@ -36,21 +37,23 @@ const processedMarkdown = computed(() => processMarkdown(props.md))
 // Top-level await - makes this a genuine async component that Suspense can track
 const { parseMarkdown } = await import('@nuxtjs/mdc/runtime')
 
-function applyGrouping(body: MDCRoot | undefined): MDCRoot | undefined {
+function applyTransforms(body: MDCRoot | undefined): MDCRoot | undefined {
   if (!body)
     return body
-  return groupImagesAST(body as Parameters<typeof groupImagesAST>[0]) as unknown as MDCRoot
+  let result = groupImagesAST(body as Parameters<typeof groupImagesAST>[0])
+  result = transformLinkEmbeds(result as Parameters<typeof transformLinkEmbeds>[0]) as typeof result
+  return result as unknown as MDCRoot
 }
 
 const rawParsed = await parseMarkdown(processedMarkdown.value, { toc: false, contentHeading: false })
 const parsed = shallowReactive({
-  body: applyGrouping(rawParsed.body),
+  body: applyTransforms(rawParsed.body),
   data: rawParsed.data,
 })
 
 watch(processedMarkdown, async (val) => {
   const result = await parseMarkdown(val, { toc: false, contentHeading: false })
-  parsed.body = applyGrouping(result.body)
+  parsed.body = applyTransforms(result.body)
   parsed.data = result.data
 })
 </script>

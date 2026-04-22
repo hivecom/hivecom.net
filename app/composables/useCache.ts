@@ -53,6 +53,7 @@ export interface QueryCacheKey {
   orderBy?: Record<string, unknown>
   limit?: number
   single?: boolean
+  maybeSingle?: boolean
 }
 
 // ── Shared module-level state ──────────────────────────────────────────────────
@@ -332,6 +333,7 @@ function generateQueryHash(query: QueryCacheKey): string {
     orderBy: query.orderBy,
     limit: query.limit,
     single: query.single ?? false,
+    maybeSingle: query.maybeSingle ?? false,
   }
   return btoa(JSON.stringify(normalizedQuery))
 }
@@ -609,7 +611,9 @@ export function useCachedFetch<T = unknown>(
 
       const result = q.single
         ? await queryBuilder.single()
-        : await queryBuilder
+        : q.maybeSingle
+          ? await queryBuilder.maybeSingle()
+          : await queryBuilder
 
       if (result.error)
         throw result.error

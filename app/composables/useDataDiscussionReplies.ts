@@ -624,10 +624,7 @@ export function useDataDiscussionReplies(
       if (!fastPathComplete)
         loading.value = true
 
-      const [fetchedDiscussion] = await Promise.all([
-        fetchDiscussion(),
-        fetchReplyCountMap(props.id),
-      ])
+      const fetchedDiscussion = await fetchDiscussion()
 
       if (discussionCache.error.value != null) {
         loading.value = false
@@ -644,6 +641,7 @@ export function useDataDiscussionReplies(
       discussion.value = fetchedDiscussion
 
       void markDiscussionSeen(fetchedDiscussion.id)
+      void fetchReplyCountMap(fetchedDiscussion.id)
 
       if (!fastPathComplete)
         await loadFirstPage(fetchedDiscussion.id)

@@ -963,12 +963,12 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
   background-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
 }
 
-h5 {
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-light);
-}
-
 .forum {
+  h5 {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-light);
+  }
+
   &__category {
     background-color: var(--color-bg-medium);
 

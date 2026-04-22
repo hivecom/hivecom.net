@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, ButtonGroup, Flex, Tooltip } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
   viewMode: 'flat' | 'threaded'
@@ -20,6 +21,8 @@ const emit = defineEmits<{
   'openTimeline': []
   'goToEnd': []
 }>()
+
+const isBelowSmall = useBreakpoint('<s')
 </script>
 
 <template>
@@ -101,13 +104,16 @@ const emit = defineEmits<{
         </template>
       </Tooltip>
       <Tooltip>
-        <Button size="s" variant="gray" @click="emit('goToEnd')">
+        <Button v-if="!isBelowSmall" size="s" variant="gray" @click="emit('goToEnd')">
           <template #end>
             <Icon :size="18" name="ph:arrow-down" />
           </template>
           <span>
             Latest
           </span>
+        </Button>
+        <Button v-else square size="s" variant="gray" @click="emit('goToEnd')">
+          <Icon :size="18" name="ph:arrow-down" />
         </Button>
         <template #tooltip>
           <p>Go to last reply</p>

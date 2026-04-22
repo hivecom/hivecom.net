@@ -6,10 +6,12 @@ import { useDataUser } from '@/composables/useDataUser'
 interface Props {
   userId?: string | null
   size?: 'xs' | 's' | 'm' | 'l'
+  tiny?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 's',
+  tiny: false,
 })
 
 const { user } = useDataUser(
@@ -33,6 +35,7 @@ const shouldDisplay = computed(() => {
   <RoleIndicator
     v-if="shouldDisplay"
     :role="role"
-    :size="size"
+    :size="props.size"
+    :tiny="props.tiny"
   />
 </template>
