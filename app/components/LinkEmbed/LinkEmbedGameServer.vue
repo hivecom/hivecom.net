@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { useDataLinkPreview } from '@/composables/useDataLinkPreview'
 import { Flex } from '@dolanske/vui'
+import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
+// useGameConnect is consumed inside GameServerConnectButton
 
 type GameserverData = NonNullable<ReturnType<typeof useDataLinkPreview>['data']['value']> & { type: 'gameserver' }
 
@@ -39,6 +41,8 @@ const containerStateConfig = computed(() => {
   }
   return configs[props.data.containerState] ?? configs.unknown
 })
+
+const hasAddresses = computed(() => props.data.addresses && props.data.addresses.length > 0)
 </script>
 
 <template>
@@ -57,7 +61,7 @@ const containerStateConfig = computed(() => {
 
     <Flex column gap="xs" class="link-embed__body link-embed__body--column" :class="{ 'link-embed__body--over-bg': gameBackground }">
       <Flex y-center gap="s" class="link-embed__header">
-        <Icon name="ph:cube" class="link-embed__icon" />
+        <Icon name="ph:game-controller" class="link-embed__icon" />
         <span class="link-embed__eyebrow">Game server</span>
         <template v-if="containerStateConfig">
           <span class="link-embed__eyebrow link-embed__eyebrow--sep">&middot;</span>
@@ -75,12 +79,27 @@ const containerStateConfig = computed(() => {
         {{ data.description }}
       </p>
 
-      <Flex y-center gap="s" class="link-embed__meta">
-        <span v-if="data.gameName" class="link-embed__meta-item">{{ data.gameName }}</span>
-        <template v-if="data.gameName && data.region">
-          <span class="link-embed__meta-sep">&middot;</span>
-        </template>
-        <span v-if="data.region" class="link-embed__meta-item">{{ data.region.toUpperCase() }}</span>
+      <Flex y-center x-between expand gap="s" class="link-embed__meta">
+        <Flex y-center gap="s">
+          <span v-if="data.gameName" class="link-embed__meta-item">{{ data.gameName }}</span>
+          <template v-if="data.gameName && data.region">
+            <span class="link-embed__meta-sep">&middot;</span>
+          </template>
+          <span v-if="data.region" class="link-embed__meta-item">{{ data.region.toUpperCase() }}</span>
+        </Flex>
+
+        <!-- Connect button - stop propagation so the NuxtLink doesn't navigate -->
+        <GameServerConnectButton
+          v-if="hasAddresses"
+          :addresses="data.addresses"
+          :port="data.port"
+          :game-shorthand="data.gameShorthand"
+          variant="gray"
+          size="s"
+          plain
+          outline
+          stop-propagation
+        />
       </Flex>
     </Flex>
   </NuxtLink>

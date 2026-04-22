@@ -1,5 +1,5 @@
-import type { JSONContent } from '@tiptap/core'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { JSONContent } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
 import { Node } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
@@ -158,7 +158,7 @@ export const LinkEmbed = Node.create({
     // Grab supabase client once - available via Nuxt's auto-import at runtime.
     let supabase: SupabaseClient | null = null
     try {
-      supabase = useSupabaseClient() as SupabaseClient
+      supabase = useSupabaseClient()
     }
     catch {
       // Not in a Nuxt context (e.g. SSR or tests) - skip UUID resolution.
@@ -206,8 +206,8 @@ export const LinkEmbed = Node.create({
                   .select('id')
                   .eq('username', username)
                   .maybeSingle()
-                  .then(({ data }) => {
-                    if (!data?.id)
+                  .then(({ data }: { data: { id: string } | null }) => {
+                    if (data?.id == null)
                       return
                     const uuid = data.id
                     const newHref = originalHref.replace(`/profile/${username}`, `/profile/${uuid}`)

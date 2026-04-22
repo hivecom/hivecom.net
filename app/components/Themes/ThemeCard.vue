@@ -147,16 +147,18 @@ if (props.item.forked_from) {
               <span>{{ props.item.fork_count }}</span>
             </template>
           </Flex>
-          <Tooltip v-if="props.item.forked_from">
-            <UserAvatar :user-id="props.item.created_by ?? undefined" size="s" :show-preview="true" />
-            <template #tooltip>
-              <p v-if="fork" style="max-width:256px">
-                This theme is based on {{ fork.name }} created by
-                <b><UserName inherit :user-id="fork.created_by" /></b>
-              </p>
-            </template>
-          </Tooltip>
-          <UserAvatar v-else :user-id="props.item.created_by ?? undefined" size="s" :show-preview="true" />
+          <template v-if="!props.item.is_official">
+            <Tooltip v-if="props.item.forked_from">
+              <UserAvatar :user-id="props.item.created_by ?? undefined" size="s" :show-preview="true" />
+              <template #tooltip>
+                <p v-if="fork" style="max-width:256px">
+                  This theme is based on {{ fork.name }} created by
+                  <b><UserName inherit :user-id="fork.created_by" /></b>
+                </p>
+              </template>
+            </Tooltip>
+            <UserAvatar v-else :user-id="props.item.created_by ?? undefined" size="s" :show-preview="true" />
+          </template>
         </Flex>
       </Flex>
     </div>

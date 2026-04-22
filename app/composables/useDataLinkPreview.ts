@@ -39,6 +39,8 @@ export interface LinkPreviewGameserver {
   gameName: string | null
   gameShorthand: string | null
   containerState: 'healthy' | 'running' | 'unhealthy' | 'offline' | 'unknown'
+  addresses: string[] | null
+  port: string | null
 }
 
 export interface LinkPreviewEvent {
@@ -270,7 +272,7 @@ export function useDataLinkPreview(url: string) {
     const { data: row, error: fetchError } = await supabase
       .from('gameservers')
       .select(`
-        id, name, description, region, game,
+        id, name, description, region, game, addresses, port,
         container (
           running, healthy,
           server ( docker_control, accessible )
@@ -336,6 +338,8 @@ export function useDataLinkPreview(url: string) {
       gameName,
       gameShorthand,
       containerState,
+      addresses: row.addresses,
+      port: row.port,
     } satisfies LinkPreviewGameserver
   }
 

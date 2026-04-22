@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "build": "nuxi build --preset github_pages",
+    "reset": "npx supabase db reset && node scripts/seed-assets.js",
     "dev": "npx supabase start && nuxi dev",
     "dev:staging": "nuxi dev --dotenv .env.production",
     "dev:staging:host": "nuxi dev --dotenv .env.production --host",

@@ -796,7 +796,8 @@ INSERT INTO public.servers(active, address, created_at, docker_control, docker_c
 INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id)
 VALUES
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'cs2', 730),
-(NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Garrys Mod', 'gmod', 4000);
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Garrys Mod', 'gmod', 4000),
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Minecraft', 'minecraft', NULL);
 
 -- Insert a test container for our gameserver
 INSERT INTO public.containers(created_at, healthy, name, reported_at, running, server, started_at)
@@ -825,6 +826,10 @@ This server is geared towards casual play - if you are looking for a competitive
 -- Insert a test gameserver for Garrys Mod
 INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region)
   VALUES (ARRAY['gmod.gameserver.hivecom.net', 'gmod.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Garrys Mod server for sandbox fun', 2, 'Hivecom Garrys Mod Sandbox Server', '27015', 'eu');
+
+-- Insert a test gameserver for Minecraft
+INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region)
+  VALUES (ARRAY['mc.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Minecraft survival server', 3, 'Hivecom Minecraft Survival', '25565', 'eu');
 
 -- Insert a test expense
 INSERT INTO public.expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
