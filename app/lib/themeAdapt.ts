@@ -15,6 +15,8 @@
  * No external dependencies - all math is implemented inline.
  */
 
+import { VUI_DEFAULT_COLORS } from './theme'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -293,78 +295,6 @@ const KEY_RANGES: Record<string, KeyRanges> = {
 }
 
 // ---------------------------------------------------------------------------
-// Default palettes (used as fallback ranges when a key is not in KEY_RANGES)
-// ---------------------------------------------------------------------------
-
-const DEFAULT_DARK_PALETTE: Record<string, string> = {
-  'bg': '#111111',
-  'bg-medium': 'rgb(22, 22, 22)',
-  'bg-raised': 'rgb(28, 28, 28)',
-  'bg-lowered': 'rgb(12, 12, 12)',
-  'text': '#ffffff',
-  'text-light': 'rgb(180, 180, 180)',
-  'text-lighter': 'rgb(110, 110, 110)',
-  'text-lightest': 'rgb(65, 65, 65)',
-  'text-invert': 'rgb(17, 17, 17)',
-  'button-gray': 'rgb(46, 46, 46)',
-  'button-gray-hover': 'rgb(38, 38, 38)',
-  'button-fill': 'rgb(250, 250, 250)',
-  'button-fill-hover': 'rgb(210, 210, 210)',
-  'text-red': 'rgb(243, 78, 70)',
-  'bg-red-lowered': 'rgb(104, 24, 24)',
-  'bg-red-raised': 'rgb(127, 29, 29)',
-  'text-green': 'rgb(106, 207, 48)',
-  'bg-green-lowered': 'rgb(40, 95, 8)',
-  'bg-green-raised': 'rgb(26, 122, 13)',
-  'text-yellow': 'rgb(255, 193, 7)',
-  'bg-yellow-lowered': 'rgb(78, 52, 0)',
-  'bg-yellow-raised': 'rgb(152, 104, 0)',
-  'text-blue': 'rgb(85, 141, 245)',
-  'bg-blue-lowered': 'rgb(13, 32, 74)',
-  'bg-blue-raised': 'rgb(26, 59, 119)',
-  'border': 'rgb(40, 40, 40)',
-  'border-strong': 'rgb(54, 54, 54)',
-  'border-weak': '#181818',
-  'accent': '#a7fc2f',
-  'bg-accent-lowered': '#4e8502',
-  'bg-accent-raised': '#69b103',
-}
-
-const DEFAULT_LIGHT_PALETTE: Record<string, string> = {
-  'bg': '#eeeeee',
-  'bg-medium': 'rgb(231, 231, 231)',
-  'bg-raised': 'rgb(222, 222, 222)',
-  'bg-lowered': 'rgb(255, 255, 255)',
-  'text': '#000000',
-  'text-light': 'rgb(64, 64, 64)',
-  'text-lighter': 'rgb(92, 92, 92)',
-  'text-lightest': 'rgb(128, 128, 128)',
-  'text-invert': 'rgb(248, 248, 248)',
-  'button-gray': 'rgb(224, 224, 224)',
-  'button-gray-hover': 'rgb(198, 198, 198)',
-  'button-fill': 'rgb(12, 12, 12)',
-  'button-fill-hover': 'rgb(52, 52, 52)',
-  'text-red': 'rgb(209, 60, 52)',
-  'bg-red-lowered': 'rgb(172, 45, 45)',
-  'bg-red-raised': 'rgb(220, 38, 38)',
-  'text-green': 'rgb(77, 160, 29)',
-  'bg-green-lowered': 'rgb(42, 114, 19)',
-  'bg-green-raised': 'rgb(61, 146, 35)',
-  'text-yellow': 'rgb(176, 129, 15)',
-  'bg-yellow-lowered': 'rgb(230, 205, 137)',
-  'bg-yellow-raised': 'rgb(253, 200, 86)',
-  'text-blue': 'rgb(85, 141, 245)',
-  'bg-blue-lowered': 'rgb(196, 214, 255)',
-  'bg-blue-raised': 'rgb(136, 178, 255)',
-  'border': 'rgb(200, 200, 200)',
-  'border-strong': 'rgb(152, 152, 152)',
-  'border-weak': 'rgb(224, 224, 224)',
-  'accent': '#69883e',
-  'bg-accent-lowered': '#93be57',
-  'bg-accent-raised': '#7ea34a',
-}
-
-// ---------------------------------------------------------------------------
 // Main adaptation function
 // ---------------------------------------------------------------------------
 
@@ -391,7 +321,7 @@ export function adaptPaletteToTheme(
   // The default palette for the *source* variant - used to build fallback ranges
   // when a key is missing from KEY_RANGES
   const defaultSourcePalette
-    = sourceVariant === 'dark' ? DEFAULT_DARK_PALETTE : DEFAULT_LIGHT_PALETTE
+    = sourceVariant === 'dark' ? VUI_DEFAULT_COLORS.dark : VUI_DEFAULT_COLORS.light
 
   const result: Record<string, string> = {}
 

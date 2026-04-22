@@ -291,6 +291,7 @@ const showCloseConfirm = ref(false)
 
 // Reusable template so the content can be moved to a Drawer on phone
 const [DefineControls, ThemeEditorControls] = createReusableTemplate()
+const [DefineHeaderItems, ThemeHeaderItems] = createReusableTemplate()
 const isMobile = useBreakpoint('<s')
 
 const ICON_COLOR_KEYS = [
@@ -341,6 +342,39 @@ const iconTheme = computed<Theme>(() => {
 
 <template>
   <div class="theme-editor__controls">
+    <DefineHeaderItems>
+      <ButtonGroup>
+        <Tooltip>
+          <Button square size="s" :outline="activeType === 'light'" @click="setColorTheme('dark')">
+            <Icon name="ph:moon" />
+          </Button>
+          <template #tooltip>
+            <p>Dark variant</p>
+          </template>
+        </Tooltip>
+        <Tooltip>
+          <Button square size="s" :outline="activeType === 'dark'" @click="setColorTheme('light')">
+            <Icon name="ph:sun" />
+          </Button>
+          <template #tooltip>
+            <p>Light variant</p>
+          </template>
+        </Tooltip>
+      </ButtonGroup>
+
+      <Tooltip>
+        <NuxtLink to="/themes/sample">
+          <Button size="s">
+            Sample
+          </Button>
+        </NuxtLink>
+        <template #tooltip>
+          <p style="max-width: 256px">
+            Go to design sample page. You won't lose your theming progress.
+          </p>
+        </template>
+      </Tooltip>
+    </DefineHeaderItems>
     <DefineControls>
       <div class="theme-editor__header">
         <Flex y-center x-between gap="xs">
@@ -355,63 +389,11 @@ const iconTheme = computed<Theme>(() => {
             <h4>Theming</h4>
           </Flex>
 
-          <Tooltip>
-            <NuxtLink to="/themes/sample">
-              <Button size="s">
-                Sample
-              </Button>
-            </NuxtLink>
-            <template #tooltip>
-              <p>Go to UI sample page</p>
-            </template>
-          </Tooltip>
-
-          <ButtonGroup>
-            <Tooltip>
-              <Button square size="s" :outline="activeType === 'light'" @click="setColorTheme('dark')">
-                <Icon name="ph:moon" />
-              </Button>
-              <template #tooltip>
-                <p>Dark variant</p>
-              </template>
-            </Tooltip>
-            <Tooltip>
-              <Button square size="s" :outline="activeType === 'dark'" @click="setColorTheme('light')">
-                <Icon name="ph:sun" />
-              </Button>
-              <template #tooltip>
-                <p>Light variant</p>
-              </template>
-            </Tooltip>
-          </ButtonGroup>
-
-          <Tooltip>
-            <Button size="s" square @click="applyOtherTheme">
-              <Icon name="ph:magic-wand" />
-            </Button>
-            <template #tooltip>
-              <p>Apply {{ activeType === 'light' ? 'dark' : 'light' }} theme colors to current variant</p>
-            </template>
-          </Tooltip>
-
-          <Tooltip>
-            <Button size="s" square @click="reset">
-              <Icon name="ph:arrow-clockwise" />
-            </Button>
-            <template #tooltip>
-              <p>Reset changes</p>
-            </template>
-          </Tooltip>
-
-          <!-- Pop editor out, not on phone -->
+          <ThemeHeaderItems v-if="!isMobile" />
 
           <div class="flex-1" />
 
-          <Button v-if="isMobile" size="s" variant="accent" @click="openSubmitModal">
-            Finalize
-          </Button>
-
-          <Button v-else square size="s" plain @click="showCloseConfirm = true">
+          <Button v-if="!isMobile" square size="s" plain @click="showCloseConfirm = true">
             <Icon name="ph:x" />
           </Button>
         </Flex>
@@ -424,6 +406,23 @@ const iconTheme = computed<Theme>(() => {
             CSS
           </Tab>
         </Tabs>
+        <Flex v-else class="mt-s">
+          <Button size="s" square @click="applyOtherTheme">
+            <Icon name="ph:magic-wand" />
+          </Button>
+
+          <ThemeHeaderItems />
+
+          <Button square size="s" :outline="activeType === 'light'" @click="reset">
+            <Icon name="ph:arrow-clockwise" />
+          </Button>
+
+          <div class="flex-1" />
+
+          <Button size="s" variant="accent" @click="openSubmitModal">
+            Finalize
+          </Button>
+        </Flex>
       </div>
 
       <!-- Scrollable color + scale list -->
@@ -539,6 +538,17 @@ const iconTheme = computed<Theme>(() => {
           </p>
         </div>
         <Flex x-end>
+          <Tooltip>
+            <Button size="s" square @click="applyOtherTheme">
+              <Icon name="ph:magic-wand" />
+            </Button>
+            <template #tooltip>
+              <p style="max-width:256px">
+                Apply {{ activeType === 'light' ? 'dark' : 'light' }} theme colors to current variant. <strong>Caution!</strong> This action will overwrite your current changes.
+              </p>
+            </template>
+          </Tooltip>
+          <div class="flex-1" />
           <Button size="s" plain variant="danger" @click="reset">
             Reset
           </Button>
@@ -795,6 +805,7 @@ const iconTheme = computed<Theme>(() => {
       background-color: var(--color-bg-medium);
       z-index: 5;
       padding-top: 0;
+      padding-bottom: var(--space-s);
     }
 
     &__footer {

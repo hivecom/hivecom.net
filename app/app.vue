@@ -6,6 +6,8 @@ import LayoutLoading from '@/components/Layout/Loading.vue'
 import ThemeEditorControls from '@/components/Themes/ThemeEditorControls.vue'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { useLastSeenTracking } from '@/lib/lastSeen'
+import MarkdownRenderer from './components/Shared/MarkdownRenderer.vue'
+import { wrapCode } from './lib/utils/formatting'
 
 const route = useRoute()
 const site = useSiteConfig()
@@ -119,7 +121,7 @@ const { editorActive } = useThemeEditorState()
       </Flex>
     </template>
 
-    <pre class="theme-custom-css-viewer">{{ pendingTheme?.theme.custom_css }}</pre>
+    <MarkdownRenderer v-if="pendingTheme" class="theme-custom-css-viewer" :md="wrapCode(pendingTheme.theme.custom_css, 'css')" />
 
     <template #footer="{ close }">
       <Flex gap="xs" expand x-end>
@@ -156,7 +158,7 @@ const { editorActive } = useThemeEditorState()
       </Flex>
     </template>
 
-    <pre class="theme-custom-css-viewer">{{ pendingCssChange?.theme.custom_css }}</pre>
+    <MarkdownRenderer v-if="pendingTheme" class="theme-custom-css-viewer" :md="wrapCode(pendingTheme.theme.custom_css, 'css')" />
 
     <template #footer="{ close }">
       <Flex gap="xs" expand x-end>
