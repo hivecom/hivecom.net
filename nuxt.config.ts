@@ -37,6 +37,121 @@ export default defineNuxtConfig({
       meta: [
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
       ],
+      script: [
+        {
+          // Blocking inline script - runs synchronously before first paint to
+          // restore the cached theme and light/dark mode from localStorage,
+          // preventing any flash of the wrong theme/palette.
+          innerHTML: `(function () {
+  try {
+    // 1. Restore light/dark mode (VUI stores this under 'vueuse-color-scheme')
+    var scheme = localStorage.getItem('vueuse-color-scheme');
+    var html = document.documentElement;
+    if (scheme === 'light') {
+      html.classList.remove('dark');
+      html.classList.add('light');
+    } else {
+      // Default to dark
+      html.classList.remove('light');
+      html.classList.add('dark');
+    }
+
+    // 2. Restore custom theme palette from cache
+    var raw = localStorage.getItem('hivecom-theme-cache');
+    if (!raw) return;
+    var theme = JSON.parse(raw);
+    if (!theme || !theme.id) return;
+
+    var style = html.style;
+
+    // Color vars: DB columns like 'dark_bg_raised' -> '--dark-color-bg-raised'
+    var colorKeys = [
+      'bg','bg_medium','bg_raised','bg_lowered',
+      'text','text_light','text_lighter','text_lightest','text_invert',
+      'text_red','text_green','text_yellow','text_blue',
+      'bg_red_lowered','bg_red_raised',
+      'bg_green_lowered','bg_green_raised',
+      'bg_yellow_lowered','bg_yellow_raised',
+      'bg_blue_lowered','bg_blue_raised',
+      'border','border_strong','border_weak',
+      'button_gray','button_gray_hover','button_fill','button_fill_hover',
+      'accent','bg_accent_lowered','bg_accent_raised'
+    ];
+    for (var i = 0; i < colorKeys.length; i++) {
+      var k = colorKeys[i];
+      for (var pi = 0; pi < 2; pi++) {
+        var prefix = pi === 0 ? 'dark' : 'light';
+        var col = prefix + '_' + k;
+        if (theme[col] != null) {
+          var varName = '--' + prefix + '-color-' + k.replace(/_/g, '-');
+          style.setProperty(varName, theme[col]);
+        }
+      }
+    }
+
+    // Scale helpers
+    function scaleVal(def, dbVal, minP, maxP) {
+      var pct = minP + (dbVal / 100) * (maxP - minP);
+      return def * (pct / 100);
+    }
+
+    // Spacing tokens (minPercent=0, maxPercent=200, defaultDb=50, unit=px)
+    var spacingDefs = [
+      ['--space-xxs', 4], ['--space-xs', 8], ['--space-s', 12],
+      ['--space-m', 16], ['--space-l', 24], ['--space-xl', 34],
+      ['--space-xxl', 48], ['--space-xxxl', 64]
+    ];
+    var spacingDb = theme.spacing != null ? theme.spacing : 50;
+    for (var j = 0; j < spacingDefs.length; j++) {
+      var scaled = scaleVal(spacingDefs[j][1], spacingDb, 0, 200);
+      style.setProperty(spacingDefs[j][0], Math.round(scaled * 10) / 10 + 'px');
+    }
+
+    // Rounding tokens (minPercent=0, maxPercent=500, defaultDb=20, unit=px)
+    var roundingDefs = [
+      ['--border-radius-xs', 3], ['--border-radius-s', 5],
+      ['--border-radius-m', 8], ['--border-radius-l', 12],
+      ['--border-radius-pill', 99]
+    ];
+    var roundingDb = theme.rounding != null ? theme.rounding : 20;
+    for (var j = 0; j < roundingDefs.length; j++) {
+      var scaled = scaleVal(roundingDefs[j][1], roundingDb, 0, 500);
+      style.setProperty(roundingDefs[j][0], Math.round(scaled * 10) / 10 + 'px');
+    }
+
+    // Transition tokens (minPercent=0, maxPercent=400, defaultDb=25, unit=s)
+    var transitionDefs = [
+      ['--transition-fast', 0.05, 'ease-in-out', '--transition-fast-duration'],
+      ['--transition', 0.11, 'cubic-bezier(.65, 0, .35, 1)', '--transition-duration'],
+      ['--transition-slow', 0.25, 'cubic-bezier(.65, 0, .35, 1)', '--transition-slow-duration']
+    ];
+    var transitionsDb = theme.transitions != null ? theme.transitions : 25;
+    for (var j = 0; j < transitionDefs.length; j++) {
+      var td = transitionDefs[j];
+      var dur = scaleVal(td[1], transitionsDb, 0, 400);
+      var durStr = Math.round(dur * 1000) / 1000 + 's';
+      style.setProperty(td[0], durStr + ' all ' + td[2]);
+      style.setProperty(td[3], durStr);
+    }
+
+    // Widening/container tokens (minPercent=100, maxPercent=300, defaultDb=0, unit=px)
+    var containerDefs = [
+      ['--container-xs', 360], ['--container-s', 728], ['--container-m', 968],
+      ['--container-l', 1280], ['--container-xl', 1540], ['--container-xxl', 1920]
+    ];
+    var wideningDb = theme.widening != null ? theme.widening : 0;
+    for (var j = 0; j < containerDefs.length; j++) {
+      var scaled = scaleVal(containerDefs[j][1], wideningDb, 100, 300);
+      style.setProperty(containerDefs[j][0], Math.round(scaled * 10) / 10 + 'px');
+    }
+  } catch (e) {
+    // Never block the page on theme restore errors
+  }
+})();`,
+          type: 'text/javascript',
+          tagPriority: 'critical',
+        },
+      ],
     },
     pageTransition: {
       name: 'page',

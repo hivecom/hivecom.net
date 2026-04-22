@@ -96,7 +96,7 @@ function computeThemeChecksum(theme: Tables<'themes'>): string {
 }
 
 function computeCssChecksum(css: string | null | undefined): string {
-  if (!css || css.trim().length === 0)
+  if (css == null || css.trim().length === 0)
     return ''
   return btoa(css.trim())
 }
@@ -129,7 +129,7 @@ export function useUserTheme() {
     const sanitized = sanitizeCustomCss(raw)
     customCssContent.value = sanitized
 
-    if (sanitized) {
+    if (sanitized.length > 0) {
       loadStyleTag()
     }
   }
@@ -149,7 +149,7 @@ export function useUserTheme() {
     },
     set(options: ThemeOption[]) {
       if (options?.[0] !== undefined)
-        setActiveTheme(options[0].value)
+        void setActiveTheme(options[0].value)
     },
   })
 
@@ -174,13 +174,13 @@ export function useUserTheme() {
       if (import.meta.client) {
         try {
           const cached = localStorage.getItem(THEME_CACHE_KEY)
-          if (cached) {
+          if (cached != null) {
             const cachedTheme = JSON.parse(cached) as Tables<'themes'>
-            if (cachedTheme?.id) {
+            if (cachedTheme?.id != null) {
               applyTheme(cachedTheme)
               activeTheme.value = cachedTheme
               // Also restore custom CSS if it was previously allowed
-              if (cachedTheme.custom_css && cachedTheme.custom_css.trim().length > 0) {
+              if (cachedTheme.custom_css != null && cachedTheme.custom_css.trim().length > 0) {
                 applyCustomCss(cachedTheme.custom_css)
               }
               return
@@ -204,9 +204,9 @@ export function useUserTheme() {
     if (import.meta.client) {
       try {
         const cached = localStorage.getItem(THEME_CACHE_KEY)
-        if (cached) {
+        if (cached != null) {
           const cachedTheme = JSON.parse(cached) as Tables<'themes'>
-          if (cachedTheme?.id) {
+          if (cachedTheme?.id != null) {
             applyTheme(cachedTheme)
             activeTheme.value = cachedTheme
           }

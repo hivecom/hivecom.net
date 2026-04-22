@@ -231,6 +231,38 @@ function nearestSegment(): BucketSegment | null {
   return best
 }
 
+const hoveredSegment = computed((): BucketSegment | null => {
+  if (!isHovering.value)
+    return null
+  const f = hoverFraction.value
+  // For dot segments, use a larger proximity threshold so the full track width
+  // is effectively clickable near a blob - not just the 6px blob itself.
+  const DOT_THRESHOLD = 0.05
+  // Check offtopic layer first - it renders on top
+  for (const seg of offtopicSegments.value) {
+    if (seg.isSingle) {
+      if (Math.abs(f - seg.topFraction) <= DOT_THRESHOLD)
+        return seg
+    }
+    else {
+      if (f >= seg.topFraction && f <= seg.bottomFraction)
+        return seg
+    }
+  }
+  // Fall back to normal segments
+  for (const seg of bucketSegments.value) {
+    if (seg.isSingle) {
+      if (Math.abs(f - seg.topFraction) <= DOT_THRESHOLD)
+        return seg
+    }
+    else {
+      if (f >= seg.topFraction && f <= seg.bottomFraction)
+        return seg
+    }
+  }
+  return null
+})
+
 function onTrackClick() {
   if (props.loading)
     return
@@ -283,38 +315,6 @@ function formatTooltip(date: Date): string {
     return date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
-
-const hoveredSegment = computed((): BucketSegment | null => {
-  if (!isHovering.value)
-    return null
-  const f = hoverFraction.value
-  // For dot segments, use a larger proximity threshold so the full track width
-  // is effectively clickable near a blob - not just the 6px blob itself.
-  const DOT_THRESHOLD = 0.05
-  // Check offtopic layer first - it renders on top
-  for (const seg of offtopicSegments.value) {
-    if (seg.isSingle) {
-      if (Math.abs(f - seg.topFraction) <= DOT_THRESHOLD)
-        return seg
-    }
-    else {
-      if (f >= seg.topFraction && f <= seg.bottomFraction)
-        return seg
-    }
-  }
-  // Fall back to normal segments
-  for (const seg of bucketSegments.value) {
-    if (seg.isSingle) {
-      if (Math.abs(f - seg.topFraction) <= DOT_THRESHOLD)
-        return seg
-    }
-    else {
-      if (f >= seg.topFraction && f <= seg.bottomFraction)
-        return seg
-    }
-  }
-  return null
-})
 
 /** Always true when hovering - any click will find the nearest segment. */
 const isOverSegment = computed(() => isHovering.value)

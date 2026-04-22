@@ -246,6 +246,7 @@ function updateFileName(id: string, value: string) {
       </Card>
 
       <FileUpload
+        expand
         label="Drag & drop images here, or click to browse"
         :disabled="!props.canUpload || uploading"
         :loading="uploading"

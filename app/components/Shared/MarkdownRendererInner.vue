@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { MDCRoot } from '@nuxtjs/mdc'
 import { useBulkDataUser } from '@/composables/useDataUser'
-import { groupImages } from '@/lib/imageGrouping'
+import { groupImagesAST } from '@/lib/imageGrouping'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import MarkdownLightbox from './MarkdownLightbox.vue'
+
 import SharedUserMention from './UserMention.global.vue'
 
 const props = defineProps({
@@ -24,16 +26,6 @@ const props = defineProps({
 // while keeping the actual runtime value as the component object.
 const mdcComponents = { SharedUserMention } as unknown as Record<string, string>
 
-// Wraps runs of solo-image <p> elements in .md-image-group divs.
-// groupImages() operates on a direct container element - pass the .typeset node.
-function runGroupImages(root: HTMLElement | null) {
-  if (!root)
-    return
-  const typeset = root.querySelector('.typeset')
-  if (typeset instanceof HTMLElement)
-    groupImages(typeset)
-}
-
 const container = useTemplateRef('container')
 
 const mentionIds = computed(() => extractMentionIds(props.md))
@@ -43,41 +35,23 @@ const processedMarkdown = computed(() => processMarkdown(props.md))
 
 // Top-level await - makes this a genuine async component that Suspense can track
 const { parseMarkdown } = await import('@nuxtjs/mdc/runtime')
-const parsed = shallowReactive(await parseMarkdown(processedMarkdown.value, { toc: false, contentHeading: false }))
+
+function applyGrouping(body: MDCRoot | undefined): MDCRoot | undefined {
+  if (!body)
+    return body
+  return groupImagesAST(body as Parameters<typeof groupImagesAST>[0]) as unknown as MDCRoot
+}
+
+const rawParsed = await parseMarkdown(processedMarkdown.value, { toc: false, contentHeading: false })
+const parsed = shallowReactive({
+  body: applyGrouping(rawParsed.body),
+  data: rawParsed.data,
+})
 
 watch(processedMarkdown, async (val) => {
   const result = await parseMarkdown(val, { toc: false, contentHeading: false })
-  parsed.body = result.body
+  parsed.body = applyGrouping(result.body)
   parsed.data = result.data
-  await nextTick()
-  runGroupImages(container.value)
-})
-
-// MutationObserver is more reliable than onMounted+nextTick here because
-// MDCRenderer (a nuxt-mdc child) does its own async rendering - by the time
-// onMounted fires, the .typeset children may not exist yet. The observer
-// fires once the subtree actually settles with content.
-let observer: MutationObserver | null = null
-
-onMounted(() => {
-  const root = container.value
-  if (!root)
-    return
-
-  // Disconnect before grouping - our own DOM mutations would re-trigger the
-  // observer otherwise. The watch on processedMarkdown handles content updates.
-  observer = new MutationObserver(() => {
-    observer?.disconnect()
-    observer = null
-    runGroupImages(root)
-  })
-
-  observer.observe(root, { childList: true, subtree: true })
-})
-
-onUnmounted(() => {
-  observer?.disconnect()
-  observer = null
 })
 </script>
 
@@ -97,7 +71,7 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 /* Consecutive solo-image paragraphs grouped into a flex row */
-.md-image-group {
+:deep(.md-image-group) {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-xs);
