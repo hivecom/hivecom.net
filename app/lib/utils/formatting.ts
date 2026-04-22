@@ -74,3 +74,7 @@ export function normalizeTipTapOutput(content: string): string {
     .replace(LEADING_NBSP_RE, '')
     .replace(TRAILING_NBSP_RE, '')
 }
+
+export function wrapCode(template: string, language: string) {
+  return `\`\`\`${language} ${template}\n\`\`\``
+}

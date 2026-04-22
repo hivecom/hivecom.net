@@ -336,6 +336,12 @@ code {
     margin-block: var(--space-s);
   }
 
+  pre {
+    span {
+      font-size: var(--font-size-s) !important;
+    }
+  }
+
   details {
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-s);

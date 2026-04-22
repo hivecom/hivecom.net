@@ -14,15 +14,14 @@ const isMobile = useBreakpoint('<xs')
 <template>
   <div>
     <Flex x-between y-center class="mb-s">
-      <Flex>
-        <h1 v-if="!props.compact">
-          Sample Theme
-        </h1>
+      <h1 v-if="!props.compact">
+        Sample Theme
+      </h1>
 
-        <h3 v-else>
-          Sample Theme
-        </h3>
-      </Flex>
+      <h3 v-else>
+        Sample Theme
+      </h3>
+
       <ThemeToggle no-text />
     </Flex>
 
@@ -38,11 +37,9 @@ const isMobile = useBreakpoint('<xs')
 
     <Card separators class="card-bg mb-xxl" :class="props.compact ? 'mb-m' : 'mb-xxl'">
       <template #header>
-        <Flex y-center x-start gap="xs">
-          <h5 class="flex-1">
-            Color details
-          </h5>
-        </Flex>
+        <h5 class="flex-1">
+          Color details
+        </h5>
       </template>
       <div class="px-m pb-m">
         <p class="mb-l">

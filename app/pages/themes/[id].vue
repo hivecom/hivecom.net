@@ -135,7 +135,7 @@ const isMobile = useBreakpoint('<s')
           </Alert>
 
           <div class="page-title">
-            <Flex y-start gap="l">
+            <Flex y-start :gap="isMobile ? 's' : 'l'" :column="isMobile">
               <ThemeIcon :theme="data" :size="isMobile ? 'm' : 'xl'" />
               <div>
                 <h1>

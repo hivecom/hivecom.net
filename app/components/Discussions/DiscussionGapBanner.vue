@@ -53,7 +53,7 @@ const emit = defineEmits<{
     transform: translateY(-50%);
     left: 0;
     right: 0;
-    border-bottom: 1px dashed var(--color-accent);
+    border-bottom: 1px dashed var(--color-border);
     opacity: 0.5;
     z-index: 1;
     transition: opacity var(--transition);
