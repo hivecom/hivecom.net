@@ -55,7 +55,7 @@ function handleClick() {
     transform: translateY(-50%);
     left: 0;
     right: 0;
-    border-bottom: 1px solid var(--color-accent);
+    border-bottom: 1px solid var(--color-border);
     opacity: 0.5;
     z-index: 1;
     transition: opacity var(--transition);

@@ -14,6 +14,9 @@ const emit = defineEmits<{
   <div class="discussion-offtopic-banner" @click="emit('show')">
     <Button plain size="s">
       {{ count }} off-topic {{ count === 1 ? 'reply' : 'replies' }} hidden
+      <template #end>
+        <Icon name="ph:caret-down" :size="12" />
+      </template>
     </Button>
   </div>
 </template>
@@ -35,7 +38,7 @@ const emit = defineEmits<{
     transform: translateY(-50%);
     left: 0;
     right: 0;
-    border-bottom: 1px dashed var(--color-text-yellow);
+    border-bottom: 1px dashed var(--color-border);
     opacity: 0.5;
     z-index: 1;
     transition: opacity var(--transition);
