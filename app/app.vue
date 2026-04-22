@@ -73,7 +73,7 @@ const layoutName = computed(() => {
 useLastSeenTracking()
 
 // Load and apply the user's custom theme (if any) from their profile
-const { pendingTheme, confirmPendingTheme, confirmPendingThemeWithoutCss } = useUserTheme()
+const { pendingTheme, confirmPendingTheme, confirmPendingThemeWithoutCss, pendingCssChange, confirmCssChange, dismissCssChange } = useUserTheme()
 const { editorActive } = useThemeEditorState()
 </script>
 
@@ -131,6 +131,40 @@ const { editorActive } = useThemeEditorState()
         </Button>
         <Button variant="fill" @click="confirmPendingTheme(); close()">
           Apply theme
+        </Button>
+      </Flex>
+    </template>
+  </Modal>
+
+  <Modal
+    :open="!!pendingCssChange"
+    centered
+    :card="{ footerSeparator: true }"
+    :can-dismiss="false"
+    size="s"
+    @close="dismissCssChange()"
+  >
+    <template #header>
+      <Flex column gap="s">
+        <h4>This theme's CSS has changed</h4>
+        <p v-if="pendingCssChange?.hasUrl">
+          The custom CSS for this theme has been updated since you last applied it. It contains external URL references, which may load remote resources or track your activity. Review the CSS below before reapplying.
+        </p>
+        <p v-else>
+          The custom CSS for this theme has been updated since you last applied it. Review the changes below before reapplying.
+        </p>
+      </Flex>
+    </template>
+
+    <pre class="theme-custom-css-viewer">{{ pendingCssChange?.theme.custom_css }}</pre>
+
+    <template #footer="{ close }">
+      <Flex gap="xs" expand x-end>
+        <Button @click="dismissCssChange(); close()">
+          Keep old CSS
+        </Button>
+        <Button variant="fill" @click="confirmCssChange(); close()">
+          Apply updated CSS
         </Button>
       </Flex>
     </template>

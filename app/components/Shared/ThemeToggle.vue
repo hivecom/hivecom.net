@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, setColorTheme, Switch, theme } from '@dolanske/vui'
+import { Button, setColorTheme, Switch, theme, Tooltip } from '@dolanske/vui'
 
 const props = defineProps({
   noText: {
@@ -11,6 +11,22 @@ const props = defineProps({
     default: false,
   },
   button: {
+    type: Boolean,
+    default: false,
+  },
+  disableTooltip: {
+    type: Boolean,
+    default: false,
+  },
+  plain: {
+    type: Boolean,
+    default: false,
+  },
+  accentWeak: {
+    type: Boolean,
+    default: false,
+  },
+  rounded: {
     type: Boolean,
     default: false,
   },
@@ -46,15 +62,25 @@ function toggleTheme() {
       </div>
 
       <template v-if="props.button">
-        <Button
-          square
-          outline
-          class="theme-toggle__button"
-          :aria-label="`Switch to ${isLight ? 'dark' : 'light'} theme`"
-          @click="toggleTheme"
-        >
-          <Icon :name="isLight ? 'ph:sun' : 'ph:moon'" />
-        </Button>
+        <Tooltip :disabled="props.disableTooltip">
+          <Button
+            square
+            :plain="props.plain"
+            :outline="!props.plain"
+            class="theme-toggle__button"
+            :class="{
+              'vui-button-accent-weak': props.accentWeak,
+              'vui-button-rounded': props.rounded,
+            }"
+            :aria-label="`Switch to ${isLight ? 'dark' : 'light'} theme`"
+            @click="toggleTheme"
+          >
+            <Icon :name="isLight ? 'ph:sun' : 'ph:moon'" />
+          </Button>
+          <template #tooltip>
+            <p>{{ isLight ? 'Switch to dark theme' : 'Switch to light theme' }}</p>
+          </template>
+        </Tooltip>
       </template>
 
       <!-- Only render the actual Switch component on client-side -->

@@ -88,9 +88,9 @@ function handleRetry() {
 const currentUser = useSupabaseUser()
 
 // When unauthenticated, a missing profile is expected (RLS only returns public
-// profiles to anon). Don't show an error — just render nothing.
-const isExpectedEmpty = computed(() =>
-  !currentUser.value && (!!error.value || !user.value),
+// profiles to anon). Show a sign-in prompt instead of an error.
+const isUnauthenticatedHidden = computed(() =>
+  !currentUser.value && !loading.value && (!!error.value || !user.value) && !!props.userId,
 )
 
 // Activity data
@@ -152,8 +152,26 @@ const {
       </div>
     </template>
 
-    <!-- Unauthenticated and profile not visible - render nothing -->
-    <template v-else-if="isExpectedEmpty" />
+    <!-- Unauthenticated and profile not visible - show sign-in prompt -->
+    <template v-else-if="isUnauthenticatedHidden">
+      <Flex column y-center x-center gap="s" class="user-preview-card__locked">
+        <Flex column y-center x-center gap="xs">
+          <Avatar :size="props.avatarSize" class="user-preview-card__locked-avatar" />
+          <span class="user-preview-card__locked-name">Private User</span>
+        </Flex>
+        <Divider style="width: 100%;" />
+        <Flex column y-center expand x-center gap="l" class="user-preview-card__locked-cta">
+          <p class="user-preview-card__locked-text text-s">
+            Sign in to see this user's profile.
+          </p>
+          <NuxtLink to="/login" class="user-preview-card__locked-link">
+            <Button size="s" expand variant="accent">
+              Sign in
+            </Button>
+          </NuxtLink>
+        </Flex>
+      </Flex>
+    </template>
 
     <!-- Error state -->
     <template v-else-if="error || !user">
@@ -281,6 +299,35 @@ const {
         color: var(--color-text);
       }
     }
+  }
+
+  &__locked {
+    text-align: center;
+  }
+
+  &__locked-avatar {
+    opacity: 0.35;
+    filter: grayscale(1);
+  }
+
+  &__locked-name {
+    font-size: var(--font-size-l);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-lighter);
+  }
+
+  &__locked-cta {
+    text-align: center;
+  }
+
+  &__locked-text {
+    margin: 0;
+    color: var(--color-text-light);
+  }
+
+  &__locked-link {
+    width: 100%;
+    text-decoration: none;
   }
 }
 

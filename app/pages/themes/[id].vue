@@ -242,7 +242,7 @@ const isMobile = useBreakpoint('<s')
                 <span>Updated</span>
                 <span>{{ formatTimeAgo(data.modified_at) }}</span>
               </Flex>
-              <Flex x-between y-center expand class="theme-details__meta-item">
+              <Flex v-if="userId" x-between y-center expand class="theme-details__meta-item">
                 <span>Users</span>
                 <BulkAvatarDisplay
                   no-empty-state
@@ -270,7 +270,7 @@ const isMobile = useBreakpoint('<s')
                   CSS
                 </Badge>
                 <Badge v-if="data.custom_css && data.custom_css.includes('url')" variant="danger">
-                  Uses CSS url
+                  Uses CSS URL
                 </Badge>
               </Flex>
             </Flex>

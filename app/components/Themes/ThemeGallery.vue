@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Button, Card, Flex, Grid, Input, paginate, Pagination, Skeleton, Tab, Tabs } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Input, paginate, Pagination, Select, Skeleton, Tab, Tabs } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { DEFAULT_THEME } from '@/lib/theme'
 import ThemeCard from './ThemeCard.vue'
 
 type ThemeRow = Database['public']['Tables']['themes']['Row']
-type GalleryTheme = ThemeRow & { user_count: number | null, fork_count: number | null }
+interface GalleryTheme extends ThemeRow { user_count: number | null, fork_count: number | null }
 
 const emit = defineEmits<{
   create: []
@@ -46,6 +46,29 @@ const totalCount = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
+// Community tab filters
+const showForks = ref(false)
+
+type SortValue = 'newest' | 'popular' | 'forks'
+const communitySort = ref<SortValue>('newest')
+
+interface SortOption { label: string, value: SortValue }
+const sortOptions: SortOption[] = [
+  { label: 'Newest', value: 'newest' },
+  { label: 'Most popular', value: 'popular' },
+  { label: 'Most forked', value: 'forks' },
+]
+
+const selectedSort = computed({
+  get(): SortOption[] {
+    return [sortOptions.find(o => o.value === communitySort.value) ?? sortOptions[0]!]
+  },
+  set(options: SortOption[]) {
+    if (options[0])
+      communitySort.value = options[0].value
+  },
+})
+
 async function fetchPage(tab: GalleryTab, page: number, searchValue: string) {
   loading.value = true
   error.value = null
@@ -69,6 +92,9 @@ async function fetchPage(tab: GalleryTab, page: number, searchValue: string) {
         break
       case 'community':
         query = query.eq('is_official', false).not('created_by', 'is', null)
+        if (!showForks.value) {
+          query = query.is('forked_from', null)
+        }
         break
       case 'created':
         if (!userId.value) {
@@ -94,6 +120,8 @@ async function fetchPage(tab: GalleryTab, page: number, searchValue: string) {
       query = query.order('created_at', { ascending: false })
     }
     else {
+      // For community, server-side sort by is_unmaintained + created_at;
+      // popular/forks sorting is applied client-side after user_count/fork_count are mapped.
       query = query.order('is_unmaintained', { ascending: true }).order('created_at', { ascending: false })
     }
 
@@ -107,7 +135,6 @@ async function fetchPage(tab: GalleryTab, page: number, searchValue: string) {
     const rawData = (data ?? [])
 
     // Count forks via a secondary query (self-referential joins are unsupported in PostgREST)
-    // REVIEW: this could be an rpc function?
     const pageIds = rawData.map(t => t.id)
     const forkCounts: Record<string, number> = {}
     if (pageIds.length > 0) {
@@ -122,12 +149,24 @@ async function fetchPage(tab: GalleryTab, page: number, searchValue: string) {
       }
     }
 
-    items.value = rawData.map(({ theme_usage, ...row }) => ({
+    const mapped: GalleryTheme[] = rawData.map(({ theme_usage, ...row }) => ({
       ...row,
       user_count: theme_usage?.[0]?.user_count ?? null,
       fork_count: forkCounts[row.id] ?? null,
     }))
 
+    // Client-side sort for community tab popular/forks options
+    // (user_count and fork_count are not available server-side for ordering)
+    if (tab === 'community') {
+      if (communitySort.value === 'popular') {
+        mapped.sort((a, b) => (b.user_count ?? -1) - (a.user_count ?? -1))
+      }
+      else if (communitySort.value === 'forks') {
+        mapped.sort((a, b) => (b.fork_count ?? -1) - (a.fork_count ?? -1))
+      }
+    }
+
+    items.value = mapped
     totalCount.value = count ?? 0
   }
   catch (err) {
@@ -151,14 +190,26 @@ const pagination = computed(() =>
   paginate(totalCount.value, currentPage.value, PER_PAGE),
 )
 
-// Reset page and re-fetch when tab or search changes
+// Reset page and re-fetch when tab changes; also reset community-specific filters
 watch(activeTab, () => {
   currentPage.value = 1
   search.value = ''
+  showForks.value = false
+  communitySort.value = 'newest'
   void fetchPage(activeTab.value, 1, '')
 })
 
 watch(search, () => {
+  currentPage.value = 1
+  void fetchPage(activeTab.value, 1, search.value)
+})
+
+watch(showForks, () => {
+  currentPage.value = 1
+  void fetchPage(activeTab.value, 1, search.value)
+})
+
+watch(communitySort, () => {
   currentPage.value = 1
   void fetchPage(activeTab.value, 1, search.value)
 })
@@ -230,7 +281,7 @@ defineExpose({ refresh, switchToCreated })
       <Tab value="community">
         Community
       </Tab>
-      <Tab v-if="userId" value="created">
+      <Tab v-show="userId" value="created">
         My themes
       </Tab>
 
@@ -245,8 +296,32 @@ defineExpose({ refresh, switchToCreated })
       </template>
     </Tabs>
 
-    <Flex x-start y-center class="mb-s">
-      <Input v-model="search" placeholder="Search themes..." class="search-input" />
+    <Flex x-between y-center gap="s" :wrap="isMobile" class="mb-s">
+      <Input v-model="search" placeholder="Search themes..." class="search-input" :expand="isMobile" />
+      <Flex v-if="activeTab === 'community'" y-center gap="s" :expand="isMobile">
+        <Select
+          v-model="selectedSort"
+          :options="sortOptions"
+          label-key="label"
+          :show-clear="false"
+          :expand="isMobile"
+        />
+        <Tooltip>
+          <Button
+            :variant="showForks ? 'fill' : 'gray'"
+            :outline="!showForks"
+            @click="showForks = !showForks"
+          >
+            <template #start>
+              <Icon name="ph:git-fork" :size="16" />
+            </template>
+            Show forks
+          </Button>
+          <template #tooltip>
+            <p>{{ showForks ? 'Hide forked themes' : 'Show forked themes' }}</p>
+          </template>
+        </Tooltip>
+      </Flex>
     </Flex>
 
     <Grid column gap="l" expand :columns="isMobile ? 1 : 2">
@@ -311,11 +386,6 @@ defineExpose({ refresh, switchToCreated })
 </template>
 
 <style scoped lang="scss">
-.search-input {
-  width: 100%;
-  max-width: 328px;
-}
-
 .theme-card-skeleton {
   display: flex;
   flex-direction: column;

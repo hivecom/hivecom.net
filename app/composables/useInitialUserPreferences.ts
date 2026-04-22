@@ -18,9 +18,11 @@ export function useInitialUserPreferences() {
   const { fetchAndApply } = useUserTheme()
 
   async function applyUserPreferences(): Promise<void> {
-    // Nothing to do for guests
-    if (userId.value == null)
+    // For guests, still attempt to restore a cached theme from localStorage.
+    if (userId.value == null) {
+      await fetchAndApply()
       return
+    }
 
     // Run both fetches in parallel - settings (light/dark) and custom theme
     // (palette overrides). Neither depends on the other.

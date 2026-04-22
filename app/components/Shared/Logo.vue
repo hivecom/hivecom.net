@@ -56,7 +56,7 @@
 
 <style scoped lang="scss">
 .logo-link {
-  color: var(--color-accent);
+  color: var(--color-accent, #a7fc2f);
   display: inline-flex;
   align-items: center;
 }
@@ -74,7 +74,7 @@
 }
 
 .logo-letter {
-  fill: var(--color-bg);
+  fill: var(--color-bg, #0e0e10);
 }
 
 /* Match the nav's existing mobile breakpoint exactly */

@@ -40,20 +40,25 @@ const { user, loading } = useDataUser(lazyUserId, {
   includeRole: false,
 })
 
-// Show the popout while loading (so the skeleton is visible) or once we have
-// profile data. We suppress it only when the fetch is done and returned nothing
-// - that's the unauthenticated / RLS-hidden case.
-const canShowPopout = computed(() =>
-  !!(visible.value && props.userId && (loading.value || user.value)),
-)
-
-const isMobile = useBreakpoint('<s')
 const currentUser = useSupabaseUser()
 
-function handleMobileClick(e: Event) {
+// Show the popout while loading (so the skeleton is visible), once we have
+// profile data, or when unauthenticated and the profile is hidden (so the
+// sign-in prompt card can be shown).
+const canShowPopout = computed(() => {
+  if (!visible.value || !props.userId)
+    return false
+  if (loading.value || user.value)
+    return true
+  // Unauthenticated + no user data = show the sign-in prompt card
   if (!currentUser.value)
-    return
+    return true
+  return false
+})
 
+const isMobile = useBreakpoint('<s')
+
+function handleMobileClick(e: Event) {
   e.stopImmediatePropagation()
   visible.value = !visible.value
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SharedLogo from '@/components/Shared/Logo.vue'
 import { useInitialUserPreferences } from '@/composables/useInitialUserPreferences'
 
 // Add loading state to prevent FOUC (Flash of Unstyled Content)
@@ -37,7 +38,7 @@ onMounted(async () => {
 <template>
   <!-- Loading overlay that fades out -->
   <div v-if="isLoading" class="initial-loading" :class="{ 'fade-out': isFadingOut }">
-    <img src="/logo.svg" alt="" width="200" class="logo-animation">
+    <SharedLogo class="logo-animation" />
   </div>
 </template>
 
@@ -67,6 +68,17 @@ onMounted(async () => {
 
   .logo-animation {
     animation: fadeUp 0.4s ease-out;
+  }
+}
+
+// Force the full logo (icon + text) on the loading screen even on mobile.
+.initial-loading {
+  .logo--full {
+    display: block !important;
+  }
+
+  .logo--compact {
+    display: none !important;
   }
 }
 

@@ -6,6 +6,7 @@ import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Inpu
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS, VUI_DEFAULT_COLORS } from '@/lib/theme'
+import { adaptPaletteToTheme } from '@/lib/themeAdapt'
 import { normalizeErrors } from '@/lib/utils/formatting'
 import CodeEditorClient from '../Shared/CodeEditor.vue'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
@@ -87,6 +88,28 @@ function onScaleChange(key: ThemeScaleKey, value: number) {
   const intValue = Math.round(value)
   scaleValues.value[key] = intValue
   applyScale(key, intValue)
+}
+
+// Apply the opposite theme's palette onto the current active theme,
+// intelligently remapping lightness values to suit the target variant while
+// preserving hue and saturation so custom-tinted themes stay coherent.
+function applyOtherTheme() {
+  const current = activeType.value
+  const other: ThemeType = current === 'light' ? 'dark' : 'light'
+  const otherPalette = themeForm.value[other]
+
+  const adapted = adaptPaletteToTheme(otherPalette, current)
+
+  for (const key of Object.keys(adapted)) {
+    const value = adapted[key]
+    if (value == null)
+      continue
+    themeForm.value[current][key] = value
+    document.documentElement.style.setProperty(`--${current}-color-${key}`, value)
+  }
+
+  const otherLabel = other.charAt(0).toUpperCase() + other.slice(1)
+  pushToast(`${otherLabel} theme colors adapted to ${current} theme`)
 }
 
 const showCustomCSSWarning = ref(false)
@@ -361,6 +384,15 @@ const iconTheme = computed<Theme>(() => {
               </template>
             </Tooltip>
           </ButtonGroup>
+
+          <Tooltip>
+            <Button size="s" square @click="applyOtherTheme">
+              <Icon name="ph:magic-wand" />
+            </Button>
+            <template #tooltip>
+              <p>Apply {{ activeType === 'light' ? 'dark' : 'light' }} theme colors to current variant</p>
+            </template>
+          </Tooltip>
 
           <Tooltip>
             <Button size="s" square @click="reset">

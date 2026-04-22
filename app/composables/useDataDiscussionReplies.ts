@@ -59,7 +59,7 @@ export function useDataDiscussionReplies(
   const loadingMore = ref(false)
   const loadingChildren = ref(false)
   const error = ref<string>()
-  const offtopicCount = ref(0)
+  const offtopicCount = computed(() => comments.value.filter(c => c.is_offtopic).length)
 
   const ascending = computed(() => props.model !== 'comment')
   const pageSize = computed(() => props.model === 'forum' ? PAGE_SIZE_FORUM : PAGE_SIZE_COMMENT)
@@ -626,12 +626,6 @@ export function useDataDiscussionReplies(
 
       const [fetchedDiscussion] = await Promise.all([
         fetchDiscussion(),
-        supabase
-          .from('discussion_replies')
-          .select('*', { count: 'exact', head: true })
-          .eq('discussion_id', props.id)
-          .eq('is_offtopic', true)
-          .then(({ count }) => { offtopicCount.value = count ?? 0 }),
         fetchReplyCountMap(props.id),
       ])
 
@@ -813,6 +807,10 @@ export function useDataDiscussionReplies(
         c.is_offtopic = nextValue
       }
     }
+
+    // Bust the page cache so a reload fetches fresh data with the updated
+    // is_offtopic values instead of serving the stale cached pages.
+    repliesCache.invalidate(props.id)
   }
 
   function collectDescendantIds(parentId: string): Set<string> {

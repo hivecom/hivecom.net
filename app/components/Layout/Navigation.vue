@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, DropdownItem, Flex, Kbd, KbdGroup, Popout, Sheet, Skeleton, Tooltip } from '@dolanske/vui'
 import SharedLogo from '@/components/Shared/Logo.vue'
+import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useCommand } from '@/composables/useCommand'
 import { useMfaStatus } from '@/composables/useMfaStatus'
 import { navigationLinks } from '@/config/navigation'
@@ -104,9 +105,14 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
     <div class="container-l">
       <div class="navigation__items">
-        <Button square class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
-          <Icon name="ph:list" size="2rem" />
-        </Button>
+        <div class="navigation__left-group">
+          <Button square class="navigation__hamburger" aria-label="Open mobile menu" @click="toggleMobileMenu">
+            <Icon name="ph:list" size="2rem" />
+          </Button>
+          <Button square plain aria-label="Search" class="navigation__mobile-search pl-4 vui-button-accent-weak vui-button-rounded" @click="openCommand()">
+            <Icon name="ph:magnifying-glass" size="16" />
+          </Button>
+        </div>
 
         <SharedLogo class="navigation__logo" />
 
@@ -207,7 +213,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
         </div>
 
         <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
-          <SearchButton />
+          <SearchButton v-if="!isMobile" />
           <!-- Custom margin, since visually the pfp appears closer than the distance between search & notif icons -->
           <NotificationSheet style="margin-right:6px" />
           <UserSheet v-if="isMobile" />
@@ -217,6 +223,19 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
         <div v-else class="navigation__auth">
           <div class="navigation__auth-buttons">
             <SearchButton />
+
+            <SharedThemeToggle button no-text plain accent-weak rounded :disable-tooltip="isMobile" />
+
+            <Tooltip :disabled="isMobile">
+              <NuxtLink to="/themes">
+                <Button square plain aria-label="Themes" class="vui-button-accent-weak vui-button-rounded">
+                  <Icon name="ph:paint-brush" />
+                </Button>
+              </NuxtLink>
+              <template #tooltip>
+                <p>Themes</p>
+              </template>
+            </Tooltip>
 
             <Button plain @click="$router.push(signInPath())">
               Sign in
@@ -229,6 +248,17 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
           <!-- On mobile we just have a little user icon -->
           <div class="navigation__auth-mobile-button">
+            <SharedThemeToggle button no-text plain accent-weak rounded disable-tooltip />
+            <Tooltip :disabled="isMobile">
+              <NuxtLink to="/themes">
+                <Button square plain aria-label="Themes" class="vui-button-accent-weak vui-button-rounded">
+                  <Icon name="ph:paint-brush" />
+                </Button>
+              </NuxtLink>
+              <template #tooltip>
+                <p>Themes</p>
+              </template>
+            </Tooltip>
             <Button square aria-label="Sign in" @click="$router.push(signInPath())">
               <Icon name="ph:sign-in" />
             </Button>
@@ -281,6 +311,12 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
     &:hover .iconify {
       color: var(--color-text);
     }
+  }
+
+  &__left-group {
+    align-items: center;
+    gap: var(--space-s);
+    display: none;
   }
 
   &__hamburger {
@@ -600,6 +636,11 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
       justify-content: center;
     }
 
+    &__left-group {
+      display: flex;
+      z-index: 1;
+    }
+
     &__logo {
       order: 2;
       position: absolute;
@@ -623,6 +664,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
       &-mobile-button {
         display: flex;
+        gap: var(--space-xs);
       }
     }
   }

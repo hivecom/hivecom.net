@@ -29,6 +29,7 @@ const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const isLoggedIn = computed(() => !!user.value)
 const authReady = ref(false)
+const sessionUser = ref<{ id: string } | null>(null)
 const userId = useUserId() // Use helper to get ID from JWT claims
 const { navigateToSignIn } = useAuthRedirect()
 type ProfileRecord = Tables<'profiles'>
@@ -178,7 +179,8 @@ watch(hydratedProfileData, (newData) => {
 // reload causes useSupabaseUser() to be null while the session is still being
 // restored, triggering a false redirect to sign-in.
 onMounted(async () => {
-  await supabase.auth.getSession().catch(() => null)
+  const result = await supabase.auth.getSession().catch(() => null)
+  sessionUser.value = result?.data?.session?.user ?? null
   authReady.value = true
 })
 
@@ -190,7 +192,7 @@ onMounted(async () => {
 // We also wait for authReady so we don't fire before the session has been restored on
 // a hard reload - otherwise a signed-in user would get redirected to sign-in.
 watch(
-  [hydratedProfileData, user, authReady],
+  [hydratedProfileData, user, authReady, sessionUser],
   ([loadedProfile, currentUser, isAuthReady]) => {
     if (!isAuthReady)
       return
@@ -199,7 +201,11 @@ watch(
     if (!isExplicitRoute || !loadedProfile)
       return
 
-    if (!loadedProfile.public && !currentUser) {
+    // Use either the reactive user (auth listener) or the session resolved on mount
+    // to avoid a race condition where useSupabaseUser is still null after getSession()
+    // resolves on a hard reload, causing a false redirect to sign-in.
+    const isAuthenticated = !!(currentUser ?? sessionUser.value)
+    if (!loadedProfile.public && !isAuthenticated) {
       navigateToSignIn()
     }
   },

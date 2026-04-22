@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Badge, Button, Card, Flex, Grid } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import ThemeToggle from '../Shared/ThemeToggle.vue'
 import UserDisplay from '../Shared/UserDisplay.vue'
 
 const props = defineProps<{
@@ -12,13 +13,18 @@ const isMobile = useBreakpoint('<xs')
 
 <template>
   <div>
-    <h1 v-if="!props.compact" class="mb-s">
-      Sample Theme
-    </h1>
+    <Flex x-between y-center class="mb-s">
+      <Flex>
+        <h1 v-if="!props.compact">
+          Sample Theme
+        </h1>
 
-    <h3 v-else class="mb-s">
-      Sample Theme
-    </h3>
+        <h3 v-else>
+          Sample Theme
+        </h3>
+      </Flex>
+      <ThemeToggle no-text />
+    </Flex>
 
     <p class="text-color-light text-l block" :class="[props.compact ? 'mb-m' : 'mb-xxl']">
       Make sure you get the contrast right.

@@ -211,6 +211,34 @@ function onMouseEnter(e: MouseEvent) {
   onMouseMove(e)
 }
 
+function nearestSegment(): BucketSegment | null {
+  const allSegs = [...offtopicSegments.value, ...bucketSegments.value]
+  if (!allSegs.length)
+    return null
+  const f = hoverFraction.value
+  let best: BucketSegment | null = null
+  let bestDist = Infinity
+  for (const seg of allSegs) {
+    // Distance from cursor to nearest edge of segment
+    const dist = seg.isSingle
+      ? Math.abs(f - seg.topFraction)
+      : Math.max(0, seg.topFraction - f, f - seg.bottomFraction)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = seg
+    }
+  }
+  return best
+}
+
+function onTrackClick() {
+  if (props.loading)
+    return
+  const seg = hoveredSegment.value ?? nearestSegment()
+  if (seg)
+    onSegmentClick(seg)
+}
+
 function onSegmentClick(seg: BucketSegment) {
   if (props.loading)
     return
@@ -260,10 +288,13 @@ const hoveredSegment = computed((): BucketSegment | null => {
   if (!isHovering.value)
     return null
   const f = hoverFraction.value
+  // For dot segments, use a larger proximity threshold so the full track width
+  // is effectively clickable near a blob - not just the 6px blob itself.
+  const DOT_THRESHOLD = 0.05
   // Check offtopic layer first - it renders on top
   for (const seg of offtopicSegments.value) {
     if (seg.isSingle) {
-      if (Math.abs(f - seg.topFraction) <= 0.02)
+      if (Math.abs(f - seg.topFraction) <= DOT_THRESHOLD)
         return seg
     }
     else {
@@ -274,7 +305,7 @@ const hoveredSegment = computed((): BucketSegment | null => {
   // Fall back to normal segments
   for (const seg of bucketSegments.value) {
     if (seg.isSingle) {
-      if (Math.abs(f - seg.topFraction) <= 0.02)
+      if (Math.abs(f - seg.topFraction) <= DOT_THRESHOLD)
         return seg
     }
     else {
@@ -285,8 +316,8 @@ const hoveredSegment = computed((): BucketSegment | null => {
   return null
 })
 
-/** True when the cursor is over a clickable segment. */
-const isOverSegment = computed(() => hoveredSegment.value != null)
+/** Always true when hovering - any click will find the nearest segment. */
+const isOverSegment = computed(() => isHovering.value)
 
 const tooltipText = computed((): string => {
   const date = formatTooltip(hoverDate.value)
@@ -338,6 +369,7 @@ defineExpose({ openJumpModal })
       <button
         class="discussion-timeline__jump-btn"
         title="Jump to date"
+        :disabled="loading"
         @click="openJumpModal"
       >
         <Icon name="ph:clock" size="12" />
@@ -359,6 +391,7 @@ defineExpose({ openJumpModal })
         @mousemove="onMouseMove"
         @mouseenter="onMouseEnter"
         @mouseleave="isHovering = false"
+        @click="onTrackClick"
       >
         <!-- Track bar: split into solid/dashed/solid segments around the gap.
              When no gap exists, a single full-height solid bar is rendered. -->
@@ -390,7 +423,6 @@ defineExpose({ openJumpModal })
             height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
             opacity: seg.opacity,
           }"
-          @click="onSegmentClick(seg)"
         />
 
         <!-- Off-topic segments: second layer in warning color -->
@@ -404,7 +436,6 @@ defineExpose({ openJumpModal })
             height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
             opacity: seg.opacity,
           }"
-          @click="onSegmentClick(seg)"
         />
 
         <!-- Current position indicator: shows where in the timeline you are -->
@@ -439,6 +470,15 @@ defineExpose({ openJumpModal })
         @click="navigateToEnd"
       >
         {{ formatLabel(end) }}
+      </button>
+
+      <button
+        class="discussion-timeline__jump-btn"
+        title="Navigate to end"
+        :disabled="loading"
+        @click="navigateToEnd"
+      >
+        <Icon name="ph:arrow-down" size="12" />
       </button>
     </div>
   </div>
@@ -720,9 +760,16 @@ defineExpose({ openJumpModal })
       opacity var(--transition),
       color var(--transition);
 
-    &:hover {
+    &:hover:not(:disabled) {
       opacity: 1;
-      color: var(--color-accent);
+
+      :deep(.iconify) {
+        color: var(--color-accent) !important;
+      }
+    }
+
+    &:disabled {
+      cursor: default;
     }
   }
 

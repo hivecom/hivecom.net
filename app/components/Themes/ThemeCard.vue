@@ -5,12 +5,14 @@ import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
 import TinyBadge from '../Shared/TinyBadge.vue'
-import UserDisplay from '../Shared/UserDisplay.vue'
+import UserAvatar from '../Shared/UserAvatar.vue'
 import UserName from '../Shared/UserName.vue'
 import ThemeIcon from './ThemeIcon.vue'
 
+type CardTheme = Database['public']['Tables']['themes']['Row'] & { user_count?: number | null, fork_count?: number | null }
+
 const props = defineProps<{
-  item: Database['public']['Tables']['themes']['Row']
+  item: CardTheme
   activeThemeId: string | undefined
 }>()
 
@@ -123,18 +125,30 @@ if (props.item.forked_from) {
 
     <!-- Theme metadata -->
     <div class="theme-menu__card--content">
-      <Flex x-start y-start>
+      <Flex x-start y-start gap="m">
         <ThemeIcon size="l" :theme="props.item" />
-        <div class="flex-1 pr-m">
+        <div class="flex-1">
           <strong>{{ props.item.name }}</strong>
           <p v-if="props.item.description">
-            {{ props.item.description }}
+            <span class="text-xs">
+
+              {{ props.item.description }}
+            </span>
           </p>
         </div>
-        <Flex y-center gap="xxs">
-          <UserDisplay :user-id="props.item.created_by" size="s" :show-role="false" />
+        <Flex y-center gap="xs">
+          <Flex y-center gap="xs" class="theme-stats">
+            <template v-if="props.item.user_count != null && props.item.user_count > 0">
+              <Icon name="ph:users" :size="12" />
+              <span>{{ props.item.user_count }}</span>
+            </template>
+            <template v-if="props.item.fork_count != null && props.item.fork_count > 0">
+              <Icon name="ph:git-fork" :size="12" />
+              <span>{{ props.item.fork_count }}</span>
+            </template>
+          </Flex>
           <Tooltip v-if="props.item.forked_from">
-            <Icon name="ph:git-fork" :size="20" />
+            <UserAvatar :user-id="props.item.created_by ?? undefined" size="s" :show-preview="true" />
             <template #tooltip>
               <p v-if="fork" style="max-width:256px">
                 This theme is based on {{ fork.name }} created by
@@ -142,9 +156,9 @@ if (props.item.forked_from) {
               </p>
             </template>
           </Tooltip>
+          <UserAvatar v-else :user-id="props.item.created_by ?? undefined" size="s" :show-preview="true" />
         </Flex>
       </Flex>
-      <div class="flex-1" />
     </div>
   </NuxtLink>
 
@@ -322,6 +336,11 @@ if (props.item.forked_from) {
       margin-top: var(--space-xxs);
     }
   }
+}
+
+.theme-stats {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-lighter);
 }
 
 .text-danger {

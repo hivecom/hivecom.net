@@ -1,6 +1,6 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
-import { setColorTheme } from '@dolanske/vui'
+import { pushToast, setColorTheme } from '@dolanske/vui'
 import { useStyleTag } from '@vueuse/core'
 import { applyTheme, sanitizeCustomCss } from '@/lib/theme'
 
@@ -15,19 +15,92 @@ const variantOptions: VariantOption[] = [
 
 const HAS_URL_REGEX = /url\s*\(/i
 
-/**
- * Loads and applies the authenticated user's custom theme (if any) from their
- * profile's `theme_id` foreign key.
- *
- * Designed to be called once in a root layout/component. Uses `useState` so
- * the active theme is shared across all component instances.
- *
- * Custom CSS is managed via a `useStyleTag`-backed shared ref. Setting the ref
- * to a non-empty string injects/updates the style tag; setting it to '' clears
- * the content without removing the element (an empty style tag has no effect).
- * `load()` is called lazily on the first non-empty apply; it is intentionally
- * never called with `unload()` to avoid multi-instance watcher staleness issues.
- */
+const THEME_CACHE_KEY = 'hivecom-theme-cache'
+
+const COLOR_SCALE_KEYS: Array<keyof Tables<'themes'>> = [
+  'dark_accent',
+  'dark_bg',
+  'dark_bg_accent_lowered',
+  'dark_bg_accent_raised',
+  'dark_bg_blue_lowered',
+  'dark_bg_blue_raised',
+  'dark_bg_green_lowered',
+  'dark_bg_green_raised',
+  'dark_bg_lowered',
+  'dark_bg_medium',
+  'dark_bg_raised',
+  'dark_bg_red_lowered',
+  'dark_bg_red_raised',
+  'dark_bg_yellow_lowered',
+  'dark_bg_yellow_raised',
+  'dark_border',
+  'dark_border_strong',
+  'dark_border_weak',
+  'dark_button_fill',
+  'dark_button_fill_hover',
+  'dark_button_gray',
+  'dark_button_gray_hover',
+  'dark_text',
+  'dark_text_blue',
+  'dark_text_green',
+  'dark_text_invert',
+  'dark_text_light',
+  'dark_text_lighter',
+  'dark_text_lightest',
+  'dark_text_red',
+  'dark_text_yellow',
+  'light_accent',
+  'light_bg',
+  'light_bg_accent_lowered',
+  'light_bg_accent_raised',
+  'light_bg_blue_lowered',
+  'light_bg_blue_raised',
+  'light_bg_green_lowered',
+  'light_bg_green_raised',
+  'light_bg_lowered',
+  'light_bg_medium',
+  'light_bg_raised',
+  'light_bg_red_lowered',
+  'light_bg_red_raised',
+  'light_bg_yellow_lowered',
+  'light_bg_yellow_raised',
+  'light_border',
+  'light_border_strong',
+  'light_border_weak',
+  'light_button_fill',
+  'light_button_fill_hover',
+  'light_button_gray',
+  'light_button_gray_hover',
+  'light_text',
+  'light_text_blue',
+  'light_text_green',
+  'light_text_invert',
+  'light_text_light',
+  'light_text_lighter',
+  'light_text_lightest',
+  'light_text_red',
+  'light_text_yellow',
+  'rounding',
+  'spacing',
+  'transitions',
+  'widening',
+]
+
+function computeThemeChecksum(theme: Tables<'themes'>): string {
+  const sorted = COLOR_SCALE_KEYS
+    .filter(k => k in theme)
+    .sort()
+    .map(k => [k, theme[k]])
+
+  return btoa(JSON.stringify(sorted))
+}
+
+function computeCssChecksum(css: string | null | undefined): string {
+  if (!css || css.trim().length === 0)
+    return ''
+  return btoa(css.trim())
+}
+
 export function useUserTheme() {
   const supabase = useSupabaseClient<Database>()
   const userId = useUserId()
@@ -38,11 +111,12 @@ export function useUserTheme() {
   // Non-null when a theme with custom CSS is awaiting user confirmation before being applied.
   const pendingTheme = useState<{ theme: Tables<'themes'>, hasUrl: boolean } | null>('theme-pending-confirmation', () => null)
 
+  // Non-null when the cached theme's CSS differs from the freshly fetched theme's CSS.
+  const pendingCssChange = useState<{ theme: Tables<'themes'>, hasUrl: boolean } | null>('theme-pending-css-change', () => null)
+
   const { settings } = useDataUserSettings()
   const { themes } = useDataThemes()
 
-  // Shared CSS content ref - all useUserTheme() instances share the same ref via
-  // useState so every useStyleTag watcher always writes the same value to the element.
   const customCssContent = useState<string>('theme-custom-css', () => '')
 
   const { load: loadStyleTag } = useStyleTag(customCssContent, {
@@ -51,12 +125,6 @@ export function useUserTheme() {
     manual: true,
   })
 
-  /**
-   * Sanitize `raw` and update the shared style tag content.
-   * Calls `load()` lazily on the first non-empty CSS so the element is only
-   * created when actually needed. Never calls `unload()` - setting the content
-   * to '' is equivalent (empty style tag has no cascade effect).
-   */
   function applyCustomCss(raw: string | null | undefined): void {
     const sanitized = sanitizeCustomCss(raw)
     customCssContent.value = sanitized
@@ -81,7 +149,6 @@ export function useUserTheme() {
     },
     set(options: ThemeOption[]) {
       if (options?.[0] !== undefined)
-        // eslint-disable-next-line ts/no-floating-promises
         setActiveTheme(options[0].value)
     },
   })
@@ -103,6 +170,27 @@ export function useUserTheme() {
   async function fetchAndApply(force = false): Promise<void> {
     const id = userId.value
     if (id == null) {
+      // Signed-out users: restore from localStorage cache if available
+      if (import.meta.client) {
+        try {
+          const cached = localStorage.getItem(THEME_CACHE_KEY)
+          if (cached) {
+            const cachedTheme = JSON.parse(cached) as Tables<'themes'>
+            if (cachedTheme?.id) {
+              applyTheme(cachedTheme)
+              activeTheme.value = cachedTheme
+              // Also restore custom CSS if it was previously allowed
+              if (cachedTheme.custom_css && cachedTheme.custom_css.trim().length > 0) {
+                applyCustomCss(cachedTheme.custom_css)
+              }
+              return
+            }
+          }
+        }
+        catch {
+          // Ignore parse errors
+        }
+      }
       applyTheme(null)
       applyCustomCss(null)
       activeTheme.value = null
@@ -112,7 +200,23 @@ export function useUserTheme() {
     if (hasFetched.value && !force)
       return
 
-    // 1. Read the user's theme_id from their profile
+    // Early restoration from localStorage to avoid FOUC
+    if (import.meta.client) {
+      try {
+        const cached = localStorage.getItem(THEME_CACHE_KEY)
+        if (cached) {
+          const cachedTheme = JSON.parse(cached) as Tables<'themes'>
+          if (cachedTheme?.id) {
+            applyTheme(cachedTheme)
+            activeTheme.value = cachedTheme
+          }
+        }
+      }
+      catch {
+        // Ignore parse errors
+      }
+    }
+
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('theme_id')
@@ -120,7 +224,6 @@ export function useUserTheme() {
       .single()
 
     if (profileError || profile?.theme_id == null) {
-      // No custom theme set - ensure defaults are active
       applyTheme(null)
       applyCustomCss(null)
       activeTheme.value = null
@@ -128,7 +231,6 @@ export function useUserTheme() {
       return
     }
 
-    // 2. Fetch the full theme row
     const { data: themeData, error: themeError } = await supabase
       .from('themes')
       .select('*')
@@ -145,7 +247,42 @@ export function useUserTheme() {
 
     const theme = themeData as Tables<'themes'>
 
-    // 3. Apply colors + scales
+    if (import.meta.client) {
+      // Checksum tracking for color/scale changes
+      const newChecksum = computeThemeChecksum(theme)
+      const storedChecksum = localStorage.getItem(`hivecom-theme-checksum-${theme.id}`)
+
+      if (storedChecksum !== null && storedChecksum !== newChecksum) {
+        pushToast('Your active theme has been updated.')
+      }
+
+      localStorage.setItem(`hivecom-theme-checksum-${theme.id}`, newChecksum)
+      localStorage.setItem(THEME_CACHE_KEY, JSON.stringify(theme))
+
+      // CSS change detection
+      const newCssChecksum = computeCssChecksum(theme.custom_css)
+      const storedCssChecksum = localStorage.getItem(`hivecom-theme-css-checksum-${theme.id}`)
+      const hasCss = theme.custom_css != null && theme.custom_css.trim().length > 0
+
+      if (hasCss && storedCssChecksum !== null && storedCssChecksum !== newCssChecksum) {
+        // CSS has changed since last apply - prompt user
+        pendingCssChange.value = {
+          theme,
+          hasUrl: HAS_URL_REGEX.test(theme.custom_css ?? ''),
+        }
+        activeTheme.value = theme
+        applyTheme(theme)
+        applyCustomCss(null)
+        hasFetched.value = true
+        return
+      }
+
+      // No CSS change or first time - save CSS checksum and apply normally
+      if (hasCss) {
+        localStorage.setItem(`hivecom-theme-css-checksum-${theme.id}`, newCssChecksum)
+      }
+    }
+
     activeTheme.value = theme
     applyTheme(theme)
     if (settings.value.allow_custom_css)
@@ -155,13 +292,8 @@ export function useUserTheme() {
     hasFetched.value = true
   }
 
-  /**
-   * Applies a fully-fetched theme to the DOM and persists it to the user's profile.
-   */
   async function applyAndPersistTheme(theme: Tables<'themes'>): Promise<void> {
     const id = userId.value
-    if (id == null)
-      return
 
     activeTheme.value = theme
     applyTheme(theme)
@@ -170,32 +302,38 @@ export function useUserTheme() {
     else
       applyCustomCss(null)
 
+    if (import.meta.client) {
+      localStorage.setItem(THEME_CACHE_KEY, JSON.stringify(theme))
+      localStorage.setItem(`hivecom-theme-checksum-${theme.id}`, computeThemeChecksum(theme))
+      if (theme.custom_css && theme.custom_css.trim().length > 0) {
+        localStorage.setItem(`hivecom-theme-css-checksum-${theme.id}`, btoa(theme.custom_css.trim()))
+      }
+    }
+
+    if (id == null)
+      return
+
     await supabase
       .from('profiles')
       .update({ theme_id: theme.id })
       .eq('id', id)
   }
 
-  /**
-   * Immediately switch to a theme by ID, or pass `null` to revert to defaults.
-   * Fetches the full theme row, applies it to the DOM, updates `activeTheme`,
-   * and persists the selection to the user's profile so it survives page reloads.
-   *
-   * If the theme contains custom CSS, the switch is held in `pendingTheme` and
-   * requires explicit user confirmation via `confirmPendingTheme()` before it is
-   * applied. Check `pendingTheme` to know when to show the warning modal.
-   */
   async function setActiveTheme(themeId: string | null): Promise<void> {
     const id = userId.value
-    if (id == null)
-      return
 
     if (themeId == null) {
       applyTheme(null)
       applyCustomCss(null)
       activeTheme.value = null
 
-      // Clear the persisted selection from the profile
+      if (import.meta.client) {
+        localStorage.removeItem(THEME_CACHE_KEY)
+      }
+
+      if (id == null)
+        return
+
       await supabase
         .from('profiles')
         .update({ theme_id: null })
@@ -215,9 +353,6 @@ export function useUserTheme() {
 
     const theme = data as Tables<'themes'>
 
-    // If the theme ships custom CSS, hold it for user confirmation instead of
-    // applying immediately. The caller should react to `pendingTheme` and show
-    // a warning modal.
     if (theme.custom_css && theme.custom_css.trim().length > 0) {
       const hasUrl = HAS_URL_REGEX.test(theme.custom_css)
       pendingTheme.value = { theme, hasUrl }
@@ -227,10 +362,6 @@ export function useUserTheme() {
     await applyAndPersistTheme(theme)
   }
 
-  /**
-   * Apply and persist the theme that is currently awaiting confirmation.
-   * Call this when the user accepts the CSS warning modal.
-   */
   async function confirmPendingTheme(): Promise<void> {
     if (!pendingTheme.value)
       return
@@ -240,10 +371,6 @@ export function useUserTheme() {
     await applyAndPersistTheme(theme)
   }
 
-  /**
-   * Apply and persist the pending theme but disable custom CSS first.
-   * Call this when the user wants to apply the theme without its custom CSS.
-   */
   async function confirmPendingThemeWithoutCss(): Promise<void> {
     if (!pendingTheme.value)
       return
@@ -253,16 +380,28 @@ export function useUserTheme() {
     await applyAndPersistTheme(theme)
   }
 
-  // Re-fetch and apply when the user changes (login/logout).
-  // The initial fetch on page load is handled by useInitialUserPreferences
-  // inside Loading.vue, which blocks the fade-out until both settings and
-  // the custom theme are ready.
+  async function confirmCssChange(): Promise<void> {
+    if (!pendingCssChange.value)
+      return
+    const { theme } = pendingCssChange.value
+    pendingCssChange.value = null
+    settings.value.allow_custom_css = true
+    if (import.meta.client && theme.custom_css) {
+      localStorage.setItem(`hivecom-theme-css-checksum-${theme.id}`, btoa(theme.custom_css.trim()))
+    }
+    applyCustomCss(theme.custom_css)
+  }
+
+  async function dismissCssChange(): Promise<void> {
+    if (!pendingCssChange.value)
+      return
+    pendingCssChange.value = null
+    // Do not update the CSS checksum - user wants to keep old behavior
+    applyCustomCss(null)
+  }
+
   watch(userId, (newId, oldId) => {
     if (newId == null) {
-      // Logged out - revert to defaults
-      applyTheme(null)
-      applyCustomCss(null)
-      activeTheme.value = null
       hasFetched.value = false
       return
     }
@@ -277,10 +416,6 @@ export function useUserTheme() {
     applyCustomCss(allowed ? activeTheme.value?.custom_css : null)
   })
 
-  /**
-   * Re-apply the active theme's custom CSS respecting the allow_custom_css setting.
-   * Call this when restoring state after closing the theme editor.
-   */
   function reapplyCustomCss(): void {
     applyCustomCss(settings.value.allow_custom_css ? activeTheme.value?.custom_css : null)
   }
@@ -288,18 +423,17 @@ export function useUserTheme() {
   return {
     activeTheme,
     pendingTheme,
+    pendingCssChange,
     fetchAndApply,
     setActiveTheme,
     confirmPendingTheme,
     confirmPendingThemeWithoutCss,
+    confirmCssChange,
+    dismissCssChange,
     applyCustomCss,
     reapplyCustomCss,
-    // Options for the theme selector dropdown. Specifically formatted to be used with
-    // vui's <Select /> component
     themeOptions,
     selectedTheme,
-    // Light / dark theme toggle options & state. Specifically formatted to be
-    // used with vui's <Select /> component
     variantOptions,
     selectedVariant,
   }

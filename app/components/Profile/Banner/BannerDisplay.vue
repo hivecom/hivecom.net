@@ -151,11 +151,12 @@ watch(tapped, (val) => {
     // viewports. The image never exceeds its native width, and height is
     // derived from the ratio so nothing gets squished or stretched.
     width: 100%;
-    max-width: 728px;
     aspect-ratio: 728 / 36;
+    min-height: 36px;
+    max-height: 36px;
     height: auto;
     object-fit: cover;
-    border-radius: var(--radius-xs, 2px);
+    border-radius: var(--border-radius-s);
     // filter and opacity are driven by inline :style bindings so hover/tap
     // state is handled in JS, avoiding scoped-CSS descendant selector quirks.
     transition:
