@@ -40,7 +40,7 @@
     "@tiptap/extension-mathematics": "^3.22.3",
     "@tiptap/extension-mention": "^3.22.3",
     "@tiptap/extension-table": "^3.22.4",
-    "@tiptap/extension-task-item": "^3.22.3",
+    "@tiptap/extension-task-item": "^3.22.4",
     "@tiptap/extension-task-list": "^3.22.3",
     "@tiptap/extension-youtube": "^3.22.3",
     "@tiptap/markdown": "^3.22.3",
