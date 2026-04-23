@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MDCRoot } from '@nuxtjs/mdc'
+import { onMounted, onUnmounted } from 'vue'
 import SharedLinkEmbed from '@/components/LinkEmbed/index.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { groupImagesAST } from '@/lib/imageGrouping'
@@ -22,6 +23,10 @@ const props = defineProps({
   },
 })
 
+const emit = defineEmits<{
+  parsed: []
+}>()
+
 // MDCRenderer.components prop is typed as Record<string, string | DefineComponent<any,any,any>>.
 // Casting via unknown as Record<string, string> satisfies the type (string is a subtype of the union)
 // while keeping the actual runtime value as the component object.
@@ -34,9 +39,6 @@ useBulkDataUser(mentionIds)
 
 const processedMarkdown = computed(() => processMarkdown(props.md))
 
-// Top-level await - makes this a genuine async component that Suspense can track
-const { parseMarkdown } = await import('@nuxtjs/mdc/runtime')
-
 function applyTransforms(body: MDCRoot | undefined): MDCRoot | undefined {
   if (!body)
     return body
@@ -45,23 +47,50 @@ function applyTransforms(body: MDCRoot | undefined): MDCRoot | undefined {
   return result as unknown as MDCRoot
 }
 
-const rawParsed = await parseMarkdown(processedMarkdown.value, { toc: false, contentHeading: false })
-const parsed = shallowReactive({
-  body: applyTransforms(rawParsed.body),
-  data: rawParsed.data,
+// Parsed result - null until the first parse completes after mount.
+// Using a regular ref (not top-level await) so this component is never in a
+// half-mounted async-setup state when the parent Suspense is torn down, which
+// caused "instance is null" / "subTree of null" crashes in Vue's runtime.
+const parsed = shallowRef<{ body: MDCRoot | undefined, data: Record<string, unknown> } | null>(null)
+
+let destroyed = false
+type ParseMarkdownFn = (source: string, opts: object) => Promise<{ body: MDCRoot, data: Record<string, unknown> }>
+let parseMarkdownFn: ParseMarkdownFn | null = null
+
+async function runParse(val: string) {
+  if (!parseMarkdownFn) {
+    const mod = await import('@nuxtjs/mdc/runtime')
+    if (destroyed)
+      return
+    parseMarkdownFn = mod.parseMarkdown as unknown as ParseMarkdownFn
+  }
+  const result = await parseMarkdownFn!(val, { toc: false, contentHeading: false })
+  if (destroyed)
+    return
+  parsed.value = {
+    body: applyTransforms(result.body),
+    data: result.data as Record<string, unknown>,
+  }
+  emit('parsed')
+}
+
+onMounted(() => {
+  runParse(processedMarkdown.value)
 })
 
-watch(processedMarkdown, async (val) => {
-  const result = await parseMarkdown(val, { toc: false, contentHeading: false })
-  parsed.body = applyTransforms(result.body)
-  parsed.data = result.data
+onUnmounted(() => {
+  destroyed = true
+})
+
+watch(processedMarkdown, (val) => {
+  runParse(val)
 })
 </script>
 
 <template>
   <div ref="container" class="md-renderer-inner">
     <MDCRenderer
-      v-if="parsed.body"
+      v-if="parsed?.body"
       :body="parsed.body"
       :data="parsed.data ?? {}"
       :tag="props.tag"

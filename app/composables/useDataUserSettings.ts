@@ -3,6 +3,10 @@ import type { Database, Json } from '@/types/database.types'
 import { pushToast } from '@dolanske/vui'
 import { isNil } from '@/lib/utils/common'
 
+// Module-level flag so the auto-save watcher is only ever registered once,
+// regardless of how many components call useDataUserSettings().
+let _autoSaveWatcherRegistered = false
+
 // Single source of truth for user settings
 export function getDefaultUserSettings(): Tables<'settings'>['data'] {
   return {
@@ -26,6 +30,7 @@ export function getDefaultUserSettings(): Tables<'settings'>['data'] {
 export function useDataUserSettings() {
   const settings = useState<Tables<'settings'>['data']>('user-settings', getDefaultUserSettings)
   const hasFetched = useState<boolean>('user-settings-fetched', () => false)
+  const isFetching = useState<boolean>('user-settings-fetching', () => false)
   const settingsLoading = ref(false)
   const settingsError = ref<Error | null>(null)
   const supabase = useSupabaseClient<Database>()
@@ -36,6 +41,7 @@ export function useDataUserSettings() {
       return null
 
     settingsLoading.value = true
+    isFetching.value = true
 
     const { data, error } = await supabase
       .from('settings')
@@ -45,6 +51,7 @@ export function useDataUserSettings() {
     settingsLoading.value = false
 
     if (error) {
+      isFetching.value = false
       settingsError.value = error
       return error
     }
@@ -56,6 +63,7 @@ export function useDataUserSettings() {
     }
 
     hasFetched.value = true
+    isFetching.value = false
     return null
   }
 
@@ -75,14 +83,18 @@ export function useDataUserSettings() {
     }
   }
 
-  // Auto save when settings update
-  watch(settings, async (newSettings) => {
-    if (isNil(user.value)) {
-      return
-    }
+  // Auto save when settings update - only register once across all callers,
+  // and only on the client (the watcher does a Supabase write which requires auth).
+  if (import.meta.client && !_autoSaveWatcherRegistered) {
+    _autoSaveWatcherRegistered = true
+    watch(settings, async (newSettings) => {
+      if (isNil(user.value) || isFetching.value) {
+        return
+      }
 
-    await updateSettings(newSettings)
-  }, { deep: true })
+      await updateSettings(newSettings)
+    }, { deep: true })
+  }
 
   // Re-fetch settings when the user changes (login/logout).
   // The initial fetch on page load is handled by useInitialUserPreferences

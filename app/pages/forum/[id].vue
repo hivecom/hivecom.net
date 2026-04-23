@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, pushToast, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { DISCUSSION_KEYS } from '@/components/Discussions/Discussion.keys'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import ForumBreadcrumbs from '@/components/Forum/ForumBreadcrumbs.vue'
 import ForumItemActions from '@/components/Forum/ForumItemActions.vue'
+import ForumPostSkeleton from '@/components/Forum/ForumPostSkeleton.vue'
 import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -524,9 +525,7 @@ function revealNsfw() {
 <template>
   <div ref="page" class="page forum container-m">
     <!-- Loading state -->
-    <template v-if="loading">
-      <Spinner />
-    </template>
+    <ForumPostSkeleton v-if="loading" />
 
     <!-- Main Content  -->
     <template v-else-if="post">
@@ -793,7 +792,7 @@ function revealNsfw() {
 
       <Discussion
         :id="String(post.id)"
-        :key="JSON.stringify(post)"
+        :key="String(post.id)"
         type="discussion"
         model="forum"
         placeholder="Write your reply to this thread..."

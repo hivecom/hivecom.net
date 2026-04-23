@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Skeleton } from '@dolanske/vui'
-import { computed, nextTick, ref } from 'vue'
+import { computed, ref } from 'vue'
 import MarkdownRendererInner from './MarkdownRendererInner.vue'
 
 const props = defineProps({
@@ -29,13 +29,10 @@ const skeletonStyle = computed(() => ({
     : props.skeletonHeight,
 }))
 
-// nextTick defers the flip so skeleton has been painted before its leave transition runs
 const resolved = ref(false)
 
-function onSuspenseResolve() {
-  nextTick(() => {
-    resolved.value = true
-  })
+function onParsed() {
+  resolved.value = true
 }
 </script>
 
@@ -48,17 +45,13 @@ function onSuspenseResolve() {
         :style="skeletonStyle"
       />
     </Transition>
-    <Suspense @resolve="onSuspenseResolve">
-      <template #fallback>
-        <span />
-      </template>
-      <MarkdownRendererInner
-        v-show="resolved || !showSkeleton"
-        :extra-class="props.class"
-        :md="props.md"
-        :tag="props.tag"
-      />
-    </Suspense>
+    <MarkdownRendererInner
+      v-show="resolved || !showSkeleton"
+      :extra-class="props.class"
+      :md="props.md"
+      :tag="props.tag"
+      @parsed="onParsed"
+    />
   </div>
 </template>
 
