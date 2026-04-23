@@ -111,19 +111,20 @@ useHead({
       <div v-if="event && !loading && !error" class="event-detail">
         <!-- Back Button -->
         <Flex x-between>
-          <Button
-            variant="gray"
-            plain
-            size="s"
-            aria-label="Go back to Events page"
-            class="event-detail__back-link"
-            @click="navigateTo('/events')"
-          >
-            <template #start>
-              <Icon name="ph:arrow-left" />
-            </template>
-            Back to Events
-          </Button>
+          <NuxtLink to="/events">
+            <Button
+              variant="gray"
+              plain
+              size="s"
+              aria-label="Go back to Events page"
+              class="event-detail__back-link"
+            >
+              <template #start>
+                <Icon name="ph:arrow-left" />
+              </template>
+              Back to Events
+            </Button>
+          </NuxtLink>
         </Flex>
 
         <!-- Header -->

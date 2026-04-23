@@ -203,12 +203,16 @@ onBeforeUnmount(() => {
           <ErrorAlert message="Password reset failed" :error="error" />
 
           <Flex x-center class="mt-l" gap="s">
-            <Button variant="fill" @click="navigateTo('/auth/forgot-password')">
-              Request New Link
-            </Button>
-            <Button variant="gray" @click="navigateTo('/auth/sign-in')">
-              Back to Sign In
-            </Button>
+            <NuxtLink to="/auth/forgot-password">
+              <Button variant="fill">
+                Request New Link
+              </Button>
+            </NuxtLink>
+            <NuxtLink to="/auth/sign-in">
+              <Button variant="gray">
+                Back to Sign In
+              </Button>
+            </NuxtLink>
           </Flex>
         </div>
 

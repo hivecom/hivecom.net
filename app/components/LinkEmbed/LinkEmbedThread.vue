@@ -19,11 +19,7 @@ defineProps<{
     <Flex column gap="xs" class="link-embed__body link-embed__body--column">
       <Flex y-center gap="s" class="link-embed__header">
         <Icon name="ph:chats-circle" class="link-embed__icon" />
-        <span class="link-embed__eyebrow">Forum discussion</span>
-        <template v-if="data.commentId">
-          <span class="link-embed__eyebrow link-embed__eyebrow--sep">&middot;</span>
-          <span class="link-embed__eyebrow">Linked reply</span>
-        </template>
+        <span class="link-embed__eyebrow">{{ data.commentId ? 'Forum reply' : 'Forum discussion' }}</span>
       </Flex>
 
       <span class="link-embed__title">{{ data.title }}</span>

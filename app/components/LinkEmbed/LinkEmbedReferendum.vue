@@ -219,9 +219,9 @@ async function removeVote() {
 
       <!-- Sign-in nudge when not logged in -->
       <template v-else-if="!user">
-        <Flex y-center x-between expand gap="m" class="link-embed__signin-nudge">
+        <Flex y-center x-between expand gap="s" class="link-embed__signin-nudge">
           <span class="link-embed__signin-nudge-text">Sign in to join this vote</span>
-          <NuxtLink href="/sign-in" class="link-embed__signin-btn">
+          <NuxtLink href="/auth/sign-in" class="link-embed__signin-btn">
             <Button variant="gray" size="s">
               Sign in
             </Button>

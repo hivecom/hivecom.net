@@ -149,12 +149,16 @@ onMounted(() => {
             </p>
           </div>
           <Flex gap="s" wrap>
-            <Button variant="gray" @click="navigateTo('/auth/sign-in')">
-              Sign In
-            </Button>
-            <Button variant="fill" @click="navigateTo('/profile/settings')">
-              Go to Settings
-            </Button>
+            <NuxtLink to="/auth/sign-in">
+              <Button variant="gray">
+                Sign In
+              </Button>
+            </NuxtLink>
+            <NuxtLink to="/profile/settings">
+              <Button variant="fill">
+                Go to Settings
+              </Button>
+            </NuxtLink>
           </Flex>
         </template>
       </Flex>

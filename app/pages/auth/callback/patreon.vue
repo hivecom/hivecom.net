@@ -109,9 +109,11 @@ onMounted(async () => {
               {{ errorMessage }}
             </p>
           </div>
-          <Button variant="fill" @click="navigateTo('/profile')">
-            Return to Profile
-          </Button>
+          <NuxtLink to="/profile">
+            <Button variant="fill">
+              Return to Profile
+            </Button>
+          </NuxtLink>
         </template>
       </Flex>
     </Card>

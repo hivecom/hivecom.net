@@ -88,6 +88,7 @@ function formatDate(date: string | null): string {
         :countdown="eventCountdown"
         :is-ongoing="eventIsOngoing"
         :created-at="data.date"
+        simple
         class="link-embed__event-countdown"
       />
     </Flex>
@@ -101,8 +102,12 @@ function formatDate(date: string | null): string {
 }
 
 .link-embed__event-countdown {
-  flex-shrink: 0;
-  background-color: var(--color-bg-medium) !important;
+  width: auto;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+  background-color: var(--color-bg) !important;
 }
 
 .link-embed__body--event-mobile {
@@ -112,7 +117,6 @@ function formatDate(date: string | null): string {
 
   .link-embed__event-countdown {
     flex-shrink: unset;
-    width: auto;
     align-self: flex-start;
   }
 }

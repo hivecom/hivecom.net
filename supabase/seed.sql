@@ -447,7 +447,11 @@ And a game server link:
 
 http://localhost:3000/servers/gameservers/1
 
-An event link:
+An ongoing event link:
+
+http://localhost:3000/events/11
+
+A future event link:
 
 http://localhost:3000/events/1
 

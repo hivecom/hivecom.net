@@ -175,9 +175,11 @@ function parseFragmentSession(fragment: string): FragmentSessionTokens | null {
               {{ errorMessage }}
             </p>
           </div>
-          <Button variant="fill" @click="navigateTo('/profile/settings')">
-            Return to Settings
-          </Button>
+          <NuxtLink to="/profile/settings">
+            <Button variant="fill">
+              Return to Settings
+            </Button>
+          </NuxtLink>
         </template>
       </Flex>
     </Card>

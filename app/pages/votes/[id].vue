@@ -334,30 +334,33 @@ function handleChoiceClick(index: number) {
         <p class="text-color-light mb-l">
           The vote you're looking for doesn't exist or has been removed.
         </p>
-        <Button @click="navigateTo('/votes')">
-          <template #start>
-            <Icon name="ph:arrow-left" />
-          </template>
-          Back to Votes
-        </Button>
+        <NuxtLink to="/votes">
+          <Button>
+            <template #start>
+              <Icon name="ph:arrow-left" />
+            </template>
+            Back to Votes
+          </Button>
+        </NuxtLink>
       </Flex>
 
       <!-- Referendum content -->
       <template v-else>
         <!-- Back Button -->
         <Flex class="mb-m" x-between wrap y-center>
-          <Button
-            variant="gray"
-            size="s"
-            plain
-            aria-label="Go back to Votes page"
-            @click="navigateTo('/votes')"
-          >
-            <template #start>
-              <Icon name="ph:arrow-left" />
-            </template>
-            Back to Votes
-          </Button>
+          <NuxtLink to="/votes">
+            <Button
+              variant="gray"
+              size="s"
+              plain
+              aria-label="Go back to Votes page"
+            >
+              <template #start>
+                <Icon name="ph:arrow-left" />
+              </template>
+              Back to Votes
+            </Button>
+          </NuxtLink>
           <Flex gap="s" y-center>
             <UserDisplay :user-id="referendum.created_by" />
 

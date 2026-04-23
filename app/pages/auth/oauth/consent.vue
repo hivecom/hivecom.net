@@ -173,9 +173,11 @@ onMounted(() => {
               </Alert>
 
               <Flex column gap="s" expand>
-                <Button expand variant="fill" @click="navigateTo('/')">
-                  Go to home
-                </Button>
+                <NuxtLink to="/">
+                  <Button expand variant="fill">
+                    Go to home
+                  </Button>
+                </NuxtLink>
                 <Button
                   expand
                   variant="gray"

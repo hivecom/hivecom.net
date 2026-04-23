@@ -33,12 +33,12 @@ const isSingleAddress = computed(() => connectActions.value.length === 1)
 const singleAction = computed(() => connectActions.value[0] ?? null)
 const isDirect = computed(() => supportsDirectConnect(props.gameShorthand))
 
-const buttonLabel = computed(() => isDirect.value ? 'Launch & Connect' : 'Copy Address')
+const buttonLabel = computed(() => isDirect.value ? 'Launch' : 'Copy Address')
 const buttonIcon = computed(() => isDirect.value ? 'ph:rocket-launch' : 'ph:copy')
 
-function actionIcon(action: ReturnType<typeof getConnectActions>[number]) {
-  return action.uri != null ? 'ph:rocket-launch' : 'ph:copy'
-}
+// function actionIcon(action: ReturnType<typeof getConnectActions>[number]) {
+//   return action.uri != null ? 'ph:rocket-launch' : 'ph:copy'
+// }
 
 function handleClick(e: MouseEvent) {
   if (props.stopPropagation) {
@@ -133,7 +133,7 @@ function handleActionClick(e: MouseEvent, action: ReturnType<typeof getConnectAc
           class="gameserver-connect-button__item"
           @click="(e: MouseEvent) => handleActionClick(e, action)"
         >
-          <Icon :name="actionIcon(action)" />
+          <!-- <Icon :name="actionIcon(action)" /> -->
           {{ action.addressWithPort }}
         </button>
       </DropdownItem>

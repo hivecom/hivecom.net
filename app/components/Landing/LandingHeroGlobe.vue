@@ -5,7 +5,7 @@ import { useGlobePerf } from '@/composables/useGlobePerf'
 import { useGlobeRenderer } from '@/composables/useGlobeRenderer'
 
 const globeEl = ref<HTMLDivElement | null>(null)
-const isGlobeVisible = ref(false)
+const isGlobeVisible = ref(true)
 
 const { loadGlobeData } = useGlobeData()
 const { params: perfParams, startProbe, stopProbe } = useGlobePerf()
@@ -17,8 +17,6 @@ onMounted(async () => {
   const container = globeEl.value
   if (!container)
     return
-
-  isGlobeVisible.value = false
 
   try {
     const {
@@ -38,10 +36,6 @@ onMounted(async () => {
       maxArcs,
       perfParams.value,
     )
-
-    requestAnimationFrame(() => {
-      isGlobeVisible.value = true
-    })
 
     // Start the frame-time probe after the globe is visible so we're sampling
     // real render load rather than initialisation overhead.

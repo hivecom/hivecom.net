@@ -55,21 +55,21 @@ const hasAddresses = computed(() => props.data.addresses && props.data.addresses
       v-if="gameBackground"
       class="link-embed__game-bg"
       :style="{ backgroundImage: `url(${gameBackground})` }"
-    >
-      <div class="link-embed__game-bg-overlay" />
-    </div>
+    />
 
-    <Flex column gap="xs" class="link-embed__body link-embed__body--column" :class="{ 'link-embed__body--over-bg': gameBackground }">
+    <Flex column gap="xs" class="link-embed__body link-embed__body--column link-embed__body--gameserver">
       <Flex y-center gap="s" class="link-embed__header">
         <Icon name="ph:game-controller" class="link-embed__icon" />
         <span class="link-embed__eyebrow">Game server</span>
         <template v-if="containerStateConfig">
           <span class="link-embed__eyebrow link-embed__eyebrow--sep">&middot;</span>
-          <span
-            class="link-embed__status-dot"
-            :class="`link-embed__status-dot--${data.containerState}`"
-          />
-          <span class="link-embed__eyebrow">{{ containerStateConfig.label }}</span>
+          <Flex y-center gap="xs">
+            <span
+              class="link-embed__status-dot"
+              :class="`link-embed__status-dot--${data.containerState}`"
+            />
+            <span class="link-embed__eyebrow">{{ containerStateConfig.label }}</span>
+          </Flex>
         </template>
       </Flex>
 
@@ -96,8 +96,6 @@ const hasAddresses = computed(() => props.data.addresses && props.data.addresses
           :game-shorthand="data.gameShorthand"
           variant="gray"
           size="s"
-          plain
-          outline
           stop-propagation
         />
       </Flex>
@@ -110,19 +108,23 @@ const hasAddresses = computed(() => props.data.addresses && props.data.addresses
   position: absolute;
   inset: 0;
   background-size: cover;
-  background-position: center;
+  background-position: center right;
   background-repeat: no-repeat;
   z-index: 0;
 }
 
-.link-embed__game-bg-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to right,
-    color-mix(in srgb, var(--color-bg-raised) 90%, transparent) 0%,
-    color-mix(in srgb, var(--color-bg-raised) 70%, transparent) 60%,
-    color-mix(in srgb, var(--color-bg-raised) 40%, transparent) 100%
+.link-embed__body--gameserver {
+  position: relative;
+  z-index: 1;
+  padding: var(--space-s) var(--space-m);
+  /* Solid background that fades out diagonally, masking the game image on the left */
+  background-image: linear-gradient(
+    120deg,
+    var(--color-bg-lowered) 0%,
+    var(--color-bg-lowered) 32%,
+    color-mix(in srgb, var(--color-bg-lowered) 60%, transparent) 58%,
+    color-mix(in srgb, var(--color-bg-lowered) 20%, transparent) 72%,
+    transparent 85%
   );
 }
 
@@ -132,6 +134,7 @@ const hasAddresses = computed(() => props.data.addresses && props.data.addresses
   height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin-top: 1px;
 
   &--healthy {
     background-color: var(--color-text-green);

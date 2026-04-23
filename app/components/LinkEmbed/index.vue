@@ -63,9 +63,8 @@ const { data, loading } = useDataLinkPreview(props.url)
 .link-embed {
   display: block;
   border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-accent);
   border-radius: var(--border-radius-s);
-  background-color: var(--color-bg-raised);
+  background-color: var(--color-bg-lowered);
   padding: var(--space-s) var(--space-m);
   text-decoration: none;
   color: inherit;
@@ -78,7 +77,6 @@ const { data, loading } = useDataLinkPreview(props.url)
   &:hover {
     background-color: var(--color-bg-medium);
     border-color: var(--color-border-strong);
-    border-left-color: var(--color-accent);
   }
 
   &--loading {
@@ -144,7 +142,7 @@ const { data, loading } = useDataLinkPreview(props.url)
 }
 
 .link-embed__icon {
-  color: var(--color-accent);
+  color: var(--color-text-lighter);
   font-size: 1rem;
   flex-shrink: 0;
 }

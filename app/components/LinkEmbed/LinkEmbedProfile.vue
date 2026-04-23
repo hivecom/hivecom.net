@@ -4,7 +4,7 @@ import { useSupabaseUser } from '#imports'
 import { Button, Flex } from '@dolanske/vui'
 import { resolveComponent } from 'vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
-import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
+
 import UserRole from '@/components/Shared/UserRole.vue'
 import { getAnonymousUsername } from '@/lib/anonymousUsernames'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -30,8 +30,8 @@ const showRealData = computed(() => props.data.isPublic || !!user.value)
     class="link-embed link-embed--profile"
     v-bind="showRealData ? { href: props.data.href } : {}"
   >
-    <UserPreviewHover :user-id="showRealData ? props.data.userId : null" class="link-embed__body link-embed__body--profile">
-      <UserAvatar :user-id="showRealData ? props.data.userId : null" size="l" class="link-embed__avatar" />
+    <Flex class="link-embed__body link-embed__body--profile" y-center gap="s">
+      <UserAvatar :user-id="props.data.userId" size="m" show-preview class="link-embed__avatar" />
       <Flex column gap="xxs" class="link-embed__profile-info">
         <Flex y-center gap="xs">
           <span class="link-embed__title">
@@ -49,18 +49,17 @@ const showRealData = computed(() => props.data.isPublic || !!user.value)
         </span>
       </Flex>
       <UserRole v-if="showRealData" :user-id="props.data.userId" size="xs" :tiny="isMobile" class="link-embed__role" />
-      <Button
-        :is="NuxtLink"
+      <NuxtLink
         v-if="!showRealData"
-        href="/sign-in"
-        variant="gray"
-        size="s"
+        to="/auth/sign-in"
         class="link-embed__signin-btn"
         @click.stop
       >
-        Sign in
-      </Button>
-    </UserPreviewHover>
+        <Button variant="gray" size="s">
+          Sign in
+        </Button>
+      </NuxtLink>
+    </Flex>
   </component>
 </template>
 

@@ -583,9 +583,11 @@ onMounted(() => {
           <ErrorAlert message="Authentication failed" :error="error" />
 
           <Flex x-center class="mt-l" expand>
-            <Button expand variant="fill" @click="navigateTo('/auth/sign-in')">
-              Return to Sign In
-            </Button>
+            <NuxtLink to="/auth/sign-in">
+              <Button expand variant="fill">
+                Return to Sign In
+              </Button>
+            </NuxtLink>
           </Flex>
         </div>
 

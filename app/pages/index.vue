@@ -143,12 +143,14 @@ onMounted(async () => {
                 Thanks for being a part of the community!
               </Alert>
 
-              <Button v-else variant="accent" @click="navigateTo('/auth/sign-up')">
-                <template #start>
-                  <Icon name="ph:user-plus" />
-                </template>
-                Sign up
-              </Button>
+              <NuxtLink v-else to="/auth/sign-up">
+                <Button variant="accent">
+                  <template #start>
+                    <Icon name="ph:user-plus" />
+                  </template>
+                  Sign up
+                </Button>
+              </NuxtLink>
             </div>
 
             <Card class="join-section__platforms">
@@ -239,12 +241,14 @@ onMounted(async () => {
           </Grid>
 
           <div class="events-section__view-all mb-m">
-            <Button @click="navigateTo('/events')">
-              View All Events
-              <template #end>
-                <Icon name="ph:arrow-right" />
-              </template>
-            </Button>
+            <NuxtLink to="/events">
+              <Button>
+                View All Events
+                <template #end>
+                  <Icon name="ph:arrow-right" />
+                </template>
+              </Button>
+            </NuxtLink>
           </div>
         </section>
       </div>

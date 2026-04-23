@@ -164,7 +164,7 @@ const {
           <p class="user-preview-card__locked-text text-s">
             Sign in to see this user's profile.
           </p>
-          <NuxtLink to="/login" class="user-preview-card__locked-link">
+          <NuxtLink to="/auth/sign-in" class="user-preview-card__locked-link">
             <Button size="s" expand variant="accent">
               Sign in
             </Button>
