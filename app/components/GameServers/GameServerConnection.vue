@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, CopyClipboard, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
+import { Card, CopyClipboard, Flex } from '@dolanske/vui'
+import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 
 interface Props {
   gameserver: Tables<'gameservers'>
+  gameShorthand?: string | null
 }
 
-defineProps<Props>()
+const { gameserver, gameShorthand } = defineProps<Props>()
+const addresses = computed(() => gameserver.addresses as string[] | null)
 </script>
 
 <template>
@@ -27,7 +30,7 @@ defineProps<Props>()
             :key="address"
             class="gameserver-connection__address-card"
           >
-            <Flex x-between x-center gap="m">
+            <Flex x-between y-center gap="m">
               <div class="gameserver-connection__address-info">
                 <div class="gameserver-connection__address-text">
                   {{ `${address}${gameserver.port ? `:${gameserver.port}` : ''}` }}
@@ -36,10 +39,7 @@ defineProps<Props>()
                   Server Address
                 </div>
               </div>
-              <CopyClipboard
-                :text="`${address}${gameserver.port ? `:${gameserver.port}` : ''}`"
-                confirm
-              >
+              <CopyClipboard :text="`${address}${gameserver.port ? `:${gameserver.port}` : ''}`" confirm>
                 <Button variant="accent" size="s">
                   <template #start>
                     <Icon name="ph:copy" />
@@ -51,46 +51,19 @@ defineProps<Props>()
           </Card>
         </div>
 
-        <!-- Quick Join Button -->
+        <!-- Quick Join -->
         <div class="gameserver-connection__quick-join-section">
           <h4 class="gameserver-connection__subtitle">
             Quick Join
           </h4>
           <div class="gameserver-connection__quick-join-buttons">
-            <CopyClipboard
-              v-if="gameserver.addresses.length === 1"
-              :text="`${gameserver.addresses[0]}${gameserver.port ? `:${gameserver.port}` : ''}`"
-              confirm
-            >
-              <Button variant="success" size="l">
-                <template #start>
-                  <Icon name="ph:play" />
-                </template>
-                Join Server
-              </Button>
-            </CopyClipboard>
-
-            <Dropdown v-else>
-              <template #trigger="{ toggle }">
-                <Button variant="success" size="l" @click="toggle">
-                  <template #start>
-                    <Icon name="ph:play" />
-                  </template>
-                  <Flex x-center gap="xs">
-                    Join Server
-                    <Icon name="ph:caret-down" size="s" />
-                  </Flex>
-                </Button>
-              </template>
-              <DropdownItem v-for="address in gameserver.addresses" :key="address">
-                <CopyClipboard :text="`${address}${gameserver.port ? `:${gameserver.port}` : ''}`" confirm>
-                  <Flex x-center gap="xs">
-                    <Icon name="ph:copy" size="s" />
-                    {{ `${address}${gameserver.port ? `:${gameserver.port}` : ''}` }}
-                  </Flex>
-                </CopyClipboard>
-              </DropdownItem>
-            </Dropdown>
+            <GameServerConnectButton
+              :addresses="addresses"
+              :port="gameserver.port"
+              :game-shorthand="gameShorthand"
+              variant="success"
+              size="l"
+            />
           </div>
         </div>
       </div>
@@ -146,9 +119,16 @@ defineProps<Props>()
 
   &__address-label {
     font-size: var(--font-size-s);
-    color: var(--color-text-lightest);
+    color: var(--color-text-lighter);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+  }
+
+  &__address-text {
+    font-size: var(--font-size-m);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+    margin-bottom: var(--space-xs);
   }
 
   &__quick-join-section {

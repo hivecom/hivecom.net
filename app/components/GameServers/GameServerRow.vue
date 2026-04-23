@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, CopyClipboard, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
+import { Flex, Tooltip } from '@dolanske/vui'
 import { capitalize } from 'vue'
+import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -46,6 +47,7 @@ const state = computed(() => {
 })
 
 const isCompactLayout = useBreakpoint('<s')
+const addresses = computed(() => props.gameserver.addresses as string[] | null)
 </script>
 
 <template>
@@ -86,28 +88,15 @@ const isCompactLayout = useBreakpoint('<s')
         <div class="region-badge">
           <RegionIndicator :region="props.gameserver.region" :show-label="!isCompactLayout" />
         </div>
-        <div v-if="props.gameserver.addresses && !isCompactLayout" data-dropdown-ignore @click.stop="() => {}">
-          <CopyClipboard v-if="props.gameserver.addresses.length === 1" :text="`${props.gameserver.addresses[0]}${props.gameserver.port ? `:${props.gameserver.port}` : ''}`" confirm>
-            <Button size="s" variant="gray">
-              Join
-            </Button>
-          </CopyClipboard>
-          <Dropdown v-else>
-            <template #trigger="{ toggle }">
-              <Button size="s" variant="gray" @click.stop="toggle">
-                <Flex y-center gap="xs">
-                  Join
-                  <Icon name="ph:caret-down" size="s" />
-                </Flex>
-              </Button>
-            </template>
-            <DropdownItem v-for="address in props.gameserver.addresses" :key="address">
-              <CopyClipboard :text="`${address}${props.gameserver.port ? `:${props.gameserver.port}` : ''}`" confirm>
-                {{ `${address}${props.gameserver.port ? `:${props.gameserver.port}` : ''}` }}
-              </CopyClipboard>
-            </DropdownItem>
-          </Dropdown>
-        </div>
+        <GameServerConnectButton
+          v-if="!isCompactLayout"
+          :addresses="addresses"
+          :port="props.gameserver.port"
+          :game-shorthand="props.game?.shorthand ?? null"
+          variant="gray"
+          size="s"
+          stop-propagation
+        />
       </Flex>
     </Flex>
   </button>

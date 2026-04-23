@@ -111,9 +111,11 @@ const user = useSupabaseUser()
         <p class="text-color-light mb-l">
           You need to be logged in to participate in this vote.
         </p>
-        <Button variant="accent" @click="navigateTo('/auth/login')">
-          Sign In
-        </Button>
+        <NuxtLink to="/auth/sign-in">
+          <Button variant="accent">
+            Sign In
+          </Button>
+        </NuxtLink>
       </Card>
     </section>
   </div>

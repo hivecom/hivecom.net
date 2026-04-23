@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { MDCRoot } from '@nuxtjs/mdc'
 import { onMounted, onUnmounted } from 'vue'
+import SharedLinkEmbed from '@/components/LinkEmbed/index.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { groupImagesAST } from '@/lib/imageGrouping'
+import { transformLinkEmbeds } from '@/lib/linkEmbedAST'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import MarkdownLightbox from './MarkdownLightbox.vue'
 import SharedUserMention from './UserMention.global.vue'
@@ -28,7 +30,7 @@ const emit = defineEmits<{
 // MDCRenderer.components prop is typed as Record<string, string | DefineComponent<any,any,any>>.
 // Casting via unknown as Record<string, string> satisfies the type (string is a subtype of the union)
 // while keeping the actual runtime value as the component object.
-const mdcComponents = { SharedUserMention } as unknown as Record<string, string>
+const mdcComponents = { SharedUserMention, SharedLinkEmbed } as unknown as Record<string, string>
 
 const container = useTemplateRef('container')
 
@@ -37,10 +39,12 @@ useBulkDataUser(mentionIds)
 
 const processedMarkdown = computed(() => processMarkdown(props.md))
 
-function applyGrouping(body: MDCRoot | undefined): MDCRoot | undefined {
+function applyTransforms(body: MDCRoot | undefined): MDCRoot | undefined {
   if (!body)
     return body
-  return groupImagesAST(body as Parameters<typeof groupImagesAST>[0]) as unknown as MDCRoot
+  let result = groupImagesAST(body as Parameters<typeof groupImagesAST>[0])
+  result = transformLinkEmbeds(result as Parameters<typeof transformLinkEmbeds>[0]) as typeof result
+  return result as unknown as MDCRoot
 }
 
 // Parsed result - null until the first parse completes after mount.
@@ -64,7 +68,7 @@ async function runParse(val: string) {
   if (destroyed)
     return
   parsed.value = {
-    body: applyGrouping(result.body),
+    body: applyTransforms(result.body),
     data: result.data as Record<string, unknown>,
   }
   emit('parsed')

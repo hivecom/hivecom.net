@@ -9,6 +9,7 @@ import { Alert, Skeleton } from '@dolanske/vui'
 import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies'
 import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
 import { scrollToId, scrollToIdWhenStable, waitForLayoutStability } from '@/lib/utils/common'
@@ -912,6 +913,9 @@ async function submitReply() {
         // reply_count server-side so the cached value is now stale.
         if (discussion.value) {
           useDiscussionCache().invalidate(discussion.value.id, discussion.value.slug)
+          // Invalidate the replies page cache so a reload fetches fresh data
+          // instead of serving the stale pages that predate this new reply.
+          useDiscussionRepliesCache().invalidate(discussion.value.id)
         }
         // The realtime subscription will fire for our own post too - pre-emptively
         // bump latestCommentTime by ensuring the new reply is in the list before

@@ -326,12 +326,14 @@ watch(() => route.path, () => {
 
         <template #footer>
           <Flex x-between y-center>
-            <Button expand outline @click="navigateTo('/')">
-              <template #start>
-                <Icon name="ph:caret-left" />
-              </template>
-              Return to home
-            </Button>
+            <NuxtLink to="/">
+              <Button expand outline>
+                <template #start>
+                  <Icon name="ph:caret-left" />
+                </template>
+                Return to home
+              </Button>
+            </NuxtLink>
             <SharedThemeToggle no-text small button />
           </Flex>
         </template>
@@ -459,12 +461,14 @@ watch(() => route.path, () => {
               </Tooltip>
             </Flex>
             <Flex v-else x-between y-center gap="xs">
-              <Button expand size="m" outline @click="navigateTo('/')">
-                <template #start>
-                  <Icon name="ph:caret-left" />
-                </template>
-                Return to home
-              </Button>
+              <NuxtLink to="/">
+                <Button expand size="m" outline>
+                  <template #start>
+                    <Icon name="ph:caret-left" />
+                  </template>
+                  Return to home
+                </Button>
+              </NuxtLink>
               <SharedThemeToggle no-text small button />
             </Flex>
           </template>

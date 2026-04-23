@@ -167,14 +167,11 @@ defineExpose({
     <Alert variant="neutral">
       <Flex y-center x-between gap="m">
         <p>Sign in to join the discussion and add a reply.</p>
-        <Tooltip placement="top">
-          <template #tooltip>
-            <p>Sign-in to start the conversation</p>
-          </template>
-          <Button variant="accent" @click="navigateTo('/auth/sign-in')">
+        <NuxtLink to="/auth/sign-in">
+          <Button variant="accent">
             Sign in
           </Button>
-        </Tooltip>
+        </NuxtLink>
       </Flex>
     </Alert>
   </div>

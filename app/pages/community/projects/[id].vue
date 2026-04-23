@@ -97,18 +97,19 @@ defineOgImage('Project', {
       <div v-if="project && !loading && !error" class="page-content">
         <!-- Back Button -->
         <Flex x-between>
-          <Button
-            variant="gray"
-            size="s"
-            plain
-            aria-label="Go back to Projects page"
-            @click="navigateTo('/community/projects')"
-          >
-            <template #start>
-              <Icon name="ph:arrow-left" />
-            </template>
-            Back to Projects
-          </Button>
+          <NuxtLink to="/community/projects">
+            <Button
+              variant="gray"
+              size="s"
+              plain
+              aria-label="Go back to Projects page"
+            >
+              <template #start>
+                <Icon name="ph:arrow-left" />
+              </template>
+              Back to Projects
+            </Button>
+          </NuxtLink>
         </Flex>
 
         <!-- Header -->

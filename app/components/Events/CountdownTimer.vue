@@ -52,7 +52,7 @@ const timeProgressPercentage = computed(() => {
 <template>
   <!-- Loading state with skeletons -->
   <div v-if="!countdown" class="countdown-timer" :class="{ 'countdown-timer--simple': props.simple }">
-    <Flex gap="s" y-center>
+    <Flex gap="s" y-center x-center>
       <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
         <Skeleton height="30px" width="29px" />
         <Skeleton height="11px" width="27px" />
@@ -91,11 +91,11 @@ const timeProgressPercentage = computed(() => {
     :style="{ '--time-progress': `${timeProgressPercentage}%` }"
   >
     <!-- Show "NOW" when event is ongoing or countdown finishes -->
-    <span v-if="shouldShowNow" class="countdown-timer__now-text">Ongoing</span>
+    <span v-if="shouldShowNow" class="countdown-timer__now-text" :class="[{ 'countdown-timer__now-text--simple': simple }]">Ongoing</span>
 
     <!-- Regular countdown grid -->
     <template v-else>
-      <Flex gap="s" y-center>
+      <Flex gap="s" y-center x-center>
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="days">
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.days" class="countdown-timer__number">{{ countdown.days.toString().padStart(2, '0') }}</span>
@@ -148,6 +148,7 @@ const timeProgressPercentage = computed(() => {
   background-color: var(--color-bg-raised);
   border-radius: var(--border-radius-m);
   overflow: hidden;
+  width: 100%;
 
   &--simple {
     .countdown-timer {
@@ -167,17 +168,22 @@ const timeProgressPercentage = computed(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
     height: 80px;
   }
 
   &__now-text {
     font-size: 3rem;
+    padding: var(--space-s) var(--space-m);
     font-weight: var(--font-weight-black);
     color: var(--color-accent);
     text-transform: uppercase;
     text-shadow: 0 0 20px var(--color-bg-accent-raised);
     margin-bottom: -6px;
+
+    &--simple {
+      color: var(--color-text-lighter);
+      text-shadow: none;
+    }
 
     @media (max-width: $breakpoint-s) {
       font-size: 2rem;

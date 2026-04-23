@@ -19,6 +19,10 @@ const COLON_COMPONENT_RE = /(^|[ \t\n]):([A-Z][A-Z0-9-]*)/gim
 const WORD_ONLY_RE = /^\w+$/
 const DETAILS_WORD_AFTER_RE = /^(\w*)/
 const DATAFILE_DIRECTIVE_RE = /:::dataFile(?:\s+\{([^}]*)\})?\s*:::/g
+// Matches a bare currency dollar sign: $ followed by a digit (e.g. $3, $10).
+// These must be escaped before remark-math sees them so they are not treated
+// as inline math delimiters.
+const CURRENCY_DOLLAR_RE = /\$(?=\d)/g
 const STRIP_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_DATAFILE_RE = /:::dataFile(?:\s+\{[^}]*\})?\s*:::/g
@@ -426,6 +430,10 @@ export function processSizeTags(markdown: string): string {
 export function processMarkdown(markdown: string): string {
   if (!markdown)
     return ''
+
+  // Escape bare currency dollar signs (e.g. $3, $10) before any remark/MDC
+  // processing so that remark-math does not treat them as inline math delimiters.
+  markdown = markdown.replace(CURRENCY_DOLLAR_RE, '\\$')
 
   // Convert TipTap details/spoiler directives to native <details> HTML first
   // so that MDC doesn't try to resolve them as unknown block components.

@@ -65,15 +65,15 @@ function handleDeleted() {
 
 // Fetch user's existing vote
 const { data: userVote, loading: _loadingVote, refetch: refetchVote } = useCachedFetch<Tables<'referendum_votes'>>(
-  () => !Number.isNaN(referendumId.value) && !!user.value?.id
+  () => !Number.isNaN(referendumId.value) && !!userId.value
     ? {
         table: 'referendum_votes',
         select: '*',
         filters: {
           referendum_id: referendumId.value,
-          user_id: user.value!.id,
+          user_id: userId.value,
         },
-        single: true,
+        maybeSingle: true,
       }
     : null,
   {
@@ -117,7 +117,7 @@ const isRemovingVote = ref(false)
 // Initialize voting state when user vote loads
 watch([userVote], ([vote]) => {
   if (vote) {
-    selectedChoices.value = [...vote.choices]
+    selectedChoices.value = (vote.choices as Array<number | string>).map(Number)
   }
 }, { immediate: true })
 
@@ -232,25 +232,12 @@ async function submitVote() {
       choices: selectedChoices.value,
     }
 
-    if (userVote.value) {
-      // Update existing vote
-      const { error } = await supabase
-        .from('referendum_votes')
-        .update(voteData)
-        .eq('id', userVote.value.id)
+    const { error } = await supabase
+      .from('referendum_votes')
+      .upsert(voteData, { onConflict: 'referendum_id,user_id' })
 
-      if (error)
-        throw error
-    }
-    else {
-      // Create new vote
-      const { error } = await supabase
-        .from('referendum_votes')
-        .insert(voteData)
-
-      if (error)
-        throw error
-    }
+    if (error)
+      throw error
 
     // Refetch data - realtime will also patch allVotes, but an explicit
     // refetch ensures the user's own vote is reflected immediately.
@@ -347,30 +334,33 @@ function handleChoiceClick(index: number) {
         <p class="text-color-light mb-l">
           The vote you're looking for doesn't exist or has been removed.
         </p>
-        <Button @click="navigateTo('/votes')">
-          <template #start>
-            <Icon name="ph:arrow-left" />
-          </template>
-          Back to Votes
-        </Button>
+        <NuxtLink to="/votes">
+          <Button>
+            <template #start>
+              <Icon name="ph:arrow-left" />
+            </template>
+            Back to Votes
+          </Button>
+        </NuxtLink>
       </Flex>
 
       <!-- Referendum content -->
       <template v-else>
         <!-- Back Button -->
         <Flex class="mb-m" x-between wrap y-center>
-          <Button
-            variant="gray"
-            size="s"
-            plain
-            aria-label="Go back to Votes page"
-            @click="navigateTo('/votes')"
-          >
-            <template #start>
-              <Icon name="ph:arrow-left" />
-            </template>
-            Back to Votes
-          </Button>
+          <NuxtLink to="/votes">
+            <Button
+              variant="gray"
+              size="s"
+              plain
+              aria-label="Go back to Votes page"
+            >
+              <template #start>
+                <Icon name="ph:arrow-left" />
+              </template>
+              Back to Votes
+            </Button>
+          </NuxtLink>
           <Flex gap="s" y-center>
             <UserDisplay :user-id="referendum.created_by" />
 

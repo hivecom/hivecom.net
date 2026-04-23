@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, CopyClipboard, Dropdown, DropdownItem, Flex, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Flex, Tooltip } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
+import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
@@ -10,6 +11,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import UserLink from '../Shared/UserLink.vue'
 
 const _props = defineProps<Props>()
+const addresses = computed(() => _props.gameserver.addresses as string[] | null)
 
 const { navigateToSignIn } = useAuthRedirect()
 
@@ -104,41 +106,14 @@ const dockerControlAccessible = computed(() => {
         </Button>
 
         <!-- Connect Button -->
-        <div
-          v-if="gameserver.addresses && gameserver.addresses.length"
-          class="gameserver-header__connect-button"
-        >
-          <CopyClipboard
-            v-if="gameserver.addresses.length === 1"
-            :text="`${gameserver.addresses[0]}${gameserver.port ? `:${gameserver.port}` : ''}`"
-            confirm
-          >
-            <Button variant="accent" :size="isMobile ? 's' : 'm'">
-              <template #start>
-                <Icon name="ph:play" />
-              </template>
-              Connect
-            </Button>
-          </CopyClipboard>
-
-          <Dropdown v-else>
-            <template #trigger="{ toggle }">
-              <Button variant="accent" :size="isMobile ? 's' : 'm'" @click="toggle">
-                <Flex y-center gap="xs">
-                  Connect
-                  <Icon name="ph:caret-down" size="s" />
-                </Flex>
-              </Button>
-            </template>
-            <DropdownItem v-for="address in gameserver.addresses" :key="address">
-              <CopyClipboard :text="`${address}${gameserver.port ? `:${gameserver.port}` : ''}`" confirm>
-                <Flex y-center gap="xs">
-                  <Icon name="ph:copy" size="s" />
-                  {{ `${address}${gameserver.port ? `:${gameserver.port}` : ''}` }}
-                </Flex>
-              </CopyClipboard>
-            </DropdownItem>
-          </Dropdown>
+        <div class="gameserver-header__connect-button">
+          <GameServerConnectButton
+            :addresses="addresses"
+            :port="gameserver.port"
+            :game-shorthand="game?.shorthand ?? null"
+            variant="accent"
+            :size="isMobile ? 's' : 'm'"
+          />
         </div>
       </Flex>
     </Flex>

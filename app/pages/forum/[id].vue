@@ -584,19 +584,20 @@ function revealNsfw() {
             <template v-else-if="isMobile">
               <!-- Back Button -->
               <Flex x-between>
-                <Button
-                  expand
-                  variant="gray"
-                  size="s"
-                  plain
-                  aria-label="Go back to Forum"
-                  @click="navigateTo('/forum')"
-                >
-                  <template #start>
-                    <Icon name="ph:arrow-left" />
-                  </template>
-                  Forum
-                </Button>
+                <NuxtLink to="/forum">
+                  <Button
+                    expand
+                    variant="gray"
+                    size="s"
+                    plain
+                    aria-label="Go back to Forum"
+                  >
+                    <template #start>
+                      <Icon name="ph:arrow-left" />
+                    </template>
+                    Forum
+                  </Button>
+                </NuxtLink>
               </Flex>
             </template>
           </div>

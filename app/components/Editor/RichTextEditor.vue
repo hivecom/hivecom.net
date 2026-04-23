@@ -34,6 +34,7 @@ import EditorVideoModal from './EditorVideoModal.vue'
 import EditorYoutubeModal from './EditorYoutubeModal.vue'
 import { DataFile } from './plugins/dataFile'
 import { ImageGroup } from './plugins/imageGroup'
+import { LinkEmbed as LinkEmbedNode } from './plugins/linkEmbed'
 import { createMentionExtension, hydrateMentionLabels, resolvePlainTextMentions } from './plugins/mentions'
 import { TextColor } from './plugins/textColor'
 import { TextFont } from './plugins/textFont'
@@ -65,6 +66,8 @@ const NBSP_SINGLE_RE = /&nbsp;$/
 const HTML_ANGLE_RE = /<([^>]*)>/g
 const TRAILING_WS_RE = /(\s+)$/
 const LEADING_WS_RE = /^(\s+)/
+// Matches [url](url) where the label is identical to the href - collapses to bare url
+const SELF_LINK_RE = /\[([^\]]+)\]\(\1\)/g
 
 // TODO: Code block highlighting & dropdown for seleting language
 
@@ -356,6 +359,8 @@ const editor = useEditor({
     }),
     // Uploaded video embeds (:::video {src="..."} ::: directive)
     Video,
+    // Standalone internal link embed cards
+    LinkEmbedNode,
     // Uploaded CSV/JSON data file attachments (:::dataFile directive)
     DataFile,
     // Spoiler / collapsible blocks via the HTML <details> element
@@ -634,6 +639,7 @@ function getEditorMarkdown(): string {
   if (!editor.value || editor.value.isEmpty)
     return ''
   const raw = editor.value.getMarkdown() ?? ''
+
   // @tiptap/extension-paragraph emits "&nbsp;" for every empty paragraph -
   // not just the trailing one - so we must replace all of them.
   // A line whose only content is "&nbsp;" represents an empty paragraph;
@@ -643,12 +649,16 @@ function getEditorMarkdown(): string {
   const stripped = raw
     .replace(NBSP_TRAILING_RE, '')
     .replace(NBSP_SINGLE_RE, '')
+    // Collapse [url](url) self-links (label === href) to bare URLs so that
+    // the markdown renderer can promote standalone internal links to rich embeds.
+    .replace(SELF_LINK_RE, '$1')
     // Escape any HTML tag-like sequences (<...>) so they are stored and rendered
     // as visible literal text rather than being interpreted as HTML by the
     // markdown renderer. Tiptap now stores these as raw angle-bracket text nodes
     // (the noHtmlMarked inline interceptor prevents them from being parsed as
     // real HTML on input), so we must re-escape them on the way out.
     .replace(HTML_ANGLE_RE, '&lt;$1&gt;')
+
   return stripped.trim() === '' ? '' : stripped
 }
 
@@ -1829,6 +1839,40 @@ async function handleSubmit() {
     &:hover {
       text-decoration: underline;
     }
+  }
+}
+
+.link-embed-node {
+  display: block;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--border-radius-s);
+  background-color: var(--color-bg-raised);
+  padding: var(--space-s) var(--space-m);
+  margin: var(--space-xs) 0;
+  cursor: default;
+  user-select: none;
+
+  &.ProseMirror-selectednode {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .link-embed-node__eyebrow {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    margin-bottom: var(--space-xxs);
+  }
+
+  .link-embed-node__url {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 </style>
