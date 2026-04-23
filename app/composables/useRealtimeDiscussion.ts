@@ -88,13 +88,13 @@ export function useRealtimeDiscussion(
     }
   }
 
-  function subscribe(discussionId: string) {
+  async function subscribe(discussionId: string) {
     // No-op if already subscribed to this discussion - avoids redundant channel
     // recreation when the watch fires without the id actually changing.
     if (replyChannel != null && subscribedDiscussionId === discussionId)
       return
 
-    void unsubscribe()
+    await unsubscribe()
 
     replyChannel = supabase
       .channel(`discussion-replies:${discussionId}`)

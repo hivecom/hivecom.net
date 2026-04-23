@@ -294,6 +294,7 @@ watch(editedContent, () => editError.value = [])
 
 // Reports
 const showReportModal = ref(false)
+const replyHovered = ref(false)
 const [DefineReusableUserInfo, UserInfo] = createReusableTemplate()
 
 // Reactions
@@ -318,6 +319,10 @@ const editedAtFormatted = computed(() => {
     :class="{
       'discussion-forum--pinned': isPinned,
     }"
+    @mouseenter="replyHovered = true"
+    @mouseleave="replyHovered = false"
+    @touchstart.passive="replyHovered = true"
+    @touchend.passive="replyHovered = false"
   >
     <!-- Reusable desktop author block (avatar + name stacked) -->
     <DefineReusableUserInfo>
@@ -589,7 +594,7 @@ const editedAtFormatted = computed(() => {
       </template>
 
       <!-- User signature / banner — shown below the post body on desktop only -->
-      <BannerDisplay v-if="!isMobile && !data.is_deleted && !showNSFWWarning" :user="user ?? null" />
+      <BannerDisplay v-if="!isMobile && !data.is_deleted && !showNSFWWarning" :user="user ?? null" :external-hover="replyHovered" />
 
       <!-- Mobile footer: reply count + reactions (only rendered on mobile when there's content) -->
       <div v-if="!data.is_deleted && isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
@@ -605,7 +610,7 @@ const editedAtFormatted = computed(() => {
           </div>
         </div>
         <!-- User banner sits on its own full-width row below reply count + reactions -->
-        <BannerDisplay v-if="!showNSFWWarning" :user="user ?? null" flush />
+        <BannerDisplay v-if="!showNSFWWarning" :user="user ?? null" flush :external-hover="replyHovered" />
       </div>
     </div>
 

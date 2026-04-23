@@ -14,14 +14,17 @@ import { wrapInBlockquote } from '@/lib/markdownProcessors'
 import { scrollToId, scrollToIdWhenStable, waitForLayoutStability } from '@/lib/utils/common'
 import { normalizeTipTapOutput } from '@/lib/utils/formatting'
 import { DISCUSSION_KEYS } from './Discussion.keys'
+import DiscussionCommentCardSkeleton from './DiscussionCommentCardSkeleton.vue'
 import DiscussionGapBanner from './DiscussionGapBanner.vue'
 import DiscussionItem from './DiscussionItem.vue'
 import DiscussionLoadMore from './DiscussionLoadMore.vue'
 import DiscussionOfftopicBanner from './DiscussionOfftopicBanner.vue'
 import DiscussionPendingBanner from './DiscussionPendingBanner.vue'
+import DiscussionReplyCardSkeleton from './DiscussionReplyCardSkeleton.vue'
 import DiscussionReplyInput from './DiscussionReplyInput.vue'
 import DiscussionTimeline from './DiscussionTimeline.vue'
 import DiscussionToolbar from './DiscussionToolbar.vue'
+import DiscussionToolbarSkeleton from './DiscussionToolbarSkeleton.vue'
 
 /**
  * NOTE
@@ -180,8 +183,8 @@ const {
   comments,
   discussion,
   userId,
-  (discussionId: string) => {
-    realtime.subscribe(discussionId)
+  async (discussionId: string) => {
+    await realtime.subscribe(discussionId)
     realtime.pendingReplyCount.value = 0
   },
   (deletedId: string) => {
@@ -297,22 +300,29 @@ function handleShowOfftopicUpdate(val: boolean) {
  * Used to insert the inline offtopic banner at the right position in the list.
  * Only populated when showOfftopic is false and there are offtopic replies loaded.
  */
-const offtopicBannerAfterIds = computed((): Set<string> => {
+/**
+ * Maps boundary comment IDs to the count of offtopic replies in that run.
+ * A "boundary" is the last visible (non-offtopic) comment before a hidden offtopic run begins.
+ */
+const offtopicBannerAfterIds = computed((): Map<string, number> => {
   if (showOfftopic.value || offtopicCount.value === 0)
-    return new Set()
-  const ids = new Set<string>()
+    return new Map()
+  const map = new Map<string, number>()
   const list = modelledComments.value
   for (let i = 0; i < list.length - 1; i++) {
     const curr = list[i]!
     const next = list[i + 1]!
-    // Insert banner after a visible comment that is immediately followed by an offtopic one
+    // Find the start of an offtopic run after a visible comment
     if (!curr.is_offtopic && next.is_offtopic) {
-      ids.add(curr.id)
+      // Count how many consecutive offtopic replies follow
+      let runCount = 0
+      for (let j = i + 1; j < list.length && list[j]!.is_offtopic; j++) {
+        runCount++
+      }
+      map.set(curr.id, runCount)
     }
   }
-  // Also handle the case where offtopic replies are at the very start (no preceding visible comment)
-  // - we use a sentinel empty-string key checked separately in the template
-  return ids
+  return map
 })
 
 /** True when the first loaded comment is already offtopic (banner goes before everything) */
@@ -321,6 +331,21 @@ const offtopicBannerAtStart = computed((): boolean => {
     return false
   const first = modelledComments.value[0]
   return first != null && first.is_offtopic
+})
+
+/** Count of offtopic replies in the leading run (when the list starts with offtopic replies) */
+const offtopicBannerAtStartCount = computed((): number => {
+  if (!offtopicBannerAtStart.value)
+    return 0
+  const list = modelledComments.value
+  let count = 0
+  for (const comment of list) {
+    if (comment.is_offtopic)
+      count++
+    else
+      break
+  }
+  return count
 })
 
 // Whether the current user is the discussion author (OP)
@@ -922,7 +947,19 @@ function isNodeVisible(node: ThreadNode): boolean {
 <template>
   <div class="discussion" :class="[`discussion--${props.model}`]">
     <template v-if="loading">
-      <Skeleton height="128px" width="auto" />
+      <template v-if="props.model === 'forum'">
+        <DiscussionToolbarSkeleton is-forum />
+        <div class="discussion__loading-cards">
+          <DiscussionReplyCardSkeleton v-for="n in 4" :key="n" />
+        </div>
+      </template>
+      <template v-else>
+        <Skeleton class="mb-m mt-s" :height="116" />
+        <DiscussionToolbarSkeleton />
+        <div class="discussion__loading-cards">
+          <DiscussionCommentCardSkeleton v-for="n in 3" :key="n" />
+        </div>
+      </template>
     </template>
 
     <template v-else-if="error">
@@ -977,7 +1014,7 @@ function isNodeVisible(node: ThreadNode): boolean {
 
       <!-- Pending banner for comment model: sits between toolbar and comments -->
       <DiscussionPendingBanner
-        v-if="realtime.pendingReplyCount.value > 0"
+        v-if="props.model === 'comment' && realtime.pendingReplyCount.value > 0"
         model="comment"
         :count="realtime.pendingReplyCount.value"
         :loading="realtime.pendingLoading.value"
@@ -1008,7 +1045,7 @@ function isNodeVisible(node: ThreadNode): boolean {
           <!-- Offtopic banner at the very start when all leading replies are offtopic -->
           <DiscussionOfftopicBanner
             v-if="offtopicBannerAtStart"
-            :count="offtopicCount"
+            :count="offtopicBannerAtStartCount"
             @show="handleShowOfftopicUpdate(true)"
           />
           <template v-for="(comment, index) in modelledComments" :key="comment.id">
@@ -1023,7 +1060,7 @@ function isNodeVisible(node: ThreadNode): boolean {
             <!-- Offtopic banner: appears after the last visible comment before a hidden offtopic run -->
             <DiscussionOfftopicBanner
               v-if="offtopicBannerAfterIds.has(comment.id)"
-              :count="offtopicCount"
+              :count="offtopicBannerAfterIds.get(comment.id)!"
               @show="handleShowOfftopicUpdate(true)"
             />
             <!-- Gap banner: appears after the last item of the early block -->
@@ -1052,7 +1089,7 @@ function isNodeVisible(node: ThreadNode): boolean {
         <div v-show="viewMode === 'threaded' && threadRoots.length > 0">
           <DiscussionOfftopicBanner
             v-if="offtopicBannerAtStart"
-            :count="offtopicCount"
+            :count="offtopicBannerAtStartCount"
             @show="handleShowOfftopicUpdate(true)"
           />
           <template v-for="(node, index) in threadRoots" :key="node.comment.id">
@@ -1068,7 +1105,7 @@ function isNodeVisible(node: ThreadNode): boolean {
             <!-- Offtopic banner: appears after the last visible root before a hidden offtopic run -->
             <DiscussionOfftopicBanner
               v-if="offtopicBannerAfterIds.has(node.comment.id)"
-              :count="offtopicCount"
+              :count="offtopicBannerAfterIds.get(node.comment.id)!"
               @show="handleShowOfftopicUpdate(true)"
             />
             <!-- Gap banner (threaded mode - roots only pagination) -->
@@ -1145,6 +1182,12 @@ function isNodeVisible(node: ThreadNode): boolean {
 
 <style scoped lang="scss">
 .discussion {
+  &__loading-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-m);
+  }
+
   display: flex;
   width: 100%;
   flex-direction: column;

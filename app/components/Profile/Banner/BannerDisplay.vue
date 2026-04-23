@@ -14,6 +14,12 @@ const props = defineProps<{
    * inside a container that already provides its own spacing (e.g. mobile footer).
    */
   flush?: boolean
+  /**
+   * When true, treats the banner as hovered from an external source (e.g. the
+   * parent reply row is hovered). This allows the parent to drive the reveal
+   * without the user needing to hover directly over the banner.
+   */
+  externalHover?: boolean
 }>()
 
 const supabase = useSupabaseClient()
@@ -121,8 +127,8 @@ watch(tapped, (val) => {
       :alt="`${user?.username ?? 'User'}'s forum banner`"
       class="banner-display__image"
       :style="{
-        filter: (hovered || tapped) ? 'saturate(1)' : 'saturate(0)',
-        opacity: (hovered || tapped) ? '1' : '0.2',
+        filter: (hovered || tapped || props.externalHover) ? 'saturate(1)' : 'saturate(0)',
+        opacity: (hovered || tapped || props.externalHover) ? '1' : '0.2',
       }"
       loading="lazy"
       decoding="async"
