@@ -3,6 +3,7 @@ import type { ValidationError } from '@dolanske/v-valid'
 import type { ComponentExposed } from 'vue-component-type-helpers'
 import type { Comment, DiscussionSettings, RawComment, ThreadNode } from './Discussion.types'
 import type { TimelineBucket } from './DiscussionTimeline.vue'
+import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Skeleton } from '@dolanske/vui'
@@ -10,6 +11,7 @@ import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies
 import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
+import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
 import { scrollToId, scrollToIdWhenStable, waitForLayoutStability } from '@/lib/utils/common'
@@ -92,6 +94,7 @@ const canBypassLock = computed(() => {
 export type { Comment, DiscussionSettings, ProvidedDiscussion, RawComment, ThreadNode } from './Discussion.types'
 
 const supabase = useSupabaseClient()
+const subscriptionsCache = useDiscussionSubscriptionsCache()
 
 // ── Reply form state (declared early - referenced in useDataDiscussionReplies callback) ──
 
@@ -138,6 +141,72 @@ useBulkDataUser(replyAuthorIds, {
 })
 
 const realtime = useRealtimeDiscussion(comments, discussion, modelRef)
+
+// ── Subscription (comment model only) ────────────────────────────────────────
+
+const isSubscribed = ref(false)
+const subscriptionLoading = ref(false)
+
+// Fetch subscription status once the discussion ID is known
+watch(discussion, async (disc) => {
+  if (!disc || !userId.value || props.model !== 'comment')
+    return
+
+  const cached = subscriptionsCache.getStatus(userId.value, disc.id)
+  if (cached !== null) {
+    isSubscribed.value = cached
+    return
+  }
+
+  const { data } = await supabase
+    .from('discussion_subscriptions')
+    .select('id')
+    .eq('user_id', userId.value)
+    .eq('discussion_id', disc.id)
+    .maybeSingle()
+
+  isSubscribed.value = !!data
+  subscriptionsCache.setStatus(userId.value, disc.id, !!data)
+}, { immediate: true })
+
+async function handleToggleSubscription() {
+  if (!userId.value || !discussion.value || subscriptionLoading.value)
+    return
+
+  subscriptionLoading.value = true
+  const discussionId = discussion.value.id
+
+  if (isSubscribed.value) {
+    const { error } = await supabase
+      .from('discussion_subscriptions')
+      .delete()
+      .eq('user_id', userId.value)
+      .eq('discussion_id', discussionId)
+
+    if (!error) {
+      isSubscribed.value = false
+      subscriptionsCache.applyUnsubscribeByDiscussion(userId.value, discussionId)
+    }
+  }
+  else {
+    const { data, error } = await supabase
+      .from('discussion_subscriptions')
+      .insert({ user_id: userId.value, discussion_id: discussionId })
+      .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)')
+      .single()
+
+    if (!error && data) {
+      isSubscribed.value = true
+      subscriptionsCache.applySubscribe(userId.value, data as unknown as SubscriptionRow)
+    }
+    else if (!error) {
+      isSubscribed.value = true
+      subscriptionsCache.setStatus(userId.value, discussionId, true)
+    }
+  }
+
+  subscriptionLoading.value = false
+}
 
 // ── View settings (declared before composable - viewMode is passed to useDataDiscussionReplies) ──
 
@@ -1009,10 +1078,14 @@ function isNodeVisible(node: ThreadNode): boolean {
         :show-offtopic="showOfftopic"
         :show-thread-replies="showThreadReplies"
         :show-timeline-button="showTimeline"
+        :show-subscribe-button="props.model === 'comment' && !!userId"
+        :is-subscribed="isSubscribed"
+        :subscription-loading="subscriptionLoading"
         @update:view-mode="handleViewModeUpdate"
         @update:show-offtopic="handleShowOfftopicUpdate"
         @update:show-thread-replies="handleShowThreadRepliesUpdate"
         @go-to-pinned="handleGoToPinnedReply"
+        @toggle-subscription="handleToggleSubscription"
         @open-timeline="timelineRef?.openJumpModal()"
         @go-to-end="handleTimelineNavigateToEnd"
       />

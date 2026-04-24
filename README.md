@@ -61,10 +61,10 @@ Once you have the Supabase instance running, you can access the admin panel at `
 
 If you'd like to test locally against production, you can invoke `npm run dev:staging`. Make sure the production credentials are defined in `.env.production`.
 
-Don't forget to reset your local database to the latest migrations after starting the Supabase instance:
+Don't forget to reset your local database to the latest migrations after starting the Supabase instance (we have a command for this as it also uploads static content to Supabase storage for local development):
 
 ```bash
-npm run supabase db reset
+npm run reset
 ```
 
 This will ensure your local database is in sync with the latest migrations and schema changes plus seed it with the initial data.
@@ -140,10 +140,10 @@ The `deploy` GitHub Actions workflow also runs once a week to rebuild and deploy
 
 ### Local development workflow
 
-Start by resetting your local database to the latest migrations:
+Start by resetting your local environment and database to the latest migrations:
 
 ```bash
-npm run supabase db reset
+npm run reset
 ```
 
 If you need to sync your local files with the current production schema, pull the latest remote migrations:
@@ -177,7 +177,7 @@ npm run supabase db diff -f <your_migration_name>
 Make sure your local database resets cleanly:
 
 ```bash
-npm run supabase db reset
+npm run reset
 ```
 
 Then regenerate types:

@@ -8,6 +8,7 @@ import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { flattenTopicsTree } from '@/lib/topics'
@@ -40,6 +41,7 @@ const isMobile = useBreakpoint('<s')
 const supabase = useSupabaseClient()
 const userId = useUserId()
 const discussionCache = useDiscussionCache()
+const subscriptionsCache = useDiscussionSubscriptionsCache()
 
 // Use the cached user data composable - role is already fetched and shared
 // with ForumItemActions and the parent page. No extra DB queries needed.
@@ -270,6 +272,9 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
     }
 
     pushToast(`${isEditing.value ? 'Updated' : 'Created'} discussion ${payload.title}${payload.is_draft ? ' (draft)' : ''}`)
+
+    if (!isEditing.value && userId.value)
+      subscriptionsCache.invalidateList(userId.value)
 
     // Invalidate the old cache entry before writing the new one so stale slug
     // and id keys don't survive a title/slug/topic change.

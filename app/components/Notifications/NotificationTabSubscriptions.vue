@@ -32,19 +32,19 @@ const DEV_FIXTURE_SUBSCRIPTIONS: SubscriptionRow[] = import.meta.dev
         id: 'dev-sub-1',
         discussion_id: 'dev-discussion-1',
         last_seen_at: new Date().toISOString(),
-        discussion: { title: 'General Discussion', slug: 'general-discussion' },
+        discussion: { title: 'General Discussion', slug: 'general-discussion', profile_id: null, event_id: null, gameserver_id: null, project_id: null, referendum_id: null, theme_id: null },
       },
       {
         id: 'dev-sub-2',
         discussion_id: 'dev-discussion-2',
         last_seen_at: new Date(Date.now() - 86400000).toISOString(),
-        discussion: { title: 'Site Feedback', slug: 'site-feedback' },
+        discussion: { title: 'Site Feedback', slug: 'site-feedback', profile_id: null, event_id: null, gameserver_id: null, project_id: null, referendum_id: null, theme_id: null },
       },
       {
         id: 'dev-sub-3',
         discussion_id: 'dev-discussion-3',
         last_seen_at: new Date(Date.now() - 172800000).toISOString(),
-        discussion: { title: 'A very long discussion title that should get truncated', slug: 'long-title' },
+        discussion: { title: 'A very long discussion title that should get truncated', slug: 'long-title', profile_id: null, event_id: null, gameserver_id: null, project_id: null, referendum_id: null, theme_id: null },
       },
     ]
   : []
@@ -81,7 +81,7 @@ async function load() {
 
   try {
     const { data, error: fetchError } = await supabase.from('discussion_subscriptions')
-      .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug)')
+      .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)')
       .eq('user_id', userId.value as string)
       .order('last_seen_at', { ascending: false })
 
@@ -147,6 +147,45 @@ function triggerClearAll() {
   confirmOpen.value = true
 }
 
+function getSubscriptionIcon(sub: SubscriptionRow): string {
+  const d = sub.discussion
+  if (!d)
+    return 'ph:bell-ringing'
+  if (d.profile_id)
+    return 'ph:user-circle'
+  if (d.event_id)
+    return 'ph:calendar'
+  if (d.gameserver_id)
+    return 'ph:desktop-tower'
+  if (d.project_id)
+    return 'ph:blueprint'
+  if (d.referendum_id)
+    return 'ph:scales'
+  if (d.theme_id)
+    return 'ph:paint-brush'
+  return 'ph:chat-dots'
+}
+
+function getSubscriptionTitle(sub: SubscriptionRow): string {
+  const title = sub.discussion?.title ?? 'Unknown discussion'
+  const d = sub.discussion
+  if (!d)
+    return title
+  if (d.profile_id)
+    return `Profile - ${title}`
+  if (d.event_id)
+    return `Event - ${title}`
+  if (d.gameserver_id)
+    return `Game Server - ${title}`
+  if (d.project_id)
+    return `Project - ${title}`
+  if (d.referendum_id)
+    return `Vote - ${title}`
+  if (d.theme_id)
+    return `Theme - ${title}`
+  return title
+}
+
 defineExpose({ load, reset, triggerClearAll, clearAllLoading, hasSubscriptions })
 </script>
 
@@ -162,8 +201,9 @@ defineExpose({ load, reset, triggerClearAll, clearAllLoading, hasSubscriptions }
       <NotificationCardSubscription
         v-for="sub in activeSubscriptions"
         :key="`sub-${sub.id}`"
-        :title="sub.discussion?.title ?? 'Unknown discussion'"
-        :href="`/forum/${sub.discussion?.slug ?? sub.discussion_id}`"
+        :title="getSubscriptionTitle(sub)"
+        :icon="getSubscriptionIcon(sub)"
+        :href="sub.discussion?.profile_id ? `/profile/${sub.discussion.profile_id}` : sub.discussion?.theme_id ? `/themes/${sub.discussion.theme_id}` : `/forum/${sub.discussion?.slug ?? sub.discussion_id}`"
         :loading="!!unsubscribeLoading[sub.id]"
         @click="emit('navigate')"
         @unsubscribe="handleUnsubscribe(sub)"

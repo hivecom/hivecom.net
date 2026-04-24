@@ -130,6 +130,7 @@ const bannerSurfaceStyle = computed(() => {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/mixins.scss' as *;
 .project-card {
   position: relative;
   cursor: pointer;
@@ -354,11 +355,7 @@ const bannerSurfaceStyle = computed(() => {
   .project-card--compact & {
     font-size: var(--font-size-s);
     line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    @include line-clamp(2);
   }
 }
 

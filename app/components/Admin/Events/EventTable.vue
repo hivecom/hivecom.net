@@ -9,6 +9,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useTableActions } from '@/composables/useTableActions'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import EventDetails from './EventDetails.vue'
@@ -48,6 +49,7 @@ type Event = Tables<'events'>
 
 const supabase = useSupabaseClient()
 const userId = useUserId()
+const subscriptionsCache = useDiscussionSubscriptionsCache()
 const route = useRoute()
 const router = useRouter()
 
@@ -247,6 +249,9 @@ async function handleEventSave(eventData: Partial<Event>) {
         .single()
       if (error)
         throw error
+
+      if (userId.value)
+        subscriptionsCache.invalidateList(userId.value)
     }
 
     showEventForm.value = false

@@ -21,8 +21,8 @@ watch(
       return
     }
     try {
-      const { getGameBackgroundUrl } = useDataGameAssets()
-      gameBackground.value = await getGameBackgroundUrl({ shorthand: d.gameShorthand } as Parameters<typeof getGameBackgroundUrl>[0])
+      const { getGameBackgroundUrlByShorthand } = useDataGameAssets()
+      gameBackground.value = await getGameBackgroundUrlByShorthand(d.gameShorthand)
     }
     catch {
       gameBackground.value = null

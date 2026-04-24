@@ -23,6 +23,10 @@ function getAssetCacheKey(gameId: number, assetType: 'icon' | 'cover' | 'backgro
   return `game_asset:${gameId}:${assetType}`
 }
 
+function getAssetCacheKeyByShorthand(shorthand: string, assetType: 'icon' | 'cover' | 'background') {
+  return `game_asset_sh:${shorthand}:${assetType}`
+}
+
 export function useDataGameAssets() {
   const supabase = useSupabaseClient<Database>()
 
@@ -99,6 +103,32 @@ export function useDataGameAssets() {
   }
 
   /**
+   * Get game background URL by shorthand string with caching.
+   * Use this when no full game object (with id) is available - e.g. link embeds.
+   * Keyed by shorthand so multiple instances with different games don't collide.
+   */
+  async function getGameBackgroundUrlByShorthand(shorthand: string): Promise<string | null> {
+    try {
+      if (shorthand == null || shorthand.trim() === '')
+        return null
+
+      const cacheKey = getAssetCacheKeyByShorthand(shorthand, 'background')
+      const cached = _gameAssetCache.get<string>(cacheKey)
+      if (cached !== null)
+        return cached
+
+      const url = await getGameAssetUrl(supabase, shorthand, 'background')
+      if (url !== null)
+        _gameAssetCache.set(cacheKey, url)
+      return url
+    }
+    catch (error) {
+      console.error(`Failed to load background for game shorthand ${shorthand}:`, error)
+      return null
+    }
+  }
+
+  /**
    * Preload all assets for a game.
    */
   async function preloadGameAssets(game: Tables<'games'>) {
@@ -120,6 +150,7 @@ export function useDataGameAssets() {
     getGameIconUrl,
     getGameCoverUrl,
     getGameBackgroundUrl,
+    getGameBackgroundUrlByShorthand,
     preloadGameAssets,
     clearGameAssets,
   }

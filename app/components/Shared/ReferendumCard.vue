@@ -127,6 +127,7 @@ function goToReferendum() {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/mixins.scss' as *;
 .referendum-card {
   transition: all 0.2s ease;
   cursor: pointer;
@@ -155,11 +156,7 @@ function goToReferendum() {
   }
 
   .line-clamp-3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    @include line-clamp(3);
   }
 
   // Ensure UserDisplay component displays inline properly

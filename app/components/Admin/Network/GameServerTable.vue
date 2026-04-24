@@ -9,6 +9,7 @@ import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
+import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import GameserverDetails from './GameServerDetails.vue'
 import GameserverFilters from './GameServerFilters.vue'
@@ -16,6 +17,7 @@ import GameserverForm from './GameServerForm.vue'
 
 const supabase = useSupabaseClient()
 const userId = useUserId()
+const subscriptionsCache = useDiscussionSubscriptionsCache()
 const route = useRoute()
 const router = useRouter()
 const isBelowMedium = useBreakpoint('<m')
@@ -208,6 +210,9 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
         } as TablesInsert<'gameservers'>)
       if (error)
         throw error
+
+      if (userId.value)
+        subscriptionsCache.invalidateList(userId.value)
     }
 
     showGameserverForm.value = false

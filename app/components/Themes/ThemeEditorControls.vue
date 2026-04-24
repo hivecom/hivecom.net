@@ -4,6 +4,7 @@ import type { Theme } from '@/types/theme'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Tab, Tabs, Textarea, theme, Tooltip } from '@dolanske/vui'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
+import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS, VUI_DEFAULT_COLORS } from '@/lib/theme'
 import { adaptPaletteToTheme } from '@/lib/themeAdapt'
@@ -22,7 +23,7 @@ type ThemeType = 'dark' | 'light'
 
 const { refresh } = useDataThemes()
 const { settings } = useDataUserSettings()
-const { activeTheme, reapplyCustomCss, applyCustomCss } = useUserTheme()
+const { activeTheme, reapplyCustomCss, applyCustomCss, fetchAndApply } = useUserTheme()
 const {
   themeForm,
   scaleValues,
@@ -179,6 +180,7 @@ function close() {
 
 // DB operations
 const supabase = useSupabaseClient()
+const subscriptionsCache = useDiscussionSubscriptionsCache()
 
 const showSubmitModal = ref(false)
 const submitLoading = ref(false)
@@ -192,7 +194,7 @@ function openSubmitModal() {
       form.description = editingTheme.value.description ?? ''
     }
     // Forking someone else's theme -> set the original theme as the fork source
-    else {
+    else if (editingTheme.value.id !== '$default') {
       form.forked_from = editingTheme.value.id
     }
   }
@@ -258,12 +260,19 @@ async function submitForm() {
     pushToast('Failed to save theme', { description: error.message })
   }
   else {
+    if (!isUpdate && userId.value)
+      subscriptionsCache.invalidateList(userId.value)
+
     refresh()
 
-    if (form.useAsCurrent) {
-      applyPaletteLocal('dark', themeForm.value.dark)
-      applyPaletteLocal('light', themeForm.value.light)
-      applyCustomCss(customCss.value)
+    if (form.useAsCurrent && themeId) {
+      if (!isUpdate && userId.value) {
+        await supabase
+          .from('profiles')
+          .update({ theme_id: themeId })
+          .eq('id', userId.value)
+      }
+      await fetchAndApply(true)
     }
 
     showSubmitModal.value = false

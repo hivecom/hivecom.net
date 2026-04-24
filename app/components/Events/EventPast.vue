@@ -52,6 +52,7 @@ const count = computed(() => countEl.value?.count ?? 0)
 </template>
 
 <style lang="scss">
+@use '@/assets/mixins.scss' as *;
 .event-past {
   width: 100%;
 
@@ -64,14 +65,10 @@ const count = computed(() => countEl.value?.count ?? 0)
   }
 
   &__title {
-    display: -webkit-box;
     font-size: var(--font-size-l);
-    overflow: hidden;
-    line-clamp: 2;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
     white-space: normal;
     padding-bottom: 0.15em;
+    @include line-clamp(2);
   }
 
   &__description {

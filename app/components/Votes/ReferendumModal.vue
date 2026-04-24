@@ -3,6 +3,7 @@ import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overri
 import { Badge, Button, Calendar, Checkbox, Flex, Grid, Input, Modal, Textarea, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 
 const supabase = useSupabaseClient()
 const userId = useUserId()
+const subscriptionsCache = useDiscussionSubscriptionsCache()
 
 // ─── Permission check ─────────────────────────────────────────────────────────
 // Use the cached user data composable instead of raw DB queries - role is
@@ -218,6 +220,9 @@ async function handleSubmit() {
 
       if (error)
         throw error
+
+      if (userId.value)
+        subscriptionsCache.invalidateList(userId.value)
 
       resetForm()
       emit('created', data as Tables<'referendums'>)

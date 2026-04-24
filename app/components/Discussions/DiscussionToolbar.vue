@@ -9,6 +9,10 @@ interface Props {
   showOfftopic: boolean
   showThreadReplies: boolean
   showTimelineButton?: boolean
+  /** Show the subscribe/unsubscribe bell button (comment model only) */
+  showSubscribeButton?: boolean
+  isSubscribed?: boolean
+  subscriptionLoading?: boolean
 }
 
 defineProps<Props>()
@@ -20,6 +24,7 @@ const emit = defineEmits<{
   'goToPinned': []
   'openTimeline': []
   'goToEnd': []
+  'toggleSubscription': []
 }>()
 
 const isBelowSmall = useBreakpoint('<s')
@@ -94,31 +99,49 @@ const isBelowSmall = useBreakpoint('<s')
       </Tooltip>
     </Flex>
 
-    <Flex v-if="showTimelineButton" gap="xs" class="discussion-toolbar__timeline-btn">
-      <Tooltip>
-        <Button square size="s" variant="gray" @click="emit('openTimeline')">
-          <Icon :size="18" name="ph:clock" />
+    <Flex gap="xs">
+      <Tooltip v-if="showSubscribeButton">
+        <Button
+          square
+          size="s"
+          variant="gray"
+          :outline="!isSubscribed"
+          :loading="subscriptionLoading"
+          @click="emit('toggleSubscription')"
+        >
+          <Icon :size="16" :name="isSubscribed ? 'ph:bell-ringing' : 'ph:bell'" :class="{ 'text-color-accent': isSubscribed }" />
         </Button>
         <template #tooltip>
-          <p>Jump to date</p>
+          <p>{{ isSubscribed ? 'Unsubscribe from replies' : 'Subscribe to replies' }}</p>
         </template>
       </Tooltip>
-      <Tooltip>
-        <Button v-if="!isBelowSmall" size="s" variant="gray" @click="emit('goToEnd')">
-          <template #end>
-            <Icon :size="18" name="ph:arrow-down" />
+
+      <Flex v-if="showTimelineButton" gap="xs" class="discussion-toolbar__timeline-btn">
+        <Tooltip>
+          <Button square size="s" variant="gray" @click="emit('openTimeline')">
+            <Icon :size="18" name="ph:clock" />
+          </Button>
+          <template #tooltip>
+            <p>Jump to date</p>
           </template>
-          <span>
-            Latest
-          </span>
-        </Button>
-        <Button v-else square size="s" variant="gray" @click="emit('goToEnd')">
-          <Icon :size="18" name="ph:arrow-down" />
-        </Button>
-        <template #tooltip>
-          <p>Go to last reply</p>
-        </template>
-      </Tooltip>
+        </Tooltip>
+        <Tooltip>
+          <Button v-if="!isBelowSmall" size="s" variant="gray" @click="emit('goToEnd')">
+            <template #end>
+              <Icon :size="18" name="ph:arrow-down" />
+            </template>
+            <span>
+              Latest
+            </span>
+          </Button>
+          <Button v-else square size="s" variant="gray" @click="emit('goToEnd')">
+            <Icon :size="18" name="ph:arrow-down" />
+          </Button>
+          <template #tooltip>
+            <p>Go to last reply</p>
+          </template>
+        </Tooltip>
+      </Flex>
     </Flex>
   </Flex>
 </template>

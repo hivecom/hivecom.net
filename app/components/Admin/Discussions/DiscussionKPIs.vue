@@ -23,6 +23,7 @@ const discussionsQuery = supabase
     event_id,
     gameserver_id,
     referendum_id,
+    theme_id,
     reply_count,
     last_reply:discussion_replies!discussion_replies_discussion_id_fkey(created_at)
   `)
@@ -104,7 +105,8 @@ const orphanedDiscussions = computed(() => {
     && !discussion.project_id
     && !discussion.event_id
     && !discussion.gameserver_id
-    && !discussion.referendum_id,
+    && !discussion.referendum_id
+    && !discussion.theme_id,
   ).length
 })
 

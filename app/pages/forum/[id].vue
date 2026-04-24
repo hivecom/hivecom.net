@@ -150,7 +150,7 @@ async function toggleSubscription() {
         user_id: userId.value,
         discussion_id: discussionId,
       })
-      .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug)')
+      .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)')
       .single()
 
     if (!error && data) {
@@ -626,6 +626,7 @@ function revealNsfw() {
                   @click="toggleSubscription"
                 >
                   <Icon
+                    size="14"
                     :name="isSubscribed ? 'ph:bell-ringing' : 'ph:bell'"
                     :class="{ 'text-color-accent': isSubscribed }"
                   />

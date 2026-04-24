@@ -166,6 +166,7 @@ const isMobile = useBreakpoint('<s')
               {{ isMobile ? '' : 'Fork' }}
             </Button>
             <Button
+              v-if="!isDefaultTheme"
               size="s"
               :variant="isThemeActive ? 'gray' : 'accent'"
               @click="setActiveTheme(isThemeActive ? null : data.id)"

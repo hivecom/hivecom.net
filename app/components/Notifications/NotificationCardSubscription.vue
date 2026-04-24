@@ -6,11 +6,13 @@ interface Props {
   title: string
   href?: string | null
   loading?: boolean
+  icon?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   href: null,
   loading: false,
+  icon: 'ph:bell-ringing',
 })
 
 const emit = defineEmits<{ (e: 'unsubscribe'): void, (e: 'click'): void }>()
@@ -18,7 +20,7 @@ const emit = defineEmits<{ (e: 'unsubscribe'): void, (e: 'click'): void }>()
 
 <template>
   <NotificationCard
-    icon="ph:bell-ringing"
+    :icon="props.icon"
     :text="props.title"
     :to="props.href"
     @click="emit('click')"

@@ -284,6 +284,13 @@ export default defineNuxtConfig({
         // events
         'ph:arrows-vertical',
 
+        // Notifications/NotificationTabSubscriptions.vue subscription entity icons
+        'ph:desktop-tower',
+        'ph:blueprint',
+        'ph:scales',
+        'ph:chat-dots',
+        'ph:paint-brush',
+
         // Discussions/DiscussionTimeline.vue jump-to-date button + toolbar
         'ph:clock',
         'ph:arrow-down',

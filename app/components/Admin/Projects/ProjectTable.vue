@@ -9,6 +9,7 @@ import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
+import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import ProjectDetails from './ProjectDetails.vue'
 import ProjectFilters from './ProjectFilters.vue'
@@ -29,6 +30,7 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 const supabase = useSupabaseClient()
 const userId = useUserId()
+const subscriptionsCache = useDiscussionSubscriptionsCache()
 const isBelowMedium = useBreakpoint('<m')
 
 const projectsQuery = supabase.from('projects').select(`
@@ -139,6 +141,9 @@ async function handleProjectSave(projectData: TablesInsert<'projects'> | TablesU
         } as TablesInsert<'projects'>)
       if (error)
         throw error
+
+      if (userId.value)
+        subscriptionsCache.invalidateList(userId.value)
     }
 
     showProjectForm.value = false

@@ -56,6 +56,7 @@ const { data, loading } = useDataLinkPreview(props.url)
 </template>
 
 <style lang="scss">
+@use '@/assets/mixins.scss' as *;
 .link-embed-wrapper {
   margin: var(--space-xs) 0;
 }
@@ -161,11 +162,7 @@ const { data, loading } = useDataLinkPreview(props.url)
   font-size: var(--font-size-xs);
   color: var(--color-text-light);
   margin: 0 !important;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  line-clamp: 2;
-  overflow: hidden;
+  @include line-clamp(2);
 
   &--empty {
     color: var(--color-text-lighter);

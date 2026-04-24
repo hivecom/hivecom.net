@@ -45,7 +45,7 @@ import { useCache } from './useCache'
  *
  * Exported so callers don't need to redeclare the shape locally.
  * Mirrors the Supabase select:
- *   `id, discussion_id, last_seen_at, discussion:discussions(title, slug)`
+ *   `id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)`
  */
 export interface SubscriptionRow {
   id: string
@@ -54,6 +54,12 @@ export interface SubscriptionRow {
   discussion: {
     title: string
     slug: string | null
+    profile_id: string | null
+    event_id: number | null
+    gameserver_id: number | null
+    project_id: number | null
+    referendum_id: number | null
+    theme_id: string | null
   } | null
 }
 

@@ -447,6 +447,10 @@ And a game server link:
 
 http://localhost:3000/servers/gameservers/1
 
+And another:
+
+http://localhost:3000/servers/gameservers/2
+
 An ongoing event link:
 
 http://localhost:3000/events/11
@@ -599,10 +603,6 @@ ON CONFLICT (id)
     username = EXCLUDED.username,
     introduction = EXCLUDED.introduction,
     birthday = EXCLUDED.birthday;
-
--- Create friend relationship between admin and test user
-INSERT INTO public.friends(created_at, friender, friend)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b3', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Insert an upcoming test event (moved 2 weeks earlier)
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, games)
@@ -1012,6 +1012,18 @@ SELECT
   'Hey @{018d224c-0e49-4b6d-b57a-87299605c2b1} do you know if the CS2 server will be up this weekend? Would love to get a few games in!'
 FROM public.discussions d
 WHERE d.slug = 'looking-for-people-to-play-cs2-with';
+
+-- TestUser replies on Hivecom's profile discussion.
+-- This tests the profile discussion subscription flow - Hivecom is subscribed
+-- to their own profile discussion and should receive a notification.
+INSERT INTO public.discussion_replies(created_at, created_by, discussion_id, markdown)
+SELECT
+  NOW() - INTERVAL '15 minutes',
+  '018d224c-0e49-4b6d-b57a-87299605c2b3'::uuid,
+  d.id,
+  'Hey @{018d224c-0e49-4b6d-b57a-87299605c2b1}, love your profile! Really cool setup you have here.'
+FROM public.discussions d
+WHERE d.profile_id = '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid;
 
 -- Insert test projects
 INSERT INTO public.projects(created_at, created_by, title, description, markdown, link, owner, tags, github)

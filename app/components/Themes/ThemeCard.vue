@@ -25,6 +25,7 @@ const emit = defineEmits<{
 }>()
 
 const isActive = computed(() => props.item.id === props.activeThemeId)
+const isDefaultTheme = computed(() => props.item.id === '$default')
 
 const userId = useUserId()
 const { user: userData } = useDataUser(userId, { includeRole: true })
@@ -68,7 +69,7 @@ if (props.item.forked_from) {
     </TinyBadge>
 
     <ButtonGroup :gap="2" class="theme-menu__card--context">
-      <Button size="s" variant="gray" @click.prevent.stop="isActive ? emit('remove') : emit('apply')">
+      <Button v-if="!isDefaultTheme" size="s" variant="gray" @click.prevent.stop="isActive ? emit('remove') : emit('apply')">
         <template #start>
           <Icon :name="isActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
         </template>
@@ -130,8 +131,7 @@ if (props.item.forked_from) {
         <div class="flex-1">
           <strong>{{ props.item.name }}</strong>
           <p v-if="props.item.description">
-            <span class="text-xs">
-
+            <span class="text-m description-clamp">
               {{ props.item.description }}
             </span>
           </p>
@@ -196,6 +196,10 @@ if (props.item.forked_from) {
 <style lang="scss" scoped>
 @use '@/assets/mixins.scss' as *;
 @use '@/assets/breakpoints.scss' as *;
+
+.description-clamp {
+  @include line-clamp(2);
+}
 
 .theme-menu__card {
   display: flex;
