@@ -6,7 +6,7 @@ import { responseMethodNotAllowed } from "../_shared/response.ts";
 
 type SupabaseClientType = ReturnType<typeof createClient<Database>>;
 
-type ImageContentType = "image/webp" | "image/png" | "image/jpeg" | "image/jpg";
+type ImageContentType = "image/webp" | "image/png" | "image/jpeg" | "image/jpg" | "image/gif";
 
 type SyncUserAvatarRequest = {
   userId: string;
@@ -19,7 +19,7 @@ type SyncUserAvatarRequest = {
 };
 
 const AVATAR_BUCKET = "hivecom-content-users";
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_IMAGE_BYTES = 1 * 1024 * 1024; // 1MB - matches bucket limit
 const FETCH_TIMEOUT_MS = 8000;
 
 Deno.serve(async (req: Request) => {
@@ -158,6 +158,17 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Update profiles.avatar_extension so the fast-path lookup works immediately
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ avatar_extension: fileExt })
+      .eq("id", userId);
+
+    if (profileError) {
+      console.error("Failed to update avatar_extension:", profileError);
+      // Non-fatal: avatar is uploaded, extension can be backfilled later
+    }
+
     const { data: urlData } = supabase.storage
       .from(AVATAR_BUCKET)
       .getPublicUrl(filePath);
@@ -214,7 +225,7 @@ async function findExistingAvatar(
   supabase: SupabaseClientType,
   userId: string,
 ): Promise<{ path: string; publicUrl: string } | null> {
-  const extensions = ["webp", "png", "jpg", "jpeg"] as const;
+  const extensions = ["gif", "webp", "png", "jpg", "jpeg"] as const;
 
   for (const ext of extensions) {
     const { data, error } = await supabase.storage
@@ -242,8 +253,10 @@ async function findExistingAvatar(
 
 function contentTypeToExtension(
   contentType: ImageContentType,
-): "webp" | "png" | "jpg" {
+): "webp" | "png" | "jpg" | "gif" {
   switch (contentType) {
+    case "image/gif":
+      return "gif";
     case "image/webp":
       return "webp";
     case "image/png":
@@ -304,8 +317,8 @@ async function downloadAvatar(
 function isAllowedImageContentType(
   value: string | undefined,
 ): value is ImageContentType {
-  return value === "image/webp" || value === "image/png" ||
-    value === "image/jpeg" || value === "image/jpg";
+  return value === "image/gif" || value === "image/webp" ||
+    value === "image/png" || value === "image/jpeg" || value === "image/jpg";
 }
 
 function buildGravatarUrl(emailHash: string): string | null {

@@ -288,7 +288,7 @@ export async function uploadUserAvatar(
 export async function getUserAvatarUrl(
   supabaseClient: SupabaseClient<Database>,
   userId: string,
-  avatarExtension?: string | null,
+  avatarExtension?: string | null | undefined,
 ): Promise<string | null> {
   // Use a simple in-memory cache for avatar URLs
   const cacheKey = `avatar:${userId}`
@@ -315,8 +315,20 @@ export async function getUserAvatarUrl(
   }
 
   try {
+    // Fast-path: null means the profile column is known to be empty - no avatar,
+    // skip all storage calls entirely. undefined means unknown - fall through to probe.
+    if (avatarExtension === null) {
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(cacheKey, JSON.stringify({ url: null, timestamp: Date.now() }))
+        }
+        catch { /* ignore */ }
+      }
+      return null
+    }
+
     // Fast-path: if extension is known, skip storage list() calls entirely
-    if (avatarExtension != null && avatarExtension.length > 0) {
+    if (avatarExtension !== undefined && avatarExtension.length > 0) {
       const avatarUrl = supabaseClient.storage
         .from('hivecom-content-users')
         .getPublicUrl(`${userId}/avatar.${avatarExtension}`)
