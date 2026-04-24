@@ -17,6 +17,7 @@
     position: relative;
     justify-content: center;
     align-items: center;
+    gap: 2px;
 
     &:has(.reactions__counter) {
       width: fit-content;
