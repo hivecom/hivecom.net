@@ -24,7 +24,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   label: 'Choose File',
-  accept: 'image/jpeg,image/jpg,image/png,image/webp',
+  accept: 'image/jpeg,image/jpg,image/png,image/webp,image/gif',
   maxSizeMB: 5,
   variant: 'asset',
   showDelete: false,
@@ -46,6 +46,7 @@ const fileInput = ref<HTMLInputElement>()
 const dragOver = ref(false)
 const imageExists = ref(true) // Assume true initially, check when previewUrl changes
 const localPreviewUrl = ref<string | null>(null) // For showing preview of uploaded file
+const internalError = ref<string | null>(null)
 
 // Computed properties
 const maxSizeBytes = computed(() => props.maxSizeMB * 1024 * 1024)
@@ -139,14 +140,20 @@ function isAcceptedType(fileType: string): boolean {
 
 function processFile(file: File) {
   if (!isAcceptedType(file.type)) {
-    emit('invalid', 'Unsupported file type. Please upload an accepted image format.')
+    const msg = 'Unsupported file type. Please upload an accepted image format.'
+    internalError.value = msg
+    emit('invalid', msg)
     return
   }
 
   if (file.size > maxSizeBytes.value) {
-    emit('invalid', `Files must be smaller than ${props.maxSizeMB}MB.`)
+    const msg = `File too large. Max size is ${props.maxSizeMB}MB.`
+    internalError.value = msg
+    emit('invalid', msg)
     return
   }
+
+  internalError.value = null
 
   if (!props.persistentDropzone) {
     if (localPreviewUrl.value)
@@ -381,8 +388,8 @@ onUnmounted(() => {
     </template>
 
     <!-- Error Message -->
-    <div v-if="error" class="file-upload__error">
-      {{ error }}
+    <div v-if="error || internalError" class="file-upload__error">
+      {{ error || internalError }}
     </div>
   </Flex>
 </template>

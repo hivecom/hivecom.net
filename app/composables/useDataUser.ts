@@ -11,8 +11,9 @@
 import type { Ref } from 'vue'
 import type { CacheConfig } from './useCache'
 import type { Database } from '@/types/database.types'
-import { computed, readonly, ref, unref, watch } from 'vue'
+import { computed, getCurrentInstance, onUnmounted, readonly, ref, unref, watch } from 'vue'
 import { getUserAvatarUrl } from '@/lib/storage'
+import { useAvatarBus } from './useAvatarBus'
 import { useCache } from './useCache'
 
 type ProfileBadgeSlug = Database['public']['Enums']['profile_badge']
@@ -45,6 +46,7 @@ interface ProfileCacheEntry {
   created_at?: string | null
   isPublic?: boolean
   has_banner?: boolean
+  avatar_extension?: string | null
 }
 
 function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is ProfileCacheEntry {
@@ -64,6 +66,29 @@ function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is Pr
 const _inflightProfiles = new Map<string, Promise<ProfileCacheEntry | null>>()
 const _inflightRoles = new Map<string, Promise<string | null>>()
 const _inflightAvatars = new Map<string, Promise<string | null>>()
+
+// ── Module-level avatar-updated bus ──────────────────────────────────────────
+// Registry of active useDataUser instances keyed by userId. When an avatar-updated
+// event fires, we bust both cache layers and force-refetch all active instances
+// watching that user so avatars update everywhere immediately.
+const _activeInstances = new Map<string, Set<() => Promise<void>>>()
+
+if (typeof window !== 'undefined') {
+  const { onAvatarUpdated } = useAvatarBus()
+  onAvatarUpdated(({ userId }) => {
+    // Do NOT call invalidateAvatarCache here - uploadUserAvatar already wrote
+    // the cache-busted URL into localStorage. Deleting it here would cause
+    // getUserAvatarUrl to reconstruct the clean URL (no ?t=) on the next read,
+    // sending the browser back to its HTTP-cached old image.
+    // Trigger force-refetch on every active instance watching this user
+    const instances = _activeInstances.get(userId)
+    if (instances) {
+      for (const refetch of instances) {
+        void refetch()
+      }
+    }
+  })
+}
 
 // ── Shared cache key helpers ──────────────────────────────────────────────────
 function getCacheKeys(id: string) {
@@ -124,7 +149,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
       inflight = Promise.resolve(
         supabase
           .from('profiles')
-          .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner')
+          .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner, avatar_extension')
           .eq('id', id)
           .single(),
       ).then(({ data, error: profileError }) => {
@@ -143,6 +168,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
           created_at: data.created_at ?? null,
           isPublic: data.public ?? false,
           has_banner: data.has_banner ?? false,
+          avatar_extension: data.avatar_extension ?? null,
         }
 
         cache.set(cacheKey, result, userTtl)
@@ -202,7 +228,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
   /**
    * Fetch user avatar URL with global inflight dedup
    */
-  async function fetchAvatarUrl(id: string): Promise<string | null> {
+  async function fetchAvatarUrl(id: string, avatarExtension?: string | null): Promise<string | null> {
     if (!includeAvatar)
       return null
 
@@ -225,7 +251,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
       inflight = (async () => {
         let avatarUrl: string | null = null
         try {
-          avatarUrl = await getUserAvatarUrl(supabase, id)
+          avatarUrl = await getUserAvatarUrl(supabase, id, avatarExtension)
         }
         catch (err) {
           console.warn('Failed to fetch avatar URL:', err)
@@ -272,12 +298,9 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
     error.value = null
 
     try {
-      // Fetch all data in parallel - each sub-fetch deduplicates globally
-      const [profile, role, avatarUrl] = await Promise.all([
-        fetchProfile(id),
-        fetchRole(id),
-        fetchAvatarUrl(id),
-      ])
+      // Fetch profile and role in parallel, then avatar with extension hint
+      const [profile, role] = await Promise.all([fetchProfile(id), fetchRole(id)])
+      const avatarUrl = await fetchAvatarUrl(id, profile?.avatar_extension)
 
       user.value = profile != null
         ? {
@@ -335,10 +358,38 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
     cache.invalidateByPattern('user:')
   }
 
-  // Watch for userId changes
-  watch(() => unref(userId), () => {
+  // Register this instance in the module-level registry so the avatar-updated
+  // bus can trigger a force-refetch when the user's avatar changes.
+  watch(() => unref(userId), (newId, oldId) => {
+    if (oldId != null && oldId !== '') {
+      const set = _activeInstances.get(oldId)
+      if (set) {
+        set.delete(refetch)
+        if (set.size === 0)
+          _activeInstances.delete(oldId)
+      }
+    }
+    if (newId != null && newId !== '') {
+      if (!_activeInstances.has(newId))
+        _activeInstances.set(newId, new Set())
+      _activeInstances.get(newId)!.add(refetch)
+    }
     void fetchUserData()
   }, { immediate: true })
+
+  if (getCurrentInstance()) {
+    onUnmounted(() => {
+      const id = unref(userId)
+      if (id != null && id !== '') {
+        const set = _activeInstances.get(id)
+        if (set) {
+          set.delete(refetch)
+          if (set.size === 0)
+            _activeInstances.delete(id)
+        }
+      }
+    })
+  }
 
   // Watch for authentication changes.
   // Only force-refetch when the user SIGNS IN (transition from null to non-null).
@@ -471,7 +522,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
         profileIdsToFetch.length > 0
           ? supabase
               .from('profiles')
-              .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner')
+              .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner, avatar_extension')
               .in('id', profileIdsToFetch)
           : Promise.resolve({ data: [], error: null }),
         includeRole && roleIdsToFetch.length > 0
@@ -506,6 +557,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
           created_at: profile.created_at ?? null,
           isPublic: profile.public ?? false,
           has_banner: profile.has_banner ?? false,
+          avatar_extension: profile.avatar_extension ?? null,
         }, userTtl)
       })
 
@@ -526,7 +578,8 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
             inflight = (async () => {
               let avatarUrl: string | null = null
               try {
-                avatarUrl = await getUserAvatarUrl(supabase, id)
+                const cachedProfile = cache.get<ProfileCacheEntry>(`user:profile:${id}`)
+                avatarUrl = await getUserAvatarUrl(supabase, id, cachedProfile?.avatar_extension)
               }
               catch (err) {
                 console.warn('Failed to fetch avatar URL for bulk user:', err)
@@ -583,6 +636,46 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
     }
   }
 
+  // Per-instance map of id -> bound refetch fn so we can delete by reference.
+  const _bulkRefetchFns = new Map<string, () => Promise<void>>()
+
+  async function refetchForId(id: string): Promise<void> {
+    const keys = getCacheKeys(id)
+    cache.delete(keys.profile)
+    cache.delete(keys.avatar)
+    await fetchUsers()
+  }
+
+  // Register/deregister this bulk instance in the module-level avatar-updated
+  // registry. For each ID in the list we register a stable bound refetch fn
+  // stored in _bulkRefetchFns so deregisterIds can delete by exact reference.
+  function registerIds(ids: string[]) {
+    for (const id of ids) {
+      if (_bulkRefetchFns.has(id))
+        continue
+      const fn = async () => refetchForId(id)
+      _bulkRefetchFns.set(id, fn)
+      if (!_activeInstances.has(id))
+        _activeInstances.set(id, new Set())
+      _activeInstances.get(id)!.add(fn)
+    }
+  }
+
+  function deregisterIds(ids: string[]) {
+    for (const id of ids) {
+      const fn = _bulkRefetchFns.get(id)
+      if (!fn)
+        continue
+      _bulkRefetchFns.delete(id)
+      const set = _activeInstances.get(id)
+      if (set) {
+        set.delete(fn)
+        if (set.size === 0)
+          _activeInstances.delete(id)
+      }
+    }
+  }
+
   // Watch for userIds changes - compare by serialised content, not by array
   // reference, so a new array with the same IDs (e.g. produced by .map() in
   // the parent on every render) doesn't trigger an unnecessary fetchUsers /
@@ -590,11 +683,21 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
   // entirely is cleaner.
   watch(
     () => unref(userIds).join(','),
-    () => {
+    (newJoined, oldJoined) => {
+      const oldIds = oldJoined != null && oldJoined !== '' ? oldJoined.split(',') : []
+      const newIds = newJoined != null && newJoined !== '' ? newJoined.split(',') : []
+      deregisterIds(oldIds)
+      registerIds(newIds)
       void fetchUsers()
     },
     { immediate: true },
   )
+
+  if (getCurrentInstance()) {
+    onUnmounted(() => {
+      deregisterIds(unref(userIds))
+    })
+  }
 
   // Watch for authentication changes - same logic as useDataUser:
   // only refetch on actual sign-in transition

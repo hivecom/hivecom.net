@@ -894,7 +894,7 @@ watch(() => editor.value, (value) => {
 }, { immediate: true })
 
 // Update editor content manually on model change
-watch(content, (newContent) => {
+watch(content, async (newContent) => {
   // When the expanded modal is open it owns the editor with focus. Syncing
   // content back into this (background) editor on every keystroke causes
   // setContent() to fire, which triggers layout reflows and makes the view
@@ -933,6 +933,17 @@ watch(content, (newContent) => {
 
   // Guard the onTransaction handler so it doesn't try to delete images that
   // are simply being replaced by an external content update.
+  // Also guard against calling setContent before the editor's ProseMirror view
+  // is attached to the DOM - if the view's root element isn't connected yet,
+  // setContent will try to resolve positions against an incomplete doc and
+  // throw a RangeError. Wait one tick and re-check; if still not connected,
+  // bail - the editor already received the correct content from its initial prop.
+  if (!editor.value?.view?.dom?.isConnected) {
+    await nextTick()
+    if (!editor.value?.view?.dom?.isConnected)
+      return
+  }
+
   externalContentUpdate = true
   editor.value?.commands.setContent(newContent ?? '', {
     contentType: 'markdown',
@@ -945,8 +956,13 @@ watch(content, (newContent) => {
   // Only focus at the end if this editor doesn't already have focus - otherwise
   // a shared v-model (e.g. the expanded modal editor) will steal focus back on
   // every keystroke as its content changes propagate to this instance.
+  // Deferred to nextTick so ProseMirror has finished processing the setContent
+  // transaction before we dispatch a cursor move - otherwise the old selection
+  // position may be out of range in the new doc, causing a RangeError.
   if (!editor.value?.isFocused) {
-    editor.value?.commands.focus('end')
+    nextTick(() => {
+      editor.value?.commands.focus('end')
+    })
   }
 })
 

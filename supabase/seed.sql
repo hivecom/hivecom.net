@@ -374,7 +374,7 @@ INSERT INTO public.user_roles(role, user_id)
   VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Create or update a profile for our admin user
-INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, badges, markdown, public)
+INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, badges, markdown, public, avatar_extension)
   VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', '76561198000000001', '2013-01-01 00:00:00+00', 'Hivecom', 'Local develop and test user', 'true', ARRAY['founder']::public.profile_badge[], '# whoami
 
 ```javascript
@@ -467,7 +467,7 @@ A concluded vote:
 
 http://localhost:3000/votes/4
 
-Links that appear **inline** like [this one](http://localhost:3000/forum/looking-for-people-to-play-cs2-with) should stay as regular links and not get embedded.', true)
+Links that appear **inline** like [this one](http://localhost:3000/forum/looking-for-people-to-play-cs2-with) should stay as regular links and not get embedded.', true, 'jpg')
 ON CONFLICT (id)
   DO UPDATE SET
     steam_id = EXCLUDED.steam_id,
@@ -475,7 +475,8 @@ ON CONFLICT (id)
     introduction = EXCLUDED.introduction,
     badges = EXCLUDED.badges,
     markdown = EXCLUDED.markdown,
-    public = EXCLUDED.public;
+    public = EXCLUDED.public,
+    avatar_extension = EXCLUDED.avatar_extension;
 
 -- The audit trigger (update_profiles_audit_fields) always resets created_at = OLD.created_at on
 -- any UPDATE, so ON CONFLICT DO UPDATE cannot change it. Bypass the trigger temporarily to force

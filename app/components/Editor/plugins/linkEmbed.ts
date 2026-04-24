@@ -180,12 +180,23 @@ export const LinkEmbed = Node.create({
           // Collect username-based profile hrefs that need UUID resolution.
           const toResolve: Array<{ username: string, originalHref: string }> = []
 
+          // Collect all replacements first - applying replaceWith during
+          // descendants() walk uses stale positions after each replacement
+          // shifts the doc, causing RangeError: Position X out of range.
+          const replacements: Array<{ pos: number, nodeSize: number, href: string }> = []
+
           newState.doc.descendants((node, pos) => {
             const href = getStandaloneLinkHref(node)
             if (href == null || href === '')
               return
+            replacements.push({ pos, nodeSize: node.nodeSize, href })
+          })
 
-            tr.replaceWith(pos, pos + node.nodeSize, nodeType.create({ href }))
+          // Apply in reverse order so earlier replacements don't shift
+          // the positions of later ones.
+          for (let i = replacements.length - 1; i >= 0; i--) {
+            const { pos, nodeSize, href } = replacements[i]!
+            tr.replaceWith(pos, pos + nodeSize, nodeType.create({ href }))
             changed = true
 
             if (supabase != null) {
@@ -193,7 +204,7 @@ export const LinkEmbed = Node.create({
               if (parsed?.type === 'profile' && parsed.username != null)
                 toResolve.push({ username: parsed.username, originalHref: href })
             }
-          })
+          }
 
           // After the sync transaction is applied, fire async UUID lookups.
           // We use setTimeout so the view is fully updated before we dispatch.

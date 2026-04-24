@@ -102,7 +102,7 @@ const attrs = useAttrs()
       class="user-avatar__link"
       :aria-label="ariaLabel"
     >
-      <Avatar :size="size" :url="avatarUrl || undefined" v-bind="attrs">
+      <Avatar :key="avatarUrl ?? undefined" :size="size" :url="avatarUrl || undefined" v-bind="attrs">
         <template v-if="!avatarUrl && initials" #default>
           {{ initials }}
         </template>
@@ -116,7 +116,7 @@ const attrs = useAttrs()
     :user-id="userId"
     class="user-avatar__wrapper"
   >
-    <Avatar :size="size" :url="avatarUrl || undefined" v-bind="attrs">
+    <Avatar :key="avatarUrl ?? undefined" :size="size" :url="avatarUrl || undefined" v-bind="attrs">
       <template v-if="!avatarUrl && initials" #default>
         {{ initials }}
       </template>
@@ -130,7 +130,7 @@ const attrs = useAttrs()
     class="user-avatar__link"
     :aria-label="ariaLabel"
   >
-    <Avatar :size="size" :url="avatarUrl || undefined" v-bind="attrs">
+    <Avatar :key="avatarUrl ?? undefined" :size="size" :url="avatarUrl || undefined" v-bind="attrs">
       <template v-if="!avatarUrl && initials" #default>
         {{ initials }}
       </template>
@@ -138,7 +138,7 @@ const attrs = useAttrs()
   </NuxtLink>
 
   <!-- Plain avatar -->
-  <Avatar v-else :size="size" :url="avatarUrl || undefined" v-bind="attrs">
+  <Avatar v-else :key="avatarUrl ?? undefined" :size="size" :url="avatarUrl || undefined" v-bind="attrs">
     <template v-if="!avatarUrl && initials" #default>
       {{ initials }}
     </template>

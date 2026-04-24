@@ -44,20 +44,20 @@ function isStorageNotFoundError(error: unknown): boolean {
  */
 export function validateImageFile(file: File): { valid: boolean, error?: string } {
   // Check file type
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
   if (!allowedTypes.includes(file.type)) {
     return {
       valid: false,
-      error: 'Please select a valid image file (JPEG, PNG, or WebP)',
+      error: 'Please select a valid image file (JPEG, PNG, WebP, or GIF)',
     }
   }
 
-  // Check file size (max 5MB)
-  const maxSize = 5 * 1024 * 1024 // 5MB in bytes
+  // Check file size (max 1MB - matches hivecom-content-users bucket limit)
+  const maxSize = 1 * 1024 * 1024 // 1MB in bytes
   if (file.size > maxSize) {
     return {
       valid: false,
-      error: 'File size must be less than 5MB',
+      error: 'File size must be less than 1MB',
     }
   }
 
@@ -175,19 +175,51 @@ export async function uploadUserAvatar(
       return { success: false, error: validation.error }
     }
 
-    // Convert to WebP for consistency and better compression
+    // GIFs are kept as-is to preserve animation; all other formats convert to WebP
     let processedFile: File
-    try {
-      processedFile = await convertImageToWebP(file, 0.85)
-    }
-    catch (conversionError) {
-      console.warn('Failed to convert avatar to WebP, using original file:', conversionError)
+    if (file.type === 'image/gif') {
       processedFile = file
     }
+    else {
+      try {
+        processedFile = await convertImageToWebP(file, 0.85)
+      }
+      catch (conversionError) {
+        console.warn('Failed to convert avatar to WebP, using original file:', conversionError)
+        processedFile = file
+      }
+    }
 
-    // Upload to user's folder with the filename 'avatar.webp' (or original extension if conversion failed)
-    const fileExtension = processedFile.type === 'image/webp' ? 'webp' : 'png'
+    // Determine extension: gif stays gif, webp for converted, png as fallback
+    let fileExtension: string
+    if (processedFile.type === 'image/gif') {
+      fileExtension = 'gif'
+    }
+    else if (processedFile.type === 'image/webp') {
+      fileExtension = 'webp'
+    }
+    else {
+      fileExtension = 'png'
+    }
     const filePath = `${userId}/avatar.${fileExtension}`
+
+    // Delete any existing avatar files with other extensions so stale files
+    // don't get served after an extension change (e.g. jpg → gif).
+    const otherExtensions = ['webp', 'gif', 'png', 'jpg', 'jpeg'].filter(e => e !== fileExtension)
+    const staleFiles = (
+      await Promise.all(
+        otherExtensions.map(async (ext) => {
+          const { data } = await supabaseClient.storage
+            .from('hivecom-content-users')
+            .list(userId, { search: `avatar.${ext}` })
+          return data && data.length > 0 ? `${userId}/avatar.${ext}` : null
+        }),
+      )
+    ).filter((f): f is string => f !== null)
+
+    if (staleFiles.length > 0) {
+      await supabaseClient.storage.from('hivecom-content-users').remove(staleFiles)
+    }
 
     const { error } = await supabaseClient.storage
       .from('hivecom-content-users')
@@ -201,20 +233,42 @@ export async function uploadUserAvatar(
       return { success: false, error: error.message }
     }
 
-    // Get the public URL
+    // Get the public URL with a cache-busting timestamp so the browser doesn't
+    // serve the old avatar from its HTTP cache (same filename, upserted in place).
     const { data: urlData } = supabaseClient.storage
       .from('hivecom-content-users')
       .getPublicUrl(filePath)
 
+    const bustUrl = `${urlData.publicUrl}?t=${Date.now()}`
+
     // Invalidate cached avatar URL since we uploaded a new one
     invalidateAvatarCache(userId)
 
+    // Store the cache-busted URL directly in localStorage so the next
+    // getUserAvatarUrl call (triggered by the avatar-updated bus) serves
+    // the fresh image instead of reconstructing the clean URL, which the
+    // browser would serve from its HTTP cache (same filename, upserted).
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(`avatar:${userId}`, JSON.stringify({
+          url: bustUrl,
+          timestamp: Date.now(),
+        }))
+      }
+      catch {
+        // localStorage full - ignore
+      }
+    }
+
+    // Update profiles table with the new avatar extension
+    await supabaseClient.from('profiles').update({ avatar_extension: fileExtension }).eq('id', userId)
+
     // Dispatch avatar updated event
-    dispatchAvatarUpdated({ userId, url: urlData.publicUrl })
+    dispatchAvatarUpdated({ userId, url: bustUrl })
 
     return {
       success: true,
-      url: urlData.publicUrl,
+      url: bustUrl,
     }
   }
   catch (error) {
@@ -234,6 +288,7 @@ export async function uploadUserAvatar(
 export async function getUserAvatarUrl(
   supabaseClient: SupabaseClient<Database>,
   userId: string,
+  avatarExtension?: string | null,
 ): Promise<string | null> {
   // Use a simple in-memory cache for avatar URLs
   const cacheKey = `avatar:${userId}`
@@ -260,8 +315,31 @@ export async function getUserAvatarUrl(
   }
 
   try {
+    // Fast-path: if extension is known, skip storage list() calls entirely
+    if (avatarExtension != null && avatarExtension.length > 0) {
+      const avatarUrl = supabaseClient.storage
+        .from('hivecom-content-users')
+        .getPublicUrl(`${userId}/avatar.${avatarExtension}`)
+        .data
+        .publicUrl
+
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(cacheKey, JSON.stringify({
+            url: avatarUrl,
+            timestamp: Date.now(),
+          }))
+        }
+        catch {
+          // localStorage might be full, ignore cache errors
+        }
+      }
+
+      return avatarUrl
+    }
+
     // Common image extensions to try, in order of preference (WebP first for new uploads)
-    const extensions = ['webp', 'png', 'jpg', 'jpeg']
+    const extensions = ['webp', 'gif', 'png', 'jpg', 'jpeg']
 
     for (const extension of extensions) {
       const filePath = `${userId}/avatar.${extension}`
@@ -790,41 +868,47 @@ export async function deleteUserAvatar(
   userId: string,
 ): Promise<{ success: boolean, error?: string }> {
   try {
-    // Common image extensions to try (WebP first for new uploads)
-    const extensions = ['webp', 'png', 'jpg', 'jpeg']
+    // Find and delete ALL avatar files regardless of extension - stale files
+    // from previous uploads (e.g. old jpg when current is gif) must all go.
+    const extensions = ['webp', 'gif', 'png', 'jpg', 'jpeg']
 
-    for (const extension of extensions) {
-      const filePath = `${userId}/avatar.${extension}`
+    const filesToDelete = (
+      await Promise.all(
+        extensions.map(async (ext) => {
+          const { data, error: listError } = await supabaseClient.storage
+            .from('hivecom-content-users')
+            .list(userId, { search: `avatar.${ext}` })
+          if (listError === null && data !== null && data.length > 0)
+            return `${userId}/avatar.${ext}`
+          return null
+        }),
+      )
+    ).filter((f): f is string => f !== null)
 
-      // Check if file exists by trying to get its metadata
-      const { data, error: listError } = await supabaseClient.storage
-        .from('hivecom-content-users')
-        .list(userId, {
-          search: `avatar.${extension}`,
-        })
-
-      if (listError === null && data !== null && data.length > 0) {
-        // File exists, delete it
-        const { error } = await supabaseClient.storage
-          .from('hivecom-content-users')
-          .remove([filePath])
-
-        if (error) {
-          console.error('Error deleting avatar:', error)
-          return { success: false, error: error.message }
-        }
-
-        // Invalidate cached avatar URL since we deleted it
-        invalidateAvatarCache(userId)
-
-        // Dispatch avatar deleted event
-        dispatchAvatarUpdated({ userId, url: null })
-
-        return { success: true }
-      }
+    if (filesToDelete.length === 0) {
+      // No avatar found - still clear the profile column in case it's stale
+      await supabaseClient.from('profiles').update({ avatar_extension: null }).eq('id', userId)
+      return { success: true }
     }
 
-    // No avatar found with any extension - this might be intentional
+    const { error } = await supabaseClient.storage
+      .from('hivecom-content-users')
+      .remove(filesToDelete)
+
+    if (error) {
+      console.error('Error deleting avatar:', error)
+      return { success: false, error: error.message }
+    }
+
+    // Invalidate cached avatar URL since we deleted it
+    invalidateAvatarCache(userId)
+
+    // Clear avatar_extension in profiles table
+    await supabaseClient.from('profiles').update({ avatar_extension: null }).eq('id', userId)
+
+    // Dispatch avatar deleted event
+    dispatchAvatarUpdated({ userId, url: null })
+
     return { success: true }
   }
   catch (error) {

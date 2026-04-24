@@ -43,6 +43,16 @@ function isStandaloneLinkParagraph(node: ASTNode): boolean {
   if (typeof href !== 'string')
     return false
 
+  // Only embed bare links - skip when anchor has custom label text
+  const anchorText = (child.children ?? [])
+    .filter(c => c.type === 'text')
+    .map(c => c.value ?? '')
+    .join('')
+    .trim()
+
+  if (anchorText !== '' && anchorText !== href)
+    return false
+
   return parseInternalUrl(href) !== null
 }
 

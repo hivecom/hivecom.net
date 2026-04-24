@@ -239,14 +239,18 @@ watch(
       const normalizedCountry = newProfile.country?.toUpperCase() ?? ''
       const hasValidCountry = COUNTRY_SELECT_OPTIONS.some(option => option.value === normalizedCountry)
 
-      profileForm.value = {
-        username: newProfile.username,
-        introduction: newProfile.introduction || '',
-        markdown: newProfile.markdown || '',
-        website: (newProfile as Tables<'profiles'> & { website?: string }).website || '',
-        country: hasValidCountry ? normalizedCountry : '',
-        birthday: newProfile.birthday || '',
-        public: newProfile.public,
+      // Update each field individually - skip markdown if unchanged to avoid
+      // Tiptap crashing with a RangeError when the editor doc is replaced while
+      // the cursor is at a position that no longer exists after the content swap.
+      profileForm.value.username = newProfile.username
+      profileForm.value.introduction = newProfile.introduction || ''
+      profileForm.value.website = (newProfile as Tables<'profiles'> & { website?: string }).website || ''
+      profileForm.value.country = hasValidCountry ? normalizedCountry : ''
+      profileForm.value.birthday = newProfile.birthday || ''
+      profileForm.value.public = newProfile.public
+      const incomingMarkdown = newProfile.markdown || ''
+      if (profileForm.value.markdown !== incomingMarkdown) {
+        profileForm.value.markdown = incomingMarkdown
       }
 
       // Initialize avatar URL
@@ -419,6 +423,7 @@ async function confirmAvatarDelete() {
             expand
             variant="avatar"
             label="Upload Avatar"
+            :max-size-m-b="1"
             :preview-url="avatarUrl"
             :loading="avatarUploading"
             :deleting="avatarDeleting"
@@ -427,6 +432,7 @@ async function confirmAvatarDelete() {
             @upload="handleAvatarUpload"
             @remove="handleAvatarRemove"
             @delete="handleAvatarDeleteConfirm"
+            @invalid="(msg) => avatarError = msg"
           />
         </Flex>
 

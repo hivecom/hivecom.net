@@ -319,10 +319,10 @@ export async function hydrateMentionLabels(
     return
   }
 
-  currentEditor.commands.command(({ tr, state }) => {
+  currentEditor.commands.command(({ tr }) => {
     let modified = false
 
-    state.doc.descendants((node, pos) => {
+    tr.doc.descendants((node, pos) => {
       if (node.type.name !== 'mention') {
         return
       }

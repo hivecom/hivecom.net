@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, CopyClipboard, Flex, Tooltip } from '@dolanske/vui'
+import { nextTick } from 'vue'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import ProfileBadges from '@/components/Profile/ProfileBadges.vue'
 import ProfileBanStatus from '@/components/Profile/ProfileBanStatus.vue'
@@ -304,6 +305,12 @@ async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
     // Refresh cached user data in case it was updated
     await refetchProfileUserData()
 
+    // Defer closing the sheet to the next tick so Tiptap can finish any
+    // pending transactions before the editor is unmounted. Closing immediately
+    // after a profile.value update (which triggers the form watcher) causes
+    // ProseMirror to throw a RangeError because it receives a content update
+    // and an unmount in the same flush.
+    await nextTick()
     closeEditSheet()
   }
   catch (error: unknown) {
