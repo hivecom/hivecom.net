@@ -41,6 +41,7 @@ function isValidSizeName(value: string): value is TextSizeName {
 // ---------------------------------------------------------------------------
 
 declare module '@tiptap/core' {
+  // eslint-disable-next-line unused-imports/no-unused-vars
   interface Commands<ReturnType> {
     textSize: {
       /** Apply a named size step to the selected text, e.g. "xl". */
@@ -158,7 +159,8 @@ export const TextSize = Mark.create({
   // ---------------------------------------------------------------------------
 
   renderMarkdown(node: JSONContent, h: MarkdownRendererHelpers, _ctx: RenderContext): string {
-    const size = (node.attrs as Record<string, unknown> | undefined)?.size
+    // eslint-disable-next-line ts/no-unsafe-assignment
+    const size = (node.attrs)?.size
     if (typeof size !== 'string' || !isValidSizeName(size))
       return h.renderChildren(node)
 
@@ -212,7 +214,7 @@ export const TextSize = Mark.create({
                 raw,
                 size,
                 tokens: lexer.inlineTokens(rawInner),
-              } as unknown as MarkdownToken
+              }
             }
             i += 3
             continue

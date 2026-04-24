@@ -72,6 +72,7 @@ interface RawCursorRow {
 
 // Shape returned by get_discussion_replies_tail RPC rows — derived from the
 // generated database types so the function name and args are type-checked.
+// eslint-disable-next-line unused-imports/no-unused-vars
 type TailRow = Database['public']['Functions']['get_discussion_replies_tail']['Returns'][number]
 
 // ---------------------------------------------------------------------------
@@ -385,7 +386,7 @@ export function useDiscussionRepliesCache() {
       if (data == null)
         return null
 
-      const rows = data as unknown as TailRow[]
+      const rows = data
       cache.set(key, rows as unknown as RawComment[], CACHE_TTL)
       return rows as unknown as RawComment[]
     }

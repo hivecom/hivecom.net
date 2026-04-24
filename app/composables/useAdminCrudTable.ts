@@ -159,7 +159,7 @@ export function useAdminCrudTable<
       ? items.value.filter(item => (filterFn ?? defaultFilterFn)(item, term))
       : items.value
 
-    return source.map(item => ({ ...transform(item), _original: item } as TransformedRow<T, R>))
+    return source.map(item => ({ ...transform(item), _original: item }))
   })
 
   const totalCount = computed(() => items.value.length)
@@ -252,8 +252,8 @@ export function useAdminCrudTable<
   onBeforeMount(refresh)
 
   return {
-    items: items as Readonly<Ref<T[]>>,
-    loading: loading as Readonly<Ref<boolean>>,
+    items,
+    loading,
     errorMessage,
     filteredRows,
     totalCount,

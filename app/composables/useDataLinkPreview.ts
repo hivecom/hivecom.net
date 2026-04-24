@@ -225,7 +225,8 @@ export function useDataLinkPreview(url: string) {
     }
 
     interface ProfileJoin { username: string | null }
-    const profileRaw: ProfileJoin | ProfileJoin[] | null = row.profiles as ProfileJoin | ProfileJoin[] | null
+    const profileRaw: ProfileJoin | ProfileJoin[] | null = row.profiles
+    // eslint-disable-next-line ts/no-unsafe-assignment
     const profile: ProfileJoin | null | undefined = Array.isArray(profileRaw) ? profileRaw[0] : profileRaw
 
     let replyContent: string | null = null
@@ -298,7 +299,7 @@ export function useDataLinkPreview(url: string) {
         .eq('id', row.game)
         .maybeSingle()
       interface GameRow { name: string | null, shorthand: string | null }
-      const gameRow: GameRow | null = gameResult.data as GameRow | null
+      const gameRow: GameRow | null = gameResult.data
       gameName = gameRow?.name ?? null
       gameShorthand = gameRow?.shorthand ?? null
     }

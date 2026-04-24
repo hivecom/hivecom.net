@@ -160,7 +160,7 @@ export function useUserTheme() {
     },
     set(options: VariantOption[]) {
       if (options?.[0]) {
-        const value = options[0].value as Tables<'settings'>['data']['theme']
+        const value = options[0].value
         settings.value.theme = value
         setColorTheme(value)
       }
@@ -245,7 +245,7 @@ export function useUserTheme() {
       return
     }
 
-    const theme = themeData as Tables<'themes'>
+    const theme = themeData
 
     if (import.meta.client) {
       // Checksum tracking for color/scale changes
@@ -351,7 +351,7 @@ export function useUserTheme() {
     if (error || data == null)
       return
 
-    const theme = data as Tables<'themes'>
+    const theme = data
 
     if (theme.custom_css && theme.custom_css.trim().length > 0) {
       const hasUrl = HAS_URL_REGEX.test(theme.custom_css)

@@ -1,3 +1,4 @@
+/// <reference types="@webgpu/types" />
 // useGlobeRenderer.ts
 // Owns the WebGL side of the globe:
 //   - Post-processing pipeline (scanline ShaderPass, UnrealBloom, AfterimagePass)
@@ -112,10 +113,7 @@ export function useGlobeRenderer() {
     const h = Math.max(1, height)
 
     if (scanlinePass) {
-      const uniforms = scanlinePass.material.uniforms as Record<
-        string,
-        { value: unknown }
-      >
+      const uniforms = scanlinePass.material.uniforms
       const res = uniforms.u_resolution?.value as
         | { set?: (x: number, y: number) => void }
         | undefined
@@ -428,10 +426,7 @@ export function useGlobeRenderer() {
         const now = performance.now()
         if (!scanlineStart)
           scanlineStart = now
-        const uniforms = scanlinePass.material.uniforms as Record<
-          string,
-          { value: unknown }
-        >
+        const uniforms = scanlinePass.material.uniforms
         if (uniforms.u_time)
           uniforms.u_time.value = (now - scanlineStart) / 1000
       }
