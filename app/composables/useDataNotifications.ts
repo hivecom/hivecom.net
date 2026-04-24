@@ -201,7 +201,7 @@ export function useDataNotifications() {
         unreadNotifications.value = []
       }
       else {
-        unreadNotifications.value = (notificationsResponse.data ?? []) as unknown as NotificationRow[]
+        unreadNotifications.value = notificationsResponse.data ?? []
       }
 
       pendingComplaintCount.value = 0

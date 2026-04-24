@@ -52,6 +52,7 @@ function isValidColorName(value: string): value is TextColorName {
 // ---------------------------------------------------------------------------
 
 declare module '@tiptap/core' {
+  // eslint-disable-next-line unused-imports/no-unused-vars
   interface Commands<ReturnType> {
     textColor: {
       /** Apply a named palette color to the selected text, e.g. "red". */
@@ -174,7 +175,8 @@ export const TextColor = Mark.create({
   // ---------------------------------------------------------------------------
 
   renderMarkdown(node: JSONContent, h: MarkdownRendererHelpers, _ctx: RenderContext): string {
-    const color = (node.attrs as Record<string, unknown> | undefined)?.color
+    // eslint-disable-next-line ts/no-unsafe-assignment
+    const color = (node.attrs)?.color
     if (typeof color !== 'string' || !isValidColorName(color))
       return h.renderChildren(node)
 
@@ -234,7 +236,7 @@ export const TextColor = Mark.create({
                 // Tokenize inner content as inline tokens so nested marks
                 // (bold, italic, mentions, etc.) are preserved.
                 tokens: lexer.inlineTokens(rawInner),
-              } as unknown as MarkdownToken
+              }
             }
             i += 3
             continue

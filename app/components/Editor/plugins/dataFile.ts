@@ -12,6 +12,7 @@ import { createAtomBlockMarkdownSpec, mergeAttributes, Node } from '@tiptap/core
 // ---------------------------------------------------------------------------
 
 declare module '@tiptap/core' {
+  // eslint-disable-next-line unused-imports/no-unused-vars
   interface Commands<ReturnType> {
     dataFile: {
       /** Insert a data file node at the current selection. */

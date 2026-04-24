@@ -40,6 +40,7 @@ function isValidFontName(value: string): value is TextFontName {
 // ---------------------------------------------------------------------------
 
 declare module '@tiptap/core' {
+  // eslint-disable-next-line unused-imports/no-unused-vars
   interface Commands<ReturnType> {
     textFont: {
       /** Apply a named system font stack to the selected text, e.g. "mono". */
@@ -157,7 +158,8 @@ export const TextFont = Mark.create({
   // ---------------------------------------------------------------------------
 
   renderMarkdown(node: JSONContent, h: MarkdownRendererHelpers, _ctx: RenderContext): string {
-    const font = (node.attrs as Record<string, unknown> | undefined)?.font
+    // eslint-disable-next-line ts/no-unsafe-assignment
+    const font = (node.attrs)?.font
     if (typeof font !== 'string' || !isValidFontName(font))
       return h.renderChildren(node)
 
@@ -211,7 +213,7 @@ export const TextFont = Mark.create({
                 raw,
                 font,
                 tokens: lexer.inlineTokens(rawInner),
-              } as unknown as MarkdownToken
+              }
             }
             i += 3
             continue

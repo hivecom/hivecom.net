@@ -14,6 +14,17 @@ export default antfu({
     'node/prefer-global/process': 'off',
     'ts/no-explicit-any': 'error',
     'n/prefer-global/process': 'off',
+    // The upgraded @antfu/eslint-config tightened this rule so it flags parameter
+    // names inside function *type signatures* (interfaces, callback types, generic
+    // constraints). Those names are documentation-only and have no runtime impact.
+    // We keep the rule active for real unused vars/args in function bodies, but
+    // set `args: 'none'` to stop it from flagging type-position parameter names.
+    'unused-imports/no-unused-vars': ['error', {
+      vars: 'all',
+      varsIgnorePattern: '^_',
+      args: 'none',
+      ignoreRestSiblings: true,
+    }],
   },
   ignores: [
     'package.json',
@@ -22,6 +33,8 @@ export default antfu({
     '**/hash.js',
     'REFACTOR.md',
     '.you/**',
+    // Fully generated file - never manually edited, will be overwritten
+    'types/database.types.ts',
   ],
   // Add additional configurations for specific file patterns
   formatters: {

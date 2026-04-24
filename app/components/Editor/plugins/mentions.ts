@@ -65,7 +65,8 @@ export const MentionWithMarkdown = Mention.extend({
     },
   } satisfies MarkdownTokenizer,
   renderMarkdown: (node: JSONContent) => {
-    const rawId = (node.attrs as Record<string, unknown> | undefined)?.id
+    // eslint-disable-next-line ts/no-unsafe-assignment
+    const rawId = (node.attrs)?.id
     const id = typeof rawId === 'string' ? rawId : ''
 
     if (id.trim() === '') {

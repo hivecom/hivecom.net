@@ -1,5 +1,5 @@
 import type { Tables } from '@/types/database.overrides'
-import type { Database, Json } from '@/types/database.types'
+import type { Database } from '@/types/database.types'
 import { pushToast } from '@dolanske/vui'
 import { isNil } from '@/lib/utils/common'
 
@@ -75,7 +75,7 @@ export function useDataUserSettings() {
     try {
       await supabase
         .from('settings')
-        .upsert({ id: user.value, data: newSettings as unknown as Json })
+        .upsert({ id: user.value, data: newSettings })
         .throwOnError()
     }
     catch (e) {
