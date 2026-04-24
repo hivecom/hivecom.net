@@ -4,6 +4,7 @@ import { slugify } from './utils/formatting'
 interface PathItem {
   parent_id: string
   title: string
+  is_archived: boolean
 }
 
 export interface FlatTopicEntry {
@@ -92,7 +93,7 @@ export function composePathToTopic(parent_id: string | null, topics: Tables<'dis
 
     const parentTopic = topics.find(topic => topic.id === currentParentId)
     if (parentTopic) {
-      path.unshift({ parent_id: parentTopic.id, title: parentTopic.name })
+      path.unshift({ parent_id: parentTopic.id, title: parentTopic.name, is_archived: parentTopic.is_archived ?? false })
       currentParentId = parentTopic.parent_id
     }
     else {

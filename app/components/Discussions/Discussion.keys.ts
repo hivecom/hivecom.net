@@ -21,6 +21,9 @@ export const DISCUSSION_KEYS = {
   /** Callback to lazily load children for a root comment (threaded view) */
   loadChildren: Symbol('loadChildren') as InjectionKey<(rootId: string) => Promise<void>>,
 
+  /** Callback to navigate to a comment by ID, loading its page if needed */
+  navigateToComment: Symbol('navigateToComment') as InjectionKey<(id: string) => Promise<boolean>>,
+
   /**
    * A reactive map of reply ID → count of direct (non-deleted) child replies.
    * Fetched once at discussion load time so the flat view can display correct

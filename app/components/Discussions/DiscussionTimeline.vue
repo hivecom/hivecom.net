@@ -16,6 +16,8 @@ interface Props {
   buckets?: TimelineBucket[]
   /** Off-topic-only activity buckets - rendered as a second layer in warning color */
   offtopicBuckets?: TimelineBucket[]
+  /** When true, offtopic segments are not rendered on the track */
+  offtopicHidden?: boolean
   /**
    * Time range of the unloaded gap, if one exists. Rendered as a dashed
    * region on the track so users can see what they'd be skipping.
@@ -39,6 +41,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   buckets: () => [],
   offtopicBuckets: () => [],
+  offtopicHidden: false,
   gapRange: null,
   bucketIntervalMs: 0,
   currentFraction: null,
@@ -104,7 +107,7 @@ interface BucketSegment {
  * greater than 1.5x the expected bucket interval (allows for DST jitter).
  * Isolated buckets become dots; runs become boxes.
  */
-function buildSegments(buckets: TimelineBucket[], max: number): BucketSegment[] {
+function buildSegments(buckets: TimelineBucket[], max: number, clampLastToEnd = true): BucketSegment[] {
   if (buckets.length === 0)
     return []
 
@@ -121,8 +124,8 @@ function buildSegments(buckets: TimelineBucket[], max: number): BucketSegment[] 
     const last = buckets[endIdx]!
     const isSingle = runLength === 1
     const bucketFraction = intervalMs > 0 ? intervalMs / spanMs.value : 0
-    const topFraction = isSingle && isFinal ? 1 : toFraction(first.bucketStart)
-    const bottomFraction = isFinal
+    const topFraction = isSingle && isFinal && clampLastToEnd ? 1 : toFraction(first.bucketStart)
+    const bottomFraction = isFinal && clampLastToEnd
       ? 1
       : isSingle
         ? topFraction
@@ -186,7 +189,7 @@ const bucketSegments = computed((): BucketSegment[] => {
 })
 
 const offtopicSegments = computed((): BucketSegment[] => {
-  return buildSegments(props.offtopicBuckets, maxOfftopicBucketCount.value)
+  return buildSegments(props.offtopicBuckets, maxOfftopicBucketCount.value, false)
 })
 
 /** Fractional range [top, bottom] of the unloaded gap on the track, or null. */
@@ -425,18 +428,20 @@ defineExpose({ openJumpModal })
           }"
         />
 
-        <!-- Off-topic segments: second layer in warning color -->
-        <div
-          v-for="(seg, i) in offtopicSegments"
-          :key="`offtopic-${i}`"
-          class="discussion-timeline__segment discussion-timeline__segment--offtopic"
-          :class="seg.isSingle ? 'discussion-timeline__segment--dot' : 'discussion-timeline__segment--box'"
-          :style="{
-            top: `${seg.topFraction * 100}%`,
-            height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
-            opacity: seg.opacity,
-          }"
-        />
+        <!-- Off-topic segments: second layer in warning color.
+             When offtopic is hidden, render only dots (no boxes) so position
+             is hinted but the extent of the hidden run is not shown. -->
+        <template v-for="(seg, i) in offtopicSegments" :key="`offtopic-${i}`">
+          <div
+            class="discussion-timeline__segment discussion-timeline__segment--offtopic"
+            :class="(seg.isSingle || offtopicHidden) ? 'discussion-timeline__segment--dot' : 'discussion-timeline__segment--box'"
+            :style="{
+              top: `${seg.topFraction * 100}%`,
+              height: (!seg.isSingle && !offtopicHidden) ? `${(seg.bottomFraction - seg.topFraction) * 100}%` : undefined,
+              opacity: seg.opacity,
+            }"
+          />
+        </template>
 
         <!-- Current position indicator: shows where in the timeline you are -->
         <div
@@ -564,18 +569,20 @@ defineExpose({ openJumpModal })
                 }"
                 @click="handleModalSegmentClick(seg)"
               />
-              <div
-                v-for="(seg, i) in offtopicSegments"
-                :key="`mjot-${i}`"
-                class="discussion-timeline__segment discussion-timeline__segment--offtopic timeline-jump-modal__segment"
-                :class="seg.isSingle ? 'discussion-timeline__segment--dot' : 'discussion-timeline__segment--box'"
-                :style="{
-                  top: `${seg.topFraction * 100}%`,
-                  height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
-                  opacity: seg.opacity,
-                }"
-                @click="handleModalSegmentClick(seg)"
-              />
+              <template v-if="!offtopicHidden">
+                <div
+                  v-for="(seg, i) in offtopicSegments"
+                  :key="`mjot-${i}`"
+                  class="discussion-timeline__segment discussion-timeline__segment--offtopic timeline-jump-modal__segment"
+                  :class="seg.isSingle ? 'discussion-timeline__segment--dot' : 'discussion-timeline__segment--box'"
+                  :style="{
+                    top: `${seg.topFraction * 100}%`,
+                    height: seg.isSingle ? undefined : `${(seg.bottomFraction - seg.topFraction) * 100}%`,
+                    opacity: seg.opacity,
+                  }"
+                  @click="handleModalSegmentClick(seg)"
+                />
+              </template>
 
               <div
                 v-if="currentFraction != null"

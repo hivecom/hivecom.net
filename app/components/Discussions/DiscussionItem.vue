@@ -21,6 +21,7 @@ const {
 } = defineProps<Props>()
 
 const loadChildren = inject(DISCUSSION_KEYS.loadChildren)
+const navigateToComment = inject(DISCUSSION_KEYS.navigateToComment)
 
 interface Props {
   data: Comment
@@ -85,14 +86,23 @@ function copyLink() {
   })
 }
 
-// Scroll to reply
-function scrollReply() {
-  if (!data.reply) {
+// Scroll to reply - if the reply is in the DOM, scroll to it directly.
+// If it's not (loaded via lazy fetch but not in the current window), use
+// navigateToComment to load the surrounding page and then scroll to it.
+async function scrollReply() {
+  const replyId = data.reply?.id ?? data.reply_to_id
+  if (!replyId)
     return
-  }
 
-  router.replace({ query: { comment: data.reply.id } })
-  scrollToId(`#comment-${data.reply.id}`, 'start')
+  const el = document.querySelector(`#comment-${replyId}`)
+  if (el) {
+    router.replace({ query: { comment: replyId } })
+    scrollToId(`#comment-${replyId}`, 'start')
+  }
+  else if (navigateToComment) {
+    await navigateToComment(replyId)
+    router.replace({ query: { comment: replyId } })
+  }
 }
 
 // ── Inline thread-reply preview (flat mode) ───────────────────────────────────

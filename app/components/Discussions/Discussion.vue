@@ -197,6 +197,7 @@ const {
 )
 
 provide(DISCUSSION_KEYS.loadChildren, loadChildren)
+provide(DISCUSSION_KEYS.navigateToComment, navigateToComment)
 provide(DISCUSSION_KEYS.replyCountMap, replyCountMap)
 
 const pinnedComment = computed((): Comment | null => {
@@ -1171,6 +1172,7 @@ function isNodeVisible(node: ThreadNode): boolean {
           :end="timelineEnd"
           :buckets="timelineBuckets"
           :offtopic-buckets="timelineOfftopicBuckets"
+          :offtopic-hidden="!showOfftopic"
           :gap-range="timelineGapRange"
           :bucket-interval-ms="timelineBucketIntervalMs"
           :current-fraction="currentScrollFraction"

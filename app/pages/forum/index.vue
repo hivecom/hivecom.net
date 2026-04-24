@@ -393,6 +393,7 @@ const breadcrumbItems = computed(() =>
   activeTopicPath.value.map((item, index) => ({
     id: item.parent_id,
     label: item.title,
+    is_archived: item.is_archived,
     onClick: index !== activeTopicPath.value.length - 1
       ? () => setActiveTopicById(item.parent_id)
       : undefined,
@@ -529,8 +530,8 @@ const modelledTopics = computed(() => {
     : topics.value.filter((topic) => {
         if (topic.id !== activeTopicId.value)
           return false
-        if (!settings.value.show_forum_archived && topic.is_archived)
-          return false
+        // Always show the topic you've explicitly navigated into, even if archived.
+        // Archived filtering only hides topics from the list view.
         return true
       })
 
@@ -897,7 +898,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
             <ForumItemActions table="discussion_topics" :data="topic" @update="replaceItemData('topic', $event)" @remove="removeItem('topic', $event)" />
           </div>
 
-          <ul v-if="topic.discussions.length > 0 || getTopicsByParentId(topic.id).length > 0">
+          <ul v-if="sortDiscussions(topic.discussions).length > 0 || getTopicsByParentId(topic.id).length > 0">
             <ForumTopicItem
               v-for="subtopic of getTopicsByParentId(topic.id)"
               :key="subtopic.id"
@@ -925,7 +926,20 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
             />
           </ul>
           <div v-else class="forum__category-empty">
-            <p>There are no discussions in this topic</p>
+            <Flex x-between y-center expand>
+              <template v-if="!settings.show_forum_archived && topic.discussions.filter((d) => d.is_archived).length > 0">
+                <p>No active discussions - {{ topic.discussions.filter((d) => d.is_archived).length }} archived {{ topic.discussions.filter((d) => d.is_archived).length === 1 ? 'discussion' : 'discussions' }} hidden.</p>
+                <Button size="s" variant="gray" @click="settings.show_forum_archived = true">
+                  Show archived
+                </Button>
+              </template>
+              <template v-else>
+                <p>There are no discussions in this topic{{ topic.is_archived ? '' : ' - start one!' }}</p>
+                <Button v-if="!topic.is_archived && user" size="s" variant="accent" @click="requestCreate('discussion')">
+                  Create discussion
+                </Button>
+              </template>
+            </Flex>
           </div>
         </Card>
       </template>
@@ -1138,7 +1152,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
   }
 
   &__category-empty {
-    padding: var(--space-m);
+    padding: var(--space-s) var(--space-m);
     font-size: var(--font-size-m);
     color: var(--color-text-light);
   }
