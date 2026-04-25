@@ -8,7 +8,7 @@ import { createAtomBlockMarkdownSpec, mergeAttributes, Node } from '@tiptap/core
 // can convert it to a <video> HTML element before rendering.
 //
 // Directive format (mirrors the YouTube extension pattern):
-//   :::video {src="https://..." width="640" height="360"} :::
+//   :::video {src="https://..."} :::
 // ---------------------------------------------------------------------------
 
 declare module '@tiptap/core' {
@@ -16,7 +16,7 @@ declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     video: {
       /** Insert a video node at the current selection. */
-      insertVideo: (attrs: { src: string, width?: number, height?: number }) => ReturnType
+      insertVideo: (attrs: { src: string }) => ReturnType
     }
   }
 }
@@ -33,12 +33,7 @@ export const Video = Node.create({
       src: {
         default: null,
       },
-      width: {
-        default: 640,
-      },
-      height: {
-        default: 360,
-      },
+
     }
   },
 
@@ -73,9 +68,9 @@ export const Video = Node.create({
     }
   },
 
-  // Markdown serialization: :::video {src="..." width="640" height="360"} :::
+  // Markdown serialization: :::video {src="..."} :::
   ...createAtomBlockMarkdownSpec({
     nodeName: 'video',
-    allowedAttributes: ['src', 'width', 'height'],
+    allowedAttributes: ['src'],
   }),
 })

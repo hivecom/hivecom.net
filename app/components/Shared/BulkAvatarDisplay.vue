@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { UserDisplayData } from '@/composables/useDataUser'
-import { Avatar, Flex, Skeleton } from '@dolanske/vui'
+import { Flex, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { shuffleArray } from '@/lib/utils/random'
@@ -17,6 +18,11 @@ interface Props {
   supporterHighlight?: boolean
   noEmptyState?: boolean
   expand?: boolean
+  /**
+   * Cluster mode: avatars overlap (negative gap), no slot reservation for
+   * the overflow bubble, and no remainingClick interaction.
+   */
+  cluster?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -28,6 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
   hideGenericUsers: true,
   supporterHighlight: false,
   expand: true,
+  cluster: false,
 })
 
 const emit = defineEmits<{
@@ -81,14 +88,19 @@ const remainingCount = computed(() => {
   return Math.max(0, eligibleCount - props.maxUsers)
 })
 
-// When there's overflow, we reserve the last avatar slot for the +X bubble so it
-// stays in the same row rather than wrapping onto a new line.
+// In cluster mode there's no slot reservation - the +N bubble just appends.
+// In normal mode we reserve the last avatar slot so the bubble stays in-row.
 const effectiveMaxUsers = computed(() => {
+  if (props.cluster)
+    return props.maxUsers
   return remainingCount.value > 0 ? props.maxUsers - 1 : props.maxUsers
 })
 
-// The displayed remaining count includes the user we bumped off to make room.
+// The displayed remaining count includes the user we bumped off to make room
+// (normal mode only).
 const displayedRemainingCount = computed(() => {
+  if (props.cluster)
+    return remainingCount.value
   return remainingCount.value > 0 ? remainingCount.value + 1 : 0
 })
 
@@ -150,7 +162,7 @@ defineExpose({
 </script>
 
 <template>
-  <Flex :expand="props.expand" class="bulk-avatar-display">
+  <Flex :expand="props.expand" class="bulk-avatar-display" :class="{ 'bulk-avatar-display--cluster': cluster }">
     <!-- Loading State -->
     <Flex
       v-if="loading && userIds.length > 0"
@@ -210,28 +222,30 @@ defineExpose({
             :to="`/profile/${entry.profile.username}`"
             class="bulk-avatar-display__link"
           >
-            <Avatar
+            <AvatarMedia
               :size="avatarSize"
               :url="entry.profile?.avatarUrl || undefined"
+              :alt="entry.profile.username"
               class="bulk-avatar-display__avatar-item"
             >
               <template v-if="!entry.profile?.avatarUrl" #default>
                 {{ getUserInitials(entry.profile.username) }}
               </template>
-            </Avatar>
+            </AvatarMedia>
           </NuxtLink>
 
           <!-- Fallback for users without username -->
-          <Avatar
+          <AvatarMedia
             v-else
             :size="avatarSize"
             :url="entry.profile?.avatarUrl || undefined"
+            :alt="entry.profile?.username || 'User'"
             class="bulk-avatar-display__avatar-item"
           >
             <template v-if="!entry.profile?.avatarUrl" #default>
               {{ entry.profile ? getUserInitials(entry.profile.username || 'User') : '?' }}
             </template>
-          </Avatar>
+          </AvatarMedia>
         </UserPreviewHover>
       </div>
 
@@ -239,11 +253,11 @@ defineExpose({
         v-if="displayedRemainingCount > 0"
         class="bulk-avatar-display__avatar bulk-avatar-display__remaining"
         :style="avatarStyleVars"
-        role="button"
-        tabindex="0"
-        @click="emit('remainingClick')"
-        @keydown.enter="emit('remainingClick')"
-        @keydown.space.prevent="emit('remainingClick')"
+        :role="cluster ? undefined : 'button'"
+        :tabindex="cluster ? undefined : 0"
+        @click="!cluster && emit('remainingClick')"
+        @keydown.enter="!cluster && emit('remainingClick')"
+        @keydown.space.prevent="!cluster && emit('remainingClick')"
       >
         <div class="bulk-avatar-display__remaining-count">
           +{{ displayedRemainingCount }}
@@ -351,15 +365,25 @@ defineExpose({
     font-weight: var(--font-weight-medium);
     color: var(--color-text-light);
     transition: background-color 0.2s ease;
-    cursor: pointer;
 
-    &:hover {
-      background: var(--color-bg-raised);
+    .bulk-avatar-display:not(.bulk-avatar-display--cluster) & {
+      cursor: pointer;
+      font-size: calc(var(--avatar-size, 40px) * 0.5);
+
+      &:hover {
+        background: var(--color-bg-raised);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--color-accent);
-      outline-offset: 2px;
+    .bulk-avatar-display--cluster & {
+      background: var(--color-bg-subtle);
+      border: 2px solid var(--color-bg);
+      font-size: calc(var(--avatar-size, 40px) * 0.3);
     }
   }
 

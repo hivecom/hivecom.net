@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useSupabaseUser } from '#imports'
-import { Avatar, Skeleton } from '@dolanske/vui'
+import { Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useDataUser } from '@/composables/useDataUser'
 
@@ -102,11 +103,13 @@ const attrs = useAttrs()
       class="user-avatar__link"
       :aria-label="ariaLabel"
     >
-      <Avatar :key="avatarUrl ?? undefined" :size="size" :url="avatarUrl || undefined" v-bind="attrs">
-        <template v-if="!avatarUrl && initials" #default>
-          {{ initials }}
-        </template>
-      </Avatar>
+      <AvatarMedia
+        :url="avatarUrl"
+        :size="size"
+        :initials="initials"
+        :alt="ariaLabel"
+        v-bind="attrs"
+      />
     </NuxtLink>
   </UserPreviewHover>
 
@@ -116,11 +119,13 @@ const attrs = useAttrs()
     :user-id="userId"
     class="user-avatar__wrapper"
   >
-    <Avatar :key="avatarUrl ?? undefined" :size="size" :url="avatarUrl || undefined" v-bind="attrs">
-      <template v-if="!avatarUrl && initials" #default>
-        {{ initials }}
-      </template>
-    </Avatar>
+    <AvatarMedia
+      :url="avatarUrl"
+      :size="size"
+      :initials="initials"
+      :alt="ariaLabel"
+      v-bind="attrs"
+    />
   </UserPreviewHover>
 
   <!-- Link only, no preview -->
@@ -130,19 +135,24 @@ const attrs = useAttrs()
     class="user-avatar__link"
     :aria-label="ariaLabel"
   >
-    <Avatar :key="avatarUrl ?? undefined" :size="size" :url="avatarUrl || undefined" v-bind="attrs">
-      <template v-if="!avatarUrl && initials" #default>
-        {{ initials }}
-      </template>
-    </Avatar>
+    <AvatarMedia
+      :url="avatarUrl"
+      :size="size"
+      :initials="initials"
+      :alt="ariaLabel"
+      v-bind="attrs"
+    />
   </NuxtLink>
 
   <!-- Plain avatar -->
-  <Avatar v-else :key="avatarUrl ?? undefined" :size="size" :url="avatarUrl || undefined" v-bind="attrs">
-    <template v-if="!avatarUrl && initials" #default>
-      {{ initials }}
-    </template>
-  </Avatar>
+  <AvatarMedia
+    v-else
+    :url="avatarUrl"
+    :size="size"
+    :initials="initials"
+    :alt="ariaLabel"
+    v-bind="attrs"
+  />
 </template>
 
 <style lang="scss" scoped>

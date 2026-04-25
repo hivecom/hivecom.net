@@ -302,6 +302,9 @@ async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
     // Update local profile data
     profile.value = cloneProfileRecord(data)
 
+    // Bust the profile cache so reloads serve fresh data (markdown, etc.)
+    void refetchProfile()
+
     // Refresh cached user data in case it was updated
     await refetchProfileUserData()
 

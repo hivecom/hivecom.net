@@ -27,7 +27,7 @@ import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, stripImageMetadata } from '@/lib/storage'
-import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
+import { BUCKET_SIZE_LIMITS, formatBytes, FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorMathModal from './EditorMathModal.vue'
 import EditorTableMenu from './EditorTableMenu.vue'
 import EditorVideoModal from './EditorVideoModal.vue'
@@ -205,8 +205,36 @@ const videoModalOpen = ref(false)
 // stored as the literal visible string `<foo>bar</foo>` in the Tiptap editor.
 // getEditorMarkdown() then escapes the raw angle brackets to `&lt;`/`&gt;`
 // on the way out so the markdown renderer never interprets them as HTML.
+// Matches a line that is solely an image: ![alt](url) with optional trailing
+// whitespace. Captured groups: 1=alt, 2=url, 3=optional title.
+const BLOCK_IMAGE_RE = /^!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)[ \t]*(?:\n|$)/
+
 const noHtmlMarked = marked.use({
   extensions: [
+    {
+      // Block-level image: a line consisting of nothing but a single image
+      // token. By intercepting it here at block level we prevent marked from
+      // wrapping it in a paragraph, which would place a block `image` node
+      // inside paragraph content and violate the ProseMirror schema.
+      name: 'image',
+      level: 'block',
+      start(src: string) {
+        return src.indexOf('![')
+      },
+      tokenizer(src: string) {
+        const match = BLOCK_IMAGE_RE.exec(src)
+        if (match) {
+          return {
+            type: 'image',
+            raw: match[0]!,
+            text: match[1] ?? '',
+            href: match[2] ?? '',
+            title: match[3] ?? null,
+            tokens: [],
+          }
+        }
+      },
+    },
     {
       // Inline-level HTML: intercepts marked's `tag` rule (inline HTML like
       // `<b>`, `</em>`, `<br/>`) before it produces an `html` token.
@@ -735,8 +763,10 @@ function handleFileUpload(files: File[] | null, pos?: number) {
           }
         })
       }
+      const limit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
+      const sizeInfo = `file is ${formatBytes(file.size)}, limit is ${formatBytes(limit)}`
       pushToast('Error uploading media', {
-        description: error.message,
+        description: `${error.message} (${sizeInfo})`,
       })
     }
     else {

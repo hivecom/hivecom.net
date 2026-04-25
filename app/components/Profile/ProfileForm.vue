@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Calendar, Flex, Input, Modal, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, ref, watch } from 'vue'
 import BannerEditor from '@/components/Profile/Banner/BannerEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import { normalizeWebsiteUrl, useUserFormValidation } from '@/composables/useUserFormValidation'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
@@ -56,16 +57,84 @@ const {
 const avatarUploading = ref(false)
 const avatarError = ref<string | null>(null)
 
+const isMobile = useBreakpoint('<s')
+
 // Banner state
 const bannerEditorOpen = ref(false)
 const bannerUrl = ref<string | null>(null)
 const bannerDeleting = ref(false)
+const bannerError = ref<string | null>(null)
+const avatarUploadRef = ref<{ openFileDialog: () => void } | null>(null)
 const importFileRef = ref<HTMLInputElement | null>(null)
+const importAnimatedRef = ref<HTMLInputElement | null>(null)
 const bannerEditorRef = ref<{ importBanner: (file: File) => Promise<{ hadMetadata: boolean }> } | null>(null)
 const sheetContentRef = ref<{ $el: HTMLElement } | null>(null)
 const bannerUploading = ref(false)
 const showBannerDeleteConfirm = ref(false)
 const showImportConfirm = ref(false)
+const showFfmpegInfo = ref(false)
+
+const BANNER_TIPS_MD = `
+These commands use [FFmpeg](https://ffmpeg.org/download.html) - a free command-line tool available for Windows, macOS, and Linux. Ideal banner size is **728x36px**, max **1MB**.
+
+**Image - crop/scale to WebP (recommended)**
+\`\`\`bash
+ffmpeg -i input.png -vf "scale=728:36:force_original_aspect_ratio=increase,crop=728:36" -quality 80 output.webp
+\`\`\`
+
+**Video - crop/scale to WebM (target under 1MB)**
+\`\`\`bash
+ffmpeg -i input.mp4 -vf "scale=728:36:force_original_aspect_ratio=increase,crop=728:36,fps=15" -c:v libvpx-vp9 -b:v 200k -an -t 10 -loop 0 output.webm
+\`\`\`
+
+**Video - crop/scale to GIF (target under 1MB)**
+\`\`\`bash
+ffmpeg -i input.mp4 -vf "scale=728:36:force_original_aspect_ratio=increase,crop=728:36,fps=10,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -t 10 -loop 0 output.gif
+\`\`\`
+
+</br>
+
+> WebM and GIF loop automatically in the browser. \`-loop 0\` sets infinite looping in the file itself as a fallback.
+
+<details>
+<summary>Trimming and looping techniques</summary>
+
+**Trim a clip before converting (optional)**
+\`\`\`bash
+ffmpeg -i input.mp4 -ss 00:00:01 -t 00:00:05 -vf "scale=728:36:force_original_aspect_ratio=increase,crop=728:36,fps=15" -c:v libvpx-vp9 -b:v 200k -an -loop 0 output.webm
+\`\`\`
+
+**Ping-pong (boomerang) loop - WebM**
+\`\`\`bash
+ffmpeg -i input.mp4 -vf "scale=728:36:force_original_aspect_ratio=increase,crop=728:36,fps=15,split[f][r];[r]reverse[rv];[f][rv]concat=n=2:v=1" -c:v libvpx-vp9 -b:v 200k -an -loop 0 output.webm
+\`\`\`
+
+**Ping-pong (boomerang) loop - GIF**
+\`\`\`bash
+ffmpeg -i input.mp4 -vf "scale=728:36:force_original_aspect_ratio=increase,crop=728:36,fps=10,split[f][r];[r]reverse[rv];[f][rv]concat=n=2:v=1,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -t 10 -loop 0 output.gif
+\`\`\`
+
+> Ping-pong works by duplicating the clip in reverse and concatenating it - forward then backward - so it loops seamlessly without a hard cut. The \`reverse\` filter requires the full clip to be buffered, so keep source clips short (under 5s) to avoid high memory use.
+
+</details>
+
+<details>
+<summary>Key parameters explained</summary>
+
+| Parameter | What it does |
+|---|---|
+| \`scale=728:36\` | Target width and height in pixels. |
+| \`force_original_aspect_ratio=increase\` | Scales up so the smallest dimension meets the target - prevents black bars. |
+| \`crop=728:36\` | Crops the center to exactly 728x36. Shift the crop point with \`:x:y\` - e.g. \`crop=728:36:0:0\` crops from the top-left. |
+| \`fps=15\` | Frames per second. Lower reduces file size - try 10 for GIFs. |
+| \`-b:v 200k\` | Target video bitrate. Lower keeps file size down - raise for better quality if under 1MB. |
+| \`-t 10\` | Limit output to 10 seconds. Shorter clips are much smaller. |
+| \`-ss 00:00:01\` | Start time - skip this many seconds into the source before encoding. |
+| \`-an\` | Strip audio - banners are silent so this saves space. |
+| \`-quality 80\` | WebP quality 0-100. 80 balances sharpness and file size. |
+
+</details>
+`.trim()
 
 // When the banner editor closes, focus back into the sheet so the Radix
 // focusOutside handler doesn't see focus leaving and dismiss the sheet.
@@ -87,6 +156,56 @@ function onBannerDeleted() {
   emit('profilePatch', { has_banner: false })
 }
 
+const BANNER_MAX_SIZE = 1 * 1024 * 1024 // 1MB
+
+async function handleAnimatedFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file || !props.profile?.id)
+    return
+
+  bannerError.value = null
+
+  if (file.size > BANNER_MAX_SIZE) {
+    bannerError.value = 'File must be under 1MB.'
+    return
+  }
+
+  const ext = file.type === 'video/webm' ? 'webm' : 'gif'
+  try {
+    bannerUploading.value = true
+    const supabase = useSupabaseClient()
+    const filePath = `${props.profile.id}/banner.${ext}`
+
+    // Remove stale banner files with other extensions
+    const otherExts = ['webp', 'webm', 'gif'].filter(e => e !== ext)
+    await Promise.all(otherExts.map(e =>
+      supabase.storage.from(USERS_BUCKET_ID).remove([`${props.profile!.id}/banner.${e}`]),
+    ))
+
+    await supabase.storage
+      .from(USERS_BUCKET_ID)
+      .upload(filePath, file, { upsert: true, contentType: file.type })
+
+    await supabase
+      .from('profiles')
+      .update({ has_banner: true, banner_extension: ext })
+      .eq('id', props.profile.id)
+
+    const { data } = supabase.storage.from(USERS_BUCKET_ID).getPublicUrl(filePath)
+    bannerUrl.value = `${data.publicUrl}?t=${Date.now()}`
+    emit('profilePatch', { has_banner: true, banner_extension: ext })
+  }
+  catch (error) {
+    console.error('Error uploading animated banner:', error)
+    bannerError.value = 'Failed to upload banner.'
+  }
+  finally {
+    bannerUploading.value = false
+  }
+}
+
 async function handleImportFile(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
@@ -94,6 +213,13 @@ async function handleImportFile(e: Event) {
   input.value = ''
   if (!file || !props.profile?.id)
     return
+
+  bannerError.value = null
+
+  if (file.size > BANNER_MAX_SIZE) {
+    bannerError.value = 'File must be under 1MB.'
+    return
+  }
 
   // Check for embedded metadata without touching the editor
   const bytes = new Uint8Array(await file.arrayBuffer())
@@ -107,21 +233,59 @@ async function handleImportFile(e: Event) {
       const supabase = useSupabaseClient()
       const filePath = `${props.profile.id}/banner.webp`
 
+      // Remove stale animated banner files if any
+      await Promise.all(['webm', 'gif'].map(e =>
+        supabase.storage.from(USERS_BUCKET_ID).remove([`${props.profile!.id}/banner.${e}`]),
+      ))
+
       await supabase.storage
         .from(USERS_BUCKET_ID)
         .upload(filePath, file, { upsert: true, contentType: 'image/webp' })
 
       await supabase
         .from('profiles')
-        .update({ has_banner: true })
+        .update({ has_banner: true, banner_extension: 'webp' })
         .eq('id', props.profile.id)
 
       const { data } = supabase.storage.from(USERS_BUCKET_ID).getPublicUrl(filePath)
       bannerUrl.value = `${data.publicUrl}?t=${Date.now()}`
-      emit('profilePatch', { has_banner: true })
+      emit('profilePatch', { has_banner: true, banner_extension: 'webp' })
     }
     catch (error) {
       console.error('Error uploading imported banner:', error)
+      bannerError.value = 'Failed to upload banner.'
+    }
+    finally {
+      bannerUploading.value = false
+    }
+  }
+  else if (isMobile.value) {
+    // On mobile skip the editor - upload the plain image directly as webp
+    try {
+      bannerUploading.value = true
+      const supabase = useSupabaseClient()
+      const filePath = `${props.profile.id}/banner.webp`
+
+      await Promise.all(['webm', 'gif'].map(e =>
+        supabase.storage.from(USERS_BUCKET_ID).remove([`${props.profile!.id}/banner.${e}`]),
+      ))
+
+      await supabase.storage
+        .from(USERS_BUCKET_ID)
+        .upload(filePath, file, { upsert: true, contentType: file.type })
+
+      await supabase
+        .from('profiles')
+        .update({ has_banner: true, banner_extension: 'webp' })
+        .eq('id', props.profile.id)
+
+      const { data } = supabase.storage.from(USERS_BUCKET_ID).getPublicUrl(filePath)
+      bannerUrl.value = `${data.publicUrl}?t=${Date.now()}`
+      emit('profilePatch', { has_banner: true, banner_extension: 'webp' })
+    }
+    catch (error) {
+      console.error('Error uploading banner on mobile:', error)
+      bannerError.value = 'Failed to upload banner.'
     }
     finally {
       bannerUploading.value = false
@@ -138,6 +302,10 @@ function confirmImport() {
   importFileRef.value?.click()
 }
 
+function openAnimatedUpload() {
+  importAnimatedRef.value?.click()
+}
+
 async function handleBannerDelete() {
   if (!props.profile?.id)
     return
@@ -146,17 +314,18 @@ async function handleBannerDelete() {
     bannerDeleting.value = true
     const supabase = useSupabaseClient()
 
-    await supabase.storage
-      .from(USERS_BUCKET_ID)
-      .remove([`${props.profile.id}/banner.webp`])
+    // Remove all possible banner extensions
+    await Promise.all(['webp', 'webm', 'gif'].map(e =>
+      supabase.storage.from(USERS_BUCKET_ID).remove([`${props.profile!.id}/banner.${e}`]),
+    ))
 
     await supabase
       .from('profiles')
-      .update({ has_banner: false })
+      .update({ has_banner: false, banner_extension: null })
       .eq('id', props.profile.id)
 
     bannerUrl.value = null
-    emit('profilePatch', { has_banner: false })
+    emit('profilePatch', { has_banner: false, banner_extension: null })
   }
   catch (error) {
     console.error('Error deleting banner:', error)
@@ -259,9 +428,10 @@ watch(
 
       // Initialize banner URL from has_banner flag
       if (newProfile.has_banner) {
+        const ext = newProfile.banner_extension ?? 'webp'
         const { data } = supabase.storage
           .from(USERS_BUCKET_ID)
-          .getPublicUrl(`${newProfile.id}/banner.webp`)
+          .getPublicUrl(`${newProfile.id}/banner.${ext}`)
         bannerUrl.value = `${data.publicUrl}?t=${Date.now()}`
       }
       else {
@@ -390,8 +560,6 @@ async function handleAvatarDelete() {
 }
 
 // Wrapper function for the confirm modal
-const isMobile = useBreakpoint('<s')
-
 async function confirmAvatarDelete() {
   await handleAvatarDelete()
 }
@@ -420,9 +588,11 @@ async function confirmAvatarDelete() {
         <Flex column gap="m" class="profile-edit-form__avatar-section" :expand="isMobile">
           <h4>Avatar</h4>
           <FileUpload
+            ref="avatarUploadRef"
             expand
             variant="avatar"
             label="Upload Avatar"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,video/webm"
             :max-size-m-b="1"
             :preview-url="avatarUrl"
             :loading="avatarUploading"
@@ -434,6 +604,31 @@ async function confirmAvatarDelete() {
             @delete="handleAvatarDeleteConfirm"
             @invalid="(msg) => avatarError = msg"
           />
+          <!-- Mobile avatar actions - shown below avatar for touch accessibility -->
+          <Flex v-if="isMobile && avatarUrl" expand gap="xs" class="profile-edit-form__avatar-mobile-actions">
+            <Button
+              expand
+              variant="accent"
+              :loading="avatarUploading"
+              @click="avatarUploadRef?.openFileDialog()"
+            >
+              <template #start>
+                <Icon name="ph:upload" />
+              </template>
+              Replace Avatar
+            </Button>
+            <Button
+              expand
+              variant="danger"
+              :loading="avatarDeleting"
+              @click="handleAvatarDeleteConfirm"
+            >
+              <template #start>
+                <Icon name="ph:trash" />
+              </template>
+              Delete Avatar
+            </Button>
+          </Flex>
         </Flex>
 
         <!-- Basic Information -->
@@ -567,27 +762,76 @@ async function confirmAvatarDelete() {
 
         <!-- Banner / Signature -->
         <Flex column gap="s" expand>
-          <label class="profile-edit-form__banner-label">Forum Signature</label>
-
-          <div class="profile-edit-form__signature-mobile-notice">
-            <Alert variant="info">
-              Forum signature editing requires a desktop or tablet - please switch to a larger device.
-            </Alert>
-          </div>
+          <Flex x-between y-center expand>
+            <label class="profile-edit-form__banner-label">Forum Signature</label>
+            <Flex gap="xs" y-center>
+              <span class="text-s text-color-lighter">Suggested size is 728x36px</span>
+              <Button size="s" variant="gray" outline @click="showFfmpegInfo = true">
+                <template #start>
+                  <Icon name="ph:info" />
+                </template>
+                Media tips
+              </Button>
+            </Flex>
+          </Flex>
 
           <div class="profile-edit-form__signature-editor">
+            <Alert v-if="isMobile" variant="info" class="profile-edit-form__signature-mobile-notice">
+              Forum signature editing requires a desktop or tablet - please switch to a larger device.
+            </Alert>
+            <input
+              ref="importAnimatedRef"
+              type="file"
+              accept="video/webm,image/gif"
+              class="profile-edit-form__import-input"
+              @change="handleAnimatedFile"
+            >
+            <input
+              ref="importFileRef"
+              type="file"
+              accept="image/*"
+              class="profile-edit-form__import-input"
+              @change="handleImportFile"
+            >
             <Flex v-if="bannerUrl" expand class="profile-edit-form__banner-wrapper">
+              <video
+                v-if="props.profile?.banner_extension === 'webm'"
+                :src="bannerUrl"
+                class="profile-edit-form__banner-preview"
+                autoplay
+                loop
+                muted
+                playsinline
+              />
               <img
+                v-else
                 :src="bannerUrl"
                 alt="Your forum banner"
                 class="profile-edit-form__banner-preview"
               >
               <div class="profile-edit-form__banner-overlay">
-                <Button size="s" variant="gray" @click="bannerEditorOpen = true">
+                <Button
+                  v-if="props.profile?.banner_extension === 'webp'"
+                  size="s"
+                  variant="gray"
+                  :disabled="isMobile"
+                  @click="!isMobile && (bannerEditorOpen = true)"
+                >
                   <template #start>
                     <Icon name="ph:pencil-simple" />
                   </template>
                   Edit
+                </Button>
+                <Button
+                  v-else
+                  size="s"
+                  variant="gray"
+                  @click="openAnimatedUpload"
+                >
+                  <template #start>
+                    <Icon name="ph:arrows-clockwise" />
+                  </template>
+                  Replace
                 </Button>
                 <Button size="s" variant="danger" :loading="bannerDeleting" @click="showBannerDeleteConfirm = true">
                   <template #start>
@@ -598,34 +842,46 @@ async function confirmAvatarDelete() {
               </div>
             </Flex>
 
-            <Flex v-else gap="xs">
-              <Button
-                :disabled="!props.profile"
-                @click="bannerEditorOpen = true"
-              >
-                <template #start>
-                  <Icon name="ph:plus" />
-                </template>
-                Create Signature
-              </Button>
-              <Button
-                variant="gray"
-                :disabled="!props.profile"
-                title="Import an existing .webp banner file"
-                @click="showImportConfirm = true"
-              >
-                <template #start>
-                  <Icon name="ph:upload-simple" />
-                </template>
-                Import
-              </Button>
-              <input
-                ref="importFileRef"
-                type="file"
-                accept="image/webp"
-                class="profile-edit-form__import-input"
-                @change="handleImportFile"
-              >
+            <Flex v-else column gap="xs">
+              <Flex :column="isMobile" gap="xs" expand :wrap="!isMobile">
+                <Button
+                  :expand="isMobile"
+                  :disabled="!props.profile || isMobile"
+                  @click="bannerEditorOpen = true"
+                >
+                  <template #start>
+                    <Icon name="ph:plus" />
+                  </template>
+                  Create Signature
+                </Button>
+                <Button
+                  variant="gray"
+                  :expand="isMobile"
+                  :disabled="!props.profile"
+                  title="Upload a GIF or WebM as your banner"
+                  @click="openAnimatedUpload"
+                >
+                  <template #start>
+                    <Icon name="ph:gif" />
+                  </template>
+                  Upload GIF / WebM
+                </Button>
+                <Button
+                  variant="gray"
+                  :expand="isMobile"
+                  :disabled="!props.profile"
+                  title="Import a plain image or an existing .webp banner file - ideal dimensions are 728x36px"
+                  @click="showImportConfirm = true"
+                >
+                  <template #start>
+                    <Icon name="ph:upload-simple" />
+                  </template>
+                  Import Image / Existing Banner
+                </Button>
+              </Flex>
+              <p v-if="bannerError" class="profile-edit-form__banner-error">
+                {{ bannerError }}
+              </p>
             </Flex>
           </div>
         </Flex>
@@ -693,12 +949,48 @@ async function confirmAvatarDelete() {
       :destructive="true"
     />
 
+    <!-- Banner Media Tips Modal -->
+    <Modal :open="showFfmpegInfo" size="l" centered scrollable @close="showFfmpegInfo = false">
+      <template #header>
+        <h4>Banner media tips</h4>
+      </template>
+
+      <Flex column gap="m">
+        <MarkdownRenderer :md="BANNER_TIPS_MD" skeleton-height="0px" />
+
+        <Flex column gap="xs">
+          <span class="text-s text-bold">Banner font</span>
+          <p class="text-s text-color-lighter">
+            The default banner font used in the editor is Visitor BRK. Download it to use in external tools.
+          </p>
+          <div>
+            <a href="/fonts/visitorbrk.ttf" download="visitorbrk.ttf">
+              <Button variant="gray" size="s">
+                <template #start>
+                  <Icon name="ph:download-simple" />
+                </template>
+                Download Visitor BRK (.ttf)
+              </Button>
+            </a>
+          </div>
+        </Flex>
+      </Flex>
+
+      <template #footer="{ close }">
+        <Flex x-end>
+          <Button @click="close">
+            Close
+          </Button>
+        </Flex>
+      </template>
+    </Modal>
+
     <!-- Import Banner Confirmation Modal -->
     <ConfirmModal
       v-model:open="showImportConfirm"
       :confirm="confirmImport"
       title="Import Signature"
-      description="This will load the selected file into the signature editor."
+      description="This will load the selected file into the signature editor. For best results, use an image that is 728x36px."
       confirm-text="Import"
       cancel-text="Cancel"
     >
@@ -740,7 +1032,23 @@ async function confirmAvatarDelete() {
         height: auto;
         aspect-ratio: 1/1;
       }
+
+      :deep(.file-upload__preview--avatar) {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1/1;
+
+        .file-upload__image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+      }
     }
+  }
+
+  &__avatar-mobile-actions {
+    width: 100%;
   }
 
   &__avatar-container {
@@ -788,18 +1096,11 @@ async function confirmAvatarDelete() {
 
   &__signature-mobile-notice {
     width: 100%;
-    display: none;
-
-    @media (max-width: 767px) {
-      display: block;
-    }
+    margin-bottom: var(--space-xs);
   }
 
   &__signature-editor {
     width: 100%;
-    @media (max-width: 767px) {
-      display: none;
-    }
   }
 
   &__banner-label {
@@ -826,6 +1127,11 @@ async function confirmAvatarDelete() {
     aspect-ratio: 728 / 36;
     height: auto;
     object-fit: cover;
+  }
+
+  &__banner-error {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-red);
   }
 
   &__import-input {

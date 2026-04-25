@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
-import { Avatar, Button, Divider, Flex, Skeleton } from '@dolanske/vui'
+import { Button, Divider, Flex, Skeleton } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
 import { useCachedFetch } from '@/composables/useCache'
@@ -194,21 +195,22 @@ const {
               class="user-preview-card__avatar-link"
               :aria-label="`View profile of ${user.username}`"
             >
-              <Avatar class="user-preview-card__avatar" :size="props.avatarSize" :url="user.avatarUrl || undefined">
+              <AvatarMedia class="user-preview-card__avatar" :size="props.avatarSize" :url="user.avatarUrl || undefined" :alt="user.username">
                 <template v-if="!user.avatarUrl" #default>
                   {{ userInitials }}
                 </template>
-              </Avatar>
+              </AvatarMedia>
             </NuxtLink>
-            <Avatar
+            <AvatarMedia
               v-else
               :size="props.avatarSize"
               :url="user.avatarUrl || undefined"
+              :alt="user.username"
             >
               <template v-if="!user.avatarUrl" #default>
                 {{ userInitials }}
               </template>
-            </Avatar>
+            </AvatarMedia>
           </Flex>
 
           <UserPreviewCardBadges

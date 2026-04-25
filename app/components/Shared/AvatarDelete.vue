@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Avatar } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
-import ConfirmModal from './ConfirmModal.vue'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 interface Props {
   userId: string
@@ -97,11 +97,11 @@ function handleMouseLeave() {
     @click="openDeleteConfirm"
   >
     <!-- Avatar -->
-    <Avatar :size="size" :url="avatarUrl || undefined">
+    <AvatarMedia :size="size" :url="avatarUrl || undefined" :alt="username">
       <template v-if="!hasAvatar" #default>
         {{ getUserInitials(username) }}
       </template>
-    </Avatar>
+    </AvatarMedia>
 
     <!-- Hover Overlay -->
     <div v-if="showOverlay" class="delete-overlay">

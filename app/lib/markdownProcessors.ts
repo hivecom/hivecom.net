@@ -222,10 +222,7 @@ export function processVideoDirectives(markdown: string): string {
     if (!src)
       return ''
 
-    const width = attrs.width ?? '640'
-    const height = attrs.height ?? '360'
-
-    return `\n<div class="md-video-embed"><video src="${src}" width="${width}" height="${height}" controls></video></div>\n`
+    return `\n<div class="md-video-embed"><video src="${src}" controls></video></div>\n`
   })
 }
 

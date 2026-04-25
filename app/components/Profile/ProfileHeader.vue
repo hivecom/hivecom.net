@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
-import { Avatar, Badge, Button, Card, CopyClipboard, Flex, Grid, Modal, Skeleton, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, CopyClipboard, Flex, Grid, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -444,11 +445,14 @@ onUnmounted(() => stopConfetti())
           <!-- Avatar -->
           <div class="profile-avatar">
             <div class="avatar-container">
-              <Avatar :key="avatarUrl ?? undefined" :size="164" :url="avatarUrl || undefined" style="border: 1px solid var(--color-border); border-radius: var(--border-radius-pill);" @click="avatarUrl && (showAvatarLightbox = true)">
-                <template v-if="!avatarUrl" #default>
-                  {{ getUserInitials(profile.username) }}
-                </template>
-              </Avatar>
+              <AvatarMedia
+                :url="avatarUrl"
+                :size="164"
+                :initials="getUserInitials(profile.username)"
+                :style="{ border: '1px solid var(--color-border)',
+                          cursor: avatarUrl ? 'pointer' : 'default' }"
+                @click="avatarUrl && (showAvatarLightbox = true)"
+              />
               <!-- Activity status indicator -->
               <Tooltip v-if="activityStatus">
                 <template #tooltip>
@@ -466,7 +470,16 @@ onUnmounted(() => stopConfetti())
             <template #header>
               <h4>{{ profile.username }}'s avatar</h4>
             </template>
-            <img :src="avatarUrl" class="avatar-lightbox">
+            <video
+              v-if="avatarUrl && (avatarUrl.split('?')[0] ?? '').endsWith('.webm')"
+              :src="avatarUrl"
+              class="avatar-lightbox"
+              autoplay
+              loop
+              muted
+              playsinline
+            />
+            <img v-else :src="avatarUrl" class="avatar-lightbox">
           </Modal>
 
           <Flex column gap="s" expand x-end class="h-100">
@@ -756,10 +769,6 @@ onUnmounted(() => stopConfetti())
     .avatar-container {
       position: relative;
       display: inline-block;
-
-      .vui-avatar {
-        cursor: pointer;
-      }
     }
   }
 

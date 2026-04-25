@@ -6,6 +6,7 @@ import { useBulkDataUser } from '@/composables/useDataUser'
 import { groupImagesAST } from '@/lib/imageGrouping'
 import { transformLinkEmbeds } from '@/lib/linkEmbedAST'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
+import { wrapTablesAST } from '@/lib/tableWrapping'
 import MarkdownLightbox from './MarkdownLightbox.vue'
 import SharedUserMention from './UserMention.global.vue'
 
@@ -44,6 +45,7 @@ function applyTransforms(body: MDCRoot | undefined): MDCRoot | undefined {
     return body
   let result = groupImagesAST(body as Parameters<typeof groupImagesAST>[0])
   result = transformLinkEmbeds(result as Parameters<typeof transformLinkEmbeds>[0]) as typeof result
+  result = wrapTablesAST(result as Parameters<typeof wrapTablesAST>[0]) as typeof result
   return result as unknown as MDCRoot
 }
 
@@ -235,6 +237,7 @@ watch(processedMarkdown, (val) => {
 
   video {
     max-width: 100%;
+    max-height: 60vh;
     border-radius: var(--border-radius-s);
   }
 }
@@ -290,23 +293,30 @@ watch(processedMarkdown, (val) => {
   display: block;
 }
 
-/* Typeset scrolls horizontally for wide tables */
-.typeset {
+/* Scroll wrapper injected around bare <table> elements after MDC render */
+:deep(.table-scroll-wrapper) {
   display: block;
-  max-width: 100%;
+  width: 100%;
+  contain: inline-size;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  margin: var(--space-xs) 0;
+  position: relative;
+}
+
+/* Typeset styles for rendered markdown */
+.typeset {
+  display: block;
+  width: 100%;
   overflow-wrap: break-word;
   word-break: break-word; // Safari fallback - break-word is non-standard but widely supported
 
   :deep(table) {
     display: table;
     border-collapse: collapse;
-    margin: var(--space-xs) 0;
-    width: fit-content;
+    margin: 0;
     min-width: 100%;
-    table-layout: fixed;
-    position: relative;
+    table-layout: auto;
   }
 
   :deep(table th),
@@ -314,7 +324,8 @@ watch(processedMarkdown, (val) => {
     padding: var(--space-xs) var(--space-s);
     border: 1px solid var(--color-border);
     text-align: left;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
     min-width: 80px;
   }
 

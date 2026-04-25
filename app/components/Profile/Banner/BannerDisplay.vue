@@ -37,12 +37,16 @@ watch(() => props.user?.id, () => {
  * Synchronous public URL - Supabase Storage getPublicUrl never hits the
  * network, it just constructs the URL from the project's storage endpoint.
  */
+const bannerExtension = computed(() => props.user?.banner_extension ?? 'webp')
+const isVideoBanner = computed(() => bannerExtension.value === 'webm')
+
 const bannerUrl = computed<string | null>(() => {
   if (!props.user?.has_banner || !props.user.id)
     return null
+  const ext = bannerExtension.value
   const { data } = supabase.storage
     .from(USERS_BUCKET_ID)
-    .getPublicUrl(`${props.user.id}/banner.webp`)
+    .getPublicUrl(`${props.user.id}/banner.${ext}`)
   return data.publicUrl ?? null
 })
 
@@ -61,6 +65,7 @@ function onBannerError() {
 const tapped = ref(false)
 const hovered = ref(false)
 const imgRef = ref<HTMLImageElement | null>(null)
+const isActive = computed(() => hovered.value || tapped.value || !!props.externalHover)
 
 /**
  * Toggle reveal on tap. We listen on touchend so that a scroll gesture that
@@ -120,15 +125,31 @@ watch(tapped, (val) => {
     @mouseenter="hovered = true"
     @mouseleave="hovered = false"
   >
+    <video
+      v-if="showBanner && isVideoBanner"
+      :src="bannerUrl!"
+      class="banner-display__image"
+      :style="{
+        filter: isActive ? 'saturate(1)' : 'saturate(0)',
+        opacity: isActive ? '1' : '0.2',
+      }"
+      autoplay
+      loop
+      muted
+      playsinline
+      @error="onBannerError"
+      @touchstart.passive="onTouchStart"
+      @touchend="onTouchEnd"
+    />
     <img
-      v-if="showBanner"
+      v-else-if="showBanner"
       ref="imgRef"
       :src="bannerUrl!"
       :alt="`${user?.username ?? 'User'}'s forum banner`"
       class="banner-display__image"
       :style="{
-        filter: (hovered || tapped || props.externalHover) ? 'saturate(1)' : 'saturate(0)',
-        opacity: (hovered || tapped || props.externalHover) ? '1' : '0.2',
+        filter: isActive ? 'saturate(1)' : 'saturate(0)',
+        opacity: isActive ? '1' : '0.2',
       }"
       loading="lazy"
       decoding="async"

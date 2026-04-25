@@ -79,17 +79,11 @@ export function useDataEventsPaged(pageSize: Ref<number>) {
   const errorPast = ref<string | null>(null)
 
   async function fetchPastCount(): Promise<void> {
-    const now = new Date().toISOString()
+    const { data, error } = await supabase
+      .rpc('get_past_events_count')
 
-    const { count, error } = await supabase
-      .from('events')
-      .select('id', { count: 'exact', head: true })
-      .lt('date', now)
-
-    if (!error && count != null && count !== 0)
-      pastTotalCount.value = count
-    else if (!error && count === 0)
-      pastTotalCount.value = 0
+    if (!error && data != null)
+      pastTotalCount.value = Number(data)
   }
 
   async function fetchPast(page: number): Promise<void> {
@@ -97,16 +91,13 @@ export function useDataEventsPaged(pageSize: Ref<number>) {
     errorPast.value = null
 
     try {
-      const now = new Date().toISOString()
       const from = (page - 1) * pageSize.value
-      const to = from + pageSize.value - 1
 
       const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .lt('date', now)
-        .order('date', { ascending: false })
-        .range(from, to)
+        .rpc('get_past_events_paginated', {
+          p_limit: pageSize.value,
+          p_offset: from,
+        })
 
       if (error)
         throw error

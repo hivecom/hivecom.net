@@ -27,8 +27,6 @@ This ticket is a catalogue of remaining improvement points. Each issue can be so
 | 27 | `components/Admin/Referendums/ReferendumForm.vue` | Layout CSS - option rows/add button row are `flex y-center gap-xs` | Low |
 | 28 | `components/Admin/Projects/ProjectForm.vue` | Layout CSS - preview section, image action row | Low |
 | 29 | `pages/votes/[id].vue` | Layout CSS - options list, choice row, and status block are pure flex column/row | Low |
-| 31 | `components/Shared/BulkAvatarDisplay.vue` | Layout CSS + 4 inline `style=` - avatar stack cell wrappers are `flex y-center x-center` | Low |
-| 32 | `components/Shared/BulkAvatarDisplayCluster.vue` | Layout CSS + 4 inline `style=` - same as `BulkAvatarDisplay` | Low |
 | 33 | `components/Landing/LandingHero.vue` | Layout CSS - hero content column and action wrapper are `flex column gap` | Low |
 | 34 | `components/Settings/ConnectTeamSpeak.vue` | Layout CSS - form action row is `flex column align-end` | Low |
 | 35 | `components/Profile/Badges/ProfileBadge.vue` | Layout CSS - main badge container and icon cells | Low |

@@ -13,6 +13,14 @@ export type StorageBucketId
     | typeof STATIC_BUCKET_ID
     | typeof USERS_BUCKET_ID
 
+// File size limits in bytes, mirroring the bucket config in storage.buckets.
+export const BUCKET_SIZE_LIMITS: Record<StorageBucketId, number> = {
+  [CMS_BUCKET_ID]: 52428800, // 50 MB
+  [FORUMS_BUCKET_ID]: 10485760, // 10 MB
+  [STATIC_BUCKET_ID]: 5242880, // 5 MB
+  [USERS_BUCKET_ID]: 1048576, // 1 MB
+}
+
 export type SortColumn = 'name' | 'updated_at' | 'created_at'
 export type SortOrder = 'asc' | 'desc'
 

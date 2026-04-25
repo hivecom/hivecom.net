@@ -405,11 +405,26 @@ Hey there! I''m @{018d224c-0e49-4b6d-b57a-87299605c2b1}, the developer test acco
    2. Nested item 2.2
 3. Third item
 
-## Links and Images
+## Links
 
 [Link to Hivecom](https://hivecom.net)
 
-![Alt text for image](https://via.placeholder.com/150)
+## Images
+
+Single image:
+
+![CS2 Cover](http://127.0.0.1:54321/storage/v1/object/public/hivecom-content-static/games/cs2/background.jpg)
+
+Two images side by side:
+
+![CS2 Cover](http://127.0.0.1:54321/storage/v1/object/public/hivecom-content-static/games/cs2/background.jpg)
+![GMod Cover](http://127.0.0.1:54321/storage/v1/object/public/hivecom-content-static/games/gmod/background.jpg)
+
+Three images in a row:
+
+![CS2 Cover](http://127.0.0.1:54321/storage/v1/object/public/hivecom-content-static/games/cs2/background.jpg)
+![GMod Cover](http://127.0.0.1:54321/storage/v1/object/public/hivecom-content-static/games/gmod/background.jpg)
+![Minecraft Cover](http://127.0.0.1:54321/storage/v1/object/public/hivecom-content-static/games/minecraft/background.jpg)
 
 ## Code Blocks
 
@@ -459,6 +474,10 @@ A future event link:
 
 http://localhost:3000/events/1
 
+An expired event link:
+
+http://localhost:3000/events/12
+
 And a community vote link:
 
 http://localhost:3000/votes/1
@@ -471,7 +490,71 @@ A concluded vote:
 
 http://localhost:3000/votes/4
 
-Links that appear **inline** like [this one](http://localhost:3000/forum/looking-for-people-to-play-cs2-with) should stay as regular links and not get embedded.', true, 'jpg')
+Links that appear **inline** like [this one](http://localhost:3000/forum/looking-for-people-to-play-cs2-with) should stay as regular links and not get embedded.
+
+## Task Lists
+
+- [x] Completed task
+- [ ] Incomplete task
+- [x] Another done item
+  - [ ] Nested incomplete
+  - [x] Nested complete
+
+## Table with 3 columns
+
+| Name | Game | Status |
+|------|------|--------|
+| Hivecom CS2 | Counter-Strike 2 | Online |
+| Hivecom GMod | Garry''s Mod | Online |
+| Hivecom MC | Minecraft | Offline |
+
+## Table with 8 columns (scrolls on mobile)
+
+| City | Country | Population | Area (km²) | Founded | Continent | Language | Currency |
+|------|---------|------------|------------|---------|-----------|----------|----------|
+| Paris | France | 2,161,000 | 105 | 987 | Europe | French | Euro |
+| Tokyo | Japan | 13,960,000 | 2,194 | 1457 | Asia | Japanese | Yen |
+| Cairo | Egypt | 10,100,000 | 3,085 | 969 | Africa | Arabic | Pound |
+| Buenos Aires | Argentina | 3,075,000 | 203 | 1536 | South America | Spanish | Peso |
+| Sydney | Australia | 5,312,000 | 12,368 | 1788 | Oceania | English | Dollar |
+| Toronto | Canada | 2,930,000 | 630 | 1793 | North America | English | Dollar |
+| Mumbai | India | 20,700,000 | 603 | 1507 | Asia | Marathi | Rupee |
+| Berlin | Germany | 3,645,000 | 892 | 1237 | Europe | German | Euro |
+
+## Table with 16 columns (probably always scrolls)
+
+| Planet | System | Type | Mass (M⊕) | Radius (R⊕) | Gravity (m/s²) | Orbital Period | Distance (AU) | Moons | Avg Temp (°C) | Atmosphere | Water | Magnetic Field | Discovered | Method | Habitable |
+|--------|--------|------|-----------|-------------|----------------|----------------|---------------|-------|---------------|------------|-------|----------------|------------|--------|-----------|
+| Earth | Sol | Rocky | 1.00 | 1.00 | 9.81 | 365.25 days | 1.00 | 1 | 15 | N₂/O₂ | Yes | Strong | - | N/A | Yes |
+| Mars | Sol | Rocky | 0.11 | 0.53 | 3.72 | 686.97 days | 1.52 | 2 | -60 | CO₂ | Frozen | Weak | - | N/A | No |
+| Kepler-452b | Kepler-452 | Rocky | ~5.00 | 1.63 | ~13.00 | 384.84 days | 1.05 | Unknown | ~17 | Unknown | Possible | Unknown | 2015 | Transit | Maybe |
+| Proxima b | Proxima Cen | Rocky | ~1.17 | ~1.10 | ~10.50 | 11.19 days | 0.049 | Unknown | ~-39 | Unknown | Possible | Unknown | 2016 | RV | Maybe |
+| TRAPPIST-1e | TRAPPIST-1 | Rocky | 0.69 | 0.92 | 9.12 | 6.10 days | 0.029 | Unknown | ~-22 | Unknown | Possible | Unknown | 2017 | Transit | Maybe |
+| Venus | Sol | Rocky | 0.82 | 0.95 | 8.87 | 224.70 days | 0.72 | 0 | 465 | CO₂/SO₂ | No | None | - | N/A | No |
+| Titan | Sol | Moon | 0.02 | 0.40 | 1.35 | 15.95 days | 9.54 | - | -179 | N₂/CH₄ | Methane | None | 1655 | Telescope | No |
+| Kepler-22b | Kepler-22 | Super-Earth | ~9.10 | 2.40 | ~15.00 | 289.86 days | 0.85 | Unknown | ~22 | Unknown | Possible | Unknown | 2011 | Transit | Maybe |
+
+## Math
+
+Inline math: $E = mc^2$ and $\pi \approx 3.14159$.
+
+Block math:
+
+$$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$
+
+## Spoiler / Details
+
+:::details
+
+:::detailsSummary
+Click to expand
+:::
+
+:::detailsContent
+This is the hidden content inside the spoiler block. It can contain **bold**, *italic*, and `code`.
+:::
+
+:::', true, 'jpg')
 ON CONFLICT (id)
   DO UPDATE SET
     steam_id = EXCLUDED.steam_id,
@@ -763,8 +846,8 @@ Please keep them to yourself.
 There are no refunds. Why did you pay for this to begin with?', NOW(), 'TeamSpeak', 'https://ts.hivecom.net', 10080);
 
 -- Insert an expired test event
-INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
-  VALUES (NOW() - INTERVAL '10 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '5 days', 'Join us for a scenic 4-day hike through the beautiful Harz National Park!', 'Hike in Harz National Park', 'Harz National Park, Germany', '
+INSERT INTO "public"."events"("id", "created_at", "created_by", "date", "description", "title", "location", "markdown", "duration_minutes")
+  VALUES ('12', NOW() - INTERVAL '10 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '5 days', 'Join us for a scenic 4-day hike through the beautiful Harz National Park!', 'Hike in Harz National Park', 'Harz National Park, Germany', '
 Join us for an amazing 4-day hiking adventure in the Harz National Park, Germany!
 
 ## What we will explore

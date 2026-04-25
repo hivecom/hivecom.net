@@ -1115,6 +1115,7 @@ export type Database = {
           ban_reason: string | null
           ban_start: string | null
           banned: boolean
+          banner_extension: string | null
           birthday: string | null
           country: string | null
           created_at: string
@@ -1148,6 +1149,7 @@ export type Database = {
           ban_reason?: string | null
           ban_start?: string | null
           banned?: boolean
+          banner_extension?: string | null
           birthday?: string | null
           country?: string | null
           created_at?: string
@@ -1181,6 +1183,7 @@ export type Database = {
           ban_reason?: string | null
           ban_start?: string | null
           banned?: boolean
+          banner_extension?: string | null
           birthday?: string | null
           country?: string | null
           created_at?: string
@@ -1828,6 +1831,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      event_ended_at: {
+        Args: { ev: Database["public"]["Tables"]["events"]["Row"] }
+        Returns: string
+      }
       event_rsvp_window_open: {
         Args: { target_event_id: number }
         Returns: boolean
@@ -2243,6 +2250,36 @@ export type Database = {
       get_forum_activity_feed_today_count: {
         Args: { p_exclude?: string }
         Returns: number
+      }
+      get_past_events_count: { Args: never; Returns: number }
+      get_past_events_paginated: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          date: string
+          description: string
+          discord_event_id: string | null
+          discord_last_synced_at: string | null
+          duration_minutes: number | null
+          games: number[] | null
+          google_event_id: string | null
+          google_last_synced_at: string | null
+          id: number
+          link: string | null
+          location: string | null
+          markdown: string | null
+          modified_at: string | null
+          modified_by: string | null
+          note: string | null
+          title: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_private_config: { Args: { config_key: string }; Returns: Json }
       get_user_emails: {

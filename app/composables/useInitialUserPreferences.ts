@@ -9,15 +9,25 @@ import { useUserTheme } from './useUserTheme'
  * Designed to be awaited inside Loading.vue before the fade-out begins, so
  * that the correct theme is in place before the loading screen lifts.
  *
- * Safe to call when no user is signed in - both inner composables guard
- * against a null user and return immediately.
+ * Waits for the Supabase auth session to resolve before deciding whether the
+ * user is signed in, so that a cached guest theme is never incorrectly applied
+ * on a reload where the user is actually authenticated.
  */
 export function useInitialUserPreferences() {
+  const supabase = useSupabaseClient()
   const userId = useUserId()
   const { fetchSettings, settings } = useDataUserSettings()
   const { fetchAndApply } = useUserTheme()
 
   async function applyUserPreferences(): Promise<void> {
+    // Wait for auth session to resolve before branching on userId.
+    // useSupabaseUser starts as null even for logged-in users until the
+    // session is restored asynchronously - checking userId.value before this
+    // completes would incorrectly treat an authenticated user as a guest.
+    if (import.meta.client) {
+      await supabase.auth.getSession()
+    }
+
     // For guests, still attempt to restore a cached theme from localStorage.
     if (userId.value == null) {
       await fetchAndApply()

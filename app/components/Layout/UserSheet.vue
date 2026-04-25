@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Avatar, Button, Divider, Flex, Sheet, Spinner } from '@dolanske/vui'
+import { Button, Divider, Flex, Sheet, Spinner } from '@dolanske/vui'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
@@ -62,20 +63,18 @@ async function signOut() {
 <template>
   <div class="user-sheet">
     <Button square plain class="vui-button-accent-weak vui-button-rounded" aria-label="Open user menu" @click="open = true">
-      <Avatar
+      <AvatarMedia
         :size="30"
         :alt="userData?.username || 'User profile'"
         :url="userData?.avatarUrl || undefined"
       >
-        <template v-if="!userData?.avatarUrl" #default>
-          <template v-if="userInitials">
-            {{ userInitials }}
-          </template>
-          <template v-else>
-            <Spinner size="s" />
-          </template>
+        <template v-if="userInitials">
+          {{ userInitials }}
         </template>
-      </Avatar>
+        <template v-else>
+          <Spinner size="s" />
+        </template>
+      </AvatarMedia>
     </Button>
 
     <Sheet

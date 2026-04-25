@@ -44,11 +44,11 @@ function isStorageNotFoundError(error: unknown): boolean {
  */
 export function validateImageFile(file: File): { valid: boolean, error?: string } {
   // Check file type
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'video/webm']
   if (!allowedTypes.includes(file.type)) {
     return {
       valid: false,
-      error: 'Please select a valid image file (JPEG, PNG, WebP, or GIF)',
+      error: 'Please select a valid image file (JPEG, PNG, WebP, GIF, or WebM)',
     }
   }
 
@@ -175,9 +175,9 @@ export async function uploadUserAvatar(
       return { success: false, error: validation.error }
     }
 
-    // GIFs are kept as-is to preserve animation; all other formats convert to WebP
+    // GIFs and WebMs are kept as-is to preserve animation; all other formats convert to WebP
     let processedFile: File
-    if (file.type === 'image/gif') {
+    if (file.type === 'image/gif' || file.type === 'video/webm') {
       processedFile = file
     }
     else {
@@ -190,10 +190,13 @@ export async function uploadUserAvatar(
       }
     }
 
-    // Determine extension: gif stays gif, webp for converted, png as fallback
+    // Determine extension: gif stays gif, webm stays webm, webp for converted, png as fallback
     let fileExtension: string
     if (processedFile.type === 'image/gif') {
       fileExtension = 'gif'
+    }
+    else if (processedFile.type === 'video/webm') {
+      fileExtension = 'webm'
     }
     else if (processedFile.type === 'image/webp') {
       fileExtension = 'webp'
@@ -205,7 +208,7 @@ export async function uploadUserAvatar(
 
     // Delete any existing avatar files with other extensions so stale files
     // don't get served after an extension change (e.g. jpg → gif).
-    const otherExtensions = ['webp', 'gif', 'png', 'jpg', 'jpeg'].filter(e => e !== fileExtension)
+    const otherExtensions = ['webp', 'gif', 'webm', 'png', 'jpg', 'jpeg'].filter(e => e !== fileExtension)
     const staleFiles = (
       await Promise.all(
         otherExtensions.map(async (ext) => {
@@ -351,7 +354,7 @@ export async function getUserAvatarUrl(
     }
 
     // Common image extensions to try, in order of preference (WebP first for new uploads)
-    const extensions = ['webp', 'gif', 'png', 'jpg', 'jpeg']
+    const extensions = ['webp', 'webm', 'gif', 'png', 'jpg', 'jpeg']
 
     for (const extension of extensions) {
       const filePath = `${userId}/avatar.${extension}`
@@ -882,7 +885,7 @@ export async function deleteUserAvatar(
   try {
     // Find and delete ALL avatar files regardless of extension - stale files
     // from previous uploads (e.g. old jpg when current is gif) must all go.
-    const extensions = ['webp', 'gif', 'png', 'jpg', 'jpeg']
+    const extensions = ['webp', 'gif', 'webm', 'png', 'jpg', 'jpeg']
 
     const filesToDelete = (
       await Promise.all(

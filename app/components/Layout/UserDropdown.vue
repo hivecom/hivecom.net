@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Avatar, Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Spinner, Tooltip } from '@dolanske/vui'
+import { Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Spinner, Tooltip } from '@dolanske/vui'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
@@ -70,20 +71,18 @@ async function signOut() {
     <Dropdown ref="dropdown" min-width="268px" placement="bottom-end">
       <template #trigger="{ toggle }">
         <Button square plain class="vui-button-accent-weak vui-button-rounded" @click="toggle">
-          <Avatar
+          <AvatarMedia
             :size="30"
             :alt="userData?.username || 'User profile'"
             :url="userData?.avatarUrl || undefined"
           >
-            <template v-if="!userData?.avatarUrl" #default>
-              <template v-if="userInitials">
-                {{ userInitials }}
-              </template>
-              <template v-else>
-                <Spinner size="s" />
-              </template>
+            <template v-if="userInitials">
+              {{ userInitials }}
             </template>
-          </Avatar>
+            <template v-else>
+              <Spinner size="s" />
+            </template>
+          </AvatarMedia>
         </Button>
       </template>
       <DropdownTitle>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Avatar, Card, Flex, Skeleton } from '@dolanske/vui'
+import { Card, Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import { useDataUser } from '@/composables/useDataUser'
 
@@ -98,17 +99,17 @@ const lastSeen = computed(() => formatDate(props.profile?.last_seen))
             class="profile-summary-card__avatar-link"
             :aria-label="`View profile for ${displayName}`"
           >
-            <Avatar :size="128" :url="avatarUrl || undefined">
+            <AvatarMedia :size="128" :url="avatarUrl || undefined" :alt="displayName">
               <template v-if="!avatarUrl" #default>
                 {{ initials }}
               </template>
-            </Avatar>
+            </AvatarMedia>
           </NuxtLink>
-          <Avatar v-else :size="128" :url="avatarUrl || undefined">
+          <AvatarMedia v-else :size="128" :url="avatarUrl || undefined" :alt="displayName">
             <template v-if="!avatarUrl" #default>
               {{ initials }}
             </template>
-          </Avatar>
+          </AvatarMedia>
         </div>
 
         <div class="profile-summary-card__identity">

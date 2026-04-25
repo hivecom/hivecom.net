@@ -1318,6 +1318,15 @@ async function exportToWebPBlob(): Promise<Blob> {
 async function loadExistingBanner(supabase: SupabaseClient<Database>, userId: string) {
   loading.value = true
   try {
+    // Try to find existing banner across all supported extensions
+    const extChecks = await Promise.all(
+      ['webp', 'webm', 'gif'].map(async (e) => {
+        const { data } = await supabase.storage.from(USERS_BUCKET_ID).list(userId, { search: `banner.${e}` })
+        return data && data.length > 0 ? e : null
+      }),
+    )
+    const foundExt = extChecks.find(e => e !== null) ?? null
+
     const { data: files, error: listError } = await supabase.storage
       .from(USERS_BUCKET_ID)
       .list(userId, { search: 'banner.webp' })
@@ -1327,7 +1336,7 @@ async function loadExistingBanner(supabase: SupabaseClient<Database>, userId: st
 
     const { data: urlData } = supabase.storage
       .from(USERS_BUCKET_ID)
-      .getPublicUrl(`${userId}/banner.webp`)
+      .getPublicUrl(`${userId}/banner.${foundExt ?? 'webp'}`)
 
     if (!urlData?.publicUrl)
       return
@@ -1404,9 +1413,14 @@ async function saveBanner() {
       return
     }
 
+    // Remove stale animated banner files if switching from animated to webp
+    await Promise.all(['webm', 'gif'].map(e =>
+      supabase.storage.from(USERS_BUCKET_ID).remove([`${props.userId}/banner.${e}`]),
+    ))
+
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ has_banner: true })
+      .update({ has_banner: true, banner_extension: 'webp' })
       .eq('id', props.userId)
 
     if (profileError) {
@@ -1439,15 +1453,14 @@ async function deleteBanner() {
 
   try {
     const supabase = useSupabaseClient<Database>()
-    const filePath = `${props.userId}/banner.webp`
-
-    await supabase.storage
-      .from(USERS_BUCKET_ID)
-      .remove([filePath])
+    // Remove all possible banner extensions
+    await Promise.all(['webp', 'webm', 'gif'].map(e =>
+      supabase.storage.from(USERS_BUCKET_ID).remove([`${props.userId}/banner.${e}`]),
+    ))
 
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ has_banner: false })
+      .update({ has_banner: false, banner_extension: null })
       .eq('id', props.userId)
 
     if (profileError) {
@@ -2086,12 +2099,11 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
           </p>
           <Flex x-end y-center gap="s">
             <Button
-              variant="danger"
+              variant="gray"
               size="s"
               plain
-              :loading="saving"
-              :disabled="!userId || loading"
-              @click="deleteBanner"
+              :disabled="saving"
+              @click="requestClose"
             >
               Cancel
             </Button>

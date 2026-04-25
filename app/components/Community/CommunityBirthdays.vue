@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Avatar, Flex } from '@dolanske/vui'
+import { Flex } from '@dolanske/vui'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
 
@@ -65,14 +66,15 @@ function getUserInitials(username: string): string {
         >
           <UserPreviewHover :user-id="entry.id">
             <div class="birthday-avatar-ring">
-              <Avatar
+              <AvatarMedia
                 :size="56"
                 :url="entry.avatarUrl || undefined"
+                :alt="entry.username"
               >
                 <template v-if="!entry.avatarUrl" #default>
                   {{ getUserInitials(entry.username) }}
                 </template>
-              </Avatar>
+              </AvatarMedia>
             </div>
           </UserPreviewHover>
         </NuxtLink>

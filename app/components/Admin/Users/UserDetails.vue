@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { Enums } from '@/types/database.types'
+import { Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 
-import { Avatar, Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
-
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
+
 import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
 import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
 import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
@@ -548,11 +549,11 @@ function getUserInitials(username: string): string {
             <template #header>
               <h6>Avatar</h6>
             </template>
-            <Avatar :size="120" :url="avatarUrl || undefined">
+            <AvatarMedia :size="120" :url="avatarUrl || undefined" :alt="user.username">
               <template v-if="!avatarUrl" #default>
                 {{ getUserInitials(user.username) }}
               </template>
-            </Avatar>
+            </AvatarMedia>
           </Card>
         </Flex>
 

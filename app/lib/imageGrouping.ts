@@ -19,6 +19,26 @@ function isSoloImageASTNode(node: ASTNode): boolean {
   return kids.length === 1 && kids[0]?.type === 'element' && kids[0]?.tag === 'img'
 }
 
+// If a <p> contains multiple images and nothing else, split it into individual
+// solo-image <p> nodes so the grouping pass can pick them up.
+function splitMultiImageASTNode(node: ASTNode): ASTNode[] {
+  if (node.type !== 'element' || node.tag !== 'p')
+    return [node]
+  const kids = (node.children ?? []).filter(
+    c => !(c.type === 'text' && (c.value ?? '').trim() === ''),
+  )
+  if (kids.length < 2)
+    return [node]
+  if (!kids.every(c => c.type === 'element' && c.tag === 'img'))
+    return [node]
+  return kids.map(img => ({
+    type: 'element',
+    tag: 'p',
+    props: {},
+    children: [img],
+  }))
+}
+
 // Walk the root AST body and wrap runs of solo-image <p> nodes in a
 // <div class="md-image-group" data-count="N"> node so that Vue renders the
 // grouping natively and never patches it away.
@@ -26,11 +46,19 @@ export function groupImagesAST(body: ASTNode): ASTNode {
   if (!body.children)
     return body
 
+  // First pass: split any <p> nodes that contain multiple consecutive images
+  // into individual solo-image <p> nodes (happens when images have no blank
+  // line between them in the source markdown).
+  const flatChildren: ASTNode[] = []
+  for (const child of body.children) {
+    flatChildren.push(...splitMultiImageASTNode(child))
+  }
+
   const newChildren: ASTNode[] = []
   let i = 0
 
-  while (i < body.children.length) {
-    const node = body.children[i]!
+  while (i < flatChildren.length) {
+    const node = flatChildren[i]!
 
     if (!isSoloImageASTNode(node)) {
       newChildren.push(node)
@@ -41,8 +69,8 @@ export function groupImagesAST(body: ASTNode): ASTNode {
     // Collect full run of consecutive solo-image paragraphs.
     const run: ASTNode[] = []
     let j = i
-    while (j < body.children.length && isSoloImageASTNode(body.children[j]!)) {
-      run.push(body.children[j]!)
+    while (j < flatChildren.length && isSoloImageASTNode(flatChildren[j]!)) {
+      run.push(flatChildren[j]!)
       j++
     }
 
@@ -67,6 +95,25 @@ export function groupImagesAST(body: ASTNode): ASTNode {
 // ---------------------------------------------------------------------------
 // DOM-level grouping (used by the ProseMirror editor)
 // ---------------------------------------------------------------------------
+
+// If a <p> contains only <img> elements (no other non-whitespace content),
+// split it into individual solo-image <p> nodes in the DOM.
+function splitMultiImageNode(node: HTMLElement, container: HTMLElement): void {
+  const kids = [...node.childNodes].filter(
+    n => !(n.nodeType === Node.TEXT_NODE && n.textContent?.trim() === ''),
+  )
+  if (kids.length < 2)
+    return
+  if (!kids.every(n => n instanceof HTMLElement && n.tagName === 'IMG'))
+    return
+  // Insert individual <p><img></p> wrappers before the original node.
+  for (const img of kids) {
+    const p = document.createElement('p')
+    p.appendChild(img.cloneNode(true))
+    container.insertBefore(p, node)
+  }
+  container.removeChild(node)
+}
 
 // A "solo image node" is either:
 // - a <p> whose only non-whitespace child is an <img>  (MDC renderer output)
@@ -108,6 +155,13 @@ export function groupImages(container: HTMLElement): void {
   // next transaction so we don't need to preserve their positions.
   for (const gap of [...container.querySelectorAll('.ProseMirror-gapcursor')]) {
     gap.parentNode?.removeChild(gap)
+  }
+
+  // Split any <p> nodes that contain multiple consecutive images into
+  // individual solo-image <p> nodes before the grouping pass.
+  for (const child of [...container.childNodes]) {
+    if (child instanceof HTMLElement && child.tagName === 'P')
+      splitMultiImageNode(child, container)
   }
 
   const children = [...container.childNodes]

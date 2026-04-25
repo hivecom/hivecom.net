@@ -4,7 +4,7 @@ import CommunityBirthdays from '@/components/Community/CommunityBirthdays.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
-import BulkAvatarDisplayCluster from '@/components/Shared/BulkAvatarDisplayCluster.vue'
+import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import { useDataProjects } from '@/composables/useDataProjects'
 import { isBanActive } from '@/lib/banStatus'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -237,13 +237,14 @@ watch(user, () => {
             </p>
           </Flex>
         </Flex>
-        <BulkAvatarDisplayCluster
+        <BulkAvatarDisplay
           v-if="randomUsers.length > 0"
           :user-ids="randomUsers"
           :max-users="48"
           :avatar-size="64"
           :gap="12"
           :supporter-highlight="true"
+          cluster
         />
         <CommunityBirthdays
           v-if="birthdayUserIds.length > 0"

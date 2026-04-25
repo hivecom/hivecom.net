@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Flex } from '@dolanske/vui'
 import { computed, onUnmounted, ref, watch } from 'vue'
+import FileCropModal from '@/components/Shared/FileCropModal.vue'
 
 interface Props {
   expand?: boolean
@@ -24,7 +25,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   label: 'Choose File',
-  accept: 'image/jpeg,image/jpg,image/png,image/webp,image/gif',
+  accept: 'image/jpeg,image/jpg,image/png,image/webp,image/gif,video/webm',
   maxSizeMB: 5,
   variant: 'asset',
   showDelete: false,
@@ -46,12 +47,29 @@ const fileInput = ref<HTMLInputElement>()
 const dragOver = ref(false)
 const imageExists = ref(true) // Assume true initially, check when previewUrl changes
 const localPreviewUrl = ref<string | null>(null) // For showing preview of uploaded file
+const currentPreviewMime = ref<string | null>(null) // MIME type of the locally previewed file
 const internalError = ref<string | null>(null)
+
+// Crop modal state
+const cropModalOpen = ref(false)
+const cropSrc = ref<string | null>(null)
+const cropMime = ref<string | null>(null)
 
 // Computed properties
 const maxSizeBytes = computed(() => props.maxSizeMB * 1024 * 1024)
 const currentPreviewUrl = computed(() => localPreviewUrl.value || props.previewUrl)
-const hasPreview = computed(() => !!currentPreviewUrl.value && imageExists.value)
+const isVideoPreview = computed(() => {
+  const url = currentPreviewUrl.value
+  if (!url)
+    return false
+  // Check blob URL via local file type or extension hint in URL
+  if (localPreviewUrl.value) {
+    // We stash the MIME type when creating the object URL
+    return currentPreviewMime.value === 'video/webm'
+  }
+  return url.includes('avatar.webm')
+})
+const hasPreview = computed(() => !!currentPreviewUrl.value && (isVideoPreview.value || imageExists.value))
 const isAvatarVariant = computed(() => props.variant === 'avatar')
 const isIconVariant = computed(() => props.variant === 'icon')
 const allowedTypes = computed(() => props.accept.split(',').map(type => type.trim()).filter(Boolean))
@@ -138,6 +156,13 @@ function isAcceptedType(fileType: string): boolean {
   })
 }
 
+// MIME types that support cropping (static images only - not GIF/WebM)
+const CROPPABLE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+
+function isCroppable(mimeType: string): boolean {
+  return CROPPABLE_TYPES.includes(mimeType)
+}
+
 function processFile(file: File) {
   if (!isAcceptedType(file.type)) {
     const msg = 'Unsupported file type. Please upload an accepted image format.'
@@ -146,7 +171,9 @@ function processFile(file: File) {
     return
   }
 
-  if (file.size > maxSizeBytes.value) {
+  // Croppable images skip the size check here - the cropped output canvas will
+  // be smaller. Size is checked again in commitFile after cropping.
+  if (!isCroppable(file.type) && file.size > maxSizeBytes.value) {
     const msg = `File too large. Max size is ${props.maxSizeMB}MB.`
     internalError.value = msg
     emit('invalid', msg)
@@ -155,10 +182,35 @@ function processFile(file: File) {
 
   internalError.value = null
 
+  // Open crop modal for static images; skip for GIF/WebM
+  if (isCroppable(file.type)) {
+    if (cropSrc.value)
+      URL.revokeObjectURL(cropSrc.value)
+    cropSrc.value = URL.createObjectURL(file)
+    cropMime.value = file.type
+    cropModalOpen.value = true
+    return
+  }
+  // GIF/WebM - skip cropping, commit directly
+
+  commitFile(file)
+}
+
+function commitFile(file: File) {
+  // Final size gate - catches oversized GIF/WebM and post-crop blobs that are
+  // still too large (e.g. huge PNG exported losslessly).
+  if (file.size > maxSizeBytes.value) {
+    const msg = `File too large. Max size is ${props.maxSizeMB}MB.`
+    internalError.value = msg
+    emit('invalid', msg)
+    return
+  }
+
   if (!props.persistentDropzone) {
     if (localPreviewUrl.value)
       URL.revokeObjectURL(localPreviewUrl.value)
     localPreviewUrl.value = URL.createObjectURL(file)
+    currentPreviewMime.value = file.type
   }
   else if (localPreviewUrl.value) {
     URL.revokeObjectURL(localPreviewUrl.value)
@@ -167,6 +219,24 @@ function processFile(file: File) {
 
   imageExists.value = true
   emit('upload', file)
+}
+
+function handleCropConfirm(croppedFile: File) {
+  cropModalOpen.value = false
+  if (cropSrc.value) {
+    URL.revokeObjectURL(cropSrc.value)
+    cropSrc.value = null
+  }
+  commitFile(croppedFile)
+}
+
+function handleCropCancel() {
+  cropModalOpen.value = false
+  if (cropSrc.value) {
+    URL.revokeObjectURL(cropSrc.value)
+    cropSrc.value = null
+  }
+  cropMime.value = null
 }
 
 // Open file dialog
@@ -184,6 +254,7 @@ function removeFile() {
   if (localPreviewUrl.value) {
     URL.revokeObjectURL(localPreviewUrl.value)
     localPreviewUrl.value = null
+    currentPreviewMime.value = null
   }
   emit('remove')
 }
@@ -229,15 +300,29 @@ watch(() => props.previewUrl, async (newUrl) => {
   }
 }, { immediate: true })
 
+defineExpose({ openFileDialog })
+
 // Cleanup on unmount
 onUnmounted(() => {
-  if (localPreviewUrl.value) {
+  if (localPreviewUrl.value)
     URL.revokeObjectURL(localPreviewUrl.value)
-  }
+  if (cropSrc.value)
+    URL.revokeObjectURL(cropSrc.value)
 })
 </script>
 
 <template>
+  <FileCropModal
+    v-if="cropModalOpen && cropSrc && cropMime"
+    :open="cropModalOpen"
+    :image-src="cropSrc"
+    :image-mime="cropMime"
+    :circular="isAvatarVariant"
+    :aspect-ratio="!isAvatarVariant ? props.aspectRatio : undefined"
+    @confirm="handleCropConfirm"
+    @cancel="handleCropCancel"
+  />
+
   <Flex column :gap="0" class="file-upload" :class="{ 'file-upload--avatar': isAvatarVariant }" :expand="expand">
     <!-- Hidden file input -->
     <input
@@ -308,7 +393,16 @@ onUnmounted(() => {
         :class="{ 'file-upload__preview--avatar': isAvatarVariant }"
         :style="aspectRatioStyle"
       >
-        <img :src="currentPreviewUrl!" :alt="label" class="file-upload__image">
+        <video
+          v-if="isVideoPreview"
+          :src="currentPreviewUrl!"
+          class="file-upload__image"
+          autoplay
+          loop
+          muted
+          playsinline
+        />
+        <img v-else :src="currentPreviewUrl!" :alt="label" class="file-upload__image">
         <div class="file-upload__overlay">
           <Flex gap="xs" class="file-upload__actions" wrap x-center>
             <Button
@@ -480,7 +574,7 @@ onUnmounted(() => {
     &--avatar {
       width: 240px;
       height: 240px;
-      border-radius: var(--border-radius-pill);
+      border-radius: 100%;
     }
 
     &:hover .file-upload__overlay {
@@ -533,7 +627,7 @@ onUnmounted(() => {
     &--avatar {
       width: 212px;
       height: 212px;
-      border-radius: var(--border-radius-pill);
+      border-radius: 100%;
       padding: var(--space-m);
       min-height: auto;
     }
