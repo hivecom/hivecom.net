@@ -53,7 +53,8 @@ const profileLink = computed(() => {
     return null
 
   const isOwner = currentUser.value?.id === props.userId
-  if (!isOwner && !userData.value?.isPublic)
+  const isSignedIn = !!currentUser.value
+  if (!isOwner && !isSignedIn && !userData.value?.isPublic)
     return null
 
   if (userData.value?.username_set && userData.value?.username)

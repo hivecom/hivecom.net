@@ -10,7 +10,7 @@ import { Alert, Skeleton } from '@dolanske/vui'
 import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies'
 import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
-import { useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
+import { PAGE_SIZE_COMMENT, PAGE_SIZE_FORUM, useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
@@ -213,6 +213,7 @@ async function handleToggleSubscription() {
 const { settings } = useDataUserSettings()
 type ViewMode = 'flat' | 'threaded'
 const viewMode = ref<ViewMode>(settings.value.discussion_view_mode ?? 'flat')
+const discussionPageSize = computed(() => props.model === 'forum' ? PAGE_SIZE_FORUM : PAGE_SIZE_COMMENT)
 watch(() => settings.value.discussion_view_mode, (val) => {
   viewMode.value = val ?? 'flat'
 })
@@ -1146,6 +1147,7 @@ function isNodeVisible(node: ThreadNode): boolean {
               v-if="gap != null && gap.count > 0 && comment.id === gap.afterId"
               :count="gap.count"
               :loading="loadingGap"
+              :page-size="discussionPageSize"
               @load-up="loadGapFromBottom()"
               @load-down="loadGapFromTop()"
             />
@@ -1191,6 +1193,7 @@ function isNodeVisible(node: ThreadNode): boolean {
               v-if="gap != null && gap.count > 0 && node.comment.id === gap.afterId"
               :count="gap.count"
               :loading="loadingGap"
+              :page-size="discussionPageSize"
               @load-up="loadGapFromBottom()"
               @load-down="loadGapFromTop()"
             />
