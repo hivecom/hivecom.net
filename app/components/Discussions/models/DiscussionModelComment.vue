@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Comment, DiscussionSettings, ProvidedDiscussion } from '../Discussion.types'
+import type { Comment, DiscussionSettings, ProvidedDiscussion, RawComment } from '../Discussion.types'
 import { Alert, Button, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -223,7 +223,7 @@ const { displayReactions, toggleReaction } = useReactions({
 
 // If the comment has a reply_to_id but the reply wasn't joined in the initial
 // query (e.g. it wasn't in the loaded window), fetch it on demand.
-const fetchedReply = ref<import('../Discussion.types').RawComment | null>(null)
+const fetchedReply = ref<RawComment | null>(null)
 const replyLoading = ref(false)
 
 const resolvedReply = computed(() => data.value.reply ?? fetchedReply.value)
@@ -657,6 +657,7 @@ watch(
     margin-bottom: 4px;
     cursor: pointer;
     transition: var(--transition-fast);
+    max-width: 328px;
 
     .iconify {
       min-width: 14px;

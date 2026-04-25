@@ -57,7 +57,7 @@ function handleClick() {
       <MarkdownPreview v-if="post.type === 'Reply'" :markdown="post.title" :mention-lookup="props.mentionLookup" />
       <template v-else>{{ post.title }}</template>
     </strong>
-    <Flex v-if="!props.hideUser" y-center x-between expand class="forum__latest-footer" @click.stop>
+    <Flex v-if="!props.hideUser" y-center x-between class="forum__latest-footer" @click.stop>
       <UserDisplay
         :user-id="post.user"
         size="s"
