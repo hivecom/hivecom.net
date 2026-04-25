@@ -104,9 +104,10 @@ const { editorActive } = useThemeEditorState()
   <Modal
     :open="!!pendingTheme"
     centered
+    scrollable
     :card="{ footerSeparator: true }"
     :can-dismiss="false"
-    size="s"
+    size="m"
     @close="pendingTheme = null"
   >
     <template #header>
@@ -125,7 +126,7 @@ const { editorActive } = useThemeEditorState()
 
     <template #footer="{ close }">
       <Flex gap="xs" expand x-end>
-        <Button @click="pendingTheme = null; close()">
+        <Button plain @click="pendingTheme = null; close()">
           Cancel
         </Button>
         <Button @click="confirmPendingThemeWithoutCss(); close()">
@@ -141,9 +142,10 @@ const { editorActive } = useThemeEditorState()
   <Modal
     :open="!!pendingCssChange"
     centered
+    scrollable
     :card="{ footerSeparator: true }"
     :can-dismiss="false"
-    size="s"
+    size="m"
     @close="dismissCssChange()"
   >
     <template #header>
@@ -203,7 +205,7 @@ const { editorActive } = useThemeEditorState()
 }
 
 .theme-custom-css-viewer {
-  max-height: 328px;
+  // max-height: 328px;
   overflow-y: auto;
 }
 

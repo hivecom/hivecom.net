@@ -135,7 +135,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div :class="`page ${isMobile ? '' : 'container-m'}` ">
+  <div class="page container-m">
     <template v-if="loading && !authReady">
       <div class="loading-container">
         <Skeleton height="2.5rem" width="60%" style="margin-bottom: var(--space-l);" />
