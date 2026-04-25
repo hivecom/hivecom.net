@@ -9,10 +9,8 @@ import DeleteAccountCard from '@/components/Settings/DeleteAccountCard.vue'
 import GeneralUserSettings from '@/components/Settings/GeneralUserSettings.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
 import PasskeyCard from '@/components/Settings/PasskeyCard.vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
 import { scrollToId } from '@/lib/utils/common'
 
-const isMobile = useBreakpoint('<s')
 const isDev = import.meta.dev
 
 const supabase = useSupabaseClient()
