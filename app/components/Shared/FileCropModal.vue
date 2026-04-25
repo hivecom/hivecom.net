@@ -159,21 +159,27 @@ function handleCancel() {
   &__foreground {
     background: var(--color-bg-lowered);
   }
+
+  &__foreground {
+    opacity: 0.75;
+  }
 }
 
 .vue-rectangle-stencil__line,
 .vue-circle-stencil__line {
-  border-color: var(--color-accent) !important;
+  border-color: var(--color-text);
 }
 
-.vue-handler-wrapper__draggable {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+.vue-simple-handler {
+  background: var(--dark-color-accent);
+  box-shadow: var(--box-shadow);
 }
 
 .vue-simple-line {
   background: none;
-  border-color: var(--color-accent);
+  // Setting white for both light & dark mode. Accent on light mode is very hard
+  // to read and I don't want themes tp override this
+  border-color: var(--color-text);
   border-style: dashed;
 }
 </style>

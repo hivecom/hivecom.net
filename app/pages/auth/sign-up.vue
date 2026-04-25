@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Alert, Button, Card, Flex, Input } from '@dolanske/vui'
+import { Alert, Button, Card, Divider, Flex, Input } from '@dolanske/vui'
 import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import '@/assets/elements/auth.scss'
@@ -130,7 +130,7 @@ async function signUpWithGoogle() {
                 </Flex>
               </Button>
             </Flex>
-            <Separator>or</Separator>
+            <Divider>or</Divider>
             <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
             <Button expand variant="fill" :loading="loading" :disabled="!email" @click="signInWithOtp">
               Sign up
