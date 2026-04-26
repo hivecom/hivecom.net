@@ -996,6 +996,30 @@ watch(content, async (newContent) => {
   }
 })
 
+// When expanded modal closes, the outer Tiptap editor missed all content
+// updates (they were skipped to avoid reflow). Force a sync now.
+watch(expandedOpen, async (isOpen) => {
+  if (isOpen || !editor.value || editorMode.value === 'plain')
+    return
+
+  const currentMarkdown = getEditorMarkdown()
+  if (currentMarkdown === (content.value ?? ''))
+    return
+
+  if (!editor.value?.view?.dom?.isConnected) {
+    await nextTick()
+    if (!editor.value?.view?.dom?.isConnected)
+      return
+  }
+
+  externalContentUpdate = true
+  editor.value.commands.setContent(content.value ?? '', {
+    contentType: 'markdown',
+  })
+  externalContentUpdate = false
+  editorIsEmpty.value = editor.value.isEmpty ?? true
+})
+
 const elementId = useId()
 const contentRulesModalOpen = ref(false)
 const shouldShowContentRulesOverlay = computed(() => fetchedContentRulesAgreement.value === false)

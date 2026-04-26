@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Flex, Grid, Sheet, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, CopyClipboard, Flex, Grid, Sheet, Tooltip } from '@dolanske/vui'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import EventRSVPCount from '@/components/Events/EventRSVPCount.vue'
@@ -251,6 +251,66 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
           </template>
 
           <MarkdownRenderer :md="props.event.markdown" class="event-markdown-content" />
+        </Card>
+
+        <!-- Sync status -->
+        <Card separators class="card-bg">
+          <template #header>
+            <h6>Sync Status</h6>
+          </template>
+
+          <Flex column gap="l" expand>
+            <!-- Discord -->
+            <Grid class="detail-item" expand columns="1fr 2fr">
+              <Flex gap="xs" y-center>
+                <Icon name="ph:discord-logo" size="14" class="text-color-light" />
+                <span class="text-color-light text-bold">Discord:</span>
+              </Flex>
+              <Flex column :gap="0">
+                <CopyClipboard v-if="props.event.discord_event_id" :text="props.event.discord_event_id">
+                  <span class="text-xs text-mono text-color-light">{{ props.event.discord_event_id }}</span>
+                </CopyClipboard>
+                <span v-else class="text-color-lighter text-xs">Not synced</span>
+                <span v-if="props.event.discord_last_synced_at" class="text-xs text-color-lighter">
+                  Last synced <TimestampDate :date="props.event.discord_last_synced_at" relative />
+                </span>
+              </Flex>
+            </Grid>
+
+            <!-- Google Calendar (official) -->
+            <Grid class="detail-item" expand columns="1fr 2fr">
+              <Flex gap="xs" y-center>
+                <Icon name="ph:google-logo" size="14" class="text-color-light" />
+                <span class="text-color-light text-bold">Official:</span>
+              </Flex>
+              <Flex column :gap="0">
+                <CopyClipboard v-if="props.event.google_event_id" :text="props.event.google_event_id">
+                  <span class="text-xs text-mono text-color-light">{{ props.event.google_event_id }}</span>
+                </CopyClipboard>
+                <span v-else class="text-color-lighter text-xs">Not synced</span>
+                <span v-if="props.event.google_last_synced_at" class="text-xs text-color-lighter">
+                  Last synced <TimestampDate :date="props.event.google_last_synced_at" relative />
+                </span>
+              </Flex>
+            </Grid>
+
+            <!-- Google Calendar (community) -->
+            <Grid class="detail-item" expand columns="1fr 2fr">
+              <Flex gap="xs" y-center>
+                <Icon name="ph:google-logo" size="14" class="text-color-light" />
+                <span class="text-color-light text-bold">Community:</span>
+              </Flex>
+              <Flex column :gap="0">
+                <CopyClipboard v-if="props.event.google_community_event_id" :text="props.event.google_community_event_id">
+                  <span class="text-xs text-mono text-color-light">{{ props.event.google_community_event_id }}</span>
+                </CopyClipboard>
+                <span v-else class="text-color-lighter text-xs">Not synced</span>
+                <span v-if="props.event.google_community_last_synced_at" class="text-xs text-color-lighter">
+                  Last synced <TimestampDate :date="props.event.google_community_last_synced_at" relative />
+                </span>
+              </Flex>
+            </Grid>
+          </Flex>
         </Card>
 
         <!-- Metadata -->

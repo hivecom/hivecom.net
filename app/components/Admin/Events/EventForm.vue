@@ -277,7 +277,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
         <Switch
           v-model="eventForm.is_official"
           label="Official Event"
-          hint="Official events are synced to Discord and Google Calendar."
+          hint="All events are synced to Discord. Official events sync to the official Google Calendar, non-official events to the community Google Calendar."
         />
 
         <Input

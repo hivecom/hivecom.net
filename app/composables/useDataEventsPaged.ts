@@ -1,7 +1,18 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref, watch } from 'vue'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
+
+// Typed helper to call RPCs that have a no-arg overload first in the union,
+// which causes TypeScript to reject the args object. This avoids `any`.
+async function rpc<T>(
+  client: SupabaseClient<Database>,
+  fn: string,
+  args: Record<string, unknown>,
+) {
+  return (client.rpc as (fn: string, args: Record<string, unknown>) => ReturnType<SupabaseClient<Database>['rpc']>)(fn, args) as ReturnType<SupabaseClient<Database>['rpc']> & Promise<{ data: T | null, error: unknown }>
+}
 
 /**
  * Server-side paginated events composable for the listing view.
@@ -17,33 +28,67 @@ import { expandRecurringEvent } from '@/lib/utils/rrule'
  *
  * Ongoing and upcoming are fetched together in a single query - there will never
  * be enough of them to warrant pagination.
+ *
+ * Optional `search` and `officialFilter` refs are respected by all three buckets:
+ * - Active/upcoming: filtered client-side after fetch
+ * - Past: passed as params to the server-side RPCs
  */
-export function useDataEventsPaged(pageSize: Ref<number>) {
+export function useDataEventsPaged(
+  pageSize: Ref<number>,
+  search?: Ref<string>,
+  officialFilter?: Ref<boolean | null>,
+) {
   const supabase = useSupabaseClient<Database>()
 
   // ── Active events (ongoing + upcoming) ───────────────────────────────────
 
-  const ongoingEvents = ref<Tables<'events'>[]>([])
-  const upcomingEvents = ref<Tables<'events'>[]>([])
+  const _allActiveEvents = ref<Tables<'events'>[]>([])
   const loadingActive = ref(false)
   const errorActive = ref<string | null>(null)
+
+  const ongoingEvents = computed(() => {
+    const now = new Date()
+    return _allActiveEvents.value
+      .filter((event) => {
+        const start = new Date(event.date)
+        const end = event.duration_minutes != null
+          ? new Date(start.getTime() + event.duration_minutes * 60 * 1000)
+          : start
+        return start <= now && now <= end
+      })
+      .filter(event => applyFilters(event))
+  })
+
+  const upcomingEvents = computed(() => {
+    const now = new Date()
+    return _allActiveEvents.value
+      .filter(event => new Date(event.date) > now)
+      .filter(event => applyFilters(event))
+  })
+
+  function applyFilters(event: Tables<'events'>): boolean {
+    const q = search?.value.trim().toLowerCase() ?? ''
+    if (q) {
+      const inTitle = event.title.toLowerCase().includes(q)
+      const inDescription = event.description.toLowerCase().includes(q)
+      if (!inTitle && !inDescription)
+        return false
+    }
+    if (officialFilter?.value != null && event.is_official !== officialFilter.value)
+      return false
+    return true
+  }
 
   async function fetchActive(): Promise<void> {
     loadingActive.value = true
     errorActive.value = null
 
     try {
-      // Fetch all events that start in the future OR have started but not yet ended.
-      // We pull a generous window: anything whose start is within the past 7 days
-      // (to catch long-running events) or is in the future.
       const nowDate = new Date()
       const sevenDaysAgo = new Date(nowDate.getTime() - 7 * 24 * 60 * 60 * 1000)
       const oneYearAhead = new Date(nowDate.getTime() + 365 * 24 * 60 * 60 * 1000)
       const sevenDaysAgoIso = sevenDaysAgo.toISOString()
 
-      // Fetch two sets:
-      // 1. Normal events starting within the active window
-      // 2. Recurring parent events (recurrence_rule IS NOT NULL) regardless of start date
       const [inWindowResult, recurringResult] = await Promise.all([
         supabase
           .from('events')
@@ -63,7 +108,6 @@ export function useDataEventsPaged(pageSize: Ref<number>) {
       if (recurringResult.error)
         throw recurringResult.error
 
-      // Deduplicate by id and expand recurring events
       const seen = new Set<number>()
       const merged: Tables<'events'>[] = []
       for (const row of [...(inWindowResult.data ?? []), ...(recurringResult.data ?? [])]) {
@@ -73,27 +117,11 @@ export function useDataEventsPaged(pageSize: Ref<number>) {
         }
       }
 
-      // Expand recurring events into virtual occurrences within [sevenDaysAgo, oneYearAhead]
       const expanded: Tables<'events'>[] = merged.flatMap(event =>
         expandRecurringEvent(event, sevenDaysAgo, oneYearAhead),
       )
 
-      // Filter out occurrences before sevenDaysAgo (can come from non-recurring events
-      // that were just outside the window, or edge cases in expansion)
-      const events = expanded.filter(event => new Date(event.date) >= sevenDaysAgo)
-
-      ongoingEvents.value = events.filter((event) => {
-        const start = new Date(event.date)
-        const end = event.duration_minutes != null
-          ? new Date(start.getTime() + event.duration_minutes * 60 * 1000)
-          : start
-        return start <= nowDate && nowDate <= end
-      })
-
-      upcomingEvents.value = events.filter((event) => {
-        const start = new Date(event.date)
-        return start > nowDate
-      })
+      _allActiveEvents.value = expanded.filter(event => new Date(event.date) >= sevenDaysAgo)
     }
     catch (err) {
       errorActive.value = err instanceof Error ? err.message : 'Failed to fetch events'
@@ -112,8 +140,10 @@ export function useDataEventsPaged(pageSize: Ref<number>) {
   const errorPast = ref<string | null>(null)
 
   async function fetchPastCount(): Promise<void> {
-    const { data, error } = await supabase
-      .rpc('get_past_events_count')
+    const { data, error } = await rpc<number>(supabase, 'get_past_events_count', {
+      p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
+      p_is_official: officialFilter?.value ?? null,
+    })
 
     if (!error && data != null)
       pastTotalCount.value = Number(data)
@@ -126,11 +156,12 @@ export function useDataEventsPaged(pageSize: Ref<number>) {
     try {
       const from = (page - 1) * pageSize.value
 
-      const { data, error } = await supabase
-        .rpc('get_past_events_paginated', {
-          p_limit: pageSize.value,
-          p_offset: from,
-        })
+      const { data, error } = await rpc<Tables<'events'>[]>(supabase, 'get_past_events_paginated', {
+        p_limit: pageSize.value,
+        p_offset: from,
+        p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
+        p_is_official: officialFilter?.value ?? null,
+      })
 
       if (error)
         throw error
@@ -161,6 +192,23 @@ export function useDataEventsPaged(pageSize: Ref<number>) {
     void fetchPast(1)
   })
 
+  // Re-fetch past when filters change; reset to page 1
+  if (search) {
+    watchDebounced(search, () => {
+      pastPage.value = 1
+      void fetchPastCount()
+      void fetchPast(1)
+    }, { debounce: 300 })
+  }
+
+  if (officialFilter) {
+    watch(officialFilter, () => {
+      pastPage.value = 1
+      void fetchPastCount()
+      void fetchPast(1)
+    })
+  }
+
   onMounted(() => {
     void fetchActive()
     void fetchPastCount()
@@ -173,7 +221,7 @@ export function useDataEventsPaged(pageSize: Ref<number>) {
   const error = computed(() => errorActive.value ?? errorPast.value)
 
   return {
-    // Active
+    // Active (computed, filtered)
     ongoingEvents,
     upcomingEvents,
     loadingActive,

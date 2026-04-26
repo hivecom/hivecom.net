@@ -1,6 +1,7 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useSupabaseUser } from '#imports'
 import { useCache } from './useCache'
 
 const CACHE_KEY = 'events:all'
@@ -72,6 +73,20 @@ export function useDataEvents() {
 
   onMounted(() => {
     void fetch()
+  })
+
+  // Bust cache and re-fetch when user signs in - auth state changes what events
+  // are visible (e.g. private/restricted events), so stale guest cache must not persist.
+  let _wasAuthed = false
+  const currentUser = useSupabaseUser()
+  watch(currentUser, (newUser) => {
+    const isAuthed = newUser != null
+    const justSignedIn = !_wasAuthed && isAuthed
+    _wasAuthed = isAuthed
+    if (justSignedIn) {
+      invalidate()
+      void fetch()
+    }
   })
 
   return {

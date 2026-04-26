@@ -48,8 +48,10 @@ const sortedData = computed<FormattedEvents>(() => {
         :to="`/events/${event.id}`"
         class="calendar-list__list-item"
         :class="{
-          'calendar-list__list-item--ongoing': event.ongoing,
-          'calendar-list__list-item--upcoming': event.upcoming,
+          'calendar-list__list-item--ongoing': event.ongoing && event.is_official,
+          'calendar-list__list-item--ongoing-community': event.ongoing && !event.is_official,
+          'calendar-list__list-item--upcoming': event.upcoming && event.is_official,
+          'calendar-list__list-item--community': event.upcoming && !event.is_official,
         }"
       >
         <div class="item-indicator" />
@@ -117,12 +119,34 @@ const sortedData = computed<FormattedEvents>(() => {
       }
     }
 
+    &--ongoing-community {
+      background-color: var(--color-bg-green-raised);
+      color: var(--color-text);
+
+      &:hover {
+        background-color: var(--color-bg-green-lowered);
+      }
+
+      .item-indicator {
+        background-color: var(--color-text-green);
+      }
+    }
+
     &--upcoming {
       background-color: var(--color-bg-raised);
       color: var(--color-text);
 
       .item-indicator {
         background-color: var(--color-accent);
+      }
+    }
+
+    &--community {
+      background-color: var(--color-bg-raised);
+      color: var(--color-text);
+
+      .item-indicator {
+        background-color: var(--color-text-green);
       }
     }
   }
@@ -138,6 +162,18 @@ const sortedData = computed<FormattedEvents>(() => {
 
     .item-indicator {
       background-color: var(--color-text);
+    }
+  }
+
+  .calendar-list__list-item--ongoing-community {
+    background-color: var(--color-bg-green-lowered);
+
+    &:hover {
+      background-color: var(--color-bg-green-raised);
+    }
+
+    .item-indicator {
+      background-color: var(--color-text-green);
     }
   }
 }

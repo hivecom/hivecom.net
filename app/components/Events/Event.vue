@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Card, Flex, Tooltip } from '@dolanske/vui'
+import { humanizeRrule } from '@/lib/utils/rrule'
 // import { useBreakpoint } from '@/lib/mediaQuery'
 import CountdownTimer from './CountdownTimer.vue'
 import EventRSVPCount from './EventRSVPCount.vue'
@@ -93,6 +94,10 @@ updateTime()
             <Badge v-if="props.data.is_official" variant="accent" size="l">
               <Icon name="ph:star-fill" />
               Official
+            </Badge>
+            <Badge v-if="props.data.recurrence_rule" variant="neutral" size="l">
+              <Icon name="ph:arrows-clockwise" />
+              {{ humanizeRrule(props.data.recurrence_rule) }}
             </Badge>
             <Badge v-if="props.data.location" variant="neutral" size="l">
               <Icon name="ph:map-pin-fill" />

@@ -214,21 +214,6 @@ Deno.serve(async (req) => {
       const supabase = createSupabaseClient();
       const eventRecord = await fetchEventRecord(supabase, eventId);
 
-      if (!eventRecord.is_official) {
-        console.log(`Skipping Discord sync for non-official event ${eventId}`);
-        return new Response(
-          JSON.stringify({
-            success: true,
-            skipped: true,
-            reason: "Event is not official",
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          },
-        );
-      }
-
       if (action === "INSERT") {
         result = await createDiscordEvent(
           discordBotToken,

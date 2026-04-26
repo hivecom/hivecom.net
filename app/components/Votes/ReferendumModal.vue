@@ -86,25 +86,36 @@ function populateForm(referendum: Tables<'referendums'>) {
 }
 
 watch(
-  () => props.editedItem,
-  (item) => {
-    if (item != null) {
-      populateForm(item)
+  () => props.open,
+  (open) => {
+    if (open) {
+      if (props.editedItem != null) {
+        populateForm(props.editedItem)
+      }
+      else {
+        resetForm()
+      }
     }
     else {
       resetForm()
-    }
-  },
-  { immediate: true },
-)
-
-// Reset loading when closed
-watch(
-  () => props.open,
-  (open) => {
-    if (!open) {
       saveLoading.value = false
       deleteLoading.value = false
+      showDeleteConfirm.value = false
+    }
+  },
+)
+
+// Re-populate when editedItem changes while modal is open
+watch(
+  () => props.editedItem,
+  (item) => {
+    if (props.open) {
+      if (item != null) {
+        populateForm(item)
+      }
+      else {
+        resetForm()
+      }
     }
   },
 )
@@ -275,11 +286,17 @@ const isMobile = useBreakpoint('<s')
   <Modal
     :open="open"
     size="m"
-    :card="{ footerSeparator: true }"
+    :can-dismiss="false"
+    :card="{ separators: true }"
     @close="handleClose"
   >
     <template #header>
-      <h4>{{ isEditing ? 'Edit vote' : 'New vote' }}</h4>
+      <Flex column :gap="0">
+        <h4>{{ isEditing ? 'Edit vote' : 'New vote' }}</h4>
+        <p class="text-color-light text-xs">
+          {{ isEditing ? props.editedItem?.title : 'Create vote for others to participate in' }}
+        </p>
+      </Flex>
     </template>
 
     <p class="mb-l text-color-light">

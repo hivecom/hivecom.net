@@ -688,12 +688,12 @@ ON CONFLICT (id)
     birthday = EXCLUDED.birthday;
 
 -- Insert an upcoming test event (moved 2 weeks earlier)
-INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, games, is_official)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '16 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, games, is_official, recurrence_rule)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b3', NOW() + INTERVAL '16 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
 It is that time of the month again! Join us for our community gaming night where we play various games together, chat, and have fun.
 
 We will probably be playing on our CS2 server, but feel free to suggest other games as well.
-  ', ARRAY[1, 2], false);
+  ', ARRAY[1, 2], false, 'FREQ=MONTHLY');
 
 -- Insert Hivecom Meetup event in Prague
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes, is_official)

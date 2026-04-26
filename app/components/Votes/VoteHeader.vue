@@ -1,6 +1,7 @@
 <script setup lang='ts'>
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Flex } from '@dolanske/vui'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
 const props = defineProps<{
   referendum: Tables<'referendums'>
@@ -23,9 +24,14 @@ const props = defineProps<{
       </h1>
     </Flex>
 
-    <p v-if="props.referendum.description" class="text-xl text-color-light mb-xl">
+    <p v-if="props.referendum.description" class="text-xl text-color-light mb-m">
       {{ props.referendum.description }}
     </p>
+
+    <Flex y-center gap="xs" class="vote-header__organizer mb-xl">
+      <span class="vote-header__organizer-label">Created by</span>
+      <UserDisplay :user-id="referendum.created_by" size="s" :show-profile-preview="true" :hide-avatar="false" />
+    </Flex>
 
     <Flex x-between y-center expand class="mt-m" wrap>
       <Flex gap="xs" wrap>
@@ -38,6 +44,11 @@ const props = defineProps<{
         </Badge>
         <Badge v-else>
           Single Choice
+        </Badge>
+
+        <Badge v-if="!props.referendum.is_public" variant="neutral">
+          <Icon name="ph:lock" />
+          Private
         </Badge>
 
         <Badge v-if="!props.isUpcoming">
@@ -66,3 +77,14 @@ const props = defineProps<{
     </Flex>
   </section>
 </template>
+
+<style scoped lang="scss">
+.vote-header {
+  &__organizer {
+    &-label {
+      font-size: var(--font-size-s);
+      color: var(--color-text-lighter);
+    }
+  }
+}
+</style>

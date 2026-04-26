@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
-import { Button, Flex, theme } from '@dolanske/vui'
+import { Button, Flex, Select, theme } from '@dolanske/vui'
 import { useDebounceFn } from '@vueuse/core'
 import dayjs from 'dayjs'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -10,11 +10,40 @@ import { dateFormat } from '@/lib/utils/date'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
 import EventCalendarColumnList from './EventCalendarColumnList.vue'
 
+interface SelectOption {
+  label: string
+  value: string
+}
+
+interface Props {
+  officialFilter?: boolean | null
+}
+
 interface Emits {
   (e: 'openEvent', event: Tables<'events'>): void
 }
 
+const props = withDefaults(defineProps<Props>(), {
+  officialFilter: null,
+})
+
 const emit = defineEmits<Emits>()
+
+const officialFilterOption = ref<SelectOption[] | undefined>(undefined)
+const officialFilterOptions: SelectOption[] = [
+  { label: 'Official', value: 'official' },
+  { label: 'Community', value: 'unofficial' },
+]
+const resolvedOfficialFilter = computed<boolean | null>(() => {
+  if (props.officialFilter != null)
+    return props.officialFilter
+  const val = officialFilterOption.value?.[0]?.value
+  if (val === 'official')
+    return true
+  if (val === 'unofficial')
+    return false
+  return null
+})
 
 const supabase = useSupabaseClient<Database>()
 
@@ -107,12 +136,19 @@ const date = ref(dayjs().startOf('day'))
 // Theme detection
 const isDark = computed(() => theme.value === 'dark')
 
+const filteredEvents = computed(() => {
+  const filter = resolvedOfficialFilter.value
+  if (filter === null)
+    return windowedEvents.value
+  return windowedEvents.value.filter(e => e.is_official === filter)
+})
+
 // Convert events to calendar attributes
 // eslint-disable-next-line ts/no-explicit-any
 const calendarAttributes = computed<any[]>(() => {
   const now = dayjs()
 
-  return windowedEvents.value.map((event) => {
+  return filteredEvents.value.map((event) => {
     const eventStart = dayjs(event.date)
     const eventEnd = event.duration_minutes
       ? eventStart.add(event.duration_minutes, 'minute')
@@ -127,13 +163,15 @@ const calendarAttributes = computed<any[]>(() => {
     const isPast = eventEnd ? eventEnd.isBefore(now) : eventStart.isBefore(now)
 
     // Determine color based on event status
+    // Official upcoming events use 'future' (accent), community events use 'community' (green)
+    const isOfficial = event.is_official
     let color = 'green'
 
     if (isOngoing) {
       color = 'ongoing'
     }
     else if (isUpcoming) {
-      color = 'future'
+      color = isOfficial ? 'future' : 'community'
     }
     else if (isPast) {
       color = 'past'
@@ -318,7 +356,7 @@ function moveToToday() {
 
 const upcomingEvents = computed(() => {
   // eslint-disable-next-line ts/no-explicit-any
-  return windowedEvents.value.reduce((acc: any, event) => {
+  return filteredEvents.value.reduce((acc: any, event) => {
     const eventMonth = dayjs(event.date).startOf('month')
     const monthDiff = eventMonth.diff(startMonth.value, 'month')
 
@@ -376,14 +414,24 @@ const pageTitle = computed(() => {
 </script>
 
 <template>
-  <Flex gap="m" class="events-calendar__title" y-center>
-    <h2 v-if="pageTitle">
-      {{ pageTitle }}
-    </h2>
-
-    <Button size="s" plain outline :expand="!pageTitle" @click="moveToToday">
-      Today
-    </Button>
+  <Flex gap="m" class="events-calendar__title" x-between y-center>
+    <Flex gap="m" y-center>
+      <h2 v-if="pageTitle">
+        {{ pageTitle }}
+      </h2>
+      <Button size="s" plain outline @click="moveToToday">
+        Today
+      </Button>
+    </Flex>
+    <Select
+      v-if="useSupabaseUser().value"
+      v-model="officialFilterOption"
+      :options="officialFilterOptions"
+      placeholder="Official"
+      single
+      show-clear
+      size="s"
+    />
 
     <!-- <Dropdown ref="dropdownRef">
       <template #trigger="{ toggle }">
@@ -911,6 +959,23 @@ const pageTitle = computed(() => {
 
 .vc-dots .vc-dot.vc-future {
   background-color: var(--color-accent) !important;
+}
+
+// Community (non-official) upcoming events - green
+.vc-community {
+  .vc-highlight {
+    background-color: var(--color-bg-green-lowered) !important;
+    z-index: 2;
+  }
+
+  &.vc-day-content {
+    border: none !important;
+    color: var(--color-text) !important;
+  }
+}
+
+.vc-dots .vc-dot.vc-community {
+  background-color: var(--color-text-green) !important;
 }
 
 // Mobile optimizations

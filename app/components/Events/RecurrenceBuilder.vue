@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Flex, Input, Select } from '@dolanske/vui'
+import { Button, Calendar, Flex, Input, Select } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
@@ -42,8 +42,17 @@ const freq = ref<Freq>('NONE')
 const interval = ref<number>(1)
 const selectedDays = ref<DayCode[]>([])
 const monthDay = ref<number>(1)
+const untilDate = ref<Date | null>(null)
 
 // ── Parse incoming RRULE into internal state ───────────────────────────────────
+
+function parseUntil(until: string): Date | null {
+  // Format: YYYYMMDDTHHmmssZ
+  const match = until.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/)
+  if (!match)
+    return null
+  return new Date(`${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}Z`)
+}
 
 function parseRule(rule: string | null) {
   if (!rule) {
@@ -51,6 +60,7 @@ function parseRule(rule: string | null) {
     interval.value = 1
     selectedDays.value = []
     monthDay.value = 1
+    untilDate.value = null
     return
   }
 
@@ -64,9 +74,15 @@ function parseRule(rule: string | null) {
     ? (parts.BYDAY.split(',') as DayCode[])
     : []
   monthDay.value = parts.BYMONTHDAY ? Number.parseInt(parts.BYMONTHDAY, 10) : 1
+  untilDate.value = parts.UNTIL ? parseUntil(parts.UNTIL) : null
 }
 
 // ── Build RRULE from internal state ───────────────────────────────────────────
+
+function formatUntil(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}Z`
+}
 
 function buildRule(): string | null {
   if (freq.value === 'NONE')
@@ -83,6 +99,9 @@ function buildRule(): string | null {
   if (freq.value === 'MONTHLY' && monthDay.value >= 1 && monthDay.value <= 31)
     parts.push(`BYMONTHDAY=${monthDay.value}`)
 
+  if (untilDate.value)
+    parts.push(`UNTIL=${formatUntil(untilDate.value)}`)
+
   return parts.join(';')
 }
 
@@ -94,7 +113,7 @@ watch(() => props.modelValue, (val) => {
 
 // ── Sync: state -> emit ───────────────────────────────────────────────────────
 
-watch([freq, interval, selectedDays, monthDay], () => {
+watch([freq, interval, selectedDays, monthDay, untilDate], () => {
   emit('update:modelValue', buildRule())
 }, { deep: true })
 
@@ -114,6 +133,7 @@ const freqModel = computed<FreqSelectOption[]>({
     interval.value = 1
     selectedDays.value = []
     monthDay.value = 1
+    untilDate.value = null
   },
 })
 
@@ -156,6 +176,16 @@ const monthDayInputValue = computed({
     const n = Number.parseInt(v, 10)
     monthDay.value = Number.isFinite(n) && n >= 1 && n <= 31 ? n : 1
   },
+})
+
+const untilDateLabel = computed(() => {
+  if (!untilDate.value)
+    return 'No end date'
+  return untilDate.value.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
 })
 </script>
 
@@ -214,6 +244,41 @@ const monthDayInputValue = computed({
         </template>
       </template>
     </Flex>
+
+    <!-- End date row -->
+    <template v-if="freq !== 'NONE'">
+      <Flex gap="xs" y-center>
+        <span class="text-s text-color-light">until</span>
+        <Calendar
+          v-model="untilDate"
+          format="yyyy-MM-dd"
+        >
+          <template #trigger>
+            <Button
+              size="s"
+              variant="gray"
+              class="until-btn"
+            >
+              {{ untilDateLabel }}
+              <template #end>
+                <Icon name="ph:calendar" size="14" />
+              </template>
+            </Button>
+          </template>
+        </Calendar>
+        <Button
+          v-if="untilDate"
+          size="s"
+          variant="gray"
+          plain
+          square
+          title="Clear end date"
+          @click="untilDate = null"
+        >
+          <Icon name="ph:x" size="14" />
+        </Button>
+      </Flex>
+    </template>
   </Flex>
 </template>
 
@@ -252,5 +317,9 @@ const monthDayInputValue = computed({
       color: var(--color-text-invert);
     }
   }
+}
+
+.until-btn {
+  min-width: 140px;
 }
 </style>

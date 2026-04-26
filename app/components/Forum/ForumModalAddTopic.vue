@@ -3,8 +3,9 @@ import type { RefreshTopicIconFn } from '@/components/Forum/Forum.keys'
 import type { TopicWithDiscussions } from '@/pages/forum/index.vue'
 import type { Tables } from '@/types/database.overrides'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, Card, Dropdown, DropdownTitle, Flex, Input, Modal, pushToast, searchString, Switch } from '@dolanske/vui'
+import { Button, Card, Dropdown, DropdownTitle, Flex, Input, Modal, pushToast, searchString, Switch, Tooltip } from '@dolanske/vui'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { invalidateTopicIconCache } from '@/composables/useTopicIcon'
 import { deleteTopicIcon, getTopicIconUrl, uploadTopicIcon } from '@/lib/storage'
@@ -22,11 +23,19 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'created', topic: TopicWithDiscussions): void
+  (e: 'deleted', topicId: string): void
 }>()
 
 const supabase = useSupabaseClient()
 const search = ref('')
 const isEditing = computed(() => !!props.editedItem)
+
+const userId = useUserId()
+const { user: cachedUser } = useDataUser(userId, { includeRole: true, includeAvatar: false })
+const canDelete = computed(() => cachedUser.value?.role === 'admin')
+
+const deleteTopicLoading = ref(false)
+const deleteTopicConfirm = ref(false)
 
 // Inject provided values from parent
 const topics = inject(FORUM_KEYS.forumTopics, () => ref([]))()
@@ -234,6 +243,34 @@ const loading = ref(false)
 
 const { validate, errors } = useValidation(form, rules, { autoclear: true })
 
+async function deleteTopic() {
+  if (!props.editedItem)
+    return
+
+  deleteTopicLoading.value = true
+
+  try {
+    const { error } = await supabase
+      .from('discussion_topics')
+      .delete()
+      .eq('id', props.editedItem.id)
+
+    if (error)
+      throw error
+
+    emit('deleted', props.editedItem.id)
+    emit('close')
+    pushToast(`Deleted topic ${props.editedItem.name}`)
+  }
+  catch {
+    pushToast('Failed to delete topic')
+  }
+  finally {
+    deleteTopicLoading.value = false
+    deleteTopicConfirm.value = false
+  }
+}
+
 async function submitForm() {
   if (loading.value)
     return
@@ -381,16 +418,45 @@ async function submitForm() {
     </Flex>
 
     <template #footer>
-      <Flex gap="s" x-end>
-        <Button plain @click="emit('close')">
-          Cancel
-        </Button>
-        <Button variant="accent" @click="submitForm">
-          {{ isEditing ? 'Save' : 'Create' }}
-        </Button>
+      <Flex gap="xs" x-between expand>
+        <Flex gap="xs">
+          <Tooltip v-if="isEditing && canDelete">
+            <Button
+              variant="danger"
+              square
+              :loading="deleteTopicLoading"
+              @click="deleteTopicConfirm = true"
+            >
+              <Icon name="ph:trash" />
+            </Button>
+            <template #tooltip>
+              <p>Delete topic</p>
+            </template>
+          </Tooltip>
+        </Flex>
+
+        <Flex gap="xs">
+          <Button plain @click="emit('close')">
+            Cancel
+          </Button>
+          <Button variant="accent" :loading="loading" @click="submitForm">
+            {{ isEditing ? 'Save changes' : 'Create' }}
+          </Button>
+        </Flex>
       </Flex>
     </template>
   </Modal>
+
+  <ConfirmModal
+    v-if="isEditing && props.editedItem != null"
+    v-model:open="deleteTopicConfirm"
+    :confirm-loading="deleteTopicLoading"
+    title="Delete topic"
+    :description="`Are you sure you want to delete '${props.editedItem?.name}'? This cannot be undone and will also delete all discussions within it.`"
+    confirm-text="Delete"
+    :destructive="true"
+    @confirm="deleteTopic"
+  />
 </template>
 
 <style scoped lang="scss">

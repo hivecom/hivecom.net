@@ -559,6 +559,8 @@ export type Database = {
           discord_last_synced_at: string | null
           duration_minutes: number | null
           games: number[] | null
+          google_community_event_id: string | null
+          google_community_last_synced_at: string | null
           google_event_id: string | null
           google_last_synced_at: string | null
           id: number
@@ -583,6 +585,8 @@ export type Database = {
           discord_last_synced_at?: string | null
           duration_minutes?: number | null
           games?: number[] | null
+          google_community_event_id?: string | null
+          google_community_last_synced_at?: string | null
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
@@ -607,6 +611,8 @@ export type Database = {
           discord_last_synced_at?: string | null
           duration_minutes?: number | null
           games?: number[] | null
+          google_community_event_id?: string | null
+          google_community_last_synced_at?: string | null
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
@@ -1978,6 +1984,7 @@ export type Database = {
           }
       get_admin_events_paginated: {
         Args: {
+          p_is_official?: boolean
           p_limit?: number
           p_offset?: number
           p_search?: string
@@ -1993,6 +2000,8 @@ export type Database = {
           discord_last_synced_at: string
           duration_minutes: number
           games: number[]
+          google_community_event_id: string
+          google_community_last_synced_at: string
           google_event_id: string
           google_last_synced_at: string
           id: number
@@ -2283,6 +2292,8 @@ export type Database = {
           discord_last_synced_at: string | null
           duration_minutes: number | null
           games: number[] | null
+          google_community_event_id: string | null
+          google_community_last_synced_at: string | null
           google_event_id: string | null
           google_last_synced_at: string | null
           id: number
@@ -2713,4 +2724,3 @@ export const Constants = {
     },
   },
 } as const
-

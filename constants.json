@@ -15,8 +15,14 @@
     "IRC_URL": "irc://irc.hivecom.net:6697/#staff"
   },
   "EVENT_CALENDAR": {
-    "GOOGLE": "https://calendar.google.com/calendar?cid=Y181Zjk0NjNjNTQzMTBhNWNiNzYxNjhkM2QxZTU1ZjQzMzI0MjliZDZmNjk0NTRlOTM1MDUwZDY5YTRjZThkZGJiQGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20",
-    "ICAL": "https://calendar.google.com/calendar/ical/c_5f9463c54310a5cb76168d3d1e55f4332429bd6f69454e935050d69a4ce8ddbb%40group.calendar.google.com/public/basic.ics"
+    "OFFICIAL": {
+      "GOOGLE": "https://calendar.google.com/calendar?cid=Y181Zjk0NjNjNTQzMTBhNWNiNzYxNjhkM2QxZTU1ZjQzMzI0MjliZDZmNjk0NTRlOTM1MDUwZDY5YTRjZThkZGJiQGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20",
+      "ICAL": "https://calendar.google.com/calendar/ical/c_5f9463c54310a5cb76168d3d1e55f4332429bd6f69454e935050d69a4ce8ddbb%40group.calendar.google.com/public/basic.ics"
+    },
+    "COMMUNITY": {
+      "GOOGLE": "https://calendar.google.com/calendar/u/0?cid=Y18xODBhM2IyY2UxMjkzOTBlOTdjNzZkN2M3YTdhYzA2M2RlZTQzZjBiZDhlZjkyNjY2MDNkOTA1ZTc0NDJhNjFiQGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20",
+      "ICAL": "https://calendar.google.com/calendar/ical/c_180a3b2ce129390e97c76d7c7a7ac063dee43f0bd8ef9266603d905e7442a61b%40group.calendar.google.com/public/basic.ics"
+    }
   },
   "CURRENCY": {
     "SYMBOL": "€",

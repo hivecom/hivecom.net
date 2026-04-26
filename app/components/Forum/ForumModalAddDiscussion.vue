@@ -23,6 +23,7 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'created', discussion: Tables<'discussions'>): void
   (e: 'draftUpdated'): void
+  (e: 'deleted', discussionId: string): void
 }>()
 
 const SLUG_DATE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}/
@@ -66,6 +67,21 @@ const activeTab = ref<'create' | 'drafts'>('create')
 const drafts = ref<Tables<'discussions'>[]>([])
 const deleteLoading = ref(false)
 const deleteConfirm = ref<string | null>(null)
+const deleteDiscussionLoading = ref(false)
+const deleteDiscussionConfirm = ref(false)
+
+const isLinkedDiscussion = computed(() => {
+  const d = editedDiscussion.value
+  if (!d)
+    return false
+  return Boolean(
+    d.event_id
+    || d.gameserver_id
+    || d.project_id
+    || d.profile_id
+    || d.referendum_id,
+  )
+})
 
 watch(() => props.editedItem, (item) => {
   if (item) {
@@ -369,6 +385,33 @@ function editDraft(draft: Tables<'discussions'>) {
   activeTab.value = 'create'
 }
 
+async function deleteDiscussion() {
+  if (!editedDiscussion.value)
+    return
+
+  deleteDiscussionLoading.value = true
+
+  try {
+    const { error } = await supabase
+      .from('discussions')
+      .delete()
+      .eq('id', editedDiscussion.value.id)
+
+    if (error)
+      throw error
+
+    emit('deleted', editedDiscussion.value.id)
+    emit('close')
+  }
+  catch {
+    pushToast('Failed to delete discussion')
+  }
+  finally {
+    deleteDiscussionLoading.value = false
+    deleteDiscussionConfirm.value = false
+  }
+}
+
 function deleteDraft() {
   if (!deleteConfirm.value)
     return
@@ -531,7 +574,7 @@ function confirmPublish() {
         :media-bucket-id="FORUMS_BUCKET_ID"
         min-height="196px"
         max-height="33vh"
-        hint="You can use markdown and added media through drag-and-drop"
+        hint="You can use markdown and add media by drag-and-drop"
         label="Content"
         placeholder="This is the main body of your discussion"
         show-attachment-button
@@ -578,16 +621,46 @@ function confirmPublish() {
     </template>
 
     <template #footer>
-      <Flex gap="s" x-end>
-        <Button plain @click="emit('close')">
-          Cancel
-        </Button>
-        <Button v-if="activeTab === 'create' || !showTabs" variant="accent" :loading="loading" @click="submitForm">
-          {{ isEditing ? 'Save' : 'Create' }}
-        </Button>
+      <Flex gap="xs" x-between expand>
+        <Flex gap="xs">
+          <Tooltip v-if="isEditing && canUpdateDiscussions">
+            <Button
+              variant="danger"
+              square
+              :disabled="isLinkedDiscussion"
+              :loading="deleteDiscussionLoading"
+              @click="deleteDiscussionConfirm = true"
+            >
+              <Icon name="ph:trash" />
+            </Button>
+            <template #tooltip>
+              <p>{{ isLinkedDiscussion ? 'This discussion is linked to an entity and cannot be deleted.' : 'Delete discussion' }}</p>
+            </template>
+          </Tooltip>
+        </Flex>
+
+        <Flex gap="xs">
+          <Button plain @click="emit('close')">
+            Cancel
+          </Button>
+          <Button v-if="activeTab === 'create' || !showTabs" variant="accent" :loading="loading" @click="submitForm">
+            {{ isEditing ? 'Save changes' : 'Create' }}
+          </Button>
+        </Flex>
       </Flex>
     </template>
   </Modal>
+
+  <ConfirmModal
+    v-if="isEditing && editedDiscussion != null"
+    v-model:open="deleteDiscussionConfirm"
+    :confirm-loading="deleteDiscussionLoading"
+    title="Delete discussion"
+    :description="`Are you sure you want to delete '${editedDiscussion?.title}'? This cannot be undone.`"
+    confirm-text="Delete"
+    :destructive="true"
+    @confirm="deleteDiscussion"
+  />
 
   <ConfirmModal
     :open="!!deleteConfirm"

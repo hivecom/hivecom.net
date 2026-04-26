@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Flex } from '@dolanske/vui'
+import { Button, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import CreateEventModal from '@/components/Events/CreateEventModal.vue'
 import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { useDataGames } from '@/composables/useDataGames'
@@ -94,6 +95,33 @@ const canEdit = computed(() => {
 
 const showEditModal = ref(false)
 
+// Delete
+const deleteLoading = ref(false)
+const deleteConfirm = ref(false)
+
+async function handleDelete() {
+  if (!event.value)
+    return
+
+  deleteLoading.value = true
+
+  try {
+    const { error: deleteError } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', eventId)
+
+    if (deleteError)
+      throw deleteError
+
+    await navigateTo('/events')
+  }
+  catch {
+    deleteLoading.value = false
+    deleteConfirm.value = false
+  }
+}
+
 // SEO and page metadata
 useSeoMeta({
   title: computed(() => event.value ? `${event.value.title} | Events` : 'Event Details'),
@@ -142,12 +170,19 @@ useHead({
             </Button>
           </NuxtLink>
 
-          <Button v-if="canEdit" size="s" @click="showEditModal = true">
-            <template #start>
-              <Icon name="ph:pencil" />
+          <Dropdown v-if="canEdit">
+            <template #trigger="{ toggle }">
+              <Button variant="gray" size="s" @click="toggle">
+                Manage
+              </Button>
             </template>
-            Edit
-          </Button>
+            <DropdownItem @click="showEditModal = true">
+              Edit
+            </DropdownItem>
+            <DropdownItem variant="danger" @click="deleteConfirm = true">
+              Delete
+            </DropdownItem>
+          </Dropdown>
         </Flex>
 
         <!-- Header -->
@@ -179,6 +214,17 @@ useHead({
   </div>
 
   <CreateEventModal v-model:open="showEditModal" :event="event" @saved="fetchEvent" />
+
+  <ConfirmModal
+    v-if="event"
+    v-model:open="deleteConfirm"
+    :confirm-loading="deleteLoading"
+    title="Delete event"
+    :description="`Are you sure you want to delete '${event.title}'? This cannot be undone.`"
+    confirm-text="Delete"
+    :destructive="true"
+    @confirm="handleDelete"
+  />
 </template>
 
 <style lang="scss" scoped>

@@ -1,16 +1,16 @@
 <script setup lang='ts'>
 import type { Tables } from '@/types/database.overrides'
-import { Button, Flex, Tooltip } from '@dolanske/vui'
+import { Button, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import ReferendumModal from '@/components/Votes/ReferendumModal.vue'
 import VoteChoices from '@/components/Votes/VoteChoices.vue'
 import VoteHeader from '@/components/Votes/VoteHeader.vue'
 import VoteLoadingSkeleton from '@/components/Votes/VoteLoadingSkeleton.vue'
 import VoteResults from '@/components/Votes/VoteResults.vue'
 import { useCachedFetch } from '@/composables/useCache'
+import { useDataUser } from '@/composables/useDataUser'
 import { useRealtimeReferendumVotes } from '@/composables/useRealtimeReferendumVotes'
 
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -48,6 +48,42 @@ const editModalOpen = ref(false)
 const isOwnReferendum = computed(() =>
   !!userId.value && referendum.value?.created_by === userId.value,
 )
+
+const { user: currentUserData } = useDataUser(userId, { includeRole: true, includeAvatar: false })
+
+const canManage = computed(() => {
+  if (!referendum.value || !userId.value)
+    return false
+  const isPrivileged = currentUserData.value?.role === 'admin' || currentUserData.value?.role === 'moderator'
+  return isOwnReferendum.value || isPrivileged
+})
+
+// Page-level delete
+const deleteConfirm = ref(false)
+const deleteLoading = ref(false)
+
+async function confirmDelete() {
+  if (!referendum.value)
+    return
+
+  deleteLoading.value = true
+
+  try {
+    const { error } = await supabase
+      .from('referendums')
+      .delete()
+      .eq('id', referendum.value.id)
+
+    if (error)
+      throw error
+
+    await navigateTo('/votes')
+  }
+  catch {
+    deleteLoading.value = false
+    deleteConfirm.value = false
+  }
+}
 
 function handleUpdated(updated: Tables<'referendums'>) {
   // Patch the local referendum ref so the page reflects changes immediately
@@ -362,22 +398,19 @@ function handleChoiceClick(index: number) {
             </Button>
           </NuxtLink>
           <Flex gap="s" y-center>
-            <UserDisplay :user-id="referendum.created_by" />
-
-            <Tooltip>
-              <Button
-                v-if="isOwnReferendum"
-                variant="gray"
-                size="s"
-                square
-                @click="editModalOpen = true"
-              >
-                <Icon name="ph:pencil-simple" />
-              </Button>
-              <template #tooltip>
-                <p>Edit vote details</p>
+            <Dropdown v-if="canManage">
+              <template #trigger="{ toggle }">
+                <Button variant="gray" size="s" @click="toggle">
+                  Manage
+                </Button>
               </template>
-            </Tooltip>
+              <DropdownItem @click="editModalOpen = true">
+                Edit
+              </DropdownItem>
+              <DropdownItem variant="danger" @click="deleteConfirm = true">
+                Delete
+              </DropdownItem>
+            </Dropdown>
           </Flex>
         </Flex>
 
@@ -419,12 +452,24 @@ function handleChoiceClick(index: number) {
 
         <!-- Edit Modal -->
         <ReferendumModal
-          v-if="isOwnReferendum && referendum"
+          v-if="canManage && referendum"
           :open="editModalOpen"
           :edited-item="referendum as Tables<'referendums'>"
           @close="editModalOpen = false"
           @updated="handleUpdated"
           @deleted="handleDeleted"
+        />
+
+        <!-- Delete Confirmation Modal -->
+        <ConfirmModal
+          v-if="referendum"
+          v-model:open="deleteConfirm"
+          :confirm-loading="deleteLoading"
+          title="Delete vote"
+          :description="`Are you sure you want to delete '${referendum.title}'? This cannot be undone and will also delete all existing votes.`"
+          confirm-text="Delete"
+          :destructive="true"
+          @confirm="confirmDelete"
         />
 
         <!-- Reveal Results Confirmation Modal -->

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Tab, Tabs } from '@dolanske/vui'
+import { Button, Flex, Input, Select, Tab, Tabs } from '@dolanske/vui'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import CreateEventModal from '@/components/Events/CreateEventModal.vue'
 import EventsCalendar from '@/components/Events/EventsCalendar.vue'
@@ -7,6 +7,28 @@ import EventsListing from '@/components/Events/EventsListing.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataEvents } from '@/composables/useDataEvents'
+
+interface SelectOption {
+  label: string
+  value: string
+}
+
+// Filters
+const search = ref('')
+const officialFilterOption = ref<SelectOption[] | undefined>(undefined)
+const officialFilter = computed<boolean | null>(() => {
+  const val = officialFilterOption.value?.[0]?.value
+  if (val === 'official')
+    return true
+  if (val === 'unofficial')
+    return false
+  return null
+})
+
+const officialFilterOptions: SelectOption[] = [
+  { label: 'Official', value: 'official' },
+  { label: 'Community', value: 'unofficial' },
+]
 
 // Tab management
 const activeTab = ref('list')
@@ -115,20 +137,39 @@ defineOgImage('Default', {
             <template #start>
               <Icon name="ph:plus" />
             </template>
-            Create Event
+            Create
           </Button>
           <CalendarButtons size="s" show-labels />
         </Flex>
       </template>
     </Tabs>
 
-    <section class="mt-xl">
+    <section>
+      <!-- Filters (list view only) -->
+      <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l">
+        <Input v-model="search" placeholder="Search events..." style="min-width: 200px">
+          <template #start>
+            <Icon name="ph:magnifying-glass" />
+          </template>
+        </Input>
+        <Select
+          v-if="user"
+          v-model="officialFilterOption"
+          :options="officialFilterOptions"
+          placeholder="Official"
+          single
+          show-clear
+        />
+      </Flex>
+
       <!-- Listing View -->
       <EventsListing
         v-if="activeTab === 'list'"
         :events="events"
         :loading="loading"
         :error-message="errorMessage"
+        :search="search"
+        :official-filter="officialFilter"
       />
 
       <!-- Calendar View -->

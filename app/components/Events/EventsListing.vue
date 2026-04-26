@@ -8,9 +8,27 @@ interface Props {
   events: Tables<'events'>[] | undefined
   loading: boolean
   errorMessage: string
+  search?: string
+  officialFilter?: boolean | null
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  search: '',
+  officialFilter: null,
+})
+
+function matchesFilters(event: Tables<'events'>): boolean {
+  const q = props.search.trim().toLowerCase()
+  if (q) {
+    const inTitle = event.title.toLowerCase().includes(q)
+    const inDesc = event.description.toLowerCase().includes(q)
+    if (!inTitle && !inDesc)
+      return false
+  }
+  if (props.officialFilter != null && event.is_official !== props.officialFilter)
+    return false
+  return true
+}
 
 const ongoingEvents = computed(() => {
   if (!props.events)
@@ -22,14 +40,14 @@ const ongoingEvents = computed(() => {
       ? new Date(start.getTime() + event.duration_minutes * 60 * 1000)
       : start
     return start <= now && now <= end
-  })
+  }).filter(matchesFilters)
 })
 
 const upcomingEvents = computed(() => {
   if (!props.events)
     return []
   const now = new Date()
-  return props.events.filter(event => new Date(event.date) > now)
+  return props.events.filter(event => new Date(event.date) > now).filter(matchesFilters)
 })
 
 const hasActiveEvents = computed(() =>
@@ -97,7 +115,7 @@ const hasActiveEvents = computed(() =>
     </div>
 
     <!-- Past Events Section - self-contained, manages its own data fetching -->
-    <EventsPastListing />
+    <EventsPastListing :search="search" :official-filter="officialFilter" />
   </template>
 </template>
 

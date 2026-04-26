@@ -481,7 +481,7 @@ const currentReferendums = computed(() => {
             <template #start>
               <Icon name="ph:plus" />
             </template>
-            New vote
+            Create
           </Button>
         </template>
       </Tabs>

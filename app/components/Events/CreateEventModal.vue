@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Calendar, Flex, Grid, Input, Modal, Select, Switch, Textarea } from '@dolanske/vui'
+import { Button, Calendar, Flex, Grid, Input, Modal, Select, Switch, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, ref, watch } from 'vue'
+import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import RecurrenceBuilder from '@/components/Events/RecurrenceBuilder.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataUser } from '@/composables/useDataUser'
 
@@ -51,6 +53,10 @@ const eventForm = ref({
 
 const saveLoading = ref(false)
 const saveError = ref<string | null>(null)
+
+const deleteLoading = ref(false)
+const deleteError = ref<string | null>(null)
+const showDeleteConfirm = ref(false)
 
 // Computed
 const isEditMode = computed(() => !!props.event)
@@ -116,6 +122,7 @@ function populateForm(event: Tables<'events'>) {
   formGames.value = Array.isArray(event.games) ? (event.games as number[]) : []
   syncSelectedGames()
   saveError.value = null
+  deleteError.value = null
 }
 
 function resetForm() {
@@ -136,6 +143,8 @@ function resetForm() {
   selectedGames.value = []
   formGames.value = []
   saveError.value = null
+  deleteError.value = null
+  showDeleteConfirm.value = false
 }
 
 function handleClose() {
@@ -170,6 +179,13 @@ const { user: currentUserData } = useDataUser(userId, { includeRole: true, inclu
 const isPrivileged = computed(() => {
   const role = currentUserData.value?.role
   return role === 'admin' || role === 'moderator'
+})
+
+const canDelete = computed(() => {
+  if (!props.event || !userId.value)
+    return false
+  const isOwner = props.event.created_by === userId.value && !props.event.is_official
+  return isOwner || isPrivileged.value
 })
 
 async function handleSubmit() {
@@ -235,6 +251,35 @@ async function handleSubmit() {
     saveLoading.value = false
   }
 }
+
+async function handleDelete() {
+  if (!props.event)
+    return
+
+  deleteLoading.value = true
+  deleteError.value = null
+
+  try {
+    const { error } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', props.event.id)
+
+    if (error)
+      throw error
+
+    open.value = false
+    emit('saved')
+    await navigateTo('/events')
+  }
+  catch (err) {
+    deleteError.value = err instanceof Error ? err.message : 'Failed to delete event. Please try again.'
+    showDeleteConfirm.value = false
+  }
+  finally {
+    deleteLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -242,6 +287,7 @@ async function handleSubmit() {
     :open="open"
     size="l"
     :card="{ separators: true }"
+    :can-dismiss="false"
     @close="handleClose"
   >
     <template #header>
@@ -261,7 +307,7 @@ async function handleSubmit() {
         v-if="isPrivileged"
         v-model="eventForm.is_official"
         label="Official Event"
-        hint="Official events are synced to Discord and Google Calendar."
+        hint="All events are synced to Discord. Official events sync to the official Google Calendar, non-official events to the community Google Calendar."
       />
 
       <Input
@@ -357,7 +403,7 @@ async function handleSubmit() {
 
       <RecurrenceBuilder v-model="eventForm.recurrence_rule" />
 
-      <Textarea
+      <Input
         v-model="eventForm.description"
         expand
         name="description"
@@ -366,7 +412,6 @@ async function handleSubmit() {
         :valid="validation.description"
         error="Description is required"
         placeholder="Enter event description"
-        :rows="3"
       />
 
       <Input
@@ -390,15 +435,16 @@ async function handleSubmit() {
         show-clear
       />
 
-      <!-- Markdown -->
-      <Textarea
+      <!-- Content / Markdown -->
+      <RichTextEditor
         v-model="eventForm.markdown"
-        expand
-        name="markdown"
-        label="Markdown"
-        hint="You can use markdown"
-        placeholder="Additional event details in markdown format (optional)"
-        :rows="5"
+        label="Content"
+        hint="You can use markdown and add media by drag-and-drop"
+        placeholder="Additional event details (optional)"
+        min-height="144px"
+        show-expand-button
+        :media-context="props.event?.id ? `events/${props.event.id}/markdown/media` : undefined"
+        :show-attachment-button="!!props.event?.id"
       />
 
       <Input
@@ -425,26 +471,51 @@ async function handleSubmit() {
     </Flex>
 
     <template #footer>
-      <Flex gap="xs">
-        <Button
-          type="submit"
-          variant="accent"
-          :disabled="!isValid"
-          :loading="saveLoading"
-          @click.prevent="handleSubmit"
-        >
-          <template #start>
-            <Icon name="ph:check" />
-          </template>
-          {{ isEditMode ? 'Save Changes' : 'Create Event' }}
-        </Button>
+      <Flex gap="xs" x-between expand>
+        <Flex gap="xs">
+          <Tooltip v-if="isEditMode && canDelete">
+            <Button
+              variant="danger"
+              square
+              :loading="deleteLoading"
+              @click="showDeleteConfirm = true"
+            >
+              <Icon name="ph:trash" />
+            </Button>
+            <template #tooltip>
+              <p>Delete event</p>
+            </template>
+          </Tooltip>
+        </Flex>
 
-        <Button @click.prevent="handleClose">
-          Cancel
-        </Button>
+        <Flex gap="xs">
+          <Button plain @click.prevent="handleClose">
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="accent"
+            :disabled="!isValid"
+            :loading="saveLoading"
+            @click.prevent="handleSubmit"
+          >
+            {{ isEditMode ? 'Save changes' : 'Create event' }}
+          </Button>
+        </Flex>
       </Flex>
     </template>
   </Modal>
+
+  <ConfirmModal
+    v-if="isEditMode && props.event != null"
+    v-model:open="showDeleteConfirm"
+    :confirm-loading="deleteLoading"
+    title="Delete event"
+    :description="`Are you sure you want to delete '${props.event?.title}'? This cannot be undone.`"
+    confirm-text="Delete"
+    :destructive="true"
+    @confirm="handleDelete"
+  />
 </template>
 
 <style lang="scss" scoped>

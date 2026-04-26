@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Tooltip } from '@dolanske/vui'
+import { Button, Dropdown, DropdownItem, DropdownTitle, Flex } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -32,51 +32,77 @@ const props = withDefaults(defineProps<CalendarButtonsProps>(), {
 
 const isBelowMediumBreakpoint = useBreakpoint('<m')
 const isBelowMedium = computed(() => isBelowMediumBreakpoint.value && !!props.isAdmin)
+
+function openLink(url: string) {
+  window.open(url, '_blank', 'noreferrer')
+}
 </script>
 
 <template>
   <Flex gap="xs" :x-center="isBelowMedium" :expand="isBelowMedium">
-    <!-- Google Calendar button -->
-    <Tooltip v-if="constants.EVENT_CALENDAR.GOOGLE">
-      <Button
-        :expand="isBelowMedium"
-        :variant="variant"
-        :size="size"
-        :href="constants.EVENT_CALENDAR.GOOGLE"
-        target="_blank"
-        :square="!showLabels && !isBelowMedium"
-        rel="noreferrer"
-      >
-        <template v-if="showLabels" #start>
-          <Icon name="ph:calendar" />
-        </template>
-        <Icon v-if="!showLabels" name="ph:calendar" />
-        <span v-if="showLabels" class="text-s">Subscribe</span>
-      </Button>
-      <template #tooltip>
-        <p>Add to your Google Calendar</p>
+    <!-- Google Calendar dropdown -->
+    <Dropdown placement="bottom-start">
+      <template #trigger="{ toggle }">
+        <Button
+          :expand="isBelowMedium"
+          :variant="variant"
+          :size="size"
+          :square="!showLabels && !isBelowMedium"
+          @click="toggle"
+        >
+          <template v-if="showLabels" #start>
+            <Icon name="ph:calendar" />
+          </template>
+          <Icon v-if="!showLabels" name="ph:calendar" />
+          <span v-if="showLabels" class="text-s">Subscribe</span>
+        </Button>
       </template>
-    </Tooltip>
 
-    <!-- Export to ICAL button -->
-    <Tooltip v-if="constants.EVENT_CALENDAR.ICAL">
-      <Button
-        :expand="isBelowMedium"
-        :variant="variant"
-        :size="size"
-        :square="!showLabels && !isBelowMedium"
-        :href="constants.EVENT_CALENDAR.ICAL"
-        rel="noreferrer"
+      <DropdownItem
+        icon="ph:star"
+        @click="openLink(constants.EVENT_CALENDAR.OFFICIAL.GOOGLE)"
       >
-        <template v-if="showLabels" #start>
-          <Icon name="ph:download" />
-        </template>
-        <Icon v-if="!showLabels" name="ph:download" />
-        <span v-if="showLabels" class="text-s">Export</span>
-      </Button>
-      <template #tooltip>
-        <p>Export ICAL</p>
+        Official
+      </DropdownItem>
+      <DropdownItem
+        icon="ph:users"
+        @click="openLink(constants.EVENT_CALENDAR.COMMUNITY.GOOGLE)"
+      >
+        Community
+      </DropdownItem>
+    </Dropdown>
+
+    <!-- ICAL export dropdown -->
+    <Dropdown placement="bottom-start">
+      <template #trigger="{ toggle }">
+        <Button
+          :expand="isBelowMedium"
+          :variant="variant"
+          :size="size"
+          :square="!showLabels && !isBelowMedium"
+          @click="toggle"
+        >
+          <template v-if="showLabels" #start>
+            <Icon name="ph:download" />
+          </template>
+          <Icon v-if="!showLabels" name="ph:download" />
+          <span v-if="showLabels" class="text-s">Export</span>
+        </Button>
       </template>
-    </Tooltip>
+
+      <DropdownTitle>ICAL</DropdownTitle>
+      <DropdownItem
+        icon="ph:star"
+        @click="openLink(constants.EVENT_CALENDAR.OFFICIAL.ICAL)"
+      >
+        Official
+      </DropdownItem>
+      <DropdownItem
+        icon="ph:users"
+        @click="openLink(constants.EVENT_CALENDAR.COMMUNITY.ICAL)"
+      >
+        Community
+      </DropdownItem>
+    </Dropdown>
   </Flex>
 </template>
