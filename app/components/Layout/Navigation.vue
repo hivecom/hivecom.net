@@ -124,7 +124,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
             >
               <NuxtLink
                 :to="link.path" :class="{
-                  'router-link-active': $route.path.includes(link.path) && link.path !== '/',
+                  'router-link-active': $route.path.startsWith(link.path.split('?')[0] ?? link.path) && link.path !== '/',
                   'router-link-focused': !!hoveredElement?.firstElementChild?.textContent.includes(link.label),
                 }"
               >

@@ -1,7 +1,7 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
-import { ref, watch } from 'vue'
 import { useSupabaseUser } from '#imports'
+import { ref, watch } from 'vue'
 import { useCache } from './useCache'
 
 const CACHE_KEY = 'events:all'
