@@ -4,6 +4,7 @@ import { Alert, Avatar, Badge, Button, Card, Divider, Flex, Modal, Switch, Toolt
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
+import ModalDeleteReply from '@/components/Discussions/ModalDeleteReply.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import BannerDisplay from '@/components/Profile/Banner/BannerDisplay.vue'
@@ -615,36 +616,12 @@ const editedAtFormatted = computed(() => {
     </div>
 
     <!-- Force delete confirmation modal (admin only) -->
-    <Modal
+    <ModalDeleteReply
       :open="showForceDeleteModal"
-      size="s"
-      centered
+      :loading="loadingForceDeletion"
       @close="showForceDeleteModal = false"
-    >
-      <template #header>
-        <h3>Permanently delete reply</h3>
-      </template>
-
-      <Flex column gap="m">
-        <Alert variant="danger" icon-align="start">
-          <p><strong>This cannot be undone.</strong> The reply row will be hard-deleted from the database.</p>
-        </Alert>
-        <p class="text-color-light text-m text-justified">
-          If other replies quote or reply to this one, they will become orphaned - their reply context will break and the thread flow may appear confusing to readers. Force deletion is <strong class="text-m">heavily discouraged</strong> unless the reply has no dependents.
-        </p>
-      </Flex>
-
-      <template #footer>
-        <Flex x-end gap="s">
-          <Button plain :inert="loadingForceDeletion" @click="showForceDeleteModal = false">
-            Cancel
-          </Button>
-          <Button variant="danger" :loading="loadingForceDeletion" @click="handleForceDeletion">
-            Permanently delete
-          </Button>
-        </Flex>
-      </template>
-    </Modal>
+      @confirm="handleForceDeletion"
+    />
 
     <!-- Delete confirmation modal -->
     <ConfirmModal

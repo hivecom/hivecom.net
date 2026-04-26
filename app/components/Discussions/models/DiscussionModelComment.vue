@@ -4,6 +4,7 @@ import { Alert, Button, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
+import ModalDeleteReply from '@/components/Discussions/ModalDeleteReply.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ReactionsList from '@/components/Reactions/ReactionsList.vue'
@@ -425,36 +426,12 @@ watch(
     </Flex>
 
     <!-- Force delete confirmation modal (admin only) -->
-    <Modal
+    <ModalDeleteReply
       :open="showForceDeleteModal"
-      size="s"
-      centered
+      :loading="loadingForceDeletion"
       @close="showForceDeleteModal = false"
-    >
-      <template #header>
-        <h3>Permanently delete reply</h3>
-      </template>
-
-      <Flex column gap="m">
-        <Alert variant="danger" icon-align="start">
-          <p><strong>This cannot be undone.</strong> The reply row will be hard-deleted from the database.</p>
-        </Alert>
-        <p class="text-color-light text-m text-justified">
-          If other replies quote or reply to this one, they will become orphaned - their reply context will break and the thread flow may appear confusing to readers. Force deletion is <strong class="text-m">heavily discouraged</strong> unless the reply has no dependents.
-        </p>
-      </Flex>
-
-      <template #footer>
-        <Flex x-end gap="s">
-          <Button plain :inert="loadingForceDeletion" @click="showForceDeleteModal = false">
-            Cancel
-          </Button>
-          <Button variant="danger" :loading="loadingForceDeletion" @click="handleForceDeletion">
-            Permanently delete
-          </Button>
-        </Flex>
-      </template>
-    </Modal>
+      @confirm="handleForceDeletion"
+    />
 
     <ConfirmModal
       :open="showDeleteModal"
@@ -475,7 +452,7 @@ watch(
     <!-- Edit modal -->
     <Modal :open="editing" centered scrollable size="m" :can-dismiss="false" @close="endEditing">
       <template #header>
-        <h3>Edit comment</h3>
+        <h4>Edit comment</h4>
       </template>
 
       <Alert v-if="resolvedReply" icon-align="start" class="mb-s">
