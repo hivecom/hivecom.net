@@ -200,12 +200,12 @@ watch(() => props.profileId, () => {
               <span class="activity-item__label">
                 <Icon class="activity-item__icon" name="mdi:teamspeak" size="13" />
                 Voice
-              </span>
-              <strong class="activity-item__title">
                 <span
                   class="activity-item__status-dot"
                   :style="{ backgroundColor: statusColor }"
                 />
+              </span>
+              <strong class="activity-item__title">
                 {{ activePresence.channelPath }}
               </strong>
             </div>
