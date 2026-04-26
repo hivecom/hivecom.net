@@ -311,8 +311,8 @@ watch(
             </p>
           </template>
         </Tooltip>
-        <button v-if="threadReplyCount && threadReplyCount > 0 && !isMobile" class="discussion-comment__reply-count" @click.stop="emit('openReplies')">
-          <CountDisplay :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+        <button v-if="threadReplyCount && threadReplyCount > 0 && !isMobile" class="discussion-comment__reply-count text-xs" @click.stop="emit('openReplies')">
+          <CountDisplay class="text-xs" :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
         </button>
 
         <TinyBadge v-if="isPinned" variant="accent" style="margin-right:2px" filled>

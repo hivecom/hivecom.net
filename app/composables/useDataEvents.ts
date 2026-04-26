@@ -44,6 +44,7 @@ export function useDataEvents() {
       const { data, error: fetchError } = await supabase
         .from('events')
         .select('*')
+        .is('recurrence_parent_id', null)
         .order('date', { ascending: true })
 
       if (fetchError)

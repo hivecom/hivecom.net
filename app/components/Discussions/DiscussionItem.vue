@@ -21,6 +21,7 @@ const {
 } = defineProps<Props>()
 
 const loadChildren = inject(DISCUSSION_KEYS.loadChildren)
+const childrenMap = inject(DISCUSSION_KEYS.childrenMap)
 const navigateToComment = inject(DISCUSSION_KEYS.navigateToComment)
 
 interface Props {
@@ -78,8 +79,12 @@ watch(isActive, async (active) => {
 const { copy } = useClipboard()
 
 function copyLink() {
+  copyLinkForComment(data.id)
+}
+
+function copyLinkForComment(id: string) {
   const url = new URL(window.location.href)
-  url.searchParams.set('comment', data.id)
+  url.searchParams.set('comment', id)
   copy(url.toString())
   pushToast('Link copied to clipboard', {
     timeout: 1500,
@@ -112,9 +117,15 @@ async function scrollReply() {
 // This means MarkdownRenderer resolves while hidden and no flash occurs on switch.
 //   threaded list items → children prop is populated, threadNode is undefined
 //   flat list items     → threadNode.children is populated, children is []
-const sourceChildren = computed((): ThreadNode[] =>
-  children.length > 0 ? children : (threadNode?.children ?? []),
-)
+// For the comment model, children are stored in childrenMap (not merged into the
+// flat comments list), so we read directly from there instead of threadNode.
+const sourceChildren = computed((): ThreadNode[] => {
+  if (model === 'comment' && childrenMap != null) {
+    const raw = childrenMap.value.get(data.id) ?? []
+    return raw.map(c => ({ comment: c as unknown as Comment, children: [] }))
+  }
+  return children.length > 0 ? children : (threadNode?.children ?? [])
+})
 
 // Whether children have been requested at least once (threaded lazy load).
 // Separate from sourceChildren.length > 0 because a root can legitimately
@@ -287,6 +298,7 @@ function stripReplyData(entry: Comment) {
             :key="item.comment.id"
             ref="self"
             :data="stripReplyData(item.comment)"
+            @copy-link="copyLinkForComment(item.comment.id)"
             @interact="repliesExpanded = false"
           />
         </template>
@@ -297,6 +309,7 @@ function stripReplyData(entry: Comment) {
             ref="self"
             class="w-100"
             :data="stripReplyData(item.comment)"
+            @copy-link="copyLinkForComment(item.comment.id)"
             @interact="repliesExpanded = false"
           />
         </template>

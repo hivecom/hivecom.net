@@ -2,11 +2,13 @@
 import type { Tables } from '@/types/database.overrides'
 import { Button, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
+import CreateEventModal from '@/components/Events/CreateEventModal.vue'
 import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { useDataGames } from '@/composables/useDataGames'
+import { useDataUser } from '@/composables/useDataUser'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -78,6 +80,20 @@ onMounted(() => {
   fetchEvent()
 })
 
+// Edit permissions
+const userId = useUserId()
+const { user: currentUserData } = useDataUser(userId, { includeRole: true, includeAvatar: false })
+
+const canEdit = computed(() => {
+  if (!event.value || !userId.value)
+    return false
+  const isOwner = event.value.created_by === userId.value && !event.value.is_official
+  const isPrivileged = currentUserData.value?.role === 'admin' || currentUserData.value?.role === 'moderator'
+  return isOwner || isPrivileged
+})
+
+const showEditModal = ref(false)
+
 // SEO and page metadata
 useSeoMeta({
   title: computed(() => event.value ? `${event.value.title} | Events` : 'Event Details'),
@@ -110,7 +126,7 @@ useHead({
       <!-- Event Content -->
       <div v-if="event && !loading && !error" class="event-detail">
         <!-- Back Button -->
-        <Flex x-between>
+        <Flex x-between y-center>
           <NuxtLink to="/events">
             <Button
               variant="gray"
@@ -125,6 +141,13 @@ useHead({
               Back to Events
             </Button>
           </NuxtLink>
+
+          <Button v-if="canEdit" size="s" @click="showEditModal = true">
+            <template #start>
+              <Icon name="ph:pencil" />
+            </template>
+            Edit
+          </Button>
         </Flex>
 
         <!-- Header -->
@@ -154,6 +177,8 @@ useHead({
       </div>
     </div>
   </div>
+
+  <CreateEventModal v-model:open="showEditModal" :event="event" @saved="fetchEvent" />
 </template>
 
 <style lang="scss" scoped>

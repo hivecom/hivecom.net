@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { Tab, Tabs } from '@dolanske/vui'
+import { Button, Flex, Tab, Tabs } from '@dolanske/vui'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
+import CreateEventModal from '@/components/Events/CreateEventModal.vue'
 import EventsCalendar from '@/components/Events/EventsCalendar.vue'
 import EventsListing from '@/components/Events/EventsListing.vue'
+import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
+import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataEvents } from '@/composables/useDataEvents'
 
 // Tab management
@@ -47,8 +50,29 @@ onMounted(() => {
   activeTab.value = sessionStorage.getItem('events_active_tab') ?? 'list'
 })
 
+// Create event modal
+const showCreateEventModal = ref(false)
+const showContentRulesModal = ref(false)
+const user = useSupabaseUser()
+
+const { agreed: contentRulesAgreed, markAgreed } = useContentRulesAgreement()
+
+function handleCreateEventClick() {
+  if (contentRulesAgreed.value === true) {
+    showCreateEventModal.value = true
+  }
+  else {
+    showContentRulesModal.value = true
+  }
+}
+
+function handleContentRulesConfirmed() {
+  markAgreed()
+  showCreateEventModal.value = true
+}
+
 // Fetch data for the listing view only - the calendar self-fetches its own windowed data
-const { events, loading, error } = useDataEvents()
+const { events, loading, error, refresh } = useDataEvents()
 const errorMessage = computed(() => error.value ?? '')
 
 useSeoMeta({
@@ -86,7 +110,15 @@ defineOgImage('Default', {
       </Tab>
 
       <template #end>
-        <CalendarButtons size="s" show-labels />
+        <Flex gap="xs" y-center>
+          <Button v-if="user" variant="accent" size="s" @click="handleCreateEventClick">
+            <template #start>
+              <Icon name="ph:plus" />
+            </template>
+            Create Event
+          </Button>
+          <CalendarButtons size="s" show-labels />
+        </Flex>
       </template>
     </Tabs>
 
@@ -104,6 +136,17 @@ defineOgImage('Default', {
       <EventsCalendar v-else-if="activeTab === 'calendar'" />
     </section>
   </div>
+
+  <CreateEventModal
+    v-model:open="showCreateEventModal"
+    @saved="refresh"
+  />
+
+  <ContentRulesModal
+    v-model:open="showContentRulesModal"
+    :show-agree-button="true"
+    @confirm="handleContentRulesConfirmed"
+  />
 </template>
 
 <style lang="scss">

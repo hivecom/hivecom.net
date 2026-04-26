@@ -9,6 +9,7 @@ import { useRealtimeRsvp } from '@/composables/useRealtimeRsvp'
 import { useRsvpBus } from '@/composables/useRsvpBus'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
+import { humanizeRrule } from '@/lib/utils/rrule'
 import CountdownTimer from './CountdownTimer.vue'
 import EventRSVPCount from './EventRSVPCount.vue'
 import EventRSVPModal from './EventRSVPModal.vue'
@@ -196,6 +197,11 @@ onMounted(() => {
     <!-- Event meta information -->
     <Flex gap="m" x-between expand :column="isBelowSmall">
       <Flex :gap="isBelowSmall ? 'xxs' : 's'" wrap class="event-header__badges-section" :x-center="isBelowSmall" :expand="isBelowSmall">
+        <Badge v-if="props.event.is_official" variant="accent" size="l">
+          <Icon name="ph:star-fill" />
+          Official
+        </Badge>
+
         <Badge v-if="props.event.location" variant="neutral" size="l">
           <Icon name="ph:map-pin-fill" />
           {{ props.event.location }}
@@ -213,15 +219,10 @@ onMounted(() => {
           </Badge>
         </Tooltip>
 
-        <template v-if="!isOngoing">
-          <Badge
-            :variant="isOngoing ? 'success' : isUpcoming ? 'accent' : 'neutral'"
-            size="l"
-          >
-            <Icon :name="isUpcoming ? 'ph:calendar-plus' : 'ph:calendar-x'" />
-            {{ isUpcoming ? 'Upcoming' : 'Past Event' }}
-          </Badge>
-        </template>
+        <Badge v-if="props.event.recurrence_rule" variant="neutral" size="l">
+          <Icon name="ph:arrows-clockwise" />
+          {{ humanizeRrule(props.event.recurrence_rule) }}
+        </Badge>
 
         <!-- RSVP Count Badge -->
         <EventRSVPCount :event="props.event" variant="accent" size="l" :show-when-zero="false" />

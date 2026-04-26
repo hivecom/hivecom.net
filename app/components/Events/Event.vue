@@ -90,7 +90,11 @@ updateTime()
             {{ props.data.description }}
           </p>
           <Flex>
-            <Badge v-if="props.data.location" variant="neutral">
+            <Badge v-if="props.data.is_official" variant="accent" size="l">
+              <Icon name="ph:star-fill" />
+              Official
+            </Badge>
+            <Badge v-if="props.data.location" variant="neutral" size="l">
               <Icon name="ph:map-pin-fill" />
               {{ props.data.location }}
             </Badge>
@@ -100,7 +104,7 @@ updateTime()
                   {{ props.data.note }}
                 </div>
               </template>
-              <Badge variant="neutral" class="event-item__note-badge">
+              <Badge variant="neutral" size="l" class="event-item__note-badge">
                 <Icon name="ph:note" />
                 Note
               </Badge>
@@ -156,6 +160,14 @@ updateTime()
 
   h3 {
     font-size: var(--font-size-xl);
+  }
+
+  .vui-badge--accent span {
+    color: var(--color-accent);
+  }
+
+  .vui-badge--neutral span {
+    color: var(--color-text-light);
   }
 
   &__container {

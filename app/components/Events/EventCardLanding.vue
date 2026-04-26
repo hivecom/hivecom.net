@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Card, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { truncate } from '@/lib/utils/formatting'
 import EventRSVPCount from './EventRSVPCount.vue'
@@ -50,12 +51,18 @@ const isBelowSmall = useBreakpoint('<m')
       }"
     >
       <Flex column gap="xs" expand class="h-100">
-        <span
-          class="event-card__status"
-          :class="[eventStatus.type]"
-        >
-          {{ eventStatus.label }}
-        </span>
+        <Flex x-between y-center expand class="mb-xs">
+          <span
+            class="event-card__status"
+            :class="[eventStatus.type]"
+          >
+            {{ eventStatus.label }}
+          </span>
+          <TinyBadge v-if="props.event.is_official" variant="accent">
+            <Icon name="ph:star-fill" />
+            Official
+          </TinyBadge>
+        </Flex>
         <strong class="event-card__title">
           {{ props.event.title }}
         </strong>
@@ -143,7 +150,6 @@ const isBelowSmall = useBreakpoint('<m')
 
   &__status {
     font-size: var(--font-size-s);
-    margin-bottom: var(--space-s);
     text-transform: uppercase;
     color: var(--color-text-lighter);
     font-weight: var(--font-weight-bold);

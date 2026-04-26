@@ -19,6 +19,7 @@ export function useRealtimeDiscussion(
   comments: Ref<RawComment[]>,
   discussion: Ref<{ id: string, slug: string | null } | undefined>,
   model: Ref<'comment' | 'forum'>,
+  hash?: string,
 ) {
   const supabase = useSupabaseClient()
   const discussionCache = useDiscussionCache()
@@ -59,6 +60,10 @@ export function useRealtimeDiscussion(
 
       if (latestCommentTime.value != null) {
         query.gt('created_at', latestCommentTime.value)
+      }
+
+      if (hash != null) {
+        query.eq('meta->>hash', hash)
       }
 
       const { data, error: fetchError } = await query
@@ -114,6 +119,14 @@ export function useRealtimeDiscussion(
           // thread open in another tab, where the optimistic push didn't happen.
           const alreadyLoaded = comments.value.some(c => c.id === newReply.id)
           if (alreadyLoaded)
+            return
+
+          // When a hash filter is active, only count replies that belong to
+          // this specific discussion section (e.g. a particular vote choice or
+          // the general chat). Replies for other hashes on the same discussion
+          // should not trigger the pending banner here.
+          const replyHash = (newReply.meta as Record<string, unknown> | null)?.hash as string | undefined
+          if (hash != null && replyHash !== hash)
             return
 
           // Invalidate the replies cache - the list is now stale.

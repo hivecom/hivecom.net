@@ -71,6 +71,18 @@ export function useDataDiscussionReplies(
   const nextCursor = ref<PageCursor | null>(null)
   const hasMore = ref(false)
 
+  // Traditional pagination state (comment model only).
+  // cursorHistory[0] = null (page 1 has no predecessor cursor),
+  // cursorHistory[n] = cursor needed to fetch page n+1.
+  const currentPage = ref(1)
+  const cursorHistory = ref<Array<PageCursor | null>>([null])
+  const totalPages = computed(() => {
+    const total = discussion.value?.reply_count ?? 0
+    if (total <= 0)
+      return 1
+    return Math.max(1, Math.ceil(total / pageSize.value))
+  })
+
   // Children loaded for threaded view, keyed by root comment id.
   const childrenMap = ref<Map<string, RawComment[]>>(new Map())
   const replyCountMap = ref<Map<string, number>>(new Map())
@@ -139,7 +151,72 @@ export function useDataDiscussionReplies(
     if (page == null)
       return
 
+    // Reset pagination history on a fresh first-page load.
+    currentPage.value = 1
+    cursorHistory.value = [null]
+
     applyPage(page, true)
+  }
+
+  /**
+   * Load a specific page by number (1-based). Comment model only.
+   * Walks the cursor history forwards as needed, caching each cursor so
+   * subsequent back/forward navigations don't re-fetch already-seen pages.
+   */
+  async function loadPage(page: number): Promise<void> {
+    if (!discussion.value || loadingMore.value)
+      return
+
+    const targetPage = Math.max(1, Math.min(page, totalPages.value))
+
+    loadingMore.value = true
+    try {
+      // Walk forward through any missing cursors up to the target page.
+      // cursorHistory[i] is the cursor needed to start fetching page i+1.
+      // So to fetch page N we need cursorHistory[N-1].
+      while (cursorHistory.value.length < targetPage) {
+        const cursorIdx = cursorHistory.value.length - 1
+        const cursor = cursorHistory.value[cursorIdx]!
+        const fetched = await repliesCache.fetchPage(discussion.value.id, {
+          ascending: ascending.value,
+          cursor,
+          pageSize: pageSize.value,
+          hash: props.hash,
+          rootOnly: rootOnly.value,
+        })
+        if (fetched == null)
+          break
+        if (cursorHistory.value.length <= cursorIdx + 1 && fetched.nextCursor != null)
+          cursorHistory.value.push(fetched.nextCursor)
+        else
+          break
+      }
+
+      const cursor = cursorHistory.value[targetPage - 1] ?? null
+      const result = await repliesCache.fetchPage(discussion.value.id, {
+        ascending: ascending.value,
+        cursor,
+        pageSize: pageSize.value,
+        hash: props.hash,
+        rootOnly: rootOnly.value,
+      })
+
+      if (result == null)
+        return
+
+      // Store the next cursor in history if we don't have it yet.
+      if (result.nextCursor != null && cursorHistory.value.length <= targetPage)
+        cursorHistory.value.push(result.nextCursor)
+
+      currentPage.value = targetPage
+      // Clear childrenMap so re-opening a reply sheet after a page change
+      // re-fetches rather than using stale entries that are no longer in comments.
+      childrenMap.value = new Map()
+      applyPage(result, true)
+    }
+    finally {
+      loadingMore.value = false
+    }
   }
 
   /**
@@ -229,6 +306,22 @@ export function useDataDiscussionReplies(
     // Already loaded - nothing to do.
     if (comments.value.some(c => c.id === targetId))
       return true
+
+    // Comment model: use traditional pagination - just jump to the target page
+    // directly without the gap mechanism.
+    if (props.model === 'comment') {
+      const targetPageNumber = result.pageIndex + 1
+      if (!options?.soft)
+        loading.value = true
+      try {
+        await loadPage(targetPageNumber)
+      }
+      finally {
+        if (!options?.soft)
+          loading.value = false
+      }
+      return comments.value.some(c => c.id === targetId)
+    }
 
     if (!options?.soft)
       loading.value = true
@@ -550,12 +643,6 @@ export function useDataDiscussionReplies(
       const children = data as RawComment[]
 
       childrenMap.value = new Map(childrenMap.value).set(rootId, children)
-
-      // Merge children into the flat comment list so threadNodeMap stays consistent.
-      const existingIds = new Set(comments.value.map(c => c.id))
-      const fresh = children.filter(c => !existingIds.has(c.id))
-      if (fresh.length > 0)
-        comments.value = [...comments.value, ...fresh]
     }
     finally {
       loadingChildren.value = false
@@ -593,6 +680,8 @@ export function useDataDiscussionReplies(
       // Reset pagination state on discussion change.
       nextCursor.value = null
       hasMore.value = false
+      currentPage.value = 1
+      cursorHistory.value = [null]
       childrenMap.value = new Map()
       fetchedPinnedReply.value = null
       gap.value = null
@@ -616,6 +705,8 @@ export function useDataDiscussionReplies(
 
         if (quickPage != null) {
           discussion.value = quickDiscussion
+          currentPage.value = 1
+          cursorHistory.value = [null]
           applyPage(quickPage, true)
           fastPathComplete = true
         }
@@ -756,6 +847,11 @@ export function useDataDiscussionReplies(
   /**
    * Build a node map from the flat `modelledComments` list.
    * Maps comment.id → ThreadNode (comment + direct children).
+   *
+   * Children fetched via loadChildren() live in childrenMap and are NOT merged
+   * into the flat comments list (to prevent them rendering as top-level items).
+   * Instead, we pull them in here directly from childrenMap so the sheet and
+   * threaded view both stay consistent without polluting the flat list.
    */
   const threadNodeMap = computed((): Map<string, ThreadNode> => {
     const data = modelledComments.value
@@ -764,9 +860,28 @@ export function useDataDiscussionReplies(
       data.map(c => [c.id, { comment: c, children: [] }]),
     )
 
+    // First pass: wire up reply relationships within the already-loaded flat list.
     for (const comment of data) {
       if (comment.reply_to_id != null && lookup.has(comment.reply_to_id)) {
         nodeMap.get(comment.reply_to_id)!.children.push(nodeMap.get(comment.id)!)
+      }
+    }
+
+    // Second pass: attach lazily-fetched children from childrenMap for any root
+    // that has been expanded. These rows are not in the flat list so we create
+    // lightweight ThreadNodes for them on the fly.
+    for (const [rootId, children] of childrenMap.value) {
+      const rootNode = nodeMap.get(rootId)
+      if (rootNode == null)
+        continue
+      for (const child of children) {
+        // Skip if already wired up from the flat list to avoid duplicates.
+        if (nodeMap.has(child.id))
+          continue
+        const childComment: Comment = { ...child, reply: null }
+        const childNode: ThreadNode = { comment: childComment, children: [] }
+        nodeMap.set(child.id, childNode)
+        rootNode.children.push(childNode)
       }
     }
 
@@ -921,7 +1036,10 @@ export function useDataDiscussionReplies(
     threadRoots,
     childrenMap,
     replyCountMap,
+    currentPage,
+    totalPages,
     loadMore,
+    loadPage,
     loadGapFromTop,
     loadGapFromBottom,
     navigateToComment,

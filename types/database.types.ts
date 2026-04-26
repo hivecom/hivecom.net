@@ -562,12 +562,16 @@ export type Database = {
           google_event_id: string | null
           google_last_synced_at: string | null
           id: number
+          is_official: boolean
           link: string | null
           location: string | null
           markdown: string | null
           modified_at: string | null
           modified_by: string | null
           note: string | null
+          recurrence_exception: boolean
+          recurrence_parent_id: number | null
+          recurrence_rule: string | null
           title: string
         }
         Insert: {
@@ -582,12 +586,16 @@ export type Database = {
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
+          is_official?: boolean
           link?: string | null
           location?: string | null
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
           note?: string | null
+          recurrence_exception?: boolean
+          recurrence_parent_id?: number | null
+          recurrence_rule?: string | null
           title?: string
         }
         Update: {
@@ -602,15 +610,27 @@ export type Database = {
           google_event_id?: string | null
           google_last_synced_at?: string | null
           id?: number
+          is_official?: boolean
           link?: string | null
           location?: string | null
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
           note?: string | null
+          recurrence_exception?: boolean
+          recurrence_parent_id?: number | null
+          recurrence_rule?: string | null
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "events_recurrence_parent_id_fkey"
+            columns: ["recurrence_parent_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       events_rsvps: {
         Row: {
@@ -1831,10 +1851,6 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
-      event_ended_at: {
-        Args: { ev: Database["public"]["Tables"]["events"]["Row"] }
-        Returns: string
-      }
       event_rsvp_window_open: {
         Args: { target_event_id: number }
         Returns: boolean
@@ -1980,12 +1996,16 @@ export type Database = {
           google_event_id: string
           google_last_synced_at: string
           id: number
+          is_official: boolean
           link: string
           location: string
           markdown: string
           modified_at: string
           modified_by: string
           note: string
+          recurrence_exception: boolean
+          recurrence_parent_id: number
+          recurrence_rule: string
           title: string
           total_count: number
         }[]
@@ -2266,12 +2286,16 @@ export type Database = {
           google_event_id: string | null
           google_last_synced_at: string | null
           id: number
+          is_official: boolean
           link: string | null
           location: string | null
           markdown: string | null
           modified_at: string | null
           modified_by: string | null
           note: string | null
+          recurrence_exception: boolean
+          recurrence_parent_id: number | null
+          recurrence_rule: string | null
           title: string
         }[]
         SetofOptions: {

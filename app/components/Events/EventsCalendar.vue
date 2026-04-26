@@ -7,6 +7,7 @@ import dayjs from 'dayjs'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { createArray } from '@/lib/utils/common'
 import { dateFormat } from '@/lib/utils/date'
+import { expandRecurringEvent } from '@/lib/utils/rrule'
 import EventCalendarColumnList from './EventCalendarColumnList.vue'
 
 interface Emits {
@@ -44,17 +45,49 @@ async function fetchWindow(start: dayjs.Dayjs, columns: number) {
     const windowStart = start.subtract(1, 'month').startOf('month').toISOString()
     const windowEnd = start.add(columns, 'month').endOf('month').toISOString()
 
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .gte('date', windowStart)
-      .lte('date', windowEnd)
-      .order('date', { ascending: true })
+    // Fetch two sets and merge:
+    // 1. Events with date in [windowStart, windowEnd] (one-offs and first occurrences)
+    // 2. Recurring parents whose first occurrence may predate the window
+    const [inWindowResult, recurringResult] = await Promise.all([
+      supabase
+        .from('events')
+        .select('*')
+        .gte('date', windowStart)
+        .lte('date', windowEnd)
+        .order('date', { ascending: true }),
+      supabase
+        .from('events')
+        .select('*')
+        .not('recurrence_rule', 'is', null)
+        .lt('date', windowStart)
+        .lte('date', windowEnd)
+        .order('date', { ascending: true }),
+    ])
 
-    if (error)
-      throw error
+    if (inWindowResult.error)
+      throw inWindowResult.error
+    if (recurringResult.error)
+      throw recurringResult.error
 
-    const rows = (data ?? []) as Tables<'events'>[]
+    // Deduplicate by id
+    const seen = new Set<number>()
+    const merged: Tables<'events'>[] = []
+    for (const row of [...(inWindowResult.data ?? []), ...(recurringResult.data ?? [])]) {
+      if (!seen.has(row.id)) {
+        seen.add(row.id)
+        merged.push(row as Tables<'events'>)
+      }
+    }
+
+    // Expand recurring events into virtual occurrences within the window
+    const winStartDate = new Date(windowStart)
+    const winEndDate = new Date(windowEnd)
+    const rows: Tables<'events'>[] = merged.flatMap(event =>
+      expandRecurringEvent(event, winStartDate, winEndDate),
+    )
+
+    rows.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
     windowCache.set(cacheKey, rows)
     windowedEvents.value = rows
   }

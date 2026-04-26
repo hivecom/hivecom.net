@@ -688,15 +688,15 @@ ON CONFLICT (id)
     birthday = EXCLUDED.birthday;
 
 -- Insert an upcoming test event (moved 2 weeks earlier)
-INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, games)
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, games, is_official)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '16 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
 It is that time of the month again! Join us for our community gaming night where we play various games together, chat, and have fun.
 
 We will probably be playing on our CS2 server, but feel free to suggest other games as well.
-  ', ARRAY[1, 2]);
+  ', ARRAY[1, 2], false);
 
 -- Insert Hivecom Meetup event in Prague
-INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes)
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes, is_official)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '1 month', 'Epic 3-day meetup in Prague with pub crawls, LAN parties, and community bonding!', 'Hivecom Meetup - Prague', 'Prague, Czech Republic', '
 The moment we''ve all been waiting for! Join us for a 3-day community meetup in the beautiful city of Prague!
 
@@ -754,10 +754,10 @@ Can''t wait to meet everyone in person!
 ## Questions?
 
 Hit up in #events on IRC or drop me a direct message if you have any questions about the meetup!
-  ', 4320);
+  ', 4320, true);
 
 -- Insert LAN Crossover Game Night (synced with Prague meetup day 2)
-INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes, games)
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes, games, is_official)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() + INTERVAL '1 month' + INTERVAL '1 day', 'Join the Prague crew online for an epic crossover LAN party with livestream, games, and drinks!', 'LAN Crossover Game Night', 'Online + Prague Airbnb', '
 Tonight''s extra special - we''re crossing over with our Prague meetup crew!
 
@@ -800,10 +800,10 @@ The Prague crew will be streaming on:
 ## Questions?
 
 Drop questions in #events or ask during the stream - the Prague crew will be monitoring chat throughout the night!
-  ', 480, ARRAY[1, 2]);
+  ', 480, ARRAY[1, 2], true);
 
 -- Insert an ongoing test event
-INSERT INTO "public"."events"("id", "created_at", "created_by", "modified_at", "modified_by", "title", "description", "note", "markdown", "date", "location", "link", "duration_minutes")
+INSERT INTO "public"."events"("id", "created_at", "created_by", "modified_at", "modified_by", "title", "description", "note", "markdown", "date", "location", "link", "duration_minutes", "is_official")
   VALUES ('11', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Andrew Explosion', 'Andrew is placed in the explosion chamber. Bye!', 'You will want to see this one in person!', '
 # Es ist Zeit!
 
@@ -843,10 +843,10 @@ Please keep them to yourself.
 
 ## Refunds
 
-There are no refunds. Why did you pay for this to begin with?', NOW(), 'TeamSpeak', 'https://ts.hivecom.net', 10080);
+There are no refunds. Why did you pay for this to begin with?', NOW(), 'TeamSpeak', 'https://ts.hivecom.net', 10080, true);
 
 -- Insert an expired test event
-INSERT INTO "public"."events"("id", "created_at", "created_by", "date", "description", "title", "location", "markdown", "duration_minutes")
+INSERT INTO "public"."events"("id", "created_at", "created_by", "date", "description", "title", "location", "markdown", "duration_minutes", "is_official")
   VALUES ('12', NOW() - INTERVAL '10 days', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '5 days', 'Join us for a scenic 4-day hike through the beautiful Harz National Park!', 'Hike in Harz National Park', 'Harz National Park, Germany', '
 Join us for an amazing 4-day hiking adventure in the Harz National Park, Germany!
 
@@ -858,7 +858,21 @@ Join us for an amazing 4-day hiking adventure in the Harz National Park, Germany
 - Historic mining heritage sites
 
 This will be a multi-day expedition with camping opportunities. Let me know if you have any questions or suggestions for the hike. Please also RSVP so I can plan accordingly!
-  ', 5760);
+  ', 5760, true);
+
+-- Insert a recurring monthly hangout event
+INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, duration_minutes, is_official, recurrence_rule)
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', date_trunc('month', NOW() + INTERVAL '1 month') + INTERVAL '18 days' + INTERVAL '19 hours', 'Our regular monthly hangout - come chill, chat, and game with the community!', 'Monthly Community Hangout', 'Voice Channels', '
+Every month we get together for a relaxed hangout session. No agenda, no pressure - just good vibes and good company.
+
+## What to expect
+
+- Casual voice chat across the community channels
+- Whatever games people feel like playing
+- A chance to catch up with familiar faces and meet new ones
+
+Drop in whenever, leave whenever. See you there!
+  ', 180, true, 'FREQ=MONTHLY');
 
 -- Mark the test user as having RSVP'd to the past event
 INSERT INTO public.events_rsvps(user_id, event_id, rsvp, created_at, created_by)

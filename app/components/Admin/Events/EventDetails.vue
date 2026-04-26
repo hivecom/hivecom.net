@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Grid, Sheet, Tooltip } from '@dolanske/vui'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import EventRSVPCount from '@/components/Events/EventRSVPCount.vue'
@@ -11,6 +11,7 @@ import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
+import { humanizeRrule } from '@/lib/utils/rrule'
 
 const props = defineProps<{
   event: Tables<'events'> | null
@@ -149,6 +150,48 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
                 {{ props.event.link }}
                 <Icon name="ph:arrow-square-out" />
               </NuxtLink>
+            </Grid>
+
+            <Grid class="detail-item" expand columns="1fr 2fr">
+              <span class="text-color-light text-bold">Official:</span>
+              <Flex gap="xs" y-center>
+                <Badge v-if="props.event.is_official" variant="accent">
+                  <template #start>
+                    <Icon name="ph:star-fill" size="12" />
+                  </template>
+                  Official
+                </Badge>
+                <span v-else class="text-color-lighter">No</span>
+              </Flex>
+            </Grid>
+
+            <Grid class="detail-item" expand columns="1fr 2fr">
+              <span class="text-color-light text-bold">Recurrence:</span>
+              <Flex gap="xs" y-center>
+                <Badge v-if="props.event.recurrence_rule" variant="neutral">
+                  <template #start>
+                    <Icon name="ph:arrows-clockwise" size="12" />
+                  </template>
+                  {{ humanizeRrule(props.event.recurrence_rule) }}
+                </Badge>
+                <Tooltip v-if="props.event.recurrence_parent_id" text="This event is a child occurrence of a recurring series">
+                  <Badge variant="neutral">
+                    <template #start>
+                      <Icon name="ph:link" size="12" />
+                    </template>
+                    Child occurrence
+                  </Badge>
+                </Tooltip>
+                <Tooltip v-if="props.event.recurrence_exception" text="This occurrence has been individually overridden within its series">
+                  <Badge variant="warning">
+                    <template #start>
+                      <Icon name="ph:warning" size="12" />
+                    </template>
+                    Exception
+                  </Badge>
+                </Tooltip>
+                <span v-if="!props.event.recurrence_rule && !props.event.recurrence_parent_id" class="text-color-lighter">One-off</span>
+              </Flex>
             </Grid>
 
             <Grid class="detail-item" expand columns="1fr 2fr">

@@ -135,6 +135,43 @@
   --vui-badge-padding-block: 6px;
 
   width: fit-content;
+
+  // Iconify icons render as <span class="iconify">, not <svg>/<path>, so VUI's
+  // per-variant svg/path color rules don't reach them. Mirror those rules here.
+  .iconify {
+    color: var(--color-text);
+  }
+
+  &.vui-badge-variant-accent .iconify {
+    color: var(--color-accent);
+  }
+
+  &.vui-badge-variant-info .iconify {
+    color: var(--color-text-blue);
+  }
+
+  &.vui-badge-variant-success .iconify {
+    color: var(--color-text-green);
+  }
+
+  &.vui-badge-variant-warning .iconify {
+    color: var(--color-text-yellow);
+  }
+
+  &.vui-badge-variant-danger .iconify {
+    color: var(--color-text-red);
+  }
+
+  // Filled badges invert to white/text-invert
+  &.filled .iconify {
+    color: var(--color-text-invert);
+  }
+
+  // Light mode: accent and warning filled badges use --color-text instead of invert
+  :root.light &.vui-badge-variant-accent.filled .iconify,
+  :root.light &.vui-badge-variant-warning.filled .iconify {
+    color: var(--color-text);
+  }
 }
 
 html,

@@ -1,6 +1,7 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref, watch } from 'vue'
+import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 /**
  * Server-side paginated events composable for the listing view.
@@ -35,19 +36,51 @@ export function useDataEventsPaged(pageSize: Ref<number>) {
       // Fetch all events that start in the future OR have started but not yet ended.
       // We pull a generous window: anything whose start is within the past 7 days
       // (to catch long-running events) or is in the future.
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .gte('date', sevenDaysAgo)
-        .order('date', { ascending: true })
-
-      if (error)
-        throw error
-
-      const events = data ?? []
       const nowDate = new Date()
+      const sevenDaysAgo = new Date(nowDate.getTime() - 7 * 24 * 60 * 60 * 1000)
+      const oneYearAhead = new Date(nowDate.getTime() + 365 * 24 * 60 * 60 * 1000)
+      const sevenDaysAgoIso = sevenDaysAgo.toISOString()
+
+      // Fetch two sets:
+      // 1. Normal events starting within the active window
+      // 2. Recurring parent events (recurrence_rule IS NOT NULL) regardless of start date
+      const [inWindowResult, recurringResult] = await Promise.all([
+        supabase
+          .from('events')
+          .select('*')
+          .gte('date', sevenDaysAgoIso)
+          .is('recurrence_rule', null)
+          .order('date', { ascending: true }),
+        supabase
+          .from('events')
+          .select('*')
+          .not('recurrence_rule', 'is', null)
+          .order('date', { ascending: true }),
+      ])
+
+      if (inWindowResult.error)
+        throw inWindowResult.error
+      if (recurringResult.error)
+        throw recurringResult.error
+
+      // Deduplicate by id and expand recurring events
+      const seen = new Set<number>()
+      const merged: Tables<'events'>[] = []
+      for (const row of [...(inWindowResult.data ?? []), ...(recurringResult.data ?? [])]) {
+        if (!seen.has(row.id)) {
+          seen.add(row.id)
+          merged.push(row)
+        }
+      }
+
+      // Expand recurring events into virtual occurrences within [sevenDaysAgo, oneYearAhead]
+      const expanded: Tables<'events'>[] = merged.flatMap(event =>
+        expandRecurringEvent(event, sevenDaysAgo, oneYearAhead),
+      )
+
+      // Filter out occurrences before sevenDaysAgo (can come from non-recurring events
+      // that were just outside the window, or edge cases in expansion)
+      const events = expanded.filter(event => new Date(event.date) >= sevenDaysAgo)
 
       ongoingEvents.value = events.filter((event) => {
         const start = new Date(event.date)

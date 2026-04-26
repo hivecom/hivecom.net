@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Calendar, Flex, Grid, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
+import { Button, Calendar, Flex, Grid, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import RecurrenceBuilder from '@/components/Events/RecurrenceBuilder.vue'
 
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useDataGames } from '@/composables/useDataGames'
@@ -37,6 +38,9 @@ const eventForm = ref({
   link: '',
   markdown: '',
   games: [] as number[],
+  is_official: false,
+  recurrence_rule: '',
+  recurrence_exception: false,
 })
 
 // State for delete confirmation modal
@@ -116,6 +120,9 @@ function updateFormData(newEvent: Tables<'events'> | null) {
       link: newEvent.link || '',
       markdown: newEvent.markdown || '',
       games: newEvent.games || [], // Handle null case from database
+      is_official: newEvent.is_official ?? false,
+      recurrence_rule: newEvent.recurrence_rule || '',
+      recurrence_exception: newEvent.recurrence_exception ?? false,
     }
 
     // Sync the selected games after updating form data
@@ -139,6 +146,9 @@ function updateFormData(newEvent: Tables<'events'> | null) {
       link: '',
       markdown: '',
       games: [],
+      is_official: false,
+      recurrence_rule: '',
+      recurrence_exception: false,
     }
 
     // Clear selected games
@@ -210,6 +220,9 @@ function handleSubmit() {
     link: eventForm.value.link.trim() || null,
     markdown: eventForm.value.markdown.trim() || null,
     games: eventForm.value.games.length > 0 ? eventForm.value.games : null,
+    is_official: eventForm.value.is_official,
+    recurrence_rule: eventForm.value.recurrence_rule.trim() || null,
+    recurrence_exception: eventForm.value.recurrence_exception,
   }
 
   emit('save', eventData)
@@ -260,6 +273,12 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
       <!-- Basic Information -->
       <Flex column gap="m" expand>
         <h4>Basic Information</h4>
+
+        <Switch
+          v-model="eventForm.is_official"
+          label="Official Event"
+          hint="Official events are synced to Discord and Google Calendar."
+        />
 
         <Input
           v-model="eventForm.title"
@@ -349,6 +368,21 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
             />
           </Grid>
         </Flex>
+
+        <!-- Recurrence Rule - shown when not editing a child occurrence -->
+        <RecurrenceBuilder
+          v-if="!props.event?.recurrence_parent_id"
+          :model-value="eventForm.recurrence_rule || null"
+          @update:model-value="eventForm.recurrence_rule = $event ?? ''"
+        />
+
+        <!-- Recurrence Exception - only shown when editing a child occurrence -->
+        <Switch
+          v-if="props.isEditMode && props.event?.recurrence_parent_id"
+          v-model="eventForm.recurrence_exception"
+          label="Mark as exception"
+          hint="Override this single occurrence within the recurring series."
+        />
 
         <Textarea
           v-model="eventForm.description"

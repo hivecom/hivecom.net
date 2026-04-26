@@ -38,6 +38,10 @@ interface RpcEvent {
   modified_at: string | null
   modified_by: string | null
   total_count: number
+  is_official: boolean
+  recurrence_rule: string | null
+  recurrence_parent_id: number | null
+  recurrence_exception: boolean
 }
 
 // ─── Signals & routing ────────────────────────────────────────────────────────
@@ -115,6 +119,8 @@ const isFiltered = computed(() => search.value.trim() !== '')
 const sortColMap: Record<string, string> = {
   Title: 'title',
   Date: 'date',
+  Official: 'is_official',
+  Recurrence: 'recurrence_rule',
 }
 
 function handleSort(label: string) {
@@ -140,6 +146,8 @@ function sortIcon(label: string): string {
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
+const isOfficialFilter = ref<boolean | null>(null)
+
 async function fetchEvents() {
   loading.value = true
   errorMessage.value = ''
@@ -151,6 +159,7 @@ async function fetchEvents() {
       p_sort_dir: sortDir.value,
       p_limit: adminTablePerPage.value,
       p_offset: (page.value - 1) * adminTablePerPage.value,
+      ...(isOfficialFilter.value !== null ? { p_is_official: isOfficialFilter.value } : {}),
     })
 
     if (error)
@@ -238,6 +247,7 @@ async function handleEventSave(eventData: Partial<Event>) {
         title: eventData.title || '',
         description: eventData.description || '',
         date: eventData.date || '',
+        is_official: eventData.is_official ?? false,
         created_by: userId.value ?? null,
         modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
@@ -306,6 +316,11 @@ watchDebounced(search, () => {
   void fetchEvents()
 }, { debounce: 300 })
 
+watch(isOfficialFilter, () => {
+  page.value = 1
+  void fetchEvents()
+})
+
 watch([sortCol, sortDir], () => {
   page.value = 1
   void fetchEvents()
@@ -353,7 +368,7 @@ onBeforeMount(async () => {
     <Flex v-else-if="initialLoad" gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
-          <EventFilters v-model:search="search" />
+          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" />
         </Flex>
 
         <Flex
@@ -387,7 +402,7 @@ onBeforeMount(async () => {
     <Flex v-else gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
-          <EventFilters v-model:search="search" />
+          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" />
         </Flex>
 
         <Flex
@@ -434,6 +449,18 @@ onBeforeMount(async () => {
                 </Flex>
               </Table.Head>
               <Table.Head>Location</Table.Head>
+              <Table.Head class="sortable-head" @click="handleSort('Official')">
+                <Flex gap="xs" y-center>
+                  Official
+                  <Icon :name="sortIcon('Official')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
+              <Table.Head class="sortable-head" @click="handleSort('Recurrence')">
+                <Flex gap="xs" y-center>
+                  Recurrence
+                  <Icon :name="sortIcon('Recurrence')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
               <Table.Head>Status</Table.Head>
               <Table.Head v-if="canManageResource">
                 Actions
@@ -449,6 +476,19 @@ onBeforeMount(async () => {
                 <Table.Cell>
                   <Badge v-if="event.location" variant="neutral">
                     {{ event.location }}
+                  </Badge>
+                  <span v-else>-</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <Badge v-if="event.is_official" variant="accent">
+                    <Icon name="ph:star-fill" size="12" />
+                    Official
+                  </Badge>
+                  <span v-else>-</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <Badge v-if="event.recurrence_rule" variant="neutral">
+                    {{ event.recurrence_rule }}
                   </Badge>
                   <span v-else>-</span>
                 </Table.Cell>

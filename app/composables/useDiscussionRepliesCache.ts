@@ -35,7 +35,7 @@ import { useCache } from './useCache'
 const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
 
 export const PAGE_SIZE_FORUM = 10
-export const PAGE_SIZE_COMMENT = 50
+export const PAGE_SIZE_COMMENT = 10
 
 // ---------------------------------------------------------------------------
 // Types
@@ -82,9 +82,11 @@ type TailRow = Database['public']['Functions']['get_discussion_replies_tail']['R
 function tailKey(
   discussionId: string,
   rootOnly: boolean = false,
+  hash?: string,
 ): string {
   const rootPart = rootOnly ? ':roots' : ''
-  return `discussion-replies-tail:${discussionId}${rootPart}`
+  const hashPart = hash != null ? `:h:${hash}` : ''
+  return `discussion-replies-tail:${discussionId}${rootPart}${hashPart}`
 }
 
 function pageKey(
@@ -92,13 +94,15 @@ function pageKey(
   ascending: boolean,
   cursor: PageCursor | null,
   rootOnly: boolean = false,
+  hash?: string,
 ): string {
   const order = ascending ? 'asc' : 'desc'
   const cursorPart = cursor != null
     ? `${cursor.cursorTime}:${cursor.cursorId}`
     : 'first'
   const rootPart = rootOnly ? ':roots' : ''
-  return `discussion-replies-page:${discussionId}:${order}:${cursorPart}${rootPart}`
+  const hashPart = hash != null ? `:h:${hash}` : ''
+  return `discussion-replies-page:${discussionId}:${order}:${cursorPart}${rootPart}${hashPart}`
 }
 
 function legacyKey(discussionId: string, ascending: boolean): string {
@@ -129,8 +133,9 @@ export function useDiscussionRepliesCache() {
     ascending: boolean,
     cursor: PageCursor | null,
     rootOnly: boolean = false,
+    hash?: string,
   ): ReplyPage | null {
-    return cache.get<ReplyPage>(pageKey(discussionId, ascending, cursor, rootOnly))
+    return cache.get<ReplyPage>(pageKey(discussionId, ascending, cursor, rootOnly, hash))
   }
 
   function setPage(
@@ -139,8 +144,9 @@ export function useDiscussionRepliesCache() {
     cursor: PageCursor | null,
     page: ReplyPage,
     rootOnly: boolean = false,
+    hash?: string,
   ): void {
-    cache.set(pageKey(discussionId, ascending, cursor, rootOnly), page, CACHE_TTL)
+    cache.set(pageKey(discussionId, ascending, cursor, rootOnly, hash), page, CACHE_TTL)
   }
 
   /**
@@ -196,7 +202,7 @@ export function useDiscussionRepliesCache() {
     const rootOnly = options.rootOnly ?? false
 
     if (!force) {
-      const cached = getPage(discussionId, ascending, cursor, rootOnly)
+      const cached = getPage(discussionId, ascending, cursor, rootOnly, options.hash)
       if (cached !== null)
         return cached
     }
@@ -237,7 +243,7 @@ export function useDiscussionRepliesCache() {
         : null
 
       const page: ReplyPage = { rows: cleanRows, hasMore, nextCursor }
-      setPage(discussionId, ascending, cursor, page, rootOnly)
+      setPage(discussionId, ascending, cursor, page, rootOnly, options.hash)
       return page
     }
     catch (err) {
@@ -358,7 +364,7 @@ export function useDiscussionRepliesCache() {
 
     const pageSize = options.pageSize ?? PAGE_SIZE_FORUM
     const rootOnly = options.rootOnly ?? false
-    const key = tailKey(discussionId, rootOnly)
+    const key = tailKey(discussionId, rootOnly, options.hash)
 
     if (!force) {
       const cached = cache.get<RawComment[]>(key)
@@ -388,6 +394,7 @@ export function useDiscussionRepliesCache() {
 
       const rows = data
       cache.set(key, rows as unknown as RawComment[], CACHE_TTL)
+      // NOTE: key already encodes hash so hash-filtered tails are cached separately
       return rows as unknown as RawComment[]
     }
     catch (err) {

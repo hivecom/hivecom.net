@@ -6,7 +6,7 @@ import type { TimelineBucket } from './DiscussionTimeline.vue'
 import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, Skeleton } from '@dolanske/vui'
+import { Alert, paginate, Pagination, Skeleton } from '@dolanske/vui'
 import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies'
 import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
@@ -140,7 +140,7 @@ useBulkDataUser(replyAuthorIds, {
   avatarTtl: 30 * 60 * 1000,
 })
 
-const realtime = useRealtimeDiscussion(comments, discussion, modelRef)
+const realtime = useRealtimeDiscussion(comments, discussion, modelRef, props.hash)
 
 // ── Subscription (comment model only) ────────────────────────────────────────
 
@@ -231,7 +231,11 @@ const {
   modelledComments,
   threadNodeMap,
   threadRoots,
+  childrenMap,
   loadMore,
+  loadPage,
+  currentPage,
+
   loadGapFromTop,
   loadGapFromBottom,
   navigateToComment,
@@ -267,6 +271,7 @@ const {
 )
 
 provide(DISCUSSION_KEYS.loadChildren, loadChildren)
+provide(DISCUSSION_KEYS.childrenMap, childrenMap)
 provide(DISCUSSION_KEYS.navigateToComment, navigateToComment)
 provide(DISCUSSION_KEYS.replyCountMap, replyCountMap)
 
@@ -454,44 +459,47 @@ const activeSentinel = computed(() =>
 const currentScrollFraction = ref<number | null>(null)
 
 // Infinite scroll: auto-load the next page when the sentinel enters the viewport.
-useIntersectionObserver(activeSentinel, ([entry]) => {
-  if (entry?.isIntersecting && hasMore.value && !loadingMore.value) {
-    void loadMore()
-  }
-}, { rootMargin: '0px 0px 300px 0px' })
+// Only active for forum model - comment model uses traditional pagination instead.
+if (props.model !== 'comment') {
+  useIntersectionObserver(activeSentinel, ([entry]) => {
+    if (entry?.isIntersecting && hasMore.value && !loadingMore.value) {
+      void loadMore()
+    }
+  }, { rootMargin: '0px 0px 300px 0px' })
 
-// After a content rebuild (e.g. timeline navigation), the sentinel may already
-// be in the viewport but the intersection observer won't re-fire because the
-// element's intersection state didn't change. Manually check when hasMore
-// becomes true so we don't strand the user at a dead-end page.
-watch(hasMore, async (val) => {
-  if (!val || loadingMore.value)
-    return
-  await nextTick()
-  const sentinel = activeSentinel.value
-  if (!sentinel)
-    return
-  const rect = sentinel.getBoundingClientRect()
-  if (rect.top < window.innerHeight + 300) {
-    void loadMore()
-  }
-})
+  // After a content rebuild (e.g. timeline navigation), the sentinel may already
+  // be in the viewport but the intersection observer won't re-fire because the
+  // element's intersection state didn't change. Manually check when hasMore
+  // becomes true so we don't strand the user at a dead-end page.
+  watch(hasMore, async (val) => {
+    if (!val || loadingMore.value)
+      return
+    await nextTick()
+    const sentinel = activeSentinel.value
+    if (!sentinel)
+      return
+    const rect = sentinel.getBoundingClientRect()
+    if (rect.top < window.innerHeight + 300) {
+      void loadMore()
+    }
+  })
 
-// Also check sentinel visibility whenever modelledComments changes - if the
-// loaded set is short enough that the sentinel is still in viewport after a
-// page loads, the intersection observer won't re-fire for the next page.
-watch(modelledComments, async () => {
-  if (!hasMore.value || loadingMore.value)
-    return
-  await nextTick()
-  const sentinel = activeSentinel.value
-  if (sentinel == null)
-    return
-  const rect = sentinel.getBoundingClientRect()
-  if (rect.top < window.innerHeight + 300) {
-    void loadMore()
-  }
-})
+  // Also check sentinel visibility whenever modelledComments changes - if the
+  // loaded set is short enough that the sentinel is still in viewport after a
+  // page loads, the intersection observer won't re-fire for the next page.
+  watch(modelledComments, async () => {
+    if (!hasMore.value || loadingMore.value)
+      return
+    await nextTick()
+    const sentinel = activeSentinel.value
+    if (sentinel == null)
+      return
+    const rect = sentinel.getBoundingClientRect()
+    if (rect.top < window.innerHeight + 300) {
+      void loadMore()
+    }
+  })
+}
 
 /**
  * Show the timeline scrubber when:
@@ -1153,15 +1161,22 @@ function isNodeVisible(node: ThreadNode): boolean {
             />
           </template>
 
-          <!-- Infinite scroll sentinel (flat mode) -->
-          <div ref="bottomSentinelEl" />
+          <!-- Infinite scroll sentinel (flat mode) - forum only -->
+          <div v-if="props.model !== 'comment'" ref="bottomSentinelEl" />
 
-          <!-- Load more (flat mode) - kept as explicit fallback / status strip -->
+          <!-- Load more (flat mode) - forum only, explicit fallback / status strip -->
           <DiscussionLoadMore
-            v-if="hasMore"
+            v-if="props.model !== 'comment' && hasMore"
             :loading="loadingMore"
             :remaining-count="remainingCount"
             @load="loadMore()"
+          />
+
+          <!-- Traditional pagination (flat mode) - comment model only -->
+          <Pagination
+            v-if="props.model === 'comment' && (hasMore || currentPage > 1)"
+            :pagination="paginate(discussion?.reply_count ?? 0, currentPage, discussionPageSize)"
+            @change="loadPage($event)"
           />
         </div>
 
@@ -1199,14 +1214,21 @@ function isNodeVisible(node: ThreadNode): boolean {
             />
           </template>
 
-          <!-- Infinite scroll sentinel (threaded mode) -->
-          <div ref="bottomSentinelThreadedEl" />
+          <!-- Infinite scroll sentinel (threaded mode) - forum only -->
+          <div v-if="props.model !== 'comment'" ref="bottomSentinelThreadedEl" />
 
-          <!-- Load more (threaded mode) - explicit fallback -->
+          <!-- Load more (threaded mode) - forum only, explicit fallback -->
           <DiscussionLoadMore
-            v-if="hasMore"
+            v-if="props.model !== 'comment' && hasMore"
             :loading="loadingMore"
             @load="loadMore()"
+          />
+
+          <!-- Traditional pagination (threaded mode) - comment model only -->
+          <Pagination
+            v-if="props.model === 'comment' && (hasMore || currentPage > 1)"
+            :pagination="paginate(discussion?.reply_count ?? 0, currentPage, discussionPageSize)"
+            @change="loadPage($event)"
           />
         </div>
 

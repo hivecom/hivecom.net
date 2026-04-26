@@ -15,11 +15,14 @@
  */
 
 import type { InjectionKey, Ref } from 'vue'
-import type { Comment, DiscussionSettings, ProvidedDiscussion } from './Discussion.types'
+import type { Comment, DiscussionSettings, ProvidedDiscussion, RawComment } from './Discussion.types'
 
 export const DISCUSSION_KEYS = {
   /** Callback to lazily load children for a root comment (threaded view) */
   loadChildren: Symbol('loadChildren') as InjectionKey<(rootId: string) => Promise<void>>,
+
+  /** Map of root comment ID → fetched children (used by comment model sheet) */
+  childrenMap: Symbol('childrenMap') as InjectionKey<Ref<Map<string, RawComment[]>>>,
 
   /** Callback to navigate to a comment by ID, loading its page if needed */
   navigateToComment: Symbol('navigateToComment') as InjectionKey<(id: string) => Promise<boolean>>,
