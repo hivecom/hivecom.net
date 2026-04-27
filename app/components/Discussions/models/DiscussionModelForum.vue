@@ -366,7 +366,7 @@ const editedAtFormatted = computed(() => {
         <p class="author-meta mt-xs text-color-lightest">
           <CountDisplay class="text-s" :value="discussionCount ?? 0" /> {{ (discussionCount ?? 0) === 1 ? 'discussion' : 'discussions' }} / <CountDisplay class="text-s" :value="replyCount ?? 0" /> {{ (replyCount ?? 0) === 1 ? 'reply' : 'replies' }}
         </p>
-        <Divider v-if="user?.introduction" />
+        <Divider v-if="user?.introduction" class="my-s" />
         <p v-if="user?.introduction" class="text-s text-center">
           {{ user.introduction }}
         </p>
