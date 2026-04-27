@@ -457,7 +457,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
               </div>
             </Flex>
 
-            <Divider />
+            <Divider class="my-m" />
 
             <!-- Leaderboard rows -->
             <div v-for="i in 10" :key="i" class="leaderboard__row leaderboard__row--skeleton">

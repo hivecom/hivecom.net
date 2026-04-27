@@ -179,7 +179,7 @@ const isMobile = useBreakpoint('<s')
           </Flex>
         </section>
 
-        <Divider :size="40" />
+        <Divider class="my-m" />
 
         <section class="theme-details">
           <Flex column gap="xl">

@@ -150,7 +150,7 @@ function handleReport() {
         </template>
       </p>
 
-      <Divider :size="40" />
+      <Divider class="my-m" />
 
       <Flex column gap="xs" class="discussion-toolbar__sheet-actions">
         <!-- Interaction actions -->
@@ -192,7 +192,7 @@ function handleReport() {
           </DropdownItem>
         </template>
 
-        <Divider :size="32" />
+        <Divider class="my-m" />
 
         <!-- Off-topic + report -->
         <template v-if="showModGroup || canPin">

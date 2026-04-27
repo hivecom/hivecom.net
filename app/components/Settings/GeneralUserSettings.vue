@@ -26,7 +26,7 @@ const { selectedTheme, themeOptions, selectedVariant, variantOptions } = useUser
     </Flex>
     <Switch v-model="settings.allow_custom_css" class="reversed" label="Allow custom CSS from themes" hint="When enabled, themes that include custom CSS will apply it. Only enable this if you trust the theme author." />
 
-    <Divider :size="64" />
+    <Divider class="my-l" />
 
     <strong class="text-color-lighter text-s block mb-m">
       Discussions
@@ -64,7 +64,7 @@ const { selectedTheme, themeOptions, selectedVariant, variantOptions } = useUser
       :disabled="settings.discussion_view_mode === 'flat'"
     />
 
-    <Divider :size="64" />
+    <Divider class="my-l" />
 
     <strong class="text-color-lighter text-s block mb-m">
       Forum
@@ -74,7 +74,7 @@ const { selectedTheme, themeOptions, selectedVariant, variantOptions } = useUser
     <Switch v-model="settings.show_forum_recently_visited" class="reversed mb-m" label="Show recently visited" />
     <Switch v-model="settings.show_forum_archived" class="reversed" label="Show archived topics & discussions" />
 
-    <Divider :size="64" />
+    <Divider class="my-l" />
 
     <strong class="text-color-lighter text-s block mb-m">
       Rich Text Editor

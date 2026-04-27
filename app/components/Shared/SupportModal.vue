@@ -134,7 +134,7 @@ function handleClose() {
         <p class="text-color-light">
           Reach out to any of the admins below on Discord or TeamSpeak if that works better for you.
         </p>
-        <Divider />
+        <Divider class="my-m" />
         <div v-if="!canViewAdmins" class="support-modal__admin-placeholder">
           Sign in to view the current admin roster.
         </div>

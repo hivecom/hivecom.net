@@ -394,7 +394,7 @@ function handleDelete() {
           Pin
         </DropdownItem>
       </template>
-      <Divider :size="0" margin="8px 0" />
+      <Divider class="my-xs" />
       <DropdownItem @click="showEditModal = true">
         Edit
       </DropdownItem>
@@ -416,7 +416,7 @@ function handleDelete() {
       </template>
       <!-- Topic-only: create sub-topic and create discussion shortcuts -->
       <template v-if="props.table === 'discussion_topics'">
-        <Divider :size="0" margin="8px 0" />
+        <Divider class="my-xs" />
         <DropdownItem
           v-if="!props.data.is_locked || user?.role === 'admin' || user?.role === 'moderator'"
           @click="showCreateSubTopicModal = true; dropdownRef?.close()"

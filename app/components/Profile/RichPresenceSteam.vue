@@ -221,7 +221,7 @@ const visible = ref(false)
           </div>
         </div>
 
-        <Divider v-if="hasPresence && props.richPresenceEnabled" class="m-xxs p-xxs" :margin="0" />
+        <Divider v-if="hasPresence && props.richPresenceEnabled" class="m-xxs p-xxs" />
 
         <div v-if="hasPresence && props.richPresenceEnabled" class="rp-section">
           <a

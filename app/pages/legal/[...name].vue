@@ -199,7 +199,7 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
             </Flex>
           </Flex>
 
-          <Divider />
+          <Divider class="my-m" />
 
           <!-- Callout: this is a future revision, not yet in effect -->
           <Alert v-if="isFutureRevision" variant="warning" class="legal-page__callout">

@@ -101,7 +101,7 @@ async function signOut() {
           />
         </div>
 
-        <Divider />
+        <Divider class="my-m" />
 
         <!-- Navigation items -->
         <Flex column expand gap="xxs" class="user-sheet__nav">
@@ -126,7 +126,7 @@ async function signOut() {
           </button>
 
           <template v-if="isAdminOrMod">
-            <Divider margin="4px 0" />
+            <Divider class="my-xs" />
             <NuxtLink to="/admin" class="user-sheet__nav-item">
               <Icon name="ph:faders" :size="18" />
               Admin Panel

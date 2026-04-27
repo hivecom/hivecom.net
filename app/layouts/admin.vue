@@ -383,7 +383,7 @@ watch(() => route.path, () => {
                 </Tooltip>
               </Flex>
             </Flex>
-            <Divider :size="0" />
+            <Divider />
           </template>
 
           <!-- Only show menu items the user has permissions for -->
@@ -408,7 +408,7 @@ watch(() => route.path, () => {
           </Tooltip>
 
           <template v-if="miniSidebar">
-            <Divider />
+            <Divider class="my-m" />
             <Tooltip placement="right">
               <DropdownItem square aria-label="Search" @click="openCommand()">
                 <template #icon>

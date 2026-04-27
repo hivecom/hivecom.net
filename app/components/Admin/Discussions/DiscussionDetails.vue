@@ -468,11 +468,11 @@ async function reassignToTopic(topicId: string) {
 
       <template v-if="hasReplies">
         <Flex v-if="showRepliesBetween" expand column gap="xs">
-          <Divider />
+          <Divider class="my-m" />
           <Flex x-center expand>
             <span class="text-color-lighter text-xs">{{ threadReplyCountText }}</span>
           </Flex>
-          <Divider />
+          <Divider class="my-m" />
         </Flex>
 
         <Card class="card-bg">

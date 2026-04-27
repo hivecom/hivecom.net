@@ -507,7 +507,7 @@ const iconTheme = computed<Theme>(() => {
             </Flex>
           </div>
 
-          <Divider :size="0" />
+          <Divider class="my-m" />
 
           <div
             v-for="(colors, groupName) in COLOR_GROUPS"

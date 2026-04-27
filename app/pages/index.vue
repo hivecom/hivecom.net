@@ -98,7 +98,7 @@ onMounted(async () => {
             About Us
           </h2>
           <ClientOnly>
-            <Divider />
+            <Divider class="my-l" />
           </ClientOnly>
 
           <div class="about-section__content">
@@ -231,7 +231,7 @@ onMounted(async () => {
             </Card>
           </div>
 
-          <Grid v-else class="events-section__list" :columns="3" gap="m" expand>
+          <Grid v-else :columns="3" gap="m" expand y-stretch>
             <EventCardLanding
               v-for="event in events"
               :key="event.id"
@@ -283,7 +283,7 @@ section {
 .heading {
   text-align: center;
   font-size: var(--font-size-xxxl);
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-l);
 }
 
 h3 {
