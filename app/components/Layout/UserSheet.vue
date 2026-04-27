@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Divider, Flex, Sheet, Spinner } from '@dolanske/vui'
+import { Button, Divider, DropdownItem, Flex, Sheet, Spinner } from '@dolanske/vui'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
@@ -101,35 +101,53 @@ async function signOut() {
           />
         </div>
 
-        <Divider />
+        <Divider class="my-s" />
 
         <!-- Navigation items -->
         <Flex column expand gap="xxs" class="user-sheet__nav">
-          <NuxtLink to="/profile" class="user-sheet__nav-item">
-            <Icon name="ph:user" :size="18" />
-            Profile
+          <NuxtLink to="/profile" class="w-100">
+            <DropdownItem>
+              <template #icon>
+                <Icon name="ph:user" :size="18" />
+              </template>
+              Profile
+            </DropdownItem>
           </NuxtLink>
 
-          <NuxtLink to="/themes" class="user-sheet__nav-item">
-            <Icon name="ph:circle-half-tilt-fill" :size="18" />
-            Themes
+          <NuxtLink to="/themes" class="w-100">
+            <DropdownItem>
+              <template #icon>
+                <Icon name="ph:circle-half-tilt-fill" :size="18" />
+              </template>
+              Themes
+            </DropdownItem>
           </NuxtLink>
 
-          <NuxtLink to="/profile/settings" class="user-sheet__nav-item">
-            <Icon name="ph:gear-six" :size="18" />
-            Settings
+          <NuxtLink to="/profile/settings" class="w-100">
+            <DropdownItem>
+              <template #icon>
+                <Icon name="ph:gear-six" :size="18" />
+              </template>
+              Settings
+            </DropdownItem>
           </NuxtLink>
 
-          <button class="user-sheet__nav-item" @click="openComplaintModal">
-            <Icon name="ph:flag" :size="18" />
+          <DropdownItem @click="openComplaintModal">
+            <template #icon>
+              <Icon name="ph:flag" :size="18" />
+            </template>
             Complaints
-          </button>
+          </DropdownItem>
 
           <template v-if="isAdminOrMod">
-            <Divider margin="4px 0" />
-            <NuxtLink to="/admin" class="user-sheet__nav-item">
-              <Icon name="ph:faders" :size="18" />
-              Admin Panel
+            <Divider class="my-s" />
+            <NuxtLink to="/admin" class="w-100">
+              <DropdownItem>
+                <template #icon>
+                  <Icon name="ph:faders" :size="18" />
+                </template>
+                Admin Panel
+              </DropdownItem>
             </NuxtLink>
           </template>
         </Flex>
@@ -173,38 +191,6 @@ async function signOut() {
   &__nav {
     padding: var(--space-xxs) 0;
     width: 100%;
-  }
-
-  &__nav-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-s);
-    padding: var(--space-s) var(--space-m);
-    border-radius: var(--border-radius-s);
-    font-size: var(--font-size-m);
-    color: var(--color-text);
-    text-decoration: none;
-    background: none;
-    border: none;
-    cursor: pointer;
-    width: 100%;
-    text-align: left;
-    transition: var(--transition);
-
-    &:hover {
-      background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
-      color: var(--color-accent);
-    }
-
-    .iconify {
-      flex-shrink: 0;
-      color: var(--color-text-light);
-      transition: var(--transition);
-    }
-
-    &:hover .iconify {
-      color: var(--color-accent);
-    }
   }
 }
 </style>

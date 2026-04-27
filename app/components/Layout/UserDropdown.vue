@@ -133,7 +133,7 @@ async function signOut() {
       </DropdownItem>
 
       <template v-if="isAdminOrMod">
-        <Divider size="2" margin="4px 0" />
+        <Divider class="my-xxs" />
         <NuxtLink to="/admin">
           <DropdownItem>
             <template #icon>
@@ -144,7 +144,7 @@ async function signOut() {
         </NuxtLink>
       </template>
 
-      <Divider size="2" margin="4px 0" />
+      <Divider class="my-xxs" />
 
       <Flex x-between y-center gap="xs" class="user-dropdown__footer">
         <SharedThemeToggle no-text />

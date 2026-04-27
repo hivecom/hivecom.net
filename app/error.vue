@@ -52,7 +52,7 @@ onMounted(() => {
             Error {{ errorCode }}
           </h1>
           <ClientOnly>
-            <Divider />
+            <Divider class="my-m" />
           </ClientOnly>
 
           <p class="error-description">

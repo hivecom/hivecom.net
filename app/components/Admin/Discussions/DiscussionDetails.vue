@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, Card, CopyClipboard, Divider, Dropdown, DropdownTitle, Flex, Grid, pushToast, searchString, Sheet, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, CopyClipboard, Dropdown, DropdownTitle, Flex, Grid, pushToast, searchString, Sheet, Tooltip } from '@dolanske/vui'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import DiscussionEditSheet from '@/components/Admin/Discussions/DiscussionEditSheet.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
@@ -467,12 +467,8 @@ async function reassignToTopic(topicId: string) {
       </Card>
 
       <template v-if="hasReplies">
-        <Flex v-if="showRepliesBetween" expand column gap="xs">
-          <Divider />
-          <Flex x-center expand>
-            <span class="text-color-lighter text-xs">{{ threadReplyCountText }}</span>
-          </Flex>
-          <Divider />
+        <Flex v-if="showRepliesBetween" expand x-center class="py-xs">
+          <span class="text-color-lighter text-s">{{ threadReplyCountText }}</span>
         </Flex>
 
         <Card class="card-bg">

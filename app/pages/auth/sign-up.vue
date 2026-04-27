@@ -130,7 +130,9 @@ async function signUpWithGoogle() {
                 </Flex>
               </Button>
             </Flex>
-            <Divider>or</Divider>
+            <Divider class="my-m">
+              or
+            </Divider>
             <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
             <Button expand variant="fill" :loading="loading" :disabled="!email" @click="signInWithOtp">
               Sign up

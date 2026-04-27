@@ -57,18 +57,18 @@ const timeProgressPercentage = computed(() => {
         <Skeleton height="30px" width="29px" />
         <Skeleton height="11px" width="27px" />
       </Flex>
-      <Divider vertical :size="props.simple ? 40 : 64" />
+      <Divider vertical :height="props.simple ? 40 : 64" />
       <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
         <Skeleton height="30px" width="29px" />
         <Skeleton height="11px" width="27px" />
       </Flex>
-      <Divider vertical :size="props.simple ? 40 : 64" />
+      <Divider vertical :height="props.simple ? 40 : 64" />
       <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
         <Skeleton height="30px" width="29px" />
         <Skeleton height="11px" width="27px" />
       </Flex>
       <template v-if="!props.simple">
-        <Divider vertical :size="props.simple ? 40 : 64" />
+        <Divider vertical :height="props.simple ? 40 : 64" />
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
           <Skeleton height="30px" width="29px" />
           <Skeleton height="11px" width="27px" />
@@ -102,14 +102,14 @@ const timeProgressPercentage = computed(() => {
           </div>
           <span class="countdown-timer__label">days</span>
         </Flex>
-        <Divider vertical :size="props.simple ? 40 : 64" />
+        <Divider vertical :height="props.simple ? 40 : 64" />
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="hours">
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.hours" class="countdown-timer__number">{{ countdown.hours.toString().padStart(2, '0') }}</span>
           </div>
           <span class="countdown-timer__label">hours</span>
         </Flex>
-        <Divider vertical :size="props.simple ? 40 : 64" />
+        <Divider vertical :height="props.simple ? 40 : 64" />
 
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="minutes">
           <div class="countdown-timer__number-wrapper">
@@ -117,7 +117,7 @@ const timeProgressPercentage = computed(() => {
           </div>
           <span class="countdown-timer__label">minutes</span>
         </Flex>
-        <Divider vertical :size="props.simple ? 40 : 64" />
+        <Divider vertical :height="props.simple ? 40 : 64" />
 
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="seconds">
           <div class="countdown-timer__number-wrapper">

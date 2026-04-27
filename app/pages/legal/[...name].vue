@@ -165,11 +165,15 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
               <Tooltip v-if="changeNote" placement="top">
                 <Icon name="ph:note" class="legal-page__note-icon" />
                 <template #tooltip>
-                  <ul class="legal-page__note-tooltip">
-                    <li v-for="(note, i) in changeNote" :key="i">
-                      {{ note }}
-                    </li>
-                  </ul>
+                  <div class="typeset">
+                    <ul>
+                      <li v-for="(note, i) in changeNote" :key="i">
+                        <p>
+                          {{ note }}
+                        </p>
+                      </li>
+                    </ul>
+                  </div>
                 </template>
               </Tooltip>
               <Button
@@ -199,7 +203,7 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
             </Flex>
           </Flex>
 
-          <Divider />
+          <Divider class="my-m" />
 
           <!-- Callout: this is a future revision, not yet in effect -->
           <Alert v-if="isFutureRevision" variant="warning" class="legal-page__callout">
@@ -333,25 +337,6 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
 
     &:hover {
       color: var(--color-text-light);
-    }
-  }
-
-  &__note-tooltip {
-    max-width: 48ch;
-    line-height: 1.5;
-    margin: 0;
-    padding-left: var(--space-s);
-    list-style: disc;
-    color: var(--color-text);
-
-    li {
-      margin: 0;
-      padding: 0;
-      font-size: var(--font-size-xxs);
-    }
-
-    li + li {
-      margin-top: var(--space-xxs);
     }
   }
 

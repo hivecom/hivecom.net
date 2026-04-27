@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
-import { Button, Divider, Flex, Skeleton } from '@dolanske/vui'
+import { Avatar, Button, Divider, Flex, Skeleton } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
@@ -137,7 +137,7 @@ const {
         </Flex>
       </Flex>
 
-      <Divider style="height: 8px;" />
+      <Divider class="my-xs" />
 
       <Flex column gap="xs">
         <Skeleton :height="14" width="100%" :radius="4" />
@@ -160,7 +160,7 @@ const {
           <Avatar :size="props.avatarSize" class="user-preview-card__locked-avatar" />
           <span class="user-preview-card__locked-name">Private User</span>
         </Flex>
-        <Divider style="width: 100%;" />
+        <Divider class="my-xs" />
         <Flex column y-center expand x-center gap="l" class="user-preview-card__locked-cta">
           <p class="user-preview-card__locked-text text-s">
             Sign in to see this user's profile.
@@ -246,7 +246,7 @@ const {
           </Flex>
         </Flex>
 
-        <Divider v-if="(props.showDescription && hasCustomIntroduction) || (activity && props.showActivity && (activity.steam_id || (activity.teamspeak_identities && activity.teamspeak_identities.length > 0)))" style="height: 8px;" />
+        <Divider v-if="(props.showDescription && hasCustomIntroduction) || (activity && props.showActivity && (activity.steam_id || (activity.teamspeak_identities && activity.teamspeak_identities.length > 0)))" class="my-xs" />
 
         <template v-if="props.showDescription && hasCustomIntroduction">
           <Flex v-if="hasCustomIntroduction" column expand :gap="0">
