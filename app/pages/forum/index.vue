@@ -1223,28 +1223,34 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
             </Flex>
             <template v-if="index === 0">
               <div class="forum__sort-wrapper">
-                <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'reply_count' }" :disabled="isMobile" @click="changeSort('reply_count')">
-                  Discussions / Replies
-                  <template v-if="!isMobile && sortIcon('reply_count')" #end>
-                    <Icon :name="sortIcon('reply_count')!" />
-                  </template>
-                </Button>
+                <div>
+                  <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'reply_count' }" :disabled="isMobile" @click="changeSort('reply_count')">
+                    Discussions / Replies
+                    <template v-if="!isMobile && sortIcon('reply_count')" #end>
+                      <Icon :name="sortIcon('reply_count')!" />
+                    </template>
+                  </Button>
+                </div>
               </div>
               <div class="forum__sort-wrapper">
-                <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'view_count' }" :disabled="isMobile" @click="changeSort('view_count')">
-                  Views
-                  <template v-if="!isMobile && sortIcon('view_count')" #end>
-                    <Icon :name="sortIcon('view_count')!" />
-                  </template>
-                </Button>
+                <div>
+                  <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'view_count' }" :disabled="isMobile" @click="changeSort('view_count')">
+                    Views
+                    <template v-if="!isMobile && sortIcon('view_count')" #end>
+                      <Icon :name="sortIcon('view_count')!" />
+                    </template>
+                  </Button>
+                </div>
               </div>
               <div class="forum__sort-wrapper">
-                <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'last_activity_at' }" :disabled="isMobile" @click="changeSort('last_activity_at')">
-                  Last activity
-                  <template v-if="!isMobile && sortIcon('last_activity_at')" #end>
-                    <Icon :name="sortIcon('last_activity_at')!" />
-                  </template>
-                </Button>
+                <div>
+                  <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'last_activity_at' }" :disabled="isMobile" @click="changeSort('last_activity_at')">
+                    Last activity
+                    <template v-if="!isMobile && sortIcon('last_activity_at')" #end>
+                      <Icon :name="sortIcon('last_activity_at')!" />
+                    </template>
+                  </Button>
+                </div>
               </div>
             </template>
             <template v-else>
