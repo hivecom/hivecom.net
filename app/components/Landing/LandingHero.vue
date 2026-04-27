@@ -152,7 +152,6 @@ onMounted(() => {
   background-size: cover;
   background-position: center;
   filter: blur(128px);
-  transform: scale(1.03);
   opacity: 1;
   animation: hero-splash-fade 3000ms ease 3000ms forwards;
   will-change: opacity, transform, filter;

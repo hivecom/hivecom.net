@@ -73,6 +73,8 @@ const allUserIds = computed(() => {
 
 const currentUserId = useUserId()
 const isMobile = useBreakpoint('<xs')
+const isBelowSmall = useBreakpoint('<s')
+const isBelowMedium = useBreakpoint('<m')
 const cache = useCache()
 
 function navigateToProfile(userId: string) {
@@ -109,24 +111,22 @@ const activityChartData = computed(() => {
 
   const points = stats.value.activityOverTime
   const labels = points.map(p => p.date)
-  const palette = getChartPalette()
-
   return {
     labels,
     datasets: [
       {
         label: 'Discussions',
         data: points.map(p => p.discussions),
-        borderColor: palette.datasets[4], // accent
-        backgroundColor: `${palette.datasets[4]}1a`,
+        borderColor: '#8b5cf6',
+        backgroundColor: '#8b5cf61a',
         fill: true,
         tension: 0.3,
       },
       {
         label: 'Replies',
         data: points.map(p => p.replies),
-        borderColor: palette.datasets[1], // green
-        backgroundColor: `${palette.datasets[1]}1a`,
+        borderColor: '#22c55e',
+        backgroundColor: '#22c55e1a',
         fill: true,
         tension: 0.3,
       },
@@ -189,24 +189,22 @@ const topicChartData = computed(() => {
 
   const topics = stats.value.topicBreakdown.slice(0, 12)
   const labels = topics.map(t => t.topic_name)
-  const palette = getChartPalette()
-
   return {
     labels,
     datasets: [
       {
         label: 'Discussions',
         data: topics.map(t => t.discussion_count),
-        backgroundColor: `${palette.datasets[4]}b3`, // accent @ ~70% opacity
-        borderColor: palette.datasets[4],
+        backgroundColor: '#8b5cf6b3',
+        borderColor: '#8b5cf6',
         borderWidth: 1,
         borderRadius: 4,
       },
       {
         label: 'Replies',
         data: topics.map(t => t.reply_count),
-        backgroundColor: `${palette.datasets[1]}b3`, // green @ ~70% opacity
-        borderColor: palette.datasets[1],
+        backgroundColor: '#22c55eb3',
+        borderColor: '#22c55e',
         borderWidth: 1,
         borderRadius: 4,
       },
@@ -411,9 +409,9 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
           <Card class="stats-podium-card">
             <!-- Card header -->
             <template #header>
-              <Flex expand x-between y-center>
+              <Flex expand :x-between="!isMobile" :x-center="isMobile" y-center wrap>
                 <Skeleton :width="160" :height="16" :radius="4" />
-                <Skeleton :width="180" :height="32" :radius="4" />
+                <Skeleton :width="isMobile ? '100%' : 196" :height="32" :radius="4" :expand="isMobile" />
               </Flex>
             </template>
 
@@ -462,10 +460,10 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
             <!-- Leaderboard rows -->
             <div v-for="i in 10" :key="i" class="leaderboard__row leaderboard__row--skeleton">
               <Flex gap="m" y-center expand>
-                <Skeleton :width="20" :height="14" :radius="3" />
+                <Skeleton v-if="!isMobile" :width="20" :height="14" :radius="3" />
                 <Skeleton :width="36" :height="36" :radius="18" />
-                <Skeleton :width="90" :height="14" :radius="4" />
-                <div class="leaderboard__bar-wrapper">
+                <Skeleton :width="90" :height="14" :radius="4" class="leaderboard__skeleton-name" />
+                <div v-if="!isMobile" class="leaderboard__bar-wrapper">
                   <Skeleton :height="6" :width="Math.max(20, 100 - i * 8)" :radius="3" />
                 </div>
                 <Skeleton :width="36" :height="22" :radius="4" />
@@ -474,7 +472,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
           </Card>
 
           <!-- Counter grid skeleton -->
-          <Grid :columns="5" gap="m" y-stretch expand>
+          <Grid :columns="isBelowSmall ? 2 : isBelowMedium ? 3 : 5" gap="m" y-stretch expand>
             <Card v-for="i in 5" :key="i" class="stats-counter-card">
               <div class="stats-counter">
                 <Skeleton :width="24" :height="24" :radius="4" />
@@ -992,6 +990,10 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
     align-items: center;
     gap: var(--space-s);
     overflow: hidden;
+  }
+
+  &__skeleton-name {
+    flex: 1;
   }
 
   &__bar-wrapper {

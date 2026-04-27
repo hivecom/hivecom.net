@@ -7,6 +7,7 @@ import EventsListing from '@/components/Events/EventsListing.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataEvents } from '@/composables/useDataEvents'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption {
   label: string
@@ -72,6 +73,8 @@ onMounted(() => {
   activeTab.value = sessionStorage.getItem('events_active_tab') ?? 'list'
 })
 
+const isMobile = useBreakpoint('<m')
+
 // Create event modal
 const showCreateEventModal = ref(false)
 const showContentRulesModal = ref(false)
@@ -133,13 +136,18 @@ defineOgImage('Default', {
 
       <template #end>
         <Flex gap="xs" y-center>
-          <Button v-if="user" variant="accent" size="s" @click="handleCreateEventClick">
-            <template #start>
+          <Button v-if="user" variant="accent" size="s" :square="isMobile" @click="handleCreateEventClick">
+            <template v-if="isMobile">
               <Icon name="ph:plus" :size="16" />
             </template>
-            Create
+            <template v-if="!isMobile" #start>
+              <Icon name="ph:plus" :size="16" />
+            </template>
+            <template v-if="!isMobile">
+              Create
+            </template>
           </Button>
-          <CalendarButtons size="s" show-labels />
+          <CalendarButtons size="s" :show-labels="!isMobile" />
         </Flex>
       </template>
     </Tabs>

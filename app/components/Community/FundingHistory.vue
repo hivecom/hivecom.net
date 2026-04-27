@@ -14,6 +14,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const isBelowExtraSmall = useBreakpoint('<xs')
+const isBelowSmall = useBreakpoint('<s')
 
 // Define transformed funding data interface for table
 interface TransformedFunding {
@@ -164,7 +165,7 @@ function getGrowthIndicator(growth: number | null) {
       <Card v-if="historicalData[0] && isCurrentYear" class="p-l">
         <!-- Header with month -->
         <Flex column gap="l" expand>
-          <Flex x-between y-center>
+          <Flex x-between y-center wrap gap="s">
             <Flex y-center gap="s">
               <h3 class="text-bold text-xxxl">
                 {{ historicalData[0].monthName }}
@@ -182,7 +183,7 @@ function getGrowthIndicator(growth: number | null) {
           </Flex>
 
           <!-- Funding source cards -->
-          <Grid :columns="2" gap="m" expand>
+          <Grid :columns="isBelowSmall ? 1 : 2" gap="m" expand>
             <!-- Patreon Card -->
             <Card class="p-m">
               <Flex column gap="xs">
