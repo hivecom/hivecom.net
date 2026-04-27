@@ -187,6 +187,7 @@ const themeCommands = computed<Command[]>(() => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const supabase = useSupabaseClient<Database>()
+const { navigate: discoverNavigate } = useDiscoverQueue()
 
 const quickCommands = computed<Command[]>(() => [
   {
@@ -227,6 +228,15 @@ const quickCommands = computed<Command[]>(() => [
         },
       }]
     : []),
+  {
+    title: 'Discover',
+    description: 'Navigate to a random forum discussion',
+    group: 'Commands',
+    handler: async () => {
+      closeCommand()
+      await discoverNavigate()
+    },
+  },
   {
     title: 'Latest Event',
     description: 'Jump to the next upcoming event',

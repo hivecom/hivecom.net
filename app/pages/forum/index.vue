@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Dropdown, DropdownItem, Flex, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, Dropdown, DropdownItem, Flex, paginate, Pagination, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
@@ -17,6 +17,7 @@ import SharedTinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useCache } from '@/composables/useCache'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
+import { useDiscoverQueue } from '@/composables/useDiscoverQueue'
 import { useForumActivityFeed } from '@/composables/useForumActivityFeed'
 import { useForumDraftCount } from '@/composables/useForumDraftCount'
 import { useForumUserActivity } from '@/composables/useForumUserActivity'
@@ -28,7 +29,7 @@ import { slugify } from '@/lib/utils/formatting'
 
 dayjs.extend(relativeTime)
 
-const FORUM_TOPICS_CACHE_KEY = 'forum:topics-with-discussions:v2'
+const FORUM_TOPICS_CACHE_KEY = 'forum:topics-v3'
 const FORUM_TOPICS_TTL = 5 * 60 * 1000 // 5 minutes
 
 useSeoMeta({
@@ -47,9 +48,16 @@ type ForumDiscussion = Tables<'discussions'>
 
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
   discussions: ForumDiscussion[]
+  stickyDiscussions: ForumDiscussion[]
+  discussionsLoaded: boolean
 }
 
 // Show display settings & store them in localStorage
+type SortColumn = 'last_activity_at' | 'reply_count' | 'view_count'
+
+const sortColumn = ref<SortColumn>('last_activity_at')
+const sortAscending = ref(false)
+
 const showSettings = ref(false)
 const settingsAnchor = useTemplateRef('settings-anchor')
 
@@ -128,6 +136,22 @@ function handleContentRulesCanceled() {
 const topicsError = ref<string | null>(null)
 const topics = ref<TopicWithDiscussions[]>([])
 
+// Lightweight discussion index for the activity feed, visibleDiscussionIds,
+// and discussionLookup. Fetched once on mount independently of the lazy
+// per-topic discussion loads so the feed works without clicking into topics.
+const FORUM_DISCUSSIONS_INDEX_CACHE_KEY = 'forum:discussions-index:v1'
+const FORUM_DISCUSSIONS_INDEX_TTL = 5 * 60 * 1000
+const allDiscussions = ref<ForumDiscussion[]>([])
+
+const TOPIC_PAGE_SIZE = 15
+
+interface TopicPaginationState {
+  page: number
+  totalCount: number
+}
+// Keyed by topicId
+const topicPagination = ref<Record<string, TopicPaginationState>>({})
+
 // Bulk-fetch topic icons for all topics so we can show them inline next to titles
 const allTopicIds = computed(() => topics.value.map(t => t.id))
 const { icons: topicIcons, refresh: refreshTopicIcon } = useBulkTopicIcons(allTopicIds)
@@ -193,18 +217,31 @@ provide(FORUM_KEYS.forumRefreshTopicIcon, refreshTopicIcon)
 
 // ── Derived visibility sets used by activity feed ──────────────────────────
 const visibleDiscussionIds = computed(() => {
+  const archivedTopicIds = new Set(
+    topics.value.filter(t => t.is_archived).map(t => t.id),
+  )
   return new Set(
-    topics.value
-      .filter(topic => settings.value.show_forum_archived || !topic.is_archived)
-      .flatMap(topic => topic.discussions)
-      .filter(discussion => settings.value.show_forum_archived || !discussion.is_archived)
-      .filter(discussion => settings.value.show_nsfw_content || !discussion.is_nsfw)
-      .map(discussion => discussion.id),
+    allDiscussions.value
+      .filter((d) => {
+        if (!settings.value.show_forum_archived) {
+          if (d.is_archived)
+            return false
+          if (d.discussion_topic_id != null && archivedTopicIds.has(d.discussion_topic_id))
+            return false
+        }
+        if (!settings.value.show_nsfw_content && d.is_nsfw)
+          return false
+        return true
+      })
+      .map(d => d.id),
   )
 })
 
 const discussionLookup = computed(() => {
   const lookup = new Map<string, ForumDiscussion>()
+  // Seed from the global index first
+  allDiscussions.value.forEach(d => lookup.set(d.id, d))
+  // Overwrite with lazily-loaded per-topic data which may have fresher counts
   topics.value.forEach((topic) => {
     topic.discussions.forEach((discussion) => {
       lookup.set(discussion.id, discussion)
@@ -264,6 +301,7 @@ const {
   prependDiscussionItem,
 } = useForumActivityFeed({
   topics,
+  allDiscussions,
   settings,
   discussionLookup,
   visibleDiscussionIds,
@@ -277,10 +315,19 @@ const {
 // Reset when the sheet reloads. The carousel updates immediately.
 const feedPendingCount = ref(0)
 
+function handleTopicActivity(topicId: string, lastActivityAt: string) {
+  const idx = topics.value.findIndex(t => t.id === topicId)
+  if (idx !== -1) {
+    const current = topics.value[idx]
+    topics.value[idx] = Object.assign({}, current, { last_activity_at: lastActivityAt }) as TopicWithDiscussions
+  }
+}
+
 const { subscribe: subscribeForumFeed } = useRealtimeForumFeed({
   onReply: prependReplyItem,
   onDiscussion: prependDiscussionItem,
   onPendingSheet: (delta) => { feedPendingCount.value += delta },
+  onTopicActivity: handleTopicActivity,
   discussionLookup,
   settings,
   visibleDiscussionIds,
@@ -311,6 +358,25 @@ const mentionLookup = computed<Record<string, string>>(() => {
   return lookup
 })
 
+async function fetchDiscussionsIndex() {
+  const cached = forumCache.get<ForumDiscussion[]>(FORUM_DISCUSSIONS_INDEX_CACHE_KEY)
+  if (cached !== null) {
+    allDiscussions.value = cached
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('discussions')
+    .select('id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id')
+    .eq('is_draft', false)
+    .not('discussion_topic_id', 'is', null)
+
+  if (!error && data) {
+    allDiscussions.value = data as ForumDiscussion[]
+    forumCache.set(FORUM_DISCUSSIONS_INDEX_CACHE_KEY, allDiscussions.value, FORUM_DISCUSSIONS_INDEX_TTL)
+  }
+}
+
 onBeforeMount(async () => {
   loading.value = true
 
@@ -322,12 +388,14 @@ onBeforeMount(async () => {
 
   if (cachedTopics !== null) {
     topics.value = cachedTopics
-    forumUnread.initializeTopics(cachedTopics)
+    forumUnread.initializeTopicsOnly(cachedTopics)
 
     if (activeTopicSlug.value) {
       const matched = cachedTopics.find(t => t.slug === activeTopicSlug.value)
-      if (matched)
+      if (matched) {
         activeTopicId.value = matched.id
+        loadTopicOrChildren(matched.id)
+      }
     }
     else if (activeTopicIdQuery.value) {
       const matched = cachedTopics.find(t => t.id === activeTopicIdQuery.value)
@@ -335,50 +403,69 @@ onBeforeMount(async () => {
         activeTopicId.value = matched.id
         if (matched.slug)
           _setQuery(matched.slug, null, false)
+        loadTopicOrChildren(matched.id)
+      }
+    }
+    else {
+      // Root view - load discussions for all top-level visible topics
+      for (const topic of getTopicsByParentId(null)) {
+        loadTopicOrChildren(topic.id)
       }
     }
   }
   else {
     await supabase
       .from('discussion_topics')
-      .select('*, discussions(id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id)')
-      .neq('discussions.is_draft', true)
+      .select('*')
       .then(({ data, error }) => {
         if (error) {
           topicsError.value = error.message
         }
         else {
-          topics.value = data
-          forumCache.set(FORUM_TOPICS_CACHE_KEY, data, FORUM_TOPICS_TTL)
+          const mapped: TopicWithDiscussions[] = (data ?? []).map(t => ({
+            ...t,
+            discussions: [],
+            stickyDiscussions: [],
+            discussionsLoaded: false,
+          } as TopicWithDiscussions))
+          topics.value = mapped
+          forumCache.set(FORUM_TOPICS_CACHE_KEY, mapped, FORUM_TOPICS_TTL)
 
-          // Seed localStorage seen-state for any topic/discussion not yet tracked.
-          // First-time visitors get everything marked as "seen" so only future
-          // activity triggers the new-post dots.
-          forumUnread.initializeTopics(data)
+          // Seed localStorage seen-state for topics. First-time visitors get everything
+          // marked as "seen" so only future activity triggers the new-post dots.
+          forumUnread.initializeTopicsOnly(mapped)
 
           // Restore active topic from URL query params (replace-only – no new history entry)
           if (activeTopicSlug.value) {
-            const matchedTopic = data.find(topic => topic.slug === activeTopicSlug.value)
+            const matchedTopic = mapped.find(topic => topic.slug === activeTopicSlug.value)
             if (matchedTopic) {
               activeTopicId.value = matchedTopic.id
+              loadTopicOrChildren(matchedTopic.id)
             }
           }
           else if (activeTopicIdQuery.value) {
-            const matchedTopic = data.find(topic => topic.id === activeTopicIdQuery.value)
+            const matchedTopic = mapped.find(topic => topic.id === activeTopicIdQuery.value)
             if (matchedTopic) {
               activeTopicId.value = matchedTopic.id
               // Upgrade UUID → slug silently (replace, not push)
               if (matchedTopic.slug) {
                 _setQuery(matchedTopic.slug, null, false)
               }
+              loadTopicOrChildren(matchedTopic.id)
+            }
+          }
+          else {
+            // Root view - load discussions for all top-level visible topics
+            for (const topic of getTopicsByParentId(null)) {
+              loadTopicOrChildren(topic.id)
             }
           }
         }
       })
   }
 
-  // ── Latest replies ───────────────────────────────────────────────────────
-  await Promise.all([fetchLatestReplies(), fetchTodayCount()])
+  // ── Discussion index + latest replies ────────────────────────────────────
+  await Promise.all([fetchDiscussionsIndex(), fetchLatestReplies(), fetchTodayCount()])
 
   loading.value = false
 
@@ -403,6 +490,128 @@ const breadcrumbItems = computed(() =>
   })),
 )
 
+// ── Per-topic lazy discussion loading ────────────────────────────────────
+
+const topicDiscussionsLoading = ref<Set<string>>(new Set())
+const topicPaginationLoading = ref<Set<string>>(new Set())
+
+const DISCUSSION_SELECT = 'id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id'
+
+async function loadTopicDiscussions(topicId: string, page: number = 0, isExplicitPageChange: boolean = false) {
+  const topic = topics.value.find(t => t.id === topicId)
+  // On first load (page 0) guard against duplicate fetches and already-loaded state.
+  // Skip the already-loaded guard when this is an explicit pagination action (e.g. clicking page 1 again).
+  // On subsequent pages always allow the fetch.
+  if (!topic)
+    return
+  if (page === 0 && !isExplicitPageChange && (topic.discussionsLoaded || topicDiscussionsLoading.value.has(topicId)))
+    return
+  if (page === 0 && isExplicitPageChange && topicPaginationLoading.value.has(topicId))
+    return
+  if (page > 0 && topicPaginationLoading.value.has(topicId))
+    return
+
+  const isPagination = page > 0 || isExplicitPageChange
+  if (isPagination) {
+    topicPaginationLoading.value = new Set([...topicPaginationLoading.value, topicId])
+  }
+  else {
+    topicDiscussionsLoading.value = new Set([...topicDiscussionsLoading.value, topicId])
+  }
+
+  const from = page * TOPIC_PAGE_SIZE
+  const to = from + TOPIC_PAGE_SIZE - 1
+
+  // Sticky discussions are always fetched on first load and kept separately.
+  // Non-sticky discussions are paginated.
+  const [stickyResult, pageResult, countResult] = await Promise.all([
+    page === 0
+      ? supabase
+          .from('discussions')
+          .select(DISCUSSION_SELECT)
+          .eq('discussion_topic_id', topicId)
+          .eq('is_draft', false)
+          .eq('is_sticky', true)
+          .order(sortColumn.value, { ascending: sortAscending.value })
+      : Promise.resolve({ data: null, error: null }),
+
+    supabase
+      .from('discussions')
+      .select(DISCUSSION_SELECT)
+      .eq('discussion_topic_id', topicId)
+      .eq('is_draft', false)
+      .eq('is_sticky', false)
+      .order(sortColumn.value, { ascending: sortAscending.value })
+      .range(from, to),
+
+    page === 0
+      ? supabase
+          .from('discussions')
+          .select('id', { count: 'exact', head: true })
+          .eq('discussion_topic_id', topicId)
+          .eq('is_draft', false)
+          .eq('is_sticky', false)
+      : Promise.resolve({ count: null, error: null }),
+  ])
+
+  topicDiscussionsLoading.value = new Set([...topicDiscussionsLoading.value].filter(id => id !== topicId))
+  topicPaginationLoading.value = new Set([...topicPaginationLoading.value].filter(id => id !== topicId))
+
+  if (pageResult.error || !pageResult.data)
+    return
+
+  const idx = topics.value.findIndex(t => t.id === topicId)
+  if (idx === -1)
+    return
+
+  const currentTopic = topics.value[idx]
+  if (!currentTopic)
+    return
+
+  const stickyDiscussions: ForumDiscussion[] = page === 0
+    ? (stickyResult.data ?? []) as ForumDiscussion[]
+    : currentTopic.stickyDiscussions
+
+  const updatedTopic: TopicWithDiscussions = {
+    ...currentTopic,
+    discussions: pageResult.data as ForumDiscussion[],
+    stickyDiscussions,
+    discussionsLoaded: true,
+  }
+  topics.value[idx] = updatedTopic
+
+  // Update pagination state
+  const prevPagination = topicPagination.value[topicId]
+  topicPagination.value = {
+    ...topicPagination.value,
+    [topicId]: {
+      page,
+      totalCount: page === 0 ? (countResult.count ?? prevPagination?.totalCount ?? 0) : (prevPagination?.totalCount ?? 0),
+    },
+  }
+
+  // Seed unread state for newly loaded discussions
+  forumUnread.initializeTopics([{
+    id: updatedTopic.id,
+    last_activity_at: updatedTopic.last_activity_at,
+    discussions: [...updatedTopic.stickyDiscussions, ...updatedTopic.discussions],
+  }])
+
+  // Bust cache so remounts reflect loaded discussions
+  forumCache.delete(FORUM_TOPICS_CACHE_KEY)
+}
+
+function getTopicPagination(topicId: string): TopicPaginationState | null {
+  return topicPagination.value[topicId] ?? null
+}
+
+async function goToTopicPage(topicId: string, page: number) {
+  // Pass isExplicitPageChange=true so the discussionsLoaded guard is bypassed,
+  // allowing re-fetching page 0 when the user clicks page 1 more than once.
+  await loadTopicDiscussions(topicId, page, true)
+  window.scrollTo(0, 0)
+}
+
 /**
  * Navigate to a topic by its ID. Used by the breadcrumb back-navigation where
  * going "up" the tree should push a history entry so the user can go forward
@@ -416,6 +625,8 @@ function setActiveTopicById(topicId: string | null) {
     _setQuery(null, null, true)
     return
   }
+
+  loadTopicOrChildren(topicId)
 
   const matchedTopic = topics.value.find(topic => topic.id === topicId)
 
@@ -439,11 +650,9 @@ function setActiveTopicFromTopic(topic: TopicWithDiscussions) {
   activeTopicId.value = topic.id
 
   // Mark this topic as seen so the new-post dot clears after navigation
-  forumUnread.markTopicSeen(
-    topic.id,
-    topic.discussions.length,
-    topic.total_reply_count ?? 0,
-  )
+  forumUnread.markTopicSeen(topic.id)
+
+  loadTopicOrChildren(topic.id)
 
   if (topic.slug) {
     _setQuery(topic.slug, null, true)
@@ -468,8 +677,10 @@ watch(
 
     if (slug) {
       const matched = topics.value.find(t => t.slug === slug)
-      if (matched)
+      if (matched) {
         activeTopicId.value = matched.id
+        loadTopicOrChildren(matched.id)
+      }
       return
     }
 
@@ -477,6 +688,7 @@ watch(
       const matched = topics.value.find(t => t.id === uuid)
       if (matched) {
         activeTopicId.value = matched.id
+        loadTopicOrChildren(matched.id)
         // Silently upgrade UUID → slug if possible
         if (matched.slug)
           _setQuery(matched.slug, null, false)
@@ -502,7 +714,8 @@ watch(
   { immediate: true },
 )
 
-// Sort results by most recently modified and by sticky (pinned)
+// Filter discussions by visibility settings. DB already orders by last_activity_at
+// so we preserve that order - re-sorting would scramble pagination.
 function sortDiscussions(discussions: ForumDiscussion[]) {
   let filtered = settings.value.show_forum_archived
     ? discussions
@@ -512,32 +725,42 @@ function sortDiscussions(discussions: ForumDiscussion[]) {
     filtered = filtered.filter(discussion => !discussion.is_nsfw)
   }
 
-  return filtered.toSorted((a, b) => {
-    if (a.is_sticky && !b.is_sticky)
-      return -1
-    if (!a.is_sticky && b.is_sticky)
-      return 1
+  // DB owns ordering; no client-side sort needed
+  return filtered
+}
 
-    return dayjs(b.last_activity_at).isAfter(dayjs(a.last_activity_at)) ? 1 : -1
-  })
+function sortIcon(col: SortColumn) {
+  if (sortColumn.value !== col)
+    return null
+  return sortAscending.value ? 'ph:arrow-up' : 'ph:arrow-down'
 }
 
 // List topics based on the activeTopicId. If it's null, list all topics
 // without a parent_id, otherwise list all topics which match the activeTopicId
 const modelledTopics = computed(() => {
-  const filtered = !activeTopicId.value
-    ? getTopicsByParentId(null)
-    : topics.value.filter((topic) => {
-        if (topic.id !== activeTopicId.value)
-          return false
-        // Always show the topic you've explicitly navigated into, even if archived.
-        // Archived filtering only hides topics from the list view.
-        return true
-      })
+  if (!activeTopicId.value) {
+    return getTopicsByParentId(null).toSorted(sortTopicsByPriority)
+  }
 
-  // Sort topics to prioritize `sort_order` and the rest is sorted
-  // alphabetically below. Only manually-created topics should have a sort_order
-  return filtered.toSorted(sortTopicsByPriority)
+  // If the active topic has children, show those children as cards - same
+  // expansion behavior as the root level. This lets e.g. "General" display
+  // Books, Garage, Music etc. as individual expandable cards.
+  const children = getTopicsByParentId(activeTopicId.value)
+  if (children.length > 0) {
+    const parent = topics.value.find(t => t.id === activeTopicId.value)
+    const sorted = children.toSorted(sortTopicsByPriority)
+    // Always prepend the parent as a card so its own direct discussions are
+    // visible alongside child topic cards (e.g. pinned posts on "Hivecom").
+    if (parent) {
+      return [parent, ...sorted]
+    }
+    return sorted
+  }
+
+  // No children - show the topic itself (discussion list view).
+  // Always include the explicitly-navigated topic even if archived.
+  const topic = topics.value.find(t => t.id === activeTopicId.value)
+  return topic ? [topic] : []
 })
 
 function sortTopicsByPriority(a: { priority: number, name: string }, b: { priority: number, name: string }) {
@@ -573,16 +796,80 @@ function getTopicsByParentId(parentId: string | null) {
 
 // When discussion is created, append it to the selected parent topic
 function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
-  const topic = topics.value.find(topic => topic.id === discussion.discussion_topic_id)
+  const topic = topics.value.find(t => t.id === discussion.discussion_topic_id)
   if (topic) {
-    topic.discussions.push(discussion)
-    // Bust the topics cache so the next full remount picks up the new discussion.
+    if (discussion.is_sticky) {
+      topic.stickyDiscussions = [discussion, ...topic.stickyDiscussions]
+    }
+    else {
+      topic.discussions = [discussion, ...topic.discussions]
+      // Bump total count
+      const pag = topicPagination.value[topic.id]
+      if (pag) {
+        topicPagination.value = {
+          ...topicPagination.value,
+          [topic.id]: { ...pag, totalCount: pag.totalCount + 1 },
+        }
+      }
+    }
+    topic.discussionsLoaded = true
+    // Also add to the global discussions index so the activity feed sees it immediately
+    if (!allDiscussions.value.some(d => d.id === discussion.id))
+      allDiscussions.value = [discussion, ...allDiscussions.value]
     forumCache.delete(FORUM_TOPICS_CACHE_KEY)
+    forumCache.delete(FORUM_DISCUSSIONS_INDEX_CACHE_KEY)
+  }
+}
+
+function changeSort(col: SortColumn) {
+  if (sortColumn.value === col) {
+    sortAscending.value = !sortAscending.value
+  }
+  else {
+    sortColumn.value = col
+    sortAscending.value = false
+  }
+
+  // Reload visible topics using pagination-style dimming (keeps existing items
+  // visible and dimmed) rather than wiping to skeletons - skeletons are for
+  // initial load only.
+  const reloadTopic = (id: string) => {
+    topicPagination.value = {
+      ...topicPagination.value,
+      [id]: { page: 0, totalCount: topicPagination.value[id]?.totalCount ?? 0 },
+    }
+    loadTopicDiscussions(id, 0, true)
+  }
+
+  for (const topic of modelledTopics.value) {
+    reloadTopic(topic.id)
+    for (const child of getTopicsByParentId(topic.id))
+      reloadTopic(child.id)
+  }
+}
+
+// Load discussions for a topic, or if it has children, load all children's discussions.
+// Used when navigating into a topic so the correct cards are populated.
+function loadTopicOrChildren(topicId: string) {
+  const children = getTopicsByParentId(topicId)
+  if (children.length > 0) {
+    // Load children's discussions for the sub-topic cards
+    for (const child of children) {
+      loadTopicDiscussions(child.id)
+    }
+    // Also load the parent's own direct discussions (e.g. pinned items on a
+    // parent topic that also has sub-topic children)
+    loadTopicDiscussions(topicId)
+  }
+  else {
+    loadTopicDiscussions(topicId)
   }
 }
 
 // Auto-scroll to the top of the page whenever nested topic is changed
-watch(activeTopicId, () => window.scrollTo(0, 0))
+watch(activeTopicId, () => {
+  window.scrollTo(0, 0)
+})
 
 // Update methods - whenever a topic or a discussion is updated, replace the new
 // object with the old one ot avoid the need to fetch data
@@ -619,7 +906,26 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
   }
   // Bust cache so remounts reflect the mutation.
   forumCache.delete(FORUM_TOPICS_CACHE_KEY)
+  if (type === 'discussion') {
+    // Keep the global index in sync with updated discussion data
+    const updatedDiscussion = data as ForumDiscussion
+    const indexIdx = allDiscussions.value.findIndex(d => d.id === updatedDiscussion.id)
+    if (indexIdx !== -1)
+      allDiscussions.value = allDiscussions.value.toSpliced(indexIdx, 1, updatedDiscussion)
+    // Also update stickyDiscussions if the discussion is sticky
+    const stickyParentTopic = topics.value.find(t =>
+      t.stickyDiscussions.some(d => d.id === updatedDiscussion.id),
+    )
+    if (stickyParentTopic) {
+      const si = stickyParentTopic.stickyDiscussions.findIndex(d => d.id === updatedDiscussion.id)
+      if (si !== -1)
+        stickyParentTopic.stickyDiscussions[si] = updatedDiscussion
+    }
+    forumCache.delete(FORUM_DISCUSSIONS_INDEX_CACHE_KEY)
+  }
 }
+
+const { navigate: navigateToRandomDiscussion } = useDiscoverQueue()
 
 // Remove methods - remove a topic or discussion from local state after deletion
 function removeItem(type: 'topic' | 'discussion', id: string) {
@@ -639,6 +945,24 @@ function removeItem(type: 'topic' | 'discussion', id: string) {
     if (parentTopic) {
       parentTopic.discussions = parentTopic.discussions.filter(discussion => discussion.id !== id)
     }
+    allDiscussions.value = allDiscussions.value.filter(d => d.id !== id)
+    // Also remove from stickyDiscussions if present
+    const stickyParent = topics.value.find(t => t.stickyDiscussions.some(d => d.id === id))
+    if (stickyParent) {
+      stickyParent.stickyDiscussions = stickyParent.stickyDiscussions.filter(d => d.id !== id)
+    }
+    // Decrement total count
+    const discussionTopicId = topics.value.find(t => t.discussions.some(d => d.id === id))?.id
+    if (discussionTopicId) {
+      const pag = topicPagination.value[discussionTopicId]
+      if (pag) {
+        topicPagination.value = {
+          ...topicPagination.value,
+          [discussionTopicId]: { ...pag, totalCount: Math.max(0, pag.totalCount - 1) },
+        }
+      }
+    }
+    forumCache.delete(FORUM_DISCUSSIONS_INDEX_CACHE_KEY)
   }
   // Bust cache so remounts reflect the deletion.
   forumCache.delete(FORUM_TOPICS_CACHE_KEY)
@@ -807,6 +1131,16 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
             @cancel="handleContentRulesCanceled"
           />
 
+          <Button size="s" :square="isMobile" @click="navigateToRandomDiscussion">
+            <template v-if="!isMobile" #start>
+              <Icon name="ph:shuffle" :size="16" />
+            </template>
+            <template v-if="isMobile">
+              <Icon name="ph:shuffle" :size="16" />
+            </template>
+            {{ isMobile ? '' : 'Discover' }}
+          </Button>
+
           <Button ref="settings-anchor" size="s" square @click="showSettings = !showSettings">
             <Icon name="ph:gear" />
           </Button>
@@ -838,7 +1172,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
           <!-- <Skeleton width="124px" height="24px" /> -->
           <Skeleton width="128px" height="16px" />
           <Skeleton width="57px" height="16px" />
-          <Skeleton width="49px" height="16px" />
+          <Skeleton width="49px" height="16px" style="margin-left:auto;margin-right:auto;" />
         </div>
 
         <ul>
@@ -877,18 +1211,35 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               </NuxtLink>
               <Badge v-if="topic.is_locked">
                 <Icon name="ph:lock" />
+
                 Locked
               </Badge>
 
               <Badge v-if="topic.is_archived" variant="warning">
                 <Icon name="ph:archive" class="text-color-yellow" />
+
                 Archived
               </Badge>
             </Flex>
             <template v-if="index === 0">
-              <span>Discussions / Replies</span>
-              <span>Views</span>
-              <span>Last activity</span>
+              <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'reply_count' }" :disabled="isMobile" @click="changeSort('reply_count')">
+                Discussions / Replies
+                <template v-if="!isMobile && sortIcon('reply_count')" #end>
+                  <Icon :name="sortIcon('reply_count')!" />
+                </template>
+              </Button>
+              <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'view_count' }" :disabled="isMobile" @click="changeSort('view_count')">
+                Views
+                <template v-if="!isMobile && sortIcon('view_count')" #end>
+                  <Icon :name="sortIcon('view_count')!" />
+                </template>
+              </Button>
+              <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'last_activity_at' }" :disabled="isMobile" @click="changeSort('last_activity_at')">
+                Last activity
+                <template v-if="!isMobile && sortIcon('last_activity_at')" #end>
+                  <Icon :name="sortIcon('last_activity_at')!" />
+                </template>
+              </Button>
             </template>
             <template v-else>
               <div />
@@ -898,44 +1249,81 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
             <ForumItemActions table="discussion_topics" :data="topic" @update="replaceItemData('topic', $event)" @remove="removeItem('topic', $event)" />
           </div>
 
-          <ul v-if="sortDiscussions(topic.discussions).length > 0 || getTopicsByParentId(topic.id).length > 0">
+          <ul v-if="topicDiscussionsLoading.has(topic.id) || sortDiscussions(topic.discussions).length > 0 || sortDiscussions(topic.stickyDiscussions).length > 0 || (!(activeTopicId && topic.id === activeTopicId) && getTopicsByParentId(topic.id).length > 0)">
+            <template v-if="topicDiscussionsLoading.has(topic.id)">
+              <li v-for="n in Math.min(5, topicPagination[topic.id]?.totalCount || 5)" :key="n" class="forum__category-post">
+                <div class="forum__category-post--item">
+                  <Skeleton width="40px" height="40px" />
+                  <Flex column :gap="0" class="forum__category-post--name">
+                    <Skeleton width="200px" height="16px" class="mb-xs" />
+                    <Skeleton width="280px" height="16px" />
+                  </Flex>
+                </div>
+              </li>
+            </template>
             <ForumTopicItem
-              v-for="subtopic of getTopicsByParentId(topic.id)"
+              v-for="subtopic of (topic.id === activeTopicId ? [] : getTopicsByParentId(topic.id))"
               :key="subtopic.id"
               :data="subtopic"
               :href="`/forum?${subtopic.slug ? `activeTopic=${subtopic.slug}` : `activeTopicId=${subtopic.id}`}`"
               :last-activity="subtopic.last_activity_at"
-              :discussion-count="subtopic.discussions.length"
+              :discussion-count="subtopic.total_discussion_count"
               :reply-count="subtopic.total_reply_count"
               :view-count="subtopic.total_view_count"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNew(subtopic.id, subtopic.discussions.length, subtopic.total_reply_count ?? 0, subtopic.discussions)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNew(subtopic.id, subtopic.last_activity_at)"
               @click="setActiveTopicFromTopic(subtopic)"
               @update="replaceItemData('topic', $event)"
               @remove="removeItem('topic', $event)"
             />
 
             <ForumDiscussionItem
-              v-for="discussion of sortDiscussions(topic.discussions)"
+              v-for="discussion of sortDiscussions(topic.stickyDiscussions)"
               :key="discussion.id"
+              :class="{ 'forum__category-post--dimmed': topicPaginationLoading.has(topic.id) }"
               :data="discussion"
               :last-activity="discussion.last_activity_at"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count ?? 0)"
-              @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.last_activity_at)"
+              @click="forumUnread.markDiscussionSeen(discussion.id)"
+              @update="replaceItemData('discussion', $event)"
+              @remove="removeItem('discussion', $event)"
+            />
+            <ForumDiscussionItem
+              v-for="discussion of sortDiscussions(topic.discussions)"
+              :key="discussion.id"
+              :class="{ 'forum__category-post--dimmed': topicPaginationLoading.has(topic.id) }"
+              :data="discussion"
+              :last-activity="discussion.last_activity_at"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.last_activity_at)"
+              @click="forumUnread.markDiscussionSeen(discussion.id)"
               @update="replaceItemData('discussion', $event)"
               @remove="removeItem('discussion', $event)"
             />
           </ul>
-          <div v-else class="forum__category-empty">
+          <div
+            v-if="topic.discussionsLoaded && getTopicPagination(topic.id) && getTopicPagination(topic.id)!.totalCount > TOPIC_PAGE_SIZE"
+            class="forum__category-pagination"
+            :class="{ 'forum__category-pagination--dimmed': topicPaginationLoading.has(topic.id) }"
+          >
+            <Pagination
+              :disabled="topicPaginationLoading.has(topic.id)"
+              :pagination="paginate(getTopicPagination(topic.id)!.totalCount, getTopicPagination(topic.id)!.page + 1, TOPIC_PAGE_SIZE)"
+              @change="(p) => goToTopicPage(topic.id, p - 1)"
+            />
+          </div>
+          <div
+            v-if="topic.discussionsLoaded && sortDiscussions(topic.discussions).length === 0 && sortDiscussions(topic.stickyDiscussions).length === 0 && getTopicsByParentId(topic.id).length === 0"
+            class="forum__category-empty"
+          >
             <Flex x-between y-center expand>
-              <template v-if="!settings.show_forum_archived && topic.discussions.filter((d) => d.is_archived).length > 0">
-                <p>No active discussions - {{ topic.discussions.filter((d) => d.is_archived).length }} archived {{ topic.discussions.filter((d) => d.is_archived).length === 1 ? 'discussion' : 'discussions' }} hidden.</p>
+              <template v-if="!settings.show_forum_archived && [...topic.discussions, ...topic.stickyDiscussions].filter((d) => d.is_archived).length > 0">
+                <p>No active discussions - {{ [...topic.discussions, ...topic.stickyDiscussions].filter((d) => d.is_archived).length }} archived {{ [...topic.discussions, ...topic.stickyDiscussions].filter((d) => d.is_archived).length === 1 ? 'discussion' : 'discussions' }} hidden.</p>
                 <Button size="s" variant="gray" @click="settings.show_forum_archived = true">
                   Show archived
                 </Button>
               </template>
               <template v-else>
                 <p>There are no discussions in this topic{{ topic.is_archived ? '' : ' - start one!' }}</p>
-                <Button v-if="!topic.is_archived && user" size="s" variant="accent" @click="requestCreate('discussion')">
+                <Button v-if="!topic.is_archived && !topic.is_locked && user" size="s" variant="accent" @click="requestCreate('discussion')">
                   Create discussion
                 </Button>
               </template>
@@ -1048,9 +1436,41 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
       color: var(--color-text-light);
       text-align: center;
     }
+
+    .forum__sort-header {
+      font-size: var(--font-size-s);
+      color: var(--color-text-light);
+
+      &.active {
+        color: var(--color-text);
+      }
+
+      &:hover {
+        color: var(--color-text);
+      }
+    }
+  }
+
+  &__category-pagination {
+    padding: var(--space-s) var(--space-m);
+    display: flex;
+    justify-content: center;
+    transition: opacity var(--transition);
+
+    &--dimmed {
+      opacity: 0.4;
+      pointer-events: none;
+    }
   }
 
   &__category-post {
+    transition: opacity var(--transition);
+
+    &--dimmed {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
     &:has(.has-active-dropdown),
     &:hover {
       .forum__item-actions {
@@ -1151,6 +1571,15 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
     }
   }
 
+  &__category-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xxs);
+    padding: var(--space-s) var(--space-m);
+    border-top: 1px solid var(--color-border);
+  }
+
   &__category-empty {
     padding: var(--space-s) var(--space-m);
     font-size: var(--font-size-m);
@@ -1162,16 +1591,18 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
   }
 }
 
-@media screen and (max-width: $breakpoint-m) {
+@media screen and (max-width: $breakpoint-s) {
   .forum__category-title,
   .forum__category-post .forum__category-post--item {
     grid-template-columns: 40px 5fr 1fr 24px;
   }
 
   .forum__category-title > span,
+  .forum__category-title > .forum__sort-header,
   .forum__category-title > div {
     white-space: nowrap;
     font-size: var(--font-size-xs);
+    padding: 0;
 
     &:nth-child(2),
     &:nth-child(3) {

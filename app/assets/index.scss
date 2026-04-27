@@ -314,6 +314,26 @@ blockquote {
   margin-bottom: 0 !important;
 }
 
+@media (max-width: $breakpoint-s) {
+  .vui-toast-wrapper.bottom-end {
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100vw;
+    padding: var(--space-s);
+    padding-bottom: calc(var(--space-s) + env(safe-area-inset-bottom, 0px));
+    align-items: stretch;
+  }
+
+  .vui-toast-wrapper .vui-toast-list {
+    width: calc(100vw - 24px);
+  }
+
+  .vui-toast-item {
+    width: 100%;
+  }
+}
+
 :root.light {
   .vui-popout {
     box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.125);

@@ -1,12 +1,12 @@
 import { useStorage } from '@vueuse/core'
+import dayjs from 'dayjs'
 
 interface TopicSeenState {
-  discussionCount: number
-  replyCount: number
+  lastVisitedAt: string
 }
 
 interface DiscussionSeenState {
-  replyCount: number
+  lastVisitedAt: string
 }
 
 interface ForumUnreadStorage {
@@ -15,16 +15,16 @@ interface ForumUnreadStorage {
   feedVisitedAt: string | null
 }
 
-const STORAGE_KEY = 'forum-unread'
+const STORAGE_KEY = 'forum-unread-v2'
 
 /**
  * Composable for tracking "new posts" state on the forum index.
  *
- * Uses localStorage to record the last-seen discussion and reply counts per
- * topic and per discussion. On first encounter of a topic/discussion the
- * current counts are stored as "seen" (so we don't flood the UI with dots on
- * first visit). Subsequent visits compare the live counts to those stored
- * values and surface a dot indicator whenever counts have grown.
+ * Uses localStorage to record the last-visited timestamp per topic and per
+ * discussion. On first encounter the current activity timestamp is stored as
+ * "seen" so we don't flood the UI with dots on first visit. Subsequent visits
+ * compare the live last_activity_at to the stored timestamp and surface a dot
+ * indicator whenever activity has occurred since the last visit.
  */
 export function useDataForumUnread() {
   const storage = useStorage<ForumUnreadStorage>(
@@ -48,117 +48,67 @@ export function useDataForumUnread() {
   )
 
   /**
-   * Returns true when a topic has accrued new discussions or replies since the
-   * user last "saw" it. Always returns false for topics not yet stored (they
-   * will be initialised as seen by `initializeTopics`).
-   *
-   * Cross-checks the per-discussion seen state: if every discussion in the
-   * topic has already been individually marked seen at its current reply count
-   * (e.g. the user navigated to each discussion via the activity feed without
-   * ever clicking the topic row), the dot is suppressed even though the
-   * topic-level aggregate counters were never explicitly updated.
+   * Returns true when a topic has activity after the user last visited it.
+   * Always returns false for topics not yet stored.
    */
-  function isTopicNew(
-    topicId: string,
-    currentDiscussionCount: number,
-    currentReplyCount: number,
-    discussions?: Array<{ id: string, reply_count?: number | null }>,
-  ): boolean {
+  function isTopicNew(topicId: string, lastActivityAt: string | null): boolean {
     const seen = storage.value.topics[topicId]
     if (!seen)
       return false
-
-    const hasNewAtTopicLevel = currentDiscussionCount > seen.discussionCount || currentReplyCount > seen.replyCount
-    if (!hasNewAtTopicLevel)
+    if (lastActivityAt == null || lastActivityAt === '')
       return false
-
-    // If the caller provides the discussions list we can check whether every
-    // discussion is already individually caught up. If so, the aggregate
-    // counters are stale (topic was never clicked directly) but nothing is
-    // actually unread - suppress the dot.
-    if (discussions != null && discussions.length > 0) {
-      const allDiscussionsSeen = discussions.every((d) => {
-        const dSeen = storage.value.discussions[d.id]
-        if (!dSeen)
-          return false
-        return (d.reply_count ?? 0) <= dSeen.replyCount
-      })
-      if (allDiscussionsSeen)
-        return false
-    }
-
-    return true
+    return dayjs(lastActivityAt).isAfter(dayjs(seen.lastVisitedAt))
   }
 
   /**
-   * Returns true when a discussion has more replies than when the user last
-   * visited it. Always returns false for discussions not yet stored.
+   * Returns true when a discussion has activity after the user last visited it.
+   * Always returns false for discussions not yet stored.
    */
-  function isDiscussionNew(discussionId: string, currentReplyCount: number): boolean {
+  function isDiscussionNew(discussionId: string, lastActivityAt: string | null): boolean {
     const seen = storage.value.discussions[discussionId]
     if (!seen)
       return false
-    return currentReplyCount > seen.replyCount
+    if (lastActivityAt == null || lastActivityAt === '')
+      return false
+    return dayjs(lastActivityAt).isAfter(dayjs(seen.lastVisitedAt))
   }
 
-  /** Record the current counts for a topic as "seen". */
-  function markTopicSeen(topicId: string, currentDiscussionCount: number, currentReplyCount: number) {
+  /** Record the current time for a topic as "seen". */
+  function markTopicSeen(topicId: string) {
     storage.value = {
       ...storage.value,
       topics: {
         ...storage.value.topics,
         [topicId]: {
-          discussionCount: currentDiscussionCount,
-          replyCount: currentReplyCount,
+          lastVisitedAt: new Date().toISOString(),
         },
       },
     }
   }
 
-  /**
-   * Bump the stored reply count for a topic by 1. Call this after the current
-   * user posts a reply so the topic-level unread dot doesn't fire for their
-   * own activity when they return to the forum index.
-   */
-  function bumpTopicReplySeen(topicId: string) {
-    const seen = storage.value.topics[topicId]
-    if (!seen)
-      return
-    storage.value = {
-      ...storage.value,
-      topics: {
-        ...storage.value.topics,
-        [topicId]: {
-          ...seen,
-          replyCount: seen.replyCount + 1,
-        },
-      },
-    }
-  }
-
-  /** Record the current reply count for a discussion as "seen". */
-  function markDiscussionSeen(discussionId: string, currentReplyCount: number) {
+  /** Record the current time for a discussion as "seen". */
+  function markDiscussionSeen(discussionId: string) {
     storage.value = {
       ...storage.value,
       discussions: {
         ...storage.value.discussions,
         [discussionId]: {
-          replyCount: currentReplyCount,
+          lastVisitedAt: new Date().toISOString(),
         },
       },
     }
   }
 
   /**
-   * Called once after topics are fetched. Any topic or discussion that has
-   * never been stored before is initialised with its current counts so that
-   * only activity that occurs *after* first encounter triggers a dot.
+   * Called once after topics (with discussions) are fetched. Any topic or
+   * discussion not yet in storage is seeded with its current last_activity_at
+   * so only activity occurring after first encounter triggers a dot.
    */
   function initializeTopics(
     topics: Array<{
       id: string
-      total_reply_count?: number | null
-      discussions: Array<{ id: string, reply_count?: number | null }>
+      last_activity_at?: string | null
+      discussions: Array<{ id: string, last_activity_at?: string | null }>
     }>,
   ) {
     const updatedTopics = { ...storage.value.topics }
@@ -168,8 +118,7 @@ export function useDataForumUnread() {
     for (const topic of topics) {
       if (!(topic.id in updatedTopics)) {
         updatedTopics[topic.id] = {
-          discussionCount: topic.discussions.length,
-          replyCount: topic.total_reply_count ?? 0,
+          lastVisitedAt: topic.last_activity_at ?? new Date().toISOString(),
         }
         changed = true
       }
@@ -177,7 +126,7 @@ export function useDataForumUnread() {
       for (const discussion of topic.discussions) {
         if (!(discussion.id in updatedDiscussions)) {
           updatedDiscussions[discussion.id] = {
-            replyCount: discussion.reply_count ?? 0,
+            lastVisitedAt: discussion.last_activity_at ?? new Date().toISOString(),
           }
           changed = true
         }
@@ -186,6 +135,30 @@ export function useDataForumUnread() {
 
     if (changed) {
       storage.value = { ...storage.value, topics: updatedTopics, discussions: updatedDiscussions }
+    }
+  }
+
+  /**
+   * Like `initializeTopics` but only seeds topic-level state. Used when only
+   * topics (without full discussion lists) are loaded on mount.
+   */
+  function initializeTopicsOnly(
+    topics: Array<{ id: string, last_activity_at?: string | null }>,
+  ) {
+    const updatedTopics = { ...storage.value.topics }
+    let changed = false
+
+    for (const topic of topics) {
+      if (!(topic.id in updatedTopics)) {
+        updatedTopics[topic.id] = {
+          lastVisitedAt: topic.last_activity_at ?? new Date().toISOString(),
+        }
+        changed = true
+      }
+    }
+
+    if (changed) {
+      storage.value = { ...storage.value, topics: updatedTopics }
     }
   }
 
@@ -205,8 +178,8 @@ export function useDataForumUnread() {
     isDiscussionNew,
     markTopicSeen,
     markDiscussionSeen,
-    bumpTopicReplySeen,
     initializeTopics,
+    initializeTopicsOnly,
     recordFeedVisit,
   }
 }

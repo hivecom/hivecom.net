@@ -34,10 +34,12 @@ export interface ActivityItem {
 
 export type TopicWithDiscussions = Tables<'discussion_topics'> & {
   discussions: Tables<'discussions'>[]
+  discussionsLoaded: boolean
 }
 
 export interface UseForumActivityFeedOptions {
   topics: Ref<TopicWithDiscussions[]>
+  allDiscussions: Ref<Tables<'discussions'>[]>
   settings: Ref<{
     show_nsfw_content: boolean
     show_forum_archived: boolean
@@ -52,6 +54,7 @@ export interface UseForumActivityFeedOptions {
 
 export function useForumActivityFeed({
   topics,
+  allDiscussions,
   settings,
   discussionLookup,
   visibleDiscussionIds,
@@ -146,40 +149,51 @@ export function useForumActivityFeed({
 
   // Flat list of all topics+discussions+replies sorted by most recent activity
   const latestPosts = computed<ActivityItem[]>(() => {
-    const flattenedTopics = topics.value
-      .flatMap(topic => [topic, ...topic.discussions])
-      .filter((item) => {
-        if (!settings.value.show_nsfw_content && 'is_nsfw' in item && item.is_nsfw)
-          return false
-        if (settings.value.show_forum_archived)
-          return true
-        if ('discussion_topic_id' in item && item.discussion_topic_id != null && hiddenTopicIds.value.has(item.discussion_topic_id))
-          return false
-        return !item.is_archived
-      })
-      .map((item) => {
-        const isTopic = !('discussion_topic_id' in item)
-        const id = item.id
-
-        const title = (isTopic ? (item).name : (item).title) ?? (isTopic ? 'Topic' : 'Discussion')
-
+    const flattenedTopicItems: ActivityItem[] = topics.value
+      .filter(topic => settings.value.show_forum_archived || !topic.is_archived)
+      .map((topic) => {
         return {
-          id,
-          type: isTopic ? 'Topic' : 'Discussion',
-          typeLabel: isTopic ? 'Created Topic' : 'Created Discussion',
-          title,
-          description: item.description ?? undefined,
-          timestamp: `${dayjs(item.created_at).fromNow()}`,
-          timestampRaw: item.created_at,
-          user: item.created_by,
-          icon: isTopic ? 'ph:folder-open' : 'ph:scroll',
-          isArchived: item.is_archived,
-          ...(isTopic
-            ? { onClick: () => onTopicClick(id) }
-
-            : { href: `/forum/${(item).slug ?? id}` }),
+          id: topic.id,
+          type: 'Topic' as const,
+          typeLabel: 'Created Topic',
+          title: topic.name,
+          description: topic.description ?? undefined,
+          timestamp: `${dayjs(topic.created_at).fromNow()}`,
+          timestampRaw: topic.created_at,
+          user: topic.created_by,
+          icon: 'ph:folder-open',
+          isArchived: topic.is_archived,
+          onClick: () => onTopicClick(topic.id),
         } as ActivityItem
       })
+
+    const flattenedDiscussions: ActivityItem[] = allDiscussions.value
+      .filter((d) => {
+        if (!settings.value.show_nsfw_content && d.is_nsfw)
+          return false
+        if (!settings.value.show_forum_archived) {
+          if (d.is_archived)
+            return false
+          if (d.discussion_topic_id != null && hiddenTopicIds.value.has(d.discussion_topic_id))
+            return false
+        }
+        return true
+      })
+      .map(d => ({
+        id: d.id,
+        type: 'Discussion' as const,
+        typeLabel: 'Created Discussion',
+        title: d.title ?? 'Discussion',
+        description: d.description ?? undefined,
+        timestamp: `${dayjs(d.created_at).fromNow()}`,
+        timestampRaw: d.created_at,
+        user: d.created_by,
+        icon: 'ph:scroll',
+        isArchived: d.is_archived,
+        href: `/forum/${d.slug ?? d.id}`,
+      } as ActivityItem))
+
+    const flattenedTopics = [...flattenedTopicItems, ...flattenedDiscussions]
 
     return [...realtimeDiscussions.value, ...flattenedTopics, ...visibleReplies.value]
       .toSorted((a, b) => {

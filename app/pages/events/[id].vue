@@ -40,8 +40,8 @@ defineOgImage('Event', {
 const { isUpcoming, isOngoing, timeAgo, countdown } = useEventTiming(event)
 const forumUnread = useDataForumUnread()
 
-function handleReplySubmitted(newReplyCount: number, discussionId: string) {
-  forumUnread.markDiscussionSeen(discussionId, newReplyCount)
+function handleReplySubmitted(_newReplyCount: number, discussionId: string) {
+  forumUnread.markDiscussionSeen(discussionId)
 }
 
 // Fetch event data

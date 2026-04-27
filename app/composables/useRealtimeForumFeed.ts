@@ -1,4 +1,4 @@
-import type { RealtimeChannel, RealtimePostgresInsertPayload } from '@supabase/supabase-js'
+import type { RealtimeChannel, RealtimePostgresInsertPayload, RealtimePostgresUpdatePayload } from '@supabase/supabase-js'
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
@@ -9,6 +9,7 @@ dayjs.extend(relativeTime)
 
 type ReplyRow = Tables<'discussion_replies'>
 type DiscussionRow = Tables<'discussions'>
+type TopicRow = Tables<'discussion_topics'>
 
 export interface UseRealtimeForumFeedOptions {
   /** Called when a new reply arrives - prepend it to the carousel feed */
@@ -17,6 +18,8 @@ export interface UseRealtimeForumFeedOptions {
   onDiscussion: (item: ActivityItem) => void
   /** Emits count of incoming items not yet reflected in the sheet feed */
   onPendingSheet: (delta: number) => void
+  /** Called when a topic's last_activity_at changes - used for unread dot updates */
+  onTopicActivity?: (topicId: string, lastActivityAt: string) => void
   /** Current discussion lookup for resolving reply context labels */
   discussionLookup: Ref<Map<string, Tables<'discussions'>>>
   settings: Ref<{
@@ -34,10 +37,14 @@ export interface UseRealtimeForumFeedOptions {
  * Carousel items are pushed immediately via `onReply`/`onDiscussion`.
  * The sheet feed tracks a pending count via `onPendingSheet` - the caller
  * decides when to reload (e.g. user clicks a "N new" banner).
+ *
+ * Also subscribes to UPDATE events on `discussion_topics` to drive unread dot
+ * updates via `onTopicActivity` when `last_activity_at` changes.
  */
 export function useRealtimeForumFeed({
   onReply,
   onDiscussion,
+  onTopicActivity,
   onPendingSheet,
   discussionLookup,
   settings,
@@ -48,6 +55,7 @@ export function useRealtimeForumFeed({
 
   let replyChannel: RealtimeChannel | null = null
   let discussionChannel: RealtimeChannel | null = null
+  let topicActivityChannel: RealtimeChannel | null = null
 
   function mapReply(row: ReplyRow): ActivityItem | null {
     if (row.discussion_id == null)
@@ -123,7 +131,7 @@ export function useRealtimeForumFeed({
   }
 
   function subscribe() {
-    if (replyChannel != null || discussionChannel != null)
+    if (replyChannel != null || discussionChannel != null || topicActivityChannel != null)
       return
 
     replyChannel = supabase
@@ -163,6 +171,24 @@ export function useRealtimeForumFeed({
         },
       )
       .subscribe()
+
+    topicActivityChannel = supabase
+      .channel('forum-feed:topic-activity')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'discussion_topics',
+        },
+        (payload: RealtimePostgresUpdatePayload<TopicRow>) => {
+          const row = payload.new
+          if (row.last_activity_at != null) {
+            onTopicActivity?.(row.id, row.last_activity_at)
+          }
+        },
+      )
+      .subscribe()
   }
 
   function unsubscribe() {
@@ -173,6 +199,10 @@ export function useRealtimeForumFeed({
     if (discussionChannel != null) {
       void supabase.removeChannel(discussionChannel)
       discussionChannel = null
+    }
+    if (topicActivityChannel != null) {
+      void supabase.removeChannel(topicActivityChannel)
+      topicActivityChannel = null
     }
   }
 
