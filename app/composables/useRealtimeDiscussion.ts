@@ -1,20 +1,142 @@
-import type { RealtimeChannel, RealtimePostgresDeletePayload, RealtimePostgresInsertPayload, RealtimePostgresUpdatePayload } from '@supabase/supabase-js'
+import type { RealtimeChannel, RealtimePostgresDeletePayload, RealtimePostgresInsertPayload, RealtimePostgresUpdatePayload, SupabaseClient } from '@supabase/supabase-js'
 import type { RawComment } from '@/components/Discussions/Discussion.types'
 import type { Tables } from '@/types/database.overrides'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
 
 /**
- * Manages the Supabase realtime channel for a discussion's replies and the
+ * Manages Supabase realtime channels for a discussion's replies and the
  * discussion row itself.
  *
- * Handles reply INSERT (pending banner), UPDATE (edits, offtopic, soft-deletes),
- * and DELETE (hard deletes) events, patching the shared `comments` ref in place.
- * Also subscribes to UPDATE events on the `discussions` row for reaction and
- * metadata sync (lock, archive, title, etc.).
+ * Channels are shared at module level and ref-counted. Multiple Discussion
+ * components on the same page (e.g. per-choice threads + general chat on the
+ * votes detail page) all use the same underlying Supabase channel. Each
+ * instance registers its own JS-side handler; the channel is only torn down
+ * when the last subscriber releases it.
  *
- * The channels are automatically torn down on scope dispose.
+ * This prevents "cannot add postgres_changes callbacks after subscribe()"
+ * which occurs when supabase.channel() returns an already-subscribed instance
+ * by name and a second caller tries to call .on() on it.
  */
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+// eslint-disable-next-line ts/no-explicit-any
+type AnySupabase = SupabaseClient<any, any, any>
+
+type InsertPayload = RealtimePostgresInsertPayload<RawComment>
+type UpdateReplyPayload = RealtimePostgresUpdatePayload<RawComment>
+type DeletePayload = RealtimePostgresDeletePayload<RawComment>
+type UpdateDiscussionPayload = RealtimePostgresUpdatePayload<Tables<'discussions'>>
+
+interface SharedReplyChannel {
+  channel: RealtimeChannel
+  refCount: number
+  insertHandlers: Set<(p: InsertPayload) => void>
+  updateHandlers: Set<(p: UpdateReplyPayload) => void>
+  deleteHandlers: Set<(p: DeletePayload) => void>
+}
+
+interface SharedDiscussionChannel {
+  channel: RealtimeChannel
+  refCount: number
+  updateHandlers: Set<(p: UpdateDiscussionPayload) => void>
+}
+
+// ---------------------------------------------------------------------------
+// Module-level registry - one channel per discussion ID, shared across all
+// composable instances that subscribe to the same discussion.
+// ---------------------------------------------------------------------------
+
+const replyChannels = new Map<string, SharedReplyChannel>()
+const discussionChannels = new Map<string, SharedDiscussionChannel>()
+
+function acquireReplyChannel(supabase: AnySupabase, discussionId: string): SharedReplyChannel {
+  const existing = replyChannels.get(discussionId)
+  if (existing) {
+    existing.refCount++
+    return existing
+  }
+
+  const insertHandlers = new Set<(p: InsertPayload) => void>()
+  const updateHandlers = new Set<(p: UpdateReplyPayload) => void>()
+  const deleteHandlers = new Set<(p: DeletePayload) => void>()
+
+  const channel = supabase
+    .channel(`discussion-replies:${discussionId}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'discussion_replies', filter: `discussion_id=eq.${discussionId}` },
+      (payload: InsertPayload) => insertHandlers.forEach(h => h(payload)),
+    )
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'discussion_replies', filter: `discussion_id=eq.${discussionId}` },
+      (payload: UpdateReplyPayload) => updateHandlers.forEach(h => h(payload)),
+    )
+    .on(
+      'postgres_changes',
+      { event: 'DELETE', schema: 'public', table: 'discussion_replies', filter: `discussion_id=eq.${discussionId}` },
+      (payload: DeletePayload) => deleteHandlers.forEach(h => h(payload)),
+    )
+    .subscribe()
+
+  const entry: SharedReplyChannel = { channel, refCount: 1, insertHandlers, updateHandlers, deleteHandlers }
+  replyChannels.set(discussionId, entry)
+  return entry
+}
+
+function releaseReplyChannel(supabase: AnySupabase, discussionId: string) {
+  const entry = replyChannels.get(discussionId)
+  if (!entry)
+    return
+  entry.refCount--
+  if (entry.refCount <= 0) {
+    replyChannels.delete(discussionId)
+    void supabase.removeChannel(entry.channel)
+  }
+}
+
+function acquireDiscussionChannel(supabase: AnySupabase, discussionId: string): SharedDiscussionChannel {
+  const existing = discussionChannels.get(discussionId)
+  if (existing) {
+    existing.refCount++
+    return existing
+  }
+
+  const updateHandlers = new Set<(p: UpdateDiscussionPayload) => void>()
+
+  const channel = supabase
+    .channel(`discussion:${discussionId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'discussions', filter: `id=eq.${discussionId}` },
+      (payload: UpdateDiscussionPayload) => updateHandlers.forEach(h => h(payload)),
+    )
+    .subscribe()
+
+  const entry: SharedDiscussionChannel = { channel, refCount: 1, updateHandlers }
+  discussionChannels.set(discussionId, entry)
+  return entry
+}
+
+function releaseDiscussionChannel(supabase: AnySupabase, discussionId: string) {
+  const entry = discussionChannels.get(discussionId)
+  if (!entry)
+    return
+  entry.refCount--
+  if (entry.refCount <= 0) {
+    discussionChannels.delete(discussionId)
+    void supabase.removeChannel(entry.channel)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Composable
+// ---------------------------------------------------------------------------
+
 export function useRealtimeDiscussion(
   comments: Ref<RawComment[]>,
   discussion: Ref<{ id: string, slug: string | null } | undefined>,
@@ -28,14 +150,14 @@ export function useRealtimeDiscussion(
   const pendingReplyCount = ref(0)
   const pendingLoading = ref(false)
 
-  let replyChannel: RealtimeChannel | null = null
-  let discussionChannel: RealtimeChannel | null = null
+  // Track which discussion this instance is currently subscribed to, and
+  // the exact handler functions registered so we can remove only ours.
   let subscribedDiscussionId: string | null = null
+  let myInsertHandler: ((p: InsertPayload) => void) | null = null
+  let myUpdateReplyHandler: ((p: UpdateReplyPayload) => void) | null = null
+  let myDeleteHandler: ((p: DeletePayload) => void) | null = null
+  let myUpdateDiscussionHandler: ((p: UpdateDiscussionPayload) => void) | null = null
 
-  /**
-   * The `created_at` timestamp of the most recently loaded reply, used to
-   * fetch only replies that arrived after the current set.
-   */
   const latestCommentTime = computed((): string | null => {
     if (comments.value.length === 0)
       return null
@@ -58,21 +180,17 @@ export function useRealtimeDiscussion(
         .eq('is_deleted', false)
         .order('created_at', { ascending: model.value !== 'comment' })
 
-      if (latestCommentTime.value != null) {
+      if (latestCommentTime.value != null)
         query.gt('created_at', latestCommentTime.value)
-      }
 
-      if (hash != null) {
+      if (hash != null)
         query.eq('meta->>hash', hash)
-      }
 
       const { data, error: fetchError } = await query
 
       if (fetchError != null || data == null)
         return
 
-      // Filter out any IDs already in the local list (e.g. own posts pushed
-      // optimistically by submitReply) to avoid duplicates.
       const existingIds = new Set(comments.value.map(c => c.id))
       const newReplies = (data as RawComment[]).filter(r => !existingIds.has(r.id))
 
@@ -93,144 +211,93 @@ export function useRealtimeDiscussion(
     }
   }
 
-  async function subscribe(discussionId: string) {
-    // No-op if already subscribed to this discussion - avoids redundant channel
-    // recreation when the watch fires without the id actually changing.
-    if (replyChannel != null && subscribedDiscussionId === discussionId)
+  function subscribe(discussionId: string) {
+    // No-op if already subscribed to this exact discussion.
+    if (subscribedDiscussionId === discussionId)
       return
 
-    await unsubscribe()
+    // Drop any previous subscription first.
+    unsubscribe()
 
-    replyChannel = supabase
-      .channel(`discussion-replies:${discussionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'discussion_replies',
-          filter: `discussion_id=eq.${discussionId}`,
-        },
-        (payload: RealtimePostgresInsertPayload<RawComment>) => {
-          const newReply = payload.new
-          // Skip replies already present in the local list - this covers the
-          // case where submitReply pushed the reply optimistically in this tab.
-          // We cannot skip by author ID because the same user may have the
-          // thread open in another tab, where the optimistic push didn't happen.
-          const alreadyLoaded = comments.value.some(c => c.id === newReply.id)
-          if (alreadyLoaded)
-            return
+    myInsertHandler = (payload: InsertPayload) => {
+      const newReply = payload.new
+      // Skip replies already present - covers optimistic inserts from this tab.
+      if (comments.value.some(c => c.id === newReply.id))
+        return
 
-          // When a hash filter is active, only count replies that belong to
-          // this specific discussion section (e.g. a particular vote choice or
-          // the general chat). Replies for other hashes on the same discussion
-          // should not trigger the pending banner here.
-          const replyHash = (newReply.meta as Record<string, unknown> | null)?.hash as string | undefined
-          if (hash != null && replyHash !== hash)
-            return
+      // When a hash filter is active only count replies for this section.
+      const replyHash = (newReply.meta as Record<string, unknown> | null)?.hash as string | undefined
+      if (hash != null && replyHash !== hash)
+        return
 
-          // Invalidate the replies cache - the list is now stale.
-          repliesCache.invalidate(discussionId)
-          pendingReplyCount.value++
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'discussion_replies',
-          filter: `discussion_id=eq.${discussionId}`,
-        },
-        (payload: RealtimePostgresUpdatePayload<RawComment>) => {
-          const updated = payload.new
-          const idx = comments.value.findIndex(c => c.id === updated.id)
-          if (idx === -1)
-            return
+      repliesCache.invalidate(discussionId)
+      pendingReplyCount.value++
+    }
 
-          // Patch in place - reactive so the template updates automatically.
-          // This covers edits (markdown, is_nsfw), soft deletes (is_deleted),
-          // and offtopic toggles (is_offtopic, and cascaded descendants).
-          comments.value[idx] = updated
+    myUpdateReplyHandler = (payload: UpdateReplyPayload) => {
+      const updated = payload.new
+      const idx = comments.value.findIndex(c => c.id === updated.id)
+      if (idx === -1)
+        return
+      comments.value[idx] = updated
+      repliesCache.legacySet(discussionId, comments.value, model.value !== 'comment')
+    }
 
-          // Keep the replies cache in sync with the patched list.
-          repliesCache.legacySet(discussionId, comments.value, model.value !== 'comment')
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'discussion_replies',
-          filter: `discussion_id=eq.${discussionId}`,
-        },
-        (payload: RealtimePostgresDeletePayload<RawComment>) => {
-          const deletedId = payload.old.id
-          comments.value = comments.value.filter(c => c.id !== deletedId)
+    myDeleteHandler = (payload: DeletePayload) => {
+      const deletedId = payload.old.id
+      comments.value = comments.value.filter(c => c.id !== deletedId)
+      repliesCache.legacySet(discussionId, comments.value, model.value !== 'comment')
+    }
 
-          // Keep the replies cache in sync with the pruned list.
-          repliesCache.legacySet(discussionId, comments.value, model.value !== 'comment')
-        },
-      )
-      .subscribe()
+    myUpdateDiscussionHandler = (payload: UpdateDiscussionPayload) => {
+      const updated = payload.new
+      if (discussion.value != null)
+        discussion.value = { ...discussion.value, ...updated }
+      discussionCache.set(updated)
+    }
 
-    // Subscribe to the discussions table for this discussion - picks up
-    // reactions, title/markdown edits, lock/archive/sticky status changes,
-    // and reply_count bumps from other sessions. Patching the discussion ref
-    // in place keeps the forum/[id].vue Reactions component and toolbar in sync
-    // without a full page reload, and also updates useDiscussionCache so that
-    // any other component reading the same cache key sees the fresh data.
-    discussionChannel = supabase
-      .channel(`discussion:${discussionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'discussions',
-          filter: `id=eq.${discussionId}`,
-        },
-        (payload: RealtimePostgresUpdatePayload<Tables<'discussions'>>) => {
-          const updated = payload.new
+    const replyEntry = acquireReplyChannel(supabase, discussionId)
+    replyEntry.insertHandlers.add(myInsertHandler)
+    replyEntry.updateHandlers.add(myUpdateReplyHandler)
+    replyEntry.deleteHandlers.add(myDeleteHandler)
 
-          // Patch the local discussion ref in place.
-          if (discussion.value != null) {
-            discussion.value = { ...discussion.value, ...updated }
-          }
-
-          // Update the discussion cache so back-navigation gets the fresh row.
-          discussionCache.set(updated)
-        },
-      )
-      .subscribe()
+    const discEntry = acquireDiscussionChannel(supabase, discussionId)
+    discEntry.updateHandlers.add(myUpdateDiscussionHandler)
 
     subscribedDiscussionId = discussionId
   }
 
-  async function unsubscribe() {
-    const channels: Promise<void>[] = []
+  function unsubscribe() {
+    if (subscribedDiscussionId == null)
+      return
 
-    if (replyChannel != null) {
-      const ch = replyChannel
-      replyChannel = null
-      channels.push(supabase.removeChannel(ch).then(() => undefined))
+    const discussionId = subscribedDiscussionId
+
+    const replyEntry = replyChannels.get(discussionId)
+    if (replyEntry) {
+      if (myInsertHandler)
+        replyEntry.insertHandlers.delete(myInsertHandler)
+      if (myUpdateReplyHandler)
+        replyEntry.updateHandlers.delete(myUpdateReplyHandler)
+      if (myDeleteHandler)
+        replyEntry.deleteHandlers.delete(myDeleteHandler)
+      releaseReplyChannel(supabase, discussionId)
     }
 
-    if (discussionChannel != null) {
-      const ch = discussionChannel
-      discussionChannel = null
-      channels.push(supabase.removeChannel(ch).then(() => undefined))
+    const discEntry = discussionChannels.get(discussionId)
+    if (discEntry && myUpdateDiscussionHandler) {
+      discEntry.updateHandlers.delete(myUpdateDiscussionHandler)
+      releaseDiscussionChannel(supabase, discussionId)
     }
 
+    myInsertHandler = null
+    myUpdateReplyHandler = null
+    myDeleteHandler = null
+    myUpdateDiscussionHandler = null
     subscribedDiscussionId = null
-
-    await Promise.allSettled(channels)
   }
 
-  onScopeDispose(() => {
-    void unsubscribe()
-  })
+  onScopeDispose(unsubscribe)
 
   return {
     pendingReplyCount,

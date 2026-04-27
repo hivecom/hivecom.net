@@ -23,6 +23,7 @@ import type { ComputedRef, MaybeRefOrGetter } from 'vue'
 import type { Tables } from '@/types/database.overrides'
 import { useIntervalFn } from '@vueuse/core'
 import { computed, ref, toValue } from 'vue'
+import { formatTimeAgo } from '@/lib/utils/duration'
 
 export interface EventCountdown {
   days: number
@@ -68,20 +69,6 @@ function msToCountdown(ms: number): EventCountdown {
 }
 
 const ZERO_COUNTDOWN: EventCountdown = { days: 0, hours: 0, minutes: 0, seconds: 0 }
-
-function buildTimeAgo(diffMs: number): string {
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-
-  if (days > 0)
-    return days === 1 ? '1 day ago' : `${days} days ago`
-  if (hours > 0)
-    return hours === 1 ? '1 hour ago' : `${hours} hours ago`
-  if (minutes > 0)
-    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
-  return 'Just now'
-}
 
 // ---------------------------------------------------------------------------
 // Composable
@@ -146,7 +133,7 @@ export function useEventTiming(
     if (!eventEnd.value || isUpcoming.value || isOngoing.value)
       return ''
     const diff = now.value.getTime() - eventEnd.value.getTime()
-    return buildTimeAgo(diff)
+    return formatTimeAgo(diff)
   })
 
   const countdown = computed<EventCountdown | null>(() => {

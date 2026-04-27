@@ -14,7 +14,7 @@ import { useDataUser } from '@/composables/useDataUser'
 import { useRealtimeReferendumVotes } from '@/composables/useRealtimeReferendumVotes'
 
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatDuration } from '@/lib/utils/duration'
+import { formatDuration, formatTimeAgo } from '@/lib/utils/duration'
 
 const isMobile = useBreakpoint('<s')
 
@@ -27,7 +27,7 @@ const userId = useUserId()
 const referendumId = computed(() => Number(route.params.id))
 
 // Fetch referendum details
-const { data: referendum, loading: loadingReferendum, refetch: _refetchReferendum } = useCachedFetch<Tables<'referendums'>>(
+const { data: referendum, loading: loadingReferendum, refetch: refetchReferendum } = useCachedFetch<Tables<'referendums'>>(
   () => !Number.isNaN(referendumId.value) && !!user.value
     ? {
         table: 'referendums',
@@ -62,6 +62,65 @@ const canManage = computed(() => {
 const deleteConfirm = ref(false)
 const deleteLoading = ref(false)
 
+// Close / re-open
+const closeConfirm = ref(false)
+const closeLoading = ref(false)
+const reopenConfirm = ref(false)
+const reopenLoading = ref(false)
+
+async function confirmClose() {
+  if (!referendum.value)
+    return
+
+  closeLoading.value = true
+
+  try {
+    const { error } = await supabase
+      .from('referendums')
+      .update({ date_end: new Date().toISOString() })
+      .eq('id', referendum.value.id)
+
+    if (error)
+      throw error
+
+    await refetchReferendum()
+  }
+  catch (e) {
+    console.error('Error closing vote:', e)
+  }
+  finally {
+    closeLoading.value = false
+    closeConfirm.value = false
+  }
+}
+
+async function confirmReopen() {
+  if (!referendum.value)
+    return
+
+  reopenLoading.value = true
+
+  try {
+    const newEnd = dayjs().add(7, 'day').toISOString()
+    const { error } = await supabase
+      .from('referendums')
+      .update({ date_end: newEnd })
+      .eq('id', referendum.value.id)
+
+    if (error)
+      throw error
+
+    await refetchReferendum()
+  }
+  catch (e) {
+    console.error('Error reopening vote:', e)
+  }
+  finally {
+    reopenLoading.value = false
+    reopenConfirm.value = false
+  }
+}
+
 async function confirmDelete() {
   if (!referendum.value)
     return
@@ -85,13 +144,8 @@ async function confirmDelete() {
   }
 }
 
-function handleUpdated(updated: Tables<'referendums'>) {
-  // Patch the local referendum ref so the page reflects changes immediately
-  // without a full refetch. useCachedFetch will re-sync on next load.
-  if (referendum.value != null) {
-    // @ts-expect-error - referendum from useCachedFetch is readonly
-    referendum.value = updated
-  }
+async function handleUpdated(_updated: Tables<'referendums'>) {
+  await refetchReferendum()
   editModalOpen.value = false
 }
 
@@ -220,7 +274,7 @@ const timeAgo = computed(() => {
     return ''
 
   const diff = dayjs(dayjs()).diff(dayjs(referendum.value.date_end))
-  return `${formatDuration(diff)} ago`
+  return formatTimeAgo(diff)
 })
 
 const totalVoters = computed(() => allVotes.value.length)
@@ -407,6 +461,12 @@ function handleChoiceClick(index: number) {
               <DropdownItem @click="editModalOpen = true">
                 Edit
               </DropdownItem>
+              <DropdownItem v-if="isActive || isUpcoming" @click="closeConfirm = true">
+                Close
+              </DropdownItem>
+              <DropdownItem v-else @click="reopenConfirm = true">
+                Re-open
+              </DropdownItem>
               <DropdownItem variant="danger" @click="deleteConfirm = true">
                 Delete
               </DropdownItem>
@@ -458,6 +518,30 @@ function handleChoiceClick(index: number) {
           @close="editModalOpen = false"
           @updated="handleUpdated"
           @deleted="handleDeleted"
+        />
+
+        <!-- Close Vote Confirmation Modal -->
+        <ConfirmModal
+          v-if="referendum"
+          v-model:open="closeConfirm"
+          :confirm-loading="closeLoading"
+          title="Close vote"
+          :description="`Close '${referendum.title}' now? End date will be set to right now.`"
+          confirm-text="Close"
+          :destructive="false"
+          @confirm="confirmClose"
+        />
+
+        <!-- Re-open Vote Confirmation Modal -->
+        <ConfirmModal
+          v-if="referendum"
+          v-model:open="reopenConfirm"
+          :confirm-loading="reopenLoading"
+          title="Re-open vote"
+          :description="`Re-open '${referendum.title}'? End date will be extended by 7 days from now.`"
+          confirm-text="Re-open"
+          :destructive="false"
+          @confirm="confirmReopen"
         />
 
         <!-- Delete Confirmation Modal -->

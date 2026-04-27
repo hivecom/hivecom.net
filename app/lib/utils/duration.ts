@@ -1,4 +1,22 @@
 /**
+ * Formats a past duration in milliseconds to a human-readable "X ago" string.
+ * Returns "Just now" for sub-minute durations.
+ */
+export function formatTimeAgo(diffMs: number): string {
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+
+  if (days > 0)
+    return days === 1 ? '1 day ago' : `${days} days ago`
+  if (hours > 0)
+    return hours === 1 ? '1 hour ago' : `${hours} hours ago`
+  if (minutes > 0)
+    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
+  return 'Just now'
+}
+
+/**
  * Formats a duration in milliseconds to a human-readable string
  * @param milliseconds The duration in milliseconds
  * @returns Formatted duration string (e.g., "2 weeks 3 days", "1 day 2 hours", "45 minutes", "1 hour")

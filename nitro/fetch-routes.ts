@@ -94,12 +94,13 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
   // Note: We are fetching IDs for all items to generate static pages for them.
   // This allows crawlers to index these pages even though we are an SPA.
   await Promise.all([
-    fetchIds<{ id: number, created_at: string, modified_at: string | null }>(
+    fetchIds<{ id: number, created_at: string, modified_at: string | null, is_official: boolean }>(
       'events',
-      'id,created_at,modified_at',
+      'id,created_at,modified_at,is_official',
       item => ({
         route: `/events/${item.id}`,
         lastmod: item.modified_at ?? item.created_at,
+        skipSitemap: !item.is_official,
       }),
     ),
 
