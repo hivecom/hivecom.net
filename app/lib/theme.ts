@@ -317,7 +317,7 @@ const TRANSITION_EASINGS: Record<string, string> = {
  * E.g. scaleToken(16, 50, 'spacing') => 24 (px)
  */
 export function scaleToken(defaultValue: number, dbValue: number, key: ThemeScaleKey): number {
-  return Math.round(defaultValue * (dbToPercent(dbValue, key) / 100))
+  return defaultValue * (dbToPercent(dbValue, key) / 100)
 }
 
 /**

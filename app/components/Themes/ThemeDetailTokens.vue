@@ -33,7 +33,7 @@ const isMobile = useBreakpoint('<s')
           <div class="container-scale" :style="{ width: `${containerToDisplayPercent(token.defaultValue, data.widening)}%` }" />
         </div>
         <span class="token-label exact">
-          {{ `${scaleToken(token.defaultValue, data.widening, 'widening')}px` }}
+          {{ `${Math.round(scaleToken(token.defaultValue, data.widening, 'widening'))}px` }}
         </span>
         <span class="token-label exact">
           {{ token.varName.replace('--container-', '') }}
@@ -53,7 +53,7 @@ const isMobile = useBreakpoint('<s')
           {{ token.varName.replace('--border-radius-', '') }}
         </span>
         <span class="token-label exact">
-          {{ `${scaleToken(token.defaultValue, data.rounding, 'rounding')}px` }}
+          {{ `${Math.round(scaleToken(token.defaultValue, data.rounding, 'rounding'))}px` }}
         </span>
       </Flex>
     </Flex>
@@ -67,7 +67,7 @@ const isMobile = useBreakpoint('<s')
           :style="{ minWidth: `${scaleToken(token.defaultValue, data.spacing, 'spacing')}px` }"
         />
         <span class="token-label exact">
-          {{ `${scaleToken(token.defaultValue, data.spacing, 'spacing')}px` }}
+          {{ `${Math.round(scaleToken(token.defaultValue, data.spacing, 'spacing'))}px` }}
         </span>
         <span class="token-label exact">
           {{ token.varName.replace('--space-', '') }}
