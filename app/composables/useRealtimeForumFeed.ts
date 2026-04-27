@@ -149,6 +149,7 @@ export function useRealtimeForumFeed({
             return
           onReply(item)
           onPendingSheet(1)
+          window.__hivecomActivitySignal?.()
         },
       )
       .subscribe()
@@ -168,6 +169,7 @@ export function useRealtimeForumFeed({
             return
           onDiscussion(item)
           onPendingSheet(1)
+          window.__hivecomActivitySignal?.()
         },
       )
       .subscribe()

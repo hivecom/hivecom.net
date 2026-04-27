@@ -1222,24 +1222,30 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               </Badge>
             </Flex>
             <template v-if="index === 0">
-              <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'reply_count' }" :disabled="isMobile" @click="changeSort('reply_count')">
-                Discussions / Replies
-                <template v-if="!isMobile && sortIcon('reply_count')" #end>
-                  <Icon :name="sortIcon('reply_count')!" />
-                </template>
-              </Button>
-              <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'view_count' }" :disabled="isMobile" @click="changeSort('view_count')">
-                Views
-                <template v-if="!isMobile && sortIcon('view_count')" #end>
-                  <Icon :name="sortIcon('view_count')!" />
-                </template>
-              </Button>
-              <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'last_activity_at' }" :disabled="isMobile" @click="changeSort('last_activity_at')">
-                Last activity
-                <template v-if="!isMobile && sortIcon('last_activity_at')" #end>
-                  <Icon :name="sortIcon('last_activity_at')!" />
-                </template>
-              </Button>
+              <div class="forum__sort-wrapper">
+                <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'reply_count' }" :disabled="isMobile" @click="changeSort('reply_count')">
+                  Discussions / Replies
+                  <template v-if="!isMobile && sortIcon('reply_count')" #end>
+                    <Icon :name="sortIcon('reply_count')!" />
+                  </template>
+                </Button>
+              </div>
+              <div class="forum__sort-wrapper">
+                <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'view_count' }" :disabled="isMobile" @click="changeSort('view_count')">
+                  Views
+                  <template v-if="!isMobile && sortIcon('view_count')" #end>
+                    <Icon :name="sortIcon('view_count')!" />
+                  </template>
+                </Button>
+              </div>
+              <div class="forum__sort-wrapper">
+                <Button plain size="s" class="forum__sort-header" :class="{ active: sortColumn === 'last_activity_at' }" :disabled="isMobile" @click="changeSort('last_activity_at')">
+                  Last activity
+                  <template v-if="!isMobile && sortIcon('last_activity_at')" #end>
+                    <Icon :name="sortIcon('last_activity_at')!" />
+                  </template>
+                </Button>
+              </div>
             </template>
             <template v-else>
               <div />
@@ -1282,8 +1288,8 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :class="{ 'forum__category-post--dimmed': topicPaginationLoading.has(topic.id) }"
               :data="discussion"
               :last-activity="discussion.last_activity_at"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.last_activity_at)"
-              @click="forumUnread.markDiscussionSeen(discussion.id)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count)"
+              @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
               @update="replaceItemData('discussion', $event)"
               @remove="removeItem('discussion', $event)"
             />
@@ -1293,8 +1299,8 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :class="{ 'forum__category-post--dimmed': topicPaginationLoading.has(topic.id) }"
               :data="discussion"
               :last-activity="discussion.last_activity_at"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.last_activity_at)"
-              @click="forumUnread.markDiscussionSeen(discussion.id)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count)"
+              @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
               @update="replaceItemData('discussion', $event)"
               @remove="removeItem('discussion', $event)"
             />
@@ -1441,13 +1447,19 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
       font-size: var(--font-size-s);
       color: var(--color-text-light);
 
-      &.active {
-        color: var(--color-text);
-      }
-
       &:hover {
         color: var(--color-text);
       }
+
+      @media screen and (max-width: $breakpoint-s) {
+        padding: 0;
+      }
+    }
+
+    .forum__sort-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
     }
   }
 

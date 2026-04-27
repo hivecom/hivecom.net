@@ -27,6 +27,7 @@ export default antfu({
     }],
   },
   ignores: [
+    'app/global.d.ts',
     'package.json',
     'package-lock.json',
     '**/supabase/functions/**/*.ts',

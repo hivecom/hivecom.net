@@ -324,7 +324,7 @@ if (linkedCommentId) {
 
     unwatch()
 
-    const found = await navigateToComment(linkedCommentId)
+    const found = await navigateToComment(linkedCommentId, { soft: true })
     if (!found)
       return
 

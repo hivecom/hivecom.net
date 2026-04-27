@@ -307,6 +307,8 @@ export function useDataNotifications() {
 
           unreadNotifications.value = [incoming, ...unreadNotifications.value]
 
+          window.__hivecomActivitySignal?.()
+
           pushToast('', {
             body: ToastBodyNotification as Component,
             bodyProps: {

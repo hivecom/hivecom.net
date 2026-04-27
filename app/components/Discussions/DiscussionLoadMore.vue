@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Spinner } from '@dolanske/vui'
+import { Spinner } from '@dolanske/vui'
 
 const props = defineProps<{
   loading: boolean
@@ -19,14 +19,14 @@ function handleClick() {
 
 <template>
   <div class="discussion-load-more" @click="handleClick">
-    <Button plain size="s" :disabled="loading">
+    <Spinner
+      v-if="loading" size="s" style="z-index: 10;"
+    />
+    <Button v-else plain size="s" :disabled="loading">
       <template v-if="!loading" #start>
         <Icon name="ph:arrow-down" :size="12" />
       </template>
-      <Spinner v-if="loading" size="s" />
-      <template v-else>
-        {{ remainingCount && remainingCount > 0 ? `${remainingCount} more ${remainingCount === 1 ? 'reply' : 'replies'}` : 'Load more' }}
-      </template>
+      {{ remainingCount && remainingCount > 0 ? `${remainingCount} more ${remainingCount === 1 ? 'reply' : 'replies'}` : 'Load more' }}
       <template v-if="!loading" #end>
         <Icon name="ph:arrow-down" :size="12" />
       </template>

@@ -6,7 +6,7 @@ interface TopicSeenState {
 }
 
 interface DiscussionSeenState {
-  lastVisitedAt: string
+  seenReplyCount: number
 }
 
 interface ForumUnreadStorage {
@@ -20,11 +20,10 @@ const STORAGE_KEY = 'forum-unread-v2'
 /**
  * Composable for tracking "new posts" state on the forum index.
  *
- * Uses localStorage to record the last-visited timestamp per topic and per
- * discussion. On first encounter the current activity timestamp is stored as
- * "seen" so we don't flood the UI with dots on first visit. Subsequent visits
- * compare the live last_activity_at to the stored timestamp and surface a dot
- * indicator whenever activity has occurred since the last visit.
+ * Topics use a last-visited timestamp (activity is harder to count at topic level).
+ * Discussions use a seen reply count - a dot only appears when reply_count exceeds
+ * the count stored at last visit/reply, which cleanly handles the case where the
+ * current user posted the latest reply.
  */
 export function useDataForumUnread() {
   const storage = useStorage<ForumUnreadStorage>(
@@ -61,16 +60,16 @@ export function useDataForumUnread() {
   }
 
   /**
-   * Returns true when a discussion has activity after the user last visited it.
+   * Returns true when a discussion has more replies than when the user last saw it.
    * Always returns false for discussions not yet stored.
    */
-  function isDiscussionNew(discussionId: string, lastActivityAt: string | null): boolean {
+  function isDiscussionNew(discussionId: string, replyCount: number | null): boolean {
     const seen = storage.value.discussions[discussionId]
     if (!seen)
       return false
-    if (lastActivityAt == null || lastActivityAt === '')
+    if (replyCount == null)
       return false
-    return dayjs(lastActivityAt).isAfter(dayjs(seen.lastVisitedAt))
+    return replyCount > seen.seenReplyCount
   }
 
   /** Record the current time for a topic as "seen". */
@@ -86,14 +85,14 @@ export function useDataForumUnread() {
     }
   }
 
-  /** Record the current time for a discussion as "seen". */
-  function markDiscussionSeen(discussionId: string) {
+  /** Record the current reply count for a discussion as "seen". */
+  function markDiscussionSeen(discussionId: string, replyCount: number) {
     storage.value = {
       ...storage.value,
       discussions: {
         ...storage.value.discussions,
         [discussionId]: {
-          lastVisitedAt: new Date().toISOString(),
+          seenReplyCount: replyCount,
         },
       },
     }
@@ -101,14 +100,14 @@ export function useDataForumUnread() {
 
   /**
    * Called once after topics (with discussions) are fetched. Any topic or
-   * discussion not yet in storage is seeded with its current last_activity_at
-   * so only activity occurring after first encounter triggers a dot.
+   * discussion not yet in storage is seeded with its current state so we don't
+   * flood the UI with dots on first visit.
    */
   function initializeTopics(
     topics: Array<{
       id: string
       last_activity_at?: string | null
-      discussions: Array<{ id: string, last_activity_at?: string | null }>
+      discussions: Array<{ id: string, reply_count?: number | null }>
     }>,
   ) {
     const updatedTopics = { ...storage.value.topics }
@@ -126,7 +125,7 @@ export function useDataForumUnread() {
       for (const discussion of topic.discussions) {
         if (!(discussion.id in updatedDiscussions)) {
           updatedDiscussions[discussion.id] = {
-            lastVisitedAt: discussion.last_activity_at ?? new Date().toISOString(),
+            seenReplyCount: discussion.reply_count ?? 0,
           }
           changed = true
         }

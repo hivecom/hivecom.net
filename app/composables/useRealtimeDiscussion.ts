@@ -232,6 +232,7 @@ export function useRealtimeDiscussion(
 
       repliesCache.invalidate(discussionId)
       pendingReplyCount.value++
+      window.__hivecomActivitySignal?.()
     }
 
     myUpdateReplyHandler = (payload: UpdateReplyPayload) => {
