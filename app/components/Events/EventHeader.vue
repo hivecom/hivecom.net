@@ -192,7 +192,7 @@ onMounted(() => {
       </Flex>
     </Flex>
 
-    <Divider class="my-m" />
+    <Divider />
 
     <!-- Event meta information -->
     <Flex gap="m" x-between expand :column="isBelowSmall">

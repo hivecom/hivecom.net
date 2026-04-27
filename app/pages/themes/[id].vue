@@ -179,11 +179,11 @@ const isMobile = useBreakpoint('<s')
           </Flex>
         </section>
 
-        <Divider class="my-m" />
+        <Divider class="mb-l mt-s" />
 
         <section class="theme-details">
           <Flex column gap="xl">
-            <Card :class="{ 'card-bg': activeTab !== 'preview' }" separators>
+            <Card separators class="card-bg">
               <template #header>
                 <Tabs v-model="activeTab" variant="filled" :style="{ width: isMobile ? '100%' : 'fit-content' }" :expand="isMobile">
                   <Tab value="preview">
@@ -266,14 +266,17 @@ const isMobile = useBreakpoint('<s')
                 <span v-else>None</span>
               </Flex>
 
-              <Flex v-if="data.custom_css" gap="xs" class="theme-details__meta-item">
-                <Badge v-if="data.custom_css" variant="warning">
-                  CSS
-                </Badge>
-                <Badge v-if="data.custom_css && data.custom_css.includes('url')" variant="danger">
-                  Uses CSS URL
-                </Badge>
-              </Flex>
+              <template v-if="data.custom_css">
+                <Divider />
+                <Flex gap="xs" class="theme-details__meta-item">
+                  <Badge v-if="data.custom_css" variant="warning">
+                    CSS
+                  </Badge>
+                  <Badge v-if="data.custom_css && data.custom_css.includes('url')" variant="danger">
+                    Uses CSS URL
+                  </Badge>
+                </Flex>
+              </template>
             </Flex>
           </div>
         </section>
@@ -290,6 +293,11 @@ const isMobile = useBreakpoint('<s')
   // then re-apply padding inside so content still has breathing room.
   margin: calc(-1 * var(--space-m));
   padding: var(--space-m);
+
+  // Hardcode to vui card's default border radius, as this element is already
+  // modified by the theme
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 .theme-details {

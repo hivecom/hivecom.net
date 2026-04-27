@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Button, Card, Flex, Grid, Input, paginate, Pagination, Select, Skeleton, Tab, Tabs } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Input, paginate, Pagination, Select, Skeleton, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { DEFAULT_THEME } from '@/lib/theme'
 import ThemeCard from './ThemeCard.vue'

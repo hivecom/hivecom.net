@@ -43,7 +43,7 @@ const emit = defineEmits<{
         expand
       />
       <!-- Font -->
-      <Divider class="my-m" />
+      <Divider class="my-s" />
       <Flex y-center gap="xs" class="banner-editor__sub-label">
         <Icon name="ph:text-t" />
         <span>Font</span>
@@ -121,7 +121,7 @@ const emit = defineEmits<{
         >
       </Flex>
       <!-- Fill -->
-      <Divider class="my-m" />
+      <Divider class="my-s" />
       <Flex y-center gap="xs" class="banner-editor__sub-label">
         <Icon name="ph:paint-bucket" />
         <span>Fill</span>
@@ -169,7 +169,7 @@ const emit = defineEmits<{
       </template>
 
       <!-- Style -->
-      <Divider class="my-m" />
+      <Divider class="my-s" />
       <Flex y-center gap="xs" class="banner-editor__sub-label">
         <Icon name="ph:text-b" />
         <span>Style</span>
@@ -231,7 +231,7 @@ const emit = defineEmits<{
 
       <!-- Outline settings -->
       <template v-if="layer.outline">
-        <Divider class="my-m" />
+        <Divider class="my-s" />
         <Flex y-center gap="xs" class="banner-editor__sub-label">
           <Icon name="ph:selection-foreground" />
           <span>Outline</span>
@@ -262,7 +262,7 @@ const emit = defineEmits<{
 
       <!-- Shadow settings -->
       <template v-if="layer.shadow">
-        <Divider class="my-m" />
+        <Divider class="my-s" />
         <Flex y-center gap="xs" class="banner-editor__sub-label">
           <Icon name="ph:circle-half-tilt" />
           <span>Shadow</span>
@@ -318,7 +318,7 @@ const emit = defineEmits<{
       </template>
 
       <!-- Transform -->
-      <Divider class="my-m" />
+      <Divider class="my-s" />
       <Flex y-center gap="xs" class="banner-editor__sub-label">
         <Icon name="ph:arrows-out" />
         <span>Transform</span>

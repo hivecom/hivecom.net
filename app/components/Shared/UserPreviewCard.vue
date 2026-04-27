@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
-import { Button, Divider, Flex, Skeleton } from '@dolanske/vui'
+import { Avatar, Button, Divider, Flex, Skeleton } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
@@ -160,7 +160,7 @@ const {
           <Avatar :size="props.avatarSize" class="user-preview-card__locked-avatar" />
           <span class="user-preview-card__locked-name">Private User</span>
         </Flex>
-        <Divider class="my-m" />
+        <Divider class="my-xs" />
         <Flex column y-center expand x-center gap="l" class="user-preview-card__locked-cta">
           <p class="user-preview-card__locked-text text-s">
             Sign in to see this user's profile.

@@ -209,7 +209,7 @@ onMounted(async () => {
             Events
           </h2>
 
-          <Grid v-if="loading" class="events-section__list" :columns="3" gap="m">
+          <Grid v-if="loading" class="events-list" :columns="3" gap="m">
             <!-- Loading state -->
             <Card v-for="i in 3" :key="i">
               <Skeleton height="1.5rem" width="80%" class="mb-s" />
@@ -231,7 +231,7 @@ onMounted(async () => {
             </Card>
           </div>
 
-          <Grid v-else :columns="3" gap="m" expand y-stretch>
+          <Grid v-else :columns="3" gap="m" expand y-stretch class="events-list">
             <EventCardLanding
               v-for="event in events"
               :key="event.id"
@@ -400,16 +400,6 @@ h4 {
 
 // Center the list and make sure it is responsive
 .events-section {
-  &__list {
-    margin: 2rem auto 0;
-    text-align: left;
-    align-items: stretch !important;
-
-    @media screen and (max-width: $breakpoint-s) {
-      grid-template-columns: 1fr !important;
-    }
-  }
-
   &__error,
   &__empty {
     .vui-card {
@@ -435,6 +425,13 @@ h4 {
     justify-content: center;
     margin-top: 1.5rem;
     text-align: center;
+  }
+}
+
+@media screen and (max-width: $breakpoint-m) {
+  .events-list {
+    --vui-grid-columns: 1 !important;
+    // grid-template-columns: 1fr !important;
   }
 }
 
