@@ -4,6 +4,7 @@ import type { Tables, TablesUpdate } from '@/types/database.overrides'
 import { Alert, Card, Flex, Grid, paginate, Pagination, Skeleton } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
+import { useDataNotifications } from '@/composables/useDataNotifications'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getRouteQueryString } from '@/lib/utils/common'
 import ComplaintCard from './ComplaintCard.vue'
@@ -144,6 +145,8 @@ function openComplaintById(complaintId: number | null): boolean {
 }
 
 // Handle acknowledge action
+const { fetch: fetchNotifications } = useDataNotifications()
+
 async function handleAcknowledge(complaintId: number) {
   if (!user.value)
     return
@@ -161,6 +164,7 @@ async function handleAcknowledge(complaintId: number) {
 
     await fetchComplaints()
     refreshSignal.value = Date.now()
+    void fetchNotifications()
   }
   catch (error) {
     console.error('Error acknowledging complaint:', error)

@@ -281,7 +281,7 @@ onUnmounted(() => {
   <section class="forum__latest">
     <Flex y-center x-start expand class="mb-s">
       <h5>
-        Latest activity
+        Recent activity
       </h5>
       <TinyBadge v-if="isMobile && newSinceLastVisit > 0" variant="accent">
         {{ newSinceLastVisit }} new
@@ -345,7 +345,7 @@ onUnmounted(() => {
       <template #header>
         <Flex y-center x-between expand class="mb-s">
           <h4>
-            Latest activity
+            Recent activity
           </h4>
           <Button
             v-if="activeTab === 'feed' && (props.feedPendingCount ?? 0) > 0"

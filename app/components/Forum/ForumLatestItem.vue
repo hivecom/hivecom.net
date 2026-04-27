@@ -13,24 +13,22 @@ const props = defineProps<{
   variant?: 'default' | 'compact'
 }>()
 
-function handleClick() {
+function handleClick(e: MouseEvent) {
   if (props.post.onClick) {
+    e.preventDefault()
     props.post.onClick()
-    return
-  }
-  if (props.post.href) {
-    navigateTo(props.post.href)
   }
 }
 </script>
 
 <template>
-  <div
+  <NuxtLink
     class="forum__latest-item"
     :class="{
       'forum__latest-item--expand': props.expand,
       'forum__latest-item--compact': props.variant === 'compact',
     }"
+    :to="props.post.href ?? ''"
     :draggable="false"
     @click="handleClick"
   >
@@ -64,7 +62,7 @@ function handleClick() {
         show-role
       />
     </Flex>
-  </div>
+  </NuxtLink>
 </template>
 
 <style lang="scss" scoped>

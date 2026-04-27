@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion, ThreadNode } from './Discussion.types'
 import { Flex, pushToast, Sheet } from '@dolanske/vui'
-import { scrollToId, waitForLayoutStability } from '@/lib/utils/common'
+import { scrollToId, scrollToIdWhenStable } from '@/lib/utils/common'
 import UserAvatar from '../Shared/UserAvatar.vue'
 import UserName from '../Shared/UserName.vue'
 import { DISCUSSION_KEYS } from './Discussion.keys'
@@ -55,24 +55,19 @@ const isActive = computed(() => data.id === route.query.comment)
 
 onMounted(async () => {
   if (isActive.value) {
-    // Wait until the page layout has fully settled before scrolling.
-    // waitForLayoutStability() polls scrollHeight each animation frame,
-    // catching late-rendered markdown, portrait images, avatars, etc.
-    await waitForLayoutStability()
-
-    const el = Array.isArray(self.value) ? self.value[0]?.$el : self.value?.$el
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // scrollToIdWhenStable re-anchors to the element every frame while layout
+    // is shifting (e.g. YouTube iframes, images loading above the target).
+    // This beats waitForLayoutStability+scrollIntoView which fires once and
+    // then gets pushed off-target by late-expanding content.
+    await scrollToIdWhenStable(`#${idPrefix}-${data.id}`, 'center', 12000, 150)
   }
 })
 
 // Scroll into view whenever another comment's scrollReply() sets ?comment=<this id> in the URL.
-// Use waitForLayoutStability() to handle late-rendering content (images, avatars) shifting the layout.
 watch(isActive, async (active) => {
   if (!active)
     return
-  await waitForLayoutStability()
-  const el = Array.isArray(self.value) ? self.value[0]?.$el : self.value?.$el
-  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  await scrollToIdWhenStable(`#${idPrefix}-${data.id}`, 'center', 12000, 150)
 }, { immediate: false })
 
 // Copy link to item

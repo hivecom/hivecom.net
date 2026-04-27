@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Button, Flex, Modal, Toasts } from '@dolanske/vui'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
 import ThemeEditorControls from '@/components/Themes/ThemeEditorControls.vue'
+import { useDataNotifications } from '@/composables/useDataNotifications'
+import { useFaviconBadge } from '@/composables/useFaviconBadge'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { useLastSeenTracking } from '@/lib/lastSeen'
 import MarkdownRenderer from './components/Shared/MarkdownRenderer.vue'
@@ -73,6 +75,27 @@ const layoutName = computed(() => {
 
 // Initialize last seen tracking for authenticated users
 useLastSeenTracking()
+
+// Favicon badge - lights up when there are unread notifications or new realtime activity while tab is hidden
+const { unreadCount } = useDataNotifications()
+const realtimeActivityWhileHidden = ref(false)
+
+// Track new realtime activity that arrives while the tab is not focused
+if (import.meta.client) {
+  // Expose a global bus for realtime composables to ping
+  window.__hivecomActivitySignal = () => {
+    if (document.hidden)
+      realtimeActivityWhileHidden.value = true
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden)
+      realtimeActivityWhileHidden.value = false
+  })
+}
+
+const faviconActive = computed(() => unreadCount.value > 0 || realtimeActivityWhileHidden.value)
+useFaviconBadge(faviconActive)
 
 // Load and apply the user's custom theme (if any) from their profile
 const { pendingTheme, confirmPendingTheme, confirmPendingThemeWithoutCss, pendingCssChange, confirmCssChange, dismissCssChange } = useUserTheme()

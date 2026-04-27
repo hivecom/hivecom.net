@@ -161,11 +161,16 @@ watch(tapped, (val) => {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .banner-display {
   // Prevent the section from collapsing into zero-height while the browser
   // is fetching the image. Banners are exactly 728x36 px.
   min-height: 1px;
-  padding-top: var(--space-s);
+
+  @media screen and (min-width: $breakpoint-s) {
+    padding-top: var(--space-s);
+  }
 
   &--flush {
     margin-top: 0;
@@ -178,17 +183,21 @@ watch(tapped, (val) => {
     // viewports. The image never exceeds its native width, and height is
     // derived from the ratio so nothing gets squished or stretched.
     width: 100%;
-    aspect-ratio: 728 / 36;
-    min-height: 36px;
     max-height: 36px;
     height: auto;
-    object-fit: cover;
     border-radius: var(--border-radius-s);
     // filter and opacity are driven by inline :style bindings so hover/tap
     // state is handled in JS, avoiding scoped-CSS descendant selector quirks.
     transition:
       filter 0.25s cubic-bezier(0.65, 0, 0.35, 1),
       opacity 0.25s cubic-bezier(0.65, 0, 0.35, 1);
+
+    @media screen and (max-width: $breakpoint-s) {
+      // On mobile, banners are full-bleed and flush with the top of the
+      // container (e.g. the mobile footer) so we can use the full width of
+      // the screen and save space by removing the border radius.
+      border-radius: 0;
+    }
   }
 }
 </style>

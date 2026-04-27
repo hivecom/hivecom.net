@@ -311,7 +311,7 @@ onBeforeMount(async () => {
       void fetchSubscription(data.id)
       // Mark the discussion seen in localStorage so the unread dot clears
       // even when navigating here by direct URL rather than from the forum index.
-      forumUnread.markDiscussionSeen(data.id)
+      forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
     }
 
     loading.value = false
@@ -373,7 +373,7 @@ onBeforeMount(async () => {
         void loadTopicBreadcrumbs(data.discussion_topic_id)
         void fetchSubscription(data.id)
         // Mark seen in localStorage so the unread dot clears on direct URL visits.
-        forumUnread.markDiscussionSeen(data.id)
+        forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
       }
 
       loading.value = false
@@ -477,8 +477,8 @@ function publish() {
  * the new reply count so that the forum-index activity indicator doesn't fire
  * for discussions the current user was the last to post in.
  */
-function handleReplySubmitted(_newReplyCount: number, discussionId: string) {
-  forumUnread.markDiscussionSeen(discussionId)
+function handleReplySubmitted(newReplyCount: number, discussionId: string) {
+  forumUnread.markDiscussionSeen(discussionId, newReplyCount)
   // Topic-level seen is timestamp-based; markTopicSeen is called when the user
   // navigates to the topic, so no extra bump needed after posting a reply.
 }
