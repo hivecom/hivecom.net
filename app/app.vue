@@ -145,7 +145,7 @@ const { editorActive } = useThemeEditorState()
       </Flex>
     </template>
 
-    <MarkdownRenderer v-if="pendingTheme" class="theme-custom-css-viewer" :md="wrapCode(pendingTheme.theme.custom_css, 'css')" />
+    <MarkdownRenderer v-if="pendingTheme" :skeleton-height="128" class="theme-custom-css-viewer" :md="wrapCode(pendingTheme.theme.custom_css, 'css')" />
 
     <template #footer="{ close }">
       <Flex gap="xs" expand x-end>
@@ -183,7 +183,7 @@ const { editorActive } = useThemeEditorState()
       </Flex>
     </template>
 
-    <MarkdownRenderer v-if="pendingTheme" class="theme-custom-css-viewer" :md="wrapCode(pendingTheme.theme.custom_css, 'css')" />
+    <MarkdownRenderer v-if="pendingTheme" :skeleton-height="128" class="theme-custom-css-viewer" :md="wrapCode(pendingTheme.theme.custom_css, 'css')" />
 
     <template #footer="{ close }">
       <Flex gap="xs" expand x-end>

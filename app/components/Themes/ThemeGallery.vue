@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Button, Card, Flex, Grid, Input, paginate, Pagination, Select, Skeleton, Tab, Tabs, Tooltip } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Input, paginate, Pagination, Select, Skeleton, Switch, Tab, Tabs } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { DEFAULT_THEME } from '@/lib/theme'
 import ThemeCard from './ThemeCard.vue'
@@ -296,31 +296,20 @@ defineExpose({ refresh, switchToCreated })
       </template>
     </Tabs>
 
-    <Flex x-between y-center gap="s" :wrap="isMobile" class="mb-s">
-      <Input v-model="search" placeholder="Search themes..." class="search-input" :expand="isMobile" />
-      <Flex v-if="activeTab === 'community'" y-center gap="s" :expand="isMobile">
+    <Flex x-start y-center gap="s" :wrap="isMobile" class="mb-l">
+      <Input v-model="search" placeholder="Search themes..." class="search-input" :expand="isMobile">
+        <template #start>
+          <Icon name="ph:magnifying-glass" :size="16" />
+        </template>
+      </Input>
+      <Flex v-if="activeTab === 'community'" y-center gap="s" :expand="isMobile" x-start>
         <Select
           v-model="selectedSort"
           :options="sortOptions"
           label-key="label"
           :show-clear="false"
-          :expand="isMobile"
         />
-        <Tooltip>
-          <Button
-            :variant="showForks ? 'fill' : 'gray'"
-            :outline="!showForks"
-            @click="showForks = !showForks"
-          >
-            <template #start>
-              <Icon name="ph:git-fork" :size="16" />
-            </template>
-            Show forks
-          </Button>
-          <template #tooltip>
-            <p>{{ showForks ? 'Hide forked themes' : 'Show forked themes' }}</p>
-          </template>
-        </Tooltip>
+        <Switch v-model="showForks" label="Show forks" />
       </Flex>
     </Flex>
 

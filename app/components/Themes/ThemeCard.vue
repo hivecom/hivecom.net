@@ -268,7 +268,7 @@ if (props.item.forked_from) {
     height: 120px;
     overflow: hidden;
     position: relative;
-    background-color: var(--color-bg-lowered);
+    background-color: var(--color-bg-raised);
     z-index: 1;
     opacity: 0.55;
     pointer-events: none;

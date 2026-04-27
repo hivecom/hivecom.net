@@ -135,7 +135,7 @@ defineOgImage('Default', {
         <Flex gap="xs" y-center>
           <Button v-if="user" variant="accent" size="s" @click="handleCreateEventClick">
             <template #start>
-              <Icon name="ph:plus" />
+              <Icon name="ph:plus" :size="16" />
             </template>
             Create
           </Button>
