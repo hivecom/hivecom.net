@@ -192,37 +192,5 @@ async function signOut() {
     padding: var(--space-xxs) 0;
     width: 100%;
   }
-
-  // &__nav-item {
-  //   display: flex;
-  //   align-items: center;
-  //   gap: var(--space-s);
-  //   padding: var(--space-s) var(--space-m);
-  //   border-radius: var(--border-radius-s);
-  //   font-size: var(--font-size-m);
-  //   color: var(--color-text);
-  //   text-decoration: none;
-  //   background: none;
-  //   border: none;
-  //   cursor: pointer;
-  //   width: 100%;
-  //   text-align: left;
-  //   transition: var(--transition);
-
-  //   &:hover {
-  //     background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  //     color: var(--color-accent);
-  //   }
-
-  //   .iconify {
-  //     flex-shrink: 0;
-  //     color: var(--color-text-light);
-  //     transition: var(--transition);
-  //   }
-
-  //   &:hover .iconify {
-  //     color: var(--color-accent);
-  //   }
-  // }
 }
 </style>
