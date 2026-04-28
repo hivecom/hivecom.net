@@ -36,7 +36,7 @@ export function useThemePreview() {
 
     const toast = pushToast('', {
       persist: true,
-      body: ToastBodyThemePreview as Component,
+      body: markRaw(ToastBodyThemePreview as Component),
       bodyProps: {
         themeName: theme.name,
         onKeep: (toastId: number, keepOrigin?: { x: number, y: number }) => {

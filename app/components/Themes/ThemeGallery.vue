@@ -333,7 +333,7 @@ defineExpose({ refresh, switchToCreated })
         <ThemeCard
           v-if="activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
           :item="DEFAULT_THEME"
-          :active-theme-id="activeTheme ? '' : '$default'"
+          :active-theme-id="activeTheme?.id"
           @remove="(origin) => setActiveTheme(null, origin)"
         />
 

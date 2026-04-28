@@ -49,7 +49,7 @@ function openEditor() {
 
 const isDefaultTheme = computed(() => data.value?.id === '$default')
 const isOwner = computed(() => !!userId.value && data.value?.created_by === userId.value)
-const isThemeActive = computed(() => isDefaultTheme.value || activeTheme.value?.id === data.value?.id)
+const isThemeActive = computed(() => (isDefaultTheme.value && !activeTheme.value) || activeTheme.value?.id === data.value?.id)
 
 onBeforeMount(() => {
   if (route.params.id === '$default') {
@@ -142,7 +142,7 @@ const isMobile = useBreakpoint('<s')
               <div>
                 <h1>
                   {{ data.name }}
-                  <TinyBadge v-if="data.id === activeTheme?.id || route.params.id === '$default'" variant="accent" style="vertical-align: middle;">
+                  <TinyBadge v-if="isThemeActive" variant="accent" style="vertical-align: middle;">
                     Active
                   </TinyBadge>
                 </h1>
@@ -190,7 +190,7 @@ const isMobile = useBreakpoint('<s')
               <template #start>
                 <Icon name="ph:paint-brush-fill" :size="16" />
               </template>
-              {{ isPreviewing ? 'Keep' : 'Apply' }}
+              {{ isPreviewing ? 'Keep' : 'Preview' }}
             </Button>
           </Flex>
         </section>

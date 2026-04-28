@@ -24,19 +24,29 @@ const emit = defineEmits<{
   edit: []
 }>()
 
-const isActive = computed(() => props.item.id === props.activeThemeId)
-const isDefaultTheme = computed(() => props.item.id === '$default')
+const isActive = computed(() => props.item.id === props.activeThemeId || (props.item.id === '$default' && !props.activeThemeId))
 
 const { previewTheme, keepPreview, previewingThemeId } = useThemePreview()
 const isPreviewing = computed(() => previewingThemeId.value === props.item.id)
 
+// When clicking "Apply" we want the hover to actually persists, however when
+// the DOM switches buttons, the hover is discarded
+const persistHover = ref(false)
+
 function handleApplyClick(e: MouseEvent) {
-  if (isActive.value)
+  persistHover.value = true
+
+  if (isActive.value) {
     emit('remove', { x: e.clientX, y: e.clientY })
-  else if (isPreviewing.value)
+    persistHover.value = false
+  }
+  else if (isPreviewing.value) {
     keepPreview({ x: e.clientX, y: e.clientY })
-  else
+    persistHover.value = false
+  }
+  else {
     previewTheme(props.item, { x: e.clientX, y: e.clientY })
+  }
 }
 const userId = useUserId()
 const { user: userData } = useDataUser(userId, { includeRole: true })
@@ -62,16 +72,25 @@ if (props.item.forked_from) {
       }
     })
 }
+
+// When we click outside of the card, make sure to reset hover persist state
+const self = useTemplateRef('selfRef')
+
+// @ts-expect-error It works so stfu
+onClickOutside(self, () => {
+  persistHover.value = false
+})
 </script>
 
 <template>
   <NuxtLink
+    ref="selfRef"
     :to="`/themes/${props.item.id}`"
-    class="theme-menu__card" :class="{ active: props.item.id === props.activeThemeId,
+    class="theme-menu__card" :class="{ active: isActive,
                                        unmaintained: props.item.is_unmaintained }"
   >
     <!-- Theme preview UI -->
-    <TinyBadge v-if="props.item.id === props.activeThemeId" variant="accent" filled>
+    <TinyBadge v-if="isActive" variant="accent" filled>
       Active
     </TinyBadge>
 
@@ -79,12 +98,12 @@ if (props.item.forked_from) {
       Deprecated
     </TinyBadge>
 
-    <ButtonGroup :gap="2" class="theme-menu__card--context">
-      <Button v-if="!isDefaultTheme || !isActive" size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="handleApplyClick">
+    <ButtonGroup :gap="2" class="theme-menu__card--context" :class="{ persist: persistHover }">
+      <Button v-show="!isActive" size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="handleApplyClick">
         <template #start>
           <Icon :name="isActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
         </template>
-        {{ isActive ? 'Remove' : isPreviewing ? 'Keep' : 'Apply' }}
+        {{ isActive ? 'Remove' : isPreviewing ? 'Keep' : 'Preview' }}
       </Button>
       <Dropdown v-if="canSeeDropdown && !props.item.is_official">
         <template #trigger="{ toggle, isOpen }">
@@ -150,11 +169,11 @@ if (props.item.forked_from) {
         <Flex y-center gap="xs">
           <Flex y-center gap="xs" class="theme-stats">
             <template v-if="props.item.user_count != null && props.item.user_count > 0">
-              <Icon name="ph:users" :size="12" />
+              <Icon name="ph:users" :size="14" />
               <span>{{ props.item.user_count }}</span>
             </template>
             <template v-if="props.item.fork_count != null && props.item.fork_count > 0">
-              <Icon name="ph:git-fork" :size="12" />
+              <Icon name="ph:git-fork" :size="14" />
               <span>{{ props.item.fork_count }}</span>
             </template>
           </Flex>
@@ -250,7 +269,8 @@ if (props.item.forked_from) {
   }
 
   &:has(.vui-button.active),
-  &:hover {
+  &:hover,
+  &:has(.theme-menu__card--context.persist) {
     .theme-menu__card--preview {
       :deep(.vui-card) {
         top: 24px;

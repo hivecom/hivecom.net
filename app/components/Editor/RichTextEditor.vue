@@ -3,7 +3,7 @@ import type { JSONContent } from '@tiptap/core'
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import { useSupabaseClient } from '#imports'
-import { Button, ButtonGroup, Dropdown, DropdownItem, Modal, pushToast, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Dropdown, DropdownItem, Modal, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import { Extension } from '@tiptap/core'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import Image from '@tiptap/extension-image'
@@ -1278,7 +1278,7 @@ async function handleSubmit() {
             <Button size="s" type="submit" :disabled="isSubmitting || props.loading" @click="handleSubmit">
               Send
               <template #end>
-                <Spinner v-if="isSubmitting || props.loading" size="xs" />
+                <Spinner v-if="isSubmitting || props.loading" size="s" />
                 <Icon v-else name="ph:paper-plane-tilt" />
               </template>
             </Button>
