@@ -205,7 +205,7 @@ async function requireAuthenticatedUser(req: Request): Promise<User> {
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
     {
       global: {
         headers: { Authorization: authHeader },
@@ -359,8 +359,7 @@ async function sendTeamSpeakMessage(args: {
   uniqueId: string;
   message: string;
   credentials: { username: string; password: string };
-}): Promise<{ clientId: number }>
-{
+}): Promise<{ clientId: number }> {
   const client = new TeamSpeakClient(args.server.queryHost, args.server.queryPort ?? 10011);
 
   try {
@@ -439,7 +438,7 @@ function sendRawCommand(
   client: TeamSpeakClient,
   cmd: string,
   params: Record<string, unknown> = {},
-) : Promise<unknown> {
+): Promise<unknown> {
   const untypedClient = client as unknown as {
     send: (command: string, commandParams?: Record<string, unknown>) => Promise<unknown>;
   };

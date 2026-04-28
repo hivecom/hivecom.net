@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
 
     const tempClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
         global: {
           headers: { Authorization: authHeader },

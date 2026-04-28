@@ -31,6 +31,7 @@ const authorizationId = computed(() => (typeof route.query.authorization_id === 
 const hasAuthorizationId = computed(() => Boolean(authorizationId.value))
 
 const loading = ref(false)
+const redirecting = ref(false)
 const submitting = ref<'approve' | 'deny' | null>(null)
 const errorMessage = ref('')
 const details = ref<AuthorizationDetails | null>(null)
@@ -51,6 +52,7 @@ async function ensureAuthenticatedOrRedirect() {
   }
 
   if (!data.user) {
+    redirecting.value = true
     await navigateTo({
       path: '/auth/sign-in',
       query: { redirect: route.fullPath },
@@ -80,8 +82,8 @@ async function loadAuthorizationDetails() {
     if (error)
       throw error
 
-    if (!data) {
-      errorMessage.value = 'Invalid authorization request.'
+    if (!data || typeof (data as AuthorizationDetails).client?.name !== 'string') {
+      errorMessage.value = 'Invalid or expired authorization request.'
       details.value = null
       return
     }
@@ -189,7 +191,7 @@ onMounted(() => {
               </Flex>
             </template>
 
-            <Flex v-else-if="loading" x-center>
+            <Flex v-else-if="loading || redirecting" x-center>
               <Spinner />
             </Flex>
 

@@ -456,7 +456,7 @@ export default defineNuxtConfig({
   },
   supabase: {
     url: process.env.SUPABASE_URL,
-    key: process.env.SUPABASE_KEY,
+    key: process.env.SUPABASE_PUBLISHABLE_KEY,
     types: '~~/types/database.types.ts',
     redirect: false, // It would make sense to have redirects based on the path, however due to SSR, this is not possible.
     redirectOptions: {
