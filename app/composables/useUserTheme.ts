@@ -3,6 +3,7 @@ import type { Database } from '@/types/database.types'
 import { pushToast, setColorTheme } from '@dolanske/vui'
 import { useStyleTag } from '@vueuse/core'
 import { applyTheme, sanitizeCustomCss } from '@/lib/theme'
+import { useThemeTransition } from './useThemeTransition'
 
 export type ThemeVariant = 'light' | 'dark'
 
@@ -109,7 +110,16 @@ export function useUserTheme() {
   const hasFetched = useState<boolean>('user-theme-fetched', () => false)
 
   // Non-null when a theme with custom CSS is awaiting user confirmation before being applied.
-  const pendingTheme = useState<{ theme: Tables<'themes'>, hasUrl: boolean } | null>('theme-pending-confirmation', () => null)
+  const pendingTheme = useState<{ theme: Tables<'themes'>, hasUrl: boolean, origin?: { x: number, y: number } } | null>('theme-pending-confirmation', () => null)
+
+  // Non-null when a previewed theme with custom CSS is awaiting user confirmation before preview is applied.
+  const pendingPreviewTheme = useState<{
+    theme: Tables<'themes'>
+    hasUrl: boolean
+    origin?: { x: number, y: number }
+    onConfirm: (withCss: boolean) => void
+    onCancel: () => void
+  } | null>('theme-pending-preview-confirmation', () => null)
 
   // Non-null when the cached theme's CSS differs from the freshly fetched theme's CSS.
   const pendingCssChange = useState<{ theme: Tables<'themes'>, hasUrl: boolean } | null>('theme-pending-css-change', () => null)
@@ -160,12 +170,15 @@ export function useUserTheme() {
     },
     set(options: VariantOption[]) {
       if (options?.[0]) {
-        const value = options[0].value
-        settings.value.theme = value
-        setColorTheme(value)
+        setVariant(options[0].value)
       }
     },
   })
+
+  function setVariant(value: ThemeVariant) {
+    settings.value.theme = value
+    setColorTheme(value)
+  }
 
   async function fetchAndApply(force = false, isLoginTransition = false): Promise<void> {
     const id = userId.value
@@ -296,12 +309,15 @@ export function useUserTheme() {
     hasFetched.value = true
   }
 
-  async function applyAndPersistTheme(theme: Tables<'themes'>): Promise<void> {
+  async function applyAndPersistTheme(theme: Tables<'themes'>, withCss?: boolean): Promise<void> {
     const id = userId.value
 
     activeTheme.value = theme
     applyTheme(theme)
-    if (settings.value.allow_custom_css)
+    // withCss explicitly controls CSS application when called from preview keep.
+    // Falls back to the user's persistent setting when not specified.
+    const applyCss = withCss ?? settings.value.allow_custom_css
+    if (applyCss)
       applyCustomCss(theme.custom_css)
     else
       applyCustomCss(null)
@@ -323,17 +339,20 @@ export function useUserTheme() {
       .eq('id', id)
   }
 
-  async function setActiveTheme(themeId: string | null): Promise<void> {
+  async function setActiveTheme(themeId: string | null, origin?: { x: number, y: number }): Promise<void> {
     const id = userId.value
 
     if (themeId == null) {
-      applyTheme(null)
-      applyCustomCss(null)
-      activeTheme.value = null
+      const { transitionTheme } = useThemeTransition()
+      void transitionTheme(() => {
+        applyTheme(null)
+        applyCustomCss(null)
+        activeTheme.value = null
 
-      if (import.meta.client) {
-        localStorage.removeItem(THEME_CACHE_KEY)
-      }
+        if (import.meta.client) {
+          localStorage.removeItem(THEME_CACHE_KEY)
+        }
+      }, origin)
 
       if (id == null)
         return
@@ -359,11 +378,30 @@ export function useUserTheme() {
 
     if (theme.custom_css && theme.custom_css.trim().length > 0) {
       const hasUrl = HAS_URL_REGEX.test(theme.custom_css)
-      pendingTheme.value = { theme, hasUrl }
+      pendingTheme.value = { theme, hasUrl, origin }
       return
     }
 
-    await applyAndPersistTheme(theme)
+    const { transitionTheme } = useThemeTransition()
+    void transitionTheme(() => {
+      void applyAndPersistTheme(theme)
+    }, origin)
+  }
+
+  function confirmPendingPreviewTheme(withCss: boolean): void {
+    if (!pendingPreviewTheme.value)
+      return
+    const { onConfirm } = pendingPreviewTheme.value
+    pendingPreviewTheme.value = null
+    onConfirm(withCss)
+  }
+
+  function cancelPendingPreviewTheme(): void {
+    if (!pendingPreviewTheme.value)
+      return
+    const { onCancel } = pendingPreviewTheme.value
+    pendingPreviewTheme.value = null
+    onCancel()
   }
 
   async function confirmPendingTheme(): Promise<void> {
@@ -430,9 +468,14 @@ export function useUserTheme() {
   return {
     activeTheme,
     pendingTheme,
+    applyAndPersistTheme,
     pendingCssChange,
+    pendingPreviewTheme,
     fetchAndApply,
     setActiveTheme,
+    setVariant,
+    confirmPendingPreviewTheme,
+    cancelPendingPreviewTheme,
     confirmPendingTheme,
     confirmPendingThemeWithoutCss,
     confirmCssChange,

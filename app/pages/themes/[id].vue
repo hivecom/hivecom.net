@@ -171,7 +171,8 @@ const isMobile = useBreakpoint('<s')
               v-if="!isDefaultTheme && isThemeActive"
               size="s"
               variant="gray"
-              @click="setActiveTheme(null)"
+              @click="(e: MouseEvent) => setActiveTheme(null, { x: e.clientX,
+                                                                y: e.clientY })"
             >
               <template #start>
                 <Icon name="ph:paint-brush" :size="16" />
@@ -182,7 +183,9 @@ const isMobile = useBreakpoint('<s')
               v-if="isDefaultTheme || !isThemeActive || isPreviewing"
               size="s"
               variant="accent"
-              @click="isPreviewing ? keepPreview() : previewTheme(data)"
+              @click="(e: MouseEvent) => isPreviewing ? keepPreview({ x: e.clientX,
+                                                                      y: e.clientY }) : data && previewTheme(data, { x: e.clientX,
+                                                                                                                     y: e.clientY })"
             >
               <template #start>
                 <Icon name="ph:paint-brush-fill" :size="16" />

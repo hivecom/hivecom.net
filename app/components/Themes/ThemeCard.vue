@@ -18,7 +18,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  remove: []
+  remove: [origin: { x: number, y: number }]
   deprecate: []
   delete: []
   edit: []
@@ -29,6 +29,15 @@ const isDefaultTheme = computed(() => props.item.id === '$default')
 
 const { previewTheme, keepPreview, previewingThemeId } = useThemePreview()
 const isPreviewing = computed(() => previewingThemeId.value === props.item.id)
+
+function handleApplyClick(e: MouseEvent) {
+  if (isActive.value)
+    emit('remove', { x: e.clientX, y: e.clientY })
+  else if (isPreviewing.value)
+    keepPreview({ x: e.clientX, y: e.clientY })
+  else
+    previewTheme(props.item, { x: e.clientX, y: e.clientY })
+}
 const userId = useUserId()
 const { user: userData } = useDataUser(userId, { includeRole: true })
 
@@ -71,7 +80,7 @@ if (props.item.forked_from) {
     </TinyBadge>
 
     <ButtonGroup :gap="2" class="theme-menu__card--context">
-      <Button v-if="!isDefaultTheme || !isActive" size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="isActive ? emit('remove') : isPreviewing ? keepPreview() : previewTheme(props.item)">
+      <Button v-if="!isDefaultTheme || !isActive" size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="handleApplyClick">
         <template #start>
           <Icon :name="isActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
         </template>

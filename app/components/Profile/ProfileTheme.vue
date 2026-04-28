@@ -28,7 +28,10 @@ const isAlreadyActive = computed(() => props.themeId != null && activeTheme.valu
       </div>
       <Flex y-center gap="xs">
         <Tooltip v-if="props.themeId && activeThemeData && !isAlreadyActive">
-          <button class="preview-btn" @click="previewTheme(activeThemeData)">
+          <button
+            class="preview-btn" @click="(e: MouseEvent) => previewTheme(activeThemeData!, { x: e.clientX,
+                                                                                            y: e.clientY })"
+          >
             <Icon name="ph:flask" :size="16" />
           </button>
           <template #tooltip>

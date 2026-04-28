@@ -6,7 +6,7 @@ import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Inpu
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { applyScale, applyTheme, COLOR_GROUPS, dbToPercent, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS, VUI_DEFAULT_COLORS } from '@/lib/theme'
+import { applyScale, applyTheme, COLOR_GROUPS, colorToHex, dbToPercent, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS, VUI_DEFAULT_COLORS } from '@/lib/theme'
 import { adaptPaletteToTheme } from '@/lib/themeAdapt'
 import { normalizeErrors } from '@/lib/utils/formatting'
 import CodeEditorClient from '../Shared/CodeEditor.vue'
@@ -105,8 +105,9 @@ function applyOtherTheme() {
     const value = adapted[key]
     if (value == null)
       continue
-    themeForm.value[current][key] = value
-    document.documentElement.style.setProperty(`--${current}-color-${key}`, value)
+    const hex = colorToHex(value)
+    themeForm.value[current][key] = hex
+    document.documentElement.style.setProperty(`--${current}-color-${key}`, hex)
   }
 
   const otherLabel = other.charAt(0).toUpperCase() + other.slice(1)

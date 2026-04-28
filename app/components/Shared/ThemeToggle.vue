@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, setColorTheme, Switch, theme, Tooltip } from '@dolanske/vui'
+import { useThemeTransition } from '@/composables/useThemeTransition'
 
 const props = defineProps({
   noText: {
@@ -33,17 +34,31 @@ const props = defineProps({
 })
 
 const { settings } = useDataUserSettings()
+const { transitionTheme } = useThemeTransition()
+
+let pendingOrigin: { x: number, y: number } | undefined
+
+function applyVariant(value: boolean) {
+  const newTheme = value ? 'light' : 'dark'
+  setColorTheme(newTheme)
+  settings.value.theme = newTheme
+}
 
 const isLight = computed({
   get: () => theme.value === 'light',
   set: (value) => {
-    const newTheme = value ? 'light' : 'dark'
-    setColorTheme(newTheme)
-    settings.value.theme = newTheme
+    const origin = pendingOrigin
+    pendingOrigin = undefined
+    void transitionTheme(() => applyVariant(value), origin)
   },
 })
 
-function toggleTheme() {
+function captureOrigin(e: MouseEvent) {
+  pendingOrigin = { x: e.clientX, y: e.clientY }
+}
+
+function toggleTheme(e: MouseEvent) {
+  captureOrigin(e)
   isLight.value = !isLight.value
 }
 </script>
@@ -84,7 +99,9 @@ function toggleTheme() {
       </template>
 
       <!-- Only render the actual Switch component on client-side -->
-      <Switch v-else v-model="isLight" class="theme-toggle__switch" />
+      <div v-else @click.capture="captureOrigin">
+        <Switch v-model="isLight" class="theme-toggle__switch" />
+      </div>
       <template #fallback>
         <!-- Static fallback for server-side rendering -->
         <div v-if="!props.button" class="theme-toggle__switch vui-switch" />

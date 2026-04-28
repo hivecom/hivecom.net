@@ -98,8 +98,33 @@ const faviconActive = computed(() => unreadCount.value > 0 || realtimeActivityWh
 useFaviconBadge(faviconActive)
 
 // Load and apply the user's custom theme (if any) from their profile
-const { pendingTheme, confirmPendingTheme, confirmPendingThemeWithoutCss, pendingCssChange, confirmCssChange, dismissCssChange } = useUserTheme()
+const { pendingTheme, confirmPendingTheme, confirmPendingThemeWithoutCss, pendingCssChange, confirmCssChange, dismissCssChange, pendingPreviewTheme, confirmPendingPreviewTheme, cancelPendingPreviewTheme } = useUserTheme()
+const { transitionTheme } = useThemeTransition()
 const { editorActive } = useThemeEditorState()
+
+function onConfirmTheme(_close: () => void) {
+  const origin = pendingTheme.value?.origin
+  void transitionTheme(() => {
+    void confirmPendingTheme()
+  }, origin)
+  // Do NOT call close() here - confirmPendingTheme sets pendingTheme = null,
+  // which closes the modal via :open="!!pendingTheme". Calling close() first
+  // triggers @close → pendingTheme = null before the transition callback fires,
+  // so confirmPendingTheme sees a null pendingTheme and bails out.
+}
+
+function onConfirmThemeWithoutCss(_close: () => void) {
+  const origin = pendingTheme.value?.origin
+  void transitionTheme(() => {
+    void confirmPendingThemeWithoutCss()
+  }, origin)
+  // Same reason as onConfirmTheme - let confirmPendingThemeWithoutCss close the modal.
+}
+
+function onConfirmPreviewTheme(withCss: boolean, close: () => void) {
+  confirmPendingPreviewTheme(withCss)
+  close()
+}
 </script>
 
 <template>
@@ -152,11 +177,49 @@ const { editorActive } = useThemeEditorState()
         <Button plain @click="pendingTheme = null; close()">
           Cancel
         </Button>
-        <Button @click="confirmPendingThemeWithoutCss(); close()">
+        <Button @click="() => onConfirmThemeWithoutCss(close)">
           Apply without CSS
         </Button>
-        <Button variant="fill" @click="confirmPendingTheme(); close()">
+        <Button variant="fill" @click="() => onConfirmTheme(close)">
           Apply theme
+        </Button>
+      </Flex>
+    </template>
+  </Modal>
+
+  <Modal
+    :open="!!pendingPreviewTheme"
+    centered
+    scrollable
+    :card="{ footerSeparator: true }"
+    :can-dismiss="false"
+    size="m"
+    @close="cancelPendingPreviewTheme()"
+  >
+    <template #header>
+      <Flex column gap="s">
+        <h4>Preview theme with custom CSS?</h4>
+        <p v-if="pendingPreviewTheme?.hasUrl">
+          This theme contains custom CSS with external URL references, which may load remote resources or track your activity.
+        </p>
+        <p v-else>
+          This theme contains custom CSS that can alter the appearance of the site in unexpected ways.
+        </p>
+      </Flex>
+    </template>
+
+    <MarkdownRenderer v-if="pendingPreviewTheme" :skeleton-height="128" class="theme-custom-css-viewer" :md="wrapCode(pendingPreviewTheme.theme.custom_css, 'css')" />
+
+    <template #footer="{ close }">
+      <Flex gap="xs" expand x-end>
+        <Button plain @click="cancelPendingPreviewTheme(); close()">
+          Cancel
+        </Button>
+        <Button @click="() => onConfirmPreviewTheme(false, close)">
+          Preview without CSS
+        </Button>
+        <Button variant="fill" @click="() => onConfirmPreviewTheme(true, close)">
+          Preview theme
         </Button>
       </Flex>
     </template>

@@ -492,6 +492,33 @@ export function applyTheme(theme: Theme | null, target: HTMLElement = document.d
 const RGB_RE = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/
 
 /**
+ * Convert any supported color string (rgb, rgba, hex) to a 6-digit hex string.
+ * Returns the fallback if the value cannot be parsed.
+ */
+export function colorToHex(value: string, fallback: string = '#000000'): string {
+  const trimmed = value.trim()
+
+  const match = trimmed.match(RGB_RE)
+  if (match) {
+    const r = Number(match[1])
+    const g = Number(match[2])
+    const b = Number(match[3])
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  }
+
+  if (trimmed.startsWith('#')) {
+    const hex = trimmed.slice(1)
+    if (hex.length === 3) {
+      const [r, g, b] = hex
+      return `#${r}${r}${g}${g}${b}${b}`
+    }
+    return `#${hex.slice(0, 6)}`
+  }
+
+  return fallback
+}
+
+/**
  * Read the current computed value of a CSS variable from :root and convert
  * it to a hex string suitable for <input type="color">.
  */

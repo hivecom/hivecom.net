@@ -2,7 +2,35 @@
 import { Button, ButtonGroup, Card, Divider, Flex, Select, Switch } from '@dolanske/vui'
 
 const { settings, settingsError } = useDataUserSettings()
-const { selectedTheme, themeOptions, selectedVariant, variantOptions } = useUserTheme()
+const { setActiveTheme, themeOptions, selectedTheme, setVariant, selectedVariant, variantOptions } = useUserTheme()
+const { transitionTheme } = useThemeTransition()
+
+let themePendingOrigin: { x: number, y: number } | undefined
+let variantPendingOrigin: { x: number, y: number } | undefined
+
+const selectedThemeWithTransition = computed({
+  get() {
+    return selectedTheme.value
+  },
+  set(value: typeof selectedTheme.value) {
+    const origin = themePendingOrigin
+    themePendingOrigin = undefined
+    if (value[0] !== undefined)
+      void setActiveTheme(value[0].value, origin)
+  },
+})
+
+const selectedVariantWithTransition = computed({
+  get() {
+    return selectedVariant.value
+  },
+  set(value: typeof selectedVariant.value) {
+    const origin = variantPendingOrigin
+    variantPendingOrigin = undefined
+    if (value[0])
+      void transitionTheme(() => setVariant(value[0]!.value), origin)
+  },
+})
 </script>
 
 <template>
@@ -18,11 +46,21 @@ const { selectedTheme, themeOptions, selectedVariant, variantOptions } = useUser
     </strong>
     <Flex class="mb-m" x-between y-center>
       <p>Current theme</p>
-      <Select v-model="selectedTheme" search :show-clear="false" :options="themeOptions" size="s" searchable />
+      <div
+        @click.capture="(e: MouseEvent) => themePendingOrigin = { x: e.clientX,
+                                                                  y: e.clientY }"
+      >
+        <Select v-model="selectedThemeWithTransition" search :show-clear="false" :options="themeOptions" size="s" searchable />
+      </div>
     </Flex>
     <Flex x-between y-center class="mb-m">
       <p>Variant</p>
-      <Select v-model="selectedVariant" :show-clear="false" :options="variantOptions" size="s" />
+      <div
+        @click.capture="(e: MouseEvent) => variantPendingOrigin = { x: e.clientX,
+                                                                    y: e.clientY }"
+      >
+        <Select v-model="selectedVariantWithTransition" :show-clear="false" :options="variantOptions" size="s" />
+      </div>
     </Flex>
     <Switch v-model="settings.allow_custom_css" class="reversed" label="Allow custom CSS from themes" hint="When enabled, themes that include custom CSS will apply it. Only enable this if you trust the theme author." />
 

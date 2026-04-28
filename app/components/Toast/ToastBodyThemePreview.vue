@@ -4,8 +4,8 @@ import { Button, Card, Flex } from '@dolanske/vui'
 interface Props {
   data: {
     themeName: string
-    onKeep: (toastId: number) => void
-    onRemove: (toastId: number) => void
+    onKeep: (toastId: number, origin?: { x: number, y: number }) => void
+    onRemove: (toastId: number, origin?: { x: number, y: number }) => void
   }
   toastId: number
 }
@@ -24,10 +24,16 @@ const { data, toastId } = defineProps<Props>()
         <span class="toast-theme-preview__title">{{ data.themeName }}</span>
       </Flex>
       <Flex gap="xs" y-center>
-        <Button size="s" variant="accent" @click="data.onKeep(toastId)">
+        <Button
+          size="s" variant="accent" @click="(e: MouseEvent) => data.onKeep(toastId, { x: e.clientX,
+                                                                                      y: e.clientY })"
+        >
           Keep
         </Button>
-        <Button size="s" variant="gray" @click="data.onRemove(toastId)">
+        <Button
+          size="s" variant="gray" @click="(e: MouseEvent) => data.onRemove(toastId, { x: e.clientX,
+                                                                                      y: e.clientY })"
+        >
           Remove
         </Button>
       </Flex>

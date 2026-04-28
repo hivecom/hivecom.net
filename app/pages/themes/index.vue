@@ -3,7 +3,33 @@ import { Button, ButtonGroup, Card, Flex, Grid, Select, Tooltip } from '@dolansk
 import ThemeGallery from '@/components/Themes/ThemeGallery.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-const { activeTheme, setActiveTheme, selectedVariant, variantOptions } = useUserTheme()
+const { activeTheme, setActiveTheme, setVariant, selectedVariant, variantOptions } = useUserTheme()
+const { transitionTheme } = useThemeTransition()
+const { dismissPreview } = useThemePreview()
+
+const variantClickOrigin = ref<{ x: number, y: number } | undefined>(undefined)
+
+function onVariantWrapperClick(e: MouseEvent) {
+  variantClickOrigin.value = { x: e.clientX, y: e.clientY }
+}
+
+function onResetClick(e: MouseEvent) {
+  dismissPreview()
+  void transitionTheme(() => setActiveTheme(null), { x: e.clientX, y: e.clientY })
+}
+
+const variantWithTransition = computed({
+  get() {
+    return selectedVariant.value
+  },
+  set(value: typeof selectedVariant.value) {
+    const origin = variantClickOrigin.value
+    variantClickOrigin.value = undefined
+    if (value[0]) {
+      void transitionTheme(() => setVariant(value[0]!.value), origin)
+    }
+  },
+})
 const { seedEditor, editorActive } = useThemeEditorState()
 
 const isMobile = useBreakpoint('<s')
@@ -52,7 +78,7 @@ function openEditor(theme?: Parameters<typeof seedEditor>[0]) {
                   </template>
                 </Tooltip>
                 <Tooltip>
-                  <Button size="s" square @click="setActiveTheme(null)">
+                  <Button size="s" square @click="onResetClick">
                     <Icon name="ph:arrow-clockwise" />
                   </Button>
                   <template #tooltip>
@@ -67,7 +93,9 @@ function openEditor(theme?: Parameters<typeof seedEditor>[0]) {
             <strong :class="isMobile ? 'text-s' : 'text-l'" class="ws-nowrap">
               Variant:
             </strong>
-            <Select v-model="selectedVariant" :show-clear="false" :options="variantOptions" size="s" />
+            <div @click.capture="onVariantWrapperClick">
+              <Select v-model="variantWithTransition" :show-clear="false" :options="variantOptions" size="s" />
+            </div>
           </Flex>
         </Grid>
       </Card>

@@ -2,7 +2,7 @@
 import type { Command } from '@dolanske/vui'
 import type { SearchType } from '@/composables/useDataSearch'
 import type { Database } from '@/types/database.types'
-import { Commands, searchString, setColorTheme, theme } from '@dolanske/vui'
+import { Commands, searchString, theme } from '@dolanske/vui'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
@@ -147,7 +147,8 @@ const matchingNavItems = computed(() => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { themes, refresh } = useDataThemes()
-const { activeTheme, setActiveTheme } = useUserTheme()
+const { activeTheme, setActiveTheme, setVariant } = useUserTheme()
+const { transitionTheme } = useThemeTransition()
 
 const themeCommands = computed<Command[]>(() => {
   const fetched = themes.value.map(theme => ({
@@ -262,8 +263,7 @@ const quickCommands = computed<Command[]>(() => [
     group: 'Commands',
     handler: () => {
       const newTheme = theme.value === 'light' ? 'dark' : 'light'
-      setColorTheme(newTheme)
-      settings.value.theme = newTheme
+      void transitionTheme(() => setVariant(newTheme))
       closeCommand()
     },
   },
