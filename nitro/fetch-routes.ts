@@ -16,13 +16,13 @@ export interface FetchRoutesResult {
  */
 export default async function fetchRoutes(): Promise<FetchRoutesResult> {
   const supabaseUrl = process.env.SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_KEY
+  const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY
 
   if (!supabaseUrl || !supabaseKey) { // eslint-disable-line ts/strict-boolean-expressions
     // Only warn if we're in a CI/production build where these should be present.
     // In dev, we might not care about pre-rendering everything.
     if (process.env.NODE_ENV === 'production') {
-      console.warn('SUPABASE_URL or SUPABASE_KEY is missing. Skipping dynamic route fetching.')
+      console.warn('SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY is missing. Skipping dynamic route fetching.')
     }
     return { routes: [], sitemapUrls: [] }
   }
