@@ -576,6 +576,7 @@ const iconTheme = computed<Theme>(() => {
     <Drawer
       v-if="isMobile"
       container-class="theme-editor__drawer-container"
+      :overlay="false"
       open :root-props="{ dismissible: false,
                           modal: false,
                           activeSnapPoint: 0.2,
