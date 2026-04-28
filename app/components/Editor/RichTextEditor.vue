@@ -87,6 +87,11 @@ interface Props {
   showExpandButton?: boolean
   alwaysShowExpandButton?: boolean
   showSubmitOptions?: boolean
+  /**
+   * External loading state - when true, disables the editor and shows spinner
+   * on the send button. Useful when the parent handles async work after submit.
+   */
+  loading?: boolean
   contentRulesOverlayText?: string
   /**
    * If provided, it will enable media upload via pasting/dragging media files
@@ -108,6 +113,7 @@ const { settings } = useDataUserSettings()
 
 const editorMode = ref <'rich' | 'plain'>('rich')
 const editorIsEmpty = ref(true)
+const isSubmitting = ref(false)
 
 const content = defineModel<string>()
 
@@ -1103,17 +1109,24 @@ async function handleSubmit() {
   if (!content.value || content.value.trim().length === 0)
     return
 
-  if (editorMode.value === 'plain') {
-    // Ensure the final value in the model is properly escaped - the textarea
-    // binds to plainTextContent (decoded) so we must re-encode before submit.
-    content.value = encodeHtmlEntities(plainTextContent.value)
+  isSubmitting.value = true
 
-    // In plain-text mode the Tiptap suggestion flow never ran, so any @username
-    // tokens must be resolved to @{uuid} before the content is submitted.
-    content.value = await resolvePlainTextMentions(content.value, supabase)
+  try {
+    if (editorMode.value === 'plain') {
+      // Ensure the final value in the model is properly escaped - the textarea
+      // binds to plainTextContent (decoded) so we must re-encode before submit.
+      content.value = encodeHtmlEntities(plainTextContent.value)
+
+      // In plain-text mode the Tiptap suggestion flow never ran, so any @username
+      // tokens must be resolved to @{uuid} before the content is submitted.
+      content.value = await resolvePlainTextMentions(content.value, supabase)
+    }
+
+    emit('submit')
   }
-
-  emit('submit')
+  finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -1131,7 +1144,7 @@ async function handleSubmit() {
     <EditorTableMenu v-if="editor && editorMode === 'rich'" :editor />
 
     <!-- Main editor instance -->
-    <div class="relative editor-host" :inert="expandedOpen">
+    <div class="relative editor-host" :inert="expandedOpen || isSubmitting || props.loading">
       <!-- Content agreement -->
       <div v-if="shouldShowContentRulesOverlay" class="editor-overlay">
         <p>{{ props.contentRulesOverlayText || 'Before being able to add content, you must agree our content rules' }}</p>
@@ -1262,10 +1275,11 @@ async function handleSubmit() {
               </template>
             </Tooltip>
 
-            <Button size="s" type="submit" @click="handleSubmit">
+            <Button size="s" type="submit" :disabled="isSubmitting || props.loading" @click="handleSubmit">
               Send
               <template #end>
-                <Icon name="ph:paper-plane-tilt" />
+                <Spinner v-if="isSubmitting || props.loading" size="xs" />
+                <Icon v-else name="ph:paper-plane-tilt" />
               </template>
             </Button>
           </ButtonGroup>
