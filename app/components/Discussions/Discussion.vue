@@ -313,28 +313,44 @@ function handleShowThreadRepliesUpdate(val: boolean) {
 // If the URL targets a specific comment, ensure it's visible even if it's
 // off-topic. We watch modelledComments so this fires once data has loaded -
 // the query param is already there on mount but comments may not be yet.
-const linkedCommentId = Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment
-if (linkedCommentId) {
-  // Wait until the discussion is loaded (discussion.value is set), then
-  // use navigateToComment to load whichever page contains the deep-linked
-  // reply. Once loaded, reveal it even if it's off-topic.
-  const unwatch = watch(discussion, async (disc) => {
-    if (disc == null)
-      return
+//
+// We also watch route.query.comment reactively so that notification clicks
+// while already on this page (which only change the query param) still
+// trigger the deep-link navigation.
+async function navigateToLinkedComment(commentId: string) {
+  // If discussion isn't loaded yet, wait for it first.
+  if (discussion.value == null) {
+    await new Promise<void>((resolve) => {
+      const unwatch = watch(discussion, (disc) => {
+        if (disc == null)
+          return
+        unwatch()
+        resolve()
+      })
+    })
+  }
 
-    unwatch()
+  const found = await navigateToComment(commentId, { soft: true })
+  if (!found)
+    return
 
-    const found = await navigateToComment(linkedCommentId, { soft: true })
-    if (!found)
-      return
-
-    const target = modelledComments.value.find(c => c.id === linkedCommentId)
-    if (target?.is_offtopic && !showOfftopic.value) {
-      showOfftopic.value = true
-      hasManuallySwitched.value = true
-    }
-  })
+  const target = modelledComments.value.find(c => c.id === commentId)
+  if (target?.is_offtopic && !showOfftopic.value) {
+    showOfftopic.value = true
+    hasManuallySwitched.value = true
+  }
 }
+
+watch(
+  () => (Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment),
+  async (commentId, prevCommentId) => {
+    // Only act on genuine changes (skip same-value updates and clears).
+    if (!commentId || commentId === prevCommentId)
+      return
+    await navigateToLinkedComment(commentId)
+  },
+  { immediate: true },
+)
 
 async function handleGoToPinnedReply() {
   const pinned = fetchedPinnedReply.value
