@@ -76,5 +76,5 @@ export function normalizeTipTapOutput(content: string): string {
 }
 
 export function wrapCode(template: string, language: string) {
-  return `\`\`\`${language} ${template}\n\`\`\``
+  return `\`\`\`${language}\n${template}\n\`\`\``
 }

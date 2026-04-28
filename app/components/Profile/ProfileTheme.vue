@@ -8,8 +8,11 @@ const props = defineProps<{
 }>()
 
 const { getById } = useDataThemes()
+const { previewTheme } = useThemePreview()
+const { activeTheme } = useUserTheme()
 
-const activeTheme = computed(() => props.themeId ? getById(props.themeId) : DEFAULT_THEME)
+const activeThemeData = computed(() => props.themeId ? getById(props.themeId) : DEFAULT_THEME)
+const isAlreadyActive = computed(() => props.themeId != null && activeTheme.value?.id === props.themeId)
 </script>
 
 <template>
@@ -20,18 +23,28 @@ const activeTheme = computed(() => props.themeId ? getById(props.themeId) : DEFA
           Theme
         </span>
         <strong class="activity-item__title no-padding">
-          {{ activeTheme ? activeTheme.name : 'Hivecom Theme' }}
+          {{ activeThemeData ? activeThemeData.name : 'Hivecom Theme' }}
         </strong>
       </div>
-      <Tooltip v-if="activeTheme">
-        <NuxtLink v-if="props.themeId" :to="`/themes/${props.themeId}`">
-          <ThemeIcon :theme="activeTheme" size="m" />
-        </NuxtLink>
-        <ThemeIcon v-else :theme="activeTheme" size="m" />
-        <template #tooltip>
-          <p>{{ props.themeId ? 'View Theme' : activeTheme.name }}</p>
-        </template>
-      </Tooltip>
+      <Flex y-center gap="xs">
+        <Tooltip v-if="props.themeId && activeThemeData && !isAlreadyActive">
+          <button class="preview-btn" @click="previewTheme(activeThemeData)">
+            <Icon name="ph:flask" :size="16" />
+          </button>
+          <template #tooltip>
+            <p>Preview theme</p>
+          </template>
+        </Tooltip>
+        <Tooltip v-if="activeThemeData">
+          <NuxtLink v-if="props.themeId" :to="`/themes/${props.themeId}`">
+            <ThemeIcon :theme="activeThemeData" size="m" />
+          </NuxtLink>
+          <ThemeIcon v-else :theme="activeThemeData" size="m" />
+          <template #tooltip>
+            <p>{{ props.themeId ? 'View Theme' : activeThemeData.name }}</p>
+          </template>
+        </Tooltip>
+      </Flex>
     </Flex>
   </Card>
 </template>
@@ -39,5 +52,28 @@ const activeTheme = computed(() => props.themeId ? getById(props.themeId) : DEFA
 <style scoped lang="scss">
 .no-padding {
   padding-left: 0 !important;
+}
+
+.preview-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--interactive-el-height);
+  height: var(--interactive-el-height);
+  border-radius: var(--border-radius-m);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-raised);
+  color: var(--color-text-light);
+  cursor: pointer;
+  transition:
+    color var(--transition),
+    background var(--transition),
+    border-color var(--transition);
+
+  &:hover {
+    color: var(--color-text);
+    background: var(--color-bg-medium);
+    border-color: var(--color-border-strong);
+  }
 }
 </style>

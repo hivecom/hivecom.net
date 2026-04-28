@@ -28,11 +28,13 @@ function goBack() {
 }
 const supabase = useSupabaseClient()
 const { setActiveTheme, activeTheme } = useUserTheme()
+const { previewTheme, keepPreview, previewingThemeId } = useThemePreview()
 const { seedEditor, editorActive } = useThemeEditorState()
 const userId = useUserId()
 
 type ThemeRow = Database['public']['Tables']['themes']['Row']
 const data = ref<ThemeRow | null>(null)
+const isPreviewing = computed(() => data.value != null && previewingThemeId.value === data.value.id)
 const dataError = ref<string | null>(null)
 const forks = ref<ThemeRow[]>([])
 const userIds = ref<string[]>([])
@@ -166,15 +168,26 @@ const isMobile = useBreakpoint('<s')
               {{ isMobile ? '' : 'Fork' }}
             </Button>
             <Button
-              v-if="!isDefaultTheme"
+              v-if="!isDefaultTheme && isThemeActive"
               size="s"
-              :variant="isThemeActive ? 'gray' : 'accent'"
-              @click="setActiveTheme(isThemeActive ? null : data.id)"
+              variant="gray"
+              @click="setActiveTheme(null)"
             >
               <template #start>
-                <Icon :name="isThemeActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
+                <Icon name="ph:paint-brush" :size="16" />
               </template>
-              {{ isThemeActive ? 'Remove' : 'Apply' }}
+              Remove
+            </Button>
+            <Button
+              v-if="isDefaultTheme || !isThemeActive || isPreviewing"
+              size="s"
+              variant="accent"
+              @click="isPreviewing ? keepPreview() : previewTheme(data)"
+            >
+              <template #start>
+                <Icon name="ph:paint-brush-fill" :size="16" />
+              </template>
+              {{ isPreviewing ? 'Keep' : 'Apply' }}
             </Button>
           </Flex>
         </section>

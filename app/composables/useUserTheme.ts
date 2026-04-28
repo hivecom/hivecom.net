@@ -167,7 +167,7 @@ export function useUserTheme() {
     },
   })
 
-  async function fetchAndApply(force = false): Promise<void> {
+  async function fetchAndApply(force = false, isLoginTransition = false): Promise<void> {
     const id = userId.value
     if (id == null) {
       // Signed-out users: restore from localStorage cache if available
@@ -200,8 +200,12 @@ export function useUserTheme() {
     if (hasFetched.value && !force)
       return
 
-    // Early restoration from localStorage to avoid FOUC
-    if (import.meta.client) {
+    // Early restoration from localStorage to avoid FOUC on reload.
+    // Skip on login transitions: the cache may hold a stale guest theme set
+    // before the user authenticated, which would flash before the real profile
+    // theme loads. On a normal reload the session is restored synchronously so
+    // isLoginTransition is false and this path is safe to use.
+    if (import.meta.client && !isLoginTransition) {
       try {
         const cached = localStorage.getItem(THEME_CACHE_KEY)
         if (cached != null) {
@@ -408,7 +412,10 @@ export function useUserTheme() {
 
     if (newId !== oldId) {
       hasFetched.value = false
-      void fetchAndApply()
+      if (import.meta.client) {
+        localStorage.removeItem(THEME_CACHE_KEY)
+      }
+      void fetchAndApply(false, true)
     }
   })
 

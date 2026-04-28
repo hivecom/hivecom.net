@@ -439,6 +439,9 @@ const iconTheme = computed<Theme>(() => {
         <!-- CSS editor -->
         <div v-if="!isMobile" v-show="activeTab === 'css'" class="theme-editor__groups--inner">
           <CodeEditorClient v-model="customCss" :focused="activeTab === 'css'" />
+          <p class="vui-hint" style="padding: var(--space-xs) var(--space-s) 0;">
+            Block comments (<code>/* ... */</code>) are stripped on save for security reasons.
+          </p>
         </div>
 
         <!-- Token editor -->

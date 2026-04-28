@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
 import { Alert, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, Skeleton, theme, Tooltip } from '@dolanske/vui'
+import { useThemePreview } from '@/composables/useThemePreview'
 import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
@@ -17,7 +18,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  apply: []
   remove: []
   deprecate: []
   delete: []
@@ -27,6 +27,8 @@ const emit = defineEmits<{
 const isActive = computed(() => props.item.id === props.activeThemeId)
 const isDefaultTheme = computed(() => props.item.id === '$default')
 
+const { previewTheme, keepPreview, previewingThemeId } = useThemePreview()
+const isPreviewing = computed(() => previewingThemeId.value === props.item.id)
 const userId = useUserId()
 const { user: userData } = useDataUser(userId, { includeRole: true })
 
@@ -69,11 +71,11 @@ if (props.item.forked_from) {
     </TinyBadge>
 
     <ButtonGroup :gap="2" class="theme-menu__card--context">
-      <Button v-if="!isDefaultTheme" size="s" variant="gray" @click.prevent.stop="isActive ? emit('remove') : emit('apply')">
+      <Button v-if="!isDefaultTheme || !isActive" size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="isActive ? emit('remove') : isPreviewing ? keepPreview() : previewTheme(props.item)">
         <template #start>
           <Icon :name="isActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
         </template>
-        {{ isActive ? 'Remove' : 'Apply' }}
+        {{ isActive ? 'Remove' : isPreviewing ? 'Keep' : 'Apply' }}
       </Button>
       <Dropdown v-if="canSeeDropdown && !props.item.is_official">
         <template #trigger="{ toggle, isOpen }">

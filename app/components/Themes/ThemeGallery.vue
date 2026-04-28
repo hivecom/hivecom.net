@@ -334,7 +334,6 @@ defineExpose({ refresh, switchToCreated })
           v-if="activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
           :item="DEFAULT_THEME"
           :active-theme-id="activeTheme ? '' : '$default'"
-          @apply="setActiveTheme(null)"
           @remove="setActiveTheme(null)"
         />
 
@@ -343,7 +342,6 @@ defineExpose({ refresh, switchToCreated })
           :key="item.id"
           :item="item"
           :active-theme-id="activeTheme?.id"
-          @apply="setActiveTheme(item.id)"
           @remove="setActiveTheme(null)"
           @edit="emit('edit', item)"
           @deprecate="deprecateTheme(item.id)"

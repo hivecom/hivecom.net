@@ -21,6 +21,8 @@ const props = defineProps<{
   focused: boolean
 }>()
 
+const COMMENT_RE = /\/\*[\s\S]*?\*\//g
+
 const model = defineModel<string>()
 
 // const activeThemeVariant = computed(() => theme.value === 'light' ? 'light' : 'dark')
@@ -30,6 +32,33 @@ const loaded = ref(false)
 let editorInstance: MonacoEditor | null = null
 let monacoInstance: MonacoModule | null = null
 let completionDisposable: MonacoIDisposable | null = null
+
+function updateCommentMarkers(monaco: MonacoModule, editor: MonacoEditor) {
+  const model = editor.getModel()
+  if (!model)
+    return
+
+  const text = model.getValue()
+  const markers: import('monaco-editor').editor.IMarkerData[] = []
+
+  let match: RegExpExecArray | null
+  COMMENT_RE.lastIndex = 0
+  // eslint-disable-next-line no-cond-assign
+  while ((match = COMMENT_RE.exec(text)) !== null) {
+    const start = model.getPositionAt(match.index)
+    const end = model.getPositionAt(match.index + match[0].length)
+    markers.push({
+      severity: monaco.MarkerSeverity.Warning,
+      message: 'Block comments (/* ... */) are stripped on save. This is a security measure - comments can be used to obfuscate dangerous patterns (e.g. java/**/script:) that would otherwise bypass sanitization. To document your CSS, consider posting a comment under your theme - you can pin it to keep notes visible at the top.',
+      startLineNumber: start.lineNumber,
+      startColumn: start.column,
+      endLineNumber: end.lineNumber,
+      endColumn: end.column,
+    })
+  }
+
+  monaco.editor.setModelMarkers(model, 'hivecom-css', markers)
+}
 
 // Add tokens to this list if you want the editor to hint/autocomplete them
 const VUI_TOKENS: { name: string, description: string }[] = [
@@ -149,7 +178,10 @@ onMounted(async () => {
 
   editor.onDidChangeModelContent(() => {
     model.value = editor.getValue()
+    updateCommentMarkers(monaco, editor)
   })
+
+  updateCommentMarkers(monaco, editor)
 
   editorInstance = editor
   loaded.value = true
