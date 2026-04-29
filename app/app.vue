@@ -5,7 +5,6 @@ import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
 import ThemeEditorControls from '@/components/Themes/ThemeEditorControls.vue'
 import { useDataNotifications } from '@/composables/useDataNotifications'
-import { useFaviconBadge } from '@/composables/useFaviconBadge'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { useLastSeenTracking } from '@/lib/lastSeen'
 import MarkdownRenderer from './components/Shared/MarkdownRenderer.vue'
@@ -63,6 +62,7 @@ useSeoMeta({
   ogType: 'website',
   twitterCard: 'summary_large_image',
 })
+
 const layoutName = computed(() => {
   if (route.path.startsWith('/admin'))
     return 'admin'
@@ -94,8 +94,12 @@ if (import.meta.client) {
   })
 }
 
-const faviconActive = computed(() => unreadCount.value > 0 || realtimeActivityWhileHidden.value)
-useFaviconBadge(faviconActive)
+// Favicon alerting
+const icon = useFavicon()
+
+watch(() => unreadCount.value > 0 || realtimeActivityWhileHidden.value, (isActive) => {
+  icon.value = isActive ? 'icon-alert.svg' : 'icon.svg'
+})
 
 // Load and apply the user's custom theme (if any) from their profile
 const { pendingTheme, confirmPendingTheme, confirmPendingThemeWithoutCss, pendingCssChange, confirmCssChange, dismissCssChange, pendingPreviewTheme, confirmPendingPreviewTheme, cancelPendingPreviewTheme } = useUserTheme()
