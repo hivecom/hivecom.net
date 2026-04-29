@@ -12,13 +12,13 @@
   "language_servers": ["!prettier", "..."],
   "languages": {
     "JavaScript": {
-      "language_servers": ["eslint"],
+      "language_servers": ["deno", "eslint"],
       "formatter": [
         { "code_action": "source.fixAll.eslint" }
       ]
     },
     "TypeScript": {
-      "language_servers": ["eslint", "typescript-language-server"],
+      "language_servers": ["deno", "eslint", "typescript-language-server"],
       "formatter": [
         { "code_action": "source.fixAll.eslint" }
       ]
@@ -77,6 +77,15 @@
     }
   },
   "lsp": {
+    "deno": {
+      "settings": {
+        "deno": {
+          "enable": true,
+          "enablePaths": ["supabase/functions"],
+          "config": "./supabase/functions/deno.json"
+        }
+      }
+    },
     "emmet-language-server": {
       "binary": {
         "path": "node_modules/.bin/emmet-language-server",
@@ -140,6 +149,7 @@
           "mode": "auto"
         },
         "validate": "on",
+        "warnIgnored": false,
         "experimental": {
           "useFlatConfig": false
         },

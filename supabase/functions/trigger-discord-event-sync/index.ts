@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { Database, Tables } from "database-types";
+import type { Database, Tables } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeSystemTrigger } from "../_shared/auth.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
@@ -24,12 +24,28 @@ const DISCORD_FREQ_WEEKLY = 2;
 const DISCORD_FREQ_DAILY = 3;
 
 const DISCORD_WEEKDAY: Record<string, number> = {
-  MO: 0, TU: 1, WE: 2, TH: 3, FR: 4, SA: 5, SU: 6,
+  MO: 0,
+  TU: 1,
+  WE: 2,
+  TH: 3,
+  FR: 4,
+  SA: 5,
+  SU: 6,
 };
 
 const DISCORD_MONTH: Record<string, number> = {
-  "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6,
-  "7": 7, "8": 8, "9": 9, "10": 10, "11": 11, "12": 12,
+  "1": 1,
+  "2": 2,
+  "3": 3,
+  "4": 4,
+  "5": 5,
+  "6": 6,
+  "7": 7,
+  "8": 8,
+  "9": 9,
+  "10": 10,
+  "11": 11,
+  "12": 12,
 };
 
 interface DiscordRecurrenceRule {
@@ -62,7 +78,9 @@ function rruleToDiscord(
 
   if (freq === "DAILY") {
     const byWeekday = parts.BYDAY
-      ? parts.BYDAY.split(",").map((d) => DISCORD_WEEKDAY[d]).filter((d) => d !== undefined)
+      ? parts.BYDAY.split(",").map((d) => DISCORD_WEEKDAY[d]).filter((d) =>
+        d !== undefined
+      )
       : null;
     return {
       start,
@@ -75,13 +93,17 @@ function rruleToDiscord(
   if (freq === "WEEKLY") {
     // Discord only supports interval 1 or 2 for weekly
     if (interval > 2) {
-      console.warn(`RRULE interval ${interval} not supported by Discord for WEEKLY, skipping recurrence`);
+      console.warn(
+        `RRULE interval ${interval} not supported by Discord for WEEKLY, skipping recurrence`,
+      );
       return null;
     }
     // Discord weekly only supports a single BYDAY value
     const byDayCodes = parts.BYDAY ? parts.BYDAY.split(",") : [];
     if (byDayCodes.length > 1) {
-      console.warn("Discord weekly recurrence only supports a single BYDAY, skipping recurrence");
+      console.warn(
+        "Discord weekly recurrence only supports a single BYDAY, skipping recurrence",
+      );
       return null;
     }
     const byWeekday = byDayCodes.length === 1

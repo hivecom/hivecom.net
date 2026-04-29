@@ -9,7 +9,7 @@ import {
   updateContainerStatus,
 } from "../_shared/docker-control.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
-import { Database } from "database-types";
+import type { Database } from "database-types";
 
 Deno.serve(async (req: Request) => {
   // This is needed if you're planning to invoke your function from a browser.
@@ -54,7 +54,8 @@ Deno.serve(async (req: Request) => {
     // Create a Supabase client
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // Get container details including the server it's hosted on

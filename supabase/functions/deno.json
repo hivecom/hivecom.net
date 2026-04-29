@@ -1,6 +1,7 @@
 {
   "version": "2.1.4",
   "imports": {
+    "@deno/types": "npm:@deno/types@^0.0.1",
     "constants": "../../constants.json",
     "database-types": "../../types/database.types.ts",
     "metrics-types": "../../types/metrics.ts",

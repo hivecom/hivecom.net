@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@supabase/functions-js@^0.0.0-automated": "0.0.0-jsr-test.1",
     "jsr:@supabase/supabase-js@2": "2.87.1",
+    "npm:@deno/types@^0.0.1": "0.0.1",
     "npm:@supabase/auth-js@2.87.1": "2.87.1",
     "npm:@supabase/postgrest-js@2.87.1": "2.87.1",
     "npm:@supabase/realtime-js@2.87.1": "2.87.1",
@@ -28,6 +29,9 @@
     }
   },
   "npm": {
+    "@deno/types@0.0.1": {
+      "integrity": "sha512-KTB6Blr05Iw7k7aMzPWlJX0kv08xXZ5Mu7fxSp0M1HnaOHDRnFC956I4PxYdOtN27+b2723Id2G2oofxLvA35A=="
+    },
     "@rauschma/stringio@1.4.0": {
       "integrity": "sha512-3uor2f/MXZkmX5RJf8r+OC3WvZVzpSme0yyL0rQDPEnatE02qRcqwEwnsgpgriEck0S/n4vWtUd6tTtrJwk45Q==",
       "dependencies": [
@@ -84,13 +88,7 @@
     "@types/node@24.10.2": {
       "integrity": "sha512-WOhQTZ4G8xZ1tjJTvKOpyEVSGgOTvJAfDK3FNFgELyaTpzhdgHVHeqW8V+UJvzF5BT+/B54T/1S2K6gd9c7bbA==",
       "dependencies": [
-        "undici-types@7.16.0"
-      ]
-    },
-    "@types/node@24.2.0": {
-      "integrity": "sha512-3xyG3pMCq3oYCNg7/ZP+E1ooTaGB4cG8JWRsqqOYQdbWNY4zbaV0Ennrd7stjiJEFZCaybcIgpTjJWHRfBSIDw==",
-      "dependencies": [
-        "undici-types@7.10.0"
+        "undici-types"
       ]
     },
     "@types/phoenix@1.6.7": {
@@ -99,7 +97,7 @@
     "@types/ws@8.18.1": {
       "integrity": "sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==",
       "dependencies": [
-        "@types/node@24.2.0"
+        "@types/node@24.10.2"
       ]
     },
     "agent-base@7.1.4": {
@@ -364,9 +362,6 @@
     "tslib@2.8.1": {
       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="
     },
-    "undici-types@7.10.0": {
-      "integrity": "sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag=="
-    },
     "undici-types@7.16.0": {
       "integrity": "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw=="
     },
@@ -393,6 +388,7 @@
   },
   "workspace": {
     "dependencies": [
+      "npm:@deno/types@^0.0.1",
       "npm:@supabase/supabase-js@2",
       "npm:google-auth-library@9",
       "npm:googleapis@144",
@@ -464,6 +460,16 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
+      "openid-steam-verify": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "presence-refresh-steam": {
+        "dependencies": [
+          "npm:@supabase/supabase-js@2"
+        ]
+      },
       "teamspeak-unlink": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2",
@@ -522,6 +528,11 @@
       "webhook-aws-ses-notifications": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "worker-sync-steam": {
+        "dependencies": [
+          "npm:@supabase/supabase-js@2"
         ]
       }
     }

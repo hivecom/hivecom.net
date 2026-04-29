@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeAuthenticatedHasPermissionAal2 } from "../_shared/auth.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
-import { Database } from "database-types";
+import type { Database } from "database-types";
 
 interface DeleteUserRequest {
   userId: string;
@@ -71,7 +71,8 @@ Deno.serve(async (req: Request) => {
       },
     );
 
-    const { data: { user: currentUser }, error: userError } = await tempClient.auth.getUser();
+    const { data: { user: currentUser }, error: userError } = await tempClient
+      .auth.getUser();
 
     if (userError || !currentUser) {
       return new Response(
@@ -103,7 +104,8 @@ Deno.serve(async (req: Request) => {
     // Create a Supabase client with service role key for admin operations
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // First, check if the user exists by looking up their profile
@@ -141,11 +143,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`Attempting to delete user: ${userProfile.username} (${userId})`);
+    console.log(
+      `Attempting to delete user: ${userProfile.username} (${userId})`,
+    );
 
     // Delete the user using Supabase Auth Admin API
     // This will delete from auth.users table, which will cascade to profiles due to foreign key constraint
-    const { error: deleteError } = await supabaseClient.auth.admin.deleteUser(userId);
+    const { error: deleteError } = await supabaseClient.auth.admin.deleteUser(
+      userId,
+    );
 
     if (deleteError) {
       console.error("Error deleting user:", deleteError);
@@ -162,7 +168,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`Successfully deleted user: ${userProfile.username} (${userId})`);
+    console.log(
+      `Successfully deleted user: ${userProfile.username} (${userId})`,
+    );
 
     // Return success response
     return new Response(

@@ -1,11 +1,37 @@
+// This tsconfig exists solely to keep typescript-language-server (tsls) quiet
+// when editing Deno edge function files in Zed. Zed does not support scoping
+// language servers to specific paths within a project - tsls runs on all .ts
+// files regardless of the root tsconfig.json "exclude" list. Without this file,
+// tsls falls back to the repo root tsconfig and produces false-positive errors
+// on Deno-specific globals and npm: specifiers it cannot resolve.
+//
+// The Deno LSP handles all real type checking here via the "enablePaths" setting
+// in .zed/settings.json. The stubs in deno.d.ts silence remaining tsls noise.
+//
+// This file can be removed if Zed ever supports path-scoped language server
+// activation (i.e. disabling tsls for supabase/functions/** while keeping it
+// active for the rest of the project).
+//
 {
   "compilerOptions": {
     "target": "esnext",
+    "lib": ["esnext", "dom"],
     "module": "esnext",
     "moduleResolution": "bundler",
+    "paths": {
+      "constants": ["../../constants.json"],
+      "database-types": ["../../types/database.types.ts"],
+      "metrics-types": ["../../types/metrics.ts"],
+      "teamspeak-types": ["../../types/teamspeak.ts"]
+    },
+    "typeRoots": [],
     "types": [],
+    "allowImportingTsExtensions": true,
     "allowJs": true,
     "checkJs": false,
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noEmit": true,
     "skipLibCheck": true
   },

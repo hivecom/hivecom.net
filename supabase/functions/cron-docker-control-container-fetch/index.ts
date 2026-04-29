@@ -2,11 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
 import {
   buildDockerControlServerUrl,
-  DockerControlResponse,
+  type DockerControlResponse,
   getActiveDockerControlServers,
   getDockerControlToken,
 } from "../_shared/docker-control.ts";
-import { Database, Tables } from "database-types";
+import type { Database, Tables } from "database-types";
 
 Deno.serve(async (req: Request) => {
   // Skip CORS preflight check for OPTIONS requests as this should not originate from a browser.
@@ -24,7 +24,8 @@ Deno.serve(async (req: Request) => {
     // Create a Supabase client with the service role key (full admin access)
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // Fetch all active servers with docker control enabled from the database
