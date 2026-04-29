@@ -36,7 +36,7 @@
     "@takumi-rs/core": "^1.0.8",
     "@tiptap/extension-details": "^3.22.3",
     "@tiptap/extension-file-handler": "^3.22.3",
-    "@tiptap/extension-image": "^3.22.3",
+    "@tiptap/extension-image": "^3.22.4",
     "@tiptap/extension-mathematics": "^3.22.3",
     "@tiptap/extension-mention": "^3.22.3",
     "@tiptap/extension-table": "^3.22.4",
