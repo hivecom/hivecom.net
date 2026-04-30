@@ -30,7 +30,7 @@ import { slugify } from '@/lib/utils/formatting'
 
 dayjs.extend(relativeTime)
 
-const FORUM_TOPICS_CACHE_KEY = 'forum:topics-v3'
+const FORUM_TOPICS_CACHE_KEY = 'topics-v3'
 const FORUM_TOPICS_TTL = 5 * 60 * 1000 // 5 minutes
 
 useSeoMeta({
@@ -140,8 +140,20 @@ const topics = ref<TopicWithDiscussions[]>([])
 // Lightweight discussion index for the activity feed, visibleDiscussionIds,
 // and discussionLookup. Fetched once on mount independently of the lazy
 // per-topic discussion loads so the feed works without clicking into topics.
-const FORUM_DISCUSSIONS_INDEX_CACHE_KEY = 'forum:discussions-index:v1'
+const FORUM_DISCUSSIONS_INDEX_CACHE_KEY = 'discussions-index:v1'
 const FORUM_DISCUSSIONS_INDEX_TTL = 5 * 60 * 1000
+
+// Per-topic discussion page cache
+const TOPIC_DISCUSSIONS_TTL = 3 * 60 * 1000 // 3 minutes
+function topicDiscussionsCacheKey(topicId: string, page: number, sort: SortColumn, asc: boolean): string {
+  return `topic-discussions:${topicId}:${page}:${sort}:${asc ? 'asc' : 'desc'}`
+}
+
+interface TopicDiscussionsPage {
+  discussions: ForumDiscussion[]
+  stickyDiscussions: ForumDiscussion[]
+  totalCount: number | null
+}
 const allDiscussions = ref<ForumDiscussion[]>([])
 
 const TOPIC_PAGE_SIZE = 15
@@ -512,6 +524,35 @@ async function loadTopicDiscussions(topicId: string, page: number = 0, isExplici
   if (page > 0 && topicPaginationLoading.value.has(topicId))
     return
 
+  // Check cache - key encodes topicId, page, sort column and direction so
+  // any previously fetched combination hits instantly, new combos miss and fetch.
+  const cacheKey = topicDiscussionsCacheKey(topicId, page, sortColumn.value, sortAscending.value)
+  const cached = forumCache.get<TopicDiscussionsPage>(cacheKey)
+  if (cached !== null) {
+    const idx = topics.value.findIndex(t => t.id === topicId)
+    if (idx !== -1 && topics.value[idx]) {
+      const currentTopic = topics.value[idx]!
+      topics.value[idx] = {
+        ...currentTopic,
+        discussions: cached.discussions,
+        stickyDiscussions: page === 0 ? cached.stickyDiscussions : currentTopic.stickyDiscussions,
+        discussionsLoaded: true,
+      }
+      if (page === 0 && cached.totalCount !== null) {
+        topicPagination.value = {
+          ...topicPagination.value,
+          [topicId]: { page, totalCount: cached.totalCount },
+        }
+      }
+      forumUnread.initializeTopics([{
+        id: topicId,
+        last_activity_at: currentTopic.last_activity_at,
+        discussions: [...(page === 0 ? cached.stickyDiscussions : currentTopic.stickyDiscussions), ...cached.discussions],
+      }])
+    }
+    return
+  }
+
   const isPagination = page > 0 || isExplicitPageChange
   if (isPagination) {
     topicPaginationLoading.value = new Set([...topicPaginationLoading.value, topicId])
@@ -583,13 +624,21 @@ async function loadTopicDiscussions(topicId: string, page: number = 0, isExplici
 
   // Update pagination state
   const prevPagination = topicPagination.value[topicId]
+  const newTotalCount = page === 0 ? (countResult.count ?? prevPagination?.totalCount ?? 0) : (prevPagination?.totalCount ?? 0)
   topicPagination.value = {
     ...topicPagination.value,
     [topicId]: {
       page,
-      totalCount: page === 0 ? (countResult.count ?? prevPagination?.totalCount ?? 0) : (prevPagination?.totalCount ?? 0),
+      totalCount: newTotalCount,
     },
   }
+
+  // Cache results for re-navigation within TTL
+  forumCache.set<TopicDiscussionsPage>(cacheKey, {
+    discussions: pageResult.data as ForumDiscussion[],
+    stickyDiscussions: page === 0 ? stickyDiscussions : currentTopic.stickyDiscussions,
+    totalCount: page === 0 ? newTotalCount : null,
+  }, TOPIC_DISCUSSIONS_TTL)
 
   // Seed unread state for newly loaded discussions
   forumUnread.initializeTopics([{
@@ -597,9 +646,6 @@ async function loadTopicDiscussions(topicId: string, page: number = 0, isExplici
     last_activity_at: updatedTopic.last_activity_at,
     discussions: [...updatedTopic.stickyDiscussions, ...updatedTopic.discussions],
   }])
-
-  // Bust cache so remounts reflect loaded discussions
-  forumCache.delete(FORUM_TOPICS_CACHE_KEY)
 }
 
 function getTopicPagination(topicId: string): TopicPaginationState | null {
@@ -817,7 +863,8 @@ function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
     // Also add to the global discussions index so the activity feed sees it immediately
     if (!allDiscussions.value.some(d => d.id === discussion.id))
       allDiscussions.value = [discussion, ...allDiscussions.value]
-    forumCache.delete(FORUM_TOPICS_CACHE_KEY)
+    // Bust topic discussion page caches for all pages of this topic so next open fetches fresh
+    forumCache.invalidateByPattern(new RegExp(`^topic-discussions:${discussion.discussion_topic_id}:`))
     forumCache.delete(FORUM_DISCUSSIONS_INDEX_CACHE_KEY)
   }
 }
@@ -906,10 +953,13 @@ function replaceItemData(type: 'topic' | 'discussion', data: Tables<'discussion_
     }
   }
   // Bust cache so remounts reflect the mutation.
-  forumCache.delete(FORUM_TOPICS_CACHE_KEY)
   if (type === 'discussion') {
-    // Keep the global index in sync with updated discussion data
     const updatedDiscussion = data as ForumDiscussion
+    // Invalidate per-topic discussion page cache for affected topic(s)
+    if (updatedDiscussion.discussion_topic_id) {
+      forumCache.invalidateByPattern(new RegExp(`^topic-discussions:${updatedDiscussion.discussion_topic_id}:`))
+    }
+    // Keep the global index in sync with updated discussion data
     const indexIdx = allDiscussions.value.findIndex(d => d.id === updatedDiscussion.id)
     if (indexIdx !== -1)
       allDiscussions.value = allDiscussions.value.toSpliced(indexIdx, 1, updatedDiscussion)
@@ -962,11 +1012,10 @@ function removeItem(type: 'topic' | 'discussion', id: string) {
           [discussionTopicId]: { ...pag, totalCount: Math.max(0, pag.totalCount - 1) },
         }
       }
+      forumCache.invalidateByPattern(new RegExp(`^topic-discussions:${discussionTopicId}:`))
     }
     forumCache.delete(FORUM_DISCUSSIONS_INDEX_CACHE_KEY)
   }
-  // Bust cache so remounts reflect the deletion.
-  forumCache.delete(FORUM_TOPICS_CACHE_KEY)
 }
 
 onBeforeMount(() => {

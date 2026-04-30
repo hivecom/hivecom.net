@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { Tables } from '@/types/database.overrides'
 import { Alert, Card, Checkbox, Flex, Grid, Skeleton } from '@dolanske/vui'
 import ExpenseCard from '@/components/Community/ExpenseCard.vue'
 import FundingHistory from '@/components/Community/FundingHistory.vue'
@@ -7,19 +6,15 @@ import FundingProgress from '@/components/Community/FundingProgress.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import { useDataExpenses } from '@/composables/useDataExpenses'
+import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
+import { useDataSupporters } from '@/composables/useDataSupporters'
 import { formatCurrency } from '@/lib/utils/currency'
 
-// Data setup
-const supabase = useSupabaseClient()
 const user = useSupabaseUser()
-const loading = ref(true)
-const errorMessage = ref('')
 
-// Funding data
-const monthlyFunding = ref<Tables<'monthly_funding'>[]>([])
-const supporters = ref<string[]>([])
-
-// Expenses via shared cache
+// All data via shared cached composables - no manual onMounted fetch needed.
+const { allFunding: monthlyFunding, loading: fundingLoading, error: fundingError } = useDataMonthlyFunding()
+const { supporterIds: supporters, loading: supportersLoading, error: supportersError } = useDataSupporters()
 const { expenses, loading: expensesLoading, error: expensesError } = useDataExpenses()
 
 // UI state
@@ -37,61 +32,16 @@ defineOgImage('Default', {
   description: 'See Hivecom community funding, expenses, and how to support the project.',
 })
 
-// Fetch data on mount
-onMounted(async () => {
-  loading.value = true
-
-  try {
-    // Fetch monthly funding history and supporters in parallel
-    // Expenses are handled by useDataExpenses() composable
-    const [fundingResult, supportersResult] = await Promise.all([
-      supabase
-        .from('monthly_funding')
-        .select('*')
-        .order('month', { ascending: false }),
-
-      supabase
-        .from('profiles')
-        .select('id, supporter_lifetime, supporter_patreon')
-        .eq('banned', false)
-        .or('supporter_lifetime.eq.true,supporter_patreon.eq.true')
-        .order('created_at', { ascending: true }), // Show earliest supporters first
-    ])
-
-    if (fundingResult.error)
-      throw fundingResult.error
-
-    monthlyFunding.value = fundingResult.data || []
-
-    if (supportersResult.error) {
-      console.warn('Error fetching supporters:', supportersResult.error)
-      // Don't throw - continue without supporters
-    }
-    else if (supportersResult.data) {
-      supporters.value = supportersResult.data.map(u => u.id)
-    }
-  }
-  catch (error: unknown) {
-    errorMessage.value = error instanceof Error ? error.message : 'Failed to load funding data'
-  }
-  finally {
-    loading.value = false
-  }
-})
-
 // Filtered expenses based on checkbox
 const filteredExpenses = computed(() => {
-  if (showPastExpenses.value) {
+  if (showPastExpenses.value)
     return expenses.value
-  }
-  else {
-    return expenses.value.filter(expense => expense.ended_at == null)
-  }
+  return expenses.value.filter(expense => expense.ended_at == null)
 })
 
-// Combine loading states
-const isLoading = computed(() => loading.value || expensesLoading.value)
-const combinedError = computed(() => errorMessage.value || expensesError.value || '')
+// Combine loading and error states
+const isLoading = computed(() => fundingLoading.value || supportersLoading.value || expensesLoading.value)
+const combinedError = computed(() => fundingError.value ?? supportersError.value ?? expensesError.value ?? '')
 </script>
 
 <template>
@@ -112,6 +62,13 @@ const combinedError = computed(() => errorMessage.value || expensesError.value |
           <Skeleton :height="100" :radius="8" />
           <Skeleton :height="100" :radius="8" />
         </Grid>
+        <Skeleton :width="200" :height="32" :radius="8" class="mt-l" />
+        <Grid :columns="2" gap="l">
+          <Skeleton :height="150" :radius="8" />
+          <Skeleton :height="150" :radius="8" />
+          <Skeleton :height="150" :radius="8" />
+          <Skeleton :height="150" :radius="8" />
+        </Grid>
       </Flex>
     </section>
 
@@ -123,9 +80,9 @@ const combinedError = computed(() => errorMessage.value || expensesError.value |
     </section>
 
     <!-- Main content -->
-    <template v-else-if="!isLoading && !combinedError">
+    <template v-else>
       <!-- Our Supporters -->
-      <Card v-if="user && supporters.length > 0" class="pb-l">
+      <Card v-if="user && supporters.length > 0" class="pb-l mt-l">
         <Flex column gap="m" x-center y-center>
           <Flex y-center gap="m" x-center expand>
             <Flex column :gap="0" x-center class="text-center" y-center>

@@ -5,8 +5,10 @@ import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import { useCache } from '@/composables/useCache'
 import { useDataProjects } from '@/composables/useDataProjects'
 import { isBanActive } from '@/lib/banStatus'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getBirthdayPatterns } from '@/lib/utils/date'
 import { shuffleArray } from '@/lib/utils/random'
@@ -70,17 +72,33 @@ defineOgImage('Default', {
   description: 'Learn about Hivecom, explore community projects, and connect with members.',
 })
 
-// State for community members
-const randomUsers = ref<string[]>([])
-const supporters = ref<string[]>([])
-const birthdayUserIds = ref<string[]>([])
-const loading = ref(true)
+// State for community members - hoist cache check before loading so it initializes correctly
+const { projects: allProjects } = useDataProjects()
+const communityCache = useCache(CACHE_NAMESPACES.community)
+
+const COMMUNITY_MEMBERS_CACHE_KEY = 'community-page:members'
+const COMMUNITY_MEMBERS_TTL = 5 * 60 * 1000 // 5 minutes
+
+interface CommunityMembersCache {
+  randomUsers: string[]
+  supporters: string[]
+  birthdayUserIds: string[]
+}
+
+const _cachedMembers = communityCache.get<CommunityMembersCache>(COMMUNITY_MEMBERS_CACHE_KEY)
+
+const randomUsers = ref<string[]>(_cachedMembers?.randomUsers ?? [])
+const supporters = ref<string[]>(_cachedMembers?.supporters ?? [])
+const birthdayUserIds = ref<string[]>(_cachedMembers?.birthdayUserIds ?? [])
+const loading = ref(_cachedMembers === null)
 const error = ref('')
 
 // State for recent projects
 const recentProjects = ref<ReturnType<typeof useDataProjects>['projects']['value']>([])
 
-const { projects: allProjects } = useDataProjects()
+// Pre-populate recent projects synchronously from already-cached project list
+if (allProjects.value.length > 0)
+  recentProjects.value = shuffleArray([...allProjects.value]).slice(0, 3)
 
 interface SupporterProfile {
   id: string
@@ -143,7 +161,13 @@ async function fetchRandomActiveCommunityMembers(filterClause: string) {
 // Fetch community data
 async function fetchCommunityData() {
   try {
-    loading.value = true
+    // Warm cache - pre-population already handled at setup time, nothing to do
+    if (_cachedMembers !== null && recentProjects.value.length > 0)
+      return
+
+    // Only show loading skeleton on cold load - cache pre-population handles warm visits
+    if (_cachedMembers === null)
+      loading.value = true
     error.value = ''
 
     if (user.value) {
@@ -196,6 +220,13 @@ async function fetchCommunityData() {
 
       // Exclude birthday celebrants from the random members cluster so they don't appear twice
       randomUsers.value = randomUserIds.filter(id => !birthdayUserIds.value.includes(id))
+
+      // Cache the member data for warm re-visits
+      communityCache.set<CommunityMembersCache>(COMMUNITY_MEMBERS_CACHE_KEY, {
+        randomUsers: randomUsers.value,
+        supporters: supporters.value,
+        birthdayUserIds: birthdayUserIds.value,
+      }, COMMUNITY_MEMBERS_TTL)
     }
 
     // Pick 3 random projects from the cached list (works for both auth states)
@@ -225,191 +256,193 @@ watch(user, () => {
     </section>
 
     <!-- Community Members (includes birthday sub-section when applicable) -->
-    <Card v-if="user && (randomUsers.length > 0 || birthdayUserIds.length > 0)" class="pb-l mt-l community-card">
-      <Flex column gap="l" x-center y-center>
-        <Flex y-center gap="m" x-center expand>
-          <Flex column :gap="0" x-center class="text-center" y-center>
-            <h2 class="text-bold text-xxl">
-              One of Many
-            </h2>
-            <p class="text-color-light">
-              A slice of our community from around the world
-            </p>
+    <ClientOnly>
+      <Card v-if="user && (randomUsers.length > 0 || birthdayUserIds.length > 0)" class="pb-l mt-l community-card">
+        <Flex column gap="l" x-center y-center>
+          <Flex y-center gap="m" x-center expand>
+            <Flex column :gap="0" x-center class="text-center" y-center>
+              <h2 class="text-bold text-xxl">
+                One of Many
+              </h2>
+              <p class="text-color-light">
+                A slice of our community from around the world
+              </p>
+            </Flex>
           </Flex>
-        </Flex>
-        <BulkAvatarDisplay
-          v-if="randomUsers.length > 0"
-          :user-ids="randomUsers"
-          :max-users="48"
-          :avatar-size="64"
-          :gap="12"
-          :supporter-highlight="true"
-          cluster
-        />
-        <CommunityBirthdays
-          v-if="birthdayUserIds.length > 0"
-          :user-ids="birthdayUserIds"
-          :show-divider="randomUsers.length > 0"
-        />
-      </Flex>
-    </Card>
-
-    <!-- Sign-in prompt for community features -->
-    <section v-if="!user" class="mt-m">
-      <Card class="signin-prompt">
-        <Flex column gap="m" y-center class="signin-prompt__content">
-          <div class="signin-prompt__icon">
-            <Icon name="ph:users-three" size="2.5rem" />
-          </div>
-          <h3 class="text-bold text-xl">
-            Discover Our Community
-          </h3>
-          <p class="text-color-light text-center">
-            Sign in to see our supporters and meet community members from around the world
-          </p>
-          <NuxtLink to="/auth/sign-in">
-            <Button variant="accent">
-              <template #start>
-                <Icon name="ph:sign-in" />
-              </template>
-              Sign In
-            </Button>
-          </NuxtLink>
+          <BulkAvatarDisplay
+            v-if="randomUsers.length > 0"
+            :user-ids="randomUsers"
+            :max-users="48"
+            :avatar-size="64"
+            :gap="12"
+            :supporter-highlight="true"
+            cluster
+          />
+          <CommunityBirthdays
+            v-if="birthdayUserIds.length > 0"
+            :user-ids="birthdayUserIds"
+            :show-divider="randomUsers.length > 0"
+          />
         </Flex>
       </Card>
-    </section>
 
-    <!-- Community Overview -->
-    <section class="mt-xl">
-      <Grid :columns="2" gap="l" class="community-grid">
-        <!-- About Our Community -->
-        <Card class="community-info-card card-bg">
-          <Flex column gap="m" expand>
-            <Flex y-center gap="m">
-              <div class="community-info-card__icon">
-                <Icon name="ph:users-three" size="2rem" />
-              </div>
-              <h3>
-                Our Community
-              </h3>
-            </Flex>
-
-            <p class="about-description">
-              Hivecom is a passionate community of developers, gamers, and friends who love building and sharing projects together. We host game servers, develop open-source tools, and create a welcoming space for collaboration.
+      <!-- Sign-in prompt for community features -->
+      <section v-if="!user" class="mt-m">
+        <Card class="signin-prompt">
+          <Flex column gap="m" y-center class="signin-prompt__content">
+            <div class="signin-prompt__icon">
+              <Icon name="ph:users-three" size="2.5rem" />
+            </div>
+            <h3 class="text-bold text-xl">
+              Discover Our Community
+            </h3>
+            <p class="text-color-light text-center">
+              Sign in to see our supporters and meet community members from around the world
             </p>
-
-            <Flex expand column gap="xxs">
-              <h4>
-                What We Do
-              </h4>
-              <Grid :columns="isMobile ? 1 : 2" class="activities-grid" expand>
-                <div class="activity-item">
-                  <Icon name="ph:game-controller" :size="18" class="activity-icon" />
-                  <span>Host dedicated game servers</span>
-                </div>
-                <div class="activity-item">
-                  <Icon name="ph:code" :size="18" class="activity-icon" />
-                  <span>Develop open-source projects</span>
-                </div>
-                <div class="activity-item">
-                  <Icon name="ph:chat-circle" :size="18" class="activity-icon" />
-                  <span>Provide community platforms</span>
-                </div>
-                <div class="activity-item">
-                  <Icon name="ph:share-network" :size="18" class="activity-icon" />
-                  <span>Share knowledge & resources</span>
-                </div>
-              </Grid>
-            </Flex>
+            <NuxtLink to="/auth/sign-in">
+              <Button variant="accent">
+                <template #start>
+                  <Icon name="ph:sign-in" />
+                </template>
+                Sign In
+              </Button>
+            </NuxtLink>
           </Flex>
         </Card>
+      </section>
 
-        <!-- Community Links -->
-        <Card class="community-info-card card-bg">
-          <Flex column gap="m" expand>
-            <Flex y-center gap="m">
-              <div class="community-info-card__icon">
-                <Icon name="ph:compass" size="2rem" />
-              </div>
-              <h3>
-                Explore
-              </h3>
-            </Flex>
-
-            <Flex column gap="s" expand>
-              <NuxtLink
-                v-for="link in communityLinks"
-                :key="link.to"
-                :to="link.to"
-                :aria-label="link.ariaLabel"
-                class="community-link"
-              >
-                <div class="community-link__content">
-                  <div class="community-link__icon">
-                    <Icon :name="link.icon" :size="20" />
-                  </div>
-
-                  <div class="community-link__text">
-                    <strong class="community-link__title">
-                      {{ link.title }}
-                    </strong>
-                    <p class="community-link__subtitle">
-                      {{ link.subtitle }}
-                    </p>
-                  </div>
-                  <div class="community-link__arrow">
-                    <Icon name="ph:arrow-right" :size="18" />
-                  </div>
+      <!-- Community Overview -->
+      <section class="mt-xl">
+        <Grid :columns="2" gap="l" class="community-grid">
+          <!-- About Our Community -->
+          <Card class="community-info-card card-bg">
+            <Flex column gap="m" expand>
+              <Flex y-center gap="m">
+                <div class="community-info-card__icon">
+                  <Icon name="ph:users-three" size="2rem" />
                 </div>
-              </NuxtLink>
+                <h3>
+                  Our Community
+                </h3>
+              </Flex>
+
+              <p class="about-description">
+                Hivecom is a passionate community of developers, gamers, and friends who love building and sharing projects together. We host game servers, develop open-source tools, and create a welcoming space for collaboration.
+              </p>
+
+              <Flex expand column gap="xxs">
+                <h4>
+                  What We Do
+                </h4>
+                <Grid :columns="isMobile ? 1 : 2" class="activities-grid" expand>
+                  <div class="activity-item">
+                    <Icon name="ph:game-controller" :size="18" class="activity-icon" />
+                    <span>Host dedicated game servers</span>
+                  </div>
+                  <div class="activity-item">
+                    <Icon name="ph:code" :size="18" class="activity-icon" />
+                    <span>Develop open-source projects</span>
+                  </div>
+                  <div class="activity-item">
+                    <Icon name="ph:chat-circle" :size="18" class="activity-icon" />
+                    <span>Provide community platforms</span>
+                  </div>
+                  <div class="activity-item">
+                    <Icon name="ph:share-network" :size="18" class="activity-icon" />
+                    <span>Share knowledge & resources</span>
+                  </div>
+                </Grid>
+              </Flex>
             </Flex>
-          </Flex>
-        </Card>
-      </Grid>
-    </section>
+          </Card>
 
-    <!-- Recent Projects -->
-    <section v-if="recentProjects.length > 0" class="mt-xl">
-      <Flex column gap="l">
-        <Flex :y-end="!isMobile" :x-between="!isMobile" :column="isMobile" expand>
-          <Flex gap="xxs" column>
-            <h2 class="text-bold text-xxl">
-              Featured Projects
-            </h2>
-            <p class="text-color-light">
-              Discover what our community has been building
-            </p>
-          </Flex>
-          <NuxtLink to="/community/projects" :class="isMobile ? 'w-100' : ''">
-            <Button :expand="isMobile">
-              <template #end>
-                <Icon name="ph:arrow-right" />
-              </template>
-              View All Projects
-            </Button>
-          </NuxtLink>
-        </Flex>
+          <!-- Community Links -->
+          <Card class="community-info-card card-bg">
+            <Flex column gap="m" expand>
+              <Flex y-center gap="m">
+                <div class="community-info-card__icon">
+                  <Icon name="ph:compass" size="2rem" />
+                </div>
+                <h3>
+                  Explore
+                </h3>
+              </Flex>
 
-        <Grid :columns="3" gap="m" class="projects-grid" expand>
-          <ProjectCard
-            v-for="project in recentProjects"
-            :key="project.id"
-            :project="project"
-            compact
-          />
+              <Flex column gap="s" expand>
+                <NuxtLink
+                  v-for="link in communityLinks"
+                  :key="link.to"
+                  :to="link.to"
+                  :aria-label="link.ariaLabel"
+                  class="community-link"
+                >
+                  <div class="community-link__content">
+                    <div class="community-link__icon">
+                      <Icon :name="link.icon" :size="20" />
+                    </div>
+
+                    <div class="community-link__text">
+                      <strong class="community-link__title">
+                        {{ link.title }}
+                      </strong>
+                      <p class="community-link__subtitle">
+                        {{ link.subtitle }}
+                      </p>
+                    </div>
+                    <div class="community-link__arrow">
+                      <Icon name="ph:arrow-right" :size="18" />
+                    </div>
+                  </div>
+                </NuxtLink>
+              </Flex>
+            </Flex>
+          </Card>
         </Grid>
-      </Flex>
-    </section>
+      </section>
 
-    <!-- Monthly Funding Progress -->
-    <section class="mt-xl">
-      <FundingProgress />
-    </section>
+      <!-- Recent Projects -->
+      <section v-if="recentProjects.length > 0" class="mt-xl">
+        <Flex column gap="l">
+          <Flex :y-end="!isMobile" :x-between="!isMobile" :column="isMobile" expand>
+            <Flex gap="xxs" column>
+              <h2 class="text-bold text-xxl">
+                Featured Projects
+              </h2>
+              <p class="text-color-light">
+                Discover what our community has been building
+              </p>
+            </Flex>
+            <NuxtLink to="/community/projects" :class="isMobile ? 'w-100' : ''">
+              <Button :expand="isMobile">
+                <template #end>
+                  <Icon name="ph:arrow-right" />
+                </template>
+                View All Projects
+              </Button>
+            </NuxtLink>
+          </Flex>
 
-    <!-- Support Section with Community Supporters -->
-    <section class="mt-l">
-      <SupportCTA :supporter-ids="supporters" />
-    </section>
+          <Grid :columns="3" gap="m" class="projects-grid" expand>
+            <ProjectCard
+              v-for="project in recentProjects"
+              :key="project.id"
+              :project="project"
+              compact
+            />
+          </Grid>
+        </Flex>
+      </section>
+
+      <!-- Monthly Funding Progress -->
+      <section class="mt-xl">
+        <FundingProgress />
+      </section>
+
+      <!-- Support Section with Community Supporters -->
+      <section class="mt-l">
+        <SupportCTA :supporter-ids="supporters" />
+      </section>
+    </ClientOnly>
   </div>
 </template>
 

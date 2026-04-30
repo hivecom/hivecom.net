@@ -2,80 +2,30 @@
 import { Card, Flex } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
-import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
+import { useDataSupporters } from '@/composables/useDataSupporters'
 
 interface Props {
-  supporterCount?: number
+  // When provided by a parent that already fetched supporters (e.g. funding.vue),
+  // these override the internally fetched list so we don't double-fetch.
   supporterIds?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  supporterCount: 0,
   supporterIds: () => [],
 })
 
-const externalSupporterCount = ref(props.supporterCount)
-const lifetimeSupporterCount = ref(0)
-const actualSupporterCount = computed(() => externalSupporterCount.value + lifetimeSupporterCount.value)
-const fetchedSupporterIds = ref<string[]>([])
-const resolvedSupporterIds = computed(() => (props.supporterIds.length > 0 ? props.supporterIds : fetchedSupporterIds.value))
 const currentUser = useSupabaseUser()
 
-// Use shared cache for monthly_funding - avoids a third parallel fetch on the funding page
-const { latestFunding } = useDataMonthlyFunding()
+// Use shared cached composable - no onMounted fetch needed here.
+const { supporterIds: fetchedSupporterIds } = useDataSupporters()
 
-// Derive supporter count from cached funding data when not provided via props
-watch(latestFunding, (funding) => {
-  if (props.supporterCount === 0 && funding != null) {
-    externalSupporterCount.value = (funding.patreon_count ?? 0) + (funding.donation_count ?? 0)
-  }
-}, { immediate: true })
+// Prefer externally-supplied IDs (e.g. already fetched by parent) over internal fetch.
+const resolvedSupporterIds = computed(() =>
+  props.supporterIds.length > 0 ? props.supporterIds : fetchedSupporterIds.value,
+)
 
-onMounted(async () => {
-  const shouldFetchSupporterIds = props.supporterIds.length === 0
-
-  if (props.supporterCount !== 0) {
-    externalSupporterCount.value = props.supporterCount
-  }
-
-  try {
-    const supabase = useSupabaseClient()
-
-    const [lifetimeResult, supportersResult] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('supporter_lifetime', true)
-        .eq('banned', false),
-
-      shouldFetchSupporterIds
-        ? supabase
-            .from('profiles')
-            .select('id')
-            .or('supporter_lifetime.eq.true,supporter_patreon.eq.true')
-            .eq('banned', false)
-            .order('created_at', { ascending: true })
-        : Promise.resolve(null),
-    ])
-
-    if (lifetimeResult && !lifetimeResult.error) {
-      lifetimeSupporterCount.value = lifetimeResult.count ?? 0
-    }
-    else if (lifetimeResult?.error) {
-      console.warn('Failed to fetch lifetime supporter count:', lifetimeResult.error)
-    }
-
-    if (shouldFetchSupporterIds && supportersResult && !supportersResult.error && supportersResult.data) {
-      fetchedSupporterIds.value = supportersResult.data.map((profile: { id: string }) => profile.id)
-    }
-    else if (supportersResult?.error) {
-      console.warn('Failed to fetch supporter ids:', supportersResult.error)
-    }
-  }
-  catch (error) {
-    console.warn('Failed to fetch supporter count:', error)
-  }
-})
+// Supporter count derived directly from the resolved list.
+const actualSupporterCount = computed(() => resolvedSupporterIds.value.length)
 </script>
 
 <template>
@@ -96,7 +46,7 @@ onMounted(async () => {
         </p>
       </Flex>
 
-      <div>
+      <Flex column y-center expand>
         <NuxtLink
           :to="constants.PATREON.URL" external target="_blank"
           class="support-button support-button--gold gold-surface"
@@ -123,7 +73,7 @@ onMounted(async () => {
         <p class="mt-s text-xxs text-color-lighter">
           (These users have linked their accounts to Patreon or are lifetime supporters)
         </p>
-      </div>
+      </Flex>
 
       <Flex column y-center class="support-benefits" expand>
         <h4 class="text-bold mb-s text-color-light text-s">

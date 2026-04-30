@@ -33,6 +33,13 @@ export function useDataMonthlyFunding() {
   const allFunding = ref<Tables<'monthly_funding'>[]>([])
   const latestFunding = ref<Tables<'monthly_funding'> | null>(null)
 
+  // Pre-populate synchronously from cache so the first render has data.
+  const _initialAll = cache.get<Tables<'monthly_funding'>[]>(CACHE_KEY_ALL)
+  if (_initialAll !== null) {
+    allFunding.value = _initialAll
+    latestFunding.value = cache.get<Tables<'monthly_funding'>>(CACHE_KEY_LATEST)
+  }
+
   async function fetch(force = false): Promise<void> {
     // Pre-check both keys - if the full list is cached, derive latest from the
     // separately-cached entry and return early without calling withCache.

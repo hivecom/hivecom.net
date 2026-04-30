@@ -129,7 +129,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
                 }"
               >
                 {{ link.label }}
-                <NavEventBadge v-if="link.label === 'Events'" />
+                <ClientOnly><NavEventBadge v-if="link.label === 'Events'" /></ClientOnly>
                 <Icon v-if="link.children" name="ph:caret-down-fill" size="12px" />
               </NuxtLink>
 
@@ -184,7 +184,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
               >
                 <Icon :name="link.icon" />
                 {{ link.label }}
-                <NavEventBadge v-if="link.label === 'Events'" />
+                <ClientOnly><NavEventBadge v-if="link.label === 'Events'" /></ClientOnly>
               </NuxtLink>
 
               <div class="navigation__mobile-submenu">

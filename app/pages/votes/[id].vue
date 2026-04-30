@@ -414,170 +414,172 @@ function handleChoiceClick(index: number) {
 <template>
   <div class="page">
     <div :class="!isMobile && 'container-m'">
-      <!-- Loading state: show skeleton while auth is unresolved OR data is loading -->
-      <VoteLoadingSkeleton v-if="loadingReferendum || !user" />
+      <ClientOnly>
+        <!-- Loading state: show skeleton while auth is unresolved OR data is loading -->
+        <VoteLoadingSkeleton v-if="loadingReferendum || !user" />
 
-      <!-- Referendum not found -->
-      <Flex v-else-if="!referendum" column class="text-center p-xl" x-center y-center>
-        <Icon name="ph:question" size="3rem" class="text-color-light mb-m" />
-        <h2>Vote not found</h2>
-        <p class="text-color-light mb-l">
-          The vote you're looking for doesn't exist or has been removed.
-        </p>
-        <NuxtLink to="/votes">
-          <Button>
-            <template #start>
-              <Icon name="ph:arrow-left" />
-            </template>
-            Back to Votes
-          </Button>
-        </NuxtLink>
-      </Flex>
-
-      <!-- Referendum content -->
-      <template v-else>
-        <!-- Back Button -->
-        <Flex class="mb-m" x-between wrap y-center>
+        <!-- Referendum not found -->
+        <Flex v-else-if="!referendum" column class="text-center p-xl" x-center y-center>
+          <Icon name="ph:question" size="3rem" class="text-color-light mb-m" />
+          <h2>Vote not found</h2>
+          <p class="text-color-light mb-l">
+            The vote you're looking for doesn't exist or has been removed.
+          </p>
           <NuxtLink to="/votes">
-            <Button
-              variant="gray"
-              size="s"
-              plain
-              aria-label="Go back to Votes page"
-            >
+            <Button>
               <template #start>
                 <Icon name="ph:arrow-left" />
               </template>
               Back to Votes
             </Button>
           </NuxtLink>
-          <Flex gap="s" y-center>
-            <Dropdown v-if="canManage">
-              <template #trigger="{ toggle }">
-                <Button variant="gray" size="s" @click="toggle">
-                  Manage
-                </Button>
-              </template>
-              <DropdownItem @click="editModalOpen = true">
-                Edit
-              </DropdownItem>
-              <DropdownItem v-if="isActive || isUpcoming" @click="closeConfirm = true">
-                Close
-              </DropdownItem>
-              <DropdownItem v-else @click="reopenConfirm = true">
-                Re-open
-              </DropdownItem>
-              <DropdownItem variant="danger" @click="deleteConfirm = true">
-                Delete
-              </DropdownItem>
-            </Dropdown>
-          </Flex>
         </Flex>
 
-        <!-- Header -->
-        <VoteHeader
-          :referendum="referendum as Tables<'referendums'>"
-          :is-active="isActive"
-          :is-upcoming="isUpcoming"
-          :status-variant="statusVariant"
-          :status-label="statusLabel"
-          :total-voters="totalVoters"
-          :time-remaining="timeRemaining"
-          :time-until-start="timeUntilStart"
-          :time-ago="timeAgo"
-        />
+        <!-- Referendum content -->
+        <template v-else>
+          <!-- Back Button -->
+          <Flex class="mb-m" x-between wrap y-center>
+            <NuxtLink to="/votes">
+              <Button
+                variant="gray"
+                size="s"
+                plain
+                aria-label="Go back to Votes page"
+              >
+                <template #start>
+                  <Icon name="ph:arrow-left" />
+                </template>
+                Back to Votes
+              </Button>
+            </NuxtLink>
+            <Flex gap="s" y-center>
+              <Dropdown v-if="canManage">
+                <template #trigger="{ toggle }">
+                  <Button variant="gray" size="s" @click="toggle">
+                    Manage
+                  </Button>
+                </template>
+                <DropdownItem @click="editModalOpen = true">
+                  Edit
+                </DropdownItem>
+                <DropdownItem v-if="isActive || isUpcoming" @click="closeConfirm = true">
+                  Close
+                </DropdownItem>
+                <DropdownItem v-else @click="reopenConfirm = true">
+                  Re-open
+                </DropdownItem>
+                <DropdownItem variant="danger" @click="deleteConfirm = true">
+                  Delete
+                </DropdownItem>
+              </Dropdown>
+            </Flex>
+          </Flex>
 
-        <!-- Voting / login prompt -->
-        <VoteChoices
-          v-if="isActive"
-          :referendum="referendum as Tables<'referendums'>"
-          :selected-choices="selectedChoices"
-          :has-voted="hasVoted"
-          :is-submitting="isSubmitting"
-          :is-removing-vote="isRemovingVote"
-          @choice-click="handleChoiceClick"
-          @submit="submitVote"
-          @request-remove-vote="requestRemoveVote"
-        />
+          <!-- Header -->
+          <VoteHeader
+            :referendum="referendum as Tables<'referendums'>"
+            :is-active="isActive"
+            :is-upcoming="isUpcoming"
+            :status-variant="statusVariant"
+            :status-label="statusLabel"
+            :total-voters="totalVoters"
+            :time-remaining="timeRemaining"
+            :time-until-start="timeUntilStart"
+            :time-ago="timeAgo"
+          />
 
-        <!-- Results Section -->
-        <VoteResults
-          :referendum="referendum as Tables<'referendums'>"
-          :votes="allVotes"
-          :should-show-results="shouldShowResults"
-          :is-loading-results="isLoadingResults"
-          :is-active="isActive"
-          @request-reveal-results="requestRevealResults"
-        />
+          <!-- Voting / login prompt -->
+          <VoteChoices
+            v-if="isActive"
+            :referendum="referendum as Tables<'referendums'>"
+            :selected-choices="selectedChoices"
+            :has-voted="hasVoted"
+            :is-submitting="isSubmitting"
+            :is-removing-vote="isRemovingVote"
+            @choice-click="handleChoiceClick"
+            @submit="submitVote"
+            @request-remove-vote="requestRemoveVote"
+          />
 
-        <!-- Edit Modal -->
-        <ReferendumModal
-          v-if="canManage && referendum"
-          :open="editModalOpen"
-          :edited-item="referendum as Tables<'referendums'>"
-          @close="editModalOpen = false"
-          @updated="handleUpdated"
-          @deleted="handleDeleted"
-        />
+          <!-- Results Section -->
+          <VoteResults
+            :referendum="referendum as Tables<'referendums'>"
+            :votes="allVotes"
+            :should-show-results="shouldShowResults"
+            :is-loading-results="isLoadingResults"
+            :is-active="isActive"
+            @request-reveal-results="requestRevealResults"
+          />
 
-        <!-- Close Vote Confirmation Modal -->
-        <ConfirmModal
-          v-if="referendum"
-          v-model:open="closeConfirm"
-          :confirm-loading="closeLoading"
-          title="Close vote"
-          :description="`Close '${referendum.title}' now? End date will be set to right now.`"
-          confirm-text="Close"
-          :destructive="false"
-          @confirm="confirmClose"
-        />
+          <!-- Edit Modal -->
+          <ReferendumModal
+            v-if="canManage && referendum"
+            :open="editModalOpen"
+            :edited-item="referendum as Tables<'referendums'>"
+            @close="editModalOpen = false"
+            @updated="handleUpdated"
+            @deleted="handleDeleted"
+          />
 
-        <!-- Re-open Vote Confirmation Modal -->
-        <ConfirmModal
-          v-if="referendum"
-          v-model:open="reopenConfirm"
-          :confirm-loading="reopenLoading"
-          title="Re-open vote"
-          :description="`Re-open '${referendum.title}'? End date will be extended by 7 days from now.`"
-          confirm-text="Re-open"
-          :destructive="false"
-          @confirm="confirmReopen"
-        />
+          <!-- Close Vote Confirmation Modal -->
+          <ConfirmModal
+            v-if="referendum"
+            v-model:open="closeConfirm"
+            :confirm-loading="closeLoading"
+            title="Close vote"
+            :description="`Close '${referendum.title}' now? End date will be set to right now.`"
+            confirm-text="Close"
+            :destructive="false"
+            @confirm="confirmClose"
+          />
 
-        <!-- Delete Confirmation Modal -->
-        <ConfirmModal
-          v-if="referendum"
-          v-model:open="deleteConfirm"
-          :confirm-loading="deleteLoading"
-          title="Delete vote"
-          :description="`Are you sure you want to delete '${referendum.title}'? This cannot be undone and will also delete all existing votes.`"
-          confirm-text="Delete"
-          :destructive="true"
-          @confirm="confirmDelete"
-        />
+          <!-- Re-open Vote Confirmation Modal -->
+          <ConfirmModal
+            v-if="referendum"
+            v-model:open="reopenConfirm"
+            :confirm-loading="reopenLoading"
+            title="Re-open vote"
+            :description="`Re-open '${referendum.title}'? End date will be extended by 7 days from now.`"
+            confirm-text="Re-open"
+            :destructive="false"
+            @confirm="confirmReopen"
+          />
 
-        <!-- Reveal Results Confirmation Modal -->
-        <ConfirmModal
-          v-model:open="showConfirmModal"
-          :confirm="confirmRevealResults"
-          title="Reveal Results Early?"
-          description="You haven't voted yet. Are you sure you want to see the current results? This action cannot be undone."
-          confirm-text="Yes, Reveal Results"
-          cancel-text="Cancel"
-          :destructive="false"
-        />
+          <!-- Delete Confirmation Modal -->
+          <ConfirmModal
+            v-if="referendum"
+            v-model:open="deleteConfirm"
+            :confirm-loading="deleteLoading"
+            title="Delete vote"
+            :description="`Are you sure you want to delete '${referendum.title}'? This cannot be undone and will also delete all existing votes.`"
+            confirm-text="Delete"
+            :destructive="true"
+            @confirm="confirmDelete"
+          />
 
-        <!-- Remove Vote Confirmation Modal -->
-        <ConfirmModal
-          v-model:open="showRemoveVoteModal"
-          :confirm="confirmRemoveVote"
-          title="Remove Your Vote?"
-          description="Are you sure you want to remove your vote? You can always vote again later while the referendum is active."
-          confirm-text="Yes, Remove Vote"
-          cancel-text="Cancel"
-          :destructive="true"
-        />
-      </template>
+          <!-- Reveal Results Confirmation Modal -->
+          <ConfirmModal
+            v-model:open="showConfirmModal"
+            :confirm="confirmRevealResults"
+            title="Reveal Results Early?"
+            description="You haven't voted yet. Are you sure you want to see the current results? This action cannot be undone."
+            confirm-text="Yes, Reveal Results"
+            cancel-text="Cancel"
+            :destructive="false"
+          />
+
+          <!-- Remove Vote Confirmation Modal -->
+          <ConfirmModal
+            v-model:open="showRemoveVoteModal"
+            :confirm="confirmRemoveVote"
+            title="Remove Your Vote?"
+            description="Are you sure you want to remove your vote? You can always vote again later while the referendum is active."
+            confirm-text="Yes, Remove Vote"
+            cancel-text="Cancel"
+            :destructive="true"
+          />
+        </template>
+      </ClientOnly>
     </div>
   </div>
 </template>

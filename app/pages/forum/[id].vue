@@ -521,17 +521,46 @@ function revealNsfw() {
 
 <template>
   <div ref="page" class="page forum container-m">
-    <!-- Loading state -->
-    <ForumPostSkeleton v-if="loading" />
+    <ClientOnly>
+      <!-- Loading state -->
+      <ForumPostSkeleton v-if="loading" />
 
-    <!-- Main Content  -->
-    <template v-else-if="post">
-      <!-- Floating header when scrolling down -->
-      <Transition name="fade">
-        <section v-if="scrollHeaderReady && !isPageTitleVisible" class="forum-post__scroll">
-          <div class="container-m">
-            <div>
-              <strong class="forum-post__scroll-title">
+      <!-- Main Content  -->
+      <template v-else-if="post">
+        <!-- Floating header when scrolling down -->
+        <Transition name="fade">
+          <section v-if="scrollHeaderReady && !isPageTitleVisible" class="forum-post__scroll">
+            <div class="container-m">
+              <div>
+                <strong class="forum-post__scroll-title">
+                  <Button
+                    class="back-button"
+                    variant="gray"
+                    plain
+                    square
+                    size="s"
+                    aria-label="Go back to Events page"
+                    @click="goBack"
+                  >
+                    <Icon class="text-color" name="ph:arrow-left" :size="16" />
+                  </Button>
+                  {{ post.title ?? 'Unnamed discussion' }}
+                </strong>
+                <p v-if="post.description">
+                  {{ post.description }}
+                </p>
+              </div>
+
+              <UserAvatar v-if="isMobile" :user-id="post.created_by" linked />
+              <UserDisplay v-else :user-id="post.created_by" show-role />
+            </div>
+          </section>
+        </Transition>
+
+        <section ref="page-title" class="page-title" :class="isMobile ? 'mb-l' : 'mb-xl'">
+          <Flex wrap x-between y-center>
+            <div class="relative">
+              <template v-if="topicBreadcrumbs.length && !isMobile">
                 <Button
                   class="back-button"
                   variant="gray"
@@ -543,260 +572,232 @@ function revealNsfw() {
                 >
                   <Icon class="text-color" name="ph:arrow-left" :size="16" />
                 </Button>
-                {{ post.title ?? 'Unnamed discussion' }}
-              </strong>
-              <p v-if="post.description">
-                {{ post.description }}
-              </p>
+                <ForumBreadcrumbs
+                  :items="breadcrumbItems"
+                  :icons="breadcrumbTopicIcons"
+                  root-href="/forum"
+                  :on-root-click="() => navigateTo('/forum')"
+                />
+              </template>
+              <template v-else-if="isMobile">
+                <!-- Back Button -->
+                <Flex x-between>
+                  <NuxtLink to="/forum">
+                    <Button
+                      expand
+                      variant="gray"
+                      size="s"
+                      plain
+                      aria-label="Go back to Forum"
+                    >
+                      <template #start>
+                        <Icon name="ph:arrow-left" />
+                      </template>
+                      Forum
+                    </Button>
+                  </NuxtLink>
+                </Flex>
+              </template>
             </div>
 
-            <UserAvatar v-if="isMobile" :user-id="post.created_by" linked />
-            <UserDisplay v-else :user-id="post.created_by" show-role />
-          </div>
-        </section>
-      </Transition>
+            <Flex gap="m" y-center>
+              <Badge v-if="post.is_nsfw" variant="danger">
+                <Icon name="ph:warning" class="text-color-red" />
+                NSFW
+              </Badge>
+              <Flex y-center gap="xxs">
+                <Icon :size="18" name="ph:eye" />
+                <CountDisplay :value="post.view_count + 1" class="text-s text-color-lighter" />
+              </Flex>
+              <Flex y-center gap="xxs">
+                <Icon :size="18" name="ph:chat-dots" />
+                <CountDisplay :value="post.reply_count" class="text-s text-color-lighter" />
+              </Flex>
 
-      <section ref="page-title" class="page-title" :class="isMobile ? 'mb-l' : 'mb-xl'">
-        <Flex wrap x-between y-center>
-          <div class="relative">
-            <template v-if="topicBreadcrumbs.length && !isMobile">
-              <Button
-                class="back-button"
-                variant="gray"
-                plain
-                square
-                size="s"
-                aria-label="Go back to Events page"
-                @click="goBack"
-              >
-                <Icon class="text-color" name="ph:arrow-left" :size="16" />
-              </Button>
-              <ForumBreadcrumbs
-                :items="breadcrumbItems"
-                :icons="breadcrumbTopicIcons"
-                root-href="/forum"
-                :on-root-click="() => navigateTo('/forum')"
-              />
-            </template>
-            <template v-else-if="isMobile">
-              <!-- Back Button -->
-              <Flex x-between>
-                <NuxtLink to="/forum">
+              <Flex gap="xxs">
+                <Tooltip v-if="userId">
                   <Button
-                    expand
                     variant="gray"
                     size="s"
-                    plain
-                    aria-label="Go back to Forum"
+                    square
+                    :loading="subscriptionLoading"
+                    @click="toggleSubscription"
                   >
-                    <template #start>
-                      <Icon name="ph:arrow-left" />
-                    </template>
-                    Forum
+                    <Icon
+                      size="14"
+                      :name="isSubscribed ? 'ph:bell-ringing' : 'ph:bell'"
+                      :class="{ 'text-color-accent': isSubscribed }"
+                    />
                   </Button>
-                </NuxtLink>
+                  <template #tooltip>
+                    <p>{{ isSubscribed ? 'Unsubscribe' : 'Subscribe' }}</p>
+                  </template>
+                </Tooltip>
+                <Tooltip v-if="userId && post.created_by !== userId">
+                  <Button
+                    variant="gray"
+                    size="s"
+                    square
+                    @click="showReportModal = true"
+                  >
+                    <Icon name="ph:flag-bold" />
+                  </Button>
+                  <template #tooltip>
+                    <p>Report discussion</p>
+                  </template>
+                </Tooltip>
+
+                <ForumItemActions
+                  :key="post.is_draft.toString()"
+                  table="discussions"
+                  :data="post"
+                  :hide-discussion-tabs="true"
+                  @remove="router.back()"
+                  @update="handlePostUpdate"
+                >
+                  <template #default="{ toggle }">
+                    <Button variant="gray" size="s" @click="toggle">
+                      Manage
+                    </Button>
+                  </template>
+                </ForumItemActions>
               </Flex>
+            </Flex>
+          </Flex>
+
+          <Flex y-center x-between gap="m" wrap :class="isMobile ? 'mt-m' : 'mt-xl'">
+            <Flex y-center gap="xs" wrap>
+              <h1>
+                {{ post.title ?? 'Unnamed discussion' }}
+              </h1>
+              <Badge v-if="post.is_locked" variant="neutral">
+                <Icon name="ph:lock" />
+                Locked
+              </Badge>
+              <Badge v-if="post.is_archived" variant="warning">
+                <Icon name="ph:archive" class="text-color-yellow" />
+                Archived
+              </Badge>
+            </Flex>
+            <Reactions
+              v-if="!post.description"
+              table="discussions"
+              :row-id="post.id"
+              :reactions="post.reactions"
+            />
+          </Flex>
+
+          <Flex v-if="post.description" :column="isMobile" :y-center="!isMobile" x-between gap="m" class="mb-m">
+            <p>{{ post.description }}</p>
+            <Reactions
+              :class="isMobile ? 'reactions--mobile' : ''"
+              table="discussions"
+              :row-id="post.id"
+              :reactions="post.reactions"
+            />
+          </Flex>
+
+          <!-- Draft alert and publishing -->
+          <Alert v-if="post.is_draft" class="mb-l" variant="info">
+            This post is a draft and is currently only visible to you.
+            <template #end>
+              <Button size="s" variant="accent" @click="publishConfirmOpen = true">
+                Publish
+              </Button>
             </template>
-          </div>
+          </Alert>
 
-          <Flex gap="m" y-center>
-            <Badge v-if="post.is_nsfw" variant="danger">
-              <Icon name="ph:warning" class="text-color-red" />
-              NSFW
-            </Badge>
-            <Flex y-center gap="xxs">
-              <Icon :size="18" name="ph:eye" />
-              <CountDisplay :value="post.view_count + 1" class="text-s text-color-lighter" />
-            </Flex>
-            <Flex y-center gap="xxs">
-              <Icon :size="18" name="ph:chat-dots" />
-              <CountDisplay :value="post.reply_count" class="text-s text-color-lighter" />
-            </Flex>
+          <ConfirmModal
+            :open="publishConfirmOpen"
+            title="Publish discussion"
+            description="Publishing a discussion cannot be undone. Are you sure you want to publish it?"
+            @confirm="publish"
+            @cancel="publishConfirmOpen = false"
+          />
 
-            <Flex gap="xxs">
-              <Tooltip v-if="userId">
-                <Button
-                  variant="gray"
-                  size="s"
-                  square
-                  :loading="subscriptionLoading"
-                  @click="toggleSubscription"
-                >
-                  <Icon
-                    size="14"
-                    :name="isSubscribed ? 'ph:bell-ringing' : 'ph:bell'"
-                    :class="{ 'text-color-accent': isSubscribed }"
-                  />
-                </Button>
+          <!-- Post author & metadata row -->
+          <Flex :column="isMobile" :x-between="!isMobile" :y-center="!isMobile" wrap gap="s" :class="{ 'mb-l': contextInfo || !!post.markdown }">
+            <UserDisplay :user-id="post.created_by" show-role />
+            <Flex :key="timestampUpdateKey" y-center wrap :gap="4" class="forum-post__timestamps">
+              <Tooltip :delay="500">
+                <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
                 <template #tooltip>
-                  <p>{{ isSubscribed ? 'Unsubscribe' : 'Subscribe' }}</p>
+                  Posted on {{ formatDate(post.created_at) }}
                 </template>
               </Tooltip>
-              <Tooltip v-if="userId && post.created_by !== userId">
-                <Button
-                  variant="gray"
-                  size="s"
-                  square
-                  @click="showReportModal = true"
-                >
-                  <Icon name="ph:flag-bold" />
-                </Button>
-                <template #tooltip>
-                  <p>Report discussion</p>
+              <template v-if="post.modified_at !== post.created_at">
+                <span aria-hidden="true">·</span>
+                <Tooltip :delay="500">
+                  <span>Edited {{ dayjs(post.modified_at).fromNow() }}</span>
+                  <template #tooltip>
+                    Edited on {{ formatDate(post.modified_at) }}
+                  </template>
+                </Tooltip>
+                <template v-if="postModifierId && postModifierUser">
+                  <span class="text-s">by <UserName size="s" show-preview :user-id="postModifierId" inherit /></span>
                 </template>
-              </Tooltip>
-
-              <ForumItemActions
-                :key="post.is_draft.toString()"
-                table="discussions"
-                :data="post"
-                :hide-discussion-tabs="true"
-                @remove="router.back()"
-                @update="handlePostUpdate"
-              >
-                <template #default="{ toggle }">
-                  <Button variant="gray" size="s" @click="toggle">
-                    Manage
-                  </Button>
-                </template>
-              </ForumItemActions>
+              </template>
             </Flex>
           </Flex>
-        </Flex>
 
-        <Flex y-center x-between gap="m" wrap :class="isMobile ? 'mt-m' : 'mt-xl'">
-          <Flex y-center gap="xs" wrap>
-            <h1>
-              {{ post.title ?? 'Unnamed discussion' }}
-            </h1>
-            <Badge v-if="post.is_locked" variant="neutral">
-              <Icon name="ph:lock" />
-              Locked
-            </Badge>
-            <Badge v-if="post.is_archived" variant="warning">
-              <Icon name="ph:archive" class="text-color-yellow" />
-              Archived
-            </Badge>
-          </Flex>
-          <Reactions
-            v-if="!post.description"
-            table="discussions"
-            :row-id="post.id"
-            :reactions="post.reactions"
-          />
-        </Flex>
+          <!-- Discussion linking card -->
+          <Card v-if="contextInfo" class="mt-l" :class="{ 'mb-xl': !!post.markdown }">
+            <Flex x-between y-center wrap gap="m">
+              <Flex column gap="xs">
+                <Flex y-center gap="xs">
+                  <Icon :name="contextInfo.icon" :size="20" />
+                  <span>This discussion is linked to {{ contextInfo.label === 'event' ? 'an' : 'a' }} {{ contextInfo.label }}</span>
+                </Flex>
+              </Flex>
+              <NuxtLink :to="contextInfo.href">
+                <Button size="s">
+                  View {{ contextInfo.label }}
+                </Button>
+              </NuxtLink>
+            </Flex>
+          </Card>
 
-        <Flex v-if="post.description" :column="isMobile" :y-center="!isMobile" x-between gap="m" class="mb-m">
-          <p>{{ post.description }}</p>
-          <Reactions
-            :class="isMobile ? 'reactions--mobile' : ''"
-            table="discussions"
-            :row-id="post.id"
-            :reactions="post.reactions"
-          />
-        </Flex>
-
-        <!-- Draft alert and publishing -->
-        <Alert v-if="post.is_draft" class="mb-l" variant="info">
-          This post is a draft and is currently only visible to you.
-          <template #end>
-            <Button size="s" variant="accent" @click="publishConfirmOpen = true">
-              Publish
-            </Button>
+          <!-- Content -->
+          <template v-if="post.markdown">
+            <hr v-if="!contextInfo" class="mb-l">
+            <MarkdownRenderer class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
           </template>
-        </Alert>
+        </section>
 
-        <ConfirmModal
-          :open="publishConfirmOpen"
-          title="Publish discussion"
-          description="Publishing a discussion cannot be undone. Are you sure you want to publish it?"
-          @confirm="publish"
-          @cancel="publishConfirmOpen = false"
+        <!-- Fullscreen NSFW overlay -->
+        <!-- TODO: remove this and add option to Modal/Sheet to increase background blur. No need to reimplement modal -->
+        <Transition name="fade">
+          <div v-if="showNSFWWarning" class="forum-post__nsfw-overlay">
+            <div class="forum-post__nsfw-overlay-inner">
+              <Icon class="forum-post__nsfw-overlay-icon" name="ph:warning" />
+              <h2>Sensitive Content</h2>
+              <p>This discussion is marked as NSFW and may contain potentially sensitive or explicit content.</p>
+              <Flex gap="s" y-center x-center wrap>
+                <Button variant="accent" @click="revealNsfw">
+                  Reveal content
+                </Button>
+                <Button variant="gray" @click="$router.back()">
+                  Go back
+                </Button>
+              </Flex>
+            </div>
+          </div>
+        </Transition>
+
+        <ComplaintsManager
+          v-model:open="showReportModal"
+          :context-discussion-id="post.id"
+          start-with-submit
         />
 
-        <!-- Post author & metadata row -->
-        <Flex :column="isMobile" :x-between="!isMobile" :y-center="!isMobile" wrap gap="s" :class="{ 'mb-l': contextInfo || !!post.markdown }">
-          <UserDisplay :user-id="post.created_by" show-role />
-          <Flex :key="timestampUpdateKey" y-center wrap :gap="4" class="forum-post__timestamps">
-            <Tooltip :delay="500">
-              <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
-              <template #tooltip>
-                Posted on {{ formatDate(post.created_at) }}
-              </template>
-            </Tooltip>
-            <template v-if="post.modified_at !== post.created_at">
-              <span aria-hidden="true">·</span>
-              <Tooltip :delay="500">
-                <span>Edited {{ dayjs(post.modified_at).fromNow() }}</span>
-                <template #tooltip>
-                  Edited on {{ formatDate(post.modified_at) }}
-                </template>
-              </Tooltip>
-              <template v-if="postModifierId && postModifierUser">
-                <span class="text-s">by <UserName size="s" show-preview :user-id="postModifierId" inherit /></span>
-              </template>
-            </template>
-          </Flex>
-        </Flex>
-
-        <!-- Discussion linking card -->
-        <Card v-if="contextInfo" class="mt-l" :class="{ 'mb-xl': !!post.markdown }">
-          <Flex x-between y-center wrap gap="m">
-            <Flex column gap="xs">
-              <Flex y-center gap="xs">
-                <Icon :name="contextInfo.icon" :size="20" />
-                <span>This discussion is linked to {{ contextInfo.label === 'event' ? 'an' : 'a' }} {{ contextInfo.label }}</span>
-              </Flex>
-            </Flex>
-            <NuxtLink :to="contextInfo.href">
-              <Button size="s">
-                View {{ contextInfo.label }}
-              </Button>
-            </NuxtLink>
-          </Flex>
-        </Card>
-
-        <!-- Content -->
-        <template v-if="post.markdown">
-          <hr v-if="!contextInfo" class="mb-l">
-          <MarkdownRenderer class="forum-post__content" :md="post.markdown" :skeleton-height="64" />
-        </template>
-      </section>
-
-      <!-- Fullscreen NSFW overlay -->
-      <!-- TODO: remove this and add option to Modal/Sheet to increase background blur. No need to reimplement modal -->
-      <Transition name="fade">
-        <div v-if="showNSFWWarning" class="forum-post__nsfw-overlay">
-          <div class="forum-post__nsfw-overlay-inner">
-            <Icon class="forum-post__nsfw-overlay-icon" name="ph:warning" />
-            <h2>Sensitive Content</h2>
-            <p>This discussion is marked as NSFW and may contain potentially sensitive or explicit content.</p>
-            <Flex gap="s" y-center x-center wrap>
-              <Button variant="accent" @click="revealNsfw">
-                Reveal content
-              </Button>
-              <Button variant="gray" @click="$router.back()">
-                Go back
-              </Button>
-            </Flex>
-          </div>
-        </div>
-      </Transition>
-
-      <ComplaintsManager
-        v-model:open="showReportModal"
-        :context-discussion-id="post.id"
-        start-with-submit
-      />
-
-      <Discussion
-        :id="String(post.id)"
-        :key="String(post.id)"
-        type="discussion"
-        model="forum"
-        placeholder="Write your reply to this thread..."
-        @reply-submitted="handleReplySubmitted"
-      />
+        <Discussion
+          :id="String(post.id)"
+          :key="String(post.id)"
+          type="discussion"
+          model="forum"
+          placeholder="Write your reply to this thread..."
+          @reply-submitted="handleReplySubmitted"
+        />
       <!-- Removing this in place of the new timeline.
       <div v-show="contentHeight > 1600" class="forum-post__fast-travel">
         <Tooltip>
@@ -809,12 +810,13 @@ function revealNsfw() {
         </Tooltip>
       </div>
        -->
-    </template>
+      </template>
 
-    <!-- Nothing found or an error -->
-    <Alert v-else variant="danger" filled>
-      {{ errorMessage ?? 'There was a problem loading the article' }}
-    </Alert>
+      <!-- Nothing found or an error -->
+      <Alert v-else variant="danger" filled>
+        {{ errorMessage ?? 'There was a problem loading the article' }}
+      </Alert>
+    </ClientOnly>
   </div>
 </template>
 

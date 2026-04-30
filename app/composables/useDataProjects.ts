@@ -37,6 +37,10 @@ export function useDataProjects() {
 
   const projects = ref<Tables<'projects'>[]>([])
 
+  const _initialCached = cache.get<Tables<'projects'>[]>(CACHE_KEY)
+  if (_initialCached !== null)
+    projects.value = _initialCached
+
   async function fetch(force = false): Promise<void> {
     const result = await withCache(CACHE_KEY, async () => {
       const { data, error: fetchError } = await supabase

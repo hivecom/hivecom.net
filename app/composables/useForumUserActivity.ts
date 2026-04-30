@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { computed, ref, watch } from 'vue'
 import { useCache } from '@/composables/useCache'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 interface ReplyJoinedDiscussion {
   id: string | null
@@ -45,7 +46,7 @@ export interface UseForumUserActivityOptions {
 
 export function useForumUserActivity({ userId, settings, discussionLookup }: UseForumUserActivityOptions) {
   const supabase = useSupabaseClient<Database>()
-  const forumCache = useCache()
+  const forumCache = useCache(CACHE_NAMESPACES.forum)
 
   const userActivity = ref<UserActivityItem[]>([])
   const userActivityLoading = ref(false)

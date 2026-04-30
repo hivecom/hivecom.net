@@ -307,6 +307,7 @@ blockquote {
     overflow: hidden;
     border-radius: var(--border-radius-m);
     flex: 1;
+    min-width: 0;
   }
 }
 

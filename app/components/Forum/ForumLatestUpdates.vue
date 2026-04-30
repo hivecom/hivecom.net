@@ -95,6 +95,7 @@ const {
   loadingMore: sheetLoadingMore,
   exhausted: sheetExhausted,
   load: loadSheet,
+  reload: reloadSheetFeed,
   loadMore,
 } = useForumActivityFeedPaginated({
   ...props.feedOptions,
@@ -201,7 +202,7 @@ async function ensureMineLoaded() {
 }
 
 async function reloadSheet() {
-  await loadSheet()
+  await reloadSheetFeed()
   emit('feedReloaded')
 
   if (visitedAt.value != null) {

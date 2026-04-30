@@ -4,8 +4,10 @@ import { Alert, Badge, Button, Flex, Modal, Skeleton, Tab, Tabs } from '@dolansk
 import { computed, ref, watch } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
 import TinyBadge from '@/components/Shared/TinyBadge.vue'
+import { useCache } from '@/composables/useCache'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useRsvpBus } from '@/composables/useRsvpBus'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
@@ -27,6 +29,7 @@ const activeTab = ref<'yes' | 'tentative' | 'no'>('yes')
 
 // Data state
 const supabase = useSupabaseClient()
+const rsvpListCache = useCache(CACHE_NAMESPACES.rsvps)
 const loading = ref(true)
 const error = ref('')
 
@@ -57,10 +60,28 @@ const { hasEventEnded } = useEventTiming(() => props.event)
 const yesTabLabel = computed(() => hasEventEnded.value ? 'Went' : 'Going')
 const yesEmptyCopy = computed(() => hasEventEnded.value ? 'as having gone' : 'as going')
 
+interface RsvpListEntry { yes: string[], tentative: string[], no: string[] }
+
+function listCacheKey(eventId: number): string {
+  return `rsvp:list:${eventId}`
+}
+
 // Fetch RSVP data
-async function fetchRSVPs() {
+async function fetchRSVPs(force = false) {
   if (!props.event?.id)
     return
+
+  const eventId = props.event.id
+  const cacheKey = listCacheKey(eventId)
+
+  if (!force) {
+    const cached = rsvpListCache.get<RsvpListEntry>(cacheKey)
+    if (cached !== null) {
+      rsvpData.value = cached
+      loading.value = false
+      return
+    }
+  }
 
   loading.value = true
   error.value = ''
@@ -69,7 +90,7 @@ async function fetchRSVPs() {
     const { data, error: fetchError } = await supabase
       .from('events_rsvps')
       .select('user_id, rsvp')
-      .eq('event_id', props.event.id)
+      .eq('event_id', eventId)
       .order('created_at', { ascending: true })
 
     if (fetchError) {
@@ -77,11 +98,7 @@ async function fetchRSVPs() {
     }
 
     // Group RSVPs by status - store just user IDs
-    const groupedData: {
-      yes: string[]
-      tentative: string[]
-      no: string[]
-    } = {
+    const groupedData: RsvpListEntry = {
       yes: [],
       tentative: [],
       no: [],
@@ -96,6 +113,7 @@ async function fetchRSVPs() {
     }
 
     rsvpData.value = groupedData
+    rsvpListCache.set<RsvpListEntry>(cacheKey, groupedData)
   }
   catch (err) {
     console.error('Error fetching RSVPs:', err)
@@ -126,11 +144,14 @@ watch(() => props.open, (isOpen) => {
   }
 }, { immediate: true })
 
-// Listen for RSVP updates to refresh data
+// Listen for RSVP updates - invalidate cache and refetch if modal is open
 const { onRsvpUpdated } = useRsvpBus()
 onRsvpUpdated(({ eventId }) => {
   if (eventId === props.event.id) {
-    fetchRSVPs()
+    rsvpListCache.delete(listCacheKey(eventId))
+    if (props.open) {
+      void fetchRSVPs(true)
+    }
   }
 })
 

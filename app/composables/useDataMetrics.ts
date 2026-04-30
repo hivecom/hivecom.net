@@ -1,6 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 import type { MetricsSnapshot } from '@/types/metrics'
+import { useCache } from '@/composables/useCache'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
+
+const METRICS_CACHE_KEY = 'metrics:daily'
+const METRICS_TTL = 60 * 60 * 1000 // 1 hour - metrics are daily snapshots
 
 const METRICS_BUCKET = 'hivecom-content-static'
 
@@ -91,17 +96,30 @@ async function fetchMetricsWithFallback(supabase: SupabaseClient<Database>) {
 
 export function useDataMetrics() {
   const supabase = useSupabaseClient<Database>()
-  const metrics = ref<MetricsSnapshot | null>(null)
+  const metricsCache = useCache(CACHE_NAMESPACES.community)
+
+  // Pre-populate synchronously so first render has data on warm cache.
+  const _initialCached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
+  const metrics = ref<MetricsSnapshot | null>(_initialCached)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
   const fetchMetrics = async () => {
+    // Serve from cache - metrics are daily, 1hr TTL is conservative
+    const cached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
+    if (cached !== null) {
+      metrics.value = cached
+      return cached
+    }
+
     loading.value = true
     error.value = null
 
     try {
       const snapshot = await fetchMetricsWithFallback(supabase)
       metrics.value = snapshot
+      if (snapshot !== null)
+        metricsCache.set(METRICS_CACHE_KEY, snapshot, METRICS_TTL)
       return snapshot
     }
     catch (err) {

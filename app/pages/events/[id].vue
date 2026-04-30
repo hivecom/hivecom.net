@@ -139,92 +139,94 @@ useHead({
 <template>
   <div class="page">
     <div :class="!isMobile && 'container-m'">
-      <!-- Loading and Error States -->
-      <DetailStates
-        :loading="loading"
-        :error="error"
-        back-to="/events"
-        back-label="Events"
-      >
-        <template #error-message>
-          We are unable to load event details at this time. Please try again later.
-        </template>
-      </DetailStates>
+      <ClientOnly>
+        <!-- Loading and Error States -->
+        <DetailStates
+          :loading="loading"
+          :error="error"
+          back-to="/events"
+          back-label="Events"
+        >
+          <template #error-message>
+            We are unable to load event details at this time. Please try again later.
+          </template>
+        </DetailStates>
 
-      <!-- Event Content -->
-      <div v-if="event && !loading && !error" class="event-detail">
-        <!-- Back Button -->
-        <Flex x-between y-center>
-          <NuxtLink to="/events">
-            <Button
-              variant="gray"
-              plain
-              size="s"
-              aria-label="Go back to Events page"
-              class="event-detail__back-link"
-            >
-              <template #start>
-                <Icon name="ph:arrow-left" />
-              </template>
-              Back to Events
-            </Button>
-          </NuxtLink>
-
-          <Dropdown v-if="canEdit">
-            <template #trigger="{ toggle }">
-              <Button variant="gray" size="s" @click="toggle">
-                Manage
+        <!-- Event Content -->
+        <div v-if="event && !loading && !error" class="event-detail">
+          <!-- Back Button -->
+          <Flex x-between y-center>
+            <NuxtLink to="/events">
+              <Button
+                variant="gray"
+                plain
+                size="s"
+                aria-label="Go back to Events page"
+                class="event-detail__back-link"
+              >
+                <template #start>
+                  <Icon name="ph:arrow-left" />
+                </template>
+                Back to Events
               </Button>
-            </template>
-            <DropdownItem @click="showEditModal = true">
-              Edit
-            </DropdownItem>
-            <DropdownItem variant="danger" @click="deleteConfirm = true">
-              Delete
-            </DropdownItem>
-          </Dropdown>
-        </Flex>
+            </NuxtLink>
 
-        <!-- Header -->
-        <div :class="{ 'event-ongoing': isOngoing }">
-          <EventHeader
-            :event="event"
-            :games="games"
-            :is-upcoming="isUpcoming"
-            :is-ongoing="isOngoing"
-            :countdown="countdown"
-            :time-ago="timeAgo"
-          />
+            <Dropdown v-if="canEdit">
+              <template #trigger="{ toggle }">
+                <Button variant="gray" size="s" @click="toggle">
+                  Manage
+                </Button>
+              </template>
+              <DropdownItem @click="showEditModal = true">
+                Edit
+              </DropdownItem>
+              <DropdownItem variant="danger" @click="deleteConfirm = true">
+                Delete
+              </DropdownItem>
+            </Dropdown>
+          </Flex>
+
+          <!-- Header -->
+          <div :class="{ 'event-ongoing': isOngoing }">
+            <EventHeader
+              :event="event"
+              :games="games"
+              :is-upcoming="isUpcoming"
+              :is-ongoing="isOngoing"
+              :countdown="countdown"
+              :time-ago="timeAgo"
+            />
+          </div>
+
+          <div class="event-detail__content">
+            <!-- Markdown -->
+            <EventMarkdown :event="event" />
+
+            <!-- Related discussion -->
+            <Discussion
+              :id="String(event.id)"
+              class="event-discussion"
+              type="event"
+              @reply-submitted="handleReplySubmitted"
+            />
+          </div>
         </div>
 
-        <div class="event-detail__content">
-          <!-- Markdown -->
-          <EventMarkdown :event="event" />
+        <CreateEventModal v-model:open="showEditModal" :event="event" @saved="fetchEvent" />
 
-          <!-- Related discussion -->
-          <Discussion
-            :id="String(event.id)"
-            class="event-discussion"
-            type="event"
-            @reply-submitted="handleReplySubmitted"
-          />
-        </div>
-      </div>
+        <ConfirmModal
+          v-if="event"
+          v-model:open="deleteConfirm"
+          :confirm-loading="deleteLoading"
+          title="Delete event"
+          :description="`Are you sure you want to delete '${event.title}'? This cannot be undone.`"
+          confirm-text="Delete"
+          :destructive="true"
+          @confirm="handleDelete"
+        />
+      </ClientOnly>
     </div>
   </div>
-
-  <CreateEventModal v-model:open="showEditModal" :event="event" @saved="fetchEvent" />
-
-  <ConfirmModal
-    v-if="event"
-    v-model:open="deleteConfirm"
-    :confirm-loading="deleteLoading"
-    title="Delete event"
-    :description="`Are you sure you want to delete '${event.title}'? This cannot be undone.`"
-    confirm-text="Delete"
-    :destructive="true"
-    @confirm="handleDelete"
-  />
 </template>
 
 <style lang="scss" scoped>

@@ -125,77 +125,79 @@ defineOgImage('Default', {
       </p>
     </section>
 
-    <!-- Tabs Navigation -->
-    <Tabs v-model="activeTab" class="my-m">
-      <Tab value="list">
-        List
-      </Tab>
-      <Tab value="calendar">
-        Calendar
-      </Tab>
+    <ClientOnly>
+      <!-- Tabs Navigation -->
+      <Tabs v-model="activeTab" class="my-m">
+        <Tab value="list">
+          List
+        </Tab>
+        <Tab value="calendar">
+          Calendar
+        </Tab>
 
-      <template #end>
-        <Flex gap="xs" y-center>
-          <Button v-if="user" variant="accent" size="s" :square="isMobile" @click="handleCreateEventClick">
-            <template v-if="isMobile">
-              <Icon name="ph:plus" :size="16" />
+        <template #end>
+          <Flex gap="xs" y-center>
+            <Button v-if="user" variant="accent" size="s" :square="isMobile" @click="handleCreateEventClick">
+              <template v-if="isMobile">
+                <Icon name="ph:plus" :size="16" />
+              </template>
+              <template v-if="!isMobile" #start>
+                <Icon name="ph:plus" :size="16" />
+              </template>
+              <template v-if="!isMobile">
+                Create
+              </template>
+            </Button>
+            <CalendarButtons size="s" :show-labels="!isMobile" />
+          </Flex>
+        </template>
+      </Tabs>
+
+      <section>
+        <!-- Filters (list view only) -->
+        <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l">
+          <Input v-model="search" placeholder="Search events..." style="min-width: 200px">
+            <template #start>
+              <Icon name="ph:magnifying-glass" />
             </template>
-            <template v-if="!isMobile" #start>
-              <Icon name="ph:plus" :size="16" />
-            </template>
-            <template v-if="!isMobile">
-              Create
-            </template>
-          </Button>
-          <CalendarButtons size="s" :show-labels="!isMobile" />
+          </Input>
+          <Select
+            v-if="user"
+            v-model="officialFilterOption"
+            :options="officialFilterOptions"
+            placeholder="Official"
+            single
+            show-clear
+          />
         </Flex>
-      </template>
-    </Tabs>
 
-    <section>
-      <!-- Filters (list view only) -->
-      <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l">
-        <Input v-model="search" placeholder="Search events..." style="min-width: 200px">
-          <template #start>
-            <Icon name="ph:magnifying-glass" />
-          </template>
-        </Input>
-        <Select
-          v-if="user"
-          v-model="officialFilterOption"
-          :options="officialFilterOptions"
-          placeholder="Official"
-          single
-          show-clear
+        <!-- Listing View -->
+        <EventsListing
+          v-if="activeTab === 'list'"
+          :events="events"
+          :loading="loading"
+          :error-message="errorMessage"
+          :search="search"
+          :official-filter="officialFilter"
         />
-      </Flex>
 
-      <!-- Listing View -->
-      <EventsListing
-        v-if="activeTab === 'list'"
-        :events="events"
-        :loading="loading"
-        :error-message="errorMessage"
-        :search="search"
-        :official-filter="officialFilter"
+        <!-- Calendar View -->
+        <!-- EventsCalendar self-fetches only the visible month window -->
+        <EventsCalendar v-else-if="activeTab === 'calendar'" />
+      </section>
+
+      <CreateEventModal
+        v-model:open="showCreateEventModal"
+        @saved="refresh"
       />
 
-      <!-- Calendar View -->
-      <!-- EventsCalendar self-fetches only the visible month window -->
-      <EventsCalendar v-else-if="activeTab === 'calendar'" />
-    </section>
+      <ContentRulesModal
+        v-model:open="showContentRulesModal"
+        :show-agree-button="true"
+        @confirm="handleContentRulesConfirmed"
+      />
+    </ClientOnly>
   </div>
-
-  <CreateEventModal
-    v-model:open="showCreateEventModal"
-    @saved="refresh"
-  />
-
-  <ContentRulesModal
-    v-model:open="showContentRulesModal"
-    :show-agree-button="true"
-    @confirm="handleContentRulesConfirmed"
-  />
 </template>
 
 <style lang="scss">

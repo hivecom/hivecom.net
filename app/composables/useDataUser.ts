@@ -400,7 +400,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
   // This busts stale null-cached role/avatar data from pre-auth.
   // We do NOT refetch on sign-out or on navigation (where currentUser briefly
   // flickers) - that was causing the skeleton flash and anonymous username issue.
-  let _wasAuthed = false
+  let _wasAuthed = currentUser.value != null
   watch(currentUser, (newUser) => {
     const isAuthed = newUser != null
     const justSignedIn = !_wasAuthed && isAuthed
@@ -497,7 +497,6 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
       })
     }
 
-    loading.value = true
     error.value = null
 
     try {
@@ -521,6 +520,41 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
       // RLS will block the storage list call and the null result would be
       // cached, preventing avatars from loading once the user signs in.
       const avatarIdsToFetch = includeAvatar && currentUser.value ? ids.filter(id => !cache.has(`user:avatar:${id}`)) : []
+
+      // Pre-populate from cache synchronously before any async work so the
+      // component can render immediately on warm hits without a loading flash.
+      const warmMap = new Map<string, UserDisplayData>()
+      for (const id of ids) {
+        const profile = cache.get<ProfileCacheEntry>(`user:profile:${id}`)
+        const role = includeRole ? cache.get<string | null>(`user:role:${id}`) : null
+        const avatarUrl = includeAvatar ? cache.get<string | null>(`user:avatar:${id}`) : null
+        if (profile) {
+          warmMap.set(id, {
+            id: profile.id,
+            username: profile.username,
+            username_set: profile.username_set ?? false,
+            role: role ?? null,
+            avatarUrl: avatarUrl ?? null,
+            supporter_lifetime: profile.supporter_lifetime ?? false,
+            supporter_patreon: profile.supporter_patreon ?? false,
+            badges: profile.badges ? [...profile.badges] : [],
+            introduction: profile.introduction ?? null,
+            country: profile.country ?? null,
+            created_at: profile.created_at ?? null,
+            isPublic: profile.isPublic ?? false,
+            has_banner: profile.has_banner ?? false,
+            banner_extension: profile.banner_extension ?? null,
+          })
+        }
+      }
+      if (warmMap.size > 0)
+        users.value = warmMap
+
+      const needsNetwork = profileIdsToFetch.length > 0 || roleIdsToFetch.length > 0 || avatarIdsToFetch.length > 0
+      if (!needsNetwork)
+        return
+
+      loading.value = true
 
       const [profileResults, roleResults] = await Promise.all([
         profileIdsToFetch.length > 0
@@ -707,7 +741,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
 
   // Watch for authentication changes - same logic as useDataUser:
   // only refetch on actual sign-in transition
-  let _wasAuthed = false
+  let _wasAuthed = currentUser.value != null
   watch(currentUser, (newUser) => {
     const isAuthed = newUser != null
     const justSignedIn = !_wasAuthed && isAuthed

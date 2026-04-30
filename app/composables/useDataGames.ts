@@ -41,6 +41,10 @@ export function useDataGames() {
 
   const games = ref<Tables<'games'>[]>([])
 
+  const _initialCached = cache.get<Tables<'games'>[]>(CACHE_KEY)
+  if (_initialCached !== null)
+    games.value = _initialCached
+
   async function fetch(force = false): Promise<void> {
     const result = await withCache(CACHE_KEY, async () => {
       const { data, error: fetchError } = await supabase

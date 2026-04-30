@@ -1,3 +1,9 @@
+@mixin truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @mixin line-clamp($lines: 3) {
   display: -webkit-box;
   -webkit-line-clamp: $lines;

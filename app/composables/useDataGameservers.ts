@@ -54,6 +54,10 @@ export function useDataGameservers() {
 
   const gameservers = ref<GameserverWithContainer[]>([])
 
+  const _initialCached = cache.get<GameserverWithContainer[]>(CACHE_KEY)
+  if (_initialCached !== null)
+    gameservers.value = _initialCached
+
   async function fetch(force = false): Promise<void> {
     const result = await withCache<GameserverWithContainer[]>(CACHE_KEY, async () => {
       const { data, error: fetchError } = await supabase

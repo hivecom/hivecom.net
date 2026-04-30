@@ -7,8 +7,10 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
 import { useActivityFeedSheet } from '@/composables/useActivityFeedSheet'
+import { useCache } from '@/composables/useCache'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 
 const props = defineProps<{
@@ -34,6 +36,21 @@ interface FeedRow {
 
 const supabase = useSupabaseClient<Database>()
 const discussionCache = useDiscussionCache()
+const profileCache = useCache(CACHE_NAMESPACES.forum)
+
+const PREVIEW_TTL = 3 * 60 * 1000 // 3 minutes
+const WEEK_COUNT_TTL = 5 * 60 * 1000 // 5 minutes
+const SHEET_TTL = 3 * 60 * 1000 // 3 minutes
+
+function previewCacheKey(profileId: string) {
+  return `profile-discussions:preview:${profileId}`
+}
+function weekCountCacheKey(profileId: string) {
+  return `profile-discussions:week-count:${profileId}`
+}
+function sheetPageCacheKey(profileId: string, offset: number) {
+  return `profile-discussions:sheet:${profileId}:${offset}`
+}
 
 // ── Discussion cache warming ───────────────────────────────────────────────
 // The RPC doesn't join discussion titles for reply rows - we need to fetch
@@ -141,8 +158,18 @@ const previewItems = computed<ActivityItem[]>(() => {
 const hasActivity = computed(() => previewItems.value.length > 0)
 
 async function fetchPreview() {
-  loading.value = true
   error.value = null
+
+  const cacheKey = previewCacheKey(props.profileId)
+  const cached = profileCache.get<FeedRow[]>(cacheKey)
+  if (cached !== null) {
+    previewRaw.value = cached
+    loading.value = false
+    void warmDiscussionCache(cached)
+    return
+  }
+
+  loading.value = true
 
   const { data, error: rpcError } = await supabase.rpc('get_forum_activity_feed', {
     p_limit: 3,
@@ -159,6 +186,7 @@ async function fetchPreview() {
   const rows = (data ?? []) as FeedRow[]
   await warmDiscussionCache(rows)
   previewRaw.value = rows
+  profileCache.set(cacheKey, rows, PREVIEW_TTL)
   loading.value = false
 }
 
@@ -176,6 +204,13 @@ watch(() => props.profileId, () => {
 const activityThisWeek = ref<number | null>(null)
 
 async function fetchThisWeekCount() {
+  const cacheKey = weekCountCacheKey(props.profileId)
+  const cached = profileCache.get<number>(cacheKey)
+  if (cached !== null) {
+    activityThisWeek.value = cached
+    return
+  }
+
   const weekAgo = dayjs().subtract(7, 'day').toISOString()
 
   const [repliesRes, discussionsRes, topicsRes] = await Promise.all([
@@ -203,6 +238,7 @@ async function fetchThisWeekCount() {
   ])
 
   activityThisWeek.value = (repliesRes.count ?? 0) + (discussionsRes.count ?? 0) + (topicsRes.count ?? 0)
+  profileCache.set(cacheKey, activityThisWeek.value, WEEK_COUNT_TTL)
 }
 
 onMounted(() => {
@@ -263,6 +299,11 @@ const {
   pageSize: PAGE_SIZE,
 
   async load() {
+    const cacheKey = sheetPageCacheKey(props.profileId, 0)
+    const cached = profileCache.get<ActivityItem[]>(cacheKey)
+    if (cached !== null)
+      return cached
+
     const { data, error: rpcError } = await supabase.rpc('get_forum_activity_feed', {
       p_limit: PAGE_SIZE,
       p_offset: 0,
@@ -270,7 +311,10 @@ const {
     })
     if (rpcError != null || data == null)
       return []
-    return fetchSheetPage(data as FeedRow[])
+    const items = await fetchSheetPage(data as FeedRow[])
+    if (items.length > 0)
+      profileCache.set(cacheKey, items, SHEET_TTL)
+    return items
   },
 
   async loadMore(offset) {

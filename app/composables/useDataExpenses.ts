@@ -1,6 +1,7 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { computed, ref } from 'vue'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useCache } from './useCache'
 
 const CACHE_KEY = 'expenses:all'
@@ -23,10 +24,12 @@ const CACHE_TTL = 60 * 60 * 1000 // 1 hour - expenses change infrequently
  * - `refresh()` forces a cache-busting re-fetch
  */
 export function useDataExpenses() {
-  const cache = useCache()
+  const cache = useCache(CACHE_NAMESPACES.community)
   const supabase = useSupabaseClient<Database>()
 
-  const expenses = ref<Tables<'expenses'>[]>([])
+  // Pre-populate synchronously so fundingProgress computes correctly on first render.
+  const _initialCached = cache.get<Tables<'expenses'>[]>(CACHE_KEY)
+  const expenses = ref<Tables<'expenses'>[]>(_initialCached ?? [])
   const loading = ref(false)
   const error = ref<string | null>(null)
 

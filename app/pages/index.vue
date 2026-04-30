@@ -12,8 +12,8 @@ definePageMeta({
 
 // Fetch data from database
 const user = useSupabaseUser()
-const { fetchMetrics } = useDataMetrics()
-const loading = ref(true)
+const { fetchMetrics, metrics: cachedMetrics } = useDataMetrics()
+const loading = ref(cachedMetrics.value === null)
 const errorMessage = ref('')
 
 // Events via shared cache - no dedicated fetch needed here
@@ -54,27 +54,32 @@ const communityStats = ref({
   membersAccurate: false,
   gameservers: 5,
   age: new Date().getFullYear() - 2013,
-  projects: 10, // Will be fetched from the projects table
+  projects: 10,
   forumPosts: 1000,
 })
+
+function applyMetrics(snapshot: { totals: { users: number, gameservers: number, projects: number, forumPosts: number } }): void {
+  const users = snapshot.totals.users
+  communityStats.value.membersAccurate = users > 0
+  communityStats.value.members = users > 0 ? users : 100
+  communityStats.value.gameservers = snapshot.totals.gameservers
+  communityStats.value.projects = snapshot.totals.projects
+  communityStats.value.forumPosts = snapshot.totals.forumPosts
+}
+
+// Pre-populate from cache synchronously - avoids placeholder numbers on warm visits
+if (cachedMetrics.value !== null)
+  applyMetrics(cachedMetrics.value)
 
 // Convert platforms object to array for easier v-for iteration
 const platforms = ref(Object.values(constants.PLATFORMS))
 
 // Fetch real data on component mount
 onMounted(async () => {
-  loading.value = true
-
   try {
     const metricsSnapshot = await fetchMetrics()
-    if (metricsSnapshot != null) {
-      const users = metricsSnapshot.totals.users
-      communityStats.value.membersAccurate = users > 0
-      communityStats.value.members = users > 0 ? users : 100
-      communityStats.value.gameservers = metricsSnapshot.totals.gameservers
-      communityStats.value.projects = metricsSnapshot.totals.projects
-      communityStats.value.forumPosts = metricsSnapshot.totals.forumPosts
-    }
+    if (metricsSnapshot != null)
+      applyMetrics(metricsSnapshot)
   }
   catch (error: unknown) {
     console.error('Error fetching data:', error)

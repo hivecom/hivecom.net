@@ -19,11 +19,11 @@ const { data, toastId } = defineProps<Props>()
       <Flex y-center x-center class="toast-theme-preview__icon">
         <Icon name="ph:flask" :size="20" />
       </Flex>
-      <Flex column expand gap="xxs" class="toast-theme-preview__text">
+      <Flex column gap="xxs" class="toast-theme-preview__text">
         <span class="toast-theme-preview__label">Previewing theme</span>
         <span class="toast-theme-preview__title">{{ data.themeName }}</span>
       </Flex>
-      <Flex gap="xs" y-center>
+      <Flex gap="xs" y-center class="toast-theme-preview__actions">
         <Button
           size="s" variant="accent" @click="(e: MouseEvent) => data.onKeep(toastId, { x: e.clientX,
                                                                                       y: e.clientY })"
@@ -42,10 +42,13 @@ const { data, toastId } = defineProps<Props>()
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/mixins.scss' as *;
+
 .toast-theme-preview {
   &__row {
     padding-inline: var(--space-xs);
     min-height: 52px;
+    min-width: 0;
   }
 
   &__icon {
@@ -60,7 +63,13 @@ const { data, toastId } = defineProps<Props>()
   }
 
   &__text {
+    flex: 1;
+    width: 0;
     min-width: 0;
+  }
+
+  &__actions {
+    flex-shrink: 0;
   }
 
   &__label {
@@ -69,11 +78,11 @@ const { data, toastId } = defineProps<Props>()
   }
 
   &__title {
+    display: block;
+    width: 100%;
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-semibold);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include truncate;
   }
 }
 </style>

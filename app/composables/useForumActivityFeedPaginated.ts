@@ -5,6 +5,8 @@ import type { Database } from '@/types/database.types'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { computed, ref } from 'vue'
+import { useCache } from '@/composables/useCache'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 
 // The generated return type for get_forum_activity_feed marks all columns
@@ -53,12 +55,23 @@ export function useForumActivityFeedPaginated({
 }: UseForumActivityFeedPaginatedOptions) {
   const supabase = useSupabaseClient<Database>()
   const userId = useUserId()
+  const feedCache = useCache(CACHE_NAMESPACES.forum)
 
   const rawItems = ref<FeedRow[]>([])
   const loading = ref(false)
   const loadingMore = ref(false)
   const exhausted = ref(false)
   const offset = ref(0)
+
+  // Cache key is stable per user context - different for community vs mine tabs
+  function feedCacheKey(): string {
+    const uid = userId.value ?? 'anon'
+    if (createdByCurrentUser)
+      return `feed:mine:${uid}`
+    if (excludeCurrentUser)
+      return `feed:community:${uid}`
+    return `feed:all:${uid}`
+  }
 
   function mapRow(row: FeedRow): ActivityItem | null {
     if (row.item_type === 'reply') {
@@ -214,11 +227,43 @@ export function useForumActivityFeedPaginated({
   async function load() {
     if (loading.value)
       return
+
+    // Serve first page from cache when available
+    const cacheKey = feedCacheKey()
+    const cached = feedCache.get<{ rows: FeedRow[], exhausted: boolean }>(cacheKey)
+    if (cached !== null) {
+      rawItems.value = cached.rows
+      exhausted.value = cached.exhausted
+      offset.value = cached.rows.length
+      return
+    }
+
     loading.value = true
     exhausted.value = false
     offset.value = 0
     rawItems.value = []
     await fetchPage(0, false)
+
+    // Cache the loaded first page
+    if (rawItems.value.length > 0) {
+      feedCache.set(cacheKey, { rows: rawItems.value, exhausted: exhausted.value })
+    }
+
+    loading.value = false
+  }
+
+  async function reload() {
+    feedCache.delete(feedCacheKey())
+    loading.value = true
+    exhausted.value = false
+    offset.value = 0
+    rawItems.value = []
+    await fetchPage(0, false)
+
+    if (rawItems.value.length > 0) {
+      feedCache.set(feedCacheKey(), { rows: rawItems.value, exhausted: exhausted.value })
+    }
+
     loading.value = false
   }
 
@@ -238,6 +283,7 @@ export function useForumActivityFeedPaginated({
     loadingMore,
     exhausted,
     load,
+    reload,
     loadMore,
   }
 }

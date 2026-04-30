@@ -215,66 +215,68 @@ function clearFilters() {
       </div>
     </section>
 
-    <!-- Tabs Navigation -->
-    <Tabs v-model="activeTab" class="my-m">
-      <Tab value="library">
-        Library
-      </Tab>
-      <Tab value="list">
-        List
-      </Tab>
-      <template #end>
-        <Button
-          class="page-title__cta"
-          size="s"
-          @click="supportModalOpen = true"
-        >
-          <template #start>
-            <Icon name="ph:lifebuoy" />
-          </template>
-          Request Game Server
-        </Button>
-      </template>
-    </Tabs>
+    <ClientOnly>
+      <!-- Tabs Navigation -->
+      <Tabs v-model="activeTab" class="my-m">
+        <Tab value="library">
+          Library
+        </Tab>
+        <Tab value="list">
+          List
+        </Tab>
+        <template #end>
+          <Button
+            class="page-title__cta"
+            size="s"
+            @click="supportModalOpen = true"
+          >
+            <template #start>
+              <Icon name="ph:lifebuoy" />
+            </template>
+            Request Game Server
+          </Button>
+        </template>
+      </Tabs>
 
-    <div class="game-servers">
-      <!-- List View -->
-      <GameListing
-        v-if="activeTab === 'list'"
-        :games="games"
-        :gameservers="gameservers"
-        :loading="loading || gamesLoading"
-        :error-message="errorMessage"
-        :filtered-games="filteredGames"
-        :filtered-gameservers="filteredGameservers"
-        :gameservers-without-game="gameserversWithoutGame"
-        :search="search"
-        :selected-games="selectedGames"
-        :selected-regions="selectedRegions"
-        :game-options="gameOptions"
-        :region-options="regionOptions"
-        @update:search="search = $event"
-        @update:selected-games="selectedGames = $event"
-        @update:selected-regions="selectedRegions = $event"
-        @clear-filters="clearFilters"
+      <div class="game-servers">
+        <!-- List View -->
+        <GameListing
+          v-if="activeTab === 'list'"
+          :games="games"
+          :gameservers="gameservers"
+          :loading="loading || gamesLoading"
+          :error-message="errorMessage"
+          :filtered-games="filteredGames"
+          :filtered-gameservers="filteredGameservers"
+          :gameservers-without-game="gameserversWithoutGame"
+          :search="search"
+          :selected-games="selectedGames"
+          :selected-regions="selectedRegions"
+          :game-options="gameOptions"
+          :region-options="regionOptions"
+          @update:search="search = $event"
+          @update:selected-games="selectedGames = $event"
+          @update:selected-regions="selectedRegions = $event"
+          @clear-filters="clearFilters"
+        />
+
+        <!-- Library View -->
+        <GameLibrary
+          v-else-if="activeTab === 'library'"
+          :games="games"
+          :gameservers="gameservers"
+          :loading="loading || gamesLoading"
+          :error-message="errorMessage"
+          :filtered-games="filteredGames"
+        />
+      </div>
+
+      <SupportModal
+        v-model:open="supportModalOpen"
+        title="Request Game Server"
+        message="Got an idea for a game server? Let us know!"
       />
-
-      <!-- Library View -->
-      <GameLibrary
-        v-else-if="activeTab === 'library'"
-        :games="games"
-        :gameservers="gameservers"
-        :loading="loading || gamesLoading"
-        :error-message="errorMessage"
-        :filtered-games="filteredGames"
-      />
-    </div>
-
-    <SupportModal
-      v-model:open="supportModalOpen"
-      title="Request Game Server"
-      message="Got an idea for a game server? Let us know!"
-    />
+    </ClientOnly>
   </div>
 </template>
 

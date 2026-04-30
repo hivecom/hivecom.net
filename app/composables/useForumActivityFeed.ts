@@ -6,12 +6,15 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import { computed, ref, watchEffect } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { useUserId } from '@/composables/useUserId'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 
 dayjs.extend(relativeTime)
 
-const FORUM_REPLIES_CACHE_KEY = 'forum:latest-replies:v2'
+const FORUM_REPLIES_CACHE_KEY = 'latest-replies:v2'
+const FORUM_TODAY_COUNT_CACHE_KEY = 'today-count'
 const FORUM_REPLIES_TTL = 2 * 60 * 1000 // 2 minutes
+const FORUM_TODAY_COUNT_TTL = 5 * 60 * 1000 // 5 minutes - changes slowly
 
 export interface ActivityItem {
   id: string
@@ -62,7 +65,7 @@ export function useForumActivityFeed({
   onTopicClick,
 }: UseForumActivityFeedOptions) {
   const supabase = useSupabaseClient<Database>()
-  const forumCache = useCache()
+  const forumCache = useCache(CACHE_NAMESPACES.forum)
   const userId = useUserId()
 
   const latestReplies = ref<ActivityItem[]>([])
@@ -230,6 +233,16 @@ export function useForumActivityFeed({
   const postSinceYesterday = ref(0)
 
   async function fetchTodayCount() {
+    const cacheKey = userId.value != null
+      ? `${FORUM_TODAY_COUNT_CACHE_KEY}:${userId.value}`
+      : FORUM_TODAY_COUNT_CACHE_KEY
+
+    const cached = forumCache.get<number>(cacheKey)
+    if (cached !== null) {
+      postSinceYesterday.value = cached
+      return
+    }
+
     const { data, error } = await supabase.rpc('get_forum_activity_feed_today_count', {
       ...(userId.value != null ? { p_exclude: userId.value } : {}),
     })
@@ -237,7 +250,9 @@ export function useForumActivityFeed({
       console.error('[useForumActivityFeed] today count error:', error.message)
       return
     }
-    postSinceYesterday.value = data ?? 0
+    const count = data ?? 0
+    postSinceYesterday.value = count
+    forumCache.set<number>(cacheKey, count, FORUM_TODAY_COUNT_TTL)
   }
 
   /**
@@ -248,6 +263,11 @@ export function useForumActivityFeed({
   function prependReplyItem(item: ActivityItem) {
     latestReplies.value = [item, ...latestReplies.value]
     forumCache.delete(FORUM_REPLIES_CACHE_KEY)
+    // Also bust today count so the badge updates on next fetch
+    const countKey = userId.value != null
+      ? `${FORUM_TODAY_COUNT_CACHE_KEY}:${userId.value}`
+      : FORUM_TODAY_COUNT_CACHE_KEY
+    forumCache.delete(countKey)
   }
 
   /**

@@ -13,11 +13,13 @@ const isOnFundingPage = computed(() => route.path === '/community/funding')
 const isBelowSmall = useBreakpoint('<s')
 
 // Funding data via shared cache
-const { latestFunding: currentFunding, loading, error } = useDataMonthlyFunding()
+const { latestFunding: currentFunding, loading: fundingLoading, error } = useDataMonthlyFunding()
 const errorMessage = computed(() => error.value)
 
 // Active expenses via shared cache
-const { totalActiveAmountCents: monthlyExpenses } = useDataExpenses()
+const { totalActiveAmountCents: monthlyExpenses, loading: expensesLoading } = useDataExpenses()
+
+const loading = computed(() => fundingLoading.value || expensesLoading.value)
 
 // Calculate funding progress
 const fundingProgress = computed(() => {

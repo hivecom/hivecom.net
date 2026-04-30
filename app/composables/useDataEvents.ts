@@ -35,6 +35,12 @@ export function useDataEvents() {
 
   const events = ref<Tables<'events'>[]>([])
 
+  // Pre-populate synchronously from cache so the first render has data -
+  // avoids a flash of empty/skeleton state on back-navigation within TTL.
+  const _initialCached = cache.get<Tables<'events'>[]>(CACHE_KEY)
+  if (_initialCached !== null)
+    events.value = _initialCached
+
   // Note: events is not wrapped in readonly() - DeepReadonly conflicts with mutable
   // array expectations at call sites. The ref itself is not re-exported as writable.
 
@@ -72,8 +78,10 @@ export function useDataEvents() {
 
   // Bust cache and re-fetch when user signs in - auth state changes what events
   // are visible (e.g. private/restricted events), so stale guest cache must not persist.
-  let _wasAuthed = false
   const currentUser = useSupabaseUser()
+  // Initialize from current auth state so back-navigation doesn't falsely trigger
+  // a cache invalidation (the watcher fires immediately with the already-resolved user).
+  let _wasAuthed = currentUser.value != null
   watch(currentUser, (newUser) => {
     const isAuthed = newUser != null
     const justSignedIn = !_wasAuthed && isAuthed

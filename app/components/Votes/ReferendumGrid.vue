@@ -3,7 +3,6 @@ import type { Tables } from '@/types/database.overrides'
 import { Grid, Skeleton } from '@dolanske/vui'
 
 import ReferendumCard from '@/components/Shared/ReferendumCard.vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
 import { getReferendumStatus } from '@/lib/referendums'
 
 const props = defineProps<{
@@ -15,12 +14,10 @@ const props = defineProps<{
   getVoterIds: (id: number) => string[]
   hasVoted: (id: number) => boolean
 }>()
-
-const isBelowSmall = useBreakpoint('<s')
 </script>
 
 <template>
-  <Grid v-if="props.isLoading" gap="m" :columns="isBelowSmall ? 1 : 2" class="referendum-cards-grid">
+  <Grid v-if="props.isLoading" expand gap="m" class="referendum-cards-grid">
     <div v-for="n in 4" :key="`skeleton-${n}`" class="skeleton-card">
       <Skeleton :height="200" :radius="12" />
     </div>
@@ -34,7 +31,7 @@ const isBelowSmall = useBreakpoint('<s')
     </p>
   </div>
 
-  <Grid v-else gap="m" :columns="isBelowSmall ? 1 : 2" class="referendum-cards-grid">
+  <Grid v-else expand gap="m" class="referendum-cards-grid">
     <ReferendumCard
       v-for="referendum in props.referendums"
       :key="referendum.id"
@@ -51,7 +48,7 @@ const isBelowSmall = useBreakpoint('<s')
 <style lang="scss" scoped>
 .referendum-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-m);
   align-items: stretch;
 

@@ -90,6 +90,12 @@ export const CACHE_NAMESPACES = {
     ttl: 10 * 60 * 1000,
     maxEntries: 100,
   },
+  /** Referendums / votes - paginated lists and vote counts. */
+  votes: {
+    storagePrefix: 'hivecom:cache:vo:',
+    ttl: 3 * 60 * 1000,
+    maxEntries: 100,
+  },
   /** Event RSVPs - counts and user status. Short TTL since they change on interaction. */
   rsvps: {
     storagePrefix: 'hivecom:cache:rv:',
