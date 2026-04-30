@@ -29,10 +29,9 @@
 
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
-import { readonly, ref } from 'vue'
-import { useCache } from './useCache'
-
-const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
+import { readonly } from 'vue'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
+import { useCacheModule } from './useCacheModule'
 
 function idKey(id: string): string {
   return `discussion:id:${id}`
@@ -54,11 +53,8 @@ export interface SetDiscussionOptions {
 }
 
 export function useDiscussionCache() {
-  const cache = useCache({ ttl: CACHE_TTL })
+  const { cache, loading, error, withCache, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.discussions)
   const supabase = useSupabaseClient<Database>()
-
-  const loading = ref(false)
-  const error = ref<string | null>(null)
 
   // ---------------------------------------------------------------------------
   // Cache primitives
@@ -99,12 +95,12 @@ export function useDiscussionCache() {
    * subsequent Discussion.vue renders don't need to re-fetch.
    */
   function set(discussion: Tables<'discussions'>, options: SetDiscussionOptions = {}): void {
-    cache.set(idKey(discussion.id), discussion, CACHE_TTL)
+    cache.set(idKey(discussion.id), discussion)
     if (discussion.slug != null) {
-      cache.set(slugKey(discussion.slug), discussion, CACHE_TTL)
+      cache.set(slugKey(discussion.slug), discussion)
     }
     if (options.entityType != null && options.entityId != null) {
-      cache.set(entityKey(options.entityType, options.entityId), discussion, CACHE_TTL)
+      cache.set(entityKey(options.entityType, options.entityId), discussion)
     }
   }
 
@@ -153,16 +149,7 @@ export function useDiscussionCache() {
    * Example: `fetchByEntity('event', eventId)`
    */
   async function fetchByEntity(type: string, entityId: string, force = false): Promise<Tables<'discussions'> | null> {
-    if (!force) {
-      const cached = getByEntity(type, entityId)
-      if (cached !== null)
-        return cached
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
+    return withCache(entityKey(type, entityId), async () => {
       const { data, error: fetchError } = await supabase
         .from('discussions')
         .select('*')
@@ -176,16 +163,12 @@ export function useDiscussionCache() {
         return null
 
       const row = data as Tables<'discussions'>
-      set(row, { entityType: type, entityId })
+      // Warm id and slug keys as side effects
+      cache.set(idKey(row.id), row)
+      if (row.slug != null)
+        cache.set(slugKey(row.slug), row)
       return row
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch discussion'
-      return null
-    }
-    finally {
-      loading.value = false
-    }
+    }, { force })
   }
 
   /**
@@ -193,16 +176,7 @@ export function useDiscussionCache() {
    * Sets both cache keys on success.
    */
   async function fetchById(id: string, force = false): Promise<Tables<'discussions'> | null> {
-    if (!force) {
-      const cached = getById(id)
-      if (cached !== null)
-        return cached
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
+    return withCache(idKey(id), async () => {
       const { data, error: fetchError } = await supabase
         .from('discussions')
         .select('*')
@@ -216,16 +190,11 @@ export function useDiscussionCache() {
         return null
 
       const row = data as Tables<'discussions'>
-      set(row)
+      // Warm the slug key as a side effect
+      if (row.slug != null)
+        cache.set(slugKey(row.slug), row)
       return row
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch discussion'
-      return null
-    }
-    finally {
-      loading.value = false
-    }
+    }, { force })
   }
 
   /**
@@ -233,16 +202,7 @@ export function useDiscussionCache() {
    * Sets both cache keys on success.
    */
   async function fetchBySlug(slug: string, force = false): Promise<Tables<'discussions'> | null> {
-    if (!force) {
-      const cached = getBySlug(slug)
-      if (cached !== null)
-        return cached
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
+    return withCache(slugKey(slug), async () => {
       const { data, error: fetchError } = await supabase
         .from('discussions')
         .select('*')
@@ -256,16 +216,10 @@ export function useDiscussionCache() {
         return null
 
       const row = data as Tables<'discussions'>
-      set(row)
+      // Warm the id key as a side effect
+      cache.set(idKey(row.id), row)
       return row
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch discussion'
-      return null
-    }
-    finally {
-      loading.value = false
-    }
+    }, { force })
   }
 
   /**
@@ -289,11 +243,18 @@ export function useDiscussionCache() {
     return fetchByEntity(type, entityId, true)
   }
 
+  onExternalInvalidation((_key) => {
+    // Another tab invalidated a discussion entry - the key will be something like
+    // 'discussion:id:123'. We can't know which entry it was without parsing, but
+    // since discussions are short-TTL (3 min) we can ignore cross-tab for now.
+    // This is intentionally a no-op placeholder for future use.
+  })
+
   // ---------------------------------------------------------------------------
 
   return {
     // State
-    loading: readonly(loading),
+    loading,
     error: readonly(error),
 
     // Cache primitives

@@ -400,6 +400,7 @@ async function deleteDiscussion() {
     if (error)
       throw error
 
+    discussionCache.invalidate(editedDiscussion.value.id, editedDiscussion.value.slug)
     emit('deleted', editedDiscussion.value.id)
     emit('close')
   }
@@ -416,12 +417,13 @@ function deleteDraft() {
   if (!deleteConfirm.value)
     return
 
+  const draftId = deleteConfirm.value
   deleteLoading.value = true
 
   supabase
     .from('discussions')
     .delete()
-    .eq('id', deleteConfirm.value)
+    .eq('id', draftId)
     .then(({ error }) => {
       deleteLoading.value = false
 
@@ -430,7 +432,9 @@ function deleteDraft() {
         return
       }
 
-      drafts.value = drafts.value.filter(d => d.id !== deleteConfirm.value)
+      const cachedDraft = discussionCache.getById(draftId)
+      discussionCache.invalidate(draftId, cachedDraft?.slug)
+      drafts.value = drafts.value.filter(d => d.id !== draftId)
       pushToast('Draft deleted')
       emit('draftUpdated')
 

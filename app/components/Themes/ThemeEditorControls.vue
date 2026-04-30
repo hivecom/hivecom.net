@@ -4,6 +4,7 @@ import type { Theme } from '@/types/theme'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Tab, Tabs, Textarea, theme, Tooltip } from '@dolanske/vui'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
+import { invalidateThemesCache } from '@/composables/useDataThemes'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { applyScale, applyTheme, COLOR_GROUPS, colorToHex, dbToPercent, SCALE_CONFIGS, THEME_SCALE_KEYS, VUI_COLOR_KEYS, VUI_DEFAULT_COLORS } from '@/lib/theme'
@@ -264,6 +265,7 @@ async function submitForm() {
     if (!isUpdate && userId.value)
       subscriptionsCache.invalidateList(userId.value)
 
+    invalidateThemesCache()
     refresh()
 
     if (form.useAsCurrent && themeId) {

@@ -9,6 +9,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { invalidateEventsCache } from '@/composables/useDataEvents'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useTableActions } from '@/composables/useTableActions'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -265,6 +266,7 @@ async function handleEventSave(eventData: Partial<Event>) {
     }
 
     showEventForm.value = false
+    invalidateEventsCache()
     await fetchEvents()
   }
   catch (err: unknown) {
@@ -284,6 +286,7 @@ async function handleEventDelete(eventId: number) {
 
     showEventDetails.value = false
     showEventForm.value = false
+    invalidateEventsCache()
     await fetchEvents()
   }
   catch (err: unknown) {

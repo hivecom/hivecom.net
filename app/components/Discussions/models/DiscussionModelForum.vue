@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion } from '../Discussion.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Avatar, Badge, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -24,6 +25,7 @@ import UserRole from '@/components/Shared/UserRole.vue'
 import { useBadgeDiscussionReplyCount } from '@/composables/useBadgeDiscussionReplyCount'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useDataUserDiscussionCount } from '@/composables/useDataUserDiscussionCount'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -50,6 +52,7 @@ const data = toRef(props, 'data')
 
 const userId = useUserId()
 const supabase = useSupabaseClient()
+const discussionCache = useDiscussionCache()
 const currentUser = useSupabaseUser()
 
 const { user: currentUserData } = useDataUser(userId, { includeRole: true })
@@ -170,11 +173,12 @@ async function handleTogglePin() {
     .from('discussions')
     .update({ pinned_reply_id: nextValue })
     .eq('id', discussion.value.id)
-    .select('pinned_reply_id')
+    .select('*')
     .single()
 
-  if (!res.error && discussion.value) {
+  if (!res.error && res.data && discussion.value) {
     discussion.value.pinned_reply_id = res.data.pinned_reply_id
+    discussionCache.set(res.data as Tables<'discussions'>)
   }
 
   pinnedLoading.value = false

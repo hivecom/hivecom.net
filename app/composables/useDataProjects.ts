@@ -1,10 +1,19 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
-import { useCache } from './useCache'
+import { useCache } from '@/composables/useCache'
+import { useCacheModule } from '@/composables/useCacheModule'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 const CACHE_KEY = 'projects:all'
-const CACHE_TTL = 60 * 60 * 1000 // 1 hour - projects change infrequently
+
+// Module-level singleton for cache invalidation from outside the composable.
+// Follows the same pattern as useDataProjectBanner's _bannerCache.
+const _projectsCache = useCache(CACHE_NAMESPACES.projects)
+
+export function invalidateProjectsCache(): void {
+  _projectsCache.delete(CACHE_KEY)
+}
 
 /**
  * Shared cached projects composable.
@@ -18,49 +27,28 @@ const CACHE_TTL = 60 * 60 * 1000 // 1 hour - projects change infrequently
  * than issuing a second query. Admin write paths should call `invalidate()` after
  * mutations so the next consumer gets a fresh list.
  *
- * - TTL: 5 minutes
+ * - TTL: 1 hour
  * - `invalidate()` should be called after admin writes to the projects table
  * - `refresh()` forces a cache-busting re-fetch
  */
 export function useDataProjects() {
-  const cache = useCache()
+  const { withCache, cache, loading, error, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.projects)
   const supabase = useSupabaseClient<Database>()
 
   const projects = ref<Tables<'projects'>[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
 
   async function fetch(force = false): Promise<void> {
-    if (!force) {
-      const cached = cache.get<Tables<'projects'>[]>(CACHE_KEY)
-      if (cached !== null) {
-        projects.value = cached
-        return
-      }
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
+    const result = await withCache(CACHE_KEY, async () => {
       const { data, error: fetchError } = await supabase
         .from('projects')
         .select('*')
         .order('created_at', { ascending: false })
-
       if (fetchError)
         throw fetchError
-
-      const result = data ?? []
+      return data ?? []
+    }, { force })
+    if (result !== null)
       projects.value = result
-      cache.set(CACHE_KEY, result, CACHE_TTL)
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch projects'
-    }
-    finally {
-      loading.value = false
-    }
   }
 
   /**
@@ -78,6 +66,11 @@ export function useDataProjects() {
   async function refresh(): Promise<void> {
     await fetch(true)
   }
+
+  onExternalInvalidation((key) => {
+    if (key === CACHE_KEY)
+      void fetch(true)
+  })
 
   onMounted(() => {
     void fetch()

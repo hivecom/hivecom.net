@@ -1,13 +1,26 @@
 import type { MaybeRefOrGetter } from 'vue'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
+import { useCache } from '@/composables/useCache'
 import { useRsvpBus } from '@/composables/useRsvpBus'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
 
 interface RsvpRow {
   id: number
   rsvp: RSVPStatus
+}
+
+// Wrapper type so we can cache null (no RSVP) as a non-null object.
+// useCache.get returns null for both cache miss and expired entry, so
+// storing a naked null value would be indistinguishable from a miss.
+interface RsvpStatusEntry { row: RsvpRow | null }
+
+const _rsvpStatusCache = useCache(CACHE_NAMESPACES.rsvps)
+
+function statusCacheKey(eventId: number, userId: string): string {
+  return `rsvp:status:${eventId}:${userId}`
 }
 
 /**
@@ -43,6 +56,15 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
       return
     }
 
+    // Serve from cache - { row: null } means confirmed no-RSVP, not a miss
+    const cacheKey = statusCacheKey(currentEvent.id, currentUserId)
+    const cached = _rsvpStatusCache.get<RsvpStatusEntry>(cacheKey)
+    if (cached !== null) {
+      rsvpStatus.value = cached.row?.rsvp ?? null
+      rsvpId.value = cached.row?.id ?? null
+      return
+    }
+
     try {
       const result = await supabase
         .from('events_rsvps')
@@ -58,6 +80,9 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
       }
 
       const data = result.data as RsvpRow | null
+
+      // Cache result - wrapping in { row } allows caching null (no RSVP)
+      _rsvpStatusCache.set<RsvpStatusEntry>(cacheKey, { row: data })
 
       if (data != null) {
         rsvpStatus.value = data.rsvp
@@ -101,6 +126,11 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
 
         const data = result.data as RsvpRow
         rsvpStatus.value = data.rsvp
+        // Write-through: keep cache consistent so back-navigation is instant
+        _rsvpStatusCache.set<RsvpStatusEntry>(
+          statusCacheKey(currentEvent.id, currentUserId),
+          { row: { id: data.id, rsvp: data.rsvp } },
+        )
       }
       else {
         const result = await supabase
@@ -120,6 +150,11 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
         const data = result.data as RsvpRow
         rsvpStatus.value = data.rsvp
         rsvpId.value = data.id
+        // Write-through
+        _rsvpStatusCache.set<RsvpStatusEntry>(
+          statusCacheKey(currentEvent.id, currentUserId),
+          { row: { id: data.id, rsvp: data.rsvp } },
+        )
       }
 
       dispatchRsvpUpdated({ eventId: currentEvent.id, newStatus })
@@ -135,8 +170,9 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
   async function removeRsvp(): Promise<void> {
     const currentRsvpId = rsvpId.value
     const currentEvent = event.value
+    const currentUserId = userId.value
 
-    if (currentRsvpId == null || currentEvent == null)
+    if (currentRsvpId == null || currentEvent == null || currentUserId == null)
       return
 
     rsvpLoading.value = true
@@ -152,6 +188,11 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
 
       rsvpStatus.value = null
       rsvpId.value = null
+      // Write-through: cache the no-RSVP state
+      _rsvpStatusCache.set<RsvpStatusEntry>(
+        statusCacheKey(currentEvent.id, currentUserId),
+        { row: null },
+      )
 
       dispatchRsvpUpdated({ eventId: currentEvent.id, newStatus: null })
     }

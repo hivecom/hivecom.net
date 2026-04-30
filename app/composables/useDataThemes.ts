@@ -1,9 +1,20 @@
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useCache } from './useCache'
 
 const CACHE_KEY = 'themes:all'
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+// Module-level cache singleton - correct namespace and allows invalidateThemesCache()
+// to be called without instantiating the composable (matches useDataEvents pattern).
+const _themesCache = useCache(CACHE_NAMESPACES.themes)
+
+export function invalidateThemesCache(): void {
+  // Clear entire themes namespace so gallery page caches are also busted
+  // when admin writes or the theme editor saves.
+  _themesCache.clearCache()
+}
 
 // Module-level refs so all composable instances share the same reactive state.
 // Updating via refresh() in any instance (e.g. ThemeEditor) is immediately
@@ -25,7 +36,7 @@ const error = ref<string | null>(null)
  * - `softDelete(id)` marks a theme as unmaintained without removing it
  */
 export function useDataThemes() {
-  const cache = useCache()
+  const cache = _themesCache
   const supabase = useSupabaseClient<Database>()
 
   async function fetch(force = false): Promise<void> {
@@ -66,7 +77,7 @@ export function useDataThemes() {
   }
 
   function invalidate(): void {
-    cache.delete(CACHE_KEY)
+    invalidateThemesCache()
   }
 
   async function refresh(): Promise<void> {

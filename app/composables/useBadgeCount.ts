@@ -27,7 +27,8 @@ import type { Ref } from 'vue'
 import type { CacheConfig } from './useCache'
 import type { Database } from '@/types/database.types'
 import { computed, readonly, ref, unref, watch } from 'vue'
-import { useCache } from './useCache'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
+import { useCacheModule } from './useCacheModule'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -85,7 +86,7 @@ export function useBadgeCount(
   const {
     fetchCount,
     cacheKeyPrefix,
-    badgeName = cacheKeyPrefix,
+    badgeName: _badgeName = cacheKeyPrefix,
     enabled = true,
     ttl = DEFAULT_CACHE_TTL,
     ...cacheConfig
@@ -93,11 +94,13 @@ export function useBadgeCount(
 
   const normalizedEnabled = computed(() => Boolean(unref(enabled)))
   const supabase = useSupabaseClient<Database>()
-  const cache = useCache({ ttl, ...cacheConfig })
+  const { withCache, cache, loading, error } = useCacheModule({
+    ...CACHE_NAMESPACES.badges,
+    ttl,
+    ...cacheConfig,
+  })
 
   const count = ref(0)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -121,33 +124,8 @@ export function useBadgeCount(
       count.value = 0
       return
     }
-
-    const cacheKey = getCacheKey(normalizedId)
-
-    if (!force) {
-      const cached = cache.get<number>(cacheKey)
-      if (cached !== null) {
-        count.value = cached
-        return
-      }
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
-      const result = await fetchCount(supabase, normalizedId)
-      cache.set(cacheKey, result, ttl)
-      count.value = result
-    }
-    catch (err) {
-      console.error(`Failed to fetch count for badge "${badgeName}"`, err)
-      error.value = err instanceof Error ? err.message : `Failed to fetch count for ${badgeName}`
-      count.value = 0
-    }
-    finally {
-      loading.value = false
-    }
+    const result = await withCache(getCacheKey(normalizedId), async () => fetchCount(supabase, normalizedId), { force, ttl })
+    count.value = result ?? 0
   }
 
   // ---------------------------------------------------------------------------
@@ -189,7 +167,7 @@ export function useBadgeCount(
 
   return {
     count: readonly(count),
-    loading: readonly(loading),
+    loading,
     error: readonly(error),
     refresh,
     invalidate,

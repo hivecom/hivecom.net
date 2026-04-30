@@ -41,9 +41,10 @@ export function useThemePreview() {
         themeName: theme.name,
         onKeep: (toastId: number, keepOrigin?: { x: number, y: number }) => {
           if (theme.id === '$default') {
-            void transitionTheme(() => {
-              void setActiveTheme(null)
-            }, keepOrigin)
+            // setActiveTheme(null) owns its own transitionTheme call.
+            // Wrapping it in another transitionTheme triggers the guard
+            // (transitioning = true) and silently blocks the inner apply.
+            void setActiveTheme(null, keepOrigin)
           }
           else {
             // Pass withCss explicitly so applyAndPersistTheme doesn't re-evaluate
@@ -129,9 +130,10 @@ export function useThemePreview() {
     previewingThemeId.value = null
     previewingTheme = null
     if (theme.id === '$default') {
-      void transitionTheme(() => {
-        void setActiveTheme(null)
-      }, origin)
+      // setActiveTheme(null) owns its own transitionTheme call - calling it
+      // directly lets the origin propagate and avoids the double-wrap that
+      // triggers the transitioning guard, silently blocking applyTheme(null).
+      void setActiveTheme(null, origin)
     }
     else {
       void transitionTheme(() => {

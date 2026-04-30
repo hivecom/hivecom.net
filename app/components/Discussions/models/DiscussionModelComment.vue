@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Comment, DiscussionSettings, ProvidedDiscussion, RawComment } from '../Discussion.types'
+import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -18,6 +19,7 @@ import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -48,6 +50,7 @@ const canBypassLock = inject(DISCUSSION_KEYS.canBypassLock, ref(false))
 
 const userId = useUserId()
 const supabase = useSupabaseClient()
+const discussionCache = useDiscussionCache()
 
 const { user: currentUserData } = useDataUser(userId, { includeRole: true })
 
@@ -90,11 +93,12 @@ async function handleTogglePin() {
     .from('discussions')
     .update({ pinned_reply_id: nextValue })
     .eq('id', discussion.value.id)
-    .select('pinned_reply_id')
+    .select('*')
     .single()
 
-  if (!res.error && discussion.value) {
+  if (!res.error && res.data && discussion.value) {
     discussion.value.pinned_reply_id = res.data.pinned_reply_id
+    discussionCache.set(res.data as Tables<'discussions'>)
   }
 
   pinnedLoading.value = false

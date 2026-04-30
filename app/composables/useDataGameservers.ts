@@ -1,10 +1,19 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
-import { useCache } from './useCache'
+import { useCache } from '@/composables/useCache'
+import { useCacheModule } from '@/composables/useCacheModule'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 const CACHE_KEY = 'gameservers:all'
-const CACHE_TTL = 30 * 60 * 1000 // 30 minutes - public pages don't need live container state
+
+// Module-level singleton for cache invalidation from outside the composable.
+// Follows the same pattern as useDataProjectBanner's _bannerCache.
+const _gameserversCache = useCache(CACHE_NAMESPACES.gameservers)
+
+export function invalidateGameserversCache(): void {
+  _gameserversCache.delete(CACHE_KEY)
+}
 
 /**
  * Shared cached gameservers composable.
@@ -40,26 +49,13 @@ export type GameserverWithContainer = Tables<'gameservers'> & {
 }
 
 export function useDataGameservers() {
-  const cache = useCache()
+  const { withCache, cache, loading, error, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.gameservers)
   const supabase = useSupabaseClient<Database>()
 
   const gameservers = ref<GameserverWithContainer[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
 
   async function fetch(force = false): Promise<void> {
-    if (!force) {
-      const cached = cache.get<GameserverWithContainer[]>(CACHE_KEY)
-      if (cached !== null) {
-        gameservers.value = cached
-        return
-      }
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
+    const result = await withCache<GameserverWithContainer[]>(CACHE_KEY, async () => {
       const { data, error: fetchError } = await supabase
         .from('gameservers')
         .select(`
@@ -77,20 +73,12 @@ export function useDataGameservers() {
           administrator
         `)
         .order('name', { ascending: true })
-
       if (fetchError)
         throw fetchError
-
-      const result = (data ?? []) as unknown as GameserverWithContainer[]
+      return (data ?? []) as unknown as GameserverWithContainer[]
+    }, { force })
+    if (result !== null)
       gameservers.value = result
-      cache.set(CACHE_KEY, result, CACHE_TTL)
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch gameservers'
-    }
-    finally {
-      loading.value = false
-    }
   }
 
   /**
@@ -108,6 +96,11 @@ export function useDataGameservers() {
   async function refresh(): Promise<void> {
     await fetch(true)
   }
+
+  onExternalInvalidation((key) => {
+    if (key === CACHE_KEY)
+      void fetch(true)
+  })
 
   onMounted(() => {
     void fetch()

@@ -1,10 +1,19 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
-import { useCache } from './useCache'
+import { useCache } from '@/composables/useCache'
+import { useCacheModule } from '@/composables/useCacheModule'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 const CACHE_KEY = 'discussion_topics:all'
 const CACHE_TTL = 30 * 60 * 1000 // 30 minutes - topics almost never change
+
+// Module-level singleton for cache invalidation from outside the composable.
+const _forumTopicsCache = useCache(CACHE_NAMESPACES.forum)
+
+export function invalidateForumTopicsCache(): void {
+  _forumTopicsCache.delete(CACHE_KEY)
+}
 
 /**
  * Shared cached discussion_topics composable.
@@ -20,44 +29,23 @@ const CACHE_TTL = 30 * 60 * 1000 // 30 minutes - topics almost never change
  * - `refresh()` forces a cache-busting re-fetch
  */
 export function useDataForumTopics() {
-  const cache = useCache()
+  const { withCache, cache, loading, error, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.forum)
   const supabase = useSupabaseClient<Database>()
 
   const topics = ref<Tables<'discussion_topics'>[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
 
   async function fetch(force = false): Promise<void> {
-    if (!force) {
-      const cached = cache.get<Tables<'discussion_topics'>[]>(CACHE_KEY)
-      if (cached !== null) {
-        topics.value = cached
-        return
-      }
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
+    const result = await withCache(CACHE_KEY, async () => {
       const { data, error: fetchError } = await supabase
         .from('discussion_topics')
         .select('*')
         .order('name', { ascending: true })
-
       if (fetchError)
         throw fetchError
-
-      const result = data ?? []
+      return data ?? []
+    }, { force, ttl: CACHE_TTL })
+    if (result !== null)
       topics.value = result
-      cache.set(CACHE_KEY, result, CACHE_TTL)
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch forum topics'
-    }
-    finally {
-      loading.value = false
-    }
   }
 
   /**
@@ -74,6 +62,11 @@ export function useDataForumTopics() {
   async function refresh(): Promise<void> {
     await fetch(true)
   }
+
+  onExternalInvalidation((key) => {
+    if (key === CACHE_KEY)
+      void fetch(true)
+  })
 
   onMounted(() => {
     void fetch()

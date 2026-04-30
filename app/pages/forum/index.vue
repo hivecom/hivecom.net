@@ -23,6 +23,7 @@ import { useForumDraftCount } from '@/composables/useForumDraftCount'
 import { useForumUserActivity } from '@/composables/useForumUserActivity'
 import { useRealtimeForumFeed } from '@/composables/useRealtimeForumFeed'
 import { useBulkTopicIcons } from '@/composables/useTopicIcon'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { composePathToTopic } from '@/lib/topics'
 import { slugify } from '@/lib/utils/formatting'
@@ -82,7 +83,7 @@ const { settings } = useDataUserSettings()
 
 const loading = ref(false)
 const supabase = useSupabaseClient()
-const forumCache = useCache()
+const forumCache = useCache(CACHE_NAMESPACES.forum)
 
 watch(contentRulesGateOpen, (open) => {
   if (!open)

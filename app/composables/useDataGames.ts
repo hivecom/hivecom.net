@@ -1,10 +1,19 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
-import { useCache } from './useCache'
+import { useCache } from '@/composables/useCache'
+import { useCacheModule } from '@/composables/useCacheModule'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 const CACHE_KEY = 'games:all'
-const CACHE_TTL = 30 * 60 * 1000 // 30 minutes - games are slow-changing reference data
+
+// Module-level singleton for cache invalidation from outside the composable.
+// Follows the same pattern as useDataProjectBanner's _bannerCache.
+const _gamesCache = useCache(CACHE_NAMESPACES.games)
+
+export function invalidateGamesCache(): void {
+  _gamesCache.delete(CACHE_KEY)
+}
 
 /**
  * Shared cached games composable.
@@ -22,49 +31,28 @@ const CACHE_TTL = 30 * 60 * 1000 // 30 minutes - games are slow-changing referen
  * than issuing a second query. Admin write paths should call `invalidate()` after
  * mutations so the next consumer gets a fresh list.
  *
- * - TTL: 20 minutes (games are effectively configuration data)
+ * - TTL: 30 minutes (games are effectively configuration data)
  * - `invalidate()` should be called after admin writes to the games table
  * - `refresh()` forces a cache-busting re-fetch
  */
 export function useDataGames() {
-  const cache = useCache()
+  const { withCache, cache, loading, error, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.games)
   const supabase = useSupabaseClient<Database>()
 
   const games = ref<Tables<'games'>[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
 
   async function fetch(force = false): Promise<void> {
-    if (!force) {
-      const cached = cache.get<Tables<'games'>[]>(CACHE_KEY)
-      if (cached !== null) {
-        games.value = cached
-        return
-      }
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
+    const result = await withCache(CACHE_KEY, async () => {
       const { data, error: fetchError } = await supabase
         .from('games')
         .select('*')
         .order('name', { ascending: true })
-
       if (fetchError)
         throw fetchError
-
-      const result = data ?? []
+      return data ?? []
+    }, { force })
+    if (result !== null)
       games.value = result
-      cache.set(CACHE_KEY, result, CACHE_TTL)
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch games'
-    }
-    finally {
-      loading.value = false
-    }
   }
 
   /**
@@ -90,6 +78,11 @@ export function useDataGames() {
   async function refresh(): Promise<void> {
     await fetch(true)
   }
+
+  onExternalInvalidation((key) => {
+    if (key === CACHE_KEY)
+      void fetch(true)
+  })
 
   onMounted(() => {
     void fetch()

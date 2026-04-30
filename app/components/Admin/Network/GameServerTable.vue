@@ -9,6 +9,7 @@ import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
+import { invalidateGameserversCache } from '@/composables/useDataGameservers'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import GameserverDetails from './GameServerDetails.vue'
@@ -216,6 +217,7 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
     }
 
     showGameserverForm.value = false
+    invalidateGameserversCache()
     await fetchGameservers()
   }
   catch (err: unknown) {
@@ -233,6 +235,7 @@ async function handleGameserverDelete(gameserverId: number) {
       throw error
 
     showGameserverForm.value = false
+    invalidateGameserversCache()
     await fetchGameservers()
   }
   catch (err: unknown) {

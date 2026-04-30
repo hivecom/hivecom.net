@@ -10,6 +10,7 @@ import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
 
 type DiscussionRecord = Tables<'discussions'>
@@ -33,6 +34,7 @@ const isOpen = defineModel<boolean>('isOpen')
 
 const supabase = useSupabaseClient()
 const { hasPermission } = useAdminPermissions()
+const discussionCache = useDiscussionCache()
 
 const canUpdate = computed(() =>
   hasPermission('discussions.update'),
@@ -322,8 +324,10 @@ async function reassignToTopic(topicId: string) {
     if (error)
       throw error
 
-    if (data)
+    if (data) {
+      discussionCache.set(data as Tables<'discussions'>)
       emit('updated', data as DiscussionRecord)
+    }
 
     pushToast('Discussion reassigned to topic')
   }

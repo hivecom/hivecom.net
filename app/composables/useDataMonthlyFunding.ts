@@ -1,7 +1,8 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
-import { useCache } from './useCache'
+import { useCacheModule } from '@/composables/useCacheModule'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 const CACHE_KEY_ALL = 'monthly_funding:all'
 const CACHE_KEY_LATEST = 'monthly_funding:latest'
@@ -21,58 +22,45 @@ const CACHE_TTL = 30 * 60 * 1000 // 30 minutes
  * This composable owns both the full list and the derived latest entry so
  * all consumers get cache hits after the first fetch on any given page.
  *
- * - TTL: 10 minutes (funding data changes at most a few times per day)
+ * - TTL: 30 minutes (funding data changes at most a few times per day)
  * - `invalidate()` should be called after admin writes to monthly_funding
  * - `refresh()` forces a cache-busting re-fetch
  */
 export function useDataMonthlyFunding() {
-  const cache = useCache()
+  const { withCache, cache, loading, error, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.community)
   const supabase = useSupabaseClient<Database>()
 
   const allFunding = ref<Tables<'monthly_funding'>[]>([])
   const latestFunding = ref<Tables<'monthly_funding'> | null>(null)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
 
   async function fetch(force = false): Promise<void> {
+    // Pre-check both keys - if the full list is cached, derive latest from the
+    // separately-cached entry and return early without calling withCache.
     if (!force) {
       const cachedAll = cache.get<Tables<'monthly_funding'>[]>(CACHE_KEY_ALL)
-      const cachedLatest = cache.get<Tables<'monthly_funding'> | null>(CACHE_KEY_LATEST)
-
-      if (cachedAll !== null && cachedLatest !== undefined) {
+      if (cachedAll !== null) {
         allFunding.value = cachedAll
-        latestFunding.value = cachedLatest
+        latestFunding.value = cache.get<Tables<'monthly_funding'>>(CACHE_KEY_LATEST)
         return
       }
     }
 
-    loading.value = true
-    error.value = null
-
-    try {
+    const result = await withCache<Tables<'monthly_funding'>[]>(CACHE_KEY_ALL, async () => {
       const { data, error: fetchError } = await supabase
         .from('monthly_funding')
         .select('*')
         .order('month', { ascending: false })
-
       if (fetchError)
         throw fetchError
+      const rows = data ?? []
+      // Derive and cache the latest entry alongside the full list
+      cache.set(CACHE_KEY_LATEST, rows[0] ?? null, CACHE_TTL)
+      return rows
+    }, { force, ttl: CACHE_TTL })
 
-      const result = data ?? []
+    if (result !== null) {
       allFunding.value = result
-
-      // Derive latest from the already-fetched list - no second round-trip needed
-      const latest = result[0] ?? null
-      latestFunding.value = latest
-
-      cache.set(CACHE_KEY_ALL, result, CACHE_TTL)
-      cache.set(CACHE_KEY_LATEST, latest, CACHE_TTL)
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch funding data'
-    }
-    finally {
-      loading.value = false
+      latestFunding.value = result[0] ?? null
     }
   }
 
@@ -84,6 +72,11 @@ export function useDataMonthlyFunding() {
   async function refresh(): Promise<void> {
     await fetch(true)
   }
+
+  onExternalInvalidation((key) => {
+    if (key === CACHE_KEY_ALL || key === CACHE_KEY_LATEST)
+      void fetch(true)
+  })
 
   onMounted(() => {
     void fetch()

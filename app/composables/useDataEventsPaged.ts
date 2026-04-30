@@ -2,7 +2,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref, watch } from 'vue'
+import { useCache } from '@/composables/useCache'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
+
+// Module-level singleton - same namespace as useDataEvents so invalidateEventsCache()
+// (which calls clearCache on this namespace) also busts paged results.
+const _pagedEventsCache = useCache(CACHE_NAMESPACES.events)
 
 // Typed helper to call RPCs that have a no-arg overload first in the union,
 // which causes TypeScript to reject the args object. This avoids `any`.
@@ -39,6 +45,24 @@ export function useDataEventsPaged(
   officialFilter?: Ref<boolean | null>,
 ) {
   const supabase = useSupabaseClient<Database>()
+
+  // ── Cache key helpers ─────────────────────────────────────────────────────
+
+  function activeKey(): string {
+    return 'events:active-paged:v1'
+  }
+
+  function pastKey(page: number): string {
+    const s = (search?.value ?? '').trim()
+    const f = String(officialFilter?.value ?? '')
+    return `events:past:p${page}:n${pageSize.value}:f${f}:s${s}`
+  }
+
+  function countKey(): string {
+    const s = (search?.value ?? '').trim()
+    const f = String(officialFilter?.value ?? '')
+    return `events:past-count:f${f}:s${s}`
+  }
 
   // ── Active events (ongoing + upcoming) ───────────────────────────────────
 
@@ -80,6 +104,13 @@ export function useDataEventsPaged(
   }
 
   async function fetchActive(): Promise<void> {
+    const key = activeKey()
+    const cached = _pagedEventsCache.get<Tables<'events'>[]>(key)
+    if (cached !== null) {
+      _allActiveEvents.value = cached
+      return
+    }
+
     loadingActive.value = true
     errorActive.value = null
 
@@ -121,7 +152,9 @@ export function useDataEventsPaged(
         expandRecurringEvent(event, sevenDaysAgo, oneYearAhead),
       )
 
-      _allActiveEvents.value = expanded.filter(event => new Date(event.date) >= sevenDaysAgo)
+      const filtered = expanded.filter(event => new Date(event.date) >= sevenDaysAgo)
+      _allActiveEvents.value = filtered
+      _pagedEventsCache.set(key, filtered)
     }
     catch (err) {
       errorActive.value = err instanceof Error ? err.message : 'Failed to fetch events'
@@ -140,16 +173,32 @@ export function useDataEventsPaged(
   const errorPast = ref<string | null>(null)
 
   async function fetchPastCount(): Promise<void> {
+    const key = countKey()
+    const cached = _pagedEventsCache.get<number>(key)
+    if (cached !== null) {
+      pastTotalCount.value = cached
+      return
+    }
+
     const { data, error } = await rpc<number>(supabase, 'get_past_events_count', {
       p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
       p_is_official: officialFilter?.value ?? null,
     })
 
-    if (!error && data != null)
+    if (!error && data != null) {
       pastTotalCount.value = Number(data)
+      _pagedEventsCache.set(key, Number(data))
+    }
   }
 
   async function fetchPast(page: number): Promise<void> {
+    const key = pastKey(page)
+    const cached = _pagedEventsCache.get<Tables<'events'>[]>(key)
+    if (cached !== null) {
+      pastEvents.value = cached
+      return
+    }
+
     loadingPast.value = true
     errorPast.value = null
 
@@ -166,7 +215,9 @@ export function useDataEventsPaged(
       if (error)
         throw error
 
-      pastEvents.value = data ?? []
+      const rows = data ?? []
+      pastEvents.value = rows
+      _pagedEventsCache.set(key, rows)
     }
     catch (err) {
       errorPast.value = err instanceof Error ? err.message : 'Failed to fetch past events'

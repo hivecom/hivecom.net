@@ -9,6 +9,7 @@ import GameIcon from '@/components/GameServers/GameIcon.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
+import { invalidateGamesCache } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import GameDetails from './GameDetails.vue'
 import GameFilters from './GameFilters.vue'
@@ -114,6 +115,7 @@ async function handleGameSave(gameData: Partial<Game>) {
     }
 
     showGameForm.value = false
+    invalidateGamesCache()
     await fetchGames()
   }
   catch (err: unknown) {
@@ -131,6 +133,7 @@ async function handleGameDelete(gameId: number) {
       throw error
 
     showGameForm.value = false
+    invalidateGamesCache()
     await fetchGames()
   }
   catch (err: unknown) {

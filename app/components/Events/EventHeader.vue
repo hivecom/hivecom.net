@@ -4,9 +4,11 @@ import { Badge, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
 import EventGames from '@/components/Events/EventGames.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useCache } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
 import { useRealtimeRsvp } from '@/composables/useRealtimeRsvp'
 import { useRsvpBus } from '@/composables/useRsvpBus'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
 import { humanizeRrule } from '@/lib/utils/rrule'
@@ -52,7 +54,11 @@ const showRSVPModal = ref(false)
 
 // State for RSVP counts
 const supabase = useSupabaseClient()
-const rsvpCounts = ref({
+const rsvpCountsCache = useCache(CACHE_NAMESPACES.rsvps)
+
+interface RsvpCountsEntry { yes: number, tentative: number, no: number, total: number }
+
+const rsvpCounts = ref<RsvpCountsEntry>({
   yes: 0,
   tentative: 0,
   no: 0,
@@ -60,48 +66,53 @@ const rsvpCounts = ref({
 })
 
 // Fetch RSVP counts
-async function fetchRSVPCounts() {
+async function fetchRSVPCounts(force = false) {
   if (!props.event?.id)
     return
 
-  try {
-    const { count: yesCount } = await supabase
-      .from('events_rsvps')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', props.event.id)
-      .eq('rsvp', 'yes')
+  const eventId = props.event.id
+  const cacheKey = `rsvp:counts:${eventId}`
 
-    const { count: tentativeCount } = await supabase
-      .from('events_rsvps')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', props.event.id)
-      .eq('rsvp', 'tentative')
-
-    const { count: noCount } = await supabase
-      .from('events_rsvps')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', props.event.id)
-      .eq('rsvp', 'no')
-
-    rsvpCounts.value = {
-      yes: yesCount || 0,
-      tentative: tentativeCount || 0,
-      no: noCount || 0,
-      total: (yesCount || 0) + (tentativeCount || 0) + (noCount || 0),
+  if (!force) {
+    const cached = rsvpCountsCache.get<RsvpCountsEntry>(cacheKey)
+    if (cached !== null) {
+      rsvpCounts.value = cached
+      return
     }
+  }
+
+  try {
+    const [yesResult, tentativeResult, noResult] = await Promise.all([
+      supabase.from('events_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'yes'),
+      supabase.from('events_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'tentative'),
+      supabase.from('events_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'no'),
+    ])
+
+    if (yesResult.error)
+      throw yesResult.error
+    if (tentativeResult.error)
+      throw tentativeResult.error
+    if (noResult.error)
+      throw noResult.error
+
+    const yes = yesResult.count ?? 0
+    const tentative = tentativeResult.count ?? 0
+    const no = noResult.count ?? 0
+    const counts: RsvpCountsEntry = { yes, tentative, no, total: yes + tentative + no }
+
+    rsvpCounts.value = counts
+    rsvpCountsCache.set(cacheKey, counts)
   }
   catch (error) {
     console.error('Error fetching RSVP counts:', error)
   }
-
-  // Fetch cmment counts
 }
 
 const { onRsvpUpdated } = useRsvpBus()
 
 onRsvpUpdated(({ eventId }) => {
   if (eventId === props.event.id) {
-    fetchRSVPCounts()
+    void fetchRSVPCounts(true)
   }
 })
 

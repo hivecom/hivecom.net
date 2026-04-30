@@ -5,13 +5,16 @@ import type { Database } from '@/types/database.types'
 import { onMounted, readonly, ref, unref, watchEffect } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { useProjectBannerBus } from '@/composables/useProjectBannerBus'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { getProjectBannerUrl } from '@/lib/storage'
 
 interface BannerCacheEntry { value: string | null }
 
-// Cache is shared across all composable instances and persists across page reloads.
-// Positive and negative results use different TTLs (passed per-set-call).
-const _bannerCache = useCache()
+// Module-level singleton cache for project banners.
+// Intentionally shared across all useDataProjectBanner instances and the exported
+// invalidateProjectBannerData helper. Uses the projects namespace to stay within
+// its entry budget. Positive and negative results use different TTLs (passed per-set-call).
+const _bannerCache = useCache(CACHE_NAMESPACES.projects)
 
 const CACHE_PREFIX = 'project-banner:'
 
@@ -74,7 +77,6 @@ export function useDataProjectBanner(
       if (currentRequest !== requestToken)
         return
 
-      console.error(`Failed to load project banner for ${id}:`, err)
       error.value = err instanceof Error ? err.message : 'Failed to load project banner'
       bannerUrl.value = null
     }

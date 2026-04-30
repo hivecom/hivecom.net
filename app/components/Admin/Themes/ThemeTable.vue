@@ -12,6 +12,7 @@ import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
+import { invalidateThemesCache } from '@/composables/useDataThemes'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getRouteQueryString } from '@/lib/utils/common'
 import ThemeDetails from './ThemeDetails.vue'
@@ -188,6 +189,7 @@ async function handleThemeDelete(themeId: string) {
     if (error)
       throw error
 
+    invalidateThemesCache()
     showThemeDetails.value = false
     await fetchThemes()
   }
@@ -204,6 +206,7 @@ async function handleThemeUpdate(themeId: string, data: TablesUpdate<'themes'>) 
       .eq('id', themeId)
     if (error)
       throw error
+    invalidateThemesCache()
     await fetchThemes()
   }
   catch (err: unknown) {

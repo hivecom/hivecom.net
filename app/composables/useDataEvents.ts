@@ -2,10 +2,21 @@ import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { useSupabaseUser } from '#imports'
 import { ref, watch } from 'vue'
-import { useCache } from './useCache'
+import { useCache } from '@/composables/useCache'
+import { useCacheModule } from '@/composables/useCacheModule'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 const CACHE_KEY = 'events:all'
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+// Module-level singleton for cache invalidation from outside the composable.
+// Follows the same pattern as useDataProjectBanner's _bannerCache.
+const _eventsCache = useCache(CACHE_NAMESPACES.events)
+
+export function invalidateEventsCache(): void {
+  // Clear entire events namespace so calendar windows and paginated pages are
+  // also busted when admin writes to the events table.
+  _eventsCache.clearCache()
+}
 
 /**
  * Shared cached events composable.
@@ -19,48 +30,27 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
  * - `refresh()` forces a cache-busting re-fetch (e.g. after RSVP mutations)
  */
 export function useDataEvents() {
-  const cache = useCache()
+  const { withCache, cache, loading, error, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.events)
   const supabase = useSupabaseClient<Database>()
 
   const events = ref<Tables<'events'>[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
 
   // Note: events is not wrapped in readonly() - DeepReadonly conflicts with mutable
   // array expectations at call sites. The ref itself is not re-exported as writable.
 
   async function fetch(force = false): Promise<void> {
-    if (!force) {
-      const cached = cache.get<Tables<'events'>[]>(CACHE_KEY)
-      if (cached !== null) {
-        events.value = cached
-        return
-      }
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
+    const result = await withCache(CACHE_KEY, async () => {
       const { data, error: fetchError } = await supabase
         .from('events')
         .select('*')
         .is('recurrence_parent_id', null)
         .order('date', { ascending: true })
-
       if (fetchError)
         throw fetchError
-
-      const result = data ?? []
+      return data ?? []
+    }, { force })
+    if (result !== null)
       events.value = result
-      cache.set(CACHE_KEY, result, CACHE_TTL)
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch events'
-    }
-    finally {
-      loading.value = false
-    }
   }
 
   function invalidate(): void {
@@ -70,6 +60,11 @@ export function useDataEvents() {
   async function refresh(): Promise<void> {
     await fetch(true)
   }
+
+  onExternalInvalidation((key) => {
+    if (key === CACHE_KEY)
+      void fetch(true)
+  })
 
   onMounted(() => {
     void fetch()

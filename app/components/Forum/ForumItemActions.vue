@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Divider, Dropdown, DropdownItem, pushToast, Tooltip } from '@dolanske/vui'
+import { invalidateForumTopicsCache } from '@/composables/useDataForumTopics'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { slugify } from '@/lib/utils/formatting'
@@ -82,6 +83,9 @@ function handleLock(mode: 'lock' | 'unlock') {
         if (props.table === 'discussions') {
           discussionCache.set(updated as Tables<'discussions'>)
         }
+        else {
+          invalidateForumTopicsCache()
+        }
         emit('update', updated)
         lockConfirm.value = false
       }
@@ -127,6 +131,9 @@ function handleArchive(mode: 'archive' | 'unarchive') {
         const updated = data[0] as Props['data']
         if (props.table === 'discussions') {
           discussionCache.set(updated as Tables<'discussions'>)
+        }
+        else {
+          invalidateForumTopicsCache()
         }
         emit('update', updated)
         archiveConfirm.value = false
@@ -340,6 +347,13 @@ function handleDelete() {
         deletengError.value = error.message
       }
       else {
+        if (props.table === 'discussions') {
+          const discussion = props.data as Tables<'discussions'>
+          discussionCache.invalidate(discussion.id, discussion.slug)
+        }
+        else {
+          invalidateForumTopicsCache()
+        }
         emit('remove', props.data.id)
         deleteConfirm.value = false
       }

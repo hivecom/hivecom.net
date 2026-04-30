@@ -50,7 +50,7 @@ export interface QueryCacheKey {
   select?: string
   filters?: Record<string, unknown>
   filterOperators?: Record<string, 'eq' | 'ilike' | 'in' | 'is' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte'>
-  orderBy?: Record<string, unknown>
+  orderBy?: Record<string, 'asc' | 'desc'>
   limit?: number
   single?: boolean
   maybeSingle?: boolean
@@ -68,12 +68,25 @@ const activeLocalStoragePrefixes = new Map<string, number>()
 
 let cleanupTimer: number | null = null
 
-const cacheStats = {
-  keyValueHits: 0,
-  keyValueMisses: 0,
-  queryHits: 0,
-  queryMisses: 0,
-  lastCleanup: 0,
+interface StatsEntry {
+  keyValueHits: number
+  keyValueMisses: number
+  queryHits: number
+  queryMisses: number
+  lastCleanup: number
+}
+
+/** Per-namespace stats map, keyed by storagePrefix. */
+const _statsPerPrefix = new Map<string, StatsEntry>()
+
+/** Gets (or lazily creates) the stats object for a given storagePrefix. */
+function getStats(prefix: string): StatsEntry {
+  let entry = _statsPerPrefix.get(prefix)
+  if (!entry) {
+    entry = { keyValueHits: 0, keyValueMisses: 0, queryHits: 0, queryMisses: 0, lastCleanup: 0 }
+    _statsPerPrefix.set(prefix, entry)
+  }
+  return entry
 }
 
 // ── In-memory access-time tracking ────────────────────────────────────────────
@@ -84,6 +97,10 @@ const cacheStats = {
 // `timestamp` (creation time) is used as a fallback for ordering.
 
 const _accessTimes = new Map<string, number>()
+
+// Tracks in-flight network requests by query hash so concurrent callers
+// can join an existing request rather than firing duplicate network calls.
+const _inflightQueries = new Map<string, Promise<{ data: unknown, error: string | null }>>()
 
 function touchEntry(fullKey: string): void {
   _accessTimes.set(fullKey, Date.now())
@@ -297,9 +314,11 @@ function cleanupPrefix(storagePrefix: string, maxEntries: number): void {
 }
 
 function cleanupAll(): void {
-  for (const [prefix, maxEntries] of activeLocalStoragePrefixes)
+  const now = Date.now()
+  for (const [prefix, maxEntries] of activeLocalStoragePrefixes) {
     cleanupPrefix(prefix, maxEntries)
-  cacheStats.lastCleanup = Date.now()
+    getStats(prefix).lastCleanup = now
+  }
 }
 
 function initializeCleanup(interval: number): void {
@@ -330,12 +349,19 @@ function generateQueryHash(query: QueryCacheKey): string {
           return acc
         }, {} as Record<string, string>)
       : {},
-    orderBy: query.orderBy,
+    orderBy: query.orderBy
+      ? Object.keys(query.orderBy).sort().reduce((acc, key) => {
+          acc[key] = query.orderBy![key]!
+          return acc
+        }, {} as Record<string, 'asc' | 'desc'>)
+      : undefined,
     limit: query.limit,
     single: query.single ?? false,
     maybeSingle: query.maybeSingle ?? false,
   }
-  return btoa(JSON.stringify(normalizedQuery))
+  // encodeURIComponent ensures non-Latin1 characters (emoji, Unicode usernames
+  // in filter values) are ASCII-safe before btoa encodes the string.
+  return btoa(encodeURIComponent(JSON.stringify(normalizedQuery)))
 }
 
 // ── Main composable ────────────────────────────────────────────────────────────
@@ -355,6 +381,10 @@ export function useCache(config: CacheConfig = {}) {
   activeLocalStoragePrefixes.set(storagePrefix, maxEntries)
   initializeCleanup(cleanupInterval)
 
+  // Auto-dispose when the owning scope (component, composable) is torn down
+  if (getCurrentScope())
+    onScopeDispose(dispose)
+
   // ── Key-value cache ──────────────────────────────────────────────────────────
 
   function cacheSet<T>(key: string, data: T, customTtl?: number): void {
@@ -364,16 +394,16 @@ export function useCache(config: CacheConfig = {}) {
   function cacheGet<T>(key: string): T | null {
     const entry = lsGet<T>(kvPrefix, key)
     if (entry == null) {
-      cacheStats.keyValueMisses++
+      getStats(storagePrefix).keyValueMisses++
       return null
     }
     if (!isEntryValid(entry)) {
       lsDelete(kvPrefix, key)
-      cacheStats.keyValueMisses++
+      getStats(storagePrefix).keyValueMisses++
       return null
     }
     touchEntry(`${kvPrefix}${key}`)
-    cacheStats.keyValueHits++
+    getStats(storagePrefix).keyValueHits++
     return entry.data
   }
 
@@ -405,16 +435,16 @@ export function useCache(config: CacheConfig = {}) {
     const hash = generateQueryHash(query)
     const entry = lsGet<T>(qPrefix, hash)
     if (entry == null) {
-      cacheStats.queryMisses++
+      getStats(storagePrefix).queryMisses++
       return null
     }
     if (!isEntryValid(entry)) {
       lsDelete(qPrefix, hash)
-      cacheStats.queryMisses++
+      getStats(storagePrefix).queryMisses++
       return null
     }
     touchEntry(`${qPrefix}${hash}`)
-    cacheStats.queryHits++
+    getStats(storagePrefix).queryHits++
     return entry.data
   }
 
@@ -449,7 +479,7 @@ export function useCache(config: CacheConfig = {}) {
     let removed = 0
     for (const hash of lsKeys(qPrefix)) {
       try {
-        const queryData = JSON.parse(atob(hash)) as QueryCacheKey
+        const queryData = JSON.parse(decodeURIComponent(atob(hash))) as QueryCacheKey
         if (queryData.table === tableName) {
           lsDelete(qPrefix, hash)
           removed++
@@ -466,24 +496,30 @@ export function useCache(config: CacheConfig = {}) {
   function clearCache(): void {
     lsClearPrefix(kvPrefix)
     lsClearPrefix(qPrefix)
-    cacheStats.keyValueHits = 0
-    cacheStats.keyValueMisses = 0
-    cacheStats.queryHits = 0
-    cacheStats.queryMisses = 0
-    cacheStats.lastCleanup = Date.now()
+    const stats = getStats(storagePrefix)
+    stats.keyValueHits = 0
+    stats.keyValueMisses = 0
+    stats.queryHits = 0
+    stats.queryMisses = 0
+    stats.lastCleanup = Date.now()
   }
 
   function dispose(): void {
     activeLocalStoragePrefixes.delete(storagePrefix)
+    if (activeLocalStoragePrefixes.size === 0 && cleanupTimer !== null && typeof window !== 'undefined') {
+      window.clearInterval(cleanupTimer)
+      cleanupTimer = null
+    }
   }
 
-  function getStats() {
+  function getCacheStats() {
+    const stats = getStats(storagePrefix)
     return {
-      ...cacheStats,
+      ...stats,
       keyValueSize: lsSize(kvPrefix),
       querySize: lsSize(qPrefix),
-      keyValueHitRate: cacheStats.keyValueHits / (cacheStats.keyValueHits + cacheStats.keyValueMisses) || 0,
-      queryHitRate: cacheStats.queryHits / (cacheStats.queryHits + cacheStats.queryMisses) || 0,
+      keyValueHitRate: stats.keyValueHits / (stats.keyValueHits + stats.keyValueMisses) || 0,
+      queryHitRate: stats.queryHits / (stats.queryHits + stats.queryMisses) || 0,
     }
   }
 
@@ -508,7 +544,7 @@ export function useCache(config: CacheConfig = {}) {
     dispose,
 
     // Statistics
-    getStats,
+    getStats: getCacheStats,
   }
 }
 
@@ -536,6 +572,11 @@ export function useCachedFetch<T = unknown>(
   const cache = useCache(cacheConfig)
   const supabase = useSupabaseClient<Database>()
 
+  // Derived prefix mirrors the internal qPrefix used by useCache so the
+  // storage event listener can match only relevant localStorage keys.
+  const _storagePrefix = cacheConfig.storagePrefix ?? LS_DEFAULT_PREFIX
+  const _qPrefix = `${_storagePrefix}q:`
+
   const data = ref<T | null>(null) as Ref<T | null>
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -549,81 +590,75 @@ export function useCachedFetch<T = unknown>(
   }
 
   async function executeQuery(q: QueryCacheKey): Promise<T | null> {
-    try {
-      let queryBuilder = supabase.from(q.table).select(q.select ?? '*')
+    let queryBuilder = supabase.from(q.table).select(q.select ?? '*')
 
-      if (q.filters) {
-        for (const [key, value] of Object.entries(q.filters)) {
-          const operator = q.filterOperators?.[key] ?? 'eq'
+    if (q.filters) {
+      for (const [key, value] of Object.entries(q.filters)) {
+        const operator = q.filterOperators?.[key] ?? 'eq'
 
-          if (Array.isArray(value)) {
-            queryBuilder = queryBuilder.in(key, value)
-          }
-          else if (value === null) {
-            queryBuilder = queryBuilder.is(key, null)
-          }
-          else if (value !== undefined) {
-            switch (operator) {
-              case 'eq':
-                queryBuilder = queryBuilder.eq(key, value)
-                break
-              case 'ilike':
-                queryBuilder = queryBuilder.ilike(key, value as string)
-                break
-              case 'neq':
-                queryBuilder = queryBuilder.neq(key, value)
-                break
-              case 'gt':
-                queryBuilder = queryBuilder.gt(key, value)
-                break
-              case 'gte':
-                queryBuilder = queryBuilder.gte(key, value)
-                break
-              case 'lt':
-                queryBuilder = queryBuilder.lt(key, value)
-                break
-              case 'lte':
-                queryBuilder = queryBuilder.lte(key, value)
-                break
-              case 'in':
-                if (Array.isArray(value))
-                  queryBuilder = queryBuilder.in(key, value)
-                break
-              case 'is':
-                if (value === null || typeof value === 'boolean')
-                  queryBuilder = queryBuilder.is(key, value)
-                break
-              default:
-                queryBuilder = queryBuilder.eq(key, value)
-            }
+        if (Array.isArray(value)) {
+          queryBuilder = queryBuilder.in(key, value)
+        }
+        else if (value === null) {
+          queryBuilder = queryBuilder.is(key, null)
+        }
+        else if (value !== undefined) {
+          switch (operator) {
+            case 'eq':
+              queryBuilder = queryBuilder.eq(key, value)
+              break
+            case 'ilike':
+              queryBuilder = queryBuilder.ilike(key, value as string)
+              break
+            case 'neq':
+              queryBuilder = queryBuilder.neq(key, value)
+              break
+            case 'gt':
+              queryBuilder = queryBuilder.gt(key, value)
+              break
+            case 'gte':
+              queryBuilder = queryBuilder.gte(key, value)
+              break
+            case 'lt':
+              queryBuilder = queryBuilder.lt(key, value)
+              break
+            case 'lte':
+              queryBuilder = queryBuilder.lte(key, value)
+              break
+            case 'in':
+              if (Array.isArray(value))
+                queryBuilder = queryBuilder.in(key, value)
+              break
+            case 'is':
+              if (value === null || typeof value === 'boolean')
+                queryBuilder = queryBuilder.is(key, value)
+              break
+            default:
+              queryBuilder = queryBuilder.eq(key, value)
           }
         }
       }
+    }
 
-      if (q.orderBy) {
-        for (const [column, direction] of Object.entries(q.orderBy)) {
-          queryBuilder = queryBuilder.order(column, { ascending: direction === 'asc' })
-        }
+    if (q.orderBy) {
+      for (const [column, direction] of Object.entries(q.orderBy)) {
+        queryBuilder = queryBuilder.order(column, { ascending: direction === 'asc' })
       }
-
-      if (q.limit != null && q.limit > 0)
-        queryBuilder = queryBuilder.limit(q.limit)
-
-      const result = q.single
-        ? await queryBuilder.single()
-        : q.maybeSingle
-          ? await queryBuilder.maybeSingle()
-          : await queryBuilder
-
-      if (result.error)
-        throw result.error
-
-      return result.data as T
     }
-    catch (err) {
-      console.error('Query execution error:', err)
-      throw err
-    }
+
+    if (q.limit != null && q.limit > 0)
+      queryBuilder = queryBuilder.limit(q.limit)
+
+    const result = q.single
+      ? await queryBuilder.single()
+      : q.maybeSingle
+        ? await queryBuilder.maybeSingle()
+        : await queryBuilder
+
+    if (result.error)
+      throw result.error
+
+    return result.data as T
   }
 
   async function fetch(force = false): Promise<void> {
@@ -639,22 +674,47 @@ export function useCachedFetch<T = unknown>(
       }
     }
 
+    const hash = generateQueryHash(q)
+
+    // On a forced refetch, drop any stale inflight entry so joiners don't
+    // receive data from the previous in-progress request.
+    if (force)
+      _inflightQueries.delete(hash)
+
+    // Join an existing in-flight request rather than firing a duplicate query.
+    // Joiners await the same promise; the original caller populates the cache
+    // and sets data.value — joiners copy the resolved value into their own ref.
+    if (_inflightQueries.has(hash)) {
+      const { data: result, error: joinError } = await (_inflightQueries.get(hash) as Promise<{ data: T | null, error: string | null }>)
+      if (result !== null)
+        data.value = result
+      if (joinError !== null)
+        error.value = joinError
+      return
+    }
+
     loading.value = true
     error.value = null
 
-    try {
-      const result = await executeQuery(q)
-      data.value = result
-      cache.cacheQuery(q, result)
-    }
-    catch (err) {
-      console.error('Error fetching data:', err)
-      error.value = err instanceof Error ? err.message : 'Failed to fetch data'
-      data.value = null
-    }
-    finally {
-      loading.value = false
-    }
+    const promise: Promise<{ data: T | null, error: string | null }> = executeQuery(q)
+      .then((result) => {
+        data.value = result
+        cache.cacheQuery(q, result)
+        return { data: result, error: null }
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Failed to fetch data'
+        error.value = message
+        data.value = null
+        return { data: null, error: message }
+      })
+      .finally(() => {
+        loading.value = false
+        _inflightQueries.delete(hash)
+      })
+
+    _inflightQueries.set(hash, promise)
+    await promise
   }
 
   async function refetch(): Promise<void> {
@@ -667,8 +727,13 @@ export function useCachedFetch<T = unknown>(
     })
   }
 
+  // Use the stable query hash as the watch key — avoids spurious refetches
+  // caused by object key ordering differences in filters/orderBy.
   watch(
-    () => JSON.stringify(resolvedQuery()),
+    () => {
+      const q = resolvedQuery()
+      return q !== null ? generateQueryHash(q) : null
+    },
     () => {
       if (isEnabled())
         void fetch()
@@ -687,6 +752,29 @@ export function useCachedFetch<T = unknown>(
     const q = resolvedQuery()
     return q ? cache.invalidateTable(q.table) : 0
   }
+
+  // ── Cross-tab invalidation ───────────────────────────────────────────────────
+  // When another tab removes a matching query entry from localStorage, refetch
+  // so both tabs stay coherent without an explicit invalidation call.
+  function handleStorageEvent(event: StorageEvent): void {
+    if (event.newValue !== null)
+      return
+    if (!event.key?.startsWith(_qPrefix))
+      return
+    const q = resolvedQuery()
+    if (!q || !isEnabled())
+      return
+    if (event.key === `${_qPrefix}${generateQueryHash(q)}`)
+      void fetch(true)
+  }
+
+  onMounted(() => {
+    window.addEventListener('storage', handleStorageEvent)
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener('storage', handleStorageEvent)
+  })
 
   return {
     data: readonly(data),

@@ -7,6 +7,7 @@ import { Button, Card, Dropdown, DropdownTitle, Flex, Input, Modal, pushToast, s
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
+import { invalidateForumTopicsCache } from '@/composables/useDataForumTopics'
 import { invalidateTopicIconCache } from '@/composables/useTopicIcon'
 import { deleteTopicIcon, getTopicIconUrl, uploadTopicIcon } from '@/lib/storage'
 import { flattenTopicsTree } from '@/lib/topics'
@@ -258,6 +259,7 @@ async function deleteTopic() {
     if (error)
       throw error
 
+    invalidateForumTopicsCache()
     emit('deleted', props.editedItem.id)
     emit('close')
     pushToast(`Deleted topic ${props.editedItem.name}`)
@@ -330,6 +332,7 @@ async function submitForm() {
       return
     }
 
+    invalidateForumTopicsCache()
     emit('created', { ...data[0], discussions: [] })
     emit('close')
     pushToast(`${isEditing.value ? 'Updated' : 'Created'} topic ${payload.name}`)

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
 import { Button, Card, Flex, Grid, Input, paginate, Pagination, Select, Skeleton, Switch, Tab, Tabs } from '@dolanske/vui'
+import { watchDebounced } from '@vueuse/core'
+import { useCache } from '@/composables/useCache'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { DEFAULT_THEME } from '@/lib/theme'
 import ThemeCard from './ThemeCard.vue'
@@ -69,10 +72,51 @@ const selectedSort = computed({
   },
 })
 
+// Persistent gallery page cache. Shares the themes namespace so
+// invalidateThemesCache() (clearCache) busts these alongside themes:all.
+const galleryCache = useCache(CACHE_NAMESPACES.themes)
+
+interface GalleryPageCache { items: GalleryTheme[], totalCount: number }
+
+/**
+ * Returns a stable cache key for a gallery page, or null when the result is
+ * not safe to cache (created tab - user-specific data).
+ *
+ * For the official tab, the active theme ID is only included in the key when
+ * that theme is unmaintained, because an unmaintained active theme is the only
+ * case where the query result differs from a no-active-theme query.
+ */
+function galleryPageKey(tab: GalleryTab, page: number, searchValue: string): string | null {
+  const q = searchValue.trim()
+  if (tab === 'official') {
+    // Only unmaintained active themes change the query result.
+    const at = (activeTheme.value?.is_unmaintained === true ? activeTheme.value.id : null) ?? ''
+    return `gallery:official:p${page}:q${q}:at${at}`
+  }
+  if (tab === 'community') {
+    return `gallery:community:p${page}:q${q}:forks${showForks.value}:sort${communitySort.value}`
+  }
+  // created tab - user-specific, keyed by userId so different users don't share entries
+  if (!userId.value)
+    return null
+  return `gallery:created:p${page}:q${q}:uid${userId.value}`
+}
+
 async function fetchPage(tab: GalleryTab, page: number, searchValue: string) {
   loading.value = true
   error.value = null
   items.value = []
+
+  const cacheKey = galleryPageKey(tab, page, searchValue)
+  if (cacheKey !== null) {
+    const cachedPage = galleryCache.get<GalleryPageCache>(cacheKey)
+    if (cachedPage !== null) {
+      items.value = cachedPage.items
+      totalCount.value = cachedPage.totalCount
+      loading.value = false
+      return
+    }
+  }
 
   const from = (page - 1) * PER_PAGE
   const to = from + PER_PAGE - 1
@@ -166,6 +210,9 @@ async function fetchPage(tab: GalleryTab, page: number, searchValue: string) {
       }
     }
 
+    if (cacheKey !== null)
+      galleryCache.set(cacheKey, { items: mapped, totalCount: count ?? 0 })
+
     items.value = mapped
     totalCount.value = count ?? 0
   }
@@ -199,10 +246,10 @@ watch(activeTab, () => {
   void fetchPage(activeTab.value, 1, '')
 })
 
-watch(search, () => {
+watchDebounced(search, () => {
   currentPage.value = 1
   void fetchPage(activeTab.value, 1, search.value)
-})
+}, { debounce: 300 })
 
 watch(showForks, () => {
   currentPage.value = 1

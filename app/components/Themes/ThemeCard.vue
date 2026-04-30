@@ -99,7 +99,7 @@ onClickOutside(self, () => {
     </TinyBadge>
 
     <ButtonGroup :gap="2" class="theme-menu__card--context" :class="{ persist: persistHover }">
-      <Button v-show="!isActive" size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="handleApplyClick">
+      <Button size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="handleApplyClick">
         <template #start>
           <Icon :name="isActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
         </template>

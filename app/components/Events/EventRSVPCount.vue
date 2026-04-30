@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Skeleton } from '@dolanske/vui'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
+import { useDataRsvpCount } from '@/composables/useDataRsvpCount'
 import { useEventTiming } from '@/composables/useEventTiming'
-import { useRsvpBus } from '@/composables/useRsvpBus'
 
 interface Props {
   event: Tables<'events'>
@@ -18,12 +18,8 @@ const props = withDefaults(defineProps<Props>(), {
   showWhenZero: false,
 })
 
-// RSVP count functionality
-const supabase = useSupabaseClient()
-const goingCount = ref<number>(0)
-const loadingCount = ref(true)
-
 const { hasEventEnded } = useEventTiming(() => props.event)
+const { goingCount, loading: loadingCount } = useDataRsvpCount(() => props.event.id)
 
 const badgeVariant = computed(() => {
   return hasEventEnded.value ? 'neutral' : 'accent'
@@ -48,54 +44,6 @@ const shouldShow = computed(() => {
   return !loadingCount.value && (goingCount.value > 0 || props.showWhenZero)
 })
 
-// Fetch RSVP count
-async function fetchRsvpCount() {
-  loadingCount.value = true
-
-  try {
-    const { count, error } = await supabase
-      .from('events_rsvps')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', props.event.id)
-      .eq('rsvp', 'yes')
-
-    if (error) {
-      console.error('Error fetching RSVP count:', error)
-      return
-    }
-
-    goingCount.value = count || 0
-  }
-  catch (error) {
-    console.error('Error fetching RSVP count:', error)
-  }
-  finally {
-    loadingCount.value = false
-  }
-}
-
-const { onRsvpUpdated } = useRsvpBus()
-
-// Subscribe at setup time so auto-cleanup via onUnmounted is registered correctly
-onRsvpUpdated(({ eventId }) => {
-  if (eventId === props.event.id) {
-    fetchRsvpCount()
-  }
-})
-
-// Lifecycle
-onMounted(() => {
-  fetchRsvpCount()
-})
-
-// Watch for event changes
-watch(() => props.event?.id, () => {
-  fetchRsvpCount()
-})
-
-// NOTE (@dolanske): Exposing the count is easier than extracting functionality
-// out. Not the best practise, but given this is for a single use-cases, I think
-// we can let it slide this time.
 defineExpose({
   count: goingCount,
 })

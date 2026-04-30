@@ -26,7 +26,8 @@
 import type { RawComment } from '@/components/Discussions/Discussion.types'
 import type { Database } from '@/types/database.types'
 import { readonly, ref } from 'vue'
-import { useCache } from './useCache'
+import { useCacheModule } from '@/composables/useCacheModule'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -114,7 +115,7 @@ function legacyKey(discussionId: string, ascending: boolean): string {
 // ---------------------------------------------------------------------------
 
 export function useDiscussionRepliesCache() {
-  const cache = useCache({ ttl: CACHE_TTL })
+  const { cache } = useCacheModule(CACHE_NAMESPACES.replies)
 
   const loading = ref(false)
   const error = ref<string | null>(null)

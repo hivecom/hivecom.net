@@ -4,6 +4,8 @@ import type { Database } from '@/types/database.types'
 import { Button, Flex, Select, theme } from '@dolanske/vui'
 import { useDebounceFn } from '@vueuse/core'
 import dayjs from 'dayjs'
+import { useCache } from '@/composables/useCache'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { createArray } from '@/lib/utils/common'
 import { dateFormat } from '@/lib/utils/date'
@@ -56,13 +58,15 @@ const windowedEvents = ref<Tables<'events'>[]>([])
 const fetching = ref(false)
 const errorMessage = ref('')
 
-// Cache: key = "YYYY-MM:columns", value = fetched rows
-const windowCache = new Map<string, Tables<'events'>[]>()
+// Persistent cache keyed by "calendar:YYYY-MM:columns". Survives back-navigation
+// within the TTL window unlike the previous in-memory Map.
+const windowCache = useCache(CACHE_NAMESPACES.events)
 
 async function fetchWindow(start: dayjs.Dayjs, columns: number) {
-  const cacheKey = `${start.format('YYYY-MM')}:${columns}`
-  if (windowCache.has(cacheKey)) {
-    windowedEvents.value = windowCache.get(cacheKey)!
+  const cacheKey = `calendar:${start.format('YYYY-MM')}:${columns}`
+  const cachedWindow = windowCache.get<Tables<'events'>[]>(cacheKey)
+  if (cachedWindow !== null) {
+    windowedEvents.value = cachedWindow
     return
   }
   fetching.value = true

@@ -9,6 +9,7 @@ import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
+import { invalidateProjectsCache } from '@/composables/useDataProjects'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import ProjectDetails from './ProjectDetails.vue'
@@ -147,6 +148,7 @@ async function handleProjectSave(projectData: TablesInsert<'projects'> | TablesU
     }
 
     showProjectForm.value = false
+    invalidateProjectsCache()
     await fetchProjects()
   }
   catch (err: unknown) {
@@ -164,6 +166,7 @@ async function handleProjectDelete(projectId: number) {
       throw error
 
     showProjectForm.value = false
+    invalidateProjectsCache()
     await fetchProjects()
   }
   catch (err: unknown) {

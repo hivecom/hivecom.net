@@ -33,8 +33,9 @@
  * - composables/useDataDiscussionReplies.ts (updateLastSeen after markDiscussionSeen)
  */
 
-import { readonly, ref } from 'vue'
-import { useCache } from './useCache'
+import { readonly } from 'vue'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
+import { useCacheModule } from './useCacheModule'
 
 // ---------------------------------------------------------------------------
 // Shared type
@@ -76,10 +77,7 @@ function statusKey(userId: string, discussionId: string): string {
 }
 
 export function useDiscussionSubscriptionsCache() {
-  const cache = useCache({ ttl: CACHE_TTL })
-
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+  const { cache, loading, error } = useCacheModule(CACHE_NAMESPACES.discussions)
 
   // ---------------------------------------------------------------------------
   // List cache
@@ -266,7 +264,7 @@ export function useDiscussionSubscriptionsCache() {
 
   return {
     // State
-    loading: readonly(loading),
+    loading,
     error: readonly(error),
 
     // List cache
