@@ -1,6 +1,25 @@
 <script setup lang="ts">
 import HomeMarquee from '@/components/Landing/HomeMarquee.vue'
 import LandingHeroBackground from '@/components/Landing/LandingHeroBackground.vue'
+
+// Fetch the latest 6 forum posts and their title & description
+const supabase = useSupabaseClient()
+const maruqeeItems = ref<{ id: number, title: string, description: string | null }[]>([])
+
+const MARQUEE_SPEED = 20
+
+onBeforeMount(() => {
+  supabase.from('discussions')
+    .select('id, title, description')
+    .eq('is_draft', false)
+    .not('discussion_topic_id', 'is', null)
+    .limit(5)
+    .then(({ data }) => {
+      if (data) {
+        maruqeeItems.value = data
+      }
+    })
+})
 </script>
 
 <template>
@@ -36,11 +55,19 @@ import LandingHeroBackground from '@/components/Landing/LandingHeroBackground.vu
     <div class="container-m">
       <section>
         <div class="home-card home-card--forum">
-          <HomeMarquee direction="left" :speed="50">
-            <p><a href="#">LATEST FORUM POSTS LATEST FORUM POSTS LATEST FORUM POSTS</a></p>
+          <HomeMarquee :speed="MARQUEE_SPEED" direction="left">
+            <p>
+              <NuxtLink to="/forum">
+                LATEST FORUM POSTS LATEST FORUM POSTS LATEST FORUM POSTS
+              </NuxtLink>
+            </p>
           </HomeMarquee>
-          <HomeMarquee direction="right" stagger>
-            <p>Lorem ipsum, dolor sit amet consectetur adipisicing elit. Deserunt, possimus ad. Aperiam expedita doloremque omnis doloribus eligendi similique saepe dolores dolorum nihil odit quam ipsa nemo totam, molestiae necessitatibus possimus.</p>
+          <HomeMarquee v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED" :direction="index % 2 === 0 ? 'right' : 'left'">
+            <p>
+              <NuxtLink :to="`/forum/${item.id}`">
+                {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
+              </NuxtLink>
+            </p>
           </HomeMarquee>
         </div>
       </section>
