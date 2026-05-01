@@ -55,6 +55,7 @@ const timingFunction = computed(() => {
         animationDuration: `${duration}s`,
         animationDirection: direction === 'left' ? 'normal' : 'reverse',
         animationTimingFunction: timingFunction,
+        visibility: contentWidth > 0 ? 'visible' : 'hidden',
       }"
     >
       <div class="marquee-content">
@@ -88,6 +89,12 @@ const timingFunction = computed(() => {
 
   * {
     white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
   }
 }
 
