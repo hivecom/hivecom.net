@@ -1,49 +1,62 @@
 <script setup lang="ts">
 interface Props {
   direction?: 'left' | 'right'
+  // Speed in px/s
   speed?: number
+  // Stepped/jerky movement instead of smooth scroll
   stagger?: boolean
 }
 
 const {
-  /**
-   * Arbitrary speed value. Zero equals no movement
-   */
-  speed = 0,
-  /**
-   * Direction of the marquee, either left or right
-   */
+  speed = 50,
   direction = 'right',
-  /**
-   * Disables smoothing
-   */
   stagger,
 } = defineProps<Props>()
 
-// Animation state
-const position = ref(0)
+const trackRef = ref<HTMLElement>()
+const contentWidth = ref(0)
 
-const INTERVAL_MS = 100
-const step = computed(() => speed * INTERVAL_MS / 1000)
+// On mount, we compute the width of the marquee component and use it to
+// properly calculate the width of the content we'll be rendering. For smooth
+// infinite-like animation, we duplicate the track, so just grabbing width of
+// one of hte copies is enough
+useResizeObserver(trackRef, (entries) => {
+  const entry = entries[0]
+  if (entry) {
+    contentWidth.value = (entry.target as HTMLElement).scrollWidth / 2
+  }
+})
 
-useIntervalFn(() => {
-  position.value += step.value
-}, INTERVAL_MS, {
-  immediate: true,
+const duration = computed(() => contentWidth.value > 0 ? contentWidth.value / speed : 0)
+
+const timingFunction = computed(() => {
+  if (!stagger || contentWidth.value === 0)
+    return 'linear'
+
+  // Divide the animation into steps based on content width to create a stagger effect
+  const steps = Math.max(1, Math.round(contentWidth.value / 50))
+  return `steps(${steps}, end)`
 })
 </script>
 
 <template>
   <div class="marquee-wrap">
     <div
-      class="marquee-content"
-      :class="[`marquee-direction-${direction}`]"
+      ref="trackRef"
+      class="marquee-track"
       :style="{
-        transform: `translateX(${direction === 'left' ? -position : position}px)`,
-        transitionDuration: stagger ? '0s' : `${INTERVAL_MS / 1000}s`,
+        animationDuration: `${duration}s`,
+        animationDirection: direction === 'left' ? 'normal' : 'reverse',
+        animationTimingFunction: timingFunction,
       }"
     >
-      <slot />
+      <div class="marquee-content">
+        <slot />
+      </div>
+      <!-- Duplicate for seamless loop -->
+      <div class="marquee-content" aria-hidden="true">
+        <slot />
+      </div>
     </div>
   </div>
 </template>
@@ -52,30 +65,31 @@ useIntervalFn(() => {
 .marquee-wrap {
   display: block;
   width: 100%;
-  position: relative;
   overflow: hidden;
+}
 
-  .marquee-content {
-    position: absolute;
-    top: 0;
-    right: 0;
-    will-change: transform;
-    transition-timing-function: linear;
-    transition-property: transform;
+.marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: marquee-scroll linear infinite;
+}
 
-    // No transition, we simply jump
-    &.stagger {
-      transition: unset;
-    }
+.marquee-content {
+  display: flex;
+  flex-shrink: 0;
 
-    &.marquee-direction-left {
-      right: unset;
-      left: 0;
-    }
+  * {
+    white-space: nowrap;
+  }
+}
 
-    * {
-      white-space: nowrap;
-    }
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
   }
 }
 </style>
