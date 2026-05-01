@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import HomeMarquee from '@/components/Landing/HomeMarquee.vue'
+import { Marquee } from '@dolanske/vui'
 import LandingHeroBackground from '@/components/Landing/LandingHeroBackground.vue'
 
 // Fetch the latest 6 forum posts and their title & description
@@ -55,20 +55,20 @@ onBeforeMount(() => {
     <div class="container-m">
       <section>
         <div class="home-card home-card--forum">
-          <HomeMarquee :speed="MARQUEE_SPEED" direction="left">
+          <Marquee :speed="MARQUEE_SPEED" direction="left">
             <p>
               <NuxtLink to="/forum">
                 LATEST FORUM POSTS LATEST FORUM POSTS LATEST FORUM POSTS
               </NuxtLink>
             </p>
-          </HomeMarquee>
-          <HomeMarquee v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED" :direction="index % 2 === 0 ? 'right' : 'left'">
+          </Marquee>
+          <Marquee v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED" :direction="index % 2 === 0 ? 'right' : 'left'">
             <p>
               <NuxtLink :to="`/forum/${item.id}`">
                 {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
               </NuxtLink>
             </p>
-          </HomeMarquee>
+          </Marquee>
         </div>
       </section>
     </div>
