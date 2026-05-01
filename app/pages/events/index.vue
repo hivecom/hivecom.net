@@ -148,7 +148,7 @@ defineOgImage('Default', {
                 Create
               </template>
             </Button>
-            <CalendarButtons size="s" :show-labels="!isMobile" />
+            <CalendarButtons size="s" :show-labels="!isMobile" :is-authenticated="!!user" />
           </Flex>
         </template>
       </Tabs>

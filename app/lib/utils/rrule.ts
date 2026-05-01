@@ -9,6 +9,7 @@ interface ParsedRRule {
   interval: number
   byDay: string[] // e.g. ['MO', 'TU']
   byMonthDay: number | null
+  until: Date | null
 }
 
 // ─── Day name maps ────────────────────────────────────────────────────────────
@@ -56,11 +57,25 @@ function parseRRule(rule: string): ParsedRRule | null {
   const byMonthDayRaw = parts.BYMONTHDAY
   const byMonthDay = byMonthDayRaw != null && byMonthDayRaw !== '' ? Number.parseInt(byMonthDayRaw, 10) : null
 
+  // UNTIL can be UTC datetime (20250615T120000Z) or date-only (20250615).
+  // The value is already uppercased by the loop above.
+  const untilRaw = parts.UNTIL
+  let until: Date | null = null
+  if (untilRaw != null && untilRaw !== '') {
+    // Normalise date-only to an ISO-like string so Date can parse it
+    const normalised = untilRaw.includes('T')
+      ? untilRaw.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/, '$1-$2-$3T$4:$5:$6$7')
+      : untilRaw.replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3')
+    const parsed = new Date(normalised)
+    until = Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
   return {
     freq: freq as ParsedRRule['freq'],
     interval,
     byDay,
     byMonthDay,
+    until,
   }
 }
 
@@ -117,6 +132,8 @@ export function expandRecurringEvent(
   const winStart = new Date(windowStart)
   const winEnd = new Date(windowEnd)
   const winEndTime = winEnd.getTime()
+  const effectiveEndTime = parsed.until != null ? Math.min(winEndTime, parsed.until.getTime()) : winEndTime
+  const effectiveWinEnd = new Date(effectiveEndTime)
   const originDate = new Date(event.date)
 
   // If the origin is after the window, there's nothing to generate.
@@ -126,7 +143,7 @@ export function expandRecurringEvent(
   const results: EventRow[] = []
 
   const pushIfInWindow = (d: Date) => {
-    if (d >= winStart && d <= winEnd && results.length < MAX_OCCURRENCES) {
+    if (d >= winStart && d <= effectiveWinEnd && results.length < MAX_OCCURRENCES) {
       results.push({ ...event, date: d.toISOString() })
       return true
     }
@@ -134,10 +151,10 @@ export function expandRecurringEvent(
   }
 
   if (parsed.freq === 'DAILY') {
-    // Start from originDate, step forward by interval days until we pass winEnd
+    // Start from originDate, step forward by interval days until we pass effectiveEndTime
     const cursor = new Date(originDate)
     let count = 0
-    while (cursor.getTime() <= winEndTime && count < MAX_OCCURRENCES) {
+    while (cursor.getTime() <= effectiveEndTime && count < MAX_OCCURRENCES) {
       pushIfInWindow(new Date(cursor))
       addDays(cursor, parsed.interval)
       count++
@@ -157,7 +174,7 @@ export function expandRecurringEvent(
       )
 
       let count = 0
-      while (cursor.getTime() <= winEndTime && count < MAX_OCCURRENCES) {
+      while (cursor.getTime() <= effectiveEndTime && count < MAX_OCCURRENCES) {
         for (const dayCode of parsed.byDay) {
           const dayIndex = DAY_CODE_TO_INDEX[dayCode]
           if (dayIndex === undefined)
@@ -179,7 +196,7 @@ export function expandRecurringEvent(
       // No BYDAY - use the event's own weekday, step by interval weeks
       const cursor = new Date(originDate)
       let count = 0
-      while (cursor.getTime() <= winEndTime && count < MAX_OCCURRENCES) {
+      while (cursor.getTime() <= effectiveEndTime && count < MAX_OCCURRENCES) {
         pushIfInWindow(new Date(cursor))
         addDays(cursor, 7 * parsed.interval)
         count++
@@ -191,7 +208,7 @@ export function expandRecurringEvent(
     // Walk month by month from origin
     let cursorTime = new Date(originDate).getTime()
     let count = 0
-    while (cursorTime <= winEndTime && count < MAX_OCCURRENCES) {
+    while (cursorTime <= effectiveEndTime && count < MAX_OCCURRENCES) {
       const cursor = new Date(cursorTime)
       const candidate = withDate(originDate, cursor.getFullYear(), cursor.getMonth(), targetDay)
       // Make sure the day didn't overflow (e.g. Feb 31 -> March)
@@ -207,7 +224,7 @@ export function expandRecurringEvent(
   else if (parsed.freq === 'YEARLY') {
     let cursorTime = new Date(originDate).getTime()
     let count = 0
-    while (cursorTime <= winEndTime && count < MAX_OCCURRENCES) {
+    while (cursorTime <= effectiveEndTime && count < MAX_OCCURRENCES) {
       const cursor = new Date(cursorTime)
       pushIfInWindow(new Date(cursor))
       cursorTime = addYears(cursor, parsed.interval).getTime()
@@ -234,6 +251,37 @@ export function expandRecurringEvent(
  *   "FREQ=YEARLY"              -> "Repeats yearly"
  *   fallback                   -> "Repeats"
  */
+/**
+ * Returns the next occurrence of a recurring event at or after `after`.
+ * Returns null if the series has ended (UNTIL passed) or is non-recurring.
+ */
+export function nextOccurrenceDate(event: EventRow, after: Date = new Date()): Date | null {
+  if (event.recurrence_rule == null || event.recurrence_rule === '')
+    return null
+  const occurrences = expandRecurringEvent(
+    event,
+    after,
+    new Date(after.getTime() + 5 * 365 * 24 * 60 * 60 * 1000),
+  )
+  return occurrences.length > 0 ? new Date(occurrences[0]!.date) : null
+}
+
+/**
+ * Returns true when the event is a recurring series parent that still has
+ * future occurrences (i.e. not capped with a past UNTIL).
+ * Used by RSVP components to avoid treating ended series as active.
+ */
+export function isSeriesActive(event: EventRow, now: Date = new Date()): boolean {
+  if (event.recurrence_rule == null || event.recurrence_rule === '' || event.recurrence_parent_id != null)
+    return false
+  const parsed = parseRRule(event.recurrence_rule)
+  if (!parsed)
+    return false
+  if (parsed.until != null && parsed.until < now)
+    return false
+  return true
+}
+
 export function humanizeRrule(rule: string): string {
   const parsed = parseRRule(rule)
   if (!parsed)

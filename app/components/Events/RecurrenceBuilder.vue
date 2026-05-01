@@ -4,6 +4,9 @@ import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   modelValue: string | null
+  // The currently selected event date - used to derive smart defaults
+  // for BYMONTHDAY (monthly) and BYDAY (weekly) when no rule exists yet.
+  eventDate?: Date | null
 }>()
 
 const emit = defineEmits<{
@@ -44,7 +47,15 @@ const selectedDays = ref<DayCode[]>([])
 const monthDay = ref<number>(1)
 const untilDate = ref<Date | null>(null)
 
-// ── Parse incoming RRULE into internal state ───────────────────────────────────
+// ── Day-of-week code map ──────────────────────────────────────────────────────
+
+const WEEKDAY_TO_CODE: DayCode[] = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
+
+function dayCodeFromDate(d: Date): DayCode {
+  return WEEKDAY_TO_CODE[d.getDay()]!
+}
+
+// ── Parse incoming RRULE into internal state ──────────────────────────────────
 
 function parseUntil(until: string): Date | null {
   // Format: YYYYMMDDTHHmmssZ
@@ -70,10 +81,17 @@ function parseRule(rule: string | null) {
 
   freq.value = (parts.FREQ as Freq) ?? 'NONE'
   interval.value = parts.INTERVAL ? Number.parseInt(parts.INTERVAL, 10) : 1
+
+  const dateRef = props.eventDate ?? null
+
   selectedDays.value = parts.BYDAY
     ? (parts.BYDAY.split(',') as DayCode[])
-    : []
-  monthDay.value = parts.BYMONTHDAY ? Number.parseInt(parts.BYMONTHDAY, 10) : 1
+    : (dateRef && freq.value === 'WEEKLY' ? [dayCodeFromDate(dateRef)] : [])
+
+  monthDay.value = parts.BYMONTHDAY
+    ? Number.parseInt(parts.BYMONTHDAY, 10)
+    : (dateRef && freq.value === 'MONTHLY' ? dateRef.getDate() : 1)
+
   untilDate.value = parts.UNTIL ? parseUntil(parts.UNTIL) : null
 }
 
@@ -111,6 +129,21 @@ watch(() => props.modelValue, (val) => {
   parseRule(val)
 }, { immediate: true })
 
+// When the user picks a new event date, update BYDAY/BYMONTHDAY if they
+// haven't been explicitly customised (i.e. still match the old date's value).
+watch(() => props.eventDate, (newDate) => {
+  if (!newDate || freq.value === 'NONE')
+    return
+  if (freq.value === 'WEEKLY') {
+    // Only update if the current selection is a single auto-derived day
+    if (selectedDays.value.length <= 1)
+      selectedDays.value = [dayCodeFromDate(newDate)]
+  }
+  if (freq.value === 'MONTHLY') {
+    monthDay.value = newDate.getDate()
+  }
+})
+
 // ── Sync: state -> emit ───────────────────────────────────────────────────────
 
 watch([freq, interval, selectedDays, monthDay, untilDate], () => {
@@ -129,11 +162,12 @@ const freqModel = computed<FreqSelectOption[]>({
   set(selection: FreqSelectOption[]) {
     const val = selection?.[0]?.value ?? 'NONE'
     freq.value = val
-    // Reset sub-fields when frequency changes
     interval.value = 1
-    selectedDays.value = []
-    monthDay.value = 1
     untilDate.value = null
+    // Derive smart defaults from the event date when switching frequency
+    const dateRef = props.eventDate ?? null
+    selectedDays.value = val === 'WEEKLY' && dateRef ? [dayCodeFromDate(dateRef)] : []
+    monthDay.value = val === 'MONTHLY' && dateRef ? dateRef.getDate() : 1
   },
 })
 

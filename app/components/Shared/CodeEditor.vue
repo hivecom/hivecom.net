@@ -181,6 +181,16 @@ onMounted(async () => {
     updateCommentMarkers(monaco, editor)
   })
 
+  // Sync external model changes (e.g. reset) back into the editor.
+  // Guard against re-entrancy: if the editor itself triggered the change,
+  // getValue() already matches so setValue() is a no-op, but we skip it
+  // anyway to avoid cursor/selection disruption.
+  watch(model, (newVal) => {
+    if (editorInstance && newVal !== editorInstance.getValue()) {
+      editorInstance.setValue(newVal ?? '')
+    }
+  })
+
   updateCommentMarkers(monaco, editor)
 
   editorInstance = editor

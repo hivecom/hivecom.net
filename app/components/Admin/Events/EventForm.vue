@@ -1,14 +1,12 @@
 <script setup lang="ts">
+import type { FormState } from '@/components/Events/EventFormFields.vue'
 import type { Tables } from '@/types/database.overrides'
-import { Button, Calendar, Flex, Grid, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
-import RecurrenceBuilder from '@/components/Events/RecurrenceBuilder.vue'
-
+import { Button, Flex, Sheet, Tooltip } from '@dolanske/vui'
+import { computed, onMounted, ref, watch } from 'vue'
+import EventFormFields from '@/components/Events/EventFormFields.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useDataGames } from '@/composables/useDataGames'
-import { useBreakpoint } from '@/lib/mediaQuery'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
+import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 const props = defineProps<{
   event: Tables<'events'> | null
@@ -16,7 +14,16 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['save', 'delete'])
+// NOTE: EventTable.vue only handles 'save' and 'delete'. When fork detection
+// triggers, a 'fork' event is emitted. EventTable.vue needs a @fork handler
+// to: (1) cap the existing event's recurrence_rule with UNTIL, and (2) insert
+// the new event. Until that handler is added, fork submissions will be silently
+// ignored by the parent.
+const emit = defineEmits<{
+  save: [eventData: object]
+  delete: [id: number]
+  fork: [payload: { oldId: number, cappedRule: string, newEventData: object }]
+}>()
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -25,7 +32,8 @@ const isOpen = defineModel<boolean>('isOpen')
 const { hasPermission } = useAdminPermissions()
 const canDeleteEvents = computed(() => hasPermission('events.delete'))
 
-// Form state
+// ── Form state ────────────────────────────────────────────────────────────────
+
 const eventForm = ref({
   title: '',
   description: '',
@@ -39,58 +47,33 @@ const eventForm = ref({
   markdown: '',
   games: [] as number[],
   is_official: false,
-  recurrence_rule: '',
+  recurrence_rule: '' as string | null,
   recurrence_exception: false,
 })
 
-// State for delete confirmation modal
-const showDeleteConfirm = ref(false)
+// Bridge computed: maps between full eventForm and EventFormFields' FormState
+const eventFormFields = computed<FormState>({
+  get: () => ({
+    title: eventForm.value.title,
+    description: eventForm.value.description,
+    note: eventForm.value.note,
+    date: eventForm.value.date,
+    duration_days: eventForm.value.duration_days,
+    duration_hours: eventForm.value.duration_hours,
+    duration_minutes: eventForm.value.duration_minutes,
+    location: eventForm.value.location,
+    link: eventForm.value.link,
+    markdown: eventForm.value.markdown,
+    recurrence_rule: eventForm.value.recurrence_rule ?? null,
+    games: eventForm.value.games,
+  }),
+  set: (val) => {
+    Object.assign(eventForm.value, val)
+  },
+})
 
-// Loading states for buttons and dropdowns
-const saveLoading = ref(false)
-const deleteLoading = ref(false)
+// ── Validation ────────────────────────────────────────────────────────────────
 
-// Interface for Select options
-interface SelectOption {
-  label: string
-  value: number
-}
-
-// Games data
-const { games, loading: loadingGames } = useDataGames()
-
-// Computed options for games select
-const gameOptions = computed(() =>
-  games.value.map(game => ({
-    label: game.name || 'Unknown Game',
-    value: game.id,
-  })),
-)
-
-// Selected games for VUI Select component (matches VUI example pattern)
-const selectedGames = ref<SelectOption[]>([])
-
-const isBelowMedium = useBreakpoint('<m')
-
-// Watch for changes in selectedGames and update form
-watch(selectedGames, (newSelectedGames) => {
-  if (newSelectedGames && Array.isArray(newSelectedGames)) {
-    eventForm.value.games = newSelectedGames.map(option => option.value)
-  }
-  else {
-    eventForm.value.games = []
-  }
-}, { deep: true })
-
-// Helper function to sync form games to selectedGames
-function syncSelectedGames() {
-  const formGames = eventForm.value.games || []
-  selectedGames.value = gameOptions.value.filter(option =>
-    formGames.includes(option.value),
-  )
-}
-
-// Form validation
 const validation = computed(() => ({
   title: !!eventForm.value.title.trim(),
   description: !!eventForm.value.description.trim(),
@@ -99,10 +82,21 @@ const validation = computed(() => ({
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
-// Function to update form data
+// ── Delete state ──────────────────────────────────────────────────────────────
+
+const showDeleteConfirm = ref(false)
+const saveLoading = ref(false)
+const deleteLoading = ref(false)
+
+// ── Fork state ────────────────────────────────────────────────────────────────
+
+const showForkConfirm = ref(false)
+let pendingEventData: ReturnType<typeof buildEventData> | null = null
+
+// ── Form data helpers ─────────────────────────────────────────────────────────
+
 function updateFormData(newEvent: Tables<'events'> | null) {
   if (newEvent) {
-    // Convert total minutes to separate duration fields
     const totalMinutes = newEvent.duration_minutes || 0
     const days = Math.floor(totalMinutes / (24 * 60))
     const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
@@ -119,21 +113,13 @@ function updateFormData(newEvent: Tables<'events'> | null) {
       location: newEvent.location || '',
       link: newEvent.link || '',
       markdown: newEvent.markdown || '',
-      games: newEvent.games || [], // Handle null case from database
+      games: newEvent.games || [],
       is_official: newEvent.is_official ?? false,
       recurrence_rule: newEvent.recurrence_rule || '',
       recurrence_exception: newEvent.recurrence_exception ?? false,
     }
-
-    // Sync the selected games after updating form data
-    if (gameOptions.value.length > 0) {
-      nextTick(() => {
-        syncSelectedGames()
-      })
-    }
   }
   else {
-    // Reset form for new event
     eventForm.value = {
       title: '',
       description: '',
@@ -150,67 +136,22 @@ function updateFormData(newEvent: Tables<'events'> | null) {
       recurrence_rule: '',
       recurrence_exception: false,
     }
-
-    // Clear selected games
-    selectedGames.value = []
   }
 }
 
-// Update form data when event prop changes (but only after games are loaded)
-watch(
-  () => props.event,
-  (newEvent) => {
-    // If games are already loaded, update form immediately
-    if (!loadingGames.value) {
-      updateFormData(newEvent)
-    }
-    // If games are still loading, the form will be updated when games finish loading
-  },
-)
+watch(() => props.event, updateFormData)
 
-// Also watch for when games finish loading to update form
-watch(
-  () => loadingGames.value,
-  (isLoading) => {
-    // When games finish loading, update form with current event data
-    if (!isLoading && props.event) {
-      updateFormData(props.event)
-    }
-    // Also sync selected games when games finish loading
-    if (!isLoading) {
-      nextTick(() => {
-        syncSelectedGames()
-      })
-    }
-  },
-)
+onMounted(() => updateFormData(props.event))
 
-// Initialize data on mount and update form when games are loaded
-onMounted(() => {
-  updateFormData(props.event)
-})
+// ── Build payload ─────────────────────────────────────────────────────────────
 
-// Handle closing the sheet
-function handleClose() {
-  isOpen.value = false
-}
-
-// Handle form submission
-function handleSubmit() {
-  if (!isValid.value)
-    return
-
-  // Set loading state
-  saveLoading.value = true
-
-  // Calculate total duration in minutes from separate fields
+function buildEventData() {
   const totalDurationMinutes
     = (eventForm.value.duration_days || 0) * 24 * 60
       + (eventForm.value.duration_hours || 0) * 60
       + (eventForm.value.duration_minutes || 0)
 
-  // Prepare the data to save
-  const eventData = {
+  return {
     title: eventForm.value.title.trim(),
     description: eventForm.value.description.trim(),
     note: eventForm.value.note.trim() || null,
@@ -221,33 +162,83 @@ function handleSubmit() {
     markdown: eventForm.value.markdown.trim() || null,
     games: eventForm.value.games.length > 0 ? eventForm.value.games : null,
     is_official: eventForm.value.is_official,
-    recurrence_rule: eventForm.value.recurrence_rule.trim() || null,
+    recurrence_rule: (eventForm.value.recurrence_rule ?? '').trim() || null,
     recurrence_exception: eventForm.value.recurrence_exception,
   }
-
-  emit('save', eventData)
 }
 
-// Open confirmation modal for deletion
+// ── Submit / fork ─────────────────────────────────────────────────────────────
+
+function handleSubmit() {
+  if (!isValid.value)
+    return
+
+  saveLoading.value = true
+
+  // Fork detection: editing a recurring parent that has already started
+  if (props.isEditMode && props.event && props.event.recurrence_rule) {
+    const pastOccurrences = expandRecurringEvent(props.event, props.event.date, new Date())
+    if (pastOccurrences.length > 0) {
+      pendingEventData = buildEventData()
+      showForkConfirm.value = true
+      saveLoading.value = false
+      return
+    }
+  }
+
+  emit('save', buildEventData())
+}
+
+function doFork() {
+  if (!props.event || !pendingEventData)
+    return
+
+  // Find the last past occurrence to determine where to cap the old series
+  const pastOccurrences = expandRecurringEvent(props.event, props.event.date, new Date())
+  const lastOccurrence = pastOccurrences.at(-1)
+
+  if (!lastOccurrence) {
+    // Fallback - no past occurrences found, just save normally
+    emit('save', pendingEventData)
+    pendingEventData = null
+    return
+  }
+
+  // Format UNTIL as YYYYMMDDTHHmmssZ
+  const untilDate = new Date(lastOccurrence.date)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const cappedRule = `${props.event.recurrence_rule};UNTIL=${untilDate.getUTCFullYear()}${pad(untilDate.getUTCMonth() + 1)}${pad(untilDate.getUTCDate())}T${pad(untilDate.getUTCHours())}${pad(untilDate.getUTCMinutes())}${pad(untilDate.getUTCSeconds())}Z`
+
+  emit('fork', {
+    oldId: props.event.id as number,
+    cappedRule,
+    newEventData: pendingEventData,
+  })
+
+  pendingEventData = null
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+
 function handleDelete() {
   if (!props.event)
     return
-
   showDeleteConfirm.value = true
 }
 
-// Perform actual deletion when confirmed
 function confirmDelete() {
   if (!props.event)
     return
-
-  // Set loading state
   deleteLoading.value = true
-
   emit('delete', props.event.id)
 }
 
-// Computed properties for form title and button text
+// ── UI helpers ─────────────────────────────────────────────────────────────────
+
+function handleClose() {
+  isOpen.value = false
+}
+
 const formTitle = computed(() => props.isEditMode ? 'Edit Event' : 'Add Event')
 const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Create Event')
 </script>
@@ -269,186 +260,18 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
       </Flex>
     </template>
 
-    <Flex column gap="l" class="event-form">
-      <!-- Basic Information -->
-      <Flex column gap="m" expand>
-        <h4>Basic Information</h4>
-
-        <Switch
-          v-model="eventForm.is_official"
-          label="Official Event"
-          hint="All events are synced to Discord. Official events sync to the official Google Calendar, non-official events to the community Google Calendar."
-        />
-
-        <Input
-          v-model="eventForm.title"
-          expand
-          name="title"
-          label="Title"
-          required
-          :valid="validation.title"
-          error="Title is required"
-          placeholder="Enter event title"
-        />
-
-        <Grid expand>
-          <div class="event-form__date-picker-container">
-            <label for="date-picker" class="event-form__date-picker-label">
-              Date <span class="required" style="color: var(--color-text-red);">*</span>
-            </label>
-            <Calendar
-              v-model="eventForm.date"
-              expand
-              enable-time-picker
-              time-picker-inline
-              enable-minutes
-              enable-seconds
-              is24
-              format="yyyy-MM-dd-HH:mm"
-              :class="{ invalid: !validation.date }"
-            >
-              <template #trigger>
-                <Button
-                  id="date-picker"
-                  class="event-form__date-picker-button"
-                  expand
-                  :class="{ error: !validation.date }"
-                >
-                  {{ eventForm.date ? eventForm.date.toLocaleString('en-US', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                  }) : 'Choose date and time' }}
-                  <template #end>
-                    <Icon name="ph:calendar" />
-                  </template>
-                </Button>
-              </template>
-            </Calendar>
-            <span v-if="!validation.date" class="text-xs text-color-red">Date is required</span>
-          </div>
-        </Grid>
-
-        <Flex column gap="s" expand>
-          <div class="event-form__duration-label">
-            Duration
-          </div>
-          <Grid :columns="isBelowMedium ? 1 : 3" gap="xs" expand>
-            <Input
-              style="width: auto"
-              name="duration_days"
-              type="number"
-              placeholder="Days"
-              :min="0"
-              :model-value="eventForm.duration_days?.toString() || ''"
-              @update:model-value="eventForm.duration_days = $event ? Number($event) : null"
-            />
-            <Input
-              expand
-              name="duration_hours"
-              type="number"
-              placeholder="Hours"
-              :min="0"
-              :max="23"
-              :model-value="eventForm.duration_hours?.toString() || ''"
-              @update:model-value="eventForm.duration_hours = $event ? Number($event) : null"
-            />
-            <Input
-              expand
-              name="duration_minutes"
-              type="number"
-              placeholder="Minutes"
-              :min="0"
-              :max="59"
-              :model-value="eventForm.duration_minutes?.toString() || ''"
-              @update:model-value="eventForm.duration_minutes = $event ? Number($event) : null"
-            />
-          </Grid>
-        </Flex>
-
-        <!-- Recurrence Rule - shown when not editing a child occurrence -->
-        <RecurrenceBuilder
-          v-if="!props.event?.recurrence_parent_id"
-          :model-value="eventForm.recurrence_rule || null"
-          @update:model-value="eventForm.recurrence_rule = $event ?? ''"
-        />
-
-        <!-- Recurrence Exception - only shown when editing a child occurrence -->
-        <Switch
-          v-if="props.isEditMode && props.event?.recurrence_parent_id"
-          v-model="eventForm.recurrence_exception"
-          label="Mark as exception"
-          hint="Override this single occurrence within the recurring series."
-        />
-
-        <Textarea
-          v-model="eventForm.description"
-          expand
-          name="description"
-          label="Description"
-          required
-          :valid="validation.description"
-          error="Description is required"
-          placeholder="Enter event description"
-          :rows="3"
-        />
-
-        <Input
-          v-model="eventForm.note"
-          expand
-          name="note"
-          label="Note"
-          placeholder="Short note about the event (optional)"
-        />
-
-        <!-- Games Selection -->
-        <Select
-          v-model="selectedGames"
-          :single="false"
-          expand
-          :options="gameOptions"
-          :disabled="loadingGames"
-          label="Games"
-          placeholder="Select associated games (optional)"
-          search
-          show-clear
-        />
-
-        <!-- Markdown Content -->
-        <RichTextEditor
-          v-model="eventForm.markdown"
-          label="Markdown"
-          hint="You can use markdown"
-          placeholder="Additional event details in markdown format (optional)"
-          min-height="144px"
-          show-expand-button
-          :media-context="props.event?.id ? `events/${props.event.id}/markdown/media` : undefined"
-          :media-bucket-id="CMS_BUCKET_ID"
-          :show-attachment-button="!!props.event?.id"
-        />
-      </Flex>
-
-      <Input
-        v-model="eventForm.location"
-        expand
-        name="location"
-        label="Location"
-        placeholder="Enter event location (optional)"
-      />
-
-      <!-- Second row: Link -->
-      <Input
-        v-model="eventForm.link"
-        expand
-        name="link"
-        type="url"
-        label="Link"
-        placeholder="https://example.com (optional)"
-      />
-    </Flex>
+    <EventFormFields
+      v-model="eventFormFields"
+      v-model:is-official="eventForm.is_official"
+      v-model:recurrence-exception="eventForm.recurrence_exception"
+      :is-privileged="true"
+      :is-edit-mode="props.isEditMode"
+      :event-id="props.event?.id?.toString() ?? undefined"
+      :show-recurrence-builder="!props.event?.recurrence_parent_id"
+      :show-recurrence-exception="props.isEditMode && !!props.event?.recurrence_parent_id"
+      :validation="validation"
+      :media-bucket-id="CMS_BUCKET_ID"
+    />
 
     <template #footer>
       <Flex gap="xs" class="form-actions">
@@ -499,46 +322,23 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
     cancel-text="Cancel"
     :destructive="true"
   />
+
+  <!-- Fork Confirmation Modal -->
+  <ConfirmModal
+    v-model:open="showForkConfirm"
+    title="This event has already occurred"
+    description="Your changes will create a new series starting from the next occurrence. The previous series will be preserved with its existing RSVPs."
+    confirm-text="Create new series"
+    @confirm="doFork"
+  />
 </template>
 
 <style lang="scss" scoped>
-.event-form {
-  padding-bottom: var(--space);
-
-  &__date-picker-container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-  }
-
-  &__date-picker-label {
-    font-size: var(--font-size-s);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text);
-  }
-
-  &__duration-label {
-    font-size: var(--font-size-s);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text);
-  }
-}
-
-.help-text {
-  font-size: var(--font-size-s);
-  color: var(--color-text-lightest);
-  margin-top: var(--space-xs);
-}
-
 .form-actions {
   margin-top: var(--space);
 }
 
 .flex-1 {
   flex: 1;
-}
-
-.required {
-  color: var(--color-danger);
 }
 </style>

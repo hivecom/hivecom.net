@@ -115,7 +115,7 @@ function applyOtherTheme() {
   pushToast(`${otherLabel} theme colors adapted to ${current} theme`)
 }
 
-const showCustomCSSWarning = ref(false)
+const showCustomCSSWarning = computed(() => !settings.value?.allow_custom_css)
 
 onMounted(() => {
   // Only seed on first mount; if seeded=true, shared state is already live
@@ -123,10 +123,6 @@ onMounted(() => {
   // was called by the parent before mounting).
   if (!seeded.value) {
     seedEditor()
-  }
-
-  if (settings.value && !settings.value.allow_custom_css) {
-    showCustomCSSWarning.value = true
   }
 })
 

@@ -11,7 +11,7 @@ import { useRsvpBus } from '@/composables/useRsvpBus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
-import { humanizeRrule } from '@/lib/utils/rrule'
+import { humanizeRrule, isSeriesActive, nextOccurrenceDate } from '@/lib/utils/rrule'
 import CountdownTimer from './CountdownTimer.vue'
 import EventRSVPCount from './EventRSVPCount.vue'
 import EventRSVPModal from './EventRSVPModal.vue'
@@ -37,6 +37,31 @@ interface Props {
 const props = defineProps<Props>()
 
 const isBelowSmall = useBreakpoint('<s')
+
+// For recurring series, display the next upcoming occurrence date rather than
+// the stored origin date. If the series has ended (UNTIL passed), fall back
+// to the origin date so something is always shown.
+const displayDate = computed(() => {
+  if (props.event.recurrence_rule) {
+    const next = nextOccurrenceDate(props.event)
+    if (next)
+      return next.toISOString()
+  }
+  return props.event.date
+})
+
+const seriesStillActive = computed(() => isSeriesActive(props.event))
+
+// Parse UNTIL from the recurrence_rule for display
+const seriesUntilDate = computed<string | null>(() => {
+  const rule = props.event.recurrence_rule
+  if (!rule)
+    return null
+  const match = rule.match(/UNTIL=(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/)
+  if (!match)
+    return null
+  return `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}Z`
+})
 
 // Get current user for authentication checks
 const user = useSupabaseUser()
@@ -194,11 +219,32 @@ onMounted(() => {
           :x-end="!isBelowSmall"
           class="event-header__date-display text-color-light"
         >
-          <TimestampDate size="xxs" :date="props.event.date" class="event-header__date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
+          <TimestampDate size="xxs" :date="displayDate" class="event-header__date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
           <!-- Duration display -->
           <div v-if="props.event.duration_minutes" class="text-xxs event-header__duration">
             for {{ formatDurationFromMinutes(props.event.duration_minutes) }}
           </div>
+        </Flex>
+
+        <!-- Series date range -->
+        <Flex
+          v-if="props.event.recurrence_rule"
+          y-center
+          :x-center="isBelowSmall"
+          :x-end="!isBelowSmall"
+          gap="xs"
+          class="event-header__series-range text-color-lighter"
+        >
+          <Icon name="ph:arrows-clockwise" size="12" />
+          <span class="text-xxs">
+            Series from <TimestampDate :date="props.event.date" format="MMM D, YYYY" size="xxs" class="inline" />
+            <template v-if="seriesUntilDate">
+              to <TimestampDate :date="seriesUntilDate" format="MMM D, YYYY" size="xxs" class="inline" />
+            </template>
+            <template v-else-if="seriesStillActive">
+              - ongoing
+            </template>
+          </span>
         </Flex>
       </Flex>
     </Flex>
@@ -339,6 +385,10 @@ onMounted(() => {
     font-size: var(--font-size-m);
     font-weight: var(--font-weight-semibold);
     color: var(--color-text);
+  }
+
+  &__series-range {
+    opacity: 0.7;
   }
 
   &__duration {

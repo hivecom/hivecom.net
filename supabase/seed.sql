@@ -689,7 +689,7 @@ ON CONFLICT (id)
 
 -- Insert an upcoming test event (moved 2 weeks earlier)
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, games, is_official, recurrence_rule)
-  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b3', NOW() + INTERVAL '16 days', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
+  VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b3', NOW() - INTERVAL '2 months', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
 It is that time of the month again! Join us for our community gaming night where we play various games together, chat, and have fun.
 
 We will probably be playing on our CS2 server, but feel free to suggest other games as well.

@@ -2,6 +2,7 @@
 import type { NotificationRow } from '@/composables/useDataNotifications'
 import type { Database } from '@/types/database.types'
 import { Button, Flex } from '@dolanske/vui'
+import { sourceIcon } from '@/composables/useDataNotifications'
 import NotificationCard from './NotificationCard.vue'
 import NotificationCardEmpty from './NotificationCardEmpty.vue'
 import NotificationCardError from './NotificationCardError.vue'
@@ -83,14 +84,6 @@ const showEmpty = computed(() =>
   && !hasNotifications.value
   && !(isDev && devFixturesActive.value),
 )
-
-function iconForSource(source: string | null): string {
-  if (source === 'mention')
-    return 'ph:at'
-  if (source === 'discussion_reply_reply')
-    return 'ph:chat-circle'
-  return 'ph:chat-circle-dots'
-}
 
 async function load() {
   if (!userId.value || loaded.value)
@@ -190,7 +183,7 @@ defineExpose({ load, reset, clearAll, clearAllLoading, hasNotifications })
       <NotificationCard
         v-for="notification in activeNotifications"
         :key="`past-${notification.id}`"
-        :icon="iconForSource(notification.source)"
+        :icon="sourceIcon(notification.source)"
         :text="notification.title"
         :description="notification.body"
         :timestamp="notification.modified_at"

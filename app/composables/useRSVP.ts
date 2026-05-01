@@ -6,156 +6,217 @@ import { useRsvpBus } from '@/composables/useRsvpBus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
+type RSVPScope = Database['public']['Enums']['events_rsvp_scope']
 
 interface RsvpRow {
   id: number
   rsvp: RSVPStatus
+  scope: RSVPScope
+  occurrence_date: string | null
 }
 
-// Wrapper type so we can cache null (no RSVP) as a non-null object.
-// useCache.get returns null for both cache miss and expired entry, so
-// storing a naked null value would be indistinguishable from a miss.
-interface RsvpStatusEntry { row: RsvpRow | null }
+// Tracks both occurrence-level and series-level RSVP rows for an event.
+// occurrenceRow - RSVP scoped to this specific event row (or null)
+// seriesRow     - RSVP scoped to the parent series (or null, only for child occurrences)
+interface RsvpState {
+  occurrenceRow: RsvpRow | null
+  seriesRow: RsvpRow | null
+}
+
+// Wrapper so cache can distinguish "confirmed no RSVP" from a cache miss.
+interface RsvpStateEntry { state: RsvpState }
 
 const _rsvpStatusCache = useCache(CACHE_NAMESPACES.rsvps)
 
-function statusCacheKey(eventId: number, userId: string): string {
-  return `rsvp:status:${eventId}:${userId}`
+function statusCacheKey(eventId: number, userId: string, occurrenceDate: string | null): string {
+  return `rsvp:status:${eventId}:${userId}:${occurrenceDate ?? 'none'}`
 }
 
 /**
- * Manages RSVP state and Supabase operations for a single event.
+ * Manages RSVP state for a single event, supporting both one-off (occurrence)
+ * and recurring-series (series) scopes.
  *
- * Fetches the current user's RSVP on mount and whenever the event or user
- * changes. Exposes `updateRsvp` and `removeRsvp` for mutations.
+ * Resolution order for the displayed status:
+ *   1. occurrence-scoped RSVP against this event row (highest priority / override)
+ *   2. series-scoped RSVP against the parent event (only for child occurrences)
+ *   3. null - no RSVP
  *
- * Fires `useRsvpBus` dispatch after every successful mutation so sibling
- * components (e.g. attendee counts) stay in sync.
- *
- * @param eventSource - Reactive or static event row. Can be a ref, getter, or plain value.
+ * Exposes:
+ *   rsvpStatus        - effective displayed status (read-only computed)
+ *   rsvpScope         - scope of the row driving rsvpStatus ('occurrence' | 'series' | null)
+ *   hasSeriesRsvp     - true when a series-level RSVP exists (independent of occurrence override)
+ *   hasOccurrenceRsvp - true when an occurrence-level override exists
+ *   updateRsvp(status, scope) - upsert with explicit scope
+ *   removeRsvp(scope?)        - remove occurrence override, series RSVP, or both
  */
-export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | undefined>) {
+export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | undefined>, occurrenceDateSource?: MaybeRefOrGetter<string | null | undefined>) {
   const supabase = useSupabaseClient()
   const user = useSupabaseUser()
   const userId = useUserId()
   const { dispatch: dispatchRsvpUpdated } = useRsvpBus()
 
   const event = toRef(eventSource)
+  const occurrenceDate = computed(() => toValue(occurrenceDateSource) ?? null)
 
-  const rsvpStatus = ref<RSVPStatus | null>(null)
-  const rsvpId = ref<number | null>(null)
+  const occurrenceRow = ref<RsvpRow | null>(null)
+  const seriesRow = ref<RsvpRow | null>(null)
   const rsvpLoading = ref(false)
+
+  // Computed effective status - occurrence overrides series
+  const rsvpStatus = computed<RSVPStatus | null>(() => {
+    return occurrenceRow.value?.rsvp ?? seriesRow.value?.rsvp ?? null
+  })
+
+  // Which scope is actually driving the displayed status
+  const rsvpScope = computed<RSVPScope | null>(() => {
+    if (occurrenceRow.value != null)
+      return 'occurrence'
+    if (seriesRow.value != null)
+      return 'series'
+    return null
+  })
+
+  const hasSeriesRsvp = computed(() => seriesRow.value != null)
+  const hasOccurrenceRsvp = computed(() => occurrenceRow.value != null)
+
+  // Whether this event is a child occurrence of a recurring series
+  const isChildOccurrence = computed(() => event.value?.recurrence_parent_id != null)
 
   async function checkRsvpStatus(): Promise<void> {
     const currentUserId = userId.value
     const currentEvent = event.value
 
     if (user.value == null || currentUserId == null || currentEvent == null) {
-      rsvpStatus.value = null
-      rsvpId.value = null
+      occurrenceRow.value = null
+      seriesRow.value = null
       return
     }
 
-    // Serve from cache - { row: null } means confirmed no-RSVP, not a miss
-    const cacheKey = statusCacheKey(currentEvent.id, currentUserId)
-    const cached = _rsvpStatusCache.get<RsvpStatusEntry>(cacheKey)
+    const cacheKey = statusCacheKey(currentEvent.id, currentUserId, occurrenceDate.value)
+    const cached = _rsvpStatusCache.get<RsvpStateEntry>(cacheKey)
     if (cached !== null) {
-      rsvpStatus.value = cached.row?.rsvp ?? null
-      rsvpId.value = cached.row?.id ?? null
+      occurrenceRow.value = cached.state.occurrenceRow
+      seriesRow.value = cached.state.seriesRow
       return
     }
 
     try {
-      const result = await supabase
+      // Always fetch occurrence-scoped RSVP for this event
+      const occurrenceDateVal = occurrenceDate.value
+      const occurrenceQuery = supabase
         .from('events_rsvps')
-        .select('id, rsvp')
+        .select('id, rsvp, scope, occurrence_date')
         .eq('user_id', currentUserId)
         .eq('event_id', currentEvent.id)
-        .maybeSingle()
+        .eq('scope', 'occurrence')
 
-      // maybeSingle() returns null data (not an error) when no row is found
-      if (result.error != null) {
-        console.error('Error checking RSVP status:', result.error)
+      const occurrencePromise = (occurrenceDateVal != null
+        ? occurrenceQuery.eq('occurrence_date', occurrenceDateVal)
+        : occurrenceQuery.is('occurrence_date', null)
+      ).maybeSingle()
+
+      // Fetch series-scoped RSVP if this is a recurring event
+      const seriesPromise = currentEvent.recurrence_rule != null
+        ? supabase
+            .from('events_rsvps')
+            .select('id, rsvp, scope, occurrence_date')
+            .eq('user_id', currentUserId)
+            .eq('event_id', currentEvent.id)
+            .eq('scope', 'series')
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null })
+
+      const [occResult, serResult] = await Promise.all([occurrencePromise, seriesPromise])
+
+      if (occResult.error != null) {
+        console.error('Error fetching occurrence RSVP:', occResult.error)
+        return
+      }
+      if (serResult.error != null) {
+        console.error('Error fetching series RSVP:', serResult.error)
         return
       }
 
-      const data = result.data as RsvpRow | null
+      const oRow = occResult.data as RsvpRow | null
+      const sRow = serResult.data as RsvpRow | null
 
-      // Cache result - wrapping in { row } allows caching null (no RSVP)
-      _rsvpStatusCache.set<RsvpStatusEntry>(cacheKey, { row: data })
+      occurrenceRow.value = oRow
+      seriesRow.value = sRow
 
-      if (data != null) {
-        rsvpStatus.value = data.rsvp
-        rsvpId.value = data.id
-      }
-      else {
-        rsvpStatus.value = null
-        rsvpId.value = null
-      }
+      const state: RsvpState = { occurrenceRow: oRow, seriesRow: sRow }
+      _rsvpStatusCache.set<RsvpStateEntry>(cacheKey, { state })
     }
     catch (error) {
       console.error('Error checking RSVP status:', error)
     }
   }
 
-  async function updateRsvp(newStatus: RSVPStatus): Promise<void> {
+  async function updateRsvp(newStatus: RSVPStatus, scope: RSVPScope = 'occurrence'): Promise<void> {
     const currentUserId = userId.value
     const currentEvent = event.value
 
     if (user.value == null || currentUserId == null || currentEvent == null)
       return
 
+    // For series scope, RSVP is stored against the parent event
+    const targetEventId = scope === 'series'
+      ? (currentEvent.recurrence_parent_id ?? currentEvent.id)
+      : currentEvent.id
+
+    // Find existing row for this scope
+    const existingRow = scope === 'occurrence' ? occurrenceRow.value : seriesRow.value
+
     rsvpLoading.value = true
 
     try {
-      const currentRsvpId = rsvpId.value
+      let updatedRow: RsvpRow
 
-      if (currentRsvpId != null) {
+      if (existingRow != null) {
         const result = await supabase
           .from('events_rsvps')
-          .update({
-            rsvp: newStatus,
-            modified_by: currentUserId,
-          })
-          .eq('id', currentRsvpId)
-          .select('id, rsvp')
+          .update({ rsvp: newStatus, modified_by: currentUserId })
+          .eq('id', existingRow.id)
+          .select('id, rsvp, scope, occurrence_date')
           .single()
 
         if (result.error != null)
           throw result.error
 
-        const data = result.data as RsvpRow
-        rsvpStatus.value = data.rsvp
-        // Write-through: keep cache consistent so back-navigation is instant
-        _rsvpStatusCache.set<RsvpStatusEntry>(
-          statusCacheKey(currentEvent.id, currentUserId),
-          { row: { id: data.id, rsvp: data.rsvp } },
-        )
+        updatedRow = result.data as RsvpRow
       }
       else {
+        const occurrenceDateVal = occurrenceDate.value
         const result = await supabase
           .from('events_rsvps')
           .insert({
             user_id: currentUserId,
-            event_id: currentEvent.id,
+            event_id: targetEventId,
             rsvp: newStatus,
+            scope,
             created_by: currentUserId,
+            ...(scope === 'occurrence' && occurrenceDateVal != null ? { occurrence_date: occurrenceDateVal } : {}),
           })
-          .select('id, rsvp')
+          .select('id, rsvp, scope, occurrence_date')
           .single()
 
         if (result.error != null)
           throw result.error
 
-        const data = result.data as RsvpRow
-        rsvpStatus.value = data.rsvp
-        rsvpId.value = data.id
-        // Write-through
-        _rsvpStatusCache.set<RsvpStatusEntry>(
-          statusCacheKey(currentEvent.id, currentUserId),
-          { row: { id: data.id, rsvp: data.rsvp } },
-        )
+        updatedRow = result.data as RsvpRow
       }
+
+      if (scope === 'occurrence') {
+        occurrenceRow.value = updatedRow
+      }
+      else {
+        seriesRow.value = updatedRow
+      }
+
+      // Write-through cache
+      _rsvpStatusCache.set<RsvpStateEntry>(
+        statusCacheKey(currentEvent.id, currentUserId, occurrenceDate.value),
+        { state: { occurrenceRow: occurrenceRow.value, seriesRow: seriesRow.value } },
+      )
 
       dispatchRsvpUpdated({ eventId: currentEvent.id, newStatus })
     }
@@ -167,31 +228,48 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
     }
   }
 
-  async function removeRsvp(): Promise<void> {
-    const currentRsvpId = rsvpId.value
+  async function removeRsvp(scope?: RSVPScope): Promise<void> {
     const currentEvent = event.value
     const currentUserId = userId.value
 
-    if (currentRsvpId == null || currentEvent == null || currentUserId == null)
+    if (currentEvent == null || currentUserId == null)
       return
 
     rsvpLoading.value = true
 
     try {
+      const toDelete: RsvpRow[] = []
+
+      if (scope === 'occurrence' || scope == null) {
+        if (occurrenceRow.value != null)
+          toDelete.push(occurrenceRow.value)
+      }
+      if (scope === 'series' || scope == null) {
+        if (seriesRow.value != null)
+          toDelete.push(seriesRow.value)
+      }
+
+      if (toDelete.length === 0) {
+        return
+      }
+
       const { error } = await supabase
         .from('events_rsvps')
         .delete()
-        .eq('id', currentRsvpId)
+        .in('id', toDelete.map(r => r.id))
 
       if (error != null)
         throw error
 
-      rsvpStatus.value = null
-      rsvpId.value = null
-      // Write-through: cache the no-RSVP state
-      _rsvpStatusCache.set<RsvpStatusEntry>(
-        statusCacheKey(currentEvent.id, currentUserId),
-        { row: null },
+      if (scope === 'occurrence' || scope == null)
+        occurrenceRow.value = null
+      if (scope === 'series' || scope == null)
+        seriesRow.value = null
+
+      // Write-through cache
+      _rsvpStatusCache.set<RsvpStateEntry>(
+        statusCacheKey(currentEvent.id, currentUserId, occurrenceDate.value),
+        { state: { occurrenceRow: occurrenceRow.value, seriesRow: seriesRow.value } },
       )
 
       dispatchRsvpUpdated({ eventId: currentEvent.id, newStatus: null })
@@ -218,7 +296,10 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
 
   return {
     rsvpStatus,
-    rsvpId,
+    rsvpScope,
+    hasSeriesRsvp,
+    hasOccurrenceRsvp,
+    isChildOccurrence,
     rsvpLoading,
     checkRsvpStatus,
     updateRsvp,

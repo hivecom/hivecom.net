@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { NotificationRow } from '@/composables/useDataNotifications'
 import { Button, Flex, Tooltip } from '@dolanske/vui'
-import { useDataNotifications } from '@/composables/useDataNotifications'
+import { sourceIcon, useDataNotifications } from '@/composables/useDataNotifications'
 import NotificationCard from './NotificationCard.vue'
 import NotificationCardBirthday from './NotificationCardBirthday.vue'
 import NotificationCardEmpty from './NotificationCardEmpty.vue'
 import NotificationCardError from './NotificationCardError.vue'
+import NotificationCardEventRsvp from './NotificationCardEventRsvp.vue'
 import NotificationCardInvite from './NotificationCardInvite.vue'
 import NotificationCardLoading from './NotificationCardLoading.vue'
 import NotificationCardPendingComplaints from './NotificationCardPendingComplaints.vue'
@@ -24,6 +25,7 @@ const {
   discussionNotifications,
   mentionNotifications,
   replyNotifications,
+  genericNotifications,
   fetch,
   markAllAsRead,
   handleInviteAction,
@@ -117,10 +119,24 @@ const activeReplyNotifications = computed(() =>
     : replyNotifications.value,
 )
 
+const activeGenericNotifications = computed(() =>
+  isDev && devFixturesActive.value
+    ? []
+    : genericNotifications.value.filter(n => n.source !== 'event_rescheduled'),
+)
+
+const activeEventRsvpNotifications = computed(() =>
+  isDev && devFixturesActive.value
+    ? []
+    : genericNotifications.value.filter(n => n.source === 'event_rescheduled'),
+)
+
 const actionableNotifications = computed(() => [
   ...activeMentionNotifications.value,
   ...activeReplyNotifications.value,
   ...activeDiscussionNotifications.value,
+  ...activeEventRsvpNotifications.value,
+  ...activeGenericNotifications.value,
 ])
 
 // Pinned = birthday + pending complaints + friend invites
@@ -139,14 +155,6 @@ const hasActionable = computed(() => actionableNotifications.value.length > 0)
 const hasAnyNotifications = computed(() =>
   hasPinned.value || hasActionable.value,
 )
-
-function iconForSource(source: string | null): string {
-  if (source === 'mention')
-    return 'ph:at'
-  if (source === 'discussion_reply_reply')
-    return 'ph:chat-circle'
-  return 'ph:chat-circle-dots'
-}
 
 const loadingCount = computed(() => {
   if (!loading.value)
@@ -171,6 +179,7 @@ const showEmpty = computed(() => {
     && discussionNotifications.value.length === 0
     && mentionNotifications.value.length === 0
     && replyNotifications.value.length === 0
+    && genericNotifications.value.length === 0
 })
 
 async function onNotificationClick(notification: NotificationRow) {
@@ -264,10 +273,21 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
 
       <!-- Regular actionable notifications -->
       <span v-if="hasActionable" class="text-s text-color-lighter">Recent</span>
+
+      <NotificationCardEventRsvp
+        v-for="notification in activeEventRsvpNotifications"
+        :key="`rsvp-${notification.id}`"
+        :title="notification.title"
+        :body="notification.body"
+        :href="notification.href"
+        :timestamp="notification.modified_at"
+        @click="onNotificationClick(notification)"
+      />
+
       <NotificationCard
-        v-for="notification in actionableNotifications"
+        v-for="notification in [...activeMentionNotifications, ...activeReplyNotifications, ...activeDiscussionNotifications, ...activeGenericNotifications]"
         :key="`active-${notification.id}`"
-        :icon="iconForSource(notification.source)"
+        :icon="sourceIcon(notification.source)"
         :text="notification.title"
         :description="notification.body"
         :timestamp="notification.modified_at"

@@ -1,4 +1,4 @@
-import type { RealtimeChannel, RealtimePostgresInsertPayload, RealtimePostgresUpdatePayload } from '@supabase/supabase-js'
+import type { RealtimeChannel, RealtimePostgresInsertPayload, RealtimePostgresUpdatePayload, SupabaseClient } from '@supabase/supabase-js'
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
@@ -6,6 +6,9 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
 dayjs.extend(relativeTime)
+
+// eslint-disable-next-line ts/no-explicit-any
+type AnySupabase = SupabaseClient<any, any, any>
 
 type ReplyRow = Tables<'discussion_replies'>
 type DiscussionRow = Tables<'discussions'>
@@ -34,13 +37,120 @@ export interface UseRealtimeForumFeedOptions {
  * Subscribes to INSERT events on `discussion_replies` and `discussions` tables
  * and maps them into ActivityItems for the forum index feed.
  *
- * Carousel items are pushed immediately via `onReply`/`onDiscussion`.
- * The sheet feed tracks a pending count via `onPendingSheet` - the caller
- * decides when to reload (e.g. user clicks a "N new" banner).
- *
- * Also subscribes to UPDATE events on `discussion_topics` to drive unread dot
- * updates via `onTopicActivity` when `last_activity_at` changes.
+ * Channels are shared at module level and ref-counted. Only one instance of
+ * the forum page exists at a time, but on fast back-navigation the previous
+ * scope may not have finished tearing down when the new scope calls subscribe().
+ * Using module-level singletons prevents the "cannot add postgres_changes
+ * callbacks after subscribe()" error that occurs when supabase.channel()
+ * returns an already-subscribed instance by name.
  */
+
+// ---------------------------------------------------------------------------
+// Module-level channel registry
+// ---------------------------------------------------------------------------
+
+interface SharedChannel<TPayload> {
+  channel: RealtimeChannel
+  refCount: number
+  handlers: Set<(p: TPayload) => void>
+}
+
+type ReplyInsertPayload = RealtimePostgresInsertPayload<ReplyRow>
+type DiscussionInsertPayload = RealtimePostgresInsertPayload<DiscussionRow>
+type TopicUpdatePayload = RealtimePostgresUpdatePayload<TopicRow>
+
+let replyChannel: SharedChannel<ReplyInsertPayload> | null = null
+let discussionChannel: SharedChannel<DiscussionInsertPayload> | null = null
+let topicActivityChannel: SharedChannel<TopicUpdatePayload> | null = null
+
+function acquireReplyChannel(supabase: AnySupabase): SharedChannel<ReplyInsertPayload> {
+  if (replyChannel) {
+    replyChannel.refCount++
+    return replyChannel
+  }
+  const handlers = new Set<(p: ReplyInsertPayload) => void>()
+  const channel = supabase
+    .channel('forum-feed:replies')
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'discussion_replies' },
+      (payload: ReplyInsertPayload) => handlers.forEach(h => h(payload)),
+    )
+    .subscribe()
+  replyChannel = { channel, refCount: 1, handlers }
+  return replyChannel
+}
+
+function releaseReplyChannel(supabase: AnySupabase) {
+  if (!replyChannel)
+    return
+  replyChannel.refCount--
+  if (replyChannel.refCount <= 0) {
+    void supabase.removeChannel(replyChannel.channel)
+    replyChannel = null
+  }
+}
+
+function acquireDiscussionChannel(supabase: AnySupabase): SharedChannel<DiscussionInsertPayload> {
+  if (discussionChannel) {
+    discussionChannel.refCount++
+    return discussionChannel
+  }
+  const handlers = new Set<(p: DiscussionInsertPayload) => void>()
+  const channel = supabase
+    .channel('forum-feed:discussions')
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'discussions' },
+      (payload: DiscussionInsertPayload) => handlers.forEach(h => h(payload)),
+    )
+    .subscribe()
+  discussionChannel = { channel, refCount: 1, handlers }
+  return discussionChannel
+}
+
+function releaseDiscussionChannel(supabase: AnySupabase) {
+  if (!discussionChannel)
+    return
+  discussionChannel.refCount--
+  if (discussionChannel.refCount <= 0) {
+    void supabase.removeChannel(discussionChannel.channel)
+    discussionChannel = null
+  }
+}
+
+function acquireTopicActivityChannel(supabase: AnySupabase): SharedChannel<TopicUpdatePayload> {
+  if (topicActivityChannel) {
+    topicActivityChannel.refCount++
+    return topicActivityChannel
+  }
+  const handlers = new Set<(p: TopicUpdatePayload) => void>()
+  const channel = supabase
+    .channel('forum-feed:topic-activity')
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'discussion_topics' },
+      (payload: TopicUpdatePayload) => handlers.forEach(h => h(payload)),
+    )
+    .subscribe()
+  topicActivityChannel = { channel, refCount: 1, handlers }
+  return topicActivityChannel
+}
+
+function releaseTopicActivityChannel(supabase: AnySupabase) {
+  if (!topicActivityChannel)
+    return
+  topicActivityChannel.refCount--
+  if (topicActivityChannel.refCount <= 0) {
+    void supabase.removeChannel(topicActivityChannel.channel)
+    topicActivityChannel = null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Composable
+// ---------------------------------------------------------------------------
+
 export function useRealtimeForumFeed({
   onReply,
   onDiscussion,
@@ -53,9 +163,7 @@ export function useRealtimeForumFeed({
 }: UseRealtimeForumFeedOptions) {
   const supabase = useSupabaseClient<Database>()
 
-  let replyChannel: RealtimeChannel | null = null
-  let discussionChannel: RealtimeChannel | null = null
-  let topicActivityChannel: RealtimeChannel | null = null
+  let subscribed = false
 
   function mapReply(row: ReplyRow): ActivityItem | null {
     if (row.discussion_id == null)
@@ -130,81 +238,67 @@ export function useRealtimeForumFeed({
     }
   }
 
+  // Per-instance handler refs so we can remove exactly this instance's handler on unsubscribe.
+  let replyHandler: ((p: ReplyInsertPayload) => void) | null = null
+  let discussionHandler: ((p: DiscussionInsertPayload) => void) | null = null
+  let topicActivityHandler: ((p: TopicUpdatePayload) => void) | null = null
+
   function subscribe() {
-    if (replyChannel != null || discussionChannel != null || topicActivityChannel != null)
+    if (subscribed)
       return
+    subscribed = true
 
-    replyChannel = supabase
-      .channel('forum-feed:replies')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'discussion_replies',
-        },
-        (payload: RealtimePostgresInsertPayload<ReplyRow>) => {
-          const item = mapReply(payload.new)
-          if (item == null)
-            return
-          onReply(item)
-          onPendingSheet(1)
-          window.__hivecomActivitySignal?.()
-        },
-      )
-      .subscribe()
+    replyHandler = (payload: ReplyInsertPayload) => {
+      const item = mapReply(payload.new)
+      if (item == null)
+        return
+      onReply(item)
+      onPendingSheet(1)
+      window.__hivecomActivitySignal?.()
+    }
+    const rc = acquireReplyChannel(supabase)
+    rc.handlers.add(replyHandler)
 
-    discussionChannel = supabase
-      .channel('forum-feed:discussions')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'discussions',
-        },
-        (payload: RealtimePostgresInsertPayload<DiscussionRow>) => {
-          const item = mapDiscussion(payload.new)
-          if (item == null)
-            return
-          onDiscussion(item)
-          onPendingSheet(1)
-          window.__hivecomActivitySignal?.()
-        },
-      )
-      .subscribe()
+    discussionHandler = (payload: DiscussionInsertPayload) => {
+      const item = mapDiscussion(payload.new)
+      if (item == null)
+        return
+      onDiscussion(item)
+      onPendingSheet(1)
+      window.__hivecomActivitySignal?.()
+    }
+    const dc = acquireDiscussionChannel(supabase)
+    dc.handlers.add(discussionHandler)
 
-    topicActivityChannel = supabase
-      .channel('forum-feed:topic-activity')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'discussion_topics',
-        },
-        (payload: RealtimePostgresUpdatePayload<TopicRow>) => {
-          const row = payload.new
-          if (row.last_activity_at != null) {
-            onTopicActivity?.(row.id, row.last_activity_at)
-          }
-        },
-      )
-      .subscribe()
+    topicActivityHandler = (payload: TopicUpdatePayload) => {
+      const row = payload.new
+      if (row.last_activity_at != null) {
+        onTopicActivity?.(row.id, row.last_activity_at)
+      }
+    }
+    const tc = acquireTopicActivityChannel(supabase)
+    tc.handlers.add(topicActivityHandler)
   }
 
   function unsubscribe() {
-    if (replyChannel != null) {
-      void supabase.removeChannel(replyChannel)
-      replyChannel = null
+    if (!subscribed)
+      return
+    subscribed = false
+
+    if (replyHandler) {
+      replyChannel?.handlers.delete(replyHandler)
+      replyHandler = null
+      releaseReplyChannel(supabase)
     }
-    if (discussionChannel != null) {
-      void supabase.removeChannel(discussionChannel)
-      discussionChannel = null
+    if (discussionHandler) {
+      discussionChannel?.handlers.delete(discussionHandler)
+      discussionHandler = null
+      releaseDiscussionChannel(supabase)
     }
-    if (topicActivityChannel != null) {
-      void supabase.removeChannel(topicActivityChannel)
-      topicActivityChannel = null
+    if (topicActivityHandler) {
+      topicActivityChannel?.handlers.delete(topicActivityHandler)
+      topicActivityHandler = null
+      releaseTopicActivityChannel(supabase)
     }
   }
 

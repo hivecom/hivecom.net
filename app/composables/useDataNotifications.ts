@@ -53,11 +53,12 @@ function parseBirthdayDate(value: string | null): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-function sourceIcon(source: string | null): string {
+export function sourceIcon(source: string | null): string {
   switch (source) {
     case 'discussion_reply': return 'ph:chat-circle-dots'
     case 'discussion_reply_reply': return 'ph:chat-circle'
     case 'mention': return 'ph:at'
+    case 'event_rescheduled': return 'ph:calendar'
     case null: return 'ph:bell'
     default: return 'ph:bell'
   }
@@ -68,6 +69,7 @@ function sourceLabel(source: string | null): string {
     case 'discussion_reply': return 'New discussion reply'
     case 'discussion_reply_reply': return 'New reply to your comment'
     case 'mention': return 'You were mentioned'
+    case 'event_rescheduled': return 'Event rescheduled'
     case null: return 'New notification'
     default: return 'New notification'
   }
@@ -125,6 +127,8 @@ export function useDataNotifications() {
       .map(entry => entry.friender)
   })
 
+  const KNOWN_SOURCES = new Set(['discussion_reply', 'mention', 'discussion_reply_reply'])
+
   const discussionNotifications = computed(() =>
     unreadNotifications.value.filter(n => n.source === 'discussion_reply'),
   )
@@ -134,6 +138,9 @@ export function useDataNotifications() {
   const replyNotifications = computed(() =>
     unreadNotifications.value.filter(n => n.source === 'discussion_reply_reply'),
   )
+  const genericNotifications = computed(() =>
+    unreadNotifications.value.filter(n => !KNOWN_SOURCES.has(n.source ?? '')),
+  )
 
   const unreadCount = computed(() =>
     pendingRequestIds.value.length
@@ -141,7 +148,8 @@ export function useDataNotifications() {
     + pendingComplaintCount.value
     + discussionNotifications.value.length
     + mentionNotifications.value.length
-    + replyNotifications.value.length,
+    + replyNotifications.value.length
+    + genericNotifications.value.length,
   )
 
   const badgeText = computed(() => {
@@ -431,6 +439,7 @@ export function useDataNotifications() {
     discussionNotifications,
     mentionNotifications,
     replyNotifications,
+    genericNotifications,
 
     // Badge
     unreadCount,

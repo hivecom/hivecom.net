@@ -49,6 +49,9 @@ export function useThemePreview() {
           else {
             // Pass withCss explicitly so applyAndPersistTheme doesn't re-evaluate
             // settings.value.allow_custom_css - user already decided during preview.
+            // Also persist the CSS consent in settings so it survives reloads.
+            if (withCss)
+              settings.value.allow_custom_css = true
             void transitionTheme(() => {
               void applyAndPersistTheme(theme, withCss)
             }, keepOrigin)
@@ -78,9 +81,8 @@ export function useThemePreview() {
     const hasCss = theme.custom_css != null && theme.custom_css.trim().length > 0
 
     // Theme has custom CSS - prompt unless already previewing this exact theme
-    // (re-clicking the same theme shouldn't re-prompt) or user has globally
-    // allowed custom CSS. Each distinct theme gets its own warning.
-    if (hasCss && !settings.value.allow_custom_css && previewingThemeId.value !== theme.id) {
+    // (re-clicking the same theme shouldn't re-prompt). Each distinct theme gets its own warning.
+    if (hasCss && previewingThemeId.value !== theme.id) {
       pendingPreviewTheme.value = {
         theme,
         hasUrl: HAS_URL_REGEX.test(theme.custom_css ?? ''),

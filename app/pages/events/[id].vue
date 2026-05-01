@@ -7,11 +7,13 @@ import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
+import { useCachedFetch } from '@/composables/useCache'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataUser } from '@/composables/useDataUser'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { expandRecurringEvent, nextOccurrenceDate } from '@/lib/utils/rrule'
 
 const isMobile = useBreakpoint('<s')
 
@@ -25,61 +27,56 @@ const supabase = useSupabaseClient()
 // Games from shared cache
 const { getByIds } = useDataGames()
 
-// Reactive data
-const event = ref<Tables<'events'> | null>(null)
-const loading = ref(true)
-const error = ref<string | null>(null)
+// Fetch event with caching
+const { data: event, loading, error, refetch: refetchEvent } = useCachedFetch<Tables<'events'>>(
+  () => ({
+    table: 'events',
+    select: '*',
+    filters: { id: eventId },
+    single: true,
+  }),
+  { ttl: 60000 },
+)
 
 // Derive event games from the cached list
-const games = computed(() => event.value?.games ? getByIds(event.value.games) : [])
+const games = computed(() => event.value?.games ? getByIds(event.value.games as number[]) : [])
 
 defineOgImage('Event', {
   eventId,
 })
 
-const { isUpcoming, isOngoing, timeAgo, countdown } = useEventTiming(event)
+const mutableEvent = computed(() => event.value as Tables<'events'> | null)
+
+// For recurring series, timing should reflect the next upcoming occurrence
+// (for countdown) or the last occurrence (for timeAgo), not the stored origin.
+const effectiveEventForTiming = computed(() => {
+  const ev = mutableEvent.value
+  if (!ev || !ev.recurrence_rule)
+    return ev
+
+  // If there's a next occurrence coming up, show countdown to it.
+  const next = nextOccurrenceDate(ev)
+  if (next)
+    return { ...ev, date: next.toISOString() }
+
+  // No next occurrence - series ended. Find the last past occurrence so
+  // timeAgo is relative to when it actually last ran, not the origin date.
+  const now = new Date()
+  const past = expandRecurringEvent(ev, new Date(ev.date), now)
+  if (past.length > 0) {
+    const last = past[past.length - 1]!
+    return { ...ev, date: last.date }
+  }
+
+  return ev
+})
+
+const { isUpcoming, isOngoing, timeAgo, countdown } = useEventTiming(effectiveEventForTiming)
 const forumUnread = useDataForumUnread()
 
 function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)
 }
-
-// Fetch event data
-async function fetchEvent() {
-  try {
-    loading.value = true
-    error.value = null
-
-    const { data, error: fetchError } = await supabase
-      .from('events')
-      .select('*')
-      .eq('id', eventId)
-      .single()
-
-    if (fetchError) {
-      if (fetchError.code === 'PGRST116') {
-        error.value = 'Event not found'
-      }
-      else {
-        error.value = fetchError.message
-      }
-      return
-    }
-
-    event.value = data
-  }
-  catch (err: unknown) {
-    error.value = (err as Error).message || 'An error occurred while loading the event'
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// Fetch data on mount
-onMounted(() => {
-  fetchEvent()
-})
 
 // Edit permissions
 const userId = useUserId()
@@ -189,7 +186,7 @@ useHead({
           <!-- Header -->
           <div :class="{ 'event-ongoing': isOngoing }">
             <EventHeader
-              :event="event"
+              :event="effectiveEventForTiming!"
               :games="games"
               :is-upcoming="isUpcoming"
               :is-ongoing="isOngoing"
@@ -200,7 +197,7 @@ useHead({
 
           <div class="event-detail__content">
             <!-- Markdown -->
-            <EventMarkdown :event="event" />
+            <EventMarkdown :event="mutableEvent!" />
 
             <!-- Related discussion -->
             <Discussion
@@ -212,7 +209,7 @@ useHead({
           </div>
         </div>
 
-        <CreateEventModal v-model:open="showEditModal" :event="event" @saved="fetchEvent" />
+        <CreateEventModal v-model:open="showEditModal" :event="mutableEvent" @saved="refetchEvent" />
 
         <ConfirmModal
           v-if="event"

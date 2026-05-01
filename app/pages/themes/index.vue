@@ -3,6 +3,7 @@ import { Button, ButtonGroup, Card, Flex, Grid, Select, Tooltip } from '@dolansk
 import ThemeGallery from '@/components/Themes/ThemeGallery.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+const userId = useUserId()
 const { activeTheme, setActiveTheme, setVariant, selectedVariant, variantOptions } = useUserTheme()
 const { transitionTheme } = useThemeTransition()
 const { dismissPreview } = useThemePreview()
@@ -67,7 +68,7 @@ function openEditor(theme?: Parameters<typeof seedEditor>[0]) {
             <Flex y-center>
               <strong class="text-semibold text-color-accent mr-xs">{{ activeTheme?.name ?? 'Default' }}</strong>
               <ButtonGroup :gap="2">
-                <Tooltip>
+                <Tooltip v-if="userId">
                   <Button size="s" :square="isMobile" @click="openEditor(activeTheme ?? null)">
                     <Icon v-if="isMobile" name="ph:pen" />
                     <template #start>

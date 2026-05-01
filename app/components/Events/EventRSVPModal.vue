@@ -9,6 +9,7 @@ import { useEventTiming } from '@/composables/useEventTiming'
 import { useRsvpBus } from '@/composables/useRsvpBus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { isSeriesActive } from '@/lib/utils/rrule'
 
 interface Props {
   event: Tables<'events'>
@@ -57,8 +58,12 @@ const currentTabData = computed(() => {
 
 const { hasEventEnded } = useEventTiming(() => props.event)
 
-const yesTabLabel = computed(() => hasEventEnded.value ? 'Went' : 'Going')
-const yesEmptyCopy = computed(() => hasEventEnded.value ? 'as having gone' : 'as going')
+const isRecurringSeries = computed(() => isSeriesActive(props.event))
+
+const eventEnded = computed(() => hasEventEnded.value && !isRecurringSeries.value)
+
+const yesTabLabel = computed(() => eventEnded.value ? 'Went' : 'Going')
+const yesEmptyCopy = computed(() => eventEnded.value ? 'as having gone' : 'as going')
 
 interface RsvpListEntry { yes: string[], tentative: string[], no: string[] }
 
@@ -87,14 +92,28 @@ async function fetchRSVPs(force = false) {
   error.value = ''
 
   try {
-    const { data, error: fetchError } = await supabase
-      .from('events_rsvps')
-      .select('user_id, rsvp')
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: true })
+    let rows: Array<{ user_id: string, rsvp: string }> = []
 
-    if (fetchError) {
-      throw fetchError
+    if (isRecurringSeries.value) {
+      const { data, error: fetchError } = await supabase
+        .rpc('get_effective_rsvps_for_occurrence', { p_event_id: eventId })
+
+      if (fetchError)
+        throw fetchError
+
+      rows = (data ?? []) as Array<{ user_id: string, rsvp: string }>
+    }
+    else {
+      const { data, error: fetchError } = await supabase
+        .from('events_rsvps')
+        .select('user_id, rsvp')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
+
+      if (fetchError)
+        throw fetchError
+
+      rows = (data ?? []) as Array<{ user_id: string, rsvp: string }>
     }
 
     // Group RSVPs by status - store just user IDs
@@ -104,13 +123,11 @@ async function fetchRSVPs(force = false) {
       no: [],
     }
 
-    if (data) {
-      data.forEach((rsvp) => {
-        if (rsvp.rsvp && groupedData[rsvp.rsvp as keyof typeof groupedData]) {
-          groupedData[rsvp.rsvp as keyof typeof groupedData].push(rsvp.user_id)
-        }
-      })
-    }
+    rows.forEach((rsvp) => {
+      if (rsvp.rsvp && groupedData[rsvp.rsvp as keyof typeof groupedData]) {
+        groupedData[rsvp.rsvp as keyof typeof groupedData].push(rsvp.user_id)
+      }
+    })
 
     rsvpData.value = groupedData
     rsvpListCache.set<RsvpListEntry>(cacheKey, groupedData)
@@ -194,8 +211,8 @@ function handleClose() {
         <div v-if="totalCount === 0" class="rsvp-modal__empty">
           <Flex column y-center x-center gap="m">
             <Icon name="ph:users-three" size="48" class="rsvp-modal__empty-icon" />
-            <h4>No RSVPs {{ hasEventEnded ? "" : "yet" }}</h4>
-            <p v-if="!hasEventEnded" class="text-color-light text-center">
+            <h4>No RSVPs {{ eventEnded ? "" : "yet" }}</h4>
+            <p v-if="!eventEnded" class="text-color-light text-center">
               Be the first to RSVP to this event!
             </p>
           </Flex>

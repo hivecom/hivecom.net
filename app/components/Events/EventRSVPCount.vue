@@ -4,6 +4,7 @@ import { Badge, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import { useDataRsvpCount } from '@/composables/useDataRsvpCount'
 import { useEventTiming } from '@/composables/useEventTiming'
+import { isSeriesActive } from '@/lib/utils/rrule'
 
 interface Props {
   event: Tables<'events'>
@@ -19,22 +20,26 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const { hasEventEnded } = useEventTiming(() => props.event)
-const { goingCount, loading: loadingCount } = useDataRsvpCount(() => props.event.id)
+const { goingCount, loading: loadingCount } = useDataRsvpCount(() => props.event)
+
+const isRecurringSeries = computed(() => isSeriesActive(props.event))
+
+const eventEnded = computed(() => hasEventEnded.value && !isRecurringSeries.value)
 
 const badgeVariant = computed(() => {
-  return hasEventEnded.value ? 'neutral' : 'accent'
+  return eventEnded.value ? 'neutral' : 'accent'
 })
 
 // Computed properties for display text
 const displayText = computed(() => {
   if (goingCount.value === 0) {
-    return hasEventEnded.value ? 'No one joined' : 'No one going yet'
+    return eventEnded.value ? 'No one joined' : 'No one going yet'
   }
   else if (goingCount.value === 1) {
-    return hasEventEnded.value ? '1 Attended' : '1 Going'
+    return eventEnded.value ? '1 Attended' : '1 Going'
   }
   else {
-    return hasEventEnded.value
+    return eventEnded.value
       ? `${goingCount.value} Attended`
       : `${goingCount.value} Going`
   }
@@ -65,7 +70,7 @@ defineExpose({
       :variant="badgeVariant"
       :size="size"
     >
-      <Icon v-if="showIcon" :class="{ ended: hasEventEnded }" name="ph:users" />
+      <Icon v-if="showIcon" :class="{ ended: eventEnded }" name="ph:users" />
 
       {{ displayText }}
     </Badge>

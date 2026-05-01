@@ -649,7 +649,9 @@ export type Database = {
           id: number
           modified_at: string | null
           modified_by: string | null
+          occurrence_date: string | null
           rsvp: Database["public"]["Enums"]["events_rsvp_status"]
+          scope: Database["public"]["Enums"]["events_rsvp_scope"]
           user_id: string
         }
         Insert: {
@@ -659,7 +661,9 @@ export type Database = {
           id?: number
           modified_at?: string | null
           modified_by?: string | null
+          occurrence_date?: string | null
           rsvp: Database["public"]["Enums"]["events_rsvp_status"]
+          scope?: Database["public"]["Enums"]["events_rsvp_scope"]
           user_id: string
         }
         Update: {
@@ -669,7 +673,9 @@ export type Database = {
           id?: number
           modified_at?: string | null
           modified_by?: string | null
+          occurrence_date?: string | null
           rsvp?: Database["public"]["Enums"]["events_rsvp_status"]
+          scope?: Database["public"]["Enums"]["events_rsvp_scope"]
           user_id?: string
         }
         Relationships: [
@@ -1864,6 +1870,13 @@ export type Database = {
         Args: { target_event_id: number }
         Returns: boolean
       }
+      events_rsvps_scope_valid: {
+        Args: {
+          p_event_id: number
+          p_scope: Database["public"]["Enums"]["events_rsvp_scope"]
+        }
+        Returns: boolean
+      }
       generate_username: { Args: never; Returns: string }
       get_admin_complaints_paginated: {
         Args: {
@@ -2260,6 +2273,17 @@ export type Database = {
           slug: string
         }[]
       }
+      get_effective_rsvp: {
+        Args: { p_occurrence_id: number; p_user_id: string }
+        Returns: Database["public"]["Enums"]["events_rsvp_status"]
+      }
+      get_effective_rsvps_for_occurrence: {
+        Args: { p_event_id: number }
+        Returns: {
+          rsvp: Database["public"]["Enums"]["events_rsvp_status"]
+          user_id: string
+        }[]
+      }
       get_forum_activity_feed: {
         Args: {
           p_created_by?: string
@@ -2547,6 +2571,7 @@ export type Database = {
         | "themes.update"
         | "themes.delete"
       app_role: "admin" | "moderator"
+      events_rsvp_scope: "occurrence" | "series"
       events_rsvp_status: "yes" | "no" | "tentative"
       kvstore_type: "NUMBER" | "BOOLEAN" | "STRING" | "JSON"
       presence_steam_status:
@@ -2765,6 +2790,7 @@ export const Constants = {
         "themes.delete",
       ],
       app_role: ["admin", "moderator"],
+      events_rsvp_scope: ["occurrence", "series"],
       events_rsvp_status: ["yes", "no", "tentative"],
       kvstore_type: ["NUMBER", "BOOLEAN", "STRING", "JSON"],
       presence_steam_status: [
@@ -2781,3 +2807,4 @@ export const Constants = {
     },
   },
 } as const
+

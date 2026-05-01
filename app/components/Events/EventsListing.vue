@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Flex, Skeleton } from '@dolanske/vui'
+import { nextOccurrenceDate } from '@/lib/utils/rrule'
 import Event from './Event.vue'
 import EventsPastListing from './EventsPastListing.vue'
 
@@ -30,12 +31,23 @@ function matchesFilters(event: Tables<'events'>): boolean {
   return true
 }
 
+// For a recurring series, the relevant date is the next occurrence, not the
+// stored origin date. This ensures recurring events don't sink into "past".
+function effectiveDate(event: Tables<'events'>): Date {
+  if (event.recurrence_rule) {
+    const next = nextOccurrenceDate(event)
+    if (next)
+      return next
+  }
+  return new Date(event.date)
+}
+
 const ongoingEvents = computed(() => {
   if (!props.events)
     return []
   const now = new Date()
   return props.events.filter((event) => {
-    const start = new Date(event.date)
+    const start = effectiveDate(event)
     const end = event.duration_minutes
       ? new Date(start.getTime() + event.duration_minutes * 60 * 1000)
       : start
@@ -47,7 +59,7 @@ const upcomingEvents = computed(() => {
   if (!props.events)
     return []
   const now = new Date()
-  return props.events.filter(event => new Date(event.date) > now).filter(matchesFilters)
+  return props.events.filter(event => effectiveDate(event) > now).filter(matchesFilters)
 })
 
 const hasActiveEvents = computed(() =>
