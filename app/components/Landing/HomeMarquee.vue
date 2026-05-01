@@ -1,9 +1,16 @@
 <script setup lang="ts">
 interface Props {
+  /**
+   * Animation direction
+   */
   direction?: 'left' | 'right'
-  // Speed in px/s
+  /**
+   * Speed in pixels/s
+   */
   speed?: number
-  // Stepped/jerky movement instead of smooth scroll
+  /**
+   * Stepped/jerky movement instead of smooth scroll
+   */
   stagger?: boolean
 }
 
